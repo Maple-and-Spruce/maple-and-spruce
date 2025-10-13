@@ -1,0 +1,33 @@
+{
+  "name": "@org/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {},
+  "private": true,
+  "devDependencies": {
+    "@nx/devkit": "21.6.3",
+    "@nx/js": "21.6.3",
+    "@nx/next": "^21.6.3",
+    "@nx/playwright": "21.6.3",
+    "@playwright/test": "^1.36.0",
+    "@swc-node/register": "1.9.2",
+    "@swc/cli": "~0.6.0",
+    "@swc/core": "1.5.7",
+    "@swc/helpers": "0.5.17",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "nx": "21.6.3",
+    "prettier": "^2.6.2",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "dependencies": {
+    "next": "14.2.33",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  }
+}
