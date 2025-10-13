@@ -4,10 +4,10 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/maple-spruce-app-e2e"
+      "path": "./apps/maple-spruce-e2e"
     },
     {
-      "path": "./apps/maple-spruce-app"
+      "path": "./apps/maple-spruce"
     }
   ]
 }

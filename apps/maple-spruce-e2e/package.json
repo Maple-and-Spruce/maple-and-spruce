@@ -1,10 +1,10 @@
 {
-  "name": "maple-spruce-app-e2e",
+  "name": "maple-spruce-e2e",
   "version": "0.0.1",
   "private": true,
   "nx": {
     "implicitDependencies": [
-      "maple-spruce-app"
+      "maple-spruce"
     ]
   }
 }
