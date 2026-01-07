@@ -1,109 +1,135 @@
-# Org
+# Maple & Spruce
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Digital platform for Maple & Spruce - a folk arts collective offering handmade goods, workshops, and music lessons in Morgantown, WV.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+**Current Phase**: Etsy integration & artist payout tracking (no physical store yet)
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Quick Start
 
-## Generate a library
+```bash
+# Install dependencies
+npm install
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
+# Run the development server
+npx nx serve maple-spruce
+
+# Open http://localhost:3000
 ```
 
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx build pkg1
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx <target> <project-name>
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
+## Project Structure
 
 ```
-npx nx release
+maple-and-spruce/
+├── .claude/                        # Claude Code configuration
+│   ├── CLAUDE.md                  # Quick reference for Claude
+│   └── AGENTS.md                  # Detailed agent rules
+├── apps/
+│   ├── maple-spruce/              # Main Next.js application
+│   └── maple-spruce-e2e/          # Playwright e2e tests
+├── packages/                       # Shared libraries (to be created)
+│   ├── ui/                        # Shared UI components
+│   ├── domain/                    # Domain models & types
+│   └── firebase/                  # Firebase utilities & repositories
+└── docs/                           # Documentation
+    ├── REQUIREMENTS.md            # Business requirements & features
+    ├── PATTERNS-AND-PRACTICES.md  # Development patterns guide
+    ├── DECISIONS.md               # Architecture decision records
+    └── BACKLOG.md                 # Ideas & future features
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+## Documentation
 
-[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+| Document | Purpose |
+|----------|---------|
+| [Requirements](docs/REQUIREMENTS.md) | What we're building and why |
+| [Patterns & Practices](docs/PATTERNS-AND-PRACTICES.md) | Code patterns & architecture |
+| [Decisions](docs/DECISIONS.md) | Architecture Decision Records (ADRs) |
+| [Backlog](docs/BACKLOG.md) | Ideas and future features |
+| [Agent Rules](.claude/AGENTS.md) | Git workflow & coding standards |
 
-## Keep TypeScript project references up to date
+## Tech Stack
 
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 15 + React 19 |
+| Monorepo | Nx |
+| UI | MUI (Material Design) |
+| Database | Firebase Firestore |
+| Auth | Firebase Authentication |
+| Backend | Firebase Cloud Functions |
+| Payments | Stripe (planned) |
+| Testing | Playwright |
 
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
+## Brand Colors
 
-```sh
-npx nx sync
+| Name | Hex | Usage |
+|------|-----|-------|
+| Cream | `#D5D6C8` | Backgrounds |
+| Dark Brown | `#4A3728` | Headings, primary text |
+| Sage Green | `#6B7B5E` | Buttons, accents |
+| Warm Gray | `#7A7A6E` | Body text |
+
+## Git Workflow
+
+```bash
+# Always work on feature branches
+git checkout -b feature/7-firebase-setup
+
+# Commit with clear messages referencing issues
+git commit -m "feat: add artist management (#2)"
+
+# Create PRs for review
+gh pr create --title "feat: Firebase setup (#7)"
 ```
 
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+See [AGENTS.md](.claude/AGENTS.md) for detailed workflow rules.
 
-```sh
-npx nx sync:check
+## Common Commands
+
+```bash
+# Development
+npx nx serve maple-spruce          # Start dev server
+npx nx build maple-spruce          # Production build
+npx nx test maple-spruce           # Run tests
+
+# E2E Testing
+npx nx e2e maple-spruce-e2e        # Run Playwright tests
+
+# Utilities
+npx nx graph                        # View dependency graph
+npx nx affected -t build           # Build affected projects
 ```
 
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+## Environment Variables
 
-## Set up CI!
+Create `.env.local` in `apps/maple-spruce/`:
 
-### Step 1
+```bash
+# Firebase
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 
-To connect to Nx Cloud, run the following command:
+# Stripe (future)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
-```sh
-npx nx connect
+# Etsy
+ETSY_API_KEY=
+ETSY_ACCESS_TOKEN=
+ETSY_SHOP_ID=
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+## GitHub Issues
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Track progress via GitHub Issues:
+- [Phase 1 Epic: Etsy + Artist Payouts](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/1)
+- [All Issues](https://github.com/Maple-and-Spruce/maple-and-spruce/issues)
 
-### Step 2
+---
 
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+*Built with Claude Code*
