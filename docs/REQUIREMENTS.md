@@ -151,7 +151,8 @@ interface Payout {
 |----------|--------|-----------|
 | Framework | Next.js 15 | Already scaffolded |
 | Monorepo | Nx | Already configured |
-| Database | Supabase | Auth + Postgres + generous free tier |
+| Database | Firebase Firestore | NoSQL, real-time, Auth included |
+| Auth | Firebase Authentication | Integrated with Firestore |
 | Payments | Stripe | For future class payments |
 
 ### Phase 1 Specific
