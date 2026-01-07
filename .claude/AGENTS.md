@@ -4,6 +4,18 @@
 
 ---
 
+## Agent Directives
+
+**IMPORTANT**: Follow these directives in every session.
+
+1. **Keep documentation current** - Update SESSION.md after completing tasks, making decisions, or learning new context.
+2. **Read before acting** - Start sessions by reading AGENTS.md and SESSION.md for context.
+3. **Check GitHub issues** - Run `gh issue list --label phase-1` to see current work.
+4. **Update Implementation Status** - Mark features as "In progress" or "Complete" in this file as work progresses.
+5. **Use feature branches** - Never commit directly to main.
+
+---
+
 ## Project Overview
 
 **Maple & Spruce** is a folk arts collective platform in Morgantown, WV offering:
@@ -40,7 +52,7 @@
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| Firebase setup | Not started | - |
+| Firebase setup | Complete | `libs/ts/firebase/firebase-config/`, `libs/firebase/database/` |
 | MUI theme | Not started | - |
 | Domain types | Not started | - |
 | Artist CRUD | Not started | - |
@@ -50,13 +62,14 @@
 | Payout reports | Not started | - |
 
 **External Dependencies:**
-- [ ] Firebase project created
-- [ ] Etsy developer account / test store
+- [x] Firebase project created (`maple-and-spruce`)
+- [x] Etsy developer account (pending approval)
 
 ## Key Documentation
 
 | Document | Purpose |
 |----------|---------|
+| [.claude/SESSION.md](./SESSION.md) | **Read first** - Current work, blockers, external service status |
 | [docs/REQUIREMENTS.md](../docs/REQUIREMENTS.md) | Business requirements, phased roadmap, data models |
 | [docs/PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md) | Code patterns, architecture, examples |
 | [docs/DECISIONS.md](../docs/DECISIONS.md) | Architecture Decision Records (ADRs) |
