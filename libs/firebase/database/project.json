@@ -1,0 +1,22 @@
+{
+  "name": "firebase-database",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/database/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/firebase/database",
+        "main": "libs/firebase/database/src/index.ts",
+        "tsConfig": "libs/firebase/database/tsconfig.lib.json",
+        "assets": ["libs/firebase/database/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "maple-and-spruce",
+    "dev": "maple-and-spruce",
+    "prod": "maple-and-spruce"
+  }
+}

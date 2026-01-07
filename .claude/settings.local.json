@@ -7,7 +7,17 @@
       "Bash(gh issue edit:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(firebase projects:list:*)",
+      "Bash(firebase login:list:*)",
+      "Bash(firebase use:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(git pull:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx nx run:*)",
+      "Bash(npx nx sync:*)"
     ]
   }
 }
