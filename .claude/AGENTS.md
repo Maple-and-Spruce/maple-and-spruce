@@ -51,9 +51,17 @@
 
 ## Git Workflow
 
+### Branch Protection
+
+**`main` branch is protected. All changes must go through pull requests.**
+
+- Direct pushes to `main` are blocked
+- All work happens on feature branches
+- PRs required even for solo development
+
 ### Branch Strategy
 
-**Always work on feature branches, never directly on `main`.**
+**Always work on feature branches.**
 
 ```bash
 # Create a new feature branch
