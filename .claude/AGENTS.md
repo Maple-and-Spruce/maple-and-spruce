@@ -15,6 +15,44 @@
 
 **Current Phase**: Phase 1 - Etsy integration & artist payout tracking
 
+## GitHub Issues
+
+**Always check `gh issue list` for current work.** Issues are the source of truth for tasks.
+
+| Command | Purpose |
+|---------|---------|
+| `gh issue list --label phase-1` | Current phase work |
+| `gh issue list --label epic` | High-level epics |
+| `gh issue view <number>` | Issue details |
+
+**Phase 1 Issues:**
+- #1 - Epic: Phase 1 overview
+- #7 - Firebase infrastructure setup
+- #2 - Artist management CRUD
+- #3 - Product/inventory tracking
+- #4 - Etsy API integration
+- #5 - Sales tracking
+- #6 - Payout reports
+
+## Implementation Status
+
+> **Update this section as features are built.**
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Firebase setup | Not started | - |
+| MUI theme | Not started | - |
+| Domain types | Not started | - |
+| Artist CRUD | Not started | - |
+| Product management | Not started | - |
+| Etsy integration | Not started | - |
+| Sales tracking | Not started | - |
+| Payout reports | Not started | - |
+
+**External Dependencies:**
+- [ ] Firebase project created
+- [ ] Etsy developer account / test store
+
 ## Key Documentation
 
 | Document | Purpose |
