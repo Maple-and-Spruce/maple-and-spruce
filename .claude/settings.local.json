@@ -17,7 +17,13 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(npx nx run:*)",
-      "Bash(npx nx sync:*)"
+      "Bash(npx nx sync:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create --title \"feat: add Firebase infrastructure setup (#7)\" --body \"$(cat <<''EOF''\n## Summary\nSets up Firebase infrastructure following patterns from mountain-sol-platform.\n\n## Changes\n- Switch from `packages/` to `libs/` directory structure\n- Create `@maple/ts/firebase/firebase-config` library (client SDK singleton)\n- Create `@maple/firebase/database` library (admin SDK for server-side)\n- Add Firebase config files (firebase.json, rules, indexes)\n- Add CI/CD workflows for build checks and Firebase hosting deploys\n- Update documentation (SESSION.md, AGENTS.md)\n\n## Libraries Created\n\n| Library | Purpose | Import |\n|---------|---------|--------|\n| firebase-config | Client SDK singleton | `@maple/ts/firebase/firebase-config` |\n| firebase-database | Admin SDK | `@maple/firebase/database` |\n\n## CI/CD Workflows\n\n| Workflow | Trigger | Action |\n|----------|---------|--------|\n| build-check.yml | PR to any branch | Build Next.js app |\n| firebase-hosting-merge.yml | Push to main | Deploy to Firebase Hosting |\n\n## Testing\n- [x] TypeScript compiles\n- [x] Next.js app builds successfully\n- [x] Nx workspace synced\n\n## Next Steps (after merge)\n1. Add `FIREBASE_SERVICE_ACCOUNT_MAPLE_AND_SPRUCE` secret to GitHub repo for CI/CD deploys\n\nCloses #7\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nEOF\n)\")",
+      "Bash(git reset:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(firebase apphosting:backends:list:*)"
     ]
   }
 }
