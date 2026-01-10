@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx nx run maple-spruce:build",
+  "outputDirectory": "apps/maple-spruce/.next",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}
