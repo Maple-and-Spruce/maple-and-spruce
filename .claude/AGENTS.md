@@ -75,6 +75,25 @@
 | [docs/DECISIONS.md](../docs/DECISIONS.md) | Architecture Decision Records (ADRs) |
 | [docs/BACKLOG.md](../docs/BACKLOG.md) | Ideas and future features |
 
+## Reference Repository
+
+**mountain-sol-platform** (`/Users/$USER/GitHub/platform`) serves as the reference implementation for patterns used in this project.
+
+When implementing new features, check mountain-sol for:
+- Nx monorepo structure and library organization
+- Firebase client/admin SDK patterns
+- Cloud Functions architecture
+- CI/CD workflow patterns
+- Repository pattern implementations
+- TypeScript path alias conventions
+
+**Key patterns borrowed from mountain-sol:**
+- `libs/ts/firebase/firebase-config/` - Singleton Firebase app initialization
+- `libs/firebase/database/` - Admin SDK with Firestore utilities
+- `.github/workflows/` - Build checks and Firebase deploy workflows
+
+As this project grows, document new patterns in `docs/PATTERNS-AND-PRACTICES.md` so they can be referenced without needing to explore mountain-sol.
+
 ## Tech Stack
 
 | Layer | Technology |
