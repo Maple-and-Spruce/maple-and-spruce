@@ -14,22 +14,34 @@
     "@swc/cli": "~0.6.0",
     "@swc/core": "1.5.7",
     "@swc/helpers": "0.5.17",
+    "@testing-library/react": "^16.0.0",
     "@types/react": "19.0.0",
     "@types/react-dom": "19.0.0",
     "nx": "21.6.3",
     "prettier": "^2.6.2",
     "tslib": "^2.3.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^2.0.0"
   },
   "workspaces": [
     "libs/**",
     "apps/*"
   ],
   "dependencies": {
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^6.0.0",
+    "@mui/material": "^6.0.0",
+    "@mui/x-data-grid": "^7.0.0",
+    "@mui/x-date-pickers": "^7.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "date-fns": "^3.0.0",
     "firebase": "^12.7.0",
     "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
     "next": "15.2.8",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "vest": "^5.4.6"
   }
 }

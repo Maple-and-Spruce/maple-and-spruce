@@ -1,6 +1,8 @@
 # Maple & Spruce - Patterns and Practices Guide
 
-> Patterns inspired by Mountain Sol's platform, adapted for Next.js/React with Firebase
+> Patterns inspired by [Mountain Sol's platform](https://github.com/MountainSOLSchool/platform), adapted for Next.js/React with Firebase
+
+**See also**: [SOL-PATTERNS-REFERENCE.md](./SOL-PATTERNS-REFERENCE.md) for detailed source code references.
 
 ---
 
@@ -11,12 +13,15 @@
 3. [State Management Patterns](#state-management-patterns)
 4. [Data Access Patterns](#data-access-patterns)
 5. [API & Backend Patterns](#api--backend-patterns)
-6. [Payment Processing](#payment-processing)
-7. [Authentication & Authorization](#authentication--authorization)
-8. [UI Component Patterns](#ui-component-patterns)
-9. [Error Handling](#error-handling)
-10. [Testing Strategy](#testing-strategy)
-11. [Third-Party Services](#third-party-services)
+6. [Firebase Cloud Functions](#firebase-cloud-functions)
+7. [Payment Processing](#payment-processing)
+8. [Authentication & Authorization](#authentication--authorization)
+9. [UI Component Patterns](#ui-component-patterns)
+10. [Validation Patterns](#validation-patterns)
+11. [Error Handling](#error-handling)
+12. [Testing Strategy](#testing-strategy)
+13. [Third-Party Services](#third-party-services)
+14. [Dependencies](#dependencies)
 
 ---
 
@@ -268,6 +273,8 @@ export const ArtistRepository = {
 
 ## API & Backend Patterns
 
+> **SOL Reference**: See [SOL-PATTERNS-REFERENCE.md#firebase-cloud-functions-architecture](./SOL-PATTERNS-REFERENCE.md#firebase-cloud-functions-architecture)
+
 ### API Route Structure
 
 ```typescript
@@ -352,6 +359,132 @@ export const generatePayouts = functions.https.onCall(async (data, context) => {
 
   return { success: true, payoutsCreated: payoutCount };
 });
+```
+
+---
+
+## Firebase Cloud Functions
+
+> **SOL Reference**: See [SOL-PATTERNS-REFERENCE.md#firebase-cloud-functions-architecture](./SOL-PATTERNS-REFERENCE.md#firebase-cloud-functions-architecture)
+
+### Library-Per-Function Pattern
+
+Following Mountain Sol's pattern, each Cloud Function should be its own Nx library for granular deployment:
+
+```
+libs/firebase/maple-functions/
+├── create-artist/
+│   ├── src/
+│   │   ├── lib/create-artist.ts
+│   │   └── index.ts
+│   └── project.json
+├── sync-etsy-products/
+├── record-sale/
+└── calculate-payout/
+```
+
+### Function Builder Pattern
+
+Create a utility for consistent function structure:
+
+```typescript
+// libs/firebase/functions/src/functions.utility.ts
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore } from 'firebase-admin/firestore';
+
+export enum Role {
+    Admin = 'admin',
+}
+
+interface FunctionOptions {
+    requiredRole?: Role;
+}
+
+export function createFunction<TReq, TRes>(
+    handler: (data: TReq, context: { uid?: string }) => Promise<TRes>,
+    options?: FunctionOptions
+) {
+    return onCall(async (request) => {
+        // Auth check
+        if (options?.requiredRole) {
+            if (!request.auth?.uid) {
+                throw new HttpsError('unauthenticated', 'Must be logged in');
+            }
+            const isAdmin = await checkRole(request.auth.uid, options.requiredRole);
+            if (!isAdmin) {
+                throw new HttpsError('permission-denied', 'Insufficient permissions');
+            }
+        }
+
+        return handler(request.data as TReq, { uid: request.auth?.uid });
+    });
+}
+
+async function checkRole(uid: string, role: Role): Promise<boolean> {
+    const db = getFirestore();
+    const doc = await db.collection('admins').doc(uid).get();
+    return doc.exists;
+}
+```
+
+### Example Function Implementation
+
+```typescript
+// libs/firebase/maple-functions/create-artist/src/lib/create-artist.ts
+import { createFunction, Role } from '@maple/firebase/functions';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import type { CreateArtistRequest, Artist } from '@maple/ts/api-types';
+
+export const createArtist = createFunction<CreateArtistRequest, Artist>(
+    async (data, context) => {
+        const db = getFirestore();
+
+        // Validation
+        if (!data.name?.trim()) {
+            throw new Error('Name is required');
+        }
+        if (!data.email?.trim()) {
+            throw new Error('Email is required');
+        }
+
+        // Create document
+        const artistData = {
+            name: data.name.trim(),
+            email: data.email.trim(),
+            phone: data.phone?.trim() || null,
+            commissionRate: data.commissionRate,
+            status: 'active',
+            notes: data.notes || null,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+        };
+
+        const docRef = await db.collection('artists').add(artistData);
+
+        return {
+            id: docRef.id,
+            ...artistData,
+        } as Artist;
+    },
+    { requiredRole: Role.Admin }
+);
+```
+
+### Shared API Types
+
+```typescript
+// libs/ts/firebase/api-types/src/artist.types.ts
+export interface CreateArtistRequest {
+    name: string;
+    email: string;
+    phone?: string;
+    commissionRate: number;
+    notes?: string;
+}
+
+export interface UpdateArtistRequest extends Partial<CreateArtistRequest> {
+    id: string;
+}
 ```
 
 ---
@@ -655,6 +788,84 @@ export default function Error({
 
 ---
 
+## Validation Patterns
+
+> **SOL Reference**: See [SOL-PATTERNS-REFERENCE.md#validation-patterns](./SOL-PATTERNS-REFERENCE.md#validation-patterns)
+
+### Vest Validation Framework
+
+Use [Vest](https://vestjs.dev/) for declarative validation that can be shared between client and server.
+
+```typescript
+// libs/ts/validation/src/artist.validation.ts
+import { create, test, enforce, only } from 'vest';
+import type { Artist } from '@maple/ts/domain';
+
+export const artistValidation = create((data: Partial<Artist>, field?: string) => {
+    only(field); // Only validate specific field if provided
+
+    test('name', 'Name is required', () => {
+        enforce(data.name).isNotBlank();
+    });
+
+    test('email', 'Email is required', () => {
+        enforce(data.email).isNotBlank();
+    });
+
+    test('email', 'Email must be valid', () => {
+        enforce(data.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    });
+
+    test('commissionRate', 'Commission rate is required', () => {
+        enforce(data.commissionRate).isNotNullish();
+    });
+
+    test('commissionRate', 'Commission rate must be between 0 and 100', () => {
+        enforce(data.commissionRate).isBetween(0, 100);
+    });
+});
+
+// Usage in component
+const result = artistValidation(formData);
+if (result.hasErrors()) {
+    const errors = result.getErrors();
+    // { name: ['Name is required'], email: ['Email must be valid'] }
+}
+```
+
+### Form State Machine
+
+Use discriminated unions for form submission state:
+
+```typescript
+type FormState =
+    | { status: 'idle' }
+    | { status: 'submitting' }
+    | { status: 'success'; data: Artist }
+    | { status: 'error'; message: string };
+
+const [formState, setFormState] = useState<FormState>({ status: 'idle' });
+
+const handleSubmit = async (data: ArtistFormData) => {
+    // Validate first
+    const validation = artistValidation(data);
+    if (validation.hasErrors()) {
+        setFormState({ status: 'error', message: 'Please fix validation errors' });
+        return;
+    }
+
+    setFormState({ status: 'submitting' });
+    try {
+        const result = await createArtist(data);
+        setFormState({ status: 'success', data: result });
+    } catch (error) {
+        setFormState({ status: 'error', message: error.message });
+    }
+};
+```
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests (Vitest)
@@ -805,4 +1016,89 @@ ETSY_SHOP_ID=
 
 ---
 
-*Last updated: 2025-01-06*
+## Dependencies
+
+### Required for Phase 1
+
+Add these dependencies to support the patterns above:
+
+```bash
+# Form validation
+npm install vest
+
+# Server state management
+npm install @tanstack/react-query
+
+# UI components (already have MUI base)
+npm install @mui/x-data-grid @mui/x-date-pickers
+
+# Date handling
+npm install date-fns
+
+# Firebase Functions v2
+npm install firebase-functions@latest
+```
+
+### package.json Additions
+
+```json
+{
+  "dependencies": {
+    "vest": "^5.4.6",
+    "@tanstack/react-query": "^5.0.0",
+    "@mui/x-data-grid": "^7.0.0",
+    "@mui/x-date-pickers": "^7.0.0",
+    "date-fns": "^3.0.0",
+    "firebase-functions": "^7.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "@testing-library/react": "^16.0.0"
+  }
+}
+```
+
+### SOL Dependencies Reference
+
+These are the key dependencies from Mountain Sol that inform our choices:
+
+| SOL Dependency | Version | Maple Equivalent |
+|----------------|---------|------------------|
+| `vest` | ^5.4.6 | vest ^5.4.6 |
+| `@ngrx/component-store` | ^20.x | @tanstack/react-query |
+| `primeng` / `primereact` | ^17.x | MUI components |
+| `firebase` | ^11.x | firebase ^12.x |
+| `firebase-functions` | ^7.x | firebase-functions ^7.x |
+| `@reduxjs/toolkit` | ^2.x | (optional - for complex state) |
+
+---
+
+## Quick Reference
+
+### Pattern Checklist
+
+When building a new feature, ensure:
+
+- [ ] Use `RequestState<T>` for async data, not boolean flags
+- [ ] Create repository for Firestore access
+- [ ] Add Vest validation suite for forms
+- [ ] Use MUI theme colors, not hardcoded hex
+- [ ] Create types in `@maple/ts/domain`
+- [ ] Add API types in `@maple/ts/api-types`
+- [ ] Follow library-per-function for Cloud Functions
+
+### File Locations
+
+| Type | Location |
+|------|----------|
+| Domain types | `libs/ts/domain/src/` |
+| API types | `libs/ts/firebase/api-types/src/` |
+| Validation | `libs/ts/validation/src/` |
+| Repositories | `libs/firebase/database/src/` |
+| Cloud Functions | `libs/firebase/maple-functions/*/` |
+| React hooks | `apps/maple-spruce/src/hooks/` |
+| Components | `apps/maple-spruce/src/components/` |
+
+---
+
+*Last updated: 2026-01-11*

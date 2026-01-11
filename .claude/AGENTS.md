@@ -50,20 +50,33 @@
 
 > **Update this section as features are built.**
 
+### Infrastructure
+
 | Feature | Status | Location |
 |---------|--------|----------|
-| Firebase setup | Complete | `libs/ts/firebase/firebase-config/`, `libs/firebase/database/` |
-| MUI theme | Not started | - |
-| Domain types | Not started | - |
-| Artist CRUD | Not started | - |
-| Product management | Not started | - |
-| Etsy integration | Not started | - |
-| Sales tracking | Not started | - |
-| Payout reports | Not started | - |
+| Firebase client SDK | Complete | `libs/ts/firebase/firebase-config/` |
+| Firebase admin SDK | Complete | `libs/firebase/database/` |
+| MUI theme | Not started | `apps/maple-spruce/src/lib/theme/` |
+| Domain types library | Not started | `libs/ts/domain/` |
+| Validation library | Not started | `libs/ts/validation/` |
+| API types library | Not started | `libs/ts/firebase/api-types/` |
+| Functions core library | Not started | `libs/firebase/functions/` |
 
-**External Dependencies:**
+### Phase 1 Features
+
+| Feature | Status | Issue | Location |
+|---------|--------|-------|----------|
+| Artist CRUD | Not started | #2 | `libs/firebase/database/src/artist.repository.ts` |
+| Product management | Not started | #3 | `libs/firebase/database/src/product.repository.ts` |
+| Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
+| Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
+| Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
+
+### External Dependencies
+
 - [x] Firebase project created (`maple-and-spruce`)
-- [x] Etsy developer account (pending approval)
+- [x] Etsy developer account (app pending approval)
+- [x] Dependencies added to package.json (vest, react-query, MUI, etc.)
 
 ## Key Documentation
 
@@ -77,22 +90,39 @@
 
 ## Reference Repository
 
-**mountain-sol-platform** (`/Users/$USER/GitHub/platform`) serves as the reference implementation for patterns used in this project.
+**Mountain Sol Platform** serves as the reference implementation for patterns used in this project.
 
-When implementing new features, check mountain-sol for:
-- Nx monorepo structure and library organization
-- Firebase client/admin SDK patterns
-- Cloud Functions architecture
-- CI/CD workflow patterns
-- Repository pattern implementations
-- TypeScript path alias conventions
+- **GitHub**: https://github.com/MountainSOLSchool/platform
+- **Local path**: `/Users/$USER/GitHub/platform`
 
-**Key patterns borrowed from mountain-sol:**
-- `libs/ts/firebase/firebase-config/` - Singleton Firebase app initialization
-- `libs/firebase/database/` - Admin SDK with Firestore utilities
-- `.github/workflows/` - Build checks and Firebase deploy workflows
+### Pattern Documentation
 
-As this project grows, document new patterns in `docs/PATTERNS-AND-PRACTICES.md` so they can be referenced without needing to explore mountain-sol.
+**IMPORTANT**: Before implementing features, consult these documents:
+
+| Document | Purpose |
+|----------|---------|
+| [docs/SOL-PATTERNS-REFERENCE.md](../docs/SOL-PATTERNS-REFERENCE.md) | Detailed SOL patterns with file links |
+| [docs/PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md) | Maple & Spruce adaptations |
+
+### Key Patterns to Follow
+
+1. **Async State (`RequestState<T>`)** - Never use boolean `isLoading`
+   - SOL: [libs/angular/request/src/lib/models/requested.type.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/angular/request/src/lib/models/requested.type.ts)
+
+2. **Repository Pattern** - All Firestore access through repositories
+   - SOL: [libs/firebase/database/src/lib/utilities/database.utility.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/database/src/lib/utilities/database.utility.ts)
+
+3. **Library-per-Function** - Each Cloud Function in its own Nx library
+   - SOL: [libs/firebase/enrollment-functions/](https://github.com/MountainSOLSchool/platform/tree/main/libs/firebase/enrollment-functions)
+
+4. **Vest Validation** - Declarative form validation suites
+   - SOL: [libs/ts/classes/classes-domain/src/lib/validation/](https://github.com/MountainSOLSchool/platform/tree/main/libs/ts/classes/classes-domain/src/lib/validation)
+
+5. **Form State Machine** - Discriminated unions for form submission
+   - SOL: [libs/angular/classes/class-management/src/lib/components/class-form/class-form.component.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/angular/classes/class-management/src/lib/components/class-form/class-form.component.ts) (lines 89-94)
+
+6. **Function Builder** - Consistent Cloud Function structure
+   - SOL: [libs/firebase/functions/src/lib/utilities/functions.utility.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts)
 
 ## Tech Stack
 
