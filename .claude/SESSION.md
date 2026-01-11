@@ -6,9 +6,9 @@
 
 ## Current Work
 
-**Status**: Documentation and patterns complete. Ready to build features.
+**Status**: Infrastructure libraries complete. Ready to implement features.
 
-**Recent session** (2026-01-11): Added comprehensive SOL patterns documentation, updated all Phase 1 issues with implementation details, added dependencies to package.json.
+**Recent session** (2026-01-11): Created all infrastructure libraries following SOL patterns - domain types, validation suites, function utilities, and API types.
 
 ## Deployment
 
@@ -47,21 +47,24 @@ Firebase App Hosting requires a billing account (Blaze plan). Using Vercel free 
 ```
 libs/
 ├── ts/
-│   ├── firebase/firebase-config/   # Client SDK singleton
-│   ├── domain/                     # Domain types (to create)
-│   ├── validation/                 # Vest suites (to create)
-│   └── firebase/api-types/         # Function types (to create)
+│   ├── firebase/
+│   │   ├── firebase-config/        # Client SDK singleton
+│   │   └── api-types/              # API request/response types ✅
+│   ├── domain/                     # Domain types ✅
+│   └── validation/                 # Vest suites ✅
 └── firebase/
     ├── database/                   # Admin SDK + repositories
-    ├── functions/                  # Function utilities (to create)
+    ├── functions/                  # Function utilities ✅
     └── maple-functions/            # Individual functions (to create)
 ```
 
 **Path aliases:**
 - `@maple/ts/firebase/firebase-config` → Client SDK
 - `@maple/firebase/database` → Admin SDK
-- `@maple/ts/domain` → Domain types (planned)
-- `@maple/ts/validation` → Validation suites (planned)
+- `@maple/firebase/functions` → Function utilities
+- `@maple/ts/domain` → Domain types (Artist, Product, Sale, Payout)
+- `@maple/ts/validation` → Vest validation suites
+- `@maple/ts/firebase/api-types` → API request/response types
 
 ## CI/CD
 
@@ -83,30 +86,26 @@ libs/
 
 | Date | Change | PR |
 |------|--------|-----|
-| 2026-01-11 | SOL patterns documentation, issue updates, package.json deps | (pending) |
+| 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | (pending) |
+| 2026-01-11 | SOL patterns documentation, issue updates, package.json deps | #19 |
 | 2026-01-10 | App Hosting setup + Vercel deployment | #15 |
 | 2026-01-10 | Reference repository documentation | #14 |
 | 2026-01-10 | Firebase infrastructure setup (issue #7) | #13 |
 | 2026-01-06 | Documentation improvements | #12 |
 
-## Documentation Added (2026-01-11)
+## Infrastructure Libraries Created (2026-01-11)
 
-- **docs/SOL-PATTERNS-REFERENCE.md** - Comprehensive patterns from Mountain Sol with GitHub links
-- **docs/PATTERNS-AND-PRACTICES.md** - Updated with Firebase Functions, Validation sections
-- **package.json** - Added vest, react-query, MUI, date-fns, firebase-functions
-- **GitHub issues #1-6** - Updated with implementation details and pattern references
-- **.claude/AGENTS.md** - Added pattern links and implementation status
+- **libs/ts/domain/** - Domain types (Artist, Product, Sale, Payout, RequestState)
+- **libs/ts/validation/** - Vest validation suites for all domain types
+- **libs/firebase/functions/** - createFunction, createAdminFunction, auth utilities, error helpers
+- **libs/ts/firebase/api-types/** - Type-safe API request/response types for all endpoints
 
 ## Next Steps
 
-1. **Create infrastructure libraries**:
-   - `libs/ts/domain/` - Domain types
-   - `libs/ts/validation/` - Vest suites
-   - `libs/firebase/functions/` - Function utilities
-2. **Implement issue #2** - Artist CRUD
-3. **Implement issue #3** - Product management
-4. **Wait for Etsy approval** - Then implement issue #4
-5. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
+1. **Implement issue #2** - Artist CRUD
+2. **Implement issue #3** - Product management
+3. **Wait for Etsy approval** - Then implement issue #4
+4. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
 
 ---
 
