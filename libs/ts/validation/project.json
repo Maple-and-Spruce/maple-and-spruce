@@ -1,0 +1,29 @@
+{
+  "name": "validation",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ts/validation/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:validation"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/ts/validation",
+        "main": "libs/ts/validation/src/index.ts",
+        "tsConfig": "libs/ts/validation/tsconfig.lib.json",
+        "assets": []
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../../coverage/libs/ts/validation"
+      }
+    }
+  }
+}
