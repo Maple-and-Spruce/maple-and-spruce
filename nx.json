@@ -5,21 +5,11 @@
     "production": ["default"],
     "sharedGlobals": []
   },
+  "sync": {
+    "applyChanges": false,
+    "disabledTaskSyncGenerators": ["@nx/js:typescript-sync"]
+  },
   "plugins": [
-    {
-      "plugin": "@nx/js/typescript",
-      "options": {
-        "typecheck": {
-          "targetName": "typecheck"
-        },
-        "build": {
-          "targetName": "build",
-          "configName": "tsconfig.lib.json",
-          "buildDepsName": "build-deps",
-          "watchDepsName": "watch-deps"
-        }
-      }
-    },
     {
       "plugin": "@nx/next/plugin",
       "options": {

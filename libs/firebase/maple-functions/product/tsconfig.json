@@ -1,0 +1,26 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext"
+  },
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "../../../ts/firebase/api-types"
+    },
+    {
+      "path": "../../../ts/validation"
+    },
+    {
+      "path": "../../database"
+    },
+    {
+      "path": "../../functions"
+    },
+    {
+      "path": "./tsconfig.lib.json"
+    }
+  ]
+}
