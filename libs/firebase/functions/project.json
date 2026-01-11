@@ -1,0 +1,22 @@
+{
+  "name": "firebase-functions",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/functions/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:util"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/firebase/functions",
+        "main": "libs/firebase/functions/src/index.ts",
+        "tsConfig": "libs/firebase/functions/tsconfig.lib.json",
+        "assets": []
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "api-types",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ts/firebase/api-types/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:api"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/ts/firebase/api-types",
+        "main": "libs/ts/firebase/api-types/src/index.ts",
+        "tsConfig": "libs/ts/firebase/api-types/tsconfig.lib.json",
+        "assets": []
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}
