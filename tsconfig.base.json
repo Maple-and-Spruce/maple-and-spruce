@@ -21,6 +21,9 @@
     "paths": {
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
       "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
+      "@maple/firebase/maple-functions/product": [
+        "libs/firebase/maple-functions/product/src/index.ts"
+      ],
       "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
       "@maple/ts/firebase/api-types": [
         "libs/ts/firebase/api-types/src/index.ts"
