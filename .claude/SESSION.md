@@ -6,9 +6,9 @@
 
 ## Current Work
 
-**Status**: Infrastructure libraries complete. Ready to implement features.
+**Status**: Inventory CRUD with authentication complete. Basic admin app functional.
 
-**Recent session** (2026-01-11): Created all infrastructure libraries following SOL patterns - domain types, validation suites, function utilities, and API types.
+**Recent session** (2026-01-13): Implemented full inventory CRUD system with Firebase Functions, authentication flow, and admin role-based authorization.
 
 ## Deployment
 
@@ -100,13 +100,94 @@ libs/
 - **libs/firebase/functions/** - createFunction, createAdminFunction, auth utilities, error helpers
 - **libs/ts/firebase/api-types/** - Type-safe API request/response types for all endpoints
 
+## Session 2026-01-13: Inventory CRUD + Auth Implementation
+
+### What was built
+
+1. **Firebase Functions App** (`apps/functions/`)
+   - Entry point exporting all Cloud Functions
+   - esbuild configuration for bundling
+   - Local development with `firebase serve --only functions` (not emulators)
+   - Functions connect to real Firebase (auth + Firestore)
+
+2. **Product CRUD Functions** (`libs/firebase/maple-functions/product/`)
+   - `getProducts` - List products (authenticated)
+   - `getProduct` - Get single product (authenticated)
+   - `createProduct` - Create product (admin only)
+   - `updateProduct` - Update product (admin only)
+   - `deleteProduct` - Delete product (admin only)
+
+3. **Product Repository** (`libs/firebase/database/src/lib/product.repository.ts`)
+   - Firestore CRUD operations
+   - Filtering by artistId, status
+   - `markAsSold` helper
+
+4. **Authentication System**
+   - `AuthGuard` component - Protects routes, redirects to login
+   - `useAuth` hook - Firebase auth state, sign out
+   - `UserMenu` component - Account dropdown with logout
+   - Login page with sign in/sign up/password reset
+
+5. **Admin Role Authorization**
+   - Roles stored in `admins` Firestore collection
+   - Document ID = user UID
+   - `hasRole()` utility checks admin status
+
+6. **MUI Theme** (`apps/maple-spruce/src/lib/theme/`)
+   - Brand colors (sage green, dark brown, cream)
+   - Custom component styling
+
+7. **Inventory Page** (`apps/maple-spruce/src/app/inventory/`)
+   - Product list with cards
+   - Add/edit dialog
+   - Delete confirmation
+   - Connected to Firebase Functions
+
+### Key learnings
+
+1. **Next.js + Nx workspace module resolution**
+   - `transpilePackages` alone doesn't work for Nx workspace libs
+   - Need explicit webpack aliases in `next.config.js`
+   - TypeScript paths in tsconfig are for IDE, not webpack
+
+2. **Firebase Functions local development**
+   - Use `firebase serve --only functions` (not emulators)
+   - Connects to real Firebase Auth and Firestore
+   - Only functions run locally as a node process
+   - Requires `package.json` with `main` field in dist folder
+
+3. **Mountain Sol auth patterns**
+   - AuthGuard wraps entire app in root layout
+   - Public routes defined in config array
+   - `onAuthStateChanged` listener for reactive auth state
+   - Client-side redirect to login for unauthenticated users
+
+### Running locally
+
+```bash
+# Terminal 1: Start Firebase Functions
+npx nx run functions:serve
+
+# Terminal 2: Start Next.js
+npx nx dev maple-spruce
+```
+
+- Frontend: http://localhost:3000
+- Functions: http://localhost:5001
+
+### To grant admin access
+
+Add a document to `admins` collection in Firestore:
+- Document ID = user's Firebase Auth UID
+- Any field (e.g., `grantedAt: <timestamp>`)
+
 ## Next Steps
 
-1. **Implement issue #2** - Artist CRUD
-2. **Implement issue #3** - Product management
+1. **Commit progress** - Create PR for inventory CRUD + auth
+2. **Implement issue #2** - Artist CRUD (similar pattern)
 3. **Wait for Etsy approval** - Then implement issue #4
 4. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
 
 ---
 
-*Last updated: 2026-01-11*
+*Last updated: 2026-01-13*

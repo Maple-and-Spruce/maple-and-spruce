@@ -10,56 +10,23 @@ import {
   Toolbar,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type { Product, CreateProductInput, RequestState } from '@maple/ts/domain';
+import type { Product, CreateProductInput } from '@maple/ts/domain';
 import {
   ProductList,
   ProductForm,
   DeleteConfirmDialog,
 } from '../../components/inventory';
-
-/**
- * Mock data for development - will be replaced with Firebase calls
- */
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    artistId: 'artist-1',
-    name: 'Handwoven Wool Scarf',
-    description: 'Beautiful handwoven scarf made with local wool',
-    price: 85.0,
-    sku: 'SCARF-001',
-    status: 'available',
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    artistId: 'artist-1',
-    name: 'Ceramic Mug Set',
-    description: 'Set of 4 hand-thrown ceramic mugs',
-    price: 120.0,
-    sku: 'MUG-SET-001',
-    status: 'available',
-    etsyListingId: '1234567890',
-    createdAt: new Date(),
-  },
-  {
-    id: '3',
-    artistId: 'artist-2',
-    name: 'Maple Cutting Board',
-    description: 'Handcrafted cutting board from local maple',
-    price: 65.0,
-    status: 'sold',
-    createdAt: new Date(),
-    soldAt: new Date(),
-  },
-];
+import { UserMenu } from '../../components/auth';
+import { useProducts } from '../../hooks';
 
 export default function InventoryPage() {
-  // Product list state
-  const [productsState, setProductsState] = useState<RequestState<Product[]>>({
-    status: 'success',
-    data: mockProducts,
-  });
+  // Product state from hook (fetches on mount)
+  const {
+    productsState,
+    createProduct,
+    updateProduct,
+    deleteProduct: deleteProductApi,
+  } = useProducts();
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -67,7 +34,7 @@ export default function InventoryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Delete dialog state
-  const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleOpenForm = useCallback((product?: Product) => {
@@ -84,69 +51,46 @@ export default function InventoryPage() {
     async (data: CreateProductInput) => {
       setIsSubmitting(true);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      if (editingProduct) {
-        // Update existing product
-        setProductsState((prev) => {
-          if (prev.status !== 'success') return prev;
-          return {
-            ...prev,
-            data: prev.data.map((p) =>
-              p.id === editingProduct.id ? { ...p, ...data } : p
-            ),
-          };
-        });
-      } else {
-        // Create new product
-        const newProduct: Product = {
-          id: `mock-${Date.now()}`,
-          ...data,
-          createdAt: new Date(),
-        };
-        setProductsState((prev) => {
-          if (prev.status !== 'success') return prev;
-          return {
-            ...prev,
-            data: [newProduct, ...prev.data],
-          };
-        });
+      try {
+        if (editingProduct) {
+          await updateProduct({ id: editingProduct.id, ...data });
+        } else {
+          await createProduct(data);
+        }
+        handleCloseForm();
+      } catch (error) {
+        console.error('Failed to save product:', error);
+        // TODO: Show error toast
+      } finally {
+        setIsSubmitting(false);
       }
-
-      setIsSubmitting(false);
-      handleCloseForm();
     },
-    [editingProduct, handleCloseForm]
+    [editingProduct, handleCloseForm, createProduct, updateProduct]
   );
 
   const handleOpenDelete = useCallback((product: Product) => {
-    setDeleteProduct(product);
+    setProductToDelete(product);
   }, []);
 
   const handleCloseDelete = useCallback(() => {
-    setDeleteProduct(null);
+    setProductToDelete(null);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!deleteProduct) return;
+    if (!productToDelete) return;
 
     setIsDeleting(true);
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    setProductsState((prev) => {
-      if (prev.status !== 'success') return prev;
-      return {
-        ...prev,
-        data: prev.data.filter((p) => p.id !== deleteProduct.id),
-      };
-    });
-
-    setIsDeleting(false);
-    handleCloseDelete();
-  }, [deleteProduct, handleCloseDelete]);
+    try {
+      await deleteProductApi(productToDelete.id);
+      handleCloseDelete();
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      // TODO: Show error toast
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [productToDelete, handleCloseDelete, deleteProductApi]);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -155,6 +99,7 @@ export default function InventoryPage() {
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
             Maple & Spruce
           </Typography>
+          <UserMenu />
         </Toolbar>
       </AppBar>
 
@@ -194,8 +139,8 @@ export default function InventoryPage() {
         />
 
         <DeleteConfirmDialog
-          open={!!deleteProduct}
-          product={deleteProduct}
+          open={!!productToDelete}
+          product={productToDelete}
           onClose={handleCloseDelete}
           onConfirm={handleConfirmDelete}
           isDeleting={isDeleting}

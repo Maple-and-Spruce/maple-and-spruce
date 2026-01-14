@@ -6,6 +6,7 @@
 import {
   createAdminFunction,
   createAuthenticatedFunction,
+  createPublicFunction,
 } from '@maple/firebase/functions';
 import { ProductRepository } from '@maple/firebase/database';
 import { throwNotFound } from '@maple/firebase/functions';
