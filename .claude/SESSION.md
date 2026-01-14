@@ -86,7 +86,8 @@ libs/
 
 | Date | Change | PR |
 |------|--------|-----|
-| 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | (pending) |
+| 2026-01-13 | Firebase Functions, auth, admin authorization | #21 |
+| 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | #20 |
 | 2026-01-11 | SOL patterns documentation, issue updates, package.json deps | #19 |
 | 2026-01-10 | App Hosting setup + Vercel deployment | #15 |
 | 2026-01-10 | Reference repository documentation | #14 |
@@ -183,10 +184,22 @@ Add a document to `admins` collection in Firestore:
 
 ## Next Steps
 
-1. **Commit progress** - Create PR for inventory CRUD + auth
-2. **Implement issue #2** - Artist CRUD (similar pattern)
-3. **Wait for Etsy approval** - Then implement issue #4
-4. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
+1. **Merge PR #21** - Inventory infrastructure complete
+2. **Refine #3** - Product data model, UX, Etsy field alignment
+3. **Implement #2** - Artist CRUD (needed for product-artist linking)
+4. **Infrastructure tasks:**
+   - #22 - Deploy Functions to Firebase (needs billing)
+   - #23 - CI/CD for Functions
+   - #24 - Testing infrastructure
+5. **Wait for Etsy approval** - Then implement #4
+
+## New Issues Created (2026-01-13)
+
+| Issue | Title | Description |
+|-------|-------|-------------|
+| #22 | Deploy Firebase Functions to production | Manual deployment setup (needs Blaze plan) |
+| #23 | Set up CI/CD for Firebase Functions | GitHub Actions for build/deploy |
+| #24 | Add testing infrastructure | Jest, unit tests, integration tests |
 
 ---
 

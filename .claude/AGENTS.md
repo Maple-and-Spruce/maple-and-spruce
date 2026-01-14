@@ -41,10 +41,13 @@
 - #1 - Epic: Phase 1 overview
 - #7 - Firebase infrastructure setup
 - #2 - Artist management CRUD
-- #3 - Product/inventory tracking
+- #3 - Product/inventory tracking (infrastructure complete, feature in progress)
 - #4 - Etsy API integration
 - #5 - Sales tracking
 - #6 - Payout reports
+- #22 - Deploy Firebase Functions to production
+- #23 - Set up CI/CD for Firebase Functions
+- #24 - Add testing infrastructure
 
 ## Implementation Status
 
@@ -69,10 +72,18 @@
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | Artist CRUD | Not started | #2 | `libs/firebase/database/src/artist.repository.ts` |
-| Product management | **Complete** | #3 | `libs/firebase/maple-functions/product/` |
+| Product management | In Progress | #3 | `libs/firebase/maple-functions/product/` |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
+
+### Infrastructure Tasks
+
+| Task | Status | Issue |
+|------|--------|-------|
+| Deploy Functions to Firebase | Not started | #22 |
+| CI/CD for Functions | Not started | #23 |
+| Testing infrastructure | Not started | #24 |
 
 ### External Dependencies
 
