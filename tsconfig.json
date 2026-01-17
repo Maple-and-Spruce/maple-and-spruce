@@ -14,6 +14,18 @@
     },
     {
       "path": "./libs/firebase/database"
+    },
+    {
+      "path": "./libs/ts/firebase/api-types"
+    },
+    {
+      "path": "./libs/firebase/functions"
+    },
+    {
+      "path": "./libs/ts/validation"
+    },
+    {
+      "path": "./libs/ts/domain"
     }
   ]
 }

@@ -6,9 +6,9 @@
 
 ## Current Work
 
-**Status**: Infrastructure libraries complete. Ready to implement features.
+**Status**: Inventory system architecture designed. Domain types updated. Ready to implement features.
 
-**Recent session** (2026-01-11): Created all infrastructure libraries following SOL patterns - domain types, validation suites, function utilities, and API types.
+**Recent session** (2026-01-16): Designed comprehensive inventory system architecture with hybrid Square/Firestore approach. Updated domain types to match new design.
 
 ## Deployment
 
@@ -42,6 +42,13 @@ Firebase App Hosting requires a billing account (Blaze plan). Using Vercel free 
 
 **Note**: Etsy app approval typically takes 1-2 business days.
 
+### Square
+| Item | Status | Details |
+|------|--------|---------|
+| Developer account | ❌ | Need to create |
+| App registered | ❌ | Need to register after account |
+| API credentials | ❌ | Pending |
+
 ## Project Structure
 
 ```
@@ -50,7 +57,7 @@ libs/
 │   ├── firebase/
 │   │   ├── firebase-config/        # Client SDK singleton
 │   │   └── api-types/              # API request/response types ✅
-│   ├── domain/                     # Domain types ✅
+│   ├── domain/                     # Domain types ✅ (updated 2026-01-16)
 │   └── validation/                 # Vest suites ✅
 └── firebase/
     ├── database/                   # Admin SDK + repositories
@@ -62,7 +69,7 @@ libs/
 - `@maple/ts/firebase/firebase-config` → Client SDK
 - `@maple/firebase/database` → Admin SDK
 - `@maple/firebase/functions` → Function utilities
-- `@maple/ts/domain` → Domain types (Artist, Product, Sale, Payout)
+- `@maple/ts/domain` → Domain types (Artist, Product, Sale, Payout, InventoryMovement, SyncConflict)
 - `@maple/ts/validation` → Vest validation suites
 - `@maple/ts/firebase/api-types` → API request/response types
 
@@ -73,7 +80,29 @@ libs/
 | `build-check.yml` | PR to any branch | Build Next.js app |
 | Vercel | Push to main | Deploy to production |
 
-## Decisions Made
+## Architecture Decisions (2026-01-16)
+
+### Inventory System Design
+
+**Hybrid Square + Firestore architecture:**
+- **Square owns**: Product catalog (name, price, images), inventory quantities, SKU
+- **Firestore owns**: Artist profiles, product-artist relationships, commission rates, sales attribution, payouts, sync conflicts
+
+**Key design choices:**
+1. Products in Firestore are **linking records** - store `squareItemId`, `etsyListingId`, `artistId`, and cached display data
+2. **Quantity-based model** - all products have quantity (even one-of-a-kind items)
+3. **Immutable audit log** - `InventoryMovement` collection tracks all changes for reconciliation
+4. **Manual conflict resolution** - `SyncConflict` collection surfaces issues for admin decision
+5. **SKU format**: Opaque `prd_[random]` - no encoded semantics
+
+**See ADRs 009-012 in docs/DECISIONS.md for full rationale.**
+
+### Commission Model
+- Artists have `defaultCommissionRate`
+- Products can have `customCommissionRate` override
+- Rate applied at sale time is snapshotted in Sale record
+
+## Recent Decisions
 
 1. **No separate test environment** - Single Firebase project, single Etsy app. Internal tool with low risk.
 2. **Use real Etsy shop** - Only reading data, no risk of corruption.
@@ -81,11 +110,16 @@ libs/
 4. **`@maple/` namespace** - Path alias prefix for all shared libraries.
 5. **Followed mountain-sol patterns** - Singleton Firebase app, admin SDK setup, CI/CD workflows.
 6. **Vercel for hosting** - Firebase App Hosting requires billing; Vercel free tier works for now.
+7. **Square as POS** - Industry standard, good API, native Etsy integration.
+8. **Hybrid inventory architecture** - Square for catalog/quantity, Firestore for consignment logic.
+9. **Event sourcing for inventory** - InventoryMovement audit log for reconciliation.
+10. **Manual sync conflict resolution** - Surface issues in UI, don't auto-resolve.
 
 ## Recent Changes
 
 | Date | Change | PR |
 |------|--------|-----|
+| 2026-01-16 | Inventory system architecture, domain type updates | (pending) |
 | 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | (pending) |
 | 2026-01-11 | SOL patterns documentation, issue updates, package.json deps | #19 |
 | 2026-01-10 | App Hosting setup + Vercel deployment | #15 |
@@ -93,20 +127,24 @@ libs/
 | 2026-01-10 | Firebase infrastructure setup (issue #7) | #13 |
 | 2026-01-06 | Documentation improvements | #12 |
 
-## Infrastructure Libraries Created (2026-01-11)
+## Domain Types Updated (2026-01-16)
 
-- **libs/ts/domain/** - Domain types (Artist, Product, Sale, Payout, RequestState)
-- **libs/ts/validation/** - Vest validation suites for all domain types
-- **libs/firebase/functions/** - createFunction, createAdminFunction, auth utilities, error helpers
-- **libs/ts/firebase/api-types/** - Type-safe API request/response types for all endpoints
+- **Artist** - Renamed `commissionRate` → `defaultCommissionRate`
+- **Product** - Now a linking record with `squareItemId`, `squareVariationId`, `etsyListingId`, `quantity`, `sku`, `customCommissionRate`, sync metadata
+- **Sale** - Added `quantitySold`, `commissionRateApplied`, `squareOrderId`, `squarePaymentId`
+- **Payout** - Added `saleCount`, `paymentMethod`, `paymentReference`, `updatedAt`
+- **InventoryMovement** - NEW: Immutable audit log for inventory changes
+- **SyncConflict** - NEW: Track and resolve sync issues between systems
 
 ## Next Steps
 
-1. **Implement issue #2** - Artist CRUD
-2. **Implement issue #3** - Product management
-3. **Wait for Etsy approval** - Then implement issue #4
-4. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
+1. **Create Square developer account** - Register app, get API credentials
+2. **Update validation suites** - Match new domain types
+3. **Implement issue #2** - Artist CRUD (with new `defaultCommissionRate` field)
+4. **Implement issue #3** - Product management (linking records, Square integration)
+5. **Wait for Etsy approval** - Then implement issue #4
+6. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
 
 ---
 
-*Last updated: 2026-01-11*
+*Last updated: 2026-01-16*

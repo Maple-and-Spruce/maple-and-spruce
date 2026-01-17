@@ -2,6 +2,9 @@
  * Product validation suite
  *
  * Vest validation for product forms.
+ * Note: Products are linking records - Square is source of truth for catalog data.
+ * This validation is for the Firestore product record.
+ *
  * @see https://vestjs.dev/
  */
 import { create, test, enforce, only } from 'vest';
@@ -52,9 +55,19 @@ export const productValidation = create(
       }
     });
 
-    test('sku', 'SKU must be alphanumeric if provided', () => {
-      if (data.sku) {
-        enforce(data.sku).matches(/^[A-Za-z0-9\-_]+$/);
+    test('quantity', 'Quantity is required', () => {
+      enforce(data.quantity).isNotNullish();
+    });
+
+    test('quantity', 'Quantity must be 0 or greater', () => {
+      if (data.quantity !== undefined) {
+        enforce(data.quantity).greaterThanOrEquals(0);
+      }
+    });
+
+    test('quantity', 'Quantity must be a whole number', () => {
+      if (data.quantity !== undefined) {
+        enforce(data.quantity).condition((val) => Number.isInteger(val));
       }
     });
 
@@ -62,15 +75,41 @@ export const productValidation = create(
       enforce(data.status).isNotBlank();
     });
 
-    test('status', 'Status must be available, sold, or reserved', () => {
+    test('status', 'Status must be active, draft, or discontinued', () => {
       if (data.status) {
-        enforce(data.status).inside(['available', 'sold', 'reserved']);
+        enforce(data.status).inside(['active', 'draft', 'discontinued']);
+      }
+    });
+
+    test('customCommissionRate', 'Commission rate must be between 0 and 1', () => {
+      if (data.customCommissionRate !== undefined) {
+        enforce(data.customCommissionRate).greaterThanOrEquals(0);
+        enforce(data.customCommissionRate).lessThanOrEquals(1);
       }
     });
 
     test('imageUrl', 'Image URL must be valid if provided', () => {
       if (data.imageUrl) {
         enforce(data.imageUrl).matches(/^https?:\/\/.+/);
+      }
+    });
+
+    // Square IDs are optional on creation (populated after sync)
+    test('squareItemId', 'Square Item ID must not be empty if provided', () => {
+      if (data.squareItemId !== undefined) {
+        enforce(data.squareItemId).isNotBlank();
+      }
+    });
+
+    test('squareVariationId', 'Square Variation ID must not be empty if provided', () => {
+      if (data.squareVariationId !== undefined) {
+        enforce(data.squareVariationId).isNotBlank();
+      }
+    });
+
+    test('etsyListingId', 'Etsy Listing ID must not be empty if provided', () => {
+      if (data.etsyListingId !== undefined) {
+        enforce(data.etsyListingId).isNotBlank();
       }
     });
   }

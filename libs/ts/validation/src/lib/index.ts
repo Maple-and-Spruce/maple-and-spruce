@@ -18,3 +18,5 @@ export { artistValidation } from './artist.validation';
 export { productValidation } from './product.validation';
 export { saleValidation } from './sale.validation';
 export { payoutValidation } from './payout.validation';
+export { inventoryMovementValidation } from './inventory-movement.validation';
+export { syncConflictResolutionValidation } from './sync-conflict.validation';
