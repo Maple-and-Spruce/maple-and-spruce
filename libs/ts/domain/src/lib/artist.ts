@@ -17,6 +17,11 @@ export interface Artist {
   defaultCommissionRate: number;
   status: ArtistStatus;
   notes?: string;
+  /**
+   * URL to the artist's photo in Firebase Storage.
+   * Used for display in admin UI and Webflow integration.
+   */
+  photoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }

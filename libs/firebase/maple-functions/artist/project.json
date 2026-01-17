@@ -1,0 +1,22 @@
+{
+  "name": "firebase-maple-functions-artist",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/artist/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/firebase/maple-functions/artist",
+        "main": "libs/firebase/maple-functions/artist/src/index.ts",
+        "tsConfig": "libs/firebase/maple-functions/artist/tsconfig.lib.json",
+        "assets": []
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

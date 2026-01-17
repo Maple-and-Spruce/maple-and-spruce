@@ -12,12 +12,6 @@
     "codebase": "maple-functions"
   },
   "emulators": {
-    "firestore": {
-      "port": 8080
-    },
-    "auth": {
-      "port": 9099
-    },
     "functions": {
       "port": 5001
     },

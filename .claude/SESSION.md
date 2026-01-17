@@ -134,6 +134,7 @@ libs/
 8. **Hybrid inventory architecture** - Square for catalog/quantity, Firestore for consignment logic.
 9. **Event sourcing for inventory** - InventoryMovement audit log for reconciliation.
 10. **Manual sync conflict resolution** - Surface issues in UI, don't auto-resolve.
+11. **No local emulators for Firebase services** - Use production Firebase (Auth, Firestore, Storage) directly. Only run functions emulator locally. Firebase CLI login handles authentication.
 
 ## Recent Changes
 
