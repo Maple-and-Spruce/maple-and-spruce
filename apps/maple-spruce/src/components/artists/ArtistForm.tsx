@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -16,7 +16,14 @@ import {
   InputAdornment,
   Alert,
 } from '@mui/material';
+import { httpsCallable } from 'firebase/functions';
+import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type { Artist, CreateArtistInput, ArtistStatus } from '@maple/ts/domain';
+import type {
+  UploadArtistImageRequest,
+  UploadArtistImageResponse,
+} from '@maple/ts/firebase/api-types';
+import { ImageUpload, type ImageUploadState } from '../common';
 
 interface ArtistFormProps {
   open: boolean;
@@ -33,6 +40,7 @@ const defaultFormData: CreateArtistInput = {
   defaultCommissionRate: 0.4, // 40% to store, 60% to artist
   status: 'active',
   notes: '',
+  photoUrl: '',
 };
 
 /**
@@ -74,6 +82,23 @@ function validateForm(data: CreateArtistInput): Record<string, string> {
   return errors;
 }
 
+/**
+ * Read a File as base64 string (without the data URL prefix)
+ */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ArtistForm({
   open,
   onClose,
@@ -84,6 +109,12 @@ export function ArtistForm({
   const [formData, setFormData] = useState<CreateArtistInput>(defaultFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Image upload state
+  const [imageUploadState, setImageUploadState] = useState<ImageUploadState>({
+    status: 'idle',
+  });
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   const isEdit = !!artist;
 
@@ -96,10 +127,19 @@ export function ArtistForm({
         defaultCommissionRate: artist.defaultCommissionRate,
         status: artist.status,
         notes: artist.notes ?? '',
+        photoUrl: artist.photoUrl ?? '',
       });
+      // If artist has an existing photo, show it as success state
+      if (artist.photoUrl) {
+        setImageUploadState({ status: 'success', url: artist.photoUrl });
+      } else {
+        setImageUploadState({ status: 'idle' });
+      }
     } else {
       setFormData(defaultFormData);
+      setImageUploadState({ status: 'idle' });
     }
+    setPendingImageFile(null);
     setErrors({});
     setSubmitError(null);
   }, [artist, open]);
@@ -122,6 +162,42 @@ export function ArtistForm({
     }
   };
 
+  const handleImageSelected = useCallback((file: File, previewUrl: string) => {
+    setPendingImageFile(file);
+    setImageUploadState({ status: 'previewing', previewUrl, file });
+  }, []);
+
+  const handleImageRemove = useCallback(() => {
+    setPendingImageFile(null);
+    setImageUploadState({ status: 'idle' });
+    setFormData((prev) => ({ ...prev, photoUrl: '' }));
+  }, []);
+
+  /**
+   * Upload image to Firebase Storage
+   */
+  const uploadImage = async (file: File, artistId?: string): Promise<string> => {
+    const functions = getMapleFunctions();
+    const upload = httpsCallable<UploadArtistImageRequest, UploadArtistImageResponse>(
+      functions,
+      'uploadArtistImage'
+    );
+
+    const imageBase64 = await readFileAsBase64(file);
+
+    const result = await upload({
+      artistId,
+      imageBase64,
+      contentType: file.type,
+    });
+
+    if (!result.data.success) {
+      throw new Error('Image upload failed');
+    }
+
+    return result.data.url;
+  };
+
   const handleSubmit = async () => {
     const validationErrors = validateForm(formData);
     if (Object.keys(validationErrors).length > 0) {
@@ -132,7 +208,41 @@ export function ArtistForm({
     setSubmitError(null);
 
     try {
-      await onSubmit(formData);
+      let photoUrl = formData.photoUrl;
+
+      // If there's a pending image to upload, upload it first
+      if (pendingImageFile) {
+        setImageUploadState({
+          status: 'uploading',
+          previewUrl:
+            imageUploadState.status === 'previewing'
+              ? imageUploadState.previewUrl
+              : '',
+        });
+
+        try {
+          photoUrl = await uploadImage(pendingImageFile, artist?.id);
+          setImageUploadState({ status: 'success', url: photoUrl });
+        } catch (uploadError) {
+          const errorMessage =
+            uploadError instanceof Error
+              ? uploadError.message
+              : 'Failed to upload image';
+          setImageUploadState({
+            status: 'error',
+            error: errorMessage,
+            previewUrl:
+              imageUploadState.status === 'previewing'
+                ? imageUploadState.previewUrl
+                : undefined,
+          });
+          setSubmitError(`Image upload failed: ${errorMessage}`);
+          return;
+        }
+      }
+
+      // Submit with the (possibly updated) photoUrl
+      await onSubmit({ ...formData, photoUrl });
       onClose();
     } catch (error) {
       setSubmitError(
@@ -151,6 +261,15 @@ export function ArtistForm({
               {submitError}
             </Alert>
           )}
+
+          {/* Image Upload */}
+          <ImageUpload
+            state={imageUploadState}
+            onFileSelected={handleImageSelected}
+            onRemove={handleImageRemove}
+            existingImageUrl={artist?.photoUrl}
+            label="Artist Photo"
+          />
 
           <TextField
             label="Name"
@@ -237,9 +356,13 @@ export function ArtistForm({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={isSubmitting}
+          disabled={isSubmitting || imageUploadState.status === 'uploading'}
         >
-          {isSubmitting ? 'Saving...' : isEdit ? 'Update' : 'Add'}
+          {isSubmitting || imageUploadState.status === 'uploading'
+            ? 'Saving...'
+            : isEdit
+              ? 'Update'
+              : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>

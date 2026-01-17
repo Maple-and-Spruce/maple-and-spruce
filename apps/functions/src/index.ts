@@ -24,6 +24,7 @@ export {
   createArtist,
   updateArtist,
   deleteArtist,
+  uploadArtistImage,
 } from '@maple/firebase/maple-functions/artist';
 
 // Product CRUD functions

@@ -4,15 +4,18 @@ import {
   Box,
   Card,
   CardContent,
+  CardMedia,
   Typography,
   Chip,
   IconButton,
   Grid,
   Skeleton,
   Alert,
+  Avatar,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PersonIcon from '@mui/icons-material/Person';
 import type { Artist } from '@maple/ts/domain';
 import type { RequestState } from '@maple/ts/domain';
 
@@ -45,6 +48,30 @@ function ArtistCard({
 }) {
   return (
     <Card>
+      {/* Artist Photo */}
+      {artist.photoUrl ? (
+        <CardMedia
+          component="img"
+          height="200"
+          image={artist.photoUrl}
+          alt={artist.name}
+          sx={{ objectFit: 'cover' }}
+        />
+      ) : (
+        <Box
+          sx={{
+            height: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'grey.100',
+          }}
+        >
+          <Avatar sx={{ width: 80, height: 80, bgcolor: 'grey.300' }}>
+            <PersonIcon sx={{ fontSize: 48, color: 'grey.500' }} />
+          </Avatar>
+        </Box>
+      )}
       <CardContent>
         <Box
           sx={{
@@ -110,6 +137,7 @@ function LoadingSkeleton() {
       {[1, 2, 3].map((i) => (
         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
           <Card>
+            <Skeleton variant="rectangular" height={200} />
             <CardContent>
               <Skeleton variant="text" width="60%" height={32} />
               <Skeleton variant="text" width="80%" />
