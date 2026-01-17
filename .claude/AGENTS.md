@@ -72,10 +72,21 @@
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | Artist CRUD | Not started | #2 | `libs/firebase/database/src/artist.repository.ts` |
-| Product management | In Progress | #3 | `libs/firebase/maple-functions/product/` |
+| Product management | Partial (has bugs) | #3 | `libs/firebase/maple-functions/product/` |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
+
+#### Product Management (#3) - Known Issues
+
+The following issues exist in the merged code and must be fixed:
+
+1. **ProductForm status enum mismatch** - Uses `'available' | 'reserved' | 'sold'` but should use `'active' | 'draft' | 'discontinued'`
+2. **ProductForm missing quantity field** - Required by domain type and validation
+3. **Manual artistId input** - Needs dropdown (blocked by #2)
+4. **No artist info in ProductList** - Should display artist name (blocked by #2)
+
+See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/3#issuecomment-3762626561) for details.
 
 ### Infrastructure Tasks
 
