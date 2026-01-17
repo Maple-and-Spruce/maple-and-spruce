@@ -17,6 +17,15 @@ export const healthCheck = createPublicFunction<
   };
 });
 
+// Artist CRUD functions
+export {
+  getArtists,
+  getArtist,
+  createArtist,
+  updateArtist,
+  deleteArtist,
+} from '@maple/firebase/maple-functions/artist';
+
 // Product CRUD functions
 export {
   getProducts,
