@@ -16,9 +16,6 @@
       "path": "./libs/firebase/database"
     },
     {
-      "path": "./libs/firebase/maple-functions/product"
-    },
-    {
       "path": "./libs/ts/firebase/api-types"
     },
     {
