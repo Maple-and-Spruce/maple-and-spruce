@@ -6,9 +6,29 @@
 
 ## Current Work
 
-**Status**: Inventory system architecture designed. Domain types updated. Ready to implement features.
+**Status**: Foundation merged, ready to start Artist Management (#2).
 
-**Recent session** (2026-01-16): Designed comprehensive inventory system architecture with hybrid Square/Firestore approach. Updated domain types to match new design.
+**Recent session** (2026-01-16): Reviewed `feature/3-inventory-crud` branch against new Square architecture. Branch has valuable foundation (auth, functions, theme) but inventory UI has issues. Documented remaining work, updated PR #21, ready to merge and start #2.
+
+### Inventory (#3) - Known Issues to Fix
+
+These issues exist in the merged code and need to be fixed when returning to #3:
+
+1. **ProductForm status enum mismatch** - Form uses `'available' | 'reserved' | 'sold'` but domain type uses `'active' | 'draft' | 'discontinued'`
+   - File: `apps/maple-spruce/src/components/inventory/ProductForm.tsx`
+
+2. **ProductForm missing quantity field** - Domain type and validation require `quantity`, but form doesn't include it
+   - File: `apps/maple-spruce/src/components/inventory/ProductForm.tsx`
+
+3. **Manual artistId input** - Form has text field for `artistId` instead of dropdown
+   - Blocked by: #2 Artist Management (need artists to populate dropdown)
+   - File: `apps/maple-spruce/src/components/inventory/ProductForm.tsx`
+
+4. **No artist info displayed** - ProductList doesn't show artist name
+   - Blocked by: #2 Artist Management
+   - File: `apps/maple-spruce/src/components/inventory/ProductList.tsx`
+
+See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/3#issuecomment-3762626561) for full details.
 
 ## Deployment
 
@@ -119,8 +139,9 @@ libs/
 
 | Date | Change | PR |
 |------|--------|-----|
-| 2026-01-16 | Inventory system architecture, domain type updates | (pending) |
-| 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | (pending) |
+| 2026-01-16 | Inventory foundation, auth infrastructure (partial #3) | #21 |
+| 2026-01-16 | Inventory system architecture, domain type updates | #25 |
+| 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | #21 |
 | 2026-01-11 | SOL patterns documentation, issue updates, package.json deps | #19 |
 | 2026-01-10 | App Hosting setup + Vercel deployment | #15 |
 | 2026-01-10 | Reference repository documentation | #14 |
@@ -138,12 +159,11 @@ libs/
 
 ## Next Steps
 
-1. **Create Square developer account** - Register app, get API credentials
-2. **Update validation suites** - Match new domain types
-3. **Implement issue #2** - Artist CRUD (with new `defaultCommissionRate` field)
-4. **Implement issue #3** - Product management (linking records, Square integration)
-5. **Wait for Etsy approval** - Then implement issue #4
-6. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
+1. **Implement issue #2** - Artist Management (CRUD, repository, functions, UI)
+2. **Return to issue #3** - Fix ProductForm issues, add artist dropdown
+3. **Wait for Etsy approval** - Then implement issue #4
+4. **Create Square developer account** - Register app, get API credentials (Phase 2)
+5. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
 
 ---
 

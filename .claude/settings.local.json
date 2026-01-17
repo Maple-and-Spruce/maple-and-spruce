@@ -23,7 +23,15 @@
       "Bash(git reset:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)",
-      "Bash(firebase apphosting:backends:list:*)"
+      "Bash(firebase apphosting:backends:list:*)",
+      "Bash(xargs cat:*)",
+      "Bash(git stash:*)",
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(npx nx build:*)",
+      "Bash(npx nx show:*)",
+      "Bash(pkill:*)",
+      "Bash(ls:*)"
     ]
   }
 }

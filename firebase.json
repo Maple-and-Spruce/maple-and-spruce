@@ -6,6 +6,11 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "functions": {
+    "source": "dist/apps/functions",
+    "runtime": "nodejs20",
+    "codebase": "maple-functions"
+  },
   "emulators": {
     "firestore": {
       "port": 8080
@@ -13,8 +18,12 @@
     "auth": {
       "port": 9099
     },
+    "functions": {
+      "port": 5001
+    },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4000
     },
     "singleProjectMode": true
   }

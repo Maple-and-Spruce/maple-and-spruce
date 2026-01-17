@@ -4,15 +4,12 @@
     "jsx": "preserve",
     "noEmit": true,
     "emitDeclarationOnly": false,
+    "composite": false,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
@@ -23,12 +20,15 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"],
+      "@maple/ts/domain": ["../../libs/ts/domain/src/index.ts"],
+      "@maple/ts/validation": ["../../libs/ts/validation/src/index.ts"],
+      "@maple/ts/firebase/firebase-config": ["../../libs/ts/firebase/firebase-config/src/index.ts"],
+      "@maple/ts/firebase/api-types": ["../../libs/ts/firebase/api-types/src/index.ts"],
+      "@maple/firebase/database": ["../../libs/firebase/database/src/index.ts"],
+      "@maple/firebase/functions": ["../../libs/firebase/functions/src/index.ts"]
     },
     "outDir": "dist",
-    "rootDir": "src",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": [
@@ -39,7 +39,11 @@
     "src/**/*.jsx",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "../../libs/ts/domain/src/**/*.ts",
+    "../../libs/ts/validation/src/**/*.ts",
+    "../../libs/ts/firebase/firebase-config/src/**/*.ts",
+    "../../libs/ts/firebase/api-types/src/**/*.ts"
   ],
   "exclude": [
     "out-tsc",
