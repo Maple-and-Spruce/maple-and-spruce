@@ -8,6 +8,9 @@
   "include": [],
   "references": [
     {
+      "path": "../domain"
+    },
+    {
       "path": "./tsconfig.lib.json"
     }
   ]

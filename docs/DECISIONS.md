@@ -233,6 +233,171 @@ Use the earthy color palette from the Webflow marketing site.
 
 ---
 
+## ADR-009: Square POS for In-Store Sales
+
+**Status:** Accepted
+**Date:** 2026-01-16
+
+### Context
+Need a point-of-sale system for when the physical store opens. Must support barcode scanning, inventory tracking, and have good API access for integration.
+
+### Decision
+Use Square as the POS system.
+
+### Rationale
+- Industry standard for small retail
+- Robust free tier with inventory management included
+- Comprehensive API (Catalog, Inventory, Orders, Webhooks)
+- Native Etsy integration (one-way, but helpful)
+- Barcode scanning support built-in
+- Good developer documentation
+
+### Alternatives Considered
+- **Shopify POS**: Good but more expensive, heavier e-commerce focus
+- **Clover**: Less developer-friendly API
+- **Custom solution**: Too much work, not worth rebuilding POS
+
+### Consequences
+- Square becomes catalog/inventory source of truth
+- Need to sync product data to Square
+- Square Webhooks required for real-time sale detection
+- May need Retail Plus plan ($89/mo) for barcode label printing
+
+---
+
+## ADR-010: Hybrid Inventory Architecture (Square + Firestore)
+
+**Status:** Accepted
+**Date:** 2026-01-16
+
+### Context
+Need to track inventory for consignment business with multiple sales channels (Square POS, Etsy). Square has excellent inventory capabilities but no concept of consignment, artist attribution, or commission splits. Building everything custom in Firestore would duplicate Square's well-built inventory features.
+
+### Decision
+Use a hybrid architecture:
+- **Square** owns product catalog (name, price, images) and inventory quantities
+- **Firestore** owns consignment relationships (artists, commissions, payouts) and sales attribution
+
+Firestore `Product` records are **linking records** that store:
+- External IDs (`squareItemId`, `etsyListingId`)
+- Artist relationship (`artistId`)
+- Commission override (`customCommissionRate`)
+- Cached display data (synced from Square)
+
+### Rationale
+1. **Don't rebuild what Square does well** - POS, inventory states, barcode scanning, real-time sync
+2. **Square can't model consignment** - No artist profiles, commission splits, or payout tracking
+3. **Firestore handles business logic** - Artist attribution, commission calculation, payout generation
+4. **Single linking record** - One place to find a product's Square ID, Etsy ID, and artist
+5. **Audit trail in Firestore** - InventoryMovement collection provides immutable event log for reconciliation
+
+### Alternatives Considered
+
+**Option A: Square as sole source of truth**
+- Store artistId/commission in Square custom attributes
+- Rejected: 10 hidden attribute limit, no artist profiles, commission logic still needed
+
+**Option B: Firestore as sole source of truth**
+- Mirror all Square data, treat Square as "dumb" POS
+- Rejected: Duplicates Square's excellent inventory tracking, more sync complexity
+
+**Option C: Third-party inventory tool (Trunk, SKUPlugs)**
+- Let them handle Square↔Etsy sync
+- Rejected: No consignment model, less control, ongoing cost
+
+### Data Ownership
+
+| Data | Owner | Sync Direction |
+|------|-------|----------------|
+| Product name, description, price, images | Square | Square → Firestore (cache) |
+| Quantity, inventory states | Square | Square → Firestore (cache) |
+| SKU | Square | Generated on create |
+| Artist profiles | Firestore | N/A |
+| Product-artist link | Firestore | N/A |
+| Commission rates | Firestore | N/A |
+| Sales records | Firestore | Square/Etsy → Firestore |
+| Payouts | Firestore | N/A |
+| Sync conflicts | Firestore | N/A |
+
+### Consequences
+
+**Easier:**
+- Leverage Square's POS and inventory features without rebuilding
+- Clear separation: Square = retail operations, Firestore = business logic
+- Day-to-day inventory management can happen in Square Dashboard
+- Audit trail enables reconciliation and debugging
+
+**Harder:**
+- Two systems to keep in sync
+- Must handle Square webhook events correctly
+- Cached data in Firestore could become stale
+- Need to coordinate creates/updates across systems
+
+---
+
+## ADR-011: Immutable Inventory Event Log
+
+**Status:** Accepted
+**Date:** 2026-01-16
+
+### Context
+Need to track inventory changes for auditing, reconciliation, and debugging sync issues. Mutable quantity field alone doesn't explain how we got to current state.
+
+### Decision
+Create an `InventoryMovement` collection in Firestore that records every inventory change as an immutable event.
+
+Each movement records:
+- Product ID
+- Movement type (sale, return, restock, adjustment, damaged, initial)
+- Quantity change (+/-)
+- Quantity before and after (snapshots)
+- Source (manual, etsy, square, system)
+- External reference (order ID, etc.)
+- Timestamp and performer
+
+### Rationale
+- **Audit trail** - Know exactly what happened and when
+- **Reconciliation** - Sum of movements should equal current quantity
+- **Debugging** - Trace sync issues back to source
+- **Event sourcing lite** - Can replay history if needed
+
+### Consequences
+- More storage (one document per change)
+- Must remember to create movement when changing quantity
+- Enables powerful reporting and debugging
+- Background function can verify data integrity
+
+---
+
+## ADR-012: Sync Conflict Detection and Manual Resolution
+
+**Status:** Accepted
+**Date:** 2026-01-16
+
+### Context
+With bidirectional sync between inventory app, Square, and Etsy, conflicts are inevitable. Examples: someone edits price in Etsy directly, Square and Firestore quantities drift, unexpected sale on one channel.
+
+### Decision
+- Detect conflicts during sync operations
+- Store conflicts in `SyncConflict` collection with snapshots of both states
+- Surface pending conflicts in admin UI dashboard
+- Provide resolution actions: use local, use external, manual fix, ignore
+- Do NOT auto-resolve - always let admin decide
+
+### Rationale
+- Auto-resolution could cause data loss or incorrect inventory
+- Admin knows context (e.g., "I intentionally set different prices")
+- Snapshot at detection time preserves evidence
+- Ignore option for known acceptable differences
+
+### Consequences
+- Admin must periodically review conflicts
+- UI needed to display and resolve conflicts
+- Better data integrity than silent auto-resolution
+- Clear audit trail of what was wrong and how it was fixed
+
+---
+
 ## Template for New Decisions
 
 ```markdown
@@ -259,4 +424,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2025-01-06*
+*Last updated: 2026-01-16*
