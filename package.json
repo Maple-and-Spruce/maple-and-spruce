@@ -6,6 +6,7 @@
   "private": true,
   "devDependencies": {
     "@nx/devkit": "21.6.3",
+    "@nx/esbuild": "^22.3.3",
     "@nx/js": "21.6.3",
     "@nx/next": "^21.6.3",
     "@nx/playwright": "21.6.3",
@@ -17,6 +18,7 @@
     "@testing-library/react": "^16.0.0",
     "@types/react": "19.0.0",
     "@types/react-dom": "19.0.0",
+    "esbuild": "^0.27.2",
     "nx": "21.6.3",
     "prettier": "^2.6.2",
     "tslib": "^2.3.0",

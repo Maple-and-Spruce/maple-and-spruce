@@ -41,10 +41,13 @@
 - #1 - Epic: Phase 1 overview
 - #7 - Firebase infrastructure setup
 - #2 - Artist management CRUD
-- #3 - Product/inventory tracking
+- #3 - Product/inventory tracking (infrastructure complete, feature in progress)
 - #4 - Etsy API integration
 - #5 - Sales tracking
 - #6 - Payout reports
+- #22 - Deploy Firebase Functions to production
+- #23 - Set up CI/CD for Firebase Functions
+- #24 - Add testing infrastructure
 
 ## Implementation Status
 
@@ -56,21 +59,42 @@
 |---------|--------|----------|
 | Firebase client SDK | Complete | `libs/ts/firebase/firebase-config/` |
 | Firebase admin SDK | Complete | `libs/firebase/database/` |
-| MUI theme | Not started | `apps/maple-spruce/src/lib/theme/` |
-| Domain types library | Not started | `libs/ts/domain/` |
-| Validation library | Not started | `libs/ts/validation/` |
-| API types library | Not started | `libs/ts/firebase/api-types/` |
-| Functions core library | Not started | `libs/firebase/functions/` |
+| MUI theme | Complete | `apps/maple-spruce/src/lib/theme/` |
+| Domain types library | Complete | `libs/ts/domain/` |
+| Validation library | Complete | `libs/ts/validation/` |
+| API types library | Complete | `libs/ts/firebase/api-types/` |
+| Functions core library | Complete | `libs/firebase/functions/` |
+| Functions app | Complete | `apps/functions/` |
+| Authentication | Complete | `apps/maple-spruce/src/components/auth/` |
 
 ### Phase 1 Features
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | Artist CRUD | Not started | #2 | `libs/firebase/database/src/artist.repository.ts` |
-| Product management | Not started | #3 | `libs/firebase/database/src/product.repository.ts` |
+| Product management | Partial (has bugs) | #3 | `libs/firebase/maple-functions/product/` |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
+
+#### Product Management (#3) - Known Issues
+
+The following issues exist in the merged code and must be fixed:
+
+1. **ProductForm status enum mismatch** - Uses `'available' | 'reserved' | 'sold'` but should use `'active' | 'draft' | 'discontinued'`
+2. **ProductForm missing quantity field** - Required by domain type and validation
+3. **Manual artistId input** - Needs dropdown (blocked by #2)
+4. **No artist info in ProductList** - Should display artist name (blocked by #2)
+
+See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/3#issuecomment-3762626561) for details.
+
+### Infrastructure Tasks
+
+| Task | Status | Issue |
+|------|--------|-------|
+| Deploy Functions to Firebase | Not started | #22 |
+| CI/CD for Functions | Not started | #23 |
+| Testing infrastructure | Not started | #24 |
 
 ### External Dependencies
 
@@ -108,21 +132,33 @@
 
 1. **Async State (`RequestState<T>`)** - Never use boolean `isLoading`
    - SOL: [libs/angular/request/src/lib/models/requested.type.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/angular/request/src/lib/models/requested.type.ts)
+   - Maple: `libs/ts/domain/src/lib/request-state.ts`
 
 2. **Repository Pattern** - All Firestore access through repositories
    - SOL: [libs/firebase/database/src/lib/utilities/database.utility.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/database/src/lib/utilities/database.utility.ts)
+   - Maple: `libs/firebase/database/src/lib/product.repository.ts`
 
 3. **Library-per-Function** - Each Cloud Function in its own Nx library
    - SOL: [libs/firebase/enrollment-functions/](https://github.com/MountainSOLSchool/platform/tree/main/libs/firebase/enrollment-functions)
+   - Maple: `libs/firebase/maple-functions/product/`
 
 4. **Vest Validation** - Declarative form validation suites
    - SOL: [libs/ts/classes/classes-domain/src/lib/validation/](https://github.com/MountainSOLSchool/platform/tree/main/libs/ts/classes/classes-domain/src/lib/validation)
+   - Maple: `libs/ts/validation/`
 
 5. **Form State Machine** - Discriminated unions for form submission
    - SOL: [libs/angular/classes/class-management/src/lib/components/class-form/class-form.component.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/angular/classes/class-management/src/lib/components/class-form/class-form.component.ts) (lines 89-94)
 
 6. **Function Builder** - Consistent Cloud Function structure
    - SOL: [libs/firebase/functions/src/lib/utilities/functions.utility.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts)
+   - Maple: `libs/firebase/functions/src/lib/functions.utility.ts`
+
+7. **AuthGuard Pattern** - Wrap app in root layout with route protection
+   - SOL: [apps/student-portal/app/auth-guard.tsx](https://github.com/MountainSOLSchool/platform/blob/main/apps/student-portal/app/auth-guard.tsx)
+   - Maple: `apps/maple-spruce/src/components/auth/AuthGuard.tsx`
+
+8. **Admin Role Authorization** - Check roles via Firestore `admins` collection
+   - Maple: `libs/firebase/functions/src/lib/auth.utility.ts`
 
 ## Tech Stack
 
@@ -231,15 +267,22 @@ Closes #[issue-number]
 ```
 apps/maple-spruce/src/
 ├── app/                    # Next.js App Router
-│   ├── (admin)/           # Admin routes (protected)
-│   ├── (public)/          # Public routes
-│   └── api/               # API routes
-├── components/            # React components
-├── hooks/                 # Custom hooks
-├── lib/
-│   ├── firebase/         # Firebase setup
-│   └── theme/            # MUI theme
-└── types/                # TypeScript types
+│   ├── inventory/         # Inventory management page
+│   ├── login/             # Login page (public)
+│   ├── auth-guard-wrapper.tsx  # Client component for AuthGuard
+│   ├── layout.tsx         # Root layout with providers
+│   └── page.tsx           # Home page
+├── components/
+│   ├── auth/              # AuthGuard, UserMenu
+│   └── inventory/         # ProductList, ProductForm, etc.
+├── config/
+│   └── public-routes.ts   # Routes that don't require auth
+├── hooks/                 # useAuth, useProducts
+└── lib/
+    └── theme/             # MUI theme + ThemeProvider
+
+apps/functions/src/
+└── index.ts               # Firebase Functions entry point
 ```
 
 ### Naming Conventions
