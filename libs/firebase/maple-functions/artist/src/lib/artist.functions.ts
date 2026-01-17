@@ -196,11 +196,9 @@ export const uploadArtistImage = createAdminFunction<
     },
   });
 
-  // Make the file publicly accessible
-  await file.makePublic();
-
-  // Generate public URL
-  const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+  // Generate public URL using Firebase Storage URL format
+  // Requires storage.rules to allow public read access for artists/ path
+  const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
 
   return {
     success: true,
