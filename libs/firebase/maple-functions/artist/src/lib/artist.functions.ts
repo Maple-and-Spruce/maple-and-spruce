@@ -176,8 +176,8 @@ export const uploadArtistImage = createAdminFunction<
     );
   }
 
-  // Get Firebase Storage bucket
-  const bucket = admin.storage().bucket();
+  // Get Firebase Storage bucket (explicit name required for local functions)
+  const bucket = admin.storage().bucket('maple-and-spruce.firebasestorage.app');
 
   // Generate unique file name
   const timestamp = Date.now();
