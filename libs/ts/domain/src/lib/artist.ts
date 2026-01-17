@@ -10,8 +10,11 @@ export interface Artist {
   name: string;
   email: string;
   phone?: string;
-  /** Commission rate as decimal (e.g., 0.40 = 40% to store, 60% to artist) */
-  commissionRate: number;
+  /**
+   * Default commission rate as decimal (e.g., 0.40 = 40% to store, 60% to artist).
+   * Can be overridden at the product level.
+   */
+  defaultCommissionRate: number;
   status: ArtistStatus;
   notes?: string;
   createdAt: Date;
@@ -28,6 +31,8 @@ export type CreateArtistInput = Omit<Artist, 'id' | 'createdAt' | 'updatedAt'>;
 /**
  * Input for updating an artist (all fields optional except id)
  */
-export type UpdateArtistInput = Partial<Omit<Artist, 'id' | 'createdAt' | 'updatedAt'>> & {
+export type UpdateArtistInput = Partial<
+  Omit<Artist, 'id' | 'createdAt' | 'updatedAt'>
+> & {
   id: string;
 };

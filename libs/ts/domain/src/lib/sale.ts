@@ -9,15 +9,26 @@ export interface Sale {
   id: string;
   productId: string;
   artistId: string;
+
   /** The price the item sold for */
   salePrice: number;
-  /** Amount kept by the store (salePrice × commissionRate) */
+  /** Quantity sold (usually 1) */
+  quantitySold: number;
+  /** Amount kept by the store */
   commission: number;
-  /** Amount owed to the artist (salePrice - commission) */
+  /** Amount owed to the artist */
   artistEarnings: number;
+  /** Commission rate used for this sale (snapshot for audit) */
+  commissionRateApplied: number;
+
   source: SaleSource;
+
+  // External references
+  squareOrderId?: string;
+  squarePaymentId?: string;
   etsyOrderId?: string;
   etsyReceiptId?: string;
+
   /** When the sale occurred */
   soldAt: Date;
   /** When the record was created */
@@ -26,7 +37,7 @@ export interface Sale {
   payoutId?: string;
 }
 
-export type SaleSource = 'etsy' | 'in_store' | 'website';
+export type SaleSource = 'etsy' | 'square' | 'manual';
 
 /**
  * Input for recording a new sale

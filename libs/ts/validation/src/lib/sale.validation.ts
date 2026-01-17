@@ -41,6 +41,22 @@ export const saleValidation = create(
       }
     });
 
+    test('quantitySold', 'Quantity sold is required', () => {
+      enforce(data.quantitySold).isNotNullish();
+    });
+
+    test('quantitySold', 'Quantity sold must be at least 1', () => {
+      if (data.quantitySold !== undefined) {
+        enforce(data.quantitySold).greaterThanOrEquals(1);
+      }
+    });
+
+    test('quantitySold', 'Quantity sold must be a whole number', () => {
+      if (data.quantitySold !== undefined) {
+        enforce(data.quantitySold).condition((val) => Number.isInteger(val));
+      }
+    });
+
     test('commission', 'Commission is required', () => {
       enforce(data.commission).isNotNullish();
     });
@@ -61,13 +77,24 @@ export const saleValidation = create(
       }
     });
 
+    test('commissionRateApplied', 'Commission rate is required', () => {
+      enforce(data.commissionRateApplied).isNotNullish();
+    });
+
+    test('commissionRateApplied', 'Commission rate must be between 0 and 1', () => {
+      if (data.commissionRateApplied !== undefined) {
+        enforce(data.commissionRateApplied).greaterThanOrEquals(0);
+        enforce(data.commissionRateApplied).lessThanOrEquals(1);
+      }
+    });
+
     test('source', 'Sale source is required', () => {
       enforce(data.source).isNotBlank();
     });
 
-    test('source', 'Sale source must be etsy, in_store, or website', () => {
+    test('source', 'Sale source must be etsy, square, or manual', () => {
       if (data.source) {
-        enforce(data.source).inside(['etsy', 'in_store', 'website']);
+        enforce(data.source).inside(['etsy', 'square', 'manual']);
       }
     });
 

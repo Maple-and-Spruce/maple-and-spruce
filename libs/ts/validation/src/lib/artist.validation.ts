@@ -52,14 +52,14 @@ export const artistValidation = create(
       }
     });
 
-    test('commissionRate', 'Commission rate is required', () => {
-      enforce(data.commissionRate).isNotNullish();
+    test('defaultCommissionRate', 'Commission rate is required', () => {
+      enforce(data.defaultCommissionRate).isNotNullish();
     });
 
-    test('commissionRate', 'Commission rate must be between 0 and 1', () => {
-      if (data.commissionRate !== undefined) {
-        enforce(data.commissionRate).greaterThanOrEquals(0);
-        enforce(data.commissionRate).lessThanOrEquals(1);
+    test('defaultCommissionRate', 'Commission rate must be between 0 and 1', () => {
+      if (data.defaultCommissionRate !== undefined) {
+        enforce(data.defaultCommissionRate).greaterThanOrEquals(0);
+        enforce(data.defaultCommissionRate).lessThanOrEquals(1);
       }
     });
 
