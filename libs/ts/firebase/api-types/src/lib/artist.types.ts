@@ -67,3 +67,22 @@ export interface DeleteArtistRequest {
 export interface DeleteArtistResponse {
   success: boolean;
 }
+
+// ============================================================================
+// Upload Artist Image
+// ============================================================================
+
+export interface UploadArtistImageRequest {
+  /** Artist ID (optional - can upload before creating artist) */
+  artistId?: string;
+  /** Base64-encoded image data */
+  imageBase64: string;
+  /** MIME type of the image (e.g., 'image/jpeg', 'image/png') */
+  contentType: string;
+}
+
+export interface UploadArtistImageResponse {
+  success: boolean;
+  /** Public URL of the uploaded image */
+  url: string;
+}

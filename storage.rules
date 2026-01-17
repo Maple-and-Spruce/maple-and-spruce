@@ -1,6 +1,13 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Artist photos are publicly readable (for Webflow integration)
+    match /artists/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Default: authenticated access only
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

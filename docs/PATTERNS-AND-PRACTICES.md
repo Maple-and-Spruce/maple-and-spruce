@@ -989,13 +989,52 @@ export const EtsyClient = {
 "@maple-spruce/firebase": ["../../packages/firebase/src"]
 ```
 
+### Local Development Environment
+
+**Key principle: Use production Firebase services, run only functions locally.**
+
+The project is configured to connect directly to production Firebase services (Auth, Firestore, Storage) during local development. Only the Cloud Functions emulator runs locally.
+
+```bash
+# Start local development
+npm run dev              # Next.js app on localhost:3000
+npx nx build functions   # Build functions
+firebase emulators:start # Functions emulator on localhost:5001
+```
+
+**Why this approach:**
+- Simpler setup - no seed data or emulator state management
+- Real data for testing - see actual artists, products, etc.
+- Firebase CLI handles authentication automatically via `firebase login`
+- Single source of truth - no sync issues between local and production data
+
+**firebase.json emulators configuration:**
+```json
+{
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  }
+}
+```
+
+**Note:** When accessing Firebase Storage from local functions, the bucket name must be explicitly specified:
+```typescript
+const bucket = admin.storage().bucket('maple-and-spruce.firebasestorage.app');
+```
+
 ### Environment Variables
 
 ```bash
 # .env.local
 
 # Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
