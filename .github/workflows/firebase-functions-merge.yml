@@ -104,6 +104,10 @@ jobs:
         if: steps.get_affected.outputs.has_changes == 'true'
         run: npx nx run functions:build
 
+      - name: Copy env file to dist
+        if: steps.get_affected.outputs.has_changes == 'true'
+        run: cp .env.prod dist/apps/functions/.env
+
       - name: Cache node_modules for deploy
         if: steps.get_affected.outputs.has_changes == 'true'
         uses: actions/cache/save@v4
@@ -120,6 +124,7 @@ jobs:
             dist/apps/functions/index.cjs
             dist/apps/functions/index.cjs.map
             dist/apps/functions/package.json
+            dist/apps/functions/.env
           retention-days: 1
 
   deploy:
