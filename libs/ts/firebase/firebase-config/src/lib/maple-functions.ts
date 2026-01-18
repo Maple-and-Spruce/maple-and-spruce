@@ -10,10 +10,12 @@ export const getMapleFunctions = () => {
   if (!_mapleFunctions) {
     _mapleFunctions = getFunctions(getMapleApp(), FUNCTIONS_REGION);
 
-    // Connect to local functions in development
+    // Connect to local functions emulator only on localhost
+    // Note: business-dev.* hostname should hit deployed dev functions, not emulator
     if (
       typeof window !== 'undefined' &&
-      window.location.hostname === 'localhost'
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1')
     ) {
       connectFunctionsEmulator(_mapleFunctions, 'localhost', 5001);
     }

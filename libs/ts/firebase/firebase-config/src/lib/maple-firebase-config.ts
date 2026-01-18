@@ -28,17 +28,29 @@ const devConfig: FirebaseOptions = {
 
 /**
  * Determine if we're in development mode
- * - localhost or 127.0.0.1 = dev
+ * Uses environment detection based on hostname or env var:
+ * - localhost, 127.0.0.1, or *-dev.* hostname = dev
+ * - NEXT_PUBLIC_FIREBASE_ENV=dev = dev
  * - Everything else = prod
  */
 function isDevelopment(): boolean {
+  // Check environment variable first (works server and client side)
+  if (process.env['NEXT_PUBLIC_FIREBASE_ENV'] === 'dev') {
+    return true;
+  }
+
   if (typeof window === 'undefined') {
     // Server-side: check NODE_ENV
     return process.env['NODE_ENV'] === 'development';
   }
   // Client-side: check hostname
   const hostname = window.location.hostname;
-  return hostname === 'localhost' || hostname === '127.0.0.1';
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.includes('-dev.') ||      // business-dev.mapleandsprucefolkarts.com
+    hostname.includes('.dev.')          // dev.business.mapleandsprucefolkarts.com (alternate pattern)
+  );
 }
 
 /**
