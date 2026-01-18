@@ -34,11 +34,23 @@ See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issu
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| **Vercel** | (check Vercel dashboard) | Auto-deploys on push to main |
+| **Vercel** | mapleandsprucefolkarts.com | Web app + API proxy, auto-deploys on push to main |
 | **Firebase Functions** | `us-east4` | Auto-deploys on merge to main via GitHub Actions |
 
-**Why Vercel instead of Firebase App Hosting?**
-Firebase App Hosting requires a billing account (Blaze plan). Using Vercel free tier until business checking account is set up. The `apphosting.yaml` is ready for when we switch.
+### Domains
+
+| Domain | Status | Target |
+|--------|--------|--------|
+| mapleandsprucefolkarts.com | ✅ Configured | Vercel (web app) |
+| www.mapleandsprucefolkarts.com | ✅ Configured | Vercel (web app) |
+| mapleandsprucewv.com | Owned (Namecheap) | Redirect to primary (future) |
+
+### Architecture
+
+- **Vercel** hosts the Next.js web app and handles API routing
+- Next.js rewrites `/api/*` requests to Firebase Functions (`us-east4-maple-and-spruce.cloudfunctions.net`)
+- API calls use `www.mapleandsprucefolkarts.com/api/getArtists` etc.
+- No separate Firebase Hosting needed - Vercel handles everything
 
 ### Firebase Functions (us-east4)
 
