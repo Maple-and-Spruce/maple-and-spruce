@@ -2,12 +2,15 @@
  * Square API utility
  *
  * Provides a wrapper around the Square SDK for catalog and inventory operations.
- * Follows the Mountain Sol Braintree pattern for secrets management.
+ *
+ * With separate Firebase projects for dev and prod, secrets are per-project:
+ * - Dev project (maple-and-spruce-dev): SQUARE_ACCESS_TOKEN = sandbox token
+ * - Prod project (maple-and-spruce): SQUARE_ACCESS_TOKEN = production token
  *
  * @see https://developer.squareup.com/docs/square-get-started
  */
 import { SquareClient, SquareEnvironment } from 'square';
-import { ServiceEnvironment, secretPair } from '@maple/firebase/functions';
+import { ServiceEnvironment } from '@maple/firebase/functions';
 import { CatalogService } from './catalog.service';
 import { InventoryService } from './inventory.service';
 
@@ -15,9 +18,11 @@ import { InventoryService } from './inventory.service';
  * Secret names for Firebase Functions secrets
  * Use with defineSecret() from firebase-functions/params
  *
- * Pattern: SQUARE_ACCESS_TOKEN for sandbox, SQUARE_ACCESS_TOKEN_PROD for production
+ * Each Firebase project has its own SQUARE_ACCESS_TOKEN with the appropriate value:
+ * - maple-and-spruce-dev: sandbox token
+ * - maple-and-spruce: production token
  */
-export const SQUARE_SECRET_NAMES = [...secretPair('SQUARE_ACCESS_TOKEN')] as const;
+export const SQUARE_SECRET_NAMES = ['SQUARE_ACCESS_TOKEN'] as const;
 
 /**
  * String parameter names for Firebase Functions
@@ -74,7 +79,8 @@ export class Square {
     private readonly strings: SquareStrings
   ) {
     this.env = new ServiceEnvironment(this.strings.SQUARE_ENV);
-    const accessToken = this.env.selectSecret(
+    // With per-project secrets, just get the token directly - no suffix needed
+    const accessToken = this.env.getSecret(
       this.secrets,
       'SQUARE_ACCESS_TOKEN'
     );
