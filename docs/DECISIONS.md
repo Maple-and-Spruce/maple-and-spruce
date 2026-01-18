@@ -398,6 +398,102 @@ With bidirectional sync between inventory app, Square, and Etsy, conflicts are i
 
 ---
 
+## ADR-013: Square Cache Synchronization Strategy
+
+**Status:** Accepted
+**Date:** 2026-01-18
+
+### Context
+The Product record in Firestore stores cached data from Square (name, price, quantity, SKU) for fast reads without API calls. Need a strategy for keeping this cache fresh while balancing complexity, cost, and real-time requirements.
+
+### Decision
+Use a three-pronged synchronization strategy:
+
+1. **Webhooks (Real-time)** - Primary mechanism for critical changes
+2. **Lazy Refresh (On-demand)** - Refresh stale cache when product is accessed
+3. **Periodic Sync (Safety net)** - Nightly batch sync catches anything missed
+
+### Implementation Details
+
+**Webhooks:**
+- Subscribe to `inventory.count.updated` for quantity changes
+- Subscribe to `catalog.version.updated` for price/name changes
+- Webhook handler updates Firestore cache and `syncedAt` timestamp
+- Create Sale record when inventory decreases (for artist attribution)
+
+**Lazy Refresh:**
+- On product read, check if `squareCache.syncedAt` is older than threshold (5 minutes)
+- If stale, fetch fresh data from Square API before returning
+- Update cache in Firestore asynchronously
+- Configurable threshold via `CACHE_STALE_THRESHOLD_MS`
+
+**Periodic Sync:**
+- Scheduled Cloud Function runs nightly
+- Batch fetches all products from Square Catalog API
+- Compares with Firestore cache, updates differences
+- Logs discrepancies for review
+- Acts as safety net for missed webhooks
+
+### Data Structure
+
+```typescript
+interface Product {
+  // ... owned fields ...
+
+  squareCache: {
+    name: string;
+    description?: string;
+    priceCents: number;
+    quantity: number;
+    sku: string;
+    imageUrl?: string;
+    syncedAt: Date;  // When cache was last refreshed
+  };
+}
+```
+
+### Rationale
+
+**Why not just webhooks?**
+- Webhooks can fail (network issues, function errors)
+- Square has retry limits
+- Need a fallback mechanism
+
+**Why not just polling?**
+- Real-time matters for sales (artist attribution)
+- Polling is wasteful for infrequent changes
+- Higher API costs
+
+**Why not just lazy refresh?**
+- First user after long gap gets slow response
+- Some products may never be accessed
+
+**Combined approach gives:**
+- Real-time for sales and critical changes
+- Good read performance (usually hit cache)
+- Self-healing (periodic sync catches drift)
+- No single point of failure
+
+### Consequences
+
+**Benefits:**
+- Fast reads (usually from cache)
+- Real-time sale detection for payouts
+- Self-correcting system
+- Clear visibility into cache freshness via `syncedAt`
+
+**Complexity:**
+- Three sync paths to implement and maintain
+- Need to handle partial failures (webhook success, Firestore update fails)
+- Must ensure idempotency (same update applied twice = no harm)
+
+**Cost:**
+- Webhook processing (pay per invocation)
+- Periodic sync API calls (but batched, once daily)
+- Lazy refresh API calls (but only for stale products)
+
+---
+
 ## Template for New Decisions
 
 ```markdown

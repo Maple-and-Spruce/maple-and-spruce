@@ -50,15 +50,12 @@ export default function InventoryPage() {
         } else {
           await createProduct(data);
         }
-        handleCloseForm();
-      } catch (error) {
-        console.error('Failed to save product:', error);
-        // TODO: Show error toast
+        // Form handles closing on success
       } finally {
         setIsSubmitting(false);
       }
     },
-    [editingProduct, handleCloseForm, createProduct, updateProduct]
+    [editingProduct, createProduct, updateProduct]
   );
 
   const handleOpenDelete = useCallback((product: Product) => {

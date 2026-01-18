@@ -8,11 +8,17 @@
 
 **IMPORTANT**: Follow these directives in every session.
 
-1. **Keep documentation current** - Update SESSION.md after completing tasks, making decisions, or learning new context.
-2. **Read before acting** - Start sessions by reading AGENTS.md and SESSION.md for context.
-3. **Check GitHub issues** - Run `gh issue list --label phase-1` to see current work.
-4. **Update Implementation Status** - Mark features as "In progress" or "Complete" in this file as work progresses.
-5. **Use feature branches** - Never commit directly to main.
+1. **NEVER read, access, or display secrets or credentials** - This is a PRIME DIRECTIVE.
+   - Never read `.secret.local`, `.env` files containing tokens, or any file that might contain API keys
+   - Never run commands that output secrets (e.g., `firebase functions:secrets:access`)
+   - Never display tokens, API keys, or passwords in chat - even sandbox/development ones
+   - Use Firebase CLI interactively for the user to set secrets themselves
+   - If you accidentally see a secret, do not repeat it - warn the user to rotate it
+2. **Keep documentation current** - Update SESSION.md after completing tasks, making decisions, or learning new context.
+3. **Read before acting** - Start sessions by reading AGENTS.md and SESSION.md for context.
+4. **Check GitHub issues** - Run `gh issue list --label phase-1` to see current work.
+5. **Update Implementation Status** - Mark features as "In progress" or "Complete" in this file as work progresses.
+6. **Use feature branches** - Never commit directly to main.
 
 ---
 
@@ -25,7 +31,7 @@
 
 **Current State**: Selling on Etsy only. No physical store yet.
 
-**Current Phase**: Phase 1 - Etsy integration & artist payout tracking
+**Current Phase**: Phase 1 - Square foundation, then Etsy integration & artist payout tracking
 
 ## GitHub Issues
 
@@ -72,18 +78,33 @@
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Artist CRUD | Not started | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
+| Artist CRUD | Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
+| Square integration | In progress | #69 | `libs/firebase/square/` |
 | Product management | Partial | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
 
-#### Product Management (#3) - Remaining Work
+#### Square Integration (#69) - Current Work
+
+Square is the foundation for inventory/catalog. Must be completed before Product Management.
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Square secrets configured | ✅ | `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`, `SQUARE_ENV` |
+| Square utility library | ✅ | `libs/firebase/square/` with Catalog & Inventory services |
+| Product type refactored | ✅ | `squareCache` for cached data, clear ownership boundaries |
+| ADR for sync strategy | ✅ | ADR-013: webhooks + lazy refresh + periodic sync |
+| Wire up CRUD to Square | 🔄 | Next step - product create/update calls Square first |
+| Webhooks | ❌ | Detect sales/inventory changes from Square |
+
+#### Product Management (#3) - Remaining Work (after Square)
 
 1. ~~**ProductForm status enum mismatch**~~ - Fixed
 2. ~~**ProductForm missing quantity field**~~ - Fixed
-3. **Manual artistId input** - Needs dropdown (blocked by #2)
-4. **No artist info in ProductList** - Should display artist name (blocked by #2)
+3. **Square sync** - Products must sync to Square catalog on create/update
+4. **Artist dropdown** - Replace manual artistId text input
+5. **Artist info display** - Show artist name in ProductList
 
 ### Infrastructure Tasks
 
@@ -119,6 +140,7 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 ### External Dependencies
 
 - [x] Firebase project created (`maple-and-spruce`)
+- [x] Square developer account created (sandbox credentials configured)
 - [x] Etsy developer account (app pending approval)
 - [x] Dependencies added to package.json (vest, react-query, MUI, etc.)
 

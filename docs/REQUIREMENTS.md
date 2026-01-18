@@ -21,25 +21,45 @@
 
 ## Phased Roadmap
 
-### Phase 1: Etsy + Artist Tracking (NOW)
-*No store, no classes - just online sales and artist management*
+### Phase 1: Square Foundation + Artist Tracking (NOW)
+*Build on Square as the catalog/inventory foundation, then layer on Etsy sync*
 
-- [ ] Artist management (profiles, commission rates, contact info)
-- [ ] Product management with artist attribution
-- [ ] Import/sync products from Etsy
+**1a. Artist Management** ✅
+- [x] Artist management (profiles, commission rates, contact info)
+- [x] Artist CRUD Cloud Functions
+- [x] Artist UI (list, create, edit, delete)
+
+**1b. Square Integration (Foundation)**
+- [ ] Square developer account and sandbox setup
+- [ ] Square Catalog API integration (create/update items)
+- [ ] Square Inventory API integration (track quantities)
+- [ ] Product creation → pushes to Square → stores IDs in Firestore
+- [ ] SKU generation for barcode scanning
+- [ ] Square webhooks for inventory/catalog changes
+
+**1c. Product Management (with Square)**
+- [ ] Product CRUD synced with Square catalog
+- [ ] Artist attribution (link products to artists)
+- [ ] Commission rate per product (optional override)
+- [ ] Quantity-based inventory tracking
+
+**1d. Etsy Integration (after Square foundation)**
+- [ ] Etsy API integration (sync listings)
+- [ ] Push Square catalog → Etsy listings
+- [ ] Etsy order webhooks/polling
+- [ ] Bidirectional inventory sync
+
+**1e. Sales & Payouts**
+- [ ] Record sales from Square and Etsy
 - [ ] Track which artist made which item
-- [ ] When item sells on Etsy, record the sale
 - [ ] Monthly payout calculation per artist
 - [ ] Payout reports (what sold, commission, amount owed)
 
-### Phase 2: Store Opening + Square POS (FUTURE)
-*Physical location opens - need POS and inventory*
+### Phase 2: Store Opening (FUTURE)
+*Physical location opens - use Square POS with existing integration*
 
-- [ ] Square catalog integration (push products to Square)
-- [ ] SKU generation for barcode scanning
-- [ ] Quantity-based inventory tracking
-- [ ] Bidirectional sync: sold in-store → update Etsy
-- [ ] Bidirectional sync: sold on Etsy → Square quantity updated
+- [ ] Square POS terminal setup
+- [ ] Barcode label printing (may need Retail Plus plan)
 - [ ] Sync conflict detection and resolution UI
 - [ ] Inventory movement audit log
 

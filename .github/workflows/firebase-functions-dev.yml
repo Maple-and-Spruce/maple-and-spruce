@@ -1,0 +1,210 @@
+name: Deploy Firebase Functions to Dev
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'fix/**'
+  workflow_dispatch:
+    inputs:
+      deploy_all:
+        description: 'Deploy all functions (ignore affected check)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  prepare_and_build:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.get_affected.outputs.matrix }}
+      has_changes: ${{ steps.get_affected.outputs.has_changes }}
+      cache_key: ${{ steps.set_cache_key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Generate cache key
+        id: set_cache_key
+        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: npm install --frozen-lockfile
+
+      - name: Get affected functions
+        id: get_affected
+        run: |
+          DEPLOY_ALL="${{ github.event.inputs.deploy_all }}"
+
+          # If deploy_all is true (manual trigger), skip affected check
+          if [ "$DEPLOY_ALL" == "true" ]; then
+            echo "Manual deploy_all requested - deploying all functions"
+            AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
+          else
+            # Get all affected projects comparing to main
+            ALL_AFFECTED=$(npx nx show projects --affected --base=origin/main)
+
+            # Check if the functions app itself is affected (e.g., env file changes)
+            FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep '^functions$' || true)
+
+            # Get affected function libraries
+            AFFECTED_LIBS=$(echo "$ALL_AFFECTED" | grep 'firebase-maple-functions-' || true)
+
+            # If the functions app is affected but no specific libraries, deploy all functions
+            if [ -n "$FUNCTIONS_APP_AFFECTED" ] && [ -z "$AFFECTED_LIBS" ]; then
+              echo "Functions app affected (likely env change) - deploying all functions"
+              AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
+            fi
+          fi
+
+          FUNCTIONS=()
+
+          while IFS= read -r lib; do
+            # Skip empty lines
+            [ -z "$lib" ] && continue
+            # Extract function name from library name (e.g., firebase-maple-functions-get-artists -> getArtists)
+            FUNC_NAME=${lib#firebase-maple-functions-}
+            # Convert kebab-case to camelCase
+            FUNC_NAME=$(echo "$FUNC_NAME" | awk -F'-' '{for(i=1;i<=NF;i++){if(i==1){printf("%s",$i)}else{printf("%s%s",toupper(substr($i,1,1)),substr($i,2))}}}')
+            FUNCTIONS+=("$FUNC_NAME")
+          done <<< "$AFFECTED_LIBS"
+
+          if [ ${#FUNCTIONS[@]} -eq 0 ]; then
+            echo "No functions were affected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+
+          # Group functions (5 per group for parallel deployment)
+          GROUP_SIZE=5
+          TOTAL=${#FUNCTIONS[@]}
+          NUM_GROUPS=$(( (TOTAL + GROUP_SIZE - 1) / GROUP_SIZE ))
+
+          VALID_GROUPS=()
+
+          for ((i=0; i<$NUM_GROUPS; i++)); do
+            START=$((i * GROUP_SIZE))
+            GROUP_FUNCTIONS=""
+
+            for ((j=0; j<GROUP_SIZE && START+j<TOTAL; j++)); do
+              if [ ! -z "$GROUP_FUNCTIONS" ]; then
+                GROUP_FUNCTIONS+=","
+              fi
+              GROUP_FUNCTIONS+="functions:maple-functions:${FUNCTIONS[START+j]}"
+            done
+
+            # Only add non-empty groups
+            if [ ! -z "$GROUP_FUNCTIONS" ] && [ "$GROUP_FUNCTIONS" != "functions:" ]; then
+              VALID_GROUPS+=("{\"functions\":\"$GROUP_FUNCTIONS\"}")
+            fi
+          done
+
+          # Combine valid groups into JSON array with include
+          GROUPS_JSON="{\"include\":["
+          for ((i=0; i<${#VALID_GROUPS[@]}; i++)); do
+            if [ $i -gt 0 ]; then
+              GROUPS_JSON+=","
+            fi
+            GROUPS_JSON+="${VALID_GROUPS[i]}"
+          done
+          GROUPS_JSON+="]}"
+
+          echo "matrix=$GROUPS_JSON" >> $GITHUB_OUTPUT
+
+          echo "Total affected functions: $TOTAL"
+          echo "Number of groups: $NUM_GROUPS"
+          echo "Matrix: $GROUPS_JSON"
+
+      - name: Build all functions
+        if: steps.get_affected.outputs.has_changes == 'true'
+        run: npx nx run functions:build
+
+      - name: Copy env file to dist (dev)
+        if: steps.get_affected.outputs.has_changes == 'true'
+        run: cp .env.dev dist/apps/functions/.env
+
+      - name: Cache node_modules for deploy
+        if: steps.get_affected.outputs.has_changes == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: ${{ steps.set_cache_key.outputs.key }}
+
+      - name: Upload build artifacts
+        if: steps.get_affected.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-functions-dev
+          path: |
+            dist/apps/functions/index.cjs
+            dist/apps/functions/index.cjs.map
+            dist/apps/functions/package.json
+            dist/apps/functions/.env
+          include-hidden-files: true
+          retention-days: 1
+
+  deploy-dev:
+    needs: prepare_and_build
+    if: >-
+      needs.prepare_and_build.outputs.has_changes == 'true' &&
+      needs.prepare_and_build.outputs.matrix != '' &&
+      toJson(fromJson(needs.prepare_and_build.outputs.matrix).include) != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      max-parallel: 1
+      matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Authenticate to Google Cloud (Dev)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-functions-dev
+          path: dist/apps/functions
+
+      - name: Verify download
+        run: ls -la dist/apps/functions
+
+      - name: Install dependencies
+        run: npm install --frozen-lockfile
+
+      - name: Deploy functions group to Dev
+        if: matrix.functions != ''
+        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce-dev --force --token "$(gcloud auth print-access-token)"
+
+      - name: Skip empty function group
+        if: matrix.functions == ''
+        run: |
+          echo "Skipping deployment for empty function group"
+          exit 0

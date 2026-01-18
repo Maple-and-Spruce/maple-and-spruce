@@ -15,6 +15,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import type { Product } from '@maple/ts/domain';
 import type { RequestState } from '@maple/ts/domain';
+import { formatPrice } from '@maple/ts/domain';
 
 interface ProductListProps {
   productsState: RequestState<Product[]>;
@@ -49,13 +50,13 @@ function ProductCard({
         >
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6" component="h3">
-              {product.name}
+              {product.squareCache.name}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {product.description || 'No description'}
+              {product.squareCache.description || 'No description'}
             </Typography>
             <Typography variant="h5" color="primary" sx={{ mb: 1 }}>
-              ${product.price.toFixed(2)}
+              {formatPrice(product.squareCache.priceCents)}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Chip
@@ -63,8 +64,13 @@ function ProductCard({
                 size="small"
                 color={statusColors[product.status]}
               />
-              {product.sku && (
-                <Chip label={`SKU: ${product.sku}`} size="small" variant="outlined" />
+              <Chip
+                label={`Qty: ${product.squareCache.quantity}`}
+                size="small"
+                variant="outlined"
+              />
+              {product.squareCache.sku && (
+                <Chip label={`SKU: ${product.squareCache.sku}`} size="small" variant="outlined" />
               )}
               {product.etsyListingId && (
                 <Chip label="Etsy" size="small" variant="outlined" color="info" />

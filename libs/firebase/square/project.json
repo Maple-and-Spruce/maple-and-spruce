@@ -1,0 +1,8 @@
+{
+  "name": "square",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/square/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:util"],
+  "targets": {}
+}

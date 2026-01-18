@@ -17,6 +17,7 @@
 
 // Function builders
 export {
+  Functions,
   createFunction,
   createPublicFunction,
   createAuthenticatedFunction,
@@ -37,3 +38,11 @@ export {
   throwValidationError,
   throwFailedPrecondition,
 } from './errors.utility';
+
+// Environment utilities
+export {
+  ServiceEnvironment,
+  secretPair,
+  secretPairs,
+  type EnvironmentMode,
+} from './environment.utility';
