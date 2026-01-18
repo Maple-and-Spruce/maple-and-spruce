@@ -66,6 +66,7 @@
 | Functions core library | Complete | `libs/firebase/functions/` |
 | Functions app | Complete | `apps/functions/` |
 | Authentication | Complete | `apps/maple-spruce/src/components/auth/` |
+| Navigation (responsive) | Complete | `apps/maple-spruce/src/components/layout/` |
 
 ### Phase 1 Features
 
@@ -286,17 +287,20 @@ Closes #[issue-number]
 ```
 apps/maple-spruce/src/
 ├── app/                    # Next.js App Router
+│   ├── artists/           # Artist management page
 │   ├── inventory/         # Inventory management page
 │   ├── login/             # Login page (public)
 │   ├── auth-guard-wrapper.tsx  # Client component for AuthGuard
 │   ├── layout.tsx         # Root layout with providers
 │   └── page.tsx           # Home page
 ├── components/
+│   ├── artists/           # ArtistList, ArtistForm, etc.
 │   ├── auth/              # AuthGuard, UserMenu
-│   └── inventory/         # ProductList, ProductForm, etc.
+│   ├── inventory/         # ProductList, ProductForm, etc.
+│   └── layout/            # AppShell (shared nav component)
 ├── config/
 │   └── public-routes.ts   # Routes that don't require auth
-├── hooks/                 # useAuth, useProducts
+├── hooks/                 # useAuth, useProducts, useArtists
 └── lib/
     └── theme/             # MUI theme + ThemeProvider
 
@@ -393,6 +397,27 @@ gh issue create \
 ### Required Variables
 
 See [PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md#environment-variables)
+
+### Local Development
+
+**Running Functions Locally:**
+```bash
+npx nx run functions:serve
+```
+
+This command:
+1. Builds the functions
+2. Starts watch mode for rebuilds
+3. Copies `.env.dev` to `dist/apps/functions/.env` (Firebase reads env vars from functions source dir)
+4. Runs `firebase serve --only functions --project=dev` on port 5001
+
+**Note:** Unlike Mountain Sol (which uses `"source": "."` in firebase.json), Maple & Spruce uses `"source": "dist/apps/functions"`. This means env files must be copied to the dist directory for Firebase to find them.
+
+**Running Web App Locally:**
+```bash
+npx nx run maple-spruce:serve
+```
+Runs on http://localhost:3000
 
 ---
 
