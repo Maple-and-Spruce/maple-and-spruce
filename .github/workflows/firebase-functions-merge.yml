@@ -75,7 +75,7 @@ jobs:
               if [ ! -z "$GROUP_FUNCTIONS" ]; then
                 GROUP_FUNCTIONS+=","
               fi
-              GROUP_FUNCTIONS+="functions:${FUNCTIONS[START+j]}"
+              GROUP_FUNCTIONS+="functions:maple-functions:${FUNCTIONS[START+j]}"
             done
 
             # Only add non-empty groups
