@@ -3,9 +3,12 @@ import { getMapleApp } from './maple-app';
 
 let _mapleFunctions: ReturnType<typeof getFunctions> | undefined;
 
+// Functions are deployed to us-east4 (Northern Virginia - close to WV business)
+const FUNCTIONS_REGION = 'us-east4';
+
 export const getMapleFunctions = () => {
   if (!_mapleFunctions) {
-    _mapleFunctions = getFunctions(getMapleApp());
+    _mapleFunctions = getFunctions(getMapleApp(), FUNCTIONS_REGION);
 
     // Connect to local functions in development
     if (
