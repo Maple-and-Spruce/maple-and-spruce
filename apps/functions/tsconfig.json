@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
@@ -9,25 +10,7 @@
     "declaration": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "noUnusedLocals": false,
-    "baseUrl": "../..",
-    "paths": {
-      "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
-      "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
-      "@maple/firebase/maple-functions/artist": [
-        "libs/firebase/maple-functions/artist/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/product": [
-        "libs/firebase/maple-functions/product/src/index.ts"
-      ],
-      "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
-      "@maple/ts/firebase/api-types": [
-        "libs/ts/firebase/api-types/src/index.ts"
-      ],
-      "@maple/ts/validation": ["libs/ts/validation/src/index.ts"]
-    }
+    "noUnusedLocals": false
   },
   "files": [],
   "include": [],

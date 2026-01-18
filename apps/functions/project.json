@@ -6,24 +6,37 @@
   "tags": ["scope:firebase", "type:app"],
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/../../dist/apps/functions"],
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
       "options": {
-        "commands": [
-          "npx esbuild apps/functions/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/apps/functions/index.js --sourcemap --external:firebase-admin --external:firebase-functions",
-          "cp apps/functions/package.json dist/apps/functions/"
+        "outputPath": "dist/apps/functions",
+        "main": "apps/functions/src/index.ts",
+        "tsConfig": "apps/functions/tsconfig.app.json",
+        "generatePackageJson": false,
+        "platform": "node",
+        "bundle": true,
+        "thirdParty": false,
+        "dependenciesFieldType": "dependencies",
+        "target": "node20",
+        "format": ["cjs"],
+        "outputFileName": "index.js",
+        "assets": [
+          {
+            "input": "apps/functions",
+            "glob": "package.json",
+            "output": "."
+          }
         ],
-        "parallel": false
+        "esbuildOptions": {
+          "sourcemap": true,
+          "logLevel": "info"
+        }
       }
     },
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": [
-          "npx nx run functions:build",
-          "firebase serve --only functions --port=5001"
-        ],
-        "parallel": false
+        "command": "npx nx run functions:build && (npx nx run functions:build --watch &) && firebase serve --only functions --port=5001"
       }
     },
     "deploy": {
