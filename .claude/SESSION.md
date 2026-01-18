@@ -6,9 +6,9 @@
 
 ## Current Work
 
-**Status**: Foundation merged, ready to start Artist Management (#2).
+**Status**: CI/CD complete, all functions deployed to us-east4. Ready to start Artist Management (#2).
 
-**Recent session** (2026-01-16): Reviewed `feature/3-inventory-crud` branch against new Square architecture. Branch has valuable foundation (auth, functions, theme) but inventory UI has issues. Documented remaining work, updated PR #21, ready to merge and start #2.
+**Recent session** (2026-01-17): Configured and debugged Firebase Functions deployment via GitHub Actions. Fixed multiple GCP permission issues, configured functions to deploy to us-east4 region, and switched to auto-generated package.json pattern (following Mountain Sol).
 
 ### Inventory (#3) - Known Issues to Fix
 
@@ -35,9 +35,18 @@ See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issu
 | Service | URL | Notes |
 |---------|-----|-------|
 | **Vercel** | (check Vercel dashboard) | Auto-deploys on push to main |
+| **Firebase Functions** | `us-east4` | Auto-deploys on merge to main via GitHub Actions |
 
 **Why Vercel instead of Firebase App Hosting?**
 Firebase App Hosting requires a billing account (Blaze plan). Using Vercel free tier until business checking account is set up. The `apphosting.yaml` is ready for when we switch.
+
+### Firebase Functions (us-east4)
+
+All 10 functions are deployed to `us-east4` (Northern Virginia - close to WV business):
+- Artist functions: `getArtists`, `getArtistById`, `createArtist`, `updateArtist`, `deleteArtist`
+- Product functions: `getProducts`, `getProductById`, `createProduct`, `updateProduct`, `deleteProduct`
+
+**Deployment**: Automatic on merge to main via `.github/workflows/firebase-functions-merge.yml`
 
 ## External Services Status
 
@@ -50,6 +59,8 @@ Firebase App Hosting requires a billing account (Blaze plan). Using Vercel free 
 | Authentication enabled | ✅ | Email/Password |
 | CLI access | ✅ | `katie@mapleandsprucefolkarts.com` |
 | App Hosting | ❌ | Requires billing - using Vercel for now |
+| Functions deployed | ✅ | 10 functions in `us-east4` |
+| App Engine | ✅ | `us-east4` region |
 
 ### Etsy
 | Item | Status | Details |
@@ -97,8 +108,30 @@ libs/
 
 | Workflow | Trigger | Action |
 |----------|---------|--------|
-| `build-check.yml` | PR to any branch | Build Next.js app |
-| Vercel | Push to main | Deploy to production |
+| `build-check.yml` | PR to any branch | Build Next.js app + functions |
+| `firebase-functions-merge.yml` | Merge to main | Deploy affected functions to `us-east4` |
+| Vercel | Push to main | Deploy web app to production |
+
+### GCP Setup for CI/CD (completed 2026-01-17)
+
+The following GCP configuration was required for GitHub Actions to deploy functions:
+
+**APIs enabled:**
+- Cloud Run API
+- Eventarc API
+- Cloud Billing API
+
+**Service account roles** (for `github-deployer`):
+- Service Account User
+
+**Cloud Build service account** (`maple-and-spruce@appspot.gserviceaccount.com`):
+- Cloud Functions Developer (via Cloud Build settings page)
+- Cloud Run Admin (via Cloud Build settings page)
+
+**Compute service account** (`[project-number]-compute@developer.gserviceaccount.com`):
+- Logs Writer
+- Storage Object Viewer
+- Artifact Registry Writer
 
 ## Architecture Decisions (2026-01-16)
 
@@ -140,6 +173,11 @@ libs/
 
 | Date | Change | PR |
 |------|--------|-----|
+| 2026-01-17 | Add --force flag to deploy, redeploy getArtists to us-east4 | #38 |
+| 2026-01-17 | Deploy functions to us-east4 region | #37 |
+| 2026-01-17 | Verify CI/CD deploy with codebase filter | #36 |
+| 2026-01-17 | Use codebase prefix in function deploy filter | #35 |
+| 2026-01-17 | Verify CI/CD deploy workflow | #34 |
 | 2026-01-16 | Inventory foundation, auth infrastructure (partial #3) | #21 |
 | 2026-01-16 | Inventory system architecture, domain type updates | #25 |
 | 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | #21 |
@@ -168,4 +206,4 @@ libs/
 
 ---
 
-*Last updated: 2026-01-16*
+*Last updated: 2026-01-17*
