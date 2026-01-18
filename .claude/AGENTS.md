@@ -71,8 +71,8 @@
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Artist CRUD | Not started | #2 | `libs/firebase/database/src/artist.repository.ts` |
-| Product management | Partial (has bugs) | #3 | `libs/firebase/maple-functions/product/` |
+| Artist CRUD | Not started | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
+| Product management | Partial (has bugs) | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
@@ -93,8 +93,14 @@ See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-
 | Task | Status | Issue |
 |------|--------|-------|
 | Deploy Functions to Firebase | Not started | #22 |
-| CI/CD for Functions | Not started | #23 |
+| CI/CD for Functions | Complete | #23 |
 | Testing infrastructure | Not started | #24 |
+
+#### CI/CD Details (#23)
+
+- **PR Build Check**: `.github/workflows/build-check.yml` - Builds web app and functions on every PR
+- **Functions Deploy**: `.github/workflows/firebase-functions-merge.yml` - Deploys only affected functions on merge to main
+- **Required Secret**: `FIREBASE_GCP_SA_KEY` - Service account JSON for Firebase deployment
 
 ### External Dependencies
 
@@ -140,7 +146,7 @@ See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-
 
 3. **Library-per-Function** - Each Cloud Function in its own Nx library
    - SOL: [libs/firebase/enrollment-functions/](https://github.com/MountainSOLSchool/platform/tree/main/libs/firebase/enrollment-functions)
-   - Maple: `libs/firebase/maple-functions/product/`
+   - Maple: `libs/firebase/maple-functions/get-artists/`, `libs/firebase/maple-functions/create-product/`, etc.
 
 4. **Vest Validation** - Declarative form validation suites
    - SOL: [libs/ts/classes/classes-domain/src/lib/validation/](https://github.com/MountainSOLSchool/platform/tree/main/libs/ts/classes/classes-domain/src/lib/validation)

@@ -17,3 +17,4 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx nx run maple-spruce:build
+      - run: npx nx run functions:build

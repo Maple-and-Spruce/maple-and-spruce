@@ -31,7 +31,8 @@
       "Bash(npx nx build:*)",
       "Bash(npx nx show:*)",
       "Bash(pkill:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gh pr view:*)"
     ]
   }
 }

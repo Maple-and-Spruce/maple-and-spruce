@@ -41,6 +41,8 @@ export type {
   UpdateArtistResponse,
   DeleteArtistRequest,
   DeleteArtistResponse,
+  UploadArtistImageRequest,
+  UploadArtistImageResponse,
 } from './artist.types';
 
 // Product types
