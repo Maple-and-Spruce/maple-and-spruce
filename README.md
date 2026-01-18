@@ -144,7 +144,7 @@ All functions deploy to `us-east4` (Northern Virginia) via Workload Identity Fed
 ## Git Workflow
 
 ```bash
-# Always work on feature branches (main is protected)
+# Always work on feature branches
 git checkout -b feature/7-firebase-setup
 
 # Commit with clear messages referencing issues
@@ -153,6 +153,8 @@ git commit -m "feat: add artist management (#2)"
 # Create PRs for review
 gh pr create --title "feat: Firebase setup (#7)"
 ```
+
+See [AGENTS.md](.claude/AGENTS.md) for detailed workflow rules.
 
 ## Phase 1 Roadmap
 
