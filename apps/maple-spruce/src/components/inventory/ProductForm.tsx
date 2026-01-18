@@ -17,6 +17,7 @@ import {
   Alert,
 } from '@mui/material';
 import type { Product, CreateProductInput, ProductStatus } from '@maple/ts/domain';
+import { toCents } from '@maple/ts/domain';
 
 interface ProductFormProps {
   open: boolean;
@@ -26,21 +27,36 @@ interface ProductFormProps {
   isSubmitting?: boolean;
 }
 
-const defaultFormData: CreateProductInput = {
+/**
+ * Form state uses user-friendly units:
+ * - priceDollars: displayed as dollars, converted to cents on submit
+ * - commissionPercent: displayed as 0-100%, converted to 0-1 on submit
+ */
+interface FormState {
+  artistId: string;
+  name: string;
+  description: string;
+  priceDollars: number;
+  quantity: number;
+  status: ProductStatus;
+  commissionPercent: number | ''; // 0-100, converted to 0-1 on submit; '' for empty
+}
+
+const defaultFormState: FormState = {
   artistId: '',
   name: '',
   description: '',
-  price: 0,
+  priceDollars: 0,
   quantity: 1,
-  sku: '',
   status: 'active',
+  commissionPercent: '',
 };
 
 /**
  * Basic client-side validation
  * Full validation happens on the server with vest
  */
-function validateForm(data: CreateProductInput): Record<string, string> {
+function validateForm(data: FormState): Record<string, string> {
   const errors: Record<string, string> = {};
 
   if (!data.name?.trim()) {
@@ -53,10 +69,14 @@ function validateForm(data: CreateProductInput): Record<string, string> {
     errors.artistId = 'Artist is required';
   }
 
-  if (data.price === undefined || data.price === null) {
-    errors.price = 'Price is required';
-  } else if (data.price <= 0) {
-    errors.price = 'Price must be greater than 0';
+  if (data.priceDollars === undefined || data.priceDollars === null) {
+    errors.priceDollars = 'Price is required';
+  } else if (data.priceDollars <= 0) {
+    errors.priceDollars = 'Price must be greater than 0';
+  }
+
+  if (data.quantity < 0) {
+    errors.quantity = 'Quantity cannot be negative';
   }
 
   if (!data.status) {
@@ -73,7 +93,7 @@ export function ProductForm({
   product,
   isSubmitting = false,
 }: ProductFormProps) {
-  const [formData, setFormData] = useState<CreateProductInput>(defaultFormData);
+  const [formData, setFormData] = useState<FormState>(defaultFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -81,27 +101,30 @@ export function ProductForm({
 
   useEffect(() => {
     if (product) {
+      // Convert from Product (with squareCache) to form state
       setFormData({
         artistId: product.artistId,
-        name: product.name,
-        description: product.description ?? '',
-        price: product.price,
-        quantity: product.quantity,
-        sku: product.sku ?? '',
+        name: product.squareCache.name,
+        description: product.squareCache.description ?? '',
+        priceDollars: product.squareCache.priceCents / 100, // Convert cents to dollars
+        quantity: product.squareCache.quantity,
         status: product.status,
-        imageUrl: product.imageUrl,
-        etsyListingId: product.etsyListingId,
+        // Convert decimal (0-1) to percentage (0-100) for display
+        commissionPercent:
+          product.customCommissionRate !== undefined
+            ? product.customCommissionRate * 100
+            : '',
       });
     } else {
-      setFormData(defaultFormData);
+      setFormData(defaultFormState);
     }
     setErrors({});
     setSubmitError(null);
   }, [product, open]);
 
   const handleChange = (
-    field: keyof CreateProductInput,
-    value: string | number | ProductStatus
+    field: keyof FormState,
+    value: string | number | ProductStatus | ''
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -127,12 +150,40 @@ export function ProductForm({
     setSubmitError(null);
 
     try {
-      await onSubmit(formData);
+      // Convert form state to CreateProductInput
+      const input: CreateProductInput = {
+        artistId: formData.artistId,
+        name: formData.name,
+        description: formData.description || undefined,
+        priceCents: toCents(formData.priceDollars), // Convert dollars to cents
+        quantity: formData.quantity,
+        status: formData.status,
+      };
+
+      // Convert percentage (0-100) to decimal (0-1) if provided
+      if (
+        formData.commissionPercent !== '' &&
+        formData.commissionPercent !== undefined &&
+        !Number.isNaN(formData.commissionPercent)
+      ) {
+        input.customCommissionRate = formData.commissionPercent / 100;
+      }
+
+      await onSubmit(input);
       onClose();
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : 'Failed to save product'
-      );
+    } catch (error: unknown) {
+      // Extract meaningful error message from Firebase/API errors
+      let message = 'Failed to save product';
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error
+      ) {
+        message = String((error as { message: unknown }).message);
+      }
+      setSubmitError(message);
     }
   };
 
@@ -179,22 +230,17 @@ export function ProductForm({
           <TextField
             label="Price"
             type="number"
-            value={formData.price}
-            onChange={(e) => handleChange('price', parseFloat(e.target.value) || 0)}
-            error={!!errors.price}
-            helperText={errors.price}
+            value={formData.priceDollars}
+            onChange={(e) =>
+              handleChange('priceDollars', parseFloat(e.target.value) || 0)
+            }
+            error={!!errors.priceDollars}
+            helperText={errors.priceDollars}
             InputProps={{
               startAdornment: <InputAdornment position="start">$</InputAdornment>,
             }}
+            inputProps={{ step: 0.01, min: 0 }}
             required
-            fullWidth
-          />
-
-          <TextField
-            label="SKU"
-            value={formData.sku}
-            onChange={(e) => handleChange('sku', e.target.value)}
-            helperText="Optional identifier"
             fullWidth
           />
 
@@ -202,7 +248,9 @@ export function ProductForm({
             label="Quantity"
             type="number"
             value={formData.quantity}
-            onChange={(e) => handleChange('quantity', parseInt(e.target.value) || 0)}
+            onChange={(e) =>
+              handleChange('quantity', parseInt(e.target.value) || 0)
+            }
             error={!!errors.quantity}
             helperText={errors.quantity}
             inputProps={{ min: 0 }}
@@ -226,10 +274,21 @@ export function ProductForm({
           </FormControl>
 
           <TextField
-            label="Image URL"
-            value={formData.imageUrl ?? ''}
-            onChange={(e) => handleChange('imageUrl', e.target.value)}
-            helperText="Optional"
+            label="Custom Commission Rate (%)"
+            type="number"
+            value={formData.commissionPercent}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange(
+                'commissionPercent',
+                val === '' ? '' : parseFloat(val)
+              );
+            }}
+            helperText="Optional override (e.g., 30 = 30%)"
+            inputProps={{ step: 1, min: 0, max: 100 }}
+            InputProps={{
+              endAdornment: <InputAdornment position="end">%</InputAdornment>,
+            }}
             fullWidth
           />
         </Box>

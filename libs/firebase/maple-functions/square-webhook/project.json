@@ -1,5 +1,5 @@
 {
-  "name": "square-webhook",
+  "name": "firebase-maple-functions-square-webhook",
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/firebase/maple-functions/square-webhook/src",
   "projectType": "library",
