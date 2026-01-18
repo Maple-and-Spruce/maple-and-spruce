@@ -1,14 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  AppBar,
-  Toolbar,
-} from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Artist, CreateArtistInput } from '@maple/ts/domain';
 import {
@@ -16,7 +9,7 @@ import {
   ArtistForm,
   DeleteConfirmDialog,
 } from '../../components/artists';
-import { UserMenu } from '../../components/auth';
+import { AppShell } from '../../components/layout';
 import { useArtists } from '../../hooks';
 
 export default function ArtistsPage() {
@@ -93,59 +86,48 @@ export default function ArtistsPage() {
   }, [artistToDelete, handleCloseDelete, deleteArtistApi]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="primary" elevation={1}>
-        <Toolbar>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Maple & Spruce
-          </Typography>
-          <UserMenu />
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 3,
-          }}
+    <AppShell>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+        }}
+      >
+        <Typography variant="h4" component="h1">
+          Artists
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenForm()}
         >
-          <Typography variant="h4" component="h2">
-            Artists
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenForm()}
-          >
-            Add Artist
-          </Button>
-        </Box>
+          Add Artist
+        </Button>
+      </Box>
 
-        <ArtistList
-          artistsState={artistsState}
-          onEdit={handleOpenForm}
-          onDelete={handleOpenDelete}
-        />
+      <ArtistList
+        artistsState={artistsState}
+        onEdit={handleOpenForm}
+        onDelete={handleOpenDelete}
+      />
 
-        <ArtistForm
-          open={isFormOpen}
-          onClose={handleCloseForm}
-          onSubmit={handleSubmitForm}
-          artist={editingArtist}
-          isSubmitting={isSubmitting}
-        />
+      <ArtistForm
+        open={isFormOpen}
+        onClose={handleCloseForm}
+        onSubmit={handleSubmitForm}
+        artist={editingArtist}
+        isSubmitting={isSubmitting}
+      />
 
-        <DeleteConfirmDialog
-          open={!!artistToDelete}
-          artist={artistToDelete}
-          onClose={handleCloseDelete}
-          onConfirm={handleConfirmDelete}
-          isDeleting={isDeleting}
-        />
-      </Container>
-    </Box>
+      <DeleteConfirmDialog
+        open={!!artistToDelete}
+        artist={artistToDelete}
+        onClose={handleCloseDelete}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
+    </AppShell>
   );
 }
