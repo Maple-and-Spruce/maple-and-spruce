@@ -47,22 +47,30 @@ See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issu
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| **Vercel** | mapleandsprucefolkarts.com | Web app, auto-deploys on push to main |
+| **Vercel** | maple-and-spruce-maple-spruce.vercel.app | Admin web app, auto-deploys on push to main |
 | **Firebase Hosting** | maple-and-spruce-api.web.app | API proxy to Cloud Functions |
 | **Firebase Functions** | `us-east4` | Auto-deploys on merge to main via GitHub Actions |
+| **Webflow** | maple-spruce-folk-arts-collective.webflow.io | Customer-facing site (not public yet) |
 
 ### Domains
 
-| Domain | Status | Target |
-|--------|--------|--------|
-| mapleandsprucefolkarts.com | ✅ Configured | Vercel (web app) |
-| www.mapleandsprucefolkarts.com | ✅ Configured | Vercel (web app) |
-| maple-and-spruce-api.web.app | ✅ Active | Firebase Hosting (API proxy) |
-| mapleandsprucewv.com | Owned (Namecheap) | Redirect to primary (future) |
+| Domain | Status | Target | Purpose |
+|--------|--------|--------|---------|
+| mapleandsprucefolkarts.com | 🔄 Needs reconfiguration | Webflow | Customer-facing site |
+| www.mapleandsprucefolkarts.com | 🔄 Needs reconfiguration | Webflow | Customer-facing site |
+| business.mapleandsprucefolkarts.com | ❌ Not configured | Vercel | Admin app |
+| mapleandsprucewv.com | Owned (Namecheap) | Webflow | Alt domain for customer site |
+| business.mapleandsprucewv.com | ❌ Not configured | Vercel | Alt admin subdomain |
+| maple-and-spruce-api.web.app | ✅ Active | Firebase Hosting | API proxy |
+
+### Domain Registrar
+
+**Namecheap** manages both domains (mapleandsprucefolkarts.com, mapleandsprucewv.com)
 
 ### Architecture
 
-- **Vercel** hosts the Next.js web app at `mapleandsprucefolkarts.com`
+- **Webflow** hosts the customer-facing site at `mapleandsprucefolkarts.com`
+- **Vercel** hosts the admin Next.js app at `business.mapleandsprucefolkarts.com`
 - **Firebase Hosting** proxies API requests at `maple-and-spruce-api.web.app`
 - **Firebase Functions** use `onRequest` (HTTP functions) with manual CORS middleware and `invoker: 'public'`
 - API calls go through Firebase Hosting rewrites (e.g., `/getArtists` → `getArtists` function)
