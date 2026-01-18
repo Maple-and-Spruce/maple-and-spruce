@@ -6,7 +6,14 @@
  * Pattern adapted from Mountain Sol Platform:
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/auth.utility.ts
  */
+import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
+
+// Ensure Firebase Admin is initialized before using getFirestore()
+// This is needed because auth.utility may be imported before the database module
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
 /**
  * Roles available in the system
