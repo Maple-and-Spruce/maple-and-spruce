@@ -5,16 +5,6 @@
   "projectType": "library",
   "tags": [],
   "targets": {
-    "build": {
-      "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/libs/ts/firebase/firebase-config",
-        "main": "libs/ts/firebase/firebase-config/src/index.ts",
-        "tsConfig": "libs/ts/firebase/firebase-config/tsconfig.lib.json",
-        "assets": ["libs/ts/firebase/firebase-config/*.md"]
-      }
-    },
     "lint": {
       "executor": "@nx/eslint:lint"
     }
