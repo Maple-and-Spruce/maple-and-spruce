@@ -32,7 +32,7 @@ jobs:
         run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --frozen-lockfile
 
       - name: Get affected functions
         id: get_affected
@@ -172,7 +172,7 @@ jobs:
         run: ls -la dist/apps/functions
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --frozen-lockfile
 
       - name: Deploy functions group
         if: matrix.functions != ''

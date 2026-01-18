@@ -2,7 +2,7 @@
 
 Digital platform for Maple & Spruce - a folk arts collective offering handmade goods, workshops, and music lessons in Morgantown, WV.
 
-**Current Phase**: Etsy integration & artist payout tracking (no physical store yet)
+**Current Phase**: Phase 1 - Etsy integration & artist payout tracking (no physical store yet)
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ Digital platform for Maple & Spruce - a folk arts collective offering handmade g
 npm install
 
 # Run the development server
-npx nx serve maple-spruce
+npx nx dev maple-spruce
 
 # Open http://localhost:3000
 ```
@@ -21,15 +21,21 @@ npx nx serve maple-spruce
 ```
 maple-and-spruce/
 ├── .claude/                        # Claude Code configuration
-│   ├── CLAUDE.md                  # Quick reference for Claude
-│   └── AGENTS.md                  # Detailed agent rules
+│   ├── CLAUDE.md                  # Agent instructions (imports AGENTS.md)
+│   └── AGENTS.md                  # Detailed agent rules & project context
 ├── apps/
 │   ├── maple-spruce/              # Main Next.js application
+│   ├── functions/                 # Firebase Cloud Functions entry point
 │   └── maple-spruce-e2e/          # Playwright e2e tests
-├── packages/                       # Shared libraries (to be created)
-│   ├── ui/                        # Shared UI components
-│   ├── domain/                    # Domain models & types
-│   └── firebase/                  # Firebase utilities & repositories
+├── libs/
+│   ├── firebase/
+│   │   ├── database/              # Firestore repositories
+│   │   ├── functions/             # Cloud Function builder utilities
+│   │   └── maple-functions/       # Individual function implementations
+│   └── ts/
+│       ├── domain/                # Domain models & types
+│       ├── firebase/              # Firebase client config
+│       └── validation/            # Vest validation suites
 └── docs/                           # Documentation
     ├── REQUIREMENTS.md            # Business requirements & features
     ├── PATTERNS-AND-PRACTICES.md  # Development patterns guide
@@ -49,16 +55,16 @@ maple-and-spruce/
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 15 + React 19 |
-| Monorepo | Nx |
-| UI | MUI (Material Design) |
-| Database | Firebase Firestore |
-| Auth | Firebase Authentication |
-| Backend | Firebase Cloud Functions |
-| Payments | Stripe (planned) |
-| Testing | Playwright |
+| Layer | Technology | Version |
+|-------|------------|---------|
+| Framework | Next.js + React | 15.5.9 / 19.0.0 |
+| Monorepo | Nx | 22.3.3 |
+| UI | MUI (Material Design) | 6.x |
+| Database | Firebase Firestore | - |
+| Auth | Firebase Authentication | - |
+| Backend | Firebase Cloud Functions | v2 (Gen 2) |
+| Payments | Stripe | (planned) |
+| Testing | Vitest + Playwright | 4.x / 1.x |
 
 ## Brand Colors
 
@@ -88,9 +94,13 @@ See [AGENTS.md](.claude/AGENTS.md) for detailed workflow rules.
 
 ```bash
 # Development
-npx nx serve maple-spruce          # Start dev server
+npx nx dev maple-spruce            # Start dev server
 npx nx build maple-spruce          # Production build
-npx nx test maple-spruce           # Run tests
+npx nx run maple-spruce:typecheck  # TypeScript check
+
+# Functions
+npx nx build functions             # Build Cloud Functions
+firebase emulators:start           # Run Firebase emulators
 
 # E2E Testing
 npx nx e2e maple-spruce-e2e        # Run Playwright tests
@@ -100,35 +110,45 @@ npx nx graph                        # View dependency graph
 npx nx affected -t build           # Build affected projects
 ```
 
-## Environment Variables
+## Environment Setup
 
-Create `.env.local` in `apps/maple-spruce/`:
+Firebase configuration is embedded in the codebase (API keys are public by design - security is enforced via Firestore rules and Cloud Function auth).
 
-```bash
-# Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
+For Cloud Functions deployment, environment files are in the repo root:
+- `.env.dev` - Development CORS origins
+- `.env.prod` - Production CORS origins
 
-# Stripe (future)
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+No `.env.local` files are required for local development.
 
-# Etsy
-ETSY_API_KEY=
-ETSY_ACCESS_TOKEN=
-ETSY_SHOP_ID=
-```
+## Deployed Functions
+
+Cloud Functions are deployed to `us-east4` (Northern Virginia) via GitHub Actions on merge to main.
+
+| Function | Type | Purpose |
+|----------|------|---------|
+| getArtists | authenticated | List all artists |
+| getArtistById | authenticated | Get single artist |
+| createArtist | admin | Create new artist |
+| updateArtist | admin | Update artist |
+| deleteArtist | admin | Delete artist |
+| getProducts | authenticated | List all products |
+| getProductById | authenticated | Get single product |
+| createProduct | admin | Create new product |
+| updateProduct | admin | Update product |
+| deleteProduct | admin | Delete product |
+| uploadArtistImage | admin | Upload artist photo |
+| healthCheck | public | Health check endpoint |
 
 ## GitHub Issues
 
 Track progress via GitHub Issues:
 - [Phase 1 Epic: Etsy + Artist Payouts](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/1)
 - [All Issues](https://github.com/Maple-and-Spruce/maple-and-spruce/issues)
+
+## CI/CD
+
+- **PR Checks**: Security audit, TypeScript check, build verification
+- **Deploy**: Functions auto-deploy on merge to main via Workload Identity Federation (keyless)
 
 ---
 
