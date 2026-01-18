@@ -63,7 +63,7 @@ export function createFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
   options: FunctionOptions = {}
 ) {
-  return onCall(async (request: CallableRequest<TRequest>): Promise<TResponse> => {
+  return onCall({ region: 'us-east4' }, async (request: CallableRequest<TRequest>): Promise<TResponse> => {
     const context: FunctionContext = {
       uid: request.auth?.uid,
       email: request.auth?.token?.email,
