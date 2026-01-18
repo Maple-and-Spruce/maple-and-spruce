@@ -4,6 +4,9 @@
   "sourceRoot": "libs/firebase/functions/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:util"],
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "functionsEnv"]
+  },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",

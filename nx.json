@@ -3,7 +3,8 @@
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": ["default"],
-    "sharedGlobals": []
+    "sharedGlobals": [],
+    "functionsEnv": ["{workspaceRoot}/.env.prod", "{workspaceRoot}/.env.dev"]
   },
   "sync": {
     "applyChanges": false,

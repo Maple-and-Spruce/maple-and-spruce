@@ -4,6 +4,9 @@
  * Provides a consistent pattern for creating HTTP functions with
  * CORS handling, authentication, and authorization.
  *
+ * Uses onRequest (HTTP functions) with manual CORS middleware for full
+ * control over CORS headers and preflight handling.
+ *
  * Pattern adapted from Mountain Sol Platform:
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts
  */
