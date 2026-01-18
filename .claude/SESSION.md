@@ -6,9 +6,9 @@
 
 ## Current Work
 
-**Status**: CI/CD complete, all functions deployed to us-east4. Ready to start Artist Management (#2).
+**Status**: Domain setup complete, functions working with CORS. Ready to start Artist Management (#2).
 
-**Recent session** (2026-01-17): Configured and debugged Firebase Functions deployment via GitHub Actions. Fixed multiple GCP permission issues, configured functions to deploy to us-east4 region, and switched to auto-generated package.json pattern (following Mountain Sol).
+**Recent session** (2026-01-18): Set up custom domains on Vercel (mapleandsprucefolkarts.com), fixed Firebase Functions CORS issues by switching from `onCall` to `onRequest` with manual CORS middleware (Mountain SOL pattern), configured us-east4 region for Firebase SDK.
 
 ### Inventory (#3) - Known Issues to Fix
 
@@ -47,16 +47,22 @@ See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issu
 
 ### Architecture
 
-- **Vercel** hosts the Next.js web app and handles API routing
-- Next.js rewrites `/api/*` requests to Firebase Functions (`us-east4-maple-and-spruce.cloudfunctions.net`)
-- API calls use `www.mapleandsprucefolkarts.com/api/getArtists` etc.
-- No separate Firebase Hosting needed - Vercel handles everything
+- **Vercel** hosts the Next.js web app at `mapleandsprucefolkarts.com`
+- **Firebase Functions** use `onRequest` (HTTP functions) with manual CORS middleware
+- Frontend uses Firebase SDK `httpsCallable()` which calls functions directly at `us-east4-maple-and-spruce.cloudfunctions.net`
+- CORS origins configured via `.env.prod` / `.env.dev` files (no localhost in production)
 
 ### Firebase Functions (us-east4)
 
 All 10 functions are deployed to `us-east4` (Northern Virginia - close to WV business):
 - Artist functions: `getArtists`, `getArtistById`, `createArtist`, `updateArtist`, `deleteArtist`
 - Product functions: `getProducts`, `getProductById`, `createProduct`, `updateProduct`, `deleteProduct`
+
+**Function Pattern** (following Mountain SOL):
+- Use `onRequest` instead of `onCall` for full CORS control
+- Manual CORS middleware validates origin against `ALLOWED_ORIGINS`
+- Manual Firebase Auth token verification from `Authorization: Bearer <token>` header
+- Response format: `{ data: result }` to match `httpsCallable` expectations
 
 **Deployment**: Automatic on merge to main via `.github/workflows/firebase-functions-merge.yml`
 
@@ -70,7 +76,8 @@ All 10 functions are deployed to `us-east4` (Northern Virginia - close to WV bus
 | Firestore enabled | ✅ | Test mode |
 | Authentication enabled | ✅ | Email/Password |
 | CLI access | ✅ | `katie@mapleandsprucefolkarts.com` |
-| App Hosting | ❌ | Requires billing - using Vercel for now |
+| App Hosting | ❌ | Using Vercel instead |
+| Blaze Plan | ✅ | Billing enabled |
 | Functions deployed | ✅ | 10 functions in `us-east4` |
 | App Engine | ✅ | `us-east4` region |
 
@@ -180,24 +187,23 @@ The following GCP configuration was required for GitHub Actions to deploy functi
 9. **Event sourcing for inventory** - InventoryMovement audit log for reconciliation.
 10. **Manual sync conflict resolution** - Surface issues in UI, don't auto-resolve.
 11. **No local emulators for Firebase services** - Use production Firebase (Auth, Firestore, Storage) directly. Only run functions emulator locally. Firebase CLI login handles authentication.
+12. **onRequest over onCall** - Use HTTP functions with manual CORS (Mountain SOL pattern) for full control over CORS headers and preflight handling.
+13. **CORS origins in env files** - `.env.prod` for production domains, `.env.dev` for localhost. No localhost in production for security.
 
 ## Recent Changes
 
 | Date | Change | PR |
 |------|--------|-----|
+| 2026-01-18 | Remove localhost from production CORS origins | #48 |
+| 2026-01-18 | Switch to onRequest with manual CORS handling | #47 |
+| 2026-01-18 | Allow public HTTP access to Cloud Functions v2 | #46 |
+| 2026-01-18 | Configure Firebase Functions SDK to use us-east4 region | #45 |
+| 2026-01-18 | Add Next.js API rewrites to proxy to Firebase Functions | #43 |
 | 2026-01-17 | Add --force flag to deploy, redeploy getArtists to us-east4 | #38 |
 | 2026-01-17 | Deploy functions to us-east4 region | #37 |
 | 2026-01-17 | Verify CI/CD deploy with codebase filter | #36 |
-| 2026-01-17 | Use codebase prefix in function deploy filter | #35 |
-| 2026-01-17 | Verify CI/CD deploy workflow | #34 |
 | 2026-01-16 | Inventory foundation, auth infrastructure (partial #3) | #21 |
 | 2026-01-16 | Inventory system architecture, domain type updates | #25 |
-| 2026-01-11 | Infrastructure libraries (domain, validation, functions, api-types) | #21 |
-| 2026-01-11 | SOL patterns documentation, issue updates, package.json deps | #19 |
-| 2026-01-10 | App Hosting setup + Vercel deployment | #15 |
-| 2026-01-10 | Reference repository documentation | #14 |
-| 2026-01-10 | Firebase infrastructure setup (issue #7) | #13 |
-| 2026-01-06 | Documentation improvements | #12 |
 
 ## Domain Types Updated (2026-01-16)
 
@@ -218,4 +224,4 @@ The following GCP configuration was required for GitHub Actions to deploy functi
 
 ---
 
-*Last updated: 2026-01-17*
+*Last updated: 2026-01-18*
