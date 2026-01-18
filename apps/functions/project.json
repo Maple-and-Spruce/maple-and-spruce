@@ -12,21 +12,14 @@
         "outputPath": "dist/apps/functions",
         "main": "apps/functions/src/index.ts",
         "tsConfig": "apps/functions/tsconfig.app.json",
-        "generatePackageJson": false,
+        "generatePackageJson": true,
         "platform": "node",
         "bundle": true,
         "thirdParty": false,
         "dependenciesFieldType": "dependencies",
         "target": "node20",
         "format": ["cjs"],
-        "outputFileName": "index.js",
-        "assets": [
-          {
-            "input": "apps/functions",
-            "glob": "package.json",
-            "output": "."
-          }
-        ],
+        "outputFileName": "index.cjs",
         "esbuildOptions": {
           "sourcemap": true,
           "logLevel": "info"
