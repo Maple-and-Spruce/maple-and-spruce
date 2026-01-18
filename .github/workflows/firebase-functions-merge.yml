@@ -170,7 +170,7 @@ jobs:
 
       - name: Deploy functions group
         if: matrix.functions != ''
-        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce --token "$(gcloud auth print-access-token)"
+        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce --force --token "$(gcloud auth print-access-token)"
 
       - name: Skip empty function group
         if: matrix.functions == ''

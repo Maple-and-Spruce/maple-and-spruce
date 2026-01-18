@@ -2,7 +2,7 @@
  * Get Artists Cloud Function
  *
  * Retrieves all artists, optionally filtered by status.
- * Deployed via CI/CD pipeline with codebase filtering.
+ * Deployed to us-east4 via CI/CD pipeline.
  */
 import { createAuthenticatedFunction } from '@maple/firebase/functions';
 import { ArtistRepository } from '@maple/firebase/database';
