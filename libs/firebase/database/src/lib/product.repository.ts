@@ -11,6 +11,7 @@ import type {
   UpdateProductInput,
   ProductStatus,
 } from '@maple/ts/domain';
+import { generateSku } from '@maple/ts/domain';
 
 const COLLECTION = 'products';
 
@@ -28,15 +29,22 @@ function docToProduct(
   return {
     id: doc.id,
     artistId: data.artistId,
+    squareItemId: data.squareItemId ?? '',
+    squareVariationId: data.squareVariationId ?? '',
+    squareCatalogVersion: data.squareCatalogVersion,
+    etsyListingId: data.etsyListingId,
     name: data.name,
     description: data.description,
     price: data.price,
-    sku: data.sku,
-    etsyListingId: data.etsyListingId,
-    status: data.status,
+    quantity: data.quantity ?? 1,
+    sku: data.sku ?? '',
     imageUrl: data.imageUrl,
+    customCommissionRate: data.customCommissionRate,
+    lastSquareSyncAt: data.lastSquareSyncAt?.toDate(),
+    lastEtsySyncAt: data.lastEtsySyncAt?.toDate(),
+    status: data.status,
     createdAt: data.createdAt?.toDate() ?? new Date(),
-    soldAt: data.soldAt?.toDate(),
+    updatedAt: data.updatedAt?.toDate() ?? new Date(),
   };
 }
 
@@ -89,10 +97,15 @@ export const ProductRepository = {
    */
   async create(input: CreateProductInput): Promise<Product> {
     const docRef = db.collection(COLLECTION).doc();
+    const now = new Date();
 
     const data = {
       ...input,
-      createdAt: new Date(),
+      sku: input.sku ?? generateSku(),
+      squareItemId: input.squareItemId ?? '',
+      squareVariationId: input.squareVariationId ?? '',
+      createdAt: now,
+      updatedAt: now,
     };
 
     await docRef.set(data);
@@ -110,7 +123,10 @@ export const ProductRepository = {
     const { id, ...updates } = input;
     const docRef = db.collection(COLLECTION).doc(id);
 
-    await docRef.update(updates);
+    await docRef.update({
+      ...updates,
+      updatedAt: new Date(),
+    });
 
     const updated = await docRef.get();
     const product = docToProduct(updated);
@@ -130,13 +146,12 @@ export const ProductRepository = {
   },
 
   /**
-   * Mark a product as sold
+   * Mark a product as discontinued
    */
-  async markAsSold(id: string): Promise<Product> {
+  async markAsDiscontinued(id: string): Promise<Product> {
     return this.update({
       id,
-      status: 'sold',
-      soldAt: new Date(),
+      status: 'discontinued',
     });
   },
 };

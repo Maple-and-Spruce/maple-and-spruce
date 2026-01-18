@@ -17,15 +17,41 @@
     "strict": true,
     "target": "es2022",
     "baseUrl": ".",
-    "customConditions": ["@maple/source"],
     "paths": {
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
       "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
-      "@maple/firebase/maple-functions/artist": [
-        "libs/firebase/maple-functions/artist/src/index.ts"
+      "@maple/firebase/maple-functions/get-artists": [
+        "libs/firebase/maple-functions/get-artists/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/product": [
-        "libs/firebase/maple-functions/product/src/index.ts"
+      "@maple/firebase/maple-functions/get-artist": [
+        "libs/firebase/maple-functions/get-artist/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-artist": [
+        "libs/firebase/maple-functions/create-artist/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-artist": [
+        "libs/firebase/maple-functions/update-artist/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-artist": [
+        "libs/firebase/maple-functions/delete-artist/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/upload-artist-image": [
+        "libs/firebase/maple-functions/upload-artist-image/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-products": [
+        "libs/firebase/maple-functions/get-products/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-product": [
+        "libs/firebase/maple-functions/get-product/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-product": [
+        "libs/firebase/maple-functions/create-product/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-product": [
+        "libs/firebase/maple-functions/update-product/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-product": [
+        "libs/firebase/maple-functions/delete-product/src/index.ts"
       ],
       "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
       "@maple/ts/firebase/api-types": [
