@@ -8,26 +8,18 @@
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts
  */
 import { onRequest } from 'firebase-functions/v2/https';
+import { defineString } from 'firebase-functions/params';
 import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'express';
 import { Role, hasRole } from './auth.utility';
 import { getAuth } from 'firebase-admin/auth';
 
-// Allowed origins for CORS
-// In production, this includes the Vercel domains
-// In development, localhost is allowed
-const ALLOWED_ORIGINS = [
-  // Production domains
-  'https://www.mapleandsprucefolkarts.com',
-  'https://mapleandsprucefolkarts.com',
-  'https://www.mapleandsprucewv.com',
-  'https://mapleandsprucewv.com',
-  // Vercel preview deployments
-  'https://maple-and-spruce-maple-spruce.vercel.app',
-  // Development
-  'http://localhost:3000',
-  'http://localhost:4200',
-];
+// Allowed origins for CORS - configured via Firebase environment
+// Set via: firebase functions:config:set or .env files
+// Production should NOT include localhost
+const ALLOWED_ORIGINS = defineString('ALLOWED_ORIGINS', {
+  default: 'https://www.mapleandsprucefolkarts.com,https://mapleandsprucefolkarts.com,https://www.mapleandsprucewv.com,https://mapleandsprucewv.com,https://maple-and-spruce-maple-spruce.vercel.app',
+});
 
 /**
  * CORS middleware - handles preflight and validates origins
@@ -45,7 +37,9 @@ const corsMiddleware = (
     return;
   }
 
-  if (ALLOWED_ORIGINS.includes(origin)) {
+  const allowedOrigins = ALLOWED_ORIGINS.value().split(',').map((o) => o.trim());
+
+  if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader(
       'Access-Control-Allow-Methods',
