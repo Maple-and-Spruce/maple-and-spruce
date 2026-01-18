@@ -1,16 +1,76 @@
 /**
  * Firebase Cloud Functions utilities
  *
- * Provides a consistent pattern for creating callable functions with
- * authentication, authorization, and error handling.
+ * Provides a consistent pattern for creating HTTP functions with
+ * CORS handling, authentication, and authorization.
  *
  * Pattern adapted from Mountain Sol Platform:
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts
  */
-import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { onRequest } from 'firebase-functions/v2/https';
+import type { Request } from 'firebase-functions/v2/https';
+import type { Response } from 'express';
 import { Role, hasRole } from './auth.utility';
+import { getAuth } from 'firebase-admin/auth';
+
+// Allowed origins for CORS
+// In production, this includes the Vercel domains
+// In development, localhost is allowed
+const ALLOWED_ORIGINS = [
+  // Production domains
+  'https://www.mapleandsprucefolkarts.com',
+  'https://mapleandsprucefolkarts.com',
+  'https://www.mapleandsprucewv.com',
+  'https://mapleandsprucewv.com',
+  // Vercel preview deployments
+  'https://maple-and-spruce-maple-spruce.vercel.app',
+  // Development
+  'http://localhost:3000',
+  'http://localhost:4200',
+];
+
+/**
+ * CORS middleware - handles preflight and validates origins
+ */
+const corsMiddleware = (
+  req: Request,
+  res: Response,
+  next: () => void
+) => {
+  const origin = req.headers.origin;
+
+  // Allow requests without origin (e.g., server-to-server)
+  if (!origin) {
+    next();
+    return;
+  }
+
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Authorization,Content-Type'
+    );
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // Handle preflight OPTIONS request
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    next();
+  } else {
+    res.status(403).json({
+      error: 'Forbidden: Origin not allowed by CORS policy',
+      origin,
+    });
+  }
+};
 
 /**
  * Context provided to function handlers
@@ -33,95 +93,104 @@ export interface FunctionOptions {
 }
 
 /**
- * Create a Firebase callable function with consistent patterns
+ * Verify Firebase Auth token from Authorization header
+ */
+async function verifyAuthToken(req: Request): Promise<{ uid: string; email?: string } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.split('Bearer ')[1];
+  try {
+    const decodedToken = await getAuth().verifyIdToken(token);
+    return {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+    };
+  } catch (error) {
+    console.error('Token verification failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Create a Firebase HTTP function with CORS and auth handling
  *
  * @param handler - The function implementation
  * @param options - Authentication and authorization options
- * @returns A Firebase callable function
+ * @returns A Firebase HTTP function
  *
  * @example
- * // Simple authenticated function
- * export const getArtists = createFunction<void, Artist[]>(
+ * export const getArtists = createFunction<GetArtistsRequest, GetArtistsResponse>(
  *   async (data, context) => {
  *     const artists = await ArtistRepository.findAll();
- *     return artists;
+ *     return { artists };
  *   },
  *   { requireAuth: true }
- * );
- *
- * @example
- * // Admin-only function
- * export const createArtist = createFunction<CreateArtistInput, Artist>(
- *   async (data, context) => {
- *     const artist = await ArtistRepository.create(data);
- *     return artist;
- *   },
- *   { requiredRole: Role.Admin }
  * );
  */
 export function createFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
   options: FunctionOptions = {}
 ) {
-  return onCall(
+  return onRequest(
     {
       region: 'us-east4',
-      // Allow CORS from all origins - Firebase SDK handles authentication
-      cors: true,
-      // Allow unauthenticated HTTP access - Firebase Auth is handled separately in the function
-      invoker: 'public',
     },
-    async (request: CallableRequest<TRequest>): Promise<TResponse> => {
-    const context: FunctionContext = {
-      uid: request.auth?.uid,
-      email: request.auth?.token?.email,
-    };
+    async (req: Request, res: Response) => {
+      // Handle CORS
+      corsMiddleware(req, res, async () => {
+        try {
+          // Verify auth token if present
+          const auth = await verifyAuthToken(req);
+          const context: FunctionContext = {
+            uid: auth?.uid,
+            email: auth?.email,
+          };
 
-    // Check authentication if required
-    if (options.requireAuth || options.requiredRole) {
-      if (!request.auth?.uid) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to perform this action');
-      }
+          // Check authentication if required
+          if (options.requireAuth || options.requiredRole) {
+            if (!auth?.uid) {
+              res.status(401).json({
+                error: 'Unauthorized: You must be logged in to perform this action',
+              });
+              return;
+            }
+          }
+
+          // Check role if required
+          if (options.requiredRole) {
+            const userHasRole = await hasRole(auth!.uid, options.requiredRole);
+            if (!userHasRole) {
+              res.status(403).json({
+                error: `Forbidden: You must be a ${options.requiredRole} to perform this action`,
+              });
+              return;
+            }
+          }
+
+          // Parse request data from body
+          const data = (req.body?.data ?? req.body ?? {}) as TRequest;
+
+          // Execute handler
+          const result = await handler(data, context);
+
+          // Send response in the format expected by httpsCallable
+          res.status(200).json({ data: result });
+        } catch (error) {
+          console.error('Function error:', error);
+          res.status(500).json({
+            error: error instanceof Error ? error.message : 'An unexpected error occurred',
+          });
+        }
+      });
     }
-
-    // Check role if required
-    if (options.requiredRole) {
-      const userHasRole = await hasRole(request.auth!.uid, options.requiredRole);
-      if (!userHasRole) {
-        throw new HttpsError(
-          'permission-denied',
-          `You must be a ${options.requiredRole} to perform this action`
-        );
-      }
-    }
-
-    try {
-      return await handler(request.data, context);
-    } catch (error) {
-      // Re-throw HttpsErrors as-is
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-
-      // Wrap other errors
-      console.error('Function error:', error);
-      throw new HttpsError(
-        'internal',
-        error instanceof Error ? error.message : 'An unexpected error occurred'
-      );
-    }
-  });
+  );
 }
 
 /**
  * Create a public function (no authentication required)
- *
- * @example
- * export const getPublicInfo = createPublicFunction<void, PublicInfo>(
- *   async () => {
- *     return { version: '1.0.0' };
- *   }
- * );
  */
 export function createPublicFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
@@ -131,13 +200,6 @@ export function createPublicFunction<TRequest, TResponse>(
 
 /**
  * Create an authenticated function (requires login)
- *
- * @example
- * export const getUserProfile = createAuthenticatedFunction<void, UserProfile>(
- *   async (data, context) => {
- *     return await UserRepository.findById(context.uid!);
- *   }
- * );
  */
 export function createAuthenticatedFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
@@ -147,13 +209,6 @@ export function createAuthenticatedFunction<TRequest, TResponse>(
 
 /**
  * Create an admin-only function
- *
- * @example
- * export const deleteArtist = createAdminFunction<{ id: string }, void>(
- *   async (data) => {
- *     await ArtistRepository.delete(data.id);
- *   }
- * );
  */
 export function createAdminFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
