@@ -30,8 +30,8 @@ export function DeleteConfirmDialog({
       <DialogTitle>Delete Product?</DialogTitle>
       <DialogContent>
         <Typography>
-          Are you sure you want to delete "{product?.name}"? This action cannot
-          be undone.
+          Are you sure you want to delete "{product?.squareCache.name}"? This
+          action cannot be undone.
         </Typography>
       </DialogContent>
       <DialogActions>

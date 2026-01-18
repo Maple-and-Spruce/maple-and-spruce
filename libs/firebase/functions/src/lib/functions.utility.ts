@@ -2,7 +2,7 @@
  * Firebase Cloud Functions utilities
  *
  * Provides a consistent pattern for creating HTTP functions with
- * CORS handling, authentication, and authorization.
+ * CORS handling, authentication, authorization, and secrets management.
  *
  * Uses onRequest (HTTP functions) with manual CORS middleware for full
  * control over CORS headers and preflight handling.
@@ -11,7 +11,12 @@
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts
  */
 import { onRequest } from 'firebase-functions/v2/https';
-import { defineString } from 'firebase-functions/params';
+import {
+  defineString,
+  defineSecret,
+  type SecretParam,
+  type StringParam,
+} from 'firebase-functions/params';
 import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'express';
 import { Role, hasRole } from './auth.utility';
@@ -23,17 +28,14 @@ import { getAuth } from 'firebase-admin/auth';
  * Production should NOT include localhost for security.
  */
 const ALLOWED_ORIGINS = defineString('ALLOWED_ORIGINS', {
-  default: 'https://www.mapleandsprucefolkarts.com,https://mapleandsprucefolkarts.com,https://www.mapleandsprucewv.com,https://mapleandsprucewv.com,https://maple-and-spruce-maple-spruce.vercel.app',
+  default:
+    'https://www.mapleandsprucefolkarts.com,https://mapleandsprucefolkarts.com,https://www.mapleandsprucewv.com,https://mapleandsprucewv.com,https://maple-and-spruce-maple-spruce.vercel.app',
 });
 
 /**
  * CORS middleware - handles preflight and validates origins
  */
-const corsMiddleware = (
-  req: Request,
-  res: Response,
-  next: () => void
-) => {
+const corsMiddleware = (req: Request, res: Response, next: () => void) => {
   const origin = req.headers.origin;
 
   // Allow requests without origin (e.g., server-to-server)
@@ -42,7 +44,9 @@ const corsMiddleware = (
     return;
   }
 
-  const allowedOrigins = ALLOWED_ORIGINS.value().split(',').map((o) => o.trim());
+  const allowedOrigins = ALLOWED_ORIGINS.value()
+    .split(',')
+    .map((o) => o.trim());
 
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -94,7 +98,9 @@ export interface FunctionOptions {
 /**
  * Verify Firebase Auth token from Authorization header
  */
-async function verifyAuthToken(req: Request): Promise<{ uid: string; email?: string } | null> {
+async function verifyAuthToken(
+  req: Request
+): Promise<{ uid: string; email?: string } | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return null;
@@ -114,85 +120,262 @@ async function verifyAuthToken(req: Request): Promise<{ uid: string; email?: str
 }
 
 /**
- * Create a Firebase HTTP function with CORS and auth handling
+ * Fluent function builder for creating Firebase HTTP functions
  *
- * @param handler - The function implementation
- * @param options - Authentication and authorization options
- * @returns A Firebase HTTP function
+ * Supports chaining secrets, strings, and role requirements.
  *
  * @example
- * export const getArtists = createFunction<GetArtistsRequest, GetArtistsResponse>(
- *   async (data, context) => {
+ * // Simple function without secrets
+ * export const getArtists = Functions.endpoint
+ *   .requiringRole(Role.Admin)
+ *   .handle<GetArtistsRequest, GetArtistsResponse>(async (data, context) => {
  *     const artists = await ArtistRepository.findAll();
  *     return { artists };
- *   },
- *   { requireAuth: true }
- * );
+ *   });
+ *
+ * @example
+ * // Function with Square secrets
+ * export const createProduct = Functions.endpoint
+ *   .usingSecrets(...SQUARE_SECRET_NAMES)
+ *   .usingStrings(...SQUARE_STRING_NAMES)
+ *   .requiringRole(Role.Admin)
+ *   .handle<CreateProductRequest, CreateProductResponse>(
+ *     async (data, context, secrets, strings) => {
+ *       const square = new Square(secrets, strings);
+ *       // ... use square client
+ *     }
+ *   );
+ */
+class FunctionBuilder<
+  SecretNames extends string = never,
+  StringNames extends string = never,
+> {
+  constructor(
+    private readonly secrets: Record<SecretNames, SecretParam> = {} as Record<
+      SecretNames,
+      SecretParam
+    >,
+    private readonly strings: Record<StringNames, StringParam> = {} as Record<
+      StringNames,
+      StringParam
+    >,
+    private readonly options: FunctionOptions = {}
+  ) {}
+
+  /**
+   * Add secrets to the function
+   */
+  usingSecrets<NewSecretNames extends string>(
+    ...secretNames: NewSecretNames[]
+  ): FunctionBuilder<SecretNames | NewSecretNames, StringNames> {
+    const newSecrets = secretNames.reduce(
+      (acc, name) => {
+        acc[name as NewSecretNames] = defineSecret(name);
+        return acc;
+      },
+      {} as Record<NewSecretNames, SecretParam>
+    );
+
+    return new FunctionBuilder(
+      { ...this.secrets, ...newSecrets } as Record<
+        SecretNames | NewSecretNames,
+        SecretParam
+      >,
+      this.strings,
+      this.options
+    );
+  }
+
+  /**
+   * Add string parameters to the function
+   */
+  usingStrings<NewStringNames extends string>(
+    ...stringNames: NewStringNames[]
+  ): FunctionBuilder<SecretNames, StringNames | NewStringNames> {
+    const newStrings = stringNames.reduce(
+      (acc, name) => {
+        acc[name as NewStringNames] = defineString(name);
+        return acc;
+      },
+      {} as Record<NewStringNames, StringParam>
+    );
+
+    return new FunctionBuilder(
+      this.secrets,
+      { ...this.strings, ...newStrings } as Record<
+        StringNames | NewStringNames,
+        StringParam
+      >,
+      this.options
+    );
+  }
+
+  /**
+   * Require authentication
+   */
+  requiringAuth(): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      requireAuth: true,
+    });
+  }
+
+  /**
+   * Require a specific role
+   */
+  requiringRole(role: Role): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      requiredRole: role,
+    });
+  }
+
+  /**
+   * Create the function with a handler
+   *
+   * @param handler - Function that receives request data, context, secrets, and strings
+   */
+  handle<TRequest, TResponse>(
+    handler: (
+      data: TRequest,
+      context: FunctionContext,
+      secrets: Record<SecretNames, string>,
+      strings: Record<StringNames, string>
+    ) => Promise<TResponse>
+  ) {
+    const secretParams = Object.values(this.secrets) as SecretParam[];
+
+    return onRequest(
+      {
+        region: 'us-east4',
+        invoker: 'public',
+        secrets: secretParams,
+      },
+      async (req: Request, res: Response) => {
+        // Handle CORS
+        corsMiddleware(req, res, async () => {
+          try {
+            // Verify auth token if present
+            const auth = await verifyAuthToken(req);
+            const context: FunctionContext = {
+              uid: auth?.uid,
+              email: auth?.email,
+            };
+
+            // Check authentication if required
+            if (this.options.requireAuth || this.options.requiredRole) {
+              if (!auth?.uid) {
+                res.status(401).json({
+                  error:
+                    'Unauthorized: You must be logged in to perform this action',
+                });
+                return;
+              }
+            }
+
+            // Check role if required
+            if (this.options.requiredRole) {
+              const userHasRole = await hasRole(
+                auth!.uid,
+                this.options.requiredRole
+              );
+              if (!userHasRole) {
+                res.status(403).json({
+                  error: `Forbidden: You must be a ${this.options.requiredRole} to perform this action`,
+                });
+                return;
+              }
+            }
+
+            // Extract secret values
+            const secretValues = Object.fromEntries(
+              Object.entries(this.secrets).map(([key, secret]) => [
+                key,
+                (secret as SecretParam).value(),
+              ])
+            ) as Record<SecretNames, string>;
+
+            // Extract string values
+            const stringValues = Object.fromEntries(
+              Object.entries(this.strings).map(([key, str]) => [
+                key,
+                (str as StringParam).value(),
+              ])
+            ) as Record<StringNames, string>;
+
+            // Parse request data from body
+            const data = (req.body?.data ?? req.body ?? {}) as TRequest;
+
+            // Execute handler
+            const result = await handler(
+              data,
+              context,
+              secretValues,
+              stringValues
+            );
+
+            // Send response in the format expected by httpsCallable
+            res.status(200).json({ data: result });
+          } catch (error) {
+            console.error('Function error:', error);
+            res.status(500).json({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'An unexpected error occurred',
+            });
+          }
+        });
+      }
+    );
+  }
+}
+
+/**
+ * Functions factory for creating HTTP functions
+ *
+ * @example
+ * export const myFunction = Functions.endpoint
+ *   .requiringRole(Role.Admin)
+ *   .handle(async (data, context) => {
+ *     return { success: true };
+ *   });
+ */
+export class Functions {
+  static endpoint = new FunctionBuilder();
+}
+
+// ============================================================================
+// Legacy API (for backwards compatibility)
+// ============================================================================
+
+/**
+ * Create a Firebase HTTP function with CORS and auth handling
+ *
+ * @deprecated Use Functions.endpoint.handle() instead
  */
 export function createFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
   options: FunctionOptions = {}
 ) {
-  return onRequest(
-    {
-      region: 'us-east4',
-      // Allow public HTTP access - we handle auth via Firebase tokens in headers.
-      // The org policy was updated to allow allUsers as Cloud Run invokers.
-      invoker: 'public',
-    },
-    async (req: Request, res: Response) => {
-      // Handle CORS
-      corsMiddleware(req, res, async () => {
-        try {
-          // Verify auth token if present
-          const auth = await verifyAuthToken(req);
-          const context: FunctionContext = {
-            uid: auth?.uid,
-            email: auth?.email,
-          };
+  let builder = Functions.endpoint;
 
-          // Check authentication if required
-          if (options.requireAuth || options.requiredRole) {
-            if (!auth?.uid) {
-              res.status(401).json({
-                error: 'Unauthorized: You must be logged in to perform this action',
-              });
-              return;
-            }
-          }
+  if (options.requireAuth) {
+    builder = builder.requiringAuth();
+  }
 
-          // Check role if required
-          if (options.requiredRole) {
-            const userHasRole = await hasRole(auth!.uid, options.requiredRole);
-            if (!userHasRole) {
-              res.status(403).json({
-                error: `Forbidden: You must be a ${options.requiredRole} to perform this action`,
-              });
-              return;
-            }
-          }
+  if (options.requiredRole) {
+    builder = builder.requiringRole(options.requiredRole);
+  }
 
-          // Parse request data from body
-          const data = (req.body?.data ?? req.body ?? {}) as TRequest;
-
-          // Execute handler
-          const result = await handler(data, context);
-
-          // Send response in the format expected by httpsCallable
-          res.status(200).json({ data: result });
-        } catch (error) {
-          console.error('Function error:', error);
-          res.status(500).json({
-            error: error instanceof Error ? error.message : 'An unexpected error occurred',
-          });
-        }
-      });
-    }
-  );
+  return builder.handle<TRequest, TResponse>(async (data, context) => {
+    return handler(data, context);
+  });
 }
 
 /**
  * Create a public function (no authentication required)
+ * @deprecated Use Functions.endpoint.handle() instead
  */
 export function createPublicFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
@@ -202,6 +385,7 @@ export function createPublicFunction<TRequest, TResponse>(
 
 /**
  * Create an authenticated function (requires login)
+ * @deprecated Use Functions.endpoint.requiringAuth().handle() instead
  */
 export function createAuthenticatedFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
@@ -211,6 +395,7 @@ export function createAuthenticatedFunction<TRequest, TResponse>(
 
 /**
  * Create an admin-only function
+ * @deprecated Use Functions.endpoint.requiringRole(Role.Admin).handle() instead
  */
 export function createAdminFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>

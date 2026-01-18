@@ -37,7 +37,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {
-        "command": "firebase deploy --only functions"
+        "command": "cp .env.prod dist/apps/functions/.env && firebase deploy --only functions --project maple-and-spruce"
       }
     }
   }
