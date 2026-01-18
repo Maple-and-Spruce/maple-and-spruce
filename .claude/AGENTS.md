@@ -72,21 +72,17 @@
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | Artist CRUD | Not started | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
-| Product management | Partial (has bugs) | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
+| Product management | Partial | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
 
-#### Product Management (#3) - Known Issues
+#### Product Management (#3) - Remaining Work
 
-The following issues exist in the merged code and must be fixed:
-
-1. **ProductForm status enum mismatch** - Uses `'available' | 'reserved' | 'sold'` but should use `'active' | 'draft' | 'discontinued'`
-2. **ProductForm missing quantity field** - Required by domain type and validation
+1. ~~**ProductForm status enum mismatch**~~ - Fixed
+2. ~~**ProductForm missing quantity field**~~ - Fixed
 3. **Manual artistId input** - Needs dropdown (blocked by #2)
 4. **No artist info in ProductList** - Should display artist name (blocked by #2)
-
-See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/3#issuecomment-3762626561) for details.
 
 ### Infrastructure Tasks
 
@@ -98,7 +94,10 @@ See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-
 
 #### CI/CD Details (#23)
 
-- **PR Build Check**: `.github/workflows/build-check.yml` - Builds web app and functions on every PR
+- **PR Build Check**: `.github/workflows/build-check.yml` - Runs on every PR:
+  - Security audit (`npm audit --audit-level=high`)
+  - TypeScript typecheck (`nx run maple-spruce:typecheck`)
+  - Build web app and functions
 - **Functions Deploy**: `.github/workflows/firebase-functions-merge.yml` - Deploys only affected functions on merge to main
 - **Auth**: Workload Identity Federation (keyless) - no secrets required
 - **Region**: All functions deploy to `us-east4` (Northern Virginia, close to WV business)
