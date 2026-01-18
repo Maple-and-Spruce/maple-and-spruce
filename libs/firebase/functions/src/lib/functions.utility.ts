@@ -136,9 +136,9 @@ export function createFunction<TRequest, TResponse>(
   return onRequest(
     {
       region: 'us-east4',
-      // Note: We don't set invoker: 'public' because the org policy restricts it.
-      // Instead, we use Firebase Hosting rewrites to proxy requests to functions.
-      // Firebase Hosting handles the public access layer.
+      // Allow public HTTP access - we handle auth via Firebase tokens in headers.
+      // The org policy was updated to allow allUsers as Cloud Run invokers.
+      invoker: 'public',
     },
     async (req: Request, res: Response) => {
       // Handle CORS
