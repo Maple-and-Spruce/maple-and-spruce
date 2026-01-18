@@ -136,6 +136,8 @@ export function createFunction<TRequest, TResponse>(
   return onRequest(
     {
       region: 'us-east4',
+      // Allow public HTTP access - we handle auth via Firebase tokens in headers
+      invoker: 'public',
     },
     async (req: Request, res: Response) => {
       // Handle CORS
