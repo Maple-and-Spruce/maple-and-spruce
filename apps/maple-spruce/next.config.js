@@ -8,6 +8,9 @@ const path = require('path');
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
  **/
+// Firebase Functions base URL
+const FUNCTIONS_BASE_URL = process.env.FUNCTIONS_BASE_URL || 'https://us-east4-maple-and-spruce.cloudfunctions.net';
+
 const nextConfig = {
   nx: {
     svgr: false,
@@ -18,6 +21,15 @@ const nextConfig = {
   // Type checking runs separately via `npx tsc --noEmit` or during dev
   typescript: {
     ignoreBuildErrors: true,
+  },
+  // Rewrite /api/* to Firebase Functions
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${FUNCTIONS_BASE_URL}/:path*`,
+      },
+    ];
   },
   // Transpile workspace packages
   transpilePackages: [
