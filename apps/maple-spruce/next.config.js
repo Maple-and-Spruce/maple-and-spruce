@@ -17,8 +17,9 @@ const nextConfig = {
   },
   // Required for Firebase App Hosting
   output: 'standalone',
-  // Skip type checking during build - Next.js doesn't resolve Nx workspace paths well
-  // Type checking runs separately via `npx tsc --noEmit` or during dev
+  // Skip type checking during Next.js build - Nx workspace path aliases don't resolve
+  // properly in Next.js's internal tsc. Type checking runs via `nx run maple-spruce:typecheck`
+  // and in CI via the build-check workflow.
   typescript: {
     ignoreBuildErrors: true,
   },
