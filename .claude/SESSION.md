@@ -14,7 +14,12 @@
 - 🎉 Firebase Functions responding correctly with Firestore data
 - 🎉 Authentication flow working (Firebase Auth → Functions → Firestore)
 
-**Recent session** (2026-01-18):
+**Latest session** (2026-01-18):
+- Added responsive navigation menu with AppShell component (#67)
+- Fixed local functions development (`.env.dev` now copied to dist for Firebase to read)
+- Updated AGENTS.md with local development instructions
+
+**Previous session** (2026-01-18):
 - Set up custom domains on Vercel (mapleandsprucefolkarts.com)
 - Fixed Firebase Functions CORS by switching to `onRequest` with manual CORS middleware
 - Configured Firebase Hosting as API proxy (matching Mountain SOL pattern)
@@ -56,11 +61,11 @@ See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issu
 
 | Domain | Status | Target | Purpose |
 |--------|--------|--------|---------|
-| mapleandsprucefolkarts.com | 🔄 Needs reconfiguration | Webflow | Customer-facing site |
-| www.mapleandsprucefolkarts.com | 🔄 Needs reconfiguration | Webflow | Customer-facing site |
-| business.mapleandsprucefolkarts.com | ❌ Not configured | Vercel | Admin app |
-| mapleandsprucewv.com | Owned (Namecheap) | Webflow | Alt domain for customer site |
-| business.mapleandsprucewv.com | ❌ Not configured | Vercel | Alt admin subdomain |
+| mapleandsprucefolkarts.com | ✅ Configured | Webflow | Customer-facing site |
+| www.mapleandsprucefolkarts.com | ✅ Configured | Webflow | Customer-facing site |
+| business.mapleandsprucefolkarts.com | ✅ Configured | Vercel | Admin app |
+| mapleandsprucewv.com | ✅ Configured | Webflow | Alt domain for customer site |
+| business.mapleandsprucewv.com | ✅ Configured | Vercel | Alt admin subdomain |
 | maple-and-spruce-api.web.app | ✅ Active | Firebase Hosting | API proxy |
 
 ### Domain Registrar
@@ -271,6 +276,7 @@ Maple & Spruce was compared to [Mountain SOL Platform](https://github.com/Mounta
 
 | Date | Change | PR |
 |------|--------|-----|
+| 2026-01-18 | Add responsive navigation menu + fix local functions serve | #67 |
 | 2026-01-18 | Ensure Firebase Admin initialized in auth.utility.ts | #58 |
 | 2026-01-18 | Restore invoker: 'public' for automatic function access | #57 |
 | 2026-01-18 | Fix function names in Firebase Hosting rewrites | #56 |
@@ -293,11 +299,33 @@ Maple & Spruce was compared to [Mountain SOL Platform](https://github.com/Mounta
 
 ## Next Steps
 
-1. **Implement issue #2** - Artist Management (CRUD, repository, functions, UI)
-2. **Return to issue #3** - Fix ProductForm issues, add artist dropdown
-3. **Wait for Etsy approval** - Then implement issue #4
-4. **Create Square developer account** - Register app, get API credentials (Phase 2)
-5. **Set up Firebase billing** - When ready, switch from Vercel to App Hosting
+**Ready to start Phase 1 Epic (#1) in earnest!**
+
+1. **Issue #2 - Artist Management** (NEXT)
+   - Artist CRUD functions already deployed (getArtists, createArtist, etc.)
+   - Need: Artist list UI, artist form, connect to functions
+   - Blocked: Nothing - can start immediately
+
+2. **Issue #3 - Complete Product Management**
+   - Fix ProductForm issues (status enum, quantity field)
+   - Add artist dropdown (depends on #2 completion)
+   - Display artist name in ProductList
+
+3. **Issue #4 - Etsy Integration** (waiting for approval)
+   - Etsy app still pending approval
+   - Once approved: implement sync, listing import, sales webhook
+
+4. **Issue #5 - Sales Tracking** (after #4)
+   - Record sales from Etsy
+   - Calculate artist earnings
+
+5. **Issue #6 - Payout Reports** (after #5)
+   - Generate payout summaries
+   - Export for payment processing
+
+**Future phases:**
+- Create Square developer account (Phase 2 - store opening)
+- Set up Firebase billing when ready for App Hosting
 
 ---
 
@@ -307,15 +335,17 @@ Maple & Spruce was compared to [Mountain SOL Platform](https://github.com/Mounta
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Web App** | ✅ Live | mapleandsprucefolkarts.com (Vercel) |
+| **Web App** | ✅ Live | business.mapleandsprucefolkarts.com (Vercel) |
+| **Navigation** | ✅ Complete | Responsive AppShell with mobile drawer |
 | **Firebase Auth** | ✅ Working | Email/password login |
 | **Cloud Functions** | ✅ Deployed | 12 functions in us-east4 |
 | **Firestore** | ✅ Accessible | Admin SDK working from functions |
 | **CI/CD** | ✅ Automatic | Push to main → deploy functions |
 | **API Proxy** | ✅ Configured | Firebase Hosting rewrites |
 | **CORS** | ✅ Working | Production domains whitelisted |
+| **Local Dev** | ✅ Working | `nx run functions:serve` loads env vars |
 
-**This is a solid foundation for building meaningful features.**
+**Infrastructure is complete. Ready to build Phase 1 features!**
 
 ---
 
