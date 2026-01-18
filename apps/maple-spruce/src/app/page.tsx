@@ -1,21 +1,24 @@
+'use client';
+
 import Link from 'next/link';
-import { Box, Typography, Button, Container, Stack } from '@mui/material';
+import { Box, Typography, Button, Stack } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PeopleIcon from '@mui/icons-material/People';
+import { AppShell } from '../components/layout';
 
 export default function Index() {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-      }}
-    >
-      <Container maxWidth="sm" sx={{ textAlign: 'center' }}>
+    <AppShell maxWidth="sm">
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 'calc(100vh - 200px)',
+          textAlign: 'center',
+        }}
+      >
         <Typography variant="h2" component="h1" gutterBottom>
           Maple & Spruce
         </Typography>
@@ -45,7 +48,7 @@ export default function Index() {
             Manage Artists
           </Button>
         </Stack>
-      </Container>
-    </Box>
+      </Box>
+    </AppShell>
   );
 }

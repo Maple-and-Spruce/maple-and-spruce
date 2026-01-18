@@ -1,14 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  AppBar,
-  Toolbar,
-} from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Product, CreateProductInput } from '@maple/ts/domain';
 import {
@@ -16,7 +9,7 @@ import {
   ProductForm,
   DeleteConfirmDialog,
 } from '../../components/inventory';
-import { UserMenu } from '../../components/auth';
+import { AppShell } from '../../components/layout';
 import { useProducts } from '../../hooks';
 
 export default function InventoryPage() {
@@ -93,59 +86,48 @@ export default function InventoryPage() {
   }, [productToDelete, handleCloseDelete, deleteProductApi]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="primary" elevation={1}>
-        <Toolbar>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Maple & Spruce
-          </Typography>
-          <UserMenu />
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 3,
-          }}
+    <AppShell>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+        }}
+      >
+        <Typography variant="h4" component="h1">
+          Inventory
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenForm()}
         >
-          <Typography variant="h4" component="h2">
-            Inventory
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenForm()}
-          >
-            Add Product
-          </Button>
-        </Box>
+          Add Product
+        </Button>
+      </Box>
 
-        <ProductList
-          productsState={productsState}
-          onEdit={handleOpenForm}
-          onDelete={handleOpenDelete}
-        />
+      <ProductList
+        productsState={productsState}
+        onEdit={handleOpenForm}
+        onDelete={handleOpenDelete}
+      />
 
-        <ProductForm
-          open={isFormOpen}
-          onClose={handleCloseForm}
-          onSubmit={handleSubmitForm}
-          product={editingProduct}
-          isSubmitting={isSubmitting}
-        />
+      <ProductForm
+        open={isFormOpen}
+        onClose={handleCloseForm}
+        onSubmit={handleSubmitForm}
+        product={editingProduct}
+        isSubmitting={isSubmitting}
+      />
 
-        <DeleteConfirmDialog
-          open={!!productToDelete}
-          product={productToDelete}
-          onClose={handleCloseDelete}
-          onConfirm={handleConfirmDelete}
-          isDeleting={isDeleting}
-        />
-      </Container>
-    </Box>
+      <DeleteConfirmDialog
+        open={!!productToDelete}
+        product={productToDelete}
+        onClose={handleCloseDelete}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
+    </AppShell>
   );
 }
