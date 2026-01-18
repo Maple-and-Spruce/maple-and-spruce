@@ -6,7 +6,8 @@ on:
       - '**'
 
 jobs:
-  build:
+  security:
+    name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,5 +17,35 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - run: npx nx run maple-spruce:build
-      - run: npx nx run functions:build
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: TypeScript typecheck
+        run: npx nx run maple-spruce:typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build web app
+        run: npx nx run maple-spruce:build
+      - name: Build functions
+        run: npx nx run functions:build

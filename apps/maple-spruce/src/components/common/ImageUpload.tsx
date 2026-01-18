@@ -4,7 +4,6 @@ import { useState, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
-  Button,
   IconButton,
   CircularProgress,
   Alert,

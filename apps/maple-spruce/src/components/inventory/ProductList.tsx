@@ -7,7 +7,7 @@ import {
   Typography,
   Chip,
   IconButton,
-  Grid,
+  Grid2 as Grid,
   Skeleton,
   Alert,
 } from '@mui/material';
@@ -23,9 +23,9 @@ interface ProductListProps {
 }
 
 const statusColors: Record<string, 'success' | 'warning' | 'default'> = {
-  available: 'success',
-  reserved: 'warning',
-  sold: 'default',
+  active: 'success',
+  draft: 'warning',
+  discontinued: 'default',
 };
 
 function ProductCard({

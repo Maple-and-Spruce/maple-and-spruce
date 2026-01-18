@@ -31,8 +31,9 @@ const defaultFormData: CreateProductInput = {
   name: '',
   description: '',
   price: 0,
+  quantity: 1,
   sku: '',
-  status: 'available',
+  status: 'active',
 };
 
 /**
@@ -85,6 +86,7 @@ export function ProductForm({
         name: product.name,
         description: product.description ?? '',
         price: product.price,
+        quantity: product.quantity,
         sku: product.sku ?? '',
         status: product.status,
         imageUrl: product.imageUrl,
@@ -196,6 +198,18 @@ export function ProductForm({
             fullWidth
           />
 
+          <TextField
+            label="Quantity"
+            type="number"
+            value={formData.quantity}
+            onChange={(e) => handleChange('quantity', parseInt(e.target.value) || 0)}
+            error={!!errors.quantity}
+            helperText={errors.quantity}
+            inputProps={{ min: 0 }}
+            required
+            fullWidth
+          />
+
           <FormControl fullWidth error={!!errors.status}>
             <InputLabel>Status</InputLabel>
             <Select
@@ -205,9 +219,9 @@ export function ProductForm({
                 handleChange('status', e.target.value as ProductStatus)
               }
             >
-              <MenuItem value="available">Available</MenuItem>
-              <MenuItem value="reserved">Reserved</MenuItem>
-              <MenuItem value="sold">Sold</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="draft">Draft</MenuItem>
+              <MenuItem value="discontinued">Discontinued</MenuItem>
             </Select>
           </FormControl>
 

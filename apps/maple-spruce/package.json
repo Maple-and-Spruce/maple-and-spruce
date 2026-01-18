@@ -3,7 +3,16 @@
   "version": "0.0.1",
   "private": true,
   "nx": {
-    "name": "maple-spruce"
+    "name": "maple-spruce",
+    "targets": {
+      "typecheck": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "tsc --noEmit -p apps/maple-spruce/tsconfig.json",
+          "cwd": "{workspaceRoot}"
+        }
+      }
+    }
   },
   "dependencies": {
     "next": "15.2.8",
