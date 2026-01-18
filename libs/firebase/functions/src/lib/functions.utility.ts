@@ -17,9 +17,11 @@ import type { Response } from 'express';
 import { Role, hasRole } from './auth.utility';
 import { getAuth } from 'firebase-admin/auth';
 
-// Allowed origins for CORS - configured via Firebase environment
-// Set via: firebase functions:config:set or .env files
-// Production should NOT include localhost
+/**
+ * Allowed origins for CORS - configured via Firebase environment.
+ * Set via .env files (.env.prod for production, .env.dev for development).
+ * Production should NOT include localhost for security.
+ */
 const ALLOWED_ORIGINS = defineString('ALLOWED_ORIGINS', {
   default: 'https://www.mapleandsprucefolkarts.com,https://mapleandsprucefolkarts.com,https://www.mapleandsprucewv.com,https://mapleandsprucewv.com,https://maple-and-spruce-maple-spruce.vercel.app',
 });
