@@ -92,7 +92,7 @@ See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-
 
 | Task | Status | Issue |
 |------|--------|-------|
-| Deploy Functions to Firebase | Not started | #22 |
+| Deploy Functions to Firebase | Complete | #22 |
 | CI/CD for Functions | Complete | #23 |
 | Testing infrastructure | Not started | #24 |
 
@@ -101,6 +101,20 @@ See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-
 - **PR Build Check**: `.github/workflows/build-check.yml` - Builds web app and functions on every PR
 - **Functions Deploy**: `.github/workflows/firebase-functions-merge.yml` - Deploys only affected functions on merge to main
 - **Auth**: Workload Identity Federation (keyless) - no secrets required
+- **Region**: All functions deploy to `us-east4` (Northern Virginia, close to WV business)
+- **Codebase**: `maple-functions` - functions are filtered by this codebase prefix
+
+#### Functions Deployment Pattern
+
+Functions follow Mountain Sol's auto-generated package.json pattern:
+- `apps/functions/project.json` has `generatePackageJson: true`
+- No static `package.json` in `apps/functions/`
+- Nx auto-detects dependencies from imports during build
+- esbuild bundles code with `thirdParty: false` (externalize deps for Firebase to install)
+
+**Deployed Functions** (all in `us-east4`):
+- `getArtists`, `getArtistById`, `createArtist`, `updateArtist`, `deleteArtist`
+- `getProducts`, `getProductById`, `createProduct`, `updateProduct`, `deleteProduct`
 
 ### External Dependencies
 
