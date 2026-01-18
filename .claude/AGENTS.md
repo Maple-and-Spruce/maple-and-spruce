@@ -79,30 +79,30 @@
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | Artist CRUD | Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
-| Square integration | In progress | #69 | `libs/firebase/square/` |
+| Square integration | Complete | #69 | `libs/firebase/square/` |
 | Product management | Partial | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
 
-#### Square Integration (#69) - Current Work
+#### Square Integration (#69) - Complete
 
-Square is the foundation for inventory/catalog. Must be completed before Product Management.
+Square foundation is complete. Ready for Product Management integration.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Square secrets configured | ✅ | `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`, `SQUARE_ENV` |
+| Square secrets configured | ✅ | Per-project pattern (same name in dev/prod projects) |
 | Square utility library | ✅ | `libs/firebase/square/` with Catalog & Inventory services |
 | Product type refactored | ✅ | `squareCache` for cached data, clear ownership boundaries |
 | ADR for sync strategy | ✅ | ADR-013: webhooks + lazy refresh + periodic sync |
-| Wire up CRUD to Square | 🔄 | Next step - product create/update calls Square first |
-| Webhooks | ❌ | Detect sales/inventory changes from Square |
+| Webhooks | ✅ | `squareWebhook` function deployed to both environments |
+| Dev environment | ✅ | Separate Firebase project + Vercel app |
 
-#### Product Management (#3) - Remaining Work (after Square)
+#### Product Management (#3) - Remaining Work
 
 1. ~~**ProductForm status enum mismatch**~~ - Fixed
 2. ~~**ProductForm missing quantity field**~~ - Fixed
-3. **Square sync** - Products must sync to Square catalog on create/update
+3. **Wire up CRUD to Square** - Product create/update calls Square first
 4. **Artist dropdown** - Replace manual artistId text input
 5. **Artist info display** - Show artist name in ProductList
 
@@ -134,14 +134,16 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 - esbuild bundles code with `thirdParty: false` (externalize deps for Firebase to install)
 
 **Deployed Functions** (all in `us-east4`):
-- `getArtists`, `getArtistById`, `createArtist`, `updateArtist`, `deleteArtist`
-- `getProducts`, `getProductById`, `createProduct`, `updateProduct`, `deleteProduct`
+- `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`
+- `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
+- `uploadArtistImage`, `healthCheck`, `squareWebhook`
 
 ### External Dependencies
 
-- [x] Firebase project created (`maple-and-spruce`)
-- [x] Square developer account created (sandbox credentials configured)
+- [x] Firebase projects created (`maple-and-spruce` prod, `maple-and-spruce-dev` dev)
+- [x] Square developer account (production & sandbox credentials configured)
 - [x] Etsy developer account (app pending approval)
+- [x] Vercel projects (prod + dev with hostname-based routing)
 - [x] Dependencies added to package.json (vest, react-query, MUI, etc.)
 
 ## Key Documentation
@@ -409,6 +411,32 @@ gh issue create \
 ---
 
 ## Environment & Secrets
+
+### Per-Project Secrets Pattern
+
+**Same secret names in each Firebase project, different values:**
+
+| Secret | Dev Project | Prod Project |
+|--------|-------------|--------------|
+| `SQUARE_ACCESS_TOKEN` | Sandbox token | Production token |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` | Sandbox key | Production key |
+
+**No more `_PROD` suffix** - the project itself determines the environment.
+
+### Environment Detection
+
+The app automatically detects which environment to use:
+
+| Condition | Environment | Firebase Project |
+|-----------|-------------|------------------|
+| `localhost` or `127.0.0.1` | Dev | `maple-and-spruce-dev` |
+| `*-dev.*` hostname | Dev | `maple-and-spruce-dev` |
+| `NEXT_PUBLIC_FIREBASE_ENV=dev` | Dev | `maple-and-spruce-dev` |
+| Everything else | Prod | `maple-and-spruce` |
+
+**Vercel Apps:**
+- Production: `business.mapleandsprucefolkarts.com` → prod Firebase
+- Development: `business-dev.mapleandsprucefolkarts.com` → dev Firebase
 
 ### Never Commit
 

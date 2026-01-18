@@ -6,328 +6,175 @@
 
 ## Current Work
 
-**Status**: ✅ **PRODUCTION READY** - CI/CD pipeline working, functions deployed, Firestore accessible. Ready to build features.
+**Status**: ✅ **DEV/PROD ENVIRONMENTS COMPLETE** - Separate Firebase projects, clean secrets, both environments deployed.
 
 **Milestone achieved** (2026-01-18):
-- 🎉 Full CI/CD pipeline working: push to main → automatic function deployment
-- 🎉 Production web app live at mapleandsprucefolkarts.com
-- 🎉 Firebase Functions responding correctly with Firestore data
-- 🎉 Authentication flow working (Firebase Auth → Functions → Firestore)
+- 🎉 Separate dev/prod Firebase projects with clean per-project secrets
+- 🎉 Dev Vercel app deployed with hostname-based environment detection
+- 🎉 All 13 functions deployed to both projects
+- 🎉 Square integration foundation complete (catalog, inventory, webhooks)
 
 **Latest session** (2026-01-18):
-- Added responsive navigation menu with AppShell component (#67)
-- Fixed local functions development (`.env.dev` now copied to dist for Firebase to read)
-- Updated AGENTS.md with local development instructions
+- Simplified secrets to per-project pattern (#71):
+  - Removed `_PROD` suffix convention - each project uses same secret names
+  - Dev project: `SQUARE_ACCESS_TOKEN` = sandbox, `SQUARE_WEBHOOK_SIGNATURE_KEY` = sandbox
+  - Prod project: `SQUARE_ACCESS_TOKEN` = production, `SQUARE_WEBHOOK_SIGNATURE_KEY` = production
+  - Cleaned up 8 unused secrets across both projects
+- Set up dev environment:
+  - Created `maple-and-spruce-dev` Firebase project with all permissions
+  - Reset org policy (`iam.allowedPolicyMemberDomains`) on dev project
+  - Deployed all 13 functions to dev
+  - Created Vercel dev app
+- Added hostname-based environment detection:
+  - `business-dev.*` or `*.dev.*` hostnames → dev Firebase project
+  - `NEXT_PUBLIC_FIREBASE_ENV=dev` env var → dev Firebase project
+  - Everything else → prod Firebase project
 
 **Previous session** (2026-01-18):
-- Set up custom domains on Vercel (mapleandsprucefolkarts.com)
-- Fixed Firebase Functions CORS by switching to `onRequest` with manual CORS middleware
-- Configured Firebase Hosting as API proxy (matching Mountain SOL pattern)
-- Fixed org policy to allow public Cloud Run access (`iam.allowedPolicyMemberDomains` reset)
-- Fixed Firebase Admin initialization in `auth.utility.ts` (PR #58)
-- **Critical fix**: Granted `roles/datastore.user` to compute service account for Firestore access
-- All 12 functions deployed and working in production
+- Completed Square webhook integration (#69/#70):
+  - Created `squareWebhook` function for catalog and inventory events
+  - HMAC-SHA256 signature verification
+  - Batch catalog sync discovers new items from Square Dashboard
+- Product CRUD wired to Square (create/update)
 
-### Inventory (#3) - Known Issues to Fix
+### Next Steps
 
-These issues exist in the merged code and need to be fixed when returning to #3:
+1. **Test dev environment end-to-end**
+   - Verify UI on dev hostname hits dev functions
+   - Test product creation flows against Square sandbox
 
-1. **ProductForm status enum mismatch** - Form uses `'available' | 'reserved' | 'sold'` but domain type uses `'active' | 'draft' | 'discontinued'`
-   - File: `apps/maple-spruce/src/components/inventory/ProductForm.tsx`
+2. **Complete Product Management (#3)**
+   - Fix ProductForm status enum mismatch
+   - Add artist dropdown (after #2)
+   - Display artist name in ProductList
 
-2. **ProductForm missing quantity field** - Domain type and validation require `quantity`, but form doesn't include it
-   - File: `apps/maple-spruce/src/components/inventory/ProductForm.tsx`
+3. **Artist Management (#2)**
+   - UI already deployed, functions working
+   - Test and polish
 
-3. **Manual artistId input** - Form has text field for `artistId` instead of dropdown
-   - Blocked by: #2 Artist Management (need artists to populate dropdown)
-   - File: `apps/maple-spruce/src/components/inventory/ProductForm.tsx`
+4. **Etsy Integration (#4)** - waiting for app approval
 
-4. **No artist info displayed** - ProductList doesn't show artist name
-   - Blocked by: #2 Artist Management
-   - File: `apps/maple-spruce/src/components/inventory/ProductList.tsx`
+---
 
-See [issue #3 comment](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/3#issuecomment-3762626561) for full details.
+## Environments
+
+### Production
+| Component | URL/Project | Notes |
+|-----------|-------------|-------|
+| Firebase Project | `maple-and-spruce` | Production data |
+| Vercel App | business.mapleandsprucefolkarts.com | Auto-deploys on push to main |
+| Square | Production API | Real inventory |
+| Functions | 13 deployed to `us-east4` | |
+
+### Development
+| Component | URL/Project | Notes |
+|-----------|-------------|-------|
+| Firebase Project | `maple-and-spruce-dev` | Sandbox data |
+| Vercel App | (your dev URL) | Separate Vercel project |
+| Square | Sandbox API | Test inventory |
+| Functions | 13 deployed to `us-east4` | |
+
+### Environment Detection
+
+The UI automatically selects the correct Firebase project:
+1. `NEXT_PUBLIC_FIREBASE_ENV=dev` → dev project
+2. `localhost` / `127.0.0.1` → dev project (+ functions emulator)
+3. Hostname contains `-dev.` or `.dev.` → dev project
+4. Everything else → prod project
+
+### Secrets (per-project, same names)
+
+| Secret | Dev Value | Prod Value |
+|--------|-----------|------------|
+| `SQUARE_ACCESS_TOKEN` | Sandbox token | Production token |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` | Sandbox webhook key | Production webhook key |
+
+### String Parameters (.env files)
+
+| Param | Dev (.env.dev) | Prod (.env.prod) |
+|-------|----------------|------------------|
+| `SQUARE_ENV` | `LOCAL` | `PROD` |
+| `SQUARE_LOCATION_ID` | Sandbox location | Production location |
+| `ALLOWED_ORIGINS` | localhost | Production domains |
+
+---
 
 ## Deployment
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| **Vercel** | maple-and-spruce-maple-spruce.vercel.app | Admin web app, auto-deploys on push to main |
-| **Firebase Hosting** | maple-and-spruce-api.web.app | API proxy to Cloud Functions |
-| **Firebase Functions** | `us-east4` | Auto-deploys on merge to main via GitHub Actions |
-| **Webflow** | maple-spruce-folk-arts-collective.webflow.io | Customer-facing site (not public yet) |
+| **Vercel (Prod)** | business.mapleandsprucefolkarts.com | Admin web app |
+| **Vercel (Dev)** | (your dev URL) | Dev admin app |
+| **Firebase Hosting** | maple-and-spruce-api.web.app | API proxy (prod) |
+| **Webflow** | mapleandsprucefolkarts.com | Customer-facing site |
 
 ### Domains
 
-| Domain | Status | Target | Purpose |
-|--------|--------|--------|---------|
-| mapleandsprucefolkarts.com | ✅ Configured | Webflow | Customer-facing site |
-| www.mapleandsprucefolkarts.com | ✅ Configured | Webflow | Customer-facing site |
-| business.mapleandsprucefolkarts.com | ✅ Configured | Vercel | Admin app |
-| mapleandsprucewv.com | ✅ Configured | Webflow | Alt domain for customer site |
-| business.mapleandsprucewv.com | ✅ Configured | Vercel | Alt admin subdomain |
-| maple-and-spruce-api.web.app | ✅ Active | Firebase Hosting | API proxy |
+| Domain | Target | Purpose |
+|--------|--------|---------|
+| mapleandsprucefolkarts.com | Webflow | Customer site |
+| business.mapleandsprucefolkarts.com | Vercel (prod) | Admin app |
+| business-dev.mapleandsprucefolkarts.com | Vercel (dev) | Dev admin app |
 
-### Domain Registrar
+### Firebase Functions (13 total, both projects)
 
-**Namecheap** manages both domains (mapleandsprucefolkarts.com, mapleandsprucewv.com)
+- Artist: `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`, `uploadArtistImage`
+- Product: `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
+- Square: `squareWebhook`
+- Health: `healthCheck`
 
-### Architecture
-
-- **Webflow** hosts the customer-facing site at `mapleandsprucefolkarts.com`
-- **Vercel** hosts the admin Next.js app at `business.mapleandsprucefolkarts.com`
-- **Firebase Hosting** proxies API requests at `maple-and-spruce-api.web.app`
-- **Firebase Functions** use `onRequest` (HTTP functions) with manual CORS middleware and `invoker: 'public'`
-- API calls go through Firebase Hosting rewrites (e.g., `/getArtists` → `getArtists` function)
-- CORS origins configured via `.env.prod` / `.env.dev` files (no localhost in production)
-
-### Firebase Functions (us-east4)
-
-All 12 functions are deployed to `us-east4` (Northern Virginia - close to WV business):
-- Artist functions: `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`, `uploadArtistImage`
-- Product functions: `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
-- Health check: `healthCheck`
-
-**Function Pattern** (following Mountain SOL):
-- Use `onRequest` with `invoker: 'public'` for public HTTP access
-- Manual CORS middleware validates origin against `ALLOWED_ORIGINS`
-- Manual Firebase Auth token verification from `Authorization: Bearer <token>` header
-- Response format: `{ data: result }` to match `httpsCallable` expectations
-
-**Deployment**: Automatic on merge to main via `.github/workflows/firebase-functions-merge.yml`
-
-### API Access
-
-API endpoints are available at:
-- `https://maple-and-spruce-api.web.app/getArtists`
-- `https://maple-and-spruce-api.web.app/createProduct`
-- etc.
+---
 
 ## External Services Status
 
 ### Firebase
+| Item | Prod | Dev |
+|------|------|-----|
+| Project | `maple-and-spruce` | `maple-and-spruce-dev` |
+| Functions | ✅ 13 deployed | ✅ 13 deployed |
+| Firestore | ✅ | ✅ |
+| Auth | ✅ | ✅ |
+| Org policy reset | ✅ | ✅ |
+
+### Square
 | Item | Status | Details |
 |------|--------|---------|
-| Project created | ✅ | `maple-and-spruce` |
-| Web app registered | ✅ | `maple-and-spruce-inventory` |
-| Firestore enabled | ✅ | Test mode |
-| Authentication enabled | ✅ | Email/Password |
-| CLI access | ✅ | `katie@mapleandsprucefolkarts.com` |
-| Hosting (API proxy) | ✅ | `maple-and-spruce-api` site with rewrites |
-| Blaze Plan | ✅ | Billing enabled |
-| Functions deployed | ✅ | 12 functions in `us-east4` |
-| App Engine | ✅ | `us-east4` region |
-
-### GCP Organization Policy (Fixed 2026-01-18)
-
-The Google Workspace org policy `iam.allowedPolicyMemberDomains` was preventing `allUsers` from being set as Cloud Run invokers. This was fixed by:
-1. Granting `roles/orgpolicy.policyAdmin` on the organization
-2. Resetting the policy at the project level: `spec.reset: true`
-
-Now new functions can use `invoker: 'public'` and will be automatically publicly accessible.
+| Developer account | ✅ | Created |
+| Sandbox app | ✅ | Configured in dev project |
+| Production app | ✅ | Configured in prod project |
+| Webhooks | ✅ | Signature verification working |
+| Library | ✅ | `libs/firebase/square/` |
 
 ### Etsy
 | Item | Status | Details |
 |------|--------|---------|
 | Developer account | ✅ | Created |
-| App registered | ⏳ | `maple-spruce-inventory` - Pending approval |
-| Keystring | ✅ | `rhcrehdphw5y3qjkf4fmdttm` |
-| Shared Secret | ✅ | (stored securely) |
-| Test shop | ❌ | Not needed - using real shop |
+| App registered | ⏳ | Pending approval |
 
-**Note**: Etsy app approval typically takes 1-2 business days.
-
-### Square
-| Item | Status | Details |
-|------|--------|---------|
-| Developer account | ❌ | Need to create |
-| App registered | ❌ | Need to register after account |
-| API credentials | ❌ | Pending |
-
-## Project Structure
-
-```
-libs/
-├── ts/
-│   ├── firebase/
-│   │   ├── firebase-config/        # Client SDK singleton
-│   │   └── api-types/              # API request/response types ✅
-│   ├── domain/                     # Domain types ✅ (updated 2026-01-16)
-│   └── validation/                 # Vest suites ✅
-└── firebase/
-    ├── database/                   # Admin SDK + repositories
-    ├── functions/                  # Function utilities ✅
-    └── maple-functions/            # Individual functions (10 deployed)
-```
-
-**Path aliases:**
-- `@maple/ts/firebase/firebase-config` → Client SDK
-- `@maple/firebase/database` → Admin SDK
-- `@maple/firebase/functions` → Function utilities
-- `@maple/ts/domain` → Domain types (Artist, Product, Sale, Payout, InventoryMovement, SyncConflict)
-- `@maple/ts/validation` → Vest validation suites
-- `@maple/ts/firebase/api-types` → API request/response types
-
-## CI/CD
-
-| Workflow | Trigger | Action |
-|----------|---------|--------|
-| `build-check.yml` | PR to any branch | Build Next.js app + functions |
-| `firebase-functions-merge.yml` | Merge to main | Deploy affected functions to `us-east4` |
-| Vercel | Push to main | Deploy web app to production |
-
-### GCP Setup for CI/CD (completed 2026-01-17)
-
-The following GCP configuration was required for GitHub Actions to deploy functions:
-
-**APIs enabled:**
-- Cloud Run API
-- Eventarc API
-- Cloud Billing API
-- Organization Policy API
-
-**Service account roles** (for `github-deployer`):
-- Service Account User
-- Firebase Admin
-- Cloud Functions Developer
-- Cloud Run Admin
-
-**Cloud Build service account** (`maple-and-spruce@appspot.gserviceaccount.com`):
-- Cloud Functions Developer (via Cloud Build settings page)
-- Cloud Run Admin (via Cloud Build settings page)
-
-**Compute service account** (`138840458966-compute@developer.gserviceaccount.com`):
-- Logs Writer
-- Storage Object Viewer
-- Artifact Registry Writer
-- **Datastore User** - Required for Firestore access from Cloud Functions
-- **Storage Object Admin** - Required for image uploads to Cloud Storage
-
-## Mountain SOL Pattern Comparison (2026-01-18)
-
-Maple & Spruce was compared to [Mountain SOL Platform](https://github.com/MountainSOLSchool/platform) to ensure alignment with proven patterns.
-
-### Where We Match ✅
-- **Firebase Admin initialization** - Same `if (admin.apps.length === 0) { admin.initializeApp(); }` pattern
-- **Database config** - Same `preferRest: true` setting for Firestore
-- **Repository pattern** - All Firestore access through repository modules
-- **Role-based auth** - Admins collection with UID-based document lookup
-- **Function structure** - HTTP functions with CORS and auth verification
-
-### Where We're Ahead 🚀
-- **Workload Identity Federation** - Mountain SOL uses service account keys in GitHub secrets; we use keyless auth (more secure)
-- **Simpler function pattern** - Factory functions vs fluent builder (appropriate for project scale)
-- **Better error responses** - JSON formatted errors with consistent structure
-- **Environment configuration** - `.env.prod`/`.env.dev` copied during build for runtime configuration
-
-### Key Infrastructure Learnings
-
-1. **Compute service account needs Firestore access** - The default compute service account (`[project-number]-compute@developer.gserviceaccount.com`) doesn't have Firestore permissions by default. Must grant `roles/datastore.user`.
-
-2. **Firebase Admin must be initialized before getFirestore()** - If `auth.utility.ts` is imported before `database.config.ts`, you need defensive initialization in both places.
-
-3. **Org policy can block public Cloud Run** - Google Workspace organizations may have `iam.allowedPolicyMemberDomains` policy that prevents `allUsers` access. Reset at project level: `spec.reset: true`.
-
-4. **Workload Identity Federation setup** - Create identity pool, provider, grant IAM permissions. No secrets needed in GitHub.
-
-5. **Firebase Hosting as API proxy** - Use rewrites to route `/functionName` to the actual function. Simpler than managing CORS for direct function URLs.
-
-## Architecture Decisions (2026-01-16)
-
-### Inventory System Design
-
-**Hybrid Square + Firestore architecture:**
-- **Square owns**: Product catalog (name, price, images), inventory quantities, SKU
-- **Firestore owns**: Artist profiles, product-artist relationships, commission rates, sales attribution, payouts, sync conflicts
-
-**Key design choices:**
-1. Products in Firestore are **linking records** - store `squareItemId`, `etsyListingId`, `artistId`, and cached display data
-2. **Quantity-based model** - all products have quantity (even one-of-a-kind items)
-3. **Immutable audit log** - `InventoryMovement` collection tracks all changes for reconciliation
-4. **Manual conflict resolution** - `SyncConflict` collection surfaces issues for admin decision
-5. **SKU format**: Opaque `prd_[random]` - no encoded semantics
-
-**See ADRs 009-012 in docs/DECISIONS.md for full rationale.**
-
-### Commission Model
-- Artists have `defaultCommissionRate`
-- Products can have `customCommissionRate` override
-- Rate applied at sale time is snapshotted in Sale record
-
-## Recent Decisions
-
-1. **No separate test environment** - Single Firebase project, single Etsy app. Internal tool with low risk.
-2. **Use real Etsy shop** - Only reading data, no risk of corruption.
-3. **Use `libs/` not `packages/`** - Matches mountain-sol-platform patterns for consistency.
-4. **`@maple/` namespace** - Path alias prefix for all shared libraries.
-5. **Followed mountain-sol patterns** - Singleton Firebase app, admin SDK setup, CI/CD workflows.
-6. **Vercel for hosting** - Firebase App Hosting requires billing; Vercel free tier works for now.
-7. **Square as POS** - Industry standard, good API, native Etsy integration.
-8. **Hybrid inventory architecture** - Square for catalog/quantity, Firestore for consignment logic.
-9. **Event sourcing for inventory** - InventoryMovement audit log for reconciliation.
-10. **Manual sync conflict resolution** - Surface issues in UI, don't auto-resolve.
-11. **No local emulators for Firebase services** - Use production Firebase (Auth, Firestore, Storage) directly. Only run functions emulator locally. Firebase CLI login handles authentication.
-12. **onRequest with invoker: 'public'** - Use HTTP functions with manual CORS (Mountain SOL pattern) and public Cloud Run access.
-13. **CORS origins in env files** - `.env.prod` for production domains, `.env.dev` for localhost. No localhost in production for security.
-14. **Firebase Hosting for API proxy** - Use hosting rewrites to proxy API calls to functions (same pattern as Mountain SOL).
-15. **Org policy override at project level** - Reset `iam.allowedPolicyMemberDomains` to allow `allUsers` for public API access.
+---
 
 ## Recent Changes
 
 | Date | Change | PR |
 |------|--------|-----|
-| 2026-01-18 | Add responsive navigation menu + fix local functions serve | #67 |
-| 2026-01-18 | Ensure Firebase Admin initialized in auth.utility.ts | #58 |
-| 2026-01-18 | Restore invoker: 'public' for automatic function access | #57 |
-| 2026-01-18 | Fix function names in Firebase Hosting rewrites | #56 |
-| 2026-01-18 | Use Firebase Hosting as API proxy instead of public invoker | #55 |
-| 2026-01-18 | Add invoker: 'public' to functions (org policy fix needed) | #54 |
-| 2026-01-18 | Trigger function redeploy with CORS fixes | #53 |
-| 2026-01-18 | Include hidden files (.env) in artifact upload | #52 |
-| 2026-01-18 | Add env files to Nx affected calculation | #51 |
-| 2026-01-18 | Remove localhost from production CORS origins | #48 |
-| 2026-01-18 | Switch to onRequest with manual CORS handling | #47 |
+| 2026-01-18 | Simplify secrets to per-project pattern | #71 |
+| 2026-01-18 | Square integration foundation | #70 |
+| 2026-01-18 | Add responsive navigation menu | #67 |
 
-## Domain Types Updated (2026-01-16)
+## Recent Decisions
 
-- **Artist** - Renamed `commissionRate` → `defaultCommissionRate`
-- **Product** - Now a linking record with `squareItemId`, `squareVariationId`, `etsyListingId`, `quantity`, `sku`, `customCommissionRate`, sync metadata
-- **Sale** - Added `quantitySold`, `commissionRateApplied`, `squareOrderId`, `squarePaymentId`
-- **Payout** - Added `saleCount`, `paymentMethod`, `paymentReference`, `updatedAt`
-- **InventoryMovement** - NEW: Immutable audit log for inventory changes
-- **SyncConflict** - NEW: Track and resolve sync issues between systems
-
-## Next Steps
-
-**Ready to start Phase 1 Epic (#1) in earnest!**
-
-1. **Issue #2 - Artist Management** (NEXT)
-   - Artist CRUD functions already deployed (getArtists, createArtist, etc.)
-   - Need: Artist list UI, artist form, connect to functions
-   - Blocked: Nothing - can start immediately
-
-2. **Issue #3 - Complete Product Management**
-   - Fix ProductForm issues (status enum, quantity field)
-   - Add artist dropdown (depends on #2 completion)
-   - Display artist name in ProductList
-
-3. **Issue #4 - Etsy Integration** (waiting for approval)
-   - Etsy app still pending approval
-   - Once approved: implement sync, listing import, sales webhook
-
-4. **Issue #5 - Sales Tracking** (after #4)
-   - Record sales from Etsy
-   - Calculate artist earnings
-
-5. **Issue #6 - Payout Reports** (after #5)
-   - Generate payout summaries
-   - Export for payment processing
-
-**Future phases:**
-- Create Square developer account (Phase 2 - store opening)
-- Set up Firebase billing when ready for App Hosting
+16. **Separate dev/prod Firebase projects** - Each project has its own secrets with the same names. Eliminates `_PROD` suffix complexity.
+17. **Hostname-based environment detection** - `business-dev.*` automatically uses dev Firebase project.
+18. **Per-project Square webhooks** - Each project registers its own webhook URL with Square.
 
 ---
+
+## Known Issues (Product Form #3)
+
+1. **Status enum mismatch** - Form uses old values, domain type uses `'active' | 'draft' | 'discontinued'`
+2. **Missing quantity field** - Need to add to form
+3. **Manual artistId input** - Need dropdown after #2 complete
+4. **No artist info displayed** - ProductList needs artist name
 
 ---
 
@@ -335,17 +182,13 @@ Maple & Spruce was compared to [Mountain SOL Platform](https://github.com/Mounta
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Web App** | ✅ Live | business.mapleandsprucefolkarts.com (Vercel) |
-| **Navigation** | ✅ Complete | Responsive AppShell with mobile drawer |
-| **Firebase Auth** | ✅ Working | Email/password login |
-| **Cloud Functions** | ✅ Deployed | 12 functions in us-east4 |
-| **Firestore** | ✅ Accessible | Admin SDK working from functions |
-| **CI/CD** | ✅ Automatic | Push to main → deploy functions |
-| **API Proxy** | ✅ Configured | Firebase Hosting rewrites |
-| **CORS** | ✅ Working | Production domains whitelisted |
-| **Local Dev** | ✅ Working | `nx run functions:serve` loads env vars |
-
-**Infrastructure is complete. Ready to build Phase 1 features!**
+| **Prod Web App** | ✅ Live | business.mapleandsprucefolkarts.com |
+| **Dev Web App** | ✅ Live | (your dev URL) |
+| **Firebase Auth** | ✅ | Both projects |
+| **Cloud Functions** | ✅ | 13 functions, both projects |
+| **Square Integration** | ✅ | Catalog, inventory, webhooks |
+| **CI/CD** | ✅ | Push to main → deploy to prod |
+| **Local Dev** | ✅ | `nx run functions:serve` |
 
 ---
 
