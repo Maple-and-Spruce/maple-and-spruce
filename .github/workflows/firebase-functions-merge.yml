@@ -129,6 +129,9 @@ jobs:
       needs.prepare_and_build.outputs.matrix != '' &&
       toJson(fromJson(needs.prepare_and_build.outputs.matrix).include) != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       max-parallel: 1
       matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
@@ -136,6 +139,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
+          create_credentials_file: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -155,13 +166,8 @@ jobs:
         run: npm ci
 
       - name: Deploy functions group
-        id: deploy
         if: matrix.functions != ''
-        uses: w9jds/firebase-action@v13.16.0
-        with:
-          args: deploy --only ${{ matrix.functions }}
-        env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_GCP_SA_KEY }}
+        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce
 
       - name: Skip empty function group
         if: matrix.functions == ''

@@ -32,7 +32,24 @@
       "Bash(npx nx show:*)",
       "Bash(pkill:*)",
       "Bash(ls:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(gcloud:*)",
+      "Bash(brew:*)",
+      "Bash(export PATH=\"/private/tmp/google-cloud-sdk/bin:$PATH\")",
+      "Bash(/bin/zsh -l -c \"gcloud --version\")",
+      "Bash(/usr/bin/head:*)",
+      "Bash(/usr/bin/grep:*)",
+      "Bash(/bin/mv:*)",
+      "Bash(/usr/bin/sed:*)",
+      "Bash(~/google-cloud-sdk/bin/gcloud --version)",
+      "Bash(~/google-cloud-sdk/bin/gcloud auth list)",
+      "Bash(~/google-cloud-sdk/bin/gcloud config set project maple-and-spruce)",
+      "Bash(~/google-cloud-sdk/bin/gcloud iam workload-identity-pools create \"github-pool\" --project=\"maple-and-spruce\" --location=\"global\" --display-name=\"GitHub Actions Pool\")",
+      "Bash(~/google-cloud-sdk/bin/gcloud iam workload-identity-pools providers create-oidc:*)",
+      "Bash(~/google-cloud-sdk/bin/gcloud iam service-accounts create \"github-deployer\" --project=\"maple-and-spruce\" --display-name=\"GitHub Deployer\")",
+      "Bash(~/google-cloud-sdk/bin/gcloud projects add-iam-policy-binding:*)",
+      "Bash(/usr/bin/tail:*)",
+      "Bash(~/google-cloud-sdk/bin/gcloud iam service-accounts add-iam-policy-binding:*)"
     ]
   }
 }

@@ -100,7 +100,7 @@ See SESSION.md and [issue #3 comment](https://github.com/Maple-and-Spruce/maple-
 
 - **PR Build Check**: `.github/workflows/build-check.yml` - Builds web app and functions on every PR
 - **Functions Deploy**: `.github/workflows/firebase-functions-merge.yml` - Deploys only affected functions on merge to main
-- **Required Secret**: `FIREBASE_GCP_SA_KEY` - Service account JSON for Firebase deployment
+- **Auth**: Workload Identity Federation (keyless) - no secrets required
 
 ### External Dependencies
 
