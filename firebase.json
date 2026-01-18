@@ -17,16 +17,17 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       { "source": "/getArtists", "function": "getArtists" },
-      { "source": "/getArtistById", "function": "getArtistById" },
+      { "source": "/getArtist", "function": "getArtist" },
       { "source": "/createArtist", "function": "createArtist" },
       { "source": "/updateArtist", "function": "updateArtist" },
       { "source": "/deleteArtist", "function": "deleteArtist" },
       { "source": "/getProducts", "function": "getProducts" },
-      { "source": "/getProductById", "function": "getProductById" },
+      { "source": "/getProduct", "function": "getProduct" },
       { "source": "/createProduct", "function": "createProduct" },
       { "source": "/updateProduct", "function": "updateProduct" },
       { "source": "/deleteProduct", "function": "deleteProduct" },
-      { "source": "/uploadArtistImage", "function": "uploadArtistImage" }
+      { "source": "/uploadArtistImage", "function": "uploadArtistImage" },
+      { "source": "/healthCheck", "function": "healthCheck" }
     ]
   },
   "emulators": {
