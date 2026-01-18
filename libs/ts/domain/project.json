@@ -5,16 +5,6 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:domain"],
   "targets": {
-    "build": {
-      "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/libs/ts/domain",
-        "main": "libs/ts/domain/src/index.ts",
-        "tsConfig": "libs/ts/domain/tsconfig.lib.json",
-        "assets": ["libs/ts/domain/*.md"]
-      }
-    },
     "lint": {
       "executor": "@nx/eslint:lint"
     }
