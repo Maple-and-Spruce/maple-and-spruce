@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      deploy_all:
+        description: 'Deploy all functions (ignore affected check)'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   prepare_and_build:
@@ -37,23 +44,30 @@ jobs:
       - name: Get affected functions
         id: get_affected
         run: |
-          # Get all affected projects comparing to previous commit
-          ALL_AFFECTED=$(npx nx show projects --affected --base=${{ steps.base.outputs.commit }})
+          DEPLOY_ALL="${{ github.event.inputs.deploy_all }}"
 
-          # Check if the functions app itself is affected (e.g., env file changes)
-          FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep '^functions$' || true)
+          # If deploy_all is true (manual trigger), skip affected check
+          if [ "$DEPLOY_ALL" == "true" ]; then
+            echo "Manual deploy_all requested - deploying all functions"
+            AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
+          else
+            # Get all affected projects comparing to previous commit
+            ALL_AFFECTED=$(npx nx show projects --affected --base=${{ steps.base.outputs.commit }})
 
-          # Get affected function libraries
-          AFFECTED_LIBS=$(echo "$ALL_AFFECTED" | grep 'firebase-maple-functions-' || true)
+            # Check if the functions app itself is affected (e.g., env file changes)
+            FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep '^functions$' || true)
+
+            # Get affected function libraries
+            AFFECTED_LIBS=$(echo "$ALL_AFFECTED" | grep 'firebase-maple-functions-' || true)
+
+            # If the functions app is affected but no specific libraries, deploy all functions
+            if [ -n "$FUNCTIONS_APP_AFFECTED" ] && [ -z "$AFFECTED_LIBS" ]; then
+              echo "Functions app affected (likely env change) - deploying all functions"
+              AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
+            fi
+          fi
 
           FUNCTIONS=()
-
-          # If the functions app is affected but no specific libraries, deploy all functions
-          if [ -n "$FUNCTIONS_APP_AFFECTED" ] && [ -z "$AFFECTED_LIBS" ]; then
-            echo "Functions app affected (likely env change) - deploying all functions"
-            # Get all function libraries
-            AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
-          fi
 
           while IFS= read -r lib; do
             # Skip empty lines
