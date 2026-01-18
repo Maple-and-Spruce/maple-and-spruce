@@ -148,6 +148,9 @@ jobs:
           service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
           create_credentials_file: true
 
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -167,7 +170,7 @@ jobs:
 
       - name: Deploy functions group
         if: matrix.functions != ''
-        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce
+        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce --token "$(gcloud auth print-access-token)"
 
       - name: Skip empty function group
         if: matrix.functions == ''
