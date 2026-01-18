@@ -8,6 +8,10 @@
  * Webhooks allow us to sync changes made directly in Square
  * (POS, Dashboard) back to our Firestore records.
  *
+ * With separate Firebase projects, each project has its own webhook signature key:
+ * - maple-and-spruce-dev: sandbox webhook signature key
+ * - maple-and-spruce: production webhook signature key
+ *
  * @see https://developer.squareup.com/docs/webhooks/overview
  */
 import { onRequest } from 'firebase-functions/v2/https';
@@ -20,9 +24,8 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 
-// Webhook signature secret (different from API access token)
+// Webhook signature secret - per-project, no _PROD suffix needed
 const SQUARE_WEBHOOK_SIGNATURE_KEY = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY');
-const SQUARE_WEBHOOK_SIGNATURE_KEY_PROD = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY_PROD');
 
 // Also need the regular Square secrets for API calls
 const squareSecrets = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
@@ -316,13 +319,16 @@ async function handleInventoryUpdate(
  *
  * Receives webhook events from Square and processes them.
  * Must be deployed and registered in Square Dashboard.
+ *
+ * Each Firebase project has its own webhook registered with Square:
+ * - maple-and-spruce-dev: sandbox webhook
+ * - maple-and-spruce: production webhook
  */
 export const squareWebhook = onRequest(
   {
     region: 'us-east4',
     secrets: [
       SQUARE_WEBHOOK_SIGNATURE_KEY,
-      SQUARE_WEBHOOK_SIGNATURE_KEY_PROD,
       ...squareSecrets,
     ],
   },
@@ -338,18 +344,18 @@ export const squareWebhook = onRequest(
       const rawBody = JSON.stringify(request.body);
       const signature = request.headers['x-square-hmacsha256-signature'] as string | undefined;
 
-      // Determine environment from string param
+      // Get the webhook signature key - per-project, so no suffix selection needed
+      const signatureKey = SQUARE_WEBHOOK_SIGNATURE_KEY.value();
+
+      // Determine environment from string param (for logging)
       const squareEnv = squareStrings.find((s) => s.name === 'SQUARE_ENV')?.value() ?? 'LOCAL';
       const isProd = squareEnv === 'PROD';
 
-      // Select the appropriate webhook signature key
-      const signatureKey = isProd
-        ? SQUARE_WEBHOOK_SIGNATURE_KEY_PROD.value()
-        : SQUARE_WEBHOOK_SIGNATURE_KEY.value();
-
       // Get the webhook URL (needed for signature verification)
       // Use the notification URL exactly as registered in Square Dashboard
-      const webhookUrl = 'https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook';
+      // This URL differs per project
+      const projectId = isProd ? 'maple-and-spruce' : 'maple-and-spruce-dev';
+      const webhookUrl = `https://us-east4-${projectId}.cloudfunctions.net/squareWebhook`;
 
       console.log('Signature verification:', {
         receivedSignature: signature,

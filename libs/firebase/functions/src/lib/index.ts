@@ -42,7 +42,5 @@ export {
 // Environment utilities
 export {
   ServiceEnvironment,
-  secretPair,
-  secretPairs,
   type EnvironmentMode,
 } from './environment.utility';
