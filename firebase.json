@@ -11,6 +11,24 @@
     "runtime": "nodejs20",
     "codebase": "maple-functions"
   },
+  "hosting": {
+    "site": "maple-and-spruce-api",
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/getArtists", "function": "getArtists" },
+      { "source": "/getArtistById", "function": "getArtistById" },
+      { "source": "/createArtist", "function": "createArtist" },
+      { "source": "/updateArtist", "function": "updateArtist" },
+      { "source": "/deleteArtist", "function": "deleteArtist" },
+      { "source": "/getProducts", "function": "getProducts" },
+      { "source": "/getProductById", "function": "getProductById" },
+      { "source": "/createProduct", "function": "createProduct" },
+      { "source": "/updateProduct", "function": "updateProduct" },
+      { "source": "/deleteProduct", "function": "deleteProduct" },
+      { "source": "/uploadArtistImage", "function": "uploadArtistImage" }
+    ]
+  },
   "emulators": {
     "functions": {
       "port": 5001
