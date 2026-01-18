@@ -19,7 +19,7 @@
         "dependenciesFieldType": "dependencies",
         "target": "node20",
         "format": ["cjs"],
-        "outputFileName": "index.cjs",
+        "outputFileName": "index.js",
         "esbuildOptions": {
           "sourcemap": true,
           "logLevel": "info"
