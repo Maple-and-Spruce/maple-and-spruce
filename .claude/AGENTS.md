@@ -425,19 +425,32 @@ gh issue create \
 
 ### Environment Detection
 
-The web app automatically selects dev or prod Firebase based on hostname:
+The web app selects Firebase config in this order:
 
-| Condition | Environment | Firebase Project |
-|-----------|-------------|------------------|
-| `localhost` or `127.0.0.1` | Dev | `maple-and-spruce-dev` |
-| `*-dev.*` hostname | Dev | `maple-and-spruce-dev` |
-| Everything else | Prod | `maple-and-spruce` |
+1. **`NEXT_PUBLIC_FIREBASE_ENV`** environment variable (checked first)
+   - Set in Vercel for deployed apps
+   - Values: `dev` or `prod`
+2. **Hostname fallback** for local development:
+   - `localhost` or `127.0.0.1` → dev
+   - `*-dev.*` hostname → dev
+   - Everything else → prod
+
+**Vercel Environment Variables (required):**
+| Project | Variable | Value |
+|---------|----------|-------|
+| Production | `NEXT_PUBLIC_FIREBASE_ENV` | `prod` |
+| Development | `NEXT_PUBLIC_FIREBASE_ENV` | `dev` |
 
 **No `.env.local` needed** - Firebase client config is hardcoded in `libs/ts/firebase/firebase-config/`.
 
-**Vercel Apps:**
-- Production: `business.mapleandsprucefolkarts.com` → prod Firebase
-- Development: `business-dev.mapleandsprucefolkarts.com` → dev Firebase
+### Square Webhook URLs
+
+**IMPORTANT**: Webhook signature verification requires the URL to match exactly what's registered in Square Dashboard. Use the `cloudfunctions.net` format, NOT the Cloud Run URLs.
+
+| Environment | Webhook URL (register in Square) |
+|-------------|----------------------------------|
+| Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
+| Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
 
 ### Never Commit
 

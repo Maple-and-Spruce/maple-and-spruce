@@ -6,52 +6,27 @@
 
 ## Current Work
 
-**Status**: ✅ **DEV/PROD ENVIRONMENTS COMPLETE** - Separate Firebase projects, clean secrets, both environments deployed.
+**Status**: ✅ **DEV ENVIRONMENT FULLY OPERATIONAL**
 
-**Milestone achieved** (2026-01-18):
-- 🎉 Separate dev/prod Firebase projects with clean per-project secrets
-- 🎉 Dev Vercel app deployed with hostname-based environment detection
-- 🎉 All 13 functions deployed to both projects
-- 🎉 Square integration foundation complete (catalog, inventory, webhooks)
+**Latest session** (2026-01-19):
+- Fixed dev site (business-dev.mapleandsprucefolkarts.com):
+  - PR #76: Use `NEXT_PUBLIC_FIREBASE_ENV` for Firebase config detection (fixed `auth/invalid-api-key`)
+  - PR #77: Add dev site to CORS allowed origins
+  - Configured Square sandbox secrets in `maple-and-spruce-dev` Firebase project
+  - Registered Square sandbox webhook with correct URL format
+- Dev environment now fully working: auth, artists, products, Square integration
 
-**Latest session** (2026-01-18):
-- Simplified secrets to per-project pattern (#71):
-  - Removed `_PROD` suffix convention - each project uses same secret names
-  - Dev project: `SQUARE_ACCESS_TOKEN` = sandbox, `SQUARE_WEBHOOK_SIGNATURE_KEY` = sandbox
-  - Prod project: `SQUARE_ACCESS_TOKEN` = production, `SQUARE_WEBHOOK_SIGNATURE_KEY` = production
-  - Cleaned up 8 unused secrets across both projects
-- Set up dev environment:
-  - Created `maple-and-spruce-dev` Firebase project with all permissions
-  - Reset org policy (`iam.allowedPolicyMemberDomains`) on dev project
-  - Deployed all 13 functions to dev
-  - Created Vercel dev app
-- Added hostname-based environment detection:
-  - `localhost` or `business-dev.*` hostnames → dev Firebase project
-  - Everything else → prod Firebase project
-
-**Previous session** (2026-01-18):
-- Completed Square webhook integration (#69/#70):
-  - Created `squareWebhook` function for catalog and inventory events
-  - HMAC-SHA256 signature verification
-  - Batch catalog sync discovers new items from Square Dashboard
-- Product CRUD wired to Square (create/update)
+**Previous session** (2026-01-19):
+- Completed Product ↔ Artist integration (#3):
+  - Replaced manual Artist ID text input with dropdown selector
+  - Added artist name display on product cards ("by Artist Name")
+  - PR #75 merged
+- Fixed CI/CD Secret Manager permissions
 
 ### Next Steps
 
-1. **Test dev environment end-to-end**
-   - Verify UI on dev hostname hits dev functions
-   - Test product creation flows against Square sandbox
-
-2. **Complete Product Management (#3)**
-   - Fix ProductForm status enum mismatch
-   - Add artist dropdown (after #2)
-   - Display artist name in ProductList
-
-3. **Artist Management (#2)**
-   - UI already deployed, functions working
-   - Test and polish
-
-4. **Etsy Integration (#4)** - waiting for app approval
+1. **Set `NEXT_PUBLIC_FIREBASE_ENV=prod`** in production Vercel project (if not done)
+2. **Etsy Integration (#4)** - waiting for app approval
 
 ---
 
@@ -62,27 +37,28 @@
 |-----------|-------------|-------|
 | Firebase Project | `maple-and-spruce` | Production data |
 | Vercel App | business.mapleandsprucefolkarts.com | Auto-deploys on push to main |
+| Vercel Env Var | `NEXT_PUBLIC_FIREBASE_ENV=prod` | **Needs to be set** |
 | Square | Production API | Real inventory |
+| Square Webhook | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` | Must match exactly |
 | Functions | 13 deployed to `us-east4` | |
 
 ### Development
 | Component | URL/Project | Notes |
 |-----------|-------------|-------|
 | Firebase Project | `maple-and-spruce-dev` | Sandbox data |
-| Vercel App | (your dev URL) | Separate Vercel project |
+| Vercel App | business-dev.mapleandsprucefolkarts.com | Separate Vercel project |
+| Vercel Env Var | `NEXT_PUBLIC_FIREBASE_ENV=dev` | ✅ Set |
 | Square | Sandbox API | Test inventory |
+| Square Webhook | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` | ✅ Registered |
 | Functions | 13 deployed to `us-east4` | |
 
 ### Environment Detection
 
-The web app automatically selects the correct Firebase project based on hostname:
-1. `localhost` / `127.0.0.1` → dev project
-2. Hostname contains `-dev.` or `.dev.` → dev project
-3. Everything else → prod project
+The web app selects Firebase config based on:
+1. **`NEXT_PUBLIC_FIREBASE_ENV`** env var (checked first - set in Vercel)
+2. **Hostname fallback** for local dev (`localhost`, `127.0.0.1`, `*-dev.*`)
 
-**No `.env.local` needed** - Firebase client config is hardcoded.
-
-### Secrets (per-project, same names)
+### Secrets (per-project, same names in Firebase Secret Manager)
 
 | Secret | Dev Value | Prod Value |
 |--------|-----------|------------|
@@ -94,8 +70,8 @@ The web app automatically selects the correct Firebase project based on hostname
 | Param | Dev (.env.dev) | Prod (.env.prod) |
 |-------|----------------|------------------|
 | `SQUARE_ENV` | `LOCAL` | `PROD` |
-| `SQUARE_LOCATION_ID` | Sandbox location | Production location |
-| `ALLOWED_ORIGINS` | localhost | Production domains |
+| `SQUARE_LOCATION_ID` | `LW0MMBZ5721QY` | `LEJBNPRGM99NV` |
+| `ALLOWED_ORIGINS` | localhost + business-dev.* | business.* domains |
 
 ---
 
@@ -104,17 +80,20 @@ The web app automatically selects the correct Firebase project based on hostname
 | Service | URL | Notes |
 |---------|-----|-------|
 | **Vercel (Prod)** | business.mapleandsprucefolkarts.com | Admin web app |
-| **Vercel (Dev)** | (your dev URL) | Dev admin app |
+| **Vercel (Dev)** | business-dev.mapleandsprucefolkarts.com | Dev admin app |
 | **Firebase Hosting** | maple-and-spruce-api.web.app | API proxy (prod) |
 | **Webflow** | mapleandsprucefolkarts.com | Customer-facing site |
 
-### Domains
+### Square Webhook URLs
 
-| Domain | Target | Purpose |
-|--------|--------|---------|
-| mapleandsprucefolkarts.com | Webflow | Customer site |
-| business.mapleandsprucefolkarts.com | Vercel (prod) | Admin app |
-| business-dev.mapleandsprucefolkarts.com | Vercel (dev) | Dev admin app |
+**IMPORTANT**: Webhook signature verification requires the URL to match exactly what's registered in Square Dashboard.
+
+| Environment | Webhook URL (register this in Square) |
+|-------------|---------------------------------------|
+| Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
+| Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
+
+**Note**: Do NOT use the Cloud Run URLs (`https://squarewebhook-xxx-uk.a.run.app`) - use the `cloudfunctions.net` format above.
 
 ### Firebase Functions (13 total, both projects)
 
@@ -134,7 +113,13 @@ The web app automatically selects the correct Firebase project based on hostname
 | Functions | ✅ 13 deployed | ✅ 13 deployed |
 | Firestore | ✅ | ✅ |
 | Auth | ✅ | ✅ |
-| Org policy reset | ✅ | ✅ |
+| Square Secrets | ✅ | ✅ |
+
+### Vercel
+| Item | Prod | Dev |
+|------|------|-----|
+| App | ✅ | ✅ |
+| `NEXT_PUBLIC_FIREBASE_ENV` | ⚠️ Needs `prod` | ✅ `dev` |
 
 ### Square
 | Item | Status | Details |
@@ -142,8 +127,8 @@ The web app automatically selects the correct Firebase project based on hostname
 | Developer account | ✅ | Created |
 | Sandbox app | ✅ | Configured in dev project |
 | Production app | ✅ | Configured in prod project |
-| Webhooks | ✅ | Signature verification working |
-| Library | ✅ | `libs/firebase/square/` |
+| Dev Webhook | ✅ | Signature verification working |
+| Prod Webhook | ✅ | Signature verification working |
 
 ### Etsy
 | Item | Status | Details |
@@ -157,24 +142,24 @@ The web app automatically selects the correct Firebase project based on hostname
 
 | Date | Change | PR |
 |------|--------|-----|
+| 2026-01-19 | Add dev site to CORS allowed origins | #77 |
+| 2026-01-19 | Use NEXT_PUBLIC_FIREBASE_ENV for config detection | #76 |
+| 2026-01-19 | Product/artist integration (dropdown + display) | #75 |
 | 2026-01-18 | Simplify secrets to per-project pattern | #71 |
-| 2026-01-18 | Square integration foundation | #70 |
-| 2026-01-18 | Add responsive navigation menu | #67 |
 
 ## Recent Decisions
 
-16. **Separate dev/prod Firebase projects** - Each project has its own secrets with the same names. Eliminates `_PROD` suffix complexity.
-17. **Hostname-based environment detection** - `business-dev.*` automatically uses dev Firebase project.
-18. **Per-project Square webhooks** - Each project registers its own webhook URL with Square.
+16. **Separate dev/prod Firebase projects** - Each project has its own secrets with the same names.
+17. **Environment variable for Firebase config** - Use `NEXT_PUBLIC_FIREBASE_ENV` (set in Vercel) instead of hostname detection for deployed apps.
+18. **Per-project Square webhooks** - Each project registers its own webhook URL with Square using `cloudfunctions.net` format.
+19. **Pass artists to ProductForm from parent** - Inventory page loads artists once and passes to children.
 
 ---
 
-## Known Issues (Product Form #3)
+## Known Issues
 
-1. **Status enum mismatch** - Form uses old values, domain type uses `'active' | 'draft' | 'discontinued'`
-2. **Missing quantity field** - Need to add to form
-3. **Manual artistId input** - Need dropdown after #2 complete
-4. **No artist info displayed** - ProductList needs artist name
+1. **Prod Vercel needs env var** - Set `NEXT_PUBLIC_FIREBASE_ENV=prod` if not already done
+2. **Vercel rate limiting** - Occasional rate limits on deploys; wait and retry
 
 ---
 
@@ -183,13 +168,15 @@ The web app automatically selects the correct Firebase project based on hostname
 | Component | Status | Notes |
 |-----------|--------|-------|
 | **Prod Web App** | ✅ Live | business.mapleandsprucefolkarts.com |
-| **Dev Web App** | ✅ Live | (your dev URL) |
+| **Dev Web App** | ✅ Live | business-dev.mapleandsprucefolkarts.com |
 | **Firebase Auth** | ✅ | Both projects |
 | **Cloud Functions** | ✅ | 13 functions, both projects |
-| **Square Integration** | ✅ | Catalog, inventory, webhooks |
+| **Square Integration** | ✅ | Catalog, inventory, webhooks (both envs) |
+| **Artist Management** | ✅ | Full CRUD with image upload |
+| **Product Management** | ✅ | CRUD with artist dropdown, Square sync |
 | **CI/CD** | ✅ | Push to main → deploy to prod |
 | **Local Dev** | ✅ | `nx run functions:serve` |
 
 ---
 
-*Last updated: 2026-01-18*
+*Last updated: 2026-01-19*
