@@ -135,8 +135,6 @@ export function ProductForm({
     status: 'idle',
   });
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
-  // Track if user explicitly removed the existing image
-  const [imageWasRemoved, setImageWasRemoved] = useState(false);
 
   const isEdit = !!product;
 
@@ -168,7 +166,6 @@ export function ProductForm({
       setImageUploadState({ status: 'idle' });
     }
     setPendingImageFile(null);
-    setImageWasRemoved(false);
     setErrors({});
     setSubmitError(null);
   }, [product, open]);
@@ -176,13 +173,11 @@ export function ProductForm({
   const handleImageSelected = useCallback((file: File, previewUrl: string) => {
     setPendingImageFile(file);
     setImageUploadState({ status: 'previewing', previewUrl, file });
-    setImageWasRemoved(false); // User selected a new image, not removing
   }, []);
 
   const handleImageRemove = useCallback(() => {
     setPendingImageFile(null);
-    setImageUploadState({ status: 'idle' });
-    setImageWasRemoved(true);
+    setImageUploadState({ status: 'removed' });
   }, []);
 
   const handleChange = (
@@ -443,7 +438,7 @@ export function ProductForm({
               state={imageUploadState}
               onFileSelected={handleImageSelected}
               onRemove={handleImageRemove}
-              existingImageUrl={imageWasRemoved ? undefined : product?.squareCache.imageUrl}
+              existingImageUrl={product?.squareCache.imageUrl}
               label="Product Image"
             />
           ) : (
