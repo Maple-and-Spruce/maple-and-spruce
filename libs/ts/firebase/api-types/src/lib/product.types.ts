@@ -71,6 +71,29 @@ export interface DeleteProductResponse {
 }
 
 // ============================================================================
+// Upload Product Image
+// ============================================================================
+
+export interface UploadProductImageRequest {
+  /** Product ID (required - product must exist in Firestore) */
+  productId: string;
+  /** Base64-encoded image data */
+  imageBase64: string;
+  /** MIME type of the image (e.g., 'image/jpeg', 'image/png') */
+  contentType: string;
+  /** Optional caption for the image */
+  caption?: string;
+}
+
+export interface UploadProductImageResponse {
+  success: boolean;
+  /** Public URL of the uploaded image (hosted by Square) */
+  imageUrl: string;
+  /** Square image ID */
+  squareImageId: string;
+}
+
+// ============================================================================
 // Sync from Etsy
 // ============================================================================
 

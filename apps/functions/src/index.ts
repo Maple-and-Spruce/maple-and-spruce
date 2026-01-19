@@ -34,6 +34,7 @@ export { getProduct } from '@maple/firebase/maple-functions/get-product';
 export { createProduct } from '@maple/firebase/maple-functions/create-product';
 export { updateProduct } from '@maple/firebase/maple-functions/update-product';
 export { deleteProduct } from '@maple/firebase/maple-functions/delete-product';
+export { uploadProductImage } from '@maple/firebase/maple-functions/upload-product-image';
 
 // Square webhook (HTTP endpoint, not callable)
 export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';

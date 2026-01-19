@@ -74,6 +74,25 @@ function verifySignature(
 }
 
 /**
+ * Extract the primary image URL from a catalog item
+ *
+ * Images are stored as separate CatalogImage objects referenced by imageIds.
+ * We fetch the first (primary) image to get its URL.
+ */
+async function extractImageUrl(
+  squareItemId: string,
+  square: Square
+): Promise<string | undefined> {
+  try {
+    const imageUrl = await square.catalogService.getItemImageUrl(squareItemId);
+    return imageUrl || undefined;
+  } catch (err) {
+    console.warn('Failed to fetch image URL:', err);
+    return undefined;
+  }
+}
+
+/**
  * Handle catalog.version.updated webhook
  *
  * Fired when a catalog item is created or updated in Square.
@@ -118,6 +137,9 @@ async function handleCatalogUpdate(
         priceMoney?: { amount?: bigint };
       } })?.itemVariationData;
 
+      // Extract image URL from catalog item
+      const imageUrl = catalogObject.id ? await extractImageUrl(catalogObject.id, square) : undefined;
+
       if (trackedSquareItemIds.has(catalogObject.id)) {
         // Update existing product
         const product = products.find(p => p.squareItemId === catalogObject.id);
@@ -132,6 +154,7 @@ async function handleCatalogUpdate(
                   ? Number(variationData.priceMoney.amount)
                   : product.squareCache.priceCents,
                 sku: variationData?.sku ?? product.squareCache.sku,
+                imageUrl: imageUrl ?? product.squareCache.imageUrl,
               },
               Number(catalogObject.version || 0)
             );
@@ -167,6 +190,10 @@ async function handleCatalogUpdate(
               sku: variationData?.sku ?? '',
             }
           );
+          // Update image URL if available (create doesn't support imageUrl directly)
+          if (imageUrl) {
+            await ProductRepository.updateSquareCache(newProduct.id, { imageUrl });
+          }
           console.log(`Created new product ${newProduct.id} from Square item ${catalogObject.id}`);
           createdCount++;
         } catch (err) {
@@ -211,6 +238,9 @@ async function handleCatalogUpdate(
     priceMoney?: { amount?: bigint };
   } })?.itemVariationData;
 
+  // Extract image URL from catalog item
+  const imageUrl = catalogObject.id ? await extractImageUrl(catalogObject.id, square) : undefined;
+
   if (existingProduct) {
     // Update existing product's cache
     await ProductRepository.updateSquareCache(
@@ -222,6 +252,7 @@ async function handleCatalogUpdate(
           ? Number(variationData.priceMoney.amount)
           : existingProduct.squareCache.priceCents,
         sku: variationData?.sku ?? existingProduct.squareCache.sku,
+        imageUrl: imageUrl ?? existingProduct.squareCache.imageUrl,
       },
       Number(catalogObject.version || 0)
     );
@@ -260,6 +291,11 @@ async function handleCatalogUpdate(
         sku: variationData?.sku ?? '',
       }
     );
+
+    // Update image URL if available (create doesn't support imageUrl directly)
+    if (imageUrl) {
+      await ProductRepository.updateSquareCache(product.id, { imageUrl });
+    }
 
     return {
       action: 'created',
