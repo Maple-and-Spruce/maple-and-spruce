@@ -14,8 +14,8 @@
    - Never display tokens, API keys, or passwords in chat - even sandbox/development ones
    - Use Firebase CLI interactively for the user to set secrets themselves
    - If you accidentally see a secret, do not repeat it - warn the user to rotate it
-2. **Keep documentation current** - Update SESSION.md after completing tasks, making decisions, or learning new context.
-3. **Read before acting** - Start sessions by reading AGENTS.md and SESSION.md for context.
+2. **Keep documentation current** - Update `docs/sessions/SESSION.md` after completing tasks. Archive completed sessions to `docs/sessions/history/YYYY-MM-DD.md`.
+3. **Read before acting** - Start sessions by reading AGENTS.md and `docs/sessions/SESSION.md` for context.
 4. **Check GitHub issues** - Run `gh issue list --label phase-1` to see current work.
 5. **Update Implementation Status** - Mark features as "In progress" or "Complete" in this file as work progresses.
 6. **Use feature branches** - Never commit directly to main.
@@ -150,7 +150,8 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 
 | Document | Purpose |
 |----------|---------|
-| [.claude/SESSION.md](./SESSION.md) | **Read first** - Current work, blockers, external service status |
+| [docs/sessions/SESSION.md](../docs/sessions/SESSION.md) | **Read first** - Current work, blockers, quick reference |
+| [docs/sessions/history/](../docs/sessions/history/) | Past session logs with detailed context |
 | [docs/REQUIREMENTS.md](../docs/REQUIREMENTS.md) | Business requirements, phased roadmap, data models |
 | [docs/PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md) | Code patterns, architecture, examples |
 | [docs/DECISIONS.md](../docs/DECISIONS.md) | Architecture Decision Records (ADRs) |
