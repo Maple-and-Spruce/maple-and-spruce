@@ -169,7 +169,7 @@ export function ArtistForm({
 
   const handleImageRemove = useCallback(() => {
     setPendingImageFile(null);
-    setImageUploadState({ status: 'idle' });
+    setImageUploadState({ status: 'removed' });
     setFormData((prev) => ({ ...prev, photoUrl: '' }));
   }, []);
 
