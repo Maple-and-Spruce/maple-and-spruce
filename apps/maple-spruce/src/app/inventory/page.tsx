@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type { Product, CreateProductInput } from '@maple/ts/domain';
+import type { Product, CreateProductInput, Artist } from '@maple/ts/domain';
 import {
   ProductList,
   ProductForm,
   DeleteConfirmDialog,
 } from '../../components/inventory';
 import { AppShell } from '../../components/layout';
-import { useProducts } from '../../hooks';
+import { useProducts, useArtists } from '../../hooks';
 
 export default function InventoryPage() {
   // Product state from hook (fetches on mount)
@@ -20,6 +20,15 @@ export default function InventoryPage() {
     updateProduct,
     deleteProduct: deleteProductApi,
   } = useProducts();
+
+  // Artist state for dropdown and display
+  const { artistsState } = useArtists();
+
+  // Create artist lookup map for efficient name display
+  const artistMap = useMemo(() => {
+    if (artistsState.status !== 'success') return new Map<string, Artist>();
+    return new Map(artistsState.data.map((a) => [a.id, a]));
+  }, [artistsState]);
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -106,6 +115,7 @@ export default function InventoryPage() {
 
       <ProductList
         productsState={productsState}
+        artistMap={artistMap}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
       />
@@ -115,6 +125,7 @@ export default function InventoryPage() {
         onClose={handleCloseForm}
         onSubmit={handleSubmitForm}
         product={editingProduct}
+        artists={artistsState.status === 'success' ? artistsState.data : []}
         isSubmitting={isSubmitting}
       />
 
