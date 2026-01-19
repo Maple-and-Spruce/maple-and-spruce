@@ -1105,10 +1105,37 @@ firebase emulators:start # Functions emulator on localhost:5001
 }
 ```
 
-**Note:** When accessing Firebase Storage from local functions, the bucket name must be explicitly specified:
+### FirebaseProject Utility
+
+Use `FirebaseProject` from `@maple/firebase/functions` for project-aware resource access:
+
 ```typescript
-const bucket = admin.storage().bucket('maple-and-spruce.firebasestorage.app');
+import { FirebaseProject } from '@maple/firebase/functions';
+import admin from 'firebase-admin';
+
+// Storage bucket (auto-detects project)
+const bucket = admin.storage().bucket(FirebaseProject.storageBucket);
+
+// Function URLs (for webhooks, callbacks)
+const webhookUrl = FirebaseProject.functionUrl('squareWebhook');
+
+// Environment checks
+if (FirebaseProject.isDev) {
+  console.log('Running in dev project');
+}
 ```
+
+**Available properties:**
+- `FirebaseProject.projectId` - Current project ID (`maple-and-spruce` or `maple-and-spruce-dev`)
+- `FirebaseProject.storageBucket` - Storage bucket name (`{project-id}.firebasestorage.app`)
+- `FirebaseProject.functionsBaseUrl` - Functions base URL (`https://us-east4-{project-id}.cloudfunctions.net`)
+- `FirebaseProject.functionUrl(name)` - Full URL for a specific function
+- `FirebaseProject.isDev` / `FirebaseProject.isProd` - Environment checks
+
+**Detection order:**
+1. `GCLOUD_PROJECT` - Set by Cloud Functions runtime
+2. `FIREBASE_CONFIG.projectId` - Set by Firebase emulator
+3. Falls back to prod (safe default for deployed functions)
 
 ### Environment Variables
 
