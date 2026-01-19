@@ -18,27 +18,22 @@ const prodConfig: FirebaseOptions = {
  * Uses maple-and-spruce-dev project for isolated testing
  */
 const devConfig: FirebaseOptions = {
-  apiKey: process.env['NEXT_PUBLIC_FIREBASE_API_KEY'] || '',
+  apiKey: 'AIzaSyAFCM6IHepC14MoMYQofiiye8v_gkYv5Cw',
   authDomain: 'maple-and-spruce-dev.firebaseapp.com',
   projectId: 'maple-and-spruce-dev',
   storageBucket: 'maple-and-spruce-dev.firebasestorage.app',
-  messagingSenderId: process.env['NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'] || '',
-  appId: process.env['NEXT_PUBLIC_FIREBASE_APP_ID'] || '',
+  messagingSenderId: '1062803455357',
+  appId: '1:1062803455357:web:e1f3cf4cb54fb18dc6e014',
+  measurementId: 'G-XGYBP0X174',
 };
 
 /**
- * Determine if we're in development mode
- * Uses environment detection based on hostname or env var:
- * - localhost, 127.0.0.1, or *-dev.* hostname = dev
- * - NEXT_PUBLIC_FIREBASE_ENV=dev = dev
+ * Determine if we're in development mode based on hostname:
+ * - localhost, 127.0.0.1 = dev (local development)
+ * - *-dev.* hostname = dev (e.g., business-dev.mapleandsprucefolkarts.com)
  * - Everything else = prod
  */
 function isDevelopment(): boolean {
-  // Check environment variable first (works server and client side)
-  if (process.env['NEXT_PUBLIC_FIREBASE_ENV'] === 'dev') {
-    return true;
-  }
-
   if (typeof window === 'undefined') {
     // Server-side: check NODE_ENV
     return process.env['NODE_ENV'] === 'development';
@@ -48,8 +43,7 @@ function isDevelopment(): boolean {
   return (
     hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
-    hostname.includes('-dev.') ||      // business-dev.mapleandsprucefolkarts.com
-    hostname.includes('.dev.')          // dev.business.mapleandsprucefolkarts.com (alternate pattern)
+    hostname.includes('-dev.')      // business-dev.mapleandsprucefolkarts.com
   );
 }
 
