@@ -10,6 +10,10 @@
     },
     "test": {
       "executor": "@nx/vite:test",
+      "defaultConfiguration": "default",
+      "configurations": {
+        "default": {}
+      },
       "outputs": ["{options.reportsDirectory}"],
       "options": {
         "reportsDirectory": "../../../coverage/libs/ts/validation"

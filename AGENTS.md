@@ -74,8 +74,10 @@
 | Authentication | Complete | `apps/maple-spruce/src/components/auth/` |
 | Navigation (responsive) | Complete | `apps/maple-spruce/src/components/layout/` |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
-| Component stories | In progress | `apps/maple-spruce/src/components/**/*.stories.tsx` |
+| Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx` |
 | Chromatic CI | Complete | `.github/workflows/chromatic.yml` |
+| Unit testing (Vitest) | Complete | `libs/ts/validation/`, `libs/ts/domain/` |
+| Unit tests in CI | Complete | `.github/workflows/build-check.yml` |
 
 ### Phase 1 Features
 
@@ -132,7 +134,7 @@ Square foundation is complete. Ready for Product Management integration.
 |------|--------|-------|
 | Deploy Functions to Firebase | Complete | #22 |
 | CI/CD for Functions | Complete | #23 |
-| Testing infrastructure | In progress | #24 |
+| Testing infrastructure | Complete | #24 |
 
 #### CI/CD Details (#23)
 
@@ -159,7 +161,7 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 - `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
 - `uploadArtistImage`, `uploadProductImage`, `healthCheck`, `squareWebhook`
 
-#### Storybook & Testing Infrastructure (#24) - In Progress
+#### Storybook & Testing Infrastructure (#24) - Complete
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -171,6 +173,10 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 | Chromatic workflow | ✅ | `.github/workflows/chromatic.yml` |
 | Storybook build in CI | ✅ | Added to `.github/workflows/build-check.yml` |
 | Remaining component stories | ✅ | All 15 components have stories with proper fixtures |
+| Vitest workspace config | ✅ | `vitest.workspace.ts` |
+| Validation unit tests | ✅ | 7 test files, 139 tests |
+| Domain unit tests | ✅ | `product.spec.ts`, 25 tests |
+| Unit tests in CI | ✅ | Added to `.github/workflows/build-check.yml` |
 | Vercel deployment | ⏳ | Pending: `storybook.maple-and-spruce.com` |
 | Chromatic project token | ⏳ | Pending: Add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets |
 

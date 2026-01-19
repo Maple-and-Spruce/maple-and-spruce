@@ -7,9 +7,19 @@
 ## Current Status
 
 **Date**: 2026-01-19
-**Status**: ✅ Storybook implementation complete
+**Status**: ✅ Testing infrastructure complete
 
 ### Completed Today
+- **Unit Testing Infrastructure (#24):**
+  - Set up Vitest workspace configuration (`vitest.workspace.ts`)
+  - Configured validation library for testing (`libs/ts/validation/vitest.config.ts`)
+  - Configured domain library for testing (`libs/ts/domain/vitest.config.ts`)
+  - Wrote 7 validation suite tests (139 tests total)
+  - Wrote domain helper tests for `generateSku`, `isCacheStale`, `formatPrice`, `toCents` (25 tests)
+  - Added unit test job to CI workflow (`.github/workflows/build-check.yml`)
+  - Added `test` and `test:coverage` scripts to `package.json`
+  - Created implementation plan at `docs/plans/TESTING-INFRASTRUCTURE-PLAN.md`
+
 - **Storybook 10 implementation:**
   - Installed and configured `@storybook/nextjs` with Nx integration
   - Created mock data fixtures for artists, products, categories
@@ -76,6 +86,19 @@
 |---------|---------------------------|
 | Production | `prod` ✅ |
 | Development | `dev` ✅ |
+
+### Test Commands
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run specific library
+npx nx run validation:test
+npx nx run domain:test
+```
 
 ### Storybook Commands
 ```bash
