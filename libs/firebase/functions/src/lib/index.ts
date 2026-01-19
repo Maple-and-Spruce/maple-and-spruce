@@ -41,6 +41,9 @@ export {
 
 // Environment utilities
 export {
+  FirebaseProject,
+  FIREBASE_PROJECTS,
   ServiceEnvironment,
   type EnvironmentMode,
+  type FirebaseProjectId,
 } from './environment.utility';

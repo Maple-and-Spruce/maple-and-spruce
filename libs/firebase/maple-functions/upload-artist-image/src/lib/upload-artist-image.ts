@@ -7,7 +7,7 @@
  * Images are stored in Firebase Storage and made publicly accessible.
  * The returned URL can be stored in the artist's photoUrl field.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import { createAdminFunction, FirebaseProject } from '@maple/firebase/functions';
 import admin from 'firebase-admin';
 import type {
   UploadArtistImageRequest,
@@ -42,8 +42,8 @@ export const uploadArtistImage = createAdminFunction<
     );
   }
 
-  // Get Firebase Storage bucket (explicit name required for local functions)
-  const bucket = admin.storage().bucket('maple-and-spruce.firebasestorage.app');
+  // Get Firebase Storage bucket for current project
+  const bucket = admin.storage().bucket(FirebaseProject.storageBucket);
 
   // Generate unique file name
   const timestamp = Date.now();
