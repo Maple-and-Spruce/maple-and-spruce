@@ -462,6 +462,22 @@ The web app selects Firebase config in this order:
 
 **No `.env.local` needed** - Firebase client config is hardcoded in `libs/ts/firebase/firebase-config/`.
 
+### FirebaseProject Utility (Cloud Functions)
+
+For Cloud Functions, use `FirebaseProject` from `@maple/firebase/functions`:
+
+```typescript
+import { FirebaseProject } from '@maple/firebase/functions';
+
+// Auto-detects project from GCLOUD_PROJECT or FIREBASE_CONFIG
+FirebaseProject.projectId      // 'maple-and-spruce' or 'maple-and-spruce-dev'
+FirebaseProject.storageBucket  // '{project-id}.firebasestorage.app'
+FirebaseProject.functionUrl('squareWebhook')  // Full webhook URL
+FirebaseProject.isDev / FirebaseProject.isProd  // Environment checks
+```
+
+See `libs/firebase/functions/src/lib/environment.utility.ts` for full documentation.
+
 ### Square Webhook URLs
 
 **IMPORTANT**: Webhook signature verification requires the URL to match exactly what's registered in Square Dashboard. Use the `cloudfunctions.net` format, NOT the Cloud Run URLs.
