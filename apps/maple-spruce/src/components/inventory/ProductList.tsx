@@ -13,12 +13,13 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import type { Product } from '@maple/ts/domain';
+import type { Product, Artist } from '@maple/ts/domain';
 import type { RequestState } from '@maple/ts/domain';
 import { formatPrice } from '@maple/ts/domain';
 
 interface ProductListProps {
   productsState: RequestState<Product[]>;
+  artistMap: Map<string, Artist>;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
 }
@@ -31,10 +32,12 @@ const statusColors: Record<string, 'success' | 'warning' | 'default'> = {
 
 function ProductCard({
   product,
+  artistName,
   onEdit,
   onDelete,
 }: {
   product: Product;
+  artistName?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -52,6 +55,11 @@ function ProductCard({
             <Typography variant="h6" component="h3">
               {product.squareCache.name}
             </Typography>
+            {artistName && (
+              <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
+                by {artistName}
+              </Typography>
+            )}
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               {product.squareCache.description || 'No description'}
             </Typography>
@@ -119,6 +127,7 @@ function LoadingSkeleton() {
 
 export function ProductList({
   productsState,
+  artistMap,
   onEdit,
   onDelete,
 }: ProductListProps) {
@@ -161,6 +170,7 @@ export function ProductList({
         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={product.id}>
           <ProductCard
             product={product}
+            artistName={artistMap.get(product.artistId)?.name}
             onEdit={() => onEdit(product)}
             onDelete={() => onDelete(product)}
           />
