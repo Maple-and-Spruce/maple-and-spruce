@@ -26,6 +26,7 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024;
  */
 export type ImageUploadState =
   | { status: 'idle' }
+  | { status: 'removed' } // User explicitly removed the image
   | { status: 'previewing'; previewUrl: string; file: File }
   | { status: 'uploading'; previewUrl: string }
   | { status: 'success'; url: string }
@@ -146,14 +147,17 @@ export function ImageUpload({
   }, []);
 
   // Determine what image to display
+  // If user explicitly removed the image, don't fall back to existingImageUrl
   const displayUrl =
-    state.status === 'success'
-      ? state.url
-      : state.status === 'previewing' || state.status === 'uploading'
-        ? state.previewUrl
-        : state.status === 'error' && state.previewUrl
+    state.status === 'removed'
+      ? undefined
+      : state.status === 'success'
+        ? state.url
+        : state.status === 'previewing' || state.status === 'uploading'
           ? state.previewUrl
-          : existingImageUrl;
+          : state.status === 'error' && state.previewUrl
+            ? state.previewUrl
+            : existingImageUrl;
 
   const isUploading = state.status === 'uploading';
   const hasImage = !!displayUrl;
