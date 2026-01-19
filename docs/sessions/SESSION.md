@@ -7,14 +7,18 @@
 ## Current Status
 
 **Date**: 2026-01-19
-**Status**: ✅ Dev environment fully operational
+**Status**: ✅ Product CRUD with Square sync working
 
-### Active Work
-None - ready for next task
+### Completed Today
+- Fixed ProductForm status enum mismatch
+- Added quantity field to ProductForm
+- Fixed Square batchUpsert duplicate object error (nest variations in items)
+- Fixed variation lookup (check both relatedObjects and itemData.variations)
 
 ### Next Steps
 1. Set `NEXT_PUBLIC_FIREBASE_ENV=prod` in production Vercel project
-2. Etsy Integration (#4) - waiting for app approval
+2. Deploy updated functions to prod
+3. Etsy Integration (#4) - waiting for app approval
 
 ### Blockers
 None

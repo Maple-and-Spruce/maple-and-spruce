@@ -930,6 +930,87 @@ test('admin can create an artist', async ({ page }) => {
 | Etsy sync | ✅ Custom integration | |
 | POS sync (future) | ✅ Custom integration | ✅ Square API |
 
+### Square Catalog API Patterns
+
+The Square Catalog API has specific patterns that differ from typical REST APIs.
+
+#### Variation Location
+
+When fetching a catalog item with `includeRelatedObjects: true`, the variation may be in two places:
+
+```typescript
+const response = await client.catalog.object.get({
+  objectId: itemId,
+  includeRelatedObjects: true,
+});
+
+// Check BOTH locations for the variation
+let variation = response.relatedObjects?.find(obj => obj.id === variationId);
+if (!variation) {
+  variation = response.object?.itemData?.variations?.find(v => v.id === variationId);
+}
+```
+
+#### batchUpsert Structure
+
+When updating items with variations, **nest variations inside the item** - do NOT send them as separate objects:
+
+```typescript
+// WRONG - causes "Duplicate object" error
+await client.catalog.batchUpsert({
+  batches: [{
+    objects: [
+      { type: 'ITEM', id: itemId, itemData: {...} },
+      { type: 'ITEM_VARIATION', id: variationId, ... }  // DUPLICATE!
+    ]
+  }]
+});
+
+// CORRECT - nest variation inside item
+await client.catalog.batchUpsert({
+  batches: [{
+    objects: [{
+      type: 'ITEM',
+      id: itemId,
+      version: BigInt(catalogVersion),
+      itemData: {
+        ...itemData,
+        variations: [{
+          type: 'ITEM_VARIATION',
+          id: variationId,
+          version: variationVersion,
+          itemVariationData: {...}
+        }]
+      }
+    }]
+  }]
+});
+```
+
+#### Optimistic Locking
+
+Square uses version fields for concurrency control:
+
+```typescript
+// Always include version when updating
+{
+  type: 'ITEM',
+  id: itemId,
+  version: BigInt(catalogVersion),  // From previous fetch
+  itemData: {...}
+}
+```
+
+#### Webhook Signature Verification
+
+Webhook URLs must match **exactly** what's registered in Square Dashboard. Use the `cloudfunctions.net` format:
+
+```
+https://us-east4-{project}.cloudfunctions.net/squareWebhook
+```
+
+NOT the Cloud Run URL format (`https://squarewebhook-xxx.a.run.app`).
+
 ### Etsy Integration Pattern
 
 ```typescript
@@ -1122,4 +1203,4 @@ When building a new feature, ensure:
 
 ---
 
-*Last updated: 2026-01-11*
+*Last updated: 2026-01-19*

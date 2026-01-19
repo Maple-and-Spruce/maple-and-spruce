@@ -10,6 +10,34 @@ import { SquareClient, Square } from 'square';
 import { generateSku } from '@maple/ts/domain';
 
 /**
+ * Input for uploading a catalog image
+ */
+export interface UploadCatalogImageInput {
+  /** Square catalog item ID to attach the image to */
+  squareItemId: string;
+  /** Image file as a Blob */
+  imageBlob: Blob;
+  /** Image filename (for content-type detection) */
+  filename: string;
+  /** Optional image name/caption for Square */
+  caption?: string;
+  /** Whether this should be the primary image (default: true) */
+  isPrimary?: boolean;
+}
+
+/**
+ * Result of uploading a catalog image
+ */
+export interface UploadCatalogImageResult {
+  /** Square image ID */
+  squareImageId: string;
+  /** Public URL of the uploaded image (hosted by Square) */
+  imageUrl: string;
+  /** Updated catalog version (uploading image changes the catalog version) */
+  squareCatalogVersion: number;
+}
+
+/**
  * Input for creating a catalog item
  */
 export interface CreateCatalogItemInput {
@@ -192,22 +220,23 @@ export class CatalogService {
       );
     }
 
-    // Find the variation
+    // Find the variation - could be in relatedObjects OR nested in itemData.variations
     const relatedObjects = currentResponse.relatedObjects || [];
-    const variation = relatedObjects.find(
+    let variation = relatedObjects.find(
       (obj: Square.CatalogObject) => obj.id === input.squareVariationId
     );
+
+    // If not in relatedObjects, check the nested variations array
+    if (!variation) {
+      const nestedVariations = currentItem.itemData?.variations || [];
+      variation = nestedVariations.find(
+        (v) => v.id === input.squareVariationId
+      ) as Square.CatalogObject | undefined;
+    }
 
     if (!variation || variation.type !== 'ITEM_VARIATION') {
       throw new Error(`Catalog variation not found: ${input.squareVariationId}`);
     }
-
-    // Build updated item data
-    const updatedItemData: Square.CatalogItem = {
-      ...currentItem.itemData,
-      name: input.name ?? currentItem.itemData?.name,
-      description: input.description ?? currentItem.itemData?.description,
-    };
 
     // Build updated variation data
     const currentVariationData = variation.itemVariationData;
@@ -223,6 +252,23 @@ export class CatalogService {
         : currentVariationData?.priceMoney,
     };
 
+    // Build the updated variation object to nest inside the item
+    const updatedVariation: Square.CatalogObject = {
+      type: 'ITEM_VARIATION',
+      id: input.squareVariationId,
+      version: variation.version,
+      itemVariationData: updatedVariationData,
+    };
+
+    // Build updated item data with the variation nested inside
+    // Square expects variations to be nested in the item, not as separate batch objects
+    const updatedItemData: Square.CatalogItem = {
+      ...currentItem.itemData,
+      name: input.name ?? currentItem.itemData?.name,
+      description: input.description ?? currentItem.itemData?.description,
+      variations: [updatedVariation],
+    };
+
     const idempotencyKey = `update-${input.squareItemId}-${Date.now()}`;
 
     const response = await this.client.catalog.batchUpsert({
@@ -235,12 +281,6 @@ export class CatalogService {
               id: input.squareItemId,
               version: BigInt(input.squareCatalogVersion),
               itemData: updatedItemData,
-            },
-            {
-              type: 'ITEM_VARIATION',
-              id: input.squareVariationId,
-              version: variation.version,
-              itemVariationData: updatedVariationData,
             },
           ],
         },
@@ -304,5 +344,102 @@ export class CatalogService {
     }
 
     return items;
+  }
+
+  /**
+   * Upload an image to Square and attach it to a catalog item
+   *
+   * Uses the CreateCatalogImage endpoint which handles multipart/form-data.
+   * Square hosts the image and returns a public URL.
+   *
+   * @see https://developer.squareup.com/docs/catalog-api/upload-and-attach-images
+   */
+  async uploadImage(input: UploadCatalogImageInput): Promise<UploadCatalogImageResult> {
+    const idempotencyKey = `image-${input.squareItemId}-${Date.now()}`;
+    const tempImageId = `#image-${Date.now()}`;
+
+    const response = await this.client.catalog.images.create({
+      request: {
+        idempotencyKey,
+        objectId: input.squareItemId,
+        isPrimary: input.isPrimary ?? true,
+        image: {
+          type: 'IMAGE',
+          id: tempImageId,
+          imageData: {
+            name: input.filename,
+            caption: input.caption,
+          },
+        },
+      },
+      imageFile: input.imageBlob,
+    });
+
+    // Check for errors
+    if (response.errors && response.errors.length > 0) {
+      const errorMessages = response.errors
+        .map((e) => e.detail || e.code || 'Unknown error')
+        .join(', ');
+      throw new Error(`Square image upload error: ${errorMessages}`);
+    }
+
+    const imageObject = response.image;
+    // Type guard: check if it's an IMAGE type with imageData
+    if (!imageObject || imageObject.type !== 'IMAGE') {
+      console.error('Square image upload response:', JSON.stringify(response, null, 2));
+      throw new Error('Failed to upload image: no image object in response');
+    }
+
+    // Now TypeScript knows imageObject is CatalogObject.Image
+    const imageData = imageObject.imageData;
+    if (!imageData?.url) {
+      console.error('Square image upload response:', JSON.stringify(response, null, 2));
+      throw new Error('Failed to upload image: no image URL in response');
+    }
+
+    // Fetch the updated item to get the new catalog version
+    // Uploading an image changes the catalog version, so we need to return the new version
+    const updatedItem = await this.getItem(input.squareItemId);
+    const newCatalogVersion = Number(updatedItem?.version || 0);
+
+    return {
+      squareImageId: imageObject.id!,
+      imageUrl: imageData.url,
+      squareCatalogVersion: newCatalogVersion,
+    };
+  }
+
+  /**
+   * Get the primary image URL for a catalog item
+   *
+   * Returns null if the item has no images.
+   */
+  async getItemImageUrl(squareItemId: string): Promise<string | null> {
+    const item = await this.getItem(squareItemId);
+    // Type guard: check if it's an ITEM type
+    if (!item || item.type !== 'ITEM') {
+      return null;
+    }
+
+    const imageIds = item.itemData?.imageIds;
+    if (!imageIds || imageIds.length === 0) {
+      return null;
+    }
+
+    // Get the first (primary) image
+    const imageId = imageIds[0];
+    try {
+      const imageResponse = await this.client.catalog.object.get({
+        objectId: imageId,
+      });
+      const imageObj = imageResponse.object;
+      // Type guard: check if it's an IMAGE type
+      if (imageObj?.type === 'IMAGE') {
+        return imageObj.imageData?.url || null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 }

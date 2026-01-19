@@ -23,6 +23,37 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Configure image optimization for external domains
+  images: {
+    remotePatterns: [
+      // Square CDN - product images are stored in Square's catalog
+      {
+        protocol: 'https',
+        hostname: '*.squarecdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'square-catalog-sandbox.s3.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'square-catalog.s3.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'items-images-production.s3.us-west-2.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'items-images-sandbox.s3.us-west-2.amazonaws.com',
+      },
+      // Firebase Storage - artist images
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+    ],
+  },
   // Rewrite /api/* to Firebase Functions
   async rewrites() {
     return [
