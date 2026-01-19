@@ -23,6 +23,7 @@ import {
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
+import { FirebaseProject } from '@maple/firebase/functions';
 
 // Webhook signature secret - per-project, no _PROD suffix needed
 const SQUARE_WEBHOOK_SIGNATURE_KEY = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY');
@@ -383,21 +384,15 @@ export const squareWebhook = onRequest(
       // Get the webhook signature key - per-project, so no suffix selection needed
       const signatureKey = SQUARE_WEBHOOK_SIGNATURE_KEY.value();
 
-      // Determine environment from string param (for logging)
-      const squareEnv = squareStrings.find((s) => s.name === 'SQUARE_ENV')?.value() ?? 'LOCAL';
-      const isProd = squareEnv === 'PROD';
-
       // Get the webhook URL (needed for signature verification)
       // Use the notification URL exactly as registered in Square Dashboard
-      // This URL differs per project
-      const projectId = isProd ? 'maple-and-spruce' : 'maple-and-spruce-dev';
-      const webhookUrl = `https://us-east4-${projectId}.cloudfunctions.net/squareWebhook`;
+      const webhookUrl = FirebaseProject.functionUrl('squareWebhook');
 
       console.log('Signature verification:', {
         receivedSignature: signature,
         webhookUrl,
         bodyLength: rawBody.length,
-        isProd,
+        projectId: FirebaseProject.projectId,
       });
 
       // Verify signature
