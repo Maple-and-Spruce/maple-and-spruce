@@ -14,6 +14,8 @@ export {
   type CreateCatalogItemResult,
   type UpdateCatalogItemInput,
   type UpdateCatalogItemResult,
+  type UploadCatalogImageInput,
+  type UploadCatalogImageResult,
 } from './lib/catalog.service';
 
 // Inventory service

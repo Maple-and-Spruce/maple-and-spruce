@@ -57,6 +57,8 @@ export type {
   UpdateProductResponse,
   DeleteProductRequest,
   DeleteProductResponse,
+  UploadProductImageRequest,
+  UploadProductImageResponse,
   SyncEtsyProductsRequest,
   SyncEtsyProductsResponse,
 } from './product.types';

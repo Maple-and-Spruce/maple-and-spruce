@@ -50,6 +50,9 @@
       "@maple/firebase/maple-functions/delete-product": [
         "libs/firebase/maple-functions/delete-product/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/upload-product-image": [
+        "libs/firebase/maple-functions/upload-product-image/src/index.ts"
+      ],
       "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
       "@maple/ts/firebase/api-types": [
         "libs/ts/firebase/api-types/src/index.ts"

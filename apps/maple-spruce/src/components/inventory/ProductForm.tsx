@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -17,8 +17,15 @@ import {
   InputAdornment,
   Alert,
 } from '@mui/material';
+import { httpsCallable } from 'firebase/functions';
+import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type { Product, CreateProductInput, ProductStatus, Artist } from '@maple/ts/domain';
 import { toCents } from '@maple/ts/domain';
+import type {
+  UploadProductImageRequest,
+  UploadProductImageResponse,
+} from '@maple/ts/firebase/api-types';
+import { ImageUpload, type ImageUploadState } from '../common';
 
 interface ProductFormProps {
   open: boolean;
@@ -88,6 +95,23 @@ function validateForm(data: FormState): Record<string, string> {
   return errors;
 }
 
+/**
+ * Read a File as base64 string (without the data URL prefix)
+ */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ProductForm({
   open,
   onClose,
@@ -101,6 +125,14 @@ export function ProductForm({
   const [formData, setFormData] = useState<FormState>(defaultFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Image upload state - only available when editing (product has Square ID)
+  const [imageUploadState, setImageUploadState] = useState<ImageUploadState>({
+    status: 'idle',
+  });
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  // Track if user explicitly removed the existing image
+  const [imageWasRemoved, setImageWasRemoved] = useState(false);
 
   const isEdit = !!product;
 
@@ -120,12 +152,33 @@ export function ProductForm({
             ? product.customCommissionRate * 100
             : '',
       });
+      // If product has an existing image, show it as success state
+      if (product.squareCache.imageUrl) {
+        setImageUploadState({ status: 'success', url: product.squareCache.imageUrl });
+      } else {
+        setImageUploadState({ status: 'idle' });
+      }
     } else {
       setFormData(defaultFormState);
+      setImageUploadState({ status: 'idle' });
     }
+    setPendingImageFile(null);
+    setImageWasRemoved(false);
     setErrors({});
     setSubmitError(null);
   }, [product, open]);
+
+  const handleImageSelected = useCallback((file: File, previewUrl: string) => {
+    setPendingImageFile(file);
+    setImageUploadState({ status: 'previewing', previewUrl, file });
+    setImageWasRemoved(false); // User selected a new image, not removing
+  }, []);
+
+  const handleImageRemove = useCallback(() => {
+    setPendingImageFile(null);
+    setImageUploadState({ status: 'idle' });
+    setImageWasRemoved(true);
+  }, []);
 
   const handleChange = (
     field: keyof FormState,
@@ -143,6 +196,32 @@ export function ProductForm({
         return next;
       });
     }
+  };
+
+  /**
+   * Upload image to Square via Firebase function
+   * Only available when editing (product must exist in Square)
+   */
+  const uploadImage = async (file: File, productId: string): Promise<string> => {
+    const functions = getMapleFunctions();
+    const upload = httpsCallable<UploadProductImageRequest, UploadProductImageResponse>(
+      functions,
+      'uploadProductImage'
+    );
+
+    const imageBase64 = await readFileAsBase64(file);
+
+    const result = await upload({
+      productId,
+      imageBase64,
+      contentType: file.type,
+    });
+
+    if (!result.data.success) {
+      throw new Error('Image upload failed');
+    }
+
+    return result.data.imageUrl;
   };
 
   const handleSubmit = async () => {
@@ -172,6 +251,37 @@ export function ProductForm({
         !Number.isNaN(formData.commissionPercent)
       ) {
         input.customCommissionRate = formData.commissionPercent / 100;
+      }
+
+      // If editing and there's a pending image to upload, upload it first
+      if (isEdit && product && pendingImageFile) {
+        setImageUploadState({
+          status: 'uploading',
+          previewUrl:
+            imageUploadState.status === 'previewing'
+              ? imageUploadState.previewUrl
+              : '',
+        });
+
+        try {
+          const imageUrl = await uploadImage(pendingImageFile, product.id);
+          setImageUploadState({ status: 'success', url: imageUrl });
+        } catch (uploadError) {
+          const errorMessage =
+            uploadError instanceof Error
+              ? uploadError.message
+              : 'Failed to upload image';
+          setImageUploadState({
+            status: 'error',
+            error: errorMessage,
+            previewUrl:
+              imageUploadState.status === 'previewing'
+                ? imageUploadState.previewUrl
+                : undefined,
+          });
+          setSubmitError(`Image upload failed: ${errorMessage}`);
+          return;
+        }
       }
 
       await onSubmit(input);
@@ -302,6 +412,21 @@ export function ProductForm({
             }}
             fullWidth
           />
+
+          {/* Image Upload - only available when editing (product must exist in Square) */}
+          {isEdit ? (
+            <ImageUpload
+              state={imageUploadState}
+              onFileSelected={handleImageSelected}
+              onRemove={handleImageRemove}
+              existingImageUrl={imageWasRemoved ? undefined : product?.squareCache.imageUrl}
+              label="Product Image"
+            />
+          ) : (
+            <Alert severity="info">
+              Product images can be added after creation
+            </Alert>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
@@ -311,9 +436,13 @@ export function ProductForm({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={isSubmitting}
+          disabled={isSubmitting || imageUploadState.status === 'uploading'}
         >
-          {isSubmitting ? 'Saving...' : isEdit ? 'Update' : 'Add'}
+          {isSubmitting || imageUploadState.status === 'uploading'
+            ? 'Saving...'
+            : isEdit
+              ? 'Update'
+              : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>
