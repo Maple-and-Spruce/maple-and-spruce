@@ -10,13 +10,14 @@ import {
   DialogActions,
   TextField,
   FormControl,
+  FormHelperText,
   InputLabel,
   Select,
   MenuItem,
   InputAdornment,
   Alert,
 } from '@mui/material';
-import type { Product, CreateProductInput, ProductStatus } from '@maple/ts/domain';
+import type { Product, CreateProductInput, ProductStatus, Artist } from '@maple/ts/domain';
 import { toCents } from '@maple/ts/domain';
 
 interface ProductFormProps {
@@ -24,6 +25,7 @@ interface ProductFormProps {
   onClose: () => void;
   onSubmit: (data: CreateProductInput) => Promise<void>;
   product?: Product;
+  artists: Artist[];
   isSubmitting?: boolean;
 }
 
@@ -91,8 +93,11 @@ export function ProductForm({
   onClose,
   onSubmit,
   product,
+  artists,
   isSubmitting = false,
 }: ProductFormProps) {
+  // Filter to only active artists for the dropdown
+  const activeArtists = artists.filter((a) => a.status === 'active');
   const [formData, setFormData] = useState<FormState>(defaultFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -208,15 +213,21 @@ export function ProductForm({
             fullWidth
           />
 
-          <TextField
-            label="Artist ID"
-            value={formData.artistId}
-            onChange={(e) => handleChange('artistId', e.target.value)}
-            error={!!errors.artistId}
-            helperText={errors.artistId || 'Temporary: enter artist ID manually'}
-            required
-            fullWidth
-          />
+          <FormControl fullWidth required error={!!errors.artistId}>
+            <InputLabel>Artist</InputLabel>
+            <Select
+              value={formData.artistId}
+              label="Artist"
+              onChange={(e) => handleChange('artistId', e.target.value)}
+            >
+              {activeArtists.map((artist) => (
+                <MenuItem key={artist.id} value={artist.id}>
+                  {artist.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.artistId && <FormHelperText>{errors.artistId}</FormHelperText>}
+          </FormControl>
 
           <TextField
             label="Description"
