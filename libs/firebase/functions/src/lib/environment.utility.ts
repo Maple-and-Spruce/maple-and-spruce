@@ -1,17 +1,129 @@
 /**
  * Environment utility for Firebase Functions
  *
- * With separate Firebase projects for dev and prod, each project has its own
- * secrets configured with the same names but different values:
- * - Dev project (maple-and-spruce-dev): SQUARE_ACCESS_TOKEN = sandbox token
- * - Prod project (maple-and-spruce): SQUARE_ACCESS_TOKEN = production token
+ * ## Firebase Project Configuration
+ *
+ * We use separate Firebase projects for dev and prod:
+ * - Dev project: `maple-and-spruce-dev`
+ * - Prod project: `maple-and-spruce`
+ *
+ * Each project has its own secrets configured with the same names but different values:
+ * - Dev project: SQUARE_ACCESS_TOKEN = sandbox token
+ * - Prod project: SQUARE_ACCESS_TOKEN = production token
  *
  * This eliminates the need for _PROD suffixes - the project itself determines
  * which credentials are used.
  *
- * The SQUARE_ENV string param is still used to control SDK behavior
- * (e.g., using Square sandbox vs production API endpoints).
+ * ## Resource Naming Conventions
+ *
+ * Firebase resources follow predictable naming patterns based on project ID:
+ * - Storage bucket: `{project-id}.firebasestorage.app`
+ * - Functions URL: `https://us-east4-{project-id}.cloudfunctions.net/{functionName}`
+ * - Firestore: Automatically scoped to project
+ *
+ * Use the `FirebaseProject` helper to get these values consistently.
+ *
+ * @see ServiceEnvironment - For Square-specific environment configuration
+ * @see FirebaseProject - For Firebase resource naming
  */
+
+/**
+ * Firebase project IDs
+ */
+export const FIREBASE_PROJECTS = {
+  dev: 'maple-and-spruce-dev',
+  prod: 'maple-and-spruce',
+} as const;
+
+export type FirebaseProjectId = (typeof FIREBASE_PROJECTS)[keyof typeof FIREBASE_PROJECTS];
+
+/**
+ * Helper for Firebase project configuration
+ *
+ * Provides consistent access to project-specific resource names.
+ * Automatically detects the current project from environment variables.
+ *
+ * @example
+ * ```typescript
+ * // In a Cloud Function:
+ * const bucket = admin.storage().bucket(FirebaseProject.storageBucket);
+ * ```
+ */
+export class FirebaseProject {
+  /**
+   * Get the current Firebase project ID
+   *
+   * Detection order:
+   * 1. GCLOUD_PROJECT - Set by Cloud Functions runtime
+   * 2. FIREBASE_CONFIG.projectId - Set by Firebase emulator
+   * 3. Falls back to prod project (safe default for deployed functions)
+   */
+  static get projectId(): FirebaseProjectId {
+    // GCLOUD_PROJECT is set by Cloud Functions runtime
+    const gcloudProject = process.env.GCLOUD_PROJECT;
+    if (gcloudProject) {
+      return gcloudProject as FirebaseProjectId;
+    }
+
+    // FIREBASE_CONFIG is set by Firebase emulator and contains project info
+    const firebaseConfig = process.env.FIREBASE_CONFIG;
+    if (firebaseConfig) {
+      try {
+        const config = JSON.parse(firebaseConfig);
+        if (config.projectId) {
+          return config.projectId as FirebaseProjectId;
+        }
+      } catch {
+        // Invalid JSON, fall through to default
+      }
+    }
+
+    // Default to prod (deployed functions always have GCLOUD_PROJECT set)
+    return FIREBASE_PROJECTS.prod;
+  }
+
+  /**
+   * Check if running in the dev project
+   */
+  static get isDev(): boolean {
+    return this.projectId === FIREBASE_PROJECTS.dev;
+  }
+
+  /**
+   * Check if running in the prod project
+   */
+  static get isProd(): boolean {
+    return this.projectId === FIREBASE_PROJECTS.prod;
+  }
+
+  /**
+   * Get the Firebase Storage bucket name for the current project
+   *
+   * Format: `{project-id}.firebasestorage.app`
+   */
+  static get storageBucket(): string {
+    return `${this.projectId}.firebasestorage.app`;
+  }
+
+  /**
+   * Get the Cloud Functions base URL for the current project
+   *
+   * Format: `https://us-east4-{project-id}.cloudfunctions.net`
+   */
+  static get functionsBaseUrl(): string {
+    return `https://us-east4-${this.projectId}.cloudfunctions.net`;
+  }
+
+  /**
+   * Get a full Cloud Functions URL for a specific function
+   *
+   * @param functionName - The function name (e.g., 'squareWebhook')
+   * @returns Full URL like `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook`
+   */
+  static functionUrl(functionName: string): string {
+    return `${this.functionsBaseUrl}/${functionName}`;
+  }
+}
 
 export type EnvironmentMode = 'LOCAL' | 'PROD';
 
