@@ -26,8 +26,7 @@
   - Deployed all 13 functions to dev
   - Created Vercel dev app
 - Added hostname-based environment detection:
-  - `business-dev.*` or `*.dev.*` hostnames → dev Firebase project
-  - `NEXT_PUBLIC_FIREBASE_ENV=dev` env var → dev Firebase project
+  - `localhost` or `business-dev.*` hostnames → dev Firebase project
   - Everything else → prod Firebase project
 
 **Previous session** (2026-01-18):
@@ -76,11 +75,12 @@
 
 ### Environment Detection
 
-The UI automatically selects the correct Firebase project:
-1. `NEXT_PUBLIC_FIREBASE_ENV=dev` → dev project
-2. `localhost` / `127.0.0.1` → dev project (+ functions emulator)
-3. Hostname contains `-dev.` or `.dev.` → dev project
-4. Everything else → prod project
+The web app automatically selects the correct Firebase project based on hostname:
+1. `localhost` / `127.0.0.1` → dev project
+2. Hostname contains `-dev.` or `.dev.` → dev project
+3. Everything else → prod project
+
+**No `.env.local` needed** - Firebase client config is hardcoded.
 
 ### Secrets (per-project, same names)
 

@@ -30,7 +30,13 @@
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx nx run functions:build && (npx nx run functions:build --watch &) && sleep 1 && cp .env.dev dist/apps/functions/.env && firebase serve --only functions --project=dev --port=5001"
+        "commands": [
+          "npx nx run functions:build",
+          "cp .env.dev dist/apps/functions/.env",
+          "(npx nx run functions:build --watch &)",
+          "firebase serve --only functions --project=dev --port=5001"
+        ],
+        "parallel": false
       }
     },
     "deploy": {

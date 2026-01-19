@@ -1031,27 +1031,9 @@ const bucket = admin.storage().bucket('maple-and-spruce.firebasestorage.app');
 
 ### Environment Variables
 
-```bash
-# .env.local
+**No `.env.local` required for local development.** Firebase client config is hardcoded in `libs/ts/firebase/firebase-config/` for both dev and prod environments. Environment detection is automatic based on hostname.
 
-# Firebase
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-FIREBASE_ADMIN_SERVICE_ACCOUNT=  # JSON string for server-side
-
-# Stripe
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-
-# Etsy
-ETSY_API_KEY=
-ETSY_ACCESS_TOKEN=
-ETSY_SHOP_ID=
-```
+Cloud Functions secrets (Square tokens, etc.) are managed per-project in Firebase - see [AGENTS.md](../.claude/AGENTS.md#per-project-secrets-pattern).
 
 ---
 

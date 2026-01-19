@@ -425,14 +425,15 @@ gh issue create \
 
 ### Environment Detection
 
-The app automatically detects which environment to use:
+The web app automatically selects dev or prod Firebase based on hostname:
 
 | Condition | Environment | Firebase Project |
 |-----------|-------------|------------------|
 | `localhost` or `127.0.0.1` | Dev | `maple-and-spruce-dev` |
 | `*-dev.*` hostname | Dev | `maple-and-spruce-dev` |
-| `NEXT_PUBLIC_FIREBASE_ENV=dev` | Dev | `maple-and-spruce-dev` |
 | Everything else | Prod | `maple-and-spruce` |
+
+**No `.env.local` needed** - Firebase client config is hardcoded in `libs/ts/firebase/firebase-config/`.
 
 **Vercel Apps:**
 - Production: `business.mapleandsprucefolkarts.com` → prod Firebase
@@ -440,13 +441,8 @@ The app automatically detects which environment to use:
 
 ### Never Commit
 
-- `.env.local` files
 - Firebase service account keys
-- API keys or tokens
-
-### Required Variables
-
-See [PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md#environment-variables)
+- API keys or tokens (Square, Etsy, etc.)
 
 ### Local Development
 
@@ -457,17 +453,45 @@ npx nx run functions:serve
 
 This command:
 1. Builds the functions
-2. Starts watch mode for rebuilds
-3. Copies `.env.dev` to `dist/apps/functions/.env` (Firebase reads env vars from functions source dir)
+2. Copies `.env.dev` to `dist/apps/functions/.env`
+3. Starts watch mode for rebuilds (background)
 4. Runs `firebase serve --only functions --project=dev` on port 5001
-
-**Note:** Unlike Mountain Sol (which uses `"source": "."` in firebase.json), Maple & Spruce uses `"source": "dist/apps/functions"`. This means env files must be copied to the dist directory for Firebase to find them.
 
 **Running Web App Locally:**
 ```bash
 npx nx run maple-spruce:serve
 ```
 Runs on http://localhost:3000
+
+#### Troubleshooting Local Functions
+
+**If the emulator prompts for environment variables:**
+
+The Firebase emulator is not finding the `.env` file. This happens when:
+- The build clears `dist/apps/functions/` before the `.env` is copied
+- A stale watch process is interfering
+
+**Fix:**
+```bash
+# Kill any stale processes
+pkill -f "firebase serve"
+pkill -f "nx run functions"
+
+# Clean and restart
+rm -rf dist/apps/functions
+npx nx run functions:serve
+```
+
+**Why this happens:**
+- Firebase reads `.env` from the functions source directory (`dist/apps/functions/`)
+- The `nx run functions:build` clears this directory
+- The serve command copies `.env.dev` after build, before starting the emulator
+- If ordering is wrong or stale processes exist, the emulator starts without the `.env`
+
+**Key indicator it's working:**
+```
+i  functions: Loaded environment variables from .env.
+```
 
 ---
 
