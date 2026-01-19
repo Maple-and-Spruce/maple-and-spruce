@@ -28,23 +28,29 @@ const devConfig: FirebaseOptions = {
 };
 
 /**
- * Determine if we're in development mode based on hostname:
- * - localhost, 127.0.0.1 = dev (local development)
- * - *-dev.* hostname = dev (e.g., business-dev.mapleandsprucefolkarts.com)
- * - Everything else = prod
+ * Determine if we're in development mode:
+ * 1. Check NEXT_PUBLIC_FIREBASE_ENV (set in Vercel for deployed apps)
+ * 2. Fall back to hostname detection (for local development)
  */
 function isDevelopment(): boolean {
-  if (typeof window === 'undefined') {
-    // Server-side: check NODE_ENV
-    return process.env['NODE_ENV'] === 'development';
+  // Check environment variable first (works on both server and client)
+  const firebaseEnv = process.env['NEXT_PUBLIC_FIREBASE_ENV'];
+  if (firebaseEnv) {
+    return firebaseEnv === 'dev';
   }
-  // Client-side: check hostname
-  const hostname = window.location.hostname;
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname.includes('-dev.')      // business-dev.mapleandsprucefolkarts.com
-  );
+
+  // Fall back to hostname detection for local development
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    return (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.includes('-dev.')
+    );
+  }
+
+  // Server-side without env var: default to dev for safety
+  return true;
 }
 
 /**
