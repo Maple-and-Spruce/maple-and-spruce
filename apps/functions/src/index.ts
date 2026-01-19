@@ -28,6 +28,13 @@ export { updateArtist } from '@maple/firebase/maple-functions/update-artist';
 export { deleteArtist } from '@maple/firebase/maple-functions/delete-artist';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
+// Category functions
+export { getCategories } from '@maple/firebase/maple-functions/get-categories';
+export { createCategory } from '@maple/firebase/maple-functions/create-category';
+export { updateCategory } from '@maple/firebase/maple-functions/update-category';
+export { deleteCategory } from '@maple/firebase/maple-functions/delete-category';
+export { reorderCategories } from '@maple/firebase/maple-functions/reorder-categories';
+
 // Product functions
 export { getProducts } from '@maple/firebase/maple-functions/get-products';
 export { getProduct } from '@maple/firebase/maple-functions/get-product';

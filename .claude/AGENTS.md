@@ -80,7 +80,8 @@
 |---------|--------|-------|----------|
 | Artist CRUD | Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
 | Square integration | Complete | #69 | `libs/firebase/square/` |
-| Product management | Partial | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
+| Product management | Complete | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
+| Category management | Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
 | Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
 | Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
 | Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
@@ -98,13 +99,29 @@ Square foundation is complete. Ready for Product Management integration.
 | Webhooks | ✅ | `squareWebhook` function deployed to both environments |
 | Dev environment | ✅ | Separate Firebase project + Vercel app |
 
-#### Product Management (#3) - Remaining Work
+#### Product Management (#3) - Complete
 
-1. ~~**ProductForm status enum mismatch**~~ - Fixed
-2. ~~**ProductForm missing quantity field**~~ - Fixed
-3. **Wire up CRUD to Square** - Product create/update calls Square first
-4. **Artist dropdown** - Replace manual artistId text input
-5. **Artist info display** - Show artist name in ProductList
+- ~~ProductForm status enum mismatch~~ - Fixed
+- ~~ProductForm missing quantity field~~ - Fixed
+- ~~Wire up CRUD to Square~~ - Product create/update calls Square first
+- ~~Artist dropdown~~ - Replaced manual artistId text input
+- ~~Artist info display~~ - Shows artist name in table
+- **Category dropdown** - Products can be assigned to categories
+- **MUI DataGrid table** - Replaced card grid with sortable/filterable table
+- **Filter toolbar** - Search, category, artist, status, in-stock filters
+
+#### Category Management - Complete
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Category domain types | ✅ | `libs/ts/domain/src/lib/category.ts` |
+| Category API types | ✅ | `libs/ts/firebase/api-types/src/lib/category.types.ts` |
+| Category validation | ✅ | `libs/ts/validation/src/lib/category.validation.ts` |
+| CategoryRepository | ✅ | `libs/firebase/database/src/lib/category.repository.ts` |
+| Cloud Functions (4) | ✅ | getCategories, createCategory, updateCategory, deleteCategory |
+| useCategories hook | ✅ | `apps/maple-spruce/src/hooks/useCategories.ts` |
+| Categories page | ✅ | `/categories` with full CRUD UI |
+| ProductForm dropdown | ✅ | Category selection in product form |
 
 ### Infrastructure Tasks
 
@@ -135,8 +152,9 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 
 **Deployed Functions** (all in `us-east4`):
 - `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`
+- `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`
 - `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
-- `uploadArtistImage`, `healthCheck`, `squareWebhook`
+- `uploadArtistImage`, `uploadProductImage`, `healthCheck`, `squareWebhook`
 
 ### External Dependencies
 

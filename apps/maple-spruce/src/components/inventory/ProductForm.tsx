@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
-import type { Product, CreateProductInput, ProductStatus, Artist } from '@maple/ts/domain';
+import type { Product, CreateProductInput, ProductStatus, Artist, Category } from '@maple/ts/domain';
 import { toCents } from '@maple/ts/domain';
 import type {
   UploadProductImageRequest,
@@ -33,6 +33,7 @@ interface ProductFormProps {
   onSubmit: (data: CreateProductInput) => Promise<void>;
   product?: Product;
   artists: Artist[];
+  categories: Category[];
   isSubmitting?: boolean;
 }
 
@@ -43,6 +44,7 @@ interface ProductFormProps {
  */
 interface FormState {
   artistId: string;
+  categoryId: string;
   name: string;
   description: string;
   priceDollars: number;
@@ -53,6 +55,7 @@ interface FormState {
 
 const defaultFormState: FormState = {
   artistId: '',
+  categoryId: '',
   name: '',
   description: '',
   priceDollars: 0,
@@ -118,6 +121,7 @@ export function ProductForm({
   onSubmit,
   product,
   artists,
+  categories,
   isSubmitting = false,
 }: ProductFormProps) {
   // Filter to only active artists for the dropdown
@@ -141,6 +145,7 @@ export function ProductForm({
       // Convert from Product (with squareCache) to form state
       setFormData({
         artistId: product.artistId,
+        categoryId: product.categoryId ?? '',
         name: product.squareCache.name,
         description: product.squareCache.description ?? '',
         priceDollars: product.squareCache.priceCents / 100, // Convert cents to dollars
@@ -237,6 +242,7 @@ export function ProductForm({
       // Convert form state to CreateProductInput
       const input: CreateProductInput = {
         artistId: formData.artistId,
+        categoryId: formData.categoryId || undefined,
         name: formData.name,
         description: formData.description || undefined,
         priceCents: toCents(formData.priceDollars), // Convert dollars to cents
@@ -337,6 +343,24 @@ export function ProductForm({
               ))}
             </Select>
             {errors.artistId && <FormHelperText>{errors.artistId}</FormHelperText>}
+          </FormControl>
+
+          <FormControl fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={formData.categoryId}
+              label="Category"
+              onChange={(e) => handleChange('categoryId', e.target.value)}
+            >
+              <MenuItem value="">
+                <em>Uncategorized</em>
+              </MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
           </FormControl>
 
           <TextField
