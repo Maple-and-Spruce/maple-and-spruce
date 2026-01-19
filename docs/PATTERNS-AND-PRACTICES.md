@@ -868,52 +868,105 @@ const handleSubmit = async (data: ArtistFormData) => {
 
 ## Testing Strategy
 
+### Overview
+
+The project uses a multi-layered testing approach:
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| Component Testing | Storybook + Vitest | Visual testing, interaction tests, accessibility |
+| Unit Testing | Vitest | Pure logic, validation, utilities |
+| E2E Testing | Playwright | Full user flows |
+| Visual Regression | Chromatic | Catch unintended UI changes |
+
+### Storybook Component Testing
+
+Storybook serves as both documentation and testing infrastructure.
+
+**Running Storybook locally:**
+```bash
+npx nx run maple-spruce:storybook
+# Opens http://localhost:6006
+```
+
+**Building Storybook:**
+```bash
+npx nx run maple-spruce:build-storybook
+```
+
+**Story structure:**
+```typescript
+// ComponentName.stories.tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { fn } from 'storybook/test';
+import { ComponentName } from './ComponentName';
+
+const meta = {
+  component: ComponentName,
+  title: 'Category/ComponentName',
+  parameters: { layout: 'centered' },
+  args: {
+    onClick: fn(),
+  },
+} satisfies Meta<typeof ComponentName>;
+
+export default meta;
+type Story = StoryObj<typeof ComponentName>;
+
+export const Default: Story = {
+  args: {
+    // default props
+  },
+};
+```
+
+**Mock data fixtures:**
+Located in `apps/maple-spruce/.storybook/fixtures/`
+- `artists.ts` - Mock Artist data
+- `categories.ts` - Mock Category data
+- `products.ts` - Mock Product data
+
+**Firebase mocks:**
+Located in `apps/maple-spruce/.storybook/mocks/firebase.ts`
+
 ### Unit Tests (Vitest)
 
+For pure logic (validation, utilities):
+
 ```typescript
-// packages/domain/src/__tests__/payout.test.ts
+// libs/ts/validation/src/lib/__tests__/artist.validation.spec.ts
 import { describe, it, expect } from 'vitest';
-import { calculateArtistEarnings, calculateCommission } from '../payout';
+import { artistValidation } from '../artist.validation';
 
-describe('payout calculations', () => {
-  it('calculates artist earnings correctly', () => {
-    // Artist gets 60% (commission rate is 40% to store)
-    expect(calculateArtistEarnings(100, 0.40)).toBe(60);
-  });
-
-  it('calculates commission correctly', () => {
-    expect(calculateCommission(100, 0.40)).toBe(40);
+describe('artist validation', () => {
+  it('requires name', () => {
+    const result = artistValidation({ email: 'test@test.com' });
+    expect(result.hasErrors('name')).toBe(true);
   });
 });
 ```
 
-### Integration Tests (Playwright)
+### E2E Tests (Playwright)
+
+Located in `apps/maple-spruce-e2e/`
 
 ```typescript
 // apps/maple-spruce-e2e/src/admin-artists.spec.ts
 import { test, expect } from '@playwright/test';
 
 test('admin can create an artist', async ({ page }) => {
-  // Login as admin
   await page.goto('/login');
-  await page.fill('[name="email"]', 'admin@example.com');
-  await page.fill('[name="password"]', 'password');
-  await page.click('button[type="submit"]');
-
-  // Navigate to artists
-  await page.goto('/admin/artists');
-  await page.click('[data-testid="add-artist"]');
-
-  // Fill form
-  await page.fill('[name="name"]', 'Jane Artist');
-  await page.fill('[name="email"]', 'jane@example.com');
-  await page.fill('[name="commissionRate"]', '40');
-  await page.click('button[type="submit"]');
-
-  // Verify created
-  await expect(page.locator('text=Jane Artist')).toBeVisible();
+  // ... test implementation
 });
 ```
+
+### Visual Regression (Chromatic)
+
+Chromatic runs automatically on PRs to main branch.
+
+- **Free tier:** 5,000 snapshots/month
+- **Workflow:** `.github/workflows/chromatic.yml`
+- **Setup:** Requires `CHROMATIC_PROJECT_TOKEN` secret
 
 ---
 

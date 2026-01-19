@@ -7,9 +7,20 @@
 ## Current Status
 
 **Date**: 2026-01-19
-**Status**: ✅ Categories & Inventory filtering implemented
+**Status**: ✅ Storybook implementation complete
 
 ### Completed Today
+- **Storybook 10 implementation:**
+  - Installed and configured `@storybook/nextjs` with Nx integration
+  - Created mock data fixtures for artists, products, categories
+  - Created Firebase mock utilities
+  - Wrote stories for all 15 components with proper fixtures and states
+  - Added accessibility addon (`@storybook/addon-a11y`)
+  - Added Storybook build to CI workflow (`.github/workflows/build-check.yml`)
+  - Created Chromatic workflow for visual regression (`.github/workflows/chromatic.yml`)
+  - Updated documentation (PATTERNS-AND-PRACTICES.md, DECISIONS.md ADR-014, AGENTS.md)
+
+### Previous Work
 - Fixed ProductForm status enum mismatch
 - Added quantity field to ProductForm
 - Fixed Square batchUpsert duplicate object error (nest variations in items)
@@ -38,13 +49,17 @@
   - CSS custom properties for non-MUI usage
 
 ### Next Steps
-1. Deploy updated functions to dev and prod
-2. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-3. Etsy Integration (#4) - waiting for app approval
-4. Square reconciliation UI improvements
+1. **Storybook deployment:**
+   - Create Chromatic account and add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets
+   - Set up Vercel project for Storybook at `storybook.maple-and-spruce.com`
+2. Deploy updated functions to dev and prod
+3. Create initial categories (Pottery, Textiles, Jewelry, etc.)
+4. Etsy Integration (#4) - waiting for app approval
+5. Square reconciliation UI improvements
 
 ### Blockers
 - Etsy app still pending approval
+- Chromatic project token needed for visual regression CI
 
 ---
 
@@ -61,6 +76,15 @@
 |---------|---------------------------|
 | Production | `prod` ✅ |
 | Development | `dev` ✅ |
+
+### Storybook Commands
+```bash
+# Run Storybook locally
+npx nx run maple-spruce:storybook
+
+# Build Storybook
+npx nx run maple-spruce:build-storybook
+```
 
 ### Deploy Commands
 ```bash
