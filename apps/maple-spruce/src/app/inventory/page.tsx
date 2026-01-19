@@ -3,14 +3,22 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type { Product, CreateProductInput, Artist } from '@maple/ts/domain';
+import type {
+  Product,
+  CreateProductInput,
+  Artist,
+  Category,
+} from '@maple/ts/domain';
 import {
-  ProductList,
+  ProductDataTable,
+  ProductFilterToolbar,
   ProductForm,
   DeleteConfirmDialog,
+  defaultFilters,
 } from '../../components/inventory';
+import type { ProductFilters } from '../../components/inventory';
 import { AppShell } from '../../components/layout';
-import { useProducts, useArtists } from '../../hooks';
+import { useProducts, useArtists, useCategories } from '../../hooks';
 
 export default function InventoryPage() {
   // Product state from hook (fetches on mount)
@@ -24,11 +32,74 @@ export default function InventoryPage() {
   // Artist state for dropdown and display
   const { artistsState } = useArtists();
 
+  // Category state for dropdown and display
+  const { categoriesState } = useCategories();
+
+  // Filter state
+  const [filters, setFilters] = useState<ProductFilters>(defaultFilters);
+
   // Create artist lookup map for efficient name display
   const artistMap = useMemo(() => {
     if (artistsState.status !== 'success') return new Map<string, Artist>();
     return new Map(artistsState.data.map((a) => [a.id, a]));
   }, [artistsState]);
+
+  // Create category lookup map for efficient name display
+  const categoryMap = useMemo(() => {
+    if (categoriesState.status !== 'success')
+      return new Map<string, Category>();
+    return new Map(categoriesState.data.map((c) => [c.id, c]));
+  }, [categoriesState]);
+
+  // Apply filters to products
+  const filteredProducts = useMemo(() => {
+    if (productsState.status !== 'success') return [];
+
+    let result = productsState.data;
+
+    // Search filter
+    if (filters.search.trim()) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter((p) => {
+        const name = p.squareCache?.name?.toLowerCase() || '';
+        const sku = p.squareCache?.sku?.toLowerCase() || '';
+        const description = p.squareCache?.description?.toLowerCase() || '';
+        return (
+          name.includes(searchLower) ||
+          sku.includes(searchLower) ||
+          description.includes(searchLower)
+        );
+      });
+    }
+
+    // Category filter
+    if (filters.categoryIds.length > 0) {
+      result = result.filter((p) => {
+        // Handle uncategorized filter (empty string in categoryIds)
+        if (filters.categoryIds.includes('')) {
+          return !p.categoryId || filters.categoryIds.includes(p.categoryId);
+        }
+        return p.categoryId && filters.categoryIds.includes(p.categoryId);
+      });
+    }
+
+    // Artist filter
+    if (filters.artistIds.length > 0) {
+      result = result.filter((p) => filters.artistIds.includes(p.artistId));
+    }
+
+    // Status filter
+    if (filters.statuses.length > 0) {
+      result = result.filter((p) => filters.statuses.includes(p.status));
+    }
+
+    // In stock only
+    if (filters.inStockOnly) {
+      result = result.filter((p) => (p.squareCache?.quantity || 0) > 0);
+    }
+
+    return result;
+  }, [productsState, filters]);
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -91,6 +162,9 @@ export default function InventoryPage() {
     }
   }, [productToDelete, handleCloseDelete, deleteProductApi]);
 
+  const totalCount =
+    productsState.status === 'success' ? productsState.data.length : 0;
+
   return (
     <AppShell>
       <Box
@@ -113,11 +187,24 @@ export default function InventoryPage() {
         </Button>
       </Box>
 
-      <ProductList
+      <ProductFilterToolbar
+        filters={filters}
+        onFiltersChange={setFilters}
+        artists={artistsState.status === 'success' ? artistsState.data : []}
+        categories={
+          categoriesState.status === 'success' ? categoriesState.data : []
+        }
+        totalCount={totalCount}
+        filteredCount={filteredProducts.length}
+      />
+
+      <ProductDataTable
         productsState={productsState}
         artistMap={artistMap}
+        categoryMap={categoryMap}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
+        filteredProducts={filteredProducts}
       />
 
       <ProductForm
@@ -126,6 +213,9 @@ export default function InventoryPage() {
         onSubmit={handleSubmitForm}
         product={editingProduct}
         artists={artistsState.status === 'success' ? artistsState.data : []}
+        categories={
+          categoriesState.status === 'success' ? categoriesState.data : []
+        }
         isSubmitting={isSubmitting}
       />
 

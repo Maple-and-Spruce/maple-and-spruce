@@ -15,6 +15,7 @@
  */
 
 export { artistValidation } from './artist.validation';
+export { categoryValidation } from './category.validation';
 export { productValidation } from './product.validation';
 export { saleValidation } from './sale.validation';
 export { payoutValidation } from './payout.validation';

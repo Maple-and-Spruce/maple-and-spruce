@@ -35,6 +35,21 @@
       "@maple/firebase/maple-functions/upload-artist-image": [
         "libs/firebase/maple-functions/upload-artist-image/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-categories": [
+        "libs/firebase/maple-functions/get-categories/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-category": [
+        "libs/firebase/maple-functions/create-category/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-category": [
+        "libs/firebase/maple-functions/update-category/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-category": [
+        "libs/firebase/maple-functions/delete-category/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/reorder-categories": [
+        "libs/firebase/maple-functions/reorder-categories/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-products": [
         "libs/firebase/maple-functions/get-products/src/index.ts"
       ],
