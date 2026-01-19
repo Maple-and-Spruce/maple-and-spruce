@@ -45,6 +45,22 @@ export type {
   UploadArtistImageResponse,
 } from './artist.types';
 
+// Category types
+export type {
+  GetCategoriesRequest,
+  GetCategoriesResponse,
+  GetCategoryRequest,
+  GetCategoryResponse,
+  CreateCategoryRequest,
+  CreateCategoryResponse,
+  UpdateCategoryRequest,
+  UpdateCategoryResponse,
+  DeleteCategoryRequest,
+  DeleteCategoryResponse,
+  ReorderCategoriesRequest,
+  ReorderCategoriesResponse,
+} from './category.types';
+
 // Product types
 export type {
   GetProductsRequest,

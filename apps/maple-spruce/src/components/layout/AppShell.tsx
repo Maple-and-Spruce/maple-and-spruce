@@ -22,6 +22,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PeopleIcon from '@mui/icons-material/People';
+import CategoryIcon from '@mui/icons-material/Category';
 import { UserMenu } from '../auth';
 
 interface NavItem {
@@ -33,6 +34,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Home', href: '/', icon: <HomeIcon /> },
   { label: 'Inventory', href: '/inventory', icon: <InventoryIcon /> },
+  { label: 'Categories', href: '/categories', icon: <CategoryIcon /> },
   { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
 ];
 
@@ -56,7 +58,7 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
 
   const drawer = (
     <Box sx={{ width: 250 }}>
-      <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+      <Box sx={{ p: 2, bgcolor: 'secondary.main', color: 'secondary.contrastText' }}>
         <Typography variant="h6">Maple & Spruce</Typography>
       </Box>
       <List>
@@ -75,7 +77,7 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
                   },
                 }}
               >
-                <ListItemIcon sx={{ color: isActive ? 'primary.main' : 'inherit' }}>
+                <ListItemIcon sx={{ color: isActive ? 'secondary.main' : 'inherit' }}>
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText primary={item.label} />
@@ -89,7 +91,7 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="primary" elevation={1}>
+      <AppBar position="static" color="secondary" elevation={1}>
         <Toolbar>
           {/* Mobile menu button */}
           <IconButton

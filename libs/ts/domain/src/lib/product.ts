@@ -49,6 +49,9 @@ export interface Product {
   /** Artist who created/consigns this product */
   artistId: string;
 
+  /** Category for filtering and organization */
+  categoryId?: string;
+
   /**
    * Commission override for this specific product.
    * If undefined, uses artist's defaultCommissionRate.
@@ -113,6 +116,7 @@ export interface CreateProductInput {
   status: ProductStatus;
 
   // Optional - owned by Firestore
+  categoryId?: string;
   customCommissionRate?: number;
 
   // Required - will be sent to Square to create catalog item
@@ -135,6 +139,7 @@ export interface UpdateProductInput {
 
   // Firestore-owned (update directly)
   artistId?: string;
+  categoryId?: string;
   customCommissionRate?: number;
   status?: ProductStatus;
 
