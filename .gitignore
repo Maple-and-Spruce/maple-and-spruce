@@ -57,3 +57,5 @@ firebase-debug.*.log
 # Environment
 .env.local
 .env.*.local
+
+storybook-static

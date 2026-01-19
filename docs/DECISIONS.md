@@ -494,6 +494,51 @@ interface Product {
 
 ---
 
+## ADR-014: Storybook for Component Testing
+
+**Status:** Accepted
+**Date:** 2026-01-19
+
+### Context
+The project needs a component testing and documentation strategy. Current test coverage is minimal (only E2E scaffolding exists). Need a systematic way to test React components, document component variations, and catch visual regressions.
+
+### Decision
+Use Storybook 10 with `@storybook/nextjs` framework and `@storybook/addon-a11y` for accessibility testing, plus Chromatic for visual regression testing in CI.
+
+### Rationale
+- **Visual documentation** - Storybook provides living documentation of all components
+- **Accessibility** - Built-in a11y addon catches WCAG issues automatically
+- **Chromatic integration** - Visual regression testing in PR reviews
+- **Next.js support** - `@storybook/nextjs` handles Next.js-specific features (App Router, image optimization)
+- **Nx integration** - `@nx/storybook` provides seamless build targets
+- **Industry standard** - Widely adopted, excellent documentation, strong ecosystem
+
+### Alternatives Considered
+- **Jest + React Testing Library only** - Good for unit tests but no visual documentation
+- **Playwright component testing** - New, less mature ecosystem
+- **Ladle** - Simpler alternative but fewer features and community support
+
+### Consequences
+**Easier:**
+- Component variations documented visually
+- Accessibility issues caught early
+- Visual regressions detected automatically in PRs
+- New developers can explore components quickly
+
+**Harder:**
+- Additional dependencies (~50MB)
+- Stories must be maintained alongside components
+- Chromatic free tier limited to 5,000 snapshots/month
+- Components using Firebase hooks need mocking
+
+### Implementation
+- Storybook config: `apps/maple-spruce/.storybook/`
+- Mock fixtures: `apps/maple-spruce/.storybook/fixtures/`
+- CI workflow: `.github/workflows/chromatic.yml`
+- Vercel deployment: Separate project for Storybook hosting
+
+---
+
 ## Template for New Decisions
 
 ```markdown

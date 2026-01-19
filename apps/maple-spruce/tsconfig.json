@@ -24,8 +24,12 @@
       "@/*": ["apps/maple-spruce/src/*"],
       "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
       "@maple/ts/validation": ["libs/ts/validation/src/index.ts"],
-      "@maple/ts/firebase/firebase-config": ["libs/ts/firebase/firebase-config/src/index.ts"],
-      "@maple/ts/firebase/api-types": ["libs/ts/firebase/api-types/src/index.ts"],
+      "@maple/ts/firebase/firebase-config": [
+        "libs/ts/firebase/firebase-config/src/index.ts"
+      ],
+      "@maple/ts/firebase/api-types": [
+        "libs/ts/firebase/api-types/src/index.ts"
+      ],
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
       "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"]
     },
@@ -53,6 +57,13 @@
     "jest.config.ts",
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
-    ".next"
+    ".next",
+    "**/*.stories.ts",
+    "**/*.stories.js"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.storybook.json"
+    }
   ]
 }

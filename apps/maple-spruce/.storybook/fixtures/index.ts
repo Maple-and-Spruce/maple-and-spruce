@@ -1,0 +1,9 @@
+/**
+ * Storybook mock data fixtures
+ *
+ * Re-export all fixtures for easy importing in stories
+ */
+
+export * from './artists';
+export * from './categories';
+export * from './products';
