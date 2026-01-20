@@ -32,6 +32,9 @@
       "@maple/firebase/maple-functions/delete-artist": [
         "libs/firebase/maple-functions/delete-artist/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-public-artists": [
+        "libs/firebase/maple-functions/get-public-artists/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/upload-artist-image": [
         "libs/firebase/maple-functions/upload-artist-image/src/index.ts"
       ],

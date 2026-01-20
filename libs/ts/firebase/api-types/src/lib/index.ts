@@ -43,6 +43,8 @@ export type {
   DeleteArtistResponse,
   UploadArtistImageRequest,
   UploadArtistImageResponse,
+  GetPublicArtistsRequest,
+  GetPublicArtistsResponse,
 } from './artist.types';
 
 // Category types

@@ -28,6 +28,9 @@ export { updateArtist } from '@maple/firebase/maple-functions/update-artist';
 export { deleteArtist } from '@maple/firebase/maple-functions/delete-artist';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
+// Public API (no auth required - for Webflow integration)
+export { getPublicArtists } from '@maple/firebase/maple-functions/get-public-artists';
+
 // Category functions
 export { getCategories } from '@maple/firebase/maple-functions/get-categories';
 export { createCategory } from '@maple/firebase/maple-functions/create-category';

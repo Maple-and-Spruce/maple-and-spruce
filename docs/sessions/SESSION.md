@@ -6,10 +6,31 @@
 
 ## Current Status
 
-**Date**: 2026-01-19
-**Status**: ✅ Signals form editing fix complete
+**Date**: 2026-01-20
+**Status**: ✅ Webflow integration strategy documented (ADR-016)
 
 ### Completed Today
+- Closed #26 (Square Integration Setup) - was already complete
+- Storybook deployed to Chromatic: https://696eb36fa42138624de9b376-eeojzkoehk.chromatic.com/
+- **Public Artist API (Phase 2a):**
+  - Created `PublicArtist` type in domain library (strips sensitive fields)
+  - Created `toPublicArtist()` helper function
+  - Added `GetPublicArtistsRequest/Response` API types
+  - Created `getPublicArtists` Cloud Function (no auth required)
+  - Added Firestore composite index for `status + name` query
+  - Updated CORS to allow Webflow domains (mapleandsprucefolkarts.com, mapleandsprucewv.com + www variants)
+- **Webflow Integration Strategy (ADR-016):**
+  - Decided on CMS Collection Sync approach (vs embedded components)
+  - Katie gets full design control in Webflow
+  - SEO-friendly, fast page loads
+  - Researched Webflow CMS API:
+    - Authentication: Site Token (stored in Firebase secrets)
+    - SDK: `webflow-api` v3.2.1
+    - Rate limits: 60 req/min, 1000/hr, bulk ops up to 100 items
+    - Images: URL references to Firebase Storage (works!)
+  - Documented e-commerce considerations (Square Web Payments SDK for future)
+
+### Previous Session
 - **Fixed Signals-based form editing (critical bug):**
   - Root cause: `useSignalEffect` doesn't track React prop changes, only signal changes
   - Forms weren't populating when editing because the effect watching `product`/`artist`/`category` props never re-ran
@@ -71,17 +92,19 @@
   - CSS custom properties for non-MUI usage
 
 ### Next Steps
-1. **Storybook deployment:**
-   - Create Chromatic account and add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets
-   - Set up Vercel project for Storybook at `storybook.maple-and-spruce.com`
-2. Deploy updated functions to dev and prod
-3. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-4. Etsy Integration (#4) - waiting for app approval
-5. Square reconciliation UI improvements
+1. **Phase 2a: Artist Showcase** (Epic #93)
+   - [x] Public Artist API endpoint
+   - [x] ADR for Webflow integration approach (ADR-016)
+   - [ ] Deploy `getPublicArtists` function to dev/prod
+   - [ ] Create Firestore index in Firebase Console (or deploy via CLI)
+   - [ ] Set up Webflow CMS "Artists" collection (Katie)
+   - [ ] Create `syncArtistToWebflow` Cloud Function
+   - [ ] Initial data migration to Webflow CMS
+2. Create initial categories (Pottery, Textiles, Jewelry, etc.)
+3. Etsy Integration (#4) - waiting for app approval
 
 ### Blockers
 - Etsy app still pending approval
-- Chromatic project token needed for visual regression CI
 
 ---
 
