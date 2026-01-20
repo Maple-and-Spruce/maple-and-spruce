@@ -124,15 +124,23 @@ export const syncArtistToWebflow = onDocumentWritten(
       }
 
       // Case 4: Artist is active - sync to Webflow
-      console.log('Syncing active artist to Webflow:', afterArtist.name);
+      // Auto-publish unless preventAutoPublish is set
+      const shouldPublish = !afterArtist.preventAutoPublish;
+      console.log('Syncing active artist to Webflow:', {
+        name: afterArtist.name,
+        autoPublish: shouldPublish,
+      });
+
       const result = await webflow.artistService.syncArtist({
         artist: afterArtist,
+        publish: shouldPublish,
       });
 
       console.log('Webflow sync result:', {
         success: result.success,
         webflowItemId: result.webflowItemId,
         isNew: result.isNew,
+        published: shouldPublish,
       });
 
       // Store the Webflow item ID back in Firestore for reference

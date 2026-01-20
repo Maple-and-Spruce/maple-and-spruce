@@ -20,6 +20,8 @@ import type { Artist } from '@maple/ts/domain';
  */
 export interface SyncArtistInput {
   artist: Artist;
+  /** If true, publish the item to the live site after sync */
+  publish?: boolean;
 }
 
 /**
@@ -65,33 +67,52 @@ export class ArtistService {
   /**
    * Sync an artist to Webflow CMS.
    * Creates a new item if it doesn't exist, updates if it does.
+   * Optionally publishes the item to the live site.
    *
-   * @param input - Artist data to sync
+   * @param input - Artist data to sync (includes publish flag)
    * @returns Result with Webflow item ID
    */
   async syncArtist(input: SyncArtistInput): Promise<SyncArtistResult> {
-    const { artist } = input;
+    const { artist, publish = false } = input;
 
     // Check if artist already exists in Webflow by firebase-id
     const existingItem = await this.findByFirebaseId(artist.id);
 
+    let webflowItemId: string;
+    let isNew: boolean;
+
     if (existingItem) {
       // Update existing item
       await this.updateItem(existingItem.id, artist);
-      return {
-        success: true,
-        webflowItemId: existingItem.id,
-        isNew: false,
-      };
+      webflowItemId = existingItem.id;
+      isNew = false;
     } else {
       // Create new item
       const newItem = await this.createItem(artist);
-      return {
-        success: true,
-        webflowItemId: newItem.id,
-        isNew: true,
-      };
+      webflowItemId = newItem.id;
+      isNew = true;
     }
+
+    // Publish item to live site if requested
+    if (publish) {
+      await this.publishItem(webflowItemId);
+    }
+
+    return {
+      success: true,
+      webflowItemId,
+      isNew,
+    };
+  }
+
+  /**
+   * Publish an item to the live Webflow site.
+   * This makes the item visible on the public website.
+   *
+   * @param itemId - Webflow item ID to publish
+   */
+  async publishItem(itemId: string): Promise<void> {
+    await this.client.collections.items.publishItem(this.collectionId, itemId);
   }
 
   /**

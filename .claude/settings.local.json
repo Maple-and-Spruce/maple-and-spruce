@@ -92,7 +92,8 @@
       "Bash(gh issue close:*)",
       "Bash(gh issue create:*)",
       "Bash(gh label create:*)",
-      "Bash(gh run cancel:*)"
+      "Bash(gh run cancel:*)",
+      "Bash(gh run watch:*)"
     ]
   }
 }

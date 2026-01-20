@@ -7,34 +7,16 @@
 ## Current Status
 
 **Date**: 2026-01-20
-**Status**: ⚠️ Webflow sync needs IAM permissions
-
-### Blocker: IAM Permissions for Firestore Trigger
-
-The `syncArtistToWebflow` function is a Firestore trigger (event-driven), which requires additional IAM permissions not needed by HTTP functions. The deployment is failing with:
-
-```
-Error: We failed to modify the IAM policy for the project.
-```
-
-**Run these commands to fix (requires project owner):**
-```bash
-gcloud projects add-iam-policy-binding maple-and-spruce-dev \
-  --member=serviceAccount:service-1062803455357@gcp-sa-pubsub.iam.gserviceaccount.com \
-  --role=roles/iam.serviceAccountTokenCreator
-
-gcloud projects add-iam-policy-binding maple-and-spruce-dev \
-  --member=serviceAccount:1062803455357-compute@developer.gserviceaccount.com \
-  --role=roles/run.invoker
-
-gcloud projects add-iam-policy-binding maple-and-spruce-dev \
-  --member=serviceAccount:1062803455357-compute@developer.gserviceaccount.com \
-  --role=roles/eventarc.eventReceiver
-```
-
-After running these, re-trigger the CI by pushing an empty commit or re-running the workflow.
+**Status**: ✅ Webflow sync deployed and working
 
 ### Completed Today
+
+- **Webflow CMS Sync - DEPLOYED & TESTED:**
+  - `syncArtistToWebflow` function deployed to dev environment
+  - Successfully syncing artists to Webflow CMS (tested with "krog" and "a boy named cat")
+  - Artists appear in Webflow CMS as "Queued to publish"
+  - Fixed IAM permissions for Firestore triggers (eventarc.eventReceiver, run.invoker, iam.serviceAccountTokenCreator)
+
 - **Webflow CMS Sync Implementation:**
   - Installed `webflow-api` SDK
   - Created `libs/firebase/webflow/` library with:
@@ -62,6 +44,13 @@ After running these, re-trigger the CI by pushing an empty commit or re-running 
   - Added directive #11: Function library naming convention
   - Added "Creating a New Cloud Function" guide in AGENTS.md
 
+### Outstanding Questions
+
+- **Auto-publish to Webflow?** Currently items sync as "Queued to publish" and require manual publish in Webflow. Consider adding:
+  - A checkbox in the artist form modal: "Publish to website"
+  - When checked, call `webflow.collections.items.publish()` after creating/updating the item
+  - This gives control over what goes live vs stays as a draft
+
 ### Previous Session
 - Closed #26 (Square Integration Setup) - was already complete
 - Storybook deployed to Chromatic
@@ -77,18 +66,12 @@ After running these, re-trigger the CI by pushing an empty commit or re-running 
   - Researched Webflow CMS API authentication, SDK, rate limits, image handling
 
 ### Next Steps
-1. **Fix IAM permissions** (see blocker above)
-2. **Test Webflow sync:**
-   - Edit an active artist in admin UI
-   - Check Webflow CMS for new item
-3. **Initial artist migration:**
-   - Run one-time sync of existing active artists
-   - Verify data integrity in Webflow
-4. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-5. Etsy Integration (#4) - waiting for app approval
+1. **Initial artist migration** - Sync existing active artists to Webflow
+2. **Consider auto-publish feature** (see outstanding questions)
+3. Create initial categories (Pottery, Textiles, Jewelry, etc.)
+4. Etsy Integration (#4) - waiting for app approval
 
 ### Blockers
-- **IAM permissions for Firestore trigger** - needs gcloud commands run by project owner
 - Etsy app still pending approval
 
 ---
@@ -145,8 +128,9 @@ Functions deploy automatically when PRs merge to main via `.github/workflows/fir
 # CI/CD will build and deploy automatically
 ```
 
-### New Webflow Function
+### Deployed Cloud Functions
 - `syncArtistToWebflow` - Firestore trigger that syncs artist changes to Webflow CMS
+- `getPublicArtists` - Public API for fetching active artists (no auth required)
 
 ### Square Webhook URLs (register in Square Dashboard)
 | Environment | URL |

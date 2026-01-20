@@ -28,6 +28,12 @@ export interface Artist {
    * @see docs/decisions/ADR-016-webflow-integration-strategy.md
    */
   webflowItemId?: string;
+  /**
+   * When true, prevents auto-publishing to Webflow.
+   * The artist will still sync to CMS but remain as a draft until manually published.
+   * Defaults to false (auto-publish enabled).
+   */
+  preventAutoPublish?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
