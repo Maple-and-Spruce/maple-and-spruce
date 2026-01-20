@@ -31,6 +31,11 @@
    - Functions deploy automatically when PRs are merged to main (`.github/workflows/firebase-functions-merge.yml`)
    - Create PRs and let the pipeline handle deployment
    - Only exception: emergency hotfixes with explicit user approval
+10. **No package.json in libraries** - Nx libraries under `libs/` should NOT have their own `package.json`:
+    - These libraries are not independently publishable
+    - The root `package.json` and `tsconfig.base.json` handle all dependency management
+    - If you use `nx generate @nx/js:library`, it may auto-create a `package.json` - delete it
+    - esbuild bundles from source; no intermediate build step needed for libs
 
 ---
 
