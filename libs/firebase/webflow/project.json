@@ -3,7 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/firebase/webflow/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:firebase", "type:feature"],
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
@@ -15,6 +15,13 @@
         "assets": ["libs/firebase/webflow/*.md"],
         "format": ["cjs"],
         "generatePackageJson": true
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../../coverage/libs/firebase/webflow"
       }
     }
   }

@@ -16,6 +16,20 @@ import type { CollectionItem } from 'webflow-api/api';
 import type { Artist } from '@maple/ts/domain';
 
 /**
+ * Generate a URL-safe slug from a name.
+ * Exported for testing purposes.
+ *
+ * @param name - The name to convert to a slug
+ * @returns URL-safe slug
+ */
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
  * Input for creating an artist in Webflow CMS
  */
 export interface SyncArtistInput {
@@ -44,7 +58,7 @@ interface WebflowItemWithId extends CollectionItem {
  * Field data structure for Webflow CMS items
  * Includes required name/slug fields plus our custom fields
  */
-interface WebflowFieldData {
+export interface WebflowFieldData {
   name: string;
   slug: string;
   'firebase-id': string;
@@ -53,6 +67,42 @@ interface WebflowFieldData {
     alt?: string;
   };
   [key: string]: unknown;
+}
+
+/**
+ * Map Firebase Artist to Webflow CMS field data.
+ * Exported for testing purposes.
+ *
+ * Synced fields (overwritten on each sync):
+ * - firebase-id: For sync reference
+ * - name: Title field (required by Webflow)
+ * - slug: URL slug (required by Webflow, auto-generated from name)
+ * - profile-image: URL to Firebase Storage image
+ *
+ * Webflow-only fields (preserved, not touched):
+ * - featured
+ * - display-order
+ * - pull-quote
+ *
+ * @param artist - Firebase artist to map
+ * @returns Webflow CMS field data
+ */
+export function mapArtistToFieldData(artist: Artist): WebflowFieldData {
+  const fieldData: WebflowFieldData = {
+    'firebase-id': artist.id,
+    name: artist.name,
+    slug: generateSlug(artist.name),
+  };
+
+  // Add profile image if available
+  if (artist.photoUrl) {
+    fieldData['profile-image'] = {
+      url: artist.photoUrl,
+      alt: `${artist.name} profile photo`,
+    };
+  }
+
+  return fieldData;
 }
 
 /**
@@ -176,7 +226,7 @@ export class ArtistService {
    * Create a new artist item in Webflow CMS
    */
   private async createItem(artist: Artist): Promise<WebflowItemWithId> {
-    const fieldData = this.mapArtistToFieldData(artist);
+    const fieldData = mapArtistToFieldData(artist);
 
     const response = await this.client.collections.items.createItem(
       this.collectionId,
@@ -198,54 +248,12 @@ export class ArtistService {
    * Update an existing artist item in Webflow CMS
    */
   private async updateItem(itemId: string, artist: Artist): Promise<void> {
-    const fieldData = this.mapArtistToFieldData(artist);
+    const fieldData = mapArtistToFieldData(artist);
 
     await this.client.collections.items.updateItem(this.collectionId, itemId, {
       isArchived: false,
       isDraft: false,
       fieldData,
     });
-  }
-
-  /**
-   * Map Firebase Artist to Webflow CMS field data
-   *
-   * Synced fields (overwritten on each sync):
-   * - firebase-id: For sync reference
-   * - name: Title field (required by Webflow)
-   * - slug: URL slug (required by Webflow, auto-generated from name)
-   * - profile-image: URL to Firebase Storage image
-   *
-   * Webflow-only fields (preserved, not touched):
-   * - featured
-   * - display-order
-   * - pull-quote
-   */
-  private mapArtistToFieldData(artist: Artist): WebflowFieldData {
-    const fieldData: WebflowFieldData = {
-      'firebase-id': artist.id,
-      name: artist.name,
-      slug: this.generateSlug(artist.name),
-    };
-
-    // Add profile image if available
-    if (artist.photoUrl) {
-      fieldData['profile-image'] = {
-        url: artist.photoUrl,
-        alt: `${artist.name} profile photo`,
-      };
-    }
-
-    return fieldData;
-  }
-
-  /**
-   * Generate a URL-safe slug from artist name
-   */
-  private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
   }
 }

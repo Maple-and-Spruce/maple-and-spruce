@@ -12,4 +12,8 @@ export {
   ArtistService,
   type SyncArtistInput,
   type SyncArtistResult,
+  type WebflowFieldData,
+  // Exported for testing
+  generateSlug,
+  mapArtistToFieldData,
 } from './lib/artist.service';
