@@ -3,12 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type {
-  Product,
-  CreateProductInput,
-  Artist,
-  Category,
-} from '@maple/ts/domain';
+import type { Product, CreateProductInput, Artist, Category } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   ProductDataTable,
@@ -121,14 +116,14 @@ export default function InventoryPage() {
   }, []);
 
   const handleSubmitForm = useCallback(
-    async (data: CreateProductInput) => {
+    async (data: CreateProductInput): Promise<Product | void> => {
       setIsSubmitting(true);
 
       try {
         if (editingProduct) {
-          await updateProduct({ id: editingProduct.id, ...data });
+          return await updateProduct({ id: editingProduct.id, ...data });
         } else {
-          await createProduct(data);
+          return await createProduct(data);
         }
         // Form handles closing on success
       } finally {

@@ -59,7 +59,8 @@ import {
 interface ProductFormSignalsProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateProductInput) => Promise<void>;
+  /** Returns the created/updated product so we can upload images after creation */
+  onSubmit: (data: CreateProductInput) => Promise<Product | void>;
   product?: Product;
   artists: Artist[];
   categories: Category[];
@@ -117,6 +118,8 @@ export function ProductFormSignals({
   const submitError = useSignal<string | null>(null);
   const imageUploadState = useSignal<ImageUploadState>({ status: 'idle' });
   const pendingImageFile = useSignal<File | null>(null);
+  /** Tracks submission phase for progress feedback */
+  const submissionPhase = useSignal<'idle' | 'creating' | 'uploading-image'>('idle');
 
   const isEdit = !!product;
 
@@ -192,6 +195,7 @@ export function ProductFormSignals({
         pendingImageFile.value = null;
         showValidationErrors.value = false;
         submitError.value = null;
+        submissionPhase.value = 'idle';
       });
     } else {
       // Reset to defaults for new product
@@ -208,6 +212,7 @@ export function ProductFormSignals({
         pendingImageFile.value = null;
         showValidationErrors.value = false;
         submitError.value = null;
+        submissionPhase.value = 'idle';
       });
     }
   });
@@ -282,14 +287,14 @@ export function ProductFormSignals({
         input.customCommissionRate = commissionPercent.value / 100;
       }
 
-      // Handle image upload for existing products
-      if (isEdit && product && pendingImageFile.value) {
-        // Capture preview URL before changing state
-        const currentPreviewUrl =
-          imageUploadState.value.status === 'previewing'
-            ? imageUploadState.value.previewUrl
-            : '';
+      // Capture preview URL for image upload state updates
+      const currentPreviewUrl =
+        imageUploadState.value.status === 'previewing'
+          ? imageUploadState.value.previewUrl
+          : '';
 
+      // Handle image upload for EXISTING products (edit mode)
+      if (isEdit && product && pendingImageFile.value) {
         imageUploadState.value = {
           status: 'uploading',
           previewUrl: currentPreviewUrl,
@@ -313,9 +318,37 @@ export function ProductFormSignals({
         }
       }
 
-      await onSubmit(input);
+      // Create/update the product
+      submissionPhase.value = isEdit ? 'idle' : 'creating';
+      const result = await onSubmit(input);
+
+      // Handle image upload for NEW products (after creation)
+      if (!isEdit && pendingImageFile.value && result) {
+        submissionPhase.value = 'uploading-image';
+        imageUploadState.value = {
+          status: 'uploading',
+          previewUrl: currentPreviewUrl,
+        };
+
+        try {
+          const imageUrl = await uploadImage(pendingImageFile.value, result.id);
+          imageUploadState.value = { status: 'success', url: imageUrl };
+        } catch (uploadError) {
+          // Image upload failed, but product was created
+          // Show error but still close - user can add image later
+          const errorMessage =
+            uploadError instanceof Error
+              ? uploadError.message
+              : 'Failed to upload image';
+          console.error('Image upload failed after product creation:', errorMessage);
+          // Don't block - product was created successfully
+        }
+      }
+
+      submissionPhase.value = 'idle';
       onClose();
     } catch (error: unknown) {
+      submissionPhase.value = 'idle';
       let message = 'Failed to save product';
       if (error instanceof Error) {
         message = error.message;
@@ -474,36 +507,41 @@ export function ProductFormSignals({
             fullWidth
           />
 
-          {/* Image Upload - only available when editing */}
-          {isEdit ? (
-            <ImageUpload
-              state={imageUploadState.value}
-              onFileSelected={handleImageSelected}
-              onRemove={handleImageRemove}
-              existingImageUrl={product?.squareCache.imageUrl}
-              label="Product Image"
-            />
-          ) : (
-            <Alert severity="info">
-              Product images can be added after creation
-            </Alert>
-          )}
+          {/* Image Upload - available for both create and edit */}
+          <ImageUpload
+            state={imageUploadState.value}
+            onFileSelected={handleImageSelected}
+            onRemove={handleImageRemove}
+            existingImageUrl={product?.squareCache.imageUrl}
+            label="Product Image"
+          />
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={isSubmitting}>
+        <Button
+          onClick={onClose}
+          disabled={isSubmitting || submissionPhase.value !== 'idle'}
+        >
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={isSubmitting || imageUploadState.value.status === 'uploading'}
+          disabled={
+            isSubmitting ||
+            imageUploadState.value.status === 'uploading' ||
+            submissionPhase.value !== 'idle'
+          }
         >
-          {isSubmitting || imageUploadState.value.status === 'uploading'
-            ? 'Saving...'
-            : isEdit
-              ? 'Update'
-              : 'Add'}
+          {submissionPhase.value === 'creating'
+            ? 'Creating product...'
+            : submissionPhase.value === 'uploading-image'
+              ? 'Uploading image...'
+              : isSubmitting || imageUploadState.value.status === 'uploading'
+                ? 'Saving...'
+                : isEdit
+                  ? 'Update'
+                  : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>

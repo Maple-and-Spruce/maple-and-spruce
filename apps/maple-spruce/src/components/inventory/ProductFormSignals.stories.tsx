@@ -297,3 +297,57 @@ export const CommissionRateInput: Story = {
     await expect(commissionInput).toHaveValue(35);
   },
 };
+
+// ============================================================
+// IMAGE UPLOAD ON CREATE STORIES
+// ============================================================
+
+/**
+ * Create mode shows image upload component (not the old "add after creation" alert)
+ *
+ * This verifies the UX improvement where users can select an image
+ * during product creation, not just when editing.
+ */
+export const CreateModeShowsImageUpload: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // The ImageUpload component should be present with its drop zone
+    // Look for the upload area text (not the old "can be added after creation" alert)
+    const uploadArea = canvas.getByText(/drag.*drop|click to upload/i);
+    await expect(uploadArea).toBeInTheDocument();
+
+    // The old info alert should NOT be present
+    const alerts = canvas.queryAllByRole('alert');
+    const addAfterCreationAlert = alerts.find((alert) =>
+      alert.textContent?.includes('after creation')
+    );
+    await expect(addAfterCreationAlert).toBeUndefined();
+  },
+};
+
+/**
+ * Edit mode also shows image upload (existing behavior preserved)
+ */
+export const EditModeShowsImageUpload: Story = {
+  args: {
+    open: true,
+    product: mockProduct,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // Should show the existing image from the product
+    const existingImage = canvas.getByRole('img');
+    await expect(existingImage).toBeInTheDocument();
+    await expect(existingImage).toHaveAttribute(
+      'src',
+      expect.stringContaining('picsum')
+    );
+  },
+};
