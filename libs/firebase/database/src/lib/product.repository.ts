@@ -61,6 +61,7 @@ function docToProduct(
 
     // Firestore-owned
     artistId: data.artistId,
+    categoryId: data.categoryId,
     customCommissionRate: data.customCommissionRate,
     status: data.status,
     createdAt: data.createdAt?.toDate() ?? new Date(),
@@ -84,6 +85,7 @@ function docToProduct(
 function productToDoc(product: Omit<Product, 'id'>): Record<string, unknown> {
   return {
     artistId: product.artistId,
+    categoryId: product.categoryId,
     customCommissionRate: product.customCommissionRate,
     status: product.status,
     createdAt: product.createdAt,
@@ -192,6 +194,7 @@ export const ProductRepository = {
     const product: Omit<Product, 'id'> = {
       // Firestore-owned
       artistId: input.artistId,
+      categoryId: input.categoryId,
       customCommissionRate: input.customCommissionRate,
       status: input.status,
       createdAt: now,
@@ -238,6 +241,8 @@ export const ProductRepository = {
     const allowedUpdates: Partial<Product> = {};
     if (updates.artistId !== undefined)
       allowedUpdates.artistId = updates.artistId;
+    if (updates.categoryId !== undefined)
+      allowedUpdates.categoryId = updates.categoryId;
     if (updates.customCommissionRate !== undefined)
       allowedUpdates.customCommissionRate = updates.customCommissionRate;
     if (updates.status !== undefined) allowedUpdates.status = updates.status;
