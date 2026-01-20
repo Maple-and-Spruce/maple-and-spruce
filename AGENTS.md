@@ -29,9 +29,24 @@
 - Workshops and craft classes
 - Music lessons (Suzuki method)
 
-**Current State**: Selling on Etsy only. No physical store yet.
+**Current State**: Selling on Etsy only. No physical store yet. Building public website on Webflow.
 
-**Current Phase**: Phase 1 - Square foundation, then Etsy integration & artist payout tracking
+**Current Phase**: Phase 2 - Public Website (Webflow Integration)
+
+## Phased Roadmap
+
+| Phase | Epic | Focus | Status |
+|-------|------|-------|--------|
+| 1 | #1 | Admin Foundation & Artist Platform | ✅ COMPLETE |
+| 2 | #93 | Public Website (Webflow Integration) | **CURRENT** |
+| 3 | #9 | Classes & Workshops | Next |
+| 4 | #10 | Music Lessons | After Classes |
+| 5 | #8 | Store Opening & Sales Tracking | When store opens |
+
+**Deferred Issues** (moved to Phase 5):
+- #4 - Etsy API integration (blocked on API approval)
+- #5 - Sales tracking (not valuable without store)
+- #6 - Payout reports (depends on sales)
 
 ## GitHub Issues
 
@@ -39,21 +54,12 @@
 
 | Command | Purpose |
 |---------|---------|
-| `gh issue list --label phase-1` | Current phase work |
+| `gh issue list --label phase-2` | Current phase work |
 | `gh issue list --label epic` | High-level epics |
 | `gh issue view <number>` | Issue details |
 
-**Phase 1 Issues:**
-- #1 - Epic: Phase 1 overview
-- #7 - Firebase infrastructure setup
-- #2 - Artist management CRUD
-- #3 - Product/inventory tracking (infrastructure complete, feature in progress)
-- #4 - Etsy API integration
-- #5 - Sales tracking
-- #6 - Payout reports
-- #22 - Deploy Firebase Functions to production
-- #23 - Set up CI/CD for Firebase Functions
-- #24 - Add testing infrastructure
+**Current Phase 2 Issues:**
+- #93 - Epic: Public Website (Webflow Integration)
 
 ## Implementation Status
 
@@ -84,17 +90,30 @@
 | Unit tests in CI | Complete | `.github/workflows/build-check.yml` |
 | Signals state management | Pilot | `libs/react/signals/` (see ADR-015) |
 
-### Phase 1 Features
+### Phase 1 Features (COMPLETE)
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Artist CRUD | Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
-| Square integration | Complete | #69 | `libs/firebase/square/` |
-| Product management | Complete | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
-| Category management | Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
-| Etsy integration | Not started | #4 | `libs/firebase/maple-functions/sync-etsy-*/` |
-| Sales tracking | Not started | #5 | `libs/firebase/maple-functions/record-sale/` |
-| Payout reports | Not started | #6 | `libs/firebase/maple-functions/calculate-payouts/` |
+| Artist CRUD | ✅ Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
+| Square integration | ✅ Complete | #69 | `libs/firebase/square/` |
+| Product management | ✅ Complete | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
+| Category management | ✅ Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
+
+### Phase 2 Features (CURRENT)
+
+| Feature | Status | Issue | Location |
+|---------|--------|-------|----------|
+| Public Artist API | Not started | #93 | TBD |
+| Webflow integration | Not started | #93 | TBD |
+| Artist showcase | Not started | #93 | Webflow |
+
+### Deferred to Phase 5 (Store Opening)
+
+| Feature | Status | Issue | Notes |
+|---------|--------|-------|-------|
+| Etsy integration | Deferred | #4 | Blocked on API approval |
+| Sales tracking | Deferred | #5 | Not valuable without store |
+| Payout reports | Deferred | #6 | Depends on sales |
 
 #### Square Integration (#69) - Complete
 
@@ -133,13 +152,13 @@ Square foundation is complete. Ready for Product Management integration.
 | Categories page | ✅ | `/categories` with full CRUD UI |
 | ProductForm dropdown | ✅ | Category selection in product form |
 
-### Infrastructure Tasks
+### Infrastructure Tasks (COMPLETE)
 
 | Task | Status | Issue |
 |------|--------|-------|
-| Deploy Functions to Firebase | Complete | #22 |
-| CI/CD for Functions | Complete | #23 |
-| Testing infrastructure | Complete | #24 |
+| Deploy Functions to Firebase | ✅ Complete | #22 |
+| CI/CD for Functions | ✅ Complete | #23 |
+| Testing infrastructure | ✅ Complete | #24 |
 
 #### CI/CD Details (#23)
 

@@ -12,75 +12,117 @@
 | Etsy shop | Active | Currently selling |
 | Artists | Have artists | Consignment model |
 | POS System | Square | Chosen for in-store sales |
+| Admin platform | ✅ Built | Artist/product management |
+| Public website | In progress | Webflow integration |
 | Classes | Not yet | Future when store opens |
 | Music lessons | Not yet | Future when store opens |
 
-**Key insight**: Focus on what's happening NOW (Etsy + artist payouts), not future state.
+**Key insight**: Build public website and class/lesson infrastructure NOW. Sales tracking when store opens.
 
 ---
 
 ## Phased Roadmap
 
-### Phase 1: Square Foundation + Artist Tracking (NOW)
-*Build on Square as the catalog/inventory foundation, then layer on Etsy sync*
+### Phase 1: Admin Foundation ✅ COMPLETE
+*Artist management, product catalog, Square integration*
 
 **1a. Artist Management** ✅
 - [x] Artist management (profiles, commission rates, contact info)
 - [x] Artist CRUD Cloud Functions
 - [x] Artist UI (list, create, edit, delete)
+- [x] Artist image upload
 
-**1b. Square Integration (Foundation)**
-- [ ] Square developer account and sandbox setup
-- [ ] Square Catalog API integration (create/update items)
-- [ ] Square Inventory API integration (track quantities)
-- [ ] Product creation → pushes to Square → stores IDs in Firestore
-- [ ] SKU generation for barcode scanning
-- [ ] Square webhooks for inventory/catalog changes
+**1b. Square Integration** ✅
+- [x] Square developer account and sandbox setup
+- [x] Square Catalog API integration (create/update items)
+- [x] Square Inventory API integration (track quantities)
+- [x] Product creation → pushes to Square → stores IDs in Firestore
+- [x] SKU generation for barcode scanning
+- [x] Square webhooks for inventory/catalog changes
 
-**1c. Product Management (with Square)**
-- [ ] Product CRUD synced with Square catalog
-- [ ] Artist attribution (link products to artists)
-- [ ] Commission rate per product (optional override)
-- [ ] Quantity-based inventory tracking
+**1c. Product Management** ✅
+- [x] Product CRUD synced with Square catalog
+- [x] Artist attribution (link products to artists)
+- [x] Commission rate per product (optional override)
+- [x] Quantity-based inventory tracking
+- [x] Category management with drag-and-drop reordering
+- [x] Product filtering (search, category, artist, status)
 
-**1d. Etsy Integration (after Square foundation)**
+**1d. Infrastructure** ✅
+- [x] Firebase projects (dev + prod)
+- [x] CI/CD with Workload Identity Federation
+- [x] 19 Cloud Functions deployed
+- [x] Testing (Vitest + Storybook + Chromatic)
+
+### Phase 2: Public Website (NOW) - Epic #93
+*Webflow integration for public-facing content*
+
+**2a. Artist Showcase**
+- [ ] Public API endpoint for active artists (read-only)
+- [ ] Artist profile pages on Webflow
+- [ ] Artist gallery/listing page
+- [ ] Integration approach decision (ADR)
+
+**2b. Workshop/Class Display**
+- [ ] Class listing API (depends on Phase 3 backend)
+- [ ] Upcoming classes display
+- [ ] Class detail pages
+- [ ] Registration flow (link to booking)
+
+**2c. Music Lesson Information**
+- [ ] Music program overview pages
+- [ ] Teacher profiles (when ready)
+- [ ] Inquiry/contact form for lessons
+
+### Phase 3: Classes & Workshops - Epic #9
+*Online registration and payment for crafting classes*
+
+- [ ] Class domain types and validation
+- [ ] Class CRUD Cloud Functions
+- [ ] Class catalog (browse-first, not calendar-first)
+- [ ] Online registration with Stripe payment
+- [ ] Coupon/discount codes
+- [ ] Confirmation emails
+- [ ] Customer portal (view purchased classes)
+- [ ] Admin: view registrations, class rosters
+- [ ] Instructor payout tracking
+
+### Phase 4: Music Lessons - Epic #10
+*Intro lessons and recurring scheduling for Suzuki method instruction*
+
+- [ ] Teacher profiles and availability management
+- [ ] First-lesson booking with prepayment
+- [ ] Recurring lesson scheduling (after student vetted)
+- [ ] Calendar management for teachers
+- [ ] Student management and progress tracking
+- [ ] Teacher payout tracking
+- [ ] Lesson packages (buy 4 get 1 free, etc.)
+
+### Phase 5: Store Opening & Sales Tracking - Epic #8
+*When physical store opens - POS, Etsy sync, payouts*
+
+**5a. Square POS**
+- [ ] Square POS terminal setup at store
+- [ ] SKU-based barcode scanning
+- [ ] Create Sale records from Square orders
+
+**5b. Etsy Integration** (blocked on API approval)
 - [ ] Etsy API integration (sync listings)
 - [ ] Push Square catalog → Etsy listings
 - [ ] Etsy order webhooks/polling
-- [ ] Bidirectional inventory sync
+- [ ] Create Sale records from Etsy orders
 
-**1e. Sales & Payouts**
+**5c. Bidirectional Sync**
+- [ ] Sale in Square → Update Etsy quantity
+- [ ] Sale on Etsy → Update Square quantity
+- [ ] Sync conflict detection and resolution UI
+
+**5d. Sales & Payouts**
 - [ ] Record sales from Square and Etsy
 - [ ] Track which artist made which item
 - [ ] Monthly payout calculation per artist
 - [ ] Payout reports (what sold, commission, amount owed)
-
-### Phase 2: Store Opening (FUTURE)
-*Physical location opens - use Square POS with existing integration*
-
-- [ ] Square POS terminal setup
-- [ ] Barcode label printing (may need Retail Plus plan)
-- [ ] Sync conflict detection and resolution UI
-- [ ] Inventory movement audit log
-
-### Phase 3: Classes & Workshops (FUTURE)
-*Start offering crafting classes*
-
-- [ ] Class catalog (browse-first, not calendar-first)
-- [ ] Class creation (name, description, date, cost, capacity)
-- [ ] Online registration with payment
-- [ ] Confirmation emails
-- [ ] Customer portal (view purchased classes)
-- [ ] Instructor payout tracking
-
-### Phase 4: Music Lessons (FUTURE)
-*Add music instruction*
-
-- [ ] Teacher profiles and availability
-- [ ] First-lesson booking with prepayment
-- [ ] Recurring lesson scheduling
-- [ ] Teacher payout tracking
-- [ ] Student management
+- [ ] Mark payouts as completed
 
 ---
 
@@ -497,4 +539,4 @@ Etsy webhooks require app approval. Initial implementation uses polling:
 
 ---
 
-*Last updated: 2026-01-16*
+*Last updated: 2025-01-19*
