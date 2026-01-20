@@ -36,6 +36,8 @@ export interface SyncArtistInput {
   artist: Artist;
   /** If true, publish the item to the live site after sync */
   publish?: boolean;
+  /** Whether this sync is from a dev environment */
+  isDev?: boolean;
 }
 
 /**
@@ -62,11 +64,20 @@ export interface WebflowFieldData {
   name: string;
   slug: string;
   'firebase-id': string;
+  'is-dev-environment': boolean;
   'profile-image'?: {
     url: string;
     alt?: string;
   };
   [key: string]: unknown;
+}
+
+/**
+ * Options for mapping artist to Webflow field data
+ */
+export interface MapArtistOptions {
+  /** Whether this sync is from a dev environment */
+  isDev: boolean;
 }
 
 /**
@@ -78,6 +89,7 @@ export interface WebflowFieldData {
  * - name: Title field (required by Webflow)
  * - slug: URL slug (required by Webflow, auto-generated from name)
  * - profile-image: URL to Firebase Storage image
+ * - is-dev-environment: True if synced from dev environment
  *
  * Webflow-only fields (preserved, not touched):
  * - featured
@@ -85,13 +97,18 @@ export interface WebflowFieldData {
  * - pull-quote
  *
  * @param artist - Firebase artist to map
+ * @param options - Mapping options (isDev flag)
  * @returns Webflow CMS field data
  */
-export function mapArtistToFieldData(artist: Artist): WebflowFieldData {
+export function mapArtistToFieldData(
+  artist: Artist,
+  options: MapArtistOptions
+): WebflowFieldData {
   const fieldData: WebflowFieldData = {
     'firebase-id': artist.id,
     name: artist.name,
     slug: generateSlug(artist.name),
+    'is-dev-environment': options.isDev,
   };
 
   // Add profile image if available
@@ -119,11 +136,11 @@ export class ArtistService {
    * Creates a new item if it doesn't exist, updates if it does.
    * Optionally publishes the item to the live site.
    *
-   * @param input - Artist data to sync (includes publish flag)
+   * @param input - Artist data to sync (includes publish and isDev flags)
    * @returns Result with Webflow item ID
    */
   async syncArtist(input: SyncArtistInput): Promise<SyncArtistResult> {
-    const { artist, publish = false } = input;
+    const { artist, publish = false, isDev = false } = input;
 
     // Check if artist already exists in Webflow by firebase-id
     const existingItem = await this.findByFirebaseId(artist.id);
@@ -133,12 +150,12 @@ export class ArtistService {
 
     if (existingItem) {
       // Update existing item
-      await this.updateItem(existingItem.id, artist);
+      await this.updateItem(existingItem.id, artist, isDev);
       webflowItemId = existingItem.id;
       isNew = false;
     } else {
       // Create new item
-      const newItem = await this.createItem(artist);
+      const newItem = await this.createItem(artist, isDev);
       webflowItemId = newItem.id;
       isNew = true;
     }
@@ -227,8 +244,11 @@ export class ArtistService {
   /**
    * Create a new artist item in Webflow CMS
    */
-  private async createItem(artist: Artist): Promise<WebflowItemWithId> {
-    const fieldData = mapArtistToFieldData(artist);
+  private async createItem(
+    artist: Artist,
+    isDev: boolean
+  ): Promise<WebflowItemWithId> {
+    const fieldData = mapArtistToFieldData(artist, { isDev });
 
     const response = await this.client.collections.items.createItem(
       this.collectionId,
@@ -249,8 +269,12 @@ export class ArtistService {
   /**
    * Update an existing artist item in Webflow CMS
    */
-  private async updateItem(itemId: string, artist: Artist): Promise<void> {
-    const fieldData = mapArtistToFieldData(artist);
+  private async updateItem(
+    itemId: string,
+    artist: Artist,
+    isDev: boolean
+  ): Promise<void> {
+    const fieldData = mapArtistToFieldData(artist, { isDev });
 
     await this.client.collections.items.updateItem(this.collectionId, itemId, {
       isArchived: false,
