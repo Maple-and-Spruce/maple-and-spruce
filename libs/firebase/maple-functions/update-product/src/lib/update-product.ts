@@ -128,6 +128,7 @@ export const updateProduct = Functions.endpoint
       const product = await ProductRepository.update({
         id: data.id,
         artistId: data.artistId,
+        categoryId: data.categoryId,
         customCommissionRate: data.customCommissionRate,
         status: data.status,
       });
