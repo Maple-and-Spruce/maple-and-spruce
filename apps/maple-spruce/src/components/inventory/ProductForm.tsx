@@ -30,7 +30,8 @@ import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
 interface ProductFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateProductInput) => Promise<void>;
+  /** Returns the created/updated product so we can upload images after creation */
+  onSubmit: (data: CreateProductInput) => Promise<Product | void>;
   product?: Product;
   artists: Artist[];
   categories: Category[];
