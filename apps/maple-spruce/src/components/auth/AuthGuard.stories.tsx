@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box, Typography } from '@mui/material';
-import { AuthGuard } from './AuthGuard';
+import { AuthGuard } from '@maple/react/auth';
 
 /**
  * AuthGuard protects routes and redirects unauthenticated users.

@@ -19,27 +19,18 @@ import {
   Typography,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import HomeIcon from '@mui/icons-material/Home';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import PeopleIcon from '@mui/icons-material/People';
-import CategoryIcon from '@mui/icons-material/Category';
-import { UserMenu } from '../auth';
+import { UserMenu } from '@maple/react/auth';
 
-interface NavItem {
+export interface NavItem {
   label: string;
   href: string;
   icon: ReactNode;
 }
 
-const navItems: NavItem[] = [
-  { label: 'Home', href: '/', icon: <HomeIcon /> },
-  { label: 'Inventory', href: '/inventory', icon: <InventoryIcon /> },
-  { label: 'Categories', href: '/categories', icon: <CategoryIcon /> },
-  { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
-];
-
-interface AppShellProps {
+export interface AppShellProps {
   children: ReactNode;
+  navItems: NavItem[];
+  title?: string;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
 }
 
@@ -48,7 +39,12 @@ interface AppShellProps {
  * Provides consistent AppBar and navigation across all authenticated pages.
  * Responsive: shows hamburger menu on mobile, inline buttons on desktop.
  */
-export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
+export function AppShell({
+  children,
+  navItems,
+  title = 'Maple & Spruce',
+  maxWidth = 'lg',
+}: AppShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -58,8 +54,10 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
 
   const drawer = (
     <Box sx={{ width: 250 }}>
-      <Box sx={{ p: 2, bgcolor: 'secondary.main', color: 'secondary.contrastText' }}>
-        <Typography variant="h6">Maple & Spruce</Typography>
+      <Box
+        sx={{ p: 2, bgcolor: 'secondary.main', color: 'secondary.contrastText' }}
+      >
+        <Typography variant="h6">{title}</Typography>
       </Box>
       <List>
         {navItems.map((item) => {
@@ -77,7 +75,9 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
                   },
                 }}
               >
-                <ListItemIcon sx={{ color: isActive ? 'secondary.main' : 'inherit' }}>
+                <ListItemIcon
+                  sx={{ color: isActive ? 'secondary.main' : 'inherit' }}
+                >
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText primary={item.label} />
@@ -115,11 +115,13 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
               flexGrow: { xs: 1, sm: 0 },
             }}
           >
-            Maple & Spruce
+            {title}
           </Typography>
 
           {/* Desktop navigation */}
-          <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, flexGrow: 1 }}>
+          <Box
+            sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, flexGrow: 1 }}
+          >
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -130,7 +132,9 @@ export function AppShell({ children, maxWidth = 'lg' }: AppShellProps) {
                   color="inherit"
                   startIcon={item.icon}
                   sx={{
-                    backgroundColor: isActive ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    backgroundColor: isActive
+                      ? 'rgba(255, 255, 255, 0.15)'
+                      : 'transparent',
                     '&:hover': {
                       backgroundColor: isActive
                         ? 'rgba(255, 255, 255, 0.2)'

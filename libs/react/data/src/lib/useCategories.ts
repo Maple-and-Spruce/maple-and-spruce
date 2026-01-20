@@ -54,7 +54,9 @@ export function useCategories() {
       setCategoriesState({
         status: 'error',
         error:
-          error instanceof Error ? error.message : 'Failed to fetch categories',
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch categories',
       });
     }
   }, []);

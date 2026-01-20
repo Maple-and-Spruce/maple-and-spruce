@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import {
+  User,
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
 import { getMapleAuth } from '@maple/ts/firebase/firebase-config';
 
 /**

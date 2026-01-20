@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useAuth } from '../../hooks';
+import { useAuth } from './useAuth';
 
 /**
  * User account menu with logout functionality.

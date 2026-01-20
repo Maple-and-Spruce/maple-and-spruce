@@ -1,4 +1,3 @@
-export { useArtists } from './useArtists';
-export { useAuth } from './useAuth';
-export { useCategories } from './useCategories';
-export { useProducts } from './useProducts';
+// Re-export from library for backward compatibility
+export { useArtists, useCategories, useProducts } from '@maple/react/data';
+export { useAuth } from '@maple/react/auth';

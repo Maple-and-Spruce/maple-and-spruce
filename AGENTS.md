@@ -67,13 +67,16 @@
 | Firebase admin SDK | Complete | `libs/firebase/database/` |
 | MUI theme | Complete | `libs/react/theme/` |
 | React UI components | Complete | `libs/react/ui/` (ImageUpload, DeleteConfirmDialog) |
+| React auth library | Complete | `libs/react/auth/` (AuthGuard, UserMenu, useAuth) |
+| React layout library | Complete | `libs/react/layout/` (AppShell) |
+| React data hooks | Complete | `libs/react/data/` (useProducts, useArtists, useCategories) |
 | Domain types library | Complete | `libs/ts/domain/` |
 | Validation library | Complete | `libs/ts/validation/` |
 | API types library | Complete | `libs/ts/firebase/api-types/` |
 | Functions core library | Complete | `libs/firebase/functions/` |
 | Functions app | Complete | `apps/functions/` |
-| Authentication | Complete | `apps/maple-spruce/src/components/auth/` |
-| Navigation (responsive) | Complete | `apps/maple-spruce/src/components/layout/` |
+| Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
+| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
 | Chromatic CI | Complete | `.github/workflows/chromatic.yml` |
