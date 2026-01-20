@@ -5,7 +5,7 @@ import { Box, Typography, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Artist, CreateArtistInput } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
-import { ArtistList, ArtistForm } from '../../components/artists';
+import { ArtistList, ArtistFormSignals } from '../../components/artists';
 import { AppShell } from '../../components/layout';
 import { useArtists } from '../../hooks';
 
@@ -110,7 +110,7 @@ export default function ArtistsPage() {
         onDelete={handleOpenDelete}
       />
 
-      <ArtistForm
+      <ArtistFormSignals
         open={isFormOpen}
         onClose={handleCloseForm}
         onSubmit={handleSubmitForm}
