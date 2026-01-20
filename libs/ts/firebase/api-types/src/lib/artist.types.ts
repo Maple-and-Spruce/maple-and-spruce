@@ -9,6 +9,7 @@ import type {
   CreateArtistInput,
   UpdateArtistInput,
   ArtistStatus,
+  PublicArtist,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -85,4 +86,20 @@ export interface UploadArtistImageResponse {
   success: boolean;
   /** Public URL of the uploaded image */
   url: string;
+}
+
+// ============================================================================
+// Get Public Artists (no auth required - for Webflow integration)
+// ============================================================================
+
+/**
+ * Request for public artists endpoint.
+ * Currently empty but structured for future pagination support.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface GetPublicArtistsRequest {}
+
+export interface GetPublicArtistsResponse {
+  /** Active artists with sensitive data stripped */
+  artists: PublicArtist[];
 }

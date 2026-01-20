@@ -41,3 +41,29 @@ export type UpdateArtistInput = Partial<
 > & {
   id: string;
 };
+
+/**
+ * Public-facing artist information for website display.
+ * Excludes sensitive data like email, commission rates, and internal notes.
+ */
+export interface PublicArtist {
+  id: string;
+  name: string;
+  photoUrl?: string;
+  /** Only 'active' artists are returned publicly, but included for type safety */
+  status: ArtistStatus;
+  createdAt: Date;
+}
+
+/**
+ * Convert a full Artist to PublicArtist by stripping sensitive fields.
+ */
+export function toPublicArtist(artist: Artist): PublicArtist {
+  return {
+    id: artist.id,
+    name: artist.name,
+    photoUrl: artist.photoUrl,
+    status: artist.status,
+    createdAt: artist.createdAt,
+  };
+}
