@@ -1,5 +1,5 @@
 {
-  "name": "@maple/maple-functions/sync-artist-to-webflow",
+  "name": "@maple/sync-artist-to-webflow",
   "version": "0.0.1",
   "private": true,
   "type": "commonjs",

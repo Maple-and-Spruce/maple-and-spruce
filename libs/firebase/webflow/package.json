@@ -1,5 +1,5 @@
 {
-  "name": "@maple/firebase/webflow",
+  "name": "@maple/firebase-webflow",
   "version": "0.0.1",
   "private": true,
   "type": "commonjs",
