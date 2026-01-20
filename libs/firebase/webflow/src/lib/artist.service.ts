@@ -162,7 +162,9 @@ export class ArtistService {
    * @param itemId - Webflow item ID to publish
    */
   async publishItem(itemId: string): Promise<void> {
-    await this.client.collections.items.publishItem(this.collectionId, itemId);
+    await this.client.collections.items.publishItem(this.collectionId, {
+      itemIds: [itemId],
+    });
   }
 
   /**

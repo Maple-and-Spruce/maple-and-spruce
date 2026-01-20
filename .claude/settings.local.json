@@ -93,7 +93,9 @@
       "Bash(gh issue create:*)",
       "Bash(gh label create:*)",
       "Bash(gh run cancel:*)",
-      "Bash(gh run watch:*)"
+      "Bash(gh run watch:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(npx nx reset)"
     ]
   }
 }
