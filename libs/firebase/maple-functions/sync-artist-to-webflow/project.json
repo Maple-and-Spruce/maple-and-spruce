@@ -1,0 +1,21 @@
+{
+  "name": "sync-artist-to-webflow",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/sync-artist-to-webflow/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/firebase/maple-functions/sync-artist-to-webflow",
+        "main": "libs/firebase/maple-functions/sync-artist-to-webflow/src/index.ts",
+        "tsConfig": "libs/firebase/maple-functions/sync-artist-to-webflow/tsconfig.lib.json",
+        "assets": ["libs/firebase/maple-functions/sync-artist-to-webflow/*.md"],
+        "format": ["cjs"],
+        "generatePackageJson": true
+      }
+    }
+  }
+}

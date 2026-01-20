@@ -88,7 +88,10 @@
       "Bash(npx test-storybook:*)",
       "Bash(npx playwright:*)",
       "Bash(npx storybook:*)",
-      "Bash(xargs kill -9)"
+      "Bash(xargs kill -9)",
+      "Bash(gh issue close:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh label create:*)"
     ]
   }
 }
