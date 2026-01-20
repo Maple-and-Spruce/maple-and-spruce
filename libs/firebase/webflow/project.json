@@ -1,0 +1,28 @@
+{
+  "name": "webflow",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/webflow/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/firebase/webflow",
+        "main": "libs/firebase/webflow/src/index.ts",
+        "tsConfig": "libs/firebase/webflow/tsconfig.lib.json",
+        "assets": ["libs/firebase/webflow/*.md"],
+        "format": ["cjs"],
+        "generatePackageJson": true
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../../coverage/libs/firebase/webflow"
+      }
+    }
+  }
+}

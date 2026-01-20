@@ -7,101 +7,69 @@
 ## Current Status
 
 **Date**: 2026-01-20
-**Status**: ✅ Webflow integration strategy documented (ADR-016)
+**Status**: ✅ Webflow sync deployed and working
 
 ### Completed Today
+
+- **Webflow CMS Sync - DEPLOYED & TESTED:**
+  - `syncArtistToWebflow` function deployed to dev environment
+  - Successfully syncing artists to Webflow CMS (tested with "krog" and "a boy named cat")
+  - Artists appear in Webflow CMS as "Queued to publish"
+  - Fixed IAM permissions for Firestore triggers (eventarc.eventReceiver, run.invoker, iam.serviceAccountTokenCreator)
+
+- **Webflow CMS Sync Implementation:**
+  - Installed `webflow-api` SDK
+  - Created `libs/firebase/webflow/` library with:
+    - `Webflow` utility class (follows Square pattern)
+    - `ArtistService` for syncing artists to Webflow CMS
+    - Exports: `WEBFLOW_SECRET_NAMES`, `WEBFLOW_STRING_NAMES`
+  - Created `syncArtistToWebflow` Firestore trigger function:
+    - Triggers on `artists/{artistId}` document writes
+    - Creates/updates/deletes Webflow CMS items based on artist status
+    - Only syncs `active` artists to Webflow
+    - Stores `webflowItemId` back in Firestore for reference
+  - Added `webflowItemId` field to `Artist` domain type
+  - Added `updateWebflowItemId()` to `ArtistRepository`
+  - Added Webflow config to `.env.dev` and `.env.prod`
+  - Fixed `nx.json` - removed `^build` dependency from esbuild
+
+- **CI/CD Fixes:**
+  - Fixed invalid package names in library package.json files (had slashes)
+  - Removed unnecessary package.json files from libs (not needed, esbuild bundles from source)
+  - Fixed project.json naming for sync-artist-to-webflow (must be `firebase-maple-functions-*`)
+
+- **Documentation:**
+  - Added directive #9: Let CI/CD handle deployments
+  - Added directive #10: No package.json in libraries
+  - Added directive #11: Function library naming convention
+  - Added "Creating a New Cloud Function" guide in AGENTS.md
+
+### Outstanding Questions
+
+- **Auto-publish to Webflow?** Currently items sync as "Queued to publish" and require manual publish in Webflow. Consider adding:
+  - A checkbox in the artist form modal: "Publish to website"
+  - When checked, call `webflow.collections.items.publish()` after creating/updating the item
+  - This gives control over what goes live vs stays as a draft
+
+### Previous Session
 - Closed #26 (Square Integration Setup) - was already complete
-- Storybook deployed to Chromatic: https://696eb36fa42138624de9b376-eeojzkoehk.chromatic.com/
+- Storybook deployed to Chromatic
 - **Public Artist API (Phase 2a):**
   - Created `PublicArtist` type in domain library (strips sensitive fields)
   - Created `toPublicArtist()` helper function
   - Added `GetPublicArtistsRequest/Response` API types
   - Created `getPublicArtists` Cloud Function (no auth required)
   - Added Firestore composite index for `status + name` query
-  - Updated CORS to allow Webflow domains (mapleandsprucefolkarts.com, mapleandsprucewv.com + www variants)
+  - Updated CORS to allow Webflow domains
 - **Webflow Integration Strategy (ADR-016):**
   - Decided on CMS Collection Sync approach (vs embedded components)
-  - Katie gets full design control in Webflow
-  - SEO-friendly, fast page loads
-  - Researched Webflow CMS API:
-    - Authentication: Site Token (stored in Firebase secrets)
-    - SDK: `webflow-api` v3.2.1
-    - Rate limits: 60 req/min, 1000/hr, bulk ops up to 100 items
-    - Images: URL references to Firebase Storage (works!)
-  - Documented e-commerce considerations (Square Web Payments SDK for future)
-
-### Previous Session
-- **Fixed Signals-based form editing (critical bug):**
-  - Root cause: `useSignalEffect` doesn't track React prop changes, only signal changes
-  - Forms weren't populating when editing because the effect watching `product`/`artist`/`category` props never re-ran
-  - Fix: Changed from `useSignalEffect` to React's `useEffect` with proper dependency array `[open, entity]`
-  - Updated: `ProductFormSignals.tsx`, `ArtistFormSignals.tsx`, `CategoryFormSignals.tsx`
-  - Updated `SIGNALS-MIGRATION-GUIDE.md` with new Pitfall #6 documenting this pattern
-  - All three forms now properly populate when editing existing entities
-  - Added `RealEditFlow` and `EditMultipleProductsSequentially` Storybook stories
-    - These use a wrapper component that simulates actual app state management
-    - Tests the closed → open → populated transition that exposed the bug
-    - Would have caught this bug before the fix was applied
-
-- **Unit Testing Infrastructure (#24):**
-  - Set up Vitest workspace configuration (`vitest.workspace.ts`)
-  - Configured validation library for testing (`libs/ts/validation/vitest.config.ts`)
-  - Configured domain library for testing (`libs/ts/domain/vitest.config.ts`)
-  - Wrote 7 validation suite tests (139 tests total)
-  - Wrote domain helper tests for `generateSku`, `isCacheStale`, `formatPrice`, `toCents` (25 tests)
-  - Added unit test job to CI workflow (`.github/workflows/build-check.yml`)
-  - Added `test` and `test:coverage` scripts to `package.json`
-  - Created implementation plan at `docs/plans/TESTING-INFRASTRUCTURE-PLAN.md`
-
-- **Storybook 10 implementation:**
-  - Installed and configured `@storybook/nextjs` with Nx integration
-  - Created mock data fixtures for artists, products, categories
-  - Created Firebase mock utilities
-  - Wrote stories for all 15 components with proper fixtures and states
-  - Added accessibility addon (`@storybook/addon-a11y`)
-  - Added Storybook build to CI workflow (`.github/workflows/build-check.yml`)
-  - Created Chromatic workflow for visual regression (`.github/workflows/chromatic.yml`)
-  - Updated documentation (PATTERNS-AND-PRACTICES.md, DECISIONS.md ADR-014, AGENTS.md)
-
-### Previous Work
-- Fixed ProductForm status enum mismatch
-- Added quantity field to ProductForm
-- Fixed Square batchUpsert duplicate object error (nest variations in items)
-- Fixed variation lookup (check both relatedObjects and itemData.variations)
-- **Added global Category system:**
-  - Category domain types, API types, validation
-  - CategoryRepository for Firestore
-  - 5 Cloud Functions: getCategories, createCategory, updateCategory, deleteCategory, reorderCategories
-  - useCategories hook
-- **Replaced card-based inventory with MUI DataGrid table:**
-  - ProductDataTable component with sortable columns
-  - ProductFilterToolbar with search, category, artist, status, in-stock filters
-  - Category dropdown in ProductForm
-- **Category management UI:**
-  - /categories page with full CRUD
-  - CategoryForm, CategoryList, DeleteConfirmDialog components
-  - Navigation link added to AppShell
-  - **Drag-and-drop category ordering** using @dnd-kit (removed numeric order field from form)
-  - Added `reorderCategories` Cloud Function - batch updates all order values atomically
-- **Design token system:**
-  - Created comprehensive design tokens in `lib/theme/theme.ts`
-  - Semantic tokens: colors, surfaces, borders, text, spacing, radii, shadows
-  - Swapped primary (brown/action) and secondary (sage green/header) for better UX
-  - White backgrounds for inputs and tables
-  - Sage-tinted table headers (`#C8D4C2`) for visual distinction
-  - CSS custom properties for non-MUI usage
+  - Researched Webflow CMS API authentication, SDK, rate limits, image handling
 
 ### Next Steps
-1. **Phase 2a: Artist Showcase** (Epic #93)
-   - [x] Public Artist API endpoint
-   - [x] ADR for Webflow integration approach (ADR-016)
-   - [ ] Deploy `getPublicArtists` function to dev/prod
-   - [ ] Create Firestore index in Firebase Console (or deploy via CLI)
-   - [ ] Set up Webflow CMS "Artists" collection (Katie)
-   - [ ] Create `syncArtistToWebflow` Cloud Function
-   - [ ] Initial data migration to Webflow CMS
-2. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-3. Etsy Integration (#4) - waiting for app approval
+1. **Initial artist migration** - Sync existing active artists to Webflow
+2. **Consider auto-publish feature** (see outstanding questions)
+3. Create initial categories (Pottery, Textiles, Jewelry, etc.)
+4. Etsy Integration (#4) - waiting for app approval
 
 ### Blockers
 - Etsy app still pending approval
@@ -121,6 +89,12 @@
 |---------|---------------------------|
 | Production | `prod` ✅ |
 | Development | `dev` ✅ |
+
+### Webflow IDs
+| Item | ID |
+|------|-----|
+| Site ID | `691a5d6c07ba1bf4714e826f` |
+| Artists Collection ID | `696f08a32a1eb691801f17ad` |
 
 ### Test Commands
 ```bash
@@ -144,21 +118,19 @@ npx nx run maple-spruce:storybook
 npx nx run maple-spruce:build-storybook
 ```
 
-### Deploy Commands
-```bash
-# Deploy functions to dev
-npx nx run functions:build && firebase deploy --only functions --project=maple-and-spruce-dev
+### Deployment
+**Let CI/CD handle deployments** - don't run manual `firebase deploy` commands.
 
-# Deploy functions to prod
-npx nx run functions:build && firebase deploy --only functions --project=maple-and-spruce
+Functions deploy automatically when PRs merge to main via `.github/workflows/firebase-functions-merge.yml`.
+
+```bash
+# To deploy: just merge your PR to main
+# CI/CD will build and deploy automatically
 ```
 
-### New Category Functions
-- `getCategories` - List all categories (ordered by display order)
-- `createCategory` - Create new category (admin only)
-- `updateCategory` - Update category (admin only)
-- `deleteCategory` - Delete category (admin only, fails if products use it)
-- `reorderCategories` - Batch reorder all categories (admin only, renormalizes order values)
+### Deployed Cloud Functions
+- `syncArtistToWebflow` - Firestore trigger that syncs artist changes to Webflow CMS
+- `getPublicArtists` - Public API for fetching active artists (no auth required)
 
 ### Square Webhook URLs (register in Square Dashboard)
 | Environment | URL |
@@ -176,4 +148,4 @@ See `history/` folder for detailed session logs:
 
 ---
 
-*Last updated: 2026-01-19*
+*Last updated: 2026-01-20*

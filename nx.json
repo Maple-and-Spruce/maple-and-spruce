@@ -75,5 +75,11 @@
         "unitTestRunner": "vitest"
       }
     }
+  },
+  "targetDefaults": {
+    "@nx/esbuild:esbuild": {
+      "cache": true,
+      "inputs": ["production", "^production"]
+    }
   }
 }
