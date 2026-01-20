@@ -13,6 +13,9 @@
     "components/**/*.stories.tsx",
     "components/**/*.stories.mdx",
     ".storybook/*.js",
-    ".storybook/*.ts"
+    ".storybook/*.ts",
+    ".storybook/*.tsx",
+    "../../libs/react/*/src/**/*.stories.ts",
+    "../../libs/react/*/src/**/*.stories.tsx"
   ]
 }

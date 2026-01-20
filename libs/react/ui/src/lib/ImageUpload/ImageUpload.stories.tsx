@@ -4,7 +4,7 @@ import { ImageUpload, type ImageUploadState } from './ImageUpload';
 
 const meta = {
   component: ImageUpload,
-  title: 'Common/ImageUpload',
+  title: 'UI/ImageUpload',
   parameters: {
     layout: 'centered',
   },

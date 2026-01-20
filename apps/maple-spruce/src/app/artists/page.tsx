@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Artist, CreateArtistInput } from '@maple/ts/domain';
-import {
-  ArtistList,
-  ArtistForm,
-  DeleteConfirmDialog,
-} from '../../components/artists';
+import { DeleteConfirmDialog } from '@maple/react/ui';
+import { ArtistList, ArtistForm } from '../../components/artists';
 import { AppShell } from '../../components/layout';
 import { useArtists } from '../../hooks';
 
@@ -123,10 +120,17 @@ export default function ArtistsPage() {
 
       <DeleteConfirmDialog
         open={!!artistToDelete}
-        artist={artistToDelete}
         onClose={handleCloseDelete}
         onConfirm={handleConfirmDelete}
         isDeleting={isDeleting}
+        title="Delete Artist?"
+        itemName={artistToDelete?.name ?? ''}
+        warningContent={
+          <Alert severity="warning">
+            Consider setting the artist to "inactive" instead to preserve
+            historical sales records. Deleting cannot be undone.
+          </Alert>
+        }
       />
     </AppShell>
   );
