@@ -7,9 +7,21 @@
 ## Current Status
 
 **Date**: 2026-01-19
-**Status**: ✅ Testing infrastructure complete
+**Status**: ✅ Signals form editing fix complete
 
 ### Completed Today
+- **Fixed Signals-based form editing (critical bug):**
+  - Root cause: `useSignalEffect` doesn't track React prop changes, only signal changes
+  - Forms weren't populating when editing because the effect watching `product`/`artist`/`category` props never re-ran
+  - Fix: Changed from `useSignalEffect` to React's `useEffect` with proper dependency array `[open, entity]`
+  - Updated: `ProductFormSignals.tsx`, `ArtistFormSignals.tsx`, `CategoryFormSignals.tsx`
+  - Updated `SIGNALS-MIGRATION-GUIDE.md` with new Pitfall #6 documenting this pattern
+  - All three forms now properly populate when editing existing entities
+  - Added `RealEditFlow` and `EditMultipleProductsSequentially` Storybook stories
+    - These use a wrapper component that simulates actual app state management
+    - Tests the closed → open → populated transition that exposed the bug
+    - Would have caught this bug before the fix was applied
+
 - **Unit Testing Infrastructure (#24):**
   - Set up Vitest workspace configuration (`vitest.workspace.ts`)
   - Configured validation library for testing (`libs/ts/validation/vitest.config.ts`)
