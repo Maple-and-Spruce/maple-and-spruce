@@ -16,9 +16,17 @@
    - If you accidentally see a secret, do not repeat it - warn the user to rotate it
 2. **Keep documentation current** - Update `docs/sessions/SESSION.md` after completing tasks. Archive completed sessions to `docs/sessions/history/YYYY-MM-DD.md`.
 3. **Read before acting** - Start sessions by reading AGENTS.md and `docs/sessions/SESSION.md` for context.
-4. **Check GitHub issues** - Run `gh issue list --label phase-1` to see current work.
+4. **Check GitHub issues** - Run `gh issue list --label phase-2` to see current work.
 5. **Update Implementation Status** - Mark features as "In progress" or "Complete" in this file as work progresses.
 6. **Use feature branches** - Never commit directly to main.
+7. **Always write tests** - When adding new functions, utilities, or domain logic:
+   - Add unit tests alongside the code (e.g., `artist.ts` → `artist.spec.ts`)
+   - Run `npm test` before creating PRs
+   - If fixing a bug, add a test that would have caught it
+8. **Use GitHub issues for work tracking** - Before starting significant work:
+   - Create or find an existing issue for the work
+   - Reference the issue in PR descriptions (`Closes #XX`)
+   - Check off testing requirements in the issue before closing
 
 ---
 
