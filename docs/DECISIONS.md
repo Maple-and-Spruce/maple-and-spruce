@@ -539,6 +539,65 @@ Use Storybook 10 with `@storybook/nextjs` framework and `@storybook/addon-a11y` 
 
 ---
 
+## ADR-015: Preact Signals for Form State Management
+
+**Status:** Accepted
+**Date:** 2026-01-19
+
+### Context
+Complex forms (like ProductForm) currently use multiple `useState` calls, manual dependency tracking in `useMemo`, and explicit error clearing logic. Mountain Sol is adopting Angular signals for state management to simplify logic and ensure correctness. Need an equivalent pattern for the React/Next.js stack.
+
+### Decision
+Adopt [Preact Signals](https://github.com/preactjs/signals) (`@preact/signals-react`) for form state management, starting with a pilot on ProductForm.
+
+Key patterns:
+- **`signal(value)`** - Replaces `useState` for form fields
+- **`computed(fn)`** - Replaces `useMemo` with automatic dependency tracking
+- **`effect(fn)`** - Replaces `useEffect` with automatic cleanup
+- **`batch(fn)`** - Groups multiple updates for single re-render
+
+### Rationale
+1. **Automatic dependency tracking** - No manual dependency arrays to maintain
+2. **Fine-grained reactivity** - Each field updates independently (fewer re-renders)
+3. **Cleaner validation** - Vest + computed signals = always-current validation state
+4. **Mountain Sol alignment** - Same conceptual model as Angular signals enables knowledge sharing
+5. **Minimal bundle impact** - ~2KB gzipped
+6. **React 19 compatible** - Confirmed working with React 19 and the React Compiler
+
+### Alternatives Considered
+- **Zustand** - Good for global state, but no fine-grained reactivity
+- **Jotai** - Similar atomic model, but more complex atom composition
+- **React Hook Form** - Form-specific, doesn't address derived state patterns
+- **XState** - Too heavyweight for form state
+
+### Consequences
+
+**Easier:**
+- Validation always reflects current state (no stale errors)
+- No need to manually clear errors on field change
+- Derived values (isValid, errors) update automatically
+- Simpler mental model - state flows naturally
+
+**Harder:**
+- New pattern for team to learn
+- Must use `.value` to read/write (easy to forget)
+- Signals shouldn't be destructured (breaks reactivity)
+- Mixing signals and regular state can be confusing
+
+### Implementation
+- Library: `libs/react/signals/` - Re-exports with project utilities
+- Pilot: `ProductFormSignals.tsx` - Side-by-side with original
+- Docs: `SIGNALS-ADOPTION-PLAN.md`, `SIGNALS-MIGRATION-GUIDE.md`
+- Next: Evaluate after pilot, expand to other forms if successful
+
+### Migration Strategy
+1. Create new signal-based component alongside existing
+2. Swap in page when ready
+3. Keep original until confidence is high
+4. Delete original after validation period
+
+---
+
 ## Template for New Decisions
 
 ```markdown
@@ -565,4 +624,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-01-16*
+*Last updated: 2026-01-19*

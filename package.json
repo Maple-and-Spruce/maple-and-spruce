@@ -26,6 +26,7 @@
     "@playwright/test": "^1.36.0",
     "@storybook/addon-a11y": "^10.1.11",
     "@storybook/nextjs": "10.1.11",
+    "@storybook/test-runner": "^0.24.2",
     "@swc-node/register": "1.9.2",
     "@swc/cli": "^0.7.10",
     "@swc/core": "^1.15.0",
@@ -39,9 +40,11 @@
     "@vitest/coverage-v8": "^4.0.0",
     "@vitest/ui": "^4.0.8",
     "chromatic": "^13.3.5",
+    "concurrently": "^9.2.1",
     "esbuild": "^0.27.2",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
+    "http-server": "^14.1.1",
     "jsdom": "^27.1.0",
     "jsonc-eslint-parser": "^2.1.0",
     "nx": "22.3.3",
@@ -52,7 +55,8 @@
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.40.0",
     "vite": "^7.0.0",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "wait-on": "^9.0.3"
   },
   "workspaces": [
     "libs/**",
@@ -68,6 +72,7 @@
     "@mui/material": "^6.0.0",
     "@mui/x-data-grid": "^7.0.0",
     "@mui/x-date-pickers": "^7.0.0",
+    "@preact/signals-react": "^3.6.1",
     "@tanstack/react-query": "^5.0.0",
     "date-fns": "^3.0.0",
     "firebase": "^12.7.0",

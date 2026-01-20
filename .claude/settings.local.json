@@ -81,7 +81,14 @@
       "Bash(npx vitest:*)",
       "Bash(npx nx run-many:*)",
       "Bash(wc:*)",
-      "Bash(npx nx generate:*)"
+      "Bash(npx nx generate:*)",
+      "Bash(npm test:*)",
+      "Bash(git rm:*)",
+      "Bash(npx concurrently:*)",
+      "Bash(npx test-storybook:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx storybook:*)",
+      "Bash(xargs kill -9)"
     ]
   }
 }

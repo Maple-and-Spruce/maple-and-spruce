@@ -5,7 +5,7 @@ import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Category, CreateCategoryInput } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
-import { CategoryList, CategoryForm } from '../../components/categories';
+import { CategoryList, CategoryFormSignals } from '../../components/categories';
 import { AppShell } from '../../components/layout';
 import { useCategories } from '../../hooks';
 
@@ -130,7 +130,7 @@ export default function CategoriesPage() {
         onReorder={handleReorder}
       />
 
-      <CategoryForm
+      <CategoryFormSignals
         open={isFormOpen}
         onClose={handleCloseForm}
         onSubmit={handleSubmitForm}
