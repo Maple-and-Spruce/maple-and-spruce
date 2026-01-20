@@ -15,7 +15,7 @@
  * @see docs/SIGNALS-MIGRATION-GUIDE.md
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -51,7 +51,6 @@ import { productValidation } from '@maple/ts/validation';
 import {
   useSignal,
   useComputed,
-  useSignalEffect,
   batch,
   useSignals,
 } from '@maple/react/signals';
@@ -161,10 +160,14 @@ export function ProductFormSignals({
 
   // ============================================================
   // EFFECTS - Populate form when product prop changes
+  // NOTE: We use React's useEffect here instead of useSignalEffect because
+  // useSignalEffect only tracks signal changes, not React prop changes.
+  // The `open` and `product` props are regular React props that need to be
+  // tracked via the dependency array.
   // ============================================================
 
-  useSignalEffect(() => {
-    // Only run when dialog opens or product changes
+  useEffect(() => {
+    // Only run when dialog opens
     if (!open) return;
 
     if (product) {
@@ -215,7 +218,8 @@ export function ProductFormSignals({
         submissionPhase.value = 'idle';
       });
     }
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product]);
 
   // ============================================================
   // EVENT HANDLERS

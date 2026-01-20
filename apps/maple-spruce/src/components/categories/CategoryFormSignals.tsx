@@ -14,6 +14,7 @@
  * @see docs/SIGNALS-MIGRATION-GUIDE.md
  */
 
+import { useEffect } from 'react';
 import {
   Box,
   Button,
@@ -29,7 +30,6 @@ import { categoryValidation } from '@maple/ts/validation';
 import {
   useSignal,
   useComputed,
-  useSignalEffect,
   batch,
   useSignals,
 } from '@maple/react/signals';
@@ -99,10 +99,14 @@ export function CategoryFormSignals({
 
   // ============================================================
   // EFFECTS - Populate form when category prop changes
+  // NOTE: We use React's useEffect here instead of useSignalEffect because
+  // useSignalEffect only tracks signal changes, not React prop changes.
+  // The `open` and `category` props are regular React props that need to be
+  // tracked via the dependency array.
   // ============================================================
 
-  useSignalEffect(() => {
-    // Only run when dialog opens or category changes
+  useEffect(() => {
+    // Only run when dialog opens
     if (!open) return;
 
     if (category) {
@@ -122,7 +126,8 @@ export function CategoryFormSignals({
         submitError.value = null;
       });
     }
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, category]);
 
   // ============================================================
   // EVENT HANDLERS

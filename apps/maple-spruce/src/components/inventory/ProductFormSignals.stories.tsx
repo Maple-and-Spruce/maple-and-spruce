@@ -1,11 +1,89 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, within, waitFor } from 'storybook/test';
+import { Button, Box, Typography } from '@mui/material';
 import { ProductFormSignals } from './ProductFormSignals';
+import type { Product, CreateProductInput } from '@maple/ts/domain';
 import {
   mockProduct,
+  mockProductNoImage,
   mockArtists,
   mockCategories,
 } from '../../../.storybook/fixtures';
+
+// ============================================================
+// WRAPPER COMPONENT FOR STATEFUL TESTS
+// This simulates real app usage where dialog opens/closes dynamically
+// ============================================================
+
+interface EditFlowWrapperProps {
+  products: Product[];
+  onSubmit: (data: CreateProductInput) => Promise<void>;
+}
+
+/**
+ * Wrapper that simulates the real app flow:
+ * 1. Shows a list of products with "Edit" buttons
+ * 2. Clicking "Edit" opens the dialog with that product's data
+ * 3. Allows testing the full closed → open → populated transition
+ */
+function EditFlowWrapper({ products, onSubmit }: EditFlowWrapperProps) {
+  const [open, setOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>();
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setEditingProduct(undefined);
+  };
+
+  return (
+    <Box sx={{ p: 2, minWidth: 400 }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        Products
+      </Typography>
+      {products.map((product) => (
+        <Box
+          key={product.id}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            p: 1,
+            mb: 1,
+            border: '1px solid #ddd',
+            borderRadius: 1,
+          }}
+        >
+          <Typography data-testid={`product-name-${product.id}`}>
+            {product.squareCache.name}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => handleEdit(product)}
+            data-testid={`edit-btn-${product.id}`}
+          >
+            Edit
+          </Button>
+        </Box>
+      ))}
+
+      <ProductFormSignals
+        open={open}
+        onClose={handleClose}
+        onSubmit={onSubmit}
+        product={editingProduct}
+        artists={mockArtists}
+        categories={mockCategories}
+      />
+    </Box>
+  );
+}
 
 const meta = {
   component: ProductFormSignals,
@@ -348,6 +426,151 @@ export const EditModeShowsImageUpload: Story = {
     await expect(existingImage).toHaveAttribute(
       'src',
       expect.stringContaining('picsum')
+    );
+  },
+};
+
+// ============================================================
+// REAL USER FLOW TESTS (using wrapper component)
+// These tests simulate the actual app behavior where dialog
+// starts closed and opens dynamically with product data
+// ============================================================
+
+type WrapperStory = StoryObj<typeof EditFlowWrapper>;
+
+/**
+ * Test: Full edit flow - click Edit, verify populated, modify, submit
+ *
+ * This is the CRITICAL test that would have caught the useSignalEffect bug.
+ * It simulates the real user flow:
+ * 1. Dialog starts CLOSED (unlike other tests where open=true from start)
+ * 2. User clicks "Edit" button on a product
+ * 3. Dialog opens and should be populated with product data
+ * 4. User modifies a field
+ * 5. User submits the form
+ * 6. onSubmit receives the updated data
+ */
+export const RealEditFlow: WrapperStory = {
+  render: (args) => <EditFlowWrapper {...args} />,
+  args: {
+    products: [mockProduct, mockProductNoImage],
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+
+    // Step 1: Verify dialog is initially closed
+    const dialog = within(document.body).queryByRole('dialog');
+    expect(dialog).not.toBeInTheDocument();
+
+    // Step 2: Click "Edit" on the first product
+    const editButton = canvas.getByTestId('edit-btn-prod-001');
+    await userEvent.click(editButton);
+
+    // Step 3: Wait for dialog to open and verify it's populated
+    const dialogCanvas = getDialogCanvas();
+    await waitFor(() => {
+      expect(dialogCanvas.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    // CRITICAL CHECK: Verify form is populated with the product data
+    // This is where the bug would manifest - fields would be empty
+    const nameInput = dialogCanvas.getByLabelText(
+      /product name/i
+    ) as HTMLInputElement;
+    await waitFor(() => {
+      expect(nameInput.value).toBe(mockProduct.squareCache.name);
+    });
+
+    // Verify other fields are populated correctly
+    const priceInput = dialogCanvas.getByLabelText(/price/i) as HTMLInputElement;
+    expect(priceInput.value).toBe(
+      (mockProduct.squareCache.priceCents / 100).toString()
+    );
+
+    const quantityInput = dialogCanvas.getByLabelText(
+      /quantity/i
+    ) as HTMLInputElement;
+    expect(quantityInput.value).toBe(
+      mockProduct.squareCache.quantity.toString()
+    );
+
+    // Step 4: Modify the name field
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, 'Updated Ceramic Vase');
+
+    // Step 5: Submit the form
+    const updateButton = dialogCanvas.getByRole('button', { name: /update/i });
+    await userEvent.click(updateButton);
+
+    // Step 6: Verify onSubmit was called with updated data
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const submittedData = (args.onSubmit as ReturnType<typeof fn>).mock
+      .calls[0][0];
+    expect(submittedData.name).toBe('Updated Ceramic Vase');
+    // Other fields should retain their original values
+    expect(submittedData.priceCents).toBe(mockProduct.squareCache.priceCents);
+    expect(submittedData.quantity).toBe(mockProduct.squareCache.quantity);
+  },
+};
+
+/**
+ * Test: Edit multiple products sequentially
+ *
+ * Verifies that editing one product, closing, then editing another
+ * correctly populates with the new product's data (not stale data).
+ */
+export const EditMultipleProductsSequentially: WrapperStory = {
+  render: (args) => <EditFlowWrapper {...args} />,
+  args: {
+    products: [mockProduct, mockProductNoImage],
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialogCanvas = getDialogCanvas();
+
+    // Edit first product
+    await userEvent.click(canvas.getByTestId('edit-btn-prod-001'));
+    await waitFor(() => {
+      expect(dialogCanvas.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    // Verify first product's data is shown
+    let nameInput = dialogCanvas.getByLabelText(
+      /product name/i
+    ) as HTMLInputElement;
+    await waitFor(() => {
+      expect(nameInput.value).toBe(mockProduct.squareCache.name);
+    });
+
+    // Close the dialog
+    await userEvent.click(dialogCanvas.getByRole('button', { name: /cancel/i }));
+    await waitFor(() => {
+      expect(dialogCanvas.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    // Edit second product
+    await userEvent.click(canvas.getByTestId('edit-btn-prod-002'));
+    await waitFor(() => {
+      expect(dialogCanvas.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    // CRITICAL: Verify second product's data is shown (not first product's)
+    nameInput = dialogCanvas.getByLabelText(
+      /product name/i
+    ) as HTMLInputElement;
+    await waitFor(() => {
+      expect(nameInput.value).toBe(mockProductNoImage.squareCache.name);
+    });
+
+    // Verify price matches second product
+    const priceInput = dialogCanvas.getByLabelText(/price/i) as HTMLInputElement;
+    expect(priceInput.value).toBe(
+      (mockProductNoImage.squareCache.priceCents / 100).toString()
     );
   },
 };
