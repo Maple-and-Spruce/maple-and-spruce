@@ -65,7 +65,8 @@
 |---------|--------|----------|
 | Firebase client SDK | Complete | `libs/ts/firebase/firebase-config/` |
 | Firebase admin SDK | Complete | `libs/firebase/database/` |
-| MUI theme | Complete | `apps/maple-spruce/src/lib/theme/` |
+| MUI theme | Complete | `libs/react/theme/` |
+| React UI components | Complete | `libs/react/ui/` (ImageUpload, DeleteConfirmDialog) |
 | Domain types library | Complete | `libs/ts/domain/` |
 | Validation library | Complete | `libs/ts/validation/` |
 | API types library | Complete | `libs/ts/firebase/api-types/` |
@@ -74,7 +75,7 @@
 | Authentication | Complete | `apps/maple-spruce/src/components/auth/` |
 | Navigation (responsive) | Complete | `apps/maple-spruce/src/components/layout/` |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
-| Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx` |
+| Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
 | Chromatic CI | Complete | `.github/workflows/chromatic.yml` |
 | Unit testing (Vitest) | Complete | `libs/ts/validation/`, `libs/ts/domain/` |
 | Unit tests in CI | Complete | `.github/workflows/build-check.yml` |

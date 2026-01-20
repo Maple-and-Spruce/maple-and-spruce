@@ -4,11 +4,8 @@ import { useState, useCallback, useMemo } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Category, CreateCategoryInput } from '@maple/ts/domain';
-import {
-  CategoryList,
-  CategoryForm,
-  DeleteConfirmDialog,
-} from '../../components/categories';
+import { DeleteConfirmDialog } from '@maple/react/ui';
+import { CategoryList, CategoryForm } from '../../components/categories';
 import { AppShell } from '../../components/layout';
 import { useCategories } from '../../hooks';
 
@@ -144,10 +141,17 @@ export default function CategoriesPage() {
 
       <DeleteConfirmDialog
         open={!!categoryToDelete}
-        category={categoryToDelete}
         onClose={handleCloseDelete}
         onConfirm={handleConfirmDelete}
         isDeleting={isDeleting}
+        title="Delete Category?"
+        itemName={categoryToDelete?.name ?? ''}
+        warningContent={
+          <Typography sx={{ mt: 1, color: 'warning.main' }}>
+            Note: This will fail if any products are using this category. You
+            must reassign those products first.
+          </Typography>
+        }
       />
     </AppShell>
   );

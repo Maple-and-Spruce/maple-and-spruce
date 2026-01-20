@@ -1,0 +1,9 @@
+{
+  "name": "theme",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/react/theme/src",
+  "projectType": "library",
+  "tags": ["scope:react", "type:ui"],
+  "// targets": "to see all targets run: nx show project theme --web",
+  "targets": {}
+}

@@ -7,7 +7,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import type { Product, Artist, Category, RequestState } from '@maple/ts/domain';
 import { formatPrice } from '@maple/ts/domain';
-import { surfaces, borders, radii, shadows } from '../../lib/theme';
+import { surfaces, borders, radii, shadows } from '@maple/react/theme';
 
 interface ProductDataTableProps {
   productsState: RequestState<Product[]>;

@@ -31,7 +31,9 @@
         "libs/ts/firebase/api-types/src/index.ts"
       ],
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
-      "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"]
+      "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
+      "@maple/react/theme": ["libs/react/theme/src/index.ts"],
+      "@maple/react/ui": ["libs/react/ui/src/index.ts"]
     },
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
@@ -48,7 +50,11 @@
     "../../libs/ts/domain/src/**/*.ts",
     "../../libs/ts/validation/src/**/*.ts",
     "../../libs/ts/firebase/firebase-config/src/**/*.ts",
-    "../../libs/ts/firebase/api-types/src/**/*.ts"
+    "../../libs/ts/firebase/api-types/src/**/*.ts",
+    "../../libs/react/theme/src/**/*.ts",
+    "../../libs/react/theme/src/**/*.tsx",
+    "../../libs/react/ui/src/**/*.ts",
+    "../../libs/react/ui/src/**/*.tsx"
   ],
   "exclude": [
     "out-tsc",

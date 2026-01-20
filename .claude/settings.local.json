@@ -75,7 +75,13 @@
       "Bash(npm view:*)",
       "Bash(npx nx add:*)",
       "Bash(npx nx g:*)",
-      "Bash(npx chromatic:*)"
+      "Bash(npx chromatic:*)",
+      "Bash(gh secret set:*)",
+      "Bash(gh secret:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx nx run-many:*)",
+      "Bash(wc:*)",
+      "Bash(npx nx generate:*)"
     ]
   }
 }
