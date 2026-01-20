@@ -25,7 +25,7 @@ import type {
   UploadProductImageRequest,
   UploadProductImageResponse,
 } from '@maple/ts/firebase/api-types';
-import { ImageUpload, type ImageUploadState } from '../common';
+import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
 
 interface ProductFormProps {
   open: boolean;

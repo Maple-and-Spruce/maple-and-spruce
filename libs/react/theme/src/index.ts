@@ -1,8 +1,5 @@
-// Theme exports
-export { ThemeProvider } from './ThemeProvider';
 export {
   theme,
-  // Design tokens
   brandColors,
   colors,
   surfaces,
@@ -12,4 +9,6 @@ export {
   radii,
   shadows,
   cssVariables,
-} from './theme';
+} from './lib/theme';
+
+export { ThemeProvider } from './lib/ThemeProvider';

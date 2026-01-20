@@ -1,5 +1,5 @@
 import type { Preview } from '@storybook/react';
-import { ThemeProvider } from '../src/lib/theme';
+import { ThemeProvider } from '@maple/react/theme';
 import '../src/app/global.css';
 
 const preview: Preview = {

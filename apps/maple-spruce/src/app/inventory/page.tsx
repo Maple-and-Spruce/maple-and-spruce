@@ -9,11 +9,11 @@ import type {
   Artist,
   Category,
 } from '@maple/ts/domain';
+import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   ProductDataTable,
   ProductFilterToolbar,
   ProductForm,
-  DeleteConfirmDialog,
   defaultFilters,
 } from '../../components/inventory';
 import type { ProductFilters } from '../../components/inventory';
@@ -221,10 +221,11 @@ export default function InventoryPage() {
 
       <DeleteConfirmDialog
         open={!!productToDelete}
-        product={productToDelete}
         onClose={handleCloseDelete}
         onConfirm={handleConfirmDelete}
         isDeleting={isDeleting}
+        title="Delete Product?"
+        itemName={productToDelete?.squareCache.name ?? ''}
       />
     </AppShell>
   );

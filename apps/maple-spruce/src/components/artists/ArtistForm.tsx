@@ -23,7 +23,7 @@ import type {
   UploadArtistImageRequest,
   UploadArtistImageResponse,
 } from '@maple/ts/firebase/api-types';
-import { ImageUpload, type ImageUploadState } from '../common';
+import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
 
 interface ArtistFormProps {
   open: boolean;

@@ -79,7 +79,9 @@
       "@maple/firebase/square": ["libs/firebase/square/src/index.ts"],
       "@maple/firebase/maple-functions/square-webhook": [
         "libs/firebase/maple-functions/square-webhook/src/index.ts"
-      ]
+      ],
+      "@maple/react/theme": ["libs/react/theme/src/index.ts"],
+      "@maple/react/ui": ["libs/react/ui/src/index.ts"]
     }
   }
 }

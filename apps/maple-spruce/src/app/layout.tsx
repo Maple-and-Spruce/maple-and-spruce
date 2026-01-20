@@ -1,5 +1,5 @@
 import './global.css';
-import { ThemeProvider } from '../lib/theme/ThemeProvider';
+import { ThemeProvider } from '@maple/react/theme';
 import { AuthGuardWrapper } from './auth-guard-wrapper';
 
 export const metadata = {
