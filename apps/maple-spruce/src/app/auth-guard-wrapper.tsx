@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { AuthGuard } from '../components/auth';
+import { AuthGuard } from '@maple/react/auth';
 import { publicRoutes } from '../config/public-routes';
 
 interface AuthGuardWrapperProps {

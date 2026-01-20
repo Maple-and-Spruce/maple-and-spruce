@@ -35,10 +35,10 @@ export function useProducts() {
 
     try {
       const functions = getMapleFunctions();
-      const getProducts = httpsCallable<GetProductsRequest, GetProductsResponse>(
-        functions,
-        'getProducts'
-      );
+      const getProducts = httpsCallable<
+        GetProductsRequest,
+        GetProductsResponse
+      >(functions, 'getProducts');
 
       const result = await getProducts({});
       setProductsState({
@@ -49,7 +49,8 @@ export function useProducts() {
       console.error('Failed to fetch products:', error);
       setProductsState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch products',
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch products',
       });
     }
   }, []);
