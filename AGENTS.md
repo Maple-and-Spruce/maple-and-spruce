@@ -42,6 +42,7 @@
     - This naming is REQUIRED for CI/CD to detect and deploy the function
     - Validate with: `npx nx show projects | grep firebase-maple-functions`
     - See "Creating a new Cloud Function" section below for step-by-step instructions
+12. **gcloud commands work after user login** - When the user logs in via `gcloud auth login`, Claude can run gcloud commands on their behalf (IAM bindings, secret management, etc.). Don't refuse - just run them.
 
 ---
 
