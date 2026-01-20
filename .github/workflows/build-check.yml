@@ -65,7 +65,7 @@ jobs:
         run: npx nx run-many --target=test --all --parallel=3
 
   storybook:
-    name: Storybook Build
+    name: Storybook Build & Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,5 +75,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
       - name: Build Storybook
         run: npx nx run maple-spruce:build-storybook
+      - name: Serve Storybook and run interaction tests
+        run: |
+          npx concurrently -k -s first -n "SB,TEST" \
+            "npx http-server apps/maple-spruce/storybook-static --port 6006 --silent" \
+            "npx wait-on tcp:6006 && npx test-storybook --ci"

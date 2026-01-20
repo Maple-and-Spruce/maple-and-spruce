@@ -13,7 +13,7 @@ import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   ProductDataTable,
   ProductFilterToolbar,
-  ProductForm,
+  ProductFormSignals,
   defaultFilters,
 } from '../../components/inventory';
 import type { ProductFilters } from '../../components/inventory';
@@ -207,7 +207,7 @@ export default function InventoryPage() {
         filteredProducts={filteredProducts}
       />
 
-      <ProductForm
+      <ProductFormSignals
         open={isFormOpen}
         onClose={handleCloseForm}
         onSubmit={handleSubmitForm}

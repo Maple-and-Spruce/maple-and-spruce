@@ -84,7 +84,8 @@
       "@maple/react/ui": ["libs/react/ui/src/index.ts"],
       "@maple/react/auth": ["libs/react/auth/src/index.ts"],
       "@maple/react/layout": ["libs/react/layout/src/index.ts"],
-      "@maple/react/data": ["libs/react/data/src/index.ts"]
+      "@maple/react/data": ["libs/react/data/src/index.ts"],
+      "@maple/react/signals": ["libs/react/signals/src/index.ts"]
     }
   }
 }
