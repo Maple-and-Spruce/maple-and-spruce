@@ -244,6 +244,10 @@ Webflow CMS API rate limits (researched 2026-01-20):
 
 **Decision**: Use Site Token stored in Firebase secrets (`WEBFLOW_API_TOKEN`)
 
+**Webflow IDs** (for sync configuration):
+- Site ID: `691a5d6c07ba1bf4714e826f`
+- Artists Collection ID: `696f08a32a1eb691801f17ad`
+
 ### SDK
 
 **Official Node.js SDK**: `webflow-api` (v3.2.1 as of Nov 2025)
