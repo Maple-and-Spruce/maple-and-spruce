@@ -13,7 +13,7 @@
  * @see docs/SIGNALS-MIGRATION-GUIDE.md
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -42,7 +42,6 @@ import { artistValidation } from '@maple/ts/validation';
 import {
   useSignal,
   useComputed,
-  useSignalEffect,
   batch,
   useSignals,
 } from '@maple/react/signals';
@@ -136,10 +135,14 @@ export function ArtistFormSignals({
 
   // ============================================================
   // EFFECTS - Populate form when artist prop changes
+  // NOTE: We use React's useEffect here instead of useSignalEffect because
+  // useSignalEffect only tracks signal changes, not React prop changes.
+  // The `open` and `artist` props are regular React props that need to be
+  // tracked via the dependency array.
   // ============================================================
 
-  useSignalEffect(() => {
-    // Only run when dialog opens or artist changes
+  useEffect(() => {
+    // Only run when dialog opens
     if (!open) return;
 
     if (artist) {
@@ -183,7 +186,8 @@ export function ArtistFormSignals({
         submitError.value = null;
       });
     }
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, artist]);
 
   // ============================================================
   // EVENT HANDLERS

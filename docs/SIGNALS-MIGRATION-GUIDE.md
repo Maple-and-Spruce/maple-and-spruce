@@ -498,7 +498,8 @@ When migrating a form component to signals:
 ### 2. Convert State to Signals
 - [ ] Replace `useState` with `useSignal` for form fields
 - [ ] Replace `useMemo` with `useComputed` for derived values
-- [ ] Replace `useEffect` with `useSignalEffect` for side effects
+- [ ] Keep `useEffect` for prop-dependent effects (see Pitfall #6)
+- [ ] Use `useSignalEffect` only for signal-dependent side effects
 
 ### 3. Integrate Validation
 - [ ] Create `validation` computed that calls Vest suite
@@ -583,6 +584,43 @@ const doubled = useComputed(() => count * 2); // Won't work!
 const count = useSignal(0);
 const doubled = useComputed(() => count.value * 2);
 ```
+
+### 6. Using useSignalEffect for React Prop Changes
+
+**CRITICAL**: `useSignalEffect` only tracks signal changes, NOT React prop changes!
+
+```typescript
+// WRONG - useSignalEffect won't re-run when `product` prop changes
+function ProductForm({ open, product }: Props) {
+  const name = useSignal('');
+
+  useSignalEffect(() => {
+    if (!open) return;
+    if (product) {
+      name.value = product.name; // This only runs once!
+    }
+  });
+}
+
+// CORRECT - use React's useEffect for prop changes
+function ProductForm({ open, product }: Props) {
+  const name = useSignal('');
+
+  useEffect(() => {
+    if (!open) return;
+    if (product) {
+      batch(() => {
+        name.value = product.name;
+      });
+    }
+  }, [open, product]); // Props tracked via dependency array
+}
+```
+
+**Rule of thumb:**
+- Use `useSignalEffect` when you need to react to **signal** changes
+- Use React's `useEffect` when you need to react to **prop** changes (then update signals inside)
+- Use `batch()` when updating multiple signals from within a `useEffect`
 
 ---
 
