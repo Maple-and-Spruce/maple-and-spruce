@@ -83,4 +83,4 @@ jobs:
         run: |
           npx concurrently -k -s first -n "SB,TEST" \
             "npx http-server apps/maple-spruce/storybook-static --port 6006 --silent" \
-            "npx wait-on tcp:6006 && npx test-storybook --ci"
+            "npx wait-on tcp:6006 && npx test-storybook --config-dir apps/maple-spruce/.storybook --ci"
