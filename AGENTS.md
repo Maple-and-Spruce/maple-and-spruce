@@ -27,6 +27,10 @@
    - Create or find an existing issue for the work
    - Reference the issue in PR descriptions (`Closes #XX`)
    - Check off testing requirements in the issue before closing
+9. **Let CI/CD handle deployments** - Never run manual `firebase deploy` commands:
+   - Functions deploy automatically when PRs are merged to main (`.github/workflows/firebase-functions-merge.yml`)
+   - Create PRs and let the pipeline handle deployment
+   - Only exception: emergency hotfixes with explicit user approval
 
 ---
 

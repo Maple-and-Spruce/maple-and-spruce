@@ -102,13 +102,14 @@ npx nx run maple-spruce:storybook
 npx nx run maple-spruce:build-storybook
 ```
 
-### Deploy Commands
-```bash
-# Deploy functions to dev
-npx nx run functions:build && firebase deploy --only functions --project=maple-and-spruce-dev
+### Deployment
+**Let CI/CD handle deployments** - don't run manual `firebase deploy` commands.
 
-# Deploy functions to prod
-npx nx run functions:build && firebase deploy --only functions --project=maple-and-spruce
+Functions deploy automatically when PRs merge to main via `.github/workflows/firebase-functions-merge.yml`.
+
+```bash
+# To deploy: just merge your PR to main
+# CI/CD will build and deploy automatically
 ```
 
 ### New Webflow Function
