@@ -868,6 +868,33 @@ const handleSubmit = async (data: ArtistFormData) => {
 
 ## Testing Strategy
 
+### Testing Requirements (Way of Working)
+
+**ALWAYS write tests when:**
+- Adding new helper functions or utilities (unit tests)
+- Adding new domain logic (unit tests)
+- Adding new validation suites (unit tests)
+- Adding new React components (Storybook stories)
+- Fixing bugs (add test that would have caught the bug)
+
+**Test files go alongside source files:**
+```
+libs/ts/domain/src/lib/
+├── artist.ts           # Source
+├── artist.spec.ts      # Tests
+├── product.ts          # Source
+├── product.spec.ts     # Tests
+```
+
+**Run tests before creating PRs:**
+```bash
+npm test                    # Run all tests
+npx nx run domain:test      # Run specific library tests
+npx nx run validation:test  # Run validation tests
+```
+
+**CI runs tests automatically** - PRs with failing tests won't be merged.
+
 ### Overview
 
 The project uses a multi-layered testing approach:

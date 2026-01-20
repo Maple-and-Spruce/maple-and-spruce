@@ -1,0 +1,56 @@
+name: Feature
+description: Add a new feature or enhancement
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request
+        Please describe the feature you'd like to add.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What does this feature do?
+      placeholder: A clear description of the feature
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What needs to be true for this feature to be complete?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: testing-requirements
+    attributes:
+      label: Testing Requirements
+      description: What tests are needed?
+      value: |
+        - [ ] Unit tests for new functions/utilities
+        - [ ] Storybook stories for new components (if applicable)
+        - [ ] All tests pass (`npm test`)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      description: Which project phase does this belong to?
+      options:
+        - Phase 1 - Admin Foundation
+        - Phase 2 - Public Website
+        - Phase 3 - Classes & Workshops
+        - Phase 4 - Music Lessons
+        - Phase 5 - Store Opening
+    validations:
+      required: true
