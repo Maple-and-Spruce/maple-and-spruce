@@ -7,7 +7,32 @@
 ## Current Status
 
 **Date**: 2026-01-20
-**Status**: ✅ Webflow sync function ready for deployment
+**Status**: ⚠️ Webflow sync needs IAM permissions
+
+### Blocker: IAM Permissions for Firestore Trigger
+
+The `syncArtistToWebflow` function is a Firestore trigger (event-driven), which requires additional IAM permissions not needed by HTTP functions. The deployment is failing with:
+
+```
+Error: We failed to modify the IAM policy for the project.
+```
+
+**Run these commands to fix (requires project owner):**
+```bash
+gcloud projects add-iam-policy-binding maple-and-spruce-dev \
+  --member=serviceAccount:service-1062803455357@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+gcloud projects add-iam-policy-binding maple-and-spruce-dev \
+  --member=serviceAccount:1062803455357-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+gcloud projects add-iam-policy-binding maple-and-spruce-dev \
+  --member=serviceAccount:1062803455357-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+```
+
+After running these, re-trigger the CI by pushing an empty commit or re-running the workflow.
 
 ### Completed Today
 - **Webflow CMS Sync Implementation:**
@@ -23,10 +48,19 @@
     - Stores `webflowItemId` back in Firestore for reference
   - Added `webflowItemId` field to `Artist` domain type
   - Added `updateWebflowItemId()` to `ArtistRepository`
-  - Added Webflow config to `.env.dev` and `.env.prod`:
-    - `WEBFLOW_SITE_ID=691a5d6c07ba1bf4714e826f`
-    - `WEBFLOW_ARTISTS_COLLECTION_ID=696f08a32a1eb691801f17ad`
-  - Fixed `nx.json` - removed `^build` dependency from esbuild (was causing unnecessary tsc builds)
+  - Added Webflow config to `.env.dev` and `.env.prod`
+  - Fixed `nx.json` - removed `^build` dependency from esbuild
+
+- **CI/CD Fixes:**
+  - Fixed invalid package names in library package.json files (had slashes)
+  - Removed unnecessary package.json files from libs (not needed, esbuild bundles from source)
+  - Fixed project.json naming for sync-artist-to-webflow (must be `firebase-maple-functions-*`)
+
+- **Documentation:**
+  - Added directive #9: Let CI/CD handle deployments
+  - Added directive #10: No package.json in libraries
+  - Added directive #11: Function library naming convention
+  - Added "Creating a New Cloud Function" guide in AGENTS.md
 
 ### Previous Session
 - Closed #26 (Square Integration Setup) - was already complete
@@ -43,20 +77,19 @@
   - Researched Webflow CMS API authentication, SDK, rate limits, image handling
 
 ### Next Steps
-1. **Deploy Webflow sync:**
-   - Verify `WEBFLOW_API_TOKEN` secret is set in Firebase dev project
-   - Deploy functions to dev: `firebase deploy --only functions --project=maple-and-spruce-dev`
-   - Test sync by editing an active artist in admin UI
+1. **Fix IAM permissions** (see blocker above)
+2. **Test Webflow sync:**
+   - Edit an active artist in admin UI
    - Check Webflow CMS for new item
-2. **Initial artist migration:**
+3. **Initial artist migration:**
    - Run one-time sync of existing active artists
    - Verify data integrity in Webflow
-3. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-4. Etsy Integration (#4) - waiting for app approval
+4. Create initial categories (Pottery, Textiles, Jewelry, etc.)
+5. Etsy Integration (#4) - waiting for app approval
 
 ### Blockers
+- **IAM permissions for Firestore trigger** - needs gcloud commands run by project owner
 - Etsy app still pending approval
-- Need to re-authenticate Firebase CLI before deploying
 
 ---
 
