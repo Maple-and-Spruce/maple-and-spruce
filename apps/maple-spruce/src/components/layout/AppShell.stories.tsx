@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box, Typography } from '@mui/material';
-import { AppShell } from './AppShell';
+import { AppShell } from '.';
 
 /**
  * AppShell provides the main application layout with navigation.

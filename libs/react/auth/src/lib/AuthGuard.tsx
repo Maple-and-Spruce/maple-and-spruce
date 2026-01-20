@@ -50,7 +50,7 @@ export function useAuthStatus(publicRoutes: Array<string>) {
   return { authStatus };
 }
 
-interface AuthGuardProps {
+export interface AuthGuardProps {
   publicRoutes: Array<string>;
   children: ReactNode;
 }

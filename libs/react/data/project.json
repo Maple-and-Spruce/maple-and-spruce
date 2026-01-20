@@ -1,0 +1,9 @@
+{
+  "name": "data",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/react/data/src",
+  "projectType": "library",
+  "tags": ["scope:react", "type:data-access"],
+  "// targets": "to see all targets run: nx show project data --web",
+  "targets": {}
+}

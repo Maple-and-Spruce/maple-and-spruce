@@ -33,7 +33,10 @@
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
       "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
       "@maple/react/theme": ["libs/react/theme/src/index.ts"],
-      "@maple/react/ui": ["libs/react/ui/src/index.ts"]
+      "@maple/react/ui": ["libs/react/ui/src/index.ts"],
+      "@maple/react/auth": ["libs/react/auth/src/index.ts"],
+      "@maple/react/layout": ["libs/react/layout/src/index.ts"],
+      "@maple/react/data": ["libs/react/data/src/index.ts"]
     },
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
@@ -54,7 +57,13 @@
     "../../libs/react/theme/src/**/*.ts",
     "../../libs/react/theme/src/**/*.tsx",
     "../../libs/react/ui/src/**/*.ts",
-    "../../libs/react/ui/src/**/*.tsx"
+    "../../libs/react/ui/src/**/*.tsx",
+    "../../libs/react/auth/src/**/*.ts",
+    "../../libs/react/auth/src/**/*.tsx",
+    "../../libs/react/layout/src/**/*.ts",
+    "../../libs/react/layout/src/**/*.tsx",
+    "../../libs/react/data/src/**/*.ts",
+    "../../libs/react/data/src/**/*.tsx"
   ],
   "exclude": [
     "out-tsc",

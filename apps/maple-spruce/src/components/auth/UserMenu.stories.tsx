@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box, AppBar, Toolbar, Typography } from '@mui/material';
-import { UserMenu } from './UserMenu';
+import { UserMenu } from '@maple/react/auth';
 
 /**
  * UserMenu displays the current user and sign-out option.

@@ -49,7 +49,8 @@ export function useArtists() {
       console.error('Failed to fetch artists:', error);
       setArtistsState({
         status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to fetch artists',
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch artists',
       });
     }
   }, []);
@@ -96,7 +97,9 @@ export function useArtists() {
       setArtistsState((prev) => {
         if (prev.status !== 'success') return prev;
         const newData = prev.data
-          .map((a) => (a.id === result.data.artist.id ? result.data.artist : a))
+          .map((a) =>
+            a.id === result.data.artist.id ? result.data.artist : a
+          )
           .sort((a, b) => a.name.localeCompare(b.name));
         return {
           ...prev,
