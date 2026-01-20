@@ -27,6 +27,21 @@
    - Create or find an existing issue for the work
    - Reference the issue in PR descriptions (`Closes #XX`)
    - Check off testing requirements in the issue before closing
+9. **Let CI/CD handle deployments** - Never run manual `firebase deploy` commands:
+   - Functions deploy automatically when PRs are merged to main (`.github/workflows/firebase-functions-merge.yml`)
+   - Create PRs and let the pipeline handle deployment
+   - Only exception: emergency hotfixes with explicit user approval
+10. **No package.json in libraries** - Nx libraries under `libs/` should NOT have their own `package.json`:
+    - These libraries are not independently publishable
+    - The root `package.json` and `tsconfig.base.json` handle all dependency management
+    - If you use `nx generate @nx/js:library`, it may auto-create a `package.json` - delete it
+    - esbuild bundles from source; no intermediate build step needed for libs
+11. **Function library naming convention** - Cloud Function libraries MUST follow the naming pattern:
+    - Project name: `firebase-maple-functions-{function-name}` (e.g., `firebase-maple-functions-get-artists`)
+    - Location: `libs/firebase/maple-functions/{function-name}/`
+    - This naming is REQUIRED for CI/CD to detect and deploy the function
+    - Validate with: `npx nx show projects | grep firebase-maple-functions`
+    - See "Creating a new Cloud Function" section below for step-by-step instructions
 
 ---
 
@@ -192,6 +207,53 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 - `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`
 - `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
 - `uploadArtistImage`, `uploadProductImage`, `healthCheck`, `squareWebhook`
+- `getPublicArtists`, `reorderCategories`, `syncArtistToWebflow`
+
+#### Creating a New Cloud Function
+
+**IMPORTANT**: Follow this pattern exactly. CI/CD will NOT deploy your function if naming is wrong.
+
+1. **Generate the library:**
+   ```bash
+   # DO NOT use nx generate - it creates wrong structure
+   # Instead, copy an existing function library and modify it
+   cp -r libs/firebase/maple-functions/get-artists libs/firebase/maple-functions/my-new-function
+   ```
+
+2. **Update project.json:**
+   ```json
+   {
+     "name": "firebase-maple-functions-my-new-function",  // MUST follow this pattern!
+     "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+     "sourceRoot": "libs/firebase/maple-functions/my-new-function/src",
+     "projectType": "library",
+     "tags": ["scope:firebase", "type:feature"],
+     "targets": {}
+   }
+   ```
+
+3. **Update tsconfig.lib.json** - point to the new source directory
+
+4. **Create your function in `src/lib/my-new-function.ts`**
+
+5. **Add path alias to `tsconfig.base.json`:**
+   ```json
+   "@maple/firebase-maple-functions/my-new-function": [
+     "libs/firebase/maple-functions/my-new-function/src/index.ts"
+   ]
+   ```
+
+6. **Export from `apps/functions/src/index.ts`:**
+   ```typescript
+   export { myNewFunction } from '@maple/firebase-maple-functions/my-new-function';
+   ```
+
+7. **Validate:** `npx nx show projects | grep firebase-maple-functions-my-new-function`
+
+**Common mistakes:**
+- ❌ Project name without prefix: `my-new-function` (CI won't deploy)
+- ❌ Wrong prefix: `maple-functions-my-new-function` (CI won't deploy)
+- ✅ Correct: `firebase-maple-functions-my-new-function`
 
 #### Storybook & Testing Infrastructure (#24) - Complete
 

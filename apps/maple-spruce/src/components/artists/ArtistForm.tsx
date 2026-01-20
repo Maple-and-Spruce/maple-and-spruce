@@ -10,6 +10,8 @@ import {
   DialogActions,
   TextField,
   FormControl,
+  FormControlLabel,
+  Checkbox,
   InputLabel,
   Select,
   MenuItem,
@@ -41,6 +43,7 @@ const defaultFormData: CreateArtistInput = {
   status: 'active',
   notes: '',
   photoUrl: '',
+  preventAutoPublish: false,
 };
 
 /**
@@ -128,6 +131,7 @@ export function ArtistForm({
         status: artist.status,
         notes: artist.notes ?? '',
         photoUrl: artist.photoUrl ?? '',
+        preventAutoPublish: artist.preventAutoPublish ?? false,
       });
       // If artist has an existing photo, show it as success state
       if (artist.photoUrl) {
@@ -146,7 +150,7 @@ export function ArtistForm({
 
   const handleChange = (
     field: keyof CreateArtistInput,
-    value: string | number | ArtistStatus
+    value: string | number | boolean | ArtistStatus
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -346,6 +350,18 @@ export function ArtistForm({
             rows={3}
             helperText="Optional internal notes about this artist"
             fullWidth
+          />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.preventAutoPublish ?? false}
+                onChange={(e) =>
+                  handleChange('preventAutoPublish', e.target.checked)
+                }
+              />
+            }
+            label="Prevent auto-publish to website"
           />
         </Box>
       </DialogContent>

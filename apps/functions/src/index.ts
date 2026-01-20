@@ -48,3 +48,6 @@ export { uploadProductImage } from '@maple/firebase/maple-functions/upload-produ
 
 // Square webhook (HTTP endpoint, not callable)
 export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
+
+// Webflow CMS sync (Firestore triggers)
+export { syncArtistToWebflow } from '@maple/maple-functions/sync-artist-to-webflow';

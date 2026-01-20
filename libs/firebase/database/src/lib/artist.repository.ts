@@ -34,6 +34,7 @@ function docToArtist(
     status: data.status,
     notes: data.notes,
     photoUrl: data.photoUrl,
+    webflowItemId: data.webflowItemId,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
   };
@@ -158,5 +159,21 @@ export const ArtistRepository = {
       id,
       status: 'active',
     });
+  },
+
+  /**
+   * Update the Webflow item ID for an artist.
+   * Called after syncing to Webflow CMS.
+   *
+   * Note: This does NOT update the updatedAt timestamp to avoid
+   * triggering another Webflow sync (infinite loop prevention).
+   */
+  async updateWebflowItemId(
+    id: string,
+    webflowItemId: string
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    // Only update webflowItemId, don't touch updatedAt to avoid re-triggering sync
+    await docRef.update({ webflowItemId });
   },
 };
