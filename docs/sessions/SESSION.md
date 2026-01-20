@@ -7,9 +7,16 @@
 ## Current Status
 
 **Date**: 2026-01-20
-**Status**: ✅ Webflow sync deployed and working
+**Status**: 🔧 Dev/Prod environment separation for Webflow sync
 
 ### Completed Today
+
+- **Dev/Prod Webflow Sync Separation:**
+  - Added `is-dev-environment` boolean field to Webflow CMS items
+  - Dev items are marked `is-dev-environment: true`, prod items are `false`
+  - **Dev items are NEVER auto-published** - stay as drafts
+  - Prod items auto-publish unless `preventAutoPublish` is set
+  - **REQUIRES**: Add `is-dev-environment` (Switch field) to Webflow CMS Artists collection
 
 - **Webflow CMS Sync - DEPLOYED & TESTED:**
   - `syncArtistToWebflow` function deployed to dev environment
@@ -44,12 +51,20 @@
   - Added directive #11: Function library naming convention
   - Added "Creating a New Cloud Function" guide in AGENTS.md
 
-### Outstanding Questions
+### Action Required
 
-- **Auto-publish to Webflow?** Currently items sync as "Queued to publish" and require manual publish in Webflow. Consider adding:
-  - A checkbox in the artist form modal: "Publish to website"
-  - When checked, call `webflow.collections.items.publish()` after creating/updating the item
-  - This gives control over what goes live vs stays as a draft
+**Add `is-dev-environment` field to Webflow CMS:**
+1. Go to Webflow Designer → Artists collection settings
+2. Add new field: `is-dev-environment` (type: Switch/Boolean)
+3. Default value: `false` (unchecked)
+
+This field lets you filter out dev test items when designing/publishing:
+- Filter by `is-dev-environment = false` to see only prod items
+- Dev items stay as drafts and won't appear on the live site
+
+### Outstanding Questions (Resolved)
+
+- ~~**Auto-publish to Webflow?**~~ → Resolved: Prod auto-publishes, dev never publishes
 
 ### Previous Session
 - Closed #26 (Square Integration Setup) - was already complete
