@@ -598,6 +598,49 @@ Key patterns:
 
 ---
 
+## ADR-016: Webflow Integration Strategy
+
+**Status:** Accepted
+**Date:** 2026-01-20
+
+### Context
+Phase 2 of Maple & Spruce focuses on building the public website. Need to integrate admin-managed data (artists, products) with the public-facing Webflow site while giving Katie full design control.
+
+### Decision
+Use **CMS Collection Sync** - push data from Firebase to Webflow CMS collections via Cloud Functions. One-way sync (Firebase → Webflow) with Webflow-only presentation fields allowed.
+
+### Rationale
+1. **Design Control** - Katie can design artist cards, layouts using native Webflow tools
+2. **SEO & Performance** - Content is in Webflow CMS, indexable and fast-loading
+3. **Separation of Concerns** - Admin app owns data, Webflow owns presentation
+4. **Future Flexibility** - Can add embedded components later for dynamic features
+
+### Alternatives Considered
+- **Embedded Components (iframe/custom code)** - Real-time but less design control, SEO issues
+- **Two-way sync** - More complex, requires conflict resolution
+
+### Consequences
+**Easier:**
+- Full design control in Webflow
+- SEO-optimized content
+- Fast page loads
+- Scalable pattern for future content types
+
+**Harder:**
+- Sync delay (seconds to minutes) between admin changes and public site
+- Additional infrastructure to maintain (sync functions)
+- Webflow API rate limits (60/min, 1000/hr)
+
+### Implementation Details
+- Authentication: Webflow Site Token stored in Firebase secrets
+- SDK: `webflow-api` v3.2.1
+- Images: Firebase Storage URLs referenced directly (Webflow caches them)
+- Trigger: Firestore document changes fire Cloud Functions
+
+See full details: [ADR-016 Full Document](decisions/ADR-016-webflow-integration-strategy.md)
+
+---
+
 ## Template for New Decisions
 
 ```markdown
@@ -624,4 +667,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-01-19*
+*Last updated: 2026-01-20*
