@@ -24,6 +24,7 @@ import {
   WEBFLOW_STRING_NAMES,
 } from '@maple/firebase/webflow';
 import { ArtistRepository } from '@maple/firebase/database';
+import { FirebaseProject } from '@maple/firebase/functions';
 
 // Define secrets and strings for Webflow
 const webflowSecrets = WEBFLOW_SECRET_NAMES.map((name) => defineSecret(name));
@@ -124,22 +125,27 @@ export const syncArtistToWebflow = onDocumentWritten(
       }
 
       // Case 4: Artist is active - sync to Webflow
-      // Auto-publish unless preventAutoPublish is set
-      const shouldPublish = !afterArtist.preventAutoPublish;
+      // Auto-publish only in prod, and only if preventAutoPublish is not set
+      // Dev items are never published - they stay as drafts with is-dev-environment=true
+      const isDev = FirebaseProject.isDev;
+      const shouldPublish = !isDev && !afterArtist.preventAutoPublish;
       console.log('Syncing active artist to Webflow:', {
         name: afterArtist.name,
+        isDev,
         autoPublish: shouldPublish,
       });
 
       const result = await webflow.artistService.syncArtist({
         artist: afterArtist,
         publish: shouldPublish,
+        isDev,
       });
 
       console.log('Webflow sync result:', {
         success: result.success,
         webflowItemId: result.webflowItemId,
         isNew: result.isNew,
+        isDev,
         published: shouldPublish,
       });
 

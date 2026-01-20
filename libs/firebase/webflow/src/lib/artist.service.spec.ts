@@ -68,23 +68,36 @@ describe('mapArtistToFieldData', () => {
     updatedAt: new Date('2025-06-15'),
   };
 
+  const prodOptions = { isDev: false };
+  const devOptions = { isDev: true };
+
   it('maps firebase-id correctly', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData['firebase-id']).toBe('artist-123');
   });
 
   it('maps name correctly', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData.name).toBe('Jane Doe');
   });
 
   it('generates slug from name', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData.slug).toBe('jane-doe');
   });
 
+  it('sets is-dev-environment to false for prod', () => {
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
+    expect(fieldData['is-dev-environment']).toBe(false);
+  });
+
+  it('sets is-dev-environment to true for dev', () => {
+    const fieldData = mapArtistToFieldData(mockArtist, devOptions);
+    expect(fieldData['is-dev-environment']).toBe(true);
+  });
+
   it('includes profile-image when photoUrl is present', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData['profile-image']).toEqual({
       url: 'https://storage.example.com/artists/jane.jpg',
       alt: 'Jane Doe profile photo',
@@ -96,12 +109,12 @@ describe('mapArtistToFieldData', () => {
       ...mockArtist,
       photoUrl: undefined,
     };
-    const fieldData = mapArtistToFieldData(artistWithoutPhoto);
+    const fieldData = mapArtistToFieldData(artistWithoutPhoto, prodOptions);
     expect(fieldData['profile-image']).toBeUndefined();
   });
 
   it('excludes sensitive fields like email and commission rate', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData).not.toHaveProperty('email');
     expect(fieldData).not.toHaveProperty('phone');
     expect(fieldData).not.toHaveProperty('defaultCommissionRate');
@@ -112,12 +125,13 @@ describe('mapArtistToFieldData', () => {
   });
 
   it('includes only the expected synced fields', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     const keys = Object.keys(fieldData);
-    expect(keys).toHaveLength(4); // firebase-id, name, slug, profile-image
+    expect(keys).toHaveLength(5); // firebase-id, name, slug, is-dev-environment, profile-image
     expect(keys).toContain('firebase-id');
     expect(keys).toContain('name');
     expect(keys).toContain('slug');
+    expect(keys).toContain('is-dev-environment');
     expect(keys).toContain('profile-image');
   });
 
@@ -127,13 +141,13 @@ describe('mapArtistToFieldData', () => {
       id: 'artist-special',
       name: "Mary O'Brien & Co.",
     };
-    const fieldData = mapArtistToFieldData(artistWithSpecialName);
+    const fieldData = mapArtistToFieldData(artistWithSpecialName, prodOptions);
     expect(fieldData.name).toBe("Mary O'Brien & Co.");
     expect(fieldData.slug).toBe('mary-o-brien-co');
   });
 
   it('generates correct alt text for profile image', () => {
-    const fieldData = mapArtistToFieldData(mockArtist);
+    const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData['profile-image']?.alt).toBe('Jane Doe profile photo');
   });
 });
