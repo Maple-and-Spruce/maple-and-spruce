@@ -2,6 +2,8 @@
 
 > Step-by-step patterns for migrating from React hooks to Preact Signals
 
+**Note:** As of January 2026, all form components have been migrated to signals. This guide remains useful for understanding the patterns used in the codebase and for future component development.
+
 This guide provides practical migration patterns with before/after examples for common scenarios in the Maple & Spruce codebase.
 
 ---

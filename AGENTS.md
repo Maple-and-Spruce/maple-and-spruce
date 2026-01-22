@@ -112,7 +112,7 @@
 | Chromatic CI | Complete | `.github/workflows/chromatic.yml` |
 | Unit testing (Vitest) | Complete | `libs/ts/validation/`, `libs/ts/domain/` |
 | Unit tests in CI | Complete | `.github/workflows/build-check.yml` |
-| Signals state management | Pilot | `libs/react/signals/` (see ADR-015) |
+| Signals state management | Complete | `libs/react/signals/` (see ADR-015) |
 
 ### Phase 1 Features (COMPLETE)
 

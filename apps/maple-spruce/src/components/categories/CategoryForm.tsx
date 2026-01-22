@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * CategoryForm - Category Form using Preact Signals
+ *
+ * Uses Preact Signals for state management which provides:
+ * 1. Automatic validation via Vest - no manual error clearing
+ * 2. Fine-grained reactivity - each field updates independently
+ * 3. Cleaner code - direct signal assignments
+ */
+
+import { useEffect } from 'react';
 import {
   Box,
   Button,
@@ -12,6 +21,13 @@ import {
   Alert,
 } from '@mui/material';
 import type { Category, CreateCategoryInput } from '@maple/ts/domain';
+import { categoryValidation } from '@maple/ts/validation';
+import {
+  useSignal,
+  useComputed,
+  batch,
+  useSignals,
+} from '@maple/react/signals';
 
 interface CategoryFormProps {
   open: boolean;
@@ -23,38 +39,6 @@ interface CategoryFormProps {
   nextOrder?: number;
 }
 
-interface FormState {
-  name: string;
-  description: string;
-}
-
-const defaultFormState: FormState = {
-  name: '',
-  description: '',
-};
-
-/**
- * Basic client-side validation
- * Full validation happens on the server with vest
- */
-function validateForm(data: FormState): Record<string, string> {
-  const errors: Record<string, string> = {};
-
-  if (!data.name?.trim()) {
-    errors.name = 'Name is required';
-  } else if (data.name.length < 2) {
-    errors.name = 'Name must be at least 2 characters';
-  } else if (data.name.length > 50) {
-    errors.name = 'Name must be at most 50 characters';
-  }
-
-  if (data.description && data.description.length > 200) {
-    errors.description = 'Description must be at most 200 characters';
-  }
-
-  return errors;
-}
-
 export function CategoryForm({
   open,
   onClose,
@@ -63,94 +47,157 @@ export function CategoryForm({
   isSubmitting = false,
   nextOrder = 0,
 }: CategoryFormProps) {
-  const [formData, setFormData] = useState<FormState>(defaultFormState);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Enable signals tracking in this component
+  useSignals();
+
+  // ============================================================
+  // FORM FIELD SIGNALS
+  // ============================================================
+  const name = useSignal('');
+  const description = useSignal('');
+
+  // ============================================================
+  // UI STATE SIGNALS
+  // ============================================================
+  const showValidationErrors = useSignal(false);
+  const submitError = useSignal<string | null>(null);
 
   const isEdit = !!category;
 
-  useEffect(() => {
-    if (category) {
-      setFormData({
-        name: category.name,
-        description: category.description ?? '',
-      });
-    } else {
-      setFormData(defaultFormState);
-    }
-    setErrors({});
-    setSubmitError(null);
-  }, [category, open]);
+  // ============================================================
+  // VALIDATION - Computed signals that auto-track dependencies
+  // ============================================================
 
-  const handleChange = (field: keyof FormState, value: string | number) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    // Clear error when field changes
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
+  // Validation runs automatically when ANY form field changes
+  const validation = useComputed(() => {
+    return categoryValidation({
+      name: name.value,
+      description: description.value || undefined,
+      order: isEdit ? category.order : nextOrder,
+    });
+  });
+
+  // Errors computed - only shows after first submit attempt
+  const errors = useComputed<Record<string, string[]>>(() => {
+    if (!showValidationErrors.value) return {};
+    return validation.value.getErrors();
+  });
+
+  // Convenience: is form currently valid
+  const isValid = useComputed(() => validation.value.isValid());
+
+  // Helper to get first error for a field
+  const getFieldError = (field: string): string | null => {
+    const fieldErrors = errors.value[field];
+    return fieldErrors?.[0] ?? null;
   };
 
+  // ============================================================
+  // EFFECTS - Populate form when category prop changes
+  // NOTE: We use React's useEffect here instead of useSignalEffect because
+  // useSignalEffect only tracks signal changes, not React prop changes.
+  // The `open` and `category` props are regular React props that need to be
+  // tracked via the dependency array.
+  // ============================================================
+
+  useEffect(() => {
+    // Only run when dialog opens
+    if (!open) return;
+
+    if (category) {
+      // Populate form from existing category
+      batch(() => {
+        name.value = category.name;
+        description.value = category.description ?? '';
+        showValidationErrors.value = false;
+        submitError.value = null;
+      });
+    } else {
+      // Reset to defaults for new category
+      batch(() => {
+        name.value = '';
+        description.value = '';
+        showValidationErrors.value = false;
+        submitError.value = null;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, category]);
+
+  // ============================================================
+  // EVENT HANDLERS
+  // ============================================================
+
   const handleSubmit = async () => {
-    const validationErrors = validateForm(formData);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    // Show validation errors on first submit attempt
+    showValidationErrors.value = true;
+
+    // Check validity
+    if (!isValid.value) {
       return;
     }
 
-    setSubmitError(null);
+    submitError.value = null;
 
     try {
       const input: CreateCategoryInput = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        order: nextOrder, // Order is set automatically; reordering is done via drag-and-drop
+        name: name.value.trim(),
+        description: description.value.trim() || undefined,
+        order: isEdit ? category.order : nextOrder,
       };
 
       await onSubmit(input);
       onClose();
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : 'Failed to save category'
-      );
+    } catch (error: unknown) {
+      let message = 'Failed to save category';
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error
+      ) {
+        message = String((error as { message: unknown }).message);
+      }
+      submitError.value = message;
     }
   };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEdit ? 'Edit Category' : 'Add Category'}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {submitError && (
-            <Alert severity="error" onClose={() => setSubmitError(null)}>
-              {submitError}
+          {submitError.value && (
+            <Alert severity="error" onClose={() => (submitError.value = null)}>
+              {submitError.value}
             </Alert>
           )}
 
+          {/* Name - signals update directly */}
           <TextField
             label="Category Name"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            error={!!errors.name}
-            helperText={errors.name}
+            value={name.value}
+            onChange={(e) => (name.value = e.target.value)}
+            error={!!getFieldError('name')}
+            helperText={getFieldError('name')}
             placeholder="e.g., Pottery & Ceramics"
             required
             fullWidth
             autoFocus
           />
 
+          {/* Description */}
           <TextField
             label="Description"
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
-            error={!!errors.description}
-            helperText={errors.description || 'Optional'}
+            value={description.value}
+            onChange={(e) => (description.value = e.target.value)}
+            error={!!getFieldError('description')}
+            helperText={getFieldError('description') || 'Optional'}
             multiline
             rows={2}
             fullWidth
