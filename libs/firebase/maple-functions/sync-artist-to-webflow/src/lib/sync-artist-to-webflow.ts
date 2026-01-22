@@ -9,6 +9,9 @@
  * - Artist updated: Updates item in Webflow CMS (or creates/removes based on status)
  * - Artist deleted: Removes item from Webflow CMS
  *
+ * IMPORTANT: This function uses inline secret definitions to avoid cold start delays.
+ * Secrets are defined in the onDocumentWritten options, NOT at module level.
+ *
  * @see docs/decisions/ADR-016-webflow-integration-strategy.md
  */
 import {
@@ -26,9 +29,9 @@ import {
 import { ArtistRepository } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
 
-// Define secrets and strings for Webflow
-const webflowSecrets = WEBFLOW_SECRET_NAMES.map((name) => defineSecret(name));
-const webflowStrings = WEBFLOW_STRING_NAMES.map((name) => defineString(name));
+// Define secrets INLINE - NOT at module level to avoid cold start delays
+const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) => defineSecret(name));
+const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) => defineString(name));
 
 /**
  * Extract artist data from Firestore snapshot
@@ -60,7 +63,7 @@ export const syncArtistToWebflow = onDocumentWritten(
   {
     document: 'artists/{artistId}',
     region: 'us-east4',
-    secrets: webflowSecrets,
+    secrets: webflowSecretParams,
   },
   async (event) => {
     const change: Change<DocumentSnapshot> = event.data!;
@@ -77,13 +80,13 @@ export const syncArtistToWebflow = onDocumentWritten(
         : null,
     });
 
-    // Build Webflow client
+    // Build Webflow client - secrets accessed at runtime, not cold start
     const secrets = Object.fromEntries(
-      webflowSecrets.map((s) => [s.name, s.value()])
+      webflowSecretParams.map((s) => [s.name, s.value()])
     ) as Record<(typeof WEBFLOW_SECRET_NAMES)[number], string>;
 
     const strings = Object.fromEntries(
-      webflowStrings.map((s) => [s.name, s.value()])
+      webflowStringParams.map((s) => [s.name, s.value()])
     ) as Record<(typeof WEBFLOW_STRING_NAMES)[number], string>;
 
     const webflow = new Webflow(secrets, strings);

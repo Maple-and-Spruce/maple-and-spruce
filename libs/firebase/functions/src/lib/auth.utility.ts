@@ -3,16 +3,24 @@
  *
  * Role-based authorization for Firebase Cloud Functions.
  *
+ * IMPORTANT: This module avoids cold start delays by NOT initializing
+ * Firebase Admin at module level. All functions that need Firestore
+ * call ensureAdminInitialized() lazily.
+ *
  * Pattern adapted from Mountain Sol Platform:
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/auth.utility.ts
  */
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Ensure Firebase Admin is initialized before using getFirestore()
-// This is needed because auth.utility may be imported before the database module
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+/**
+ * Lazily initialize Firebase Admin SDK
+ * Called only when needed, not at module load time
+ */
+function ensureAdminInitialized(): void {
+  if (admin.apps.length === 0) {
+    admin.initializeApp();
+  }
 }
 
 /**
@@ -40,6 +48,7 @@ export enum Role {
  * }
  */
 export async function hasRole(uid: string, role: Role): Promise<boolean> {
+  ensureAdminInitialized();
   const db = getFirestore();
 
   switch (role) {
@@ -62,6 +71,7 @@ export async function hasRole(uid: string, role: Role): Promise<boolean> {
  * await grantAdminRole(newAdminUid, currentAdminUid);
  */
 export async function grantAdminRole(uid: string, grantedBy: string): Promise<void> {
+  ensureAdminInitialized();
   const db = getFirestore();
   await db.collection('admins').doc(uid).set({
     grantedAt: new Date(),
@@ -75,6 +85,7 @@ export async function grantAdminRole(uid: string, grantedBy: string): Promise<vo
  * @param uid - The user's Firebase Auth UID
  */
 export async function revokeAdminRole(uid: string): Promise<void> {
+  ensureAdminInitialized();
   const db = getFirestore();
   await db.collection('admins').doc(uid).delete();
 }
@@ -85,6 +96,7 @@ export async function revokeAdminRole(uid: string): Promise<void> {
  * @returns Array of admin user UIDs
  */
 export async function getAdminUids(): Promise<string[]> {
+  ensureAdminInitialized();
   const db = getFirestore();
   const snapshot = await db.collection('admins').get();
   return snapshot.docs.map((doc) => doc.id);

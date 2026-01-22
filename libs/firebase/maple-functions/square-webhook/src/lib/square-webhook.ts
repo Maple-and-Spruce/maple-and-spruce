@@ -12,6 +12,9 @@
  * - maple-and-spruce-dev: sandbox webhook signature key
  * - maple-and-spruce: production webhook signature key
  *
+ * IMPORTANT: This function uses inline secret definitions to avoid cold start delays.
+ * Secrets are defined in the onRequest options, NOT at module level.
+ *
  * @see https://developer.squareup.com/docs/webhooks/overview
  */
 import { onRequest } from 'firebase-functions/v2/https';
@@ -24,13 +27,6 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 import { FirebaseProject } from '@maple/firebase/functions';
-
-// Webhook signature secret - per-project, no _PROD suffix needed
-const SQUARE_WEBHOOK_SIGNATURE_KEY = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY');
-
-// Also need the regular Square secrets for API calls
-const squareSecrets = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
-const squareStrings = SQUARE_STRING_NAMES.map((name) => defineString(name));
 
 // Webhook event types we handle
 type WebhookEventType =
@@ -351,6 +347,12 @@ async function handleInventoryUpdate(
   };
 }
 
+// Define secrets INLINE in the function options to avoid cold start delays
+// These are NOT defined at module level - they are created when the function is registered
+const webhookSignatureKey = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY');
+const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
+const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
+
 /**
  * Square webhook endpoint
  *
@@ -364,10 +366,7 @@ async function handleInventoryUpdate(
 export const squareWebhook = onRequest(
   {
     region: 'us-east4',
-    secrets: [
-      SQUARE_WEBHOOK_SIGNATURE_KEY,
-      ...squareSecrets,
-    ],
+    secrets: [webhookSignatureKey, ...squareSecretParams],
   },
   async (request, response) => {
     // Only accept POST
@@ -381,8 +380,8 @@ export const squareWebhook = onRequest(
       const rawBody = JSON.stringify(request.body);
       const signature = request.headers['x-square-hmacsha256-signature'] as string | undefined;
 
-      // Get the webhook signature key - per-project, so no suffix selection needed
-      const signatureKey = SQUARE_WEBHOOK_SIGNATURE_KEY.value();
+      // Get the webhook signature key - accessed at runtime, not cold start
+      const signatureKey = webhookSignatureKey.value();
 
       // Get the webhook URL (needed for signature verification)
       // Use the notification URL exactly as registered in Square Dashboard
@@ -405,13 +404,13 @@ export const squareWebhook = onRequest(
       const event = request.body as WebhookEvent;
       console.log(`Received Square webhook: ${event.type} (${event.event_id})`);
 
-      // Build Square client for API calls
+      // Build Square client for API calls - secrets accessed at runtime
       const secrets = Object.fromEntries(
-        squareSecrets.map((s) => [s.name, s.value()])
+        squareSecretParams.map((s) => [s.name, s.value()])
       ) as Record<(typeof SQUARE_SECRET_NAMES)[number], string>;
 
       const strings = Object.fromEntries(
-        squareStrings.map((s) => [s.name, s.value()])
+        squareStringParams.map((s) => [s.name, s.value()])
       ) as Record<(typeof SQUARE_STRING_NAMES)[number], string>;
 
       const square = new Square(secrets, strings);
