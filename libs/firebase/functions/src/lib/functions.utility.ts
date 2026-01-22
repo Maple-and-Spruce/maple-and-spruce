@@ -4,8 +4,10 @@
  * Provides a consistent pattern for creating HTTP functions with
  * CORS handling, authentication, authorization, and secrets management.
  *
- * Uses onRequest (HTTP functions) with manual CORS middleware for full
- * control over CORS headers and preflight handling.
+ * IMPORTANT: This module is designed to avoid cold start delays.
+ * - NO module-level defineSecret/defineString calls
+ * - NO module-level Firebase Admin initialization
+ * - Secrets and strings are defined lazily inside builder methods
  *
  * Pattern adapted from Mountain Sol Platform:
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts
@@ -21,56 +23,7 @@ import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'express';
 import { Role, hasRole } from './auth.utility';
 import { getAuth } from 'firebase-admin/auth';
-
-/**
- * Allowed origins for CORS - configured via Firebase environment.
- * Set via .env files (.env.prod for production, .env.dev for development).
- * The .env file must be present - no default to ensure explicit configuration.
- */
-const ALLOWED_ORIGINS = defineString('ALLOWED_ORIGINS');
-
-/**
- * CORS middleware - handles preflight and validates origins
- */
-const corsMiddleware = (req: Request, res: Response, next: () => void) => {
-  const origin = req.headers.origin;
-
-  // Allow requests without origin (e.g., server-to-server)
-  if (!origin) {
-    next();
-    return;
-  }
-
-  const allowedOrigins = ALLOWED_ORIGINS.value()
-    .split(',')
-    .map((o) => o.trim());
-
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader(
-      'Access-Control-Allow-Methods',
-      'GET, POST, OPTIONS, PUT, PATCH, DELETE'
-    );
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Authorization,Content-Type'
-    );
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-    // Handle preflight OPTIONS request
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-
-    next();
-  } else {
-    res.status(403).json({
-      error: 'Forbidden: Origin not allowed by CORS policy',
-      origin,
-    });
-  }
-};
+import admin from 'firebase-admin';
 
 /**
  * Context provided to function handlers
@@ -93,6 +46,16 @@ export interface FunctionOptions {
 }
 
 /**
+ * Lazily initialize Firebase Admin SDK
+ * Called only when needed, not at module load time
+ */
+function ensureAdminInitialized(): void {
+  if (admin.apps.length === 0) {
+    admin.initializeApp();
+  }
+}
+
+/**
  * Verify Firebase Auth token from Authorization header
  */
 async function verifyAuthToken(
@@ -105,6 +68,7 @@ async function verifyAuthToken(
 
   const token = authHeader.split('Bearer ')[1];
   try {
+    ensureAdminInitialized();
     const decodedToken = await getAuth().verifyIdToken(token);
     return {
       uid: decodedToken.uid,
@@ -117,9 +81,60 @@ async function verifyAuthToken(
 }
 
 /**
+ * CORS middleware - handles preflight and validates origins
+ *
+ * IMPORTANT: ALLOWED_ORIGINS is passed in as a parameter, not accessed
+ * from module scope. This avoids cold start delays from defineString.
+ */
+function createCorsMiddleware(allowedOriginsParam: StringParam) {
+  return (req: Request, res: Response, next: () => void) => {
+    const origin = req.headers.origin;
+
+    // Allow requests without origin (e.g., server-to-server, health checks)
+    if (!origin) {
+      next();
+      return;
+    }
+
+    const allowedOrigins = allowedOriginsParam
+      .value()
+      .split(',')
+      .map((o) => o.trim());
+
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader(
+        'Access-Control-Allow-Methods',
+        'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+      );
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Authorization,Content-Type'
+      );
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+      // Handle preflight OPTIONS request
+      if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+      }
+
+      next();
+    } else {
+      res.status(403).json({
+        error: 'Forbidden: Origin not allowed by CORS policy',
+        origin,
+      });
+    }
+  };
+}
+
+/**
  * Fluent function builder for creating Firebase HTTP functions
  *
  * Supports chaining secrets, strings, and role requirements.
+ * All defineSecret/defineString calls happen inside builder methods,
+ * avoiding cold start delays from module-level initialization.
  *
  * @example
  * // Simple function without secrets
@@ -161,6 +176,9 @@ class FunctionBuilder<
 
   /**
    * Add secrets to the function
+   *
+   * Secrets are defined lazily here, not at module level.
+   * This avoids cold start delays from Secret Manager fetches.
    */
   usingSecrets<NewSecretNames extends string>(
     ...secretNames: NewSecretNames[]
@@ -185,6 +203,9 @@ class FunctionBuilder<
 
   /**
    * Add string parameters to the function
+   *
+   * Strings are defined lazily here, not at module level.
+   * This avoids cold start delays from parameter fetches.
    */
   usingStrings<NewStringNames extends string>(
     ...stringNames: NewStringNames[]
@@ -240,7 +261,13 @@ class FunctionBuilder<
       strings: Record<StringNames, string>
     ) => Promise<TResponse>
   ) {
+    // Define ALLOWED_ORIGINS lazily here, not at module level
+    // This is the key optimization - defineString is called when handle() is invoked
+    // during function registration, not when the module is first imported
+    const allowedOriginsParam = defineString('ALLOWED_ORIGINS');
+
     const secretParams = Object.values(this.secrets) as SecretParam[];
+    const corsMiddleware = createCorsMiddleware(allowedOriginsParam);
 
     return onRequest(
       {
@@ -284,7 +311,7 @@ class FunctionBuilder<
               }
             }
 
-            // Extract secret values
+            // Extract secret values (only accessed at runtime, not at cold start)
             const secretValues = Object.fromEntries(
               Object.entries(this.secrets).map(([key, secret]) => [
                 key,
@@ -292,7 +319,7 @@ class FunctionBuilder<
               ])
             ) as Record<SecretNames, string>;
 
-            // Extract string values
+            // Extract string values (only accessed at runtime, not at cold start)
             const stringValues = Object.fromEntries(
               Object.entries(this.strings).map(([key, str]) => [
                 key,
