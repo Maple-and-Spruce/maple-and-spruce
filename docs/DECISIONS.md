@@ -541,14 +541,17 @@ Use Storybook 10 with `@storybook/nextjs` framework and `@storybook/addon-a11y` 
 
 ## ADR-015: Preact Signals for Form State Management
 
-**Status:** Accepted
+**Status:** Implemented
 **Date:** 2026-01-19
+**Updated:** 2026-01-21
 
 ### Context
 Complex forms (like ProductForm) currently use multiple `useState` calls, manual dependency tracking in `useMemo`, and explicit error clearing logic. Mountain Sol is adopting Angular signals for state management to simplify logic and ensure correctness. Need an equivalent pattern for the React/Next.js stack.
 
 ### Decision
-Adopt [Preact Signals](https://github.com/preactjs/signals) (`@preact/signals-react`) for form state management, starting with a pilot on ProductForm.
+Adopt [Preact Signals](https://github.com/preactjs/signals) (`@preact/signals-react`) for form state management. All form components now use signals.
+
+**Migration completed:** All forms (ArtistForm, CategoryForm, ProductForm) have been migrated to signals and the old useState-based implementations have been removed.
 
 Key patterns:
 - **`signal(value)`** - Replaces `useState` for form fields
