@@ -1,6 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+/**
+ * ProductForm - Product Form using Preact Signals
+ *
+ * Uses Preact Signals for state management which provides:
+ * 1. Automatic validation - no manual error clearing
+ * 2. Fine-grained reactivity - each field updates independently
+ * 3. Cleaner code - no handleChange wrapper
+ * 4. Always-current derived state - isValid, errors auto-update
+ */
+
+import { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -19,13 +29,26 @@ import {
 } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
-import type { Product, CreateProductInput, ProductStatus, Artist, Category } from '@maple/ts/domain';
+import type {
+  Product,
+  CreateProductInput,
+  ProductStatus,
+  Artist,
+  Category,
+} from '@maple/ts/domain';
 import { toCents } from '@maple/ts/domain';
 import type {
   UploadProductImageRequest,
   UploadProductImageResponse,
 } from '@maple/ts/firebase/api-types';
 import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
+import { productValidation } from '@maple/ts/validation';
+import {
+  useSignal,
+  useComputed,
+  batch,
+  useSignals,
+} from '@maple/react/signals';
 
 interface ProductFormProps {
   open: boolean;
@@ -39,67 +62,6 @@ interface ProductFormProps {
 }
 
 /**
- * Form state uses user-friendly units:
- * - priceDollars: displayed as dollars, converted to cents on submit
- * - commissionPercent: displayed as 0-100%, converted to 0-1 on submit
- */
-interface FormState {
-  artistId: string;
-  categoryId: string;
-  name: string;
-  description: string;
-  priceDollars: number;
-  quantity: number;
-  status: ProductStatus;
-  commissionPercent: number | ''; // 0-100, converted to 0-1 on submit; '' for empty
-}
-
-const defaultFormState: FormState = {
-  artistId: '',
-  categoryId: '',
-  name: '',
-  description: '',
-  priceDollars: 0,
-  quantity: 1,
-  status: 'active',
-  commissionPercent: '',
-};
-
-/**
- * Basic client-side validation
- * Full validation happens on the server with vest
- */
-function validateForm(data: FormState): Record<string, string> {
-  const errors: Record<string, string> = {};
-
-  if (!data.name?.trim()) {
-    errors.name = 'Name is required';
-  } else if (data.name.length < 2) {
-    errors.name = 'Name must be at least 2 characters';
-  }
-
-  if (!data.artistId?.trim()) {
-    errors.artistId = 'Artist is required';
-  }
-
-  if (data.priceDollars === undefined || data.priceDollars === null) {
-    errors.priceDollars = 'Price is required';
-  } else if (data.priceDollars <= 0) {
-    errors.priceDollars = 'Price must be greater than 0';
-  }
-
-  if (data.quantity < 0) {
-    errors.quantity = 'Quantity cannot be negative';
-  }
-
-  if (!data.status) {
-    errors.status = 'Status is required';
-  }
-
-  return errors;
-}
-
-/**
  * Read a File as base64 string (without the data URL prefix)
  */
 function readFileAsBase64(file: File): Promise<string> {
@@ -107,7 +69,6 @@ function readFileAsBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
       const base64 = result.split(',')[1];
       resolve(base64);
     };
@@ -125,90 +86,159 @@ export function ProductForm({
   categories,
   isSubmitting = false,
 }: ProductFormProps) {
+  // Enable signals tracking in this component
+  useSignals();
+
   // Filter to only active artists for the dropdown
   const activeArtists = artists.filter((a) => a.status === 'active');
-  const [formData, setFormData] = useState<FormState>(defaultFormState);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Image upload state - only available when editing (product has Square ID)
-  const [imageUploadState, setImageUploadState] = useState<ImageUploadState>({
-    status: 'idle',
-  });
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  // ============================================================
+  // FORM FIELD SIGNALS
+  // Each field is its own signal - enables fine-grained updates
+  // ============================================================
+  const artistId = useSignal('');
+  const categoryId = useSignal('');
+  const name = useSignal('');
+  const description = useSignal('');
+  const priceDollars = useSignal(0);
+  const quantity = useSignal(1);
+  const status = useSignal<ProductStatus>('active');
+  const commissionPercent = useSignal<number | ''>('');
+
+  // ============================================================
+  // UI STATE SIGNALS
+  // ============================================================
+  const showValidationErrors = useSignal(false);
+  const submitError = useSignal<string | null>(null);
+  const imageUploadState = useSignal<ImageUploadState>({ status: 'idle' });
+  const pendingImageFile = useSignal<File | null>(null);
+  /** Tracks submission phase for progress feedback */
+  const submissionPhase = useSignal<'idle' | 'creating' | 'uploading-image'>('idle');
 
   const isEdit = !!product;
 
+  // ============================================================
+  // VALIDATION - Computed signals that auto-track dependencies
+  // ============================================================
+
+  // Validation runs automatically when ANY form field changes
+  const validation = useComputed(() => {
+    return productValidation({
+      artistId: artistId.value,
+      name: name.value,
+      priceCents: Math.round(priceDollars.value * 100),
+      quantity: quantity.value,
+      status: status.value,
+      // Only include commission if provided
+      customCommissionRate:
+        commissionPercent.value !== '' &&
+        !Number.isNaN(commissionPercent.value)
+          ? commissionPercent.value / 100
+          : undefined,
+    });
+  });
+
+  // Errors computed - only shows after first submit attempt
+  const errors = useComputed<Record<string, string[]>>(() => {
+    if (!showValidationErrors.value) return {};
+    return validation.value.getErrors();
+  });
+
+  // Convenience: is form currently valid
+  const isValid = useComputed(() => validation.value.isValid());
+
+  // Helper to get first error for a field
+  const getFieldError = (field: string): string | null => {
+    const fieldErrors = errors.value[field];
+    return fieldErrors?.[0] ?? null;
+  };
+
+  // ============================================================
+  // EFFECTS - Populate form when product prop changes
+  // NOTE: We use React's useEffect here instead of useSignalEffect because
+  // useSignalEffect only tracks signal changes, not React prop changes.
+  // The `open` and `product` props are regular React props that need to be
+  // tracked via the dependency array.
+  // ============================================================
+
   useEffect(() => {
+    // Only run when dialog opens
+    if (!open) return;
+
     if (product) {
-      // Convert from Product (with squareCache) to form state
-      setFormData({
-        artistId: product.artistId,
-        categoryId: product.categoryId ?? '',
-        name: product.squareCache.name,
-        description: product.squareCache.description ?? '',
-        priceDollars: product.squareCache.priceCents / 100, // Convert cents to dollars
-        quantity: product.squareCache.quantity,
-        status: product.status,
-        // Convert decimal (0-1) to percentage (0-100) for display
-        commissionPercent:
+      // Populate form from existing product
+      batch(() => {
+        artistId.value = product.artistId;
+        categoryId.value = product.categoryId ?? '';
+        name.value = product.squareCache.name;
+        description.value = product.squareCache.description ?? '';
+        priceDollars.value = product.squareCache.priceCents / 100;
+        quantity.value = product.squareCache.quantity;
+        status.value = product.status;
+        commissionPercent.value =
           product.customCommissionRate !== undefined
             ? product.customCommissionRate * 100
-            : '',
+            : '';
+
+        // Set image state
+        if (product.squareCache.imageUrl) {
+          imageUploadState.value = {
+            status: 'success',
+            url: product.squareCache.imageUrl,
+          };
+        } else {
+          imageUploadState.value = { status: 'idle' };
+        }
+
+        pendingImageFile.value = null;
+        showValidationErrors.value = false;
+        submitError.value = null;
+        submissionPhase.value = 'idle';
       });
-      // If product has an existing image, show it as success state
-      if (product.squareCache.imageUrl) {
-        setImageUploadState({ status: 'success', url: product.squareCache.imageUrl });
-      } else {
-        setImageUploadState({ status: 'idle' });
-      }
     } else {
-      setFormData(defaultFormState);
-      setImageUploadState({ status: 'idle' });
+      // Reset to defaults for new product
+      batch(() => {
+        artistId.value = '';
+        categoryId.value = '';
+        name.value = '';
+        description.value = '';
+        priceDollars.value = 0;
+        quantity.value = 1;
+        status.value = 'active';
+        commissionPercent.value = '';
+        imageUploadState.value = { status: 'idle' };
+        pendingImageFile.value = null;
+        showValidationErrors.value = false;
+        submitError.value = null;
+        submissionPhase.value = 'idle';
+      });
     }
-    setPendingImageFile(null);
-    setErrors({});
-    setSubmitError(null);
-  }, [product, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product]);
+
+  // ============================================================
+  // EVENT HANDLERS
+  // ============================================================
 
   const handleImageSelected = useCallback((file: File, previewUrl: string) => {
-    setPendingImageFile(file);
-    setImageUploadState({ status: 'previewing', previewUrl, file });
+    pendingImageFile.value = file;
+    imageUploadState.value = { status: 'previewing', previewUrl, file };
   }, []);
 
   const handleImageRemove = useCallback(() => {
-    setPendingImageFile(null);
-    setImageUploadState({ status: 'removed' });
+    pendingImageFile.value = null;
+    imageUploadState.value = { status: 'removed' };
   }, []);
-
-  const handleChange = (
-    field: keyof FormState,
-    value: string | number | ProductStatus | ''
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    // Clear error when field changes
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
 
   /**
    * Upload image to Square via Firebase function
-   * Only available when editing (product must exist in Square)
    */
   const uploadImage = async (file: File, productId: string): Promise<string> => {
     const functions = getMapleFunctions();
-    const upload = httpsCallable<UploadProductImageRequest, UploadProductImageResponse>(
-      functions,
-      'uploadProductImage'
-    );
+    const upload = httpsCallable<
+      UploadProductImageRequest,
+      UploadProductImageResponse
+    >(functions, 'uploadProductImage');
 
     const imageBase64 = await readFileAsBase64(file);
 
@@ -226,70 +256,98 @@ export function ProductForm({
   };
 
   const handleSubmit = async () => {
-    const validationErrors = validateForm(formData);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    // Show validation errors on first submit attempt
+    showValidationErrors.value = true;
+
+    // Check validity
+    if (!isValid.value) {
       return;
     }
 
-    setSubmitError(null);
+    submitError.value = null;
 
     try {
-      // Convert form state to CreateProductInput
+      // Build the input from signal values
       const input: CreateProductInput = {
-        artistId: formData.artistId,
-        categoryId: formData.categoryId || undefined,
-        name: formData.name,
-        description: formData.description || undefined,
-        priceCents: toCents(formData.priceDollars), // Convert dollars to cents
-        quantity: formData.quantity,
-        status: formData.status,
+        artistId: artistId.value,
+        categoryId: categoryId.value || undefined,
+        name: name.value,
+        description: description.value || undefined,
+        priceCents: toCents(priceDollars.value),
+        quantity: quantity.value,
+        status: status.value,
       };
 
-      // Convert percentage (0-100) to decimal (0-1) if provided
+      // Add commission rate if provided
       if (
-        formData.commissionPercent !== '' &&
-        formData.commissionPercent !== undefined &&
-        !Number.isNaN(formData.commissionPercent)
+        commissionPercent.value !== '' &&
+        !Number.isNaN(commissionPercent.value)
       ) {
-        input.customCommissionRate = formData.commissionPercent / 100;
+        input.customCommissionRate = commissionPercent.value / 100;
       }
 
-      // If editing and there's a pending image to upload, upload it first
-      if (isEdit && product && pendingImageFile) {
-        setImageUploadState({
+      // Capture preview URL for image upload state updates
+      const currentPreviewUrl =
+        imageUploadState.value.status === 'previewing'
+          ? imageUploadState.value.previewUrl
+          : '';
+
+      // Handle image upload for EXISTING products (edit mode)
+      if (isEdit && product && pendingImageFile.value) {
+        imageUploadState.value = {
           status: 'uploading',
-          previewUrl:
-            imageUploadState.status === 'previewing'
-              ? imageUploadState.previewUrl
-              : '',
-        });
+          previewUrl: currentPreviewUrl,
+        };
 
         try {
-          const imageUrl = await uploadImage(pendingImageFile, product.id);
-          setImageUploadState({ status: 'success', url: imageUrl });
+          const imageUrl = await uploadImage(pendingImageFile.value, product.id);
+          imageUploadState.value = { status: 'success', url: imageUrl };
         } catch (uploadError) {
           const errorMessage =
             uploadError instanceof Error
               ? uploadError.message
               : 'Failed to upload image';
-          setImageUploadState({
+          imageUploadState.value = {
             status: 'error',
             error: errorMessage,
-            previewUrl:
-              imageUploadState.status === 'previewing'
-                ? imageUploadState.previewUrl
-                : undefined,
-          });
-          setSubmitError(`Image upload failed: ${errorMessage}`);
+            previewUrl: currentPreviewUrl || undefined,
+          };
+          submitError.value = `Image upload failed: ${errorMessage}`;
           return;
         }
       }
 
-      await onSubmit(input);
+      // Create/update the product
+      submissionPhase.value = isEdit ? 'idle' : 'creating';
+      const result = await onSubmit(input);
+
+      // Handle image upload for NEW products (after creation)
+      if (!isEdit && pendingImageFile.value && result) {
+        submissionPhase.value = 'uploading-image';
+        imageUploadState.value = {
+          status: 'uploading',
+          previewUrl: currentPreviewUrl,
+        };
+
+        try {
+          const imageUrl = await uploadImage(pendingImageFile.value, result.id);
+          imageUploadState.value = { status: 'success', url: imageUrl };
+        } catch (uploadError) {
+          // Image upload failed, but product was created
+          // Show error but still close - user can add image later
+          const errorMessage =
+            uploadError instanceof Error
+              ? uploadError.message
+              : 'Failed to upload image';
+          console.error('Image upload failed after product creation:', errorMessage);
+          // Don't block - product was created successfully
+        }
+      }
+
+      submissionPhase.value = 'idle';
       onClose();
     } catch (error: unknown) {
-      // Extract meaningful error message from Firebase/API errors
+      submissionPhase.value = 'idle';
       let message = 'Failed to save product';
       if (error instanceof Error) {
         message = error.message;
@@ -300,37 +358,43 @@ export function ProductForm({
       ) {
         message = String((error as { message: unknown }).message);
       }
-      setSubmitError(message);
+      submitError.value = message;
     }
   };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEdit ? 'Edit Product' : 'Add Product'}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {submitError && (
-            <Alert severity="error" onClose={() => setSubmitError(null)}>
-              {submitError}
+          {submitError.value && (
+            <Alert severity="error" onClose={() => (submitError.value = null)}>
+              {submitError.value}
             </Alert>
           )}
 
+          {/* Product Name - signals update directly, no handleChange wrapper */}
           <TextField
             label="Product Name"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            error={!!errors.name}
-            helperText={errors.name}
+            value={name.value}
+            onChange={(e) => (name.value = e.target.value)}
+            error={!!getFieldError('name')}
+            helperText={getFieldError('name')}
             required
             fullWidth
           />
 
-          <FormControl fullWidth required error={!!errors.artistId}>
+          {/* Artist Select */}
+          <FormControl fullWidth required error={!!getFieldError('artistId')}>
             <InputLabel>Artist</InputLabel>
             <Select
-              value={formData.artistId}
+              value={artistId.value}
               label="Artist"
-              onChange={(e) => handleChange('artistId', e.target.value)}
+              onChange={(e) => (artistId.value = e.target.value)}
             >
               {activeArtists.map((artist) => (
                 <MenuItem key={artist.id} value={artist.id}>
@@ -338,15 +402,18 @@ export function ProductForm({
                 </MenuItem>
               ))}
             </Select>
-            {errors.artistId && <FormHelperText>{errors.artistId}</FormHelperText>}
+            {getFieldError('artistId') && (
+              <FormHelperText>{getFieldError('artistId')}</FormHelperText>
+            )}
           </FormControl>
 
+          {/* Category Select */}
           <FormControl fullWidth>
             <InputLabel>Category</InputLabel>
             <Select
-              value={formData.categoryId}
+              value={categoryId.value}
               label="Category"
-              onChange={(e) => handleChange('categoryId', e.target.value)}
+              onChange={(e) => (categoryId.value = e.target.value)}
             >
               <MenuItem value="">
                 <em>Uncategorized</em>
@@ -359,54 +426,58 @@ export function ProductForm({
             </Select>
           </FormControl>
 
+          {/* Description */}
           <TextField
             label="Description"
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
+            value={description.value}
+            onChange={(e) => (description.value = e.target.value)}
             multiline
             rows={3}
             fullWidth
           />
 
+          {/* Price */}
           <TextField
             label="Price"
             type="number"
-            value={formData.priceDollars}
+            value={priceDollars.value}
             onChange={(e) =>
-              handleChange('priceDollars', parseFloat(e.target.value) || 0)
+              (priceDollars.value = parseFloat(e.target.value) || 0)
             }
-            error={!!errors.priceDollars}
-            helperText={errors.priceDollars}
+            error={!!getFieldError('priceCents')}
+            helperText={getFieldError('priceCents')}
             InputProps={{
-              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              startAdornment: (
+                <InputAdornment position="start">$</InputAdornment>
+              ),
             }}
             inputProps={{ step: 0.01, min: 0 }}
             required
             fullWidth
           />
 
+          {/* Quantity */}
           <TextField
             label="Quantity"
             type="number"
-            value={formData.quantity}
+            value={quantity.value}
             onChange={(e) =>
-              handleChange('quantity', parseInt(e.target.value) || 0)
+              (quantity.value = parseInt(e.target.value, 10) || 0)
             }
-            error={!!errors.quantity}
-            helperText={errors.quantity}
+            error={!!getFieldError('quantity')}
+            helperText={getFieldError('quantity')}
             inputProps={{ min: 0 }}
             required
             fullWidth
           />
 
-          <FormControl fullWidth error={!!errors.status}>
+          {/* Status */}
+          <FormControl fullWidth error={!!getFieldError('status')}>
             <InputLabel>Status</InputLabel>
             <Select
-              value={formData.status}
+              value={status.value}
               label="Status"
-              onChange={(e) =>
-                handleChange('status', e.target.value as ProductStatus)
-              }
+              onChange={(e) => (status.value = e.target.value as ProductStatus)}
             >
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="draft">Draft</MenuItem>
@@ -414,18 +485,20 @@ export function ProductForm({
             </Select>
           </FormControl>
 
+          {/* Commission Rate */}
           <TextField
             label="Custom Commission Rate (%)"
             type="number"
-            value={formData.commissionPercent}
+            value={commissionPercent.value}
             onChange={(e) => {
               const val = e.target.value;
-              handleChange(
-                'commissionPercent',
-                val === '' ? '' : parseFloat(val)
-              );
+              commissionPercent.value = val === '' ? '' : parseFloat(val);
             }}
-            helperText="Optional override (e.g., 30 = 30%)"
+            error={!!getFieldError('customCommissionRate')}
+            helperText={
+              getFieldError('customCommissionRate') ||
+              'Optional override (e.g., 30 = 30%)'
+            }
             inputProps={{ step: 1, min: 0, max: 100 }}
             InputProps={{
               endAdornment: <InputAdornment position="end">%</InputAdornment>,
@@ -433,36 +506,41 @@ export function ProductForm({
             fullWidth
           />
 
-          {/* Image Upload - only available when editing (product must exist in Square) */}
-          {isEdit ? (
-            <ImageUpload
-              state={imageUploadState}
-              onFileSelected={handleImageSelected}
-              onRemove={handleImageRemove}
-              existingImageUrl={product?.squareCache.imageUrl}
-              label="Product Image"
-            />
-          ) : (
-            <Alert severity="info">
-              Product images can be added after creation
-            </Alert>
-          )}
+          {/* Image Upload - available for both create and edit */}
+          <ImageUpload
+            state={imageUploadState.value}
+            onFileSelected={handleImageSelected}
+            onRemove={handleImageRemove}
+            existingImageUrl={product?.squareCache.imageUrl}
+            label="Product Image"
+          />
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={isSubmitting}>
+        <Button
+          onClick={onClose}
+          disabled={isSubmitting || submissionPhase.value !== 'idle'}
+        >
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={isSubmitting || imageUploadState.status === 'uploading'}
+          disabled={
+            isSubmitting ||
+            imageUploadState.value.status === 'uploading' ||
+            submissionPhase.value !== 'idle'
+          }
         >
-          {isSubmitting || imageUploadState.status === 'uploading'
-            ? 'Saving...'
-            : isEdit
-              ? 'Update'
-              : 'Add'}
+          {submissionPhase.value === 'creating'
+            ? 'Creating product...'
+            : submissionPhase.value === 'uploading-image'
+              ? 'Uploading image...'
+              : isSubmitting || imageUploadState.value.status === 'uploading'
+                ? 'Saving...'
+                : isEdit
+                  ? 'Update'
+                  : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>

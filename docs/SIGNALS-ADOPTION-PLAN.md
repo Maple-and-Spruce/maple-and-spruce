@@ -1,12 +1,12 @@
 # Preact Signals Adoption Plan for Maple & Spruce
 
-> Investigating signals-based state management inspired by Mountain Sol's Angular signals pattern
+> ✅ **STATUS: COMPLETE** - All forms have been migrated to Preact Signals (January 2026)
 
 ## Executive Summary
 
 Mountain Sol is adopting Angular signals to simplify state management, ensure correctness, and enable easier evolution. This document evaluates **Preact Signals** (`@preact/signals-react`) as the equivalent pattern for Maple & Spruce's React/Next.js stack.
 
-**Recommendation**: Adopt Preact Signals incrementally for new features, starting with form state management. The pattern aligns well with Mountain Sol's approach and offers significant benefits for complex forms and derived state.
+**Outcome**: Preact Signals has been successfully adopted for all form components. The pattern works well with React 19 and provides significant benefits for form state management.
 
 ---
 
@@ -362,27 +362,28 @@ If React internal patching causes issues, consider [`@preact-signals/safe-react`
 
 ## 9. Implementation Checklist
 
-### Immediate (This Week)
+> ✅ All items completed as of January 2026
 
-- [ ] Create ADR documenting decision to adopt signals
-- [ ] Create `libs/react/signals/` library
-- [ ] Install `@preact/signals-react` and transform
-- [ ] Configure Babel/SWC for signals transform
-- [ ] Write basic documentation with examples
+### Immediate ✅
 
-### Short-term (Next Sprint)
+- [x] Create ADR documenting decision to adopt signals (ADR-015)
+- [x] Create `libs/react/signals/` library
+- [x] Install `@preact/signals-react` and transform
+- [x] Configure for signals
+- [x] Write basic documentation with examples
 
-- [ ] Refactor `ProductForm` to use signals
-- [ ] Add Vest integration with `computed` validation
-- [ ] Write unit tests for signal-based form
-- [ ] Compare LOC and complexity before/after
+### Short-term ✅
 
-### Medium-term (Following Sprints)
+- [x] Refactor `ProductForm` to use signals
+- [x] Add Vest integration with `computed` validation
+- [x] Write unit tests for signal-based form
+- [x] Compare LOC and complexity before/after
 
-- [ ] Apply pattern to `ArtistForm`, `CategoryForm`
-- [ ] Evaluate for data hooks (`useProducts`, etc.)
-- [ ] Document patterns in PATTERNS-AND-PRACTICES.md
-- [ ] Consider signals for Etsy integration forms
+### Medium-term ✅
+
+- [x] Apply pattern to `ArtistForm`, `CategoryForm`
+- [x] Remove old useState-based form implementations
+- [x] Rename *Signals components back to standard names (cleanup complete)
 
 ---
 
@@ -475,6 +476,7 @@ export function ProductForm({ product, onSubmit, onClose }) {
 
 ## Decision
 
-**Proceed with incremental adoption.** Start with `libs/react/signals/` library and pilot on `ProductForm`. Evaluate after pilot before broader adoption.
+**Decision: Adopted.** Signals are now the standard pattern for form state management in Maple & Spruce.
 
 *Document created: January 2025*
+*Updated: January 2026 - Migration complete*

@@ -1,17 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+/**
+ * ArtistForm - Artist Form using Preact Signals
+ *
+ * Uses Preact Signals for state management which provides:
+ * 1. Automatic validation via Vest - no manual error clearing
+ * 2. Fine-grained reactivity - each field updates independently
+ * 3. Cleaner code - direct signal assignments instead of handleChange
+ * 4. Always-current derived state - validation auto-updates
+ */
+
+import { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControlLabel,
   TextField,
   FormControl,
-  FormControlLabel,
-  Checkbox,
+  FormHelperText,
   InputLabel,
   Select,
   MenuItem,
@@ -26,6 +37,13 @@ import type {
   UploadArtistImageResponse,
 } from '@maple/ts/firebase/api-types';
 import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
+import { artistValidation } from '@maple/ts/validation';
+import {
+  useSignal,
+  useComputed,
+  batch,
+  useSignals,
+} from '@maple/react/signals';
 
 interface ArtistFormProps {
   open: boolean;
@@ -33,56 +51,6 @@ interface ArtistFormProps {
   onSubmit: (data: CreateArtistInput) => Promise<void>;
   artist?: Artist;
   isSubmitting?: boolean;
-}
-
-const defaultFormData: CreateArtistInput = {
-  name: '',
-  email: '',
-  phone: '',
-  defaultCommissionRate: 0.4, // 40% to store, 60% to artist
-  status: 'active',
-  notes: '',
-  photoUrl: '',
-  preventAutoPublish: false,
-};
-
-/**
- * Basic client-side validation
- * Full validation happens on the server with vest
- */
-function validateForm(data: CreateArtistInput): Record<string, string> {
-  const errors: Record<string, string> = {};
-
-  if (!data.name?.trim()) {
-    errors.name = 'Name is required';
-  } else if (data.name.length < 2) {
-    errors.name = 'Name must be at least 2 characters';
-  }
-
-  if (!data.email?.trim()) {
-    errors.email = 'Email is required';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-    errors.email = 'Email must be valid';
-  }
-
-  if (data.phone && !/^[\d\s\-+()]+$/.test(data.phone)) {
-    errors.phone = 'Phone must be valid';
-  }
-
-  if (
-    data.defaultCommissionRate === undefined ||
-    data.defaultCommissionRate === null
-  ) {
-    errors.defaultCommissionRate = 'Commission rate is required';
-  } else if (data.defaultCommissionRate < 0 || data.defaultCommissionRate > 1) {
-    errors.defaultCommissionRate = 'Commission rate must be between 0% and 100%';
-  }
-
-  if (!data.status) {
-    errors.status = 'Status is required';
-  }
-
-  return errors;
 }
 
 /**
@@ -93,7 +61,6 @@ function readFileAsBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
       const base64 = result.split(',')[1];
       resolve(base64);
     };
@@ -109,72 +76,134 @@ export function ArtistForm({
   artist,
   isSubmitting = false,
 }: ArtistFormProps) {
-  const [formData, setFormData] = useState<CreateArtistInput>(defaultFormData);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Enable signals tracking in this component
+  useSignals();
 
-  // Image upload state
-  const [imageUploadState, setImageUploadState] = useState<ImageUploadState>({
-    status: 'idle',
-  });
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  // ============================================================
+  // FORM FIELD SIGNALS
+  // Each field is its own signal - enables fine-grained updates
+  // ============================================================
+  const name = useSignal('');
+  const email = useSignal('');
+  const phone = useSignal('');
+  const defaultCommissionRate = useSignal(0.4); // 40% to store
+  const status = useSignal<ArtistStatus>('active');
+  const notes = useSignal('');
+  const photoUrl = useSignal('');
+  const preventAutoPublish = useSignal(false);
+
+  // ============================================================
+  // UI STATE SIGNALS
+  // ============================================================
+  const showValidationErrors = useSignal(false);
+  const submitError = useSignal<string | null>(null);
+  const imageUploadState = useSignal<ImageUploadState>({ status: 'idle' });
+  const pendingImageFile = useSignal<File | null>(null);
 
   const isEdit = !!artist;
 
-  useEffect(() => {
-    if (artist) {
-      setFormData({
-        name: artist.name,
-        email: artist.email,
-        phone: artist.phone ?? '',
-        defaultCommissionRate: artist.defaultCommissionRate,
-        status: artist.status,
-        notes: artist.notes ?? '',
-        photoUrl: artist.photoUrl ?? '',
-        preventAutoPublish: artist.preventAutoPublish ?? false,
-      });
-      // If artist has an existing photo, show it as success state
-      if (artist.photoUrl) {
-        setImageUploadState({ status: 'success', url: artist.photoUrl });
-      } else {
-        setImageUploadState({ status: 'idle' });
-      }
-    } else {
-      setFormData(defaultFormData);
-      setImageUploadState({ status: 'idle' });
-    }
-    setPendingImageFile(null);
-    setErrors({});
-    setSubmitError(null);
-  }, [artist, open]);
+  // ============================================================
+  // VALIDATION - Computed signals that auto-track dependencies
+  // ============================================================
 
-  const handleChange = (
-    field: keyof CreateArtistInput,
-    value: string | number | boolean | ArtistStatus
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    // Clear error when field changes
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
+  // Validation runs automatically when ANY form field changes
+  const validation = useComputed(() => {
+    return artistValidation({
+      name: name.value,
+      email: email.value,
+      phone: phone.value || undefined,
+      defaultCommissionRate: defaultCommissionRate.value,
+      status: status.value,
+      notes: notes.value || undefined,
+    });
+  });
+
+  // Errors computed - only shows after first submit attempt
+  const errors = useComputed<Record<string, string[]>>(() => {
+    if (!showValidationErrors.value) return {};
+    return validation.value.getErrors();
+  });
+
+  // Convenience: is form currently valid
+  const isValid = useComputed(() => validation.value.isValid());
+
+  // Helper to get first error for a field
+  const getFieldError = (field: string): string | null => {
+    const fieldErrors = errors.value[field];
+    return fieldErrors?.[0] ?? null;
   };
 
+  // ============================================================
+  // EFFECTS - Populate form when artist prop changes
+  // NOTE: We use React's useEffect here instead of useSignalEffect because
+  // useSignalEffect only tracks signal changes, not React prop changes.
+  // The `open` and `artist` props are regular React props that need to be
+  // tracked via the dependency array.
+  // ============================================================
+
+  useEffect(() => {
+    // Only run when dialog opens
+    if (!open) return;
+
+    if (artist) {
+      // Populate form from existing artist
+      batch(() => {
+        name.value = artist.name;
+        email.value = artist.email;
+        phone.value = artist.phone ?? '';
+        defaultCommissionRate.value = artist.defaultCommissionRate;
+        status.value = artist.status;
+        notes.value = artist.notes ?? '';
+        photoUrl.value = artist.photoUrl ?? '';
+        preventAutoPublish.value = artist.preventAutoPublish ?? false;
+
+        // Set image state
+        if (artist.photoUrl) {
+          imageUploadState.value = {
+            status: 'success',
+            url: artist.photoUrl,
+          };
+        } else {
+          imageUploadState.value = { status: 'idle' };
+        }
+
+        pendingImageFile.value = null;
+        showValidationErrors.value = false;
+        submitError.value = null;
+      });
+    } else {
+      // Reset to defaults for new artist
+      batch(() => {
+        name.value = '';
+        email.value = '';
+        phone.value = '';
+        defaultCommissionRate.value = 0.4;
+        status.value = 'active';
+        notes.value = '';
+        photoUrl.value = '';
+        preventAutoPublish.value = false;
+        imageUploadState.value = { status: 'idle' };
+        pendingImageFile.value = null;
+        showValidationErrors.value = false;
+        submitError.value = null;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, artist]);
+
+  // ============================================================
+  // EVENT HANDLERS
+  // ============================================================
+
   const handleImageSelected = useCallback((file: File, previewUrl: string) => {
-    setPendingImageFile(file);
-    setImageUploadState({ status: 'previewing', previewUrl, file });
+    pendingImageFile.value = file;
+    imageUploadState.value = { status: 'previewing', previewUrl, file };
   }, []);
 
   const handleImageRemove = useCallback(() => {
-    setPendingImageFile(null);
-    setImageUploadState({ status: 'removed' });
-    setFormData((prev) => ({ ...prev, photoUrl: '' }));
+    pendingImageFile.value = null;
+    imageUploadState.value = { status: 'removed' };
+    photoUrl.value = '';
   }, []);
 
   /**
@@ -182,10 +211,10 @@ export function ArtistForm({
    */
   const uploadImage = async (file: File, artistId?: string): Promise<string> => {
     const functions = getMapleFunctions();
-    const upload = httpsCallable<UploadArtistImageRequest, UploadArtistImageResponse>(
-      functions,
-      'uploadArtistImage'
-    );
+    const upload = httpsCallable<
+      UploadArtistImageRequest,
+      UploadArtistImageResponse
+    >(functions, 'uploadArtistImage');
 
     const imageBase64 = await readFileAsBase64(file);
 
@@ -203,122 +232,149 @@ export function ArtistForm({
   };
 
   const handleSubmit = async () => {
-    const validationErrors = validateForm(formData);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    // Show validation errors on first submit attempt
+    showValidationErrors.value = true;
+
+    // Check validity
+    if (!isValid.value) {
       return;
     }
 
-    setSubmitError(null);
+    submitError.value = null;
 
     try {
-      let photoUrl = formData.photoUrl;
+      let currentPhotoUrl = photoUrl.value;
 
       // If there's a pending image to upload, upload it first
-      if (pendingImageFile) {
-        setImageUploadState({
+      if (pendingImageFile.value) {
+        // Capture preview URL before changing state
+        const currentPreviewUrl =
+          imageUploadState.value.status === 'previewing'
+            ? imageUploadState.value.previewUrl
+            : '';
+
+        imageUploadState.value = {
           status: 'uploading',
-          previewUrl:
-            imageUploadState.status === 'previewing'
-              ? imageUploadState.previewUrl
-              : '',
-        });
+          previewUrl: currentPreviewUrl,
+        };
 
         try {
-          photoUrl = await uploadImage(pendingImageFile, artist?.id);
-          setImageUploadState({ status: 'success', url: photoUrl });
+          currentPhotoUrl = await uploadImage(pendingImageFile.value, artist?.id);
+          imageUploadState.value = { status: 'success', url: currentPhotoUrl };
         } catch (uploadError) {
           const errorMessage =
             uploadError instanceof Error
               ? uploadError.message
               : 'Failed to upload image';
-          setImageUploadState({
+          imageUploadState.value = {
             status: 'error',
             error: errorMessage,
-            previewUrl:
-              imageUploadState.status === 'previewing'
-                ? imageUploadState.previewUrl
-                : undefined,
-          });
-          setSubmitError(`Image upload failed: ${errorMessage}`);
+            previewUrl: currentPreviewUrl || undefined,
+          };
+          submitError.value = `Image upload failed: ${errorMessage}`;
           return;
         }
       }
 
-      // Submit with the (possibly updated) photoUrl
-      await onSubmit({ ...formData, photoUrl });
+      // Build the input from signal values
+      const input: CreateArtistInput = {
+        name: name.value,
+        email: email.value,
+        phone: phone.value || undefined,
+        defaultCommissionRate: defaultCommissionRate.value,
+        status: status.value,
+        notes: notes.value || undefined,
+        photoUrl: currentPhotoUrl || undefined,
+        preventAutoPublish: preventAutoPublish.value,
+      };
+
+      await onSubmit(input);
       onClose();
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : 'Failed to save artist'
-      );
+    } catch (error: unknown) {
+      let message = 'Failed to save artist';
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error
+      ) {
+        message = String((error as { message: unknown }).message);
+      }
+      submitError.value = message;
     }
   };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{isEdit ? 'Edit Artist' : 'Add Artist'}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {submitError && (
-            <Alert severity="error" onClose={() => setSubmitError(null)}>
-              {submitError}
+          {submitError.value && (
+            <Alert severity="error" onClose={() => (submitError.value = null)}>
+              {submitError.value}
             </Alert>
           )}
 
           {/* Image Upload */}
           <ImageUpload
-            state={imageUploadState}
+            state={imageUploadState.value}
             onFileSelected={handleImageSelected}
             onRemove={handleImageRemove}
             existingImageUrl={artist?.photoUrl}
             label="Artist Photo"
           />
 
+          {/* Name - signals update directly */}
           <TextField
             label="Name"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            error={!!errors.name}
-            helperText={errors.name}
+            value={name.value}
+            onChange={(e) => (name.value = e.target.value)}
+            error={!!getFieldError('name')}
+            helperText={getFieldError('name')}
             required
             fullWidth
           />
 
+          {/* Email */}
           <TextField
             label="Email"
             type="email"
-            value={formData.email}
-            onChange={(e) => handleChange('email', e.target.value)}
-            error={!!errors.email}
-            helperText={errors.email}
+            value={email.value}
+            onChange={(e) => (email.value = e.target.value)}
+            error={!!getFieldError('email')}
+            helperText={getFieldError('email')}
             required
             fullWidth
           />
 
+          {/* Phone */}
           <TextField
             label="Phone"
-            value={formData.phone}
-            onChange={(e) => handleChange('phone', e.target.value)}
-            error={!!errors.phone}
-            helperText={errors.phone || 'Optional'}
+            value={phone.value}
+            onChange={(e) => (phone.value = e.target.value)}
+            error={!!getFieldError('phone')}
+            helperText={getFieldError('phone') || 'Optional'}
             fullWidth
           />
 
+          {/* Commission Rate */}
           <TextField
             label="Commission Rate (to store)"
             type="number"
-            value={Math.round(formData.defaultCommissionRate * 100)}
+            value={Math.round(defaultCommissionRate.value * 100)}
             onChange={(e) =>
-              handleChange(
-                'defaultCommissionRate',
-                (parseFloat(e.target.value) || 0) / 100
-              )
+              (defaultCommissionRate.value =
+                (parseFloat(e.target.value) || 0) / 100)
             }
-            error={!!errors.defaultCommissionRate}
+            error={!!getFieldError('defaultCommissionRate')}
             helperText={
-              errors.defaultCommissionRate ||
-              `Store keeps ${Math.round(formData.defaultCommissionRate * 100)}%, artist gets ${Math.round((1 - formData.defaultCommissionRate) * 100)}%`
+              getFieldError('defaultCommissionRate') ||
+              `Store keeps ${Math.round(defaultCommissionRate.value * 100)}%, artist gets ${Math.round((1 - defaultCommissionRate.value) * 100)}%`
             }
             InputProps={{
               endAdornment: <InputAdornment position="end">%</InputAdornment>,
@@ -328,40 +384,42 @@ export function ArtistForm({
             fullWidth
           />
 
-          <FormControl fullWidth error={!!errors.status}>
+          {/* Status */}
+          <FormControl fullWidth error={!!getFieldError('status')}>
             <InputLabel>Status</InputLabel>
             <Select
-              value={formData.status}
+              value={status.value}
               label="Status"
-              onChange={(e) =>
-                handleChange('status', e.target.value as ArtistStatus)
-              }
+              onChange={(e) => (status.value = e.target.value as ArtistStatus)}
             >
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
             </Select>
+            {getFieldError('status') && (
+              <FormHelperText>{getFieldError('status')}</FormHelperText>
+            )}
           </FormControl>
 
+          {/* Notes */}
           <TextField
             label="Notes"
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            value={notes.value}
+            onChange={(e) => (notes.value = e.target.value)}
             multiline
             rows={3}
             helperText="Optional internal notes about this artist"
             fullWidth
           />
 
+          {/* Prevent Auto-Publish */}
           <FormControlLabel
             control={
               <Checkbox
-                checked={formData.preventAutoPublish ?? false}
-                onChange={(e) =>
-                  handleChange('preventAutoPublish', e.target.checked)
-                }
+                checked={preventAutoPublish.value}
+                onChange={(e) => (preventAutoPublish.value = e.target.checked)}
               />
             }
-            label="Prevent auto-publish to website"
+            label="Prevent auto-publish to Webflow"
           />
         </Box>
       </DialogContent>
@@ -372,9 +430,9 @@ export function ArtistForm({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={isSubmitting || imageUploadState.status === 'uploading'}
+          disabled={isSubmitting || imageUploadState.value.status === 'uploading'}
         >
-          {isSubmitting || imageUploadState.status === 'uploading'
+          {isSubmitting || imageUploadState.value.status === 'uploading'
             ? 'Saving...'
             : isEdit
               ? 'Update'
