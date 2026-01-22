@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
- * Tests for lazy initialization pattern in auth.utility.ts
+ * Tests for auth.utility.ts
  *
  * Uses vi.hoisted + vi.mock for proper module mocking with Vitest.
  * @see https://vitest.dev/guide/mocking/modules
@@ -10,29 +10,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Define mocks using vi.hoisted so they're available in vi.mock factory
 const mocks = vi.hoisted(() => {
   return {
-    initializeApp: vi.fn(),
-    apps: [] as unknown[],
     docGet: vi.fn(),
     docSet: vi.fn(),
     docDelete: vi.fn(),
     collectionGet: vi.fn(),
+    getDb: vi.fn(),
   };
 });
 
-// Mock firebase-admin module
-vi.mock('firebase-admin', () => {
-  return {
-    default: {
-      get apps() {
-        return mocks.apps;
-      },
-      initializeApp: mocks.initializeApp,
-    },
-  };
-});
-
-// Mock firebase-admin/firestore module
-vi.mock('firebase-admin/firestore', () => {
+// Mock @maple/firebase/database module
+vi.mock('@maple/firebase/database', () => {
   const mockDocRef = {
     get: mocks.docGet,
     set: mocks.docSet,
@@ -44,20 +31,20 @@ vi.mock('firebase-admin/firestore', () => {
     get: mocks.collectionGet,
   };
 
-  const mockFirestore = {
+  const mockDb = {
     collection: vi.fn().mockReturnValue(mockCollectionRef),
   };
 
+  mocks.getDb.mockReturnValue(mockDb);
+
   return {
-    getFirestore: vi.fn().mockReturnValue(mockFirestore),
+    getDb: mocks.getDb,
   };
 });
 
 describe('auth.utility', () => {
   beforeEach(() => {
-    // Reset mocks and apps array before each test
     vi.clearAllMocks();
-    mocks.apps.length = 0;
 
     // Setup default mock returns
     mocks.docGet.mockResolvedValue({ exists: false });
@@ -67,55 +54,15 @@ describe('auth.utility', () => {
     vi.resetModules();
   });
 
-  describe('lazy initialization', () => {
-    it('should initialize admin when hasRole is called', async () => {
+  describe('hasRole', () => {
+    it('should call getDb to get Firestore instance', async () => {
       const { hasRole, Role } = await import('./auth.utility');
 
       await hasRole('test-uid', Role.Admin);
 
-      expect(mocks.initializeApp).toHaveBeenCalledTimes(1);
+      expect(mocks.getDb).toHaveBeenCalled();
     });
 
-    it('should initialize admin when grantAdminRole is called', async () => {
-      const { grantAdminRole } = await import('./auth.utility');
-
-      await grantAdminRole('new-admin-uid', 'granter-uid');
-
-      expect(mocks.initializeApp).toHaveBeenCalledTimes(1);
-    });
-
-    it('should initialize admin when revokeAdminRole is called', async () => {
-      const { revokeAdminRole } = await import('./auth.utility');
-
-      await revokeAdminRole('admin-uid');
-
-      expect(mocks.initializeApp).toHaveBeenCalledTimes(1);
-    });
-
-    it('should initialize admin when getAdminUids is called', async () => {
-      const { getAdminUids } = await import('./auth.utility');
-
-      await getAdminUids();
-
-      expect(mocks.initializeApp).toHaveBeenCalledTimes(1);
-    });
-
-    it('should not reinitialize if admin is already initialized', async () => {
-      // Pre-populate apps array to simulate already initialized
-      mocks.apps.push({});
-
-      const { hasRole, grantAdminRole, Role } = await import('./auth.utility');
-
-      // Call multiple functions
-      await hasRole('test-uid', Role.Admin);
-      await grantAdminRole('new-admin', 'granter');
-
-      // Should not call initializeApp since apps array was not empty
-      expect(mocks.initializeApp).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('hasRole', () => {
     it('should return true when admin document exists', async () => {
       mocks.docGet.mockResolvedValue({ exists: true });
 
@@ -134,6 +81,47 @@ describe('auth.utility', () => {
       const result = await hasRole('non-admin-uid', Role.Admin);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('grantAdminRole', () => {
+    it('should call getDb and set admin document', async () => {
+      const { grantAdminRole } = await import('./auth.utility');
+
+      await grantAdminRole('new-admin-uid', 'granter-uid');
+
+      expect(mocks.getDb).toHaveBeenCalled();
+      expect(mocks.docSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          grantedBy: 'granter-uid',
+        })
+      );
+    });
+  });
+
+  describe('revokeAdminRole', () => {
+    it('should call getDb and delete admin document', async () => {
+      const { revokeAdminRole } = await import('./auth.utility');
+
+      await revokeAdminRole('admin-uid');
+
+      expect(mocks.getDb).toHaveBeenCalled();
+      expect(mocks.docDelete).toHaveBeenCalled();
+    });
+  });
+
+  describe('getAdminUids', () => {
+    it('should return array of admin UIDs', async () => {
+      mocks.collectionGet.mockResolvedValue({
+        docs: [{ id: 'admin1' }, { id: 'admin2' }],
+      });
+
+      const { getAdminUids } = await import('./auth.utility');
+
+      const result = await getAdminUids();
+
+      expect(mocks.getDb).toHaveBeenCalled();
+      expect(result).toEqual(['admin1', 'admin2']);
     });
   });
 
