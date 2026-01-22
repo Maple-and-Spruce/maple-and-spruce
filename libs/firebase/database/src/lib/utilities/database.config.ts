@@ -40,8 +40,14 @@ export function getDb(): FirebaseFirestore.Firestore {
     ensureAdminInitialized();
     dbInstance = admin.firestore();
 
+    // Apply settings only once, and only if no operations have been performed yet.
+    // Wrap in try-catch because settings() throws if called after any Firestore operation.
     if (!settingsApplied) {
-      dbInstance.settings({ ignoreUndefinedProperties: true, preferRest: true });
+      try {
+        dbInstance.settings({ ignoreUndefinedProperties: true, preferRest: true });
+      } catch {
+        // Settings already applied or Firestore already in use - ignore
+      }
       settingsApplied = true;
     }
   }
