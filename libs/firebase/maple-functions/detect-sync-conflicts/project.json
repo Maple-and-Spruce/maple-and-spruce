@@ -1,0 +1,15 @@
+{
+  "name": "firebase-maple-functions-detect-sync-conflicts",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/detect-sync-conflicts/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "libs/firebase/maple-functions/detect-sync-conflicts/vitest.config.ts"
+      }
+    }
+  }
+}

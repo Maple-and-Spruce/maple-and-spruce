@@ -644,6 +644,101 @@ See full details: [ADR-016 Full Document](decisions/ADR-016-webflow-integration-
 
 ---
 
+## ADR-017: Cloud Function Unit Testing with Mocked Dependencies
+
+**Status:** Accepted
+**Date:** 2026-01-25
+
+### Context
+Cloud Functions interact with external services (Square, Firestore) making them seem difficult to test. The original testing plan stated "Repository tests require Firebase mocking complexity" and "mocking Square SDK is complex."
+
+### Decision
+Use Vitest's `vi.hoisted()` and `vi.mock()` patterns to mock dependencies at the module level. This enables comprehensive unit testing of Cloud Functions without Firebase emulators or real API calls.
+
+### Implementation
+```typescript
+// Define mocks using vi.hoisted so they're available in vi.mock factory
+const mocks = vi.hoisted(() => ({
+  findAll: vi.fn(),
+  create: vi.fn(),
+}));
+
+// Mock at module level
+vi.mock('@maple/firebase/database', () => ({
+  ProductRepository: {
+    findAll: mocks.findAll,
+    create: mocks.create,
+  },
+}));
+
+// Mock Square SDK similarly
+vi.mock('@maple/firebase/square', () => ({
+  Square: vi.fn().mockImplementation(() => ({
+    catalogService: { listItems: mocks.catalogListItems },
+    inventoryService: { getCounts: mocks.inventoryGetCounts },
+  })),
+}));
+```
+
+### Rationale
+1. **Not actually complex** - Same pattern used for repository tests works for Square SDK
+2. **Fast execution** - No emulators or network calls
+3. **Focused testing** - Test business logic in isolation
+4. **Already proven** - `auth.utility.spec.ts` and `product.repository.spec.ts` use this pattern
+
+### Test Coverage Achieved
+- SyncConflictRepository: 14 tests
+- Webhook handler: 10 tests
+- Detection logic: 13 tests
+- All validation suites: 139+ tests
+
+### Consequences
+**Easier:**
+- Unit test any Cloud Function logic
+- Fast CI runs (no emulator startup)
+- Test edge cases and error paths easily
+
+**Harder:**
+- Mocks must be maintained when APIs change
+- Integration testing still needs emulators (deferred)
+
+---
+
+## ADR-018: Sync Conflict History Preservation
+
+**Status:** Accepted
+**Date:** 2026-01-25
+
+### Context
+The initial sync conflict implementation would update existing pending conflicts when the same issue was detected again. This loses historical data about when conflicts were first detected and how they evolved.
+
+### Decision
+Always create new conflict records. Only check for existing **pending** conflicts to prevent duplicates. Resolved conflicts are preserved as history.
+
+### Behavior
+- Detection finds quantity mismatch → Creates new conflict
+- Detection runs again, same mismatch exists, conflict still pending → Skip (already pending)
+- Admin resolves conflict → Marked as resolved (preserved)
+- Detection runs again, mismatch recurs → Creates NEW conflict (history preserved)
+
+### Rationale
+1. **Audit trail** - Full history of when conflicts occurred and how resolved
+2. **Pattern detection** - Can identify recurring issues with specific products
+3. **Simple logic** - Only need to check for pending conflicts, not update state
+4. **Expected low volume** - Webhook-based sync handles most updates; conflicts are edge cases
+
+### Consequences
+**Easier:**
+- Debug recurring sync issues
+- Understand resolution patterns over time
+- Simple detection logic (create if no pending)
+
+**Harder:**
+- Conflict table grows over time (but expected low volume)
+- May need pagination for history view (implemented)
+
+---
+
 ## Template for New Decisions
 
 ```markdown
@@ -670,4 +765,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-01-20*
+*Last updated: 2026-01-25*

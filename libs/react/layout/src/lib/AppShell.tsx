@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   AppBar,
+  Badge,
   Box,
   Button,
   Container,
@@ -25,6 +26,10 @@ export interface NavItem {
   label: string;
   href: string;
   icon: ReactNode;
+  /** Optional badge count to display on the nav item */
+  badge?: number;
+  /** Badge color (defaults to 'error' for visibility) */
+  badgeColor?: 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success';
 }
 
 export interface AppShellProps {
@@ -78,7 +83,17 @@ export function AppShell({
                 <ListItemIcon
                   sx={{ color: isActive ? 'secondary.main' : 'inherit' }}
                 >
-                  {item.icon}
+                  {item.badge && item.badge > 0 ? (
+                    <Badge
+                      badgeContent={item.badge}
+                      color={item.badgeColor || 'error'}
+                      max={99}
+                    >
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
                 </ListItemIcon>
                 <ListItemText primary={item.label} />
               </ListItemButton>
@@ -130,7 +145,19 @@ export function AppShell({
                   component={Link}
                   href={item.href}
                   color="inherit"
-                  startIcon={item.icon}
+                  startIcon={
+                    item.badge && item.badge > 0 ? (
+                      <Badge
+                        badgeContent={item.badge}
+                        color={item.badgeColor || 'error'}
+                        max={99}
+                      >
+                        {item.icon}
+                      </Badge>
+                    ) : (
+                      item.icon
+                    )
+                  }
                   sx={{
                     backgroundColor: isActive
                       ? 'rgba(255, 255, 255, 0.15)'
