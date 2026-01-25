@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, within, userEvent } from 'storybook/test';
+import { fn, expect, userEvent, screen, waitFor } from 'storybook/test';
 import { SyncConflictResolver } from './SyncConflictResolver';
 import {
   mockQuantityMismatchConflict,
@@ -68,15 +68,18 @@ export const WithNotes: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Click the Manual resolution button
-    const manualButton = canvas.getByRole('button', { name: /manual/i });
+    const manualButton = screen.getByRole('button', { name: /manual/i });
     await userEvent.click(manualButton);
 
     // Fill in the notes field
-    const notesField = canvas.getByRole('textbox', { name: /notes/i });
+    const notesField = screen.getByRole('textbox', { name: /notes/i });
     await userEvent.type(notesField, 'Counted physical inventory and updated both systems');
   },
 };
@@ -110,11 +113,14 @@ export const SelectUseLocal: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Click "Use Local" button
-    const useLocalBtn = canvas.getByRole('button', { name: /use local/i });
+    const useLocalBtn = screen.getByRole('button', { name: /use local/i });
     await userEvent.click(useLocalBtn);
 
     // Verify it's selected (pressed state)
@@ -129,11 +135,14 @@ export const SelectUseExternal: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Click "Use Square" button
-    const useExternalBtn = canvas.getByRole('button', { name: /use square/i });
+    const useExternalBtn = screen.getByRole('button', { name: /use square/i });
     await userEvent.click(useExternalBtn);
 
     // Verify it's selected
@@ -148,20 +157,24 @@ export const ManualRequiresNotes: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Select "Manual" resolution
-    const manualBtn = canvas.getByRole('button', { name: /manual/i });
+    const manualBtn = screen.getByRole('button', { name: /manual/i });
     await userEvent.click(manualBtn);
 
     // Try to submit without notes
-    const confirmBtn = canvas.getByRole('button', { name: /confirm/i });
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i });
     await userEvent.click(confirmBtn);
 
     // Verify error message appears
-    const errorText = await canvas.findByText(/please describe what you did/i);
-    await expect(errorText).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/please describe what you did/i)).toBeInTheDocument();
+    });
   },
 };
 
@@ -172,19 +185,22 @@ export const ManualWithNotes: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement);
+  play: async ({ args }) => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Select "Manual" resolution
-    const manualBtn = canvas.getByRole('button', { name: /manual/i });
+    const manualBtn = screen.getByRole('button', { name: /manual/i });
     await userEvent.click(manualBtn);
 
     // Fill in notes
-    const notesField = canvas.getByRole('textbox', { name: /notes/i });
+    const notesField = screen.getByRole('textbox', { name: /notes/i });
     await userEvent.type(notesField, 'Fixed manually');
 
     // Click confirm
-    const confirmBtn = canvas.getByRole('button', { name: /confirm/i });
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i });
     await userEvent.click(confirmBtn);
 
     // Verify onResolve was called with correct params
@@ -199,15 +215,18 @@ export const SubmitUseLocal: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement);
+  play: async ({ args }) => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Select resolution
-    const useLocalBtn = canvas.getByRole('button', { name: /use local/i });
+    const useLocalBtn = screen.getByRole('button', { name: /use local/i });
     await userEvent.click(useLocalBtn);
 
     // Click confirm
-    const confirmBtn = canvas.getByRole('button', { name: /confirm/i });
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i });
     await userEvent.click(confirmBtn);
 
     // Verify onResolve callback was called
@@ -222,19 +241,22 @@ export const SubmitWithOptionalNotes: Story = {
   args: {
     conflict: mockPriceMismatchConflict,
   },
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement);
+  play: async ({ args }) => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Select resolution
-    const useExternalBtn = canvas.getByRole('button', { name: /use square/i });
+    const useExternalBtn = screen.getByRole('button', { name: /use square/i });
     await userEvent.click(useExternalBtn);
 
     // Add optional notes
-    const notesField = canvas.getByRole('textbox', { name: /notes/i });
+    const notesField = screen.getByRole('textbox', { name: /notes/i });
     await userEvent.type(notesField, 'Price was updated in Square');
 
     // Click confirm
-    const confirmBtn = canvas.getByRole('button', { name: /confirm/i });
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i });
     await userEvent.click(confirmBtn);
 
     // Verify onResolve callback was called with notes
@@ -249,11 +271,14 @@ export const CancelClosesDialog: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement);
+  play: async ({ args }) => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Click cancel
-    const cancelBtn = canvas.getByRole('button', { name: /cancel/i });
+    const cancelBtn = screen.getByRole('button', { name: /cancel/i });
     await userEvent.click(cancelBtn);
 
     // Verify onClose was called
@@ -268,11 +293,14 @@ export const ConfirmDisabledWithoutSelection: Story = {
   args: {
     conflict: mockQuantityMismatchConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Confirm button should be disabled initially
-    const confirmBtn = canvas.getByRole('button', { name: /confirm/i });
+    const confirmBtn = screen.getByRole('button', { name: /confirm/i });
     await expect(confirmBtn).toBeDisabled();
   },
 };
@@ -284,15 +312,18 @@ export const MissingLocalHidesUseLocal: Story = {
   args: {
     conflict: mockMissingLocalConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // "Use Local" button should not exist for missing_local conflicts
-    const useLocalBtn = canvas.queryByRole('button', { name: /use local/i });
+    const useLocalBtn = screen.queryByRole('button', { name: /use local/i });
     expect(useLocalBtn).not.toBeInTheDocument();
 
     // But "Use Square" should exist
-    const useExternalBtn = canvas.getByRole('button', { name: /use square/i });
+    const useExternalBtn = screen.getByRole('button', { name: /use square/i });
     await expect(useExternalBtn).toBeInTheDocument();
   },
 };
@@ -304,15 +335,18 @@ export const MissingExternalHidesUseExternal: Story = {
   args: {
     conflict: mockMissingExternalConflict,
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    // MUI Dialog renders in a portal, use screen to query the whole document
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // "Use Square" button should not exist for missing_external conflicts
-    const useExternalBtn = canvas.queryByRole('button', { name: /use square/i });
+    const useExternalBtn = screen.queryByRole('button', { name: /use square/i });
     expect(useExternalBtn).not.toBeInTheDocument();
 
     // But "Use Local" should exist
-    const useLocalBtn = canvas.getByRole('button', { name: /use local/i });
+    const useLocalBtn = screen.getByRole('button', { name: /use local/i });
     await expect(useLocalBtn).toBeInTheDocument();
   },
 };
