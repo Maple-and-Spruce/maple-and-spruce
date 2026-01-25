@@ -144,9 +144,10 @@ export const ClickToResolve: Story = {
     // Wait for the DataGrid to render
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // Find and click the resolve button on the first row
-    const resolveButton = await canvas.findByRole('button', { name: /resolve/i });
-    await userEvent.click(resolveButton);
+    // Find all resolve buttons (one per pending row) and click the first one
+    const resolveButtons = canvas.getAllByRole('button', { name: /resolve/i });
+    expect(resolveButtons.length).toBeGreaterThan(0);
+    await userEvent.click(resolveButtons[0]);
 
     // Verify onResolve was called with the first pending conflict
     expect(args.onResolve).toHaveBeenCalledWith(

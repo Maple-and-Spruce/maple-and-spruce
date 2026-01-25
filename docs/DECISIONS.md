@@ -739,6 +739,60 @@ Always create new conflict records. Only check for existing **pending** conflict
 
 ---
 
+## ADR-019: Storybook Interaction Testing Patterns
+
+**Status:** Accepted
+**Date:** 2026-01-25
+
+### Context
+Storybook interaction tests were failing in CI for components that use MUI Dialog (and other portal-based components). The tests couldn't find dialog buttons because:
+1. MUI Dialog renders content in a portal at `document.body`, not inside the story's canvas element
+2. Using `within(canvasElement)` only queries within the story container, missing portal content
+3. DataGrid tables with multiple rows have multiple buttons with the same role/name
+
+### Decision
+Adopt these patterns for Storybook interaction tests:
+
+**For portal-based components (Dialog, Modal, Popover, Menu):**
+```typescript
+import { screen, waitFor } from 'storybook/test';
+
+play: async () => {
+  // Wait for portal content to render
+  await waitFor(() => {
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  // Query using screen (whole document), not canvas
+  const button = screen.getByRole('button', { name: /submit/i });
+}
+```
+
+**For tables/lists with multiple similar elements:**
+```typescript
+play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+
+  // Use getAllByRole and select specific element
+  const buttons = canvas.getAllByRole('button', { name: /resolve/i });
+  expect(buttons.length).toBeGreaterThan(0);
+  await userEvent.click(buttons[0]); // Click first one
+}
+```
+
+### Rationale
+- `screen` queries the entire document, including portal content
+- `waitFor` ensures async portal rendering is complete before querying
+- `getAllByRole` handles multiple matching elements gracefully
+- These patterns work consistently in both local and CI environments
+
+### Consequences
+- Need to import `screen` and `waitFor` from `storybook/test`
+- Must choose appropriate query method based on component type
+- Tests are more explicit about what they're querying
+
+---
+
 ## Template for New Decisions
 
 ```markdown
