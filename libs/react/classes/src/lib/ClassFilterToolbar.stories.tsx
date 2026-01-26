@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, waitFor } from 'storybook/test';
-import { ClassFilterToolbar, type ClassFilters } from './ClassFilterToolbar';
+import { ClassFilterToolbar } from './ClassFilterToolbar';
 import { mockClassCategories } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 import { mockActiveInstructors } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 

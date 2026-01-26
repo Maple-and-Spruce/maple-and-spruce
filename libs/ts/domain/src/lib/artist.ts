@@ -8,7 +8,7 @@
  * Artists have commission-based payments (different from Instructors who have per-class payments).
  */
 
-import type { Payee, PayeeStatus, PayoutMethod } from './payee';
+import type { Payee, PayeeStatus } from './payee';
 
 /**
  * Artist entity - implements Payee interface with consignment-specific fields.

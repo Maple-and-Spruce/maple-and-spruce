@@ -37,7 +37,9 @@
       "@maple/react/auth": ["libs/react/auth/src/index.ts"],
       "@maple/react/layout": ["libs/react/layout/src/index.ts"],
       "@maple/react/data": ["libs/react/data/src/index.ts"],
-      "@maple/react/signals": ["libs/react/signals/src/index.ts"]
+      "@maple/react/signals": ["libs/react/signals/src/index.ts"],
+      "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
+      "@maple/react/classes": ["libs/react/classes/src/index.ts"]
     },
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
@@ -66,7 +68,11 @@
     "../../libs/react/data/src/**/*.ts",
     "../../libs/react/data/src/**/*.tsx",
     "../../libs/react/signals/src/**/*.ts",
-    "../../libs/react/signals/src/**/*.tsx"
+    "../../libs/react/signals/src/**/*.tsx",
+    "../../libs/react/instructors/src/**/*.ts",
+    "../../libs/react/instructors/src/**/*.tsx",
+    "../../libs/react/classes/src/**/*.ts",
+    "../../libs/react/classes/src/**/*.tsx"
   ],
   "exclude": [
     "out-tsc",

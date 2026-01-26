@@ -100,7 +100,6 @@ export const mockClassCancelled: Class = {
   categoryId: 'cat-fiber',
   skillLevel: 'all-levels',
   status: 'cancelled',
-  notes: 'Cancelled due to instructor illness. Rescheduled for next month.',
   createdAt: new Date('2024-07-15T10:00:00Z'),
   updatedAt: new Date('2024-07-20T11:00:00Z'),
 };

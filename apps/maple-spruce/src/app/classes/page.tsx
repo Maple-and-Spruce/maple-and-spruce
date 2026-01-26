@@ -24,7 +24,6 @@ export default function ClassesPage() {
     createClass,
     updateClass,
     deleteClass: deleteClassApi,
-    fetchClasses,
   } = useClasses(filters);
 
   // Instructors and categories for dropdowns

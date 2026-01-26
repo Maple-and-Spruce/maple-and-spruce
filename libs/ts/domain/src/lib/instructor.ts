@@ -9,7 +9,7 @@
  * - Instructors receive payment per class (flat, hourly, or percentage)
  */
 
-import type { Payee, PayeeStatus, PayoutMethod } from './payee';
+import type { Payee } from './payee';
 
 /**
  * How an instructor is paid for teaching
