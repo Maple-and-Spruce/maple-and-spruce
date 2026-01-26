@@ -6,85 +6,53 @@
 
 ## Current Status
 
-**Date**: 2026-01-20
-**Status**: 🔧 Dev/Prod environment separation for Webflow sync
+**Date**: 2026-01-25
+**Status**: ✅ Sync Conflict Resolution Complete
 
 ### Completed Today
 
+- **Sync Conflict Resolution (#28) - COMPLETE:**
+  - Closed GitHub issue #28 after PR #103 merged
+  - Full implementation of sync conflict detection and resolution UI
+
+- **Storybook Interaction Test Fixes:**
+  - Fixed MUI Dialog tests using `screen` instead of `canvas` (portal rendering)
+  - Fixed DataGrid tests using `getAllByRole` for multiple resolve buttons
+  - Added ADR-019: Storybook Interaction Testing Patterns
+
+- **Square Webhook Bug Fix:**
+  - Fixed inventory sync - webhook was parsing payload incorrectly
+  - Changed from `event.data.object.catalog_object_id` to `event.data.object.inventory_counts[0].catalog_object_id`
+
+- **Cloud Function Unit Tests:**
+  - Added tests for `detect-sync-conflicts` (13 tests)
+  - Added tests for `square-webhook` (10 tests)
+  - Added ADR-017: Cloud Function Unit Testing with Mocked Dependencies
+  - Added ADR-018: Sync Conflict History Preservation
+
+- **Documentation Updates:**
+  - Updated AGENTS.md directive #9: Claude never deploys - user runs locally
+  - Added testing patterns and conflict detection to Implementation Status
+
+### Previous Session (2026-01-20)
+
 - **Dev/Prod Webflow Sync Separation:**
-  - Added `is-dev-environment` boolean field to Webflow CMS items
+  - Added `is-dev-environment` boolean field to Webflow CMS items ✅ (implemented in Webflow)
   - Dev items are marked `is-dev-environment: true`, prod items are `false`
-  - **Dev items are NEVER auto-published** - stay as drafts
-  - Prod items auto-publish unless `preventAutoPublish` is set
-  - **REQUIRES**: Add `is-dev-environment` (Switch field) to Webflow CMS Artists collection
+  - Dev items stay as drafts, prod items auto-publish
 
 - **Webflow CMS Sync - DEPLOYED & TESTED:**
-  - `syncArtistToWebflow` function deployed to dev environment
-  - Successfully syncing artists to Webflow CMS (tested with "krog" and "a boy named cat")
-  - Artists appear in Webflow CMS as "Queued to publish"
-  - Fixed IAM permissions for Firestore triggers (eventarc.eventReceiver, run.invoker, iam.serviceAccountTokenCreator)
-
-- **Webflow CMS Sync Implementation:**
-  - Installed `webflow-api` SDK
-  - Created `libs/firebase/webflow/` library with:
-    - `Webflow` utility class (follows Square pattern)
-    - `ArtistService` for syncing artists to Webflow CMS
-    - Exports: `WEBFLOW_SECRET_NAMES`, `WEBFLOW_STRING_NAMES`
-  - Created `syncArtistToWebflow` Firestore trigger function:
-    - Triggers on `artists/{artistId}` document writes
-    - Creates/updates/deletes Webflow CMS items based on artist status
-    - Only syncs `active` artists to Webflow
-    - Stores `webflowItemId` back in Firestore for reference
-  - Added `webflowItemId` field to `Artist` domain type
-  - Added `updateWebflowItemId()` to `ArtistRepository`
-  - Added Webflow config to `.env.dev` and `.env.prod`
-  - Fixed `nx.json` - removed `^build` dependency from esbuild
-
-- **CI/CD Fixes:**
-  - Fixed invalid package names in library package.json files (had slashes)
-  - Removed unnecessary package.json files from libs (not needed, esbuild bundles from source)
-  - Fixed project.json naming for sync-artist-to-webflow (must be `firebase-maple-functions-*`)
-
-- **Documentation:**
-  - Added directive #9: Let CI/CD handle deployments
-  - Added directive #10: No package.json in libraries
-  - Added directive #11: Function library naming convention
-  - Added "Creating a New Cloud Function" guide in AGENTS.md
-
-### Action Required
-
-**Add `is-dev-environment` field to Webflow CMS:**
-1. Go to Webflow Designer → Artists collection settings
-2. Add new field: `is-dev-environment` (type: Switch/Boolean)
-3. Default value: `false` (unchecked)
-
-This field lets you filter out dev test items when designing/publishing:
-- Filter by `is-dev-environment = false` to see only prod items
-- Dev items stay as drafts and won't appear on the live site
-
-### Outstanding Questions (Resolved)
-
-- ~~**Auto-publish to Webflow?**~~ → Resolved: Prod auto-publishes, dev never publishes
-
-### Previous Session
-- Closed #26 (Square Integration Setup) - was already complete
-- Storybook deployed to Chromatic
-- **Public Artist API (Phase 2a):**
-  - Created `PublicArtist` type in domain library (strips sensitive fields)
-  - Created `toPublicArtist()` helper function
-  - Added `GetPublicArtistsRequest/Response` API types
-  - Created `getPublicArtists` Cloud Function (no auth required)
-  - Added Firestore composite index for `status + name` query
-  - Updated CORS to allow Webflow domains
-- **Webflow Integration Strategy (ADR-016):**
-  - Decided on CMS Collection Sync approach (vs embedded components)
-  - Researched Webflow CMS API authentication, SDK, rate limits, image handling
+  - `syncArtistToWebflow` function deployed and working
+  - Artists syncing to Webflow CMS successfully
 
 ### Next Steps
-1. **Initial artist migration** - Sync existing active artists to Webflow
-2. **Consider auto-publish feature** (see outstanding questions)
-3. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-4. Etsy Integration (#4) - waiting for app approval
+1. Create initial categories (Pottery, Textiles, Jewelry, etc.)
+2. Etsy Integration (#4) - waiting for app approval
+3. Inventory Movement Audit Log (#27)
+
+### Notes
+- **No initial artist migration needed** - starting from scratch in Webflow
+- `is-dev-environment` field already implemented in Webflow CMS
 
 ### Blockers
 - Etsy app still pending approval
@@ -122,6 +90,8 @@ npm run test:coverage
 # Run specific library
 npx nx run validation:test
 npx nx run domain:test
+npx nx run firebase-maple-functions-detect-sync-conflicts:test
+npx nx run firebase-maple-functions-square-webhook:test
 ```
 
 ### Storybook Commands
@@ -133,19 +103,28 @@ npx nx run maple-spruce:storybook
 npx nx run maple-spruce:build-storybook
 ```
 
+### Local Development
+```bash
+# Run functions locally
+npx nx run functions:serve
+
+# Run web app locally
+npx nx run maple-spruce:serve
+```
+
 ### Deployment
 **Let CI/CD handle deployments** - don't run manual `firebase deploy` commands.
 
 Functions deploy automatically when PRs merge to main via `.github/workflows/firebase-functions-merge.yml`.
 
-```bash
-# To deploy: just merge your PR to main
-# CI/CD will build and deploy automatically
-```
-
 ### Deployed Cloud Functions
 - `syncArtistToWebflow` - Firestore trigger that syncs artist changes to Webflow CMS
 - `getPublicArtists` - Public API for fetching active artists (no auth required)
+- `getSyncConflicts` - List sync conflicts with filters
+- `getSyncConflictSummary` - Get counts for nav badge
+- `resolveSyncConflict` - Apply resolution
+- `detectSyncConflicts` - Compare Firestore vs Square data
+- `squareWebhook` - Handles Square inventory updates
 
 ### Square Webhook URLs (register in Square Dashboard)
 | Environment | URL |
@@ -158,9 +137,11 @@ Functions deploy automatically when PRs merge to main via `.github/workflows/fir
 ## Session History
 
 See `history/` folder for detailed session logs:
+- [2026-01-25](history/2026-01-25.md) - Sync conflict resolution, Storybook test fixes
+- [2026-01-20](history/2026-01-20.md) - Webflow CMS sync, dev/prod separation
 - [2026-01-19](history/2026-01-19.md) - Dev environment fixes, product/artist integration
 - [2026-01-18](history/2026-01-18.md) - Square integration foundation, dev/prod separation
 
 ---
 
-*Last updated: 2026-01-20*
+*Last updated: 2026-01-25*

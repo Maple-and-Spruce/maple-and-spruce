@@ -130,9 +130,10 @@
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Public Artist API | Not started | #93 | TBD |
-| Webflow integration | Not started | #93 | TBD |
-| Artist showcase | Not started | #93 | Webflow |
+| Public Artist API | ✅ Complete | #93 | `libs/firebase/maple-functions/get-public-artists/` |
+| Webflow integration | ✅ Complete | #93 | `libs/firebase/webflow/`, `syncArtistToWebflow` |
+| Sync Conflict Resolution | ✅ Complete | #28 | `/sync-conflicts` page, 4 Cloud Functions |
+| Artist showcase | In progress | #93 | Webflow CMS sync working |
 
 ### Deferred to Phase 5 (Store Opening)
 
