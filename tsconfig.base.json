@@ -92,6 +92,18 @@
       "@maple/firebase/webflow": ["libs/firebase/webflow/src/index.ts"],
       "@maple/maple-functions/sync-artist-to-webflow": [
         "libs/firebase/maple-functions/sync-artist-to-webflow/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-sync-conflicts": [
+        "libs/firebase/maple-functions/get-sync-conflicts/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-sync-conflict-summary": [
+        "libs/firebase/maple-functions/get-sync-conflict-summary/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/resolve-sync-conflict": [
+        "libs/firebase/maple-functions/resolve-sync-conflict/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/detect-sync-conflicts": [
+        "libs/firebase/maple-functions/detect-sync-conflicts/src/index.ts"
       ]
     }
   }

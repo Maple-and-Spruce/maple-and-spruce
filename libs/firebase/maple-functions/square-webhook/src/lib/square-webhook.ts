@@ -305,45 +305,68 @@ async function handleCatalogUpdate(
  * Handle inventory.count.updated webhook
  *
  * Fired when inventory quantity changes in Square (sale, adjustment, etc.)
+ *
+ * Payload structure:
+ * {
+ *   "data": {
+ *     "object": {
+ *       "inventory_counts": [
+ *         { "catalog_object_id": "...", "quantity": "9", "location_id": "...", "state": "IN_STOCK" }
+ *       ]
+ *     }
+ *   }
+ * }
  */
 async function handleInventoryUpdate(
   event: WebhookEvent
 ): Promise<{ action: string; details: string }> {
-  // The event data contains the catalog object ID (variation)
-  const inventoryCount = event.data.object as {
-    catalog_object_id?: string;
-    quantity?: string;
-    location_id?: string;
+  // The inventory counts are nested inside object.inventory_counts array
+  const inventoryData = event.data.object as {
+    inventory_counts?: Array<{
+      catalog_object_id?: string;
+      quantity?: string;
+      location_id?: string;
+      state?: string;
+    }>;
   } | undefined;
 
-  if (!inventoryCount?.catalog_object_id) {
+  const inventoryCounts = inventoryData?.inventory_counts;
+
+  if (!inventoryCounts || inventoryCounts.length === 0) {
     return {
       action: 'skipped',
-      details: 'No catalog_object_id in inventory event',
+      details: 'No inventory_counts in event',
     };
   }
 
-  // Find the product by variation ID
-  // Note: We store squareVariationId, not squareItemId for inventory
+  // Process each inventory count update
   const products = await ProductRepository.findAll();
-  const product = products.find(
-    (p) => p.squareVariationId === inventoryCount.catalog_object_id
-  );
+  const results: string[] = [];
 
-  if (!product) {
-    return {
-      action: 'skipped',
-      details: `No product found for variation ${inventoryCount.catalog_object_id}`,
-    };
+  for (const count of inventoryCounts) {
+    if (!count.catalog_object_id) {
+      results.push('skipped (no catalog_object_id)');
+      continue;
+    }
+
+    // Find the product by variation ID
+    const product = products.find(
+      (p) => p.squareVariationId === count.catalog_object_id
+    );
+
+    if (!product) {
+      results.push(`skipped variation ${count.catalog_object_id} (not tracked)`);
+      continue;
+    }
+
+    const newQuantity = parseInt(count.quantity || '0', 10);
+    await ProductRepository.updateCachedQuantity(product.id, newQuantity);
+    results.push(`${product.id}: ${newQuantity}`);
   }
-
-  const newQuantity = parseInt(inventoryCount.quantity || '0', 10);
-
-  await ProductRepository.updateCachedQuantity(product.id, newQuantity);
 
   return {
     action: 'updated',
-    details: `Updated quantity for product ${product.id} to ${newQuantity}`,
+    details: `Inventory updates: ${results.join(', ')}`,
   };
 }
 

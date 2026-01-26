@@ -110,3 +110,15 @@ export type {
   GetArtistPayoutSummaryRequest,
   GetArtistPayoutSummaryResponse,
 } from './payout.types';
+
+// Sync Conflict types
+export type {
+  GetSyncConflictsRequest,
+  GetSyncConflictsResponse,
+  GetSyncConflictSummaryRequest,
+  GetSyncConflictSummaryResponse,
+  ResolveSyncConflictRequest,
+  ResolveSyncConflictResponse,
+  DetectSyncConflictsRequest,
+  DetectSyncConflictsResponse,
+} from './sync-conflict.types';

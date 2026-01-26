@@ -23,14 +23,16 @@
    - Add unit tests alongside the code (e.g., `artist.ts` → `artist.spec.ts`)
    - Run `npm test` before creating PRs
    - If fixing a bug, add a test that would have caught it
+   - Cloud Functions CAN be unit tested - use `vi.mock()` to mock repositories and external services (see ADR-017)
 8. **Use GitHub issues for work tracking** - Before starting significant work:
    - Create or find an existing issue for the work
    - Reference the issue in PR descriptions (`Closes #XX`)
    - Check off testing requirements in the issue before closing
-9. **Let CI/CD handle deployments** - Never run manual `firebase deploy` commands:
-   - Functions deploy automatically when PRs are merged to main (`.github/workflows/firebase-functions-merge.yml`)
-   - Create PRs and let the pipeline handle deployment
-   - Only exception: emergency hotfixes with explicit user approval
+9. **Never deploy manually** - Claude should NEVER run `firebase deploy` commands:
+   - User runs functions and web app locally for development/testing
+   - Deployments to dev are the user's choice (they will run deploy commands themselves if needed)
+   - Production deployments happen automatically via CI/CD when PRs are merged to main
+   - Claude's job is to write code and create PRs, not deploy
 10. **No package.json in libraries** - Nx libraries under `libs/` should NOT have their own `package.json`:
     - These libraries are not independently publishable
     - The root `package.json` and `tsconfig.base.json` handle all dependency management
@@ -113,6 +115,7 @@
 | Unit testing (Vitest) | Complete | `libs/ts/validation/`, `libs/ts/domain/` |
 | Unit tests in CI | Complete | `.github/workflows/build-check.yml` |
 | Signals state management | Complete | `libs/react/signals/` (see ADR-015) |
+| Sync conflict detection | Complete | `libs/firebase/maple-functions/detect-sync-conflicts/`, UI at `/sync-conflicts` |
 
 ### Phase 1 Features (COMPLETE)
 
@@ -209,6 +212,7 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 - `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
 - `uploadArtistImage`, `uploadProductImage`, `healthCheck`, `squareWebhook`
 - `getPublicArtists`, `reorderCategories`, `syncArtistToWebflow`
+- `detectSyncConflicts`, `getSyncConflicts`, `getSyncConflictSummary`, `resolveSyncConflict`
 
 #### Creating a New Cloud Function
 
@@ -625,7 +629,9 @@ See `libs/firebase/functions/src/lib/environment.utility.ts` for full documentat
 
 ### Local Development
 
-**Running Functions Locally:**
+**Development workflow:** The user runs functions and web app locally for testing. Claude writes code and creates PRs - Claude does NOT deploy.
+
+**Running Functions Locally (user runs this):**
 ```bash
 npx nx run functions:serve
 ```
@@ -636,11 +642,13 @@ This command:
 3. Starts watch mode for rebuilds (background)
 4. Runs `firebase serve --only functions --project=dev` on port 5001
 
-**Running Web App Locally:**
+**Running Web App Locally (user runs this):**
 ```bash
 npx nx run maple-spruce:serve
 ```
 Runs on http://localhost:3000
+
+**Deployment:** User decides when to deploy to dev (runs deploy commands themselves). Production deploys happen automatically via CI/CD on merge to main.
 
 #### Troubleshooting Local Functions
 
