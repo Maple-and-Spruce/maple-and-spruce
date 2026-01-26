@@ -233,9 +233,17 @@ These items are explicitly out of scope for this implementation:
 | Item | Reason | Future Consideration |
 |------|--------|---------------------|
 | E2E tests (Playwright) | Features still evolving, Storybook covers components | Add when preparing for production launch |
-| Repository tests | Requires Firebase mocking complexity | Add when repository logic becomes more complex |
-| Square service tests | Working code, mocking Square SDK is complex | Add if bugs emerge |
 | Firebase emulator tests | Setup complexity | Consider for integration testing phase |
+
+### Items Previously Deferred, Now Implemented
+
+| Item | Original Reason | Resolution |
+|------|-----------------|------------|
+| Repository tests | "Requires Firebase mocking complexity" | ✅ Implemented using `vi.mock()` pattern - not complex |
+| Square service tests | "mocking Square SDK is complex" | ✅ Implemented using same `vi.mock()` pattern |
+| Cloud Function tests | Assumed to need emulators | ✅ Unit tested with mocked dependencies |
+
+See ADR-017 for the mocking patterns used.
 
 ---
 

@@ -51,3 +51,9 @@ export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
 
 // Webflow CMS sync (Firestore triggers)
 export { syncArtistToWebflow } from '@maple/maple-functions/sync-artist-to-webflow';
+
+// Sync conflict functions
+export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
+export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
+export { resolveSyncConflict } from '@maple/firebase/maple-functions/resolve-sync-conflict';
+export { detectSyncConflicts } from '@maple/firebase/maple-functions/detect-sync-conflicts';
