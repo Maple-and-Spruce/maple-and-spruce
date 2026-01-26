@@ -112,7 +112,7 @@ Use Firebase (Firestore + Firebase Auth + Cloud Functions).
 
 ## ADR-005: Stripe for Payments
 
-**Status:** Accepted
+**Status:** Superseded by ADR-021 (Square for All Payments)
 **Date:** 2025-01-06
 
 ### Context
@@ -793,6 +793,154 @@ play: async ({ canvasElement }) => {
 
 ---
 
+## ADR-020: Payee Interface for Shared Payment Abstractions
+
+**Status:** Accepted
+**Date:** 2026-01-25
+
+### Context
+Phase 3 introduces Instructors who need to be paid for teaching classes. Artists already have payment-related fields (commission rates, payout tracking). Initially considered two approaches:
+1. Add an `isInstructor` flag to Artist
+2. Create separate Instructor entity with shared payment interface
+
+### Decision
+Use **composition over inheritance** - create a `Payee` interface that both Artist and Instructor implement independently.
+
+```typescript
+interface Payee {
+  id: string;
+  name: string;
+  email: string;
+  payRate?: number;
+  payRateType?: 'hourly' | 'flat' | 'percentage';
+}
+
+// Artist implements Payee (for consignment payouts)
+interface Artist extends Payee {
+  bio?: string;
+  imageUrl?: string;
+  commissionRate: number; // Artist-specific
+}
+
+// Instructor implements Payee (for class payments)
+interface Instructor extends Payee {
+  bio?: string;
+  photoUrl?: string;
+  specialties: string[];  // Instructor-specific
+}
+```
+
+### Rationale
+1. **Separation of concerns** - Artists and Instructors have different business contexts
+2. **Type safety** - TypeScript discriminated unions prevent mixing up entity types
+3. **Flexibility** - A person could be both an Artist AND an Instructor (different records)
+4. **Cleaner domain model** - No optional fields or type guards throughout codebase
+5. **Independent evolution** - Artist payment logic (commission %) differs from Instructor (hourly/flat rate)
+
+### Alternatives Considered
+- **Artist.isInstructor flag** - Would require optional instructor-specific fields, type guards everywhere, and tight coupling
+- **Single "Person" entity** - Too generic, loses domain specificity
+- **Inheritance (Instructor extends Artist)** - Wrong semantic relationship
+
+### Consequences
+**Easier:**
+- Clean separation in database (separate collections)
+- Type-safe code throughout
+- Independent CRUD operations
+- Future: shared payout generation from Payee interface
+
+**Harder:**
+- If same person is both Artist and Instructor, two records exist (intentional)
+- Need to implement Payee-aware utilities separately for each type
+
+---
+
+## ADR-021: Square for All Payments (Supersedes ADR-005)
+
+**Status:** Accepted (supersedes ADR-005)
+**Date:** 2026-01-25
+
+### Context
+ADR-005 originally chose Stripe for payments. Since then, Square has been integrated as the POS system (ADR-009). Using two payment processors (Stripe for online, Square for in-store) would create:
+- Two sets of transaction records to reconcile
+- Two sets of webhook handlers to maintain
+- Complexity in financial reporting
+
+### Decision
+Use **Square for all payments**, including future class registrations. This supersedes ADR-005.
+
+### Rationale
+1. **Single source of truth** - All transactions in Square
+2. **Unified reporting** - Square Dashboard shows all revenue
+3. **Simpler integration** - Already have Square SDK integrated
+4. **PCI compliance** - Square handles it for both in-store and online
+5. **Cost neutral** - Similar transaction fees (2.9% + 30¢)
+
+### Square Payment Features Used
+- **Square Checkout** - For online class registration payments
+- **Square Terminal** - For in-store transactions
+- **Square Orders API** - Unified order management
+- **Square Webhooks** - Already handling inventory; extend to orders
+
+### Consequences
+**Easier:**
+- One payment processor to manage
+- Unified transaction history
+- Existing webhook infrastructure reusable
+- Simpler financial reconciliation
+
+**Harder:**
+- Square Checkout has less customization than Stripe Elements
+- Locked into Square ecosystem
+- If Square relationship ends, need to migrate everything
+
+### Migration Path
+No migration needed - Stripe was never implemented. Simply proceed with Square for Phase 3c (Registration payments).
+
+---
+
+## ADR-022: Catalog-First Class Browsing
+
+**Status:** Accepted
+**Date:** 2026-01-25
+
+### Context
+Users need to browse and register for classes. Common patterns:
+1. **Calendar-first** - View a calendar, click dates to see classes
+2. **Catalog-first** - Browse class cards/list, filter by category/date/instructor
+
+### Decision
+Use **catalog-first browsing** for the public-facing class discovery experience.
+
+### Rationale
+1. **Katie's preference** - Explicitly requested during requirements gathering
+2. **Better for discovery** - Users see what's offered without knowing dates
+3. **Class types vary** - One-off workshops, multi-session series, recurring classes
+4. **Photos matter** - Class photos and descriptions are selling points
+5. **SEO-friendly** - Class pages are indexable content
+
+### Implementation
+- Public `/classes` page with filter toolbar
+- Filters: category, instructor, upcoming/all, skill level
+- Class cards show: image, title, instructor, date/time, price, spots available
+- Future: Webflow CMS sync for public-facing class pages
+
+### Calendar View (Deferred)
+A calendar view could be added later as a secondary navigation option, but is not the primary browsing experience.
+
+### Consequences
+**Easier:**
+- Rich class presentations with photos and descriptions
+- Flexible filtering matches how users think ("pottery classes" not "Tuesday classes")
+- Works well for varying class formats
+
+**Harder:**
+- Users can't see schedule density at a glance
+- Multi-session classes need clear date display
+- May need calendar view for power users later
+
+---
+
 ## Template for New Decisions
 
 ```markdown
@@ -819,4 +967,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-25 (ADRs 020-022 added for Phase 3)*

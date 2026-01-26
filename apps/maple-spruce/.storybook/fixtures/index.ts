@@ -7,3 +7,5 @@
 export * from './artists';
 export * from './categories';
 export * from './products';
+export * from './instructors';
+export * from './classes';

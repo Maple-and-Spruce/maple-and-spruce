@@ -71,6 +71,8 @@ const nextConfig = {
     '@maple/ts/firebase/api-types',
     '@maple/firebase/database',
     '@maple/firebase/functions',
+    '@maple/react/instructors',
+    '@maple/react/classes',
   ],
   webpack: (config) => {
     // Add aliases for workspace packages
@@ -82,6 +84,8 @@ const nextConfig = {
       '@maple/ts/firebase/api-types': path.resolve(__dirname, '../../libs/ts/firebase/api-types/src/index.ts'),
       '@maple/firebase/database': path.resolve(__dirname, '../../libs/firebase/database/src/index.ts'),
       '@maple/firebase/functions': path.resolve(__dirname, '../../libs/firebase/functions/src/index.ts'),
+      '@maple/react/instructors': path.resolve(__dirname, '../../libs/react/instructors/src/index.ts'),
+      '@maple/react/classes': path.resolve(__dirname, '../../libs/react/classes/src/index.ts'),
     };
     return config;
   },

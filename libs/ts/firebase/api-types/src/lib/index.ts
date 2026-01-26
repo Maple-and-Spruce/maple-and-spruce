@@ -122,3 +122,57 @@ export type {
   DetectSyncConflictsRequest,
   DetectSyncConflictsResponse,
 } from './sync-conflict.types';
+
+// Phase 3: Classes & Workshops
+
+// Instructor types
+export type {
+  GetInstructorsRequest,
+  GetInstructorsResponse,
+  GetInstructorRequest,
+  GetInstructorResponse,
+  CreateInstructorRequest,
+  CreateInstructorResponse,
+  UpdateInstructorRequest,
+  UpdateInstructorResponse,
+  DeleteInstructorRequest,
+  DeleteInstructorResponse,
+  UploadInstructorImageRequest,
+  UploadInstructorImageResponse,
+  GetPublicInstructorsRequest,
+  GetPublicInstructorsResponse,
+} from './instructor.types';
+
+// Class types
+export type {
+  GetClassesRequest,
+  GetClassesResponse,
+  GetClassRequest,
+  GetClassResponse,
+  CreateClassRequest,
+  CreateClassResponse,
+  UpdateClassRequest,
+  UpdateClassResponse,
+  DeleteClassRequest,
+  DeleteClassResponse,
+  UploadClassImageRequest,
+  UploadClassImageResponse,
+  GetPublicClassesRequest,
+  GetPublicClassesResponse,
+} from './class.types';
+
+// Class Category types
+export type {
+  GetClassCategoriesRequest,
+  GetClassCategoriesResponse,
+  GetClassCategoryRequest,
+  GetClassCategoryResponse,
+  CreateClassCategoryRequest,
+  CreateClassCategoryResponse,
+  UpdateClassCategoryRequest,
+  UpdateClassCategoryResponse,
+  DeleteClassCategoryRequest,
+  DeleteClassCategoryResponse,
+  ReorderClassCategoriesRequest,
+  ReorderClassCategoriesResponse,
+} from './class-category.types';

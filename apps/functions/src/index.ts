@@ -57,3 +57,24 @@ export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-confl
 export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
 export { resolveSyncConflict } from '@maple/firebase/maple-functions/resolve-sync-conflict';
 export { detectSyncConflicts } from '@maple/firebase/maple-functions/detect-sync-conflicts';
+
+// Instructor functions
+export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';
+export { getInstructor } from '@maple/firebase/maple-functions/get-instructor';
+export { createInstructor } from '@maple/firebase/maple-functions/create-instructor';
+export { updateInstructor } from '@maple/firebase/maple-functions/update-instructor';
+export { deleteInstructor } from '@maple/firebase/maple-functions/delete-instructor';
+
+// Class functions
+export { getClasses } from '@maple/firebase/maple-functions/get-classes';
+export { getClass } from '@maple/firebase/maple-functions/get-class';
+export { createClass } from '@maple/firebase/maple-functions/create-class';
+export { updateClass } from '@maple/firebase/maple-functions/update-class';
+export { deleteClass } from '@maple/firebase/maple-functions/delete-class';
+export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-image';
+
+// Public class API (no auth required - for Webflow integration)
+export { getPublicClasses } from '@maple/firebase/maple-functions/get-public-classes';
+
+// Class category functions
+export { getClassCategories } from '@maple/firebase/maple-functions/get-class-categories';
