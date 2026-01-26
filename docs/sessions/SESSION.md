@@ -7,18 +7,17 @@
 ## Current Status
 
 **Date**: 2026-01-25
-**Status**: 🚀 Phase 3a/3b PR Ready for Review
+**Status**: ✅ Phase 3a/3b Complete - Ready for Phase 3c
 
-### Active Work
+### Just Completed
 
-**PR #106: Phase 3a/3b - Classes & Workshops Backend + Admin UI**
-- Backend foundation complete (13 Cloud Functions)
-- Admin UI complete (Instructors + Classes pages)
-- Storybook stories added for all new components
+**PR #106 Merged: Phase 3a/3b - Classes & Workshops Backend + Admin UI**
+- 13 Cloud Functions deployed to production
+- Admin UI for Instructors and Classes live
+- All Storybook stories added
 - CI coverage reporting configured
-- Awaiting CI checks to pass
 
-### Completed Today
+### Phase 3a/3b Summary
 
 - **Phase 3a: Backend Foundation**
   - Domain types: Payee, Instructor, Class, ClassCategory, Registration
@@ -32,54 +31,27 @@
   - `/instructors` and `/classes` admin pages
   - useInstructors and useClasses data hooks
 
-- **Storybook & Testing**
-  - Stories for all Phase 3 components
-  - Mock fixtures for instructors and classes
-  - CI coverage reporting with 80% threshold
-  - Fixed payRate/payRateType validation coupling
-  - Fixed Firestore timestamp conversion
-
 ### Key Design Decisions Made
 
-1. **Payee Interface Pattern** - Composition over inheritance
+1. **ADR-020: Payee Interface Pattern** - Composition over inheritance
    - Artist and Instructor both implement Payee interface
    - Enables shared payout logic without tight coupling
 
-2. **Square for Class Payments** (supersedes ADR-005)
+2. **ADR-021: Square for Class Payments** (supersedes ADR-005)
    - Using Square for all payments (consistent with POS)
    - NOT using Stripe as originally planned
 
-3. **Catalog-First Class Browsing**
+3. **ADR-022: Catalog-First Class Browsing**
    - Browse classes by category/date/instructor
    - Calendar view deferred (can be added later)
 
-### Previous Session (2026-01-25 - morning)
+### Next Steps: Phase 3c - Registration System
 
-- **Sync Conflict Resolution (#28) - COMPLETE:**
-  - Closed GitHub issue #28 after PR #103 merged
-  - Full implementation of sync conflict detection and resolution UI
-
-- **Storybook Interaction Test Fixes:**
-  - Fixed MUI Dialog tests using `screen` instead of `canvas` (portal rendering)
-  - Fixed DataGrid tests using `getAllByRole` for multiple resolve buttons
-  - Added ADR-019: Storybook Interaction Testing Patterns
-
-- **Square Webhook Bug Fix:**
-  - Fixed inventory sync - webhook was parsing payload incorrectly
-  - Changed from `event.data.object.catalog_object_id` to `event.data.object.inventory_counts[0].catalog_object_id`
-
-- **Cloud Function Unit Tests:**
-  - Added tests for `detect-sync-conflicts` (13 tests)
-  - Added tests for `square-webhook` (10 tests)
-  - Added ADR-017: Cloud Function Unit Testing with Mocked Dependencies
-  - Added ADR-018: Sync Conflict History Preservation
-
-### Next Steps
-
-1. Wait for CI checks on PR #106
-2. Fix any CI failures
-3. Merge PR #106
-4. Begin Phase 3c: Registration system
+1. Expand Registration domain types (from placeholder)
+2. Create Registration CRUD Cloud Functions
+3. Integrate Square Checkout for online payments
+4. Set up confirmation emails (SendGrid or Firebase Extensions)
+5. Sync classes to Webflow CMS for public display
 
 ### Blockers
 - None currently
@@ -94,12 +66,6 @@
 | Production | business.mapleandsprucefolkarts.com | `maple-and-spruce` | Production API |
 | Development | business-dev.mapleandsprucefolkarts.com | `maple-and-spruce-dev` | Sandbox API |
 
-### Required Vercel Env Vars
-| Project | `NEXT_PUBLIC_FIREBASE_ENV` |
-|---------|---------------------------|
-| Production | `prod` ✅ |
-| Development | `dev` ✅ |
-
 ### Phase 3 Components
 
 | Library | Components |
@@ -107,7 +73,7 @@
 | `libs/react/instructors/` | InstructorList, InstructorForm, InstructorFilterToolbar |
 | `libs/react/classes/` | ClassList, ClassForm, ClassFilterToolbar |
 
-### New Cloud Functions (Phase 3)
+### Cloud Functions (Phase 3)
 
 **Instructor:** getInstructors, getInstructor, createInstructor, updateInstructor, deleteInstructor
 
@@ -126,8 +92,6 @@ npm run test:coverage
 # Run specific library
 npx nx run validation:test
 npx nx run domain:test
-npx nx run firebase-maple-functions-detect-sync-conflicts:test
-npx nx run firebase-maple-functions-square-webhook:test
 ```
 
 ### Storybook Commands
@@ -152,21 +116,6 @@ npx nx run maple-spruce:serve
 **Let CI/CD handle deployments** - don't run manual `firebase deploy` commands.
 
 Functions deploy automatically when PRs merge to main via `.github/workflows/firebase-functions-merge.yml`.
-
-### Deployed Cloud Functions
-- `syncArtistToWebflow` - Firestore trigger that syncs artist changes to Webflow CMS
-- `getPublicArtists` - Public API for fetching active artists (no auth required)
-- `getSyncConflicts` - List sync conflicts with filters
-- `getSyncConflictSummary` - Get counts for nav badge
-- `resolveSyncConflict` - Apply resolution
-- `detectSyncConflicts` - Compare Firestore vs Square data
-- `squareWebhook` - Handles Square inventory updates
-
-### Square Webhook URLs (register in Square Dashboard)
-| Environment | URL |
-|-------------|-----|
-| Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
-| Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
 
 ---
 
