@@ -64,13 +64,22 @@
   - Fixed DataGrid tests using `getAllByRole` for multiple resolve buttons
   - Added ADR-019: Storybook Interaction Testing Patterns
 
+- **Square Webhook Bug Fix:**
+  - Fixed inventory sync - webhook was parsing payload incorrectly
+  - Changed from `event.data.object.catalog_object_id` to `event.data.object.inventory_counts[0].catalog_object_id`
+
+- **Cloud Function Unit Tests:**
+  - Added tests for `detect-sync-conflicts` (13 tests)
+  - Added tests for `square-webhook` (10 tests)
+  - Added ADR-017: Cloud Function Unit Testing with Mocked Dependencies
+  - Added ADR-018: Sync Conflict History Preservation
+
 ### Next Steps
 
 1. Wait for CI checks on PR #106
 2. Fix any CI failures
 3. Merge PR #106
-4. Add ADR-020 for Phase 3 design decisions
-5. Begin Phase 3c: Registration system
+4. Begin Phase 3c: Registration system
 
 ### Blockers
 - None currently
@@ -117,6 +126,8 @@ npm run test:coverage
 # Run specific library
 npx nx run validation:test
 npx nx run domain:test
+npx nx run firebase-maple-functions-detect-sync-conflicts:test
+npx nx run firebase-maple-functions-square-webhook:test
 ```
 
 ### Storybook Commands
@@ -141,6 +152,21 @@ npx nx run maple-spruce:serve
 **Let CI/CD handle deployments** - don't run manual `firebase deploy` commands.
 
 Functions deploy automatically when PRs merge to main via `.github/workflows/firebase-functions-merge.yml`.
+
+### Deployed Cloud Functions
+- `syncArtistToWebflow` - Firestore trigger that syncs artist changes to Webflow CMS
+- `getPublicArtists` - Public API for fetching active artists (no auth required)
+- `getSyncConflicts` - List sync conflicts with filters
+- `getSyncConflictSummary` - Get counts for nav badge
+- `resolveSyncConflict` - Apply resolution
+- `detectSyncConflicts` - Compare Firestore vs Square data
+- `squareWebhook` - Handles Square inventory updates
+
+### Square Webhook URLs (register in Square Dashboard)
+| Environment | URL |
+|-------------|-----|
+| Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
+| Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
 
 ---
 

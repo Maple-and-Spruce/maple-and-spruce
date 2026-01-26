@@ -99,7 +99,9 @@
       "Bash(npm ls:*)",
       "Bash(1)",
       "Bash(python3:*)",
-      "Bash(nx reset:*)"
+      "Bash(nx reset:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)"
     ]
   }
 }
