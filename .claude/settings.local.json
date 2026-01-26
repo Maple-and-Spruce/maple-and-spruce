@@ -96,7 +96,10 @@
       "Bash(gh run watch:*)",
       "Bash(gh pr edit:*)",
       "Bash(npx nx reset)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(1)",
+      "Bash(python3:*)",
+      "Bash(nx reset:*)"
     ]
   }
 }

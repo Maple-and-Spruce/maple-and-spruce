@@ -79,8 +79,10 @@ export function ClassFilterToolbar({
     >
       {/* Status Filter */}
       <FormControl size="small" sx={{ minWidth: 120 }}>
-        <InputLabel>Status</InputLabel>
+        <InputLabel id="status-filter-label">Status</InputLabel>
         <Select
+          labelId="status-filter-label"
+          id="status-filter-select"
           value={filters.status ?? ''}
           label="Status"
           onChange={handleStatusChange}
@@ -98,8 +100,10 @@ export function ClassFilterToolbar({
       {/* Category Filter */}
       {categories.length > 0 && (
         <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Category</InputLabel>
+          <InputLabel id="category-filter-label">Category</InputLabel>
           <Select
+            labelId="category-filter-label"
+            id="category-filter-select"
             value={filters.categoryId ?? ''}
             label="Category"
             onChange={handleCategoryChange}
@@ -119,8 +123,10 @@ export function ClassFilterToolbar({
       {/* Instructor Filter */}
       {instructors.length > 0 && (
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Instructor</InputLabel>
+          <InputLabel id="instructor-filter-label">Instructor</InputLabel>
           <Select
+            labelId="instructor-filter-label"
+            id="instructor-filter-select"
             value={filters.instructorId ?? ''}
             label="Instructor"
             onChange={handleInstructorChange}

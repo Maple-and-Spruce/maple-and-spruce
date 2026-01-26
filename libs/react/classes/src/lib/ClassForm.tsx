@@ -382,8 +382,10 @@ export function ClassForm({
                 fullWidth
               />
               <FormControl sx={{ minWidth: 140 }} error={!!getFieldError('status')}>
-                <InputLabel>Status</InputLabel>
+                <InputLabel id="class-status-label">Status</InputLabel>
                 <Select
+                  labelId="class-status-label"
+                  id="class-status-select"
                   value={status.value}
                   label="Status"
                   onChange={(e) => (status.value = e.target.value as ClassStatus)}
@@ -478,8 +480,10 @@ export function ClassForm({
                 required
               />
               <FormControl sx={{ minWidth: 140 }}>
-                <InputLabel>Skill Level</InputLabel>
+                <InputLabel id="skill-level-label">Skill Level</InputLabel>
                 <Select
+                  labelId="skill-level-label"
+                  id="skill-level-select"
                   value={skillLevel.value}
                   label="Skill Level"
                   onChange={(e) => (skillLevel.value = e.target.value as ClassSkillLevel)}
@@ -492,8 +496,10 @@ export function ClassForm({
               </FormControl>
               {categories.length > 0 && (
                 <FormControl sx={{ minWidth: 160 }}>
-                  <InputLabel>Category</InputLabel>
+                  <InputLabel id="category-label">Category</InputLabel>
                   <Select
+                    labelId="category-label"
+                    id="category-select"
                     value={categoryId.value}
                     label="Category"
                     onChange={(e) => (categoryId.value = e.target.value)}
@@ -514,8 +520,10 @@ export function ClassForm({
             {/* Instructor */}
             {instructors.length > 0 && (
               <FormControl fullWidth>
-                <InputLabel>Instructor</InputLabel>
+                <InputLabel id="instructor-label">Instructor</InputLabel>
                 <Select
+                  labelId="instructor-label"
+                  id="instructor-select"
                   value={instructorId.value}
                   label="Instructor"
                   onChange={(e) => (instructorId.value = e.target.value)}

@@ -152,7 +152,7 @@ export const classValidation = create(
 
     // Minimum age validation (optional)
     test('minimumAge', 'Minimum age must be between 0 and 100', () => {
-      if (data.minimumAge !== undefined) {
+      if (data.minimumAge !== undefined && data.minimumAge !== null) {
         enforce(data.minimumAge).greaterThanOrEquals(0);
         enforce(data.minimumAge).lessThanOrEquals(100);
       }

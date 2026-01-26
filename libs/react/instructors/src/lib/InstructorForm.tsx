@@ -113,6 +113,8 @@ export function InstructorForm({
       notes: notes.value || undefined,
       bio: bio.value || undefined,
       specialties: specialties.value.length > 0 ? specialties.value : undefined,
+      payRate: payRate.value,
+      payRateType: payRateType.value,
     });
   });
 
@@ -305,8 +307,10 @@ export function InstructorForm({
 
           {/* Pay Rate Type */}
           <FormControl fullWidth>
-            <InputLabel>Pay Rate Type</InputLabel>
+            <InputLabel id="pay-rate-type-label">Pay Rate Type</InputLabel>
             <Select
+              labelId="pay-rate-type-label"
+              id="pay-rate-type-select"
               value={payRateType.value ?? ''}
               label="Pay Rate Type"
               onChange={(e) =>

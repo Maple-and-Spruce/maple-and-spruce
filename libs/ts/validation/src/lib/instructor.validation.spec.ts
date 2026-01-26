@@ -244,10 +244,34 @@ describe('instructorValidation', () => {
       expect(result.hasErrors('payRateType')).toBe(false);
     });
 
+    it('passes when payRate and payRateType are null (JSON serialization)', () => {
+      // JSON serialization converts undefined to null
+      const result = instructorValidation({
+        ...validInstructor,
+        payRate: null as unknown as undefined,
+        payRateType: null as unknown as undefined,
+      });
+      expect(result.hasErrors('payRate')).toBe(false);
+      expect(result.hasErrors('payRateType')).toBe(false);
+    });
+
+    it('fails when payRateType is set but payRate is missing', () => {
+      const result = instructorValidation({
+        ...validInstructor,
+        payRate: undefined,
+        payRateType: 'flat',
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('payRate')).toContain(
+        'Pay rate is required when pay rate type is set'
+      );
+    });
+
     it('fails when payRate is negative', () => {
       const result = instructorValidation({
         ...validInstructor,
         payRate: -100,
+        payRateType: 'flat',
       });
       expect(result.isValid()).toBe(false);
       expect(result.getErrors('payRate')).toContain(

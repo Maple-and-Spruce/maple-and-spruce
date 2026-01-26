@@ -402,6 +402,14 @@ describe('classValidation', () => {
       expect(result.hasErrors('minimumAge')).toBe(false);
     });
 
+    it('passes when minimumAge is null (optional)', () => {
+      const result = classValidation({
+        ...validClass,
+        minimumAge: null as unknown as number,
+      });
+      expect(result.hasErrors('minimumAge')).toBe(false);
+    });
+
     it('fails when minimumAge is negative', () => {
       const result = classValidation({
         ...validClass,

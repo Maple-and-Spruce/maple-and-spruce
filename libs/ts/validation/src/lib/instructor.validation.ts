@@ -70,20 +70,29 @@ export const instructorValidation = create(
       }
     });
 
-    test('payRate', 'Pay rate must be non-negative', () => {
-      if (data.payRate !== undefined) {
-        enforce(data.payRate).greaterThanOrEquals(0);
-      }
-    });
-
+    // Pay rate and type are coupled - validate together
     test('payRateType', 'Pay rate type must be valid if provided', () => {
       if (data.payRateType) {
         enforce(data.payRateType).inside(['flat', 'hourly', 'percentage']);
       }
     });
 
+    // Only validate payRate if payRateType is set
+    test('payRate', 'Pay rate is required when pay rate type is set', () => {
+      if (data.payRateType && (data.payRate === undefined || data.payRate === null)) {
+        enforce(false).isTruthy();
+      }
+    });
+
+    test('payRate', 'Pay rate must be non-negative', () => {
+      // Only validate if payRateType is set and payRate has a value
+      if (data.payRateType && data.payRate !== undefined && data.payRate !== null) {
+        enforce(data.payRate).greaterThanOrEquals(0);
+      }
+    });
+
     test('payRate', 'Percentage pay rate must be between 0 and 1', () => {
-      if (data.payRateType === 'percentage' && data.payRate !== undefined) {
+      if (data.payRateType === 'percentage' && data.payRate !== undefined && data.payRate !== null) {
         enforce(data.payRate).greaterThanOrEquals(0);
         enforce(data.payRate).lessThanOrEquals(1);
       }

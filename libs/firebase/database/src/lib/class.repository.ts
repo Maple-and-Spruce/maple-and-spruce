@@ -4,7 +4,7 @@
  * Handles all Firestore operations for classes/workshops.
  * All database access should go through this repository.
  */
-import { db } from './utilities/database.config';
+import { db, toDate } from './utilities/database.config';
 import type {
   Class,
   CreateClassInput,
@@ -31,7 +31,7 @@ function docToClass(
     description: data.description,
     shortDescription: data.shortDescription,
     instructorId: data.instructorId,
-    dateTime: data.dateTime?.toDate() ?? new Date(),
+    dateTime: toDate(data.dateTime),
     durationMinutes: data.durationMinutes,
     capacity: data.capacity,
     priceCents: data.priceCents,
@@ -44,8 +44,8 @@ function docToClass(
     whatToBring: data.whatToBring,
     minimumAge: data.minimumAge,
     webflowItemId: data.webflowItemId,
-    createdAt: data.createdAt?.toDate() ?? new Date(),
-    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
   };
 }
 
