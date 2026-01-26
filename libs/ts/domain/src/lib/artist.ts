@@ -3,25 +3,22 @@
  *
  * Represents artists who consign items through Maple & Spruce.
  * Commission rate determines the split between store and artist on sales.
+ *
+ * Implements the Payee interface for shared payment/payout infrastructure.
+ * Artists have commission-based payments (different from Instructors who have per-class payments).
  */
 
-export interface Artist {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
+import type { Payee, PayeeStatus } from './payee';
+
+/**
+ * Artist entity - implements Payee interface with consignment-specific fields.
+ */
+export interface Artist extends Payee {
   /**
    * Default commission rate as decimal (e.g., 0.40 = 40% to store, 60% to artist).
    * Can be overridden at the product level.
    */
   defaultCommissionRate: number;
-  status: ArtistStatus;
-  notes?: string;
-  /**
-   * URL to the artist's photo in Firebase Storage.
-   * Used for display in admin UI and Webflow integration.
-   */
-  photoUrl?: string;
   /**
    * Webflow CMS item ID.
    * Set after syncing to Webflow, used for updates/deletes.
@@ -34,11 +31,13 @@ export interface Artist {
    * Defaults to false (auto-publish enabled).
    */
   preventAutoPublish?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export type ArtistStatus = 'active' | 'inactive';
+/**
+ * @deprecated Use PayeeStatus from './payee' instead.
+ * Kept for backwards compatibility.
+ */
+export type ArtistStatus = PayeeStatus;
 
 /**
  * Input for creating a new artist (no id, timestamps auto-generated)

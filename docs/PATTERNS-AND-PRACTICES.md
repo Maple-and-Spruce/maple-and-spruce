@@ -799,9 +799,9 @@ Use [Vest](https://vestjs.dev/) for declarative validation that can be shared be
 ```typescript
 // libs/ts/validation/src/artist.validation.ts
 import { create, test, enforce, only } from 'vest';
-import type { Artist } from '@maple/ts/domain';
+import type { CreateArtistInput } from '@maple/ts/domain';
 
-export const artistValidation = create((data: Partial<Artist>, field?: string) => {
+export const artistValidation = create((data: Partial<CreateArtistInput>, field?: string) => {
     only(field); // Only validate specific field if provided
 
     test('name', 'Name is required', () => {
@@ -816,22 +816,138 @@ export const artistValidation = create((data: Partial<Artist>, field?: string) =
         enforce(data.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
     });
 
-    test('commissionRate', 'Commission rate is required', () => {
-        enforce(data.commissionRate).isNotNullish();
+    test('defaultCommissionRate', 'Commission rate is required', () => {
+        enforce(data.defaultCommissionRate).isNotNullish();
     });
 
-    test('commissionRate', 'Commission rate must be between 0 and 100', () => {
-        enforce(data.commissionRate).isBetween(0, 100);
+    test('defaultCommissionRate', 'Commission rate must be between 0 and 1', () => {
+        if (data.defaultCommissionRate !== undefined) {
+            enforce(data.defaultCommissionRate).isBetween(0, 1);
+        }
     });
 });
+```
 
-// Usage in component
-const result = artistValidation(formData);
-if (result.hasErrors()) {
-    const errors = result.getErrors();
-    // { name: ['Name is required'], email: ['Email must be valid'] }
+### Shared Validation Pattern (Client + Server)
+
+**CRITICAL**: The same Vest validation suite must be used by both the frontend form and backend Cloud Function. This ensures:
+1. Users see validation errors on form fields before submitting
+2. Backend validates the same rules (defense in depth)
+3. Error messages are consistent
+
+**Frontend Form Pattern:**
+
+```typescript
+// ClassForm.tsx
+import { classValidation } from '@maple/ts/validation';
+import { useSignal, useComputed, useSignals } from '@maple/react/signals';
+
+function ClassForm({ onSubmit }) {
+  useSignals();
+
+  // Form field signals
+  const name = useSignal('');
+  const description = useSignal('');
+  const priceCents = useSignal(0);
+  // ... all other fields
+
+  // IMPORTANT: Pass ALL fields that the validation suite checks
+  const validation = useComputed(() => {
+    return classValidation({
+      name: name.value,
+      description: description.value,
+      priceCents: priceCents.value,
+      // ... ALL other fields - must match what backend sends
+    });
+  });
+
+  // Only show errors after first submit attempt
+  const showValidationErrors = useSignal(false);
+  const errors = useComputed(() => {
+    if (!showValidationErrors.value) return {};
+    return validation.value.getErrors();
+  });
+
+  const getFieldError = (field: string) => errors.value[field]?.[0] ?? null;
+
+  const handleSubmit = async () => {
+    showValidationErrors.value = true;
+    if (!validation.value.isValid()) return;
+
+    await onSubmit(buildInput());
+  };
+
+  return (
+    <TextField
+      value={name.value}
+      onChange={(e) => (name.value = e.target.value)}
+      error={!!getFieldError('name')}
+      helperText={getFieldError('name')}
+    />
+  );
 }
 ```
+
+**Backend Cloud Function Pattern:**
+
+```typescript
+// create-class.ts
+import { createAdminFunction } from '@maple/firebase/functions';
+import { classValidation } from '@maple/ts/validation';
+
+export const createClass = createAdminFunction<CreateClassRequest, CreateClassResponse>(
+  async (data) => {
+    // Same validation suite as frontend
+    const result = classValidation(data);
+    if (!result.isValid()) {
+      const errors = result.getErrors();
+      const errorMessages = Object.entries(errors)
+        .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+        .join('; ');
+      throw new Error(`Validation failed: ${errorMessages}`);
+    }
+
+    // Additional server-only validations (e.g., uniqueness checks)
+    const existing = await Repository.findByEmail(data.email);
+    if (existing) {
+      throw new Error(`An item with email ${data.email} already exists`);
+    }
+
+    return await Repository.create(data);
+  }
+);
+```
+
+**Common Mistake to Avoid:**
+
+```typescript
+// BAD: Form validation doesn't include all fields
+const validation = useComputed(() => {
+  return instructorValidation({
+    name: name.value,
+    email: email.value,
+    // MISSING: payRate, payRateType - backend validates these!
+  });
+});
+
+// GOOD: Form validation includes ALL fields
+const validation = useComputed(() => {
+  return instructorValidation({
+    name: name.value,
+    email: email.value,
+    payRate: payRate.value,         // Include even if optional
+    payRateType: payRateType.value, // Include even if optional
+  });
+});
+```
+
+### Backend-Only Validations
+
+Some validations can only happen on the backend (e.g., uniqueness checks, referential integrity). These errors appear in the form's general error alert, not on individual fields. Examples:
+
+- "An artist with email X already exists"
+- "Instructor not found"
+- "Category is in use and cannot be deleted"
 
 ### Form State Machine
 

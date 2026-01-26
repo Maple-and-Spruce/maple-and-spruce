@@ -21,3 +21,8 @@ export { saleValidation } from './sale.validation';
 export { payoutValidation } from './payout.validation';
 export { inventoryMovementValidation } from './inventory-movement.validation';
 export { syncConflictResolutionValidation } from './sync-conflict.validation';
+
+// Phase 3: Classes & Workshops
+export { instructorValidation } from './instructor.validation';
+export { classValidation } from './class.validation';
+export { classCategoryValidation } from './class-category.validation';

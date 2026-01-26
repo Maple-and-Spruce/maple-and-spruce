@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-upload-class-image",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/upload-class-image/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

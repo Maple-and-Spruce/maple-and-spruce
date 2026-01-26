@@ -57,15 +57,17 @@
 
 **Current State**: Selling on Etsy only. No physical store yet. Building public website on Webflow.
 
-**Current Phase**: Phase 2 - Public Website (Webflow Integration)
+**Current Phase**: Phase 3 - Classes & Workshops (Backend + Admin UI Complete)
 
 ## Phased Roadmap
 
 | Phase | Epic | Focus | Status |
 |-------|------|-------|--------|
 | 1 | #1 | Admin Foundation & Artist Platform | ✅ COMPLETE |
-| 2 | #93 | Public Website (Webflow Integration) | **CURRENT** |
-| 3 | #9 | Classes & Workshops | Next |
+| 2 | #93 | Public Website (Webflow Integration) | ✅ COMPLETE |
+| 3a | #9 | Classes & Workshops - Backend | ✅ COMPLETE (PR #106) |
+| 3b | #9 | Classes & Workshops - Admin UI | ✅ COMPLETE (PR #106) |
+| 3c | #9 | Classes & Workshops - Registration | **NEXT** |
 | 4 | #10 | Music Lessons | After Classes |
 | 5 | #8 | Store Opening & Sales Tracking | When store opens |
 
@@ -80,12 +82,13 @@
 
 | Command | Purpose |
 |---------|---------|
-| `gh issue list --label phase-2` | Current phase work |
+| `gh issue list --label phase-3` | Current phase work |
 | `gh issue list --label epic` | High-level epics |
 | `gh issue view <number>` | Issue details |
 
-**Current Phase 2 Issues:**
-- #93 - Epic: Public Website (Webflow Integration)
+**Current Phase 3 Issues:**
+- #9 - Epic: Classes & Workshops
+- PR #106 - Phase 3a/3b implementation (backend + admin UI)
 
 ## Implementation Status
 
@@ -126,14 +129,46 @@
 | Product management | ✅ Complete | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
 | Category management | ✅ Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
 
-### Phase 2 Features (CURRENT)
+### Phase 2 Features (COMPLETE)
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | Public Artist API | ✅ Complete | #93 | `libs/firebase/maple-functions/get-public-artists/` |
 | Webflow integration | ✅ Complete | #93 | `libs/firebase/webflow/`, `syncArtistToWebflow` |
 | Sync Conflict Resolution | ✅ Complete | #28 | `/sync-conflicts` page, 4 Cloud Functions |
-| Artist showcase | In progress | #93 | Webflow CMS sync working |
+| Artist showcase | ✅ Complete | #93 | Webflow CMS sync working |
+
+### Phase 3 Features (CURRENT)
+
+| Feature | Status | Issue | Location |
+|---------|--------|-------|----------|
+| **Phase 3a: Backend** | | | |
+| Payee interface | ✅ Complete | #9 | `libs/ts/domain/src/lib/payee.ts` |
+| Instructor domain types | ✅ Complete | #9 | `libs/ts/domain/src/lib/instructor.ts` |
+| Class domain types | ✅ Complete | #9 | `libs/ts/domain/src/lib/class.ts` |
+| ClassCategory types | ✅ Complete | #9 | `libs/ts/domain/src/lib/class-category.ts` |
+| Registration placeholder | ✅ Complete | #9 | `libs/ts/domain/src/lib/registration.ts` |
+| Instructor validation | ✅ Complete | #9 | `libs/ts/validation/src/lib/instructor.validation.ts` |
+| Class validation | ✅ Complete | #9 | `libs/ts/validation/src/lib/class.validation.ts` |
+| InstructorRepository | ✅ Complete | #9 | `libs/firebase/database/src/lib/instructor.repository.ts` |
+| ClassRepository | ✅ Complete | #9 | `libs/firebase/database/src/lib/class.repository.ts` |
+| ClassCategoryRepository | ✅ Complete | #9 | `libs/firebase/database/src/lib/class-category.repository.ts` |
+| Instructor Cloud Functions (5) | ✅ Complete | #9 | `libs/firebase/maple-functions/get-instructors/`, etc. |
+| Class Cloud Functions (7) | ✅ Complete | #9 | `libs/firebase/maple-functions/get-classes/`, etc. |
+| ClassCategory Cloud Functions (1) | ✅ Complete | #9 | `libs/firebase/maple-functions/get-class-categories/` |
+| **Phase 3b: Admin UI** | | | |
+| Instructor components | ✅ Complete | #9 | `libs/react/instructors/` |
+| Class components | ✅ Complete | #9 | `libs/react/classes/` |
+| Instructors page | ✅ Complete | #9 | `/instructors` admin page |
+| Classes page | ✅ Complete | #9 | `/classes` admin page |
+| useInstructors hook | ✅ Complete | #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
+| useClasses hook | ✅ Complete | #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |
+| Storybook stories | ✅ Complete | #9 | `libs/react/*/src/**/*.stories.tsx` |
+| **Phase 3c: Registration** | | | |
+| Registration domain types | Pending | #9 | - |
+| Registration Cloud Functions | Pending | #9 | - |
+| Registration UI | Pending | #9 | - |
+| Square payment integration | Pending | #9 | - |
 
 ### Deferred to Phase 5 (Store Opening)
 
@@ -208,11 +243,27 @@ Functions follow Mountain Sol's auto-generated package.json pattern:
 - esbuild bundles code with `thirdParty: false` (externalize deps for Firebase to install)
 
 **Deployed Functions** (all in `us-east4`):
-- `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`
-- `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`
-- `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`
-- `uploadArtistImage`, `uploadProductImage`, `healthCheck`, `squareWebhook`
-- `getPublicArtists`, `reorderCategories`, `syncArtistToWebflow`
+
+**Artists:**
+- `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`, `uploadArtistImage`
+
+**Products:**
+- `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`, `uploadProductImage`
+
+**Categories:**
+- `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`
+
+**Instructors (Phase 3):**
+- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`
+
+**Classes (Phase 3):**
+- `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `getPublicClasses`
+
+**Class Categories (Phase 3):**
+- `getClassCategories`
+
+**Infrastructure:**
+- `healthCheck`, `squareWebhook`, `getPublicArtists`, `syncArtistToWebflow`
 - `detectSyncConflicts`, `getSyncConflicts`, `getSyncConflictSummary`, `resolveSyncConflict`
 
 #### Creating a New Cloud Function

@@ -56,6 +56,52 @@ export function getDb(): FirebaseFirestore.Firestore {
 }
 
 /**
+ * Safely convert a Firestore Timestamp, Date, or date-like value to a Date.
+ *
+ * Handles:
+ * - Firestore Timestamp objects (have .toDate() method)
+ * - Native Date objects (returned as-is)
+ * - Date strings (parsed via new Date())
+ * - Numbers (treated as milliseconds since epoch)
+ * - null/undefined (returns fallback or new Date())
+ *
+ * @param value - The value to convert
+ * @param fallback - Optional fallback if value is nullish (defaults to new Date())
+ * @returns A Date object
+ *
+ * @example
+ * // In repository docToEntity converters:
+ * dateTime: toDate(data.dateTime),
+ * createdAt: toDate(data.createdAt, new Date()),
+ */
+export function toDate(
+  value: unknown,
+  fallback: Date = new Date()
+): Date {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  // Firestore Timestamp - has toDate method
+  if (typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate();
+  }
+
+  // Already a Date
+  if (value instanceof Date) {
+    return value;
+  }
+
+  // String or number - try to parse
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? fallback : parsed;
+  }
+
+  return fallback;
+}
+
+/**
  * @deprecated Use getDb() instead for lazy initialization
  *
  * This export is kept for backwards compatibility but triggers
