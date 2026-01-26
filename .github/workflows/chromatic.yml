@@ -12,6 +12,7 @@ jobs:
   chromatic:
     name: Visual Regression Testing
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

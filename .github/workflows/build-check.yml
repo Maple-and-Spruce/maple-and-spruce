@@ -9,6 +9,7 @@ jobs:
   security:
     name: Security Audit
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -23,6 +24,7 @@ jobs:
   typecheck:
     name: TypeScript Check
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -37,6 +39,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -53,6 +56,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -67,6 +71,7 @@ jobs:
   storybook:
     name: Storybook Build & Tests
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
