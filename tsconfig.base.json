@@ -145,7 +145,8 @@
         "libs/firebase/maple-functions/get-class-categories/src/index.ts"
       ],
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
-      "@maple/react/classes": ["libs/react/classes/src/index.ts"]
+      "@maple/react/classes": ["libs/react/classes/src/index.ts"],
+      "@/*": ["apps/maple-spruce/src/*"]
     }
   }
 }

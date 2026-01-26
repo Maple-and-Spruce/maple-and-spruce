@@ -19,28 +19,6 @@
         "name": "next"
       }
     ],
-    "baseUrl": "../..",
-    "paths": {
-      "@/*": ["apps/maple-spruce/src/*"],
-      "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
-      "@maple/ts/validation": ["libs/ts/validation/src/index.ts"],
-      "@maple/ts/firebase/firebase-config": [
-        "libs/ts/firebase/firebase-config/src/index.ts"
-      ],
-      "@maple/ts/firebase/api-types": [
-        "libs/ts/firebase/api-types/src/index.ts"
-      ],
-      "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
-      "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
-      "@maple/react/theme": ["libs/react/theme/src/index.ts"],
-      "@maple/react/ui": ["libs/react/ui/src/index.ts"],
-      "@maple/react/auth": ["libs/react/auth/src/index.ts"],
-      "@maple/react/layout": ["libs/react/layout/src/index.ts"],
-      "@maple/react/data": ["libs/react/data/src/index.ts"],
-      "@maple/react/signals": ["libs/react/signals/src/index.ts"],
-      "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
-      "@maple/react/classes": ["libs/react/classes/src/index.ts"]
-    },
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
