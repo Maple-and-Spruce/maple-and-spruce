@@ -16,6 +16,7 @@ on:
 jobs:
   prepare_and_build:
     runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     outputs:
       matrix: ${{ steps.get_affected.outputs.matrix }}
       has_changes: ${{ steps.get_affected.outputs.has_changes }}
