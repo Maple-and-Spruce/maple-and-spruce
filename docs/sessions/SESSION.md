@@ -7,9 +7,53 @@
 ## Current Status
 
 **Date**: 2026-01-25
-**Status**: ✅ Sync Conflict Resolution Complete
+**Status**: 🚀 Phase 3a/3b PR Ready for Review
+
+### Active Work
+
+**PR #106: Phase 3a/3b - Classes & Workshops Backend + Admin UI**
+- Backend foundation complete (13 Cloud Functions)
+- Admin UI complete (Instructors + Classes pages)
+- Storybook stories added for all new components
+- CI coverage reporting configured
+- Awaiting CI checks to pass
 
 ### Completed Today
+
+- **Phase 3a: Backend Foundation**
+  - Domain types: Payee, Instructor, Class, ClassCategory, Registration
+  - Validation suites with unit tests
+  - Repositories with filtering capabilities
+  - 13 Cloud Functions for Instructor/Class/ClassCategory CRUD
+
+- **Phase 3b: Admin UI**
+  - InstructorList, InstructorForm, InstructorFilterToolbar components
+  - ClassList, ClassForm, ClassFilterToolbar components
+  - `/instructors` and `/classes` admin pages
+  - useInstructors and useClasses data hooks
+
+- **Storybook & Testing**
+  - Stories for all Phase 3 components
+  - Mock fixtures for instructors and classes
+  - CI coverage reporting with 80% threshold
+  - Fixed payRate/payRateType validation coupling
+  - Fixed Firestore timestamp conversion
+
+### Key Design Decisions Made
+
+1. **Payee Interface Pattern** - Composition over inheritance
+   - Artist and Instructor both implement Payee interface
+   - Enables shared payout logic without tight coupling
+
+2. **Square for Class Payments** (supersedes ADR-005)
+   - Using Square for all payments (consistent with POS)
+   - NOT using Stripe as originally planned
+
+3. **Catalog-First Class Browsing**
+   - Browse classes by category/date/instructor
+   - Calendar view deferred (can be added later)
+
+### Previous Session (2026-01-25 - morning)
 
 - **Sync Conflict Resolution (#28) - COMPLETE:**
   - Closed GitHub issue #28 after PR #103 merged
@@ -20,42 +64,16 @@
   - Fixed DataGrid tests using `getAllByRole` for multiple resolve buttons
   - Added ADR-019: Storybook Interaction Testing Patterns
 
-- **Square Webhook Bug Fix:**
-  - Fixed inventory sync - webhook was parsing payload incorrectly
-  - Changed from `event.data.object.catalog_object_id` to `event.data.object.inventory_counts[0].catalog_object_id`
-
-- **Cloud Function Unit Tests:**
-  - Added tests for `detect-sync-conflicts` (13 tests)
-  - Added tests for `square-webhook` (10 tests)
-  - Added ADR-017: Cloud Function Unit Testing with Mocked Dependencies
-  - Added ADR-018: Sync Conflict History Preservation
-
-- **Documentation Updates:**
-  - Updated AGENTS.md directive #9: Claude never deploys - user runs locally
-  - Added testing patterns and conflict detection to Implementation Status
-
-### Previous Session (2026-01-20)
-
-- **Dev/Prod Webflow Sync Separation:**
-  - Added `is-dev-environment` boolean field to Webflow CMS items ✅ (implemented in Webflow)
-  - Dev items are marked `is-dev-environment: true`, prod items are `false`
-  - Dev items stay as drafts, prod items auto-publish
-
-- **Webflow CMS Sync - DEPLOYED & TESTED:**
-  - `syncArtistToWebflow` function deployed and working
-  - Artists syncing to Webflow CMS successfully
-
 ### Next Steps
-1. Create initial categories (Pottery, Textiles, Jewelry, etc.)
-2. Etsy Integration (#4) - waiting for app approval
-3. Inventory Movement Audit Log (#27)
 
-### Notes
-- **No initial artist migration needed** - starting from scratch in Webflow
-- `is-dev-environment` field already implemented in Webflow CMS
+1. Wait for CI checks on PR #106
+2. Fix any CI failures
+3. Merge PR #106
+4. Add ADR-020 for Phase 3 design decisions
+5. Begin Phase 3c: Registration system
 
 ### Blockers
-- Etsy app still pending approval
+- None currently
 
 ---
 
@@ -73,11 +91,20 @@
 | Production | `prod` ✅ |
 | Development | `dev` ✅ |
 
-### Webflow IDs
-| Item | ID |
-|------|-----|
-| Site ID | `691a5d6c07ba1bf4714e826f` |
-| Artists Collection ID | `696f08a32a1eb691801f17ad` |
+### Phase 3 Components
+
+| Library | Components |
+|---------|------------|
+| `libs/react/instructors/` | InstructorList, InstructorForm, InstructorFilterToolbar |
+| `libs/react/classes/` | ClassList, ClassForm, ClassFilterToolbar |
+
+### New Cloud Functions (Phase 3)
+
+**Instructor:** getInstructors, getInstructor, createInstructor, updateInstructor, deleteInstructor
+
+**Class:** getClasses, getClass, createClass, updateClass, deleteClass, uploadClassImage, getPublicClasses
+
+**ClassCategory:** getClassCategories
 
 ### Test Commands
 ```bash
@@ -90,8 +117,6 @@ npm run test:coverage
 # Run specific library
 npx nx run validation:test
 npx nx run domain:test
-npx nx run firebase-maple-functions-detect-sync-conflicts:test
-npx nx run firebase-maple-functions-square-webhook:test
 ```
 
 ### Storybook Commands
@@ -117,27 +142,12 @@ npx nx run maple-spruce:serve
 
 Functions deploy automatically when PRs merge to main via `.github/workflows/firebase-functions-merge.yml`.
 
-### Deployed Cloud Functions
-- `syncArtistToWebflow` - Firestore trigger that syncs artist changes to Webflow CMS
-- `getPublicArtists` - Public API for fetching active artists (no auth required)
-- `getSyncConflicts` - List sync conflicts with filters
-- `getSyncConflictSummary` - Get counts for nav badge
-- `resolveSyncConflict` - Apply resolution
-- `detectSyncConflicts` - Compare Firestore vs Square data
-- `squareWebhook` - Handles Square inventory updates
-
-### Square Webhook URLs (register in Square Dashboard)
-| Environment | URL |
-|-------------|-----|
-| Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
-| Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
-
 ---
 
 ## Session History
 
 See `history/` folder for detailed session logs:
-- [2026-01-25](history/2026-01-25.md) - Sync conflict resolution, Storybook test fixes
+- [2026-01-25](history/2026-01-25.md) - Sync conflict resolution, Storybook test fixes, Phase 3a/3b
 - [2026-01-20](history/2026-01-20.md) - Webflow CMS sync, dev/prod separation
 - [2026-01-19](history/2026-01-19.md) - Dev environment fixes, product/artist integration
 - [2026-01-18](history/2026-01-18.md) - Square integration foundation, dev/prod separation
