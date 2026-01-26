@@ -104,6 +104,45 @@
       ],
       "@maple/firebase/maple-functions/detect-sync-conflicts": [
         "libs/firebase/maple-functions/detect-sync-conflicts/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-instructors": [
+        "libs/firebase/maple-functions/get-instructors/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-instructor": [
+        "libs/firebase/maple-functions/get-instructor/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-instructor": [
+        "libs/firebase/maple-functions/create-instructor/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-instructor": [
+        "libs/firebase/maple-functions/update-instructor/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-instructor": [
+        "libs/firebase/maple-functions/delete-instructor/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-classes": [
+        "libs/firebase/maple-functions/get-classes/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-class": [
+        "libs/firebase/maple-functions/get-class/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-class": [
+        "libs/firebase/maple-functions/create-class/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-class": [
+        "libs/firebase/maple-functions/update-class/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-class": [
+        "libs/firebase/maple-functions/delete-class/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/upload-class-image": [
+        "libs/firebase/maple-functions/upload-class-image/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-public-classes": [
+        "libs/firebase/maple-functions/get-public-classes/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-class-categories": [
+        "libs/firebase/maple-functions/get-class-categories/src/index.ts"
       ]
     }
   }
