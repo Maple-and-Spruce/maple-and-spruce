@@ -25,3 +25,13 @@ export {
   type AdjustInventoryInput,
   type InventoryCountResult,
 } from './lib/inventory.service';
+
+// Payments service
+export {
+  PaymentsService,
+  type CreatePaymentInput,
+  type CreatePaymentResult,
+  type RefundPaymentInput,
+  type RefundPaymentResult,
+  type GetPaymentResult,
+} from './lib/payments.service';

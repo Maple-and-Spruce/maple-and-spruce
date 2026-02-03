@@ -159,6 +159,8 @@ export type {
   UploadClassImageResponse,
   GetPublicClassesRequest,
   GetPublicClassesResponse,
+  GetPublicClassRequest,
+  GetPublicClassResponse,
 } from './class.types';
 
 // Class Category types
@@ -176,3 +178,33 @@ export type {
   ReorderClassCategoriesRequest,
   ReorderClassCategoriesResponse,
 } from './class-category.types';
+
+// Phase 3c: Discount types
+export type {
+  GetDiscountsRequest,
+  GetDiscountsResponse,
+  CreateDiscountRequest,
+  CreateDiscountResponse,
+  UpdateDiscountRequest,
+  UpdateDiscountResponse,
+  DeleteDiscountRequest,
+  DeleteDiscountResponse,
+  LookupDiscountRequest,
+  LookupDiscountResponse,
+} from './discount.types';
+
+// Phase 3c: Registration types
+export type {
+  GetRegistrationsRequest,
+  GetRegistrationsResponse,
+  GetRegistrationRequest,
+  GetRegistrationResponse,
+  UpdateRegistrationRequest,
+  UpdateRegistrationResponse,
+  CancelRegistrationRequest,
+  CancelRegistrationResponse,
+  CalculateRegistrationCostRequest,
+  CalculateRegistrationCostResponse,
+  CreateRegistrationRequest,
+  CreateRegistrationResponse,
+} from './registration.types';
