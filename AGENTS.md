@@ -1,50 +1,22 @@
 # Agent Rules for Maple & Spruce
 
-> Rules and context for Claude Code when working on this project
+> Project context for AI assistants working on this codebase. Keep under 150 lines.
 
 ---
 
-## Agent Directives
+## Directives
 
-**IMPORTANT**: Follow these directives in every session.
-
-1. **NEVER read, access, or display secrets or credentials** - This is a PRIME DIRECTIVE.
-   - Never read `.secret.local`, `.env` files containing tokens, or any file that might contain API keys
-   - Never run commands that output secrets (e.g., `firebase functions:secrets:access`)
-   - Never display tokens, API keys, or passwords in chat - even sandbox/development ones
-   - Use Firebase CLI interactively for the user to set secrets themselves
-   - If you accidentally see a secret, do not repeat it - warn the user to rotate it
-2. **Keep documentation current** - Update `docs/sessions/SESSION.md` after completing tasks. Archive completed sessions to `docs/sessions/history/YYYY-MM-DD.md`.
-3. **Read before acting** - Start sessions by reading AGENTS.md and `docs/sessions/SESSION.md` for context.
-4. **Check GitHub issues** - Run `gh issue list --label phase-2` to see current work.
-5. **Update Implementation Status** - Mark features as "In progress" or "Complete" in this file as work progresses.
-6. **Use feature branches** - Never commit directly to main.
-7. **Always write tests** - When adding new functions, utilities, or domain logic:
-   - Add unit tests alongside the code (e.g., `artist.ts` → `artist.spec.ts`)
-   - Run `npm test` before creating PRs
-   - If fixing a bug, add a test that would have caught it
-   - Cloud Functions CAN be unit tested - use `vi.mock()` to mock repositories and external services (see ADR-017)
-8. **Use GitHub issues for work tracking** - Before starting significant work:
-   - Create or find an existing issue for the work
-   - Reference the issue in PR descriptions (`Closes #XX`)
-   - Check off testing requirements in the issue before closing
-9. **Never deploy manually** - Claude should NEVER run `firebase deploy` commands:
-   - User runs functions and web app locally for development/testing
-   - Deployments to dev are the user's choice (they will run deploy commands themselves if needed)
-   - Production deployments happen automatically via CI/CD when PRs are merged to main
-   - Claude's job is to write code and create PRs, not deploy
-10. **No package.json in libraries** - Nx libraries under `libs/` should NOT have their own `package.json`:
-    - These libraries are not independently publishable
-    - The root `package.json` and `tsconfig.base.json` handle all dependency management
-    - If you use `nx generate @nx/js:library`, it may auto-create a `package.json` - delete it
-    - esbuild bundles from source; no intermediate build step needed for libs
-11. **Function library naming convention** - Cloud Function libraries MUST follow the naming pattern:
-    - Project name: `firebase-maple-functions-{function-name}` (e.g., `firebase-maple-functions-get-artists`)
-    - Location: `libs/firebase/maple-functions/{function-name}/`
-    - This naming is REQUIRED for CI/CD to detect and deploy the function
-    - Validate with: `npx nx show projects | grep firebase-maple-functions`
-    - See "Creating a new Cloud Function" section below for step-by-step instructions
-12. **gcloud commands work after user login** - When the user logs in via `gcloud auth login`, Claude can run gcloud commands on their behalf (IAM bindings, secret management, etc.). Don't refuse - just run them.
+1. **NEVER read, access, or display secrets or credentials** -- PRIME DIRECTIVE. Never read `.secret.local`, `.env` files with tokens, or display API keys. Warn the user to rotate if seen accidentally.
+2. **Keep documentation current** -- Follow the self-updating doc workflow in .claude/CLAUDE.md and the `session-management` skill.
+3. **Read before acting** -- Start sessions by reading AGENTS.md, .claude/CLAUDE.md, and `docs/sessions/SESSION.md`.
+4. **Check GitHub issues** -- Run `gh issue list` for current work. Issues are the source of truth.
+5. **Use feature branches** -- Never commit directly to main. See `git-workflow` skill.
+6. **Always write tests** -- Unit tests for new functions/utilities. Run `npm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017).
+7. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
+8. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
+9. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
+10. **Function naming convention** -- `firebase-maple-functions-{name}`. See `create-cloud-function` skill.
+11. **gcloud commands OK** -- Run gcloud after user logs in via `gcloud auth login`.
 
 ---
 
@@ -55,360 +27,20 @@
 - Workshops and craft classes
 - Music lessons (Suzuki method)
 
-**Current State**: Selling on Etsy only. No physical store yet. Building public website on Webflow.
-
-**Current Phase**: Phase 3 - Classes & Workshops (Backend + Admin UI Complete)
+**Current State**: Selling on Etsy. Building public website on Webflow.
+**Current Phase**: Phase 3 Complete -- Classes & Workshops (All subphases done)
 
 ## Phased Roadmap
 
-| Phase | Epic | Focus | Status |
-|-------|------|-------|--------|
-| 1 | #1 | Admin Foundation & Artist Platform | ✅ COMPLETE |
-| 2 | #93 | Public Website (Webflow Integration) | ✅ COMPLETE |
-| 3a | #9 | Classes & Workshops - Backend | ✅ COMPLETE (PR #106) |
-| 3b | #9 | Classes & Workshops - Admin UI | ✅ COMPLETE (PR #106) |
-| 3c | #9 | Classes & Workshops - Registration | **NEXT** |
-| 4 | #10 | Music Lessons | After Classes |
-| 5 | #8 | Store Opening & Sales Tracking | When store opens |
-
-**Deferred Issues** (moved to Phase 5):
-- #4 - Etsy API integration (blocked on API approval)
-- #5 - Sales tracking (not valuable without store)
-- #6 - Payout reports (depends on sales)
-
-## GitHub Issues
-
-**Always check `gh issue list` for current work.** Issues are the source of truth for tasks.
-
-| Command | Purpose |
-|---------|---------|
-| `gh issue list --label phase-3` | Current phase work |
-| `gh issue list --label epic` | High-level epics |
-| `gh issue view <number>` | Issue details |
-
-**Current Phase 3 Issues:**
-- #9 - Epic: Classes & Workshops
-- PR #106 - Phase 3a/3b implementation (backend + admin UI)
-
-## Implementation Status
-
-> **Update this section as features are built.**
-
-### Infrastructure
-
-| Feature | Status | Location |
-|---------|--------|----------|
-| Firebase client SDK | Complete | `libs/ts/firebase/firebase-config/` |
-| Firebase admin SDK | Complete | `libs/firebase/database/` |
-| MUI theme | Complete | `libs/react/theme/` |
-| React UI components | Complete | `libs/react/ui/` (ImageUpload, DeleteConfirmDialog) |
-| React auth library | Complete | `libs/react/auth/` (AuthGuard, UserMenu, useAuth) |
-| React layout library | Complete | `libs/react/layout/` (AppShell) |
-| React data hooks | Complete | `libs/react/data/` (useProducts, useArtists, useCategories) |
-| Domain types library | Complete | `libs/ts/domain/` |
-| Validation library | Complete | `libs/ts/validation/` |
-| API types library | Complete | `libs/ts/firebase/api-types/` |
-| Functions core library | Complete | `libs/firebase/functions/` |
-| Functions app | Complete | `apps/functions/` |
-| Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
-| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
-| Storybook | Complete | `apps/maple-spruce/.storybook/` |
-| Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
-| Chromatic CI | Complete | `.github/workflows/chromatic.yml` |
-| Unit testing (Vitest) | Complete | `libs/ts/validation/`, `libs/ts/domain/` |
-| Unit tests in CI | Complete | `.github/workflows/build-check.yml` |
-| Signals state management | Complete | `libs/react/signals/` (see ADR-015) |
-| Sync conflict detection | Complete | `libs/firebase/maple-functions/detect-sync-conflicts/`, UI at `/sync-conflicts` |
-
-### Phase 1 Features (COMPLETE)
-
-| Feature | Status | Issue | Location |
-|---------|--------|-------|----------|
-| Artist CRUD | ✅ Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
-| Square integration | ✅ Complete | #69 | `libs/firebase/square/` |
-| Product management | ✅ Complete | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
-| Category management | ✅ Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
-
-### Phase 2 Features (COMPLETE)
-
-| Feature | Status | Issue | Location |
-|---------|--------|-------|----------|
-| Public Artist API | ✅ Complete | #93 | `libs/firebase/maple-functions/get-public-artists/` |
-| Webflow integration | ✅ Complete | #93 | `libs/firebase/webflow/`, `syncArtistToWebflow` |
-| Sync Conflict Resolution | ✅ Complete | #28 | `/sync-conflicts` page, 4 Cloud Functions |
-| Artist showcase | ✅ Complete | #93 | Webflow CMS sync working |
-
-### Phase 3 Features (CURRENT)
-
-| Feature | Status | Issue | Location |
-|---------|--------|-------|----------|
-| **Phase 3a: Backend** | | | |
-| Payee interface | ✅ Complete | #9 | `libs/ts/domain/src/lib/payee.ts` |
-| Instructor domain types | ✅ Complete | #9 | `libs/ts/domain/src/lib/instructor.ts` |
-| Class domain types | ✅ Complete | #9 | `libs/ts/domain/src/lib/class.ts` |
-| ClassCategory types | ✅ Complete | #9 | `libs/ts/domain/src/lib/class-category.ts` |
-| Registration placeholder | ✅ Complete | #9 | `libs/ts/domain/src/lib/registration.ts` |
-| Instructor validation | ✅ Complete | #9 | `libs/ts/validation/src/lib/instructor.validation.ts` |
-| Class validation | ✅ Complete | #9 | `libs/ts/validation/src/lib/class.validation.ts` |
-| InstructorRepository | ✅ Complete | #9 | `libs/firebase/database/src/lib/instructor.repository.ts` |
-| ClassRepository | ✅ Complete | #9 | `libs/firebase/database/src/lib/class.repository.ts` |
-| ClassCategoryRepository | ✅ Complete | #9 | `libs/firebase/database/src/lib/class-category.repository.ts` |
-| Instructor Cloud Functions (5) | ✅ Complete | #9 | `libs/firebase/maple-functions/get-instructors/`, etc. |
-| Class Cloud Functions (7) | ✅ Complete | #9 | `libs/firebase/maple-functions/get-classes/`, etc. |
-| ClassCategory Cloud Functions (1) | ✅ Complete | #9 | `libs/firebase/maple-functions/get-class-categories/` |
-| **Phase 3b: Admin UI** | | | |
-| Instructor components | ✅ Complete | #9 | `libs/react/instructors/` |
-| Class components | ✅ Complete | #9 | `libs/react/classes/` |
-| Instructors page | ✅ Complete | #9 | `/instructors` admin page |
-| Classes page | ✅ Complete | #9 | `/classes` admin page |
-| useInstructors hook | ✅ Complete | #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
-| useClasses hook | ✅ Complete | #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |
-| Storybook stories | ✅ Complete | #9 | `libs/react/*/src/**/*.stories.tsx` |
-| **Phase 3c: Registration** | | | |
-| Registration domain types | Pending | #9 | - |
-| Registration Cloud Functions | Pending | #9 | - |
-| Registration UI | Pending | #9 | - |
-| Square payment integration | Pending | #9 | - |
-
-### Deferred to Phase 5 (Store Opening)
-
-| Feature | Status | Issue | Notes |
-|---------|--------|-------|-------|
-| Etsy integration | Deferred | #4 | Blocked on API approval |
-| Sales tracking | Deferred | #5 | Not valuable without store |
-| Payout reports | Deferred | #6 | Depends on sales |
-
-#### Square Integration (#69) - Complete
-
-Square foundation is complete. Ready for Product Management integration.
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Square secrets configured | ✅ | Per-project pattern (same name in dev/prod projects) |
-| Square utility library | ✅ | `libs/firebase/square/` with Catalog & Inventory services |
-| Product type refactored | ✅ | `squareCache` for cached data, clear ownership boundaries |
-| ADR for sync strategy | ✅ | ADR-013: webhooks + lazy refresh + periodic sync |
-| Webhooks | ✅ | `squareWebhook` function deployed to both environments |
-| Dev environment | ✅ | Separate Firebase project + Vercel app |
-
-#### Product Management (#3) - Complete
-
-- ~~ProductForm status enum mismatch~~ - Fixed
-- ~~ProductForm missing quantity field~~ - Fixed
-- ~~Wire up CRUD to Square~~ - Product create/update calls Square first
-- ~~Artist dropdown~~ - Replaced manual artistId text input
-- ~~Artist info display~~ - Shows artist name in table
-- **Category dropdown** - Products can be assigned to categories
-- **MUI DataGrid table** - Replaced card grid with sortable/filterable table
-- **Filter toolbar** - Search, category, artist, status, in-stock filters
-
-#### Category Management - Complete
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Category domain types | ✅ | `libs/ts/domain/src/lib/category.ts` |
-| Category API types | ✅ | `libs/ts/firebase/api-types/src/lib/category.types.ts` |
-| Category validation | ✅ | `libs/ts/validation/src/lib/category.validation.ts` |
-| CategoryRepository | ✅ | `libs/firebase/database/src/lib/category.repository.ts` |
-| Cloud Functions (4) | ✅ | getCategories, createCategory, updateCategory, deleteCategory |
-| useCategories hook | ✅ | `apps/maple-spruce/src/hooks/useCategories.ts` |
-| Categories page | ✅ | `/categories` with full CRUD UI |
-| ProductForm dropdown | ✅ | Category selection in product form |
-
-### Infrastructure Tasks (COMPLETE)
-
-| Task | Status | Issue |
-|------|--------|-------|
-| Deploy Functions to Firebase | ✅ Complete | #22 |
-| CI/CD for Functions | ✅ Complete | #23 |
-| Testing infrastructure | ✅ Complete | #24 |
-
-#### CI/CD Details (#23)
-
-- **PR Build Check**: `.github/workflows/build-check.yml` - Runs on every PR:
-  - Security audit (`npm audit --audit-level=high`)
-  - TypeScript typecheck (`nx run maple-spruce:typecheck`)
-  - Build web app and functions
-- **Functions Deploy**: `.github/workflows/firebase-functions-merge.yml` - Deploys only affected functions on merge to main
-- **Auth**: Workload Identity Federation (keyless) - no secrets required
-- **Region**: All functions deploy to `us-east4` (Northern Virginia, close to WV business)
-- **Codebase**: `maple-functions` - functions are filtered by this codebase prefix
-
-#### Functions Deployment Pattern
-
-Functions follow Mountain Sol's auto-generated package.json pattern:
-- `apps/functions/project.json` has `generatePackageJson: true`
-- No static `package.json` in `apps/functions/`
-- Nx auto-detects dependencies from imports during build
-- esbuild bundles code with `thirdParty: false` (externalize deps for Firebase to install)
-
-**Deployed Functions** (all in `us-east4`):
-
-**Artists:**
-- `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist`, `uploadArtistImage`
-
-**Products:**
-- `getProducts`, `getProduct`, `createProduct`, `updateProduct`, `deleteProduct`, `uploadProductImage`
-
-**Categories:**
-- `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`
-
-**Instructors (Phase 3):**
-- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`
-
-**Classes (Phase 3):**
-- `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `getPublicClasses`
-
-**Class Categories (Phase 3):**
-- `getClassCategories`
-
-**Infrastructure:**
-- `healthCheck`, `squareWebhook`, `getPublicArtists`, `syncArtistToWebflow`
-- `detectSyncConflicts`, `getSyncConflicts`, `getSyncConflictSummary`, `resolveSyncConflict`
-
-#### Creating a New Cloud Function
-
-**IMPORTANT**: Follow this pattern exactly. CI/CD will NOT deploy your function if naming is wrong.
-
-1. **Generate the library:**
-   ```bash
-   # DO NOT use nx generate - it creates wrong structure
-   # Instead, copy an existing function library and modify it
-   cp -r libs/firebase/maple-functions/get-artists libs/firebase/maple-functions/my-new-function
-   ```
-
-2. **Update project.json:**
-   ```json
-   {
-     "name": "firebase-maple-functions-my-new-function",  // MUST follow this pattern!
-     "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
-     "sourceRoot": "libs/firebase/maple-functions/my-new-function/src",
-     "projectType": "library",
-     "tags": ["scope:firebase", "type:feature"],
-     "targets": {}
-   }
-   ```
-
-3. **Update tsconfig.lib.json** - point to the new source directory
-
-4. **Create your function in `src/lib/my-new-function.ts`**
-
-5. **Add path alias to `tsconfig.base.json`:**
-   ```json
-   "@maple/firebase-maple-functions/my-new-function": [
-     "libs/firebase/maple-functions/my-new-function/src/index.ts"
-   ]
-   ```
-
-6. **Export from `apps/functions/src/index.ts`:**
-   ```typescript
-   export { myNewFunction } from '@maple/firebase-maple-functions/my-new-function';
-   ```
-
-7. **Validate:** `npx nx show projects | grep firebase-maple-functions-my-new-function`
-
-**Common mistakes:**
-- ❌ Project name without prefix: `my-new-function` (CI won't deploy)
-- ❌ Wrong prefix: `maple-functions-my-new-function` (CI won't deploy)
-- ✅ Correct: `firebase-maple-functions-my-new-function`
-
-#### Storybook & Testing Infrastructure (#24) - Complete
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Storybook setup | ✅ | `@storybook/nextjs` v10 with Nx integration |
-| Mock data fixtures | ✅ | `apps/maple-spruce/.storybook/fixtures/` |
-| Firebase mocks | ✅ | `apps/maple-spruce/.storybook/mocks/firebase.ts` |
-| ImageUpload stories | ✅ | All states: idle, previewing, uploading, success, error, removed |
-| DeleteConfirmDialog stories | ✅ | All 3 variants (artists, categories, inventory) |
-| Chromatic workflow | ✅ | `.github/workflows/chromatic.yml` |
-| Storybook build in CI | ✅ | Added to `.github/workflows/build-check.yml` |
-| Remaining component stories | ✅ | All 15 components have stories with proper fixtures |
-| Vitest workspace config | ✅ | `vitest.workspace.ts` |
-| Validation unit tests | ✅ | 7 test files, 139 tests |
-| Domain unit tests | ✅ | `product.spec.ts`, 25 tests |
-| Unit tests in CI | ✅ | Added to `.github/workflows/build-check.yml` |
-| Vercel deployment | ⏳ | Pending: `storybook.maple-and-spruce.com` |
-| Chromatic project token | ⏳ | Pending: Add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets |
-
-**Running Storybook locally:**
-```bash
-npx nx run maple-spruce:storybook
-# Opens http://localhost:6006
-```
-
-**Building Storybook:**
-```bash
-npx nx run maple-spruce:build-storybook
-# Output: dist/storybook/maple-spruce
-```
-
-### External Dependencies
-
-- [x] Firebase projects created (`maple-and-spruce` prod, `maple-and-spruce-dev` dev)
-- [x] Square developer account (production & sandbox credentials configured)
-- [x] Etsy developer account (app pending approval)
-- [x] Vercel projects (prod + dev with hostname-based routing)
-- [x] Dependencies added to package.json (vest, react-query, MUI, etc.)
-
-## Key Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [docs/sessions/SESSION.md](../docs/sessions/SESSION.md) | **Read first** - Current work, blockers, quick reference |
-| [docs/sessions/history/](../docs/sessions/history/) | Past session logs with detailed context |
-| [docs/REQUIREMENTS.md](../docs/REQUIREMENTS.md) | Business requirements, phased roadmap, data models |
-| [docs/PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md) | Code patterns, architecture, examples |
-| [docs/DECISIONS.md](../docs/DECISIONS.md) | Architecture Decision Records (ADRs) |
-| [docs/BACKLOG.md](../docs/BACKLOG.md) | Ideas and future features |
-
-## Reference Repository
-
-**Mountain Sol Platform** serves as the reference implementation for patterns used in this project.
-
-- **GitHub**: https://github.com/MountainSOLSchool/platform
-- **Local path**: `/Users/$USER/GitHub/platform`
-
-### Pattern Documentation
-
-**IMPORTANT**: Before implementing features, consult these documents:
-
-| Document | Purpose |
-|----------|---------|
-| [docs/SOL-PATTERNS-REFERENCE.md](../docs/SOL-PATTERNS-REFERENCE.md) | Detailed SOL patterns with file links |
-| [docs/PATTERNS-AND-PRACTICES.md](../docs/PATTERNS-AND-PRACTICES.md) | Maple & Spruce adaptations |
-
-### Key Patterns to Follow
-
-1. **Async State (`RequestState<T>`)** - Never use boolean `isLoading`
-   - SOL: [libs/angular/request/src/lib/models/requested.type.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/angular/request/src/lib/models/requested.type.ts)
-   - Maple: `libs/ts/domain/src/lib/request-state.ts`
-
-2. **Repository Pattern** - All Firestore access through repositories
-   - SOL: [libs/firebase/database/src/lib/utilities/database.utility.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/database/src/lib/utilities/database.utility.ts)
-   - Maple: `libs/firebase/database/src/lib/product.repository.ts`
-
-3. **Library-per-Function** - Each Cloud Function in its own Nx library
-   - SOL: [libs/firebase/enrollment-functions/](https://github.com/MountainSOLSchool/platform/tree/main/libs/firebase/enrollment-functions)
-   - Maple: `libs/firebase/maple-functions/get-artists/`, `libs/firebase/maple-functions/create-product/`, etc.
-
-4. **Vest Validation** - Declarative form validation suites
-   - SOL: [libs/ts/classes/classes-domain/src/lib/validation/](https://github.com/MountainSOLSchool/platform/tree/main/libs/ts/classes/classes-domain/src/lib/validation)
-   - Maple: `libs/ts/validation/`
-
-5. **Form State Machine** - Discriminated unions for form submission
-   - SOL: [libs/angular/classes/class-management/src/lib/components/class-form/class-form.component.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/angular/classes/class-management/src/lib/components/class-form/class-form.component.ts) (lines 89-94)
-
-6. **Function Builder** - Consistent Cloud Function structure
-   - SOL: [libs/firebase/functions/src/lib/utilities/functions.utility.ts](https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts)
-   - Maple: `libs/firebase/functions/src/lib/functions.utility.ts`
-
-7. **AuthGuard Pattern** - Wrap app in root layout with route protection
-   - SOL: [apps/student-portal/app/auth-guard.tsx](https://github.com/MountainSOLSchool/platform/blob/main/apps/student-portal/app/auth-guard.tsx)
-   - Maple: `apps/maple-spruce/src/components/auth/AuthGuard.tsx`
-
-8. **Admin Role Authorization** - Check roles via Firestore `admins` collection
-   - Maple: `libs/firebase/functions/src/lib/auth.utility.ts`
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 1 | Admin Foundation & Artist Platform | Complete |
+| 2 | Public Website (Webflow Integration) | Complete |
+| 3 | Classes & Workshops (3a/3b/3c) | Complete |
+| 4 | Music Lessons | Next |
+| 5 | Store Opening & Sales Tracking | Future |
+
+**Deferred** (Phase 5): #4 Etsy API, #5 Sales tracking, #6 Payout reports
 
 ## Tech Stack
 
@@ -418,338 +50,56 @@ npx nx run maple-spruce:build-storybook
 | UI | MUI (Material Design) |
 | Database | Firebase Firestore |
 | Auth | Firebase Authentication |
-| Backend | Firebase Cloud Functions |
-| Payments | Stripe (future) |
+| Backend | Firebase Cloud Functions (us-east4) |
+| Payments | Square |
 | Monorepo | Nx |
+
+## Key Patterns
+
+- **Repository Pattern** -- All Firestore via repositories, never raw `getDocs`
+- **Library-per-Function** -- Each Cloud Function in its own Nx library
+- **Vest Validation** -- Declarative form validation suites in `libs/ts/validation/`
+- **RequestState\<T\>** -- Discriminated unions for async state, no boolean `isLoading`
+- **Preact Signals** -- Form state management (ADR-015)
+- **Function Builder** -- Consistent Cloud Function structure via `@maple/firebase/functions`
+
+## Reference Repository
+
+Mountain Sol Platform: https://github.com/MountainSOLSchool/platform
+Local: `/Users/$USER/GitHub/platform`
+
+## Documentation Map
+
+| Document | Purpose |
+|----------|---------|
+| `docs/sessions/SESSION.md` | **Read first** -- Current work status |
+| `docs/reference/REQUIREMENTS.md` | Business requirements & roadmap |
+| `docs/reference/implementation-status.md` | Feature tracking |
+| `docs/reference/deployed-functions.md` | All deployed Cloud Functions |
+| `docs/reference/code-standards.md` | Naming, TypeScript, patterns |
+| `docs/architecture/DECISIONS.md` | Architecture Decision Records |
+| `docs/architecture/PATTERNS-AND-PRACTICES.md` | Code patterns & examples |
+| `docs/architecture/SOL-PATTERNS-REFERENCE.md` | Mountain Sol reference patterns |
+| `docs/architecture/ci-cd.md` | CI/CD pipeline details |
+| `docs/guides/environment-setup.md` | Secrets, env detection, webhooks |
+| `docs/reference/BACKLOG.md` | Future feature ideas |
+
+## Skills (`.claude/skills/`)
+
+| Skill | Use when |
+|-------|----------|
+| `create-cloud-function` | Adding a new Firebase Cloud Function |
+| `git-workflow` | Creating branches, commits, or PRs |
+| `local-development` | Running locally, troubleshooting emulators |
+| `session-management` | Updating docs, managing sessions |
 
 ## Brand Colors
 
 | Name | Hex | Usage |
 |------|-----|-------|
 | Cream | `#D5D6C8` | Backgrounds |
-| Dark Brown | `#4A3728` | Headings, primary text |
-| Sage Green | `#6B7B5E` | Buttons, accents (primary) |
+| Dark Brown | `#4A3728` | Headings |
+| Sage Green | `#6B7B5E` | Primary/buttons |
 | Warm Gray | `#7A7A6E` | Body text |
 
-**Always use MUI theme colors, not hardcoded hex values.**
-
----
-
-## Git Workflow
-
-### Branch Protection
-
-**`main` branch is protected. All changes must go through pull requests.**
-
-- Direct pushes to `main` are blocked
-- All work happens on feature branches
-- PRs required even for solo development
-
-### Branch Strategy
-
-**Always work on feature branches.**
-
-```bash
-# Create a new feature branch
-git checkout main
-git pull origin main
-git checkout -b feature/7-firebase-setup
-```
-
-**Branch naming:**
-- `feature/[issue-number]-[short-description]`
-- `fix/[issue-number]-[short-description]`
-- `chore/[description]`
-
-### Commit Rules
-
-1. **Commit frequently** - Small, focused commits
-2. **Clear messages** - Describe what and why
-3. **Reference issues** - Include `#issue-number`
-
-**Format:**
-```
-<type>: <short description>
-
-[optional body]
-
-[Fixes #123]
-```
-
-**Types:** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
-
-**Examples:**
-```bash
-git commit -m "feat: add artist creation form (#2)"
-git commit -m "fix: correct commission calculation (#5)"
-```
-
-### Pull Request Workflow
-
-**Always create PRs, never merge directly to main.**
-
-```bash
-git push -u origin feature/7-firebase-setup
-gh pr create --title "feat: Firebase setup (#7)" --body "..."
-```
-
-**PR template:**
-```markdown
-## Summary
-[Brief description]
-
-## Changes
-- [Change 1]
-- [Change 2]
-
-## Testing
-- [ ] Tested locally
-
-Closes #[issue-number]
-```
-
----
-
-## Code Standards
-
-### File Organization
-
-```
-apps/maple-spruce/src/
-├── app/                    # Next.js App Router
-│   ├── artists/           # Artist management page
-│   ├── inventory/         # Inventory management page
-│   ├── login/             # Login page (public)
-│   ├── auth-guard-wrapper.tsx  # Client component for AuthGuard
-│   ├── layout.tsx         # Root layout with providers
-│   └── page.tsx           # Home page
-├── components/
-│   ├── artists/           # ArtistList, ArtistForm, etc.
-│   ├── auth/              # AuthGuard, UserMenu
-│   ├── inventory/         # ProductList, ProductForm, etc.
-│   └── layout/            # AppShell (shared nav component)
-├── config/
-│   └── public-routes.ts   # Routes that don't require auth
-├── hooks/                 # useAuth, useProducts, useArtists
-└── lib/
-    └── theme/             # MUI theme + ThemeProvider
-
-apps/functions/src/
-└── index.ts               # Firebase Functions entry point
-```
-
-### Naming Conventions
-
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `ArtistCard.tsx` |
-| Files | kebab-case | `artist-card.tsx` |
-| Hooks | `use` prefix | `useArtists.ts` |
-| Types | PascalCase | `Artist` |
-| Constants | SCREAMING_SNAKE | `MAX_COMMISSION_RATE` |
-
-### TypeScript
-
-- **Strict mode** - No `any` types
-- **Explicit returns** - Type all function returns
-- **Discriminated unions** - For state (not boolean flags)
-
-### Repository Pattern
-
-**All Firestore access goes through repositories.**
-
-```typescript
-// Good
-const artists = await ArtistRepository.findAll();
-
-// Bad
-const snapshot = await getDocs(collection(db, 'artists'));
-```
-
-### MUI Components
-
-```typescript
-// Good - uses theme
-<Button color="primary">Save</Button>
-
-// Bad - hardcoded
-<Button sx={{ backgroundColor: '#6B7B5E' }}>Save</Button>
-```
-
----
-
-## Working with Issues
-
-### Before Starting Work
-
-1. Check GitHub issues for the task
-2. Create feature branch: `feature/[issue]-[desc]`
-3. Reference issue in commits and PR
-
-### Creating Issues
-
-```bash
-gh issue create \
-  --title "Bug: Commission calculation issue" \
-  --label "bug,phase-1" \
-  --body "## Description..."
-```
-
-### Issue Labels
-
-- `phase-1`: Etsy + artist tracking (current)
-- `phase-2`: Store opening + POS
-- `phase-3`: Classes & workshops
-- `phase-4`: Music lessons
-- `epic`: Large feature area
-
----
-
-## Documentation Updates
-
-| Change | Update |
-|--------|--------|
-| New code pattern | PATTERNS-AND-PRACTICES.md |
-| Architecture decision | DECISIONS.md (new ADR) |
-| New feature planned | REQUIREMENTS.md |
-| Future idea | BACKLOG.md |
-
----
-
-## Environment & Secrets
-
-### Per-Project Secrets Pattern
-
-**Same secret names in each Firebase project, different values:**
-
-| Secret | Dev Project | Prod Project |
-|--------|-------------|--------------|
-| `SQUARE_ACCESS_TOKEN` | Sandbox token | Production token |
-| `SQUARE_WEBHOOK_SIGNATURE_KEY` | Sandbox key | Production key |
-
-**No more `_PROD` suffix** - the project itself determines the environment.
-
-### Environment Detection
-
-The web app selects Firebase config in this order:
-
-1. **`NEXT_PUBLIC_FIREBASE_ENV`** environment variable (checked first)
-   - Set in Vercel for deployed apps
-   - Values: `dev` or `prod`
-2. **Hostname fallback** for local development:
-   - `localhost` or `127.0.0.1` → dev
-   - `*-dev.*` hostname → dev
-   - Everything else → prod
-
-**Vercel Environment Variables (required):**
-| Project | Variable | Value |
-|---------|----------|-------|
-| Production | `NEXT_PUBLIC_FIREBASE_ENV` | `prod` |
-| Development | `NEXT_PUBLIC_FIREBASE_ENV` | `dev` |
-
-**No `.env.local` needed** - Firebase client config is hardcoded in `libs/ts/firebase/firebase-config/`.
-
-### FirebaseProject Utility (Cloud Functions)
-
-For Cloud Functions, use `FirebaseProject` from `@maple/firebase/functions`:
-
-```typescript
-import { FirebaseProject } from '@maple/firebase/functions';
-
-// Auto-detects project from GCLOUD_PROJECT or FIREBASE_CONFIG
-FirebaseProject.projectId      // 'maple-and-spruce' or 'maple-and-spruce-dev'
-FirebaseProject.storageBucket  // '{project-id}.firebasestorage.app'
-FirebaseProject.functionUrl('squareWebhook')  // Full webhook URL
-FirebaseProject.isDev / FirebaseProject.isProd  // Environment checks
-```
-
-See `libs/firebase/functions/src/lib/environment.utility.ts` for full documentation.
-
-### Square Webhook URLs
-
-**IMPORTANT**: Webhook signature verification requires the URL to match exactly what's registered in Square Dashboard. Use the `cloudfunctions.net` format, NOT the Cloud Run URLs.
-
-| Environment | Webhook URL (register in Square) |
-|-------------|----------------------------------|
-| Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
-| Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
-
-### Never Commit
-
-- Firebase service account keys
-- API keys or tokens (Square, Etsy, etc.)
-
-### Local Development
-
-**Development workflow:** The user runs functions and web app locally for testing. Claude writes code and creates PRs - Claude does NOT deploy.
-
-**Running Functions Locally (user runs this):**
-```bash
-npx nx run functions:serve
-```
-
-This command:
-1. Builds the functions
-2. Copies `.env.dev` to `dist/apps/functions/.env`
-3. Starts watch mode for rebuilds (background)
-4. Runs `firebase serve --only functions --project=dev` on port 5001
-
-**Running Web App Locally (user runs this):**
-```bash
-npx nx run maple-spruce:serve
-```
-Runs on http://localhost:3000
-
-**Deployment:** User decides when to deploy to dev (runs deploy commands themselves). Production deploys happen automatically via CI/CD on merge to main.
-
-#### Troubleshooting Local Functions
-
-**If the emulator prompts for environment variables:**
-
-The Firebase emulator is not finding the `.env` file. This happens when:
-- The build clears `dist/apps/functions/` before the `.env` is copied
-- A stale watch process is interfering
-
-**Fix:**
-```bash
-# Kill any stale processes
-pkill -f "firebase serve"
-pkill -f "nx run functions"
-
-# Clean and restart
-rm -rf dist/apps/functions
-npx nx run functions:serve
-```
-
-**Why this happens:**
-- Firebase reads `.env` from the functions source directory (`dist/apps/functions/`)
-- The `nx run functions:build` clears this directory
-- The serve command copies `.env.dev` after build, before starting the emulator
-- If ordering is wrong or stale processes exist, the emulator starts without the `.env`
-
-**Key indicator it's working:**
-```
-i  functions: Loaded environment variables from .env.
-```
-
----
-
-## Quick Checklists
-
-### Before Committing
-- [ ] On feature branch (not main)
-- [ ] Code follows patterns doc
-- [ ] No credentials committed
-- [ ] TypeScript compiles
-- [ ] Commit references issue
-
-### Before PR
-- [ ] Commits pushed
-- [ ] PR description complete
-- [ ] Issue referenced
-- [ ] Self-reviewed diff
-
-### Before Merge
-- [ ] PR approved (or self-reviewed)
-- [ ] No conflicts
-- [ ] CI passes (when set up)
+Always use MUI theme tokens, not hardcoded hex values.
