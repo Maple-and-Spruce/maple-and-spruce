@@ -6,52 +6,48 @@
 
 ## Current Status
 
-**Date**: 2026-01-25
-**Status**: ✅ Phase 3a/3b Complete - Ready for Phase 3c
+**Date**: 2026-02-03
+**Status**: ✅ Phase 3 Complete - Ready for Phase 4 (Music Lessons)
 
 ### Just Completed
 
-**PR #106 Merged: Phase 3a/3b - Classes & Workshops Backend + Admin UI**
-- 13 Cloud Functions deployed to production
-- Admin UI for Instructors and Classes live
-- All Storybook stories added
-- CI coverage reporting configured
+**PR #108 Merged: Phase 3c - Registration System with Square Payments**
+- 13 new Cloud Functions (6 discount, 5 registration, createRegistration, cancelRegistration)
+- Square PaymentsService for payment processing and refunds
+- Admin UI: `/discounts` (full CRUD), `/registrations` (list + detail + cancel/refund)
+- Public registration flow: `/register` → `/register/[classId]` → `/register/[classId]/confirm`
+- Square Web Payments SDK integration for secure card entry
+- Discount system (percent, amount, early-bird) with validation
+- Firestore transactions for atomic capacity checking
+- Next.js 16 migration + security vulnerability resolution
 
-### Phase 3a/3b Summary
+### Phase 3 Summary (Complete)
 
-- **Phase 3a: Backend Foundation**
-  - Domain types: Payee, Instructor, Class, ClassCategory, Registration
-  - Validation suites with unit tests
-  - Repositories with filtering capabilities
-  - 13 Cloud Functions for Instructor/Class/ClassCategory CRUD
-
-- **Phase 3b: Admin UI**
-  - InstructorList, InstructorForm, InstructorFilterToolbar components
-  - ClassList, ClassForm, ClassFilterToolbar components
-  - `/instructors` and `/classes` admin pages
-  - useInstructors and useClasses data hooks
+- **Phase 3a: Backend** - Domain types, validation, repositories, 13 Cloud Functions
+- **Phase 3b: Admin UI** - Instructor and Class management pages with Storybook
+- **Phase 3c: Registration** - Discount system, registration with Square payments, public checkout flow
 
 ### Key Design Decisions Made
 
-1. **ADR-020: Payee Interface Pattern** - Composition over inheritance
-   - Artist and Instructor both implement Payee interface
-   - Enables shared payout logic without tight coupling
+1. **ADR-020**: Payee Interface Pattern (composition over inheritance)
+2. **ADR-021**: Square for All Payments (supersedes Stripe)
+3. **ADR-022**: Catalog-First Class Browsing
+4. **ADR-023**: Anonymous Public Registration with Square Web Payments
+5. **ADR-024**: Next.js 16 Migration for security
 
-2. **ADR-021: Square for Class Payments** (supersedes ADR-005)
-   - Using Square for all payments (consistent with POS)
-   - NOT using Stripe as originally planned
+### Next Steps: Phase 4 - Music Lessons
 
-3. **ADR-022: Catalog-First Class Browsing**
-   - Browse classes by category/date/instructor
-   - Calendar view deferred (can be added later)
+1. Music lesson domain types (instrument, level, schedule)
+2. Student management
+3. Recurring lesson scheduling
+4. Suzuki method curriculum tracking
 
-### Next Steps: Phase 3c - Registration System
+### Environment Variables Needed for Registration
 
-1. Expand Registration domain types (from placeholder)
-2. Create Registration CRUD Cloud Functions
-3. Integrate Square Checkout for online payments
-4. Set up confirmation emails (SendGrid or Firebase Extensions)
-5. Sync classes to Webflow CMS for public display
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SQUARE_APPLICATION_ID` | Square app ID for Web Payments SDK |
+| `NEXT_PUBLIC_SQUARE_LOCATION_ID` | Square location for Web Payments SDK |
 
 ### Blockers
 - None currently
@@ -72,14 +68,20 @@
 |---------|------------|
 | `libs/react/instructors/` | InstructorList, InstructorForm, InstructorFilterToolbar |
 | `libs/react/classes/` | ClassList, ClassForm, ClassFilterToolbar |
+| `libs/react/discounts/` | DiscountList, DiscountForm |
+| `libs/react/registrations/` | RegistrationList, RegistrationDetailDialog, PublicClassCard, RegistrationCheckoutForm, CostSummary, SquareCardForm |
 
 ### Cloud Functions (Phase 3)
 
 **Instructor:** getInstructors, getInstructor, createInstructor, updateInstructor, deleteInstructor
 
-**Class:** getClasses, getClass, createClass, updateClass, deleteClass, uploadClassImage, getPublicClasses
+**Class:** getClasses, getClass, createClass, updateClass, deleteClass, uploadClassImage, getPublicClasses, getPublicClass
 
 **ClassCategory:** getClassCategories
+
+**Discounts:** getDiscounts, createDiscount, updateDiscount, deleteDiscount, lookupDiscount
+
+**Registrations:** getRegistrations, getRegistration, updateRegistration, calculateRegistrationCost, createRegistration, cancelRegistration
 
 ### Test Commands
 ```bash
@@ -122,6 +124,7 @@ Functions deploy automatically when PRs merge to main via `.github/workflows/fir
 ## Session History
 
 See `history/` folder for detailed session logs:
+- [2026-02-03](history/2026-02-03.md) - Phase 3c: Registration system, security fixes, Next.js 16
 - [2026-01-25](history/2026-01-25.md) - Sync conflict resolution, Storybook test fixes, Phase 3a/3b
 - [2026-01-20](history/2026-01-20.md) - Webflow CMS sync, dev/prod separation
 - [2026-01-19](history/2026-01-19.md) - Dev environment fixes, product/artist integration
@@ -129,4 +132,4 @@ See `history/` folder for detailed session logs:
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-02-03*
