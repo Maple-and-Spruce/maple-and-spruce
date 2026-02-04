@@ -14,9 +14,9 @@ A folk arts collective in Morgantown, WV offering handmade goods from local arti
 | Phase | Focus | Status |
 |-------|-------|--------|
 | 1 | Admin Foundation (artists, products, Square) | ✅ Complete |
-| 2 | Public Website (Webflow integration) | **In Progress** |
-| 3 | Classes & Workshops | Planned |
-| 4 | Music Lessons | Planned |
+| 2 | Public Website (Webflow integration) | ✅ Complete |
+| 3 | Classes & Workshops | ✅ Complete |
+| 4 | Music Lessons | Next |
 | 5 | Store Opening & Sales Tracking | When store opens |
 
 ## Live URLs
@@ -47,10 +47,11 @@ npx nx dev maple-spruce
 
 | Document | Audience | Purpose |
 |----------|----------|---------|
-| [Requirements](docs/REQUIREMENTS.md) | All | Business requirements & roadmap |
-| [Decisions](docs/DECISIONS.md) | Technical | Architecture Decision Records |
-| [Patterns](docs/PATTERNS-AND-PRACTICES.md) | Developers | Code patterns & examples |
-| [AGENTS.md](AGENTS.md) | AI/Claude | Detailed context for AI assistants |
+| [Requirements](docs/reference/REQUIREMENTS.md) | All | Business requirements & roadmap |
+| [Decisions](docs/architecture/DECISIONS.md) | Technical | Architecture Decision Records |
+| [Patterns](docs/architecture/PATTERNS-AND-PRACTICES.md) | Developers | Code patterns & examples |
+| [AGENTS.md](AGENTS.md) | AI/Claude | Project context for AI assistants |
+| [.claude/CLAUDE.md](.claude/CLAUDE.md) | Claude | Claude-specific workflow & doc lifecycle |
 
 ## Common Commands
 
