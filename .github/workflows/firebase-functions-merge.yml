@@ -40,7 +40,7 @@ jobs:
         run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
-        run: npm install --frozen-lockfile
+        run: npm ci --loglevel http
 
       - name: Get affected functions
         id: get_affected
@@ -200,8 +200,16 @@ jobs:
       - name: Verify download
         run: ls -la dist/apps/functions
 
-      - name: Install dependencies
-        run: npm install --frozen-lockfile
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.prepare_and_build.outputs.cache_key }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: npm ci --loglevel http
 
       - name: Deploy functions group
         if: matrix.functions != ''
