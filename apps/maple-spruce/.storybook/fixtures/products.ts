@@ -23,7 +23,7 @@ export const mockProduct: Product = {
     quantity: 3,
     sku: 'prd_abc12345',
     imageUrl: 'https://picsum.photos/seed/product1/400/400',
-    syncedAt: new Date(),
+    syncedAt: new Date('2026-01-15T10:00:00Z'),
   },
 };
 
@@ -44,7 +44,7 @@ export const mockProductNoImage: Product = {
     priceCents: 8500,
     quantity: 5,
     sku: 'prd_def67890',
-    syncedAt: new Date(),
+    syncedAt: new Date('2026-01-15T10:00:00Z'),
   },
 };
 
@@ -66,7 +66,7 @@ export const mockProductDraft: Product = {
     quantity: 2,
     sku: 'prd_ghi11223',
     imageUrl: 'https://picsum.photos/seed/product3/400/400',
-    syncedAt: new Date(),
+    syncedAt: new Date('2026-01-15T10:00:00Z'),
   },
 };
 
@@ -88,7 +88,7 @@ export const mockProductDiscontinued: Product = {
     quantity: 0,
     sku: 'prd_jkl44556',
     imageUrl: 'https://picsum.photos/seed/product4/400/400',
-    syncedAt: new Date(),
+    syncedAt: new Date('2026-01-15T10:00:00Z'),
   },
 };
 
@@ -111,7 +111,7 @@ export const mockProductOutOfStock: Product = {
     quantity: 0,
     sku: 'prd_mno77889',
     imageUrl: 'https://picsum.photos/seed/product5/400/400',
-    syncedAt: new Date(),
+    syncedAt: new Date('2026-01-15T10:00:00Z'),
   },
 };
 

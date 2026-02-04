@@ -56,6 +56,7 @@ function SortableRow({ category, onEdit, onDelete }: SortableRowProps) {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -72,11 +73,13 @@ function SortableRow({ category, onEdit, onDelete }: SortableRowProps) {
     <TableRow ref={setNodeRef} style={style} hover>
       <TableCell width={50}>
         <IconButton
-          {...attributes}
+          ref={setActivatorNodeRef}
           {...listeners}
           size="small"
           sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}
           aria-label="Drag to reorder"
+          tabIndex={attributes.tabIndex}
+          role={attributes.role}
         >
           <DragIndicatorIcon fontSize="small" color="action" />
         </IconButton>

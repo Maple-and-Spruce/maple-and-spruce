@@ -710,6 +710,46 @@ export function ArtistCard({ artist, onClick }: ArtistCardProps) {
 }
 ```
 
+### @dnd-kit Drag Handle Pattern
+
+When using `@dnd-kit/sortable` with MUI `IconButton` as a drag handle, **do not spread all `useSortable` attributes onto the IconButton**. The `attributes` object from `useSortable` includes props (`aria-pressed`, `aria-roledescription`, `aria-describedby`) that conflict with MUI's internal component structure and can prevent child icons from rendering.
+
+**Instead, use `setActivatorNodeRef` and selectively forward only the attributes you need:**
+
+```typescript
+const {
+  attributes,
+  listeners,
+  setNodeRef,
+  setActivatorNodeRef,  // Separate ref for the drag handle
+  transform,
+  transition,
+} = useSortable({ id: item.id });
+
+// Row gets the main ref
+<TableRow ref={setNodeRef} style={style}>
+  <TableCell>
+    {/* Drag handle gets activator ref + listeners only */}
+    <IconButton
+      ref={setActivatorNodeRef}
+      {...listeners}
+      tabIndex={attributes.tabIndex}
+      role={attributes.role}
+    >
+      <DragIndicatorIcon />
+    </IconButton>
+  </TableCell>
+</TableRow>
+```
+
+**Do NOT do this:**
+```typescript
+// BAD: spreads all dnd-kit attributes onto IconButton
+<IconButton {...attributes} {...listeners}>
+  <DragIndicatorIcon />  {/* May not render */}
+</IconButton>
+```
+
 ---
 
 ## Error Handling
@@ -1021,6 +1061,19 @@ The project uses a multi-layered testing approach:
 | Unit Testing | Vitest | Pure logic, validation, utilities |
 | E2E Testing | Playwright | Full user flows |
 | Visual Regression | Chromatic | Catch unintended UI changes |
+
+### Deterministic Data in Storybook Fixtures
+
+**Storybook fixtures must never use dates based on the current time.** Chromatic visual regression tests compare screenshots across builds — any non-deterministic data (dates, timestamps, random IDs) causes snapshots to change on every run, generating false positives.
+
+**Rules:**
+- Never use `new Date()`, `Date.now()`, or helpers that compute dates relative to "today" in fixture files
+- Always use fixed ISO date strings: `new Date('2026-06-14T10:00:00Z')`
+- For "future" dates, pick dates far enough ahead that they won't become "past" dates during the project's lifetime
+- For "past" dates, use a fixed historical date
+- Filtered collections (e.g., "upcoming classes") must compare against a fixed reference date, not `new Date()`
+
+**Fixture files location:** `apps/maple-spruce/.storybook/fixtures/`
 
 ### Storybook Component Testing
 
@@ -1426,4 +1479,4 @@ When building a new feature, ensure:
 
 ---
 
-*Last updated: 2026-01-19*
+*Last updated: 2026-02-04*
