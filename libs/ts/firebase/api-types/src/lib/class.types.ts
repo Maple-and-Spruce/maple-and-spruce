@@ -114,3 +114,15 @@ export interface GetPublicClassesResponse {
   /** Published classes with enriched data (instructor name, spots remaining) */
   classes: PublicClass[];
 }
+
+// ============================================================================
+// Get Public Class by ID (no auth required - for website/Webflow)
+// ============================================================================
+
+export interface GetPublicClassRequest {
+  id: string;
+}
+
+export interface GetPublicClassResponse {
+  class: PublicClass;
+}

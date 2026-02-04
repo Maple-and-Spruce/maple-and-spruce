@@ -26,3 +26,7 @@ export { syncConflictResolutionValidation } from './sync-conflict.validation';
 export { instructorValidation } from './instructor.validation';
 export { classValidation } from './class.validation';
 export { classCategoryValidation } from './class-category.validation';
+
+// Phase 3c: Registration & Discounts
+export { discountValidation, type DiscountValidationInput } from './discount.validation';
+export { registrationValidation, type RegistrationValidationInput } from './registration.validation';

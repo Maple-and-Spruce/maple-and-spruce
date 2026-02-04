@@ -13,6 +13,7 @@ import { SquareClient, SquareEnvironment } from 'square';
 import { ServiceEnvironment } from '@maple/firebase/functions';
 import { CatalogService } from './catalog.service';
 import { InventoryService } from './inventory.service';
+import { PaymentsService } from './payments.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -72,6 +73,7 @@ export class Square {
   private readonly env: ServiceEnvironment;
   private readonly _catalogService: CatalogService;
   private readonly _inventoryService: InventoryService;
+  private readonly _paymentsService: PaymentsService;
   public readonly locationId: string;
 
   constructor(
@@ -102,6 +104,7 @@ export class Square {
 
     this._catalogService = new CatalogService(this.client);
     this._inventoryService = new InventoryService(this.client);
+    this._paymentsService = new PaymentsService(this.client);
   }
 
   /**
@@ -130,6 +133,13 @@ export class Square {
    */
   get inventoryService(): InventoryService {
     return this._inventoryService;
+  }
+
+  /**
+   * Get the payments service for processing payments and refunds
+   */
+  get paymentsService(): PaymentsService {
+    return this._paymentsService;
   }
 
   /**

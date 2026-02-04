@@ -8,6 +8,8 @@ import CategoryIcon from '@mui/icons-material/Category';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import SchoolIcon from '@mui/icons-material/School';
 import EventIcon from '@mui/icons-material/Event';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { AppShell, type NavItem } from '@maple/react/layout';
 import { useSyncConflictSummary } from '@maple/react/data';
 
@@ -40,6 +42,12 @@ export function AppShellWrapper({
       { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
       { label: 'Classes', href: '/classes', icon: <EventIcon /> },
       { label: 'Instructors', href: '/instructors', icon: <SchoolIcon /> },
+      { label: 'Discounts', href: '/discounts', icon: <LocalOfferIcon /> },
+      {
+        label: 'Registrations',
+        href: '/registrations',
+        icon: <HowToRegIcon />,
+      },
       {
         label: 'Sync',
         href: '/sync-conflicts',

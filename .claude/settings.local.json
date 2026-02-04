@@ -101,7 +101,14 @@
       "Bash(python3:*)",
       "Bash(nx reset:*)",
       "Bash(git fetch:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce add AGENTS.md)",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce rebase --continue)",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce diff --name-only --diff-filter=U)",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce status)",
+      "Bash(GIT_EDITOR=true git -C /Users/davidmccoy/GitHub/maple-and-spruce rebase --continue)",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce diff --check)",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce add -A)"
     ]
   }
 }

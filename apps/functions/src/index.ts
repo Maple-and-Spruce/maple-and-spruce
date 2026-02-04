@@ -75,6 +75,22 @@ export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-i
 
 // Public class API (no auth required - for Webflow integration)
 export { getPublicClasses } from '@maple/firebase/maple-functions/get-public-classes';
+export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
 
 // Class category functions
 export { getClassCategories } from '@maple/firebase/maple-functions/get-class-categories';
+
+// Discount functions
+export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';
+export { createDiscount } from '@maple/firebase/maple-functions/create-discount';
+export { updateDiscount } from '@maple/firebase/maple-functions/update-discount';
+export { deleteDiscount } from '@maple/firebase/maple-functions/delete-discount';
+export { lookupDiscount } from '@maple/firebase/maple-functions/lookup-discount';
+
+// Registration functions
+export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
+export { getRegistration } from '@maple/firebase/maple-functions/get-registration';
+export { updateRegistration } from '@maple/firebase/maple-functions/update-registration';
+export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calculate-registration-cost';
+export { createRegistration } from '@maple/firebase/maple-functions/create-registration';
+export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-registration';
