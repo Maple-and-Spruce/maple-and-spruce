@@ -71,17 +71,16 @@ function SortableRow({ category, onEdit, onDelete }: SortableRowProps) {
 
   return (
     <TableRow ref={setNodeRef} style={style} hover>
-      <TableCell width={50}>
+      <TableCell sx={{ width: 64, px: 1 }}>
         <IconButton
           ref={setActivatorNodeRef}
           {...listeners}
-          size="small"
           sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}
           aria-label="Drag to reorder"
           tabIndex={attributes.tabIndex}
           role={attributes.role}
         >
-          <DragIndicatorIcon fontSize="small" color="action" />
+          <DragIndicatorIcon sx={{ fontSize: 32 }} color="action" />
         </IconButton>
       </TableCell>
       <TableCell>
@@ -123,7 +122,7 @@ function LoadingSkeleton() {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell width={50}></TableCell>
+            <TableCell sx={{ width: 64, px: 1 }}></TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Description</TableCell>
             <TableCell align="right">Actions</TableCell>
@@ -256,7 +255,7 @@ export function CategoryList({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell width={50}></TableCell>
+              <TableCell sx={{ width: 64, px: 1 }}></TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Description</TableCell>
               <TableCell align="right" width={100}>
