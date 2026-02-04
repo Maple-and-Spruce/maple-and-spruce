@@ -19,12 +19,6 @@ jobs:
           cache: 'npm'
       - run: npm install --frozen-lockfile
       - name: Run npm audit
-        # Known unfixable high-severity issues (require major version bumps):
-        # - next.js: GHSA-9g9p, GHSA-5f7q, GHSA-h25m (needs Next 16)
-        # - fast-xml-parser: GHSA-37qj (needs firebase-admin downgrade)
-        # - elliptic: GHSA-848j (storybook/webflow-api transitive dep)
-        # TODO: Remove continue-on-error once upstream deps are patched
-        continue-on-error: true
         run: npm audit --audit-level=high
 
   typecheck:
