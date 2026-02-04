@@ -941,6 +941,88 @@ A calendar view could be added later as a secondary navigation option, but is no
 
 ---
 
+## ADR-023: Anonymous Public Registration with Square Web Payments
+
+**Status:** Accepted
+**Date:** 2026-02-03
+
+### Context
+Phase 3c adds online class registration. Customers need to browse classes and pay to register. Key design questions:
+1. Should customers need Firebase Auth accounts to register?
+2. How to prevent overbooking (race conditions on capacity)?
+3. How to handle the payment flow (redirect vs embedded)?
+4. How to support discount codes?
+
+### Decision
+Use **anonymous public registration** with embedded Square Web Payments SDK. No Firebase Auth required for customers.
+
+**Registration flow:**
+1. Customer browses `/register` (public, no auth)
+2. Selects a class, fills in name/email/phone, optionally applies discount code
+3. Square Web Payments SDK tokenizes card details (nonce) client-side
+4. `createRegistration` Cloud Function (public) receives nonce and processes payment
+5. Firestore transaction atomically checks capacity + reserves spot
+6. Square `payments.create()` charges the card using the nonce
+7. On success: registration confirmed, confirmation email queued
+8. On payment failure: registration cancelled, spot freed
+
+**Discount system:** Three types using discriminated unions:
+- `percent` - percentage off (e.g., 10%)
+- `amount` - fixed dollar amount off (e.g., $5)
+- `amount_before_date` - early bird pricing (fixed amount before cutoff date)
+
+### Rationale
+1. **No auth barrier** - Requiring account creation reduces conversion for one-time class registrants
+2. **Firestore transactions** - Atomic capacity check prevents double-booking race conditions
+3. **Embedded card form** - Square Web Payments SDK keeps customers on-site (vs redirect to Square Checkout)
+4. **Server-side payment** - Nonce-based flow means card details never touch our server
+5. **Email-based identification** - Customers identified by email, no account needed
+6. **Discriminated unions for discounts** - Type-safe, extensible, and each variant can have different validation rules
+
+### Alternatives Considered
+- **Firebase Auth for customers** - Higher friction, unnecessary for single-purchase flow
+- **Square Checkout (redirect)** - Simpler but takes customer off-site, less brand control
+- **Stripe Elements** - Would require second payment processor (see ADR-021)
+- **Optimistic capacity (no transaction)** - Risk of overselling popular classes
+
+### Consequences
+**Easier:**
+- Zero-friction registration (no account creation)
+- Consistent with Square ecosystem (ADR-021)
+- Atomic capacity management prevents overselling
+- Extensible discount system for promotions
+
+**Harder:**
+- No customer portal (can't view/manage registrations without admin help)
+- Email is sole identifier (typos = lost registrations)
+- Square Web Payments SDK adds client-side dependency (~50KB)
+- Future: may need customer accounts for recurring registrants
+
+---
+
+## ADR-024: Next.js 16 Migration
+
+**Status:** Accepted
+**Date:** 2026-02-03
+
+### Context
+npm audit flagged high-severity vulnerabilities in Next.js 15.5.x (GHSA-9g9p, GHSA-5f7q, GHSA-h25m). The fixes require Next.js 16.x which is a major version bump.
+
+### Decision
+Migrate from Next.js 15.5.11 to 16.1.6 via `nx migrate`. Also added npm `overrides` for `fast-xml-parser: ^5.3.4` to resolve a high-severity vulnerability in the firebase-admin dependency chain.
+
+### Rationale
+1. **Security** - Resolves all high-severity npm audit findings
+2. **Low risk** - Next.js 16 is a semver-major but the actual breaking changes are minimal for our usage (App Router, client components)
+3. **CI compliance** - Security audit step now passes without workarounds
+
+### Consequences
+- All high-severity vulnerabilities resolved
+- Only 7 low-severity `elliptic` issues remain (no upstream fix available)
+- `npm audit --audit-level=high` exits cleanly
+
+---
+
 ## Template for New Decisions
 
 ```markdown
@@ -967,4 +1049,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-01-25 (ADRs 020-022 added for Phase 3)*
+*Last updated: 2026-02-03 (ADRs 023-024 added for Phase 3c)*

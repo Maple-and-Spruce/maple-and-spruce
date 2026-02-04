@@ -15,6 +15,7 @@ export * from './lib/instructor';
 export * from './lib/class';
 export * from './lib/class-category';
 export * from './lib/registration';
+export * from './lib/discount';
 
 // State management
 export * from './lib/request-state';

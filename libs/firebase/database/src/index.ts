@@ -11,3 +11,13 @@ export {
 export { InstructorRepository } from './lib/instructor.repository';
 export { ClassRepository, type ClassFilters } from './lib/class.repository';
 export { ClassCategoryRepository } from './lib/class-category.repository';
+
+// Phase 3c: Registration & Discounts
+export {
+  DiscountRepository,
+  type DiscountFilters,
+} from './lib/discount.repository';
+export {
+  RegistrationRepository,
+  type RegistrationFilters,
+} from './lib/registration.repository';
