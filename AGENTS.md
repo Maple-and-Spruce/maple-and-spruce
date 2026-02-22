@@ -95,6 +95,8 @@ Local: `/Users/$USER/GitHub/platform`
 
 ## Brand Colors
 
+### Admin App (MUI Theme)
+
 | Name | Hex | Usage |
 |------|-----|-------|
 | Cream | `#D5D6C8` | Backgrounds |
@@ -103,3 +105,8 @@ Local: `/Users/$USER/GitHub/platform`
 | Warm Gray | `#7A7A6E` | Body text |
 
 Always use MUI theme tokens, not hardcoded hex values.
+
+### Public Website (Webflow) -- Source of Truth
+
+The Webflow site defines the brand's visual identity. The admin app MUI
+theme will be updated to align with Webflow's palette (see #122).

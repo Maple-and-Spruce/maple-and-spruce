@@ -88,6 +88,24 @@
 | useDiscounts + useRegistrations hooks | Complete | #9 | `libs/react/data/src/lib/` |
 | Storybook fixtures | Complete | #9 | `apps/maple-spruce/.storybook/fixtures/` |
 
+## Webflow Go-Live (In Progress)
+
+| Feature | Status | Issue | Notes |
+|---------|--------|-------|-------|
+| Remove placeholder content | Pending | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Music page, Contact page |
+| Fix broken links | Pending | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Fiddle repair, anchor links |
+| Fix Artists page 404 | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | CMS template page returns 404 |
+| Clean CMS test data | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Replace with real artist profiles |
+| SEO metadata (all pages) | Pending | [#115](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/115) | Only Contact has SEO currently |
+| Google Analytics setup | Pending | [#116](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/116) | No tracking configured |
+| Fix Webflow style inconsistencies | Pending | [#117](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/117) | Hardcoded colors, style bugs |
+| Image alt text | Pending | [#118](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/118) | ~10 images missing alt text |
+| Clean up class names/styles | Pending | [#119](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/119) | 37 default names, 311 empty styles |
+| Canonical domain + sitemap | Pending | [#120](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/120) | Dual domains, sitemap 404 |
+| Responsive bug fixes | Pending | [#121](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/121) | Card padding, visual bugs |
+| Align admin MUI theme to Webflow | Pending | [#122](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/122) | Update MUI colors to match Webflow |
+| Publish site | Pending | - | 3+ weeks unpublished |
+
 ## Deferred to Phase 5 (Store Opening)
 
 | Feature | Status | Issue | Notes |
