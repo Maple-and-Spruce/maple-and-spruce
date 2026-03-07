@@ -180,6 +180,9 @@
       "@maple/firebase/maple-functions/get-public-class": [
         "libs/firebase/maple-functions/get-public-class/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/check-admin-status": [
+        "libs/firebase/maple-functions/check-admin-status/src/index.ts"
+      ],
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
