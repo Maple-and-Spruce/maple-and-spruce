@@ -2,6 +2,7 @@
   "name": "@maple/source",
   "version": "0.0.0",
   "license": "MIT",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "test": "nx run-many --target=test --all",
     "test:coverage": "nx run-many --target=test --all --coverage"
@@ -85,7 +86,9 @@
     "vest": "^5.4.6",
     "webflow-api": "^3.2.1"
   },
-  "overrides": {
-    "fast-xml-parser": "^5.3.4"
+  "pnpm": {
+    "overrides": {
+      "fast-xml-parser": "^5.3.4"
+    }
   }
 }

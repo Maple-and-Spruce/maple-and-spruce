@@ -29,18 +29,21 @@ jobs:
         id: base
         run: echo "commit=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Generate cache key
         id: set_cache_key
-        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
-        run: npm ci --loglevel http
+        run: pnpm install --frozen-lockfile
 
       - name: Get affected functions
         id: get_affected
@@ -50,10 +53,10 @@ jobs:
           # If deploy_all is true (manual trigger), skip affected check
           if [ "$DEPLOY_ALL" == "true" ]; then
             echo "Manual deploy_all requested - deploying all functions"
-            AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
+            AFFECTED_LIBS=$(pnpm exec nx show projects | grep 'firebase-maple-functions-' || true)
           else
             # Get all affected projects comparing to previous commit
-            ALL_AFFECTED=$(npx nx show projects --affected --base=${{ steps.base.outputs.commit }})
+            ALL_AFFECTED=$(pnpm exec nx show projects --affected --base=${{ steps.base.outputs.commit }})
 
             # Check if the functions app itself is affected (e.g., env file changes)
             FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep '^functions$' || true)
@@ -64,7 +67,7 @@ jobs:
             # If the functions app is affected but no specific libraries, deploy all functions
             if [ -n "$FUNCTIONS_APP_AFFECTED" ] && [ -z "$AFFECTED_LIBS" ]; then
               echo "Functions app affected (likely env change) - deploying all functions"
-              AFFECTED_LIBS=$(npx nx show projects | grep 'firebase-maple-functions-' || true)
+              AFFECTED_LIBS=$(pnpm exec nx show projects | grep 'firebase-maple-functions-' || true)
             fi
           fi
 
@@ -131,7 +134,7 @@ jobs:
 
       - name: Build all functions
         if: steps.get_affected.outputs.has_changes == 'true'
-        run: npx nx run functions:build
+        run: pnpm exec nx run functions:build
 
       - name: Copy env file to dist
         if: steps.get_affected.outputs.has_changes == 'true'
@@ -186,6 +189,9 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -209,11 +215,11 @@ jobs:
 
       - name: Install dependencies (fallback)
         if: steps.restore-cache.outputs.cache-hit != 'true'
-        run: npm ci --loglevel http
+        run: pnpm install --frozen-lockfile
 
       - name: Deploy functions group
         if: matrix.functions != ''
-        run: npx firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce --force --token "$(gcloud auth print-access-token)"
+        run: pnpm exec firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce --force --token "$(gcloud auth print-access-token)"
 
       - name: Skip empty function group
         if: matrix.functions == ''

@@ -6,62 +6,138 @@ on:
       - '**'
 
 jobs:
-  security:
-    name: Security Audit
+  install:
+    name: Install Dependencies
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    outputs:
+      cache_key: ${{ steps.set_cache_key.outputs.key }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
-      - name: Run npm audit
-        run: npm audit --audit-level=high
+          cache: 'pnpm'
+
+      - name: Generate cache key
+        id: set_cache_key
+        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ steps.set_cache_key.outputs.key }}
+
+      - name: Install dependencies
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Save node_modules cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: ${{ steps.set_cache_key.outputs.key }}
+
+  security:
+    name: Security Audit
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Run pnpm audit
+        run: pnpm audit --audit-level=high
 
   typecheck:
     name: TypeScript Check
+    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
       - name: TypeScript typecheck
-        run: npx nx run maple-spruce:typecheck
+        run: pnpm exec nx run maple-spruce:typecheck
 
   build:
     name: Build
+    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+
       - name: Build web app
-        run: npx nx run maple-spruce:build
+        run: pnpm exec nx run maple-spruce:build
+
       - name: Build functions
-        run: npx nx run functions:build
+        run: pnpm exec nx run functions:build
 
   unit-tests:
     name: Unit Tests & Coverage
+    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
@@ -69,14 +145,25 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
       - name: Run unit tests with coverage
-        run: npx vitest run --coverage
+        run: pnpm exec vitest run --coverage
+
       - name: Report coverage
         uses: davelosert/vitest-coverage-report-action@v2
         with:
@@ -85,22 +172,35 @@ jobs:
 
   storybook:
     name: Storybook Build & Tests
+    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Build Storybook
-        run: npx nx run maple-spruce:build-storybook
+        run: pnpm exec nx run maple-spruce:build-storybook
+
       - name: Serve Storybook and run interaction tests
         run: |
-          npx concurrently -k -s first -n "SB,TEST" \
-            "npx http-server apps/maple-spruce/storybook-static --port 6006 --silent" \
-            "npx wait-on tcp:6006 && npx test-storybook --config-dir apps/maple-spruce/.storybook --ci"
+          pnpm exec concurrently -k -s first -n "SB,TEST" \
+            "pnpm exec http-server apps/maple-spruce/storybook-static --port 6006 --silent" \
+            "pnpm exec wait-on tcp:6006 && pnpm exec test-storybook --config-dir apps/maple-spruce/.storybook --ci"

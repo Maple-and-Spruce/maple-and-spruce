@@ -16,7 +16,7 @@ The user runs functions and web app locally for testing. Claude writes code and 
 ## Running Functions Locally (user runs this)
 
 ```bash
-npx nx run functions:serve
+pnpm exec nx run functions:serve
 ```
 
 This command:
@@ -28,7 +28,7 @@ This command:
 ## Running Web App Locally (user runs this)
 
 ```bash
-npx nx run maple-spruce:serve
+pnpm exec nx run maple-spruce:serve
 ```
 
 Runs on http://localhost:3000
@@ -36,20 +36,20 @@ Runs on http://localhost:3000
 ## Running Storybook
 
 ```bash
-npx nx run maple-spruce:storybook
+pnpm exec nx run maple-spruce:storybook
 # Opens http://localhost:6006
 ```
 
 Building Storybook:
 ```bash
-npx nx run maple-spruce:build-storybook
+pnpm exec nx run maple-spruce:build-storybook
 # Output: dist/storybook/maple-spruce
 ```
 
 ## Running Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## Deployment
@@ -72,7 +72,7 @@ pkill -f "nx run functions"
 
 # Clean and restart
 rm -rf dist/apps/functions
-npx nx run functions:serve
+pnpm exec nx run functions:serve
 ```
 
 **Why this happens:**
