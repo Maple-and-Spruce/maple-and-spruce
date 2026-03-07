@@ -1,8 +1,15 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Box, Typography, Button, CircularProgress, Paper } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  CircularProgress,
+  Paper,
+} from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import type { RequestState } from '@maple/ts/domain';
 import { useAdminStatus } from './useAdminStatus';
 import { useAuth } from './useAuth';
 
@@ -11,16 +18,28 @@ export interface AdminGuardProps {
 }
 
 /**
- * Guards content that requires admin access.
- *
- * Shows a loading spinner while checking admin status,
- * a friendly message if the user is not an admin,
- * or renders children if the user is an admin.
+ * Props for the presentational AdminGuardView component.
+ * Exposed for Storybook testing.
  */
-export function AdminGuard({ children }: AdminGuardProps) {
-  const { isAdmin, isCheckingAdmin, adminState } = useAdminStatus();
-  const { signOut } = useAuth();
+export interface AdminGuardViewProps {
+  children: ReactNode;
+  isAdmin: boolean;
+  isCheckingAdmin: boolean;
+  adminState: RequestState<boolean>;
+  onSignOut: () => void;
+}
 
+/**
+ * Presentational component for AdminGuard states.
+ * Accepts all state as props for testability in Storybook.
+ */
+export function AdminGuardView({
+  children,
+  isAdmin,
+  isCheckingAdmin,
+  adminState,
+  onSignOut,
+}: AdminGuardViewProps) {
   // Show loading while checking admin status
   if (isCheckingAdmin) {
     return (
@@ -68,7 +87,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
           <Typography color="text.secondary" sx={{ mb: 3 }}>
             We couldn&apos;t verify your access. Please try again later.
           </Typography>
-          <Button variant="outlined" onClick={signOut}>
+          <Button variant="outlined" onClick={onSignOut}>
             Sign Out
           </Button>
         </Paper>
@@ -110,7 +129,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
             Looking forward to onboarding you! You don&apos;t currently have
             access but a manager at Maple &amp; Spruce will onboard you.
           </Typography>
-          <Button variant="outlined" onClick={signOut}>
+          <Button variant="outlined" onClick={onSignOut}>
             Sign Out
           </Button>
         </Paper>
@@ -120,4 +139,27 @@ export function AdminGuard({ children }: AdminGuardProps) {
 
   // User is admin, render children
   return <>{children}</>;
+}
+
+/**
+ * Guards content that requires admin access.
+ *
+ * Shows a loading spinner while checking admin status,
+ * a friendly message if the user is not an admin,
+ * or renders children if the user is an admin.
+ */
+export function AdminGuard({ children }: AdminGuardProps) {
+  const { isAdmin, isCheckingAdmin, adminState } = useAdminStatus();
+  const { signOut } = useAuth();
+
+  return (
+    <AdminGuardView
+      isAdmin={isAdmin}
+      isCheckingAdmin={isCheckingAdmin}
+      adminState={adminState}
+      onSignOut={signOut}
+    >
+      {children}
+    </AdminGuardView>
+  );
 }

@@ -6,5 +6,10 @@ export {
   isPublicRoute,
   type AuthGuardProps,
 } from './lib/AuthGuard';
-export { AdminGuard, type AdminGuardProps } from './lib/AdminGuard';
+export {
+  AdminGuard,
+  AdminGuardView,
+  type AdminGuardProps,
+  type AdminGuardViewProps,
+} from './lib/AdminGuard';
 export { UserMenu } from './lib/UserMenu';
