@@ -193,6 +193,12 @@ export type {
   LookupDiscountResponse,
 } from './discount.types';
 
+// Auth types
+export type {
+  CheckAdminStatusRequest,
+  CheckAdminStatusResponse,
+} from './auth.types';
+
 // Phase 3c: Registration types
 export type {
   GetRegistrationsRequest,

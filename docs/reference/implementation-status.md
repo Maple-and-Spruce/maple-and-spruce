@@ -12,7 +12,7 @@
 | Firebase admin SDK | Complete | `libs/firebase/database/` |
 | MUI theme | Complete | `libs/react/theme/` |
 | React UI components | Complete | `libs/react/ui/` (ImageUpload, DeleteConfirmDialog) |
-| React auth library | Complete | `libs/react/auth/` (AuthGuard, UserMenu, useAuth) |
+| React auth library | Complete | `libs/react/auth/` (AuthGuard, AdminGuard, UserMenu, useAuth, useAdminStatus) |
 | React layout library | Complete | `libs/react/layout/` (AppShell) |
 | React data hooks | Complete | `libs/react/data/` (useProducts, useArtists, useCategories) |
 | Domain types library | Complete | `libs/ts/domain/` |
@@ -21,6 +21,7 @@
 | Functions core library | Complete | `libs/firebase/functions/` |
 | Functions app | Complete | `apps/functions/` |
 | Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
+| Admin authorization (UI) | Complete | `AdminGuard` + `useAdminStatus` + `checkAdminStatus` Cloud Function |
 | Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
