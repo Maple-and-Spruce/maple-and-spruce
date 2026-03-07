@@ -26,7 +26,7 @@
     "@nx/web": "22.3.3",
     "@playwright/test": "^1.36.0",
     "@storybook/addon-a11y": "^10.1.11",
-    "@storybook/nextjs": "10.2.4",
+    "@storybook/nextjs": "10.2.16",
     "@storybook/test-runner": "^0.24.2",
     "@swc-node/register": "1.9.2",
     "@swc/cli": "^0.7.10",
@@ -50,7 +50,7 @@
     "jsonc-eslint-parser": "^2.1.0",
     "nx": "22.3.3",
     "prettier": "~3.6.2",
-    "storybook": "10.2.4",
+    "storybook": "10.2.16",
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
@@ -88,7 +88,10 @@
   },
   "pnpm": {
     "overrides": {
-      "fast-xml-parser": "^5.3.4"
+      "fast-xml-parser": "^5.3.4",
+      "minimatch@>=9.0.0 <9.0.6": ">=9.0.6",
+      "koa@>=3.0.0 <3.1.2": ">=3.1.2",
+      "serialize-javascript@<=7.0.2": ">=7.0.3"
     }
   }
 }
