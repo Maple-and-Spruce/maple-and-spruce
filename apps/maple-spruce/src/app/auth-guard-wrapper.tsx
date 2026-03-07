@@ -1,7 +1,8 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { AuthGuard } from '@maple/react/auth';
+import { usePathname } from 'next/navigation';
+import { AuthGuard, AdminGuard, isPublicRoute } from '@maple/react/auth';
 import { publicRoutes } from '../config/public-routes';
 
 interface AuthGuardWrapperProps {
@@ -9,9 +10,18 @@ interface AuthGuardWrapperProps {
 }
 
 /**
- * Client component wrapper for AuthGuard.
- * Required because AuthGuard uses hooks that need client-side rendering.
+ * Client component wrapper for AuthGuard and AdminGuard.
+ *
+ * Public routes bypass both guards.
+ * Non-public routes require authentication (AuthGuard) and admin access (AdminGuard).
  */
 export function AuthGuardWrapper({ children }: AuthGuardWrapperProps) {
-  return <AuthGuard publicRoutes={publicRoutes}>{children}</AuthGuard>;
+  const pathname = usePathname();
+  const isPublic = isPublicRoute(publicRoutes, pathname);
+
+  return (
+    <AuthGuard publicRoutes={publicRoutes}>
+      {isPublic ? children : <AdminGuard>{children}</AdminGuard>}
+    </AuthGuard>
+  );
 }

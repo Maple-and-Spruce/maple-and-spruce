@@ -26,6 +26,9 @@
 ## Registrations (Phase 3c)
 - `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`, `createRegistration`, `cancelRegistration`
 
+## Auth
+- `checkAdminStatus` — Authenticated users can check if they have admin access
+
 ## Infrastructure
 - `healthCheck`, `squareWebhook`, `getPublicArtists`, `syncArtistToWebflow`
 - `detectSyncConflicts`, `getSyncConflicts`, `getSyncConflictSummary`, `resolveSyncConflict`

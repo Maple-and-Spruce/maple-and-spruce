@@ -20,6 +20,9 @@ export const healthCheck = createPublicFunction<
   };
 });
 
+// Auth functions
+export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-status';
+
 // Artist functions
 export { getArtists } from '@maple/firebase/maple-functions/get-artists';
 export { getArtist } from '@maple/firebase/maple-functions/get-artist';
