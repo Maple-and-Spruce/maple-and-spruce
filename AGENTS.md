@@ -11,7 +11,7 @@
 3. **Read before acting** -- Start sessions by reading AGENTS.md, .claude/CLAUDE.md, and `docs/sessions/SESSION.md`.
 4. **Check GitHub issues** -- Run `gh issue list` for current work. Issues are the source of truth.
 5. **Use feature branches** -- Never commit directly to main. See `git-workflow` skill.
-6. **Always write tests** -- Unit tests for new functions/utilities. Run `npm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017).
+6. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017).
 7. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
 8. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
 9. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
