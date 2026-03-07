@@ -216,7 +216,7 @@ jobs:
 
       - name: Deploy functions group to Dev
         if: matrix.functions != ''
-        run: pnpm exec firebase-tools deploy --only ${{ matrix.functions }} --project maple-and-spruce-dev --force --token "$(gcloud auth print-access-token)"
+        run: pnpm exec firebase deploy --only ${{ matrix.functions }} --project maple-and-spruce-dev --force --token "$(gcloud auth print-access-token)"
 
       - name: Skip empty function group
         if: matrix.functions == ''
