@@ -30,7 +30,7 @@ jobs:
           key: ${{ steps.set_cache_key.outputs.key }}
       - name: Install dependencies
         if: steps.restore-cache.outputs.cache-hit != 'true'
-        run: npm ci --loglevel http
+        run: npm ci --prefer-offline --loglevel http
       - name: Save node_modules cache
         if: steps.restore-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
