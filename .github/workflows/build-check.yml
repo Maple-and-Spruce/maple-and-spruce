@@ -6,10 +6,12 @@ on:
       - '**'
 
 jobs:
-  security:
-    name: Security Audit
+  install:
+    name: Install Dependencies
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    outputs:
+      cache_key: ${{ steps.set_cache_key.outputs.key }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -17,37 +19,76 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-      - run: npm ci --loglevel http
+      - name: Generate cache key
+        id: set_cache_key
+        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ steps.set_cache_key.outputs.key }}
+      - name: Install dependencies
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: npm ci --loglevel http
+      - name: Save node_modules cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: ${{ steps.set_cache_key.outputs.key }}
+
+  security:
+    name: Security Audit
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
       - name: Run npm audit
         run: npm audit --audit-level=high
 
   typecheck:
     name: TypeScript Check
+    needs: install
     runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
       - name: TypeScript typecheck
         run: npx nx run maple-spruce:typecheck
 
   build:
     name: Build
+    needs: install
     runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
@@ -62,8 +103,8 @@ jobs:
 
   unit-tests:
     name: Unit Tests & Coverage
+    needs: install
     runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
       contents: read
       pull-requests: write
@@ -73,8 +114,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
       - name: Run unit tests with coverage
         run: npx vitest run --coverage
       - name: Report coverage
@@ -85,16 +129,19 @@ jobs:
 
   storybook:
     name: Storybook Build & Tests
+    needs: install
     runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-      - run: npm ci --loglevel http
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build Storybook
