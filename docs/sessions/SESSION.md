@@ -6,10 +6,42 @@
 
 ## Current Status
 
-**Date**: 2026-03-17
-**Status**: ✅ Webflow Content Update Complete
+**Date**: 2026-03-21
+**Status**: 🔧 Calendar System In Progress
 
 ### Just Completed
+
+**Calendar Domain + Admin CRUD (Phase 4.5, PR 1 of 3)**
+- PR #160: `feat/157-calendar-domain-and-admin-crud`
+- CalendarEvent domain type with RFC 5545 RRULE recurrence support
+- Vest validation suite (30+ tests, all passing)
+- CalendarEventRepository (Firestore `calendarEvents` collection)
+- 5 CRUD Cloud Functions (get/create/update/delete calendar events)
+- `useCalendarEvents` data hook
+- `libs/react/events/` component library (List, Form, FilterToolbar)
+- Admin `/events` page with full CRUD
+- "Calendar Events" nav item in AppShell sidebar
+
+### Next Steps (Calendar System)
+
+1. **PR 2** (#158): ICS feeds + `onClassWrite` trigger
+   - `ical-generator` library, 5 HTTP feed endpoints, adhoc proxy
+   - Firestore trigger to auto-generate CalendarEvents from published classes
+   - Firebase Hosting rewrites for clean URLs
+2. **PR 3** (#159): Public `/calendar` page
+   - FullCalendar integration, color-coded event sources
+   - Month/week/list views, mobile responsive, click-through to registration
+
+### GitHub Issues
+
+- Epic: #156 (Public Calendar System)
+- #157 (Domain + Admin CRUD) — PR #160 filed
+- #158 (ICS Feeds + Trigger) — planned
+- #159 (Public Calendar Page) — planned
+
+---
+
+### Previous: Webflow Content Update (2026-03-17)
 
 **Webflow Website Content Update (Phases 1-4)**
 
