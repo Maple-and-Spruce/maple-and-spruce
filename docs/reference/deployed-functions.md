@@ -29,6 +29,17 @@
 ## Calendar Events (Phase 4.5)
 - `getCalendarEvents`, `getCalendarEvent`, `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent`
 
+## Calendar ICS Feeds (Phase 4.5)
+- `calendarClassesFeed` — HTTP: `/calendar/classes.ics`
+- `calendarMusicFeed` — HTTP: `/calendar/music.ics`
+- `calendarEventsFeed` — HTTP: `/calendar/events.ics` (includes jams)
+- `calendarHoursFeed` — HTTP: `/calendar/hours.ics`
+- `calendarAllFeed` — HTTP: `/calendar/all.ics`
+- `calendarAdhocProxy` — HTTP: `/calendar/adhoc.ics` (proxies Katie's Google Calendar)
+
+## Calendar Triggers (Phase 4.5)
+- `onClassWrite` — Firestore trigger: auto-generates CalendarEvents from published classes
+
 ## Auth
 - `checkAdminStatus` — Authenticated users can check if they have admin access
 

@@ -97,6 +97,17 @@ export { createCalendarEvent } from '@maple/firebase/maple-functions/create-cale
 export { updateCalendarEvent } from '@maple/firebase/maple-functions/update-calendar-event';
 export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-calendar-event';
 
+// Calendar ICS feeds (HTTP endpoints)
+export { calendarClassesFeed } from '@maple/firebase/maple-functions/calendar-classes-feed';
+export { calendarMusicFeed } from '@maple/firebase/maple-functions/calendar-music-feed';
+export { calendarEventsFeed } from '@maple/firebase/maple-functions/calendar-events-feed';
+export { calendarHoursFeed } from '@maple/firebase/maple-functions/calendar-hours-feed';
+export { calendarAllFeed } from '@maple/firebase/maple-functions/calendar-all-feed';
+export { calendarAdhocProxy } from '@maple/firebase/maple-functions/calendar-adhoc-proxy';
+
+// Calendar triggers (Firestore)
+export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
+
 // Registration functions
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';

@@ -126,9 +126,10 @@
 | useCalendarEvents hook | **Complete** | `libs/react/data/src/lib/useCalendarEvents.ts` |
 | Calendar event components | **Complete** | `libs/react/events/` (CalendarEventList, CalendarEventForm, CalendarEventFilterToolbar) |
 | Admin /events page | **Complete** | `apps/maple-spruce/src/app/events/page.tsx` |
-| ICS feed generation library | Planned | `libs/ts/calendar/` (PR 2) |
-| ICS feed Cloud Functions (5) | Planned | HTTP `onRequest` endpoints (PR 2) |
-| onClassWrite Firestore trigger | Planned | Auto-generate CalendarEvents from classes (PR 2) |
+| ICS feed generation library | **Complete** | `libs/ts/calendar/` |
+| ICS feed Cloud Functions (6) | **Complete** | 5 feeds + adhoc proxy (`calendarClassesFeed`, etc.) |
+| onClassWrite Firestore trigger | **Complete** | Auto-generates CalendarEvents from published classes |
+| Firebase Hosting rewrites | **Complete** | `/calendar/*.ics` routes to feed functions |
 | Public /calendar page | Planned | FullCalendar integration (PR 3) |
 
 ## Deferred to Phase 5 (Store Opening)
