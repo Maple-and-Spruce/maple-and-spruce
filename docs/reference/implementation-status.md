@@ -93,11 +93,18 @@
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
-| Remove placeholder content | Pending | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Music page, Contact page |
-| Fix broken links | Pending | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Fiddle repair, anchor links |
+| Pre-opening messaging | **Complete** | - | Banner in maple-nav component (all pages), `pre-opening-banner` style, contact link |
+| Content accuracy fixes | **Complete** | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Jam times, typos, open hours refs fixed |
+| Fix broken nav links | **Complete** | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | 5 broken hrefs in maple-nav fixed |
+| Our Story text update | **Complete** | - | "soft opening mid-2026" → "Opening May 2026" |
+| Music Lessons page | **Complete** | - | `/music-lessons` — pricing, policies, instrument loan program |
+| Craft Classes page | **Complete** | - | `/classes` — 6 class offerings with pricing, pathway, policies |
+| Shop page | **Complete** | - | `/shop` — What we carry, Etsy link, consignment info |
+| Navigation updated | **Complete** | - | Music Lessons + Shop added to maple-nav dropdowns |
+| SEO on new pages | **Complete** | - | All 3 new pages have SEO titles + descriptions + OG tags |
 | Fix Artists page 404 | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | CMS template page returns 404 |
 | Clean CMS test data | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Replace with real artist profiles |
-| SEO metadata (all pages) | Pending | [#115](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/115) | Only Contact has SEO currently |
+| SEO metadata (existing pages) | Pending | [#115](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/115) | Some existing pages still need SEO |
 | Google Analytics setup | Pending | [#116](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/116) | No tracking configured |
 | Fix Webflow style inconsistencies | Pending | [#117](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/117) | Hardcoded colors, style bugs |
 | Image alt text | Pending | [#118](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/118) | ~10 images missing alt text |

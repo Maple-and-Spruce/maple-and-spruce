@@ -6,20 +6,43 @@
 
 ## Current Status
 
-**Date**: 2026-02-03
-**Status**: ✅ Phase 3 Complete - Ready for Phase 4 (Music Lessons)
+**Date**: 2026-03-17
+**Status**: ✅ Webflow Content Update Complete
 
 ### Just Completed
 
-**PR #108 Merged: Phase 3c - Registration System with Square Payments**
-- 13 new Cloud Functions (6 discount, 5 registration, createRegistration, cancelRegistration)
-- Square PaymentsService for payment processing and refunds
-- Admin UI: `/discounts` (full CRUD), `/registrations` (list + detail + cancel/refund)
-- Public registration flow: `/register` → `/register/[classId]` → `/register/[classId]/confirm`
-- Square Web Payments SDK integration for secure card entry
-- Discount system (percent, amount, early-bird) with validation
-- Firestore transactions for atomic capacity checking
-- Next.js 16 migration + security vulnerability resolution
+**Webflow Website Content Update (Phases 1-4)**
+
+Phase 1 — Fixed existing pages:
+- Fixed Craft Club typo ("not though" → "not through")
+- Removed specific jam times from Music + Contact FAQ (no set time yet)
+- Updated Our Story ("soft opening mid-2026" → "Opening May 2026")
+- Removed "open hours" reference from Fiddle Repair
+- Updated Contact page with opening date + phone number
+- Fixed 5 broken navigation links in maple-nav component (Artists, Our Story, Gallery, Contact all had wrong URLs)
+
+Phase 2 — Created 3 new pages:
+- `/music-lessons` — Suzuki violin, Suzuki harp, old-time fiddle, guitar (coming soon), instrument loan program, lesson policies
+- `/classes` — 6 class offerings (wire wrapping, beading, stained glass intro + series, pottery, micro macrame), pathway, policies
+- `/shop` — What we carry, Etsy link, in-store (opening May), consignment info
+- All pricing verified against workspace docs (`_business_context/02-products-and-services.md`)
+
+Phase 3 — Updated navigation:
+- Added Music Lessons link to Music dropdown
+- Added Shop link to Craft dropdown
+- Fixed all broken nav hrefs
+
+Phase 4 — Pre-opening banner (in maple-nav component):
+- Added "Opening May 2026" banner inside the `maple-nav` component (appears on all pages)
+- Generic text: "Opening May 2026 — Classes are coming soon!"
+- "Contact us for more info →" links to the Contact page
+- Created `pre-opening-banner` reusable style (lime green `#E0EF7D`)
+- Old per-page banners manually cleaned up
+
+Documentation updated:
+- `docs/reference/implementation-status.md` — 9 items marked complete in Webflow Go-Live section
+- `docs/reference/webflow-go-live-checklist.md` — 12 items marked done, page count updated
+- SEO metadata set on all 3 new pages (titles, descriptions, OG tags)
 
 ### Phase 3 Summary (Complete)
 
@@ -35,12 +58,13 @@
 4. **ADR-023**: Anonymous Public Registration with Square Web Payments
 5. **ADR-024**: Next.js 16 Migration for security
 
-### Next Steps: Phase 4 - Music Lessons
+### Next Steps
 
-1. Music lesson domain types (instrument, level, schedule)
-2. Student management
-3. Recurring lesson scheduling
-4. Suzuki method curriculum tracking
+1. Publish Webflow site (review all pages first)
+2. Fix Artists page 404 (#114) + add real artist profiles
+3. Delete orphan `/untitled` page in Webflow
+4. Responsive QA on new pages (#121)
+5. Phase 4 - Music Lessons backend (domain types, student management, scheduling)
 
 ### Environment Variables Needed for Registration
 
@@ -132,4 +156,4 @@ See `history/` folder for detailed session logs:
 
 ---
 
-*Last updated: 2026-02-03*
+*Last updated: 2026-03-17*
