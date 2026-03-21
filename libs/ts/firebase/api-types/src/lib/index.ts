@@ -199,6 +199,20 @@ export type {
   CheckAdminStatusResponse,
 } from './auth.types';
 
+// Phase 4.5: Calendar Event types
+export type {
+  GetCalendarEventsRequest,
+  GetCalendarEventsResponse,
+  GetCalendarEventRequest,
+  GetCalendarEventResponse,
+  CreateCalendarEventRequest,
+  CreateCalendarEventResponse,
+  UpdateCalendarEventRequest,
+  UpdateCalendarEventResponse,
+  DeleteCalendarEventRequest,
+  DeleteCalendarEventResponse,
+} from './calendar-event.types';
+
 // Phase 3c: Registration types
 export type {
   GetRegistrationsRequest,

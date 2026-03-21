@@ -8,6 +8,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import SchoolIcon from '@mui/icons-material/School';
 import EventIcon from '@mui/icons-material/Event';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { AppShell, type NavItem } from '@maple/react/layout';
@@ -47,6 +48,11 @@ export function AppShellWrapper({
         label: 'Registrations',
         href: '/registrations',
         icon: <HowToRegIcon />,
+      },
+      {
+        label: 'Calendar Events',
+        href: '/events',
+        icon: <CalendarMonthIcon />,
       },
       {
         label: 'Sync',

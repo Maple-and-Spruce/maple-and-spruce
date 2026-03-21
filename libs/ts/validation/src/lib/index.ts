@@ -30,3 +30,6 @@ export { classCategoryValidation } from './class-category.validation';
 // Phase 3c: Registration & Discounts
 export { discountValidation, type DiscountValidationInput } from './discount.validation';
 export { registrationValidation, type RegistrationValidationInput } from './registration.validation';
+
+// Phase 4.5: Calendar
+export { calendarEventValidation } from './calendar-event.validation';

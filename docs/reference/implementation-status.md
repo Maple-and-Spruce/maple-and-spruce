@@ -114,6 +114,23 @@
 | Align admin MUI theme to Webflow | Pending | [#122](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/122) | Update MUI colors to match Webflow |
 | Publish site | Pending | - | 3+ weeks unpublished |
 
+## Phase 4.5: Calendar System (In Progress)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| CalendarEvent domain type | **Complete** | `libs/ts/domain/src/lib/calendar-event.ts` |
+| CalendarEvent validation | **Complete** | `libs/ts/validation/src/lib/calendar-event.validation.ts` |
+| CalendarEventRepository | **Complete** | `libs/firebase/database/src/lib/calendar-event.repository.ts` |
+| Calendar API types | **Complete** | `libs/ts/firebase/api-types/src/lib/calendar-event.types.ts` |
+| Calendar CRUD Cloud Functions (5) | **Complete** | `libs/firebase/maple-functions/{get,create,update,delete}-calendar-event{,s}/` |
+| useCalendarEvents hook | **Complete** | `libs/react/data/src/lib/useCalendarEvents.ts` |
+| Calendar event components | **Complete** | `libs/react/events/` (CalendarEventList, CalendarEventForm, CalendarEventFilterToolbar) |
+| Admin /events page | **Complete** | `apps/maple-spruce/src/app/events/page.tsx` |
+| ICS feed generation library | Planned | `libs/ts/calendar/` (PR 2) |
+| ICS feed Cloud Functions (5) | Planned | HTTP `onRequest` endpoints (PR 2) |
+| onClassWrite Firestore trigger | Planned | Auto-generate CalendarEvents from classes (PR 2) |
+| Public /calendar page | Planned | FullCalendar integration (PR 3) |
+
 ## Deferred to Phase 5 (Store Opening)
 
 | Feature | Status | Issue | Notes |

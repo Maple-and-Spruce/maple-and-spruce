@@ -8,5 +8,6 @@ export {
   useClassCategories,
   useDiscounts,
   useRegistrations,
+  useCalendarEvents,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
