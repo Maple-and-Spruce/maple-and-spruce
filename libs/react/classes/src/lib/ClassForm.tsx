@@ -55,6 +55,8 @@ interface ClassFormProps {
   instructors?: Instructor[];
   categories?: ClassCategory[];
   isSubmitting?: boolean;
+  /** Override the default date/time for new classes (useful for deterministic snapshots). */
+  defaultDateTime?: Date;
 }
 
 /**
@@ -81,6 +83,7 @@ export function ClassForm({
   instructors = [],
   categories = [],
   isSubmitting = false,
+  defaultDateTime,
 }: ClassFormProps) {
   useSignals();
 
@@ -194,16 +197,21 @@ export function ClassForm({
       });
     } else {
       // Defaults for new class
-      const defaultDateTime = new Date();
-      defaultDateTime.setHours(defaultDateTime.getHours() + 24); // Tomorrow
-      defaultDateTime.setMinutes(0, 0, 0);
+      let newClassDateTime: Date;
+      if (defaultDateTime) {
+        newClassDateTime = defaultDateTime;
+      } else {
+        newClassDateTime = new Date();
+        newClassDateTime.setHours(newClassDateTime.getHours() + 24); // Tomorrow
+        newClassDateTime.setMinutes(0, 0, 0);
+      }
 
       batch(() => {
         name.value = '';
         description.value = '';
         shortDescription.value = '';
         instructorId.value = '';
-        dateTime.value = defaultDateTime;
+        dateTime.value = newClassDateTime;
         durationMinutes.value = 120;
         capacity.value = 10;
         priceCents.value = 4500; // $45 default
