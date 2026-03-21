@@ -26,6 +26,9 @@
 ## Registrations (Phase 3c)
 - `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`, `createRegistration`, `cancelRegistration`
 
+## Calendar Events (Phase 4.5)
+- `getCalendarEvents`, `getCalendarEvent`, `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent`
+
 ## Auth
 - `checkAdminStatus` — Authenticated users can check if they have admin access
 
