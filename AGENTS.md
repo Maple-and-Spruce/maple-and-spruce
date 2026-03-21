@@ -76,6 +76,7 @@ Local: `/Users/$USER/GitHub/platform`
 | `docs/reference/REQUIREMENTS.md` | Business requirements & roadmap |
 | `docs/reference/implementation-status.md` | Feature tracking |
 | `docs/reference/deployed-functions.md` | All deployed Cloud Functions |
+| `docs/reference/webflow-design-system.md` | Webflow design tokens, styles, variable IDs |
 | `docs/reference/code-standards.md` | Naming, TypeScript, patterns |
 | `docs/architecture/DECISIONS.md` | Architecture Decision Records |
 | `docs/architecture/PATTERNS-AND-PRACTICES.md` | Code patterns & examples |

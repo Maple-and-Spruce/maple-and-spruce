@@ -22,10 +22,18 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 
 | Item | Issue | Status |
 |------|-------|--------|
-| Remove "asdfasdf" placeholder from Music page | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Pending |
-| Fix Contact page address ("\<location coming soon\>!") | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Pending |
-| Fix malformed fiddle repair link on Contact | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Pending |
-| Fix broken anchor links (`#`) in navigation | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Pending |
+| Remove "asdfasdf" placeholder from Music page | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | **Done** (not found; may have been removed already) |
+| Fix Contact page address ("\<location coming soon\>!") | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | **Done** (updated with opening date + address) |
+| Fix malformed fiddle repair link on Contact | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | **Done** (now uses page link, not URL) |
+| Fix broken anchor links (`#`) in navigation | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | **Done** (5 broken hrefs fixed in maple-nav) |
+| Add pre-opening messaging to all pages | - | **Done** (banner in maple-nav component, shows on all pages) |
+| Fix Craft Club typo ("not though") | - | **Done** ("not though" → "not through") |
+| Remove specific jam times (pre-opening) | - | **Done** (Music + Contact FAQ updated) |
+| Update Our Story opening date | - | **Done** ("soft opening mid-2026" → "Opening May 2026") |
+| Create Music Lessons page (`/music-lessons`) | - | **Done** |
+| Create Craft Classes page (`/classes`) | - | **Done** |
+| Create Shop page (`/shop`) | - | **Done** |
+| Add new pages to navigation | - | **Done** (Music Lessons + Shop in maple-nav) |
 | Fix Artists page 404 | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Pending |
 | Remove CMS test data (4 fake artists) | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Pending |
 | Add Katie's real artist profile via admin + sync | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Pending |
@@ -88,7 +96,7 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 | CMS Collection (Artists) | `696f08a32a1eb691801f17ad` |
 | Last Published | 2026-01-31 |
 | Last Updated | 2026-02-22 |
-| Pages | 7 (Home, Music, Craft, Craft Club, Fiddle Repair, Contact, Artists Template) |
+| Pages | 14 (Home, Music, Music Lessons, Craft, Craft Classes, Craft Club, Fiddle Repair, Contact, Our Artists, Our Story, Gallery, Shop, Artists Template, untitled/orphan) |
 
 ## Architecture Reference
 
@@ -100,4 +108,4 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-03-17*
