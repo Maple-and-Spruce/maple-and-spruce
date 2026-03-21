@@ -6,46 +6,33 @@
 
 ## Current Status
 
-**Date**: 2026-03-17
-**Status**: ✅ Webflow Content Update Complete
+**Date**: 2026-03-21
+**Status**: Webflow site live, phased customer interaction integration underway
 
-### Just Completed
+### Current Focus: Phased Webflow Customer Interactions
 
-**Webflow Website Content Update (Phases 1-4)**
+The Webflow site is live and published. Facebook/Instagram ads are running. The focus has shifted to phased integration of customer-facing interactions on the Webflow site.
 
-Phase 1 — Fixed existing pages:
-- Fixed Craft Club typo ("not though" → "not through")
-- Removed specific jam times from Music + Contact FAQ (no set time yet)
-- Updated Our Story ("soft opening mid-2026" → "Opening May 2026")
-- Removed "open hours" reference from Fiddle Repair
-- Updated Contact page with opening date + phone number
-- Fixed 5 broken navigation links in maple-nav component (Artists, Our Story, Gallery, Contact all had wrong URLs)
+**Phase sequence:**
+1. **Epic A: Artists on Webflow** ([#161](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/161)) — Not Started
+2. **Epic B: Class Browsing on Webflow** ([#162](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/162)) — Not Started
+3. **Epic C: Payment & Registration Testing** ([#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163)) — Not Started
+4. **Epic D: Class Registration with Payment** ([#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164)) — Not Started
 
-Phase 2 — Created 3 new pages:
-- `/music-lessons` — Suzuki violin, Suzuki harp, old-time fiddle, guitar (coming soon), instrument loan program, lesson policies
-- `/classes` — 6 class offerings (wire wrapping, beading, stained glass intro + series, pottery, micro macrame), pathway, policies
-- `/shop` — What we carry, Etsy link, in-store (opening May), consignment info
-- All pricing verified against workspace docs (`_business_context/02-products-and-services.md`)
+**Key decisions:**
+- Test against dev CMS collections before production
+- No payment integration until backend testing is complete
+- Music lessons use Tally forms for initial inquiries ([#10](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/10) updated)
 
-Phase 3 — Updated navigation:
-- Added Music Lessons link to Music dropdown
-- Added Shop link to Craft dropdown
-- Fixed all broken nav hrefs
+### Recently Completed
 
-Phase 4 — Pre-opening banner (in maple-nav component):
-- Added "Opening May 2026" banner inside the `maple-nav` component (appears on all pages)
-- Generic text: "Opening May 2026 — Classes are coming soon!"
-- "Contact us for more info →" links to the Contact page
-- Created `pre-opening-banner` reusable style (lime green `#E0EF7D`)
-- Old per-page banners manually cleaned up
+**Webflow Go-Live** (closed issues: #112, #126, #127, #129, #131, #132, #135, #137)
+- Site published and live with ads running
+- Content updates, navigation fixes, new pages (Music Lessons, Classes, Shop)
+- Pre-opening banner on all pages
+- SEO metadata on new pages
 
-Documentation updated:
-- `docs/reference/implementation-status.md` — 9 items marked complete in Webflow Go-Live section
-- `docs/reference/webflow-go-live-checklist.md` — 12 items marked done, page count updated
-- SEO metadata set on all 3 new pages (titles, descriptions, OG tags)
-
-### Phase 3 Summary (Complete)
-
+**Phase 3 (Complete)**
 - **Phase 3a: Backend** - Domain types, validation, repositories, 13 Cloud Functions
 - **Phase 3b: Admin UI** - Instructor and Class management pages with Storybook
 - **Phase 3c: Registration** - Discount system, registration with Square payments, public checkout flow
@@ -60,11 +47,10 @@ Documentation updated:
 
 ### Next Steps
 
-1. Publish Webflow site (review all pages first)
+1. Begin Epic A: Artists on Webflow (#161)
 2. Fix Artists page 404 (#114) + add real artist profiles
-3. Delete orphan `/untitled` page in Webflow
-4. Responsive QA on new pages (#121)
-5. Phase 4 - Music Lessons backend (domain types, student management, scheduling)
+3. Post-launch quality improvements (#114-#122)
+4. Phase 4 - Music Lessons backend (Tally forms for initial inquiries)
 
 ### Environment Variables Needed for Registration
 
@@ -156,4 +142,4 @@ See `history/` folder for detailed session logs:
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-21*

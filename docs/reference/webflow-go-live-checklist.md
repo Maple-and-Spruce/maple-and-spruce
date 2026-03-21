@@ -2,6 +2,8 @@
 
 > Master checklist for launching the Maple & Spruce public website on Webflow.
 > Epic: [#112](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/112)
+>
+> **Status: Initial go-live is COMPLETE.** The site is live and published with Facebook/Instagram ads running. Remaining items (#114-#122) below are post-launch quality improvements.
 
 ---
 
@@ -59,7 +61,7 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 | All blockers resolved | Pending |
 | All high priority items resolved | Pending |
 | Final visual review on all breakpoints | Pending |
-| Publish site in Webflow | Pending |
+| Publish site in Webflow | **Done** |
 | Verify all pages load correctly | Pending |
 | Verify sitemap.xml is accessible | Pending |
 | Verify GA4 is tracking (Real-Time report) | Pending |
@@ -94,7 +96,7 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 |----------|-------|
 | Site ID | `691a5d6c07ba1bf4714e826f` |
 | CMS Collection (Artists) | `696f08a32a1eb691801f17ad` |
-| Last Published | 2026-01-31 |
+| Last Published | 2026-03-21 (site is live, ads running) |
 | Last Updated | 2026-02-22 |
 | Pages | 14 (Home, Music, Music Lessons, Craft, Craft Classes, Craft Club, Fiddle Repair, Contact, Our Artists, Our Story, Gallery, Shop, Artists Template, untitled/orphan) |
 
@@ -108,4 +110,4 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 
 ---
 
-*Last updated: 2026-03-17*
+*Last updated: 2026-03-21*
