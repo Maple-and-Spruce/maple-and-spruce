@@ -17,5 +17,8 @@ export * from './lib/class-category';
 export * from './lib/registration';
 export * from './lib/discount';
 
+// Phase 4.5: Calendar
+export * from './lib/calendar-event';
+
 // State management
 export * from './lib/request-state';
