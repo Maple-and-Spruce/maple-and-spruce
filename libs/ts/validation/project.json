@@ -3,7 +3,10 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/ts/validation/src",
   "projectType": "library",
-  "tags": ["scope:shared", "type:validation"],
+  "tags": [
+    "scope:shared",
+    "type:validation"
+  ],
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint"
@@ -14,9 +17,11 @@
       "configurations": {
         "default": {}
       },
-      "outputs": ["{options.reportsDirectory}"],
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
       "options": {
-        "reportsDirectory": "../../../coverage/libs/ts/validation"
+        "reportsDirectory": "{projectRoot}/../../../coverage/libs/ts/validation"
       }
     }
   }
