@@ -89,7 +89,9 @@
 | useDiscounts + useRegistrations hooks | Complete | #9 | `libs/react/data/src/lib/` |
 | Storybook fixtures | Complete | #9 | `apps/maple-spruce/.storybook/fixtures/` |
 
-## Webflow Go-Live (In Progress)
+## Webflow Go-Live (COMPLETE)
+
+Site is published and live with Facebook/Instagram ads running. Closed issues: #112, #126, #127, #129, #131, #132, #135, #137.
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
@@ -102,6 +104,12 @@
 | Shop page | **Complete** | - | `/shop` — What we carry, Etsy link, consignment info |
 | Navigation updated | **Complete** | - | Music Lessons + Shop added to maple-nav dropdowns |
 | SEO on new pages | **Complete** | - | All 3 new pages have SEO titles + descriptions + OG tags |
+| Publish site | **Complete** | - | Site is live |
+
+**Post-launch quality improvements (remaining):**
+
+| Feature | Status | Issue | Notes |
+|---------|--------|-------|-------|
 | Fix Artists page 404 | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | CMS template page returns 404 |
 | Clean CMS test data | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Replace with real artist profiles |
 | SEO metadata (existing pages) | Pending | [#115](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/115) | Some existing pages still need SEO |
@@ -112,7 +120,17 @@
 | Canonical domain + sitemap | Pending | [#120](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/120) | Dual domains, sitemap 404 |
 | Responsive bug fixes | Pending | [#121](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/121) | Card padding, visual bugs |
 | Align admin MUI theme to Webflow | Pending | [#122](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/122) | Update MUI colors to match Webflow |
-| Publish site | Pending | - | 3+ weeks unpublished |
+
+## Phase: Webflow Customer Interactions (In Progress)
+
+Phased rollout of customer-facing interactions on the Webflow site. Test against dev CMS collections before production; no payment until backend testing is complete.
+
+| Epic | Status | Issue | Notes |
+|------|--------|-------|-------|
+| **A: Artists on Webflow** | Not Started | [#161](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/161) | Artist profiles synced to Webflow CMS |
+| **B: Class Browsing on Webflow** | Not Started | [#162](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/162) | Public class listings on Webflow |
+| **C: Payment & Registration Testing** | Not Started | [#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163) | End-to-end payment flow testing |
+| **D: Class Registration with Payment** | Not Started | [#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164) | Full registration + payment on Webflow |
 
 ## Phase 4.5: Calendar System (In Progress)
 
