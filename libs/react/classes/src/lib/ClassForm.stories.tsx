@@ -12,6 +12,9 @@ import {
   mockInstructor,
 } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 
+/** Static default date for deterministic Chromatic snapshots */
+const STATIC_DEFAULT_DATE = new Date('2030-04-01T10:00:00Z');
+
 const meta = {
   component: ClassForm,
   title: 'Classes/ClassForm',
@@ -24,6 +27,7 @@ const meta = {
     onSubmit: fn(),
     instructors: mockActiveInstructors,
     categories: mockClassCategories,
+    defaultDateTime: STATIC_DEFAULT_DATE,
   },
 } satisfies Meta<typeof ClassForm>;
 

@@ -21,3 +21,9 @@ export {
   RegistrationRepository,
   type RegistrationFilters,
 } from './lib/registration.repository';
+
+// Phase 4.5: Calendar
+export {
+  CalendarEventRepository,
+  type CalendarEventFilters,
+} from './lib/calendar-event.repository';

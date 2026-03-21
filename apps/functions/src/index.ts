@@ -90,6 +90,13 @@ export { updateDiscount } from '@maple/firebase/maple-functions/update-discount'
 export { deleteDiscount } from '@maple/firebase/maple-functions/delete-discount';
 export { lookupDiscount } from '@maple/firebase/maple-functions/lookup-discount';
 
+// Calendar Event functions
+export { getCalendarEvents } from '@maple/firebase/maple-functions/get-calendar-events';
+export { getCalendarEvent } from '@maple/firebase/maple-functions/get-calendar-event';
+export { createCalendarEvent } from '@maple/firebase/maple-functions/create-calendar-event';
+export { updateCalendarEvent } from '@maple/firebase/maple-functions/update-calendar-event';
+export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-calendar-event';
+
 // Registration functions
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';
