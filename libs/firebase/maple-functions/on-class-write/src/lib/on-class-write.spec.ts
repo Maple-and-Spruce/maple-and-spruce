@@ -8,11 +8,6 @@ import type { CalendarEvent } from '@maple/ts/domain';
  * generates, updates, or removes CalendarEvents.
  */
 
-// Mock firebase-admin
-vi.mock('firebase-admin', () => ({
-  default: { apps: [{}], initializeApp: vi.fn() },
-}));
-
 // Define mocks using vi.hoisted
 const mocks = vi.hoisted(() => {
   return {
@@ -22,6 +17,11 @@ const mocks = vi.hoisted(() => {
     delete: vi.fn(),
   };
 });
+
+// Mock firebase-admin
+vi.mock('firebase-admin', () => ({
+  default: { apps: [{}], initializeApp: vi.fn() },
+}));
 
 // Mock CalendarEventRepository
 vi.mock('@maple/firebase/database', () => ({
