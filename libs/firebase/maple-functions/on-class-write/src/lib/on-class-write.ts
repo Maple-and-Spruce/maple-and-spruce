@@ -13,6 +13,7 @@ import {
   type Change,
   type DocumentSnapshot,
 } from 'firebase-functions/v2/firestore';
+import admin from 'firebase-admin';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import type { Class } from '@maple/ts/domain';
 import { DEFAULT_EVENT_LOCATION } from '@maple/ts/domain';
@@ -52,6 +53,11 @@ export const onClassWrite = onDocumentWritten(
     region: 'us-east4',
   },
   async (event) => {
+    // Ensure Firebase Admin is initialized before accessing repositories
+    if (admin.apps.length === 0) {
+      admin.initializeApp();
+    }
+
     const change: Change<DocumentSnapshot> = event.data!;
     const beforeClass = extractClass(change.before);
     const afterClass = extractClass(change.after);
