@@ -20,16 +20,8 @@
       "collectionGroup": "calendarEvents",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "type", "order": "ASCENDING" },
-        { "fieldPath": "startDateTime", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "calendarEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "public", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "startDateTime", "order": "ASCENDING" }
       ]
     }
