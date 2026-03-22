@@ -7,7 +7,15 @@
  * Each function is in its own library to enable granular CI/CD deployment.
  * When a function library changes, only that function gets redeployed.
  */
+import admin from 'firebase-admin';
 import { createPublicFunction } from '@maple/firebase/functions';
+
+// Initialize Firebase Admin at the entry point, before any function handlers run.
+// This ensures the admin SDK is ready for Firestore triggers (onDocumentWritten)
+// which can execute before lazy initialization in individual modules takes effect.
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
 // Health check for testing
 export const healthCheck = createPublicFunction<

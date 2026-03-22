@@ -7,38 +7,15 @@
  * - Create: If class status is 'published', creates a corresponding CalendarEvent
  * - Update: Updates the corresponding CalendarEvent; sets public=false if not published
  * - Delete: Removes the corresponding CalendarEvent
- *
- * IMPORTANT: Firebase Admin must be initialized before the repository's db proxy
- * is accessed. We use the getDb() function directly and initialize admin in the
- * handler to ensure correct ordering.
  */
 import {
   onDocumentWritten,
   type Change,
   type DocumentSnapshot,
 } from 'firebase-functions/v2/firestore';
-import admin from 'firebase-admin';
+import { CalendarEventRepository } from '@maple/firebase/database';
 import type { Class } from '@maple/ts/domain';
 import { DEFAULT_EVENT_LOCATION } from '@maple/ts/domain';
-
-/**
- * Ensure Firebase Admin is initialized.
- * Must be called before any Firestore operations.
- */
-function ensureInitialized(): void {
-  if (admin.apps.length === 0) {
-    admin.initializeApp();
-  }
-}
-
-/**
- * Get the CalendarEventRepository lazily, after admin is initialized.
- */
-async function getRepo() {
-  ensureInitialized();
-  const { CalendarEventRepository } = await import('@maple/firebase/database');
-  return CalendarEventRepository;
-}
 
 /**
  * Extract class data from Firestore snapshot
@@ -92,13 +69,11 @@ export const onClassWrite = onDocumentWritten(
     });
 
     try {
-      const repo = await getRepo();
-
       // Case 1: Class deleted
       if (!afterClass) {
-        const existing = await repo.findBySourceRef(sourceRef);
+        const existing = await CalendarEventRepository.findBySourceRef(sourceRef);
         if (existing) {
-          await repo.delete(existing.id);
+          await CalendarEventRepository.delete(existing.id);
           console.log('Deleted CalendarEvent for removed class:', classId);
         }
         return;
@@ -107,7 +82,7 @@ export const onClassWrite = onDocumentWritten(
       // Case 2: Class created
       if (!beforeClass) {
         if (afterClass.status === 'published') {
-          await repo.create({
+          await CalendarEventRepository.create({
             title: afterClass.name,
             description: afterClass.description || '',
             startDateTime: afterClass.dateTime,
@@ -125,11 +100,11 @@ export const onClassWrite = onDocumentWritten(
       }
 
       // Case 3: Class updated
-      const existing = await repo.findBySourceRef(sourceRef);
+      const existing = await CalendarEventRepository.findBySourceRef(sourceRef);
 
       if (existing) {
         // Update the existing calendar event
-        await repo.update({
+        await CalendarEventRepository.update({
           id: existing.id,
           title: afterClass.name,
           description: afterClass.description || '',
@@ -141,7 +116,7 @@ export const onClassWrite = onDocumentWritten(
         console.log('Updated CalendarEvent for class:', classId);
       } else if (afterClass.status === 'published') {
         // Class was updated to published status but has no CalendarEvent yet
-        await repo.create({
+        await CalendarEventRepository.create({
           title: afterClass.name,
           description: afterClass.description || '',
           startDateTime: afterClass.dateTime,

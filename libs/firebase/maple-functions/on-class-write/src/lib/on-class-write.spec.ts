@@ -18,11 +18,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock firebase-admin
-vi.mock('firebase-admin', () => ({
-  default: { apps: [{}], initializeApp: vi.fn() },
-}));
-
 // Mock CalendarEventRepository
 vi.mock('@maple/firebase/database', () => ({
   CalendarEventRepository: {
@@ -115,7 +110,6 @@ describe('onClassWrite', () => {
       expect(createArg.type).toBe('class');
       expect(createArg.public).toBe(true);
       expect(createArg.sourceRef).toBe('classes/class-123');
-      // endDateTime = dateTime + 120 min
       expect(createArg.endDateTime.getTime()).toBe(
         createArg.startDateTime.getTime() + 120 * 60 * 1000
       );
@@ -174,7 +168,7 @@ describe('onClassWrite', () => {
       expect(mocks.update.mock.calls[0][0].public).toBe(false);
     });
 
-    it('creates CalendarEvent when class is published for first time (no existing event)', async () => {
+    it('creates CalendarEvent when class is published for first time', async () => {
       mocks.findBySourceRef.mockResolvedValue(undefined);
       mocks.create.mockResolvedValue(existingCalendarEvent);
 
