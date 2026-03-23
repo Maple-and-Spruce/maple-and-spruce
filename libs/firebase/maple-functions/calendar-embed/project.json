@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-calendar-embed",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/calendar-embed/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

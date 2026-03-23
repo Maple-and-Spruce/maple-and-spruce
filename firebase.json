@@ -33,7 +33,8 @@
       { "source": "/calendar/events.ics", "function": "calendarEventsFeed" },
       { "source": "/calendar/hours.ics", "function": "calendarHoursFeed" },
       { "source": "/calendar/all.ics", "function": "calendarAllFeed" },
-      { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" }
+      { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" },
+      { "source": "/calendar/embed", "function": "calendarEmbed" }
     ]
   },
   "emulators": {

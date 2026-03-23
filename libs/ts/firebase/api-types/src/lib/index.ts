@@ -228,3 +228,15 @@ export type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
 } from './registration.types';
+
+// Calendar Embed Config types
+export type {
+  GetCalendarEmbedConfigRequest,
+  GetCalendarEmbedConfigResponse,
+  UpdateCalendarEmbedConfigRequest,
+  UpdateCalendarEmbedConfigResponse,
+  AddCalendarEmbedSourceRequest,
+  AddCalendarEmbedSourceResponse,
+  RemoveCalendarEmbedSourceRequest,
+  RemoveCalendarEmbedSourceResponse,
+} from './calendar-embed-config.types';
