@@ -132,7 +132,7 @@ Phased rollout of customer-facing interactions on the Webflow site. Test against
 | **C: Payment & Registration Testing** | Not Started | [#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163) | End-to-end payment flow testing |
 | **D: Class Registration with Payment** | Not Started | [#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164) | Full registration + payment on Webflow |
 
-## Phase 4.5: Calendar System (In Progress)
+## Phase 4.5: Calendar System (Complete)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -148,7 +148,7 @@ Phased rollout of customer-facing interactions on the Webflow site. Test against
 | ICS feed Cloud Functions (6) | **Complete** | 5 feeds + adhoc proxy (`calendarClassesFeed`, etc.) |
 | onClassWrite Firestore trigger | **Complete** | Auto-generates CalendarEvents from published classes |
 | Firebase Hosting rewrites | **Complete** | `/calendar/*.ics` routes to feed functions |
-| Public /calendar page | Planned | FullCalendar integration (PR 3) |
+| Public /calendar page | **Complete** | `apps/maple-spruce/src/app/calendar/page.tsx` — FullCalendar with ICS feeds, legend, subscribe section |
 
 ## Deferred to Phase 5 (Store Opening)
 

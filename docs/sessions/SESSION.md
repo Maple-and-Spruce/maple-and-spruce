@@ -6,52 +6,12 @@
 
 ## Current Status
 
-**Date**: 2026-03-21
-<<<<<<< HEAD
-**Status**: Webflow site live, phased customer interaction integration underway
-=======
-**Status**: 🔧 Calendar System In Progress
->>>>>>> origin/main
+**Date**: 2026-03-22
+**Status**: Calendar system complete, Webflow customer interaction phasing underway
 
 ### Current Focus: Phased Webflow Customer Interactions
 
-<<<<<<< HEAD
 The Webflow site is live and published. Facebook/Instagram ads are running. The focus has shifted to phased integration of customer-facing interactions on the Webflow site.
-=======
-**Calendar Domain + Admin CRUD (Phase 4.5, PR 1 of 3)**
-- PR #160: `feat/157-calendar-domain-and-admin-crud`
-- CalendarEvent domain type with RFC 5545 RRULE recurrence support
-- Vest validation suite (30+ tests, all passing)
-- CalendarEventRepository (Firestore `calendarEvents` collection)
-- 5 CRUD Cloud Functions (get/create/update/delete calendar events)
-- `useCalendarEvents` data hook
-- `libs/react/events/` component library (List, Form, FilterToolbar)
-- Admin `/events` page with full CRUD
-- "Calendar Events" nav item in AppShell sidebar
-
-### Next Steps (Calendar System)
-
-1. **PR 2** (#158): ICS feeds + `onClassWrite` trigger
-   - `ical-generator` library, 5 HTTP feed endpoints, adhoc proxy
-   - Firestore trigger to auto-generate CalendarEvents from published classes
-   - Firebase Hosting rewrites for clean URLs
-2. **PR 3** (#159): Public `/calendar` page
-   - FullCalendar integration, color-coded event sources
-   - Month/week/list views, mobile responsive, click-through to registration
-
-### GitHub Issues
-
-- Epic: #156 (Public Calendar System)
-- #157 (Domain + Admin CRUD) — PR #160 filed
-- #158 (ICS Feeds + Trigger) — planned
-- #159 (Public Calendar Page) — planned
-
----
-
-### Previous: Webflow Content Update (2026-03-17)
-
-**Webflow Website Content Update (Phases 1-4)**
->>>>>>> origin/main
 
 **Phase sequence:**
 1. **Epic A: Artists on Webflow** ([#161](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/161)) — Not Started
@@ -62,28 +22,22 @@ The Webflow site is live and published. Facebook/Instagram ads are running. The 
 **Key decisions:**
 - Test against dev CMS collections before production
 - No payment integration until backend testing is complete
-- Music lessons use Tally forms for initial inquiries ([#10](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/10) updated)
+- Music lessons use Tally forms for initial inquiries (#10 updated)
 
-### Recently Completed
+### Recently Completed: Calendar System (Phase 4.5, All 3 PRs Merged)
 
-**Webflow Go-Live** (closed issues: #112, #126, #127, #129, #131, #132, #135, #137)
-- Site published and live with ads running
-- Content updates, navigation fixes, new pages (Music Lessons, Classes, Shop)
-- Pre-opening banner on all pages
-- SEO metadata on new pages
+- **PR #160** (#157): CalendarEvent domain, CRUD functions, admin UI
+- **PR #166** (#158): ICS feeds, onClassWrite trigger, hosting rewrites
+- **PR 3** (#159): Public `/calendar` page with FullCalendar
+  - FullCalendar integration with color-coded ICS event sources
+  - Month/week/list views, mobile-responsive (list default on mobile)
+  - Store hours as background events
+  - Event click-through to `/register/{classId}` via sourceRef
+  - Calendar legend and subscribe section with copyable ICS URLs
 
-**Phase 3 (Complete)**
-- **Phase 3a: Backend** - Domain types, validation, repositories, 13 Cloud Functions
-- **Phase 3b: Admin UI** - Instructor and Class management pages with Storybook
-- **Phase 3c: Registration** - Discount system, registration with Square payments, public checkout flow
+### Recently Completed: Webflow Go-Live
 
-### Key Design Decisions Made
-
-1. **ADR-020**: Payee Interface Pattern (composition over inheritance)
-2. **ADR-021**: Square for All Payments (supersedes Stripe)
-3. **ADR-022**: Catalog-First Class Browsing
-4. **ADR-023**: Anonymous Public Registration with Square Web Payments
-5. **ADR-024**: Next.js 16 Migration for security
+Closed issues: #112, #126, #127, #129, #131, #132, #135, #137
 
 ### Next Steps
 
@@ -91,6 +45,20 @@ The Webflow site is live and published. Facebook/Instagram ads are running. The 
 2. Fix Artists page 404 (#114) + add real artist profiles
 3. Post-launch quality improvements (#114-#122)
 4. Phase 4 - Music Lessons backend (Tally forms for initial inquiries)
+
+### GitHub Issues
+
+**Webflow Customer Interactions:**
+- #161 (Artists on Webflow) — not started
+- #162 (Class Browsing on Webflow) — not started
+- #163 (Payment & Registration Testing) — not started
+- #164 (Class Registration with Payment) — not started
+
+**Calendar System (Complete):**
+- Epic: #156 (Public Calendar System)
+- #157 (Domain + Admin CRUD) — Merged (PR #160)
+- #158 (ICS Feeds + Trigger) — Merged (PR #166)
+- #159 (Public Calendar Page) — PR in progress
 
 ### Environment Variables Needed for Registration
 
@@ -182,4 +150,4 @@ See `history/` folder for detailed session logs:
 
 ---
 
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-22*
