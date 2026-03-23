@@ -46,6 +46,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.90.21(react@19.0.0)
+      '@touch4it/ical-timezones':
+        specifier: ^1.9.0
+        version: 1.9.0
       date-fns:
         specifier: ^3.0.0
         version: 3.6.0
@@ -60,7 +63,7 @@ importers:
         version: 7.2.2(firebase-admin@13.7.0(encoding@0.1.13))
       ical-generator:
         specifier: ^10.1.0
-        version: 10.1.0(@types/node@20.19.9)(luxon@3.7.2)
+        version: 10.1.0(@touch4it/ical-timezones@1.9.0)(@types/node@20.19.9)(luxon@3.7.2)
       next:
         specifier: 16.1.7
         version: 16.1.7(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.3)
@@ -3864,6 +3867,10 @@ packages:
 
   '@tootallnate/quickjs-emscripten@0.23.0':
     resolution: {integrity: sha512-C5Mc6rdnsaJDjO3UpGW/CQTHtCKaYlScZTly4JIu97Jxo/odCiH0ITnDXSJPTOrEKk/ycSZ0AOgTmkDtkOsvIA==}
+
+  '@touch4it/ical-timezones@1.9.0':
+    resolution: {integrity: sha512-UAiZMrFlgMdOIaJDPsKu5S7OecyMLr3GGALJTYkRgHmsHAA/8Ixm1qD09ELP2X7U1lqgrctEgvKj9GzMbczC+g==}
+    engines: {node: '>= 14.0.0'}
 
   '@tsconfig/node10@1.0.12':
     resolution: {integrity: sha512-UCYBaeFvM11aU2y3YPZ//O5Rhj+xKyzy7mvcIoAjASbigy8mHMryP5cK7dgjlz2hWxh1g5pLw084E0a/wlUSFQ==}
@@ -15099,6 +15106,8 @@ snapshots:
 
   '@tootallnate/quickjs-emscripten@0.23.0': {}
 
+  '@touch4it/ical-timezones@1.9.0': {}
+
   '@tsconfig/node10@1.0.12': {}
 
   '@tsconfig/node12@1.0.11': {}
@@ -18647,8 +18656,9 @@ snapshots:
 
   hyperdyperid@1.2.0: {}
 
-  ical-generator@10.1.0(@types/node@20.19.9)(luxon@3.7.2):
+  ical-generator@10.1.0(@touch4it/ical-timezones@1.9.0)(@types/node@20.19.9)(luxon@3.7.2):
     optionalDependencies:
+      '@touch4it/ical-timezones': 1.9.0
       '@types/node': 20.19.9
       luxon: 3.7.2
 

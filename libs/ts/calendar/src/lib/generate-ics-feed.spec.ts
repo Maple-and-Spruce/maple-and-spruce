@@ -37,6 +37,15 @@ describe('generateIcsFeed', () => {
     expect(ics).toContain('X-PUBLISHED-TTL:PT5M');
   });
 
+  it('includes VTIMEZONE component for strict parsers', () => {
+    const events = [makeEvent()];
+    const ics = generateIcsFeed(events, 'Test Calendar');
+
+    expect(ics).toContain('BEGIN:VTIMEZONE');
+    expect(ics).toContain('TZID:America/New_York');
+    expect(ics).toContain('END:VTIMEZONE');
+  });
+
   it('generates VEVENT for each event', () => {
     const events = [
       makeEvent({ id: 'evt-1', title: 'Event One' }),
@@ -82,7 +91,9 @@ describe('generateIcsFeed', () => {
 
     const ics = generateIcsFeed([event], 'Test');
 
-    expect(ics).not.toContain('RRULE:');
+    // Check within the VEVENT block only (VTIMEZONE has its own RRULE for DST)
+    const veventBlock = ics.split('BEGIN:VEVENT')[1]?.split('END:VEVENT')[0] ?? '';
+    expect(veventBlock).not.toContain('RRULE:');
   });
 
   it('includes source reference as custom property', () => {
@@ -103,10 +114,11 @@ describe('generateIcsFeed', () => {
 
     const ics = generateIcsFeed([event], 'Test');
 
-    expect(ics).toContain('BEGIN:VEVENT');
-    expect(ics).toContain('SUMMARY:');
-    expect(ics).not.toContain('DESCRIPTION:');
-    expect(ics).not.toContain('LOCATION:');
+    // Check within the VEVENT block only (VTIMEZONE may contain location-like fields)
+    const veventBlock = ics.split('BEGIN:VEVENT')[1]?.split('END:VEVENT')[0] ?? '';
+    expect(veventBlock).toContain('SUMMARY:');
+    expect(veventBlock).not.toContain('DESCRIPTION:');
+    expect(veventBlock).not.toContain('LOCATION:');
   });
 
   it('returns proper content type string', () => {
