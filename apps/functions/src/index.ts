@@ -116,6 +116,13 @@ export { calendarAdhocProxy } from '@maple/firebase/maple-functions/calendar-adh
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 
+// Calendar embed config
+export { getCalendarEmbedConfig } from '@maple/firebase/maple-functions/get-calendar-embed-config';
+export { updateCalendarEmbedConfig } from '@maple/firebase/maple-functions/update-calendar-embed-config';
+export { addCalendarEmbedSource } from '@maple/firebase/maple-functions/add-calendar-embed-source';
+export { removeCalendarEmbedSource } from '@maple/firebase/maple-functions/remove-calendar-embed-source';
+export { calendarEmbed } from '@maple/firebase/maple-functions/calendar-embed';
+
 // Registration functions
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';

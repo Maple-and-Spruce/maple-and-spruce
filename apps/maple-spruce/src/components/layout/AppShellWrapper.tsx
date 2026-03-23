@@ -9,6 +9,7 @@ import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import SchoolIcon from '@mui/icons-material/School';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import TuneIcon from '@mui/icons-material/Tune';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { AppShell, type NavItem } from '@maple/react/layout';
@@ -53,6 +54,11 @@ export function AppShellWrapper({
         label: 'Calendar Events',
         href: '/events',
         icon: <CalendarMonthIcon />,
+      },
+      {
+        label: 'Calendar Embed',
+        href: '/calendar-embed',
+        icon: <TuneIcon />,
       },
       {
         label: 'Sync',
