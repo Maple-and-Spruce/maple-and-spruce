@@ -186,6 +186,12 @@ export function AppShell({
           onNavigate={() => setMobileOpen(false)}
         />
       </Box>
+
+      {/* User menu pinned to bottom */}
+      <Divider />
+      <Box sx={{ p: 1 }}>
+        <UserMenu variant="inline" />
+      </Box>
     </Box>
   );
 
@@ -271,22 +277,6 @@ export function AppShell({
             >
               {title}
             </Typography>
-            <UserMenu />
-          </Toolbar>
-        </AppBar>
-
-        {/* Desktop top bar — user menu only */}
-        <AppBar
-          position="static"
-          color="inherit"
-          elevation={0}
-          sx={{
-            display: { xs: 'none', md: 'flex' },
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Toolbar sx={{ justifyContent: 'flex-end' }}>
             <UserMenu />
           </Toolbar>
         </AppBar>
