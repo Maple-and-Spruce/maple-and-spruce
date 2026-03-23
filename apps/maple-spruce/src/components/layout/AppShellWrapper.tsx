@@ -52,6 +52,13 @@ export function AppShellWrapper({
             icon: <CategoryIcon />,
           },
           { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
+          {
+            label: 'Sync',
+            href: '/sync-conflicts',
+            icon: <SyncProblemIcon />,
+            badge: pendingConflicts,
+            badgeColor: 'warning',
+          },
         ],
       },
       {
@@ -87,18 +94,6 @@ export function AppShellWrapper({
             label: 'Embed Settings',
             href: '/calendar-embed',
             icon: <TuneIcon />,
-          },
-        ],
-      },
-      {
-        label: 'System',
-        items: [
-          {
-            label: 'Sync',
-            href: '/sync-conflicts',
-            icon: <SyncProblemIcon />,
-            badge: pendingConflicts,
-            badgeColor: 'warning',
           },
         ],
       },
