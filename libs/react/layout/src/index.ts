@@ -1,1 +1,6 @@
-export { AppShell, type NavItem, type AppShellProps } from './lib/AppShell';
+export {
+  AppShell,
+  type NavItem,
+  type NavGroup,
+  type AppShellProps,
+} from './lib/AppShell';

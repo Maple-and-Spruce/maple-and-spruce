@@ -28,7 +28,7 @@ This command:
 ## Running Web App Locally (user runs this)
 
 ```bash
-pnpm exec nx run maple-spruce:serve
+pnpm exec nx run maple-spruce:dev
 ```
 
 Runs on http://localhost:3000
