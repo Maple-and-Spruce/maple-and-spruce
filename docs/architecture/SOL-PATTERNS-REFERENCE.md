@@ -3,6 +3,7 @@
 > Detailed patterns from the Mountain Sol platform that serve as reference implementations for Maple & Spruce.
 >
 > **Source Repository**: https://github.com/MountainSOLSchool/platform
+> **Local Path**: `/Users/$USER/GitHub/platform`
 
 ---
 
