@@ -1,0 +1,15 @@
+{
+  "name": "ts-calendar",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ts/calendar/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:util"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "reportsDirectory": "../../../coverage/libs/ts/calendar"
+      }
+    }
+  }
+}

@@ -27,7 +27,13 @@
       { "source": "/updateProduct", "function": "updateProduct" },
       { "source": "/deleteProduct", "function": "deleteProduct" },
       { "source": "/uploadArtistImage", "function": "uploadArtistImage" },
-      { "source": "/healthCheck", "function": "healthCheck" }
+      { "source": "/healthCheck", "function": "healthCheck" },
+      { "source": "/calendar/classes.ics", "function": "calendarClassesFeed" },
+      { "source": "/calendar/music.ics", "function": "calendarMusicFeed" },
+      { "source": "/calendar/events.ics", "function": "calendarEventsFeed" },
+      { "source": "/calendar/hours.ics", "function": "calendarHoursFeed" },
+      { "source": "/calendar/all.ics", "function": "calendarAllFeed" },
+      { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" }
     ]
   },
   "emulators": {

@@ -7,7 +7,15 @@
  * Each function is in its own library to enable granular CI/CD deployment.
  * When a function library changes, only that function gets redeployed.
  */
+import admin from 'firebase-admin';
 import { createPublicFunction } from '@maple/firebase/functions';
+
+// Initialize Firebase Admin at the entry point, before any function handlers run.
+// This ensures the admin SDK is ready for Firestore triggers (onDocumentWritten)
+// which can execute before lazy initialization in individual modules takes effect.
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
 // Health check for testing
 export const healthCheck = createPublicFunction<
@@ -96,6 +104,17 @@ export { getCalendarEvent } from '@maple/firebase/maple-functions/get-calendar-e
 export { createCalendarEvent } from '@maple/firebase/maple-functions/create-calendar-event';
 export { updateCalendarEvent } from '@maple/firebase/maple-functions/update-calendar-event';
 export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-calendar-event';
+
+// Calendar ICS feeds (HTTP endpoints)
+export { calendarClassesFeed } from '@maple/firebase/maple-functions/calendar-classes-feed';
+export { calendarMusicFeed } from '@maple/firebase/maple-functions/calendar-music-feed';
+export { calendarEventsFeed } from '@maple/firebase/maple-functions/calendar-events-feed';
+export { calendarHoursFeed } from '@maple/firebase/maple-functions/calendar-hours-feed';
+export { calendarAllFeed } from '@maple/firebase/maple-functions/calendar-all-feed';
+export { calendarAdhocProxy } from '@maple/firebase/maple-functions/calendar-adhoc-proxy';
+
+// Calendar triggers (Firestore)
+export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 
 // Registration functions
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
