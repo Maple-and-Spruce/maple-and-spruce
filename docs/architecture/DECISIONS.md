@@ -1026,6 +1026,38 @@ Migrate from Next.js 15.5.11 to 16.1.6 via `nx migrate`. Also added npm `overrid
 ## Template for New Decisions
 
 ```markdown
+## ADR-025: Open Web Calendar for Public Calendar Display
+
+**Status:** Accepted
+**Date:** 2026-03-23
+
+### Context
+The calendar system (Phase 4.5) produces ICS feeds served via Firebase Hosting (`/calendar/classes.ics`, `/calendar/events.ics`, etc.). We need a way to display these feeds as an interactive calendar on the public Webflow marketing site. The admin app (`maple-spruce`) is not the right place for a public-facing calendar page.
+
+### Decision
+Use [Open Web Calendar](https://github.com/niccokunzmann/open-web-calendar) — an open-source calendar widget that consumes ICS feed URLs — self-hosted on Vercel. Embed it in Webflow via an iframe in an Embed element.
+
+### Rationale
+- **ICS-native:** Directly consumes our existing ICS feed URLs with no intermediary sync step. Feeds are fetched server-side, avoiding CORS issues.
+- **Self-hosted on Vercel:** No dependency on a third-party hosted service. We control uptime and can fork if needed.
+- **Customizable:** Supports custom CSS, multiple skins, configurable views (month/week/day/agenda), timezone, and per-calendar-source color coding.
+- **Free and open source:** GPL-2.0. EU-funded (NLnet/NGI0 Core Fund 2024-2025). No subscription fees.
+- **Simple Webflow integration:** Single iframe embed — no custom JavaScript, no build step.
+
+### Alternatives Considered
+- **Tockify** ($8/mo): Polished design, but does not support subscribing to arbitrary external ICS feed URLs. Only syncs from Google Calendar.
+- **Event Calendar App** ($39/mo): Supports live ICS sync, but expensive for what we need and adds a paid dependency.
+- **Elfsight** ($5/mo): Unclear ICS URL support. Free tier limited to ~200 views/month — too restrictive with ads running.
+- **Google Calendar embed** (free): Can subscribe to ICS feeds, but refreshes only every 12-24 hours. Generic/dated design, not customizable.
+- **FullCalendar in admin app** (free): Maximum flexibility, but hosting a public page inside the admin app is architecturally wrong. Would require maintaining a separate build/deploy for public visitors.
+
+### Consequences
+- Calendar display depends on a modestly-sized open-source project (solo maintainer, 315 stars), but self-hosting on Vercel and GPL licensing mitigate abandonment risk.
+- Design customization requires CSS work rather than a visual editor.
+- Calendar widget lives outside the Nx monorepo (separate Vercel deployment), which is intentional — it's a standalone display layer consuming our ICS API.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1049,4 +1081,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-02-03 (ADRs 023-024 added for Phase 3c)*
+*Last updated: 2026-03-23 (ADR-025 added for public calendar display)*
