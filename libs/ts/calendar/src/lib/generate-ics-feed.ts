@@ -5,6 +5,7 @@
  * No Firebase dependencies — just takes domain types and returns strings.
  */
 import ical, { ICalEventRepeatingFreq } from 'ical-generator';
+import { getVtimezoneComponent } from '@touch4it/ical-timezones';
 import type { CalendarEvent } from '@maple/ts/domain';
 
 const TIMEZONE = 'America/New_York';
@@ -82,5 +83,16 @@ export function generateIcsFeed(
     }
   }
 
-  return calendar.toString();
+  // ical-generator does not emit VTIMEZONE blocks, which strict parsers
+  // (e.g. Open Web Calendar / recurring-ical-events) require to resolve
+  // TZID references. Inject the VTIMEZONE component after the calendar header.
+  const icsString = calendar.toString();
+  const vtimezone = getVtimezoneComponent(TIMEZONE);
+  if (vtimezone) {
+    return icsString.replace(
+      'BEGIN:VEVENT',
+      `${vtimezone}\r\nBEGIN:VEVENT`
+    );
+  }
+  return icsString;
 }
