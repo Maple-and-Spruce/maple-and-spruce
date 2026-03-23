@@ -136,6 +136,14 @@ describe('generateIcsFeed', () => {
     expect(ics).not.toContain('BEGIN:VEVENT');
   });
 
+  it('includes VTIMEZONE even with no events', () => {
+    const ics = generateIcsFeed([], 'Empty Calendar');
+
+    expect(ics).toContain('BEGIN:VTIMEZONE');
+    expect(ics).toContain('TZID:America/New_York');
+    expect(ics).toContain('END:VTIMEZONE');
+  });
+
   it('includes prodId with Maple & Spruce', () => {
     const ics = generateIcsFeed([], 'Test');
 

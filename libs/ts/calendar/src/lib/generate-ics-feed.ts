@@ -85,14 +85,16 @@ export function generateIcsFeed(
 
   // ical-generator does not emit VTIMEZONE blocks, which strict parsers
   // (e.g. Open Web Calendar / recurring-ical-events) require to resolve
-  // TZID references. Inject the VTIMEZONE component after the calendar header.
+  // TZID references. Always inject VTIMEZONE — even empty feeds declare
+  // TIMEZONE-ID which parsers try to resolve.
   const icsString = calendar.toString();
   const vtimezone = getVtimezoneComponent(TIMEZONE);
   if (vtimezone) {
-    return icsString.replace(
-      'BEGIN:VEVENT',
-      `${vtimezone}\r\nBEGIN:VEVENT`
-    );
+    // Insert before first VEVENT if events exist, otherwise before END:VCALENDAR
+    const insertBefore = icsString.includes('BEGIN:VEVENT')
+      ? 'BEGIN:VEVENT'
+      : 'END:VCALENDAR';
+    return icsString.replace(insertBefore, `${vtimezone}\r\n${insertBefore}`);
   }
   return icsString;
 }
