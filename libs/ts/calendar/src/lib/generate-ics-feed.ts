@@ -46,7 +46,6 @@ export function generateIcsFeed(
     },
     timezone: TIMEZONE,
     x: [
-      ['X-WR-TIMEZONE', TIMEZONE],
       ['X-PUBLISHED-TTL', 'PT5M'],
     ],
   });
