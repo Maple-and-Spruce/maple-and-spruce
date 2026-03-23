@@ -12,7 +12,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TuneIcon from '@mui/icons-material/Tune';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
-import { AppShell, type NavItem } from '@maple/react/layout';
+import { AppShell, type NavGroup } from '@maple/react/layout';
 import { useSyncConflictSummary } from '@maple/react/data';
 
 interface AppShellWrapperProps {
@@ -22,13 +22,12 @@ interface AppShellWrapperProps {
 
 /**
  * App-specific wrapper around the library's AppShell component.
- * Provides the navigation configuration for Maple & Spruce.
+ * Provides the grouped navigation configuration for Maple & Spruce.
  */
 export function AppShellWrapper({
   children,
   maxWidth = 'lg',
-}: AppShellWrapperProps) {
-  // Fetch sync conflict summary for badge count
+}: AppShellWrapperProps): ReactNode {
   const { summaryState } = useSyncConflictSummary();
 
   const pendingConflicts = useMemo(() => {
@@ -36,43 +35,79 @@ export function AppShellWrapper({
     return summaryState.data.pending;
   }, [summaryState]);
 
-  const navItems: NavItem[] = useMemo(
+  const navGroups: NavGroup[] = useMemo(
     () => [
-      { label: 'Home', href: '/', icon: <HomeIcon /> },
-      { label: 'Inventory', href: '/inventory', icon: <InventoryIcon /> },
-      { label: 'Categories', href: '/categories', icon: <CategoryIcon /> },
-      { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
-      { label: 'Classes', href: '/classes', icon: <EventIcon /> },
-      { label: 'Instructors', href: '/instructors', icon: <SchoolIcon /> },
-      { label: 'Discounts', href: '/discounts', icon: <LocalOfferIcon /> },
       {
-        label: 'Registrations',
-        href: '/registrations',
-        icon: <HowToRegIcon />,
+        label: 'Store',
+        items: [
+          { label: 'Home', href: '/', icon: <HomeIcon /> },
+          {
+            label: 'Inventory',
+            href: '/inventory',
+            icon: <InventoryIcon />,
+          },
+          {
+            label: 'Categories',
+            href: '/categories',
+            icon: <CategoryIcon />,
+          },
+          { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
+        ],
       },
       {
-        label: 'Calendar Events',
-        href: '/events',
-        icon: <CalendarMonthIcon />,
+        label: 'Classes',
+        items: [
+          { label: 'Classes', href: '/classes', icon: <EventIcon /> },
+          {
+            label: 'Instructors',
+            href: '/instructors',
+            icon: <SchoolIcon />,
+          },
+          {
+            label: 'Discounts',
+            href: '/discounts',
+            icon: <LocalOfferIcon />,
+          },
+          {
+            label: 'Registrations',
+            href: '/registrations',
+            icon: <HowToRegIcon />,
+          },
+        ],
       },
       {
-        label: 'Calendar Embed',
-        href: '/calendar-embed',
-        icon: <TuneIcon />,
+        label: 'Calendar',
+        items: [
+          {
+            label: 'Events',
+            href: '/events',
+            icon: <CalendarMonthIcon />,
+          },
+          {
+            label: 'Embed Settings',
+            href: '/calendar-embed',
+            icon: <TuneIcon />,
+          },
+        ],
       },
       {
-        label: 'Sync',
-        href: '/sync-conflicts',
-        icon: <SyncProblemIcon />,
-        badge: pendingConflicts,
-        badgeColor: 'warning',
+        label: 'System',
+        items: [
+          {
+            label: 'Sync',
+            href: '/sync-conflicts',
+            icon: <SyncProblemIcon />,
+            badge: pendingConflicts,
+            badgeColor: 'warning',
+          },
+        ],
       },
     ],
     [pendingConflicts]
   );
 
   return (
-    <AppShell navItems={navItems} maxWidth={maxWidth}>
+    <AppShell navGroups={navGroups} maxWidth={maxWidth}>
       {children}
     </AppShell>
   );
