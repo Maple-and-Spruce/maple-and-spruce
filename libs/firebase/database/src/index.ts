@@ -27,3 +27,4 @@ export {
   CalendarEventRepository,
   type CalendarEventFilters,
 } from './lib/calendar-event.repository';
+export { CalendarEmbedConfigRepository } from './lib/calendar-embed-config.repository';

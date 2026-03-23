@@ -40,6 +40,10 @@
 ## Calendar Triggers (Phase 4.5)
 - `onClassWrite` — Firestore trigger: auto-generates CalendarEvents from published classes
 
+## Calendar Embed Config
+- `getCalendarEmbedConfig`, `updateCalendarEmbedConfig`, `addCalendarEmbedSource`, `removeCalendarEmbedSource`
+- `calendarEmbed` — HTTP: `/calendar/embed` (redirects to OWC with configured sources)
+
 ## Auth
 - `checkAdminStatus` — Authenticated users can check if they have admin access
 

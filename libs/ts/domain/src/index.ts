@@ -19,6 +19,7 @@ export * from './lib/discount';
 
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';
+export * from './lib/calendar-embed-config';
 
 // State management
 export * from './lib/request-state';

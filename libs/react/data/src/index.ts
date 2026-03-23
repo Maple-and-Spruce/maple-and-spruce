@@ -14,6 +14,7 @@ export {
   useCalendarEvents,
   type UseCalendarEventsFilters,
 } from './lib/useCalendarEvents';
+export { useCalendarEmbedConfig } from './lib/useCalendarEmbedConfig';
 
 // Phase 3c: Registration & Discounts
 export {

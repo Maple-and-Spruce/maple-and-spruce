@@ -225,6 +225,21 @@
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],
       "@maple/react/events": ["libs/react/events/src/index.ts"],
+      "@maple/firebase/maple-functions/get-calendar-embed-config": [
+        "libs/firebase/maple-functions/get-calendar-embed-config/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-calendar-embed-config": [
+        "libs/firebase/maple-functions/update-calendar-embed-config/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/add-calendar-embed-source": [
+        "libs/firebase/maple-functions/add-calendar-embed-source/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/remove-calendar-embed-source": [
+        "libs/firebase/maple-functions/remove-calendar-embed-source/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/calendar-embed": [
+        "libs/firebase/maple-functions/calendar-embed/src/index.ts"
+      ],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }
