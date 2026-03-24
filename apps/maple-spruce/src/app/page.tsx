@@ -1,54 +1,375 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { Box, Typography, Button, Stack } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  CardActionArea,
+  Skeleton,
+  Alert,
+  Chip,
+  Stack,
+} from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import EventIcon from '@mui/icons-material/Event';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import InventoryIcon from '@mui/icons-material/Inventory';
-import PeopleIcon from '@mui/icons-material/People';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
+import { formatClassPrice } from '@maple/ts/domain';
+import { useSyncConflictSummary } from '@maple/react/data';
 import { AppShell } from '../components/layout';
+import { useClasses, useRegistrations, useProducts } from '../hooks';
 
-export default function Index() {
+/** Format a date as "Mon, Mar 23" */
+function formatShortDate(date: Date): string {
+  return new Date(date).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Format time as "2:00 PM" */
+function formatTime(date: Date): string {
+  return new Date(date).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export default function DashboardPage() {
+  const { classesState } = useClasses();
+  const { registrationsState } = useRegistrations();
+  const { productsState } = useProducts();
+  const { summaryState } = useSyncConflictSummary();
+
+  // Upcoming published classes in the next 7 days
+  const upcomingClasses = useMemo(() => {
+    if (classesState.status !== 'success') return [];
+    const now = new Date();
+    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return classesState.data
+      .filter((c) => {
+        const dt = new Date(c.dateTime);
+        return c.status === 'published' && dt >= now && dt <= weekFromNow;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+      );
+  }, [classesState]);
+
+  // Registration counts per class
+  const registrationsByClass = useMemo(() => {
+    if (registrationsState.status !== 'success') return new Map<string, number>();
+    const map = new Map<string, number>();
+    for (const reg of registrationsState.data) {
+      if (reg.status === 'confirmed' || reg.status === 'pending') {
+        map.set(reg.classId, (map.get(reg.classId) ?? 0) + reg.quantity);
+      }
+    }
+    return map;
+  }, [registrationsState]);
+
+  // Recent registrations (last 7 days)
+  const recentRegistrations = useMemo(() => {
+    if (registrationsState.status !== 'success') return [];
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return registrationsState.data
+      .filter(
+        (r) =>
+          new Date(r.createdAt) >= weekAgo &&
+          (r.status === 'confirmed' || r.status === 'pending')
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 5);
+  }, [registrationsState]);
+
+  // Class name lookup
+  const classNameMap = useMemo(() => {
+    if (classesState.status !== 'success') return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const c of classesState.data) {
+      map.set(c.id, c.name);
+    }
+    return map;
+  }, [classesState]);
+
+  // Low stock products (quantity <= 2, active only)
+  const lowStockProducts = useMemo(() => {
+    if (productsState.status !== 'success') return [];
+    return productsState.data
+      .filter((p) => p.status === 'active' && p.squareCache.quantity <= 2)
+      .sort((a, b) => a.squareCache.quantity - b.squareCache.quantity)
+      .slice(0, 5);
+  }, [productsState]);
+
+  // Sync conflicts count
+  const pendingConflicts = useMemo(() => {
+    if (summaryState.status !== 'success') return 0;
+    return summaryState.data.pending;
+  }, [summaryState]);
+
+  const isLoading =
+    classesState.status === 'loading' ||
+    classesState.status === 'idle' ||
+    registrationsState.status === 'loading' ||
+    registrationsState.status === 'idle';
+
   return (
-    <AppShell maxWidth="sm">
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 'calc(100vh - 200px)',
-          textAlign: 'center',
-        }}
-      >
-        <Typography variant="h2" component="h1" gutterBottom>
-          Maple & Spruce
-        </Typography>
-        <Typography variant="h5" color="text.secondary" sx={{ mb: 4 }}>
-          Folk Arts Collective
-        </Typography>
+    <AppShell>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Dashboard
+      </Typography>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
-          <Button
-            component={Link}
-            href="/inventory"
-            variant="contained"
-            size="large"
-            startIcon={<InventoryIcon />}
-            sx={{ px: 4, py: 1.5 }}
-          >
-            Manage Inventory
-          </Button>
-          <Button
-            component={Link}
-            href="/artists"
-            variant="contained"
-            size="large"
-            startIcon={<PeopleIcon />}
-            sx={{ px: 4, py: 1.5 }}
-          >
-            Manage Artists
-          </Button>
-        </Stack>
-      </Box>
+      <Grid container spacing={3}>
+        {/* Upcoming Classes */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Typography variant="h6" gutterBottom>
+            <EventIcon
+              fontSize="small"
+              sx={{ verticalAlign: 'middle', mr: 0.5 }}
+            />
+            Upcoming Classes (7 days)
+          </Typography>
+
+          {isLoading ? (
+            <Stack spacing={1}>
+              <Skeleton variant="rounded" height={72} />
+              <Skeleton variant="rounded" height={72} />
+            </Stack>
+          ) : classesState.status === 'error' ? (
+            <Alert severity="error">{classesState.error}</Alert>
+          ) : upcomingClasses.length === 0 ? (
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="text.secondary">
+                  No classes scheduled this week
+                </Typography>
+              </CardContent>
+            </Card>
+          ) : (
+            <Stack spacing={1}>
+              {upcomingClasses.map((c) => {
+                const regCount = registrationsByClass.get(c.id) ?? 0;
+                const spotsLeft = c.capacity - regCount;
+                return (
+                  <Card key={c.id} variant="outlined">
+                    <CardActionArea
+                      component={Link}
+                      href="/classes"
+                      sx={{ px: 2, py: 1.5 }}
+                    >
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="subtitle2">
+                            {c.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {formatShortDate(c.dateTime)} at{' '}
+                            {formatTime(c.dateTime)} &middot;{' '}
+                            {formatClassPrice(c.priceCents)}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={`${regCount}/${c.capacity}`}
+                          size="small"
+                          color={
+                            spotsLeft === 0
+                              ? 'error'
+                              : spotsLeft <= 3
+                                ? 'warning'
+                                : 'default'
+                          }
+                          variant={spotsLeft === 0 ? 'filled' : 'outlined'}
+                        />
+                      </Box>
+                    </CardActionArea>
+                  </Card>
+                );
+              })}
+            </Stack>
+          )}
+        </Grid>
+
+        {/* Recent Registrations */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Typography variant="h6" gutterBottom>
+            <HowToRegIcon
+              fontSize="small"
+              sx={{ verticalAlign: 'middle', mr: 0.5 }}
+            />
+            Recent Registrations
+          </Typography>
+
+          {registrationsState.status === 'loading' ||
+          registrationsState.status === 'idle' ? (
+            <Stack spacing={1}>
+              <Skeleton variant="rounded" height={56} />
+              <Skeleton variant="rounded" height={56} />
+            </Stack>
+          ) : registrationsState.status === 'error' ? (
+            <Alert severity="error">{registrationsState.error}</Alert>
+          ) : recentRegistrations.length === 0 ? (
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="text.secondary">
+                  No registrations this week
+                </Typography>
+              </CardContent>
+            </Card>
+          ) : (
+            <Stack spacing={1}>
+              {recentRegistrations.map((r) => (
+                <Card key={r.id} variant="outlined">
+                  <CardActionArea
+                    component={Link}
+                    href="/registrations"
+                    sx={{ px: 2, py: 1.5 }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="subtitle2">
+                          {r.customerName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {classNameMap.get(r.classId) ?? 'Unknown class'}{' '}
+                          &middot; {formatShortDate(r.createdAt)}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={r.status}
+                        size="small"
+                        color={
+                          r.status === 'confirmed' ? 'success' : 'warning'
+                        }
+                        variant="outlined"
+                      />
+                    </Box>
+                  </CardActionArea>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Grid>
+
+        {/* Low Stock */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Typography variant="h6" gutterBottom>
+            <InventoryIcon
+              fontSize="small"
+              sx={{ verticalAlign: 'middle', mr: 0.5 }}
+            />
+            Low Stock
+          </Typography>
+
+          {productsState.status === 'loading' ||
+          productsState.status === 'idle' ? (
+            <Stack spacing={1}>
+              <Skeleton variant="rounded" height={56} />
+              <Skeleton variant="rounded" height={56} />
+            </Stack>
+          ) : productsState.status === 'error' ? (
+            <Alert severity="error">{productsState.error}</Alert>
+          ) : lowStockProducts.length === 0 ? (
+            <Card variant="outlined">
+              <CardContent>
+                <Typography color="text.secondary">
+                  All products well-stocked
+                </Typography>
+              </CardContent>
+            </Card>
+          ) : (
+            <Stack spacing={1}>
+              {lowStockProducts.map((p) => (
+                <Card key={p.id} variant="outlined">
+                  <CardActionArea
+                    component={Link}
+                    href="/inventory"
+                    sx={{ px: 2, py: 1.5 }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Typography variant="subtitle2">
+                        {p.squareCache.name}
+                      </Typography>
+                      <Chip
+                        label={
+                          p.squareCache.quantity === 0
+                            ? 'Out of stock'
+                            : `${p.squareCache.quantity} left`
+                        }
+                        size="small"
+                        color={
+                          p.squareCache.quantity === 0 ? 'error' : 'warning'
+                        }
+                        variant={
+                          p.squareCache.quantity === 0 ? 'filled' : 'outlined'
+                        }
+                      />
+                    </Box>
+                  </CardActionArea>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Grid>
+
+        {/* Sync Conflicts */}
+        {pendingConflicts > 0 && (
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined">
+              <CardActionArea
+                component={Link}
+                href="/sync-conflicts"
+                sx={{ px: 2, py: 2 }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                  }}
+                >
+                  <SyncProblemIcon color="warning" />
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {pendingConflicts} sync conflict
+                      {pendingConflicts !== 1 ? 's' : ''} pending
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Review and resolve inventory discrepancies
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardActionArea>
+            </Card>
+          </Grid>
+        )}
+      </Grid>
     </AppShell>
   );
 }
