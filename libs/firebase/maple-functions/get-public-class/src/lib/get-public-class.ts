@@ -5,7 +5,7 @@
  * Returns enriched data: instructor name, category name, spots remaining.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createPublicFunction } from '@maple/firebase/functions';
+import { Functions } from '@maple/firebase/functions';
 import {
   ClassRepository,
   InstructorRepository,
@@ -18,10 +18,9 @@ import type {
   GetPublicClassResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getPublicClass = createPublicFunction<
-  GetPublicClassRequest,
-  GetPublicClassResponse
->(async (data) => {
+export const getPublicClass = Functions.endpoint
+  .withOptions({ minInstances: 1, concurrency: 80 })
+  .handle<GetPublicClassRequest, GetPublicClassResponse>(async (data) => {
   if (!data.id) {
     throw new Error('Class ID is required');
   }

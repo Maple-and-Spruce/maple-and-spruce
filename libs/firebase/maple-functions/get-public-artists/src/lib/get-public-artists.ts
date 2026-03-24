@@ -14,10 +14,9 @@ import type {
   GetPublicArtistsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getPublicArtists = Functions.endpoint.handle<
-  GetPublicArtistsRequest,
-  GetPublicArtistsResponse
->(async () => {
+export const getPublicArtists = Functions.endpoint
+  .withOptions({ minInstances: 1, concurrency: 80 })
+  .handle<GetPublicArtistsRequest, GetPublicArtistsResponse>(async () => {
   // Only fetch active artists for public consumption
   const artists = await ArtistRepository.findAll({ status: 'active' });
 

@@ -22,7 +22,7 @@
         "format": ["cjs"],
         "outputFileName": "index.js",
         "esbuildOptions": {
-          "sourcemap": true,
+          "minify": true,
           "logLevel": "info"
         }
       }
@@ -31,8 +31,8 @@
       "executor": "nx:run-commands",
       "options": {
         "commands": [
-          "npx nx run functions:build",
-          "cp .env.dev dist/apps/functions/.env",
+          "npx nx run functions:build && npx nx run functions-calendar:build && npx nx run functions-square:build && npx nx run functions-sync:build",
+          "cp .env.dev dist/apps/functions/.env && cp .env.dev dist/apps/functions-calendar/.env && cp .env.dev dist/apps/functions-square/.env && cp .env.dev dist/apps/functions-sync/.env",
           "(npx nx run functions:build --watch &)",
           "firebase serve --only functions --project=dev --port=5001"
         ],

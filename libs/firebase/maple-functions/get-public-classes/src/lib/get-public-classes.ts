@@ -6,7 +6,7 @@
  * Enriches with instructor names, category names, and live registration counts.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createPublicFunction } from '@maple/firebase/functions';
+import { Functions } from '@maple/firebase/functions';
 import {
   ClassRepository,
   InstructorRepository,
@@ -19,10 +19,9 @@ import type {
   GetPublicClassesResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getPublicClasses = createPublicFunction<
-  GetPublicClassesRequest,
-  GetPublicClassesResponse
->(async (data) => {
+export const getPublicClasses = Functions.endpoint
+  .withOptions({ minInstances: 1, concurrency: 80 })
+  .handle<GetPublicClassesRequest, GetPublicClassesResponse>(async (data) => {
   // Only fetch published classes that are upcoming
   const classes = await ClassRepository.findAll({
     status: 'published',

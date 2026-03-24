@@ -389,6 +389,8 @@ const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name))
 export const squareWebhook = onRequest(
   {
     region: 'us-east4',
+    memory: '512MiB',
+    concurrency: 10,
     secrets: [webhookSignatureKey, ...squareSecretParams],
   },
   async (request, response) => {

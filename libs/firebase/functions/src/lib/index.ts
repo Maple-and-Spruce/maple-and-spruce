@@ -24,6 +24,7 @@ export {
   createAdminFunction,
   type FunctionContext,
   type FunctionOptions,
+  type RuntimeOptions,
 } from './functions.utility';
 
 // Auth utilities

@@ -51,12 +51,24 @@ Write your function in `src/lib/{my-new-function}.ts`.
 ]
 ```
 
-### 6. Export from the functions entry point
+### 6. Choose the correct codebase and export
 
-In `apps/functions/src/index.ts`:
+Determine which codebase your function belongs to based on its dependencies:
+- **Square SDK** → `apps/functions-square/src/index.ts` (codebase: `maple-square`)
+- **ical-generator** → `apps/functions-calendar/src/index.ts` (codebase: `maple-calendar`)
+- **webflow-api** → `apps/functions-sync/src/index.ts` (codebase: `maple-sync`)
+- **Everything else** → `apps/functions/src/index.ts` (codebase: `maple-core`, default)
+
+Add the export to the correct entry point:
 
 ```typescript
 export { myNewFunction } from '@maple/firebase-maple-functions/{my-new-function}';
+```
+
+If the function is NOT in `maple-core`, add a mapping in `function-codebases.json`:
+
+```json
+"firebase-maple-functions-{my-new-function}": "maple-{codebase}"
 ```
 
 ### 7. Validate

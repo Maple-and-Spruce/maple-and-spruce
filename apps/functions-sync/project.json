@@ -1,0 +1,31 @@
+{
+  "name": "functions-sync",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-sync/src",
+  "projectType": "application",
+  "tags": ["scope:firebase", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "inputs": ["default", "functionsEnv"],
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/functions-sync",
+        "main": "apps/functions-sync/src/index.ts",
+        "tsConfig": "apps/functions-sync/tsconfig.app.json",
+        "generatePackageJson": true,
+        "platform": "node",
+        "bundle": true,
+        "thirdParty": false,
+        "dependenciesFieldType": "dependencies",
+        "target": "node20",
+        "format": ["cjs"],
+        "outputFileName": "index.js",
+        "esbuildOptions": {
+          "minify": true,
+          "logLevel": "info"
+        }
+      }
+    }
+  }
+}

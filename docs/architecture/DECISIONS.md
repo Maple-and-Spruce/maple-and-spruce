@@ -1058,6 +1058,43 @@ Use [Open Web Calendar](https://github.com/niccokunzmann/open-web-calendar) — 
 
 ---
 
+## ADR-026: Firebase Codebases Split for Cold Start Optimization
+
+**Status:** Accepted
+**Date:** 2026-03-24
+
+### Context
+All 67 Cloud Functions shared a single Firebase codebase (`maple-functions`) with one auto-generated `package.json`. Every cold start loaded all dependencies — Square SDK (~800KB), Webflow API, ical-generator, timezone data — even for simple CRUD reads that only needed firebase-admin. Cold start times were unnecessarily high for all functions.
+
+### Decision
+Split functions into 4 Firebase codebases, each with its own Nx app project, entry point, and auto-generated dependency list:
+
+- **maple-core** (`apps/functions/`): ~52 CRUD/admin functions. No heavy third-party deps.
+- **maple-calendar** (`apps/functions-calendar/`): 6 ICS feed functions. Only ical-generator + timezone deps.
+- **maple-square** (`apps/functions-square/`): 8 functions. Only Square SDK.
+- **maple-sync** (`apps/functions-sync/`): 1 function. Only webflow-api.
+
+Additionally, per-function runtime options (`minInstances`, `concurrency`, `memory`) are configured via `FunctionBuilder.withOptions()`.
+
+### Rationale
+- **Nx `generatePackageJson: true`** automatically scopes dependencies per build. Each codebase's `dist/` only includes the packages it actually imports.
+- **Firebase codebases** deploy independently — each gets its own Cloud Run service with its own cold start characteristics.
+- **CI/CD** uses `function-codebases.json` mapping to determine which codebase to build/deploy when a function library changes.
+- **`minInstances: 1`** on public-facing endpoints eliminates cold starts entirely for the most latency-sensitive paths.
+
+### Alternatives Considered
+- **Lazy loading via dynamic `import()`**: Would reduce per-function init time but doesn't solve the shared `package.json` problem. All deps still get installed.
+- **`thirdParty: true`** (bundle everything including node_modules): Enables tree-shaking but risky with native bindings. Complementary but not sufficient alone.
+- **Single codebase with manual package.json**: Error-prone and doesn't leverage Nx's dependency detection.
+
+### Consequences
+- Adding a new function now requires choosing the correct codebase and updating `function-codebases.json` (if not maple-core).
+- CI/CD builds only affected codebases rather than all functions.
+- First deploy after the split requires manually deleting the old function names from the previous `maple-functions` codebase.
+- `minInstances: 1` adds a small ongoing cost (~$0.11/day per 512MB warm instance).
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1081,4 +1118,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-03-23 (ADR-025 added for public calendar display)*
+*Last updated: 2026-03-24 (ADR-026 added for Firebase codebases split)*
