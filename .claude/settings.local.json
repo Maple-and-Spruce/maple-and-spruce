@@ -142,7 +142,17 @@
       "Bash(gh workflow:*)",
       "Bash(pnpm install:*)",
       "Bash(npx nx:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(firebase:*)",
+      "WebFetch(domain:us-east4-maple-and-spruce-dev.cloudfunctions.net)",
+      "WebFetch(domain:firebase.google.com)",
+      "WebFetch(domain:www.javacodegeeks.com)",
+      "WebFetch(domain:oneuptime.com)",
+      "WebFetch(domain:makerkit.dev)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "WebFetch(domain:www.ayrshare.com)",
+      "Bash(pnpm exec:*)"
     ]
   }
 }

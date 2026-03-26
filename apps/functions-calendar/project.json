@@ -1,0 +1,31 @@
+{
+  "name": "functions-calendar",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-calendar/src",
+  "projectType": "application",
+  "tags": ["scope:firebase", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "inputs": ["default", "functionsEnv"],
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/functions-calendar",
+        "main": "apps/functions-calendar/src/index.ts",
+        "tsConfig": "apps/functions-calendar/tsconfig.app.json",
+        "generatePackageJson": true,
+        "platform": "node",
+        "bundle": true,
+        "thirdParty": false,
+        "dependenciesFieldType": "dependencies",
+        "target": "node20",
+        "format": ["cjs"],
+        "outputFileName": "index.js",
+        "esbuildOptions": {
+          "minify": true,
+          "logLevel": "info"
+        }
+      }
+    }
+  }
+}

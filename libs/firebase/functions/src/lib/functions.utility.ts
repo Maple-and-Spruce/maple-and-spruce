@@ -36,6 +36,20 @@ export interface FunctionContext {
 }
 
 /**
+ * Runtime options for Cloud Functions (2nd gen)
+ */
+export interface RuntimeOptions {
+  /** Memory allocation (default: 256MiB) */
+  memory?: '128MiB' | '256MiB' | '512MiB' | '1GiB' | '2GiB';
+  /** Concurrent requests per instance (default: 1, max: 1000). Requires >= 1 CPU. */
+  concurrency?: number;
+  /** Minimum warm instances to avoid cold starts (default: 0) */
+  minInstances?: number;
+  /** Timeout in seconds (default: 60, max: 540) */
+  timeoutSeconds?: number;
+}
+
+/**
  * Options for creating a function
  */
 export interface FunctionOptions {
@@ -43,6 +57,8 @@ export interface FunctionOptions {
   requireAuth?: boolean;
   /** Require user to have a specific role */
   requiredRole?: Role;
+  /** Runtime configuration for the Cloud Function */
+  runtime?: RuntimeOptions;
 }
 
 /**
@@ -249,6 +265,16 @@ class FunctionBuilder<
   }
 
   /**
+   * Set runtime options (memory, concurrency, minInstances, timeoutSeconds)
+   */
+  withOptions(runtime: RuntimeOptions): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      runtime,
+    });
+  }
+
+  /**
    * Create the function with a handler
    *
    * @param handler - Function that receives request data, context, secrets, and strings
@@ -274,6 +300,10 @@ class FunctionBuilder<
         region: 'us-east4',
         invoker: 'public',
         secrets: secretParams,
+        ...(this.options.runtime?.memory && { memory: this.options.runtime.memory }),
+        ...(this.options.runtime?.concurrency && { concurrency: this.options.runtime.concurrency }),
+        ...(this.options.runtime?.minInstances !== undefined && { minInstances: this.options.runtime.minInstances }),
+        ...(this.options.runtime?.timeoutSeconds && { timeoutSeconds: this.options.runtime.timeoutSeconds }),
       },
       async (req: Request, res: Response) => {
         // Handle CORS

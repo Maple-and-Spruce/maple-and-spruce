@@ -2,6 +2,9 @@
 globs:
   - "libs/firebase/maple-functions/**"
   - "apps/functions/**"
+  - "apps/functions-calendar/**"
+  - "apps/functions-square/**"
+  - "apps/functions-sync/**"
 ---
 
 # Firebase Cloud Functions Rules
@@ -16,6 +19,19 @@ Cloud Function libraries **MUST** follow this naming pattern:
 
 For the full creation procedure, use the `create-cloud-function` skill.
 
+## Codebases
+
+Functions are split into 4 Firebase codebases to reduce cold start times:
+
+| Codebase | App Project | Heavy Deps | Entry Point |
+|----------|-------------|------------|-------------|
+| `maple-core` | `apps/functions/` | firebase-admin, vest | `apps/functions/src/index.ts` |
+| `maple-calendar` | `apps/functions-calendar/` | ical-generator | `apps/functions-calendar/src/index.ts` |
+| `maple-square` | `apps/functions-square/` | square SDK | `apps/functions-square/src/index.ts` |
+| `maple-sync` | `apps/functions-sync/` | webflow-api | `apps/functions-sync/src/index.ts` |
+
+When adding a new function, export it from the correct codebase's entry point and add a mapping in `function-codebases.json` if it's not in `maple-core`.
+
 ## No package.json in Libraries
 
 Nx libraries under `libs/` should NOT have their own `package.json`:
@@ -26,13 +42,26 @@ Nx libraries under `libs/` should NOT have their own `package.json`:
 ## Deployment
 
 - Region: `us-east4` (Northern Virginia)
-- Codebase prefix: `maple-functions`
 - Deploy is automatic via CI/CD on merge to main
 - Never run `firebase deploy` manually
+- CI/CD reads `function-codebases.json` to map functions to codebases
 
-## Functions Entry Point
+## Functions Entry Points
 
-All functions must be exported from `apps/functions/src/index.ts`.
+Each codebase has its own entry point:
+- Core CRUD/admin: `apps/functions/src/index.ts`
+- Calendar ICS feeds: `apps/functions-calendar/src/index.ts`
+- Square integration: `apps/functions-square/src/index.ts`
+- Webflow sync: `apps/functions-sync/src/index.ts`
+
+## Runtime Options
+
+Use `Functions.endpoint.withOptions()` for per-function runtime config:
+```typescript
+Functions.endpoint
+  .withOptions({ minInstances: 1, concurrency: 80, memory: '512MiB' })
+  .handle<Req, Res>(async (data) => { ... });
+```
 
 ## Testing
 
@@ -40,7 +69,14 @@ All functions must be exported from `apps/functions/src/index.ts`.
 - Use `vi.mock()` to mock repositories and external services
 - See ADR-017 for patterns
 
+## CI/CD Notes
+
+- CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
+- Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
+
 ## After Changes
 
 - Update `docs/reference/deployed-functions.md` when adding new functions
 - Update `docs/reference/implementation-status.md` when completing features
+- Update `function-codebases.json` if the function is not in `maple-core`
+- Run `./tools/validate-function-tsconfigs.sh` to catch missing tsconfig includes or codebase mappings

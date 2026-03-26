@@ -46,23 +46,45 @@ Write your function in `src/lib/{my-new-function}.ts`.
 ### 5. Add path alias to tsconfig.base.json
 
 ```json
-"@maple/firebase-maple-functions/{my-new-function}": [
+"@maple/firebase/maple-functions/{my-new-function}": [
   "libs/firebase/maple-functions/{my-new-function}/src/index.ts"
 ]
 ```
 
-### 6. Export from the functions entry point
+### 6. Choose the correct codebase and export
 
-In `apps/functions/src/index.ts`:
+Determine which codebase your function belongs to based on its dependencies:
+- **Square SDK** → `apps/functions-square/src/index.ts` (codebase: `maple-square`)
+- **ical-generator** → `apps/functions-calendar/src/index.ts` (codebase: `maple-calendar`)
+- **webflow-api** → `apps/functions-sync/src/index.ts` (codebase: `maple-sync`)
+- **Everything else** → `apps/functions/src/index.ts` (codebase: `maple-core`, default)
+
+Add the export to the correct entry point:
 
 ```typescript
-export { myNewFunction } from '@maple/firebase-maple-functions/{my-new-function}';
+export { myNewFunction } from '@maple/firebase/maple-functions/{my-new-function}';
 ```
+
+If the function is NOT in `maple-core`, also:
+
+1. Add a mapping in `function-codebases.json`:
+   ```json
+   "firebase-maple-functions-{my-new-function}": "maple-{codebase}"
+   ```
+
+2. Add the library to the codebase's `tsconfig.app.json` include array:
+   ```json
+   "../../libs/firebase/maple-functions/{my-new-function}/**/*.ts"
+   ```
 
 ### 7. Validate
 
 ```bash
+# Check project is discoverable by CI/CD
 npx nx show projects | grep firebase-maple-functions-{my-new-function}
+
+# Check tsconfig includes and codebase mappings are consistent
+./tools/validate-function-tsconfigs.sh
 ```
 
 ## Common Mistakes
@@ -70,6 +92,8 @@ npx nx show projects | grep firebase-maple-functions-{my-new-function}
 - **Wrong**: `my-new-function` (no prefix, CI won't deploy)
 - **Wrong**: `maple-functions-my-new-function` (wrong prefix, CI won't deploy)
 - **Correct**: `firebase-maple-functions-my-new-function`
+- **Forgot tsconfig.app.json**: Function builds locally but fails in CI (esbuild can't find the source)
+- **Forgot function-codebases.json**: Non-core function deploys to wrong codebase
 
 ## Post-Creation
 
