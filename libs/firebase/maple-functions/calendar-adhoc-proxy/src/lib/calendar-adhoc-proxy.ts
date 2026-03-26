@@ -16,7 +16,7 @@ const googleCalendarIcsUrl = defineString('GOOGLE_CALENDAR_ADHOC_ICS_URL', {
 });
 
 export const calendarAdhocProxy = onRequest(
-  { region: 'us-east4', cors: true },
+  { region: 'us-east4', cors: true, concurrency: 80 },
   async (request, response) => {
     if (request.method === 'OPTIONS') {
       response.status(204).send('');

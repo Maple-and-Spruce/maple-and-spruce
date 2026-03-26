@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "../../libs/firebase/maple-functions/create-product/**/*.ts",
+    "../../libs/firebase/maple-functions/update-product/**/*.ts",
+    "../../libs/firebase/maple-functions/upload-product-image/**/*.ts",
+    "../../libs/firebase/maple-functions/square-webhook/**/*.ts",
+    "../../libs/firebase/maple-functions/create-registration/**/*.ts",
+    "../../libs/firebase/maple-functions/cancel-registration/**/*.ts",
+    "../../libs/firebase/maple-functions/detect-sync-conflicts/**/*.ts",
+    "../../libs/firebase/maple-functions/resolve-sync-conflict/**/*.ts",
+    "../../libs/firebase/database/src/**/*.ts",
+    "../../libs/firebase/functions/src/**/*.ts",
+    "../../libs/firebase/square/src/**/*.ts",
+    "../../libs/ts/domain/src/**/*.ts",
+    "../../libs/ts/validation/src/**/*.ts",
+    "../../libs/ts/firebase/api-types/src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

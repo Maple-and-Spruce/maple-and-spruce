@@ -69,6 +69,7 @@ export const detectSyncConflicts = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
   .requiringRole(Role.Admin)
+  .withOptions({ memory: '512MiB', concurrency: 10 })
   .handle<DetectSyncConflictsRequest, DetectSyncConflictsResponse>(
     async (data, _context, secrets, strings) => {
       // Initialize Square client

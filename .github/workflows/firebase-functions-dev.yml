@@ -21,6 +21,7 @@ jobs:
       matrix: ${{ steps.get_affected.outputs.matrix }}
       has_changes: ${{ steps.get_affected.outputs.has_changes }}
       cache_key: ${{ steps.set_cache_key.outputs.key }}
+      affected_codebases: ${{ steps.get_affected.outputs.affected_codebases }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,6 +48,10 @@ jobs:
         run: |
           DEPLOY_ALL="${{ github.event.inputs.deploy_all }}"
 
+          # Read the codebase mapping
+          MAPPING=$(cat function-codebases.json)
+          DEFAULT_CODEBASE=$(echo "$MAPPING" | jq -r '.defaultCodebase')
+
           # If deploy_all is true (manual trigger), skip affected check
           if [ "$DEPLOY_ALL" == "true" ]; then
             echo "Manual deploy_all requested - deploying all functions"
@@ -55,62 +60,79 @@ jobs:
             # Get all affected projects comparing to main
             ALL_AFFECTED=$(pnpm exec nx show projects --affected --base=origin/main)
 
-            # Check if the functions app itself is affected (e.g., env file changes)
-            FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep '^functions$' || true)
+            # Check if any functions app is affected (e.g., env file changes)
+            FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep -E '^functions(-calendar|-square|-sync)?$' || true)
 
             # Get affected function libraries
             AFFECTED_LIBS=$(echo "$ALL_AFFECTED" | grep 'firebase-maple-functions-' || true)
 
-            # If the functions app is affected but no specific libraries, deploy all functions
+            # If a functions app is affected but no specific libraries, deploy all functions
             if [ -n "$FUNCTIONS_APP_AFFECTED" ] && [ -z "$AFFECTED_LIBS" ]; then
               echo "Functions app affected (likely env change) - deploying all functions"
               AFFECTED_LIBS=$(pnpm exec nx show projects | grep 'firebase-maple-functions-' || true)
             fi
           fi
 
-          FUNCTIONS=()
+          # Build arrays of function names with their codebases
+          declare -A CODEBASE_FUNCTIONS
+          AFFECTED_CODEBASES_SET=()
 
           while IFS= read -r lib; do
             # Skip empty lines
             [ -z "$lib" ] && continue
+
+            # Look up codebase from mapping
+            CODEBASE=$(echo "$MAPPING" | jq -r --arg lib "$lib" '.functionToCodebase[$lib] // .defaultCodebase')
+
             # Extract function name from library name (e.g., firebase-maple-functions-get-artists -> getArtists)
             FUNC_NAME=${lib#firebase-maple-functions-}
             # Convert kebab-case to camelCase
             FUNC_NAME=$(echo "$FUNC_NAME" | awk -F'-' '{for(i=1;i<=NF;i++){if(i==1){printf("%s",$i)}else{printf("%s%s",toupper(substr($i,1,1)),substr($i,2))}}}')
-            FUNCTIONS+=("$FUNC_NAME")
+
+            # Append to codebase group
+            if [ -z "${CODEBASE_FUNCTIONS[$CODEBASE]}" ]; then
+              CODEBASE_FUNCTIONS[$CODEBASE]="functions:${CODEBASE}:${FUNC_NAME}"
+              AFFECTED_CODEBASES_SET+=("$CODEBASE")
+            else
+              CODEBASE_FUNCTIONS[$CODEBASE]="${CODEBASE_FUNCTIONS[$CODEBASE]},functions:${CODEBASE}:${FUNC_NAME}"
+            fi
           done <<< "$AFFECTED_LIBS"
 
-          if [ ${#FUNCTIONS[@]} -eq 0 ]; then
+          if [ ${#CODEBASE_FUNCTIONS[@]} -eq 0 ]; then
             echo "No functions were affected"
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            echo "affected_codebases=[]" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
-          # Group functions (5 per group for parallel deployment)
-          GROUP_SIZE=5
-          TOTAL=${#FUNCTIONS[@]}
-          NUM_GROUPS=$(( (TOTAL + GROUP_SIZE - 1) / GROUP_SIZE ))
+          # Output affected codebases for the build step
+          CODEBASES_JSON=$(printf '%s\n' "${AFFECTED_CODEBASES_SET[@]}" | sort -u | jq -R . | jq -sc .)
+          echo "affected_codebases=$CODEBASES_JSON" >> $GITHUB_OUTPUT
 
+          # Group functions by codebase, then split into batches of 5
+          GROUP_SIZE=5
           VALID_GROUPS=()
 
-          for ((i=0; i<$NUM_GROUPS; i++)); do
-            START=$((i * GROUP_SIZE))
-            GROUP_FUNCTIONS=""
+          for CODEBASE in "${!CODEBASE_FUNCTIONS[@]}"; do
+            IFS=',' read -ra FUNCS <<< "${CODEBASE_FUNCTIONS[$CODEBASE]}"
+            TOTAL=${#FUNCS[@]}
 
-            for ((j=0; j<GROUP_SIZE && START+j<TOTAL; j++)); do
+            for ((i=0; i<TOTAL; i+=GROUP_SIZE)); do
+              GROUP_FUNCTIONS=""
+              for ((j=i; j<i+GROUP_SIZE && j<TOTAL; j++)); do
+                if [ ! -z "$GROUP_FUNCTIONS" ]; then
+                  GROUP_FUNCTIONS+=","
+                fi
+                GROUP_FUNCTIONS+="${FUNCS[j]}"
+              done
+
               if [ ! -z "$GROUP_FUNCTIONS" ]; then
-                GROUP_FUNCTIONS+=","
+                VALID_GROUPS+=("{\"functions\":\"$GROUP_FUNCTIONS\"}")
               fi
-              GROUP_FUNCTIONS+="functions:maple-functions:${FUNCTIONS[START+j]}"
             done
-
-            # Only add non-empty groups
-            if [ ! -z "$GROUP_FUNCTIONS" ] && [ "$GROUP_FUNCTIONS" != "functions:" ]; then
-              VALID_GROUPS+=("{\"functions\":\"$GROUP_FUNCTIONS\"}")
-            fi
           done
 
           # Combine valid groups into JSON array with include
@@ -125,17 +147,40 @@ jobs:
 
           echo "matrix=$GROUPS_JSON" >> $GITHUB_OUTPUT
 
-          echo "Total affected functions: $TOTAL"
-          echo "Number of groups: $NUM_GROUPS"
+          echo "Affected codebases: ${AFFECTED_CODEBASES_SET[*]}"
           echo "Matrix: $GROUPS_JSON"
 
-      - name: Build all functions
+      - name: Build affected codebases
         if: steps.get_affected.outputs.has_changes == 'true'
-        run: pnpm exec nx run functions:build
+        run: |
+          MAPPING=$(cat function-codebases.json)
+          CODEBASES='${{ steps.get_affected.outputs.affected_codebases }}'
+
+          for CODEBASE in $(echo "$CODEBASES" | jq -r '.[]'); do
+            PROJECT=$(echo "$MAPPING" | jq -r --arg cb "$CODEBASE" '.codebaseProjects[$cb]')
+            echo "Building codebase: $CODEBASE (project: $PROJECT)"
+            pnpm exec nx run ${PROJECT}:build
+          done
+
+      - name: Remove generated lockfiles
+        if: steps.get_affected.outputs.has_changes == 'true'
+        run: |
+          # Nx generatePackageJson creates subset lockfiles that miss aliased
+          # transitive deps (e.g. square-legacy). Removing them lets Firebase
+          # Cloud Build do a fresh pnpm install with proper resolution.
+          find dist/apps -name 'pnpm-lock.yaml' -delete
 
       - name: Copy env file to dist (dev)
         if: steps.get_affected.outputs.has_changes == 'true'
-        run: cp .env.dev dist/apps/functions/.env
+        run: |
+          MAPPING=$(cat function-codebases.json)
+          CODEBASES='${{ steps.get_affected.outputs.affected_codebases }}'
+
+          for CODEBASE in $(echo "$CODEBASES" | jq -r '.[]'); do
+            PROJECT=$(echo "$MAPPING" | jq -r --arg cb "$CODEBASE" '.codebaseProjects[$cb]')
+            echo "Copying .env.dev to dist/apps/${PROJECT}/"
+            cp .env.dev dist/apps/${PROJECT}/.env
+          done
 
       - name: Cache node_modules for deploy
         if: steps.get_affected.outputs.has_changes == 'true'
@@ -150,10 +195,10 @@ jobs:
         with:
           name: dist-functions-dev
           path: |
-            dist/apps/functions/index.cjs
-            dist/apps/functions/index.cjs.map
-            dist/apps/functions/package.json
-            dist/apps/functions/.env
+            dist/apps/functions/
+            dist/apps/functions-calendar/
+            dist/apps/functions-square/
+            dist/apps/functions-sync/
           include-hidden-files: true
           retention-days: 1
 
@@ -198,10 +243,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist-functions-dev
-          path: dist/apps/functions
+          path: dist/apps
 
       - name: Verify download
-        run: ls -la dist/apps/functions
+        run: ls -la dist/apps/
 
       - name: Restore node_modules cache
         id: restore-cache

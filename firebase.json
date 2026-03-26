@@ -6,11 +6,28 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "functions": {
-    "source": "dist/apps/functions",
-    "runtime": "nodejs20",
-    "codebase": "maple-functions"
-  },
+  "functions": [
+    {
+      "source": "dist/apps/functions",
+      "runtime": "nodejs20",
+      "codebase": "maple-core"
+    },
+    {
+      "source": "dist/apps/functions-calendar",
+      "runtime": "nodejs20",
+      "codebase": "maple-calendar"
+    },
+    {
+      "source": "dist/apps/functions-square",
+      "runtime": "nodejs20",
+      "codebase": "maple-square"
+    },
+    {
+      "source": "dist/apps/functions-sync",
+      "runtime": "nodejs20",
+      "codebase": "maple-sync"
+    }
+  ],
   "hosting": {
     "site": "maple-and-spruce-api",
     "public": "public",

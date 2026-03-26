@@ -25,19 +25,44 @@ All CI workflows use `pnpm/action-setup@v4` which reads the version from `packag
 
 ## Functions Deploy
 
-**Workflow**: `.github/workflows/firebase-functions-merge.yml` - Deploys only affected functions on merge to main.
+**Workflows**:
+- `.github/workflows/firebase-functions-merge.yml` — Deploys affected functions on merge to main (prod)
+- `.github/workflows/firebase-functions-dev.yml` — Deploys affected functions on push to feature/fix branches (dev)
 
-- **Auth**: Workload Identity Federation (keyless) - no secrets required
-- **Region**: All functions deploy to `us-east4` (Northern Virginia, close to WV business)
-- **Codebase**: `maple-functions` - functions are filtered by this codebase prefix
+**Auth**: Workload Identity Federation (keyless) — no secrets required
+**Region**: All functions deploy to `us-east4` (Northern Virginia)
 
-## Functions Deployment Pattern
+### Codebases
 
-Functions follow Mountain Sol's auto-generated package.json pattern:
-- `apps/functions/project.json` has `generatePackageJson: true`
-- No static `package.json` in `apps/functions/`
-- Nx auto-detects dependencies from imports during build
-- esbuild bundles code with `thirdParty: false` (externalize deps for Firebase to install)
+Functions are split into 4 Firebase codebases to reduce cold start times (see ADR-026):
+
+| Codebase | App Project | Entry Point |
+|----------|-------------|-------------|
+| `maple-core` | `apps/functions/` | `apps/functions/src/index.ts` |
+| `maple-calendar` | `apps/functions-calendar/` | `apps/functions-calendar/src/index.ts` |
+| `maple-square` | `apps/functions-square/` | `apps/functions-square/src/index.ts` |
+| `maple-sync` | `apps/functions-sync/` | `apps/functions-sync/src/index.ts` |
+
+### How CI determines what to deploy
+
+1. **Affected detection**: `nx show projects --affected` finds changed function libraries (`firebase-maple-functions-*`)
+2. **Codebase mapping**: `function-codebases.json` maps each library to its codebase. Functions not in the mapping default to `maple-core`.
+3. **Build**: Only affected codebases are built via `nx run {project}:build`
+4. **Lockfile cleanup**: Nx-generated `pnpm-lock.yaml` files are deleted from `dist/` — they can miss aliased transitive deps (e.g. `square-legacy`). Firebase Cloud Build does a fresh `pnpm install` instead.
+5. **Deploy matrix**: Functions are batched into groups of 5 and deployed in parallel per codebase.
+
+## Functions Build Pattern
+
+Each codebase app uses esbuild via `@nx/esbuild:esbuild`:
+- `generatePackageJson: true` — Nx creates a `package.json` in `dist/` with only the deps that codebase needs
+- `bundle: true` with `thirdParty: false` — code is bundled but npm dependencies are externalized for Firebase to install
+- Each codebase's `tsconfig.app.json` must include paths to all function libraries it exports
+
+### Validation
+
+Run `./tools/validate-function-tsconfigs.sh` to check that:
+- Every function exported from an entry point has its library in the codebase's `tsconfig.app.json`
+- Every non-core function has a mapping in `function-codebases.json`
 
 ## Web App Deploy
 

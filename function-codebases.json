@@ -1,0 +1,26 @@
+{
+  "codebaseProjects": {
+    "maple-core": "functions",
+    "maple-calendar": "functions-calendar",
+    "maple-square": "functions-square",
+    "maple-sync": "functions-sync"
+  },
+  "functionToCodebase": {
+    "firebase-maple-functions-calendar-classes-feed": "maple-calendar",
+    "firebase-maple-functions-calendar-music-feed": "maple-calendar",
+    "firebase-maple-functions-calendar-events-feed": "maple-calendar",
+    "firebase-maple-functions-calendar-hours-feed": "maple-calendar",
+    "firebase-maple-functions-calendar-all-feed": "maple-calendar",
+    "firebase-maple-functions-calendar-adhoc-proxy": "maple-calendar",
+    "firebase-maple-functions-create-product": "maple-square",
+    "firebase-maple-functions-update-product": "maple-square",
+    "firebase-maple-functions-upload-product-image": "maple-square",
+    "firebase-maple-functions-square-webhook": "maple-square",
+    "firebase-maple-functions-create-registration": "maple-square",
+    "firebase-maple-functions-cancel-registration": "maple-square",
+    "firebase-maple-functions-detect-sync-conflicts": "maple-square",
+    "firebase-maple-functions-resolve-sync-conflict": "maple-square",
+    "firebase-maple-functions-sync-artist-to-webflow": "maple-sync"
+  },
+  "defaultCodebase": "maple-core"
+}

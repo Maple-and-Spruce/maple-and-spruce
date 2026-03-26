@@ -1,11 +1,14 @@
 /**
- * Firebase Cloud Functions entry point
+ * Firebase Cloud Functions — Core Codebase (maple-core)
  *
- * All functions are exported from their individual libraries and re-exported here.
- * This file serves as the main entry point for Firebase Functions deployment.
+ * This is the main codebase containing CRUD operations, auth, triggers,
+ * and admin functions. Heavy dependencies (Square SDK, Webflow API,
+ * ical-generator) are isolated in separate codebases to reduce cold starts.
  *
- * Each function is in its own library to enable granular CI/CD deployment.
- * When a function library changes, only that function gets redeployed.
+ * See also:
+ * - apps/functions-calendar/ — ICS feed generation (ical-generator)
+ * - apps/functions-square/  — Square integration (square SDK)
+ * - apps/functions-sync/    — Webflow sync (webflow-api)
  */
 import admin from 'firebase-admin';
 import { createPublicFunction } from '@maple/firebase/functions';
@@ -49,25 +52,14 @@ export { updateCategory } from '@maple/firebase/maple-functions/update-category'
 export { deleteCategory } from '@maple/firebase/maple-functions/delete-category';
 export { reorderCategories } from '@maple/firebase/maple-functions/reorder-categories';
 
-// Product functions
+// Product functions (read/delete only — writes are in maple-square codebase)
 export { getProducts } from '@maple/firebase/maple-functions/get-products';
 export { getProduct } from '@maple/firebase/maple-functions/get-product';
-export { createProduct } from '@maple/firebase/maple-functions/create-product';
-export { updateProduct } from '@maple/firebase/maple-functions/update-product';
 export { deleteProduct } from '@maple/firebase/maple-functions/delete-product';
-export { uploadProductImage } from '@maple/firebase/maple-functions/upload-product-image';
 
-// Square webhook (HTTP endpoint, not callable)
-export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
-
-// Webflow CMS sync (Firestore triggers)
-export { syncArtistToWebflow } from '@maple/maple-functions/sync-artist-to-webflow';
-
-// Sync conflict functions
+// Sync conflict functions (read-only — resolution is in maple-square codebase)
 export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
 export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
-export { resolveSyncConflict } from '@maple/firebase/maple-functions/resolve-sync-conflict';
-export { detectSyncConflicts } from '@maple/firebase/maple-functions/detect-sync-conflicts';
 
 // Instructor functions
 export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';
@@ -105,13 +97,7 @@ export { createCalendarEvent } from '@maple/firebase/maple-functions/create-cale
 export { updateCalendarEvent } from '@maple/firebase/maple-functions/update-calendar-event';
 export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-calendar-event';
 
-// Calendar ICS feeds (HTTP endpoints)
-export { calendarClassesFeed } from '@maple/firebase/maple-functions/calendar-classes-feed';
-export { calendarMusicFeed } from '@maple/firebase/maple-functions/calendar-music-feed';
-export { calendarEventsFeed } from '@maple/firebase/maple-functions/calendar-events-feed';
-export { calendarHoursFeed } from '@maple/firebase/maple-functions/calendar-hours-feed';
-export { calendarAllFeed } from '@maple/firebase/maple-functions/calendar-all-feed';
-export { calendarAdhocProxy } from '@maple/firebase/maple-functions/calendar-adhoc-proxy';
+// Calendar ICS feeds are in the maple-calendar codebase
 
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
@@ -123,10 +109,8 @@ export { addCalendarEmbedSource } from '@maple/firebase/maple-functions/add-cale
 export { removeCalendarEmbedSource } from '@maple/firebase/maple-functions/remove-calendar-embed-source';
 export { calendarEmbed } from '@maple/firebase/maple-functions/calendar-embed';
 
-// Registration functions
+// Registration functions (read/update only — create/cancel are in maple-square codebase)
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';
 export { updateRegistration } from '@maple/firebase/maple-functions/update-registration';
 export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calculate-registration-cost';
-export { createRegistration } from '@maple/firebase/maple-functions/create-registration';
-export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-registration';

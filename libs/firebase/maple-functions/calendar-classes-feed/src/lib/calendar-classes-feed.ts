@@ -9,7 +9,7 @@ import { CalendarEventRepository } from '@maple/firebase/database';
 import { generateIcsFeed, ICS_FEED_HEADERS } from '@maple/ts/calendar';
 
 export const calendarClassesFeed = onRequest(
-  { region: 'us-east4', cors: true },
+  { region: 'us-east4', cors: true, minInstances: 1, concurrency: 80 },
   async (request, response) => {
     if (request.method === 'OPTIONS') {
       response.status(204).send('');
