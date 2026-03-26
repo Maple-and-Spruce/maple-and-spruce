@@ -69,8 +69,14 @@ Functions.endpoint
 - Use `vi.mock()` to mock repositories and external services
 - See ADR-017 for patterns
 
+## CI/CD Notes
+
+- CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
+- Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
+
 ## After Changes
 
 - Update `docs/reference/deployed-functions.md` when adding new functions
 - Update `docs/reference/implementation-status.md` when completing features
 - Update `function-codebases.json` if the function is not in `maple-core`
+- Run `./tools/validate-function-tsconfigs.sh` to catch missing tsconfig includes or codebase mappings

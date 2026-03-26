@@ -12,4 +12,4 @@ if (admin.apps.length === 0) {
 }
 
 // Webflow CMS sync (Firestore trigger)
-export { syncArtistToWebflow } from '@maple/maple-functions/sync-artist-to-webflow';
+export { syncArtistToWebflow } from '@maple/firebase/maple-functions/sync-artist-to-webflow';
