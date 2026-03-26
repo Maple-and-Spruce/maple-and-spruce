@@ -39,7 +39,7 @@ const quickLinks = [
   { label: 'MailerLite', href: 'https://app.mailerlite.com', icon: CampaignIcon, color: '#09c269' },
   { label: 'Google Drive', href: 'https://drive.google.com', icon: FolderSharedIcon, color: '#f4b400' },
   { label: 'Square', href: 'https://squareup.com/dashboard', icon: ShoppingCartIcon, color: '#006aff' },
-  { label: 'Facebook Ads', href: 'https://adsmanager.facebook.com', icon: CampaignIcon, color: '#1877f2' },
+  { label: 'Facebook Ads', href: 'https://adsmanager.facebook.com/adsmanager/manage/campaigns', icon: CampaignIcon, color: '#1877f2' },
   { label: 'Webflow', href: 'https://webflow.com/dashboard', icon: LanguageIcon, color: '#4353ff' },
   { label: 'Firebase', href: 'https://console.firebase.google.com', icon: AdminPanelSettingsIcon, color: '#f5820d' },
   { label: 'Vercel', href: 'https://vercel.com/dashboard', icon: RocketLaunchIcon, color: '#000000' },
