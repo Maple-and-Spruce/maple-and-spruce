@@ -109,7 +109,7 @@ jobs:
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
           # Output affected codebases for the build step
-          CODEBASES_JSON=$(printf '%s\n' "${AFFECTED_CODEBASES_SET[@]}" | sort -u | jq -R . | jq -s .)
+          CODEBASES_JSON=$(printf '%s\n' "${AFFECTED_CODEBASES_SET[@]}" | sort -u | jq -R . | jq -sc .)
           echo "affected_codebases=$CODEBASES_JSON" >> $GITHUB_OUTPUT
 
           # Group functions by codebase, then split into batches of 5
