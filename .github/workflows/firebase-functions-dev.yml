@@ -162,19 +162,13 @@ jobs:
             pnpm exec nx run ${PROJECT}:build
           done
 
-      - name: Fix generated lockfiles
+      - name: Remove generated lockfiles
         if: steps.get_affected.outputs.has_changes == 'true'
         run: |
-          MAPPING=$(cat function-codebases.json)
-          CODEBASES='${{ steps.get_affected.outputs.affected_codebases }}'
-
-          for CODEBASE in $(echo "$CODEBASES" | jq -r '.[]'); do
-            PROJECT=$(echo "$MAPPING" | jq -r --arg cb "$CODEBASE" '.codebaseProjects[$cb]')
-            echo "Fixing lockfile in dist/apps/${PROJECT}/"
-            cd dist/apps/${PROJECT}
-            pnpm install --no-frozen-lockfile
-            cd ${{ github.workspace }}
-          done
+          # Nx generatePackageJson creates subset lockfiles that miss aliased
+          # transitive deps (e.g. square-legacy). Removing them lets Firebase
+          # Cloud Build do a fresh pnpm install with proper resolution.
+          find dist/apps -name 'pnpm-lock.yaml' -delete
 
       - name: Copy env file to dist (dev)
         if: steps.get_affected.outputs.has_changes == 'true'
