@@ -75,8 +75,10 @@ export const etsyAuthCallback = Functions.endpoint
         );
 
         if (response.ok) {
-          const shopData = await response.json();
-          if (shopData.results?.length > 0) {
+          const shopData = (await response.json()) as {
+            results?: Array<{ shop_id: number }>;
+          };
+          if (shopData.results?.length && shopData.results.length > 0) {
             shopId = String(shopData.results[0].shop_id);
             await updateTokenShopId(shopId);
           }
