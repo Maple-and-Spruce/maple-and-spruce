@@ -13,6 +13,7 @@ import { db } from './utilities/database.config';
 import type {
   Product,
   SquareCache,
+  EtsyCache,
   CreateProductInput,
   UpdateProductInput,
   ProductStatus,
@@ -56,6 +57,20 @@ function docToProduct(
         syncedAt: data.lastSquareSyncAt?.toDate() ?? new Date(0),
       };
 
+  const etsyCache: EtsyCache | undefined = data.etsyCache
+    ? {
+        title: data.etsyCache.title,
+        description: data.etsyCache.description,
+        priceCents: data.etsyCache.priceCents,
+        quantity: data.etsyCache.quantity,
+        url: data.etsyCache.url,
+        taxonomyId: data.etsyCache.taxonomyId,
+        tags: data.etsyCache.tags,
+        state: data.etsyCache.state,
+        syncedAt: data.etsyCache.syncedAt?.toDate() ?? new Date(),
+      }
+    : undefined;
+
   return {
     id: doc.id,
 
@@ -76,6 +91,7 @@ function docToProduct(
 
     // Cached data
     squareCache,
+    etsyCache,
   };
 }
 
@@ -106,6 +122,20 @@ function productToDoc(product: Omit<Product, 'id'>): Record<string, unknown> {
       imageUrl: product.squareCache.imageUrl,
       syncedAt: product.squareCache.syncedAt,
     },
+
+    ...(product.etsyCache && {
+      etsyCache: {
+        title: product.etsyCache.title,
+        description: product.etsyCache.description,
+        priceCents: product.etsyCache.priceCents,
+        quantity: product.etsyCache.quantity,
+        url: product.etsyCache.url,
+        taxonomyId: product.etsyCache.taxonomyId,
+        tags: product.etsyCache.tags,
+        state: product.etsyCache.state,
+        syncedAt: product.etsyCache.syncedAt,
+      },
+    }),
   };
 }
 
@@ -302,6 +332,51 @@ export const ProductRepository = {
     await docRef.update({
       'squareCache.quantity': quantity,
       'squareCache.syncedAt': new Date(),
+      updatedAt: new Date(),
+    });
+  },
+
+  /**
+   * Find a product by Etsy listing ID
+   */
+  async findByEtsyListingId(
+    etsyListingId: string
+  ): Promise<Product | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('etsyListingId', '==', etsyListingId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return undefined;
+    }
+
+    return docToProduct(snapshot.docs[0]);
+  },
+
+  /**
+   * Update the Etsy cache after a successful Etsy API call
+   */
+  async updateEtsyCache(
+    id: string,
+    etsyListingId: string,
+    cache: EtsyCache
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    await docRef.update({
+      etsyListingId,
+      etsyCache: {
+        title: cache.title,
+        description: cache.description,
+        priceCents: cache.priceCents,
+        quantity: cache.quantity,
+        url: cache.url,
+        taxonomyId: cache.taxonomyId,
+        tags: cache.tags,
+        state: cache.state,
+        syncedAt: cache.syncedAt,
+      },
       updatedAt: new Date(),
     });
   },
