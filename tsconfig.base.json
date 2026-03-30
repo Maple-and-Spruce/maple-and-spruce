@@ -241,6 +241,15 @@
       "@maple/firebase/maple-functions/calendar-embed": [
         "libs/firebase/maple-functions/calendar-embed/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/etsy-auth-url": [
+        "libs/firebase/maple-functions/etsy-auth-url/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/etsy-auth-callback": [
+        "libs/firebase/maple-functions/etsy-auth-callback/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-etsy-connection-status": [
+        "libs/firebase/maple-functions/get-etsy-connection-status/src/index.ts"
+      ],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }
