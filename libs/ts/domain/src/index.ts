@@ -10,6 +10,9 @@ export * from './lib/payout';
 export * from './lib/inventory-movement';
 export * from './lib/sync-conflict';
 
+// Phase 5: Etsy Integration
+export * from './lib/etsy';
+
 // Phase 3: Classes & Workshops
 export * from './lib/instructor';
 export * from './lib/class';

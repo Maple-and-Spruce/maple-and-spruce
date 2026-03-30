@@ -1,0 +1,28 @@
+{
+  "name": "etsy",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/etsy/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/firebase/etsy",
+        "main": "libs/firebase/etsy/src/index.ts",
+        "tsConfig": "libs/firebase/etsy/tsconfig.lib.json",
+        "assets": ["libs/firebase/etsy/*.md"],
+        "format": ["cjs"],
+        "generatePackageJson": true
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "{projectRoot}/../../../coverage/libs/firebase/etsy"
+      }
+    }
+  }
+}

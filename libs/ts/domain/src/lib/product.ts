@@ -11,6 +11,7 @@
  *
  * @see ADR-011 for sync strategy details
  */
+import type { EtsyCache } from './etsy';
 
 /**
  * Cached data from Square for display without API calls.
@@ -88,6 +89,12 @@ export interface Product {
    * Check syncedAt to determine freshness.
    */
   squareCache: SquareCache;
+
+  /**
+   * Cached data from Etsy listing for fast reads.
+   * Only present if the product is listed on Etsy.
+   */
+  etsyCache?: EtsyCache;
 }
 
 export type ProductStatus = 'active' | 'draft' | 'discontinued';
