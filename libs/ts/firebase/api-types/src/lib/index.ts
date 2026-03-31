@@ -240,3 +240,13 @@ export type {
   RemoveCalendarEmbedSourceRequest,
   RemoveCalendarEmbedSourceResponse,
 } from './calendar-embed-config.types';
+
+// Phase 5: Etsy OAuth types
+export type {
+  EtsyAuthUrlRequest,
+  EtsyAuthUrlResponse,
+  EtsyAuthCallbackRequest,
+  EtsyAuthCallbackResponse,
+  GetEtsyConnectionStatusRequest,
+  GetEtsyConnectionStatusResponse,
+} from './etsy.types';
