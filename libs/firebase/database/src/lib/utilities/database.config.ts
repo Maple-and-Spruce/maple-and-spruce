@@ -44,7 +44,8 @@ export function getDb(): FirebaseFirestore.Firestore {
     // Wrap in try-catch because settings() throws if called after any Firestore operation.
     if (!settingsApplied) {
       try {
-        dbInstance.settings({ ignoreUndefinedProperties: true, preferRest: true });
+        const useEmulator = !!process.env['FIRESTORE_EMULATOR_HOST'];
+        dbInstance.settings({ ignoreUndefinedProperties: true, preferRest: !useEmulator });
       } catch {
         // Settings already applied or Firestore already in use - ignore
       }

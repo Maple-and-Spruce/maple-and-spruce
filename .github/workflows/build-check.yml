@@ -170,6 +170,47 @@ jobs:
           vite-config-path: vitest.config.ts
           file-coverage-mode: changes
 
+  integration-tests:
+    name: Integration Tests
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Build functions
+        run: pnpm exec nx run functions:build
+
+      - name: Create emulator .env
+        run: |
+          echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
+          echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
+          echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
+
+      - name: Run integration tests with emulators
+        run: firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+
   storybook:
     name: Storybook Build & Tests
     needs: [install]
