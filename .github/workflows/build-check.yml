@@ -209,7 +209,7 @@ jobs:
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
 
       - name: Run integration tests with emulators
-        run: firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+        run: npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
 
   storybook:
     name: Storybook Build & Tests
