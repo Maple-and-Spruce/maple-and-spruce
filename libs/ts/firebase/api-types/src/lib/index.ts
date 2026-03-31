@@ -250,3 +250,13 @@ export type {
   GetEtsyConnectionStatusRequest,
   GetEtsyConnectionStatusResponse,
 } from './etsy.types';
+
+// Etsy Template types
+export type {
+  GetEtsyTemplatesRequest,
+  GetEtsyTemplatesResponse,
+  SaveEtsyCategoryTemplateRequest,
+  SaveEtsyCategoryTemplateResponse,
+  SaveEtsyArtistTemplateRequest,
+  SaveEtsyArtistTemplateResponse,
+} from './etsy-template.types';

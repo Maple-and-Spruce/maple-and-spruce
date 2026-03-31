@@ -114,3 +114,8 @@ export { getRegistrations } from '@maple/firebase/maple-functions/get-registrati
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';
 export { updateRegistration } from '@maple/firebase/maple-functions/update-registration';
 export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calculate-registration-cost';
+
+// Etsy template functions (read/write Firestore only — no Etsy API dep)
+export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';
+export { saveEtsyCategoryTemplate } from '@maple/firebase/maple-functions/save-etsy-category-template';
+export { saveEtsyArtistTemplate } from '@maple/firebase/maple-functions/save-etsy-artist-template';
