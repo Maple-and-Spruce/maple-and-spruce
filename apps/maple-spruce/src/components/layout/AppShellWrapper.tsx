@@ -10,6 +10,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TuneIcon from '@mui/icons-material/Tune';
+import SettingsIcon from '@mui/icons-material/Settings';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { AppShell, type NavGroup } from '@maple/react/layout';
@@ -94,6 +95,16 @@ export function AppShellWrapper({
             label: 'Embed Settings',
             href: '/calendar-embed',
             icon: <TuneIcon />,
+          },
+        ],
+      },
+      {
+        label: 'Admin',
+        items: [
+          {
+            label: 'Settings',
+            href: '/settings',
+            icon: <SettingsIcon />,
           },
         ],
       },
