@@ -11,6 +11,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useEtsyConnection } from '@maple/react/data';
+import { AppShell } from '../../../components/layout';
 
 export default function EtsyCallbackPage(): React.ReactNode {
   const searchParams = useSearchParams();
@@ -30,6 +31,7 @@ export default function EtsyCallbackPage(): React.ReactNode {
 
   if (!code || !state) {
     return (
+      <AppShell>
       <Card>
         <CardContent>
           <Alert severity="error">
@@ -41,11 +43,12 @@ export default function EtsyCallbackPage(): React.ReactNode {
           </Button>
         </CardContent>
       </Card>
+      </AppShell>
     );
   }
 
   return (
-    <>
+    <AppShell>
       <Typography variant="h4" gutterBottom>
         Connecting Etsy
       </Typography>
@@ -99,6 +102,6 @@ export default function EtsyCallbackPage(): React.ReactNode {
           </Stack>
         </CardContent>
       </Card>
-    </>
+    </AppShell>
   );
 }
