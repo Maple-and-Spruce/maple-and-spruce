@@ -11,6 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import { useEtsyConnection } from '@maple/react/data';
+import { AppShell } from '../../components/layout';
 
 export default function SettingsPage(): React.ReactNode {
   const { connectionState, authUrlState, generateAuthUrl } =
@@ -29,7 +30,7 @@ export default function SettingsPage(): React.ReactNode {
     connectionState.status === 'success' && connectionState.data.tokenValid;
 
   return (
-    <>
+    <AppShell>
       <Typography variant="h4" gutterBottom>
         Settings
       </Typography>
@@ -112,6 +113,6 @@ export default function SettingsPage(): React.ReactNode {
           </Stack>
         </CardContent>
       </Card>
-    </>
+    </AppShell>
   );
 }
