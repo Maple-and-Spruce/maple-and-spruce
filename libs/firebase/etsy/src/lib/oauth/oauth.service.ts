@@ -102,7 +102,7 @@ export class OAuthService {
       );
     }
 
-    const tokenResponse: EtsyTokenResponse = await response.json();
+    const tokenResponse = (await response.json()) as EtsyTokenResponse;
     const tokenData = this.parseTokenResponse(tokenResponse);
     await this.tokenStorage.saveTokens(tokenData);
     return tokenData;
@@ -160,7 +160,7 @@ export class OAuthService {
       );
     }
 
-    const tokenResponse: EtsyTokenResponse = await response.json();
+    const tokenResponse = (await response.json()) as EtsyTokenResponse;
     const tokenData = this.parseTokenResponse(tokenResponse);
     await this.tokenStorage.saveTokens(tokenData);
     return tokenData;

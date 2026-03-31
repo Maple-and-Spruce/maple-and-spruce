@@ -13,3 +13,8 @@ if (admin.apps.length === 0) {
 
 // Webflow CMS sync (Firestore trigger)
 export { syncArtistToWebflow } from '@maple/firebase/maple-functions/sync-artist-to-webflow';
+
+// Etsy OAuth bootstrap
+export { etsyAuthUrl } from '@maple/firebase/maple-functions/etsy-auth-url';
+export { etsyAuthCallback } from '@maple/firebase/maple-functions/etsy-auth-callback';
+export { getEtsyConnectionStatus } from '@maple/firebase/maple-functions/get-etsy-connection-status';
