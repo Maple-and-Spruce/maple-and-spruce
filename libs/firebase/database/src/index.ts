@@ -36,3 +36,4 @@ export {
   consumeOAuthState,
   updateTokenShopId,
 } from './lib/etsy-token.repository';
+export { EtsyTemplateRepository } from './lib/etsy-template.repository';

@@ -250,6 +250,15 @@
       "@maple/firebase/maple-functions/get-etsy-connection-status": [
         "libs/firebase/maple-functions/get-etsy-connection-status/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-etsy-templates": [
+        "libs/firebase/maple-functions/get-etsy-templates/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/save-etsy-category-template": [
+        "libs/firebase/maple-functions/save-etsy-category-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/save-etsy-artist-template": [
+        "libs/firebase/maple-functions/save-etsy-artist-template/src/index.ts"
+      ],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }
