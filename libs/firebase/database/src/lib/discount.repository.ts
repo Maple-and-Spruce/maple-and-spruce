@@ -122,13 +122,15 @@ export const DiscountRepository = {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inputRecord = input as Record<string, any>;
     const data = {
       ...input,
       // Always store code in uppercase for case-insensitive lookups
       code: input.code.toUpperCase(),
       // Convert cutoffDate to Date if present (for amount-before-date discounts)
-      ...('cutoffDate' in input && input.cutoffDate
-        ? { cutoffDate: new Date(input.cutoffDate) }
+      ...(inputRecord.cutoffDate
+        ? { cutoffDate: new Date(inputRecord.cutoffDate) }
         : {}),
       createdAt: now,
       updatedAt: now,
@@ -157,8 +159,8 @@ export const DiscountRepository = {
     const dataWithTimestamp: Record<string, unknown> = {
       ...updates,
       // Convert cutoffDate to Date if present
-      ...('cutoffDate' in updates && updates.cutoffDate
-        ? { cutoffDate: new Date(updates.cutoffDate as string | Date) }
+      ...(updates.cutoffDate
+        ? { cutoffDate: new Date(updates.cutoffDate) }
         : {}),
       updatedAt: new Date(),
     };
