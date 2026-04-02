@@ -150,7 +150,7 @@ export const SyncConflictRepository = {
     const data = {
       productId: input.productId,
       type: input.type,
-      detectedAt: input.detectedAt,
+      detectedAt: new Date(input.detectedAt),
       localState: input.localState,
       externalState: input.externalState,
       status: 'pending' as SyncConflictStatus,

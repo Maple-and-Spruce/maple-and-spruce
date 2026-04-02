@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "classes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dateTime", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "calendarEvents",
       "queryScope": "COLLECTION",
       "fields": [

@@ -111,6 +111,7 @@ export const ClassRepository = {
 
     const data = {
       ...input,
+      dateTime: new Date(input.dateTime),
       createdAt: now,
       updatedAt: now,
     };
@@ -132,6 +133,7 @@ export const ClassRepository = {
 
     const dataWithTimestamp = {
       ...updates,
+      ...(updates.dateTime ? { dateTime: new Date(updates.dateTime) } : {}),
       updatedAt: new Date(),
     };
 
