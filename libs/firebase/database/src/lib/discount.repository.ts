@@ -126,6 +126,10 @@ export const DiscountRepository = {
       ...input,
       // Always store code in uppercase for case-insensitive lookups
       code: input.code.toUpperCase(),
+      // Convert cutoffDate to Date if present (for amount-before-date discounts)
+      ...('cutoffDate' in input && input.cutoffDate
+        ? { cutoffDate: new Date(input.cutoffDate) }
+        : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -152,6 +156,10 @@ export const DiscountRepository = {
 
     const dataWithTimestamp: Record<string, unknown> = {
       ...updates,
+      // Convert cutoffDate to Date if present
+      ...('cutoffDate' in updates && updates.cutoffDate
+        ? { cutoffDate: new Date(updates.cutoffDate as string | Date) }
+        : {}),
       updatedAt: new Date(),
     };
 
