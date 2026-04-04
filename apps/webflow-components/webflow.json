@@ -1,0 +1,7 @@
+{
+  "library": {
+    "name": "Maple & Spruce Components",
+    "components": ["src/**/*.webflow.tsx"]
+  },
+  "globals": "./globals.ts"
+}
