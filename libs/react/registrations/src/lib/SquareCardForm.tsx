@@ -14,7 +14,7 @@ interface SquarePayments {
 }
 
 interface SquareCard {
-  attach: (selector: string) => Promise<void>;
+  attach: (selectorOrElement: string | HTMLElement) => Promise<void>;
   tokenize: () => Promise<SquareTokenizeResult>;
   destroy: () => Promise<void>;
 }
@@ -112,7 +112,14 @@ export function SquareCardForm({
         locationId
       );
       const card = await payments.card();
-      await card.attach('#square-card-container');
+      // Use the ref element directly instead of a CSS selector.
+      // CSS selectors use document.getElementById which doesn't
+      // search inside Shadow DOM (used by Webflow Code Components).
+      const container = containerRef.current;
+      if (!container) {
+        throw new Error('Card container element not found');
+      }
+      await card.attach(container);
 
       cardRef.current = card;
       setIsLoading(false);
