@@ -1,0 +1,18 @@
+{
+  "library": {
+    "name": "Maple & Spruce Components",
+    "components": [
+      "src/**/*.webflow.tsx"
+    ],
+    "description": "",
+    "id": "maple-spruce-components"
+  },
+  "globals": "./globals.ts",
+  "telemetry": {
+    "global": {
+      "allowTelemetry": true,
+      "lastPrompted": 1775271421230,
+      "version": "1.13.0"
+    }
+  }
+}
