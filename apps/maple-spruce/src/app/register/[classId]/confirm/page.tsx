@@ -7,12 +7,22 @@ import {
   Container,
   Paper,
   Button,
+  Divider,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 export default function RegistrationConfirmPage() {
   const searchParams = useSearchParams();
   const confirmationNumber = searchParams.get('confirmation') ?? '';
+  const customerName = searchParams.get('name') ?? '';
+  const className = searchParams.get('className') ?? '';
+  const amountCents = Number(searchParams.get('amount') ?? '0');
+  const quantity = Number(searchParams.get('qty') ?? '1');
+
+  const amountFormatted =
+    amountCents > 0
+      ? `$${(amountCents / 100).toFixed(2)}`
+      : 'Free';
 
   return (
     <Box
@@ -33,13 +43,28 @@ export default function RegistrationConfirmPage() {
           />
 
           <Typography variant="h4" component="h1" gutterBottom>
-            Registration Confirmed!
+            You&apos;re Registered!
           </Typography>
 
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            You're all set. A confirmation email has been sent to your email
-            address.
-          </Typography>
+          {customerName && (
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Thanks, {customerName}! Your spot is reserved.
+            </Typography>
+          )}
+
+          {className && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                {className}
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                {quantity > 1 ? `${quantity} spots` : '1 spot'} &middot;{' '}
+                {amountFormatted}
+              </Typography>
+            </Box>
+          )}
+
+          <Divider sx={{ my: 2 }} />
 
           {confirmationNumber && (
             <Box
@@ -50,44 +75,34 @@ export default function RegistrationConfirmPage() {
                 mb: 3,
               }}
             >
-              <Typography variant="subtitle2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary">
                 Confirmation Number
               </Typography>
               <Typography
-                variant="h5"
+                variant="body1"
                 fontFamily="monospace"
                 fontWeight={600}
               >
                 {confirmationNumber}
               </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                display="block"
-                sx={{ mt: 0.5 }}
-              >
-                Please save this number for your records
-              </Typography>
             </Box>
           )}
 
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            If you have any questions, please contact us at{' '}
+            Questions? Contact us at{' '}
             <Typography
-              component="span"
+              component="a"
+              href="mailto:katie@mapleandsprucefolkarts.com"
               variant="body2"
               color="primary"
               fontWeight={500}
+              sx={{ textDecoration: 'none' }}
             >
-              info@mapleandspruce.com
+              katie@mapleandsprucefolkarts.com
             </Typography>
           </Typography>
 
-          <Button
-            variant="contained"
-            href="/register"
-            size="large"
-          >
+          <Button variant="contained" href="/register" size="large">
             Browse More Classes
           </Button>
         </Paper>

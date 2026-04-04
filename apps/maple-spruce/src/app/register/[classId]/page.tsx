@@ -135,12 +135,22 @@ export default function RegisterClassPage() {
   );
 
   const handleSuccess = useCallback(
-    (confirmationNumber: string) => {
-      router.push(
-        `/register/${classId}/confirm?confirmation=${encodeURIComponent(confirmationNumber)}`
-      );
+    (details: {
+      confirmationNumber: string;
+      customerName: string;
+      pricePaidCents: number;
+      quantity: number;
+    }) => {
+      const params = new URLSearchParams({
+        confirmation: details.confirmationNumber,
+        name: details.customerName,
+        amount: String(details.pricePaidCents),
+        qty: String(details.quantity),
+        className: publicClass?.name ?? '',
+      });
+      router.push(`/register/${classId}/confirm?${params.toString()}`);
     },
-    [router, classId]
+    [router, classId, publicClass?.name]
   );
 
   const squareApplicationId =

@@ -36,7 +36,12 @@ interface RegistrationCheckoutFormProps {
     notes?: string;
     paymentNonce: string;
   }) => Promise<CreateRegistrationResponse>;
-  onSuccess: (confirmationNumber: string) => void;
+  onSuccess: (details: {
+    confirmationNumber: string;
+    customerName: string;
+    pricePaidCents: number;
+    quantity: number;
+  }) => void;
 }
 
 export function RegistrationCheckoutForm({
@@ -145,7 +150,12 @@ export function RegistrationCheckoutForm({
         paymentNonce: nonce,
       });
 
-      onSuccess(result.confirmationNumber);
+      onSuccess({
+        confirmationNumber: result.confirmationNumber,
+        customerName: customerName.trim(),
+        pricePaidCents: result.registration.pricePaidCents,
+        quantity,
+      });
     } catch (error) {
       setSubmitError(
         error instanceof Error
