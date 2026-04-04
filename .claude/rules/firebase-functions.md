@@ -65,14 +65,19 @@ Functions.endpoint
 
 ## Testing
 
-- Cloud Functions CAN be unit tested
-- Use `vi.mock()` to mock repositories and external services
-- See ADR-017 for patterns
+**Unit tests**: Use `vi.mock()` to mock repositories and external services. See ADR-017 for patterns.
+
+**Integration tests**: Use `apps/functions-integration-tests/` to test functions against real Firebase emulators (auth, firestore, functions). Integration tests do NOT use mocks — they seed data via the emulator REST API and call functions over HTTP. See ADR-027.
+
+- Test utilities: `src/utils/` (auth-helper, firestore-helper, http-client, emulator-config)
+- Fixtures: `src/fixtures/` (reusable test data seeded into emulator)
+- Run: `pnpm exec nx run functions-integration-tests:test-with-emulators`
 
 ## CI/CD Notes
 
 - CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
 - Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
+- Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds functions, creates a minimal `.env`, and runs `firebase emulators:exec`.
 
 ## After Changes
 

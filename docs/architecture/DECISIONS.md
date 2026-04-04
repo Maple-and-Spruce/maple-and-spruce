@@ -1095,6 +1095,36 @@ Additionally, per-function runtime options (`minInstances`, `concurrency`, `memo
 
 ---
 
+## ADR-027: Integration Testing with Firebase Emulators
+
+**Status:** Accepted
+**Date:** 2026-03-30
+
+### Context
+Unit tests mock repositories and external services (ADR-017), which validates business logic in isolation but misses integration issues. We discovered two bugs that only manifest when functions run against real Firebase services: `preferRest: true` breaks Firestore in the emulator (REST transport tries OAuth), and a blanket `path-to-regexp` override prevents Express 4 from starting in the functions emulator. These classes of bugs cannot be caught by mocked unit tests.
+
+### Decision
+Create a dedicated Nx app (`apps/functions-integration-tests/`) that tests Cloud Functions against the Firebase local emulator suite (auth, firestore, functions). Tests use Vitest with `globals: true`, run sequentially against shared emulator state, and are excluded from the root `vitest run` used for unit tests. CI runs them in a separate job with Java 21 (required by the Firestore emulator).
+
+### Rationale
+- Catches config and integration bugs that mocked tests miss
+- Emulator REST APIs provide clean setup/teardown without SDK dependencies
+- Separate Nx app keeps integration tests isolated from fast unit test feedback loop
+- Modeled after the Mountain Sol platform's proven integration test setup
+
+### Alternatives Considered
+- **Unit tests only**: Faster but missed real integration bugs (preferRest, path-to-regexp)
+- **E2E tests on staging**: Slower, costs money, flaky due to network
+- **Firebase Test SDK (`@firebase/rules-unit-testing`)**: Only tests security rules, not Cloud Function logic
+
+### Consequences
+- CI pipeline gains an additional job (~1-2 min with emulator startup)
+- Developers need Java installed locally to run integration tests
+- New test fixtures must be maintained alongside domain type changes
+- `firebase.json` now configures auth (9099) and firestore (8080) emulator ports
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1118,4 +1148,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-03-24 (ADR-026 added for Firebase codebases split)*
+*Last updated: 2026-03-30 (ADR-027 added for integration testing with Firebase emulators)*

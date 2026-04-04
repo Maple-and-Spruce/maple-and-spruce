@@ -57,6 +57,23 @@ See `libs/firebase/functions/src/lib/environment.utility.ts` for full documentat
 | Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
 | Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
 
+## Firebase Emulators (Integration Tests)
+
+Integration tests run against the Firebase local emulator suite. Emulator ports are configured in `firebase.json`:
+
+| Emulator | Port | Purpose |
+|----------|------|---------|
+| Auth | 9099 | User creation, sign-in, ID tokens |
+| Firestore | 8080 | Document reads/writes |
+| Functions | 5001 | Cloud Function execution |
+| Emulator UI | 4000 | Web dashboard |
+
+**Prerequisites**: Java 21+ (required by Firestore emulator)
+
+**Key configuration**: `libs/firebase/database/src/lib/utilities/database.config.ts` sets `preferRest: !useEmulator`. The Firestore REST transport tries OAuth authentication which fails against the emulator — gRPC (the default when `preferRest` is false) works correctly with the emulator.
+
+The `FIRESTORE_EMULATOR_HOST` and `FIREBASE_AUTH_EMULATOR_HOST` environment variables are set automatically by `firebase emulators:exec`. The `firebase-admin` SDK detects these and routes traffic to the local emulators instead of production.
+
 ## Never Commit
 
 - Firebase service account keys

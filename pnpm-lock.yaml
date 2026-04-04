@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  path-to-regexp@>=2: '>=8.4.0'
   lodash: '>=4.18.0'
   axios: '>=1.13.5'
   koa: '>=3.1.2'
@@ -9098,9 +9099,6 @@ packages:
 
   path-to-regexp@1.9.0:
     resolution: {integrity: sha512-xIp7/apCFJuUHdDLWe8O1HIkb0kQrOMb/0u6FXQjemHn/ii5LrIzU6bdECnsiTF/GjZkMEKg1xdiZwNqDYlZ6g==}
-
-  path-to-regexp@3.3.0:
-    resolution: {integrity: sha512-qyCH421YQPS2WFDxDjftfc1ZR5WKQzVzqsp4n9M2kQhVOo/ByahFoUNJfl58kOcEGfQ//7weFTDhm+ss8Ecxgw==}
 
   path-to-regexp@8.4.0:
     resolution: {integrity: sha512-PuseHIvAnz3bjrM2rGJtSgo1zjgxapTLZ7x2pjhzWwlp4SJQgK3f3iZIQwkpEnBaKz6seKBADpM4B4ySkuYypg==}
@@ -22239,8 +22237,6 @@ snapshots:
     dependencies:
       isarray: 0.0.1
 
-  path-to-regexp@3.3.0: {}
-
   path-to-regexp@8.4.0: {}
 
   path-type@4.0.0: {}
@@ -23329,7 +23325,7 @@ snapshots:
       mime-types: 2.1.18
       minimatch: 3.1.5
       path-is-inside: 1.0.2
-      path-to-regexp: 3.3.0
+      path-to-regexp: 8.4.0
       range-parser: 1.2.0
 
   serve-index@1.9.2:

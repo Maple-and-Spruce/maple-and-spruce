@@ -241,6 +241,12 @@ Square foundation is complete. Ready for Product Management integration.
 | Validation unit tests | Complete | 7 test files, 139 tests |
 | Domain unit tests | Complete | `product.spec.ts`, 25 tests |
 | Unit tests in CI | Complete | Added to `.github/workflows/build-check.yml` |
+| Integration test app | Complete | `apps/functions-integration-tests/` (ADR-027) |
+| Integration test utilities | Complete | Auth, Firestore, HTTP client helpers for emulator |
+| calculateRegistrationCost tests | Complete | 24 tests covering all discount types, validation, eligibility |
+| Artist CRUD starter tests | Complete | Auth guards + CRUD lifecycle |
+| Integration tests in CI | Complete | Separate job with Java 21 + Firebase emulators |
+| Firebase emulator config | Complete | Auth (9099), Firestore (8080) added to `firebase.json` |
 | Vercel deployment | Pending | `storybook.maple-and-spruce.com` |
 | Chromatic project token | Pending | Add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets |
 
