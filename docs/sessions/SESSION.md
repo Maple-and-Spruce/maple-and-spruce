@@ -6,62 +6,92 @@
 
 ## Current Status
 
-**Date**: 2026-03-23
-**Status**: Calendar system complete, Webflow customer interaction phasing underway
+**Date**: 2026-04-03
+**Status**: Webflow registration widget working end-to-end, CMS pipeline next
 
-### Current Focus: Phased Webflow Customer Interactions
+### Current Focus: Class Registration on Webflow
 
-The Webflow site is live and published. Facebook/Instagram ads are running. The focus has shifted to phased integration of customer-facing interactions on the Webflow site.
+Registration + payment is working on the Webflow public site via a React Code Component embedded in Shadow DOM. Test page live at `mapleandsprucefolkarts.com/test-class-enrollment` with a hardcoded class ID.
 
-**Phase sequence:**
-1. **Epic A: Artists on Webflow** ([#161](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/161)) — Not Started
-2. **Epic B: Class Browsing on Webflow** ([#162](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/162)) — Not Started
-3. **Epic C: Payment & Registration Testing** ([#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163)) — Not Started
-4. **Epic D: Class Registration with Payment** ([#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164)) — Not Started
+**Next steps to make it real:**
+1. Build Classes CMS collection in Webflow (#139) — needs `firebase-id` field
+2. Build syncClassToWebflow Cloud Function (#140, #141)
+3. Build Classes listing page and detail template in Webflow (#144, #145)
+4. Bind registration component's `classId` prop to CMS `firebase-id` field (#202)
 
-**Key decisions:**
-- Test against dev CMS collections before production
-- No payment integration until backend testing is complete
-- Music lessons use Tally forms for initial inquiries (#10 updated)
+### Open PRs
 
-### Recently Completed: Calendar System (Phase 4.5)
+| PR | Branch | Status | Description |
+|----|--------|--------|-------------|
+| #201 | `feature/200-webflow-registration-widget` | Open | Webflow Code Component + Shadow DOM fixes |
+| #194 | `fix/registration-confirmation-improvements` | Open | Confirmation page improvements |
+| (needs PR) | `feature/190-registration-lookup` | Pushed, no PR | Backend for customer self-service lookup + cancel |
 
-All 3 PRs merged:
-- **PR #160** (#157): CalendarEvent domain, CRUD functions, admin UI
-- **PR #166** (#158): ICS feeds, onClassWrite trigger, hosting rewrites
+### Completed This Session (2026-04-03)
 
-Public calendar display uses Open Web Calendar (self-hosted on Vercel) embedded in Webflow via iframe. See ADR-025.
+- **PR #188** (merged): Fixed Firestore Timestamp storage bug — dates were stored as strings, broke `getPublicClasses` query
+- **Firestore index**: Added composite index for `classes` (status + dateTime)
+- **Square env vars**: Configured `NEXT_PUBLIC_SQUARE_*` on Vercel dev, registration payment flow working
+- **Webflow Code Component** (PR #201):
+  - Created `apps/webflow-components/` with `@webflow/react` Code Components
+  - Solved Shadow DOM + MUI styling via `@webflow/emotion-utils` decorator
+  - Solved Shadow DOM + Square SDK — card form mounts outside Shadow DOM as sibling
+  - Submit button portaled to external container with inline brand styles
+  - Published to Katie's Workspace, tested end-to-end on Webflow
+- **Backend: Self-service endpoints** (branch `feature/190-registration-lookup`):
+  - `lookupRegistration` Cloud Function (public, confirmation number + email)
+  - `cancelRegistrationPublic` Cloud Function (public, with Square refund + 48hr cutoff)
+  - Added `confirmationNumber` to Registration domain type + repository
+- **Confirmation page** (PR #194): Shows class name, amount, customer name; updated contact email
+- **GitHub Issues Created**: #189-202 covering self-service, email infra, Apple/Google Pay, Webflow CMS pipeline
 
-### Next Steps
+### Key Decisions Made
 
-1. Begin Epic A: Artists on Webflow (#161)
-2. Fix Artists page 404 (#114) + add real artist profiles
-3. Post-launch quality improvements (#114-#122)
-4. Phase 4 - Music Lessons backend (Tally forms for initial inquiries)
+- **Webflow Code Components** (not script tag embed) for React integration — official support, Shadow DOM isolation, designer-configurable props
+- **CMS-powered class browsing** with React component only for the interactive registration/payment — hybrid approach
+- **Registration lives on Webflow**, not admin app — customers never touch the admin site
+- **Square SDK + Shadow DOM workaround**: Card container mounted outside Shadow DOM as sibling element
 
-### GitHub Issues
+### GitHub Issues — Registration Pipeline
 
-**Webflow Customer Interactions:**
-- #161 (Artists on Webflow) — not started
-- #162 (Class Browsing on Webflow) — not started
-- #163 (Payment & Registration Testing) — not started
-- #164 (Class Registration with Payment) — not started
+**Webflow CMS Pipeline (next up):**
+- #139 — Create Classes CMS collection in Webflow
+- #140 — Build ClassService for Webflow CMS sync
+- #141 — Build syncClassToWebflow Cloud Function
+- #142 — Configure WEBFLOW_CLASSES_COLLECTION_ID secret
+- #143 — Sync registration count changes to Webflow CMS
+- #144 — Build Classes listing page in Webflow
+- #145 — Build Class detail template page in Webflow
+- #202 — Embed registration component on class detail page
 
-**Calendar System (Complete):**
-- Epic: #156 (Public Calendar System)
-- #157 (Domain + Admin CRUD) — Merged (PR #160)
-- #158 (ICS Feeds + Trigger) — Merged (PR #166)
-- #159 (Public Calendar Page) — Open Web Calendar on Vercel + VTIMEZONE fix PR
+**Customer Self-Service:**
+- #189 — Epic: Customer Self-Service
+- #190 — Registration lookup page + endpoint
+- #191 — Self-service cancellation + refund
+- #192 — Capture Square receipt URL
+- #199 — Frontend lookup/cancellation page
 
-### Environment Variables Needed for Registration
+**Email:**
+- #195 — Install Firebase Trigger Email extension
+- #196 — Configure Amazon SES
+- #197 — Email templates
 
-| Variable | Purpose |
-|----------|---------|
-| `NEXT_PUBLIC_SQUARE_APPLICATION_ID` | Square app ID for Web Payments SDK |
-| `NEXT_PUBLIC_SQUARE_LOCATION_ID` | Square location for Web Payments SDK |
+**Payments:**
+- #198 — Apple Pay + Google Pay
+
+**Webflow Epic:**
+- #200 — Epic: Webflow Class Registration Integration
 
 ### Blockers
 - None currently
+
+### Webflow Component Publishing
+
+To republish the Code Component after changes:
+```bash
+npx webflow library share --manifest apps/webflow-components/webflow.json --skip-update-check
+```
+Requires `WEBFLOW_WORKSPACE_API_TOKEN` in root `.env` (gitignored). Token generated from Webflow Dashboard → Apps & Integrations → Manage → Generate API Token (Code components: Read and write).
 
 ---
 
@@ -72,6 +102,7 @@ Public calendar display uses Open Web Calendar (self-hosted on Vercel) embedded 
 |-------------|---------|------------------|--------|
 | Production | business.mapleandsprucefolkarts.com | `maple-and-spruce` | Production API |
 | Development | business-dev.mapleandsprucefolkarts.com | `maple-and-spruce-dev` | Sandbox API |
+| Webflow (public) | mapleandsprucefolkarts.com | Both (via `env` prop) | Both (via `squareAppId` prop) |
 
 ### Test Commands
 ```bash
@@ -99,4 +130,4 @@ See `history/` folder for detailed session logs:
 
 ---
 
-*Last updated: 2026-03-23*
+*Last updated: 2026-04-03*

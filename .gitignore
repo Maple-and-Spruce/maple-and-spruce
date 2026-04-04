@@ -5,6 +5,9 @@ dist
 tmp
 out-tsc
 
+# Webflow CLI token
+apps/webflow-components/.env
+
 # dependencies
 node_modules
 
@@ -62,3 +65,6 @@ storybook-static
 vitest.config.*.timestamp*
 .claude/worktrees
 .claude/settings.local.json
+
+# Webflow CLI token (auto-generated)
+.env

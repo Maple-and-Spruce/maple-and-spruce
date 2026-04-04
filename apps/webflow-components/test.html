@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Registration Widget Test — Shadow DOM + External Card</title>
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.5rem; }
+    .shadow-host { border: 2px dashed #ccc; padding: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Test: Square Card Outside Shadow DOM, Positioned After Host</h1>
+
+  <p>This simulates the Webflow Code Component approach: the form is inside
+     Shadow DOM, but the Square card container is inserted as a sibling
+     after the shadow host element.</p>
+
+  <div id="shadow-host" class="shadow-host"></div>
+
+  <script>
+    // Create shadow DOM (like Webflow Code Components do)
+    const host = document.getElementById('shadow-host');
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    // Simulated component content inside Shadow DOM
+    const formContent = document.createElement('div');
+    formContent.innerHTML = `
+      <h3 style="font-family: system-ui">Register for Class</h3>
+      <p style="font-family: system-ui; color: #666">Form fields would go here...</p>
+      <p style="font-family: system-ui; font-weight: bold">Payment</p>
+      <p style="font-family: system-ui; color: #888; font-size: 14px" id="status">Loading Square SDK...</p>
+    `;
+    shadow.appendChild(formContent);
+
+    // The card container goes OUTSIDE the shadow DOM, as a sibling after the host
+    const cardContainer = document.createElement('div');
+    cardContainer.style.cssText = 'min-height: 56px; border: 1px solid #e0e0e0; border-radius: 4px; padding: 8px; margin: 0 20px 20px 20px; box-sizing: border-box;';
+    host.parentElement.insertBefore(cardContainer, host.nextSibling);
+
+    const status = shadow.getElementById('status');
+
+    // Load Square SDK
+    const script = document.createElement('script');
+    script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+    script.onload = async () => {
+      status.textContent = 'Initializing card...';
+      try {
+        const payments = await window.Square.payments(
+          'sandbox-sq0idb-gAg2gnLYZ-5b2uXajUfZLA',
+          'LW0MMBZ5721QY'
+        );
+        const card = await payments.card();
+        await card.attach(cardContainer);
+        status.textContent = '✅ Card attached outside Shadow DOM, positioned as sibling!';
+      } catch (err) {
+        status.textContent = '❌ Failed: ' + err.message;
+      }
+    };
+    document.head.appendChild(script);
+  </script>
+</body>
+</html>
