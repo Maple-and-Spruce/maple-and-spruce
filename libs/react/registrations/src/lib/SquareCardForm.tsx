@@ -107,19 +107,30 @@ export function SquareCardForm({
         throw new Error('Square SDK not loaded');
       }
 
+      // Wait for the container ref to be attached to the DOM.
+      // This handles the case where Square SDK is already loaded
+      // and initializeCard fires before React has rendered the container.
+      let container = containerRef.current;
+      if (!container) {
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (containerRef.current) {
+              container = containerRef.current;
+              resolve();
+            } else {
+              requestAnimationFrame(check);
+            }
+          };
+          requestAnimationFrame(check);
+        });
+      }
+
       const payments = await window.Square.payments(
         applicationId,
         locationId
       );
       const card = await payments.card();
-      // Use the ref element directly instead of a CSS selector.
-      // CSS selectors use document.getElementById which doesn't
-      // search inside Shadow DOM (used by Webflow Code Components).
-      const container = containerRef.current;
-      if (!container) {
-        throw new Error('Card container element not found');
-      }
-      await card.attach(container);
+      await card.attach(container!);
 
       cardRef.current = card;
       setIsLoading(false);
