@@ -52,7 +52,7 @@ describe('Artist Functions', () => {
         functionName: 'createArtist',
         data: SAMPLE_ARTIST,
       });
-      expect(result.status).toBe(403);
+      expect(result.status).toBe(401);
     });
 
     it('should reject non-admin users', async () => {
