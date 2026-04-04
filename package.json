@@ -97,11 +97,13 @@
   "pnpm": {
     "overrides": {
       "lodash": ">=4.18.0",
-      "axios": ">=1.13.5"
+      "axios": ">=1.13.5",
+      "koa": ">=3.1.2"
     },
     "overridesComments": {
       "lodash": "GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.",
-      "axios": "GHSA-43fc-jf86-j433: DoS via __proto__ key in mergeConfig. Transitive dep of nx@22.6.4. Added 2026-04-01."
+      "axios": "GHSA-43fc-jf86-j433: DoS via __proto__ key in mergeConfig. Transitive dep of nx@22.6.4. Added 2026-04-01.",
+      "koa": "GHSA-7gcc-r8m5-44qm: Host Header Injection via ctx.hostname. Transitive dep of @webflow/webflow-cli > @module-federation/dts-plugin. Added 2026-04-04."
     }
   }
 }
