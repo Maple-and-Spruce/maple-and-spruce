@@ -174,7 +174,7 @@ export function RegistrationWidget({
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ maxWidth: 700, mx: 'auto', py: 2 }}>
+      <Box sx={{ width: '100%' }}>
         {state.status === 'loading' && (
           <Box
             sx={{

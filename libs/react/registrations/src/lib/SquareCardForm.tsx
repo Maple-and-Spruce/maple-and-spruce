@@ -172,19 +172,14 @@ export function SquareCardForm({
         // Match the shadow host's padding and width so the card + button
         // appear as a seamless continuation of the form inside Shadow DOM.
         const shadowHost = findShadowHost(placeholder);
-        const hostStyles = shadowHost
-          ? getComputedStyle(shadowHost)
-          : null;
 
-        // Create wrapper that visually continues the form layout
+        // Create wrapper that visually continues the form layout.
+        // Width is inherited from the same parent container that
+        // holds the shadow host, so Webflow controls the sizing.
         const wrapper = document.createElement('div');
         wrapper.style.cssText = [
-          `max-width: ${hostStyles?.width ?? '100%'}`,
-          `padding-left: ${hostStyles?.paddingLeft ?? '0px'}`,
-          `padding-right: ${hostStyles?.paddingRight ?? '0px'}`,
+          'width: 100%',
           'box-sizing: border-box',
-          // Negative margin to close the gap between shadow host and this wrapper
-          'margin-top: -8px',
         ].join('; ');
         wrapperRef.current = wrapper;
 
