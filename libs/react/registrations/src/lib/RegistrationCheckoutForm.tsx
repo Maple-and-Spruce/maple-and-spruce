@@ -277,27 +277,27 @@ export function RegistrationCheckoutForm({
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
           }}
+          afterCardContent={
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isCardReady}
+              fullWidth
+              sx={{ py: 1.5 }}
+            >
+              {isSubmitting ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} color="inherit" />
+                  Processing...
+                </Box>
+              ) : (
+                `Register & Pay ${costBreakdown ? `$${(costBreakdown.finalCostCents / 100).toFixed(2)}` : ''}`
+              )}
+            </Button>
+          }
         />
       </Box>
-
-      {/* Submit Button */}
-      <Button
-        variant="contained"
-        size="large"
-        onClick={handleSubmit}
-        disabled={isSubmitting || !isCardReady}
-        fullWidth
-        sx={{ py: 1.5 }}
-      >
-        {isSubmitting ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CircularProgress size={20} color="inherit" />
-            Processing...
-          </Box>
-        ) : (
-          `Register & Pay ${costBreakdown ? `$${(costBreakdown.finalCostCents / 100).toFixed(2)}` : ''}`
-        )}
-      </Button>
     </Box>
   );
 }

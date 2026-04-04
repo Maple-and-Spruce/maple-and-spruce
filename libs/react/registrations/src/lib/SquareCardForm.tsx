@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 
 /**
  * Square Web Payments SDK types (subset needed for card payment)
- *
- * The full SDK loads via script tag; these types are declared locally
- * to avoid a separate package dependency.
  */
 interface SquarePayments {
   card: () => Promise<SquareCard>;
@@ -43,6 +41,13 @@ interface SquareCardFormProps {
   onReady?: () => void;
   /** Ref function to expose tokenize to parent */
   onTokenizeRef: (tokenize: () => Promise<string>) => void;
+  /**
+   * Optional content to render after the card form.
+   * When in Shadow DOM, this content is portaled to the external
+   * container so it appears visually after the card input.
+   * Use this for the submit button.
+   */
+  afterCardContent?: React.ReactNode;
 }
 
 /**
@@ -58,41 +63,54 @@ function isInShadowDom(el: HTMLElement): boolean {
 }
 
 /**
+ * Find the Shadow DOM host element for a given node.
+ */
+function findShadowHost(el: HTMLElement): Element | null {
+  let node: Node | null = el;
+  while (node) {
+    if (node instanceof ShadowRoot) return node.host;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+/**
  * Square Card Form component
  *
  * Wraps the Square Web Payments SDK to provide a secure card input field.
- * Loads the Square script, initializes the card element, and exposes
- * a tokenize function to the parent via onTokenizeRef.
  *
- * Handles Shadow DOM: Square SDK cannot attach inside Shadow DOM,
- * so when running inside one (e.g. Webflow Code Components), the card
- * container is created in the regular DOM and positioned to overlay
- * a placeholder element inside the Shadow DOM.
- *
- * @see https://developer.squareup.com/docs/web-payments/take-card-payment
+ * Shadow DOM handling: Square SDK cannot render inside Shadow DOM,
+ * so when detected (e.g. Webflow Code Components), the card container
+ * and any afterCardContent are rendered in the regular DOM as a sibling
+ * after the Shadow DOM host element.
  */
 export function SquareCardForm({
   applicationId,
   locationId,
   onReady,
   onTokenizeRef,
+  afterCardContent,
 }: SquareCardFormProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
+    null
+  );
   const cardRef = useRef<SquareCard | null>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
-  const externalContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardContainerRef = useRef<HTMLDivElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const initializedRef = useRef(false);
 
-  // Clean up external container on unmount
+  // Clean up external elements on unmount
   useEffect(() => {
     return () => {
       if (cardRef.current) {
         cardRef.current.destroy().catch(console.error);
       }
-      if (externalContainerRef.current) {
-        externalContainerRef.current.remove();
-        externalContainerRef.current = null;
+      if (wrapperRef.current) {
+        wrapperRef.current.remove();
+        wrapperRef.current = null;
       }
     };
   }, []);
@@ -109,7 +127,6 @@ export function SquareCardForm({
       ? 'https://sandbox.web.squarecdn.com/v1/square.js'
       : 'https://web.squarecdn.com/v1/square.js';
 
-    // Check if script is already loaded
     if (window.Square) {
       initializeCard();
       return;
@@ -148,35 +165,45 @@ export function SquareCardForm({
         });
       }
 
-      // Determine the attach target. Square SDK cannot render inside
-      // Shadow DOM, so if we detect we're in one, create an external
-      // container in the regular DOM positioned over the placeholder.
       let attachTarget: HTMLElement;
 
       if (placeholder && isInShadowDom(placeholder)) {
-        // Create an external container in the regular DOM
-        const external = document.createElement('div');
-        external.style.cssText =
-          'min-height: 56px; border: 1px solid #e0e0e0; border-radius: 4px; padding: 8px; box-sizing: border-box;';
-        externalContainerRef.current = external;
+        // Shadow DOM mode: create external wrapper with card + portal for afterCardContent
+        const shadowHost = findShadowHost(placeholder);
 
-        // Insert the external container right after the Shadow DOM host
-        // so it appears visually in the right place
-        let host: Element | null = placeholder;
-        while (host && !(host instanceof ShadowRoot)) {
-          host = host.parentNode as Element;
-        }
-        const shadowHost = (host as ShadowRoot | null)?.host;
+        // Get computed width from the shadow host for matching layout
+        const hostWidth = shadowHost
+          ? getComputedStyle(shadowHost).width
+          : '100%';
+
+        // Create wrapper that holds card + afterCardContent
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `max-width: ${hostWidth}; box-sizing: border-box;`;
+        wrapperRef.current = wrapper;
+
+        // Card container
+        const cardContainer = document.createElement('div');
+        cardContainer.style.cssText =
+          'min-height: 56px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; box-sizing: border-box; margin-bottom: 24px;';
+        cardContainerRef.current = cardContainer;
+        wrapper.appendChild(cardContainer);
+
+        // Portal target for afterCardContent (submit button, etc.)
+        const portalTarget = document.createElement('div');
+        wrapper.appendChild(portalTarget);
+        setPortalContainer(portalTarget);
+
+        // Insert after shadow host
         if (shadowHost?.parentElement) {
           shadowHost.parentElement.insertBefore(
-            external,
+            wrapper,
             shadowHost.nextSibling
           );
         } else {
-          document.body.appendChild(external);
+          document.body.appendChild(wrapper);
         }
 
-        attachTarget = external;
+        attachTarget = cardContainer;
       } else {
         // Normal DOM — attach directly to the placeholder
         attachTarget = placeholder!;
@@ -192,7 +219,6 @@ export function SquareCardForm({
       cardRef.current = card;
       setIsLoading(false);
 
-      // Expose tokenize function to parent
       onTokenizeRef(async () => {
         if (!cardRef.current) {
           throw new Error('Card form not initialized');
@@ -213,7 +239,9 @@ export function SquareCardForm({
       onReady?.();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to initialize payment form';
+        err instanceof Error
+          ? err.message
+          : 'Failed to initialize payment form';
       setError(message);
       setIsLoading(false);
     }
@@ -247,17 +275,26 @@ export function SquareCardForm({
         </Box>
       )}
 
+      {/* In normal DOM this is the card container; in Shadow DOM it's a hidden placeholder */}
       <Box
         ref={placeholderRef}
         id="square-card-container"
         sx={{
-          minHeight: externalContainerRef.current ? 0 : 56,
-          border: isLoading || externalContainerRef.current ? 'none' : 1,
+          minHeight: portalContainer ? 0 : 56,
+          border: isLoading || portalContainer ? 'none' : 1,
           borderColor: 'divider',
           borderRadius: 1,
-          p: isLoading || externalContainerRef.current ? 0 : 1,
+          p: isLoading || portalContainer ? 0 : 1,
         }}
       />
+
+      {/* In normal DOM, afterCardContent renders here inline */}
+      {!portalContainer && afterCardContent}
+
+      {/* In Shadow DOM, afterCardContent is portaled to the external container */}
+      {portalContainer && afterCardContent
+        ? createPortal(afterCardContent, portalContainer)
+        : null}
     </Box>
   );
 }
