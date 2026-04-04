@@ -87,6 +87,38 @@ export interface CalculateRegistrationCostResponse {
 }
 
 // ============================================================================
+// Lookup Registration by Confirmation Number (Public)
+// ============================================================================
+
+export interface LookupRegistrationRequest {
+  confirmationNumber: string;
+  customerEmail: string;
+}
+
+export interface LookupRegistrationResponse {
+  registration: Registration;
+  className: string;
+  classDate: string;
+  classLocation: string;
+}
+
+// ============================================================================
+// Cancel Registration (Public - customer self-service)
+// ============================================================================
+
+export interface CancelRegistrationPublicRequest {
+  confirmationNumber: string;
+  customerEmail: string;
+  reason?: string;
+}
+
+export interface CancelRegistrationPublicResponse {
+  registration: Registration;
+  refundAmountCents: number;
+  refundId?: string;
+}
+
+// ============================================================================
 // Create Registration (Public - with payment)
 // ============================================================================
 

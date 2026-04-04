@@ -37,6 +37,7 @@ function docToRegistration(
     squareOrderId: data.squareOrderId,
     discountCode: data.discountCode,
     discountAmountCents: data.discountAmountCents,
+    confirmationNumber: data.confirmationNumber,
     status: data.status as RegistrationStatus,
     notes: data.notes,
     confirmationSentAt: data.confirmationSentAt
@@ -95,6 +96,25 @@ export const RegistrationRepository = {
   async findById(id: string): Promise<Registration | undefined> {
     const doc = await db.collection(COLLECTION).doc(id).get();
     return docToRegistration(doc);
+  },
+
+  /**
+   * Find a registration by confirmation number
+   */
+  async findByConfirmationNumber(
+    confirmationNumber: string
+  ): Promise<Registration | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('confirmationNumber', '==', confirmationNumber.toUpperCase())
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return undefined;
+    }
+
+    return docToRegistration(snapshot.docs[0]);
   },
 
   /**

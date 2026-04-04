@@ -179,6 +179,12 @@
       "@maple/firebase/maple-functions/cancel-registration": [
         "libs/firebase/maple-functions/cancel-registration/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/cancel-registration-public": [
+        "libs/firebase/maple-functions/cancel-registration-public/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/lookup-registration": [
+        "libs/firebase/maple-functions/lookup-registration/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-public-class": [
         "libs/firebase/maple-functions/get-public-class/src/index.ts"
       ],

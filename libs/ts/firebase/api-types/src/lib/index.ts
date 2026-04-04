@@ -225,6 +225,10 @@ export type {
   CancelRegistrationResponse,
   CalculateRegistrationCostRequest,
   CalculateRegistrationCostResponse,
+  LookupRegistrationRequest,
+  LookupRegistrationResponse,
+  CancelRegistrationPublicRequest,
+  CancelRegistrationPublicResponse,
   CreateRegistrationRequest,
   CreateRegistrationResponse,
 } from './registration.types';

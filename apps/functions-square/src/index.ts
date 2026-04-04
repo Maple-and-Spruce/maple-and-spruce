@@ -23,6 +23,7 @@ export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
 // Registration operations (Square payments)
 export { createRegistration } from '@maple/firebase/maple-functions/create-registration';
 export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-registration';
+export { cancelRegistrationPublic } from '@maple/firebase/maple-functions/cancel-registration-public';
 
 // Sync conflict resolution (Square catalog comparison)
 export { detectSyncConflicts } from '@maple/firebase/maple-functions/detect-sync-conflicts';

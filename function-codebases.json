@@ -18,6 +18,7 @@
     "firebase-maple-functions-square-webhook": "maple-square",
     "firebase-maple-functions-create-registration": "maple-square",
     "firebase-maple-functions-cancel-registration": "maple-square",
+    "firebase-maple-functions-cancel-registration-public": "maple-square",
     "firebase-maple-functions-detect-sync-conflicts": "maple-square",
     "firebase-maple-functions-resolve-sync-conflict": "maple-square",
     "firebase-maple-functions-sync-artist-to-webflow": "maple-sync",

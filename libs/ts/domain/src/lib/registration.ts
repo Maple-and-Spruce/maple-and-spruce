@@ -42,6 +42,8 @@ export interface Registration {
   discountCode?: string;
   /** Discount amount in cents */
   discountAmountCents?: number;
+  /** Human-readable confirmation number (e.g. MS-HB978U) */
+  confirmationNumber?: string;
   /** Registration status */
   status: RegistrationStatus;
   /** Notes from customer (e.g., dietary restrictions, accessibility needs) */
