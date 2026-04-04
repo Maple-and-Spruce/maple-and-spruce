@@ -125,6 +125,8 @@ export const CalendarEventRepository = {
 
     const data = {
       ...input,
+      startDateTime: new Date(input.startDateTime),
+      endDateTime: new Date(input.endDateTime),
       createdAt: now,
       updatedAt: now,
     };
@@ -146,6 +148,8 @@ export const CalendarEventRepository = {
 
     const dataWithTimestamp = {
       ...updates,
+      ...(updates.startDateTime ? { startDateTime: new Date(updates.startDateTime) } : {}),
+      ...(updates.endDateTime ? { endDateTime: new Date(updates.endDateTime) } : {}),
       updatedAt: new Date(),
     };
 

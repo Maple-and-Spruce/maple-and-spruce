@@ -16,6 +16,9 @@ export {
 } from './lib/useCalendarEvents';
 export { useCalendarEmbedConfig } from './lib/useCalendarEmbedConfig';
 
+// Phase 5: Etsy Integration
+export { useEtsyConnection } from './lib/useEtsyConnection';
+
 // Phase 3c: Registration & Discounts
 export {
   useDiscounts,

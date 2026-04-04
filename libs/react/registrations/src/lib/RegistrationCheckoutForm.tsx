@@ -36,7 +36,12 @@ interface RegistrationCheckoutFormProps {
     notes?: string;
     paymentNonce: string;
   }) => Promise<CreateRegistrationResponse>;
-  onSuccess: (confirmationNumber: string) => void;
+  onSuccess: (details: {
+    confirmationNumber: string;
+    customerName: string;
+    pricePaidCents: number;
+    quantity: number;
+  }) => void;
 }
 
 export function RegistrationCheckoutForm({
@@ -145,7 +150,12 @@ export function RegistrationCheckoutForm({
         paymentNonce: nonce,
       });
 
-      onSuccess(result.confirmationNumber);
+      onSuccess({
+        confirmationNumber: result.confirmationNumber,
+        customerName: customerName.trim(),
+        pricePaidCents: result.registration.pricePaidCents,
+        quantity,
+      });
     } catch (error) {
       setSubmitError(
         error instanceof Error
@@ -277,27 +287,36 @@ export function RegistrationCheckoutForm({
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
           }}
+          afterCardContent={
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isCardReady}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                fontSize: '16px',
+                fontWeight: 600,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                color: '#D5D6C8',
+                backgroundColor:
+                  isSubmitting || !isCardReady ? '#8a7b6e' : '#4A3728',
+                border: 'none',
+                borderRadius: '8px',
+                cursor:
+                  isSubmitting || !isCardReady ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting || !isCardReady ? 0.7 : 1,
+                transition: 'background-color 0.2s, opacity 0.2s',
+                letterSpacing: '0.02em',
+              }}
+            >
+              {isSubmitting
+                ? 'Processing...'
+                : `Register & Pay ${costBreakdown ? `$${(costBreakdown.finalCostCents / 100).toFixed(2)}` : ''}`}
+            </button>
+          }
         />
       </Box>
-
-      {/* Submit Button */}
-      <Button
-        variant="contained"
-        size="large"
-        onClick={handleSubmit}
-        disabled={isSubmitting || !isCardReady}
-        fullWidth
-        sx={{ py: 1.5 }}
-      >
-        {isSubmitting ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CircularProgress size={20} color="inherit" />
-            Processing...
-          </Box>
-        ) : (
-          `Register & Pay ${costBreakdown ? `$${(costBreakdown.finalCostCents / 100).toFixed(2)}` : ''}`
-        )}
-      </Button>
     </Box>
   );
 }

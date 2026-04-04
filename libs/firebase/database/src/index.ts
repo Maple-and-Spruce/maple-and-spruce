@@ -28,3 +28,12 @@ export {
   type CalendarEventFilters,
 } from './lib/calendar-event.repository';
 export { CalendarEmbedConfigRepository } from './lib/calendar-embed-config.repository';
+
+// Phase 5: Etsy
+export {
+  FirestoreTokenStorage,
+  saveOAuthState,
+  consumeOAuthState,
+  updateTokenShopId,
+} from './lib/etsy-token.repository';
+export { EtsyTemplateRepository } from './lib/etsy-template.repository';

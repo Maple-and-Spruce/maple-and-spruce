@@ -123,14 +123,36 @@ Site is published and live with Facebook/Instagram ads running. Closed issues: #
 
 ## Phase: Webflow Customer Interactions (In Progress)
 
-Phased rollout of customer-facing interactions on the Webflow site. Test against dev CMS collections before production; no payment until backend testing is complete.
+Phased rollout of customer-facing interactions on the Webflow site.
 
 | Epic | Status | Issue | Notes |
 |------|--------|-------|-------|
 | **A: Artists on Webflow** | Not Started | [#161](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/161) | Artist profiles synced to Webflow CMS |
 | **B: Class Browsing on Webflow** | Not Started | [#162](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/162) | Public class listings on Webflow |
-| **C: Payment & Registration Testing** | Not Started | [#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163) | End-to-end payment flow testing |
-| **D: Class Registration with Payment** | Not Started | [#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164) | Full registration + payment on Webflow |
+| **C: Payment & Registration Testing** | **In Progress** | [#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163) | End-to-end payment tested in dev with Square sandbox |
+| **D: Class Registration with Payment** | **In Progress** | [#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164) | React Code Component working on Webflow (PR #201) |
+
+### Webflow Registration Component (PR #201)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Webflow Code Component library | **Complete** | `apps/webflow-components/` |
+| Registration widget (React) | **Complete** | `apps/webflow-components/src/RegistrationWidget.tsx` |
+| Shadow DOM + MUI styling | **Complete** | `@webflow/emotion-utils` decorator |
+| Shadow DOM + Square SDK | **Complete** | External card mount workaround in `SquareCardForm.tsx` |
+| Published to workspace | **Complete** | Katie's Workspace, "Maple & Spruce Components" |
+| Test page | **Complete** | `mapleandsprucefolkarts.com/test-class-enrollment` |
+| CMS-bound class pages | Not Started | Needs #139-145, #202 |
+
+### Customer Self-Service (Backend only, PR pending)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| `lookupRegistration` Cloud Function | **Complete** | `libs/firebase/maple-functions/lookup-registration/` |
+| `cancelRegistrationPublic` Cloud Function | **Complete** | `libs/firebase/maple-functions/cancel-registration-public/` |
+| `confirmationNumber` on Registration type | **Complete** | `libs/ts/domain/src/lib/registration.ts` |
+| `findByConfirmationNumber` repository method | **Complete** | `libs/firebase/database/src/lib/registration.repository.ts` |
+| Frontend lookup/cancel page | Not Started | #199 |
 
 ## Phase 4.5: Calendar System (Complete)
 
