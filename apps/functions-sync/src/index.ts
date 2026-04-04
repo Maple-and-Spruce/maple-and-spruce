@@ -11,8 +11,9 @@ if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
-// Webflow CMS sync (Firestore trigger)
+// Webflow CMS sync (Firestore triggers)
 export { syncArtistToWebflow } from '@maple/firebase/maple-functions/sync-artist-to-webflow';
+export { syncClassToWebflow } from '@maple/firebase/maple-functions/sync-class-to-webflow';
 
 // Etsy OAuth bootstrap
 export { etsyAuthUrl } from '@maple/firebase/maple-functions/etsy-auth-url';
