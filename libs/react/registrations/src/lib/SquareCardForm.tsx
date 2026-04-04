@@ -168,23 +168,44 @@ export function SquareCardForm({
       let attachTarget: HTMLElement;
 
       if (placeholder && isInShadowDom(placeholder)) {
-        // Shadow DOM mode: create external wrapper with card + portal for afterCardContent
+        // Shadow DOM mode: create external wrapper with card + portal for afterCardContent.
+        // Match the shadow host's padding and width so the card + button
+        // appear as a seamless continuation of the form inside Shadow DOM.
         const shadowHost = findShadowHost(placeholder);
+        const hostStyles = shadowHost
+          ? getComputedStyle(shadowHost)
+          : null;
 
-        // Get computed width from the shadow host for matching layout
-        const hostWidth = shadowHost
-          ? getComputedStyle(shadowHost).width
-          : '100%';
-
-        // Create wrapper that holds card + afterCardContent
+        // Create wrapper that visually continues the form layout
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = `max-width: ${hostWidth}; box-sizing: border-box;`;
+        wrapper.style.cssText = [
+          `max-width: ${hostStyles?.width ?? '100%'}`,
+          `padding-left: ${hostStyles?.paddingLeft ?? '0px'}`,
+          `padding-right: ${hostStyles?.paddingRight ?? '0px'}`,
+          'box-sizing: border-box',
+          // Negative margin to close the gap between shadow host and this wrapper
+          'margin-top: -8px',
+        ].join('; ');
         wrapperRef.current = wrapper;
 
-        // Card container
+        // Card container — styled to match MUI outlined input look
         const cardContainer = document.createElement('div');
-        cardContainer.style.cssText =
-          'min-height: 56px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px; box-sizing: border-box; margin-bottom: 24px;';
+        cardContainer.style.cssText = [
+          'min-height: 56px',
+          'border: 1px solid rgba(0, 0, 0, 0.23)',
+          'border-radius: 8px',
+          'padding: 12px',
+          'box-sizing: border-box',
+          'margin-bottom: 24px',
+          'transition: border-color 0.2s',
+        ].join('; ');
+        // Hover effect to match MUI inputs
+        cardContainer.addEventListener('mouseenter', () => {
+          cardContainer.style.borderColor = 'rgba(0, 0, 0, 0.87)';
+        });
+        cardContainer.addEventListener('mouseleave', () => {
+          cardContainer.style.borderColor = 'rgba(0, 0, 0, 0.23)';
+        });
         cardContainerRef.current = cardContainer;
         wrapper.appendChild(cardContainer);
 
