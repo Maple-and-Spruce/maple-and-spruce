@@ -11,14 +11,8 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Paper,
-  Chip,
-  Divider,
   ThemeProvider,
 } from '@mui/material';
-import EventIcon from '@mui/icons-material/Event';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
@@ -34,26 +28,6 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function formatPrice(cents: number): string {
-  const dollars = cents / 100;
-  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
-}
 
 interface RegistrationWidgetProps {
   classId: string;
@@ -158,15 +132,20 @@ export function RegistrationWidget({
   );
 
   const handleSuccess = useCallback(
-    (confirmationNumber: string) => {
+    (details: {
+      confirmationNumber: string;
+      customerName: string;
+      pricePaidCents: number;
+      quantity: number;
+    }) => {
       if (state.status !== 'ready') return;
       setState({
         status: 'confirmed',
-        confirmationNumber,
-        customerName: '', // Will be populated from the form data
+        confirmationNumber: details.confirmationNumber,
+        customerName: details.customerName,
         className: state.publicClass.name,
-        pricePaidCents: state.publicClass.priceCents,
-        quantity: 1,
+        pricePaidCents: details.pricePaidCents,
+        quantity: details.quantity,
       });
     },
     [state]
@@ -196,73 +175,6 @@ export function RegistrationWidget({
 
         {state.status === 'ready' && (
           <>
-            {/* Class Details */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h5" gutterBottom>
-                {state.publicClass.name}
-              </Typography>
-
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                {state.publicClass.dateTime && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <EventIcon fontSize="small" color="action" />
-                    <Typography variant="body2" color="text.secondary">
-                      {formatDate(
-                        typeof state.publicClass.dateTime === 'string'
-                          ? state.publicClass.dateTime
-                          : (state.publicClass.dateTime as Date).toISOString()
-                      )}{' '}
-                      at{' '}
-                      {formatTime(
-                        typeof state.publicClass.dateTime === 'string'
-                          ? state.publicClass.dateTime
-                          : (state.publicClass.dateTime as Date).toISOString()
-                      )}
-                    </Typography>
-                  </Box>
-                )}
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <AccessTimeIcon fontSize="small" color="action" />
-                  <Typography variant="body2" color="text.secondary">
-                    {state.publicClass.durationMinutes} min
-                  </Typography>
-                </Box>
-
-                {state.publicClass.instructorName && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <PersonIcon fontSize="small" color="action" />
-                    <Typography variant="body2" color="text.secondary">
-                      {state.publicClass.instructorName}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  {formatPrice(state.publicClass.priceCents)}
-                </Typography>
-                {state.publicClass.spotsRemaining !== undefined && (
-                  <Chip
-                    size="small"
-                    label={`${state.publicClass.spotsRemaining} spots left`}
-                    color={
-                      state.publicClass.spotsRemaining <= 3
-                        ? 'warning'
-                        : 'default'
-                    }
-                  />
-                )}
-              </Box>
-
-              {state.publicClass.description && (
-                <Typography variant="body2" color="text.secondary">
-                  {state.publicClass.description}
-                </Typography>
-              )}
-            </Paper>
-
             {/* Registration Form */}
             {state.publicClass.spotsRemaining <= 0 ? (
               <Alert severity="info">
@@ -274,11 +186,7 @@ export function RegistrationWidget({
                 katie@mapleandsprucefolkarts.com to register.
               </Alert>
             ) : (
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Register
-                </Typography>
-                <Divider sx={{ mb: 3 }} />
+              <Box>
                 <RegistrationCheckoutForm
                   publicClass={state.publicClass}
                   squareApplicationId={squareAppId}
@@ -287,13 +195,13 @@ export function RegistrationWidget({
                   onSubmit={handleSubmit}
                   onSuccess={handleSuccess}
                 />
-              </Paper>
+              </Box>
             )}
           </>
         )}
 
         {state.status === 'confirmed' && (
-          <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Box sx={{ p: 4, textAlign: 'center' }}>
             <CheckCircleOutlineIcon
               color="success"
               sx={{ fontSize: 64, mb: 2 }}
@@ -305,7 +213,7 @@ export function RegistrationWidget({
               Your spot for {state.className} is reserved.
             </Typography>
 
-            <Divider sx={{ my: 2 }} />
+            <Box sx={{ borderTop: 1, borderColor: 'divider', my: 2 }} />
 
             <Box
               sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 3 }}
@@ -335,7 +243,7 @@ export function RegistrationWidget({
                 katie@mapleandsprucefolkarts.com
               </Typography>
             </Typography>
-          </Paper>
+          </Box>
         )}
       </Box>
     </ThemeProvider>

@@ -17,3 +17,13 @@ export {
   generateSlug,
   mapArtistToFieldData,
 } from './lib/artist.service';
+
+// Class service
+export {
+  ClassService,
+  type SyncClassInput,
+  type SyncClassResult,
+  type ClassWebflowFieldData,
+  generateClassSlug,
+  mapClassToFieldData,
+} from './lib/class.service';
