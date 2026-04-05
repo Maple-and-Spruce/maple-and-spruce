@@ -7,9 +7,23 @@
 ## Current Status
 
 **Date**: 2026-04-05
-**Status**: Webflow class browsing + registration pipeline complete, polishing remaining
+**Status**: Integration test coverage expanded, Webflow CMS pipeline polishing
 
-### Current Focus: Class Registration on Webflow (CMS Pipeline Done)
+### Current Focus: Integration Test Coverage (#167)
+
+PR #218 adds 84 new integration tests across 8 domain-specific nx projects:
+- Split monolithic test project for `nx affected` efficiency
+- Shared utils extracted to `libs/firebase/integration-test-utils`
+- First Firestore trigger test (`onClassWrite` → calendar event sync)
+- 120 total tests passing against Firebase emulators
+
+Follow-up issues created for remaining coverage:
+- #219 — ICS calendar feed endpoints (HTTP pattern)
+- #220 — Registration admin + remaining maple-core endpoints
+- #221 — Square payment/catalog functions (needs Square sandbox)
+- #206 — syncClassToWebflow trigger (already existed)
+
+### Previous Focus: Class Registration on Webflow (CMS Pipeline Done)
 
 Full CMS pipeline built and working:
 - Classes sync from Firebase → Webflow CMS via `syncClassToWebflow` trigger
