@@ -60,6 +60,43 @@ describe('mapClassToFieldData', () => {
     expect(result.capacity).toBe(10);
   });
 
+  it('formats price display correctly', () => {
+    expect(mapClassToFieldData(mockClass, { isDev: false })['price-display']).toBe('$45');
+
+    const freeClass = { ...mockClass, priceCents: 0 };
+    expect(mapClassToFieldData(freeClass, { isDev: false })['price-display']).toBe('Free');
+
+    const decimalClass = { ...mockClass, priceCents: 4550 };
+    expect(mapClassToFieldData(decimalClass, { isDev: false })['price-display']).toBe('$45.50');
+  });
+
+  it('formats duration display correctly', () => {
+    expect(mapClassToFieldData(mockClass, { isDev: false })['duration-display']).toBe('2 hours');
+
+    const oneHour = { ...mockClass, durationMinutes: 60 };
+    expect(mapClassToFieldData(oneHour, { isDev: false })['duration-display']).toBe('1 hour');
+
+    const ninety = { ...mockClass, durationMinutes: 90 };
+    expect(mapClassToFieldData(ninety, { isDev: false })['duration-display']).toBe('1.5 hours');
+
+    const short = { ...mockClass, durationMinutes: 45 };
+    expect(mapClassToFieldData(short, { isDev: false })['duration-display']).toBe('45 min');
+  });
+
+  it('formats spots display correctly', () => {
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 9 })['spots-display']
+    ).toBe('1 spot remaining');
+
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 3 })['spots-display']
+    ).toBe('7 spots remaining');
+
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 10 })['spots-display']
+    ).toBe('Class Full');
+  });
+
   it('sets isDev flag correctly', () => {
     const result = mapClassToFieldData(mockClass, { isDev: true });
     expect(result['is-dev-environment']).toBe(true);

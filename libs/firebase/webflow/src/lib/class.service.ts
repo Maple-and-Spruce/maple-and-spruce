@@ -94,6 +94,24 @@ export function mapClassToFieldData(
       ? classEntity.capacity - options.registrationCount
       : classEntity.capacity;
 
+  // Format display values
+  const priceDollars = classEntity.priceCents / 100;
+  const priceDisplay = priceDollars === 0
+    ? 'Free'
+    : Number.isInteger(priceDollars)
+      ? `$${priceDollars}`
+      : `$${priceDollars.toFixed(2)}`;
+
+  const durationDisplay = classEntity.durationMinutes >= 60
+    ? classEntity.durationMinutes % 60 === 0
+      ? `${classEntity.durationMinutes / 60} hour${classEntity.durationMinutes / 60 === 1 ? '' : 's'}`
+      : `${(classEntity.durationMinutes / 60).toFixed(1)} hours`
+    : `${classEntity.durationMinutes} min`;
+
+  const spotsDisplay = spotsRemaining <= 0
+    ? 'Class Full'
+    : `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`;
+
   const fieldData: ClassWebflowFieldData = {
     'firebase-id': classEntity.id,
     name: classEntity.name,
@@ -106,6 +124,9 @@ export function mapClassToFieldData(
     'price-cents': classEntity.priceCents,
     capacity: classEntity.capacity,
     'spots-remaining': spotsRemaining,
+    'price-display': priceDisplay,
+    'duration-display': durationDisplay,
+    'spots-display': spotsDisplay,
     'skill-level':
       classEntity.skillLevel === 'all-levels'
         ? 'All Levels'
