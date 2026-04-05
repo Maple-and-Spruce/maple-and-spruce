@@ -146,6 +146,7 @@ export const createRegistration = Functions.endpoint
 
       // 5. Process Square payment
       let squarePaymentId: string | undefined;
+      let squareReceiptUrl: string | undefined;
       try {
         if (finalCostCents > 0) {
           const square = new Square(
@@ -166,12 +167,14 @@ export const createRegistration = Functions.endpoint
           });
 
           squarePaymentId = paymentResult.paymentId;
+          squareReceiptUrl = paymentResult.receiptUrl;
         }
 
         // 6. Update registration to confirmed with payment info
         await registrationDocRef.update({
           status: 'confirmed',
           squarePaymentId: squarePaymentId || null,
+          squareReceiptUrl: squareReceiptUrl || null,
           updatedAt: new Date(),
         });
       } catch (paymentError) {
@@ -201,6 +204,7 @@ export const createRegistration = Functions.endpoint
               confirmationNumber,
               amountPaidCents: finalCostCents,
               quantity: data.quantity,
+              receiptUrl: squareReceiptUrl,
               materialsIncluded: classEntity.materialsIncluded,
               whatToBring: classEntity.whatToBring,
             },
