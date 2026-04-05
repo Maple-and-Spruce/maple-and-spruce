@@ -4,17 +4,37 @@
   "sourceRoot": "apps/functions-integration-tests/src",
   "projectType": "application",
   "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "functions-integration-tests-artist",
+    "functions-integration-tests-class",
+    "functions-integration-tests-instructor",
+    "functions-integration-tests-category",
+    "functions-integration-tests-discount",
+    "functions-integration-tests-calendar",
+    "functions-integration-tests-registration",
+    "functions-integration-tests-utility"
+  ],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
+      "executor": "nx:run-commands",
       "options": {
-        "config": "apps/functions-integration-tests/vitest.config.ts"
+        "commands": [
+          "npx nx run functions-integration-tests-artist:test",
+          "npx nx run functions-integration-tests-class:test",
+          "npx nx run functions-integration-tests-instructor:test",
+          "npx nx run functions-integration-tests-category:test",
+          "npx nx run functions-integration-tests-discount:test",
+          "npx nx run functions-integration-tests-calendar:test",
+          "npx nx run functions-integration-tests-registration:test",
+          "npx nx run functions-integration-tests-utility:test"
+        ],
+        "parallel": false
       }
     },
     "test-with-emulators": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm exec nx run functions:build && cp .env.dev dist/apps/functions/.env && firebase emulators:exec --project=dev --only auth,firestore,functions \"pnpm exec nx run functions-integration-tests:test\""
+        "command": "npx nx run functions:build && cp .env.dev dist/apps/functions/.env && firebase emulators:exec --project=dev --only auth,firestore,functions \"npx nx run functions-integration-tests:test\""
       }
     }
   }

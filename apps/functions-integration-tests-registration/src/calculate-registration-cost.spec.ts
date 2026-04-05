@@ -2,7 +2,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   callFunction,
-} from '../utils/index.js';
+} from '@maple/firebase/integration-test-utils';
 import {
   PUBLISHED_CLASS,
   DRAFT_CLASS,
@@ -16,7 +16,7 @@ import {
   INACTIVE_DISCOUNT,
   LARGE_AMOUNT_DISCOUNT,
   DISCOUNT_IDS,
-} from '../fixtures/index.js';
+} from '@maple/firebase/integration-test-utils';
 import type {
   CalculateRegistrationCostRequest,
   CalculateRegistrationCostResponse,

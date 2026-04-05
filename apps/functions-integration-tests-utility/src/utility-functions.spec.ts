@@ -4,9 +4,9 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   callFunction,
-} from '../utils/index.js';
-import type { TestUser } from '../utils/index.js';
-import { ADMIN_USER, NON_ADMIN_USER } from '../fixtures/index.js';
+} from '@maple/firebase/integration-test-utils';
+import type { TestUser } from '@maple/firebase/integration-test-utils';
+import { ADMIN_USER, NON_ADMIN_USER } from '@maple/firebase/integration-test-utils';
 import type {
   CheckAdminStatusResponse,
   GetPublicArtistsResponse,
