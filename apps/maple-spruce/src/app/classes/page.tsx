@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Box, Typography, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Class, CreateClassInput } from '@maple/ts/domain';
@@ -15,6 +16,8 @@ import { AppShell } from '../../components/layout';
 import { useClasses, useInstructors, useClassCategories } from '../../hooks';
 
 export default function ClassesPage() {
+  const router = useRouter();
+
   // Filter state
   const [filters, setFilters] = useState<ClassFilters>({});
 
@@ -145,6 +148,7 @@ export default function ClassesPage() {
         categories={categories}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
+        onViewRoster={(classItem) => router.push(`/classes/${classItem.id}/roster`)}
       />
 
       <ClassForm
