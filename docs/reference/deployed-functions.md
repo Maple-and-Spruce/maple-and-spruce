@@ -90,3 +90,5 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 Webflow CMS synchronization. Isolates `webflow-api`.
 
 - `syncArtistToWebflow` — Firestore trigger: syncs artist data to Webflow CMS
+- `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS
+- `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)

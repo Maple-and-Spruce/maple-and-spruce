@@ -1,0 +1,15 @@
+{
+  "name": "firebase-maple-functions-sync-registration-count",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/sync-registration-count/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "libs/firebase/maple-functions/sync-registration-count/vitest.config.ts"
+      }
+    }
+  }
+}
