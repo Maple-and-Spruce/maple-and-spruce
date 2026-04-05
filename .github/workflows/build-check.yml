@@ -210,19 +210,19 @@ jobs:
           echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
-          echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.env
+          echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.secret.local
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions-square/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions-square/.env
           echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
           echo "ALLOWED_ORIGINS=http://localhost:3000" >> dist/apps/functions-square/.env
           echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions-sync/.env
-          echo "WEBFLOW_API_TOKEN=mock-token" >> dist/apps/functions-sync/.env
+          echo "WEBFLOW_API_TOKEN=mock-token" > dist/apps/functions-sync/.secret.local
+          echo "ETSY_API_KEY=fake" >> dist/apps/functions-sync/.secret.local
+          echo "ETSY_SHARED_SECRET=fake" >> dist/apps/functions-sync/.secret.local
           echo "WEBFLOW_SITE_ID=fake" >> dist/apps/functions-sync/.env
           echo "WEBFLOW_ARTISTS_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
           echo "WEBFLOW_CLASSES_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
           echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
-          echo "ETSY_API_KEY=fake" >> dist/apps/functions-sync/.env
-          echo "ETSY_SHARED_SECRET=fake" >> dist/apps/functions-sync/.env
           echo "ETSY_REDIRECT_URI=http://localhost:3000/etsy/callback" >> dist/apps/functions-sync/.env
 
       - name: Start mock server and run integration tests
