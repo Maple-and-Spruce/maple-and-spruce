@@ -22,6 +22,7 @@
     "firebase-maple-functions-resolve-sync-conflict": "maple-square",
     "firebase-maple-functions-sync-artist-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-class-to-webflow": "maple-sync",
+    "firebase-maple-functions-sync-registration-count": "maple-sync",
     "firebase-maple-functions-etsy-auth-url": "maple-sync",
     "firebase-maple-functions-etsy-auth-callback": "maple-sync",
     "firebase-maple-functions-get-etsy-connection-status": "maple-sync"
