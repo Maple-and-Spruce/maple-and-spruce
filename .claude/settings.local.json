@@ -152,7 +152,8 @@
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:docs.cloud.google.com)",
       "WebFetch(domain:www.ayrshare.com)",
-      "Bash(pnpm exec:*)"
+      "Bash(pnpm exec:*)",
+      "Bash(apps/functions-integration-tests/project.json:*)"
     ]
   }
 }
