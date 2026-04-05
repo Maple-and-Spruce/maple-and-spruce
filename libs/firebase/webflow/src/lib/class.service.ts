@@ -112,6 +112,23 @@ export function mapClassToFieldData(
     ? 'Class Full'
     : `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`;
 
+  // Format date and time display values
+  const dateObj = classEntity.dateTime instanceof Date
+    ? classEntity.dateTime
+    : new Date(classEntity.dateTime);
+
+  const dateDisplay = dateObj.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const timeDisplay = dateObj.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
   const fieldData: ClassWebflowFieldData = {
     'firebase-id': classEntity.id,
     name: classEntity.name,
@@ -127,6 +144,8 @@ export function mapClassToFieldData(
     'price-display': priceDisplay,
     'duration-display': durationDisplay,
     'spots-display': spotsDisplay,
+    'date-display': dateDisplay,
+    'time-display': timeDisplay,
     'skill-level':
       classEntity.skillLevel === 'all-levels'
         ? 'All Levels'
