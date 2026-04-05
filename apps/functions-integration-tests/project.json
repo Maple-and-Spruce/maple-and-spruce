@@ -36,7 +36,7 @@
     "test-with-emulators": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx nx run functions:build && npx nx run functions-square:build && cp .env.dev dist/apps/functions/.env && cp .env.dev dist/apps/functions-square/.env && npx tsx libs/firebase/integration-test-mock-server/start.ts & MOCK_PID=$! && sleep 1 && SQUARE_BASE_URL=http://localhost:9999 firebase emulators:exec --project=dev --only auth,firestore,functions \"npx nx run functions-integration-tests:test\"; EXIT_CODE=$?; kill $MOCK_PID 2>/dev/null; exit $EXIT_CODE"
+        "command": "npx nx run functions:build && npx nx run functions-square:build && npx nx run functions-sync:build && cp .env.dev dist/apps/functions/.env && cp .env.dev dist/apps/functions-square/.env && cp .env.dev dist/apps/functions-sync/.env && echo 'SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_BASE_URL=http://localhost:9999' >> dist/apps/functions-square/.env && echo 'WEBFLOW_API_TOKEN=mock-token\nWEBFLOW_BASE_URL=http://localhost:9999' >> dist/apps/functions-sync/.env && npx tsx libs/firebase/integration-test-mock-server/start.ts & MOCK_PID=$! && sleep 2 && firebase emulators:exec --project=dev --only auth,firestore,functions \"npx nx run functions-integration-tests:test\"; EXIT_CODE=$?; kill $MOCK_PID 2>/dev/null; exit $EXIT_CODE"
       }
     }
   }
