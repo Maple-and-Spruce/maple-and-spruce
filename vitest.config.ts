@@ -20,6 +20,7 @@ export default defineConfig({
       '**/dist/**',
       'apps/maple-spruce-e2e/**',
       'apps/functions-integration-tests/**',
+      'apps/functions-integration-tests-*/**',
     ],
     coverage: {
       provider: 'v8',
