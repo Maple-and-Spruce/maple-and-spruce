@@ -1,0 +1,23 @@
+{
+  "name": "functions-integration-tests-category",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-category/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-category",
+    "firebase-maple-functions-get-categories",
+    "firebase-maple-functions-update-category",
+    "firebase-maple-functions-delete-category",
+    "firebase-maple-functions-reorder-categories",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-category/vitest.config.ts"
+      }
+    }
+  }
+}

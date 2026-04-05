@@ -1,0 +1,7 @@
+{
+  "name": "firebase-integration-test-utils",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/integration-test-utils/src",
+  "projectType": "library",
+  "tags": ["type:util"]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "functions-integration-tests-instructor",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-instructor/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-instructor",
+    "firebase-maple-functions-get-instructors",
+    "firebase-maple-functions-get-instructor",
+    "firebase-maple-functions-update-instructor",
+    "firebase-maple-functions-delete-instructor",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-instructor/vitest.config.ts"
+      }
+    }
+  }
+}

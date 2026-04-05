@@ -1,0 +1,24 @@
+{
+  "name": "functions-integration-tests-artist",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-artist/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-artist",
+    "firebase-maple-functions-get-artists",
+    "firebase-maple-functions-get-artist",
+    "firebase-maple-functions-update-artist",
+    "firebase-maple-functions-delete-artist",
+    "firebase-maple-functions-get-public-artists",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-artist/vitest.config.ts"
+      }
+    }
+  }
+}

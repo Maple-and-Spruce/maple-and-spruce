@@ -1,0 +1,20 @@
+{
+  "name": "functions-integration-tests-utility",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-utility/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-check-admin-status",
+    "firebase-maple-functions-get-public-artists",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-utility/vitest.config.ts"
+      }
+    }
+  }
+}

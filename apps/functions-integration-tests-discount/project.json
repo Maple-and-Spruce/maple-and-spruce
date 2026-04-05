@@ -1,0 +1,23 @@
+{
+  "name": "functions-integration-tests-discount",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-discount/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-discount",
+    "firebase-maple-functions-get-discounts",
+    "firebase-maple-functions-update-discount",
+    "firebase-maple-functions-delete-discount",
+    "firebase-maple-functions-lookup-discount",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-discount/vitest.config.ts"
+      }
+    }
+  }
+}

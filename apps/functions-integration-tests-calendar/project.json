@@ -1,0 +1,27 @@
+{
+  "name": "functions-integration-tests-calendar",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-calendar/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-calendar-event",
+    "firebase-maple-functions-get-calendar-events",
+    "firebase-maple-functions-get-calendar-event",
+    "firebase-maple-functions-update-calendar-event",
+    "firebase-maple-functions-delete-calendar-event",
+    "firebase-maple-functions-get-calendar-embed-config",
+    "firebase-maple-functions-update-calendar-embed-config",
+    "firebase-maple-functions-add-calendar-embed-source",
+    "firebase-maple-functions-remove-calendar-embed-source",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-calendar/vitest.config.ts"
+      }
+    }
+  }
+}

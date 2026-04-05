@@ -265,6 +265,9 @@
       "@maple/firebase/maple-functions/save-etsy-artist-template": [
         "libs/firebase/maple-functions/save-etsy-artist-template/src/index.ts"
       ],
+      "@maple/firebase/integration-test-utils": [
+        "libs/firebase/integration-test-utils/src/index.ts"
+      ],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }

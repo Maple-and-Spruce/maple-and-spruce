@@ -68,3 +68,4 @@ vitest.config.*.timestamp*
 
 # Webflow CLI token (auto-generated)
 .env
+firestore-debug.log
