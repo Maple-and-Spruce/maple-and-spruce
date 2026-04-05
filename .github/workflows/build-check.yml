@@ -202,6 +202,7 @@ jobs:
       - name: Build functions
         run: |
           pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
 
       - name: Create emulator .env
@@ -209,12 +210,26 @@ jobs:
           echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
-          echo "WEBFLOW_SITE_ID=fake" > dist/apps/functions-sync/.env
+          echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.env
+          echo "SQUARE_ENV=LOCAL" >> dist/apps/functions-square/.env
+          echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions-square/.env
+          echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
+          echo "ALLOWED_ORIGINS=http://localhost:3000" >> dist/apps/functions-square/.env
+          echo "WEBFLOW_API_TOKEN=mock-token" > dist/apps/functions-sync/.env
+          echo "WEBFLOW_SITE_ID=fake" >> dist/apps/functions-sync/.env
           echo "WEBFLOW_ARTISTS_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
           echo "WEBFLOW_CLASSES_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
+          echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
 
-      - name: Run integration tests with emulators
-        run: npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+      - name: Start mock server and run integration tests
+        run: |
+          npx tsx libs/firebase/integration-test-mock-server/start.ts &
+          MOCK_PID=$!
+          sleep 2
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+          EXIT_CODE=$?
+          kill $MOCK_PID 2>/dev/null
+          exit $EXIT_CODE
 
   storybook:
     name: Storybook Build & Tests
