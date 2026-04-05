@@ -34,7 +34,7 @@
     "test-with-emulators": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx nx run functions:build && cp .env.dev dist/apps/functions/.env && firebase emulators:exec --project=dev --only auth,firestore,functions \"npx nx run functions-integration-tests:test\""
+        "command": "pnpm exec nx run functions:build && pnpm exec nx run functions-sync:build && cp .env.dev dist/apps/functions/.env && cp .env.dev dist/apps/functions-sync/.env && firebase emulators:exec --project=dev --only auth,firestore,functions \"pnpm exec nx run functions-integration-tests:test\""
       }
     }
   }
