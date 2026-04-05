@@ -11,6 +11,7 @@
  */
 import { WebflowClient } from 'webflow-api';
 import { ArtistService } from './artist.service';
+import { ClassService } from './class.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -30,6 +31,7 @@ export const WEBFLOW_SECRET_NAMES = ['WEBFLOW_API_TOKEN'] as const;
 export const WEBFLOW_STRING_NAMES = [
   'WEBFLOW_SITE_ID',
   'WEBFLOW_ARTISTS_COLLECTION_ID',
+  'WEBFLOW_CLASSES_COLLECTION_ID',
 ] as const;
 
 export type WebflowSecrets = Record<
@@ -63,8 +65,10 @@ export type WebflowStrings = Record<
 export class Webflow {
   private readonly client: WebflowClient;
   private readonly _artistService: ArtistService;
+  private readonly _classService: ClassService | null;
   public readonly siteId: string;
   public readonly artistsCollectionId: string;
+  public readonly classesCollectionId: string;
 
   constructor(
     private readonly secrets: WebflowSecrets,
@@ -80,6 +84,7 @@ export class Webflow {
 
     this.siteId = this.strings.WEBFLOW_SITE_ID;
     this.artistsCollectionId = this.strings.WEBFLOW_ARTISTS_COLLECTION_ID;
+    this.classesCollectionId = this.strings.WEBFLOW_CLASSES_COLLECTION_ID;
 
     if (!this.siteId) {
       throw new Error('Webflow site ID not configured. Set WEBFLOW_SITE_ID.');
@@ -99,6 +104,10 @@ export class Webflow {
       this.client,
       this.artistsCollectionId
     );
+
+    this._classService = this.classesCollectionId
+      ? new ClassService(this.client, this.classesCollectionId)
+      : null;
   }
 
   /**
@@ -113,6 +122,18 @@ export class Webflow {
    */
   get artistService(): ArtistService {
     return this._artistService;
+  }
+
+  /**
+   * Get the class service for syncing classes to Webflow CMS
+   */
+  get classService(): ClassService {
+    if (!this._classService) {
+      throw new Error(
+        'Webflow classes collection ID not configured. Set WEBFLOW_CLASSES_COLLECTION_ID.'
+      );
+    }
+    return this._classService;
   }
 
   /**

@@ -95,6 +95,9 @@
       "@maple/firebase/maple-functions/sync-artist-to-webflow": [
         "libs/firebase/maple-functions/sync-artist-to-webflow/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-class-to-webflow": [
+        "libs/firebase/maple-functions/sync-class-to-webflow/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-sync-conflicts": [
         "libs/firebase/maple-functions/get-sync-conflicts/src/index.ts"
       ],

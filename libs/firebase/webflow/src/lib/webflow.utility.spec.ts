@@ -20,8 +20,12 @@ describe('WEBFLOW_STRING_NAMES', () => {
     expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_ARTISTS_COLLECTION_ID');
   });
 
-  it('has exactly two strings', () => {
-    expect(WEBFLOW_STRING_NAMES).toHaveLength(2);
+  it('includes WEBFLOW_CLASSES_COLLECTION_ID', () => {
+    expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_CLASSES_COLLECTION_ID');
+  });
+
+  it('has exactly three strings', () => {
+    expect(WEBFLOW_STRING_NAMES).toHaveLength(3);
   });
 });
 
@@ -33,6 +37,7 @@ describe('Webflow', () => {
   const validStrings = {
     WEBFLOW_SITE_ID: 'test-site-id',
     WEBFLOW_ARTISTS_COLLECTION_ID: 'test-collection-id',
+    WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-collection-id',
   };
 
   describe('constructor validation', () => {
@@ -50,6 +55,7 @@ describe('Webflow', () => {
       const invalidStrings = {
         WEBFLOW_SITE_ID: '',
         WEBFLOW_ARTISTS_COLLECTION_ID: 'test-collection-id',
+        WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
@@ -61,6 +67,7 @@ describe('Webflow', () => {
       const invalidStrings = {
         WEBFLOW_SITE_ID: 'test-site-id',
         WEBFLOW_ARTISTS_COLLECTION_ID: '',
+        WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
