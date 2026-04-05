@@ -1,0 +1,21 @@
+{
+  "name": "functions-integration-tests",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests/vitest.config.ts"
+      }
+    },
+    "test-with-emulators": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec nx run functions:build && cp .env.dev dist/apps/functions/.env && firebase emulators:exec --project=dev --only auth,firestore,functions \"pnpm exec nx run functions-integration-tests:test\""
+      }
+    }
+  }
+}

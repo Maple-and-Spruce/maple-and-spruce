@@ -46,11 +46,33 @@ pnpm exec nx run maple-spruce:build-storybook
 # Output: dist/storybook/maple-spruce
 ```
 
-## Running Tests
+## Running Unit Tests
 
 ```bash
 pnpm test
 ```
+
+## Running Integration Tests (user runs this)
+
+Integration tests run Cloud Functions against real Firebase emulators. Requires Java installed (for Firestore emulator).
+
+**All-in-one** (builds functions, copies .env, starts emulators, runs tests, shuts down):
+```bash
+pnpm exec nx run functions-integration-tests:test-with-emulators
+```
+
+**Manual** (useful when iterating on tests — keep emulators running):
+```bash
+# Terminal 1: Build and start emulators
+pnpm exec nx run functions:build
+cp .env.dev dist/apps/functions/.env
+firebase emulators:start --project=dev --only auth,firestore,functions
+
+# Terminal 2: Run tests (repeat as needed)
+pnpm exec nx run functions-integration-tests:test
+```
+
+Emulator ports: Auth (9099), Firestore (8080), Functions (5001), UI (4000)
 
 ## Deployment
 
