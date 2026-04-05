@@ -38,6 +38,8 @@ export interface Registration {
   squarePaymentId?: string;
   /** Square order ID */
   squareOrderId?: string;
+  /** Square receipt URL (for customer payment receipt) */
+  squareReceiptUrl?: string;
   /** Discount/coupon code applied */
   discountCode?: string;
   /** Discount amount in cents */

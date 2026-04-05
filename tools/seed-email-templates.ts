@@ -98,6 +98,10 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
       </tr>
     </table>
 
+    {{#if receiptUrl}}
+    <p><a href="{{receiptUrl}}" style="color: #6B7B5E; font-weight: bold;">View Payment Receipt</a></p>
+    {{/if}}
+
     {{#if materialsIncluded}}
     <div class="highlight-box">
       <strong style="color: #4A3728;">Materials Included</strong><br>
@@ -174,6 +178,10 @@ const registrationCancelledHtml = `<!DOCTYPE html>
       <strong style="color: #4A3728;">Refund: {{refundAmount}}</strong><br>
       Your refund has been initiated and will appear on your original payment method within 5–10 business days.
     </div>
+
+    {{#if receiptUrl}}
+    <p><a href="{{receiptUrl}}" style="color: #6B7B5E;">View Original Payment Receipt</a></p>
+    {{/if}}
 
     <p>If you have any questions about your refund or would like to register for a future class,
       please contact us at
