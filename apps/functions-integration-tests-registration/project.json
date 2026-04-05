@@ -1,0 +1,19 @@
+{
+  "name": "functions-integration-tests-registration",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-registration/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-calculate-registration-cost",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-registration/vitest.config.ts"
+      }
+    }
+  }
+}
