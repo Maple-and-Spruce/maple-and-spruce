@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GroupIcon from '@mui/icons-material/Group';
@@ -26,6 +27,7 @@ interface ClassListProps {
   categories?: ClassCategory[];
   onEdit: (classItem: Class) => void;
   onDelete: (classItem: Class) => void;
+  onViewRoster?: (classItem: Class) => void;
 }
 
 const statusColors: Record<string, 'success' | 'default' | 'error' | 'warning'> = {
@@ -77,12 +79,14 @@ function ClassCard({
   categoryName,
   onEdit,
   onDelete,
+  onViewRoster,
 }: {
   classItem: Class;
   instructorName?: string;
   categoryName?: string;
   onEdit: () => void;
   onDelete: () => void;
+  onViewRoster?: () => void;
 }) {
   const dateTime = classItem.dateTime instanceof Date
     ? classItem.dateTime
@@ -181,6 +185,11 @@ function ClassCard({
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {onViewRoster && (
+              <IconButton onClick={onViewRoster} size="small" aria-label="View Roster" color="primary">
+                <PeopleIcon />
+              </IconButton>
+            )}
             <IconButton onClick={onEdit} size="small" aria-label="Edit">
               <EditIcon />
             </IconButton>
@@ -229,6 +238,7 @@ export function ClassList({
   categories = [],
   onEdit,
   onDelete,
+  onViewRoster,
 }: ClassListProps) {
   if (classesState.status === 'loading') {
     return <LoadingSkeleton />;
@@ -285,6 +295,7 @@ export function ClassList({
             }
             onEdit={() => onEdit(classItem)}
             onDelete={() => onDelete(classItem)}
+            onViewRoster={onViewRoster ? () => onViewRoster(classItem) : undefined}
           />
         </Grid>
       ))}
