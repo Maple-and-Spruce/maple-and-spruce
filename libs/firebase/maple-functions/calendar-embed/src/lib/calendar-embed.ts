@@ -21,19 +21,32 @@ function resolveSourceUrl(url: string, hostingBaseUrl: string): string {
 
 /**
  * Determine the Firebase Hosting base URL from the request.
+ *
+ * Relative source paths (e.g. "/calendar/classes.ics") rely on Firebase
+ * Hosting rewrites in firebase.json, which only apply on the hosting
+ * domain — not when the function is invoked directly via its
+ * cloudfunctions.net or run.app URL. When invoked directly, fall back to
+ * the known hosting domain for the matching environment.
+ *
  * In production: https://maple-and-spruce-api.web.app
- * In dev: uses the request host or falls back to cloud function URL pattern.
+ * In dev:        https://maple-and-spruce-dev.web.app
  */
-function getHostingBaseUrl(req: { hostname: string; protocol: string }): string {
-  // If the request comes through Firebase Hosting, use that host
-  if (req.hostname.includes('maple-and-spruce')) {
+export function getHostingBaseUrl(req: { hostname: string; protocol: string }): string {
+  const isFunctionDirect =
+    req.hostname.endsWith('.cloudfunctions.net') ||
+    req.hostname.endsWith('.run.app');
+
+  // Requests through Firebase Hosting can use their own host directly.
+  if (!isFunctionDirect && req.hostname.includes('maple-and-spruce')) {
     return `${req.protocol}://${req.hostname}`;
   }
-  // Fallback: construct from the known hosting site
-  if (req.hostname.includes('-dev')) {
-    return 'https://maple-and-spruce-dev.web.app';
-  }
-  return 'https://maple-and-spruce-api.web.app';
+
+  // Fallback: pick the hosting site based on the project ID embedded in
+  // the hostname (works for both cloudfunctions.net and run.app).
+  const isDev = req.hostname.includes('maple-and-spruce-dev');
+  return isDev
+    ? 'https://maple-and-spruce-dev.web.app'
+    : 'https://maple-and-spruce-api.web.app';
 }
 
 export const calendarEmbed = onRequest(
