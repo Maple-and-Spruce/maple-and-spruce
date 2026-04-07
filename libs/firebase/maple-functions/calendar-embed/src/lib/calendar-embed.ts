@@ -12,7 +12,7 @@ import { CalendarEmbedConfigRepository } from '@maple/firebase/database';
  * Resolve a source URL that may be a path (e.g. "/calendar/classes.ics")
  * to a full URL using the request's host as the base for system feeds.
  */
-function resolveSourceUrl(url: string, hostingBaseUrl: string): string {
+export function resolveSourceUrl(url: string, hostingBaseUrl: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
@@ -49,42 +49,65 @@ export function getHostingBaseUrl(req: { hostname: string; protocol: string }): 
     : 'https://maple-and-spruce-api.web.app';
 }
 
+/**
+ * Minimal request/response shape used by the handler. This lets the
+ * handler be unit-tested without spinning up an HTTP server.
+ */
+export interface CalendarEmbedRequest {
+  hostname: string;
+  protocol: string;
+}
+
+export interface CalendarEmbedResponse {
+  redirect(status: number, url: string): void;
+  status(code: number): { json(body: unknown): void };
+}
+
+/**
+ * Build the Open Web Calendar redirect URL from the persisted config.
+ * Extracted from the onRequest handler so it can be unit tested.
+ */
+export async function handleCalendarEmbedRequest(
+  request: CalendarEmbedRequest,
+  response: CalendarEmbedResponse
+): Promise<void> {
+  try {
+    const config = await CalendarEmbedConfigRepository.get();
+    const hostingBaseUrl = getHostingBaseUrl(request);
+
+    // Build OWC URL with enabled sources
+    const enabledSources = config.sources.filter((s) => s.enabled);
+    const params = new URLSearchParams();
+
+    for (const source of enabledSources) {
+      params.append('url', resolveSourceUrl(source.url, hostingBaseUrl));
+    }
+
+    params.set('tab', config.defaultTab);
+    for (const tab of config.tabs) {
+      params.append('tabs', tab);
+    }
+    params.set('skin', config.skin);
+    params.set('start_of_week', config.startOfWeek);
+    if (config.timezone) {
+      params.set('timezone', config.timezone);
+    }
+    if (config.title) {
+      params.set('title', config.title);
+    }
+    if (config.cssUrl) {
+      params.set('css_url', config.cssUrl);
+    }
+
+    const owcUrl = `${config.owcBaseUrl}/calendar.html?${params.toString()}`;
+    response.redirect(302, owcUrl);
+  } catch (error) {
+    console.error('Error generating calendar embed redirect:', error);
+    response.status(500).json({ error: 'Failed to load calendar configuration' });
+  }
+}
+
 export const calendarEmbed = onRequest(
   { region: 'us-east4', cors: true },
-  async (request, response) => {
-    try {
-      const config = await CalendarEmbedConfigRepository.get();
-      const hostingBaseUrl = getHostingBaseUrl(request);
-
-      // Build OWC URL with enabled sources
-      const enabledSources = config.sources.filter((s) => s.enabled);
-      const params = new URLSearchParams();
-
-      for (const source of enabledSources) {
-        params.append('url', resolveSourceUrl(source.url, hostingBaseUrl));
-      }
-
-      params.set('tab', config.defaultTab);
-      for (const tab of config.tabs) {
-        params.append('tabs', tab);
-      }
-      params.set('skin', config.skin);
-      params.set('start_of_week', config.startOfWeek);
-      if (config.timezone) {
-        params.set('timezone', config.timezone);
-      }
-      if (config.title) {
-        params.set('title', config.title);
-      }
-      if (config.cssUrl) {
-        params.set('css_url', config.cssUrl);
-      }
-
-      const owcUrl = `${config.owcBaseUrl}/calendar.html?${params.toString()}`;
-      response.redirect(302, owcUrl);
-    } catch (error) {
-      console.error('Error generating calendar embed redirect:', error);
-      response.status(500).json({ error: 'Failed to load calendar configuration' });
-    }
-  }
+  (request, response) => handleCalendarEmbedRequest(request, response)
 );
