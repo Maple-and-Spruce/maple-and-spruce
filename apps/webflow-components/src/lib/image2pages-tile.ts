@@ -161,6 +161,7 @@ export function computeLayout(
   return { grid, pageW, pageH, marginPts, totalW, totalH, offsetX, offsetY, pxPerPt };
 }
 
+/* c8 ignore start -- DOM/Canvas-bound, exercised in the browser only */
 /**
  * Build a tiled PDF from a decoded image and computed layout. Each tile is
  * extracted via a 2D canvas, encoded as PNG, and embedded into the PDF page.
@@ -242,3 +243,4 @@ export async function loadImage(file: File): Promise<HTMLImageElement> {
   await img.decode();
   return img;
 }
+/* c8 ignore stop */
