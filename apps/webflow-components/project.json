@@ -1,0 +1,21 @@
+{
+  "name": "webflow-components",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/webflow-components/src",
+  "projectType": "application",
+  "tags": [
+    "scope:webflow",
+    "type:app"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
+      "options": {
+        "reportsDirectory": "{projectRoot}/../../coverage/apps/webflow-components"
+      }
+    }
+  }
+}
