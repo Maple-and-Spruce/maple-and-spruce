@@ -100,13 +100,15 @@
       "lodash": ">=4.18.0",
       "axios": ">=1.13.5",
       "koa": ">=3.1.2",
-      "vite@>=7.0.0 <7.3.2": ">=7.3.2"
+      "vite@>=7.0.0 <7.3.2": ">=7.3.2",
+      "basic-ftp@<5.2.1": ">=5.2.1"
     },
     "overridesComments": {
       "lodash": "GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.",
       "axios": "GHSA-43fc-jf86-j433: DoS via __proto__ key in mergeConfig. Transitive dep of nx@22.6.4. Added 2026-04-01.",
       "koa": "GHSA-7gcc-r8m5-44qm: Host Header Injection via ctx.hostname. Transitive dep of @webflow/webflow-cli > @module-federation/dts-plugin. Added 2026-04-04.",
-      "vite": "GHSA-v2wj-q39q-566r (server.fs.deny bypass) and GHSA-p9ff-h696-f583 (arbitrary file read via dev server WebSocket). Transitive dep of @nx/vitest@22.6.4 > vitest@4.1.2. Added 2026-04-07."
+      "vite": "GHSA-v2wj-q39q-566r (server.fs.deny bypass) and GHSA-p9ff-h696-f583 (arbitrary file read via dev server WebSocket). Transitive dep of @nx/vitest@22.6.4 > vitest@4.1.2. Added 2026-04-07.",
+      "basic-ftp": "GHSA-chqc-8p9q-pq6q: FTP Command Injection via CRLF. Transitive dep of firebase-tools > proxy-agent > pac-proxy-agent > get-uri. Added 2026-04-09."
     }
   }
 }
