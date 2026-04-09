@@ -152,8 +152,8 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | Unit tests for tiling logic | **Complete** | `apps/webflow-components/src/lib/image2pages-tile.spec.ts` (16 tests) |
 | Image2Pages React widget | **Complete** | `apps/webflow-components/src/Image2PagesWidget.tsx` |
 | Webflow component declaration | **Complete** | `apps/webflow-components/src/image2pages.webflow.tsx` |
-| Published to workspace | Not Started | Awaiting `webflow components publish` |
-| Embedded on a Webflow page | Not Started | Pattern Scaling tool page |
+| Published to workspace | **Complete** | `webflow library share` published to Katie's Workspace |
+| Embedded on a Webflow page | **Complete** | New "Pattern Scaling Tool" page (`/untitled` slug, draft) with maple-nav + Image to Pages + Footer |
 
 ### Customer Self-Service (Backend only, PR pending)
 
