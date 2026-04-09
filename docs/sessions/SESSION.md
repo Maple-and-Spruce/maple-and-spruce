@@ -6,84 +6,80 @@
 
 ## Current Status
 
-**Date**: 2026-04-05
-**Status**: Integration test coverage expanded, Webflow CMS pipeline polishing
+**Date**: 2026-04-09
+**Status**: Class registration launch prep — wave 1 code complete, manual ops remaining. Image2Pages widget shipped on `feat/image2pages-widget`.
 
-### Current Focus: Integration Test Coverage (#167)
+### Image2Pages Webflow Widget (in flight)
 
-PR #218 adds 84 new integration tests across 8 domain-specific nx projects:
-- Split monolithic test project for `nx affected` efficiency
-- Shared utils extracted to `libs/firebase/integration-test-utils`
-- First Firestore trigger test (`onClassWrite` → calendar event sync)
-- 120 total tests passing against Firebase emulators
+Branch: `feat/image2pages-widget`
 
-Follow-up issues created for remaining coverage:
-- #219 — ICS calendar feed endpoints (HTTP pattern)
-- #220 — Registration admin + remaining maple-core endpoints
-- #221 — Square payment/catalog functions (needs Square sandbox)
-- #206 — syncClassToWebflow trigger (already existed)
+- New Webflow Code Component at `apps/webflow-components/src/Image2PagesWidget.tsx` + `image2pages.webflow.tsx`
+- Pure-browser tiling library at `apps/webflow-components/src/lib/image2pages-tile.ts` (Canvas + pdf-lib, no server)
+- Three sizing modes: by page count, target width (in), target height (in)
+- Live preview canvas with dashed dark-brown page-boundary overlay; brand-themed via `@maple/react/theme`
+- Tests: `apps/webflow-components/src/lib/image2pages-tile.spec.ts` (16 unit tests for `bestGrid` / `gridFromTargetSize` / `computeLayout`)
+- Nx scaffolding added: `apps/webflow-components/project.json` + `vitest.config.ts` (test target only — no build target; webflow-cli still drives bundling via `webflow.json`)
+- Published to workspace via `webflow library share` (env var aliasing: `WEBFLOW_TOKEN` → `WEBFLOW_WORKSPACE_API_TOKEN`)
+- Embedded on new "Pattern Scaling Tool" page (page id `69d7921b12449f27596c57e9`, draft) with maple-nav + Image to Pages + Footer
+- PR: [#231](https://github.com/Maple-and-Spruce/maple-and-spruce/pull/231)
+- Ported from standalone prototype: github.com/david-shortman/image2pages-web
 
-### Previous Focus: Class Registration on Webflow (CMS Pipeline Done)
+### Registration Launch: Meta Ads Readiness
 
-Full CMS pipeline built and working:
-- Classes sync from Firebase → Webflow CMS via `syncClassToWebflow` trigger
-- Listing page at `/upcoming-classes` with CMS Collection List card grid
-- Detail template page at `/classes/[slug]` with class info + registration component
-- Registration component reads `firebase-id` from CMS and enables checkout
+Goal: enable paid Meta ads driving traffic to Webflow class registration pages.
 
-**Live test:** `mapleandsprucefolkarts.com/classes/trigger-test-class`
+### What's Done
 
-### Open PRs
+**Wave 1 code (all merged):**
+- PR #213 — Class roster admin page (#211)
+- PR #214 — Email templates for confirmation + cancellation (#197)
+- PR #216 — syncRegistrationCount Cloud Function (#143)
+- PR #217 — Integration tests for syncClassToWebflow (#206)
+- PR #218 — Integration test foundation with 8 domain-specific projects (#167)
+- PR #226 — Square receipt URL in registrations + emails (#192) — auto-merge pending
 
-| PR | Branch | Status | Description |
-|----|--------|--------|-------------|
-| #204 | `feature/141-sync-class-to-webflow` | Open | Full CMS pipeline + Webflow pages |
-| (needs PR) | `feature/190-registration-lookup` | Pushed, no PR | Backend for customer self-service lookup + cancel |
+**Registration flow verified:**
+- Registration widget placed on Webflow CMS class detail page
+- Props bound to CMS fields (firebase-id → classId)
+- Tested working end-to-end with dev Square configuration
 
-### Completed This Session (2026-04-04 — 2026-04-05)
+**Analysis completed:**
+- #205 sync fields already implemented — remaining work is Webflow Designer binding
+- #202 component already placed — just needed manual prop configuration (done)
 
-**CMS Pipeline (PR #204):**
-- ClassService for Webflow CMS sync (mirrors ArtistService pattern)
-- syncClassToWebflow Firestore trigger (published → sync, unpublished → remove)
-- Display-formatted fields: price-display, duration-display, spots-display
-- Classes CMS collection created in Webflow (19 fields including firebase-id)
-- Upcoming Classes listing page with CMS Collection List
-- Class detail template page with registration component
-- Card styling, link decoration, responsive breakpoints
-- WEBFLOW_CLASSES_COLLECTION_ID configured in .env.dev/.env.prod
-- 48 webflow library tests passing
+### Remaining Work (Manual Ops)
 
-**Registration Widget Updates:**
-- Removed redundant class info card (CMS page already shows it)
-- Fixed onSuccess handler signature
+| Task | Issue | Owner | Notes |
+|------|-------|-------|-------|
+| AWS account + SES setup | #223 | David | **Start first** — production access takes 24-48h |
+| Firebase email extension | #195 | David | After SES; then run `tools/seed-email-templates.ts` |
+| GA4 + GTM | #116 | David | Google/Webflow console work |
+| Meta Pixel | #224 | David | After GTM; needed for ad optimization |
+| Privacy + cancellation policy pages | #225 | David/Katie | Webflow content pages |
+| Canonical domain + sitemap | #120 | David | DNS + Webflow settings |
+| Switch widget to prod Square credentials | — | David | Webflow Designer, last step |
+| Upcoming Classes page enhancements | #210 | In progress | Agent working on Webflow MCP |
 
-**Issues Closed:** #139, #140, #141, #142, #144, #145, #146
+### Issues Created This Session
 
-### Remaining Work
-
-**Immediate polish (#205):**
-- Add `time-display` formatted field to sync
-- Bind remaining CMS fields on detail page (description, what-to-bring, etc.)
-- Create real test class with all fields populated
-- Hide empty detail cards with Webflow conditional visibility
-
-**Next priorities:**
-- #143 — Sync registration count changes to Webflow CMS (spots remaining updates)
-- #202 — Document registration component CMS binding (done manually)
-- #205 — Fix missing class data display
-- #163 — Payment & Registration Testing (integration tests, PR #187)
-- Self-service features (#189-192, #199)
-- Email infrastructure (#195-197)
+| Issue | Title |
+|-------|-------|
+| #215 | Admin email template management with preview |
+| #222 | Configure required status checks for PR merging |
+| #223 | Create AWS account + SES for Maple & Spruce |
+| #224 | Install Meta Pixel via GTM |
+| #225 | Privacy policy + cancellation policy pages |
 
 ### Key Decisions Made
 
-- **Webflow Code Components** for React integration — Shadow DOM, designer-configurable props
-- **CMS-powered class browsing** with React component only for registration/payment
-- **Pre-formatted display fields** in sync (price-display, duration-display, spots-display) to avoid client-side formatting
-- **Registration component shows form only** — class details handled by CMS page layout
+- **Handlebars templates** for emails (matches existing `createRegistration` code pattern, easier to update than inline HTML)
+- **Agent Teams** enabled for parallel development (experimental feature)
+- **Per-domain integration test apps** structure from #218 (artist, class, instructor, etc.)
+- **vitest.config.ts** excludes integration test apps from unit test runner
 
 ### Blockers
-- None currently
+- SES production access approval (24-48h) blocks email testing
+- No blockers for registration flow itself — working on dev
 
 ---
 
