@@ -198,11 +198,22 @@ export const createRegistration = Functions.endpoint
             data: {
               customerName: data.customerName,
               className: classEntity.name,
-              classDate: classEntity.dateTime.toISOString(),
-              classDuration: classEntity.durationMinutes,
+              classDate: classEntity.dateTime.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZone: 'America/New_York',
+              }),
+              classDuration:
+                classEntity.durationMinutes >= 60
+                  ? `${Math.floor(classEntity.durationMinutes / 60)} hour${Math.floor(classEntity.durationMinutes / 60) > 1 ? 's' : ''}${classEntity.durationMinutes % 60 ? ` ${classEntity.durationMinutes % 60} min` : ''}`
+                  : `${classEntity.durationMinutes} minutes`,
               classLocation: classEntity.location || 'Maple & Spruce',
               confirmationNumber,
-              amountPaidCents: finalCostCents,
+              amountPaid: `$${(finalCostCents / 100).toFixed(2)}`,
               quantity: data.quantity,
               receiptUrl: squareReceiptUrl,
               materialsIncluded: classEntity.materialsIncluded,
