@@ -220,6 +220,7 @@ export function RegistrationWidget({
                   publicClass={state.publicClass}
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
+                  env={env}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
                   onSuccess={handleSuccess}
