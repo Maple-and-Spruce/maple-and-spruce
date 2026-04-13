@@ -42,6 +42,7 @@ interface RegistrationCheckoutFormProps {
   onSuccess: (details: {
     confirmationNumber: string;
     customerName: string;
+    customerEmail: string;
     pricePaidCents: number;
     quantity: number;
   }) => void;
@@ -157,6 +158,7 @@ export function RegistrationCheckoutForm({
       onSuccess({
         confirmationNumber: result.confirmationNumber,
         customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
         pricePaidCents: result.registration.pricePaidCents,
         quantity,
       });
