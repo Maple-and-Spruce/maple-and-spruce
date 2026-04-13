@@ -140,6 +140,8 @@ describe('mapClassToFieldData', () => {
     const result = mapClassToFieldData(mockClass, {
       isDev: false,
       instructorName: 'Jane Doe',
+      instructorBio: 'Jane has been teaching pottery for 15 years.',
+      instructorImage: 'https://storage.example.com/instructors/jane.jpg',
       categoryName: 'Ceramics',
     });
 
@@ -150,10 +152,29 @@ describe('mapClassToFieldData', () => {
     expect(result['what-to-bring']).toBe('Apron, towel');
     expect(result['minimum-age']).toBe(12);
     expect(result['instructor-name']).toBe('Jane Doe');
+    expect(result['instructor-bio']).toBe(
+      'Jane has been teaching pottery for 15 years.'
+    );
+    expect(result['instructor-image']).toEqual({
+      url: 'https://storage.example.com/instructors/jane.jpg',
+      alt: 'Jane Doe profile photo',
+    });
     expect(result['category-name']).toBe('Ceramics');
     expect(result['class-image']).toEqual({
       url: 'https://storage.example.com/pottery.jpg',
       alt: 'Pottery 101 class image',
+    });
+  });
+
+  it('uses fallback alt text for instructor image when no name provided', () => {
+    const result = mapClassToFieldData(mockClass, {
+      isDev: false,
+      instructorImage: 'https://storage.example.com/instructors/jane.jpg',
+    });
+
+    expect(result['instructor-image']).toEqual({
+      url: 'https://storage.example.com/instructors/jane.jpg',
+      alt: 'Instructor profile photo',
     });
   });
 
@@ -181,6 +202,8 @@ describe('mapClassToFieldData', () => {
     expect(result['what-to-bring']).toBeUndefined();
     expect(result['minimum-age']).toBeUndefined();
     expect(result['instructor-name']).toBeUndefined();
+    expect(result['instructor-bio']).toBeUndefined();
+    expect(result['instructor-image']).toBeUndefined();
     expect(result['category-name']).toBeUndefined();
   });
 });

@@ -163,6 +163,8 @@ export const syncClassToWebflow = onDocumentWritten(
         publish: shouldPublish,
         isDev,
         instructorName: instructor?.name,
+        instructorBio: instructor?.bio,
+        instructorImage: instructor?.photoUrl,
         categoryName: category?.name,
         registrationCount,
       });
