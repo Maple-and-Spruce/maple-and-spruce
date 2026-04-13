@@ -9,7 +9,7 @@
  *   npx tsx tools/seed-email-templates.ts --prod    # seeds prod project
  */
 
-import { cert, initializeApp } from 'firebase-admin/app';
+import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const isProd = process.argv.includes('--prod');
