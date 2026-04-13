@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 /**
  * Root vitest config for workspace-level coverage reporting.
@@ -13,6 +13,11 @@ import { resolve } from 'path';
  * @see vitest.workspace.ts for the list of project configs
  */
 export default defineConfig({
+  plugins: [
+    tsconfigPaths({
+      projects: ['tsconfig.base.json'],
+    }),
+  ],
   test: {
     // Exclude Playwright e2e tests - they use a different test runner
     exclude: [
@@ -36,16 +41,6 @@ export default defineConfig({
         branches: 50, // Branches often lower due to error handling paths
         statements: 80,
       },
-    },
-  },
-  resolve: {
-    alias: {
-      '@maple/ts/domain': resolve(__dirname, 'libs/ts/domain/src/index.ts'),
-      '@maple/ts/validation': resolve(__dirname, 'libs/ts/validation/src/index.ts'),
-      '@maple/firebase/database': resolve(__dirname, 'libs/firebase/database/src/index.ts'),
-      '@maple/firebase/functions': resolve(__dirname, 'libs/firebase/functions/src/index.ts'),
-      '@maple/firebase/square': resolve(__dirname, 'libs/firebase/square/src/index.ts'),
-      '@maple/firebase/webflow': resolve(__dirname, 'libs/firebase/webflow/src/index.ts'),
     },
   },
 });
