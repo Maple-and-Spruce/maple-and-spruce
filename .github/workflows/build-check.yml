@@ -227,6 +227,7 @@ jobs:
           echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
           echo "ETSY_REDIRECT_URI=http://localhost:3000/etsy/callback" >> dist/apps/functions-sync/.env
           echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions-calendar/.env
+          echo "GOOGLE_CALENDAR_ADHOC_ICS_URL=" >> dist/apps/functions-calendar/.env
 
       - name: Start mock server and run integration tests
         run: |
