@@ -153,6 +153,26 @@ export function ClassForm({
     return fieldErrors?.[0] ?? null;
   };
 
+  const fieldLabels: Record<string, string> = {
+    name: 'Class Name',
+    description: 'Full Description',
+    shortDescription: 'Short Description',
+    instructorId: 'Instructor',
+    dateTime: 'Date & Time',
+    durationMinutes: 'Duration',
+    capacity: 'Capacity',
+    priceCents: 'Price',
+    skillLevel: 'Skill Level',
+    status: 'Status',
+    minimumAge: 'Minimum Age',
+    materialsIncluded: 'Materials Included',
+    whatToBring: 'What to Bring',
+  };
+
+  const hasValidationErrors = useComputed(() => {
+    return showValidationErrors.value && Object.keys(errors.value).length > 0;
+  });
+
   // ============================================================
   // EFFECTS
   // ============================================================
@@ -369,6 +389,19 @@ export function ClassForm({
               </Alert>
             )}
 
+            {hasValidationErrors.value && (
+              <Alert severity="error">
+                Please fix the following errors:
+                <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                  {Object.entries(errors.value).map(([field, messages]) => (
+                    <li key={field}>
+                      <strong>{fieldLabels[field] ?? field}</strong>: {messages[0]}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
             {/* Image Upload */}
             <ImageUpload
               state={imageUploadState.value}
@@ -526,8 +559,8 @@ export function ClassForm({
             </Box>
 
             {/* Instructor */}
-            {instructors.length > 0 && (
-              <FormControl fullWidth>
+            {(instructors.length > 0 || !!getFieldError('instructorId')) && (
+              <FormControl fullWidth error={!!getFieldError('instructorId')}>
                 <InputLabel id="instructor-label">Instructor</InputLabel>
                 <Select
                   labelId="instructor-label"
@@ -545,7 +578,9 @@ export function ClassForm({
                     </MenuItem>
                   ))}
                 </Select>
-                <FormHelperText>Optional - assign an instructor</FormHelperText>
+                <FormHelperText>
+                  {getFieldError('instructorId') || 'Optional - assign an instructor'}
+                </FormHelperText>
               </FormControl>
             )}
 
