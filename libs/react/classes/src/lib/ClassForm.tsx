@@ -96,13 +96,15 @@ export function ClassForm({
   const instructorId = useSignal('');
   const dateTime = useSignal<Date>(new Date());
   const durationMinutes = useSignal(60);
-  const capacity = useSignal(10);
+  const capacity = useSignal(8);
   const priceCents = useSignal(0);
+  const priceDisplay = useSignal('0.00');
   const imageUrl = useSignal('');
   const categoryId = useSignal('');
   const skillLevel = useSignal<ClassSkillLevel>('all-levels');
   const status = useSignal<ClassStatus>('draft');
-  const location = useSignal('');
+  const location = useSignal('Maple & Spruce');
+  const durationMode = useSignal<'preset' | 'custom'>('preset');
   const materialsIncluded = useSignal('');
   const whatToBring = useSignal('');
   const minimumAge = useSignal<number | undefined>(undefined);
@@ -173,11 +175,13 @@ export function ClassForm({
         durationMinutes.value = classItem.durationMinutes;
         capacity.value = classItem.capacity;
         priceCents.value = classItem.priceCents;
+        priceDisplay.value = (classItem.priceCents / 100).toFixed(2);
         imageUrl.value = classItem.imageUrl ?? '';
         categoryId.value = classItem.categoryId ?? '';
         skillLevel.value = classItem.skillLevel;
         status.value = classItem.status;
         location.value = classItem.location ?? '';
+        durationMode.value = [60, 90, 120, 150, 180].includes(classItem.durationMinutes) ? 'preset' : 'custom';
         materialsIncluded.value = classItem.materialsIncluded ?? '';
         whatToBring.value = classItem.whatToBring ?? '';
         minimumAge.value = classItem.minimumAge;
@@ -213,13 +217,15 @@ export function ClassForm({
         instructorId.value = '';
         dateTime.value = newClassDateTime;
         durationMinutes.value = 120;
-        capacity.value = 10;
+        durationMode.value = 'preset';
+        capacity.value = 8;
         priceCents.value = 4500; // $45 default
+        priceDisplay.value = '45.00';
         imageUrl.value = '';
         categoryId.value = '';
         skillLevel.value = 'all-levels';
         status.value = 'draft';
-        location.value = '';
+        location.value = 'Maple & Spruce';
         materialsIncluded.value = '';
         whatToBring.value = '';
         minimumAge.value = undefined;
@@ -447,24 +453,64 @@ export function ClassForm({
                   },
                 }}
               />
-              <TextField
-                label="Duration"
-                type="number"
-                value={durationMinutes.value}
-                onChange={(e) => (durationMinutes.value = parseInt(e.target.value) || 0)}
-                error={!!getFieldError('durationMinutes')}
-                helperText={getFieldError('durationMinutes')}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">min</InputAdornment>,
-                }}
-                sx={{ width: 130 }}
-                required
-              />
+              <FormControl sx={{ minWidth: 160 }} error={!!getFieldError('durationMinutes')} required>
+                <InputLabel id="duration-label">Duration</InputLabel>
+                <Select
+                  labelId="duration-label"
+                  id="duration-select"
+                  value={durationMode.value === 'custom' ? 'custom' : String(durationMinutes.value)}
+                  label="Duration"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'custom') {
+                      durationMode.value = 'custom';
+                    } else {
+                      durationMode.value = 'preset';
+                      durationMinutes.value = parseInt(val);
+                    }
+                  }}
+                >
+                  <MenuItem value="60">1 hour</MenuItem>
+                  <MenuItem value="90">1.5 hours</MenuItem>
+                  <MenuItem value="120">2 hours</MenuItem>
+                  <MenuItem value="150">2.5 hours</MenuItem>
+                  <MenuItem value="180">3 hours</MenuItem>
+                  <MenuItem value="custom">Custom</MenuItem>
+                </Select>
+                {getFieldError('durationMinutes') && (
+                  <FormHelperText>{getFieldError('durationMinutes')}</FormHelperText>
+                )}
+              </FormControl>
+              {durationMode.value === 'custom' && (
+                <TextField
+                  label="Minutes"
+                  type="number"
+                  value={durationMinutes.value}
+                  onChange={(e) => (durationMinutes.value = parseInt(e.target.value) || 0)}
+                  error={!!getFieldError('durationMinutes')}
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">min</InputAdornment>,
+                  }}
+                  sx={{ width: 130 }}
+                />
+              )}
               <TextField
                 label="Price"
-                type="number"
-                value={priceCents.value / 100}
-                onChange={(e) => (priceCents.value = Math.round(parseFloat(e.target.value) * 100) || 0)}
+                value={priceDisplay.value}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Allow only digits and a single decimal point
+                  if (/^\d*\.?\d{0,2}$/.test(raw) || raw === '') {
+                    priceDisplay.value = raw;
+                    const cents = Math.round(parseFloat(raw || '0') * 100);
+                    priceCents.value = isNaN(cents) ? 0 : cents;
+                  }
+                }}
+                onBlur={() => {
+                  // Format to 2 decimal places on blur
+                  const val = parseFloat(priceDisplay.value || '0');
+                  priceDisplay.value = (isNaN(val) ? 0 : val).toFixed(2);
+                }}
                 error={!!getFieldError('priceCents')}
                 helperText={getFieldError('priceCents')}
                 InputProps={{
