@@ -34,6 +34,7 @@ export async function callFunction<
     method: 'POST',
     headers,
     body: JSON.stringify({ data: options.data ?? {} }),
+    signal: AbortSignal.timeout(15000),
   });
 
   const bodyText = await response.text();

@@ -25,6 +25,7 @@ export default defineConfig({
     include: ['src/**/*.spec.ts'],
     setupFiles: ['../../libs/firebase/integration-test-utils/src/lib/setup.ts'],
     testTimeout: 30000,
+    hookTimeout: 30000,
     fileParallelism: false,
     sequence: {
       concurrent: false,
