@@ -27,6 +27,7 @@ import {
   Square,
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
+  PaymentError,
 } from '@maple/firebase/square';
 import {
   isClassRegistrationOpen,
@@ -228,13 +229,23 @@ export const createRegistration = Functions.endpoint
         });
       } catch (paymentError) {
         // Payment failed - update registration to cancelled
+        const errorDetail =
+          paymentError instanceof Error
+            ? paymentError.message
+            : 'Unknown error';
         await registrationDocRef.update({
           status: 'cancelled',
-          notes: `Payment failed: ${paymentError instanceof Error ? paymentError.message : 'Unknown error'}`,
+          notes: `Payment failed: ${errorDetail}`,
           updatedAt: new Date(),
         });
-        throw new Error(
-          `Payment failed: ${paymentError instanceof Error ? paymentError.message : 'Unable to process payment'}`
+
+        // Forward user-friendly message from PaymentError, or wrap generic errors
+        if (paymentError instanceof PaymentError) {
+          throw paymentError;
+        }
+        throw new PaymentError(
+          'Unable to process payment. Please try again or use a different card.',
+          undefined
         );
       }
 

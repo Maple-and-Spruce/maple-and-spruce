@@ -372,11 +372,20 @@ class FunctionBuilder<
             res.status(200).json({ data: result });
           } catch (error) {
             console.error('Function error:', error);
-            res.status(500).json({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : 'An unexpected error occurred',
+
+            const message =
+              error instanceof Error
+                ? error.message
+                : 'An unexpected error occurred';
+
+            // Return error in the callable protocol format so httpsCallable
+            // on the client can extract the message. Without this structure,
+            // the Firebase SDK shows a generic "internal" error to users.
+            res.status(400).json({
+              error: {
+                message,
+                status: 'INVALID_ARGUMENT',
+              },
             });
           }
         });

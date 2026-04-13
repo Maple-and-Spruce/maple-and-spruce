@@ -1,0 +1,18 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  root: __dirname,
+  test: {
+    name: 'square',
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.spec.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov', 'json-summary', 'json'],
+      reportsDirectory: '../../../coverage/libs/firebase/square',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/index.ts'],
+    },
+  },
+});

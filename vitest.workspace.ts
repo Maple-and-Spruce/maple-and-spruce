@@ -6,6 +6,7 @@ export default defineWorkspace([
   'libs/firebase/database/vitest.config.ts',
   'libs/firebase/functions/vitest.config.ts',
   'libs/firebase/webflow/vitest.config.ts',
+  'libs/firebase/square/vitest.config.ts',
   'libs/firebase/maple-functions/detect-sync-conflicts/vitest.config.ts',
   'libs/firebase/maple-functions/square-webhook/vitest.config.ts',
   'libs/firebase/maple-functions/calendar-embed/vitest.config.ts',
