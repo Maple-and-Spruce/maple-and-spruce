@@ -12,7 +12,10 @@ const baseRegistration: Registration = {
   customerEmail: 'test@example.com',
   customerName: 'Test User',
   quantity: 1,
-  pricePaidCents: 5000,
+  pricePaidCents: 5300,
+  subtotalCents: 5000,
+  taxAmountCents: 300,
+  taxRatePercent: 6.0,
   status: 'confirmed',
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -43,10 +46,10 @@ describe('canRefundRegistration', () => {
 
 describe('getNetAmountPaid', () => {
   it('returns full price when no discount', () => {
-    expect(getNetAmountPaid(baseRegistration)).toBe(5000);
+    expect(getNetAmountPaid(baseRegistration)).toBe(5300);
   });
 
   it('subtracts discount amount', () => {
-    expect(getNetAmountPaid({ ...baseRegistration, discountAmountCents: 1000 })).toBe(4000);
+    expect(getNetAmountPaid({ ...baseRegistration, discountAmountCents: 1000 })).toBe(4300);
   });
 });

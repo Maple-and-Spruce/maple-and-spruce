@@ -13,6 +13,7 @@ import { SquareClient, SquareEnvironment } from 'square';
 import { ServiceEnvironment } from '@maple/firebase/functions';
 import { CatalogService } from './catalog.service';
 import { InventoryService } from './inventory.service';
+import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
 
 /**
@@ -31,8 +32,13 @@ export const SQUARE_SECRET_NAMES = ['SQUARE_ACCESS_TOKEN'] as const;
  *
  * SQUARE_ENV: 'LOCAL' (sandbox) or 'PROD' (production)
  * SQUARE_LOCATION_ID: The location ID for inventory operations
+ * SALES_TAX_RATE: Sales tax rate as percentage (e.g., '6.0' for 6%)
  */
-export const SQUARE_STRING_NAMES = ['SQUARE_ENV', 'SQUARE_LOCATION_ID'] as const;
+export const SQUARE_STRING_NAMES = [
+  'SQUARE_ENV',
+  'SQUARE_LOCATION_ID',
+  'SALES_TAX_RATE',
+] as const;
 
 export type SquareSecrets = Record<
   (typeof SQUARE_SECRET_NAMES)[number],
@@ -73,8 +79,10 @@ export class Square {
   private readonly env: ServiceEnvironment;
   private readonly _catalogService: CatalogService;
   private readonly _inventoryService: InventoryService;
+  private readonly _ordersService: OrdersService;
   private readonly _paymentsService: PaymentsService;
   public readonly locationId: string;
+  public readonly taxRatePercent: number;
 
   constructor(
     private readonly secrets: SquareSecrets,
@@ -95,6 +103,14 @@ export class Square {
       );
     }
 
+    const taxRate = parseFloat(this.strings.SALES_TAX_RATE);
+    if (isNaN(taxRate) || taxRate < 0) {
+      throw new Error(
+        'Sales tax rate not configured or invalid. Set SALES_TAX_RATE (e.g., "6.0").'
+      );
+    }
+    this.taxRatePercent = taxRate;
+
     this.client = new SquareClient({
       token: accessToken,
       environment: this.env.isProd
@@ -104,6 +120,7 @@ export class Square {
 
     this._catalogService = new CatalogService(this.client);
     this._inventoryService = new InventoryService(this.client);
+    this._ordersService = new OrdersService(this.client);
     this._paymentsService = new PaymentsService(this.client);
   }
 
@@ -133,6 +150,13 @@ export class Square {
    */
   get inventoryService(): InventoryService {
     return this._inventoryService;
+  }
+
+  /**
+   * Get the orders service for creating orders with tax
+   */
+  get ordersService(): OrdersService {
+    return this._ordersService;
   }
 
   /**
