@@ -215,7 +215,9 @@ export const createRegistration = Functions.endpoint
               confirmationNumber,
               amountPaid: `$${(finalCostCents / 100).toFixed(2)}`,
               quantity: data.quantity,
-              receiptUrl: squareReceiptUrl,
+              receiptUrl: squareReceiptUrl?.includes('squareupsandbox.com')
+                ? undefined
+                : squareReceiptUrl,
               materialsIncluded: classEntity.materialsIncluded,
               whatToBring: classEntity.whatToBring,
             },
