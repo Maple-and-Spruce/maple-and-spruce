@@ -121,8 +121,7 @@ export function SquareCardForm({
     initializedRef.current = true;
 
     const isSandbox =
-      applicationId.startsWith('sandbox-') ||
-      applicationId.startsWith('sq0idp-');
+      applicationId.startsWith('sandbox-');
     const scriptUrl = isSandbox
       ? 'https://sandbox.web.squarecdn.com/v1/square.js'
       : 'https://web.squarecdn.com/v1/square.js';
