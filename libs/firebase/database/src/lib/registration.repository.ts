@@ -33,8 +33,12 @@ function docToRegistration(
     customerPhone: data.customerPhone,
     quantity: data.quantity,
     pricePaidCents: data.pricePaidCents,
+    subtotalCents: data.subtotalCents,
+    taxAmountCents: data.taxAmountCents,
+    taxRatePercent: data.taxRatePercent,
     squarePaymentId: data.squarePaymentId,
     squareOrderId: data.squareOrderId,
+    squareReceiptUrl: data.squareReceiptUrl,
     discountCode: data.discountCode,
     discountAmountCents: data.discountAmountCents,
     status: data.status as RegistrationStatus,
@@ -116,10 +120,11 @@ export const RegistrationRepository = {
       .collection(COLLECTION)
       .where('classId', '==', classId)
       .where('status', 'in', statuses)
-      .count()
       .get();
 
-    return snapshot.data().count;
+    return snapshot.docs.reduce((sum, doc) => {
+      return sum + ((doc.data().quantity as number) || 1);
+    }, 0);
   },
 
   /**

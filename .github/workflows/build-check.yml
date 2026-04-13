@@ -212,7 +212,7 @@ jobs:
           echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
-          echo "SALES_TAX_RATE=0.06" >> dist/apps/functions/.env
+          echo "SALES_TAX_RATE=6.0" >> dist/apps/functions/.env
           echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.secret.local
           echo "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key" >> dist/apps/functions-square/.secret.local
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions-square/.env

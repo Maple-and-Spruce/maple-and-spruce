@@ -42,6 +42,7 @@ interface RegistrationCheckoutFormProps {
   onSuccess: (details: {
     confirmationNumber: string;
     customerName: string;
+    customerEmail: string;
     pricePaidCents: number;
     quantity: number;
   }) => void;
@@ -103,13 +104,16 @@ export function RegistrationCheckoutForm({
     [publicClass.id, onCalculateCost]
   );
 
+  const isFull = publicClass.spotsRemaining <= 0;
+  const maxQuantity = Math.min(10, publicClass.spotsRemaining);
+
   const handleQuantityChange = useCallback(
     (newQuantity: number) => {
-      const qty = Math.max(1, Math.min(10, newQuantity));
+      const qty = Math.max(1, Math.min(maxQuantity, newQuantity));
       setQuantity(qty);
       calculateCost(qty, discountCode);
     },
-    [discountCode, calculateCost]
+    [discountCode, calculateCost, maxQuantity]
   );
 
   const handleApplyDiscount = useCallback(() => {
@@ -157,6 +161,7 @@ export function RegistrationCheckoutForm({
       onSuccess({
         confirmationNumber: result.confirmationNumber,
         customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
         pricePaidCents: result.registration.pricePaidCents,
         quantity,
       });
@@ -186,6 +191,12 @@ export function RegistrationCheckoutForm({
       {submitError && (
         <Alert severity="error" onClose={() => setSubmitError(null)}>
           {submitError}
+        </Alert>
+      )}
+
+      {isFull && (
+        <Alert severity="warning">
+          This class is full. Registration is not available at this time.
         </Alert>
       )}
 
@@ -226,9 +237,20 @@ export function RegistrationCheckoutForm({
             type="number"
             value={quantity}
             onChange={(e) => handleQuantityChange(Number(e.target.value))}
-            inputProps={{ min: 1, max: Math.min(10, publicClass.spotsRemaining) }}
+            inputProps={{ min: 1, max: maxQuantity }}
             fullWidth
+            disabled={isFull}
+            helperText={
+              isFull
+                ? 'No spots available'
+                : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available`
+            }
           />
+          {!isFull && quantity > publicClass.spotsRemaining && (
+            <Alert severity="warning">
+              Only {publicClass.spotsRemaining} spot{publicClass.spotsRemaining === 1 ? '' : 's'} remaining. Quantity has been adjusted.
+            </Alert>
+          )}
           <TextField
             label="Notes (optional)"
             value={notes}
@@ -276,6 +298,9 @@ export function RegistrationCheckoutForm({
           originalCostCents={costBreakdown.originalCostCents}
           discountAmountCents={costBreakdown.discountAmountCents}
           finalCostCents={costBreakdown.finalCostCents}
+          taxAmountCents={costBreakdown.taxAmountCents}
+          taxRatePercent={costBreakdown.taxRatePercent}
+          totalCents={costBreakdown.totalCents}
           discountDescription={costBreakdown.discountDescription}
           quantity={quantity}
           pricePerItemCents={publicClass.priceCents}
@@ -299,7 +324,7 @@ export function RegistrationCheckoutForm({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || !isCardReady}
+              disabled={isSubmitting || !isCardReady || isFull}
               style={{
                 width: '100%',
                 padding: '14px 24px',
@@ -308,19 +333,19 @@ export function RegistrationCheckoutForm({
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 color: '#D5D6C8',
                 backgroundColor:
-                  isSubmitting || !isCardReady ? '#8a7b6e' : '#4A3728',
+                  isSubmitting || !isCardReady || isFull ? '#8a7b6e' : '#4A3728',
                 border: 'none',
                 borderRadius: '8px',
                 cursor:
-                  isSubmitting || !isCardReady ? 'not-allowed' : 'pointer',
-                opacity: isSubmitting || !isCardReady ? 0.7 : 1,
+                  isSubmitting || !isCardReady || isFull ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting || !isCardReady || isFull ? 0.7 : 1,
                 transition: 'background-color 0.2s, opacity 0.2s',
                 letterSpacing: '0.02em',
               }}
             >
               {isSubmitting
                 ? 'Processing...'
-                : `Register & Pay ${costBreakdown ? `$${(costBreakdown.finalCostCents / 100).toFixed(2)}` : ''}`}
+                : `Register & Pay ${costBreakdown ? `$${(costBreakdown.totalCents / 100).toFixed(2)}` : ''}`}
             </button>
           }
         />

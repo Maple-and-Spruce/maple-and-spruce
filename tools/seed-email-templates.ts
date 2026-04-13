@@ -9,7 +9,7 @@
  *   npx tsx tools/seed-email-templates.ts --prod    # seeds prod project
  */
 
-import { cert, initializeApp } from 'firebase-admin/app';
+import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const isProd = process.argv.includes('--prod');
@@ -89,8 +89,16 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
         <td>{{classLocation}}</td>
       </tr>
       <tr>
-        <td class="label">Amount Paid</td>
-        <td>{{amountPaid}}</td>
+        <td class="label">Subtotal</td>
+        <td>{{subtotal}}</td>
+      </tr>
+      <tr>
+        <td class="label">WV Sales Tax ({{taxRate}}%)</td>
+        <td>{{taxAmount}}</td>
+      </tr>
+      <tr>
+        <td class="label">Total Paid</td>
+        <td><strong>{{amountPaid}}</strong></td>
       </tr>
       <tr>
         <td class="label">Confirmation #</td>

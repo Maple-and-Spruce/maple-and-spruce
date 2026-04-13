@@ -38,6 +38,9 @@
       "@maple/firebase/maple-functions/upload-artist-image": [
         "libs/firebase/maple-functions/upload-artist-image/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/upload-instructor-image": [
+        "libs/firebase/maple-functions/upload-instructor-image/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-categories": [
         "libs/firebase/maple-functions/get-categories/src/index.ts"
       ],
@@ -94,6 +97,9 @@
       "@maple/firebase/etsy": ["libs/firebase/etsy/src/index.ts"],
       "@maple/firebase/maple-functions/sync-artist-to-webflow": [
         "libs/firebase/maple-functions/sync-artist-to-webflow/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/sync-instructor-to-webflow": [
+        "libs/firebase/maple-functions/sync-instructor-to-webflow/src/index.ts"
       ],
       "@maple/firebase/maple-functions/sync-class-to-webflow": [
         "libs/firebase/maple-functions/sync-class-to-webflow/src/index.ts"

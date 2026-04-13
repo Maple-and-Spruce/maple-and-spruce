@@ -80,8 +80,14 @@ export interface CalculateRegistrationCostResponse {
   originalCostCents: number;
   /** Discount amount applied */
   discountAmountCents: number;
-  /** Final price to charge */
+  /** Post-discount subtotal (pre-tax) */
   finalCostCents: number;
+  /** Tax rate as percentage (e.g., 6.0) */
+  taxRatePercent: number;
+  /** Tax amount in cents */
+  taxAmountCents: number;
+  /** Total to charge (subtotal + tax) */
+  totalCents: number;
   /** Description of discount applied */
   discountDescription?: string;
 }

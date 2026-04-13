@@ -12,6 +12,7 @@
 import { WebflowClient } from 'webflow-api';
 import { ArtistService } from './artist.service';
 import { ClassService } from './class.service';
+import { InstructorService } from './instructor.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -32,6 +33,7 @@ export const WEBFLOW_STRING_NAMES = [
   'WEBFLOW_SITE_ID',
   'WEBFLOW_ARTISTS_COLLECTION_ID',
   'WEBFLOW_CLASSES_COLLECTION_ID',
+  'WEBFLOW_INSTRUCTORS_COLLECTION_ID',
 ] as const;
 
 export type WebflowSecrets = Record<
@@ -66,9 +68,11 @@ export class Webflow {
   private readonly client: WebflowClient;
   private readonly _artistService: ArtistService;
   private readonly _classService: ClassService | null;
+  private readonly _instructorService: InstructorService | null;
   public readonly siteId: string;
   public readonly artistsCollectionId: string;
   public readonly classesCollectionId: string;
+  public readonly instructorsCollectionId: string;
 
   constructor(
     private readonly secrets: WebflowSecrets,
@@ -85,6 +89,7 @@ export class Webflow {
     this.siteId = this.strings.WEBFLOW_SITE_ID;
     this.artistsCollectionId = this.strings.WEBFLOW_ARTISTS_COLLECTION_ID;
     this.classesCollectionId = this.strings.WEBFLOW_CLASSES_COLLECTION_ID;
+    this.instructorsCollectionId = this.strings.WEBFLOW_INSTRUCTORS_COLLECTION_ID;
 
     if (!this.siteId) {
       throw new Error('Webflow site ID not configured. Set WEBFLOW_SITE_ID.');
@@ -110,6 +115,10 @@ export class Webflow {
 
     this._classService = this.classesCollectionId
       ? new ClassService(this.client, this.classesCollectionId)
+      : null;
+
+    this._instructorService = this.instructorsCollectionId
+      ? new InstructorService(this.client, this.instructorsCollectionId)
       : null;
   }
 
@@ -137,6 +146,18 @@ export class Webflow {
       );
     }
     return this._classService;
+  }
+
+  /**
+   * Get the instructor service for syncing instructors to Webflow CMS
+   */
+  get instructorService(): InstructorService {
+    if (!this._instructorService) {
+      throw new Error(
+        'Webflow instructors collection ID not configured. Set WEBFLOW_INSTRUCTORS_COLLECTION_ID.'
+      );
+    }
+    return this._instructorService;
   }
 
   /**

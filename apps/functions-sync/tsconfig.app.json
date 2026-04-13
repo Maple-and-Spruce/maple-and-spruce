@@ -9,6 +9,7 @@
     "../../libs/firebase/maple-functions/sync-artist-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/sync-class-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/sync-registration-count/**/*.ts",
+    "../../libs/firebase/maple-functions/sync-instructor-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/etsy-auth-url/**/*.ts",
     "../../libs/firebase/maple-functions/etsy-auth-callback/**/*.ts",
     "../../libs/firebase/maple-functions/get-etsy-connection-status/**/*.ts",
