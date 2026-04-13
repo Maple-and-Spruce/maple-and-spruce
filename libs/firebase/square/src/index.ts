@@ -39,6 +39,8 @@ export {
 // Payments service
 export {
   PaymentsService,
+  PaymentError,
+  getPaymentErrorMessage,
   type CreatePaymentInput,
   type CreatePaymentResult,
   type RefundPaymentInput,

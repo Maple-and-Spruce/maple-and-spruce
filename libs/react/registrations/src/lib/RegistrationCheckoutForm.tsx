@@ -18,6 +18,45 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { formatPhoneNumber } from './formatPhoneNumber';
 
+/**
+ * Firebase callable errors have a `code` and `message` property.
+ * When the backend returns a structured error, the message contains
+ * the user-friendly text. If the message is a generic code like
+ * "internal", fall back to a helpful default.
+ */
+interface FirebaseError {
+  code?: string;
+  message?: string;
+  details?: unknown;
+}
+
+const GENERIC_ERROR_CODES = new Set([
+  'internal',
+  'INTERNAL',
+  'unknown',
+  'UNKNOWN',
+]);
+
+function extractErrorMessage(error: unknown): string {
+  const fallback =
+    'Something went wrong processing your payment. Please try again.';
+
+  if (!error) return fallback;
+
+  // Firebase FunctionsError (from httpsCallable)
+  const fbError = error as FirebaseError;
+  if (fbError.message && !GENERIC_ERROR_CODES.has(fbError.message)) {
+    return fbError.message;
+  }
+
+  // Standard Error
+  if (error instanceof Error && !GENERIC_ERROR_CODES.has(error.message)) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 interface RegistrationCheckoutFormProps {
   publicClass: PublicClass;
   squareApplicationId: string;
@@ -178,11 +217,7 @@ export function RegistrationCheckoutForm({
         quantity,
       });
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : 'Registration failed. Please try again.'
-      );
+      setSubmitError(extractErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
