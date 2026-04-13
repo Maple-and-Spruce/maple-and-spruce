@@ -8,7 +8,103 @@
  * @see https://developer.squareup.com/docs/payments-api/overview
  * @see https://developer.squareup.com/docs/web-payments/overview
  */
-import { SquareClient, Square } from 'square';
+import { SquareClient, Square, SquareError } from 'square';
+
+/**
+ * User-friendly messages for common Square payment error codes.
+ *
+ * @see https://developer.squareup.com/docs/payments-api/error-codes
+ */
+const SQUARE_PAYMENT_ERROR_MESSAGES: Record<string, string> = {
+  CARD_DECLINED: 'Your card was declined. Please try a different card.',
+  CVV_FAILURE:
+    'The CVV number is incorrect. Please check your card details and try again.',
+  ADDRESS_VERIFICATION_FAILURE:
+    'The billing address does not match the card on file. Please verify your address.',
+  INVALID_EXPIRATION:
+    'The card expiration date is invalid. Please check your card details.',
+  INSUFFICIENT_FUNDS:
+    'Insufficient funds. Please try a different payment method.',
+  CARD_EXPIRED:
+    'Your card has expired. Please use a different card.',
+  INVALID_CARD:
+    'The card number is invalid. Please check your card details.',
+  GENERIC_DECLINE:
+    'Your card was declined. Please try a different card.',
+  CARD_NOT_SUPPORTED:
+    'This card type is not supported. Please try a different card.',
+  INVALID_ACCOUNT:
+    'There is a problem with your card account. Please contact your bank.',
+  CARD_TOKEN_EXPIRED:
+    'Your payment session has expired. Please refresh the page and try again.',
+  CARD_TOKEN_USED:
+    'A payment error occurred. Please refresh the page and try again.',
+};
+
+/**
+ * Minimal shape of a Square error object (works with both Square.Error_
+ * and SquareError.BodyError).
+ */
+interface SquareErrorEntry {
+  code?: string;
+  detail?: string;
+}
+
+/**
+ * Extract a user-friendly error message from a Square API error.
+ *
+ * Checks the error code against known payment error codes and returns
+ * a customer-friendly message. Falls back to the Square-provided detail
+ * or a generic message.
+ */
+export function getPaymentErrorMessage(errors: SquareErrorEntry[]): string {
+  for (const error of errors) {
+    const code = error.code || '';
+    if (code in SQUARE_PAYMENT_ERROR_MESSAGES) {
+      return SQUARE_PAYMENT_ERROR_MESSAGES[code];
+    }
+  }
+
+  // Fall back to Square's detail message if available
+  const detail = errors[0]?.detail;
+  if (detail) {
+    return detail;
+  }
+
+  return 'Unable to process payment. Please try again or use a different card.';
+}
+
+/**
+ * Extract error details from a SquareError (thrown by the SDK on HTTP errors).
+ */
+function extractSquareErrorMessage(error: unknown): string {
+  if (error instanceof SquareError) {
+    const squareErrors = error.errors;
+    if (squareErrors && squareErrors.length > 0) {
+      return getPaymentErrorMessage(squareErrors);
+    }
+    return error.message || 'Unable to process payment. Please try again.';
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Unable to process payment. Please try again.';
+}
+
+/**
+ * Custom error class for payment failures that preserves user-friendly messages.
+ */
+export class PaymentError extends Error {
+  constructor(
+    public readonly userMessage: string,
+    public readonly squareErrorCode?: string
+  ) {
+    super(userMessage);
+    this.name = 'PaymentError';
+  }
+}
 
 /**
  * Input for creating a payment
@@ -108,31 +204,43 @@ export class PaymentsService {
    * @see https://developer.squareup.com/docs/web-payments/take-card-payment
    */
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
-    const response = await this.client.payments.create({
-      sourceId: input.sourceId,
-      idempotencyKey: input.idempotencyKey,
-      amountMoney: {
-        amount: BigInt(input.amountCents),
-        currency: 'USD',
-      },
-      locationId: input.locationId,
-      autocomplete: true,
-      buyerEmailAddress: input.buyerEmailAddress,
-      note: input.note,
-      referenceId: input.referenceId,
-      orderId: input.orderId,
-    });
+    let response;
+    try {
+      response = await this.client.payments.create({
+        sourceId: input.sourceId,
+        idempotencyKey: input.idempotencyKey,
+        amountMoney: {
+          amount: BigInt(input.amountCents),
+          currency: 'USD',
+        },
+        locationId: input.locationId,
+        autocomplete: true,
+        buyerEmailAddress: input.buyerEmailAddress,
+        note: input.note,
+        referenceId: input.referenceId,
+        orderId: input.orderId,
+      });
+    } catch (error) {
+      // Square SDK throws SquareError for HTTP-level failures (4xx/5xx)
+      const userMessage = extractSquareErrorMessage(error);
+      const squareCode =
+        error instanceof SquareError
+          ? error.errors?.[0]?.code
+          : undefined;
+      throw new PaymentError(userMessage, squareCode);
+    }
 
     if (response.errors && response.errors.length > 0) {
-      const errorMessages = response.errors
-        .map((e: Square.Error_) => e.detail || e.code || 'Unknown error')
-        .join(', ');
-      throw new Error(`Square payment error: ${errorMessages}`);
+      const userMessage = getPaymentErrorMessage(response.errors);
+      throw new PaymentError(userMessage, response.errors[0]?.code);
     }
 
     const payment = response.payment;
     if (!payment) {
-      throw new Error('Square payment failed: no payment in response');
+      throw new PaymentError(
+        'Unable to process payment. Please try again.',
+        undefined
+      );
     }
 
     return {
