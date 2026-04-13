@@ -60,14 +60,11 @@ describe('mapClassToFieldData', () => {
     expect(result.capacity).toBe(10);
   });
 
-  it('formats date and time display correctly', () => {
+  it('formats date and time display in Eastern time', () => {
+    // mockClass.dateTime is 2026-05-15T14:00:00.000Z = 10:00 AM Eastern (EDT)
     const result = mapClassToFieldData(mockClass, { isDev: false });
-    // Date should be formatted as a readable date string
-    expect(result['date-display']).toContain('2026');
-    expect(result['date-display']).toContain('May');
-    expect(result['date-display']).toContain('15');
-    // Time should be formatted as readable time
-    expect(result['time-display']).toMatch(/\d{1,2}:\d{2}\s*(AM|PM)/);
+    expect(result['date-display']).toBe('Friday, May 15, 2026');
+    expect(result['time-display']).toBe('10:00 AM');
   });
 
   it('formats price display correctly', () => {

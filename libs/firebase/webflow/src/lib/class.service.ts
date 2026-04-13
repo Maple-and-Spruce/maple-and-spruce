@@ -128,11 +128,13 @@ export function mapClassToFieldData(
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'America/New_York',
   });
 
   const timeDisplay = dateObj.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: 'America/New_York',
   });
 
   const fieldData: ClassWebflowFieldData = {
