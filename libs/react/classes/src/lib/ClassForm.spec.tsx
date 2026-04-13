@@ -1,9 +1,11 @@
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ClassForm } from './ClassForm';
 
-// Mock firebase functions - not needed for validation tests
+// Mock all external @maple/* and firebase deps so vitest doesn't need
+// to resolve cross-library imports (matches existing test patterns).
 vi.mock('firebase/functions', () => ({
   httpsCallable: vi.fn(),
 }));
@@ -11,6 +13,14 @@ vi.mock('firebase/functions', () => ({
 vi.mock('@maple/ts/firebase/firebase-config', () => ({
   getMapleFunctions: vi.fn(),
 }));
+
+vi.mock('@maple/react/ui', () => ({
+  ImageUpload: (props: Record<string, unknown>) => (
+    <div data-testid="image-upload">{String(props['label'] ?? '')}</div>
+  ),
+}));
+
+import { ClassForm } from './ClassForm';
 
 // A future date that won't expire during tests
 const futureDate = new Date('2099-06-15T14:00:00');
@@ -37,12 +47,12 @@ describe('ClassForm', () => {
       await user.click(addButton);
 
       // Should show the error summary alert
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Please fix the following errors');
-
-      // Name is empty - should show error
-      expect(alert).toHaveTextContent('Class Name');
+      const alerts = screen.getAllByRole('alert');
+      const errorAlert = alerts.find((a) =>
+        a.textContent?.includes('Please fix the following errors')
+      );
+      expect(errorAlert).toBeDefined();
+      expect(errorAlert!.textContent).toContain('Class Name');
 
       // onSubmit should NOT have been called
       expect(defaultProps.onSubmit).not.toHaveBeenCalled();
@@ -56,9 +66,9 @@ describe('ClassForm', () => {
       const addButton = screen.getByRole('button', { name: 'Add' });
       await user.click(addButton);
 
-      // The Class Name field should show an error
-      const nameField = screen.getByLabelText(/Class Name/);
-      expect(nameField).toHaveAttribute('aria-invalid', 'true');
+      // The Class Name input should be marked invalid
+      const nameInput = screen.getByRole('textbox', { name: /Class Name/ });
+      expect(nameInput).toHaveAttribute('aria-invalid', 'true');
     });
 
     it('shows instructor error when status is published and no instructor is selected', async () => {
@@ -66,8 +76,8 @@ describe('ClassForm', () => {
 
       render(<ClassForm {...defaultProps} />);
 
-      // Change status to Published
-      const statusSelect = screen.getByLabelText('Status');
+      // Change status to Published via the combobox
+      const statusSelect = screen.getByRole('combobox', { name: /Status/ });
       await user.click(statusSelect);
       const publishedOption = screen.getByRole('option', {
         name: 'Published',
@@ -75,11 +85,13 @@ describe('ClassForm', () => {
       await user.click(publishedOption);
 
       // Fill in required fields to isolate the instructor error
-      const nameField = screen.getByLabelText(/Class Name/);
+      const nameField = screen.getByRole('textbox', { name: /Class Name/ });
       await user.clear(nameField);
       await user.type(nameField, 'A Valid Class Name');
 
-      const descField = screen.getByLabelText(/Full Description/);
+      const descField = screen.getByRole('textbox', {
+        name: /Full Description/,
+      });
       await user.clear(descField);
       await user.type(
         descField,
@@ -96,12 +108,12 @@ describe('ClassForm', () => {
         a.textContent?.includes('Please fix the following errors')
       );
       expect(errorAlert).toBeDefined();
-      expect(errorAlert).toHaveTextContent('Instructor');
-      expect(errorAlert).toHaveTextContent(
+      expect(errorAlert!.textContent).toContain('Instructor');
+      expect(errorAlert!.textContent).toContain(
         'Instructor is required for published classes'
       );
 
-      // The instructor field should now be visible even with no instructors passed
+      // The instructor error should also appear inline
       expect(
         screen.getByText('Instructor is required for published classes')
       ).toBeInTheDocument();
@@ -116,19 +128,23 @@ describe('ClassForm', () => {
       render(<ClassForm {...defaultProps} />);
 
       // Change status to Published
-      const statusSelect = screen.getByLabelText('Status');
+      const statusSelect = screen.getByRole('combobox', { name: /Status/ });
       await user.click(statusSelect);
       await user.click(screen.getByRole('option', { name: 'Published' }));
 
-      // Before clicking Add, instructor field should not be visible
-      expect(screen.queryByLabelText('Instructor')).not.toBeInTheDocument();
+      // Before clicking Add, instructor combobox should not be visible
+      expect(
+        screen.queryByRole('combobox', { name: /Instructor/ })
+      ).not.toBeInTheDocument();
 
       // Click Add to trigger validation
       await user.click(screen.getByRole('button', { name: 'Add' }));
 
       // Now instructor field should appear with error
-      const instructorField = screen.getByLabelText('Instructor');
-      expect(instructorField).toBeInTheDocument();
+      const instructorSelect = screen.getByRole('combobox', {
+        name: /Instructor/,
+      });
+      expect(instructorSelect).toBeInTheDocument();
     });
 
     it('does not show error summary when form is valid', async () => {
@@ -142,11 +158,13 @@ describe('ClassForm', () => {
       );
 
       // Fill in all required fields
-      const nameField = screen.getByLabelText(/Class Name/);
+      const nameField = screen.getByRole('textbox', { name: /Class Name/ });
       await user.clear(nameField);
       await user.type(nameField, 'Pottery Workshop');
 
-      const descField = screen.getByLabelText(/Full Description/);
+      const descField = screen.getByRole('textbox', {
+        name: /Full Description/,
+      });
       await user.clear(descField);
       await user.type(
         descField,
@@ -175,16 +193,21 @@ describe('ClassForm', () => {
       await user.click(addButton);
 
       // Should show errors
-      expect(
-        screen.getByText('Please fix the following errors:')
-      ).toBeInTheDocument();
+      const errorAlerts = screen
+        .getAllByRole('alert')
+        .filter((a) =>
+          a.textContent?.includes('Please fix the following errors')
+        );
+      expect(errorAlerts.length).toBeGreaterThan(0);
 
       // Fix name
-      const nameField = screen.getByLabelText(/Class Name/);
+      const nameField = screen.getByRole('textbox', { name: /Class Name/ });
       await user.type(nameField, 'A Valid Class Name');
 
       // Fix description
-      const descField = screen.getByLabelText(/Full Description/);
+      const descField = screen.getByRole('textbox', {
+        name: /Full Description/,
+      });
       await user.clear(descField);
       await user.type(
         descField,
