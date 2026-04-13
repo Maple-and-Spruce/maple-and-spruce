@@ -213,6 +213,7 @@ jobs:
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
           echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.secret.local
+          echo "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key" >> dist/apps/functions-square/.secret.local
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions-square/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions-square/.env
           echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
