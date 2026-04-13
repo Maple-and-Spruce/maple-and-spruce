@@ -120,10 +120,11 @@ export const RegistrationRepository = {
       .collection(COLLECTION)
       .where('classId', '==', classId)
       .where('status', 'in', statuses)
-      .count()
       .get();
 
-    return snapshot.data().count;
+    return snapshot.docs.reduce((sum, doc) => {
+      return sum + ((doc.data().quantity as number) || 1);
+    }, 0);
   },
 
   /**
