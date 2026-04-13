@@ -16,6 +16,7 @@ import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
+import { formatPhoneNumber } from './formatPhoneNumber';
 
 interface RegistrationCheckoutFormProps {
   publicClass: PublicClass;
@@ -214,8 +215,11 @@ export function RegistrationCheckoutForm({
             label="Phone Number (optional)"
             type="tel"
             value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
+            onChange={(e) =>
+              setCustomerPhone(formatPhoneNumber(e.target.value))
+            }
             fullWidth
+            placeholder="(304) 555-1234"
           />
           <TextField
             label="Number of Spots"

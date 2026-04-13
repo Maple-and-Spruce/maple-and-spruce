@@ -18,6 +18,7 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
+      '.claude/**',
       'apps/maple-spruce-e2e/**',
       'apps/functions-integration-tests/**',
       'apps/functions-integration-tests-*/**',
