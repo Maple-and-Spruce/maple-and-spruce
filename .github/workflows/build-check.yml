@@ -205,6 +205,7 @@ jobs:
           pnpm exec nx run functions:build
           pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
 
       - name: Create emulator .env
         run: |
@@ -225,6 +226,7 @@ jobs:
           echo "WEBFLOW_CLASSES_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
           echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
           echo "ETSY_REDIRECT_URI=http://localhost:3000/etsy/callback" >> dist/apps/functions-sync/.env
+          echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions-calendar/.env
 
       - name: Start mock server and run integration tests
         run: |
