@@ -28,7 +28,7 @@
           "npx nx run functions-integration-tests-calendar:test",
           "npx nx run functions-integration-tests-registration:test",
           "npx nx run functions-integration-tests-utility:test",
-          "npx nx run functions-integration-tests-square:test"
+          "npx nx run functions-integration-tests-square:test --verbose"
         ],
         "parallel": false
       }
