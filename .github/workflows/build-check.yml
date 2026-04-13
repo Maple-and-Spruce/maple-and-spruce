@@ -212,6 +212,7 @@ jobs:
           echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
           echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
+          echo "SALES_TAX_RATE=0.06" >> dist/apps/functions/.env
           echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.secret.local
           echo "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key" >> dist/apps/functions-square/.secret.local
           echo "SQUARE_ENV=LOCAL" >> dist/apps/functions-square/.env
@@ -235,7 +236,7 @@ jobs:
           npx tsx libs/firebase/integration-test-mock-server/start.ts &
           MOCK_PID=$!
           sleep 2
-          npx firebase --debug emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
           EXIT_CODE=$?
           kill $MOCK_PID 2>/dev/null
           exit $EXIT_CODE
