@@ -27,3 +27,12 @@ export {
   generateClassSlug,
   mapClassToFieldData,
 } from './lib/class.service';
+
+// Instructor service
+export {
+  InstructorService,
+  type SyncInstructorInput,
+  type SyncInstructorResult,
+  type InstructorWebflowFieldData,
+  mapInstructorToFieldData,
+} from './lib/instructor.service';
