@@ -107,11 +107,23 @@ export function RegistrationCheckoutForm({
   const isFull = publicClass.spotsRemaining <= 0;
   const maxQuantity = Math.min(10, publicClass.spotsRemaining);
 
+  const [quantityWarning, setQuantityWarning] = useState<string | null>(null);
+
   const handleQuantityChange = useCallback(
     (newQuantity: number) => {
-      const qty = Math.max(1, Math.min(maxQuantity, newQuantity));
-      setQuantity(qty);
-      calculateCost(qty, discountCode);
+      if (newQuantity > maxQuantity) {
+        setQuantityWarning(
+          `Only ${maxQuantity} spot${maxQuantity === 1 ? '' : 's'} available. Quantity set to ${maxQuantity}.`
+        );
+        const qty = maxQuantity;
+        setQuantity(qty);
+        calculateCost(qty, discountCode);
+      } else {
+        setQuantityWarning(null);
+        const qty = Math.max(1, newQuantity);
+        setQuantity(qty);
+        calculateCost(qty, discountCode);
+      }
     },
     [discountCode, calculateCost, maxQuantity]
   );
@@ -246,9 +258,9 @@ export function RegistrationCheckoutForm({
                 : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available`
             }
           />
-          {!isFull && quantity > publicClass.spotsRemaining && (
-            <Alert severity="warning">
-              Only {publicClass.spotsRemaining} spot{publicClass.spotsRemaining === 1 ? '' : 's'} remaining. Quantity has been adjusted.
+          {quantityWarning && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              {quantityWarning}
             </Alert>
           )}
           <TextField
