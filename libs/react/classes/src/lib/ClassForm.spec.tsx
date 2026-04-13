@@ -231,4 +231,111 @@ describe('ClassForm', () => {
       expect(errorAlert).toBeUndefined();
     });
   });
+
+  describe('form rendering', () => {
+    it('renders all form fields', () => {
+      render(<ClassForm {...defaultProps} />);
+
+      // Required fields
+      expect(
+        screen.getByRole('textbox', { name: /Class Name/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: /Full Description/ })
+      ).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: /Status/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole('combobox', { name: /Skill Level/ })
+      ).toBeInTheDocument();
+
+      // Optional fields
+      expect(
+        screen.getByRole('textbox', { name: /Short Description/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: /Location/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: /Materials Included/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: /What to Bring/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('spinbutton', { name: /Minimum Age/ })
+      ).toBeInTheDocument();
+
+      // Buttons
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    });
+
+    it('renders in edit mode with pre-filled values', () => {
+      const classItem = {
+        id: 'class-1',
+        name: 'Existing Class',
+        description: 'A description for an existing class.',
+        shortDescription: 'Short desc',
+        instructorId: undefined,
+        dateTime: new Date('2099-06-15T14:00:00'),
+        durationMinutes: 90,
+        capacity: 15,
+        priceCents: 5000,
+        skillLevel: 'beginner' as const,
+        status: 'draft' as const,
+        location: '123 Main St',
+        materialsIncluded: 'Clay, tools',
+        whatToBring: 'Apron',
+        minimumAge: 12,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      render(
+        <ClassForm {...defaultProps} classItem={classItem} />
+      );
+
+      expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: /Class Name/ })
+      ).toHaveValue('Existing Class');
+      expect(
+        screen.getByRole('textbox', { name: /Location/ })
+      ).toHaveValue('123 Main St');
+      expect(
+        screen.getByRole('spinbutton', { name: /Minimum Age/ })
+      ).toHaveValue(12);
+    });
+
+    it('calls onClose when Cancel is clicked', async () => {
+      const user = userEvent.setup();
+
+      render(<ClassForm {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(defaultProps.onClose).toHaveBeenCalledOnce();
+    });
+
+    it('renders category dropdown when categories are provided', () => {
+      render(
+        <ClassForm
+          {...defaultProps}
+          categories={[
+            {
+              id: 'cat-1',
+              name: 'Pottery',
+              order: 0,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ]}
+        />
+      );
+
+      expect(
+        screen.getByRole('combobox', { name: /Category/ })
+      ).toBeInTheDocument();
+    });
+  });
 });

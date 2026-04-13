@@ -34,11 +34,6 @@ export default defineConfig({
       reportsDirectory: './coverage',
       // Merge coverage from all workspace projects
       all: false,
-      // Exclude transitive deps resolved by tsconfigPaths that lack their own tests
-      exclude: [
-        '**/node_modules/**',
-        'libs/react/**',
-      ],
       // Fail CI if coverage drops below 80%
       thresholds: {
         lines: 80,
