@@ -104,6 +104,9 @@ export function RegistrationCheckoutForm({
     [publicClass.id, onCalculateCost]
   );
 
+  const isFull = publicClass.spotsRemaining <= 0;
+  const maxQuantity = Math.min(10, publicClass.spotsRemaining);
+
   const handleQuantityChange = useCallback(
     (newQuantity: number) => {
       const qty = Math.max(1, Math.min(maxQuantity, newQuantity));
@@ -182,9 +185,6 @@ export function RegistrationCheckoutForm({
     onSubmit,
     onSuccess,
   ]);
-
-  const isFull = publicClass.spotsRemaining <= 0;
-  const maxQuantity = Math.min(10, publicClass.spotsRemaining);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
