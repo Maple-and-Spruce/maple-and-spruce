@@ -26,6 +26,16 @@ export {
   type InventoryCountResult,
 } from './lib/inventory.service';
 
+// Orders service
+export {
+  OrdersService,
+  type CreateOrderInput,
+  type CreateOrderResult,
+  type OrderLineItemInput,
+  type OrderTaxInput,
+  type OrderDiscountInput,
+} from './lib/orders.service';
+
 // Payments service
 export {
   PaymentsService,

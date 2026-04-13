@@ -28,6 +28,8 @@ export interface CreatePaymentInput {
   note?: string;
   /** External reference ID (e.g., registration ID) */
   referenceId?: string;
+  /** Square order ID to associate with this payment */
+  orderId?: string;
 }
 
 /**
@@ -118,6 +120,7 @@ export class PaymentsService {
       buyerEmailAddress: input.buyerEmailAddress,
       note: input.note,
       referenceId: input.referenceId,
+      orderId: input.orderId,
     });
 
     if (response.errors && response.errors.length > 0) {

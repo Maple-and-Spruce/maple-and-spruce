@@ -278,6 +278,9 @@ export function RegistrationCheckoutForm({
           originalCostCents={costBreakdown.originalCostCents}
           discountAmountCents={costBreakdown.discountAmountCents}
           finalCostCents={costBreakdown.finalCostCents}
+          taxAmountCents={costBreakdown.taxAmountCents}
+          taxRatePercent={costBreakdown.taxRatePercent}
+          totalCents={costBreakdown.totalCents}
           discountDescription={costBreakdown.discountDescription}
           quantity={quantity}
           pricePerItemCents={publicClass.priceCents}
@@ -322,7 +325,7 @@ export function RegistrationCheckoutForm({
             >
               {isSubmitting
                 ? 'Processing...'
-                : `Register & Pay ${costBreakdown ? `$${(costBreakdown.finalCostCents / 100).toFixed(2)}` : ''}`}
+                : `Register & Pay ${costBreakdown ? `$${(costBreakdown.totalCents / 100).toFixed(2)}` : ''}`}
             </button>
           }
         />
