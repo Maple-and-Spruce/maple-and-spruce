@@ -235,7 +235,7 @@ jobs:
           npx tsx libs/firebase/integration-test-mock-server/start.ts &
           MOCK_PID=$!
           sleep 2
-          npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+          npx firebase --debug emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
           EXIT_CODE=$?
           kill $MOCK_PID 2>/dev/null
           exit $EXIT_CODE
