@@ -470,11 +470,22 @@ export function ClassForm({
                     }
                   }}
                 >
+                  <MenuItem value="15">0.25 hours</MenuItem>
+                  <MenuItem value="30">0.5 hours</MenuItem>
+                  <MenuItem value="45">0.75 hours</MenuItem>
                   <MenuItem value="60">1 hour</MenuItem>
+                  <MenuItem value="75">1.25 hours</MenuItem>
                   <MenuItem value="90">1.5 hours</MenuItem>
+                  <MenuItem value="105">1.75 hours</MenuItem>
                   <MenuItem value="120">2 hours</MenuItem>
+                  <MenuItem value="135">2.25 hours</MenuItem>
                   <MenuItem value="150">2.5 hours</MenuItem>
+                  <MenuItem value="165">2.75 hours</MenuItem>
                   <MenuItem value="180">3 hours</MenuItem>
+                  <MenuItem value="195">3.25 hours</MenuItem>
+                  <MenuItem value="210">3.5 hours</MenuItem>
+                  <MenuItem value="225">3.75 hours</MenuItem>
+                  <MenuItem value="240">4 hours</MenuItem>
                   <MenuItem value="custom">Custom</MenuItem>
                 </Select>
                 {getFieldError('durationMinutes') && (
