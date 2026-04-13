@@ -33,7 +33,8 @@ import { ClassForm } from './ClassForm';
 // A future date that won't expire during tests
 const futureDate = new Date('2099-06-15T14:00:00');
 
-describe('ClassForm', () => {
+// MUI + DateTimePicker + Preact Signals rendering is slow on CI
+describe('ClassForm', { timeout: 30_000 }, () => {
   const defaultProps = {
     open: true,
     onClose: vi.fn(),
