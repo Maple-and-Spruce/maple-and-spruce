@@ -1,8 +1,16 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+/**
+ * Helper to set an input's value in one shot (avoids per-keystroke
+ * simulation with userEvent.type which times out on CI).
+ */
+function setInputValue(element: HTMLElement, value: string): void {
+  fireEvent.change(element, { target: { value } });
+}
 
 // Mock all external @maple/* and firebase deps so vitest doesn't need
 // to resolve cross-library imports (matches existing test patterns).
@@ -71,7 +79,7 @@ describe('ClassForm', () => {
       expect(nameInput).toHaveAttribute('aria-invalid', 'true');
     });
 
-    it('shows instructor error when status is published and no instructor is selected', { timeout: 15000 }, async () => {
+    it('shows instructor error when status is published and no instructor is selected', async () => {
       const user = userEvent.setup();
 
       render(<ClassForm {...defaultProps} />);
@@ -85,16 +93,12 @@ describe('ClassForm', () => {
       await user.click(publishedOption);
 
       // Fill in required fields to isolate the instructor error
-      const nameField = screen.getByRole('textbox', { name: /Class Name/ });
-      await user.clear(nameField);
-      await user.type(nameField, 'A Valid Class Name');
-
-      const descField = screen.getByRole('textbox', {
-        name: /Full Description/,
-      });
-      await user.clear(descField);
-      await user.type(
-        descField,
+      setInputValue(
+        screen.getByRole('textbox', { name: /Class Name/ }),
+        'A Valid Class Name'
+      );
+      setInputValue(
+        screen.getByRole('textbox', { name: /Full Description/ }),
         'This is a detailed description that is at least twenty characters long.'
       );
 
@@ -147,7 +151,7 @@ describe('ClassForm', () => {
       expect(instructorSelect).toBeInTheDocument();
     });
 
-    it('does not show error summary when form is valid', { timeout: 15000 }, async () => {
+    it('does not show error summary when form is valid', async () => {
       const user = userEvent.setup();
 
       render(
@@ -167,16 +171,12 @@ describe('ClassForm', () => {
       );
 
       // Fill in all required fields
-      const nameField = screen.getByRole('textbox', { name: /Class Name/ });
-      await user.clear(nameField);
-      await user.type(nameField, 'Pottery Workshop');
-
-      const descField = screen.getByRole('textbox', {
-        name: /Full Description/,
-      });
-      await user.clear(descField);
-      await user.type(
-        descField,
+      setInputValue(
+        screen.getByRole('textbox', { name: /Class Name/ }),
+        'Pottery Workshop'
+      );
+      setInputValue(
+        screen.getByRole('textbox', { name: /Full Description/ }),
         'Learn the basics of pottery in this hands-on workshop.'
       );
 
@@ -192,7 +192,7 @@ describe('ClassForm', () => {
       expect(errorAlert).toBeUndefined();
     });
 
-    it('clears error summary when errors are fixed', { timeout: 15000 }, async () => {
+    it('clears error summary when errors are fixed', async () => {
       const user = userEvent.setup();
 
       render(<ClassForm {...defaultProps} />);
@@ -209,17 +209,13 @@ describe('ClassForm', () => {
         );
       expect(errorAlerts.length).toBeGreaterThan(0);
 
-      // Fix name
-      const nameField = screen.getByRole('textbox', { name: /Class Name/ });
-      await user.type(nameField, 'A Valid Class Name');
-
-      // Fix description
-      const descField = screen.getByRole('textbox', {
-        name: /Full Description/,
-      });
-      await user.clear(descField);
-      await user.type(
-        descField,
+      // Fix name and description
+      setInputValue(
+        screen.getByRole('textbox', { name: /Class Name/ }),
+        'A Valid Class Name'
+      );
+      setInputValue(
+        screen.getByRole('textbox', { name: /Full Description/ }),
         'This is a detailed description that is at least twenty characters long.'
       );
 
