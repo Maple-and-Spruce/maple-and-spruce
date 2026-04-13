@@ -37,6 +37,8 @@ declare global {
 interface SquareCardFormProps {
   applicationId: string;
   locationId: string;
+  /** Square environment — 'prod' loads production SDK, anything else loads sandbox */
+  env?: string;
   /** Called when the form is ready to tokenize */
   onReady?: () => void;
   /** Ref function to expose tokenize to parent */
@@ -87,6 +89,7 @@ function findShadowHost(el: HTMLElement): Element | null {
 export function SquareCardForm({
   applicationId,
   locationId,
+  env,
   onReady,
   onTokenizeRef,
   afterCardContent,
@@ -120,8 +123,7 @@ export function SquareCardForm({
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const isSandbox =
-      applicationId.startsWith('sandbox-');
+    const isSandbox = env ? env !== 'prod' : applicationId.startsWith('sandbox-');
     const scriptUrl = isSandbox
       ? 'https://sandbox.web.squarecdn.com/v1/square.js'
       : 'https://web.squarecdn.com/v1/square.js';
