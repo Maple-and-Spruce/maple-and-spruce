@@ -7,10 +7,12 @@
  * 2. Verify class exists, is published, is in the future
  * 3. Check capacity via Firestore transaction (prevent overbooking)
  * 4. Apply discount if code provided
- * 5. Process Square payment with nonce from frontend
- * 6. Create registration record
- * 7. Write to `mail` collection for confirmation email
- * 8. Return registration + confirmation number
+ * 5. Calculate sales tax
+ * 6. Create Square Order with tax line item
+ * 7. Process Square payment against the order
+ * 8. Create registration record
+ * 9. Write to `mail` collection for confirmation email
+ * 10. Return registration + confirmation number
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
@@ -30,6 +32,7 @@ import {
   isClassRegistrationOpen,
   applyDiscount,
   isDiscountValid,
+  calculateTax,
 } from '@maple/ts/domain';
 import { registrationValidation } from '@maple/ts/validation';
 import type {
@@ -92,9 +95,22 @@ export const createRegistration = Functions.endpoint
         // Silently ignore invalid discount codes (UI already validated)
       }
 
-      const finalCostCents = Math.max(0, originalCostCents - discountAmountCents);
+      const subtotalCents = Math.max(0, originalCostCents - discountAmountCents);
 
-      // 4. Check capacity atomically via Firestore transaction
+      // 4. Calculate sales tax
+      const square = new Square(
+        secrets as typeof secrets &
+          Record<(typeof SQUARE_SECRET_NAMES)[number], string>,
+        strings as typeof strings &
+          Record<(typeof SQUARE_STRING_NAMES)[number], string>
+      );
+      const taxRatePercent = square.taxRatePercent;
+      const { taxAmountCents, totalCents: pricePaidCents } = calculateTax(
+        subtotalCents,
+        taxRatePercent
+      );
+
+      // 5. Check capacity atomically via Firestore transaction
       //    This prevents overbooking race conditions.
       const db = getDb();
       const registrationDocRef = RegistrationRepository.getDocRef();
@@ -133,7 +149,10 @@ export const createRegistration = Functions.endpoint
           customerName: data.customerName,
           customerPhone: data.customerPhone || null,
           quantity: data.quantity,
-          pricePaidCents: finalCostCents,
+          pricePaidCents,
+          subtotalCents,
+          taxAmountCents,
+          taxRatePercent,
           discountCode: discountCode || null,
           discountAmountCents: discountAmountCents || null,
           status: 'pending',
@@ -144,36 +163,66 @@ export const createRegistration = Functions.endpoint
         });
       });
 
-      // 5. Process Square payment
+      // 6. Create Square Order and process payment
       let squarePaymentId: string | undefined;
       let squareReceiptUrl: string | undefined;
+      let squareOrderId: string | undefined;
       try {
-        if (finalCostCents > 0) {
-          const square = new Square(
-            secrets as typeof secrets &
-              Record<(typeof SQUARE_SECRET_NAMES)[number], string>,
-            strings as typeof strings &
-              Record<(typeof SQUARE_STRING_NAMES)[number], string>
-          );
+        if (subtotalCents > 0) {
+          // Create Square Order with line item and tax
+          const orderResult = await square.ordersService.createOrder({
+            locationId: square.locationId,
+            idempotencyKey: `order-${registrationDocRef.id}-${Date.now()}`,
+            referenceId: registrationDocRef.id,
+            lineItems: [
+              {
+                name: classEntity.name,
+                quantity: data.quantity.toString(),
+                basePriceCents: classEntity.priceCents,
+              },
+            ],
+            taxes: [
+              {
+                name: 'WV Sales Tax',
+                percentage: taxRatePercent.toString(),
+                scope: 'ORDER',
+              },
+            ],
+            discounts:
+              discountAmountCents > 0
+                ? [
+                    {
+                      name: discountCode || 'Discount',
+                      amountCents: discountAmountCents,
+                      scope: 'ORDER',
+                    },
+                  ]
+                : undefined,
+          });
 
+          squareOrderId = orderResult.orderId;
+
+          // Process payment against the order
           const paymentResult = await square.paymentsService.createPayment({
             sourceId: data.paymentNonce,
-            amountCents: finalCostCents,
+            amountCents: orderResult.totalCents,
             idempotencyKey: `reg-${registrationDocRef.id}-${Date.now()}`,
             locationId: square.locationId,
             buyerEmailAddress: data.customerEmail,
             note: `Registration for ${classEntity.name} - ${confirmationNumber}`,
             referenceId: registrationDocRef.id,
+            orderId: squareOrderId,
           });
 
           squarePaymentId = paymentResult.paymentId;
           squareReceiptUrl = paymentResult.receiptUrl;
         }
 
-        // 6. Update registration to confirmed with payment info
+        // 7. Update registration to confirmed with payment info
         await registrationDocRef.update({
           status: 'confirmed',
           squarePaymentId: squarePaymentId || null,
+          squareOrderId: squareOrderId || null,
           squareReceiptUrl: squareReceiptUrl || null,
           updatedAt: new Date(),
         });
@@ -189,8 +238,11 @@ export const createRegistration = Functions.endpoint
         );
       }
 
-      // 7. Write to mail collection for confirmation email
+      // 8. Write to mail collection for confirmation email
       try {
+        const formatCurrency = (cents: number): string =>
+          `$${(cents / 100).toFixed(2)}`;
+
         await db.collection('mail').add({
           to: data.customerEmail,
           template: {
@@ -213,7 +265,10 @@ export const createRegistration = Functions.endpoint
                   : `${classEntity.durationMinutes} minutes`,
               classLocation: classEntity.location || 'Maple & Spruce',
               confirmationNumber,
-              amountPaid: `$${(finalCostCents / 100).toFixed(2)}`,
+              subtotal: formatCurrency(subtotalCents),
+              taxRate: taxRatePercent,
+              taxAmount: formatCurrency(taxAmountCents),
+              amountPaid: formatCurrency(pricePaidCents),
               quantity: data.quantity,
               receiptUrl: squareReceiptUrl?.includes('squareupsandbox.com')
                 ? undefined
@@ -228,7 +283,7 @@ export const createRegistration = Functions.endpoint
         console.error('Failed to queue confirmation email:', emailError);
       }
 
-      // 8. Fetch and return the final registration
+      // 9. Fetch and return the final registration
       const registration = await RegistrationRepository.findById(
         registrationDocRef.id
       );

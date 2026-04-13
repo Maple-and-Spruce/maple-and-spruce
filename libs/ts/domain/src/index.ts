@@ -19,6 +19,7 @@ export * from './lib/class';
 export * from './lib/class-category';
 export * from './lib/registration';
 export * from './lib/discount';
+export * from './lib/tax';
 
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';

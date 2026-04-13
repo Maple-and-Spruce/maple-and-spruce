@@ -6,6 +6,9 @@ interface CostSummaryProps {
   originalCostCents: number;
   discountAmountCents: number;
   finalCostCents: number;
+  taxAmountCents: number;
+  taxRatePercent: number;
+  totalCents: number;
   discountDescription?: string;
   quantity: number;
   pricePerItemCents: number;
@@ -19,10 +22,13 @@ export function CostSummary({
   originalCostCents,
   discountAmountCents,
   finalCostCents,
+  taxAmountCents,
+  taxRatePercent,
+  totalCents,
   discountDescription,
   quantity,
   pricePerItemCents,
-}: CostSummaryProps) {
+}: CostSummaryProps): React.ReactElement {
   return (
     <Box
       sx={{
@@ -67,6 +73,40 @@ export function CostSummary({
         </Box>
       )}
 
+      {discountAmountCents > 0 && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            mb: 0.5,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Subtotal
+          </Typography>
+          <Typography variant="body2">
+            {formatCents(finalCostCents)}
+          </Typography>
+        </Box>
+      )}
+
+      {taxAmountCents > 0 && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            mb: 0.5,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            WV Sales Tax ({taxRatePercent}%)
+          </Typography>
+          <Typography variant="body2">
+            {formatCents(taxAmountCents)}
+          </Typography>
+        </Box>
+      )}
+
       <Divider sx={{ my: 1 }} />
 
       <Box
@@ -79,7 +119,7 @@ export function CostSummary({
           Total
         </Typography>
         <Typography variant="subtitle1" fontWeight={600}>
-          {formatCents(finalCostCents)}
+          {formatCents(totalCents)}
         </Typography>
       </Box>
     </Box>

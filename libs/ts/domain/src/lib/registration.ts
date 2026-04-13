@@ -32,8 +32,14 @@ export interface Registration {
   customerPhone?: string;
   /** Number of spots registered (usually 1, but could be group registration) */
   quantity: number;
-  /** Amount paid in cents */
+  /** Total amount paid in cents (includes tax) */
   pricePaidCents: number;
+  /** Post-discount, pre-tax amount in cents */
+  subtotalCents: number;
+  /** Sales tax amount in cents */
+  taxAmountCents: number;
+  /** Tax rate applied as percentage (e.g., 6.0 for 6%) */
+  taxRatePercent: number;
   /** Square payment ID (for refunds, reconciliation) */
   squarePaymentId?: string;
   /** Square order ID */

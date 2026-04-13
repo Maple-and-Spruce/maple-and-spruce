@@ -89,8 +89,16 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
         <td>{{classLocation}}</td>
       </tr>
       <tr>
-        <td class="label">Amount Paid</td>
-        <td>{{amountPaid}}</td>
+        <td class="label">Subtotal</td>
+        <td>{{subtotal}}</td>
+      </tr>
+      <tr>
+        <td class="label">WV Sales Tax ({{taxRate}}%)</td>
+        <td>{{taxAmount}}</td>
+      </tr>
+      <tr>
+        <td class="label">Total Paid</td>
+        <td><strong>{{amountPaid}}</strong></td>
       </tr>
       <tr>
         <td class="label">Confirmation #</td>
