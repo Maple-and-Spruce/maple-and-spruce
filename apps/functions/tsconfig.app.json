@@ -29,6 +29,7 @@
     "../../libs/firebase/maple-functions/create-instructor/**/*.ts",
     "../../libs/firebase/maple-functions/update-instructor/**/*.ts",
     "../../libs/firebase/maple-functions/delete-instructor/**/*.ts",
+    "../../libs/firebase/maple-functions/upload-instructor-image/**/*.ts",
     "../../libs/firebase/maple-functions/get-classes/**/*.ts",
     "../../libs/firebase/maple-functions/get-class/**/*.ts",
     "../../libs/firebase/maple-functions/create-class/**/*.ts",

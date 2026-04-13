@@ -28,12 +28,19 @@ import {
   Chip,
   Autocomplete,
 } from '@mui/material';
+import { httpsCallable } from 'firebase/functions';
+import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type {
   Instructor,
   CreateInstructorInput,
   PayeeStatus,
   InstructorPayRateType,
 } from '@maple/ts/domain';
+import type {
+  UploadInstructorImageRequest,
+  UploadInstructorImageResponse,
+} from '@maple/ts/firebase/api-types';
+import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
 import { instructorValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -51,6 +58,22 @@ interface InstructorFormProps {
 }
 
 // Common specialties for autocomplete suggestions
+/**
+ * Read a File as base64 string (without the data URL prefix)
+ */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 const SPECIALTY_SUGGESTIONS = [
   'weaving',
   'natural dyeing',
@@ -97,6 +120,9 @@ export function InstructorForm({
   // ============================================================
   const showValidationErrors = useSignal(false);
   const submitError = useSignal<string | null>(null);
+  const imageUploadState = useSignal<ImageUploadState>({ status: 'idle' });
+  const pendingImageFile = useSignal<File | null>(null);
+  const photoUrl = useSignal('');
 
   const isEdit = !!instructor;
 
@@ -148,6 +174,18 @@ export function InstructorForm({
         specialties.value = instructor.specialties ?? [];
         payRate.value = instructor.payRate;
         payRateType.value = instructor.payRateType;
+        photoUrl.value = instructor.photoUrl ?? '';
+
+        if (instructor.photoUrl) {
+          imageUploadState.value = {
+            status: 'success',
+            url: instructor.photoUrl,
+          };
+        } else {
+          imageUploadState.value = { status: 'idle' };
+        }
+
+        pendingImageFile.value = null;
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -162,6 +200,9 @@ export function InstructorForm({
         specialties.value = [];
         payRate.value = undefined;
         payRateType.value = undefined;
+        photoUrl.value = '';
+        imageUploadState.value = { status: 'idle' };
+        pendingImageFile.value = null;
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -173,6 +214,42 @@ export function InstructorForm({
   // HANDLERS
   // ============================================================
 
+  const handleImageSelected = useCallback((file: File, previewUrl: string) => {
+    pendingImageFile.value = file;
+    imageUploadState.value = { status: 'previewing', previewUrl, file };
+  }, []);
+
+  const handleImageRemove = useCallback(() => {
+    pendingImageFile.value = null;
+    imageUploadState.value = { status: 'removed' };
+    photoUrl.value = '';
+  }, []);
+
+  const uploadImage = async (
+    file: File,
+    existingInstructorId?: string
+  ): Promise<string> => {
+    const functions = getMapleFunctions();
+    const upload = httpsCallable<
+      UploadInstructorImageRequest,
+      UploadInstructorImageResponse
+    >(functions, 'uploadInstructorImage');
+
+    const imageBase64 = await readFileAsBase64(file);
+
+    const result = await upload({
+      instructorId: existingInstructorId,
+      imageBase64,
+      contentType: file.type,
+    });
+
+    if (!result.data.success) {
+      throw new Error('Image upload failed');
+    }
+
+    return result.data.url;
+  };
+
   const handleSubmit = useCallback(async () => {
     showValidationErrors.value = true;
 
@@ -183,6 +260,41 @@ export function InstructorForm({
     submitError.value = null;
 
     try {
+      let currentPhotoUrl = photoUrl.value;
+
+      // If there's a pending image to upload
+      if (pendingImageFile.value) {
+        const currentPreviewUrl =
+          imageUploadState.value.status === 'previewing'
+            ? imageUploadState.value.previewUrl
+            : '';
+
+        imageUploadState.value = {
+          status: 'uploading',
+          previewUrl: currentPreviewUrl,
+        };
+
+        try {
+          currentPhotoUrl = await uploadImage(
+            pendingImageFile.value,
+            instructor?.id
+          );
+          imageUploadState.value = { status: 'success', url: currentPhotoUrl };
+        } catch (uploadError) {
+          const errorMessage =
+            uploadError instanceof Error
+              ? uploadError.message
+              : 'Failed to upload image';
+          imageUploadState.value = {
+            status: 'error',
+            error: errorMessage,
+            previewUrl: currentPreviewUrl || undefined,
+          };
+          submitError.value = `Image upload failed: ${errorMessage}`;
+          return;
+        }
+      }
+
       const input: CreateInstructorInput = {
         name: name.value,
         email: email.value,
@@ -193,6 +305,7 @@ export function InstructorForm({
         specialties: specialties.value.length > 0 ? specialties.value : undefined,
         payRate: payRate.value,
         payRateType: payRateType.value,
+        photoUrl: currentPhotoUrl || undefined,
       };
 
       await onSubmit(input);
@@ -210,7 +323,7 @@ export function InstructorForm({
       }
       submitError.value = message;
     }
-  }, [onSubmit, onClose]);
+  }, [onSubmit, onClose, instructor?.id]);
 
   // ============================================================
   // RENDER
@@ -226,6 +339,15 @@ export function InstructorForm({
               {submitError.value}
             </Alert>
           )}
+
+          {/* Image Upload */}
+          <ImageUpload
+            state={imageUploadState.value}
+            onFileSelected={handleImageSelected}
+            onRemove={handleImageRemove}
+            existingImageUrl={instructor?.photoUrl}
+            label="Instructor Photo"
+          />
 
           {/* Name */}
           <TextField
@@ -401,8 +523,16 @@ export function InstructorForm({
         <Button onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : isEdit ? 'Update' : 'Add'}
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={isSubmitting || imageUploadState.value.status === 'uploading'}
+        >
+          {isSubmitting || imageUploadState.value.status === 'uploading'
+            ? 'Saving...'
+            : isEdit
+              ? 'Update'
+              : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>

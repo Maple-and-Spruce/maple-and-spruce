@@ -67,6 +67,7 @@ export { getInstructor } from '@maple/firebase/maple-functions/get-instructor';
 export { createInstructor } from '@maple/firebase/maple-functions/create-instructor';
 export { updateInstructor } from '@maple/firebase/maple-functions/update-instructor';
 export { deleteInstructor } from '@maple/firebase/maple-functions/delete-instructor';
+export { uploadInstructorImage } from '@maple/firebase/maple-functions/upload-instructor-image';
 
 // Class functions
 export { getClasses } from '@maple/firebase/maple-functions/get-classes';

@@ -24,8 +24,12 @@ describe('WEBFLOW_STRING_NAMES', () => {
     expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_CLASSES_COLLECTION_ID');
   });
 
-  it('has exactly three strings', () => {
-    expect(WEBFLOW_STRING_NAMES).toHaveLength(3);
+  it('includes WEBFLOW_INSTRUCTORS_COLLECTION_ID', () => {
+    expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_INSTRUCTORS_COLLECTION_ID');
+  });
+
+  it('has exactly four strings', () => {
+    expect(WEBFLOW_STRING_NAMES).toHaveLength(4);
   });
 });
 
@@ -38,6 +42,7 @@ describe('Webflow', () => {
     WEBFLOW_SITE_ID: 'test-site-id',
     WEBFLOW_ARTISTS_COLLECTION_ID: 'test-collection-id',
     WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-collection-id',
+    WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-collection-id',
   };
 
   describe('constructor validation', () => {
@@ -56,6 +61,7 @@ describe('Webflow', () => {
         WEBFLOW_SITE_ID: '',
         WEBFLOW_ARTISTS_COLLECTION_ID: 'test-collection-id',
         WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-id',
+        WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
@@ -68,6 +74,7 @@ describe('Webflow', () => {
         WEBFLOW_SITE_ID: 'test-site-id',
         WEBFLOW_ARTISTS_COLLECTION_ID: '',
         WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-id',
+        WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
@@ -96,6 +103,25 @@ describe('Webflow', () => {
       const webflow = new Webflow(validSecrets, validStrings);
       const artistService = webflow.artistService;
       expect(artistService).toBeDefined();
+    });
+  });
+
+  describe('instructorService', () => {
+    it('returns InstructorService instance when collection ID is configured', () => {
+      const webflow = new Webflow(validSecrets, validStrings);
+      const instructorService = webflow.instructorService;
+      expect(instructorService).toBeDefined();
+    });
+
+    it('throws error when collection ID is not configured', () => {
+      const stringsWithoutInstructors = {
+        ...validStrings,
+        WEBFLOW_INSTRUCTORS_COLLECTION_ID: '',
+      };
+      const webflow = new Webflow(validSecrets, stringsWithoutInstructors);
+      expect(() => webflow.instructorService).toThrow(
+        'Webflow instructors collection ID not configured. Set WEBFLOW_INSTRUCTORS_COLLECTION_ID.'
+      );
     });
   });
 
