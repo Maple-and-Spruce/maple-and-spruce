@@ -209,27 +209,17 @@ jobs:
 
       - name: Create emulator .env
         run: |
-          echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
-          echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
-          echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
-          echo "SALES_TAX_RATE=6.0" >> dist/apps/functions/.env
-          echo "SQUARE_ACCESS_TOKEN=mock-token" > dist/apps/functions-square/.secret.local
-          echo "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key" >> dist/apps/functions-square/.secret.local
-          echo "SQUARE_ENV=LOCAL" >> dist/apps/functions-square/.env
-          echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions-square/.env
+          # Copy .env.dev to every codebase (has all shared project-level params)
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            cp .env.dev "$dir/.env"
+          done
+
+          # Codebase-specific overrides
           echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
-          echo "ALLOWED_ORIGINS=http://localhost:3000" >> dist/apps/functions-square/.env
-          echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions-sync/.env
-          echo "WEBFLOW_API_TOKEN=mock-token" > dist/apps/functions-sync/.secret.local
-          echo "ETSY_API_KEY=fake" >> dist/apps/functions-sync/.secret.local
-          echo "ETSY_SHARED_SECRET=fake" >> dist/apps/functions-sync/.secret.local
-          echo "WEBFLOW_SITE_ID=fake" >> dist/apps/functions-sync/.env
-          echo "WEBFLOW_ARTISTS_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
-          echo "WEBFLOW_CLASSES_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
+          printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square/.secret.local
+
           echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
-          echo "ETSY_REDIRECT_URI=http://localhost:3000/etsy/callback" >> dist/apps/functions-sync/.env
-          echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions-calendar/.env
-          echo "GOOGLE_CALENDAR_ADHOC_ICS_URL=" >> dist/apps/functions-calendar/.env
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
       - name: Start mock server and run integration tests
         run: |
