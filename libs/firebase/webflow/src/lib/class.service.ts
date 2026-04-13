@@ -38,6 +38,10 @@ export interface SyncClassInput {
   isDev?: boolean;
   /** Enriched instructor name (denormalized) */
   instructorName?: string;
+  /** Enriched instructor bio (denormalized) */
+  instructorBio?: string;
+  /** Enriched instructor profile image URL (denormalized) */
+  instructorImage?: string;
   /** Enriched category name (denormalized) */
   categoryName?: string;
   /** Current registration count for spots remaining calculation */
@@ -78,6 +82,8 @@ export interface ClassWebflowFieldData {
 export interface MapClassOptions {
   isDev: boolean;
   instructorName?: string;
+  instructorBio?: string;
+  instructorImage?: string;
   categoryName?: string;
   registrationCount?: number;
 }
@@ -188,6 +194,19 @@ export function mapClassToFieldData(
     fieldData['instructor-name'] = options.instructorName;
   }
 
+  if (options.instructorBio) {
+    fieldData['instructor-bio'] = options.instructorBio;
+  }
+
+  if (options.instructorImage) {
+    fieldData['instructor-image'] = {
+      url: options.instructorImage,
+      alt: options.instructorName
+        ? `${options.instructorName} profile photo`
+        : 'Instructor profile photo',
+    };
+  }
+
   if (options.categoryName) {
     fieldData['category-name'] = options.categoryName;
   }
@@ -214,6 +233,8 @@ export class ClassService {
       publish = false,
       isDev = false,
       instructorName,
+      instructorBio,
+      instructorImage,
       categoryName,
       registrationCount,
     } = input;
@@ -226,6 +247,8 @@ export class ClassService {
     const fieldData = mapClassToFieldData(classEntity, {
       isDev,
       instructorName,
+      instructorBio,
+      instructorImage,
       categoryName,
       registrationCount,
     });
