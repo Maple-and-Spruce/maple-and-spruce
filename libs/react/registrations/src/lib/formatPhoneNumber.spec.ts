@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPhoneNumber } from './RegistrationCheckoutForm';
+import { formatPhoneNumber } from './formatPhoneNumber';
 
 describe('formatPhoneNumber', () => {
   it('returns empty string for empty input', () => {
