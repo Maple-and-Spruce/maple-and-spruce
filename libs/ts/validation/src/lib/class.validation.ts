@@ -150,6 +150,13 @@ export const classValidation = create(
       }
     });
 
+    // Instructor validation (required when published)
+    test('instructorId', 'Instructor is required for published classes', () => {
+      if (data.status === 'published') {
+        enforce(data.instructorId).isNotBlank();
+      }
+    });
+
     // Minimum age validation (optional)
     test('minimumAge', 'Minimum age must be between 0 and 100', () => {
       if (data.minimumAge !== undefined && data.minimumAge !== null) {

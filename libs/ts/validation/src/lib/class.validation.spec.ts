@@ -393,6 +393,59 @@ describe('classValidation', () => {
     });
   });
 
+  describe('instructorId field', () => {
+    it('fails when published class has no instructorId', () => {
+      const result = classValidation({
+        ...validClass,
+        status: 'published',
+        instructorId: undefined,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('instructorId')).toContain(
+        'Instructor is required for published classes'
+      );
+    });
+
+    it('fails when published class has empty instructorId', () => {
+      const result = classValidation({
+        ...validClass,
+        status: 'published',
+        instructorId: '',
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('instructorId')).toContain(
+        'Instructor is required for published classes'
+      );
+    });
+
+    it('passes when published class has instructorId', () => {
+      const result = classValidation({
+        ...validClass,
+        status: 'published',
+        instructorId: 'instructor-123',
+      });
+      expect(result.hasErrors('instructorId')).toBe(false);
+    });
+
+    it('passes when draft class has no instructorId', () => {
+      const result = classValidation({
+        ...validClass,
+        status: 'draft',
+        instructorId: undefined,
+      });
+      expect(result.hasErrors('instructorId')).toBe(false);
+    });
+
+    it('passes when cancelled class has no instructorId', () => {
+      const result = classValidation({
+        ...validClass,
+        status: 'cancelled',
+        instructorId: undefined,
+      });
+      expect(result.hasErrors('instructorId')).toBe(false);
+    });
+  });
+
   describe('minimumAge field', () => {
     it('passes when minimumAge is undefined (optional)', () => {
       const result = classValidation({
