@@ -116,8 +116,10 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
     </div>
     {{/if}}
 
-    <p>If you have any questions, please reach out to us at
-      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>.</p>
+    <p>If you have any questions, please reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
+      call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
+      or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
 
     <p style="font-size: 14px; color: #999;">
       Need to cancel? Please contact us at least 48 hours before the class date.
@@ -127,7 +129,7 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
   <div class="footer">
     <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
     Morgantown, WV<br>
-    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a><br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
     <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
   </div>
 </div>
@@ -184,13 +186,15 @@ const registrationCancelledHtml = `<!DOCTYPE html>
     {{/if}}
 
     <p>If you have any questions about your refund or would like to register for a future class,
-      please contact us at
-      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>.</p>
+      please reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
+      call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
+      or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
     Morgantown, WV<br>
-    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a><br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
     <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
   </div>
 </div>
