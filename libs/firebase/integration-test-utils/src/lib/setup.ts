@@ -18,7 +18,7 @@ beforeAll(async () => {
 
   for (const check of checks) {
     try {
-      await fetch(check.url);
+      await fetch(check.url, { signal: AbortSignal.timeout(10000) });
     } catch {
       throw new Error(
         `${check.name} emulator is not running at ${check.url}. ` +
