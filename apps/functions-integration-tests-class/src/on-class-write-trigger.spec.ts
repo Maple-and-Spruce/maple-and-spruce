@@ -14,6 +14,8 @@ import type {
   UpdateClassResponse,
   DeleteClassRequest,
   GetCalendarEventsResponse,
+  CreateInstructorRequest,
+  CreateInstructorResponse,
 } from '@maple/ts/firebase/api-types';
 import type { CalendarEvent } from '@maple/ts/domain';
 
@@ -45,6 +47,7 @@ function findLinkedEvent(
 
 describe('onClassWrite Trigger', () => {
   let adminUser: TestUser;
+  let instructorId: string;
 
   beforeAll(async () => {
     await clearAuthEmulator();
@@ -56,6 +59,25 @@ describe('onClassWrite Trigger', () => {
       userId: adminUser.uid,
       email: adminUser.email,
     });
+
+    // Create an instructor for published class tests
+    const instructorResult = await callFunction<
+      CreateInstructorRequest,
+      CreateInstructorResponse
+    >({
+      functionName: 'createInstructor',
+      data: {
+        name: 'Trigger Test Instructor',
+        email: 'trigger-instructor@test.com',
+        status: 'active',
+        bio: 'Test instructor for trigger integration tests.',
+        specialties: ['pottery'],
+        payRateType: 'flat',
+        payRate: 5000,
+      },
+      idToken: adminUser.idToken,
+    });
+    instructorId = instructorResult.data!.instructor.id;
   });
 
   afterAll(async () => {
@@ -91,6 +113,7 @@ describe('onClassWrite Trigger', () => {
           priceCents: 4500,
           skillLevel: 'beginner',
           status: 'published',
+          instructorId,
         },
         idToken: adminUser.idToken,
       });
@@ -203,6 +226,7 @@ describe('onClassWrite Trigger', () => {
           priceCents: 5000,
           skillLevel: 'intermediate',
           status: 'published',
+          instructorId,
         },
         idToken: adminUser.idToken,
       });
@@ -263,6 +287,7 @@ describe('onClassWrite Trigger', () => {
           priceCents: 3000,
           skillLevel: 'beginner',
           status: 'published',
+          instructorId,
         },
         idToken: adminUser.idToken,
       });

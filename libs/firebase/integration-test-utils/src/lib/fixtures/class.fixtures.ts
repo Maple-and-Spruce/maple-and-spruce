@@ -71,10 +71,52 @@ export const PAST_CLASS = {
   updatedAt: new Date().toISOString(),
 };
 
+/** Published class with instructor and category references */
+export const PUBLISHED_CLASS_WITH_REFS = {
+  ...PUBLISHED_CLASS,
+  name: 'Published Class With Refs',
+  instructorId: 'test-instructor-1',
+  categoryId: 'test-category-1',
+};
+
+/** Published class without an instructor (for graceful-handling tests) */
+export const PUBLISHED_CLASS_NO_INSTRUCTOR = {
+  ...PUBLISHED_CLASS,
+  name: 'Published Class No Instructor',
+};
+
+/** Sample instructor fixture for enrichment tests */
+export const SAMPLE_INSTRUCTOR = {
+  name: 'Jane Weaver',
+  email: 'jane@test.com',
+  status: 'active',
+  bio: 'Fiber artist with 15 years of experience in natural dyeing and weaving.',
+  specialties: ['weaving', 'natural dyeing'],
+  payRateType: 'flat',
+  payRate: 7500,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+/** Sample class category fixture for enrichment tests */
+export const SAMPLE_CLASS_CATEGORY = {
+  name: 'Pottery',
+  description: 'Pottery and ceramics classes.',
+  slug: 'pottery',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 /** Well-known doc IDs for test classes */
 export const CLASS_IDS = {
   published: 'test-class-published',
   draft: 'test-class-draft',
   cancelled: 'test-class-cancelled',
   past: 'test-class-past',
+  syncTriggerCreate: 'test-sync-trigger-create',
+  syncTriggerDraft: 'test-sync-trigger-draft',
+  syncTriggerUnpublish: 'test-sync-trigger-unpublish',
+  syncTriggerDelete: 'test-sync-trigger-delete',
+  publishedWithRefs: 'test-class-published-with-refs',
+  publishedNoInstructor: 'test-class-published-no-instructor',
 } as const;

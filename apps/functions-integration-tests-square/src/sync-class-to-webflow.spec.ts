@@ -27,6 +27,8 @@ import type {
   UpdateClassResponse,
   DeleteClassRequest,
   GetClassResponse,
+  CreateInstructorRequest,
+  CreateInstructorResponse,
 } from '@maple/ts/firebase/api-types';
 
 function futureDate(): Date {
@@ -62,6 +64,7 @@ async function getClassWebflowItemId(
 
 describe('syncClassToWebflow Trigger', () => {
   let adminUser: TestUser;
+  let instructorId: string;
 
   beforeAll(async () => {
     await clearAuthEmulator();
@@ -73,6 +76,25 @@ describe('syncClassToWebflow Trigger', () => {
       userId: adminUser.uid,
       email: adminUser.email,
     });
+
+    // Create an instructor for published class tests
+    const instructorResult = await callFunction<
+      CreateInstructorRequest,
+      CreateInstructorResponse
+    >({
+      functionName: 'createInstructor',
+      data: {
+        name: 'Webflow Sync Test Instructor',
+        email: 'webflow-instructor@test.com',
+        status: 'active',
+        bio: 'Test instructor for Webflow sync integration tests.',
+        specialties: ['pottery'],
+        payRateType: 'flat',
+        payRate: 5000,
+      },
+      idToken: adminUser.idToken,
+    });
+    instructorId = instructorResult.data!.instructor.id;
   });
 
   afterAll(async () => {
@@ -110,6 +132,7 @@ describe('syncClassToWebflow Trigger', () => {
           priceCents: 4500,
           skillLevel: 'beginner',
           status: 'published',
+          instructorId,
         },
         idToken: adminUser.idToken,
       });
@@ -196,6 +219,7 @@ describe('syncClassToWebflow Trigger', () => {
           priceCents: 3000,
           skillLevel: 'beginner',
           status: 'published',
+          instructorId,
         },
         idToken: adminUser.idToken,
       });
