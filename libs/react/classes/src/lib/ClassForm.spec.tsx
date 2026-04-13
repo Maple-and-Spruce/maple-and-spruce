@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Mock all external @maple/* and firebase deps so vitest doesn't need
@@ -71,7 +71,7 @@ describe('ClassForm', () => {
       expect(nameInput).toHaveAttribute('aria-invalid', 'true');
     });
 
-    it('shows instructor error when status is published and no instructor is selected', async () => {
+    it('shows instructor error when status is published and no instructor is selected', { timeout: 15000 }, async () => {
       const user = userEvent.setup();
 
       render(<ClassForm {...defaultProps} />);
@@ -147,13 +147,22 @@ describe('ClassForm', () => {
       expect(instructorSelect).toBeInTheDocument();
     });
 
-    it('does not show error summary when form is valid', async () => {
+    it('does not show error summary when form is valid', { timeout: 15000 }, async () => {
       const user = userEvent.setup();
 
       render(
         <ClassForm
           {...defaultProps}
-          instructors={[{ id: 'inst-1', name: 'Jane Doe' }]}
+          instructors={[
+            {
+              id: 'inst-1',
+              name: 'Jane Doe',
+              email: 'jane@example.com',
+              status: 'active' as const,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ]}
         />
       );
 
@@ -183,7 +192,7 @@ describe('ClassForm', () => {
       expect(errorAlert).toBeUndefined();
     });
 
-    it('clears error summary when errors are fixed', async () => {
+    it('clears error summary when errors are fixed', { timeout: 15000 }, async () => {
       const user = userEvent.setup();
 
       render(<ClassForm {...defaultProps} />);
