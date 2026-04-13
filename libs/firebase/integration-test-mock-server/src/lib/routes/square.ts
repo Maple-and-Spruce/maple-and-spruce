@@ -11,6 +11,7 @@
  */
 import { MockServer } from '../mock-server.js';
 
+let orderCounter = 0;
 let paymentCounter = 0;
 let refundCounter = 0;
 let catalogCounter = 0;
@@ -19,6 +20,27 @@ let catalogCounter = 0;
 const payments = new Map<string, Record<string, unknown>>();
 
 export function registerSquareRoutes(server: MockServer): void {
+  // Create order (required before payment in registration flow)
+  server.post('/v2/orders', (req) => {
+    const body = req.body as Record<string, unknown>;
+    orderCounter++;
+    const orderId = `mock-order-${orderCounter}`;
+
+    return {
+      status: 200,
+      body: {
+        order: {
+          id: orderId,
+          location_id: (body['order'] as Record<string, unknown>)?.['location_id'] ?? 'mock-location',
+          state: 'OPEN',
+          total_money: { amount: 0, currency: 'USD' },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      },
+    };
+  });
+
   // Create payment
   server.post('/v2/payments', (req) => {
     const body = req.body as Record<string, unknown>;
@@ -169,6 +191,7 @@ export function registerSquareRoutes(server: MockServer): void {
  * Reset Square mock state between tests.
  */
 export function resetSquareState(): void {
+  orderCounter = 0;
   paymentCounter = 0;
   refundCounter = 0;
   catalogCounter = 0;
