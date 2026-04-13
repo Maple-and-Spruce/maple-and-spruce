@@ -139,11 +139,40 @@ export function RegistrationWidget({
       quantity: number;
     }) => {
       if (state.status !== 'ready') return;
+
+      const className = state.publicClass.name;
+      const value = details.pricePaidCents / 100;
+
+      // Meta Pixel: CompleteRegistration event
+      const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;
+      if (win?.fbq) {
+        (win.fbq as (...args: unknown[]) => void)(
+          'track', 'CompleteRegistration', {
+            value,
+            currency: 'USD',
+            content_name: className,
+          }
+        );
+      }
+
+      // GTM dataLayer: for GA4 and other tags
+      if (win) {
+        const dataLayer = (win.dataLayer || []) as Record<string, unknown>[];
+        dataLayer.push({
+          event: 'complete_registration',
+          registration_value: value,
+          registration_currency: 'USD',
+          class_name: className,
+          confirmation_number: details.confirmationNumber,
+        });
+        win.dataLayer = dataLayer;
+      }
+
       setState({
         status: 'confirmed',
         confirmationNumber: details.confirmationNumber,
         customerName: details.customerName,
-        className: state.publicClass.name,
+        className,
         pricePaidCents: details.pricePaidCents,
         quantity: details.quantity,
       });
@@ -191,6 +220,7 @@ export function RegistrationWidget({
                   publicClass={state.publicClass}
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
+                  env={env}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
                   onSuccess={handleSuccess}

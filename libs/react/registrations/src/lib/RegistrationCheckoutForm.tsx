@@ -16,11 +16,14 @@ import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
+import { formatPhoneNumber } from './formatPhoneNumber';
 
 interface RegistrationCheckoutFormProps {
   publicClass: PublicClass;
   squareApplicationId: string;
   squareLocationId: string;
+  /** Square environment — passed through to SquareCardForm */
+  env?: string;
   onCalculateCost: (
     classId: string,
     quantity: number,
@@ -48,6 +51,7 @@ export function RegistrationCheckoutForm({
   publicClass,
   squareApplicationId,
   squareLocationId,
+  env,
   onCalculateCost,
   onSubmit,
   onSuccess,
@@ -211,8 +215,11 @@ export function RegistrationCheckoutForm({
             label="Phone Number (optional)"
             type="tel"
             value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
+            onChange={(e) =>
+              setCustomerPhone(formatPhoneNumber(e.target.value))
+            }
             fullWidth
+            placeholder="(304) 555-1234"
           />
           <TextField
             label="Number of Spots"
@@ -283,6 +290,7 @@ export function RegistrationCheckoutForm({
         <SquareCardForm
           applicationId={squareApplicationId}
           locationId={squareLocationId}
+          env={env}
           onReady={() => setIsCardReady(true)}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
