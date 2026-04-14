@@ -95,7 +95,8 @@ describe('createRegistration', () => {
       expect(result.data?.registration.customerName).toBe('Test Student');
       expect(result.data?.registration.quantity).toBe(1);
       expect(result.data?.registration.status).toBe('confirmed');
-      expect(result.data?.registration.pricePaidCents).toBe(4500);
+      // 4500 base + 6% tax = 4770
+      expect(result.data?.registration.pricePaidCents).toBe(4770);
       expect(result.data?.confirmationNumber).toBeDefined();
       expect(result.data?.confirmationNumber).toMatch(/^MS-[A-Z0-9]{6}$/);
     });
@@ -138,8 +139,8 @@ describe('createRegistration', () => {
 
       expect(result.status).toBe(200);
       expect(result.data?.registration.quantity).toBe(2);
-      // Price should be multiplied by quantity
-      expect(result.data?.registration.pricePaidCents).toBe(9000);
+      // Price should be multiplied by quantity: 4500 * 2 + 6% tax = 9540
+      expect(result.data?.registration.pricePaidCents).toBe(9540);
     });
   });
 
@@ -327,8 +328,8 @@ describe('createRegistration', () => {
 
       expect(result.status).toBe(200);
       expect(result.data?.registration).toBeDefined();
-      // 50% off $45 = $22.50 = 2250 cents
-      expect(result.data?.registration.pricePaidCents).toBe(2250);
+      // 50% off $45 = $22.50 + 6% tax = 2385 cents
+      expect(result.data?.registration.pricePaidCents).toBe(2385);
       expect(result.data?.registration.discountCode).toBe('TESTDISCOUNT');
     });
   });
