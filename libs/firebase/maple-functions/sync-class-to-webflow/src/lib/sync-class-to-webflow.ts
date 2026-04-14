@@ -179,7 +179,7 @@ export const syncClassToWebflow = onDocumentWritten(
 
       // Store the Webflow item ID back in Firestore
       // Uses bare update (no updatedAt) to prevent re-triggering sync
-      if (result.success && result.webflowItemId) {
+      if (result.success && result.webflowItemId && afterClass.webflowItemId !== result.webflowItemId) {
         await ClassRepository.updateWebflowItemId(
           afterClass.id,
           result.webflowItemId

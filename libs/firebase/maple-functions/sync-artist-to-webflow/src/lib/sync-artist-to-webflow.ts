@@ -153,7 +153,7 @@ export const syncArtistToWebflow = onDocumentWritten(
       });
 
       // Store the Webflow item ID back in Firestore for reference
-      if (result.success && result.webflowItemId) {
+      if (result.success && result.webflowItemId && afterArtist.webflowItemId !== result.webflowItemId) {
         await ArtistRepository.updateWebflowItemId(
           afterArtist.id,
           result.webflowItemId

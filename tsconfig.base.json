@@ -274,6 +274,9 @@
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],
+      "@maple/firebase/integration-test-mock-server": [
+        "libs/firebase/integration-test-mock-server/src/index.ts"
+      ],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }

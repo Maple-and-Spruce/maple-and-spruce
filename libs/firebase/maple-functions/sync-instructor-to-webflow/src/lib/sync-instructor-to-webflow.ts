@@ -153,7 +153,7 @@ export const syncInstructorToWebflow = onDocumentWritten(
       });
 
       // Store the Webflow item ID back in Firestore for reference
-      if (result.success && result.webflowItemId) {
+      if (result.success && result.webflowItemId && afterInstructor.webflowItemId !== result.webflowItemId) {
         await InstructorRepository.updateWebflowItemId(
           afterInstructor.id,
           result.webflowItemId

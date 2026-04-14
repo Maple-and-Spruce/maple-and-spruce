@@ -15,6 +15,50 @@ export async function clearFirestoreEmulator(): Promise<void> {
   await fetch(url, { method: 'DELETE' });
 }
 
+export async function getFirestoreDoc(
+  collectionPath: string,
+  docId: string
+): Promise<Record<string, unknown> | null> {
+  const url = `${FIRESTORE_URL}/v1/projects/${EMULATOR_CONFIG.projectId}/databases/(default)/documents/${collectionPath}/${docId}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: 'Bearer owner',
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(
+      `Failed to get Firestore doc ${collectionPath}/${docId}: ${await response.text()}`
+    );
+  }
+
+  const body = (await response.json()) as { fields?: Record<string, unknown> };
+  if (!body.fields) return null;
+  return parseFirestoreFields(body.fields);
+}
+
+export async function deleteFirestoreDoc(
+  collectionPath: string,
+  docId: string
+): Promise<void> {
+  const url = `${FIRESTORE_URL}/v1/projects/${EMULATOR_CONFIG.projectId}/databases/(default)/documents/${collectionPath}/${docId}`;
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      Authorization: 'Bearer owner',
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(
+      `Failed to delete Firestore doc ${collectionPath}/${docId}: ${await response.text()}`
+    );
+  }
+}
+
 export async function setFirestoreDoc(
   collectionPath: string,
   docId: string,
@@ -94,4 +138,33 @@ function convertValue(value: unknown): unknown {
     };
   }
   return { stringValue: String(value) };
+}
+
+function parseFirestoreFields(
+  fields: Record<string, unknown>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    result[key] = parseFirestoreValue(value as Record<string, unknown>);
+  }
+  return result;
+}
+
+function parseFirestoreValue(value: Record<string, unknown>): unknown {
+  if ('nullValue' in value) return null;
+  if ('stringValue' in value) return value.stringValue;
+  if ('integerValue' in value) return Number(value.integerValue);
+  if ('doubleValue' in value) return value.doubleValue;
+  if ('booleanValue' in value) return value.booleanValue;
+  if ('timestampValue' in value) return value.timestampValue;
+  if ('referenceValue' in value) return value.referenceValue;
+  if ('arrayValue' in value) {
+    const arr = value.arrayValue as { values?: Record<string, unknown>[] };
+    return (arr.values ?? []).map(parseFirestoreValue);
+  }
+  if ('mapValue' in value) {
+    const map = value.mapValue as { fields?: Record<string, unknown> };
+    return map.fields ? parseFirestoreFields(map.fields) : {};
+  }
+  return undefined;
 }
