@@ -103,6 +103,9 @@ export class Webflow {
 
     this.client = new WebflowClient({
       accessToken,
+      ...(process.env['WEBFLOW_BASE_URL']
+        ? { baseUrl: process.env['WEBFLOW_BASE_URL'] }
+        : {}),
     });
 
     this._artistService = new ArtistService(

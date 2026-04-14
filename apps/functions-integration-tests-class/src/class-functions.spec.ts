@@ -22,6 +22,8 @@ import type {
   GetPublicClassesResponse,
   GetPublicClassRequest,
   GetPublicClassResponse,
+  CreateInstructorRequest,
+  CreateInstructorResponse,
 } from '@maple/ts/firebase/api-types';
 
 /** A future date, 30 days from now */
@@ -45,6 +47,7 @@ const SAMPLE_CLASS: CreateClassRequest = {
 describe('Class Functions', () => {
   let adminUser: TestUser;
   let nonAdminUser: TestUser;
+  let instructorId: string;
 
   beforeAll(async () => {
     await clearAuthEmulator();
@@ -60,6 +63,25 @@ describe('Class Functions', () => {
       userId: adminUser.uid,
       email: adminUser.email,
     });
+
+    // Create an instructor for published class tests
+    const instructorResult = await callFunction<
+      CreateInstructorRequest,
+      CreateInstructorResponse
+    >({
+      functionName: 'createInstructor',
+      data: {
+        name: 'Test Instructor',
+        email: 'instructor@test.com',
+        status: 'active',
+        bio: 'Test instructor for class integration tests.',
+        specialties: ['pottery'],
+        payRateType: 'flat',
+        payRate: 5000,
+      },
+      idToken: adminUser.idToken,
+    });
+    instructorId = instructorResult.data!.instructor.id;
   });
 
   afterAll(async () => {
@@ -169,7 +191,7 @@ describe('Class Functions', () => {
         UpdateClassResponse
       >({
         functionName: 'updateClass',
-        data: { id: classId, status: 'published' },
+        data: { id: classId, status: 'published', instructorId },
         idToken: adminUser.idToken,
       });
       expect(publishResult.status).toBe(200);
@@ -261,6 +283,7 @@ describe('Class Functions', () => {
           ...SAMPLE_CLASS,
           name: 'Published Knitting Class',
           status: 'published',
+          instructorId,
         },
         idToken: adminUser.idToken,
       });

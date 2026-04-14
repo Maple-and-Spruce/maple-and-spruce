@@ -203,19 +203,33 @@ jobs:
       - name: Build functions
         run: |
           pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
 
       - name: Create emulator .env
         run: |
-          echo "ALLOWED_ORIGINS=http://localhost:3000" > dist/apps/functions/.env
-          echo "SQUARE_ENV=LOCAL" >> dist/apps/functions/.env
-          echo "SQUARE_LOCATION_ID=fake" >> dist/apps/functions/.env
-          echo "WEBFLOW_SITE_ID=fake" > dist/apps/functions-sync/.env
-          echo "WEBFLOW_ARTISTS_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
-          echo "WEBFLOW_CLASSES_COLLECTION_ID=fake" >> dist/apps/functions-sync/.env
+          # Copy .env.dev to every codebase (has all shared project-level params)
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            cp .env.dev "$dir/.env"
+          done
 
-      - name: Run integration tests with emulators
-        run: npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+          # Codebase-specific overrides
+          echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
+          printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square/.secret.local
+
+          echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
+
+      - name: Start mock server and run integration tests
+        run: |
+          npx tsx libs/firebase/integration-test-mock-server/start.ts &
+          MOCK_PID=$!
+          sleep 2
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+          EXIT_CODE=$?
+          kill $MOCK_PID 2>/dev/null
+          exit $EXIT_CODE
 
   storybook:
     name: Storybook Build & Tests

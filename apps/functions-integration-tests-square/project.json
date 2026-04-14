@@ -1,0 +1,23 @@
+{
+  "name": "functions-integration-tests-square",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-square/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-registration",
+    "firebase-maple-functions-cancel-registration",
+    "firebase-maple-functions-sync-class-to-webflow",
+    "firebase-maple-functions-sync-artist-to-webflow",
+    "firebase-integration-test-utils",
+    "firebase-integration-test-mock-server"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-square/vitest.config.ts"
+      }
+    }
+  }
+}

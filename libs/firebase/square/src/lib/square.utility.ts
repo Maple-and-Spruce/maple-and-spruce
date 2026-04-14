@@ -116,6 +116,9 @@ export class Square {
       environment: this.env.isProd
         ? SquareEnvironment.Production
         : SquareEnvironment.Sandbox,
+      ...(process.env['SQUARE_BASE_URL']
+        ? { baseUrl: process.env['SQUARE_BASE_URL'] }
+        : {}),
     });
 
     this._catalogService = new CatalogService(this.client);

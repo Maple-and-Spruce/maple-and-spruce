@@ -11,6 +11,8 @@ export type { TestUser } from './lib/utils/auth-helper.js';
 export {
   clearFirestoreEmulator,
   setFirestoreDoc,
+  getFirestoreDoc,
+  deleteFirestoreDoc,
   FirestoreRef,
   FirestoreTimestamp,
 } from './lib/utils/firestore-helper.js';
@@ -28,6 +30,10 @@ export {
   DRAFT_CLASS,
   CANCELLED_CLASS,
   PAST_CLASS,
+  PUBLISHED_CLASS_WITH_REFS,
+  PUBLISHED_CLASS_NO_INSTRUCTOR,
+  SAMPLE_INSTRUCTOR,
+  SAMPLE_CLASS_CATEGORY,
   CLASS_IDS,
 } from './lib/fixtures/class.fixtures.js';
 export {
