@@ -196,14 +196,10 @@ describe('PaymentsService', () => {
     });
 
     it('throws PaymentError when Square SDK throws SquareError', async () => {
-      const squareError = new SquareError(
-        'Card declined',
-        { statusCode: 400, body: {} } as Parameters<
-          typeof SquareError['constructor']
-        >[1]
-      );
+      const squareError = new SquareError('Card declined');
       Object.defineProperty(squareError, 'errors', {
         value: [{ code: 'CARD_DECLINED', detail: 'Card was declined' }],
+        writable: true,
       });
 
       mockClient.payments.create.mockRejectedValue(squareError);
@@ -221,12 +217,7 @@ describe('PaymentsService', () => {
     });
 
     it('throws PaymentError when Square SDK throws SquareError without errors array', async () => {
-      const squareError = new SquareError(
-        'Server error',
-        { statusCode: 500, body: {} } as Parameters<
-          typeof SquareError['constructor']
-        >[1]
-      );
+      const squareError = new SquareError('Server error');
 
       mockClient.payments.create.mockRejectedValue(squareError);
 
