@@ -4,8 +4,11 @@ import type { Class } from '@maple/ts/domain';
 /**
  * Tests for sync-registration-count.ts
  *
- * Tests the business logic for syncing registration count changes
- * to Webflow CMS when registrations are created, updated, or deleted.
+ * Tests the full Firestore trigger handler logic:
+ * 1. Extracts classId from registration snapshots
+ * 2. Looks up the class, skips if not found or not published
+ * 3. Fetches enrichment data (instructor, category, registration count)
+ * 4. Calls Webflow syncClass with the correct parameters
  */
 
 // Define mocks using vi.hoisted
@@ -18,6 +21,8 @@ const mocks = vi.hoisted(() => {
     registrationCountByClassId: vi.fn(),
     // Webflow mocks
     syncClass: vi.fn(),
+    // FirebaseProject mock
+    isDev: false,
   };
 });
 
@@ -37,58 +42,84 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-// Mock Webflow
-vi.mock('@maple/firebase/webflow', () => ({
-  Webflow: vi.fn().mockImplementation(() => ({
-    classService: {
-      syncClass: mocks.syncClass,
+// Mock Webflow — use a class so `new Webflow(...)` works
+vi.mock('@maple/firebase/webflow', () => {
+  return {
+    Webflow: class MockWebflow {
+      classService = { syncClass: mocks.syncClass };
     },
-  })),
-  WEBFLOW_SECRET_NAMES: ['WEBFLOW_API_TOKEN'],
-  WEBFLOW_STRING_NAMES: ['WEBFLOW_SITE_ID', 'WEBFLOW_CLASSES_COLLECTION_ID'],
-}));
+    WEBFLOW_SECRET_NAMES: ['WEBFLOW_API_TOKEN'],
+    WEBFLOW_STRING_NAMES: ['WEBFLOW_SITE_ID', 'WEBFLOW_CLASSES_COLLECTION_ID'],
+  };
+});
 
 // Mock firebase functions
 vi.mock('@maple/firebase/functions', () => ({
   FirebaseProject: {
-    isDev: false,
+    get isDev() {
+      return mocks.isDev;
+    },
   },
 }));
 
-// Mock firebase-functions (the SDK itself)
+// Mock firebase-functions — return the handler directly (same pattern as on-class-write)
 vi.mock('firebase-functions/v2/firestore', () => ({
-  onDocumentWritten: vi.fn(),
+  onDocumentWritten: vi.fn((_config, handler) => handler),
 }));
 
 vi.mock('firebase-functions/params', () => ({
-  defineSecret: vi.fn((name: string) => ({ name, value: () => `mock-${name}` })),
-  defineString: vi.fn((name: string) => ({ name, value: () => `mock-${name}` })),
+  defineSecret: vi.fn((name: string) => ({
+    name,
+    value: () => `mock-${name}`,
+  })),
+  defineString: vi.fn((name: string) => ({
+    name,
+    value: () => `mock-${name}`,
+  })),
 }));
 
 // Import after mocks
-import { extractClassId } from './sync-registration-count';
+import {
+  extractClassId,
+  syncRegistrationCount,
+} from './sync-registration-count';
+
+// The onDocumentWritten mock returns the handler directly
+const handler = syncRegistrationCount as unknown as (
+  event: unknown
+) => Promise<void>;
+
+// Helper to create a mock Firestore snapshot
+function makeSnapshot(
+  exists: boolean,
+  data?: Record<string, unknown>
+): unknown {
+  return {
+    exists,
+    data: () => (exists ? data : undefined),
+  };
+}
+
+// Helper to create a mock published class
+const createMockClass = (overrides: Partial<Class> = {}): Class => ({
+  id: 'class-001',
+  name: 'Intro to Pottery',
+  description: 'Learn pottery basics',
+  dateTime: new Date('2026-05-15T14:00:00Z'),
+  durationMinutes: 120,
+  capacity: 12,
+  priceCents: 4500,
+  skillLevel: 'beginner',
+  status: 'published',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
 
 describe('Sync Registration Count', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  // Helper to create a mock published class
-  const createMockClass = (
-    overrides: Partial<Class> = {}
-  ): Class => ({
-    id: 'class-001',
-    name: 'Intro to Pottery',
-    description: 'Learn pottery basics',
-    dateTime: new Date('2026-05-15T14:00:00Z'),
-    durationMinutes: 120,
-    capacity: 12,
-    priceCents: 4500,
-    skillLevel: 'beginner',
-    status: 'published',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
+    mocks.isDev = false;
   });
 
   describe('extractClassId', () => {
@@ -136,140 +167,147 @@ describe('Sync Registration Count', () => {
     });
   });
 
-  describe('registration count sync logic', () => {
-    it('computes correct spots remaining after new registration', () => {
-      const classEntity = createMockClass({ capacity: 12 });
-      const registrationCount = 3;
-      const spotsRemaining = classEntity.capacity - registrationCount;
+  describe('handler — classId extraction from snapshots', () => {
+    it('uses after snapshot classId for create', async () => {
+      const classEntity = createMockClass();
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(1);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-1',
+        isNew: false,
+      });
 
-      expect(spotsRemaining).toBe(9);
+      await handler({
+        params: { registrationId: 'reg-001' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      expect(mocks.classFindById).toHaveBeenCalledWith('class-001');
     });
 
-    it('computes zero spots remaining when class is full', () => {
-      const classEntity = createMockClass({ capacity: 8 });
-      const registrationCount = 8;
-      const spotsRemaining = classEntity.capacity - registrationCount;
+    it('uses before snapshot classId for delete', async () => {
+      const classEntity = createMockClass({ id: 'class-002' });
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(0);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-1',
+        isNew: false,
+      });
 
-      expect(spotsRemaining).toBe(0);
+      await handler({
+        params: { registrationId: 'reg-002' },
+        data: {
+          after: makeSnapshot(false),
+          before: makeSnapshot(true, { classId: 'class-002' }),
+        },
+      });
+
+      expect(mocks.classFindById).toHaveBeenCalledWith('class-002');
     });
 
-    it('computes negative spots remaining when over-enrolled', () => {
-      const classEntity = createMockClass({ capacity: 8 });
-      const registrationCount = 10;
-      const spotsRemaining = classEntity.capacity - registrationCount;
+    it('skips sync when no classId found in either snapshot', async () => {
+      await handler({
+        params: { registrationId: 'reg-003' },
+        data: {
+          after: makeSnapshot(true, { status: 'confirmed' }),
+          before: makeSnapshot(false),
+        },
+      });
 
-      expect(spotsRemaining).toBe(-2);
-    });
-
-    it('returns full capacity when no registrations exist', () => {
-      const classEntity = createMockClass({ capacity: 12 });
-      const registrationCount = 0;
-      const spotsRemaining = classEntity.capacity - registrationCount;
-
-      expect(spotsRemaining).toBe(12);
+      expect(mocks.classFindById).not.toHaveBeenCalled();
+      expect(mocks.syncClass).not.toHaveBeenCalled();
     });
   });
 
-  describe('class lookup behavior', () => {
-    it('finds published class for sync', async () => {
-      const classEntity = createMockClass({ status: 'published' });
-      mocks.classFindById.mockResolvedValue(classEntity);
-
-      const result = await mocks.classFindById('class-001');
-
-      expect(result).toBeDefined();
-      expect(result.status).toBe('published');
-    });
-
+  describe('handler — class lookup', () => {
     it('skips sync when class is not found', async () => {
       mocks.classFindById.mockResolvedValue(undefined);
 
-      const result = await mocks.classFindById('class-nonexistent');
+      await handler({
+        params: { registrationId: 'reg-004' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-nonexistent' }),
+          before: makeSnapshot(false),
+        },
+      });
 
-      expect(result).toBeUndefined();
+      expect(mocks.classFindById).toHaveBeenCalledWith('class-nonexistent');
+      expect(mocks.syncClass).not.toHaveBeenCalled();
     });
 
     it('skips sync when class is draft', async () => {
-      const classEntity = createMockClass({ status: 'draft' });
-      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.classFindById.mockResolvedValue(
+        createMockClass({ status: 'draft' })
+      );
 
-      const result = await mocks.classFindById('class-001');
+      await handler({
+        params: { registrationId: 'reg-005' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
 
-      expect(result.status).not.toBe('published');
+      expect(mocks.syncClass).not.toHaveBeenCalled();
     });
 
     it('skips sync when class is cancelled', async () => {
-      const classEntity = createMockClass({ status: 'cancelled' });
+      mocks.classFindById.mockResolvedValue(
+        createMockClass({ status: 'cancelled' })
+      );
+
+      await handler({
+        params: { registrationId: 'reg-006' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      expect(mocks.syncClass).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handler — enrichment and sync', () => {
+    it('fetches instructor, category, and count then calls syncClass', async () => {
+      const classEntity = createMockClass({
+        instructorId: 'instructor-001',
+        categoryId: 'category-001',
+      });
       mocks.classFindById.mockResolvedValue(classEntity);
-
-      const result = await mocks.classFindById('class-001');
-
-      expect(result.status).not.toBe('published');
-    });
-  });
-
-  describe('enrichment data fetching', () => {
-    it('fetches instructor, category, and count in parallel', async () => {
-      const classEntity = createMockClass({
-        instructorId: 'instructor-001',
-        categoryId: 'category-001',
+      mocks.instructorFindById.mockResolvedValue({
+        id: 'instructor-001',
+        name: 'Jane Smith',
       });
-
-      mocks.instructorFindById.mockResolvedValue({ id: 'instructor-001', name: 'Jane Smith' });
-      mocks.categoryfindById.mockResolvedValue({ id: 'category-001', name: 'Pottery' });
+      mocks.categoryfindById.mockResolvedValue({
+        id: 'category-001',
+        name: 'Pottery',
+      });
       mocks.registrationCountByClassId.mockResolvedValue(5);
-
-      const [instructor, category, count] = await Promise.all([
-        mocks.instructorFindById(classEntity.instructorId),
-        mocks.categoryfindById(classEntity.categoryId),
-        mocks.registrationCountByClassId(classEntity.id),
-      ]);
-
-      expect(instructor.name).toBe('Jane Smith');
-      expect(category.name).toBe('Pottery');
-      expect(count).toBe(5);
-    });
-
-    it('handles class with no instructor or category', async () => {
-      const classEntity = createMockClass({
-        instructorId: undefined,
-        categoryId: undefined,
-      });
-
-      mocks.registrationCountByClassId.mockResolvedValue(3);
-
-      const count = await mocks.registrationCountByClassId(classEntity.id);
-
-      expect(count).toBe(3);
-      expect(classEntity.instructorId).toBeUndefined();
-      expect(classEntity.categoryId).toBeUndefined();
-    });
-  });
-
-  describe('webflow sync call', () => {
-    it('calls syncClass with correct parameters', async () => {
-      const classEntity = createMockClass({
-        instructorId: 'instructor-001',
-        categoryId: 'category-001',
-      });
-
       mocks.syncClass.mockResolvedValue({
         success: true,
         webflowItemId: 'wf-item-123',
         isNew: false,
       });
 
-      const result = await mocks.syncClass({
-        classEntity,
-        publish: true,
-        isDev: false,
-        instructorName: 'Jane Smith',
-        categoryName: 'Pottery',
-        registrationCount: 5,
+      await handler({
+        params: { registrationId: 'reg-007' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
       });
 
-      expect(result.success).toBe(true);
-      expect(result.isNew).toBe(false);
+      expect(mocks.instructorFindById).toHaveBeenCalledWith('instructor-001');
+      expect(mocks.categoryfindById).toHaveBeenCalledWith('category-001');
+      expect(mocks.registrationCountByClassId).toHaveBeenCalledWith(
+        'class-001'
+      );
       expect(mocks.syncClass).toHaveBeenCalledWith({
         classEntity,
         publish: true,
@@ -280,51 +318,115 @@ describe('Sync Registration Count', () => {
       });
     });
 
-    it('handles Webflow API error gracefully', async () => {
-      mocks.syncClass.mockRejectedValue(new Error('Webflow API rate limited'));
+    it('handles class with no instructor or category', async () => {
+      const classEntity = createMockClass({
+        instructorId: undefined,
+        categoryId: undefined,
+      });
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(3);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-item-456',
+        isNew: true,
+      });
 
-      await expect(mocks.syncClass({
-        classEntity: createMockClass(),
+      await handler({
+        params: { registrationId: 'reg-008' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      // Should NOT call instructor or category repos
+      expect(mocks.instructorFindById).not.toHaveBeenCalled();
+      expect(mocks.categoryfindById).not.toHaveBeenCalled();
+
+      expect(mocks.syncClass).toHaveBeenCalledWith({
+        classEntity,
         publish: true,
         isDev: false,
+        instructorName: undefined,
+        categoryName: undefined,
         registrationCount: 3,
-      })).rejects.toThrow('Webflow API rate limited');
+      });
+    });
+
+    it('does not publish when running in dev environment', async () => {
+      mocks.isDev = true;
+      const classEntity = createMockClass();
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(0);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-item-789',
+        isNew: true,
+      });
+
+      await handler({
+        params: { registrationId: 'reg-009' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      expect(mocks.syncClass).toHaveBeenCalledWith(
+        expect.objectContaining({
+          publish: false,
+          isDev: true,
+        })
+      );
+    });
+
+    it('publishes when running in prod environment', async () => {
+      mocks.isDev = false;
+      const classEntity = createMockClass();
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(2);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-item-101',
+        isNew: false,
+      });
+
+      await handler({
+        params: { registrationId: 'reg-010' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      expect(mocks.syncClass).toHaveBeenCalledWith(
+        expect.objectContaining({
+          publish: true,
+          isDev: false,
+        })
+      );
     });
   });
 
-  describe('classId extraction from registration changes', () => {
-    it('uses after snapshot classId for create/update', () => {
-      const afterSnapshot = {
-        exists: true,
-        data: () => ({ classId: 'class-001', status: 'confirmed' }),
-      };
-      const beforeSnapshot = {
-        exists: false,
-        data: () => undefined,
-      };
+  describe('handler — error handling', () => {
+    it('catches Webflow API errors without throwing', async () => {
+      const classEntity = createMockClass();
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(1);
+      mocks.syncClass.mockRejectedValue(
+        new Error('Webflow API rate limited')
+      );
 
-      const classId =
-        extractClassId(afterSnapshot as unknown as import('firebase-functions/v2/firestore').DocumentSnapshot) ??
-        extractClassId(beforeSnapshot as unknown as import('firebase-functions/v2/firestore').DocumentSnapshot);
-
-      expect(classId).toBe('class-001');
-    });
-
-    it('uses before snapshot classId for delete', () => {
-      const afterSnapshot = {
-        exists: false,
-        data: () => undefined,
-      };
-      const beforeSnapshot = {
-        exists: true,
-        data: () => ({ classId: 'class-002', status: 'confirmed' }),
-      };
-
-      const classId =
-        extractClassId(afterSnapshot as unknown as import('firebase-functions/v2/firestore').DocumentSnapshot) ??
-        extractClassId(beforeSnapshot as unknown as import('firebase-functions/v2/firestore').DocumentSnapshot);
-
-      expect(classId).toBe('class-002');
+      // Should NOT throw — the handler catches errors to prevent retry loops
+      await expect(
+        handler({
+          params: { registrationId: 'reg-011' },
+          data: {
+            after: makeSnapshot(true, { classId: 'class-001' }),
+            before: makeSnapshot(false),
+          },
+        })
+      ).resolves.toBeUndefined();
     });
   });
 });
