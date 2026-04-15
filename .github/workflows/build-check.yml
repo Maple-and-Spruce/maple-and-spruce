@@ -210,8 +210,9 @@ jobs:
       - name: Create emulator .env
         run: |
           # Copy .env.dev to every codebase (has all shared project-level params)
+          # Strip comments and blank lines — Firebase .env parser needs clean key=value pairs
           for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
-            cp .env.dev "$dir/.env"
+            grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
           # Codebase-specific overrides
