@@ -261,8 +261,5 @@ jobs:
       - name: Build Storybook
         run: pnpm exec nx run maple-spruce:build-storybook
 
-      - name: Serve Storybook and run interaction tests
-        run: |
-          pnpm exec concurrently -k -s first -n "SB,TEST" \
-            "pnpm exec http-server apps/maple-spruce/storybook-static --port 6006 --silent" \
-            "pnpm exec wait-on tcp:6006 && pnpm exec test-storybook --config-dir apps/maple-spruce/.storybook --ci"
+      - name: Run Storybook interaction tests via Vitest
+        run: pnpm exec vitest run --project storybook
