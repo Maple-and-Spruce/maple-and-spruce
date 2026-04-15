@@ -25,5 +25,11 @@ export default defineConfig({
       provider: playwright({}),
       instances: [{ browser: 'chromium' }],
     },
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['json'],
+      reportsDirectory: './coverage/storybook',
+      all: false,
+    },
   },
 });

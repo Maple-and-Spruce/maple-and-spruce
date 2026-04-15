@@ -164,11 +164,11 @@ jobs:
       - name: Run unit tests with coverage
         run: pnpm exec vitest run --coverage
 
-      - name: Report coverage
-        uses: davelosert/vitest-coverage-report-action@v2
+      - name: Upload unit coverage
+        uses: actions/upload-artifact@v4
         with:
-          vite-config-path: vitest.config.ts
-          file-coverage-mode: changes
+          name: coverage-unit
+          path: coverage/unit/coverage-final.json
 
   integration-tests:
     name: Integration Tests
@@ -261,5 +261,64 @@ jobs:
       - name: Build Storybook
         run: pnpm exec nx run maple-spruce:build-storybook
 
-      - name: Run Storybook interaction tests via Vitest
-        run: pnpm exec vitest run --project storybook
+      - name: Run Storybook interaction tests with coverage
+        run: pnpm exec vitest run --project storybook --coverage
+
+      - name: Upload Storybook coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-storybook
+          path: coverage/storybook/coverage-final.json
+
+  coverage-check:
+    name: Merged Coverage Check
+    needs: [install, unit-tests, storybook]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Download unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage/unit
+
+      - name: Download Storybook coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-storybook
+          path: coverage/storybook
+
+      - name: Merge coverage reports
+        run: |
+          mkdir -p coverage/merged
+          pnpm exec nyc merge coverage coverage/merged/coverage-final.json
+          pnpm exec nyc report -t coverage/merged --reporter=text --reporter=json-summary --report-dir=coverage/merged
+
+      - name: Check coverage thresholds
+        run: |
+          pnpm exec nyc check-coverage \
+            --lines 80 \
+            --functions 80 \
+            --statements 80 \
+            --branches 50 \
+            -t coverage/merged
