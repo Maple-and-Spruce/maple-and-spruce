@@ -67,17 +67,45 @@ Functions.endpoint
 
 **Unit tests**: Use `vi.mock()` to mock repositories and external services. See ADR-017 for patterns.
 
-**Integration tests**: Use `apps/functions-integration-tests/` to test functions against real Firebase emulators (auth, firestore, functions). Integration tests do NOT use mocks — they seed data via the emulator REST API and call functions over HTTP. See ADR-027.
+**Integration tests**: Test functions against real Firebase emulators (auth, firestore, functions) with a mock HTTP server for Square/Webflow APIs. See ADR-027.
 
-- Test utilities: `src/utils/` (auth-helper, firestore-helper, http-client, emulator-config)
-- Fixtures: `src/fixtures/` (reusable test data seeded into emulator)
-- Run: `pnpm exec nx run functions-integration-tests:test-with-emulators`
+- Run locally: `./tools/run-integration-tests.sh` (all suites) or `./tools/run-integration-tests.sh square` (one suite)
+- Test suites: `apps/functions-integration-tests-{artist,class,instructor,category,discount,calendar,registration,utility,square}/`
+- Mock server: `libs/firebase/integration-test-mock-server/` — intercepts Square and Webflow SDK calls via `SQUARE_BASE_URL` / `WEBFLOW_BASE_URL` env vars
+- Test utilities: `libs/firebase/integration-test-utils/` (auth-helper, firestore-helper, http-client, fixtures)
+- For verbose output on a failing suite: `npx vitest run --config apps/functions-integration-tests-<suite>/vitest.config.ts --reporter=verbose` (while emulators + mock server are running)
+
+### Emulator environment setup
+
+Firebase emulator requires ALL project-level `defineString`/`defineSecret` params in **every** codebase's `.env`, even if that codebase doesn't use them. Missing params cause a silent hang (stdin prompt) with no error message. The solution is to copy `.env.dev` to every codebase's dist dir, then append codebase-specific overrides. The script and CI workflow both do this automatically.
+
+When adding a new `defineString`/`defineSecret` param, add it to `.env.dev` and it will propagate to all codebases.
+
+### Firestore trigger feedback loops
+
+Sync functions that write back to the document they're triggered on (e.g., storing `webflowItemId` after syncing to Webflow) must guard against re-triggering themselves:
+
+```typescript
+// Only write if the value actually changed — prevents trigger → write → trigger loop
+if (result.webflowItemId && doc.webflowItemId !== result.webflowItemId) {
+  await Repository.updateWebflowItemId(doc.id, result.webflowItemId);
+}
+```
+
+This guard is required on `syncClassToWebflow`, `syncArtistToWebflow`, and `syncInstructorToWebflow`.
+
+### Mock server routes
+
+When an external API adds a new endpoint to the payment/sync flow, add a matching route to `libs/firebase/integration-test-mock-server/src/lib/routes/`. Current routes:
+
+- **Square**: `POST /v2/orders`, `POST /v2/payments`, `GET /v2/payments/:id`, `POST /v2/refunds`, catalog CRUD
+- **Webflow**: CMS item CRUD + publish on `/collections/:id/items`
 
 ## CI/CD Notes
 
 - CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
 - Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
-- Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds functions, creates a minimal `.env`, and runs `firebase emulators:exec`.
+- Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds all 4 codebases, copies `.env.dev` to each, starts the mock server, and runs `firebase emulators:exec`.
 
 ## After Changes
 

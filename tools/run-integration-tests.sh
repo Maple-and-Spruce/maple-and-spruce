@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+#
+# Run integration tests against Firebase emulators + mock HTTP server.
+#
+# Usage:
+#   ./tools/run-integration-tests.sh              # run all suites
+#   ./tools/run-integration-tests.sh square       # run one suite
+#   ./tools/run-integration-tests.sh class square  # run multiple suites
+#
+# Prerequisites: pnpm, Java 21+ (for Firestore emulator)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$ROOT_DIR"
+
+# ---------------------------------------------------------------------------
+# 1. Kill stale processes from previous runs
+# ---------------------------------------------------------------------------
+for port in 9999 5001 8080 9099 4000; do
+  lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
+done
+sleep 1
+
+# ---------------------------------------------------------------------------
+# 2. Build all function codebases (reset cache to avoid stale bundles)
+# ---------------------------------------------------------------------------
+echo "Building function codebases..."
+pnpm exec nx reset 2>/dev/null || true
+pnpm exec nx run functions:build
+pnpm exec nx run functions-square:build
+pnpm exec nx run functions-sync:build
+pnpm exec nx run functions-calendar:build
+
+# ---------------------------------------------------------------------------
+# 3. Set up .env and .secret.local for every codebase
+#
+#    Firebase emulator requires ALL project-level params (defineString /
+#    defineSecret) in every codebase's .env — even params that codebase
+#    doesn't use. Missing params cause a silent hang (stdin prompt) in
+#    non-interactive environments.
+#
+#    Solution: copy .env.dev everywhere, then append codebase-specific
+#    overrides.
+# ---------------------------------------------------------------------------
+echo "Setting up emulator environment..."
+for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+  # Strip comments and blank lines — Firebase .env parser needs clean key=value pairs
+  grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
+done
+
+# maple-square: mock server URL + fake secrets
+echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
+printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square/.secret.local
+
+# maple-sync: mock server URL + fake secrets
+echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
+printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
+
+# ---------------------------------------------------------------------------
+# 4. Start mock HTTP server (Square + Webflow APIs)
+# ---------------------------------------------------------------------------
+echo "Starting mock server on :9999..."
+npx tsx libs/firebase/integration-test-mock-server/start.ts &
+MOCK_PID=$!
+sleep 2
+
+# ---------------------------------------------------------------------------
+# 5. Run tests inside Firebase emulators
+# ---------------------------------------------------------------------------
+# Determine which test suites to run
+if [ $# -gt 0 ]; then
+  TEST_CMD=""
+  for suite in "$@"; do
+    TEST_CMD="${TEST_CMD}pnpm exec nx run functions-integration-tests-${suite}:test && "
+  done
+  # Remove trailing " && "
+  TEST_CMD="${TEST_CMD% && }"
+else
+  TEST_CMD="pnpm exec nx run functions-integration-tests:test"
+fi
+
+echo "Running: $TEST_CMD"
+EXIT_CODE=0
+npx firebase emulators:exec \
+  --project=dev \
+  --only auth,firestore,functions \
+  "$TEST_CMD" || EXIT_CODE=$?
+
+# ---------------------------------------------------------------------------
+# 6. Cleanup
+# ---------------------------------------------------------------------------
+kill $MOCK_PID 2>/dev/null || true
+
+if [ $EXIT_CODE -eq 0 ]; then
+  echo ""
+  echo "All integration tests passed."
+else
+  echo ""
+  echo "Integration tests failed (exit code $EXIT_CODE)."
+  echo ""
+  echo "Tip: For verbose vitest output on a single suite, run:"
+  echo "  npx vitest run --config apps/functions-integration-tests-<suite>/vitest.config.ts --reporter=verbose"
+  echo "(while emulators + mock server are running)"
+fi
+
+exit $EXIT_CODE
