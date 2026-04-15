@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { generateClassSlug, mapClassToFieldData } from './class.service';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  generateClassSlug,
+  mapClassToFieldData,
+  ClassService,
+} from './class.service';
 import type { Class } from '@maple/ts/domain';
 
 describe('generateClassSlug', () => {
@@ -202,5 +206,295 @@ describe('mapClassToFieldData', () => {
     expect(result['instructor-bio']).toBeUndefined();
     expect(result['instructor-image']).toBeUndefined();
     expect(result['category-name']).toBeUndefined();
+  });
+});
+
+// ── ClassService tests ──────────────────────────────────────────────────
+
+describe('ClassService', () => {
+  const COLLECTION_ID = 'col-classes-123';
+
+  // Mock Webflow client
+  const mockClient = {
+    collections: {
+      items: {
+        listItems: vi.fn(),
+        createItem: vi.fn(),
+        updateItem: vi.fn(),
+        deleteItem: vi.fn(),
+        publishItem: vi.fn(),
+      },
+    },
+  };
+
+  let service: ClassService;
+
+  const mockClass: Class = {
+    id: 'class-abc',
+    name: 'Pottery 101',
+    description: 'Learn the basics of pottery',
+    shortDescription: 'Intro to pottery',
+    instructorId: 'inst-1',
+    dateTime: new Date('2026-05-15T14:00:00.000Z'),
+    durationMinutes: 120,
+    capacity: 10,
+    priceCents: 4500,
+    imageUrl: 'https://storage.example.com/pottery.jpg',
+    categoryId: 'cat-1',
+    skillLevel: 'beginner',
+    status: 'published',
+    location: 'Main Studio',
+    materialsIncluded: 'Clay, glazes, tools',
+    whatToBring: 'Apron, towel',
+    minimumAge: 12,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    service = new ClassService(mockClient as any, COLLECTION_ID);
+  });
+
+  describe('syncClass', () => {
+    it('creates a new Webflow item when class does not exist', async () => {
+      // findByFirebaseId returns nothing
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-new-item',
+      });
+
+      const result = await service.syncClass({
+        classEntity: mockClass,
+        publish: false,
+        isDev: false,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        webflowItemId: 'wf-new-item',
+        isNew: true,
+      });
+      expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        expect.objectContaining({
+          isArchived: false,
+          isDraft: false,
+          fieldData: expect.objectContaining({
+            'firebase-id': 'class-abc',
+            name: 'Pottery 101',
+          }),
+        })
+      );
+    });
+
+    it('updates an existing Webflow item when class already exists', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          {
+            id: 'wf-existing',
+            fieldData: { 'firebase-id': 'class-abc' },
+          },
+        ],
+      });
+      mockClient.collections.items.updateItem.mockResolvedValue({});
+
+      const result = await service.syncClass({
+        classEntity: mockClass,
+        publish: false,
+        isDev: false,
+        instructorName: 'Jane Doe',
+        categoryName: 'Ceramics',
+        registrationCount: 3,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        webflowItemId: 'wf-existing',
+        isNew: false,
+      });
+      expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-existing',
+        expect.objectContaining({
+          isArchived: false,
+          isDraft: false,
+          fieldData: expect.objectContaining({
+            'firebase-id': 'class-abc',
+            'instructor-name': 'Jane Doe',
+            'category-name': 'Ceramics',
+            'spots-remaining': 7,
+          }),
+        })
+      );
+    });
+
+    it('publishes the item after sync when publish is true', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-publish-me',
+      });
+      mockClient.collections.items.publishItem.mockResolvedValue({});
+
+      await service.syncClass({
+        classEntity: mockClass,
+        publish: true,
+        isDev: false,
+      });
+
+      expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { itemIds: ['wf-publish-me'] }
+      );
+    });
+
+    it('does not publish the item when publish is false', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-no-publish',
+      });
+
+      await service.syncClass({
+        classEntity: mockClass,
+        publish: false,
+        isDev: false,
+      });
+
+      expect(
+        mockClient.collections.items.publishItem
+      ).not.toHaveBeenCalled();
+    });
+
+    it('defaults publish to false and isDev to false', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-defaults',
+      });
+
+      await service.syncClass({ classEntity: mockClass });
+
+      expect(
+        mockClient.collections.items.publishItem
+      ).not.toHaveBeenCalled();
+      // The field data should have isDev = false
+      const createCall = mockClient.collections.items.createItem.mock.calls[0];
+      expect(createCall[1].fieldData['is-dev-environment']).toBe(false);
+    });
+
+    it('passes instructorBio and instructorImage through to field data', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-enriched',
+      });
+
+      await service.syncClass({
+        classEntity: mockClass,
+        instructorName: 'Jane',
+        instructorBio: 'Expert potter',
+        instructorImage: 'https://example.com/jane.jpg',
+      });
+
+      const createCall = mockClient.collections.items.createItem.mock.calls[0];
+      expect(createCall[1].fieldData['instructor-bio']).toBe('Expert potter');
+      expect(createCall[1].fieldData['instructor-image']).toEqual({
+        url: 'https://example.com/jane.jpg',
+        alt: 'Jane profile photo',
+      });
+    });
+  });
+
+  describe('createItem', () => {
+    it('throws when Webflow API returns no ID', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({});
+
+      await expect(
+        service.syncClass({ classEntity: mockClass })
+      ).rejects.toThrow('Webflow API did not return an item ID after creation');
+    });
+  });
+
+  describe('removeClass', () => {
+    it('deletes existing Webflow item and returns true', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          {
+            id: 'wf-to-delete',
+            fieldData: { 'firebase-id': 'class-abc' },
+          },
+        ],
+      });
+      mockClient.collections.items.deleteItem.mockResolvedValue({});
+
+      const result = await service.removeClass('class-abc');
+
+      expect(result).toBe(true);
+      expect(mockClient.collections.items.deleteItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-to-delete'
+      );
+    });
+
+    it('returns false when class not found in Webflow', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+
+      const result = await service.removeClass('class-nonexistent');
+
+      expect(result).toBe(false);
+      expect(
+        mockClient.collections.items.deleteItem
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('publishItem', () => {
+    it('publishes item to Webflow live site', async () => {
+      mockClient.collections.items.publishItem.mockResolvedValue({});
+
+      await service.publishItem('wf-item-789');
+
+      expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { itemIds: ['wf-item-789'] }
+      );
+    });
+  });
+
+  describe('findByFirebaseId (via syncClass/removeClass)', () => {
+    it('returns null when listItems response has no items', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({});
+
+      const result = await service.removeClass('class-abc');
+      expect(result).toBe(false);
+    });
+
+    it('returns null when listItems throws an error', async () => {
+      mockClient.collections.items.listItems.mockRejectedValue(
+        new Error('Network error')
+      );
+
+      const result = await service.removeClass('class-abc');
+      expect(result).toBe(false);
+    });
+
+    it('returns null when matching item has no id', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          {
+            // no id field
+            fieldData: { 'firebase-id': 'class-abc' },
+          },
+        ],
+      });
+
+      // Should treat it as not found, so syncClass creates a new item
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-new',
+      });
+
+      const result = await service.syncClass({ classEntity: mockClass });
+      expect(result.isNew).toBe(true);
+    });
   });
 });
