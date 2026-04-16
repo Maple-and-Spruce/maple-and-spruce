@@ -13,6 +13,7 @@ allowBuilds:
   re2: true
   sharp: true
 
+managePackageManagerVersions: false
 minimumReleaseAge: 0
 nodeLinker: hoisted
 shamefullyHoist: true
