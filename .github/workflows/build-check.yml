@@ -262,7 +262,7 @@ jobs:
         run: pnpm exec nx run maple-spruce:build-storybook
 
       - name: Run Storybook interaction tests with coverage
-        run: pnpm exec vitest run --project storybook --coverage
+        run: pnpm exec vitest run --config vitest.storybook.config.ts --coverage
 
       - name: Upload Storybook coverage
         uses: actions/upload-artifact@v4
