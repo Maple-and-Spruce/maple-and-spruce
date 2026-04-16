@@ -149,9 +149,14 @@ export interface PublicClass {
 /**
  * Return class sessions sorted earliest-first without mutating the input.
  */
+/** Coerce a dateTime value that may be a string (from JSON serialization) to a Date. */
+function ensureDate(dt: Date | string): Date {
+  return dt instanceof Date ? dt : new Date(dt);
+}
+
 export function getSortedSessions(classEntity: Class): ClassSession[] {
   return [...classEntity.sessions].sort(
-    (a, b) => a.dateTime.getTime() - b.dateTime.getTime()
+    (a, b) => ensureDate(a.dateTime).getTime() - ensureDate(b.dateTime).getTime()
   );
 }
 
@@ -172,7 +177,7 @@ export function getFirstSession(classEntity: Class): ClassSession {
  * to the first session's start time.
  */
 export function getRegistrationCutoff(classEntity: Class): Date {
-  return classEntity.registrationClosesAt ?? getFirstSession(classEntity).dateTime;
+  return ensureDate(classEntity.registrationClosesAt ?? getFirstSession(classEntity).dateTime);
 }
 
 /**
@@ -259,7 +264,7 @@ export function getSessionEndTime(
   session: ClassSession,
   durationMinutes: number
 ): Date {
-  return new Date(session.dateTime.getTime() + durationMinutes * 60 * 1000);
+  return new Date(ensureDate(session.dateTime).getTime() + durationMinutes * 60 * 1000);
 }
 
 /**
@@ -297,18 +302,18 @@ export function formatSessions(
   }
 
   const sorted = [...sessions].sort(
-    (a, b) => a.dateTime.getTime() - b.dateTime.getTime()
+    (a, b) => ensureDate(a.dateTime).getTime() - ensureDate(b.dateTime).getTime()
   );
 
-  const timeOf = (d: Date): string =>
-    d.toLocaleTimeString('en-US', {
+  const timeOf = (d: Date | string): string =>
+    ensureDate(d).toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       timeZone,
     });
 
-  const dateOf = (d: Date): string =>
-    d.toLocaleDateString('en-US', {
+  const dateOf = (d: Date | string): string =>
+    ensureDate(d).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       timeZone,

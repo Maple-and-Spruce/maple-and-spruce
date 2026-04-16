@@ -327,4 +327,69 @@ describe('Class domain helpers', () => {
       expect(result.timeDisplay).toBe('Varies');
     });
   });
+
+  describe('ISO string coercion (client-side JSON)', () => {
+    // Firebase callable functions serialize Date objects to ISO strings.
+    // All domain helpers must handle string dateTime values gracefully.
+
+    const isoClass = {
+      ...baseClass,
+      sessions: [{ dateTime: '2030-06-15T14:00:00.000Z' as unknown as Date }],
+    };
+
+    const isoMultiSession = {
+      ...baseClass,
+      sessions: [
+        { dateTime: '2030-06-29T14:00:00.000Z' as unknown as Date },
+        { dateTime: '2030-06-15T14:00:00.000Z' as unknown as Date },
+        { dateTime: '2030-06-22T14:00:00.000Z' as unknown as Date },
+      ],
+    };
+
+    it('getFirstSession handles ISO strings', () => {
+      const first = getFirstSession(isoClass);
+      expect(first.dateTime).toBe('2030-06-15T14:00:00.000Z');
+    });
+
+    it('getSortedSessions handles ISO strings', () => {
+      const sorted = getSortedSessions(isoMultiSession);
+      expect(sorted.map((s) => String(s.dateTime))).toEqual([
+        '2030-06-15T14:00:00.000Z',
+        '2030-06-22T14:00:00.000Z',
+        '2030-06-29T14:00:00.000Z',
+      ]);
+    });
+
+    it('getRegistrationCutoff handles ISO string sessions', () => {
+      const cutoff = getRegistrationCutoff(isoClass);
+      expect(cutoff).toEqual(new Date('2030-06-15T14:00:00.000Z'));
+    });
+
+    it('getRegistrationCutoff handles ISO string registrationClosesAt', () => {
+      const withOverride = {
+        ...isoClass,
+        registrationClosesAt: '2030-06-10T00:00:00.000Z' as unknown as Date,
+      };
+      expect(getRegistrationCutoff(withOverride)).toEqual(new Date('2030-06-10T00:00:00.000Z'));
+    });
+
+    it('getSessionEndTime handles ISO string', () => {
+      const session = { dateTime: '2030-06-15T14:00:00.000Z' as unknown as Date };
+      const result = getSessionEndTime(session, 120);
+      expect(result).toEqual(new Date('2030-06-15T16:00:00.000Z'));
+    });
+
+    it('formatSessions handles ISO strings', () => {
+      const result = formatSessions(
+        [
+          { dateTime: '2030-06-15T18:00:00.000Z' as unknown as Date },
+          { dateTime: '2030-06-22T18:00:00.000Z' as unknown as Date },
+        ],
+        'America/New_York'
+      );
+      expect(result.sharedTime).toBe(true);
+      expect(result.dateDisplay).toContain('Jun 15');
+      expect(result.dateDisplay).toContain('Jun 22');
+    });
+  });
 });
