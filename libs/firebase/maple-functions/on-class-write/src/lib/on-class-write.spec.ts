@@ -484,4 +484,68 @@ describe('onClassWrite', () => {
       expect(id).toBe(`class-abc-456-${sessionDates[0].getTime()}`);
     });
   });
+
+  // ────────────────────────────────────────────
+  // Legacy dateTime fallback
+  // ────────────────────────────────────────────
+
+  describe('legacy dateTime fallback', () => {
+    it('creates event from scalar dateTime when sessions array is missing', async () => {
+      const legacyDate = new Date('2030-07-01T10:00:00Z');
+      const legacyClassData = {
+        name: 'Legacy Class',
+        description: 'A class without sessions array.',
+        dateTime: ts(legacyDate),
+        durationMinutes: 60,
+        capacity: 8,
+        priceCents: 3000,
+        skillLevel: 'beginner',
+        status: 'published',
+        location: 'Studio',
+        createdAt: ts(new Date('2025-01-01')),
+        updatedAt: ts(new Date('2025-01-01')),
+      };
+
+      await handler({
+        params: { classId: 'legacy-1' },
+        data: {
+          before: makeSnapshot(false),
+          after: makeSnapshot(true, legacyClassData, 'legacy-1'),
+        },
+      });
+
+      expect(mocks.upsertWithId).toHaveBeenCalledTimes(1);
+      const [id, input] = mocks.upsertWithId.mock.calls[0];
+      expect(id).toBe(`class-legacy-1-${legacyDate.getTime()}`);
+      expect(input.startDateTime).toEqual(legacyDate);
+    });
+
+    it('handles dateTime as ISO string (emulator REST API format)', async () => {
+      const isoDate = '2030-08-15T14:00:00.000Z';
+      const legacyClassData = {
+        name: 'String Date Class',
+        description: 'A class with dateTime as string.',
+        dateTime: isoDate,
+        durationMinutes: 90,
+        capacity: 6,
+        priceCents: 4000,
+        skillLevel: 'all-levels',
+        status: 'published',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await handler({
+        params: { classId: 'string-date-1' },
+        data: {
+          before: makeSnapshot(false),
+          after: makeSnapshot(true, legacyClassData, 'string-date-1'),
+        },
+      });
+
+      expect(mocks.upsertWithId).toHaveBeenCalledTimes(1);
+      const [, input] = mocks.upsertWithId.mock.calls[0];
+      expect(input.startDateTime).toEqual(new Date(isoDate));
+    });
+  });
 });
