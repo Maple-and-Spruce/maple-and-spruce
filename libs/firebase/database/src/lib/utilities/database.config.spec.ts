@@ -143,11 +143,13 @@ describe('database.config', () => {
     it('should return non-function properties directly', async () => {
       const { db } = await import('./database.config');
 
-      // Access a non-function property through the proxy
-      const type = db.type;
+      // Access a made-up property to exercise the proxy's non-function return path (line 119)
+      const val = (db as unknown as Record<string, unknown>)['nonExistentProp'];
 
-      // Should have triggered initialization
+      // Should have triggered initialization via the proxy
       expect(mocks.firestore).toHaveBeenCalledTimes(1);
+      // Non-existent property returns undefined
+      expect(val).toBeUndefined();
     });
   });
 
