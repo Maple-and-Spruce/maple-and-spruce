@@ -31,7 +31,7 @@ function futureDate(): Date {
  * are async — there's a brief delay between the write and the trigger
  * completing its work.
  */
-function waitForTrigger(ms = 2000): Promise<void> {
+function waitForTrigger(ms = 4000): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
