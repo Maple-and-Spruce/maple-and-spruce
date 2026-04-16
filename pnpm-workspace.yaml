@@ -16,6 +16,7 @@ allowBuilds:
 managePackageManagerVersions: false
 minimumReleaseAge: 0
 nodeLinker: hoisted
+verifyDepsBeforeRun: false
 shamefullyHoist: true
 strictPeerDependencies: false
 
