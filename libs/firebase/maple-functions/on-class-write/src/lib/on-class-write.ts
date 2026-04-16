@@ -145,22 +145,24 @@ export const onClassWrite = onDocumentWritten(
         sessions.map((s) => sessionEventId(classId, s))
       );
 
-      // Case 2: Upsert one event per session
-      for (const session of sessions) {
-        const id = sessionEventId(classId, session);
-        await CalendarEventRepository.upsertWithId(id, {
-          title: afterClass.name,
-          description: afterClass.description || '',
-          startDateTime: session.dateTime,
-          endDateTime: getSessionEndTime(session, afterClass.durationMinutes),
-          recurrenceRule: null,
-          location: afterClass.location || DEFAULT_EVENT_LOCATION,
-          type: 'class',
-          public: isPublic,
-          sourceRef,
-          createdBy: 'system',
-        });
-      }
+      // Case 2: Upsert one event per session (parallel for speed)
+      await Promise.all(
+        sessions.map((session) => {
+          const id = sessionEventId(classId, session);
+          return CalendarEventRepository.upsertWithId(id, {
+            title: afterClass.name,
+            description: afterClass.description || '',
+            startDateTime: session.dateTime,
+            endDateTime: getSessionEndTime(session, afterClass.durationMinutes),
+            recurrenceRule: null,
+            location: afterClass.location || DEFAULT_EVENT_LOCATION,
+            type: 'class',
+            public: isPublic,
+            sourceRef,
+            createdBy: 'system',
+          });
+        })
+      );
 
       // Case 3: Delete any events for sessions that no longer exist
       const staleIds = [...existingIds].filter((id) => !desiredIds.has(id));
