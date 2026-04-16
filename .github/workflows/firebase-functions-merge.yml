@@ -12,6 +12,9 @@ on:
         default: 'false'
         type: boolean
 
+env:
+  NX_DAEMON: 'false'
+
 jobs:
   prepare_and_build:
     runs-on: ubuntu-latest

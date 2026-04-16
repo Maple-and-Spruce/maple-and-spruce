@@ -1,3 +1,35 @@
 packages:
   - 'apps/*'
   - 'libs/**'
+
+allowBuilds:
+  '@firebase/util': true
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  less: true
+  nx: true
+  protobufjs: true
+  re2: true
+  sharp: true
+
+managePackageManagerVersions: false
+minimumReleaseAge: 0
+nodeLinker: hoisted
+verifyDepsBeforeRun: false
+shamefullyHoist: true
+strictPeerDependencies: false
+
+overrides:
+  # GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.
+  lodash: '>=4.18.0'
+  # GHSA-3p68-rc4w-qgx5 (SSRF via NO_PROXY bypass) and GHSA (cloud metadata exfiltration via header injection). Transitive dep of nx@22.6.4 and square@43.2.1. Updated 2026-04-12.
+  axios: '>=1.15.0'
+  # GHSA-7gcc-r8m5-44qm: Host Header Injection via ctx.hostname. Transitive dep of @webflow/webflow-cli > @module-federation/dts-plugin. Added 2026-04-04.
+  koa: '>=3.1.2'
+  # GHSA-v2wj-q39q-566r (server.fs.deny bypass) and GHSA-p9ff-h696-f583 (arbitrary file read via dev server WebSocket). Transitive dep of @nx/vitest@22.6.4 > vitest@4.1.2. Added 2026-04-07.
+  vite@>=7.0.0 <7.3.2: '>=7.3.2'
+  # GHSA-chqc-8p9q-pq6q (FTP command injection via CRLF) and GHSA-6v7q-wjvx-w8wg (incomplete CRLF protection). Transitive dep of firebase-tools@15.11.0 > proxy-agent > pac-proxy-agent > get-uri. Updated 2026-04-12.
+  basic-ftp: '>=5.2.2'
+  # path-to-regexp override
+  path-to-regexp@>=2: '>=8.4.0'

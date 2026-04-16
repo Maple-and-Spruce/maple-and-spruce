@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  NX_DAEMON: 'false'
+
 jobs:
   chromatic:
     name: Visual Regression Testing
