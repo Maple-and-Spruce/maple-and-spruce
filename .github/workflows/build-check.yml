@@ -277,9 +277,6 @@ jobs:
     needs: [install, unit-tests, storybook]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -310,23 +307,19 @@ jobs:
           name: coverage-storybook
           path: coverage/storybook
 
-      - name: Prepare coverage files for merge
+      - name: Prepare and merge coverage reports
         run: |
-          mkdir -p coverage/to-merge
+          mkdir -p coverage/to-merge coverage/merged
           cp coverage/unit/coverage-final.json coverage/to-merge/unit.json
           cp coverage/storybook/coverage-final.json coverage/to-merge/storybook.json
-
-      - name: Merge coverage reports
-        run: |
-          mkdir -p coverage/merged
           pnpm exec nyc merge coverage/to-merge coverage/merged/coverage-final.json
           pnpm exec nyc report -t coverage/merged --reporter=text
 
-      - name: Check coverage thresholds
+      - name: Check coverage thresholds (80%)
         run: |
           pnpm exec nyc check-coverage \
             --lines 80 \
             --functions 80 \
-            --statements 79 \
+            --statements 80 \
             --branches 50 \
             -t coverage/merged
