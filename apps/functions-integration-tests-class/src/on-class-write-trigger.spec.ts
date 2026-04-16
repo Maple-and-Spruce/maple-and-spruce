@@ -107,7 +107,7 @@ describe('onClassWrite Trigger', () => {
         data: {
           name: 'Trigger Test Pottery',
           description: 'A class that should generate a calendar event automatically.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 120,
           capacity: 10,
           priceCents: 4500,
@@ -166,7 +166,7 @@ describe('onClassWrite Trigger', () => {
         data: {
           name: 'Draft Trigger Test',
           description: 'This draft class should not generate a calendar event.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 90,
           capacity: 8,
           priceCents: 3500,
@@ -220,7 +220,7 @@ describe('onClassWrite Trigger', () => {
         data: {
           name: 'Update Trigger Test',
           description: 'This class will be updated to test trigger sync.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 60,
           capacity: 12,
           priceCents: 5000,
@@ -281,7 +281,7 @@ describe('onClassWrite Trigger', () => {
         data: {
           name: 'Delete Trigger Test',
           description: 'This class will be deleted to test trigger cleanup.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 60,
           capacity: 6,
           priceCents: 3000,

@@ -22,7 +22,8 @@ function pastDate(): string {
 export const PUBLISHED_CLASS = {
   name: 'Intro to Pottery',
   description: 'Learn the basics of wheel throwing.',
-  dateTime: futureDate(),
+  sessions: [{ dateTime: futureDate() }],
+  firstSessionAt: futureDate(),
   durationMinutes: 120,
   capacity: 10,
   priceCents: 4500,
@@ -35,7 +36,8 @@ export const PUBLISHED_CLASS = {
 export const DRAFT_CLASS = {
   name: 'Advanced Glazing',
   description: 'Advanced glazing techniques.',
-  dateTime: futureDate(),
+  sessions: [{ dateTime: futureDate() }],
+  firstSessionAt: futureDate(),
   durationMinutes: 90,
   capacity: 8,
   priceCents: 6000,
@@ -48,7 +50,8 @@ export const DRAFT_CLASS = {
 export const CANCELLED_CLASS = {
   name: 'Cancelled Workshop',
   description: 'This class was cancelled.',
-  dateTime: futureDate(),
+  sessions: [{ dateTime: futureDate() }],
+  firstSessionAt: futureDate(),
   durationMinutes: 60,
   capacity: 12,
   priceCents: 3500,
@@ -61,7 +64,8 @@ export const CANCELLED_CLASS = {
 export const PAST_CLASS = {
   name: 'Past Pottery Session',
   description: 'This class already happened.',
-  dateTime: pastDate(),
+  sessions: [{ dateTime: pastDate() }],
+  firstSessionAt: pastDate(),
   durationMinutes: 120,
   capacity: 10,
   priceCents: 4500,

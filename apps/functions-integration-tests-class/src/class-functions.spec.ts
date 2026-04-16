@@ -36,7 +36,7 @@ function futureDate(): Date {
 const SAMPLE_CLASS: CreateClassRequest = {
   name: 'Intro to Pottery',
   description: 'Learn the basics of wheel throwing in this hands-on workshop.',
-  dateTime: futureDate(),
+  sessions: [{ dateTime: futureDate() }],
   durationMinutes: 120,
   capacity: 10,
   priceCents: 4500,
@@ -339,7 +339,7 @@ describe('Class Functions', () => {
         data: {
           description:
             'A class with no name but a long enough description for validation.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 120,
           capacity: 10,
           priceCents: 4500,
@@ -358,7 +358,7 @@ describe('Class Functions', () => {
         data: {
           name: 'Short Desc Class',
           description: 'Too short',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 120,
           capacity: 10,
           priceCents: 4500,

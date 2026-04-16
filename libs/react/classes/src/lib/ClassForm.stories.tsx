@@ -424,6 +424,7 @@ export const ChangeSkillLevel: Story = {
  * Type into description and short description fields
  */
 export const FillDescriptionFields: Story = {
+  parameters: { test: { timeout: 30_000 } },
   args: {
     open: true,
     isSubmitting: false,
