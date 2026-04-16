@@ -29,20 +29,14 @@ export default defineConfig({
       'apps/functions-integration-tests-*/**',
     ],
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'json-summary', 'json'],
-      reportsDirectory: './coverage',
+      reportsDirectory: './coverage/unit',
       // Merge coverage from all workspace projects
       all: false,
-      // Coverage threshold temporarily at 77% until Storybook interaction
-      // tests are set up (#266) to cover React component code properly.
-      // Do NOT lower further — add tests instead.
-      thresholds: {
-        lines: 77,
-        functions: 77,
-        branches: 50, // Branches often lower due to error handling paths
-        statements: 77,
-      },
+      // Coverage thresholds enforced in CI via nyc check-coverage after
+      // merging unit + Storybook coverage reports. See build-check.yml.
+      // Local reference: lines 80%, functions 80%, statements 80%, branches 50%
     },
   },
 });

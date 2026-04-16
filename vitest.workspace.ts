@@ -12,4 +12,5 @@ export default defineWorkspace([
   'libs/firebase/maple-functions/calendar-embed/vitest.config.ts',
   'libs/react/classes/vitest.config.ts',
   'libs/react/signals/vitest.config.ts',
+  'vitest.storybook.config.ts',
 ]);

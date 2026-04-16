@@ -15,9 +15,9 @@ const preview: Preview = {
     layout: 'centered',
     a11y: {
       // Accessibility testing is enabled for manual review in Storybook UI
-      // Set to 'warn' instead of 'error' to not fail tests automatically
+      // Set to 'todo' so violations report as warnings without failing vitest
       // This allows us to review and fix a11y issues progressively
-      test: 'warn',
+      test: 'todo',
     },
   },
 };
