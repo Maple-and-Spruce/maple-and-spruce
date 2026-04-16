@@ -212,17 +212,12 @@ jobs:
           path: node_modules
           key: ${{ needs.install.outputs.cache_key }}
 
-      - name: Reconcile node_modules
-        run: pnpm install --frozen-lockfile
-
       - name: Build functions
-        env:
-          NX_DAEMON: 'false'
         run: |
-          ./node_modules/.bin/nx run functions:build
-          ./node_modules/.bin/nx run functions-square:build
-          ./node_modules/.bin/nx run functions-sync:build
-          ./node_modules/.bin/nx run functions-calendar:build
+          NX_DAEMON=false pnpm exec nx run functions:build
+          NX_DAEMON=false pnpm exec nx run functions-square:build
+          NX_DAEMON=false pnpm exec nx run functions-sync:build
+          NX_DAEMON=false pnpm exec nx run functions-calendar:build
 
       - name: Create emulator .env
         run: |
@@ -244,7 +239,7 @@ jobs:
           npx tsx libs/firebase/integration-test-mock-server/start.ts &
           MOCK_PID=$!
           sleep 2
-          npx firebase emulators:exec --project=dev --only auth,firestore,functions "./node_modules/.bin/nx run functions-integration-tests:test"
+          NX_DAEMON=false npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
           EXIT_CODE=$?
           kill $MOCK_PID 2>/dev/null
           exit $EXIT_CODE
