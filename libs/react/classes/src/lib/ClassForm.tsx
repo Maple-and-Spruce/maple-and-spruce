@@ -2,25 +2,35 @@
 
 /**
  * ClassForm - Class/Workshop Form using Preact Signals
+ *
+ * Supports multi-session classes: a calendar multi-select for picking dates,
+ * with either one shared time or per-date unique times.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
   FormControl,
+  FormControlLabel,
   FormHelperText,
   InputLabel,
   Select,
   MenuItem,
   Alert,
   InputAdornment,
+  Switch,
+  Typography,
 } from '@mui/material';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import { PickersDay, type PickersDayProps } from '@mui/x-date-pickers/PickersDay';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
@@ -29,6 +39,7 @@ import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type {
   Class,
   CreateClassInput,
+  ClassSession,
   ClassStatus,
   ClassSkillLevel,
   Instructor,
@@ -75,6 +86,49 @@ function readFileAsBase64(file: File): Promise<string> {
   });
 }
 
+/**
+ * Normalise a Date to a YYYY-MM-DD string for use as a Map key.
+ */
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Check whether two dates share the same calendar day.
+ */
+function isSameDay(a: Date, b: Date): boolean {
+  return toDateKey(a) === toDateKey(b);
+}
+
+// ---------------------------------------------------------------------------
+// Custom PickersDay that visually highlights selected dates
+// ---------------------------------------------------------------------------
+function MultiSelectDay(
+  props: PickersDayProps<Date> & { selectedDates: Date[] }
+) {
+  const { selectedDates, day, ...rest } = props;
+  const isSelected = selectedDates.some((d) => isSameDay(d, day));
+
+  return (
+    <PickersDay
+      {...rest}
+      day={day}
+      selected={isSelected}
+      sx={{
+        ...(isSelected && {
+          backgroundColor: 'primary.main',
+          color: 'primary.contrastText',
+          '&:hover': { backgroundColor: 'primary.dark' },
+          '&.Mui-selected': {
+            backgroundColor: 'primary.main',
+            color: 'primary.contrastText',
+          },
+        }),
+      }}
+    />
+  );
+}
+
 export function ClassForm({
   open,
   onClose,
@@ -94,7 +148,19 @@ export function ClassForm({
   const description = useSignal('');
   const shortDescription = useSignal('');
   const instructorId = useSignal('');
-  const dateTime = useSignal<Date>(new Date());
+
+  // Multi-date selection
+  const selectedDates = useSignal<Date[]>([]);
+  // Shared time (hour/min) — only used when useDifferentTimes is false
+  const sharedTime = useSignal<Date | null>(null);
+  // Per-date times — only used when useDifferentTimes is true
+  const perDateTimes = useSignal<Map<string, Date>>(new Map());
+  // Toggle between shared/per-date time mode
+  const useDifferentTimes = useSignal(false);
+
+  // Registration cutoff override
+  const registrationClosesAt = useSignal<Date | null>(null);
+
   const durationMinutes = useSignal(60);
   const capacity = useSignal(8);
   const priceCents = useSignal(0);
@@ -120,6 +186,33 @@ export function ClassForm({
   const isEdit = !!classItem;
 
   // ============================================================
+  // COMPOSE SESSIONS from date+time signals
+  // ============================================================
+  const composedSessions = useComputed<ClassSession[]>(() => {
+    const dates = [...selectedDates.value].sort(
+      (a, b) => a.getTime() - b.getTime()
+    );
+    if (dates.length === 0) return [];
+
+    return dates.map((d) => {
+      let timeSource: Date | null;
+      if (useDifferentTimes.value) {
+        timeSource = perDateTimes.value.get(toDateKey(d)) ?? sharedTime.value;
+      } else {
+        timeSource = sharedTime.value;
+      }
+
+      const dt = new Date(d);
+      if (timeSource) {
+        dt.setHours(timeSource.getHours(), timeSource.getMinutes(), 0, 0);
+      } else {
+        dt.setHours(12, 0, 0, 0); // default noon
+      }
+      return { dateTime: dt };
+    });
+  });
+
+  // ============================================================
   // VALIDATION
   // ============================================================
 
@@ -129,7 +222,8 @@ export function ClassForm({
       description: description.value,
       shortDescription: shortDescription.value || undefined,
       instructorId: instructorId.value || undefined,
-      dateTime: dateTime.value,
+      sessions: composedSessions.value,
+      registrationClosesAt: registrationClosesAt.value ?? undefined,
       durationMinutes: durationMinutes.value,
       capacity: capacity.value,
       priceCents: priceCents.value,
@@ -160,7 +254,8 @@ export function ClassForm({
     description: 'Full Description',
     shortDescription: 'Short Description',
     instructorId: 'Instructor',
-    dateTime: 'Date & Time',
+    sessions: 'Class Dates',
+    registrationClosesAt: 'Registration Close',
     durationMinutes: 'Duration',
     capacity: 'Capacity',
     priceCents: 'Price',
@@ -183,15 +278,38 @@ export function ClassForm({
     if (!open) return;
 
     if (classItem) {
+      // Edit mode — populate from existing class
+      const dates = classItem.sessions.map((s) =>
+        s.dateTime instanceof Date ? s.dateTime : new Date(s.dateTime)
+      );
+
+      // Detect shared vs different times
+      const times = dates.map((d) => `${d.getHours()}:${d.getMinutes()}`);
+      const allSame = times.every((t) => t === times[0]);
+
+      const defaultShared = dates[0] ?? new Date();
+
+      const perDateMap = new Map<string, Date>();
+      if (!allSame) {
+        for (const d of dates) {
+          perDateMap.set(toDateKey(d), d);
+        }
+      }
+
       batch(() => {
         name.value = classItem.name;
         description.value = classItem.description;
         shortDescription.value = classItem.shortDescription ?? '';
         instructorId.value = classItem.instructorId ?? '';
-        dateTime.value =
-          classItem.dateTime instanceof Date
-            ? classItem.dateTime
-            : new Date(classItem.dateTime);
+        selectedDates.value = dates;
+        sharedTime.value = defaultShared;
+        perDateTimes.value = perDateMap;
+        useDifferentTimes.value = !allSame;
+        registrationClosesAt.value = classItem.registrationClosesAt
+          ? classItem.registrationClosesAt instanceof Date
+            ? classItem.registrationClosesAt
+            : new Date(classItem.registrationClosesAt)
+          : null;
         durationMinutes.value = classItem.durationMinutes;
         capacity.value = classItem.capacity;
         priceCents.value = classItem.priceCents;
@@ -226,7 +344,7 @@ export function ClassForm({
         newClassDateTime = defaultDateTime;
       } else {
         newClassDateTime = new Date();
-        newClassDateTime.setHours(newClassDateTime.getHours() + 24); // Tomorrow
+        newClassDateTime.setHours(newClassDateTime.getHours() + 24);
         newClassDateTime.setMinutes(0, 0, 0);
       }
 
@@ -235,11 +353,15 @@ export function ClassForm({
         description.value = '';
         shortDescription.value = '';
         instructorId.value = '';
-        dateTime.value = newClassDateTime;
+        selectedDates.value = [];
+        sharedTime.value = newClassDateTime;
+        perDateTimes.value = new Map();
+        useDifferentTimes.value = false;
+        registrationClosesAt.value = null;
         durationMinutes.value = 120;
         durationMode.value = 'preset';
         capacity.value = 8;
-        priceCents.value = 4500; // $45 default
+        priceCents.value = 4500;
         priceDisplay.value = '45.00';
         imageUrl.value = '';
         categoryId.value = '';
@@ -259,7 +381,39 @@ export function ClassForm({
   }, [open, classItem]);
 
   // ============================================================
-  // HANDLERS
+  // DATE HANDLERS
+  // ============================================================
+
+  const handleDateClick = useCallback((day: Date | null) => {
+    if (!day) return;
+    const key = toDateKey(day);
+    const existing = selectedDates.value;
+    const alreadySelected = existing.some((d) => toDateKey(d) === key);
+
+    if (alreadySelected) {
+      // Remove date
+      selectedDates.value = existing.filter((d) => toDateKey(d) !== key);
+      // Also remove per-date time entry
+      const newMap = new Map(perDateTimes.value);
+      newMap.delete(key);
+      perDateTimes.value = newMap;
+    } else {
+      selectedDates.value = [...existing, day];
+    }
+  }, []);
+
+  const removeDate = useCallback((day: Date) => {
+    const key = toDateKey(day);
+    selectedDates.value = selectedDates.value.filter(
+      (d) => toDateKey(d) !== key
+    );
+    const newMap = new Map(perDateTimes.value);
+    newMap.delete(key);
+    perDateTimes.value = newMap;
+  }, []);
+
+  // ============================================================
+  // IMAGE HANDLERS
   // ============================================================
 
   const handleImageSelected = useCallback((file: File, previewUrl: string) => {
@@ -297,6 +451,10 @@ export function ClassForm({
 
     return result.data.url;
   };
+
+  // ============================================================
+  // SUBMIT
+  // ============================================================
 
   const handleSubmit = useCallback(async () => {
     showValidationErrors.value = true;
@@ -348,7 +506,8 @@ export function ClassForm({
         description: description.value,
         shortDescription: shortDescription.value || undefined,
         instructorId: instructorId.value || undefined,
-        dateTime: dateTime.value,
+        sessions: composedSessions.value,
+        registrationClosesAt: registrationClosesAt.value ?? undefined,
         durationMinutes: durationMinutes.value,
         capacity: capacity.value,
         priceCents: priceCents.value,
@@ -378,6 +537,13 @@ export function ClassForm({
       submitError.value = message;
     }
   }, [onSubmit, onClose, classItem?.id]);
+
+  // Sorted selected dates for display
+  const sortedDates = useMemo(
+    () => [...selectedDates.value].sort((a, b) => a.getTime() - b.getTime()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedDates.value]
+  );
 
   // ============================================================
   // RENDER
@@ -469,23 +635,162 @@ export function ClassForm({
               fullWidth
             />
 
-            {/* Row 2: Date, Duration, Price */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <DateTimePicker
-                label="Date & Time"
-                value={dateTime.value}
-                onChange={(newValue) => {
-                  if (newValue) dateTime.value = newValue;
-                }}
-                slotProps={{
-                  textField: {
-                    error: !!getFieldError('dateTime'),
-                    helperText: getFieldError('dateTime'),
-                    required: true,
-                    sx: { flex: 1, minWidth: 200 },
-                  },
+            {/* ============================================================ */}
+            {/* MULTI-DATE PICKER SECTION                                    */}
+            {/* ============================================================ */}
+            <Box
+              sx={{
+                border: 1,
+                borderColor: getFieldError('sessions') ? 'error.main' : 'divider',
+                borderRadius: 1,
+                p: 2,
+              }}
+            >
+              <Typography variant="subtitle2" gutterBottom>
+                Class Dates *
+              </Typography>
+
+              {/* Calendar */}
+              <DateCalendar
+                disablePast
+                onChange={handleDateClick}
+                slots={{
+                  day: (props) => (
+                    <MultiSelectDay
+                      {...props}
+                      selectedDates={selectedDates.value}
+                    />
+                  ),
                 }}
               />
+
+              {/* Selected date chips */}
+              {sortedDates.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                  {sortedDates.map((d) => (
+                    <Chip
+                      key={toDateKey(d)}
+                      label={d.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                      onDelete={() => removeDate(d)}
+                      size="small"
+                    />
+                  ))}
+                </Box>
+              )}
+
+              {getFieldError('sessions') && (
+                <FormHelperText error>
+                  {getFieldError('sessions')}
+                </FormHelperText>
+              )}
+
+              {/* Time controls */}
+              {sortedDates.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  {sortedDates.length > 1 && (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={useDifferentTimes.value}
+                          onChange={(e) =>
+                            (useDifferentTimes.value = e.target.checked)
+                          }
+                          size="small"
+                        />
+                      }
+                      label="Use different times for each date"
+                      sx={{ mb: 1 }}
+                    />
+                  )}
+
+                  {!useDifferentTimes.value ? (
+                    <TimePicker
+                      label="Time (all dates)"
+                      value={sharedTime.value}
+                      onChange={(v) => (sharedTime.value = v)}
+                      slotProps={{
+                        textField: {
+                          size: 'small',
+                          sx: { width: 180 },
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                      }}
+                    >
+                      {sortedDates.map((d) => {
+                        const key = toDateKey(d);
+                        return (
+                          <Box
+                            key={key}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ minWidth: 110 }}>
+                              {d.toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </Typography>
+                            <TimePicker
+                              value={
+                                perDateTimes.value.get(key) ??
+                                sharedTime.value
+                              }
+                              onChange={(v) => {
+                                if (v) {
+                                  const newMap = new Map(perDateTimes.value);
+                                  newMap.set(key, v);
+                                  perDateTimes.value = newMap;
+                                }
+                              }}
+                              slotProps={{
+                                textField: {
+                                  size: 'small',
+                                  sx: { width: 160 },
+                                },
+                              }}
+                            />
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </Box>
+
+            {/* Registration Close (optional) */}
+            <DateTimePicker
+              label="Registration closes (optional)"
+              value={registrationClosesAt.value}
+              onChange={(v) => (registrationClosesAt.value = v)}
+              slotProps={{
+                textField: {
+                  error: !!getFieldError('registrationClosesAt'),
+                  helperText:
+                    getFieldError('registrationClosesAt') ||
+                    'Defaults to first session start if not set',
+                  sx: { width: 280 },
+                },
+              }}
+            />
+
+            {/* Row: Duration, Price */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <FormControl sx={{ minWidth: 160 }} error={!!getFieldError('durationMinutes')} required>
                 <InputLabel id="duration-label">Duration</InputLabel>
                 <Select
@@ -543,7 +848,6 @@ export function ClassForm({
                 value={priceDisplay.value}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  // Allow only digits and a single decimal point
                   if (/^\d*\.?\d{0,2}$/.test(raw) || raw === '') {
                     priceDisplay.value = raw;
                     const cents = Math.round(parseFloat(raw || '0') * 100);
@@ -551,7 +855,6 @@ export function ClassForm({
                   }
                 }}
                 onBlur={() => {
-                  // Format to 2 decimal places on blur
                   const val = parseFloat(priceDisplay.value || '0');
                   priceDisplay.value = (isNaN(val) ? 0 : val).toFixed(2);
                 }}
@@ -565,7 +868,7 @@ export function ClassForm({
               />
             </Box>
 
-            {/* Row 3: Capacity, Skill Level, Category */}
+            {/* Row: Capacity, Skill Level, Category */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <TextField
                 label="Capacity"

@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { generateSlug, mapArtistToFieldData } from './artist.service';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  generateSlug,
+  mapArtistToFieldData,
+  ArtistService,
+} from './artist.service';
 import type { Artist } from '@maple/ts/domain';
 
 describe('generateSlug', () => {
@@ -149,5 +153,250 @@ describe('mapArtistToFieldData', () => {
   it('generates correct alt text for profile image', () => {
     const fieldData = mapArtistToFieldData(mockArtist, prodOptions);
     expect(fieldData['profile-image']?.alt).toBe('Jane Doe profile photo');
+  });
+});
+
+// ── ArtistService tests ────────────────────────────────────────────────
+
+describe('ArtistService', () => {
+  const COLLECTION_ID = 'col-artists-123';
+
+  // Mock Webflow client following the same pattern as class.service.spec.ts
+  const mockClient = {
+    collections: {
+      items: {
+        listItems: vi.fn(),
+        createItem: vi.fn(),
+        updateItem: vi.fn(),
+        deleteItem: vi.fn(),
+        publishItem: vi.fn(),
+      },
+    },
+  };
+
+  let service: ArtistService;
+
+  const mockArtist: Artist = {
+    id: 'artist-abc',
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+    phone: '555-1234',
+    photoUrl: 'https://storage.example.com/jane.jpg',
+    status: 'active',
+    defaultCommissionRate: 0.4,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    service = new ArtistService(mockClient as any, COLLECTION_ID);
+  });
+
+  describe('syncArtist', () => {
+    it('creates a new Webflow item when artist does not exist', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-new-item',
+      });
+
+      const result = await service.syncArtist({
+        artist: mockArtist,
+        publish: false,
+        isDev: false,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        webflowItemId: 'wf-new-item',
+        isNew: true,
+      });
+      expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        expect.objectContaining({
+          isArchived: false,
+          isDraft: false,
+          fieldData: expect.objectContaining({
+            'firebase-id': 'artist-abc',
+            name: 'Jane Doe',
+          }),
+        })
+      );
+    });
+
+    it('updates an existing Webflow item when artist already exists', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          {
+            id: 'wf-existing',
+            fieldData: { 'firebase-id': 'artist-abc' },
+          },
+        ],
+      });
+      mockClient.collections.items.updateItem.mockResolvedValue({});
+
+      const result = await service.syncArtist({
+        artist: mockArtist,
+        publish: false,
+        isDev: false,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        webflowItemId: 'wf-existing',
+        isNew: false,
+      });
+      expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-existing',
+        expect.objectContaining({
+          isArchived: false,
+          isDraft: false,
+          fieldData: expect.objectContaining({
+            'firebase-id': 'artist-abc',
+          }),
+        })
+      );
+    });
+
+    it('publishes the item after sync when publish is true', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-publish-me',
+      });
+      mockClient.collections.items.publishItem.mockResolvedValue({});
+
+      await service.syncArtist({
+        artist: mockArtist,
+        publish: true,
+        isDev: false,
+      });
+
+      expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { itemIds: ['wf-publish-me'] }
+      );
+    });
+
+    it('does not publish when publish is false', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-no-publish',
+      });
+
+      await service.syncArtist({
+        artist: mockArtist,
+        publish: false,
+        isDev: false,
+      });
+
+      expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
+    });
+
+    it('defaults publish to false and isDev to false', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-defaults',
+      });
+
+      await service.syncArtist({ artist: mockArtist });
+
+      expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
+      const createCall = mockClient.collections.items.createItem.mock.calls[0];
+      expect(createCall[1].fieldData['is-dev-environment']).toBe(false);
+    });
+  });
+
+  describe('createItem (via syncArtist)', () => {
+    it('throws when Webflow API returns no ID', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({});
+
+      await expect(
+        service.syncArtist({ artist: mockArtist })
+      ).rejects.toThrow('Webflow API did not return an item ID after creation');
+    });
+  });
+
+  describe('removeArtist', () => {
+    it('deletes existing Webflow item and returns true', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          {
+            id: 'wf-to-delete',
+            fieldData: { 'firebase-id': 'artist-abc' },
+          },
+        ],
+      });
+      mockClient.collections.items.deleteItem.mockResolvedValue({});
+
+      const result = await service.removeArtist('artist-abc');
+
+      expect(result).toBe(true);
+      expect(mockClient.collections.items.deleteItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-to-delete'
+      );
+    });
+
+    it('returns false when artist not found in Webflow', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+
+      const result = await service.removeArtist('artist-nonexistent');
+
+      expect(result).toBe(false);
+      expect(mockClient.collections.items.deleteItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('publishItem', () => {
+    it('publishes item to Webflow live site', async () => {
+      mockClient.collections.items.publishItem.mockResolvedValue({});
+
+      await service.publishItem('wf-item-789');
+
+      expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { itemIds: ['wf-item-789'] }
+      );
+    });
+  });
+
+  describe('findByFirebaseId (via syncArtist/removeArtist)', () => {
+    it('returns null when listItems response has no items array', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({});
+
+      const result = await service.removeArtist('artist-abc');
+      expect(result).toBe(false);
+    });
+
+    it('returns null when listItems throws an error', async () => {
+      mockClient.collections.items.listItems.mockRejectedValue(
+        new Error('Network error')
+      );
+
+      const result = await service.removeArtist('artist-abc');
+      expect(result).toBe(false);
+    });
+
+    it('returns null when matching item has no id', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          {
+            // no id field
+            fieldData: { 'firebase-id': 'artist-abc' },
+          },
+        ],
+      });
+
+      // Should treat it as not found, so syncArtist creates a new item
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-new',
+      });
+
+      const result = await service.syncArtist({ artist: mockArtist });
+      expect(result.isNew).toBe(true);
+    });
   });
 });

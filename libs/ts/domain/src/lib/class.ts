@@ -4,6 +4,10 @@
  * Represents classes/workshops offered by Maple & Spruce.
  * Classes are browsable by category, date, instructor (catalog-first, not calendar-first).
  *
+ * Classes support one or more scheduled sessions. Registration logic still
+ * treats a class as a single bookable unit — the `sessions` array only
+ * affects display across the admin, Webflow CMS, and calendar endpoints.
+ *
  * Future payments will use Square (consistent with existing POS integration).
  */
 
@@ -22,6 +26,17 @@ export type ClassSkillLevel =
 export type ClassStatus = 'draft' | 'published' | 'cancelled' | 'completed';
 
 /**
+ * A single scheduled session of a class.
+ *
+ * Each session has its own start `dateTime`. Every session in a class
+ * shares the same `durationMinutes` (stored on the parent Class).
+ */
+export interface ClassSession {
+  /** Start date and time of this session */
+  dateTime: Date;
+}
+
+/**
  * Class/Workshop entity
  */
 export interface Class {
@@ -34,10 +49,18 @@ export interface Class {
   shortDescription?: string;
   /** Instructor ID (references Instructor entity) */
   instructorId?: string;
-  /** Class date and time */
-  dateTime: Date;
-  /** Duration in minutes */
+  /**
+   * Scheduled sessions for the class. Must contain at least one session.
+   * Ordered earliest-first after normalization.
+   */
+  sessions: ClassSession[];
+  /** Duration in minutes (applies to every session) */
   durationMinutes: number;
+  /**
+   * Optional override for when registration closes.
+   * Defaults to the first session's start time if undefined.
+   */
+  registrationClosesAt?: Date;
   /** Maximum number of participants */
   capacity: number;
   /** Price in cents (e.g., 4500 = $45.00) */
@@ -85,6 +108,13 @@ export type UpdateClassInput = Partial<
 };
 
 /**
+ * Session representation for public API consumers (ISO string date).
+ */
+export interface PublicClassSession {
+  dateTime: string;
+}
+
+/**
  * Public-facing class information for website display.
  * Includes calculated spotsRemaining and enriched instructor/category names.
  */
@@ -96,8 +126,10 @@ export interface PublicClass {
   instructorId?: string;
   /** Enriched from Instructor.name */
   instructorName?: string;
-  /** ISO string for easy client parsing */
-  dateTime: string;
+  /** ISO strings for easy client parsing, ordered earliest-first. */
+  sessions: PublicClassSession[];
+  /** ISO string; omitted if no override (default cutoff = first session). */
+  registrationClosesAt?: string;
   durationMinutes: number;
   capacity: number;
   /** Calculated: capacity - registrationCount */
@@ -112,6 +144,35 @@ export interface PublicClass {
   materialsIncluded?: string;
   whatToBring?: string;
   minimumAge?: number;
+}
+
+/**
+ * Return class sessions sorted earliest-first without mutating the input.
+ */
+export function getSortedSessions(classEntity: Class): ClassSession[] {
+  return [...classEntity.sessions].sort(
+    (a, b) => a.dateTime.getTime() - b.dateTime.getTime()
+  );
+}
+
+/**
+ * Return the earliest session of a class. Throws if the class has no sessions,
+ * which should never happen for a valid persisted class.
+ */
+export function getFirstSession(classEntity: Class): ClassSession {
+  if (classEntity.sessions.length === 0) {
+    throw new Error(`Class ${classEntity.id} has no sessions`);
+  }
+  return getSortedSessions(classEntity)[0];
+}
+
+/**
+ * Return the `Date` at which registration closes for a class.
+ * Prefers the explicit `registrationClosesAt` override; otherwise falls back
+ * to the first session's start time.
+ */
+export function getRegistrationCutoff(classEntity: Class): Date {
+  return classEntity.registrationClosesAt ?? getFirstSession(classEntity).dateTime;
 }
 
 /**
@@ -135,7 +196,10 @@ export function toPublicClass(
     description: classEntity.description,
     instructorId: classEntity.instructorId,
     instructorName,
-    dateTime: classEntity.dateTime.toISOString(),
+    sessions: getSortedSessions(classEntity).map((s) => ({
+      dateTime: s.dateTime.toISOString(),
+    })),
+    registrationClosesAt: classEntity.registrationClosesAt?.toISOString(),
     durationMinutes: classEntity.durationMinutes,
     capacity: classEntity.capacity,
     spotsRemaining: Math.max(0, classEntity.capacity - registrationCount),
@@ -165,11 +229,13 @@ export function formatClassPrice(priceCents: number): string {
 
 /**
  * Check if a class is open for registration.
- * A class is open if it's published and scheduled in the future.
+ * A class is open if it's published and the registration cutoff
+ * (explicit `registrationClosesAt` or earliest session) is in the future.
  */
 export function isClassRegistrationOpen(classEntity: Class): boolean {
   return (
-    classEntity.status === 'published' && classEntity.dateTime > new Date()
+    classEntity.status === 'published' &&
+    getRegistrationCutoff(classEntity) > new Date()
   );
 }
 
@@ -187,10 +253,83 @@ export function hasAvailableSpots(
 }
 
 /**
- * Calculate end time for a class
+ * Calculate end time for a specific session.
  */
-export function getClassEndTime(classEntity: Class): Date {
-  return new Date(
-    classEntity.dateTime.getTime() + classEntity.durationMinutes * 60 * 1000
+export function getSessionEndTime(
+  session: ClassSession,
+  durationMinutes: number
+): Date {
+  return new Date(session.dateTime.getTime() + durationMinutes * 60 * 1000);
+}
+
+/**
+ * Format a list of sessions for human display in the configured timezone.
+ *
+ * Examples (ET):
+ * - Single session, any time: `"Apr 15 · 6:00 PM"`
+ * - Multi session, shared time: `"Apr 15, Apr 22, Apr 29 · 6:00 PM"`
+ * - Multi session, varying times: `"Apr 15 6:00 PM, Apr 22 7:00 PM, Apr 29 6:00 PM"`
+ *
+ * Returns an object so callers (e.g., the Webflow CMS mapper) can surface
+ * the date portion and time portion in separate fields.
+ */
+export interface FormattedSessions {
+  /**
+   * Combined human-readable label — dates only if the time is shared,
+   * otherwise dates + per-session times interleaved.
+   */
+  dateDisplay: string;
+  /**
+   * Shared time string (e.g., `"6:00 PM"`) when every session is at the
+   * same time in the target timezone; otherwise `"Varies"`.
+   */
+  timeDisplay: string;
+  /** True when every session shares the same HH:mm in the target timezone. */
+  sharedTime: boolean;
+}
+
+export function formatSessions(
+  sessions: ClassSession[],
+  timeZone = 'America/New_York'
+): FormattedSessions {
+  if (sessions.length === 0) {
+    return { dateDisplay: '', timeDisplay: '', sharedTime: true };
+  }
+
+  const sorted = [...sessions].sort(
+    (a, b) => a.dateTime.getTime() - b.dateTime.getTime()
   );
+
+  const timeOf = (d: Date): string =>
+    d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone,
+    });
+
+  const dateOf = (d: Date): string =>
+    d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    });
+
+  const firstTime = timeOf(sorted[0].dateTime);
+  const sharedTime = sorted.every((s) => timeOf(s.dateTime) === firstTime);
+
+  if (sharedTime) {
+    return {
+      dateDisplay: sorted.map((s) => dateOf(s.dateTime)).join(', '),
+      timeDisplay: firstTime,
+      sharedTime: true,
+    };
+  }
+
+  return {
+    dateDisplay: sorted
+      .map((s) => `${dateOf(s.dateTime)} ${timeOf(s.dateTime)}`)
+      .join(', '),
+    timeDisplay: 'Varies',
+    sharedTime: false,
+  };
 }

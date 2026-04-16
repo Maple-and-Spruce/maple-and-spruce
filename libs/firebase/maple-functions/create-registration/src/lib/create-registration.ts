@@ -34,6 +34,7 @@ import {
   applyDiscount,
   isDiscountValid,
   calculateTax,
+  formatSessions,
 } from '@maple/ts/domain';
 import { registrationValidation } from '@maple/ts/validation';
 import type {
@@ -261,15 +262,15 @@ export const createRegistration = Functions.endpoint
             data: {
               customerName: data.customerName,
               className: classEntity.name,
-              classDate: classEntity.dateTime.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZone: 'America/New_York',
-              }),
+              classDate: (() => {
+                const { dateDisplay, timeDisplay } = formatSessions(
+                  classEntity.sessions,
+                  'America/New_York'
+                );
+                return timeDisplay && timeDisplay !== 'Varies'
+                  ? `${dateDisplay} \u00B7 ${timeDisplay}`
+                  : dateDisplay;
+              })(),
               classDuration:
                 classEntity.durationMinutes >= 60
                   ? `${Math.floor(classEntity.durationMinutes / 60)} hour${Math.floor(classEntity.durationMinutes / 60) > 1 ? 's' : ''}${classEntity.durationMinutes % 60 ? ` ${classEntity.durationMinutes % 60} min` : ''}`

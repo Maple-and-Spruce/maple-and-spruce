@@ -76,13 +76,19 @@ export default function DashboardPage() {
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     return classesState.data
       .filter((c) => {
-        const dt = new Date(c.dateTime);
+        const firstDt = c.sessions?.[0]?.dateTime;
+        if (!firstDt) return false;
+        const dt = firstDt instanceof Date ? firstDt : new Date(firstDt);
         return c.status === 'published' && dt >= now && dt <= weekFromNow;
       })
-      .sort(
-        (a, b) =>
-          new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
-      );
+      .sort((a, b) => {
+        const aFirst = a.sessions?.[0]?.dateTime;
+        const bFirst = b.sessions?.[0]?.dateTime;
+        return (
+          (aFirst instanceof Date ? aFirst : new Date(aFirst)).getTime() -
+          (bFirst instanceof Date ? bFirst : new Date(bFirst)).getTime()
+        );
+      });
   }, [classesState]);
 
   // Registration counts per class
@@ -201,8 +207,16 @@ export default function DashboardPage() {
                             {c.name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {formatShortDate(c.dateTime)} at{' '}
-                            {formatTime(c.dateTime)} &middot;{' '}
+                            {c.sessions?.[0] && formatShortDate(
+                              c.sessions[0].dateTime instanceof Date
+                                ? c.sessions[0].dateTime
+                                : new Date(c.sessions[0].dateTime)
+                            )} at{' '}
+                            {c.sessions?.[0] && formatTime(
+                              c.sessions[0].dateTime instanceof Date
+                                ? c.sessions[0].dateTime
+                                : new Date(c.sessions[0].dateTime)
+                            )}{c.sessions.length > 1 ? ` (+${c.sessions.length - 1})` : ''} &middot;{' '}
                             {formatClassPrice(c.priceCents)}
                           </Typography>
                         </Box>

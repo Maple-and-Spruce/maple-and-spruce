@@ -5,6 +5,7 @@ import {
   ClassService,
 } from './class.service';
 import type { Class } from '@maple/ts/domain';
+import { formatSessions } from '@maple/ts/domain';
 
 describe('generateClassSlug', () => {
   it('converts name to lowercase with hyphens', () => {
@@ -35,7 +36,7 @@ describe('mapClassToFieldData', () => {
     description: 'Learn the basics of pottery',
     shortDescription: 'Intro to pottery',
     instructorId: 'inst-1',
-    dateTime: new Date('2026-05-15T14:00:00.000Z'),
+    sessions: [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
     durationMinutes: 120,
     capacity: 10,
     priceCents: 4500,
@@ -65,10 +66,14 @@ describe('mapClassToFieldData', () => {
   });
 
   it('formats date and time display in Eastern time', () => {
-    // mockClass.dateTime is 2026-05-15T14:00:00.000Z = 10:00 AM Eastern (EDT)
+    // mockClass session is 2026-05-15T14:00:00.000Z = 10:00 AM Eastern (EDT)
     const result = mapClassToFieldData(mockClass, { isDev: false });
-    expect(result['date-display']).toBe('Friday, May 15, 2026');
-    expect(result['time-display']).toBe('10:00 AM');
+    const expected = formatSessions(
+      [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
+      'America/New_York'
+    );
+    expect(result['date-display']).toBe(expected.dateDisplay);
+    expect(result['time-display']).toBe(expected.timeDisplay);
   });
 
   it('formats price display correctly', () => {
@@ -184,7 +189,7 @@ describe('mapClassToFieldData', () => {
       id: 'class-min',
       name: 'Basic Class',
       description: 'A basic class',
-      dateTime: new Date('2026-06-01T10:00:00.000Z'),
+      sessions: [{ dateTime: new Date('2026-06-01T10:00:00.000Z') }],
       durationMinutes: 60,
       capacity: 8,
       priceCents: 2500,
@@ -235,7 +240,7 @@ describe('ClassService', () => {
     description: 'Learn the basics of pottery',
     shortDescription: 'Intro to pottery',
     instructorId: 'inst-1',
-    dateTime: new Date('2026-05-15T14:00:00.000Z'),
+    sessions: [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
     durationMinutes: 120,
     capacity: 10,
     priceCents: 4500,

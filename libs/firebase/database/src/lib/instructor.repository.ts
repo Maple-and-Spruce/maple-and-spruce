@@ -4,7 +4,7 @@
  * Handles all Firestore operations for instructors.
  * All database access should go through this repository.
  */
-import { db } from './utilities/database.config';
+import { db, toDate } from './utilities/database.config';
 import type {
   Instructor,
   CreateInstructorInput,
@@ -40,8 +40,8 @@ function docToInstructor(
     payRate: data.payRate,
     payRateType: data.payRateType,
     webflowItemId: data.webflowItemId,
-    createdAt: data.createdAt?.toDate() ?? new Date(),
-    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
   };
 }
 

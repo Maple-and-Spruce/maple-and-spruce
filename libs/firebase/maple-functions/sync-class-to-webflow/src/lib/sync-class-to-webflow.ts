@@ -40,6 +40,50 @@ const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) =>
 );
 
 /**
+ * Convert a raw Firestore value to a Date.
+ */
+function toDateLike(value: unknown): Date | undefined {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toDate' in value &&
+    typeof (value as { toDate: unknown }).toDate === 'function'
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? undefined : d;
+  }
+  return undefined;
+}
+
+/**
+ * Parse sessions from a Firestore class document, tolerating legacy scalar dateTime.
+ */
+function parseSessions(
+  rawSessions: unknown,
+  legacyDateTime: unknown
+): { dateTime: Date }[] {
+  if (Array.isArray(rawSessions) && rawSessions.length > 0) {
+    return rawSessions
+      .map((entry) => {
+        const dateField =
+          entry && typeof entry === 'object' && 'dateTime' in entry
+            ? (entry as { dateTime: unknown }).dateTime
+            : entry;
+        return { dateTime: toDateLike(dateField) ?? new Date() };
+      })
+      .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+  }
+
+  const legacy = toDateLike(legacyDateTime);
+  return legacy ? [{ dateTime: legacy }] : [];
+}
+
+/**
  * Extract class data from Firestore snapshot
  */
 function extractClass(
@@ -55,9 +99,10 @@ function extractClass(
   return {
     id: snapshot.id,
     ...data,
-    dateTime: data['dateTime']?.toDate?.() ?? new Date(),
-    createdAt: data['createdAt']?.toDate?.() ?? new Date(),
-    updatedAt: data['updatedAt']?.toDate?.() ?? new Date(),
+    sessions: parseSessions(data['sessions'], data['dateTime']),
+    registrationClosesAt: toDateLike(data['registrationClosesAt']),
+    createdAt: toDateLike(data['createdAt']) ?? new Date(),
+    updatedAt: toDateLike(data['updatedAt']) ?? new Date(),
   } as Class;
 }
 

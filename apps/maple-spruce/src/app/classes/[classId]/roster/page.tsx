@@ -174,8 +174,11 @@ export default function ClassRosterPage() {
                 {currentClass.name}
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                {formatDate(currentClass.dateTime)} at{' '}
-                {formatTime(currentClass.dateTime)} &middot;{' '}
+                {(() => {
+                  const first = currentClass.sessions?.[0];
+                  if (!first) return '';
+                  return `${formatDate(first.dateTime)} at ${formatTime(first.dateTime)}`;
+                })()}{currentClass.sessions.length > 1 ? ` (+${currentClass.sessions.length - 1} more)` : ''} &middot;{' '}
                 {currentClass.durationMinutes} min
               </Typography>
               {currentClass.location && (
