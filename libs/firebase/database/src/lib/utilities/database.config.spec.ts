@@ -139,5 +139,78 @@ describe('database.config', () => {
       // The proxy should delegate to the same instance
       // (We can't directly compare since proxy wraps it, but initialization count confirms sharing)
     });
+
+    it('should return non-function properties directly', async () => {
+      const { db } = await import('./database.config');
+
+      // Access a made-up property to exercise the proxy's non-function return path (line 119)
+      const val = (db as unknown as Record<string, unknown>)['nonExistentProp'];
+
+      // Should have triggered initialization via the proxy
+      expect(mocks.firestore).toHaveBeenCalledTimes(1);
+      // Non-existent property returns undefined
+      expect(val).toBeUndefined();
+    });
+  });
+
+  describe('toDate', () => {
+    it('returns fallback for null', async () => {
+      const { toDate } = await import('./database.config');
+      const fallback = new Date('2025-01-01');
+      expect(toDate(null, fallback)).toBe(fallback);
+    });
+
+    it('returns fallback for undefined', async () => {
+      const { toDate } = await import('./database.config');
+      const fallback = new Date('2025-01-01');
+      expect(toDate(undefined, fallback)).toBe(fallback);
+    });
+
+    it('converts Firestore Timestamp (object with toDate method)', async () => {
+      const { toDate } = await import('./database.config');
+      const expected = new Date('2025-06-15T10:00:00Z');
+      const timestamp = { toDate: () => expected };
+      expect(toDate(timestamp)).toBe(expected);
+    });
+
+    it('returns Date instances as-is', async () => {
+      const { toDate } = await import('./database.config');
+      const date = new Date('2025-06-15T10:00:00Z');
+      expect(toDate(date)).toBe(date);
+    });
+
+    it('parses valid ISO string', async () => {
+      const { toDate } = await import('./database.config');
+      const result = toDate('2025-06-15T10:00:00Z');
+      expect(result.toISOString()).toBe('2025-06-15T10:00:00.000Z');
+    });
+
+    it('parses valid numeric timestamp', async () => {
+      const { toDate } = await import('./database.config');
+      const ts = new Date('2025-06-15T10:00:00Z').getTime();
+      const result = toDate(ts);
+      expect(result.toISOString()).toBe('2025-06-15T10:00:00.000Z');
+    });
+
+    it('returns fallback for invalid string', async () => {
+      const { toDate } = await import('./database.config');
+      const fallback = new Date('2025-01-01');
+      expect(toDate('not-a-date', fallback)).toBe(fallback);
+    });
+
+    it('returns fallback for unrecognized types (object without toDate)', async () => {
+      const { toDate } = await import('./database.config');
+      const fallback = new Date('2025-01-01');
+      expect(toDate({ foo: 'bar' }, fallback)).toBe(fallback);
+    });
+
+    it('uses default fallback (current date) when none provided', async () => {
+      const { toDate } = await import('./database.config');
+      const before = Date.now();
+      const result = toDate(null);
+      const after = Date.now();
+      expect(result.getTime()).toBeGreaterThanOrEqual(before);
+      expect(result.getTime()).toBeLessThanOrEqual(after);
+    });
   });
 });
