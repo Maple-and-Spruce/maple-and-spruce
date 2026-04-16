@@ -45,20 +45,6 @@ const skillLevelColors: Record<string, 'success' | 'warning' | 'error' | 'info'>
 };
 
 /**
- * Format date for display
- */
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
-}
-
-/**
  * Format duration in minutes to readable string
  */
 function formatDuration(minutes: number): string {

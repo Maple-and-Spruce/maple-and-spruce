@@ -86,7 +86,7 @@ export const migrateClassSessions = createAdminFunction<
           continue;
         }
 
-        const earliest = new Date(Math.min(...dates.map((d) => d.getTime())));
+        const earliest = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
 
         if (!dryRun) {
           await doc.ref.update({ firstSessionAt: earliest });
