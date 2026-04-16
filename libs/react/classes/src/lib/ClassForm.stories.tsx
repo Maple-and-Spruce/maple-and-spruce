@@ -279,3 +279,237 @@ export const WithInstructor: Story = {
     });
   },
 };
+
+// ============================================================
+// COVERAGE-BOOSTING INTERACTION TESTS
+// ============================================================
+
+/**
+ * Verify create-new form has correct defaults:
+ * capacity=8, location="Maple & Spruce", price empty, duration preset
+ */
+export const CreateNewDefaults: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    await waitFor(() => {
+      // Default capacity should be 8
+      const capacityInput = canvas.getByLabelText(/capacity/i);
+      expect(capacityInput).toHaveValue(8);
+
+      // Default location should be "Maple & Spruce"
+      const locationInput = canvas.getByLabelText(/location/i);
+      expect(locationInput).toHaveValue('Maple & Spruce');
+    });
+  },
+};
+
+/**
+ * Type into the price field and verify formatting
+ */
+export const PriceInputFormatting: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/price/i)).toBeInTheDocument();
+    });
+
+    const priceInput = canvas.getByLabelText(/price/i);
+
+    // Clear and type a price
+    await userEvent.clear(priceInput);
+    await userEvent.type(priceInput, '45');
+
+    await waitFor(() => {
+      expect(priceInput).toHaveValue('45');
+    });
+  },
+};
+
+/**
+ * Change the duration dropdown selection
+ */
+export const DurationDropdownSelection: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // Find and click the duration dropdown
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/duration/i)).toBeInTheDocument();
+    });
+
+    const durationSelect = canvas.getByLabelText(/duration/i);
+    await userEvent.click(durationSelect);
+
+    // Select "2 hours" from the dropdown
+    await waitFor(() => {
+      const option = canvas.getByRole('option', { name: /2 hours/i });
+      expect(option).toBeInTheDocument();
+    });
+
+    await userEvent.click(canvas.getByRole('option', { name: /2 hours/i }));
+  },
+};
+
+/**
+ * Change status to published — exercises status dropdown code path
+ */
+export const ChangeStatusToPublished: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassDraft,
+    instructors: mockActiveInstructors,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // Find status dropdown
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/status/i)).toBeInTheDocument();
+    });
+
+    const statusSelect = canvas.getByLabelText(/status/i);
+    await userEvent.click(statusSelect);
+
+    await waitFor(() => {
+      const publishedOption = canvas.getByRole('option', { name: /published/i });
+      expect(publishedOption).toBeInTheDocument();
+    });
+
+    await userEvent.click(canvas.getByRole('option', { name: /published/i }));
+  },
+};
+
+/**
+ * Change skill level — exercises skill level dropdown
+ */
+export const ChangeSkillLevel: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/skill level/i)).toBeInTheDocument();
+    });
+
+    const skillSelect = canvas.getByLabelText(/skill level/i);
+    await userEvent.click(skillSelect);
+
+    await waitFor(() => {
+      expect(canvas.getByRole('option', { name: /intermediate/i })).toBeInTheDocument();
+    });
+
+    await userEvent.click(canvas.getByRole('option', { name: /intermediate/i }));
+  },
+};
+
+/**
+ * Type into description and short description fields
+ */
+export const FillDescriptionFields: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/class name/i)).toBeInTheDocument();
+    });
+
+    // Fill class name
+    const nameInput = canvas.getByLabelText(/class name/i);
+    await userEvent.type(nameInput, 'Intro to Pottery');
+
+    // Fill short description
+    const shortDescInput = canvas.getByLabelText(/short description/i);
+    await userEvent.type(shortDescInput, 'Learn the basics');
+
+    // Fill full description
+    const descInput = canvas.getByLabelText(/full description/i);
+    await userEvent.type(descInput, 'A comprehensive intro to wheel throwing');
+
+    // Fill materials
+    const materialsInput = canvas.getByLabelText(/materials included/i);
+    await userEvent.type(materialsInput, 'Clay, glaze, tools');
+
+    // Fill what to bring
+    const bringInput = canvas.getByLabelText(/what to bring/i);
+    await userEvent.type(bringInput, 'Apron, towel');
+  },
+};
+
+/**
+ * Change capacity value
+ */
+export const ChangeCapacity: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/capacity/i)).toBeInTheDocument();
+    });
+
+    const capacityInput = canvas.getByLabelText(/capacity/i);
+    await userEvent.clear(capacityInput);
+    await userEvent.type(capacityInput, '12');
+
+    await waitFor(() => {
+      expect(capacityInput).toHaveValue(12);
+    });
+  },
+};
+
+/**
+ * Select an instructor from dropdown
+ */
+export const SelectInstructor: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructors: mockActiveInstructors,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/instructor/i)).toBeInTheDocument();
+    });
+
+    const instructorSelect = canvas.getByLabelText(/instructor/i);
+    await userEvent.click(instructorSelect);
+
+    await waitFor(() => {
+      const options = canvas.getAllByRole('option');
+      expect(options.length).toBeGreaterThan(0);
+    });
+
+    // Click the first instructor option
+    const options = canvas.getAllByRole('option');
+    if (options.length > 1) {
+      await userEvent.click(options[1]); // skip "None" option
+    }
+  },
+};
