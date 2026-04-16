@@ -424,7 +424,6 @@ export const ChangeSkillLevel: Story = {
  * Type into description and short description fields
  */
 export const FillDescriptionFields: Story = {
-  parameters: { test: { timeout: 30_000 } },
   args: {
     open: true,
     isSubmitting: false,
@@ -436,25 +435,21 @@ export const FillDescriptionFields: Story = {
       expect(canvas.getByLabelText(/class name/i)).toBeInTheDocument();
     });
 
-    // Fill class name
+    // Use shorter strings to avoid timeout on the heavier multi-session form
     const nameInput = canvas.getByLabelText(/class name/i);
-    await userEvent.type(nameInput, 'Intro to Pottery');
+    await userEvent.type(nameInput, 'Pottery');
 
-    // Fill short description
     const shortDescInput = canvas.getByLabelText(/short description/i);
-    await userEvent.type(shortDescInput, 'Learn the basics');
+    await userEvent.type(shortDescInput, 'Basics');
 
-    // Fill full description
     const descInput = canvas.getByLabelText(/full description/i);
-    await userEvent.type(descInput, 'A comprehensive intro to wheel throwing');
+    await userEvent.type(descInput, 'Intro class');
 
-    // Fill materials
     const materialsInput = canvas.getByLabelText(/materials included/i);
-    await userEvent.type(materialsInput, 'Clay, glaze, tools');
+    await userEvent.type(materialsInput, 'Clay');
 
-    // Fill what to bring
     const bringInput = canvas.getByLabelText(/what to bring/i);
-    await userEvent.type(bringInput, 'Apron, towel');
+    await userEvent.type(bringInput, 'Apron');
   },
 };
 

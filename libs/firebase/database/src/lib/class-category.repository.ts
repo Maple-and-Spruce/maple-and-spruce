@@ -4,7 +4,7 @@
  * Handles all Firestore operations for class categories.
  * All database access should go through this repository.
  */
-import { db } from './utilities/database.config';
+import { db, toDate } from './utilities/database.config';
 import type {
   ClassCategory,
   CreateClassCategoryInput,
@@ -30,8 +30,8 @@ function docToClassCategory(
     description: data.description,
     order: data.order,
     icon: data.icon,
-    createdAt: data.createdAt?.toDate() ?? new Date(),
-    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
   };
 }
 
