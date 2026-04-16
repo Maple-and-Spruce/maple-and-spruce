@@ -129,11 +129,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
+      - name: Debug build env
+        run: |
+          echo "=== pnpm version ==="
+          pnpm --version
+          echo "=== node_modules/.modules.yaml header ==="
+          head -20 node_modules/.modules.yaml 2>/dev/null || echo "not found"
+          echo "=== lockfile header ==="
+          head -5 pnpm-lock.yaml
+          echo "=== nx graph test ==="
+          timeout 30 pnpm exec nx show projects 2>&1 | head -10 || echo "nx show projects timed out or failed"
+
       - name: Build web app
-        run: pnpm exec nx run maple-spruce:build
+        run: NX_DAEMON=false pnpm exec nx run maple-spruce:build
 
       - name: Build functions
-        run: pnpm exec nx run functions:build
+        run: NX_DAEMON=false pnpm exec nx run functions:build
 
   unit-tests:
     name: Unit Tests & Coverage
@@ -202,6 +213,8 @@ jobs:
           key: ${{ needs.install.outputs.cache_key }}
 
       - name: Build functions
+        env:
+          NX_DAEMON: 'false'
         run: |
           pnpm exec nx run functions:build
           pnpm exec nx run functions-square:build
