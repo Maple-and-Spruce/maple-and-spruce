@@ -7,12 +7,55 @@
 import { db, toDate } from './utilities/database.config';
 import type {
   Class,
+  ClassSession,
   CreateClassInput,
   UpdateClassInput,
   ClassStatus,
 } from '@maple/ts/domain';
 
 const COLLECTION = 'classes';
+
+/**
+ * Convert raw Firestore session entries to ClassSession objects.
+ *
+ * Tolerates:
+ * - the new shape: `[{ dateTime: Timestamp }]`
+ * - legacy docs that haven't been migrated yet: a scalar `dateTime` field
+ *   (the caller handles the fallback by passing `data.dateTime`).
+ */
+function parseSessions(
+  rawSessions: unknown,
+  legacyDateTime: unknown
+): ClassSession[] {
+  if (Array.isArray(rawSessions) && rawSessions.length > 0) {
+    return rawSessions
+      .map((entry) => {
+        const dateField =
+          entry && typeof entry === 'object' && 'dateTime' in entry
+            ? (entry as { dateTime: unknown }).dateTime
+            : entry;
+        return { dateTime: toDate(dateField) };
+      })
+      .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+  }
+
+  if (legacyDateTime !== undefined && legacyDateTime !== null) {
+    return [{ dateTime: toDate(legacyDateTime) }];
+  }
+
+  return [];
+}
+
+/**
+ * Normalize input sessions to a sorted array of `{ dateTime: Date }`.
+ */
+function normalizeSessionsInput(sessions: ClassSession[]): ClassSession[] {
+  return sessions
+    .map((s) => ({
+      dateTime: s.dateTime instanceof Date ? s.dateTime : new Date(s.dateTime),
+    }))
+    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+}
 
 /**
  * Convert Firestore document to Class
@@ -25,14 +68,19 @@ function docToClass(
   }
 
   const data = doc.data()!;
+  const sessions = parseSessions(data.sessions, data.dateTime);
+
   return {
     id: doc.id,
     name: data.name,
     description: data.description,
     shortDescription: data.shortDescription,
     instructorId: data.instructorId,
-    dateTime: toDate(data.dateTime),
+    sessions,
     durationMinutes: data.durationMinutes,
+    registrationClosesAt: data.registrationClosesAt
+      ? toDate(data.registrationClosesAt)
+      : undefined,
     capacity: data.capacity,
     priceCents: data.priceCents,
     imageUrl: data.imageUrl,
@@ -82,16 +130,23 @@ export const ClassRepository = {
       query = query.where('instructorId', '==', filters.instructorId);
     }
 
-    if (filters?.upcoming) {
-      query = query.where('dateTime', '>', new Date());
-    }
-
-    query = query.orderBy('dateTime', 'asc');
+    // Sort by a top-level indexed field — `firstSessionAt` mirrors the
+    // earliest session and is written on every create/update below.
+    query = query.orderBy('firstSessionAt', 'asc');
 
     const snapshot = await query.get();
-    return snapshot.docs
+    let results = snapshot.docs
       .map((doc) => docToClass(doc))
       .filter((c): c is Class => c !== undefined);
+
+    if (filters?.upcoming) {
+      const now = Date.now();
+      results = results.filter((c) =>
+        c.sessions.some((s) => s.dateTime.getTime() > now)
+      );
+    }
+
+    return results;
   },
 
   /**
@@ -108,10 +163,16 @@ export const ClassRepository = {
   async create(input: CreateClassInput): Promise<Class> {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
+    const sessions = normalizeSessionsInput(input.sessions);
+    const firstSessionAt = sessions[0]?.dateTime ?? now;
 
     const data = {
       ...input,
-      dateTime: new Date(input.dateTime),
+      sessions: sessions.map((s) => ({ dateTime: s.dateTime })),
+      firstSessionAt,
+      registrationClosesAt: input.registrationClosesAt
+        ? new Date(input.registrationClosesAt)
+        : null,
       createdAt: now,
       updatedAt: now,
     };
@@ -120,7 +181,13 @@ export const ClassRepository = {
 
     return {
       id: docRef.id,
-      ...data,
+      ...input,
+      sessions,
+      registrationClosesAt: input.registrationClosesAt
+        ? new Date(input.registrationClosesAt)
+        : undefined,
+      createdAt: now,
+      updatedAt: now,
     };
   },
 
@@ -131,11 +198,27 @@ export const ClassRepository = {
     const { id, ...updates } = input;
     const docRef = db.collection(COLLECTION).doc(id);
 
-    const dataWithTimestamp = {
+    const normalizedSessions = updates.sessions
+      ? normalizeSessionsInput(updates.sessions)
+      : undefined;
+
+    const dataWithTimestamp: Record<string, unknown> = {
       ...updates,
-      ...(updates.dateTime ? { dateTime: new Date(updates.dateTime) } : {}),
       updatedAt: new Date(),
     };
+
+    if (normalizedSessions) {
+      dataWithTimestamp.sessions = normalizedSessions.map((s) => ({
+        dateTime: s.dateTime,
+      }));
+      dataWithTimestamp.firstSessionAt = normalizedSessions[0]?.dateTime ?? null;
+    }
+
+    if ('registrationClosesAt' in updates) {
+      dataWithTimestamp.registrationClosesAt = updates.registrationClosesAt
+        ? new Date(updates.registrationClosesAt)
+        : null;
+    }
 
     await docRef.update(dataWithTimestamp);
 

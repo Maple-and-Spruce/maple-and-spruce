@@ -5,6 +5,7 @@ import type { CreateClassInput } from '@maple/ts/domain';
 describe('classValidation', () => {
   // Use fixed date for consistent testing
   const futureDate = new Date('2030-06-15T14:00:00Z');
+  const futureDate2 = new Date('2030-06-22T14:00:00Z');
   const pastDate = new Date('2020-01-01T10:00:00Z');
 
   const validClass: CreateClassInput = {
@@ -12,7 +13,7 @@ describe('classValidation', () => {
     description: 'Learn the basics of weaving in this hands-on workshop.',
     shortDescription: 'A beginner-friendly weaving workshop.',
     instructorId: 'instructor-123',
-    dateTime: futureDate,
+    sessions: [{ dateTime: futureDate }],
     durationMinutes: 120,
     capacity: 8,
     priceCents: 4500, // $45
@@ -43,7 +44,7 @@ describe('classValidation', () => {
       const result = classValidation({
         name: 'Basic Pottery',
         description: 'Learn pottery basics in this introductory class.',
-        dateTime: futureDate,
+        sessions: [{ dateTime: futureDate }],
         durationMinutes: 60,
         capacity: 10,
         priceCents: 3500,
@@ -164,35 +165,130 @@ describe('classValidation', () => {
     });
   });
 
-  describe('dateTime field', () => {
-    it('fails when dateTime is missing', () => {
+  describe('sessions field', () => {
+    it('fails when sessions is missing', () => {
       const result = classValidation({
         ...validClass,
-        dateTime: undefined as unknown as Date,
+        sessions: undefined as unknown as Array<{ dateTime: Date }>,
       });
       expect(result.isValid()).toBe(false);
-      expect(result.getErrors('dateTime')).toContain(
-        'Date and time is required'
+      expect(result.getErrors('sessions')).toContain(
+        'At least one class date is required'
       );
     });
 
-    it('fails when dateTime is in the past', () => {
+    it('fails when sessions is an empty array', () => {
       const result = classValidation({
         ...validClass,
-        dateTime: pastDate,
+        sessions: [],
       });
       expect(result.isValid()).toBe(false);
-      expect(result.getErrors('dateTime')).toContain(
-        'Class must be scheduled in the future'
+      expect(result.getErrors('sessions')).toContain(
+        'At least one class date is required'
       );
     });
 
-    it('passes with future dateTime', () => {
+    it('fails when sessions contain past dates', () => {
       const result = classValidation({
         ...validClass,
-        dateTime: futureDate,
+        sessions: [{ dateTime: pastDate }],
       });
-      expect(result.hasErrors('dateTime')).toBe(false);
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('sessions')).toContain(
+        'All class dates must be scheduled in the future'
+      );
+    });
+
+    it('fails when any session has a past date', () => {
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }, { dateTime: pastDate }],
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('sessions')).toContain(
+        'All class dates must be scheduled in the future'
+      );
+    });
+
+    it('passes with a single future session', () => {
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }],
+      });
+      expect(result.hasErrors('sessions')).toBe(false);
+    });
+
+    it('passes with multiple future sessions', () => {
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }, { dateTime: futureDate2 }],
+      });
+      expect(result.hasErrors('sessions')).toBe(false);
+    });
+  });
+
+  describe('registrationClosesAt field', () => {
+    it('passes when registrationClosesAt is undefined (optional)', () => {
+      const result = classValidation({
+        ...validClass,
+        registrationClosesAt: undefined,
+      });
+      expect(result.hasErrors('registrationClosesAt')).toBe(false);
+    });
+
+    it('fails when registrationClosesAt is after the first session', () => {
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }],
+        registrationClosesAt: new Date('2030-06-16T00:00:00Z'),
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('registrationClosesAt')).toContain(
+        'Registration close must be before the first class session'
+      );
+    });
+
+    it('passes when registrationClosesAt is before the first session', () => {
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }, { dateTime: futureDate2 }],
+        registrationClosesAt: new Date('2030-06-14T00:00:00Z'),
+      });
+      expect(result.hasErrors('registrationClosesAt')).toBe(false);
+    });
+
+    it('passes when registrationClosesAt equals the first session time', () => {
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }],
+        registrationClosesAt: new Date(futureDate.getTime()),
+      });
+      expect(result.hasErrors('registrationClosesAt')).toBe(false);
+    });
+
+    it('fails when registrationClosesAt is in the past', () => {
+      const result = classValidation({
+        ...validClass,
+        registrationClosesAt: pastDate,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('registrationClosesAt')).toContain(
+        'Registration close must be in the future'
+      );
+    });
+
+    it('uses the earliest session when checking against multiple sessions', () => {
+      // registrationClosesAt is before futureDate but after an earlier session
+      const earlierSession = new Date('2030-06-10T14:00:00Z');
+      const result = classValidation({
+        ...validClass,
+        sessions: [{ dateTime: futureDate }, { dateTime: earlierSession }],
+        registrationClosesAt: new Date('2030-06-12T00:00:00Z'),
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('registrationClosesAt')).toContain(
+        'Registration close must be before the first class session'
+      );
     });
   });
 
@@ -540,7 +636,7 @@ describe('classValidation', () => {
       const invalidData = {
         name: '',
         description: '',
-        dateTime: pastDate,
+        sessions: [{ dateTime: pastDate }],
         durationMinutes: 0,
         capacity: 0,
         priceCents: -1,

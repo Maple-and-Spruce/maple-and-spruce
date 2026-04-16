@@ -252,8 +252,9 @@ export function RegistrationWidget({
       const className = pc.name;
       const value = details.pricePaidCents / 100;
 
-      // Calculate class end time
-      const startDate = new Date(pc.dateTime);
+      // Calculate class end time (use first session)
+      const firstSessionIso = pc.sessions?.[0]?.dateTime ?? '';
+      const startDate = new Date(firstSessionIso);
       const endDate = new Date(
         startDate.getTime() + pc.durationMinutes * 60 * 1000
       );
@@ -291,7 +292,7 @@ export function RegistrationWidget({
         className,
         pricePaidCents: details.pricePaidCents,
         quantity: details.quantity,
-        classDate: pc.dateTime,
+        classDate: firstSessionIso,
         classEndDate: endDate.toISOString(),
         classDurationMinutes: pc.durationMinutes,
         skillLevel: pc.skillLevel,

@@ -100,7 +100,10 @@ export const CalendarEventRepository = {
   },
 
   /**
-   * Find calendar event by source reference (e.g. "classes/abc123")
+   * Find the first calendar event by source reference (e.g. "classes/abc123").
+   *
+   * For sources that may map to multiple events (e.g. a multi-session class),
+   * prefer `findAllBySourceRef`.
    */
   async findBySourceRef(sourceRef: string): Promise<CalendarEvent | undefined> {
     const snapshot = await db
@@ -114,6 +117,47 @@ export const CalendarEventRepository = {
     }
 
     return docToCalendarEvent(snapshot.docs[0]);
+  },
+
+  /**
+   * Find all calendar events for a given source reference.
+   * Used by reconcilers that may create multiple events per source
+   * (e.g. one event per session of a multi-session class).
+   */
+  async findAllBySourceRef(sourceRef: string): Promise<CalendarEvent[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('sourceRef', '==', sourceRef)
+      .get();
+
+    return snapshot.docs
+      .map((doc) => docToCalendarEvent(doc))
+      .filter((e): e is CalendarEvent => e !== undefined);
+  },
+
+  /**
+   * Create or replace a calendar event at a caller-supplied document ID.
+   * Useful for reconcilers that need stable, deterministic IDs.
+   */
+  async upsertWithId(
+    id: string,
+    input: CreateCalendarEventInput
+  ): Promise<CalendarEvent> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    const existing = await docRef.get();
+    const now = new Date();
+
+    const data = {
+      ...input,
+      startDateTime: new Date(input.startDateTime),
+      endDateTime: new Date(input.endDateTime),
+      createdAt: existing.exists ? toDate(existing.data()?.createdAt) : now,
+      updatedAt: now,
+    };
+
+    await docRef.set(data);
+
+    return { id, ...data };
   },
 
   /**

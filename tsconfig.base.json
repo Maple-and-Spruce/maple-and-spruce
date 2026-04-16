@@ -143,6 +143,9 @@
       "@maple/firebase/maple-functions/create-class": [
         "libs/firebase/maple-functions/create-class/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/migrate-class-sessions": [
+        "libs/firebase/maple-functions/migrate-class-sessions/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/update-class": [
         "libs/firebase/maple-functions/update-class/src/index.ts"
       ],

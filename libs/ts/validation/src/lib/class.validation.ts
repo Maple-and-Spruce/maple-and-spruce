@@ -53,19 +53,60 @@ export const classValidation = create(
       }
     });
 
-    // DateTime validation
-    test('dateTime', 'Date and time is required', () => {
-      enforce(data.dateTime).isNotNullish();
+    // Sessions validation — at least one session, all in the future
+    test('sessions', 'At least one class date is required', () => {
+      enforce(data.sessions).isArray();
+      enforce(data.sessions?.length ?? 0).greaterThanOrEquals(1);
     });
 
-    test('dateTime', 'Class must be scheduled in the future', () => {
-      if (data.dateTime) {
-        const classDate = data.dateTime instanceof Date
-          ? data.dateTime
-          : new Date(data.dateTime);
-        enforce(classDate.getTime()).greaterThan(Date.now());
+    test('sessions', 'All class dates must be scheduled in the future', () => {
+      if (Array.isArray(data.sessions) && data.sessions.length > 0) {
+        const now = Date.now();
+        const allFuture = data.sessions.every((s) => {
+          const d = s.dateTime instanceof Date ? s.dateTime : new Date(s.dateTime);
+          return d.getTime() > now;
+        });
+        enforce(allFuture).isTruthy();
       }
     });
+
+    // Registration cutoff validation (optional)
+    test(
+      'registrationClosesAt',
+      'Registration close must be before the first class session',
+      () => {
+        if (
+          data.registrationClosesAt &&
+          Array.isArray(data.sessions) &&
+          data.sessions.length > 0
+        ) {
+          const cutoff =
+            data.registrationClosesAt instanceof Date
+              ? data.registrationClosesAt
+              : new Date(data.registrationClosesAt);
+          const firstSessionMs = Math.min(
+            ...data.sessions.map((s) =>
+              (s.dateTime instanceof Date ? s.dateTime : new Date(s.dateTime)).getTime()
+            )
+          );
+          enforce(cutoff.getTime()).lessThanOrEquals(firstSessionMs);
+        }
+      }
+    );
+
+    test(
+      'registrationClosesAt',
+      'Registration close must be in the future',
+      () => {
+        if (data.registrationClosesAt) {
+          const cutoff =
+            data.registrationClosesAt instanceof Date
+              ? data.registrationClosesAt
+              : new Date(data.registrationClosesAt);
+          enforce(cutoff.getTime()).greaterThan(Date.now());
+        }
+      }
+    );
 
     // Duration validation
     test('durationMinutes', 'Duration is required', () => {

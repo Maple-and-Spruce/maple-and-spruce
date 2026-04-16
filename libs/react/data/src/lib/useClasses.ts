@@ -86,7 +86,7 @@ export function useClasses(filters?: UseClassesFilters) {
         if (prev.status !== 'success') return prev;
         // Sort by dateTime after adding (soonest first)
         const newData = [...prev.data, result.data.class].sort(
-          (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+          (a, b) => new Date(a.sessions?.[0]?.dateTime ?? 0).getTime() - new Date(b.sessions?.[0]?.dateTime ?? 0).getTime()
         );
         return {
           ...prev,
@@ -116,7 +116,7 @@ export function useClasses(filters?: UseClassesFilters) {
           .map((c) => (c.id === result.data.class.id ? result.data.class : c))
           .sort(
             (a, b) =>
-              new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+              new Date(a.sessions?.[0]?.dateTime ?? 0).getTime() - new Date(b.sessions?.[0]?.dateTime ?? 0).getTime()
           );
         return {
           ...prev,

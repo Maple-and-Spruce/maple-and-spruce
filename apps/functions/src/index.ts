@@ -76,6 +76,7 @@ export { createClass } from '@maple/firebase/maple-functions/create-class';
 export { updateClass } from '@maple/firebase/maple-functions/update-class';
 export { deleteClass } from '@maple/firebase/maple-functions/delete-class';
 export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-image';
+export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-class-sessions';
 
 // Public class API (no auth required - for Webflow integration)
 export { getPublicClasses } from '@maple/firebase/maple-functions/get-public-classes';

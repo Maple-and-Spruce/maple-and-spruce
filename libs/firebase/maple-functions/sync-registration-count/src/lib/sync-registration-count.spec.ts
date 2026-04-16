@@ -105,7 +105,7 @@ const createMockClass = (overrides: Partial<Class> = {}): Class => ({
   id: 'class-001',
   name: 'Intro to Pottery',
   description: 'Learn pottery basics',
-  dateTime: new Date('2026-05-15T14:00:00Z'),
+  sessions: [{ dateTime: new Date('2026-05-15T14:00:00Z') }],
   durationMinutes: 120,
   capacity: 12,
   priceCents: 4500,

@@ -126,7 +126,7 @@ describe('syncClassToWebflow Trigger', () => {
           name: 'Webflow Sync Test Class',
           description:
             'This class should be synced to Webflow via the mock server.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 120,
           capacity: 10,
           priceCents: 4500,
@@ -176,7 +176,7 @@ describe('syncClassToWebflow Trigger', () => {
         data: {
           name: 'Draft Webflow Test',
           description: 'This draft class should not be synced to Webflow.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 90,
           capacity: 8,
           priceCents: 3500,
@@ -213,7 +213,7 @@ describe('syncClassToWebflow Trigger', () => {
           name: 'Unpublish Sync Test',
           description:
             'This class will be unpublished to test Webflow removal.',
-          dateTime: futureDate(),
+          sessions: [{ dateTime: futureDate() }],
           durationMinutes: 60,
           capacity: 6,
           priceCents: 3000,
