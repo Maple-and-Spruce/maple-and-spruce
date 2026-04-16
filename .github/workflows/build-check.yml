@@ -5,6 +5,9 @@ on:
     branches:
       - '**'
 
+env:
+  NX_DAEMON: 'false'
+
 jobs:
   install:
     name: Install Dependencies
@@ -70,7 +73,7 @@ jobs:
           key: ${{ needs.install.outputs.cache_key }}
 
       - name: Run pnpm audit
-        run: pnpm audit --audit-level=high --ignore-registry-errors
+        run: pnpm audit --audit-level=high
 
   typecheck:
     name: TypeScript Check

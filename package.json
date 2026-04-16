@@ -2,7 +2,7 @@
   "name": "@maple/source",
   "version": "0.0.0",
   "license": "MIT",
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@11.0.0-rc.1+sha512.0d7d837668eb35b81d28f560ef8ec5e103ff5d162e249fd0d30c546c39a551d290ac9cf15709353b94d2df6eb445bfa465c7a05148d328eda32950c02e40d060",
   "scripts": {
     "test": "nx run-many --target=test --all",
     "test:coverage": "nx run-many --target=test --all --coverage"
@@ -98,22 +98,5 @@
     "square": "^43.2.1",
     "vest": "^5.4.6",
     "webflow-api": "^3.3.4"
-  },
-  "pnpm": {
-    "overrides": {
-      "path-to-regexp@>=2": ">=8.4.0",
-      "lodash": ">=4.18.0",
-      "axios": ">=1.15.0",
-      "koa": ">=3.1.2",
-      "vite@>=7.0.0 <7.3.2": ">=7.3.2",
-      "basic-ftp": ">=5.2.2"
-    },
-    "overridesComments": {
-      "lodash": "GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.",
-      "axios": "GHSA-3p68-rc4w-qgx5 (SSRF via NO_PROXY bypass) and GHSA (cloud metadata exfiltration via header injection). Transitive dep of nx@22.6.4 and square@43.2.1. Updated 2026-04-12.",
-      "koa": "GHSA-7gcc-r8m5-44qm: Host Header Injection via ctx.hostname. Transitive dep of @webflow/webflow-cli > @module-federation/dts-plugin. Added 2026-04-04.",
-      "vite": "GHSA-v2wj-q39q-566r (server.fs.deny bypass) and GHSA-p9ff-h696-f583 (arbitrary file read via dev server WebSocket). Transitive dep of @nx/vitest@22.6.4 > vitest@4.1.2. Added 2026-04-07.",
-      "basic-ftp": "GHSA-chqc-8p9q-pq6q (FTP command injection via CRLF) and GHSA-6v7q-wjvx-w8wg (incomplete CRLF protection). Transitive dep of firebase-tools@15.11.0 > proxy-agent > pac-proxy-agent > get-uri. Updated 2026-04-12."
-    }
   }
 }
