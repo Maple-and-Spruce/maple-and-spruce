@@ -189,7 +189,7 @@ export const onClassWrite = onDocumentWritten(
         classId,
         upserted: sessions.length,
         deleted: staleIds.length,
-        public: isPublic,
+        public: isPublished,
       });
     } catch (error) {
       console.error('Error in onClassWrite:', error);
