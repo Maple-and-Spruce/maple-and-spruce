@@ -31,6 +31,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Debug lockfile
+        run: |
+          echo "=== pnpm version ==="
+          pnpm --version
+          echo "=== lockfile header ==="
+          head -20 pnpm-lock.yaml
+          echo "=== YAML doc separators ==="
+          grep -n '^---' pnpm-lock.yaml || echo "none found"
+          echo "=== lockfile line count ==="
+          wc -l pnpm-lock.yaml
+          echo "=== lockfile md5 ==="
+          md5sum pnpm-lock.yaml
+          echo "=== git diff on lockfile ==="
+          git diff --stat pnpm-lock.yaml || echo "no diff"
+          echo "=== @zkochan/js-yaml version ==="
+          node -e "console.log(require('@zkochan/js-yaml/package.json').version)"
+          echo "=== test parse ==="
+          node -e "
+            const { load } = require('@zkochan/js-yaml');
+            const fs = require('fs');
+            try {
+              load(fs.readFileSync('pnpm-lock.yaml', 'utf8'));
+              console.log('parse OK');
+            } catch(e) {
+              console.log('parse FAILED:', e.message);
+              console.log('mark:', JSON.stringify(e.mark));
+            }
+          "
+          echo "=== check for other lockfiles ==="
+          find . -name 'pnpm-lock.yaml' -not -path './node_modules/*' 2>/dev/null
+          echo "=== node_modules/.modules.yaml ==="
+          head -10 node_modules/.modules.yaml 2>/dev/null || echo "not found"
+
       - name: Build Storybook
         run: pnpm exec nx run maple-spruce:build-storybook
 
