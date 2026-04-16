@@ -9,49 +9,8 @@ env:
   NX_DAEMON: 'false'
 
 jobs:
-  install:
-    name: Install Dependencies
-    runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
-    outputs:
-      cache_key: ${{ steps.set_cache_key.outputs.key }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Generate cache key
-        id: set_cache_key
-        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
-
-      - name: Restore node_modules cache
-        id: restore-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ steps.set_cache_key.outputs.key }}
-
-      - name: Install dependencies
-        if: steps.restore-cache.outputs.cache-hit != 'true'
-        run: pnpm install --frozen-lockfile
-
-      - name: Save node_modules cache
-        if: steps.restore-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: node_modules
-          key: ${{ steps.set_cache_key.outputs.key }}
-
   security:
     name: Security Audit
-    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
@@ -66,18 +25,14 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run pnpm audit
         run: pnpm audit --audit-level=high
 
   typecheck:
     name: TypeScript Check
-    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
@@ -92,18 +47,14 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: TypeScript typecheck
         run: pnpm exec nx run maple-spruce:typecheck
 
   build:
     name: Build
-    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
@@ -118,11 +69,8 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Cache Next.js build
         uses: actions/cache@v4
@@ -140,7 +88,6 @@ jobs:
 
   unit-tests:
     name: Unit Tests & Coverage
-    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
@@ -158,11 +105,8 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run unit tests with coverage
         run: pnpm exec vitest run --coverage
@@ -176,7 +120,6 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    needs: [install]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
@@ -198,11 +141,8 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build functions
         run: |
@@ -238,7 +178,6 @@ jobs:
 
   storybook:
     name: Storybook Build & Tests
-    needs: [install]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
@@ -253,11 +192,8 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
@@ -277,7 +213,7 @@ jobs:
 
   coverage-check:
     name: Merged Coverage Check
-    needs: [install, unit-tests, storybook]
+    needs: [unit-tests, storybook]
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
@@ -295,11 +231,8 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Restore node_modules cache
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.install.outputs.cache_key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Download unit coverage
         uses: actions/download-artifact@v4
