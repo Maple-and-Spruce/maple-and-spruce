@@ -5,6 +5,9 @@ on:
     branches:
       - '**'
 
+env:
+  NX_DAEMON: 'false'
+
 jobs:
   install:
     name: Install Dependencies
@@ -129,22 +132,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
-      - name: Debug build env
-        run: |
-          echo "=== pnpm version ==="
-          pnpm --version
-          echo "=== node_modules/.modules.yaml header ==="
-          head -20 node_modules/.modules.yaml 2>/dev/null || echo "not found"
-          echo "=== lockfile header ==="
-          head -5 pnpm-lock.yaml
-          echo "=== nx graph test ==="
-          timeout 30 pnpm exec nx show projects 2>&1 | head -10 || echo "nx show projects timed out or failed"
-
       - name: Build web app
-        run: NX_DAEMON=false pnpm exec nx run maple-spruce:build
+        run: pnpm exec nx run maple-spruce:build
 
       - name: Build functions
-        run: NX_DAEMON=false pnpm exec nx run functions:build
+        run: pnpm exec nx run functions:build
 
   unit-tests:
     name: Unit Tests & Coverage
@@ -214,10 +206,10 @@ jobs:
 
       - name: Build functions
         run: |
-          NX_DAEMON=false pnpm exec nx run functions:build
-          NX_DAEMON=false pnpm exec nx run functions-square:build
-          NX_DAEMON=false pnpm exec nx run functions-sync:build
-          NX_DAEMON=false pnpm exec nx run functions-calendar:build
+          pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
+          pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
 
       - name: Create emulator .env
         run: |
@@ -239,7 +231,7 @@ jobs:
           npx tsx libs/firebase/integration-test-mock-server/start.ts &
           MOCK_PID=$!
           sleep 2
-          NX_DAEMON=false npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
           EXIT_CODE=$?
           kill $MOCK_PID 2>/dev/null
           exit $EXIT_CODE
