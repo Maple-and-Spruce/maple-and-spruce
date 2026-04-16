@@ -169,6 +169,7 @@ jobs:
         with:
           name: coverage-unit
           path: coverage/unit/coverage-final.json
+          if-no-files-found: error
 
   integration-tests:
     name: Integration Tests
@@ -262,13 +263,14 @@ jobs:
         run: pnpm exec nx run maple-spruce:build-storybook
 
       - name: Run Storybook interaction tests with coverage
-        run: pnpm exec vitest run --config vitest.storybook.config.ts --coverage
+        run: pnpm exec vitest run --config vitest.storybook.config.ts --coverage --coverage.reportsDirectory=${{ github.workspace }}/coverage/storybook
 
       - name: Upload Storybook coverage
         uses: actions/upload-artifact@v4
         with:
           name: coverage-storybook
           path: coverage/storybook/coverage-final.json
+          if-no-files-found: error
 
   coverage-check:
     name: Merged Coverage Check
@@ -308,11 +310,17 @@ jobs:
           name: coverage-storybook
           path: coverage/storybook
 
+      - name: Prepare coverage files for merge
+        run: |
+          mkdir -p coverage/to-merge
+          cp coverage/unit/coverage-final.json coverage/to-merge/unit.json
+          cp coverage/storybook/coverage-final.json coverage/to-merge/storybook.json
+
       - name: Merge coverage reports
         run: |
           mkdir -p coverage/merged
-          pnpm exec nyc merge coverage coverage/merged/coverage-final.json
-          pnpm exec nyc report -t coverage/merged --reporter=text --reporter=json-summary --report-dir=coverage/merged
+          pnpm exec nyc merge coverage/to-merge coverage/merged/coverage-final.json
+          pnpm exec nyc report -t coverage/merged --reporter=text
 
       - name: Check coverage thresholds
         run: |

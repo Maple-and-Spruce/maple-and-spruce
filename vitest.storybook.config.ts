@@ -28,7 +28,7 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       reporter: ['json'],
-      reportsDirectory: './coverage/storybook',
+      reportsDirectory: path.join(dirname, 'coverage/storybook'),
       all: false,
     },
   },
