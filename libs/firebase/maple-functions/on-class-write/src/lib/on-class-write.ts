@@ -140,12 +140,27 @@ export const onClassWrite = onDocumentWritten(
       }
 
       const sessions = getSortedSessions(afterClass);
-      const isPublic = afterClass.status === 'published';
+      const isPublished = afterClass.status === 'published';
+
+      // Case 2: Class is not published — remove any existing events
+      if (!isPublished) {
+        if (existingEvents.length > 0) {
+          await Promise.all(
+            existingEvents.map((e) => CalendarEventRepository.delete(e.id))
+          );
+          console.log(
+            `Removed ${existingEvents.length} CalendarEvent(s) for non-published class:`,
+            classId
+          );
+        }
+        return;
+      }
+
+      // Case 3: Class is published — upsert one event per session (parallel)
       const desiredIds = new Set(
         sessions.map((s) => sessionEventId(classId, s))
       );
 
-      // Case 2: Upsert one event per session (parallel for speed)
       await Promise.all(
         sessions.map((session) => {
           const id = sessionEventId(classId, session);
@@ -157,14 +172,14 @@ export const onClassWrite = onDocumentWritten(
             recurrenceRule: null,
             location: afterClass.location || DEFAULT_EVENT_LOCATION,
             type: 'class',
-            public: isPublic,
+            public: true,
             sourceRef,
             createdBy: 'system',
           });
         })
       );
 
-      // Case 3: Delete any events for sessions that no longer exist
+      // Case 4: Delete events for sessions that no longer exist
       const staleIds = [...existingIds].filter((id) => !desiredIds.has(id));
       await Promise.all(
         staleIds.map((id) => CalendarEventRepository.delete(id))

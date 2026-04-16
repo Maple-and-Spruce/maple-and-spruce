@@ -185,14 +185,8 @@ describe('onClassWrite', () => {
         },
       });
 
-      // Draft class still runs through the reconciler; it upserts events
-      // with public: false. Verify no events are created with public: true.
-      // Actually — the trigger upserts for ALL classes (even drafts) but
-      // sets public=false when status != 'published'. Let's verify:
-      expect(mocks.upsertWithId).toHaveBeenCalledTimes(3);
-      for (const [, input] of mocks.upsertWithId.mock.calls) {
-        expect(input.public).toBe(false);
-      }
+      // Draft class should NOT create calendar events — only published classes do.
+      expect(mocks.upsertWithId).not.toHaveBeenCalled();
     });
   });
 
@@ -233,10 +227,11 @@ describe('onClassWrite', () => {
       expect(mocks.delete).not.toHaveBeenCalled();
     });
 
-    it('sets public=false on all events when class is unpublished', async () => {
-      mocks.findAllBySourceRef.mockResolvedValue(
-        sessionDates.map((d) => makeCalendarEvent('class-123', d))
+    it('deletes all events when class is unpublished', async () => {
+      const existingEvents = sessionDates.map((d) =>
+        makeCalendarEvent('class-123', d)
       );
+      mocks.findAllBySourceRef.mockResolvedValue(existingEvents);
 
       await handler({
         params: { classId: 'class-123' },
@@ -249,9 +244,11 @@ describe('onClassWrite', () => {
         },
       });
 
-      expect(mocks.upsertWithId).toHaveBeenCalledTimes(3);
-      for (const [, input] of mocks.upsertWithId.mock.calls) {
-        expect(input.public).toBe(false);
+      // Should NOT upsert — should delete existing events instead
+      expect(mocks.upsertWithId).not.toHaveBeenCalled();
+      expect(mocks.delete).toHaveBeenCalledTimes(3);
+      for (const event of existingEvents) {
+        expect(mocks.delete).toHaveBeenCalledWith(event.id);
       }
     });
 
@@ -394,7 +391,7 @@ describe('onClassWrite', () => {
   // ────────────────────────────────────────────
 
   describe('public flag', () => {
-    it('sets public=false for draft class events', async () => {
+    it('does not create events for draft class', async () => {
       await handler({
         params: { classId: 'class-123' },
         data: {
@@ -403,9 +400,7 @@ describe('onClassWrite', () => {
         },
       });
 
-      for (const [, input] of mocks.upsertWithId.mock.calls) {
-        expect(input.public).toBe(false);
-      }
+      expect(mocks.upsertWithId).not.toHaveBeenCalled();
     });
 
     it('sets public=true for published class events', async () => {
@@ -422,7 +417,7 @@ describe('onClassWrite', () => {
       }
     });
 
-    it('sets public=false for cancelled class events', async () => {
+    it('does not create events for cancelled class', async () => {
       await handler({
         params: { classId: 'class-123' },
         data: {
@@ -434,9 +429,7 @@ describe('onClassWrite', () => {
         },
       });
 
-      for (const [, input] of mocks.upsertWithId.mock.calls) {
-        expect(input.public).toBe(false);
-      }
+      expect(mocks.upsertWithId).not.toHaveBeenCalled();
     });
   });
 
