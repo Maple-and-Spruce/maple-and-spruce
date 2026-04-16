@@ -70,7 +70,7 @@ jobs:
           key: ${{ needs.install.outputs.cache_key }}
 
       - name: Run pnpm audit
-        run: pnpm audit --audit-level=high --ignore-registry-errors
+        run: pnpm audit --audit-level=high
 
   typecheck:
     name: TypeScript Check
