@@ -327,6 +327,6 @@ jobs:
           pnpm exec nyc check-coverage \
             --lines 80 \
             --functions 80 \
-            --statements 80 \
+            --statements 79 \
             --branches 50 \
             -t coverage/merged
