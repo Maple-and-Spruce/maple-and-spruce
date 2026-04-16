@@ -19,7 +19,7 @@ import EventIcon from '@mui/icons-material/Event';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GroupIcon from '@mui/icons-material/Group';
 import type { Class, Instructor, ClassCategory, RequestState } from '@maple/ts/domain';
-import { formatClassPrice } from '@maple/ts/domain';
+import { formatClassPrice, getFirstSession, formatSessions } from '@maple/ts/domain';
 
 interface ClassListProps {
   classesState: RequestState<Class[]>;
@@ -88,10 +88,13 @@ function ClassCard({
   onDelete: () => void;
   onViewRoster?: () => void;
 }) {
-  const dateTime = classItem.dateTime instanceof Date
-    ? classItem.dateTime
-    : new Date(classItem.dateTime);
-  const isPast = dateTime < new Date();
+  const firstSession = getFirstSession(classItem);
+  const firstDateTime =
+    firstSession.dateTime instanceof Date
+      ? firstSession.dateTime
+      : new Date(firstSession.dateTime);
+  const isPast = firstDateTime < new Date();
+  const { dateDisplay, timeDisplay } = formatSessions(classItem.sessions);
 
   return (
     <Card sx={{ opacity: isPast && classItem.status !== 'completed' ? 0.7 : 1 }}>
@@ -134,7 +137,7 @@ function ClassCard({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               <EventIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
               <Typography variant="body2" color="text.secondary">
-                {formatDate(dateTime)}
+                {dateDisplay}{timeDisplay && timeDisplay !== 'Varies' ? ` \u00B7 ${timeDisplay}` : ''}
               </Typography>
             </Box>
 

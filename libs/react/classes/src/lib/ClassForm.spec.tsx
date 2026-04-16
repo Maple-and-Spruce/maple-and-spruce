@@ -33,7 +33,7 @@ import { ClassForm } from './ClassForm';
 // A future date that won't expire during tests
 const futureDate = new Date('2099-06-15T14:00:00');
 
-// MUI + DateTimePicker + Preact Signals rendering is slow on CI
+// MUI + DateCalendar/TimePicker + Preact Signals rendering is slow on CI
 describe('ClassForm', { timeout: 30_000 }, () => {
   const defaultProps = {
     open: true,
@@ -152,7 +152,7 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       expect(instructorSelect).toBeInTheDocument();
     });
 
-    it('does not show error summary when form is valid', async () => {
+    it('shows only sessions error when text fields are valid but no dates selected', async () => {
       const user = userEvent.setup();
 
       render(
@@ -171,7 +171,7 @@ describe('ClassForm', { timeout: 30_000 }, () => {
         />
       );
 
-      // Fill in all required fields
+      // Fill in text required fields
       setInputValue(
         screen.getByRole('textbox', { name: /Class Name/ }),
         'Pottery Workshop'
@@ -185,12 +185,13 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       const addButton = screen.getByRole('button', { name: 'Add' });
       await user.click(addButton);
 
-      // Should not show validation error summary
+      // Should show error about sessions (no calendar dates selected)
       const alerts = screen.queryAllByRole('alert');
       const errorAlert = alerts.find((a) =>
         a.textContent?.includes('Please fix the following errors')
       );
-      expect(errorAlert).toBeUndefined();
+      // The only remaining error should be about class dates
+      expect(errorAlert?.textContent).toContain('Class Dates');
     });
 
     it('clears error summary when errors are fixed', async () => {
@@ -274,7 +275,7 @@ describe('ClassForm', { timeout: 30_000 }, () => {
         description: 'A description for an existing class.',
         shortDescription: 'Short desc',
         instructorId: undefined,
-        dateTime: new Date('2099-06-15T14:00:00'),
+        sessions: [{ dateTime: new Date('2099-06-15T14:00:00') }],
         durationMinutes: 90,
         capacity: 15,
         priceCents: 5000,

@@ -14,7 +14,7 @@ export const mockClass: Class = {
   shortDescription:
     'Create your first woven wall hanging in this hands-on beginner workshop.',
   instructorId: 'instructor-001',
-  dateTime: new Date('2030-04-14T10:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-14T10:00:00Z') }],
   durationMinutes: 180,
   capacity: 8,
   priceCents: 7500,
@@ -36,7 +36,7 @@ export const mockClass2: Class = {
     'Discover the meditative art of wheel throwing in this introductory pottery class. You will learn to center clay, pull walls, and create simple forms like bowls and cups. Your pieces will be bisque-fired and ready for pickup in 2 weeks.',
   shortDescription: 'Learn to throw pottery on the wheel in this hands-on intro class.',
   instructorId: 'instructor-002',
-  dateTime: new Date('2030-04-07T14:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-07T14:00:00Z') }],
   durationMinutes: 150,
   capacity: 6,
   priceCents: 6500,
@@ -59,7 +59,7 @@ export const mockClassDraft: Class = {
     'Take your weaving to the next level with advanced tapestry techniques including color blending, hatching, and pictorial design. This workshop is designed for weavers with experience who want to explore more complex patterns.',
   shortDescription: 'Explore advanced tapestry weaving techniques.',
   instructorId: 'instructor-001',
-  dateTime: new Date('2030-04-30T10:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-30T10:00:00Z') }],
   durationMinutes: 240,
   capacity: 6,
   priceCents: 12500,
@@ -79,7 +79,7 @@ export const mockClassCancelled: Class = {
     'Learn to create beautiful, sustainable colors using plants, minerals, and other natural materials. This workshop covers mordanting, dye extraction, and creating a personal color palette.',
   shortDescription: 'Create natural dyes from plants and minerals.',
   instructorId: 'instructor-005',
-  dateTime: new Date('2030-04-10T10:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-10T10:00:00Z') }],
   durationMinutes: 180,
   capacity: 10,
   priceCents: 8500,
@@ -97,7 +97,7 @@ export const mockClassCompleted: Class = {
     'Create beautiful wire-wrapped jewelry in this beginner-friendly workshop. You will make a pendant and a pair of earrings using copper and silver-plated wire.',
   shortDescription: 'Make wire-wrapped jewelry to wear or gift.',
   instructorId: 'instructor-003',
-  dateTime: new Date('2024-03-01T14:00:00Z'),
+  sessions: [{ dateTime: new Date('2024-03-01T14:00:00Z') }],
   durationMinutes: 120,
   capacity: 8,
   priceCents: 5500,
@@ -118,7 +118,7 @@ export const mockClassNoImage: Class = {
     'Explore clay without the wheel! Learn hand building techniques including pinch pots, coil building, and slab construction. Perfect for all skill levels.',
   shortDescription: 'Create pottery without a wheel using hand building techniques.',
   instructorId: 'instructor-002',
-  dateTime: new Date('2030-04-21T18:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-21T18:00:00Z') }],
   durationMinutes: 150,
   capacity: 10,
   priceCents: 5500,
@@ -138,7 +138,7 @@ export const mockClassIntermediate: Class = {
     'Deepen your understanding of color relationships and how they translate to woven textiles. This intermediate workshop covers color mixing, value contrast, and creating harmonious palettes for your weaving projects.',
   shortDescription: 'Learn color theory principles for weavers.',
   instructorId: 'instructor-001',
-  dateTime: new Date('2030-04-28T10:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-28T10:00:00Z') }],
   durationMinutes: 180,
   capacity: 8,
   priceCents: 8500,
@@ -157,7 +157,7 @@ export const mockClassNoInstructor: Class = {
   description:
     'Use our studio space and equipment for your own projects. Staff available for questions but this is not an instructed class.',
   shortDescription: 'Independent studio time with equipment access.',
-  dateTime: new Date('2030-04-05T12:00:00Z'),
+  sessions: [{ dateTime: new Date('2030-04-05T12:00:00Z') }],
   durationMinutes: 180,
   capacity: 12,
   priceCents: 2500,
@@ -184,7 +184,7 @@ export const mockPublishedClasses: Class[] = mockClasses.filter(
 );
 
 export const mockUpcomingClasses: Class[] = mockClasses.filter(
-  (c) => c.status === 'published' && c.dateTime > new Date('2024-01-01T00:00:00Z')
+  (c) => c.status === 'published' && c.sessions[0].dateTime > new Date('2024-01-01T00:00:00Z')
 );
 
 /**

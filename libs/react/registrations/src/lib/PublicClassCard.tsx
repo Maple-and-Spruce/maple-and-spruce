@@ -19,20 +19,44 @@ interface PublicClassCardProps {
   onRegister: (classId: string) => void;
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
+function formatSessionsDisplay(sessions: { dateTime: string }[]): {
+  dateDisplay: string;
+  timeDisplay: string;
+} {
+  if (!sessions || sessions.length === 0) {
+    return { dateDisplay: '', timeDisplay: '' };
+  }
+  const sorted = [...sessions].sort(
+    (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+  );
 
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const dateOf = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+
+  const timeOf = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+  const firstTime = timeOf(sorted[0].dateTime);
+  const allSame = sorted.every((s) => timeOf(s.dateTime) === firstTime);
+
+  if (allSame) {
+    return {
+      dateDisplay: sorted.map((s) => dateOf(s.dateTime)).join(', '),
+      timeDisplay: firstTime,
+    };
+  }
+  return {
+    dateDisplay: sorted
+      .map((s) => `${dateOf(s.dateTime)} ${timeOf(s.dateTime)}`)
+      .join(', '),
+    timeDisplay: 'Varies',
+  };
 }
 
 function formatPrice(cents: number): string {
@@ -91,13 +115,13 @@ export function PublicClassCard({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <EventIcon fontSize="small" color="action" />
             <Typography variant="body2">
-              {formatDate(publicClass.dateTime)}
+              {formatSessionsDisplay(publicClass.sessions).dateDisplay}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <AccessTimeIcon fontSize="small" color="action" />
             <Typography variant="body2">
-              {formatTime(publicClass.dateTime)} ({publicClass.durationMinutes}{' '}
+              {formatSessionsDisplay(publicClass.sessions).timeDisplay} ({publicClass.durationMinutes}{' '}
               min)
             </Typography>
           </Box>

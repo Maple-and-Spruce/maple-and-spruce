@@ -33,7 +33,7 @@ describe('ClassRepository', () => {
   });
 
   describe('create', () => {
-    it('converts dateTime string to Date object for Firestore storage', async () => {
+    it('converts session dateTime strings to Date objects for Firestore storage', async () => {
       let savedData: Record<string, unknown> = {};
       const mockSet = vi.fn().mockImplementation((data) => {
         savedData = data;
@@ -52,7 +52,9 @@ describe('ClassRepository', () => {
         description: 'Learn pottery',
         shortDescription: undefined,
         instructorId: undefined,
-        dateTime: '2026-05-15T14:00:00.000Z' as unknown as Date,
+        sessions: [
+          { dateTime: '2026-05-15T14:00:00.000Z' as unknown as Date },
+        ],
         durationMinutes: 120,
         capacity: 10,
         priceCents: 4500,
@@ -67,9 +69,17 @@ describe('ClassRepository', () => {
       });
 
       expect(mockSet).toHaveBeenCalled();
-      // dateTime should be a Date object, not a string
-      expect(savedData.dateTime).toBeInstanceOf(Date);
-      expect((savedData.dateTime as Date).toISOString()).toBe(
+      // sessions should be an array with dateTime as Date objects
+      expect(savedData.sessions).toBeInstanceOf(Array);
+      const sessions = savedData.sessions as { dateTime: unknown }[];
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].dateTime).toBeInstanceOf(Date);
+      expect((sessions[0].dateTime as Date).toISOString()).toBe(
+        '2026-05-15T14:00:00.000Z'
+      );
+      // firstSessionAt should be written as a denormalized field
+      expect(savedData.firstSessionAt).toBeInstanceOf(Date);
+      expect((savedData.firstSessionAt as Date).toISOString()).toBe(
         '2026-05-15T14:00:00.000Z'
       );
       // createdAt/updatedAt should also be Date objects
@@ -77,7 +87,7 @@ describe('ClassRepository', () => {
       expect(savedData.updatedAt).toBeInstanceOf(Date);
     });
 
-    it('handles dateTime that is already a Date object', async () => {
+    it('handles sessions with dateTime already as Date objects', async () => {
       let savedData: Record<string, unknown> = {};
       const mockSet = vi.fn().mockImplementation((data) => {
         savedData = data;
@@ -97,7 +107,7 @@ describe('ClassRepository', () => {
         description: 'Learn pottery',
         shortDescription: undefined,
         instructorId: undefined,
-        dateTime: dateObj,
+        sessions: [{ dateTime: dateObj }],
         durationMinutes: 120,
         capacity: 10,
         priceCents: 4500,
@@ -111,15 +121,72 @@ describe('ClassRepository', () => {
         minimumAge: undefined,
       });
 
-      expect(savedData.dateTime).toBeInstanceOf(Date);
-      expect((savedData.dateTime as Date).toISOString()).toBe(
+      const sessions = savedData.sessions as { dateTime: unknown }[];
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].dateTime).toBeInstanceOf(Date);
+      expect((sessions[0].dateTime as Date).toISOString()).toBe(
         '2026-05-15T14:00:00.000Z'
+      );
+      expect(savedData.firstSessionAt).toBeInstanceOf(Date);
+      expect((savedData.firstSessionAt as Date).toISOString()).toBe(
+        '2026-05-15T14:00:00.000Z'
+      );
+    });
+
+    it('sorts multiple sessions by dateTime and sets firstSessionAt to the earliest', async () => {
+      let savedData: Record<string, unknown> = {};
+      const mockSet = vi.fn().mockImplementation((data) => {
+        savedData = data;
+        return Promise.resolve();
+      });
+
+      const mockDocRef = vi.fn().mockReturnValue({
+        id: 'class-new',
+        set: mockSet,
+      });
+      const mockCollection = vi.fn().mockReturnValue({ doc: mockDocRef });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+
+      await ClassRepository.create({
+        name: 'Multi-Session Workshop',
+        description: 'A two-day workshop',
+        shortDescription: undefined,
+        instructorId: undefined,
+        sessions: [
+          { dateTime: new Date('2026-06-02T14:00:00.000Z') },
+          { dateTime: new Date('2026-06-01T10:00:00.000Z') },
+        ],
+        durationMinutes: 180,
+        capacity: 8,
+        priceCents: 9000,
+        imageUrl: undefined,
+        categoryId: undefined,
+        skillLevel: 'all-levels',
+        status: 'published',
+        location: undefined,
+        materialsIncluded: undefined,
+        whatToBring: undefined,
+        minimumAge: undefined,
+      });
+
+      const sessions = savedData.sessions as { dateTime: Date }[];
+      expect(sessions).toHaveLength(2);
+      // Should be sorted chronologically
+      expect(sessions[0].dateTime.toISOString()).toBe(
+        '2026-06-01T10:00:00.000Z'
+      );
+      expect(sessions[1].dateTime.toISOString()).toBe(
+        '2026-06-02T14:00:00.000Z'
+      );
+      // firstSessionAt should be the earliest session
+      expect((savedData.firstSessionAt as Date).toISOString()).toBe(
+        '2026-06-01T10:00:00.000Z'
       );
     });
   });
 
   describe('update', () => {
-    it('converts dateTime string to Date object on update', async () => {
+    it('converts session dateTime strings to Date objects on update', async () => {
       let updatedFields: Record<string, unknown> = {};
       const mockUpdate = vi.fn().mockImplementation((data) => {
         updatedFields = data;
@@ -134,7 +201,16 @@ describe('ClassRepository', () => {
           description: 'Learn pottery',
           shortDescription: null,
           instructorId: null,
-          dateTime: { toDate: () => new Date('2026-05-20T14:00:00.000Z') },
+          sessions: [
+            {
+              dateTime: {
+                toDate: () => new Date('2026-05-20T14:00:00.000Z'),
+              },
+            },
+          ],
+          firstSessionAt: {
+            toDate: () => new Date('2026-05-20T14:00:00.000Z'),
+          },
           durationMinutes: 120,
           capacity: 10,
           priceCents: 4500,
@@ -162,17 +238,26 @@ describe('ClassRepository', () => {
 
       await ClassRepository.update({
         id: 'class-1',
-        dateTime: '2026-05-20T14:00:00.000Z' as unknown as Date,
+        sessions: [
+          { dateTime: '2026-05-20T14:00:00.000Z' as unknown as Date },
+        ],
       });
 
       expect(mockUpdate).toHaveBeenCalled();
-      expect(updatedFields.dateTime).toBeInstanceOf(Date);
-      expect((updatedFields.dateTime as Date).toISOString()).toBe(
+      const sessions = updatedFields.sessions as { dateTime: unknown }[];
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].dateTime).toBeInstanceOf(Date);
+      expect((sessions[0].dateTime as Date).toISOString()).toBe(
+        '2026-05-20T14:00:00.000Z'
+      );
+      // firstSessionAt should also be updated
+      expect(updatedFields.firstSessionAt).toBeInstanceOf(Date);
+      expect((updatedFields.firstSessionAt as Date).toISOString()).toBe(
         '2026-05-20T14:00:00.000Z'
       );
     });
 
-    it('does not add dateTime field when not being updated', async () => {
+    it('does not add sessions or firstSessionAt fields when sessions are not being updated', async () => {
       let updatedFields: Record<string, unknown> = {};
       const mockUpdate = vi.fn().mockImplementation((data) => {
         updatedFields = data;
@@ -187,7 +272,16 @@ describe('ClassRepository', () => {
           description: 'desc',
           shortDescription: null,
           instructorId: null,
-          dateTime: { toDate: () => new Date('2026-05-15T14:00:00.000Z') },
+          sessions: [
+            {
+              dateTime: {
+                toDate: () => new Date('2026-05-15T14:00:00.000Z'),
+              },
+            },
+          ],
+          firstSessionAt: {
+            toDate: () => new Date('2026-05-15T14:00:00.000Z'),
+          },
           durationMinutes: 120,
           capacity: 10,
           priceCents: 4500,
@@ -218,7 +312,8 @@ describe('ClassRepository', () => {
         name: 'Updated Name',
       });
 
-      expect(updatedFields.dateTime).toBeUndefined();
+      expect(updatedFields.sessions).toBeUndefined();
+      expect(updatedFields.firstSessionAt).toBeUndefined();
       expect(updatedFields.name).toBe('Updated Name');
       expect(updatedFields.updatedAt).toBeInstanceOf(Date);
     });

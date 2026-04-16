@@ -2,20 +2,21 @@
  * Class Service for Webflow CMS
  *
  * Handles syncing class data from Firebase to Webflow CMS.
- * Follows one-way sync pattern: Firebase → Webflow (as per ADR-016).
+ * Follows one-way sync pattern: Firebase -> Webflow (as per ADR-016).
  *
  * Field Mapping:
- * - Firebase `id` → Webflow `firebase-id` (for lookup)
- * - Firebase `name` → Webflow `name` (title field)
- * - Firebase `dateTime` → Webflow `date-time`
- * - Firebase `priceCents` → Webflow `price-cents`
- * - Enriched `instructorName` / `categoryName` → denormalized text fields
+ * - Firebase `id` -> Webflow `firebase-id` (for lookup)
+ * - Firebase `name` -> Webflow `name` (title field)
+ * - Firebase `sessions[0].dateTime` -> Webflow `date-time`
+ * - Firebase `priceCents` -> Webflow `price-cents`
+ * - Enriched `instructorName` / `categoryName` -> denormalized text fields
  *
  * @see docs/decisions/ADR-016-webflow-integration-strategy.md
  */
 import { WebflowClient } from 'webflow-api';
 import type { CollectionItem } from 'webflow-api/api';
 import type { Class } from '@maple/ts/domain';
+import { getFirstSession, formatSessions } from '@maple/ts/domain';
 
 /**
  * Generate a URL-safe slug from a name.
@@ -118,33 +119,26 @@ export function mapClassToFieldData(
     ? 'Class Full'
     : `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`;
 
-  // Format date and time display values
-  const dateObj = classEntity.dateTime instanceof Date
-    ? classEntity.dateTime
-    : new Date(classEntity.dateTime);
+  // Format date and time display values from sessions
+  const { dateDisplay, timeDisplay } = formatSessions(
+    classEntity.sessions,
+    'America/New_York'
+  );
 
-  const dateDisplay = dateObj.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'America/New_York',
-  });
-
-  const timeDisplay = dateObj.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'America/New_York',
-  });
+  // The `date-time` Webflow field is a native DateTime — use the first
+  // session so Webflow can sort classes chronologically.
+  const firstSessionDate = getFirstSession(classEntity).dateTime;
+  const dateTimeIso =
+    firstSessionDate instanceof Date
+      ? firstSessionDate.toISOString()
+      : String(firstSessionDate);
 
   const fieldData: ClassWebflowFieldData = {
     'firebase-id': classEntity.id,
     name: classEntity.name,
     slug: generateClassSlug(classEntity.name),
     'is-dev-environment': options.isDev,
-    'date-time': classEntity.dateTime instanceof Date
-      ? classEntity.dateTime.toISOString()
-      : String(classEntity.dateTime),
+    'date-time': dateTimeIso,
     'duration-minutes': classEntity.durationMinutes,
     'price-cents': classEntity.priceCents,
     capacity: classEntity.capacity,

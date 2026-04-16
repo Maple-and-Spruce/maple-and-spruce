@@ -4,8 +4,13 @@ import {
   formatClassPrice,
   isClassRegistrationOpen,
   hasAvailableSpots,
-  getClassEndTime,
+  getSessionEndTime,
+  getFirstSession,
+  getSortedSessions,
+  getRegistrationCutoff,
+  formatSessions,
   type Class,
+  type ClassSession,
 } from './class';
 
 describe('Class domain helpers', () => {
@@ -15,7 +20,7 @@ describe('Class domain helpers', () => {
     description: 'Learn the basics of weaving in this hands-on workshop.',
     shortDescription: 'A beginner-friendly weaving workshop.',
     instructorId: 'instructor-456',
-    dateTime: new Date('2030-06-15T14:00:00Z'),
+    sessions: [{ dateTime: new Date('2030-06-15T14:00:00Z') }],
     durationMinutes: 120,
     capacity: 8,
     priceCents: 4500,
@@ -30,6 +35,61 @@ describe('Class domain helpers', () => {
     createdAt: new Date('2025-01-01T00:00:00Z'),
     updatedAt: new Date('2025-01-02T00:00:00Z'),
   };
+
+  const multiSessionClass: Class = {
+    ...baseClass,
+    sessions: [
+      { dateTime: new Date('2030-06-22T14:00:00Z') },
+      { dateTime: new Date('2030-06-15T14:00:00Z') },
+      { dateTime: new Date('2030-06-29T14:00:00Z') },
+    ],
+  };
+
+  describe('getFirstSession', () => {
+    it('returns earliest session regardless of array order', () => {
+      const first = getFirstSession(multiSessionClass);
+      expect(first.dateTime).toEqual(new Date('2030-06-15T14:00:00Z'));
+    });
+
+    it('throws for a class with no sessions', () => {
+      const empty: Class = { ...baseClass, sessions: [] };
+      expect(() => getFirstSession(empty)).toThrow('has no sessions');
+    });
+  });
+
+  describe('getSortedSessions', () => {
+    it('returns sessions sorted earliest first', () => {
+      const sorted = getSortedSessions(multiSessionClass);
+      expect(sorted.map((s) => s.dateTime.toISOString())).toEqual([
+        '2030-06-15T14:00:00.000Z',
+        '2030-06-22T14:00:00.000Z',
+        '2030-06-29T14:00:00.000Z',
+      ]);
+    });
+
+    it('does not mutate the original sessions array', () => {
+      const before = multiSessionClass.sessions[0].dateTime.toISOString();
+      getSortedSessions(multiSessionClass);
+      expect(multiSessionClass.sessions[0].dateTime.toISOString()).toBe(before);
+    });
+  });
+
+  describe('getRegistrationCutoff', () => {
+    it('defaults to first session dateTime', () => {
+      expect(getRegistrationCutoff(baseClass)).toEqual(
+        new Date('2030-06-15T14:00:00Z')
+      );
+    });
+
+    it('uses registrationClosesAt when set', () => {
+      const cutoff = new Date('2030-06-10T00:00:00Z');
+      const withOverride: Class = {
+        ...baseClass,
+        registrationClosesAt: cutoff,
+      };
+      expect(getRegistrationCutoff(withOverride)).toEqual(cutoff);
+    });
+  });
 
   describe('toPublicClass', () => {
     it('converts Class to PublicClass with all fields', () => {
@@ -47,7 +107,8 @@ describe('Class domain helpers', () => {
         description: 'Learn the basics of weaving in this hands-on workshop.',
         instructorId: 'instructor-456',
         instructorName: 'Sarah Miller',
-        dateTime: '2030-06-15T14:00:00.000Z',
+        sessions: [{ dateTime: '2030-06-15T14:00:00.000Z' }],
+        registrationClosesAt: undefined,
         durationMinutes: 120,
         capacity: 8,
         spotsRemaining: 5, // 8 - 3
@@ -82,9 +143,13 @@ describe('Class domain helpers', () => {
       expect(toPublicClass(baseClass, undefined, undefined, 10).spotsRemaining).toBe(0);
     });
 
-    it('converts dateTime to ISO string', () => {
-      const result = toPublicClass(baseClass);
-      expect(result.dateTime).toBe('2030-06-15T14:00:00.000Z');
+    it('converts sessions to ISO strings', () => {
+      const result = toPublicClass(multiSessionClass);
+      expect(result.sessions).toEqual([
+        { dateTime: '2030-06-15T14:00:00.000Z' },
+        { dateTime: '2030-06-22T14:00:00.000Z' },
+        { dateTime: '2030-06-29T14:00:00.000Z' },
+      ]);
     });
   });
 
@@ -112,11 +177,11 @@ describe('Class domain helpers', () => {
       vi.useRealTimers();
     });
 
-    it('returns true for published class in the future', () => {
+    it('returns true for published class with future first session', () => {
       const futureClass: Class = {
         ...baseClass,
         status: 'published',
-        dateTime: new Date('2025-06-15T14:00:00Z'),
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
       };
       expect(isClassRegistrationOpen(futureClass)).toBe(true);
     });
@@ -125,7 +190,7 @@ describe('Class domain helpers', () => {
       const draftClass: Class = {
         ...baseClass,
         status: 'draft',
-        dateTime: new Date('2025-06-15T14:00:00Z'),
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
       };
       expect(isClassRegistrationOpen(draftClass)).toBe(false);
     });
@@ -134,7 +199,7 @@ describe('Class domain helpers', () => {
       const cancelledClass: Class = {
         ...baseClass,
         status: 'cancelled',
-        dateTime: new Date('2025-06-15T14:00:00Z'),
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
       };
       expect(isClassRegistrationOpen(cancelledClass)).toBe(false);
     });
@@ -143,18 +208,39 @@ describe('Class domain helpers', () => {
       const completedClass: Class = {
         ...baseClass,
         status: 'completed',
-        dateTime: new Date('2025-06-15T14:00:00Z'),
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
       };
       expect(isClassRegistrationOpen(completedClass)).toBe(false);
     });
 
-    it('returns false for published class in the past', () => {
+    it('returns false for published class with past first session', () => {
       const pastClass: Class = {
         ...baseClass,
         status: 'published',
-        dateTime: new Date('2024-06-15T14:00:00Z'),
+        sessions: [{ dateTime: new Date('2024-06-15T14:00:00Z') }],
       };
       expect(isClassRegistrationOpen(pastClass)).toBe(false);
+    });
+
+    it('uses registrationClosesAt when set', () => {
+      // First session is future, but registrationClosesAt is in the past
+      const closedClass: Class = {
+        ...baseClass,
+        status: 'published',
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
+        registrationClosesAt: new Date('2024-12-01T00:00:00Z'),
+      };
+      expect(isClassRegistrationOpen(closedClass)).toBe(false);
+    });
+
+    it('is open when registrationClosesAt is in the future', () => {
+      const openClass: Class = {
+        ...baseClass,
+        status: 'published',
+        sessions: [{ dateTime: new Date('2025-06-15T14:00:00Z') }],
+        registrationClosesAt: new Date('2025-06-01T00:00:00Z'),
+      };
+      expect(isClassRegistrationOpen(openClass)).toBe(true);
     });
   });
 
@@ -174,31 +260,71 @@ describe('Class domain helpers', () => {
     });
   });
 
-  describe('getClassEndTime', () => {
+  describe('getSessionEndTime', () => {
     it('calculates end time correctly', () => {
-      const result = getClassEndTime(baseClass);
-      // 14:00 + 120 minutes = 16:00
+      const session: ClassSession = { dateTime: new Date('2030-06-15T14:00:00Z') };
+      const result = getSessionEndTime(session, 120);
       expect(result).toEqual(new Date('2030-06-15T16:00:00.000Z'));
     });
 
-    it('handles 30-minute class', () => {
-      const shortClass: Class = {
-        ...baseClass,
-        dateTime: new Date('2030-06-15T10:00:00Z'),
-        durationMinutes: 30,
-      };
-      const result = getClassEndTime(shortClass);
+    it('handles 30-minute session', () => {
+      const session: ClassSession = { dateTime: new Date('2030-06-15T10:00:00Z') };
+      const result = getSessionEndTime(session, 30);
       expect(result).toEqual(new Date('2030-06-15T10:30:00.000Z'));
     });
 
-    it('handles 8-hour class', () => {
-      const longClass: Class = {
-        ...baseClass,
-        dateTime: new Date('2030-06-15T09:00:00Z'),
-        durationMinutes: 480,
-      };
-      const result = getClassEndTime(longClass);
+    it('handles 8-hour session', () => {
+      const session: ClassSession = { dateTime: new Date('2030-06-15T09:00:00Z') };
+      const result = getSessionEndTime(session, 480);
       expect(result).toEqual(new Date('2030-06-15T17:00:00.000Z'));
+    });
+  });
+
+  describe('formatSessions', () => {
+    it('returns empty strings for empty sessions', () => {
+      const result = formatSessions([]);
+      expect(result).toEqual({
+        dateDisplay: '',
+        timeDisplay: '',
+        sharedTime: true,
+      });
+    });
+
+    it('formats a single session', () => {
+      const result = formatSessions(
+        [{ dateTime: new Date('2030-06-15T18:00:00Z') }],
+        'America/New_York'
+      );
+      // 18:00 UTC = 2:00 PM ET
+      expect(result.sharedTime).toBe(true);
+      expect(result.dateDisplay).toContain('Jun');
+      expect(result.dateDisplay).toContain('15');
+    });
+
+    it('detects shared time across sessions', () => {
+      const result = formatSessions(
+        [
+          { dateTime: new Date('2030-06-15T18:00:00Z') },
+          { dateTime: new Date('2030-06-22T18:00:00Z') },
+        ],
+        'America/New_York'
+      );
+      expect(result.sharedTime).toBe(true);
+      // Both dates should be listed
+      expect(result.dateDisplay).toContain('Jun 15');
+      expect(result.dateDisplay).toContain('Jun 22');
+    });
+
+    it('detects different times across sessions', () => {
+      const result = formatSessions(
+        [
+          { dateTime: new Date('2030-06-15T18:00:00Z') },
+          { dateTime: new Date('2030-06-22T19:00:00Z') },
+        ],
+        'America/New_York'
+      );
+      expect(result.sharedTime).toBe(false);
+      expect(result.timeDisplay).toBe('Varies');
     });
   });
 });
