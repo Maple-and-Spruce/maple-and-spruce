@@ -16,6 +16,7 @@ import {
 import Grid from '@mui/material/Grid2';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BusinessIcon from '@mui/icons-material/Business';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import EventIcon from '@mui/icons-material/Event';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
@@ -24,7 +25,9 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import LanguageIcon from '@mui/icons-material/Language';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import PhoneIcon from '@mui/icons-material/Phone';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import SchoolIcon from '@mui/icons-material/School';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
@@ -44,6 +47,9 @@ const quickLinks = [
   { label: 'Firebase', href: 'https://console.firebase.google.com', icon: AdminPanelSettingsIcon, color: '#f5820d' },
   { label: 'Vercel', href: 'https://vercel.com/dashboard', icon: RocketLaunchIcon, color: '#000000' },
   { label: 'Google Voice', href: 'https://voice.google.com', icon: PhoneIcon, color: '#34a853' },
+  { label: 'Hope Scholarship', href: 'https://app.hopescholarshipwv.com/esa/esa_vendor_admin/landing', icon: SchoolIcon, color: '#b71c1c' },
+  { label: 'WV MyTaxes', href: 'https://mytaxes.wvtax.gov', icon: ReceiptLongIcon, color: '#0b6e4f' },
+  { label: 'Apple Business', href: 'https://business.apple.com/main/home', icon: BusinessIcon, color: '#555555' },
 ];
 
 /** Format a date as "Mon, Mar 23" */
