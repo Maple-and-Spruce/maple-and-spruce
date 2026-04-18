@@ -1,0 +1,23 @@
+{
+  "name": "functions-integration-tests-student",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-student/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-student",
+    "firebase-maple-functions-get-students",
+    "firebase-maple-functions-get-student",
+    "firebase-maple-functions-update-student",
+    "firebase-maple-functions-delete-student",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-student/vitest.config.ts"
+      }
+    }
+  }
+}

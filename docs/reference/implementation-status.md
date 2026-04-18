@@ -165,6 +165,22 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | `findByConfirmationNumber` repository method | **Complete** | `libs/firebase/database/src/lib/registration.repository.ts` |
 | Frontend lookup/cancel page | Not Started | #199 |
 
+## Phase 4: Music Lessons - Epic #10
+
+### Student Records (#278, backend in progress)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Student domain type (w/ Instrument + LessonLength enums) | **Complete** | `libs/ts/domain/src/lib/student.ts` |
+| Student validation (Vest) | **Complete** | `libs/ts/validation/src/lib/student.validation.ts` |
+| StudentRepository | **Complete** | `libs/firebase/database/src/lib/student.repository.ts` |
+| Student API types | **Complete** | `libs/ts/firebase/api-types/src/lib/student.types.ts` |
+| Student CRUD Cloud Functions (5) | **Complete** | `libs/firebase/maple-functions/{create,get,get-list,update,delete}-student/` |
+| Student unit + integration tests | **Complete** | `libs/ts/{domain,validation}/src/lib/student*.spec.ts`, `apps/functions-integration-tests-student/` |
+| useStudents hook | Not Started | #278 |
+| Student list/form/detail components | Not Started | #278 |
+| Admin /students page + nav | Not Started | #278 |
+
 ## Phase 4.5: Calendar System (Complete)
 
 | Feature | Status | Location |

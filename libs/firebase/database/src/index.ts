@@ -22,6 +22,9 @@ export {
   type RegistrationFilters,
 } from './lib/registration.repository';
 
+// Phase 4: Music Lessons
+export { StudentRepository } from './lib/student.repository';
+
 // Phase 4.5: Calendar
 export {
   CalendarEventRepository,

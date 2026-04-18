@@ -21,6 +21,9 @@ export * from './lib/registration';
 export * from './lib/discount';
 export * from './lib/tax';
 
+// Phase 4: Music Lessons
+export * from './lib/student';
+
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';
 export * from './lib/calendar-embed-config';
