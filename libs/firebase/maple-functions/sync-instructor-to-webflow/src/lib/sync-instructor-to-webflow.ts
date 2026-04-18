@@ -91,12 +91,16 @@ export const syncInstructorToWebflow = onDocumentWritten(
 
     const webflow = new Webflow(secrets, strings);
 
+    const isDev = FirebaseProject.isDev;
+    const shouldPublish = !isDev;
+
     try {
       // Case 1: Instructor deleted
       if (!afterInstructor) {
         console.log('Instructor deleted, removing from Webflow');
         const removed = await webflow.instructorService.removeInstructor(
-          event.params.instructorId
+          event.params.instructorId,
+          shouldPublish
         );
         console.log(
           removed
@@ -112,7 +116,10 @@ export const syncInstructorToWebflow = onDocumentWritten(
         afterInstructor.status !== 'active'
       ) {
         console.log('Instructor became inactive, removing from Webflow');
-        const removed = await webflow.instructorService.removeInstructor(afterInstructor.id);
+        const removed = await webflow.instructorService.removeInstructor(
+          afterInstructor.id,
+          shouldPublish
+        );
         console.log(
           removed
             ? 'Successfully removed from Webflow'
@@ -130,8 +137,6 @@ export const syncInstructorToWebflow = onDocumentWritten(
       // Case 4: Instructor is active - sync to Webflow
       // Auto-publish only in prod
       // Dev items are never published - they stay as drafts with is-dev-environment=true
-      const isDev = FirebaseProject.isDev;
-      const shouldPublish = !isDev;
       console.log('Syncing active instructor to Webflow:', {
         name: afterInstructor.name,
         isDev,

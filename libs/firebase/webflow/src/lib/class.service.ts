@@ -277,15 +277,24 @@ export class ClassService {
 
   /**
    * Remove a class from Webflow CMS.
+   * When publish=true, uses deleteItemLive so the deletion is reflected on
+   * the live site without a manual republish.
    */
-  async removeClass(firebaseId: string): Promise<boolean> {
+  async removeClass(firebaseId: string, publish = false): Promise<boolean> {
     const existingItem = await this.findByFirebaseId(firebaseId);
     if (!existingItem) return false;
 
-    await this.client.collections.items.deleteItem(
-      this.collectionId,
-      existingItem.id
-    );
+    if (publish) {
+      await this.client.collections.items.deleteItemLive(
+        this.collectionId,
+        existingItem.id
+      );
+    } else {
+      await this.client.collections.items.deleteItem(
+        this.collectionId,
+        existingItem.id
+      );
+    }
     return true;
   }
 
