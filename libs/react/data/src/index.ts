@@ -9,6 +9,9 @@ export { useInstructors } from './lib/useInstructors';
 export { useClasses, type UseClassesFilters } from './lib/useClasses';
 export { useClassCategories } from './lib/useClassCategories';
 
+// Phase 4: Music Lessons
+export { useStudents } from './lib/useStudents';
+
 // Phase 4.5: Calendar
 export {
   useCalendarEvents,
