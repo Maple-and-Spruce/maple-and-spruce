@@ -68,8 +68,9 @@ run emulators simultaneously.
 | Mock HTTP server  | 9999    | 10009            |
 
 `tools/bootstrap-worktree.sh` picks an offset deterministically from the
-branch name (`cksum` → mod 50 → ×10 + 10), so the same branch always uses
-the same offset across machines.
+branch name (`cksum` → mod 500 → ×10 + 10), so the same branch always
+uses the same offset across machines. 500 slots keeps collisions rare
+(~28 simultaneous branches to a 50% birthday-collision chance).
 
 ### Running integration tests in a worktree
 
@@ -114,6 +115,23 @@ git branch -D feature/my-change  # if you want to drop the branch too
 
 `.claude/worktrees` is gitignored, so orphaned directories there never
 pollute commits — but `git worktree prune` is the clean way to reconcile.
+
+## Firebase hub/logging ports: harmless auto-increment
+
+The Firebase CLI starts an internal hub (default 4400) and logging port
+(4500) that aren't exposed in `firebase.json`'s `emulators` section. When
+you run a second emulator suite, the CLI auto-increments them to 4401 /
+4501 and prints:
+
+```
+⚠  emulators: It seems that you are running multiple instances of the
+   emulator suite for project maple-and-spruce-dev. This may result in
+   unexpected behavior.
+```
+
+This warning is paranoid but harmless for the per-worktree case —
+verified: both trees serve independent Firestore data on their shifted
+ports. Ignore the warning.
 
 ## Troubleshooting
 

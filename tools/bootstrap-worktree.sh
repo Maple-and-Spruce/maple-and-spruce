@@ -56,9 +56,10 @@ fi
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 # Deterministic offset derived from branch name.
-# Range: 10..500 in steps of 10, away from the default ports at offset 0.
+# Range: 10..5000 in steps of 10, away from the default ports at offset 0.
+# 500 slots keeps birthday collisions rare (~28 branches to 50% collision).
 hash="$(printf '%s' "$branch" | cksum | awk '{print $1}')"
-offset=$(( (hash % 50) * 10 + 10 ))
+offset=$(( (hash % 500) * 10 + 10 ))
 
 if [ ! -f ".env.dev" ]; then
   echo "Missing .env.dev — expected to be committed. Re-check your worktree." >&2
