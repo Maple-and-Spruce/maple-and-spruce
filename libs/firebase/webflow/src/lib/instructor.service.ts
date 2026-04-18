@@ -184,21 +184,34 @@ export class InstructorService {
 
   /**
    * Remove an instructor from Webflow CMS.
+   * When publish=true, uses deleteItemLive so the deletion is reflected on
+   * the live site without a manual republish.
    *
    * @param firebaseId - Firebase instructor ID
+   * @param publish - Whether to also publish the deletion to the live site
    * @returns True if deleted, false if not found
    */
-  async removeInstructor(firebaseId: string): Promise<boolean> {
+  async removeInstructor(
+    firebaseId: string,
+    publish = false
+  ): Promise<boolean> {
     const existingItem = await this.findByFirebaseId(firebaseId);
 
     if (!existingItem) {
       return false;
     }
 
-    await this.client.collections.items.deleteItem(
-      this.collectionId,
-      existingItem.id
-    );
+    if (publish) {
+      await this.client.collections.items.deleteItemLive(
+        this.collectionId,
+        existingItem.id
+      );
+    } else {
+      await this.client.collections.items.deleteItem(
+        this.collectionId,
+        existingItem.id
+      );
+    }
 
     return true;
   }

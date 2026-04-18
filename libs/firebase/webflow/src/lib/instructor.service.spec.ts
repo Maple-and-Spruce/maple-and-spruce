@@ -163,6 +163,7 @@ function createMockClient() {
         createItem: vi.fn(),
         updateItem: vi.fn(),
         deleteItem: vi.fn(),
+        deleteItemLive: vi.fn(),
         publishItem: vi.fn(),
       },
     },
@@ -190,6 +191,7 @@ describe('InstructorService', () => {
       createItem: ReturnType<typeof vi.fn>;
       updateItem: ReturnType<typeof vi.fn>;
       deleteItem: ReturnType<typeof vi.fn>;
+      deleteItemLive: ReturnType<typeof vi.fn>;
       publishItem: ReturnType<typeof vi.fn>;
     };
 
@@ -286,6 +288,53 @@ describe('InstructorService', () => {
       expect(items().deleteItem).toHaveBeenCalledWith(collectionId, 'wf-del');
     });
 
+    it('defaults to staged delete (deleteItem, not deleteItemLive)', async () => {
+      items().listItems.mockResolvedValue({
+        items: [
+          { id: 'wf-staged', fieldData: { 'firebase-id': 'inst-001' } },
+        ],
+      });
+      items().deleteItem.mockResolvedValue({});
+
+      await service.removeInstructor('inst-001');
+
+      expect(items().deleteItem).toHaveBeenCalledTimes(1);
+      expect(items().deleteItemLive).not.toHaveBeenCalled();
+    });
+
+    it('uses deleteItemLive when publish=true to auto-publish removal', async () => {
+      items().listItems.mockResolvedValue({
+        items: [{ id: 'wf-live', fieldData: { 'firebase-id': 'inst-001' } }],
+      });
+      items().deleteItemLive.mockResolvedValue({});
+
+      const result = await service.removeInstructor('inst-001', true);
+
+      expect(result).toBe(true);
+      expect(items().deleteItemLive).toHaveBeenCalledWith(
+        collectionId,
+        'wf-live'
+      );
+      expect(items().deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('uses deleteItem when publish=false', async () => {
+      items().listItems.mockResolvedValue({
+        items: [
+          { id: 'wf-staged', fieldData: { 'firebase-id': 'inst-001' } },
+        ],
+      });
+      items().deleteItem.mockResolvedValue({});
+
+      await service.removeInstructor('inst-001', false);
+
+      expect(items().deleteItem).toHaveBeenCalledWith(
+        collectionId,
+        'wf-staged'
+      );
+      expect(items().deleteItemLive).not.toHaveBeenCalled();
+    });
+
     it('returns false when instructor not found in Webflow', async () => {
       items().listItems.mockResolvedValue({ items: [] });
 
@@ -293,6 +342,16 @@ describe('InstructorService', () => {
 
       expect(result).toBe(false);
       expect(items().deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('does not call any delete when publish=true and item not found', async () => {
+      items().listItems.mockResolvedValue({ items: [] });
+
+      const result = await service.removeInstructor('nonexistent', true);
+
+      expect(result).toBe(false);
+      expect(items().deleteItem).not.toHaveBeenCalled();
+      expect(items().deleteItemLive).not.toHaveBeenCalled();
     });
   });
 
