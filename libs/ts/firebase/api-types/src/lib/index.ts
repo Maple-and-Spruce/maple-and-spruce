@@ -229,6 +229,20 @@ export type {
   CreateRegistrationResponse,
 } from './registration.types';
 
+// Phase 4: Music Lessons - Student types
+export type {
+  GetStudentsRequest,
+  GetStudentsResponse,
+  GetStudentRequest,
+  GetStudentResponse,
+  CreateStudentRequest,
+  CreateStudentResponse,
+  UpdateStudentRequest,
+  UpdateStudentResponse,
+  DeleteStudentRequest,
+  DeleteStudentResponse,
+} from './student.types';
+
 // Calendar Embed Config types
 export type {
   GetCalendarEmbedConfigRequest,

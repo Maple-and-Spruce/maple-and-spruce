@@ -134,6 +134,21 @@
       "@maple/firebase/maple-functions/delete-instructor": [
         "libs/firebase/maple-functions/delete-instructor/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-students": [
+        "libs/firebase/maple-functions/get-students/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-student": [
+        "libs/firebase/maple-functions/get-student/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-student": [
+        "libs/firebase/maple-functions/create-student/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-student": [
+        "libs/firebase/maple-functions/update-student/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-student": [
+        "libs/firebase/maple-functions/delete-student/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-classes": [
         "libs/firebase/maple-functions/get-classes/src/index.ts"
       ],
