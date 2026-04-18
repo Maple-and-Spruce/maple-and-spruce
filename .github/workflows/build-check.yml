@@ -138,6 +138,38 @@ jobs:
       - name: Build functions
         run: pnpm exec nx run functions:build
 
+  webflow-components-typecheck:
+    name: Webflow Components Typecheck
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      # Webflow's CLI `library bundle` command is broken upstream with
+      # current webpack / Module Federation transitive versions (fails
+      # with "no files found for remoteEntry chunk"). The actual
+      # `library share` command on merge has its own working pipeline.
+      # A typecheck is the best PR-time gate we have against shipping
+      # broken component code.
+      - name: Typecheck webflow components
+        run: pnpm exec tsc --noEmit -p apps/webflow-components/tsconfig.json
+
   unit-tests:
     name: Unit Tests & Coverage
     needs: [install]

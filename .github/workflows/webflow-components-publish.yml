@@ -1,0 +1,37 @@
+name: Publish Webflow Components on merge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/webflow-components/**'
+  workflow_dispatch: {}
+
+env:
+  NX_DAEMON: 'false'
+
+jobs:
+  publish:
+    name: Publish library to Webflow Workspace
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Share webflow components library
+        env:
+          WEBFLOW_WORKSPACE_API_TOKEN: ${{ secrets.WEBFLOW_WORKSPACE_API_TOKEN }}
+        run: pnpm exec webflow library share --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
