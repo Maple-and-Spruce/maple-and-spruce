@@ -1,7 +1,16 @@
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 
 export default defineConfig({
   root: __dirname,
+  resolve: {
+    // Point @maple/react/signals at the real lib entry so vitest can
+    // resolve it without a full tsconfig-paths plugin. Tests can still
+    // mock specific exports via vi.mock.
+    alias: {
+      '@maple/react/signals': path.resolve(__dirname, '../signals/src/index.ts'),
+    },
+  },
   test: {
     name: 'react-registrations',
     globals: true,
