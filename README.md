@@ -34,6 +34,9 @@ npx nx dev maple-spruce
 # Open http://localhost:3000
 ```
 
+Working in a git worktree? See [docs/guides/worktree-setup.md](docs/guides/worktree-setup.md)
+for port isolation so emulators and tests run in parallel trees.
+
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 19, MUI
