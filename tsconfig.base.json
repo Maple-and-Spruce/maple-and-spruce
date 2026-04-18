@@ -252,6 +252,7 @@
         "libs/firebase/maple-functions/on-class-write/src/index.ts"
       ],
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
+      "@maple/react/students": ["libs/react/students/src/index.ts"],
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],

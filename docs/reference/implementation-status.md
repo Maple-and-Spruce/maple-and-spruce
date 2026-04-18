@@ -167,7 +167,7 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 ## Phase 4: Music Lessons - Epic #10
 
-### Student Records (#278, backend in progress)
+### Student Records (#278, Complete)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -177,9 +177,10 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | Student API types | **Complete** | `libs/ts/firebase/api-types/src/lib/student.types.ts` |
 | Student CRUD Cloud Functions (5) | **Complete** | `libs/firebase/maple-functions/{create,get,get-list,update,delete}-student/` |
 | Student unit + integration tests | **Complete** | `libs/ts/{domain,validation}/src/lib/student*.spec.ts`, `apps/functions-integration-tests-student/` |
-| useStudents hook | Not Started | #278 |
-| Student list/form/detail components | Not Started | #278 |
-| Admin /students page + nav | Not Started | #278 |
+| useStudents hook | **Complete** | `libs/react/data/src/lib/useStudents.ts` |
+| StudentList + StudentForm (Preact signals, Vest) | **Complete** | `libs/react/students/src/lib/` |
+| Storybook interaction tests (24) | **Complete** | `libs/react/students/src/lib/*.stories.tsx` |
+| Admin /students page + Music Lessons nav group | **Complete** | `apps/maple-spruce/src/app/students/page.tsx`, `AppShellWrapper.tsx` |
 
 ## Phase 4.5: Calendar System (Complete)
 
