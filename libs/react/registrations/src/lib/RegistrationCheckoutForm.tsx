@@ -118,6 +118,11 @@ export function RegistrationCheckoutForm({
   // Tokenize ref from SquareCardForm
   const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
 
+  // Synchronous submit guard. setState is async, so during a cold start
+  // rapid double-clicks can both enter handleSubmit before the button
+  // re-renders as disabled — which has caused duplicate charges.
+  const isSubmittingRef = useRef(false);
+
   // Calculate initial cost on mount
   useEffect(() => {
     calculateCost(quantity, '');
@@ -174,26 +179,27 @@ export function RegistrationCheckoutForm({
   }, [quantity, discountCode, calculateCost]);
 
   const handleSubmit = useCallback(async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setSubmitError(null);
 
-    // Basic validation
-    if (!customerName.trim()) {
-      setSubmitError('Please enter your name');
-      return;
-    }
-    if (!customerEmail.trim() || !customerEmail.includes('@')) {
-      setSubmitError('Please enter a valid email address');
-      return;
-    }
-
-    if (!tokenizeRef.current) {
-      setSubmitError('Payment form not ready. Please wait and try again.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
     try {
+      // Basic validation
+      if (!customerName.trim()) {
+        setSubmitError('Please enter your name');
+        return;
+      }
+      if (!customerEmail.trim() || !customerEmail.includes('@')) {
+        setSubmitError('Please enter a valid email address');
+        return;
+      }
+
+      if (!tokenizeRef.current) {
+        setSubmitError('Payment form not ready. Please wait and try again.');
+        return;
+      }
+
       // Tokenize the card
       const nonce = await tokenizeRef.current();
 
@@ -220,6 +226,7 @@ export function RegistrationCheckoutForm({
       setSubmitError(extractErrorMessage(error));
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   }, [
     customerName,
