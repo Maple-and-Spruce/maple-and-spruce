@@ -6,6 +6,11 @@ let _mapleFunctions: ReturnType<typeof getFunctions> | undefined;
 // Functions are deployed to us-east4 (Northern Virginia - close to WV business)
 const FUNCTIONS_REGION = 'us-east4';
 
+const EMULATOR_PORT = parseInt(
+  process.env['NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT'] ?? '5001',
+  10,
+);
+
 export const getMapleFunctions = () => {
   if (!_mapleFunctions) {
     _mapleFunctions = getFunctions(getMapleApp(), FUNCTIONS_REGION);
@@ -17,7 +22,7 @@ export const getMapleFunctions = () => {
       (window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1')
     ) {
-      connectFunctionsEmulator(_mapleFunctions, 'localhost', 5001);
+      connectFunctionsEmulator(_mapleFunctions, 'localhost', EMULATOR_PORT);
     }
   }
   return _mapleFunctions;

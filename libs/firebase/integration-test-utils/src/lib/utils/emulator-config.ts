@@ -1,10 +1,20 @@
+const OFFSET = parseInt(process.env['EMULATOR_PORT_OFFSET'] ?? '0', 10);
+
+const FUNCTIONS_PORT = 5001 + OFFSET;
+const FIRESTORE_PORT = 8080 + OFFSET;
+const AUTH_PORT = 9099 + OFFSET;
+const ORIGIN_PORT = 3000 + OFFSET;
+const MOCK_SERVER_PORT = 9999 + OFFSET;
+
 export const EMULATOR_CONFIG = {
   projectId: 'maple-and-spruce-dev',
-  functionsHost: 'http://localhost:5001',
-  firestoreHost: 'localhost:8080',
-  authHost: 'localhost:9099',
+  functionsHost: `http://localhost:${FUNCTIONS_PORT}`,
+  firestoreHost: `localhost:${FIRESTORE_PORT}`,
+  authHost: `localhost:${AUTH_PORT}`,
   region: 'us-east4',
-  origin: 'http://localhost:3000',
+  origin: `http://localhost:${ORIGIN_PORT}`,
+  mockServerUrl: `http://localhost:${MOCK_SERVER_PORT}`,
+  portOffset: OFFSET,
 } as const;
 
 export function getFunctionUrl(functionName: string): string {
