@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -9,6 +9,12 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import {
+  useSignal,
+  useComputed,
+  useSignals,
+  batch,
+} from '@maple/react/signals';
 import { SquareCardForm } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
 import type { PublicClass } from '@maple/ts/domain';
@@ -96,137 +102,148 @@ export function RegistrationCheckoutForm({
   onSubmit,
   onSuccess,
 }: RegistrationCheckoutFormProps) {
+  useSignals();
+
   // Customer info
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [discountCode, setDiscountCode] = useState('');
-  const [notes, setNotes] = useState('');
+  const customerName = useSignal('');
+  const customerEmail = useSignal('');
+  const customerPhone = useSignal('');
+  const quantity = useSignal(1);
+  const discountCode = useSignal('');
+  const notes = useSignal('');
 
   // Cost state
-  const [costBreakdown, setCostBreakdown] =
-    useState<CalculateRegistrationCostResponse | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [discountApplied, setDiscountApplied] = useState(false);
+  const costBreakdown = useSignal<CalculateRegistrationCostResponse | null>(
+    null
+  );
+  const isCalculating = useSignal(false);
 
-  // Form state
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isCardReady, setIsCardReady] = useState(false);
+  // Form state — isSubmitting is a signal, not React state, so mutations
+  // are synchronous. Setting it to true at the top of handleSubmit both
+  // flips the button to its disabled state immediately AND short-circuits
+  // any re-entrant call from a rapid second click, which is the race that
+  // caused duplicate charges.
+  const isSubmitting = useSignal(false);
+  const submitError = useSignal<string | null>(null);
+  const isCardReady = useSignal(false);
+  const quantityWarning = useSignal<string | null>(null);
 
-  // Tokenize ref from SquareCardForm
+  // Derived state — guaranteed in sync with its inputs.
+  const isFull = useComputed(() => publicClass.spotsRemaining <= 0);
+  const maxQuantity = useComputed(() =>
+    Math.min(10, publicClass.spotsRemaining)
+  );
+  const discountApplied = useComputed(
+    () => (costBreakdown.value?.discountAmountCents ?? 0) > 0
+  );
+  const isButtonDisabled = useComputed(
+    () => isSubmitting.value || !isCardReady.value || isFull.value
+  );
+
+  // Tokenize ref from SquareCardForm — a function handle, not state.
   const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
-
-  // Synchronous submit guard. setState is async, so during a cold start
-  // rapid double-clicks can both enter handleSubmit before the button
-  // re-renders as disabled — which has caused duplicate charges.
-  const isSubmittingRef = useRef(false);
-
-  // Calculate initial cost on mount
-  useEffect(() => {
-    calculateCost(quantity, '');
-  }, []);
 
   const calculateCost = useCallback(
     async (qty: number, code: string) => {
-      setIsCalculating(true);
+      isCalculating.value = true;
       try {
         const result = await onCalculateCost(
           publicClass.id,
           qty,
           code || undefined
         );
-        setCostBreakdown(result);
-        setDiscountApplied(!!result.discountAmountCents && result.discountAmountCents > 0);
+        costBreakdown.value = result;
       } catch (error) {
         console.error('Failed to calculate cost:', error);
       } finally {
-        setIsCalculating(false);
+        isCalculating.value = false;
       }
     },
-    [publicClass.id, onCalculateCost]
+    [publicClass.id, onCalculateCost, isCalculating, costBreakdown]
   );
 
-  const isFull = publicClass.spotsRemaining <= 0;
-  const maxQuantity = Math.min(10, publicClass.spotsRemaining);
-
-  const [quantityWarning, setQuantityWarning] = useState<string | null>(null);
+  // Calculate initial cost on mount
+  useEffect(() => {
+    calculateCost(quantity.value, '');
+  }, []);
 
   const handleQuantityChange = useCallback(
     (newQuantity: number) => {
-      if (newQuantity > maxQuantity) {
-        setQuantityWarning(
-          `Only ${maxQuantity} spot${maxQuantity === 1 ? '' : 's'} available. Quantity set to ${maxQuantity}.`
-        );
-        const qty = maxQuantity;
-        setQuantity(qty);
-        calculateCost(qty, discountCode);
+      const max = maxQuantity.value;
+      if (newQuantity > max) {
+        batch(() => {
+          quantityWarning.value = `Only ${max} spot${max === 1 ? '' : 's'} available. Quantity set to ${max}.`;
+          quantity.value = max;
+        });
+        calculateCost(max, discountCode.value);
       } else {
-        setQuantityWarning(null);
         const qty = Math.max(1, newQuantity);
-        setQuantity(qty);
-        calculateCost(qty, discountCode);
+        batch(() => {
+          quantityWarning.value = null;
+          quantity.value = qty;
+        });
+        calculateCost(qty, discountCode.value);
       }
     },
-    [discountCode, calculateCost, maxQuantity]
+    [calculateCost, discountCode, maxQuantity, quantity, quantityWarning]
   );
 
   const handleApplyDiscount = useCallback(() => {
-    if (discountCode.trim()) {
-      calculateCost(quantity, discountCode.trim());
+    const code = discountCode.value.trim();
+    if (code) {
+      calculateCost(quantity.value, code);
     }
   }, [quantity, discountCode, calculateCost]);
 
   const handleSubmit = useCallback(async () => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    setSubmitError(null);
+    // Synchronous re-entry check: signal writes are immediate, so a
+    // second click that arrives before React re-renders still sees
+    // isSubmitting.value === true and bails out.
+    if (isSubmitting.value) return;
+    isSubmitting.value = true;
+    submitError.value = null;
 
     try {
-      // Basic validation
-      if (!customerName.trim()) {
-        setSubmitError('Please enter your name');
+      if (!customerName.value.trim()) {
+        submitError.value = 'Please enter your name';
         return;
       }
-      if (!customerEmail.trim() || !customerEmail.includes('@')) {
-        setSubmitError('Please enter a valid email address');
+      if (
+        !customerEmail.value.trim() ||
+        !customerEmail.value.includes('@')
+      ) {
+        submitError.value = 'Please enter a valid email address';
         return;
       }
-
       if (!tokenizeRef.current) {
-        setSubmitError('Payment form not ready. Please wait and try again.');
+        submitError.value = 'Payment form not ready. Please wait and try again.';
         return;
       }
 
-      // Tokenize the card
       const nonce = await tokenizeRef.current();
 
-      // Submit registration
       const result = await onSubmit({
         classId: publicClass.id,
-        customerEmail: customerEmail.trim(),
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim() || undefined,
-        quantity,
-        discountCode: discountCode.trim() || undefined,
-        notes: notes.trim() || undefined,
+        customerEmail: customerEmail.value.trim(),
+        customerName: customerName.value.trim(),
+        customerPhone: customerPhone.value.trim() || undefined,
+        quantity: quantity.value,
+        discountCode: discountCode.value.trim() || undefined,
+        notes: notes.value.trim() || undefined,
         paymentNonce: nonce,
       });
 
       onSuccess({
         confirmationNumber: result.confirmationNumber,
-        customerName: customerName.trim(),
-        customerEmail: customerEmail.trim(),
+        customerName: customerName.value.trim(),
+        customerEmail: customerEmail.value.trim(),
         pricePaidCents: result.registration.pricePaidCents,
-        quantity,
+        quantity: quantity.value,
       });
     } catch (error) {
-      setSubmitError(extractErrorMessage(error));
+      submitError.value = extractErrorMessage(error);
     } finally {
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
+      isSubmitting.value = false;
     }
   }, [
     customerName,
@@ -238,17 +255,19 @@ export function RegistrationCheckoutForm({
     publicClass.id,
     onSubmit,
     onSuccess,
+    isSubmitting,
+    submitError,
   ]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {submitError && (
-        <Alert severity="error" onClose={() => setSubmitError(null)}>
-          {submitError}
+      {submitError.value && (
+        <Alert severity="error" onClose={() => (submitError.value = null)}>
+          {submitError.value}
         </Alert>
       )}
 
-      {isFull && (
+      {isFull.value && (
         <Alert severity="warning">
           This class is full. Registration is not available at this time.
         </Alert>
@@ -262,16 +281,16 @@ export function RegistrationCheckoutForm({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
             label="Full Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
+            value={customerName.value}
+            onChange={(e) => (customerName.value = e.target.value)}
             required
             fullWidth
           />
           <TextField
             label="Email Address"
             type="email"
-            value={customerEmail}
-            onChange={(e) => setCustomerEmail(e.target.value)}
+            value={customerEmail.value}
+            onChange={(e) => (customerEmail.value = e.target.value)}
             required
             fullWidth
             helperText="Confirmation will be sent to this address"
@@ -279,9 +298,9 @@ export function RegistrationCheckoutForm({
           <TextField
             label="Phone Number (optional)"
             type="tel"
-            value={customerPhone}
+            value={customerPhone.value}
             onChange={(e) =>
-              setCustomerPhone(formatPhoneNumber(e.target.value))
+              (customerPhone.value = formatPhoneNumber(e.target.value))
             }
             fullWidth
             placeholder="(304) 555-1234"
@@ -289,26 +308,26 @@ export function RegistrationCheckoutForm({
           <TextField
             label="Number of Spots"
             type="number"
-            value={quantity}
+            value={quantity.value}
             onChange={(e) => handleQuantityChange(Number(e.target.value))}
-            inputProps={{ min: 1, max: maxQuantity }}
+            inputProps={{ min: 1, max: maxQuantity.value }}
             fullWidth
-            disabled={isFull}
+            disabled={isFull.value}
             helperText={
-              isFull
+              isFull.value
                 ? 'No spots available'
                 : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available`
             }
           />
-          {quantityWarning && (
+          {quantityWarning.value && (
             <Alert severity="warning" sx={{ mt: 1 }}>
-              {quantityWarning}
+              {quantityWarning.value}
             </Alert>
           )}
           <TextField
             label="Notes (optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={notes.value}
+            onChange={(e) => (notes.value = e.target.value)}
             multiline
             rows={2}
             fullWidth
@@ -325,8 +344,10 @@ export function RegistrationCheckoutForm({
         <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
             label="Enter code"
-            value={discountCode}
-            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+            value={discountCode.value}
+            onChange={(e) =>
+              (discountCode.value = e.target.value.toUpperCase())
+            }
             size="small"
             sx={{ flex: 1 }}
             inputProps={{ style: { fontFamily: 'monospace' } }}
@@ -334,29 +355,29 @@ export function RegistrationCheckoutForm({
           <Button
             variant="outlined"
             onClick={handleApplyDiscount}
-            disabled={!discountCode.trim() || isCalculating}
+            disabled={!discountCode.value.trim() || isCalculating.value}
           >
-            {isCalculating ? <CircularProgress size={20} /> : 'Apply'}
+            {isCalculating.value ? <CircularProgress size={20} /> : 'Apply'}
           </Button>
         </Box>
-        {discountApplied && costBreakdown?.discountDescription && (
+        {discountApplied.value && costBreakdown.value?.discountDescription && (
           <Alert severity="success" sx={{ mt: 1 }}>
-            {costBreakdown.discountDescription} applied!
+            {costBreakdown.value.discountDescription} applied!
           </Alert>
         )}
       </Box>
 
       {/* Cost Summary */}
-      {costBreakdown && (
+      {costBreakdown.value && (
         <CostSummary
-          originalCostCents={costBreakdown.originalCostCents}
-          discountAmountCents={costBreakdown.discountAmountCents}
-          finalCostCents={costBreakdown.finalCostCents}
-          taxAmountCents={costBreakdown.taxAmountCents}
-          taxRatePercent={costBreakdown.taxRatePercent}
-          totalCents={costBreakdown.totalCents}
-          discountDescription={costBreakdown.discountDescription}
-          quantity={quantity}
+          originalCostCents={costBreakdown.value.originalCostCents}
+          discountAmountCents={costBreakdown.value.discountAmountCents}
+          finalCostCents={costBreakdown.value.finalCostCents}
+          taxAmountCents={costBreakdown.value.taxAmountCents}
+          taxRatePercent={costBreakdown.value.taxRatePercent}
+          totalCents={costBreakdown.value.totalCents}
+          discountDescription={costBreakdown.value.discountDescription}
+          quantity={quantity.value}
           pricePerItemCents={publicClass.priceCents}
         />
       )}
@@ -370,7 +391,7 @@ export function RegistrationCheckoutForm({
           applicationId={squareApplicationId}
           locationId={squareLocationId}
           env={env}
-          onReady={() => setIsCardReady(true)}
+          onReady={() => (isCardReady.value = true)}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
           }}
@@ -378,7 +399,7 @@ export function RegistrationCheckoutForm({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || !isCardReady || isFull}
+              disabled={isButtonDisabled.value}
               style={{
                 width: '100%',
                 padding: '14px 24px',
@@ -386,20 +407,18 @@ export function RegistrationCheckoutForm({
                 fontWeight: 600,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 color: '#D5D6C8',
-                backgroundColor:
-                  isSubmitting || !isCardReady || isFull ? '#8a7b6e' : '#4A3728',
+                backgroundColor: isButtonDisabled.value ? '#8a7b6e' : '#4A3728',
                 border: 'none',
                 borderRadius: '8px',
-                cursor:
-                  isSubmitting || !isCardReady || isFull ? 'not-allowed' : 'pointer',
-                opacity: isSubmitting || !isCardReady || isFull ? 0.7 : 1,
+                cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
+                opacity: isButtonDisabled.value ? 0.7 : 1,
                 transition: 'background-color 0.2s, opacity 0.2s',
                 letterSpacing: '0.02em',
               }}
             >
-              {isSubmitting
+              {isSubmitting.value
                 ? 'Processing...'
-                : `Register & Pay ${costBreakdown ? `$${(costBreakdown.totalCents / 100).toFixed(2)}` : ''}`}
+                : `Register & Pay ${costBreakdown.value ? `$${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''}`}
             </button>
           }
         />
