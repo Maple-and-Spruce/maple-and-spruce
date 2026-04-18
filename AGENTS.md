@@ -83,6 +83,7 @@ Local: `/Users/$USER/GitHub/platform`
 | `docs/architecture/SOL-PATTERNS-REFERENCE.md` | Mountain Sol reference patterns |
 | `docs/architecture/ci-cd.md` | CI/CD pipeline details |
 | `docs/guides/environment-setup.md` | Secrets, env detection, webhooks |
+| `docs/guides/worktree-setup.md` | Running in a git worktree w/ port-isolated emulators |
 | `docs/reference/BACKLOG.md` | Future feature ideas |
 
 ## Skills (`.claude/skills/`)
