@@ -5,7 +5,8 @@
  * - GET /collections/:collectionId/items (list items)
  * - POST /collections/:collectionId/items (create item)
  * - PATCH /collections/:collectionId/items/:itemId (update item)
- * - DELETE /collections/:collectionId/items/:itemId (delete item)
+ * - DELETE /collections/:collectionId/items/:itemId (staged delete)
+ * - DELETE /collections/:collectionId/items/:itemId/live (live delete; auto-publishes)
  * - PUT /collections/:collectionId/items/publish (publish items)
  */
 import { MockServer } from '../mock-server.js';
@@ -14,6 +15,12 @@ let itemCounter = 0;
 
 /** In-memory CMS items store, keyed by collection → itemId */
 const collections = new Map<string, Map<string, Record<string, unknown>>>();
+
+/**
+ * Tracks which delete endpoint was used for each item ID.
+ * Integration tests can inspect this to verify prod vs. dev delete behavior.
+ */
+const deleteLog: Array<{ itemId: string; live: boolean }> = [];
 
 function getCollection(
   collectionId: string
@@ -106,12 +113,25 @@ export function registerWebflowRoutes(server: MockServer): void {
     return { status: 200, body: updated };
   });
 
-  // Delete collection item
+  // Delete collection item (live — auto-publishes the removal)
+  // Must be registered before the staged route so the `/live` suffix matches first.
+  server.delete('/collections/:collectionId/items/:itemId/live', (req) => {
+    const collectionId = req.params['collectionId'];
+    const itemId = req.params['itemId'];
+    const collection = getCollection(collectionId);
+    collection.delete(itemId);
+    deleteLog.push({ itemId, live: true });
+
+    return { status: 204, body: {} };
+  });
+
+  // Delete collection item (staged — requires a separate publish to go live)
   server.delete('/collections/:collectionId/items/:itemId', (req) => {
     const collectionId = req.params['collectionId'];
     const itemId = req.params['itemId'];
     const collection = getCollection(collectionId);
     collection.delete(itemId);
+    deleteLog.push({ itemId, live: false });
 
     return { status: 204, body: {} };
   });
@@ -144,4 +164,16 @@ export function registerWebflowRoutes(server: MockServer): void {
 export function resetWebflowState(): void {
   itemCounter = 0;
   collections.clear();
+  deleteLog.length = 0;
+}
+
+/**
+ * Get the delete-endpoint log.
+ * Each entry records whether the live (/live) or staged endpoint was hit.
+ */
+export function getWebflowDeleteLog(): ReadonlyArray<{
+  itemId: string;
+  live: boolean;
+}> {
+  return deleteLog;
 }

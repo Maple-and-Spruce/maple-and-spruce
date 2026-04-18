@@ -169,6 +169,7 @@ describe('ArtistService', () => {
         createItem: vi.fn(),
         updateItem: vi.fn(),
         deleteItem: vi.fn(),
+        deleteItemLive: vi.fn(),
         publishItem: vi.fn(),
       },
     },
@@ -340,6 +341,57 @@ describe('ArtistService', () => {
       );
     });
 
+    it('defaults to staged delete (deleteItem, not deleteItemLive)', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          { id: 'wf-staged', fieldData: { 'firebase-id': 'artist-abc' } },
+        ],
+      });
+      mockClient.collections.items.deleteItem.mockResolvedValue({});
+
+      await service.removeArtist('artist-abc');
+
+      expect(mockClient.collections.items.deleteItem).toHaveBeenCalledTimes(1);
+      expect(
+        mockClient.collections.items.deleteItemLive
+      ).not.toHaveBeenCalled();
+    });
+
+    it('uses deleteItemLive when publish=true to auto-publish removal', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [{ id: 'wf-live', fieldData: { 'firebase-id': 'artist-abc' } }],
+      });
+      mockClient.collections.items.deleteItemLive.mockResolvedValue({});
+
+      const result = await service.removeArtist('artist-abc', true);
+
+      expect(result).toBe(true);
+      expect(mockClient.collections.items.deleteItemLive).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-live'
+      );
+      expect(mockClient.collections.items.deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('uses deleteItem when publish=false', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [
+          { id: 'wf-staged', fieldData: { 'firebase-id': 'artist-abc' } },
+        ],
+      });
+      mockClient.collections.items.deleteItem.mockResolvedValue({});
+
+      await service.removeArtist('artist-abc', false);
+
+      expect(mockClient.collections.items.deleteItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-staged'
+      );
+      expect(
+        mockClient.collections.items.deleteItemLive
+      ).not.toHaveBeenCalled();
+    });
+
     it('returns false when artist not found in Webflow', async () => {
       mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
 
@@ -347,6 +399,18 @@ describe('ArtistService', () => {
 
       expect(result).toBe(false);
       expect(mockClient.collections.items.deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('does not call any delete when publish=true and item not found', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+
+      const result = await service.removeArtist('artist-missing', true);
+
+      expect(result).toBe(false);
+      expect(mockClient.collections.items.deleteItem).not.toHaveBeenCalled();
+      expect(
+        mockClient.collections.items.deleteItemLive
+      ).not.toHaveBeenCalled();
     });
   });
 

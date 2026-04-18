@@ -143,12 +143,16 @@ export const syncClassToWebflow = onDocumentWritten(
 
     const webflow = new Webflow(secrets, strings);
 
+    const isDev = FirebaseProject.isDev;
+    const shouldPublish = !isDev;
+
     try {
       // Case 1: Class deleted
       if (!afterClass) {
         console.log('Class deleted, removing from Webflow');
         const removed = await webflow.classService.removeClass(
-          event.params.classId
+          event.params.classId,
+          shouldPublish
         );
         console.log(
           removed
@@ -164,7 +168,10 @@ export const syncClassToWebflow = onDocumentWritten(
         afterClass.status !== 'published'
       ) {
         console.log('Class unpublished, removing from Webflow');
-        const removed = await webflow.classService.removeClass(afterClass.id);
+        const removed = await webflow.classService.removeClass(
+          afterClass.id,
+          shouldPublish
+        );
         console.log(
           removed
             ? 'Successfully removed from Webflow'
@@ -180,8 +187,6 @@ export const syncClassToWebflow = onDocumentWritten(
       }
 
       // Case 4: Class is published — enrich and sync to Webflow
-      const isDev = FirebaseProject.isDev;
-      const shouldPublish = !isDev;
 
       // Fetch enrichment data in parallel
       const [instructor, category, registrationCount] = await Promise.all([

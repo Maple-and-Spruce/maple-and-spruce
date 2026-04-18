@@ -91,12 +91,16 @@ export const syncArtistToWebflow = onDocumentWritten(
 
     const webflow = new Webflow(secrets, strings);
 
+    const isDev = FirebaseProject.isDev;
+    const publishRemoval = !isDev;
+
     try {
       // Case 1: Artist deleted
       if (!afterArtist) {
         console.log('Artist deleted, removing from Webflow');
         const removed = await webflow.artistService.removeArtist(
-          event.params.artistId
+          event.params.artistId,
+          publishRemoval
         );
         console.log(
           removed
@@ -112,7 +116,10 @@ export const syncArtistToWebflow = onDocumentWritten(
         afterArtist.status !== 'active'
       ) {
         console.log('Artist became inactive, removing from Webflow');
-        const removed = await webflow.artistService.removeArtist(afterArtist.id);
+        const removed = await webflow.artistService.removeArtist(
+          afterArtist.id,
+          publishRemoval
+        );
         console.log(
           removed
             ? 'Successfully removed from Webflow'
@@ -130,7 +137,6 @@ export const syncArtistToWebflow = onDocumentWritten(
       // Case 4: Artist is active - sync to Webflow
       // Auto-publish only in prod, and only if preventAutoPublish is not set
       // Dev items are never published - they stay as drafts with is-dev-environment=true
-      const isDev = FirebaseProject.isDev;
       const shouldPublish = !isDev && !afterArtist.preventAutoPublish;
       console.log('Syncing active artist to Webflow:', {
         name: afterArtist.name,

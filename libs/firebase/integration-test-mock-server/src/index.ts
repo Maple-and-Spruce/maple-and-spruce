@@ -7,5 +7,6 @@ export {
 export {
   registerWebflowRoutes,
   resetWebflowState,
+  getWebflowDeleteLog,
 } from './lib/routes/webflow.js';
 export { createMockServer } from './lib/create-mock-server.js';

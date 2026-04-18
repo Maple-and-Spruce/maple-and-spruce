@@ -1,7 +1,16 @@
 import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
   root: __dirname,
+  resolve: {
+    alias: {
+      '@maple/firebase/integration-test-mock-server': resolve(
+        __dirname,
+        '../../../libs/firebase/integration-test-mock-server/src/index.ts'
+      ),
+    },
+  },
   test: {
     name: 'webflow',
     globals: true,
