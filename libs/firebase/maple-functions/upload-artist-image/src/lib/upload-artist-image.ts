@@ -7,22 +7,17 @@
  * Images are stored in Firebase Storage and made publicly accessible.
  * The returned URL can be stored in the artist's photoUrl field.
  */
-import { createAdminFunction, FirebaseProject } from '@maple/firebase/functions';
+import {
+  createAdminFunction,
+  FirebaseProject,
+  throwValidationError,
+} from '@maple/firebase/functions';
+import { imageUploadValidation } from '@maple/ts/validation';
 import admin from 'firebase-admin';
 import type {
   UploadArtistImageRequest,
   UploadArtistImageResponse,
 } from '@maple/ts/firebase/api-types';
-
-/**
- * Allowed image MIME types for artist photos
- */
-const ALLOWED_IMAGE_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-];
 
 export const uploadArtistImage = createAdminFunction<
   UploadArtistImageRequest,
@@ -30,16 +25,9 @@ export const uploadArtistImage = createAdminFunction<
 >(async (data) => {
   const { artistId, imageBase64, contentType } = data;
 
-  // Validate image data
-  if (!imageBase64) {
-    throw new Error('imageBase64 is required');
-  }
-
-  // Validate content type
-  if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
-    throw new Error(
-      `Invalid content type. Allowed: ${ALLOWED_IMAGE_TYPES.join(', ')}`
-    );
+  const validation = imageUploadValidation({ imageBase64, contentType });
+  if (validation.hasErrors()) {
+    throwValidationError(validation.getErrors());
   }
 
   // Get Firebase Storage bucket for current project

@@ -376,4 +376,160 @@ describe('Discount Functions', () => {
       expect(result.status).not.toBe(200);
     });
   });
+
+  describe('Update validation', () => {
+    let updateTargetId: string;
+    let collisionTargetCode: string;
+
+    beforeAll(async () => {
+      const [targetRes, collisionRes] = await Promise.all([
+        callFunction<CreatePercentDiscount, CreateDiscountResponse>({
+          functionName: 'createDiscount',
+          data: { ...PERCENT_DISCOUNT, code: 'UPD-TARGET' },
+          idToken: adminUser.idToken,
+        }),
+        callFunction<CreatePercentDiscount, CreateDiscountResponse>({
+          functionName: 'createDiscount',
+          data: { ...PERCENT_DISCOUNT, code: 'UPD-TAKEN' },
+          idToken: adminUser.idToken,
+        }),
+      ]);
+
+      updateTargetId = targetRes.data!.discount.id;
+      collisionTargetCode = collisionRes.data!.discount.code;
+    });
+
+    afterAll(async () => {
+      const res = await callFunction<GetDiscountsRequest, GetDiscountsResponse>(
+        {
+          functionName: 'getDiscounts',
+          idToken: adminUser.idToken,
+        }
+      );
+      const toDelete = (res.data?.discounts ?? []).filter((d) =>
+        ['UPD-TARGET', 'UPD-TAKEN', 'UPD-RENAMED'].includes(d.code)
+      );
+      await Promise.all(
+        toDelete.map((d) =>
+          callFunction<DeleteDiscountRequest>({
+            functionName: 'deleteDiscount',
+            data: { id: d.id },
+            idToken: adminUser.idToken,
+          })
+        )
+      );
+    });
+
+    it('should succeed when updating with valid partial payload', async () => {
+      const result = await callFunction<
+        UpdateDiscountRequest,
+        UpdateDiscountResponse
+      >({
+        functionName: 'updateDiscount',
+        data: {
+          id: updateTargetId,
+          description: 'Updated description via partial payload',
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discount.description).toBe(
+        'Updated description via partial payload'
+      );
+    });
+
+    it('should reject update with empty code', async () => {
+      const result = await callFunction<UpdateDiscountRequest>({
+        functionName: 'updateDiscount',
+        data: {
+          id: updateTargetId,
+          code: '',
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+      const errorMessage =
+        typeof result.raw === 'object' &&
+        result.raw !== null &&
+        'error' in result.raw
+          ? ((result.raw as { error: { message?: string } }).error?.message ??
+            '')
+          : '';
+      expect(errorMessage).toMatch(/code/i);
+    });
+
+    it('should reject update with out-of-range percent', async () => {
+      const result = await callFunction<UpdateDiscountRequest>({
+        functionName: 'updateDiscount',
+        data: {
+          id: updateTargetId,
+          percent: -5,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+      const errorMessage =
+        typeof result.raw === 'object' &&
+        result.raw !== null &&
+        'error' in result.raw
+          ? ((result.raw as { error: { message?: string } }).error?.message ??
+            '')
+          : '';
+      expect(errorMessage).toMatch(/percent/i);
+    });
+
+    it('should reject update with invalid code characters', async () => {
+      const result = await callFunction<UpdateDiscountRequest>({
+        functionName: 'updateDiscount',
+        data: {
+          id: updateTargetId,
+          code: 'BAD CODE!',
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+    });
+
+    it('should still reject code collision (DB-level uniqueness)', async () => {
+      const result = await callFunction<UpdateDiscountRequest>({
+        functionName: 'updateDiscount',
+        data: {
+          id: updateTargetId,
+          code: collisionTargetCode,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+      const errorMessage =
+        typeof result.raw === 'object' &&
+        result.raw !== null &&
+        'error' in result.raw
+          ? ((result.raw as { error: { message?: string } }).error?.message ??
+            '')
+          : '';
+      expect(errorMessage).toMatch(/already exists/i);
+    });
+
+    it('should allow renaming to a fresh code', async () => {
+      const result = await callFunction<
+        UpdateDiscountRequest,
+        UpdateDiscountResponse
+      >({
+        functionName: 'updateDiscount',
+        data: {
+          id: updateTargetId,
+          code: 'UPD-RENAMED',
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discount.code).toBe('UPD-RENAMED');
+    });
+  });
 });

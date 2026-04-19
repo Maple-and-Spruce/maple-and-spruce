@@ -4,12 +4,12 @@
  * Vest validation for music lesson student forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateStudentInput } from '@maple/ts/domain';
 import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
 
-export const studentValidation = create(
-  (data: Partial<CreateStudentInput>, field?: string) => {
+export const studentValidation = staticSuite(
+  (data: Partial<CreateStudentInput>, field?: string | string[]) => {
     only(field);
 
     test('name', 'Student name is required', () => {

@@ -4,7 +4,7 @@
  * Vest validation for artist forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateArtistInput } from '@maple/ts/domain';
 
 /**
@@ -25,8 +25,8 @@ import type { CreateArtistInput } from '@maple/ts/domain';
  * const result = artistValidation(formData, 'email');
  * const errors = result.getErrors('email');
  */
-export const artistValidation = create(
-  (data: Partial<CreateArtistInput>, field?: string) => {
+export const artistValidation = staticSuite(
+  (data: Partial<CreateArtistInput>, field?: string | string[]) => {
     only(field);
 
     test('name', 'Name is required', () => {

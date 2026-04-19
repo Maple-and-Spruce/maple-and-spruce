@@ -4,7 +4,7 @@
  * Vest validation for inventory adjustments.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateInventoryMovementInput } from '@maple/ts/domain';
 
 const VALID_MOVEMENT_TYPES = [
@@ -30,8 +30,8 @@ const VALID_SOURCES = ['manual', 'etsy', 'square', 'system'] as const;
  *   // Record movement
  * }
  */
-export const inventoryMovementValidation = create(
-  (data: Partial<CreateInventoryMovementInput>, field?: string) => {
+export const inventoryMovementValidation = staticSuite(
+  (data: Partial<CreateInventoryMovementInput>, field?: string | string[]) => {
     only(field);
 
     test('productId', 'Product is required', () => {

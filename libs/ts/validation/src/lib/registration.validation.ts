@@ -6,7 +6,7 @@
  *
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 
 /**
  * Input shape for registration validation
@@ -26,8 +26,8 @@ export interface RegistrationValidationInput {
  * @param data - Partial registration data to validate
  * @param field - Optional field to validate (for single-field validation)
  */
-export const registrationValidation = create(
-  (data: RegistrationValidationInput, field?: string) => {
+export const registrationValidation = staticSuite(
+  (data: RegistrationValidationInput, field?: string | string[]) => {
     only(field);
 
     // Class ID validation

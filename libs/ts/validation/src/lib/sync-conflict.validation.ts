@@ -4,7 +4,7 @@
  * Vest validation for sync conflict resolution.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { ResolveSyncConflictInput } from '@maple/ts/domain';
 
 const VALID_RESOLUTIONS = [
@@ -26,8 +26,8 @@ const VALID_RESOLUTIONS = [
  *   // Resolve conflict
  * }
  */
-export const syncConflictResolutionValidation = create(
-  (data: Partial<ResolveSyncConflictInput>, field?: string) => {
+export const syncConflictResolutionValidation = staticSuite(
+  (data: Partial<ResolveSyncConflictInput>, field?: string | string[]) => {
     only(field);
 
     test('conflictId', 'Conflict ID is required', () => {

@@ -5,8 +5,14 @@
  * Admin-only endpoint.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createAdminFunction,
+  throwInvalidArgument,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
 import { DiscountRepository } from '@maple/firebase/database';
+import { discountValidation } from '@maple/ts/validation';
 import type {
   UpdateDiscountRequest,
   UpdateDiscountResponse,
@@ -17,16 +23,22 @@ export const updateDiscount = createAdminFunction<
   UpdateDiscountResponse
 >(async (data) => {
   if (!data.id) {
-    throw new Error('Discount ID is required');
+    throwInvalidArgument('Discount ID is required');
   }
 
-  // Check if discount exists
   const existing = await DiscountRepository.findById(data.id);
   if (!existing) {
-    throw new Error(`Discount not found: ${data.id}`);
+    throwNotFound('Discount', data.id);
   }
 
-  // If code is changing, check for uniqueness
+  const fields = Object.keys(data).filter((key) => key !== 'id');
+  if (fields.length > 0) {
+    const result = discountValidation({ ...existing, ...data }, fields);
+    if (result.hasErrors()) {
+      throwValidationError(result.getErrors());
+    }
+  }
+
   if (data.code && data.code.toUpperCase() !== existing.code) {
     const codeExists = await DiscountRepository.findByCode(data.code);
     if (codeExists) {

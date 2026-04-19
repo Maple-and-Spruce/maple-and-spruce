@@ -4,7 +4,7 @@
  * Vest validation for sale recording forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateSaleInput } from '@maple/ts/domain';
 
 /**
@@ -19,8 +19,8 @@ import type { CreateSaleInput } from '@maple/ts/domain';
  *   // Record sale
  * }
  */
-export const saleValidation = create(
-  (data: Partial<CreateSaleInput>, field?: string) => {
+export const saleValidation = staticSuite(
+  (data: Partial<CreateSaleInput>, field?: string | string[]) => {
     only(field);
 
     test('productId', 'Product is required', () => {

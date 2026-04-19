@@ -312,10 +312,13 @@ SOL uses [Vest](https://vestjs.dev/) for declarative validation with suite defin
 ### Pattern
 
 ```typescript
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 
-export const artistValidation = create((data: Partial<Artist>, field?: string) => {
-    only(field); // Only validate specific field if provided
+// Always use staticSuite (never create) — each call returns a fresh,
+// independent result with no retained state. See PATTERNS-AND-PRACTICES.md.
+export const artistValidation = staticSuite(
+  (data: Partial<Artist>, field?: string | string[]) => {
+    only(field); // Scope to a single field or a list of fields
 
     test('name', 'Name is required', () => {
         enforce(data.name).isNotBlank();
@@ -332,7 +335,8 @@ export const artistValidation = create((data: Partial<Artist>, field?: string) =
     test('commissionRate', 'Commission rate must be between 0 and 1', () => {
         enforce(data.commissionRate).isBetween(0, 1);
     });
-});
+  }
+);
 
 // Usage in component
 const result = artistValidation(formData);

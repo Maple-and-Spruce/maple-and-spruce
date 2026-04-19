@@ -796,13 +796,16 @@ export default function Error({
 
 Use [Vest](https://vestjs.dev/) for declarative validation that can be shared between client and server.
 
+**Always use `staticSuite`, never `create`.** Suites declared with `staticSuite` are pure functions: each call returns an independent `SuiteResult` with no retained state. Suites declared with `create` are stateful — results from prior calls can leak into subsequent runs, which breaks reactive computeds in the client and bleeds state across requests in warm cloud function containers. Stateful suites force every callsite to manage `.reset()` defensively; stateless suites just work.
+
 ```typescript
 // libs/ts/validation/src/artist.validation.ts
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateArtistInput } from '@maple/ts/domain';
 
-export const artistValidation = create((data: Partial<CreateArtistInput>, field?: string) => {
-    only(field); // Only validate specific field if provided
+export const artistValidation = staticSuite(
+  (data: Partial<CreateArtistInput>, field?: string | string[]) => {
+    only(field); // Scope to one field (string) or a list of fields (string[])
 
     test('name', 'Name is required', () => {
         enforce(data.name).isNotBlank();
@@ -825,7 +828,8 @@ export const artistValidation = create((data: Partial<CreateArtistInput>, field?
             enforce(data.defaultCommissionRate).isBetween(0, 1);
         }
     });
-});
+  }
+);
 ```
 
 ### Shared Validation Pattern (Client + Server)
@@ -888,32 +892,71 @@ function ClassForm({ onSubmit }) {
 }
 ```
 
-**Backend Cloud Function Pattern:**
+**Backend Cloud Function — Create Pattern:**
 
 ```typescript
 // create-class.ts
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createAdminFunction,
+  throwValidationError,
+} from '@maple/firebase/functions';
 import { classValidation } from '@maple/ts/validation';
 
 export const createClass = createAdminFunction<CreateClassRequest, CreateClassResponse>(
   async (data) => {
-    // Same validation suite as frontend
     const result = classValidation(data);
-    if (!result.isValid()) {
-      const errors = result.getErrors();
-      const errorMessages = Object.entries(errors)
-        .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
-        .join('; ');
-      throw new Error(`Validation failed: ${errorMessages}`);
+    if (result.hasErrors()) {
+      throwValidationError(result.getErrors());
     }
 
-    // Additional server-only validations (e.g., uniqueness checks)
+    // Server-only validations (uniqueness, referential integrity, etc.)
     const existing = await Repository.findByEmail(data.email);
     if (existing) {
       throw new Error(`An item with email ${data.email} already exists`);
     }
 
     return await Repository.create(data);
+  }
+);
+```
+
+**Backend Cloud Function — Update (Partial) Pattern:**
+
+Partial updates validate only the fields the caller sent, using the existing record as context for cross-field rules. Always gate on `hasErrors()` — when `only()` scopes validation to a subset of fields, the top-level `isValid()` is unreliable because skipped fields report as invalid at the per-field level.
+
+```typescript
+// update-class.ts
+import {
+  createAdminFunction,
+  throwInvalidArgument,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
+import { classValidation } from '@maple/ts/validation';
+
+export const updateClass = createAdminFunction<UpdateClassRequest, UpdateClassResponse>(
+  async (data) => {
+    if (!data.id) {
+      throwInvalidArgument('Class ID is required');
+    }
+
+    const existing = await Repository.findById(data.id);
+    if (!existing) {
+      throwNotFound('Class', data.id);
+    }
+
+    const fields = Object.keys(data).filter((key) => key !== 'id');
+    if (fields.length > 0) {
+      // Merge existing + data so cross-field rules (e.g. discount type-conditional)
+      // have context. Pass `fields` to only() so unrelated required checks don't
+      // fail a partial update.
+      const result = classValidation({ ...existing, ...data }, fields);
+      if (result.hasErrors()) {
+        throwValidationError(result.getErrors());
+      }
+    }
+
+    return await Repository.update(data);
   }
 );
 ```

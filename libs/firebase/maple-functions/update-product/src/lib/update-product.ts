@@ -12,13 +12,19 @@
  * For quantity changes:
  * - Updates Square Inventory API, then updates Firestore cache
  */
-import { Functions, Role, throwNotFound } from '@maple/firebase/functions';
+import {
+  Functions,
+  Role,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
 import { ProductRepository } from '@maple/firebase/database';
 import {
   Square,
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
+import { productValidation } from '@maple/ts/validation';
 import type {
   UpdateProductRequest,
   UpdateProductResponse,
@@ -30,25 +36,19 @@ export const updateProduct = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<UpdateProductRequest, UpdateProductResponse>(
     async (data, _context, secrets, strings) => {
-      // Check product exists
       const existing = await ProductRepository.findById(data.id);
       if (!existing) {
         throwNotFound('Product', data.id);
       }
 
-      // Validate Firestore-owned fields
-      if (
-        data.status &&
-        !['active', 'draft', 'discontinued'].includes(data.status)
-      ) {
-        throw new Error('Status must be active, draft, or discontinued');
-      }
-
-      if (
-        data.customCommissionRate !== undefined &&
-        (data.customCommissionRate < 0 || data.customCommissionRate > 1)
-      ) {
-        throw new Error('Commission rate must be between 0 and 1');
+      // Validation must run before any Square writes — invalid data must
+      // never reach Square and fail halfway through.
+      const fields = Object.keys(data).filter((key) => key !== 'id');
+      if (fields.length > 0) {
+        const result = productValidation({ ...existing, ...data }, fields);
+        if (result.hasErrors()) {
+          throwValidationError(result.getErrors());
+        }
       }
 
       // Check if any Square-owned fields are being updated
