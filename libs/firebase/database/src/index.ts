@@ -40,6 +40,16 @@ export {
 } from './lib/calendar-event.repository';
 export { CalendarEmbedConfigRepository } from './lib/calendar-embed-config.repository';
 
+// Phase 5: Sales & Inventory
+export {
+  SaleRepository,
+  type SaleFilters,
+} from './lib/sale.repository';
+export {
+  InventoryMovementRepository,
+  type InventoryMovementFilters,
+} from './lib/inventory-movement.repository';
+
 // Phase 5: Etsy
 export {
   FirestoreTokenStorage,
