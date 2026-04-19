@@ -7,7 +7,7 @@
 ## Current Status
 
 **Date**: 2026-04-19
-**Status**: Phase 4 Music Lessons complete. PR #304 (teacher payout tracking) all CI green, ready to merge. Requirements and docs updated.
+**Status**: Phase 4 complete (PR #304 ready to merge). Phase 5 planning complete, implementation starting.
 
 ### Phase 4 Music Lessons — Complete
 
@@ -23,11 +23,27 @@ All 6 sub-issues of epic #10 implemented:
 
 **Requirements reviewed and updated** — REQUIREMENTS.md Phase 4 section rewritten to match actual implementation. Deferred items documented (lesson packages, teacher availability, public profiles).
 
-### Next Steps
+### Phase 5: Unified Inventory, Etsy Push, & Sales Tracking
 
-- Merge PR #304
-- Close sub-issues #278–#283 and epic #10
-- Begin Phase 5 planning (Store Opening & Sales Tracking, epic #8)
+**Planning completed 2026-04-19.** Admin app becomes single source of truth for products, pushing to Etsy + Square. Sales on either channel auto-recorded with cross-channel inventory sync.
+
+**Etsy API approved** (2026-03-27, `maplspruce-listings` app, Personal Access tier).
+
+| PR | Issue | Title | Depends On | Status |
+|----|-------|-------|------------|--------|
+| 1 | #305 | Product variant model refactor | — | **In progress** |
+| 2 | #306 | Square multi-variation catalog support | #305 | Not started |
+| 3 | #307 | Push-to-Etsy Cloud Function | #305 | Not started |
+| 4 | #308 | Etsy import multi-variant support | #305, #306 | Not started |
+| 5 | #309 | Sale recording + InventoryMovement audit log | #305 | Not started |
+| 6 | #310 | Etsy order polling + cross-channel inventory sync | #307, #309 | Not started |
+| 7 | #311 | Etsy sync conflict detection + resolution | #305, #307 | Not started |
+| 8 | #312 | Admin UI — variant management + sales page | #305, #306, #309 | Not started |
+| 9 | #313 | Artist payout calculation + admin page | #309 | Not started |
+
+**Critical path:** PR 1 → PR 2 → PR 5 → PR 6 (end-to-end sales tracking)
+
+**Full plan:** `.claude/plans/wild-scribbling-stearns.md`
 
 ### Image2Pages Webflow Widget (in flight)
 

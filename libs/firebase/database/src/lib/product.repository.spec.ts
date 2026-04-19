@@ -132,6 +132,9 @@ describe('ProductRepository', () => {
         squareCatalogVersion: 1,
         squareLocationId: 'sq-loc-001',
         sku: 'prd_newsku',
+        variations: [
+          { variantId: 'var-new', squareVariationId: 'sq-var-new', sku: 'prd_newsku' },
+        ],
       };
 
       let savedData: Record<string, unknown> = {};
@@ -175,6 +178,9 @@ describe('ProductRepository', () => {
         squareCatalogVersion: 1,
         squareLocationId: 'sq-loc-001',
         sku: 'prd_nocat',
+        variations: [
+          { variantId: 'var-nocat', squareVariationId: 'sq-var-nocat', sku: 'prd_nocat' },
+        ],
       };
 
       let savedData: Record<string, unknown> = {};

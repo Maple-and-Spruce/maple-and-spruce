@@ -15,6 +15,16 @@ export const mockProduct: Product = {
   squareLocationId: 'sq-loc-001',
   createdAt: new Date('2024-03-15T10:00:00Z'),
   updatedAt: new Date('2024-06-20T14:30:00Z'),
+  variants: [
+    {
+      id: 'var-001',
+      label: 'Regular',
+      sku: 'prd_abc12345',
+      priceCents: 4500,
+      quantity: 3,
+      squareVariationId: 'sq-var-001',
+    },
+  ],
   squareCache: {
     name: 'Hand-thrown Ceramic Vase',
     description:
@@ -38,6 +48,16 @@ export const mockProductNoImage: Product = {
   squareLocationId: 'sq-loc-001',
   createdAt: new Date('2024-04-10T09:00:00Z'),
   updatedAt: new Date('2024-05-15T16:45:00Z'),
+  variants: [
+    {
+      id: 'var-002',
+      label: 'Regular',
+      sku: 'prd_def67890',
+      priceCents: 8500,
+      quantity: 5,
+      squareVariationId: 'sq-var-002',
+    },
+  ],
   squareCache: {
     name: 'Maple Cutting Board',
     description: 'Handcrafted maple cutting board with live edge detail.',
@@ -59,6 +79,16 @@ export const mockProductDraft: Product = {
   squareLocationId: 'sq-loc-001',
   createdAt: new Date('2024-08-01T11:00:00Z'),
   updatedAt: new Date('2024-08-01T11:00:00Z'),
+  variants: [
+    {
+      id: 'var-003',
+      label: 'Regular',
+      sku: 'prd_ghi11223',
+      priceCents: 6000,
+      quantity: 2,
+      squareVariationId: 'sq-var-003',
+    },
+  ],
   squareCache: {
     name: 'Stoneware Mug Set (4)',
     description: 'Set of 4 handmade stoneware mugs.',
@@ -81,6 +111,16 @@ export const mockProductDiscontinued: Product = {
   squareLocationId: 'sq-loc-001',
   createdAt: new Date('2023-06-15T12:00:00Z'),
   updatedAt: new Date('2024-09-01T08:00:00Z'),
+  variants: [
+    {
+      id: 'var-004',
+      label: 'Regular',
+      sku: 'prd_jkl44556',
+      priceCents: 12000,
+      quantity: 0,
+      squareVariationId: 'sq-var-004',
+    },
+  ],
   squareCache: {
     name: 'Woven Wall Hanging',
     description: 'Macrame wall hanging with natural cotton cord.',
@@ -104,6 +144,16 @@ export const mockProductOutOfStock: Product = {
   squareLocationId: 'sq-loc-001',
   createdAt: new Date('2024-05-20T10:00:00Z'),
   updatedAt: new Date('2024-07-10T14:00:00Z'),
+  variants: [
+    {
+      id: 'var-005',
+      label: 'Regular',
+      sku: 'prd_mno77889',
+      priceCents: 7500,
+      quantity: 0,
+      squareVariationId: 'sq-var-005',
+    },
+  ],
   squareCache: {
     name: 'Silver Pendant Necklace',
     description: 'Hand-forged sterling silver pendant on a 18" chain.',
