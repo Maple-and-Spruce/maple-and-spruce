@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import type { PublicClass } from '@maple/ts/domain';
@@ -63,6 +70,14 @@ const mockRegistrationResponse = {
 describe('RegistrationCheckoutForm submit flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  // @testing-library/react v13+ auto-registers cleanup only when Vitest
+  // globals are enabled. This spec runs under both the project config
+  // (globals: true) and the repo-root config during CI coverage runs
+  // (globals: false). Explicit cleanup keeps tests isolated under either.
+  afterEach(() => {
+    cleanup();
   });
 
   it('blocks submit and surfaces validation errors when the form is empty', async () => {
