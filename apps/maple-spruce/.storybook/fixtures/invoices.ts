@@ -39,8 +39,43 @@ export const mockInvoicePaid: Invoice = {
   totalCents: 13000,
   issuedAt: new Date('2026-03-21T09:00:00Z'),
   paidAt: new Date('2026-03-25T09:00:00Z'),
+  paymentRecord: {
+    source: 'square-webhook',
+    squarePaymentId: 'SQ-PAYMENT-abc123',
+    recordedAt: new Date('2026-03-25T09:00:00Z'),
+  },
+  squareOrderId: 'SQ-ORDER-1',
+  squareInvoiceId: 'SQ-INVOICE-1',
   createdAt: new Date('2026-03-20T09:00:00Z'),
   updatedAt: new Date('2026-03-25T09:00:00Z'),
+};
+
+export const mockInvoicePaidManually: Invoice = {
+  id: 'inv-003-manual',
+  studentId: 'student-001',
+  status: 'paid',
+  lineItems: [aprilTuition],
+  totalCents: 13000,
+  issuedAt: new Date('2026-02-20T09:00:00Z'),
+  paidAt: new Date('2026-02-24T09:00:00Z'),
+  paymentRecord: {
+    source: 'admin-manual',
+    recordedAt: new Date('2026-02-24T09:00:00Z'),
+  },
+  createdAt: new Date('2026-02-20T09:00:00Z'),
+  updatedAt: new Date('2026-02-24T09:00:00Z'),
+};
+
+export const mockInvoiceSyncError: Invoice = {
+  id: 'inv-sync-error',
+  studentId: 'student-001',
+  status: 'sent',
+  lineItems: [aprilTuition],
+  totalCents: 13000,
+  issuedAt: new Date('2026-04-21T09:00:00Z'),
+  squareSyncError: 'Square order error: INVALID_REQUEST',
+  createdAt: new Date('2026-04-21T09:00:00Z'),
+  updatedAt: new Date('2026-04-21T09:00:00Z'),
 };
 
 export const mockInvoiceVoid: Invoice = {
@@ -90,6 +125,8 @@ export const mockInvoices: Invoice[] = [
   mockInvoiceDraft,
   mockInvoiceSent,
   mockInvoicePaid,
+  mockInvoicePaidManually,
   mockInvoiceVoid,
   mockInvoiceMultiLine,
+  mockInvoiceSyncError,
 ];

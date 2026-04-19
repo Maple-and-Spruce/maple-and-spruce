@@ -247,7 +247,7 @@ describe('Invoice Functions', () => {
       expect(result.data!.invoice.paidAt).toBeUndefined();
     });
 
-    it('transitions sent → paid and stamps paidAt', async () => {
+    it('transitions sent → paid and stamps paidAt + paymentRecord (admin-manual)', async () => {
       const result = await callFunction<
         UpdateInvoiceRequest,
         UpdateInvoiceResponse
@@ -261,6 +261,10 @@ describe('Invoice Functions', () => {
       expect(result.data!.invoice.status).toBe('paid');
       expect(result.data!.invoice.paidAt).toBeTruthy();
       expect(result.data!.invoice.issuedAt).toBeTruthy();
+      // Manual paid transitions are attributed to the admin (#281).
+      expect(result.data!.invoice.paymentRecord).toBeTruthy();
+      expect(result.data!.invoice.paymentRecord?.source).toBe('admin-manual');
+      expect(result.data!.invoice.paymentRecord?.squarePaymentId).toBeUndefined();
     });
 
     it('rejects paid → sent (invalid transition)', async () => {

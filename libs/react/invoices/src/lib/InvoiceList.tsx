@@ -18,6 +18,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import BlockIcon from '@mui/icons-material/Block';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import type {
   Invoice,
   InvoiceStatus,
@@ -150,6 +153,34 @@ function InvoiceRow({
               color={statusColor[status]}
               variant={status === 'paid' ? 'filled' : 'outlined'}
             />
+            {status === 'paid' && invoice.paymentRecord && (
+              <Chip
+                icon={
+                  invoice.paymentRecord.source === 'square-webhook' ? (
+                    <CreditCardIcon />
+                  ) : (
+                    <PersonOutlineIcon />
+                  )
+                }
+                label={
+                  invoice.paymentRecord.source === 'square-webhook'
+                    ? 'Paid via Square'
+                    : 'Marked paid manually'
+                }
+                size="small"
+                variant="outlined"
+              />
+            )}
+            {invoice.squareSyncError && (
+              <Chip
+                icon={<WarningAmberIcon />}
+                label="Square sync failed"
+                size="small"
+                color="error"
+                variant="outlined"
+                title={invoice.squareSyncError}
+              />
+            )}
             <Typography variant="body2" color="text.secondary">
               {invoice.lineItems.length} line
               {invoice.lineItems.length === 1 ? '' : 's'}

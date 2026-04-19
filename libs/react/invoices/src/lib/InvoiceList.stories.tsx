@@ -6,8 +6,10 @@ import {
   mockInvoiceDraft,
   mockInvoiceSent,
   mockInvoicePaid,
+  mockInvoicePaidManually,
   mockInvoiceVoid,
   mockInvoiceMultiLine,
+  mockInvoiceSyncError,
 } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 import type { Invoice, RequestState } from '@maple/ts/domain';
 
@@ -276,5 +278,71 @@ export const TotalFormattedAsDollars: Story = {
       // $18750 cents → $187.50
       expect(canvas.getByText('$187.50')).toBeInTheDocument();
     });
+  },
+};
+
+// ============================================================
+// INTERACTION TESTS — payment attribution + sync error (added in #281)
+// ============================================================
+
+export const PaidViaSquareBadge: Story = {
+  args: {
+    invoicesState: {
+      status: 'success',
+      data: [mockInvoicePaid],
+    } as RequestState<Invoice[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      expect(canvas.getByText(/paid via square/i)).toBeInTheDocument();
+    });
+    // Manual badge should NOT appear for a Square-paid invoice
+    expect(canvas.queryByText(/marked paid manually/i)).toBeNull();
+  },
+};
+
+export const PaidManuallyBadge: Story = {
+  args: {
+    invoicesState: {
+      status: 'success',
+      data: [mockInvoicePaidManually],
+    } as RequestState<Invoice[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      expect(canvas.getByText(/marked paid manually/i)).toBeInTheDocument();
+    });
+    expect(canvas.queryByText(/paid via square/i)).toBeNull();
+  },
+};
+
+export const SquareSyncErrorBadge: Story = {
+  args: {
+    invoicesState: {
+      status: 'success',
+      data: [mockInvoiceSyncError],
+    } as RequestState<Invoice[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      expect(canvas.getByText(/square sync failed/i)).toBeInTheDocument();
+    });
+  },
+};
+
+export const PaymentBadgeAbsentOnDraftAndSent: Story = {
+  args: {
+    invoicesState: {
+      status: 'success',
+      data: [mockInvoiceDraft, mockInvoiceSent],
+    } as RequestState<Invoice[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.queryByText(/paid via square/i)).toBeNull();
+    expect(canvas.queryByText(/marked paid manually/i)).toBeNull();
   },
 };

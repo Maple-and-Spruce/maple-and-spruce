@@ -42,6 +42,23 @@ export interface InvoiceLineItem {
   subtotalCents: number;
 }
 
+/**
+ * How the invoice became `paid`. Stamped by the server on the transition
+ * into paid so the admin UI can attribute the payment to a specific event
+ * (customer paid via Square vs. Katie flipped the switch manually).
+ */
+export type InvoicePaymentSource = 'admin-manual' | 'square-webhook';
+
+export interface InvoicePaymentRecord {
+  source: InvoicePaymentSource;
+  /** Square payment id when the payment came in via the Square webhook. */
+  squarePaymentId?: string;
+  /** When the payment was recorded (distinct from paidAt which is the
+   *  invoice status transition timestamp — typically the same but the
+   *  two can differ if the webhook is delayed). */
+  recordedAt: Date;
+}
+
 export interface Invoice {
   id: string;
   studentId: string;
@@ -53,6 +70,18 @@ export interface Invoice {
   issuedAt?: Date;
   /** Set on the transition sent → paid. */
   paidAt?: Date;
+  /** How the payment was recorded. Present only for paid invoices. */
+  paymentRecord?: InvoicePaymentRecord;
+  /** Square Order id created during the sent transition (source of line items in Square). */
+  squareOrderId?: string;
+  /** Square Invoice id created during the sent transition. */
+  squareInvoiceId?: string;
+  /**
+   * Last Square sync error, if any. Set by the Firestore trigger when it
+   * can't successfully send/cancel the Square invoice; cleared on the
+   * next successful sync. Admin surfaces this so Katie can retry.
+   */
+  squareSyncError?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

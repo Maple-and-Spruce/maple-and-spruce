@@ -153,7 +153,27 @@
       "WebFetch(domain:docs.cloud.google.com)",
       "WebFetch(domain:www.ayrshare.com)",
       "Bash(pnpm exec:*)",
-      "Bash(apps/functions-integration-tests/project.json:*)"
+      "Bash(apps/functions-integration-tests/project.json:*)",
+      "Bash(pnpm nx *)",
+      "Bash(./tools/validate-function-tsconfigs.sh)",
+      "Bash(./tools/validate-function-tsconfigs.sh --fix)",
+      "Bash(cp -r libs/react/instructors libs/react/students)",
+      "Bash(rm libs/react/students/src/lib/*.tsx)",
+      "Bash(cp -r libs/react/students libs/react/lessons)",
+      "Bash(rm libs/react/lessons/src/lib/*.tsx libs/react/lessons/src/lib/*.ts)",
+      "Bash(cp -r libs/react/lessons libs/react/invoices)",
+      "Bash(rm -rf libs/react/invoices/src/lib/*)",
+      "WebFetch(domain:developer.squareup.com)",
+      "WebFetch(domain:squareup.com)",
+      "Bash(cat libs/firebase/square/vitest.config.ts)",
+      "Bash(find libs/firebase/square -name \"vitest.config*\")",
+      "Bash(ls vitest.config.*)",
+      "Bash(cat vitest.config.ts)",
+      "Bash(sed -n '145,152p' libs/ts/domain/src/lib/invoice.ts)",
+      "Bash(sed -n '36,60p' libs/firebase/maple-functions/sync-invoice-to-square/src/lib/sync-invoice-to-square.ts)",
+      "Bash(awk '{print $1, $3}')",
+      "Bash(sort -k2 -n)",
+      "Bash(awk -F'|' '{gsub\\(/^[[:space:]]+|[[:space:]]+$/, \"\", $1\\); gsub\\(/^[[:space:]]+|[[:space:]]+$/, \"\", $2\\); if \\($2+0 < 75 && $2 != \"\"\\) print $1, \"|\", $2}')"
     ]
   }
 }

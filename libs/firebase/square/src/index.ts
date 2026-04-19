@@ -47,3 +47,12 @@ export {
   type RefundPaymentResult,
   type GetPaymentResult,
 } from './lib/payments.service';
+
+// Invoices service
+export {
+  InvoicesService,
+  type SendInvoiceInput,
+  type SendInvoiceResult,
+  type InvoiceCustomerInput,
+  type InvoiceLineItemInput,
+} from './lib/invoices.service';

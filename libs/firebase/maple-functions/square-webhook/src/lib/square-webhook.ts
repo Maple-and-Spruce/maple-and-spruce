@@ -20,7 +20,10 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { createHmac } from 'crypto';
-import { ProductRepository } from '@maple/firebase/database';
+import {
+  InvoiceRepository,
+  ProductRepository,
+} from '@maple/firebase/database';
 import {
   Square,
   SQUARE_SECRET_NAMES,
@@ -31,7 +34,8 @@ import { FirebaseProject } from '@maple/firebase/functions';
 // Webhook event types we handle
 type WebhookEventType =
   | 'catalog.version.updated'
-  | 'inventory.count.updated';
+  | 'inventory.count.updated'
+  | 'invoice.payment_made';
 
 interface WebhookEvent {
   merchant_id: string;
@@ -95,7 +99,7 @@ async function extractImageUrl(
  * Fired when a catalog item is created or updated in Square.
  * We need to sync the changes to our Firestore record.
  */
-async function handleCatalogUpdate(
+export async function handleCatalogUpdate(
   event: WebhookEvent,
   square: Square
 ): Promise<{ action: string; details: string }> {
@@ -317,7 +321,7 @@ async function handleCatalogUpdate(
  *   }
  * }
  */
-async function handleInventoryUpdate(
+export async function handleInventoryUpdate(
   event: WebhookEvent
 ): Promise<{ action: string; details: string }> {
   // The inventory counts are nested inside object.inventory_counts array
@@ -367,6 +371,74 @@ async function handleInventoryUpdate(
   return {
     action: 'updated',
     details: `Inventory updates: ${results.join(', ')}`,
+  };
+}
+
+/**
+ * Handle invoice.payment_made webhook
+ *
+ * Fired when a customer completes payment on a Square invoice we sent.
+ * Match by squareInvoiceId and flip our Firestore invoice to paid with
+ * paymentRecord { source: 'square-webhook', squarePaymentId }.
+ *
+ * Payload shape (per Square docs):
+ *   data.object.invoice.id                                → Square invoice id
+ *   data.object.invoice.payment_requests[0]
+ *     .completed_payment_ids[0]                           → Square payment id
+ */
+export async function handleInvoicePaymentMade(
+  event: WebhookEvent
+): Promise<{ action: string; details: string }> {
+  const payload = event.data.object as
+    | {
+        invoice?: {
+          id?: string;
+          payment_requests?: Array<{
+            completed_payment_ids?: string[];
+          }>;
+        };
+      }
+    | undefined;
+
+  const squareInvoiceId = payload?.invoice?.id ?? event.data.id;
+  const squarePaymentId =
+    payload?.invoice?.payment_requests?.[0]?.completed_payment_ids?.[0] ??
+    'unknown';
+
+  if (!squareInvoiceId) {
+    return {
+      action: 'skipped',
+      details: 'No invoice id in invoice.payment_made payload',
+    };
+  }
+
+  const invoice = await InvoiceRepository.findBySquareInvoiceId(
+    squareInvoiceId
+  );
+
+  if (!invoice) {
+    return {
+      action: 'skipped',
+      details: `No Firestore invoice with squareInvoiceId ${squareInvoiceId}`,
+    };
+  }
+
+  // Idempotent: already paid by a prior event → no-op.
+  if (invoice.status === 'paid') {
+    return {
+      action: 'skipped',
+      details: `Invoice ${invoice.id} already paid (idempotent)`,
+    };
+  }
+
+  await InvoiceRepository.markPaidBySquareWebhook({
+    id: invoice.id,
+    squarePaymentId,
+  });
+
+  return {
+    action: 'paid',
+    details: `Invoice ${invoice.id} → paid (squarePaymentId=${squarePaymentId})`,
   };
 }
 
@@ -450,6 +522,10 @@ export const squareWebhook = onRequest(
 
         case 'inventory.count.updated':
           result = await handleInventoryUpdate(event);
+          break;
+
+        case 'invoice.payment_made':
+          result = await handleInvoicePaymentMade(event);
           break;
 
         default:

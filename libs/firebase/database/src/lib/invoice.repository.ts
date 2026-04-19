@@ -4,12 +4,17 @@
  * Private-pay music lesson invoices. See `invoice.ts` for status
  * transition rules — the repository applies issuedAt / paidAt stamps
  * automatically when status transitions into sent / paid.
+ *
+ * Paid transitions also stamp a `paymentRecord` so the admin can
+ * attribute the payment to a specific event (admin-manual vs. the Square
+ * `invoice.payment_made` webhook).
  */
 import { db, toDate } from './utilities/database.config';
 import type {
   Invoice,
   CreateInvoiceInput,
   InvoiceLineItem,
+  InvoicePaymentRecord,
   InvoiceStatus,
   UpdateInvoiceInput,
 } from '@maple/ts/domain';
@@ -25,6 +30,14 @@ function docToInvoice(
   }
 
   const data = doc.data()!;
+  const rawPaymentRecord = data.paymentRecord as
+    | {
+        source: InvoicePaymentRecord['source'];
+        squarePaymentId?: string;
+        recordedAt: unknown;
+      }
+    | undefined;
+
   return {
     id: doc.id,
     studentId: data.studentId,
@@ -33,6 +46,16 @@ function docToInvoice(
     totalCents: data.totalCents ?? 0,
     issuedAt: data.issuedAt ? toDate(data.issuedAt) : undefined,
     paidAt: data.paidAt ? toDate(data.paidAt) : undefined,
+    paymentRecord: rawPaymentRecord
+      ? {
+          source: rawPaymentRecord.source,
+          squarePaymentId: rawPaymentRecord.squarePaymentId,
+          recordedAt: toDate(rawPaymentRecord.recordedAt),
+        }
+      : undefined,
+    squareOrderId: data.squareOrderId,
+    squareInvoiceId: data.squareInvoiceId,
+    squareSyncError: data.squareSyncError,
     notes: data.notes,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -78,6 +101,26 @@ export const InvoiceRepository = {
     return docToInvoice(doc);
   },
 
+  /**
+   * Find an invoice by the Square invoice id — used by the payment_made
+   * webhook to look up the Firestore record that needs to flip to paid.
+   */
+  async findBySquareInvoiceId(
+    squareInvoiceId: string
+  ): Promise<Invoice | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('squareInvoiceId', '==', squareInvoiceId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return undefined;
+    }
+
+    return docToInvoice(snapshot.docs[0]);
+  },
+
   async create(input: CreateInvoiceInput): Promise<Invoice> {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
@@ -95,6 +138,15 @@ export const InvoiceRepository = {
       // as the Firestore doc — normal flow starts as draft with these unset.
       issuedAt: status === 'sent' || status === 'paid' ? now : undefined,
       paidAt: status === 'paid' ? now : undefined,
+      // Direct-to-paid creates imply manual admin attribution since no
+      // Square event has fired yet.
+      paymentRecord:
+        status === 'paid'
+          ? {
+              source: 'admin-manual' as const,
+              recordedAt: now,
+            }
+          : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -109,6 +161,7 @@ export const InvoiceRepository = {
       totalCents,
       issuedAt: data.issuedAt,
       paidAt: data.paidAt,
+      paymentRecord: data.paymentRecord,
       notes: data.notes,
       createdAt: now,
       updatedAt: now,
@@ -135,9 +188,11 @@ export const InvoiceRepository = {
 
     // Apply transition side-effects:
     // - first time entering sent: stamp issuedAt
-    // - first time entering paid: stamp paidAt (and issuedAt if not set)
+    // - first time entering paid: stamp paidAt (and issuedAt if not set) +
+    //   attribute payment to admin-manual (webhook path uses a different method)
     let issuedAt = existing.issuedAt;
     let paidAt = existing.paidAt;
+    let paymentRecord = existing.paymentRecord;
 
     if (nextStatus === 'sent' && !issuedAt) {
       issuedAt = now;
@@ -145,6 +200,12 @@ export const InvoiceRepository = {
     if (nextStatus === 'paid') {
       if (!issuedAt) issuedAt = now;
       if (!paidAt) paidAt = now;
+      if (!paymentRecord) {
+        paymentRecord = {
+          source: 'admin-manual',
+          recordedAt: now,
+        };
+      }
     }
 
     const payload: Record<string, unknown> = {
@@ -153,6 +214,7 @@ export const InvoiceRepository = {
       totalCents: nextTotalCents,
       issuedAt,
       paidAt,
+      paymentRecord,
       updatedAt: now,
     };
 
@@ -168,6 +230,82 @@ export const InvoiceRepository = {
       throw new Error(`Invoice ${id} not found after update`);
     }
     return invoice;
+  },
+
+  /**
+   * Flip an invoice to paid from the Square `invoice.payment_made` webhook,
+   * attributing the payment to Square. Idempotent — if the invoice is
+   * already paid, leaves the earlier paymentRecord intact.
+   */
+  async markPaidBySquareWebhook(args: {
+    id: string;
+    squarePaymentId: string;
+  }): Promise<Invoice> {
+    const docRef = db.collection(COLLECTION).doc(args.id);
+    const existingSnap = await docRef.get();
+    const existing = docToInvoice(existingSnap);
+    if (!existing) {
+      throw new Error(`Invoice ${args.id} not found`);
+    }
+
+    // Idempotent: already paid → no-op return current state.
+    if (existing.status === 'paid') {
+      return existing;
+    }
+
+    const now = new Date();
+    const payload: Record<string, unknown> = {
+      status: 'paid' as InvoiceStatus,
+      paidAt: existing.paidAt ?? now,
+      issuedAt: existing.issuedAt ?? now,
+      paymentRecord: {
+        source: 'square-webhook' as const,
+        squarePaymentId: args.squarePaymentId,
+        recordedAt: now,
+      },
+      updatedAt: now,
+    };
+
+    await docRef.update(payload);
+
+    const updated = await docRef.get();
+    const invoice = docToInvoice(updated);
+    if (!invoice) {
+      throw new Error(`Invoice ${args.id} not found after webhook update`);
+    }
+    return invoice;
+  },
+
+  /**
+   * Persist the Square ids stamped during a successful send, and clear
+   * any prior sync error.
+   */
+  async markSquareSynced(args: {
+    id: string;
+    squareOrderId: string;
+    squareInvoiceId: string;
+  }): Promise<void> {
+    await db.collection(COLLECTION).doc(args.id).update({
+      squareOrderId: args.squareOrderId,
+      squareInvoiceId: args.squareInvoiceId,
+      squareSyncError: null,
+      updatedAt: new Date(),
+    });
+  },
+
+  /**
+   * Persist a Square sync error so the admin UI can surface it. The
+   * invoice stays in whatever status it was in; only the error field is
+   * updated.
+   */
+  async recordSquareSyncError(args: {
+    id: string;
+    error: string;
+  }): Promise<void> {
+    await db.collection(COLLECTION).doc(args.id).update({
+      squareSyncError: args.error,
+      updatedAt: new Date(),
+    });
   },
 
   async delete(id: string): Promise<void> {
