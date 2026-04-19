@@ -54,6 +54,17 @@
 | Payments | Square |
 | Monorepo | Nx |
 
+## Quick Commands
+
+```bash
+pnpm dev              # Web app (Next.js) on :3000
+pnpm dev:functions    # Functions emulator on :5001
+pnpm storybook        # Storybook on :6006
+pnpm test             # Unit tests
+```
+
+For integration tests, worktree port isolation, and emulator troubleshooting see the `local-development` skill.
+
 ## Key Patterns
 
 - **Repository Pattern** -- All Firestore via repositories, never raw `getDocs`
