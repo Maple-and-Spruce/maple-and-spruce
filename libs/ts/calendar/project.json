@@ -6,7 +6,7 @@
   "tags": ["scope:shared", "type:util"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
+      "executor": "@nx/vitest:test",
       "options": {
         "reportsDirectory": "../../../coverage/libs/ts/calendar"
       }
