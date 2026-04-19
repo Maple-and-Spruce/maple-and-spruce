@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import type { Instructor, Lesson, RequestState } from '@maple/ts/domain';
 
 interface LessonListProps {
@@ -23,6 +24,13 @@ interface LessonListProps {
   primaryTeacherId?: string;
   onEdit: (lesson: Lesson) => void;
   onCancel: (lesson: Lesson) => void;
+  /**
+   * Optional — when provided, past scheduled lessons get a
+   * "Mark rendered" action. Required for Hope Scholarship students so
+   * invoicing via EMA can only pull from rendered records; useful for
+   * private-pay too so #283 payout tracking has accurate counts.
+   */
+  onMarkRendered?: (lesson: Lesson) => void;
   /** For deterministic testing; defaults to current wall clock. */
   now?: Date;
 }
@@ -50,16 +58,24 @@ function LessonRow({
   lesson,
   teacherName,
   isSubstitute,
+  isPast,
   onEdit,
   onCancel,
+  onMarkRendered,
 }: {
   lesson: Lesson;
   teacherName: string;
   isSubstitute: boolean;
+  isPast: boolean;
   onEdit: () => void;
   onCancel: () => void;
+  onMarkRendered?: () => void;
 }) {
   const canMutate = lesson.status === 'scheduled';
+  // Mark-rendered is only meaningful for past scheduled lessons; hide it
+  // for future-dated rows so Katie doesn't mark something that hasn't
+  // happened yet.
+  const canMarkRendered = canMutate && isPast && !!onMarkRendered;
 
   return (
     <ListItem
@@ -72,6 +88,17 @@ function LessonRow({
       secondaryAction={
         canMutate ? (
           <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {canMarkRendered && (
+              <IconButton
+                edge="end"
+                onClick={onMarkRendered}
+                size="small"
+                aria-label="Mark lesson as rendered"
+                color="success"
+              >
+                <CheckCircleIcon fontSize="small" />
+              </IconButton>
+            )}
             <IconButton
               edge="end"
               onClick={onEdit}
@@ -151,6 +178,7 @@ export function LessonList({
   primaryTeacherId,
   onEdit,
   onCancel,
+  onMarkRendered,
   now = new Date(),
 }: LessonListProps) {
   if (lessonsState.status === 'loading') {
@@ -204,8 +232,12 @@ export function LessonList({
         primaryTeacherId !== undefined &&
         lesson.teacherId !== primaryTeacherId
       }
+      isPast={lesson.scheduledAt.getTime() <= now.getTime()}
       onEdit={() => onEdit(lesson)}
       onCancel={() => onCancel(lesson)}
+      onMarkRendered={
+        onMarkRendered ? () => onMarkRendered(lesson) : undefined
+      }
     />
   );
 
