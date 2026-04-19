@@ -24,6 +24,10 @@ export {
 
 // Phase 4: Music Lessons
 export { StudentRepository } from './lib/student.repository';
+export {
+  LessonRepository,
+  type LessonFilters,
+} from './lib/lesson.repository';
 
 // Phase 4.5: Calendar
 export {

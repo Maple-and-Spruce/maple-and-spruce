@@ -149,6 +149,21 @@
       "@maple/firebase/maple-functions/delete-student": [
         "libs/firebase/maple-functions/delete-student/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/create-lesson": [
+        "libs/firebase/maple-functions/create-lesson/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-lesson-series": [
+        "libs/firebase/maple-functions/create-lesson-series/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-lessons": [
+        "libs/firebase/maple-functions/get-lessons/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-lesson": [
+        "libs/firebase/maple-functions/update-lesson/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-lesson": [
+        "libs/firebase/maple-functions/delete-lesson/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-classes": [
         "libs/firebase/maple-functions/get-classes/src/index.ts"
       ],
@@ -253,6 +268,7 @@
       ],
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
       "@maple/react/students": ["libs/react/students/src/index.ts"],
+      "@maple/react/lessons": ["libs/react/lessons/src/index.ts"],
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],

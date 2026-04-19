@@ -76,6 +76,13 @@ export { createStudent } from '@maple/firebase/maple-functions/create-student';
 export { updateStudent } from '@maple/firebase/maple-functions/update-student';
 export { deleteStudent } from '@maple/firebase/maple-functions/delete-student';
 
+// Music lesson functions (Phase 4)
+export { getLessons } from '@maple/firebase/maple-functions/get-lessons';
+export { createLesson } from '@maple/firebase/maple-functions/create-lesson';
+export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesson-series';
+export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
+export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
+
 // Class functions
 export { getClasses } from '@maple/firebase/maple-functions/get-classes';
 export { getClass } from '@maple/firebase/maple-functions/get-class';
