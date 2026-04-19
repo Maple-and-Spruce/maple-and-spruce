@@ -341,6 +341,12 @@
       "@maple/firebase/maple-functions/update-etsy-listing": [
         "libs/firebase/maple-functions/update-etsy-listing/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/record-sale": [
+        "libs/firebase/maple-functions/record-sale/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-sales": [
+        "libs/firebase/maple-functions/get-sales/src/index.ts"
+      ],
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],

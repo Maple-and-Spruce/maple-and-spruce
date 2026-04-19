@@ -63,6 +63,8 @@
     "../../libs/firebase/maple-functions/save-etsy-category-template/**/*.ts",
     "../../libs/firebase/maple-functions/save-etsy-artist-template/**/*.ts",
     "../../libs/firebase/maple-functions/list-etsy-listings/**/*.ts",
+    "../../libs/firebase/maple-functions/record-sale/**/*.ts",
+    "../../libs/firebase/maple-functions/get-sales/**/*.ts",
     "../../libs/firebase/maple-functions/create-student/**/*.ts",
     "../../libs/firebase/maple-functions/delete-student/**/*.ts",
     "../../libs/firebase/maple-functions/get-student/**/*.ts",

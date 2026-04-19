@@ -8,6 +8,8 @@
 export interface Sale {
   id: string;
   productId: string;
+  /** Optional variant ID when the product has multiple variants */
+  variantId?: string;
   artistId: string;
 
   /** The price the item sold for */
