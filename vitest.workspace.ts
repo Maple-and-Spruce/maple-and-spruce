@@ -12,6 +12,7 @@ export default defineWorkspace([
   'libs/firebase/maple-functions/sync-invoice-to-square/vitest.config.ts',
   'libs/firebase/maple-functions/create-invoice/vitest.config.ts',
   'libs/firebase/maple-functions/update-invoice/vitest.config.ts',
+  'libs/firebase/maple-functions/get-teacher-payouts/vitest.config.ts',
   'libs/firebase/maple-functions/calendar-embed/vitest.config.ts',
   'libs/react/classes/vitest.config.ts',
   'libs/react/signals/vitest.config.ts',

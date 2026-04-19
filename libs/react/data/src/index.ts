@@ -13,6 +13,10 @@ export { useClassCategories } from './lib/useClassCategories';
 export { useStudents } from './lib/useStudents';
 export { useLessons, type UseLessonsOptions } from './lib/useLessons';
 export { useInvoices, type UseInvoicesOptions } from './lib/useInvoices';
+export {
+  useTeacherPayouts,
+  type UseTeacherPayoutsOptions,
+} from './lib/useTeacherPayouts';
 
 // Phase 4.5: Calendar
 export {

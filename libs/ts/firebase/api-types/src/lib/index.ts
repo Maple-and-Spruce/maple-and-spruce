@@ -269,6 +269,12 @@ export type {
   DeleteInvoiceResponse,
 } from './invoice.types';
 
+// Phase 4: Music Lessons - Teacher payout aggregation
+export type {
+  GetTeacherPayoutsRequest,
+  GetTeacherPayoutsResponse,
+} from './teacher-payout.types';
+
 // Calendar Embed Config types
 export type {
   GetCalendarEmbedConfigRequest,

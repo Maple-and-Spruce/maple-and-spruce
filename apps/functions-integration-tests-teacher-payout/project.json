@@ -1,0 +1,25 @@
+{
+  "name": "functions-integration-tests-teacher-payout",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-teacher-payout/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-get-teacher-payouts",
+    "firebase-maple-functions-create-invoice",
+    "firebase-maple-functions-update-invoice",
+    "firebase-maple-functions-create-student",
+    "firebase-maple-functions-create-instructor",
+    "firebase-maple-functions-create-lesson",
+    "firebase-maple-functions-update-lesson",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-teacher-payout/vitest.config.ts"
+      }
+    }
+  }
+}

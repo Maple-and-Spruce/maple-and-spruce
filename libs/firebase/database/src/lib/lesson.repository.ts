@@ -28,6 +28,7 @@ function docToLesson(
     scheduledAt: toDate(data.scheduledAt),
     durationMinutes: data.durationMinutes,
     teacherId: data.teacherId,
+    primaryTeacherAtCreateId: data.primaryTeacherAtCreateId,
     seriesId: data.seriesId,
     status: data.status,
     notes: data.notes,
@@ -123,6 +124,7 @@ export const LessonRepository = {
       batch.set(lessonRef, {
         studentId: input.studentId,
         teacherId: input.teacherId,
+        primaryTeacherAtCreateId: input.primaryTeacherAtCreateId,
         durationMinutes: input.durationMinutes,
         scheduledAt,
         seriesId,
@@ -141,6 +143,7 @@ export const LessonRepository = {
       scheduledAt: input.scheduledAts[i],
       durationMinutes: input.durationMinutes,
       teacherId: input.teacherId,
+      primaryTeacherAtCreateId: input.primaryTeacherAtCreateId,
       seriesId,
       status: 'scheduled',
       notes: input.notes,

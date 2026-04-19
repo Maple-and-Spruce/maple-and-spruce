@@ -39,7 +39,14 @@ export const createLesson = createAdminFunction<
     throw new Error(`Student not found: ${coerced.studentId}`);
   }
 
-  const lesson = await LessonRepository.create(coerced);
+  // Snapshot the student's current primary teacher so later reassignment
+  // of the student can't retroactively flip substitute attribution for
+  // this lesson. See #283 payout tracking.
+  const lesson = await LessonRepository.create({
+    ...coerced,
+    primaryTeacherAtCreateId:
+      coerced.primaryTeacherAtCreateId ?? student.primaryTeacherId,
+  });
 
   return { lesson };
 });

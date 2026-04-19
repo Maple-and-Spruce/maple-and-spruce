@@ -89,6 +89,9 @@ export { createInvoice } from '@maple/firebase/maple-functions/create-invoice';
 export { updateInvoice } from '@maple/firebase/maple-functions/update-invoice';
 export { deleteInvoice } from '@maple/firebase/maple-functions/delete-invoice';
 
+// Teacher payout aggregation (Phase 4, #283)
+export { getTeacherPayouts } from '@maple/firebase/maple-functions/get-teacher-payouts';
+
 // Class functions
 export { getClasses } from '@maple/firebase/maple-functions/get-classes';
 export { getClass } from '@maple/firebase/maple-functions/get-class';

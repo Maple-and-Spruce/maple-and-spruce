@@ -148,6 +148,9 @@ describe('Lesson Functions', () => {
       expect(result.data?.lesson.durationMinutes).toBe(30);
       expect(result.data?.lesson.status).toBe('scheduled');
       expect(result.data?.lesson.seriesId).toBeUndefined();
+      // Snapshot the student's primary teacher at create time (#283 payout
+      // attribution can't retroactively flip when Katie reassigns later).
+      expect(result.data?.lesson.primaryTeacherAtCreateId).toBe(TEACHER_ID);
       lessonId = result.data!.lesson.id;
     });
 

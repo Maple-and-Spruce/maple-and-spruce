@@ -8,16 +8,16 @@
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| Physical store | Not yet | Long timeline |
+| Physical store | Not yet | Opening May 2026 |
 | Etsy shop | Active | Currently selling |
 | Artists | Have artists | Consignment model |
 | POS System | Square | Chosen for in-store sales |
-| Admin platform | ✅ Built | Artist/product management |
-| Public website | In progress | Webflow integration |
-| Classes | Not yet | Future when store opens |
-| Music lessons | Not yet | Future when store opens |
+| Admin platform | ✅ Built | Artist/product/class/lesson management |
+| Public website | ✅ Live | Webflow with registration widget |
+| Classes | ✅ Built | Online registration + payment via Square |
+| Music lessons | ✅ Built | Admin-driven registration, scheduling, invoicing, payouts |
 
-**Key insight**: Build public website and class/lesson infrastructure NOW. Sales tracking when store opens.
+**Key insight**: Website, classes, and music lesson infrastructure are built. Next: sales tracking when store opens.
 
 ---
 
@@ -87,16 +87,58 @@
 - [ ] Admin: view registrations, class rosters
 - [ ] Instructor payout tracking
 
-### Phase 4: Music Lessons - Epic #10
-*Intro lessons and recurring scheduling for Suzuki method instruction*
+### Phase 4: Music Lessons - Epic #10 ✅ COMPLETE
+*Admin-driven registration, scheduling, invoicing, and payout tracking for Suzuki method instruction*
 
-- [ ] Teacher profiles and availability management
-- [ ] First-lesson booking with prepayment
-- [ ] Recurring lesson scheduling (after student vetted)
-- [ ] Calendar management for teachers
-- [ ] Student management and progress tracking
-- [ ] Teacher payout tracking
-- [ ] Lesson packages (buy 4 get 1 free, etc.)
+**Key design decisions:**
+- Admin-driven registration (Katie registers students, not self-service)
+- Each Student has a 1:1 primary teacher; Lessons hang off Students
+- Two payment tracks: private-pay (Square invoicing) and Hope Scholarship (external portal)
+- Substitute teacher attribution: credit goes to whoever actually taught the lesson
+
+**4a. Student Records (#278)** ✅
+- [x] Student domain type (Instrument, LessonLength enums, Hope Scholarship flag)
+- [x] Student CRUD Cloud Functions (5)
+- [x] Admin `/students` page with Hope/Private filter
+- [x] Student detail page `/students/[id]`
+
+**4b. Lesson Scheduling (#279)** ✅
+- [x] Lesson domain type (status: scheduled/cancelled/rendered)
+- [x] Lesson + LessonSeries validation (Vest)
+- [x] First-lesson booking (single date) and recurring series generation
+- [x] Lesson CRUD Cloud Functions (5) including `createLessonSeries`
+- [x] `useLessons` hook scoped by studentId
+- [x] ScheduleLessonDialog + EditLessonDialog (signals, Vest)
+
+**4c. Invoice Initiation — Private Pay (#280)** ✅
+- [x] Invoice domain type with status transitions (draft → sent → paid/void)
+- [x] Invoice CRUD Cloud Functions (4) with Hope guard, transition enforcement, draft-only delete
+- [x] InvoiceBuilderDialog with "Add from lesson" picker
+- [x] Wired into `/students/[id]` with Hope guard in UI
+
+**4d. Parent Invoice Delivery + Online Payment (#281)** ✅
+- [x] Square Invoices API integration (InvoicesService: Customers + Orders + Invoices)
+- [x] `syncInvoiceToSquare` Firestore trigger (draft → sent, sent → void)
+- [x] `square-webhook` extended for `invoice.payment_made`
+- [x] Payment attribution ("Paid via Square" / "Marked paid manually" chips)
+
+**4e. Hope Scholarship Handling (#282)** ✅
+- [x] Hope per-lesson rate constants (30/45/60 min tiers, initial vs full)
+- [x] HopeRatesTable + HopeScholarshipBanner on student detail
+- [x] Mark-lesson-rendered action (past scheduled lessons only)
+- [x] Exclude Hope students from in-app invoice flow
+
+**4f. Teacher Payout Tracking (#283)** ✅
+- [x] `teacher-payout.ts` aggregator (paid private-pay + rendered Hope lessons)
+- [x] `primaryTeacherAtCreateId` snapshot for substitute attribution
+- [x] `getTeacherPayouts` Cloud Function (admin, date range + teacher filter)
+- [x] PeriodPicker + TeacherPayoutsList with Hope/Private/Substitute chips
+- [x] `/payouts` admin page + Music Lessons nav entry
+
+**Deferred from Phase 4:**
+- Lesson packages (buy 4 get 1 free) — not needed at launch
+- Teacher availability/calendar management — using external scheduling for now
+- Public music teacher profiles on Webflow — blocked on instructor-to-Webflow sync (#147, #148)
 
 ### Phase 5: Store Opening & Sales Tracking - Epic #8
 *When physical store opens - POS, Etsy sync, payouts*
@@ -539,4 +581,4 @@ Etsy webhooks require app approval. Initial implementation uses polling:
 
 ---
 
-*Last updated: 2025-01-19*
+*Last updated: 2026-04-19*
