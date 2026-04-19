@@ -23,6 +23,7 @@ import type {
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   EditLessonDialog,
+  HopeScholarshipBanner,
   LessonList,
   ScheduleLessonDialog,
 } from '@maple/react/lessons';
@@ -98,6 +99,15 @@ export default function StudentDetailPage() {
     try {
       await updateLesson({ id: cancelLesson.id, status: 'cancelled' });
       setCancelLesson(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMarkRendered = async (lesson: Lesson) => {
+    setIsSubmitting(true);
+    try {
+      await updateLesson({ id: lesson.id, status: 'rendered' });
     } finally {
       setIsSubmitting(false);
     }
@@ -198,6 +208,12 @@ export default function StudentDetailPage() {
         </Button>
       </Box>
 
+      {student.isHopeScholarship && (
+        <HopeScholarshipBanner
+          registeredLessonLength={student.registeredLessonLength}
+        />
+      )}
+
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
         Lessons
       </Typography>
@@ -207,6 +223,7 @@ export default function StudentDetailPage() {
         primaryTeacherId={student.primaryTeacherId}
         onEdit={(lesson) => setEditLesson(lesson)}
         onCancel={(lesson) => setCancelLesson(lesson)}
+        onMarkRendered={handleMarkRendered}
       />
 
       <ScheduleLessonDialog

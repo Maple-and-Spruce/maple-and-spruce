@@ -67,10 +67,24 @@ export const mockLessonCancelled: Lesson = {
   updatedAt: NOW,
 };
 
+/** Past-dated lesson still in `scheduled` status — ready to be marked rendered. */
+export const mockLessonPastScheduled: Lesson = {
+  id: 'lesson-006',
+  studentId: 'student-001',
+  scheduledAt: new Date('2026-04-12T15:00:00Z'),
+  durationMinutes: 30,
+  teacherId: 'instructor-001',
+  seriesId: 'series-spring',
+  status: 'scheduled',
+  createdAt: NOW,
+  updatedAt: NOW,
+};
+
 export const mockLessons: Lesson[] = [
   mockLessonUpcomingSingle,
   mockLessonUpcomingSeries,
   mockLessonUpcomingSubstitute,
   mockLessonPastRendered,
   mockLessonCancelled,
+  mockLessonPastScheduled,
 ];

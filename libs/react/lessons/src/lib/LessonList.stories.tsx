@@ -7,6 +7,7 @@ import {
   mockLessonUpcomingSeries,
   mockLessonUpcomingSubstitute,
   mockLessonPastRendered,
+  mockLessonPastScheduled,
   mockLessonCancelled,
   mockInstructor,
   mockInstructor2,
@@ -23,6 +24,7 @@ const meta = {
   args: {
     onEdit: fn(),
     onCancel: fn(),
+    onMarkRendered: fn(),
     instructors,
     primaryTeacherId: mockInstructor.id,
     now: fixedNow,
@@ -181,5 +183,99 @@ export const SubstituteChipAppearsWhenTeacherDiffers: Story = {
     await waitFor(() => {
       expect(canvas.getByText(/substitute/i)).toBeInTheDocument();
     });
+  },
+};
+
+// ============================================================
+// MARK RENDERED (added in #282)
+// ============================================================
+
+export const MarkRenderedShownOnPastScheduledLesson: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      expect(
+        canvas.getByRole('button', { name: /mark lesson as rendered/i })
+      ).toBeInTheDocument();
+    });
+  },
+};
+
+export const MarkRenderedHiddenOnUpcomingLesson: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonUpcomingSingle],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      canvas.queryByRole('button', { name: /mark lesson as rendered/i })
+    ).toBeNull();
+    // Edit + Cancel still present
+    expect(
+      canvas.getByRole('button', { name: /edit lesson/i })
+    ).toBeInTheDocument();
+  },
+};
+
+export const MarkRenderedHiddenWhenHandlerOmitted: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled],
+    } as RequestState<Lesson[]>,
+    onMarkRendered: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      canvas.queryByRole('button', { name: /mark lesson as rendered/i })
+    ).toBeNull();
+  },
+};
+
+export const MarkRenderedCallsHandler: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button', {
+      name: /mark lesson as rendered/i,
+    });
+    await userEvent.click(button);
+    await waitFor(() => {
+      expect(args.onMarkRendered).toHaveBeenCalledTimes(1);
+      expect(args.onMarkRendered).toHaveBeenCalledWith(
+        mockLessonPastScheduled
+      );
+    });
+  },
+};
+
+export const MarkRenderedHiddenOnRenderedRow: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastRendered],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Already-rendered lesson shouldn't offer the action again
+    expect(
+      canvas.queryByRole('button', { name: /mark lesson as rendered/i })
+    ).toBeNull();
   },
 };

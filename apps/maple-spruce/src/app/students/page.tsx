@@ -1,13 +1,22 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Alert, Box, Button, Typography } from '@mui/material';
+import { useMemo, useState, useCallback } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type { CreateStudentInput, Student } from '@maple/ts/domain';
+import type { CreateStudentInput, RequestState, Student } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { StudentForm, StudentList } from '@maple/react/students';
 import { AppShell } from '../../components/layout';
 import { useInstructors, useStudents } from '../../hooks';
+
+type HopeFilter = 'all' | 'hope' | 'private';
 
 export default function StudentsPage() {
   const {
@@ -29,6 +38,20 @@ export default function StudentsPage() {
   // Delete dialog state
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Hope Scholarship filter — client-side since roster is small.
+  const [hopeFilter, setHopeFilter] = useState<HopeFilter>('all');
+
+  const filteredStudentsState = useMemo<RequestState<Student[]>>(() => {
+    if (studentsState.status !== 'success') return studentsState;
+    if (hopeFilter === 'all') return studentsState;
+    const predicate = (s: Student) =>
+      hopeFilter === 'hope' ? s.isHopeScholarship : !s.isHopeScholarship;
+    return {
+      ...studentsState,
+      data: studentsState.data.filter(predicate),
+    };
+  }, [studentsState, hopeFilter]);
 
   const handleOpenForm = useCallback((student?: Student) => {
     setEditingStudent(student);
@@ -114,8 +137,24 @@ export default function StudentsPage() {
         </Alert>
       )}
 
+      <Box sx={{ mb: 2 }}>
+        <ToggleButtonGroup
+          exclusive
+          value={hopeFilter}
+          onChange={(_, next) => {
+            if (next) setHopeFilter(next as HopeFilter);
+          }}
+          size="small"
+          aria-label="Filter students by Hope Scholarship"
+        >
+          <ToggleButton value="all">All students</ToggleButton>
+          <ToggleButton value="hope">Hope Scholarship only</ToggleButton>
+          <ToggleButton value="private">Private-pay only</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
       <StudentList
-        studentsState={studentsState}
+        studentsState={filteredStudentsState}
         instructors={instructors}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}

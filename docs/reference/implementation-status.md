@@ -167,6 +167,20 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 ## Phase 4: Music Lessons - Epic #10
 
+### Hope Scholarship Handling (#282, Complete)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Hope flag on Student (set/unset by Katie) | **Complete** | shipped in #278 |
+| Hope per-lesson rate constants + helpers | **Complete** | `libs/react/lessons/src/lib/hope-rates.ts` (+ 7 unit tests) |
+| `HopeRatesTable` (4-tier, highlight current) | **Complete** | `libs/react/lessons/src/lib/HopeRatesTable.tsx` |
+| `HopeScholarshipBanner` on student detail | **Complete** | `libs/react/lessons/src/lib/HopeScholarshipBanner.tsx` |
+| Mark-lesson-rendered action (past scheduled lessons) | **Complete** | `LessonList.tsx` + `/students/[id]/page.tsx` |
+| Hope filter on `/students` (All / Hope / Private) | **Complete** | `/students/page.tsx` |
+| Exclude Hope students from in-app invoice flow | **Deferred to #280** | invoice flow doesn't exist yet |
+| Rendered lessons feed teacher payouts | **Data ready** | `Lesson.status='rendered'` records exist; aggregation in #283 |
+| Storybook interaction tests | **Complete** | 18 new (rates table, banner, mark-rendered on LessonList) |
+
 ### Lesson Scheduling (#279, Complete)
 
 | Feature | Status | Location |
