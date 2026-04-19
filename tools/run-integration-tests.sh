@@ -27,15 +27,16 @@ FIRESTORE_PORT=$((8080 + OFFSET))
 AUTH_PORT=$((9099 + OFFSET))
 UI_PORT=$((4000 + OFFSET))
 MOCK_SERVER_PORT=$((9999 + OFFSET))
+ETSY_MOCK_SERVER_PORT=$((9998 + OFFSET))
 
 if [ "$OFFSET" != "0" ]; then
-  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, mock:$MOCK_SERVER_PORT"
+  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, mock:$MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT"
 fi
 
 # ---------------------------------------------------------------------------
 # 1. Kill stale processes on OUR ports only (leave other worktrees alone)
 # ---------------------------------------------------------------------------
-for port in "$MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
+for port in "$MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
   lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 1
@@ -67,20 +68,31 @@ for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sy
   grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
 done
 
+# maple-core: Etsy mock server URL + fake secrets (for listEtsyListings, getEtsyTemplates)
+echo "ETSY_API_BASE=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/application" >> dist/apps/functions/.env
+printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
+
 # maple-square: mock server URL + fake secrets
 echo "SQUARE_BASE_URL=http://localhost:$MOCK_SERVER_PORT" >> dist/apps/functions-square/.env
-printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square/.secret.local
+echo "ETSY_API_BASE=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/application" >> dist/apps/functions-square/.env
+printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
 
 # maple-sync: mock server URL + fake secrets
 echo "WEBFLOW_BASE_URL=http://localhost:$MOCK_SERVER_PORT" >> dist/apps/functions-sync/.env
+echo "ETSY_API_BASE=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/application" >> dist/apps/functions-sync/.env
+echo "ETSY_TOKEN_URL=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/public/oauth/token" >> dist/apps/functions-sync/.env
 printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
 # ---------------------------------------------------------------------------
-# 4. Start mock HTTP server (Square + Webflow APIs)
+# 4. Start mock HTTP servers (Square + Webflow + Etsy APIs)
 # ---------------------------------------------------------------------------
-echo "Starting mock server on :$MOCK_SERVER_PORT..."
+echo "Starting monolithic mock server on :$MOCK_SERVER_PORT..."
 MOCK_SERVER_PORT="$MOCK_SERVER_PORT" npx tsx libs/firebase/integration-test-mock-server/start.ts &
 MOCK_PID=$!
+
+echo "Starting Etsy mock server on :$ETSY_MOCK_SERVER_PORT..."
+ETSY_MOCK_SERVER_PORT="$ETSY_MOCK_SERVER_PORT" npx tsx libs/firebase/etsy-test-mock-server/start.ts &
+ETSY_MOCK_PID=$!
 sleep 2
 
 # ---------------------------------------------------------------------------
@@ -126,6 +138,7 @@ EMULATOR_PORT_OFFSET="$OFFSET" npx firebase --config "$FIREBASE_CONFIG_FILE" emu
 # 7. Cleanup
 # ---------------------------------------------------------------------------
 kill $MOCK_PID 2>/dev/null || true
+kill $ETSY_MOCK_PID 2>/dev/null || true
 
 if [ $EXIT_CODE -eq 0 ]; then
   echo ""

@@ -23,6 +23,11 @@ export { useCalendarEmbedConfig } from './lib/useCalendarEmbedConfig';
 
 // Phase 5: Etsy Integration
 export { useEtsyConnection } from './lib/useEtsyConnection';
+export {
+  useEtsyListings,
+  type UseEtsyListingsOptions,
+} from './lib/useEtsyListings';
+export { useEtsyImport } from './lib/useEtsyImport';
 
 // Phase 3c: Registration & Discounts
 export {

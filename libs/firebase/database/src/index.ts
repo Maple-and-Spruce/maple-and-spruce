@@ -48,3 +48,7 @@ export {
   updateTokenShopId,
 } from './lib/etsy-token.repository';
 export { EtsyTemplateRepository } from './lib/etsy-template.repository';
+export {
+  EtsyImportRepository,
+  type CreateEtsyImportInput,
+} from './lib/etsy-import.repository';

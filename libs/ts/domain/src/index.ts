@@ -12,6 +12,7 @@ export * from './lib/sync-conflict';
 
 // Phase 5: Etsy Integration
 export * from './lib/etsy';
+export * from './lib/etsy-import';
 
 // Phase 3: Classes & Workshops
 export * from './lib/instructor';

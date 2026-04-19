@@ -62,10 +62,12 @@ export const etsyAuthCallback = Functions.endpoint
       // Fetch the shop ID from Etsy.
       // The token response includes the user ID but not the shop ID.
       // We need to call the API to get it.
+      const etsyApiBase =
+        process.env['ETSY_API_BASE'] ?? 'https://api.etsy.com/v3/application';
       let shopId = '';
       try {
         const response = await fetch(
-          `https://api.etsy.com/v3/application/users/${tokenData.userId}/shops`,
+          `${etsyApiBase}/users/${tokenData.userId}/shops`,
           {
             headers: {
               'x-api-key': `${secrets.ETSY_API_KEY}:${secrets.ETSY_SHARED_SECRET}`,

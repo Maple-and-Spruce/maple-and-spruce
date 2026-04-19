@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-list-etsy-listings",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/list-etsy-listings/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}
