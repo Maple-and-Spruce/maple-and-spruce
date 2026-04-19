@@ -1,13 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   generateSku,
+  generateVariantId,
   isCacheStale,
   getEffectiveCommissionRate,
   formatPrice,
   toCents,
+  getTotalQuantity,
+  findVariant,
+  findVariantBySquareId,
+  findVariantByEtsyProductId,
+  isMultiVariant,
+  resolveVariants,
   CACHE_STALE_THRESHOLD_MS,
 } from './product';
-import type { Product } from './product';
+import type { Product, ProductVariant } from './product';
 
 describe('generateSku', () => {
   it('returns a string starting with prd_', () => {
@@ -36,6 +43,21 @@ describe('generateSku', () => {
   });
 });
 
+describe('generateVariantId', () => {
+  it('returns a string starting with var_', () => {
+    const id = generateVariantId();
+    expect(id).toMatch(/^var_/);
+  });
+
+  it('generates unique IDs', () => {
+    const ids = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      ids.add(generateVariantId());
+    }
+    expect(ids.size).toBe(100);
+  });
+});
+
 describe('isCacheStale', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -52,9 +74,6 @@ describe('isCacheStale', () => {
     const product: Pick<Product, 'squareCache'> = {
       squareCache: {
         name: 'Test',
-        priceCents: 1000,
-        quantity: 5,
-        sku: 'prd_test123',
         syncedAt: now,
       },
     };
@@ -72,9 +91,6 @@ describe('isCacheStale', () => {
     const product: Pick<Product, 'squareCache'> = {
       squareCache: {
         name: 'Test',
-        priceCents: 1000,
-        quantity: 5,
-        sku: 'prd_test123',
         syncedAt,
       },
     };
@@ -92,9 +108,6 @@ describe('isCacheStale', () => {
     const product: Pick<Product, 'squareCache'> = {
       squareCache: {
         name: 'Test',
-        priceCents: 1000,
-        quantity: 5,
-        sku: 'prd_test123',
         syncedAt,
       },
     };
@@ -112,9 +125,6 @@ describe('isCacheStale', () => {
     const product: Pick<Product, 'squareCache'> = {
       squareCache: {
         name: 'Test',
-        priceCents: 1000,
-        quantity: 5,
-        sku: 'prd_test123',
         syncedAt,
       },
     };
@@ -215,5 +225,159 @@ describe('toCents', () => {
 describe('CACHE_STALE_THRESHOLD_MS', () => {
   it('is set to 5 minutes', () => {
     expect(CACHE_STALE_THRESHOLD_MS).toBe(5 * 60 * 1000);
+  });
+});
+
+// --- Variant helpers ---
+
+const makeVariant = (overrides?: Partial<ProductVariant>): ProductVariant => ({
+  id: 'var_abc12345',
+  label: 'Regular',
+  sku: 'prd_test1234',
+  priceCents: 2500,
+  quantity: 5,
+  ...overrides,
+});
+
+const makeProductWithVariants = (
+  variants: ProductVariant[]
+): Pick<Product, 'variants'> => ({ variants });
+
+describe('getTotalQuantity', () => {
+  it('returns quantity for single variant', () => {
+    const product = makeProductWithVariants([makeVariant({ quantity: 10 })]);
+    expect(getTotalQuantity(product)).toBe(10);
+  });
+
+  it('sums quantities across multiple variants', () => {
+    const product = makeProductWithVariants([
+      makeVariant({ id: 'v1', quantity: 3 }),
+      makeVariant({ id: 'v2', quantity: 7 }),
+      makeVariant({ id: 'v3', quantity: 2 }),
+    ]);
+    expect(getTotalQuantity(product)).toBe(12);
+  });
+
+  it('returns 0 when all variants are out of stock', () => {
+    const product = makeProductWithVariants([
+      makeVariant({ quantity: 0 }),
+      makeVariant({ id: 'v2', quantity: 0 }),
+    ]);
+    expect(getTotalQuantity(product)).toBe(0);
+  });
+});
+
+describe('findVariant', () => {
+  it('finds variant by ID', () => {
+    const target = makeVariant({ id: 'var_target', label: 'Large' });
+    const product = makeProductWithVariants([
+      makeVariant({ id: 'var_other' }),
+      target,
+    ]);
+    expect(findVariant(product, 'var_target')).toEqual(target);
+  });
+
+  it('returns undefined for unknown ID', () => {
+    const product = makeProductWithVariants([makeVariant()]);
+    expect(findVariant(product, 'var_nonexistent')).toBeUndefined();
+  });
+});
+
+describe('findVariantBySquareId', () => {
+  it('finds variant by Square variation ID', () => {
+    const target = makeVariant({
+      id: 'v1',
+      squareVariationId: 'SQ_VAR_123',
+    });
+    const product = makeProductWithVariants([
+      makeVariant({ id: 'v0', squareVariationId: 'SQ_VAR_000' }),
+      target,
+    ]);
+    expect(findVariantBySquareId(product, 'SQ_VAR_123')).toEqual(target);
+  });
+
+  it('returns undefined when no match', () => {
+    const product = makeProductWithVariants([
+      makeVariant({ squareVariationId: 'SQ_VAR_999' }),
+    ]);
+    expect(findVariantBySquareId(product, 'SQ_VAR_000')).toBeUndefined();
+  });
+});
+
+describe('findVariantByEtsyProductId', () => {
+  it('finds variant by Etsy product ID', () => {
+    const target = makeVariant({ id: 'v1', etsyProductId: 42 });
+    const product = makeProductWithVariants([
+      makeVariant({ id: 'v0', etsyProductId: 99 }),
+      target,
+    ]);
+    expect(findVariantByEtsyProductId(product, 42)).toEqual(target);
+  });
+
+  it('returns undefined when no match', () => {
+    const product = makeProductWithVariants([makeVariant()]);
+    expect(findVariantByEtsyProductId(product, 42)).toBeUndefined();
+  });
+});
+
+describe('isMultiVariant', () => {
+  it('returns false for single variant', () => {
+    const product = makeProductWithVariants([makeVariant()]);
+    expect(isMultiVariant(product)).toBe(false);
+  });
+
+  it('returns true for multiple variants', () => {
+    const product = makeProductWithVariants([
+      makeVariant({ id: 'v1' }),
+      makeVariant({ id: 'v2' }),
+    ]);
+    expect(isMultiVariant(product)).toBe(true);
+  });
+});
+
+describe('resolveVariants', () => {
+  it('returns provided variants when present', () => {
+    const variants = [
+      { label: 'Small', priceCents: 1000, quantity: 3 },
+      { label: 'Large', priceCents: 1500, quantity: 5 },
+    ];
+    const result = resolveVariants({ variants });
+    expect(result).toEqual(variants);
+  });
+
+  it('creates single Regular variant from legacy fields', () => {
+    const result = resolveVariants({ priceCents: 2500, quantity: 10 });
+    expect(result).toEqual([
+      { label: 'Regular', priceCents: 2500, quantity: 10 },
+    ]);
+  });
+
+  it('defaults to 0 price and quantity when legacy fields missing', () => {
+    const result = resolveVariants({});
+    expect(result).toEqual([
+      { label: 'Regular', priceCents: 0, quantity: 0 },
+    ]);
+  });
+
+  it('prefers variants over legacy fields', () => {
+    const result = resolveVariants({
+      variants: [{ label: 'Custom', priceCents: 500, quantity: 1 }],
+      priceCents: 9999,
+      quantity: 99,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toBe('Custom');
+    expect(result[0].priceCents).toBe(500);
+  });
+
+  it('falls back to legacy when variants is empty array', () => {
+    const result = resolveVariants({
+      variants: [],
+      priceCents: 2500,
+      quantity: 10,
+    });
+    expect(result).toEqual([
+      { label: 'Regular', priceCents: 2500, quantity: 10 },
+    ]);
   });
 });

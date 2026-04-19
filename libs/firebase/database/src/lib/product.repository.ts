@@ -8,10 +8,12 @@
  * - Square owns catalog/inventory data
  * - Firestore owns business logic (artist links, commissions)
  * - squareCache contains cached Square data for fast reads
+ * - variants[] contains per-variant data (price, quantity, SKU, external IDs)
  */
 import { db } from './utilities/database.config';
 import type {
   Product,
+  ProductVariant,
   SquareCache,
   EtsyCache,
   CreateProductInput,
@@ -19,12 +21,22 @@ import type {
   ProductStatus,
   SquareProductResult,
 } from '@maple/ts/domain';
-import { isCacheStale } from '@maple/ts/domain';
+import {
+  isCacheStale,
+  generateVariantId,
+  generateSku,
+  resolveVariants,
+} from '@maple/ts/domain';
 
 const COLLECTION = 'products';
 
 /**
- * Convert Firestore document to Product
+ * Convert Firestore document to Product.
+ *
+ * Handles three data shapes:
+ * 1. Current: squareCache (listing-level) + variants[]
+ * 2. Legacy v2: squareCache with per-variant fields (priceCents, quantity, sku) + squareVariationId
+ * 3. Legacy v1: flat fields (name, price, quantity, sku) at top level
  */
 function docToProduct(
   doc: FirebaseFirestore.DocumentSnapshot
@@ -35,34 +47,29 @@ function docToProduct(
 
   const data = doc.data()!;
 
-  // Handle legacy flat structure or new squareCache structure
-  const squareCache: SquareCache = data.squareCache
+  // --- Square cache (listing-level fields + deprecated per-variant fields) ---
+  const squareCacheRaw = data.squareCache;
+  const squareCache: SquareCache = squareCacheRaw
     ? {
-        name: data.squareCache.name,
-        description: data.squareCache.description,
-        priceCents: data.squareCache.priceCents,
-        quantity: data.squareCache.quantity,
-        sku: data.squareCache.sku,
-        imageUrl: data.squareCache.imageUrl,
-        syncedAt: data.squareCache.syncedAt?.toDate() ?? new Date(),
+        name: squareCacheRaw.name,
+        description: squareCacheRaw.description,
+        imageUrl: squareCacheRaw.imageUrl,
+        syncedAt: squareCacheRaw.syncedAt?.toDate() ?? new Date(),
+        // Deprecated fields populated below after variants are resolved
       }
     : {
-        // Legacy fallback - convert flat fields to squareCache
+        // Legacy v1 fallback
         name: data.name ?? '',
         description: data.description,
-        priceCents: data.price ?? 0, // legacy field was 'price'
-        quantity: data.quantity ?? 0,
-        sku: data.sku ?? '',
         imageUrl: data.imageUrl,
         syncedAt: data.lastSquareSyncAt?.toDate() ?? new Date(0),
       };
 
+  // --- Etsy cache ---
   const etsyCache: EtsyCache | undefined = data.etsyCache
     ? {
         title: data.etsyCache.title,
         description: data.etsyCache.description,
-        priceCents: data.etsyCache.priceCents,
-        quantity: data.etsyCache.quantity,
         url: data.etsyCache.url,
         taxonomyId: data.etsyCache.taxonomyId,
         tags: data.etsyCache.tags,
@@ -70,6 +77,53 @@ function docToProduct(
         syncedAt: data.etsyCache.syncedAt?.toDate() ?? new Date(),
       }
     : undefined;
+
+  // --- Variants: migrate from legacy if needed ---
+  let variants: ProductVariant[];
+
+  if (data.variants && Array.isArray(data.variants) && data.variants.length > 0) {
+    // Current format
+    variants = data.variants.map((v: Record<string, unknown>) => ({
+      id: (v.id as string) ?? generateVariantId(),
+      label: (v.label as string) ?? 'Regular',
+      sku: (v.sku as string) ?? '',
+      priceCents: (v.priceCents as number) ?? 0,
+      quantity: (v.quantity as number) ?? 0,
+      squareVariationId: v.squareVariationId as string | undefined,
+      etsyProductId: v.etsyProductId as number | undefined,
+    }));
+  } else {
+    // Legacy: create single variant from squareCache or flat fields
+    const legacyPrice = data.squareCache?.priceCents ?? data.price ?? 0;
+    const legacyQty = data.squareCache?.quantity ?? data.quantity ?? 0;
+    const legacySku = data.squareCache?.sku ?? data.sku ?? '';
+    const legacyVariationId = data.squareVariationId ?? '';
+
+    variants = [
+      {
+        id: generateVariantId(),
+        label: 'Regular',
+        sku: legacySku,
+        priceCents: legacyPrice,
+        quantity: legacyQty,
+        squareVariationId: legacyVariationId || undefined,
+      },
+    ];
+  }
+
+  // Populate deprecated SquareCache fields from first variant for backward compat
+  const firstVariant = variants[0];
+  if (firstVariant) {
+    squareCache.priceCents = firstVariant.priceCents;
+    squareCache.quantity = firstVariant.quantity;
+    squareCache.sku = firstVariant.sku;
+  }
+
+  // Populate deprecated EtsyCache fields from first variant
+  if (etsyCache && firstVariant) {
+    etsyCache.priceCents = firstVariant.priceCents;
+    etsyCache.quantity = firstVariant.quantity;
+  }
 
   return {
     id: doc.id,
@@ -82,9 +136,13 @@ function docToProduct(
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
 
+    // Variants
+    variants,
+    variantProperties: data.variantProperties,
+
     // External system links
     squareItemId: data.squareItemId ?? '',
-    squareVariationId: data.squareVariationId ?? '',
+    squareVariationId: firstVariant?.squareVariationId,
     squareCatalogVersion: data.squareCatalogVersion,
     squareLocationId: data.squareLocationId,
     etsyListingId: data.etsyListingId,
@@ -107,28 +165,40 @@ function productToDoc(product: Omit<Product, 'id'>): Record<string, unknown> {
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
 
+    // Variants
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      label: v.label,
+      sku: v.sku,
+      priceCents: v.priceCents,
+      quantity: v.quantity,
+      squareVariationId: v.squareVariationId,
+      etsyProductId: v.etsyProductId,
+    })),
+    variantProperties: product.variantProperties,
+
+    // External links (item-level)
     squareItemId: product.squareItemId,
-    squareVariationId: product.squareVariationId,
+    squareVariationId: product.squareVariationId ?? product.variants[0]?.squareVariationId,
     squareCatalogVersion: product.squareCatalogVersion,
     squareLocationId: product.squareLocationId,
     etsyListingId: product.etsyListingId,
 
+    // Cached data (listing-level + deprecated per-variant fields for compat)
     squareCache: {
       name: product.squareCache.name,
       description: product.squareCache.description,
-      priceCents: product.squareCache.priceCents,
-      quantity: product.squareCache.quantity,
-      sku: product.squareCache.sku,
       imageUrl: product.squareCache.imageUrl,
       syncedAt: product.squareCache.syncedAt,
+      priceCents: product.variants[0]?.priceCents,
+      quantity: product.variants[0]?.quantity,
+      sku: product.variants[0]?.sku,
     },
 
     ...(product.etsyCache && {
       etsyCache: {
         title: product.etsyCache.title,
         description: product.etsyCache.description,
-        priceCents: product.etsyCache.priceCents,
-        quantity: product.etsyCache.quantity,
         url: product.etsyCache.url,
         taxonomyId: product.etsyCache.taxonomyId,
         tags: product.etsyCache.tags,
@@ -221,6 +291,24 @@ export const ProductRepository = {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
 
+    // Resolve variants from input
+    const resolvedVariants = resolveVariants(input);
+
+    // Map Square variation results to product variants
+    const variants: ProductVariant[] = resolvedVariants.map((v, i) => {
+      const squareVar = squareResult.variations[i];
+      return {
+        id: squareVar?.variantId ?? generateVariantId(),
+        label: v.label,
+        sku: squareVar?.sku ?? v.sku ?? generateSku(),
+        priceCents: v.priceCents,
+        quantity: v.quantity,
+        squareVariationId: squareVar?.squareVariationId,
+      };
+    });
+
+    const firstVar = variants[0];
+
     const product: Omit<Product, 'id'> = {
       // Firestore-owned
       artistId: input.artistId,
@@ -230,23 +318,27 @@ export const ProductRepository = {
       createdAt: now,
       updatedAt: now,
 
+      // Variants
+      variants,
+      variantProperties: input.variantProperties,
+
       // From Square result
       squareItemId: squareResult.squareItemId,
-      squareVariationId: squareResult.squareVariationId,
+      squareVariationId: firstVar?.squareVariationId,
       squareCatalogVersion: squareResult.squareCatalogVersion,
       squareLocationId: squareResult.squareLocationId,
 
       // No Etsy yet
       etsyListingId: undefined,
 
-      // Initial cache from input (just created in Square)
+      // Listing-level cache + deprecated per-variant fields for compat
       squareCache: {
         name: input.name,
         description: input.description,
-        priceCents: input.priceCents,
-        quantity: input.quantity,
-        sku: squareResult.sku,
         syncedAt: now,
+        priceCents: firstVar?.priceCents,
+        quantity: firstVar?.quantity,
+        sku: firstVar?.sku,
       },
     };
 
@@ -293,7 +385,7 @@ export const ProductRepository = {
   },
 
   /**
-   * Update the Square cache after a successful Square API call
+   * Update the Square cache (listing-level fields) after a successful Square API call
    */
   async updateSquareCache(
     id: string,
@@ -311,13 +403,14 @@ export const ProductRepository = {
     if (cache.name !== undefined) updates['squareCache.name'] = cache.name;
     if (cache.description !== undefined)
       updates['squareCache.description'] = cache.description;
+    if (cache.imageUrl !== undefined)
+      updates['squareCache.imageUrl'] = cache.imageUrl;
+    // Deprecated per-variant fields — still written for backward compat
     if (cache.priceCents !== undefined)
       updates['squareCache.priceCents'] = cache.priceCents;
     if (cache.quantity !== undefined)
       updates['squareCache.quantity'] = cache.quantity;
     if (cache.sku !== undefined) updates['squareCache.sku'] = cache.sku;
-    if (cache.imageUrl !== undefined)
-      updates['squareCache.imageUrl'] = cache.imageUrl;
     if (squareCatalogVersion !== undefined)
       updates['squareCatalogVersion'] = squareCatalogVersion;
 
@@ -325,15 +418,107 @@ export const ProductRepository = {
   },
 
   /**
-   * Update just the cached quantity (for inventory webhooks)
+   * Update a specific variant's quantity (e.g. after a sale or inventory webhook)
    */
-  async updateCachedQuantity(id: string, quantity: number): Promise<void> {
+  async updateVariantQuantity(
+    id: string,
+    variantId: string,
+    quantity: number
+  ): Promise<void> {
     const docRef = db.collection(COLLECTION).doc(id);
+    const doc = await docRef.get();
+    const product = docToProduct(doc);
+
+    if (!product) {
+      throw new Error(`Product ${id} not found`);
+    }
+
+    const updatedVariants = product.variants.map((v) =>
+      v.id === variantId ? { ...v, quantity } : v
+    );
+
     await docRef.update({
-      'squareCache.quantity': quantity,
+      variants: updatedVariants.map((v) => ({
+        id: v.id,
+        label: v.label,
+        sku: v.sku,
+        priceCents: v.priceCents,
+        quantity: v.quantity,
+        squareVariationId: v.squareVariationId,
+        etsyProductId: v.etsyProductId,
+      })),
       'squareCache.syncedAt': new Date(),
       updatedAt: new Date(),
     });
+  },
+
+  /**
+   * Update just the cached quantity for a variant by Square variation ID.
+   * Used by inventory webhooks.
+   */
+  async updateCachedQuantity(
+    id: string,
+    quantity: number,
+    squareVariationId?: string
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    const doc = await docRef.get();
+    const product = docToProduct(doc);
+
+    if (!product) {
+      throw new Error(`Product ${id} not found`);
+    }
+
+    const updatedVariants = product.variants.map((v) => {
+      // If squareVariationId specified, match on it; otherwise update first variant
+      const isTarget = squareVariationId
+        ? v.squareVariationId === squareVariationId
+        : true;
+      return isTarget ? { ...v, quantity } : v;
+    });
+
+    await docRef.update({
+      variants: updatedVariants.map((v) => ({
+        id: v.id,
+        label: v.label,
+        sku: v.sku,
+        priceCents: v.priceCents,
+        quantity: v.quantity,
+        squareVariationId: v.squareVariationId,
+        etsyProductId: v.etsyProductId,
+      })),
+      'squareCache.syncedAt': new Date(),
+      updatedAt: new Date(),
+    });
+  },
+
+  /**
+   * Replace all variants on a product (e.g. after Square catalog sync)
+   */
+  async updateVariants(
+    id: string,
+    variants: ProductVariant[],
+    variantProperties?: string[]
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    const updateData: Record<string, unknown> = {
+      variants: variants.map((v) => ({
+        id: v.id,
+        label: v.label,
+        sku: v.sku,
+        priceCents: v.priceCents,
+        quantity: v.quantity,
+        squareVariationId: v.squareVariationId,
+        etsyProductId: v.etsyProductId,
+      })),
+      updatedAt: new Date(),
+    };
+
+    if (variantProperties !== undefined) {
+      updateData['variantProperties'] = variantProperties;
+    }
+
+    await docRef.update(updateData);
   },
 
   /**
@@ -402,13 +587,13 @@ export const ProductRepository = {
       etsyCache: {
         title: cache.title,
         description: cache.description,
-        priceCents: cache.priceCents,
-        quantity: cache.quantity,
         url: cache.url,
         taxonomyId: cache.taxonomyId,
         tags: cache.tags,
         state: cache.state,
         syncedAt: cache.syncedAt,
+        priceCents: cache.priceCents,
+        quantity: cache.quantity,
       },
       updatedAt: new Date(),
     });

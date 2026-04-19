@@ -189,6 +189,7 @@ export async function handleCatalogUpdate(
               squareCatalogVersion: Number(catalogObject.version || 0),
               squareLocationId: square.locationId,
               sku: variationData?.sku ?? '',
+              variations: [{ variantId: 'var_compat', squareVariationId: variation.id!, sku: variationData?.sku ?? '' }],
             }
           );
           // Update image URL if available (create doesn't support imageUrl directly)
@@ -290,6 +291,7 @@ export async function handleCatalogUpdate(
         squareCatalogVersion: Number(catalogObject.version || 0),
         squareLocationId: square.locationId,
         sku: variationData?.sku ?? '',
+        variations: [{ variantId: 'var_compat', squareVariationId: variation.id!, sku: variationData?.sku ?? '' }],
       }
     );
 

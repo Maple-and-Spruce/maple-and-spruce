@@ -14,10 +14,6 @@
 export interface EtsyCache {
   title: string;
   description?: string;
-  /** Price in cents (e.g., 2500 = $25.00) */
-  priceCents: number;
-  /** Current inventory quantity */
-  quantity: number;
   /** Public Etsy listing URL */
   url?: string;
   /** Etsy taxonomy category ID */
@@ -28,6 +24,13 @@ export interface EtsyCache {
   state: 'active' | 'draft' | 'inactive';
   /** When this cache was last synced from Etsy */
   syncedAt: Date;
+
+  // --- Deprecated: per-variant data now lives on ProductVariant ---
+
+  /** @deprecated Use product.variants[].priceCents */
+  priceCents?: number;
+  /** @deprecated Use product.variants[].quantity */
+  quantity?: number;
 }
 
 /**

@@ -153,8 +153,8 @@ async function detectSquareConflicts(
         type: 'missing_external',
         detectedAt: new Date(),
         localState: {
-          quantity: product.squareCache.quantity,
-          price: product.squareCache.priceCents,
+          quantity: product.squareCache.quantity ?? 0,
+          price: product.squareCache.priceCents ?? 0,
           name: product.squareCache.name,
         },
         externalState: {
@@ -184,14 +184,14 @@ async function detectSquareConflicts(
       : 0;
 
     // Check for quantity mismatch
-    if (product.squareCache.quantity !== squareQuantity) {
+    if ((product.squareCache.quantity ?? 0) !== squareQuantity) {
       const result = await createConflictIfNoPending({
         productId: product.id,
         type: 'quantity_mismatch',
         detectedAt: new Date(),
         localState: {
-          quantity: product.squareCache.quantity,
-          price: product.squareCache.priceCents,
+          quantity: product.squareCache.quantity ?? 0,
+          price: product.squareCache.priceCents ?? 0,
           name: product.squareCache.name,
         },
         externalState: {
@@ -206,14 +206,14 @@ async function detectSquareConflicts(
     }
 
     // Check for price mismatch
-    if (product.squareCache.priceCents !== squarePrice) {
+    if ((product.squareCache.priceCents ?? 0) !== squarePrice) {
       const result = await createConflictIfNoPending({
         productId: product.id,
         type: 'price_mismatch',
         detectedAt: new Date(),
         localState: {
-          quantity: product.squareCache.quantity,
-          price: product.squareCache.priceCents,
+          quantity: product.squareCache.quantity ?? 0,
+          price: product.squareCache.priceCents ?? 0,
           name: product.squareCache.name,
         },
         externalState: {

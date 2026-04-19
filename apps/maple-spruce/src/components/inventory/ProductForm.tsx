@@ -172,8 +172,8 @@ export function ProductForm({
         categoryId.value = product.categoryId ?? '';
         name.value = product.squareCache.name;
         description.value = product.squareCache.description ?? '';
-        priceDollars.value = product.squareCache.priceCents / 100;
-        quantity.value = product.squareCache.quantity;
+        priceDollars.value = (product.squareCache.priceCents ?? 0) / 100;
+        quantity.value = product.squareCache.quantity ?? 0;
         status.value = product.status;
         commissionPercent.value =
           product.customCommissionRate !== undefined

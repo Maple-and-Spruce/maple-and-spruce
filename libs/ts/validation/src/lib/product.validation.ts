@@ -15,24 +15,13 @@ import type { CreateProductInput } from '@maple/ts/domain';
  *
  * CreateProductInput contains:
  * - Firestore-owned: artistId, status, customCommissionRate
- * - Square-bound: name, description, priceCents, quantity
+ * - Square-bound: name, description, variants (or legacy priceCents/quantity)
  *
  * @param data - Partial product data to validate
  * @param field - Optional field(s) to validate (for single-field or
  *                partial-update validation). Pass a string for a single
  *                field, or an array of field names to validate only those
  *                fields (useful for partial updates).
- *
- * @example
- * // Full validation
- * const result = productValidation(formData);
- * if (result.isValid()) {
- *   // Submit form
- * }
- *
- * @example
- * // Partial update - only validate fields that were provided
- * const result = productValidation(patch, Object.keys(patch));
  */
 export const productValidation = staticSuite(
   (data: Partial<CreateProductInput>, field?: string | string[]) => {
@@ -76,37 +65,84 @@ export const productValidation = staticSuite(
       enforce(data.name).longerThanOrEquals(2);
     });
 
-    test('priceCents', 'Price is required', () => {
-      enforce(data.priceCents).isNotNullish();
-    });
+    // === Variant validation ===
 
-    test('priceCents', 'Price must be greater than 0', () => {
-      if (data.priceCents !== undefined) {
-        enforce(data.priceCents).greaterThan(0);
-      }
-    });
+    if (data.variants && data.variants.length > 0) {
+      // New variant-aware path
+      test('variants', 'At least one variant is required', () => {
+        enforce(data.variants).isNotEmpty();
+      });
 
-    test('priceCents', 'Price cannot exceed $100,000', () => {
-      if (data.priceCents !== undefined) {
-        // 100000 dollars = 10000000 cents
-        enforce(data.priceCents).lessThanOrEquals(10000000);
-      }
-    });
+      test('variants', 'Each variant must have a label', () => {
+        for (const v of data.variants!) {
+          enforce(v.label).isNotBlank();
+        }
+      });
 
-    test('quantity', 'Quantity is required', () => {
-      enforce(data.quantity).isNotNullish();
-    });
+      test('variants', 'Each variant price must be greater than 0', () => {
+        for (const v of data.variants!) {
+          enforce(v.priceCents).greaterThan(0);
+        }
+      });
 
-    test('quantity', 'Quantity must be 0 or greater', () => {
-      if (data.quantity !== undefined) {
-        enforce(data.quantity).greaterThanOrEquals(0);
-      }
-    });
+      test('variants', 'Each variant price cannot exceed $100,000', () => {
+        for (const v of data.variants!) {
+          enforce(v.priceCents).lessThanOrEquals(10000000);
+        }
+      });
 
-    test('quantity', 'Quantity must be a whole number', () => {
-      if (data.quantity !== undefined) {
-        enforce(data.quantity).condition((val) => Number.isInteger(val));
-      }
-    });
+      test('variants', 'Each variant quantity must be 0 or greater', () => {
+        for (const v of data.variants!) {
+          enforce(v.quantity).greaterThanOrEquals(0);
+        }
+      });
+
+      test('variants', 'Each variant quantity must be a whole number', () => {
+        for (const v of data.variants!) {
+          enforce(v.quantity).condition((val) => Number.isInteger(val));
+        }
+      });
+
+      test('variants', 'Variant labels must be unique', () => {
+        const labels = data.variants!.map((v) => v.label);
+        enforce(labels).condition(
+          (arr) => new Set(arr).size === arr.length
+        );
+      });
+    } else {
+      // Legacy single-variant path (priceCents/quantity at top level)
+      test('priceCents', 'Price is required', () => {
+        enforce(data.priceCents).isNotNullish();
+      });
+
+      test('priceCents', 'Price must be greater than 0', () => {
+        if (data.priceCents !== undefined) {
+          enforce(data.priceCents).greaterThan(0);
+        }
+      });
+
+      test('priceCents', 'Price cannot exceed $100,000', () => {
+        if (data.priceCents !== undefined) {
+          // 100000 dollars = 10000000 cents
+          enforce(data.priceCents).lessThanOrEquals(10000000);
+        }
+      });
+
+      test('quantity', 'Quantity is required', () => {
+        enforce(data.quantity).isNotNullish();
+      });
+
+      test('quantity', 'Quantity must be 0 or greater', () => {
+        if (data.quantity !== undefined) {
+          enforce(data.quantity).greaterThanOrEquals(0);
+        }
+      });
+
+      test('quantity', 'Quantity must be a whole number', () => {
+        if (data.quantity !== undefined) {
+          enforce(data.quantity).condition((val) => Number.isInteger(val));
+        }
+      });
+    }
   }
 );

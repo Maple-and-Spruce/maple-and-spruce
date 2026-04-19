@@ -55,20 +55,23 @@ export const createProduct = Functions.endpoint
       console.log('Square client initialized, creating catalog item...');
 
       // 1. Create catalog item in Square
+      const priceCents = data.priceCents ?? 0;
+      const quantity = data.quantity ?? 0;
+
       const catalogResult = await square.catalogService.createItem({
         name: data.name,
         description: data.description,
-        priceCents: data.priceCents,
+        priceCents,
       });
 
       console.log('Square catalog item created:', catalogResult);
 
       // 2. Set initial inventory quantity
-      if (data.quantity > 0) {
+      if (quantity > 0) {
         await square.inventoryService.setQuantity({
           squareVariationId: catalogResult.squareVariationId,
           locationId: square.locationId,
-          quantity: data.quantity,
+          quantity,
         });
       }
 
@@ -79,6 +82,7 @@ export const createProduct = Functions.endpoint
         squareCatalogVersion: catalogResult.squareCatalogVersion,
         squareLocationId: square.locationId,
         sku: catalogResult.sku,
+        variations: [{ variantId: 'var_compat', squareVariationId: catalogResult.squareVariationId, sku: catalogResult.sku }],
       });
 
       return { product };

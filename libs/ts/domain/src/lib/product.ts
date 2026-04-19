@@ -9,9 +9,37 @@
  * Square owns: name, description, price, quantity, SKU, images
  * Firestore owns: artist relationship, commission rates, status
  *
+ * Products support multiple variants (e.g. size, color). Most products
+ * have a single "Regular" variant. Each variant maps 1:1 to a Square
+ * ITEM_VARIATION and an Etsy inventory product.
+ *
+ * @see ADR-010 for hybrid inventory architecture
  * @see ADR-011 for sync strategy details
  */
 import type { EtsyCache } from './etsy';
+
+/**
+ * A product variant (e.g. size, color).
+ *
+ * Most products have a single variant with label "Regular".
+ * Each variant maps to one Square ITEM_VARIATION and one Etsy inventory product.
+ */
+export interface ProductVariant {
+  /** Internal variant ID (auto-generated) */
+  id: string;
+  /** Display label: "Regular", "Small", "Blue", etc. */
+  label: string;
+  /** Product SKU for barcode scanning */
+  sku: string;
+  /** Price in cents (e.g., 2500 = $25.00) */
+  priceCents: number;
+  /** Current inventory quantity */
+  quantity: number;
+  /** Square item variation ID */
+  squareVariationId?: string;
+  /** Etsy per-variant product ID */
+  etsyProductId?: number;
+}
 
 /**
  * Cached data from Square for display without API calls.
@@ -21,20 +49,28 @@ import type { EtsyCache } from './etsy';
  * - Webhooks (real-time on sales/inventory changes)
  * - Lazy refresh (on product access if stale)
  * - Periodic sync (nightly safety net)
+ *
+ * Listing-level fields only. Per-variant data (price, quantity, SKU)
+ * lives on ProductVariant.
  */
 export interface SquareCache {
   name: string;
   description?: string;
-  /** Price in cents (e.g., 2500 = $25.00) */
-  priceCents: number;
-  /** Current inventory quantity */
-  quantity: number;
-  /** Product SKU for barcode scanning */
-  sku: string;
   /** Primary product image URL */
   imageUrl?: string;
   /** When this cache was last synced from Square */
   syncedAt: Date;
+
+  // --- Deprecated: per-variant data now lives on ProductVariant ---
+  // These fields are populated from variants[0] for backward compatibility.
+  // Consumers should migrate to reading from product.variants[].
+
+  /** @deprecated Use product.variants[].priceCents */
+  priceCents?: number;
+  /** @deprecated Use product.variants[].quantity */
+  quantity?: number;
+  /** @deprecated Use product.variants[].sku */
+  sku?: string;
 }
 
 /**
@@ -65,13 +101,27 @@ export interface Product {
   createdAt: Date;
   updatedAt: Date;
 
+  // === VARIANTS ===
+
+  /**
+   * Product variants (minimum 1). Most products have a single "Regular" variant.
+   * Each variant has its own SKU, price, quantity, and external system IDs.
+   */
+  variants: ProductVariant[];
+
+  /**
+   * Labels for what variants represent (e.g. ["Size"], ["Color", "Size"]).
+   * Empty or undefined for single-variant products.
+   */
+  variantProperties?: string[];
+
   // === EXTERNAL SYSTEM LINKS ===
 
   /** Square catalog item ID - Required, Square is catalog owner */
   squareItemId: string;
 
-  /** Square item variation ID (for inventory tracking) */
-  squareVariationId: string;
+  /** @deprecated Use product.variants[].squareVariationId */
+  squareVariationId?: string;
 
   /** Square catalog version for optimistic locking on updates */
   squareCatalogVersion?: number;
@@ -85,7 +135,7 @@ export interface Product {
   // === CACHED DATA (may be stale, for display only) ===
 
   /**
-   * Cached data from Square for fast reads.
+   * Cached listing-level data from Square for fast reads.
    * Check syncedAt to determine freshness.
    */
   squareCache: SquareCache;
@@ -113,6 +163,93 @@ export function isCacheStale(product: Pick<Product, 'squareCache'>): boolean {
 }
 
 /**
+ * Generate a unique variant ID
+ */
+export function generateVariantId(): string {
+  return `var_${Math.random().toString(36).substring(2, 10)}`;
+}
+
+/**
+ * Get total quantity across all variants
+ */
+export function getTotalQuantity(product: Pick<Product, 'variants'>): number {
+  return product.variants.reduce((sum, v) => sum + v.quantity, 0);
+}
+
+/**
+ * Find a variant by ID
+ */
+export function findVariant(
+  product: Pick<Product, 'variants'>,
+  variantId: string
+): ProductVariant | undefined {
+  return product.variants.find((v) => v.id === variantId);
+}
+
+/**
+ * Find a variant by Square variation ID
+ */
+export function findVariantBySquareId(
+  product: Pick<Product, 'variants'>,
+  squareVariationId: string
+): ProductVariant | undefined {
+  return product.variants.find(
+    (v) => v.squareVariationId === squareVariationId
+  );
+}
+
+/**
+ * Find a variant by Etsy product ID
+ */
+export function findVariantByEtsyProductId(
+  product: Pick<Product, 'variants'>,
+  etsyProductId: number
+): ProductVariant | undefined {
+  return product.variants.find((v) => v.etsyProductId === etsyProductId);
+}
+
+/**
+ * Check if a product has multiple variants (not just the default "Regular")
+ */
+export function isMultiVariant(product: Pick<Product, 'variants'>): boolean {
+  return product.variants.length > 1;
+}
+
+/**
+ * Resolve CreateProductInput to a normalized variants array.
+ * If variants[] is provided, use it. Otherwise, create a single "Regular"
+ * variant from the legacy priceCents/quantity fields.
+ */
+export function resolveVariants(
+  input: Pick<
+    CreateProductInput,
+    'variants' | 'priceCents' | 'quantity'
+  >
+): CreateVariantInput[] {
+  if (input.variants && input.variants.length > 0) {
+    return input.variants;
+  }
+  return [
+    {
+      label: 'Regular',
+      priceCents: input.priceCents ?? 0,
+      quantity: input.quantity ?? 0,
+    },
+  ];
+}
+
+/**
+ * Input for a product variant during creation
+ */
+export interface CreateVariantInput {
+  label: string;
+  priceCents: number;
+  quantity: number;
+  /** SKU is auto-generated if not provided */
+  sku?: string;
+}
+
+/**
  * Input for creating a new product
  *
  * Square IDs and cache are populated after Square API call.
@@ -129,10 +266,25 @@ export interface CreateProductInput {
   // Required - will be sent to Square to create catalog item
   name: string;
   description?: string;
-  /** Price in cents */
-  priceCents: number;
-  /** Initial inventory quantity */
-  quantity: number;
+
+  /**
+   * Product variants. If omitted, a single "Regular" variant is created
+   * from the top-level priceCents/quantity fields for backward compatibility.
+   */
+  variants?: CreateVariantInput[];
+
+  /**
+   * Labels for variant dimensions (e.g. ["Size"], ["Color"]).
+   * Only meaningful when variants has more than 1 entry.
+   */
+  variantProperties?: string[];
+
+  // === Legacy single-variant fields (used when variants is omitted) ===
+
+  /** Price in cents — used when variants is omitted */
+  priceCents?: number;
+  /** Initial inventory quantity — used when variants is omitted */
+  quantity?: number;
 }
 
 /**
@@ -153,11 +305,26 @@ export interface UpdateProductInput {
   // Square-owned (triggers Square API call)
   name?: string;
   description?: string;
-  /** Price in cents */
-  priceCents?: number;
 
-  // Inventory changes go through Inventory API
+  /** Updated variants (replaces all variants) */
+  variants?: CreateVariantInput[];
+  variantProperties?: string[];
+
+  // === Legacy single-variant fields ===
+  /** Price in cents — applies to first variant when variants is omitted */
+  priceCents?: number;
+  /** Quantity — applies to first variant when variants is omitted */
   quantity?: number;
+}
+
+/**
+ * Result of creating a single variation in Square
+ */
+export interface SquareVariationResult {
+  /** Internal variant ID (matches ProductVariant.id) */
+  variantId: string;
+  squareVariationId: string;
+  sku: string;
 }
 
 /**
@@ -165,9 +332,15 @@ export interface UpdateProductInput {
  */
 export interface SquareProductResult {
   squareItemId: string;
-  squareVariationId: string;
   squareCatalogVersion: number;
   squareLocationId: string;
+  /** Per-variation results */
+  variations: SquareVariationResult[];
+
+  // === Legacy fields for backward compatibility ===
+  /** @deprecated Use variations[0].squareVariationId */
+  squareVariationId: string;
+  /** @deprecated Use variations[0].sku */
   sku: string;
 }
 
