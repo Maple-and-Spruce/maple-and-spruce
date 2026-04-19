@@ -164,7 +164,12 @@ export class ListingService {
   ): Promise<EtsyListingImage> {
     const id = await this.shopId();
     const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: contentType });
+    // Cast through BlobPart[]: Node's Buffer extends Uint8Array and is a
+    // valid BlobPart at runtime, but lib.dom's Uint8Array generic doesn't
+    // accept the widened ArrayBufferLike that Node uses.
+    const blob = new Blob([imageBuffer as unknown as BlobPart], {
+      type: contentType,
+    });
     formData.append('image', blob, filename);
     formData.append('rank', String(rank));
 

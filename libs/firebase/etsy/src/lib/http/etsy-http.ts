@@ -10,7 +10,6 @@
  * This module has zero external dependencies — uses only Node.js fetch.
  */
 import type { OAuthService } from '../oauth/oauth.service.js';
-import type { EtsyApiError } from '../types/common.types.js';
 
 const ETSY_API_BASE_DEFAULT = 'https://api.etsy.com/v3/application';
 
