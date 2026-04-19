@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Box,
   Card,
@@ -22,6 +23,12 @@ interface StudentListProps {
   instructors: Instructor[];
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
+  /**
+   * If provided, student name becomes a link to this path plus the
+   * student's id (e.g. `/students`). Leave undefined to render a plain
+   * name (used in some Storybook contexts).
+   */
+  detailHrefBase?: string;
 }
 
 const statusColors: Record<string, 'success' | 'default'> = {
@@ -32,14 +39,25 @@ const statusColors: Record<string, 'success' | 'default'> = {
 function StudentCard({
   student,
   teacherName,
+  detailHrefBase,
   onEdit,
   onDelete,
 }: {
   student: Student;
   teacherName: string;
+  detailHrefBase?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const nameContent = (
+    <Typography variant="h6" component="h3" noWrap>
+      {student.name}
+    </Typography>
+  );
+  const detailHref = detailHrefBase
+    ? `${detailHrefBase}/${student.id}`
+    : undefined;
+
   return (
     <Card>
       <CardContent>
@@ -51,9 +69,16 @@ function StudentCard({
           }}
         >
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h6" component="h3" noWrap>
-              {student.name}
-            </Typography>
+            {detailHref ? (
+              <Link
+                href={detailHref}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                {nameContent}
+              </Link>
+            ) : (
+              nameContent
+            )}
             <Typography
               variant="body2"
               color="text.secondary"
@@ -148,6 +173,7 @@ export function StudentList({
   instructors,
   onEdit,
   onDelete,
+  detailHrefBase,
 }: StudentListProps) {
   if (studentsState.status === 'loading') {
     return <LoadingSkeleton />;
@@ -191,6 +217,7 @@ export function StudentList({
             teacherName={
               teacherNameById.get(student.primaryTeacherId) ?? 'Unassigned'
             }
+            detailHrefBase={detailHrefBase}
             onEdit={() => onEdit(student)}
             onDelete={() => onDelete(student)}
           />

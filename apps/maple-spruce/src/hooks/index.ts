@@ -5,6 +5,7 @@ export {
   useProducts,
   useInstructors,
   useStudents,
+  useLessons,
   useClasses,
   useClassCategories,
   useDiscounts,

@@ -22,6 +22,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Music Lesson Students
 - `getStudents`, `getStudent`, `createStudent`, `updateStudent`, `deleteStudent`
 
+### Music Lessons
+- `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`
+
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`
 - `getPublicClasses` _(minInstances: 1, concurrency: 80)_

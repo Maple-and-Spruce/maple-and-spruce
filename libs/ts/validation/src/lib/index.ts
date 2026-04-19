@@ -33,6 +33,10 @@ export { registrationValidation, type RegistrationValidationInput } from './regi
 
 // Phase 4: Music Lessons
 export { studentValidation } from './student.validation';
+export {
+  lessonValidation,
+  lessonSeriesValidation,
+} from './lesson.validation';
 
 // Phase 4.5: Calendar
 export { calendarEventValidation } from './calendar-event.validation';
