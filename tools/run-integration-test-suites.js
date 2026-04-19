@@ -21,6 +21,7 @@ function main() {
     suites = process.argv[2].split(',').map((s) => s.trim());
   } else {
     // Discover all suites via Nx
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
     const raw = execSync('pnpm exec nx show projects', {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
