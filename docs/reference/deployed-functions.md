@@ -25,6 +25,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Music Lessons
 - `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`
 
+### Music Lesson Invoices (private-pay)
+- `getInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`
+
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`
 - `getPublicClasses` _(minInstances: 1, concurrency: 80)_

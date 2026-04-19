@@ -28,6 +28,10 @@ export {
   LessonRepository,
   type LessonFilters,
 } from './lib/lesson.repository';
+export {
+  InvoiceRepository,
+  type InvoiceFilters,
+} from './lib/invoice.repository';
 
 // Phase 4.5: Calendar
 export {

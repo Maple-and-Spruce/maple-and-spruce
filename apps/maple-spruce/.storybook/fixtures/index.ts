@@ -13,3 +13,4 @@ export * from './discounts';
 export * from './registrations';
 export * from './students';
 export * from './lessons';
+export * from './invoices';
