@@ -100,6 +100,37 @@ export class InventoryService {
   }
 
   /**
+   * Batch set inventory quantities for multiple variations.
+   *
+   * Each entry becomes a separate PHYSICAL_COUNT change within
+   * a single batchCreateChanges call.
+   */
+  async setQuantities(
+    entries: Array<{ squareVariationId: string; locationId: string; quantity: number }>
+  ): Promise<void> {
+    if (entries.length === 0) {
+      return;
+    }
+
+    const idempotencyKey = `set-batch-${Date.now()}`;
+    const occurredAt = new Date().toISOString();
+
+    await this.client.inventory.batchCreateChanges({
+      idempotencyKey,
+      changes: entries.map((entry) => ({
+        type: 'PHYSICAL_COUNT',
+        physicalCount: {
+          catalogObjectId: entry.squareVariationId,
+          locationId: entry.locationId,
+          quantity: String(entry.quantity),
+          state: 'IN_STOCK',
+          occurredAt,
+        },
+      })),
+    });
+  }
+
+  /**
    * Adjust inventory quantity by a delta
    *
    * Use positive numbers to add inventory, negative to remove.
