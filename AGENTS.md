@@ -11,7 +11,7 @@
 3. **Read before acting** -- Start sessions by reading AGENTS.md, .claude/CLAUDE.md, and `docs/sessions/SESSION.md`.
 4. **Check GitHub issues** -- Run `gh issue list` for current work. Issues are the source of truth.
 5. **Use feature branches** -- Never commit directly to main. See `git-workflow` skill.
-6. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017).
+6. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017). Aim for **~85% coverage on new code** — the 80% CI threshold is a floor, not a target. See `docs/reference/code-standards.md` for per-file-type guidance.
 7. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
 8. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
 9. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
@@ -28,7 +28,7 @@
 - Music lessons (Suzuki method)
 
 **Current State**: Selling on Etsy. Building public website on Webflow.
-**Current Phase**: Phase 3 Complete -- Classes & Workshops (All subphases done)
+**Current Phase**: Phase 4 Complete -- Music Lessons (All sub-issues done)
 
 ## Phased Roadmap
 
@@ -37,10 +37,10 @@
 | 1 | Admin Foundation & Artist Platform | Complete |
 | 2 | Public Website (Webflow Integration) | Complete |
 | 3 | Classes & Workshops (3a/3b/3c) | Complete |
-| 4 | Music Lessons | Next |
-| 5 | Store Opening & Sales Tracking | Future |
+| 4 | Music Lessons | Complete |
+| 5 | Store Opening & Sales Tracking | Next |
 
-**Deferred** (Phase 5): #4 Etsy API, #5 Sales tracking, #6 Payout reports
+**Deferred** (Phase 5): #5 Sales tracking, #6 Payout reports
 
 ## Tech Stack
 
@@ -53,6 +53,17 @@
 | Backend | Firebase Cloud Functions (us-east4) |
 | Payments | Square |
 | Monorepo | Nx |
+
+## Quick Commands
+
+```bash
+pnpm dev              # Web app (Next.js) on :3000
+pnpm dev:functions    # Functions emulator on :5001
+pnpm storybook        # Storybook on :6006
+pnpm test             # Unit tests
+```
+
+For integration tests, worktree port isolation, and emulator troubleshooting see the `local-development` skill.
 
 ## Key Patterns
 

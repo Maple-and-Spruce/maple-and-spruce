@@ -167,6 +167,41 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 ## Phase 4: Music Lessons - Epic #10
 
+### Teacher Payout Tracking (#283, Complete)
+
+Closes the last follow-up under epic #10. Aggregates what Katie owes each teacher in a date range from two sources: **paid private-pay invoice lines** (via `lessonId` linkback from #280) and **rendered Hope Scholarship lessons** (since Hope is invoiced externally, the rendered status is the signal). Substitutes get credit via a snapshotted `primaryTeacherAtCreateId` on each lesson so later reassignment of a student's primary teacher doesn't retroactively flip attribution.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| `Lesson.primaryTeacherAtCreateId` snapshot + stamped on create | **Complete** | `libs/ts/domain/src/lib/lesson.ts` + `create-lesson*/src/lib/*.ts` |
+| `wasTaughtBySubstitute` domain helper | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
+| Hope rates moved to domain (shared with payout calc) | **Complete** | `libs/ts/domain/src/lib/hope-rates.ts` |
+| `teacher-payout.ts` — aggregator + compensation helpers | **Complete** | `libs/ts/domain/src/lib/teacher-payout.ts` (+ 26 unit tests) |
+| `getTeacherPayouts` cloud function (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/get-teacher-payouts/` |
+| Unit test for handler (7) + integration test (end-to-end with mixed sources, substitute flag, teacher filter, empty period) | **Complete** | `apps/functions-integration-tests-teacher-payout/` |
+| `useTeacherPayouts` hook | **Complete** | `libs/react/data/src/lib/useTeacherPayouts.ts` |
+| `PeriodPicker` + `TeacherPayoutsList` (expandable per teacher, Hope/Private/Sub chips, "Rate not set" warning) | **Complete** | `libs/react/payouts/` |
+| Storybook interaction tests (14) | **Complete** | `libs/react/payouts/src/lib/*.stories.tsx` |
+| `/payouts` admin page + Music Lessons nav entry | **Complete** | `apps/maple-spruce/src/app/payouts/page.tsx`, `AppShellWrapper.tsx` |
+
+### Parent Invoice Delivery + Online Payment (#281, Complete)
+
+Uses Square Invoices API rather than a custom Webflow payment page — Square sends the parent the email + hosted payment page, handles receipts and reminders, and webhooks us back when paid.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Invoice extended with `paymentRecord` / `squareOrderId` / `squareInvoiceId` / `squareSyncError` | **Complete** | `libs/ts/domain/src/lib/invoice.ts` |
+| `InvoicesService` wrapper (Square Customers + Orders + Invoices APIs) | **Complete** | `libs/firebase/square/src/lib/invoices.service.ts` |
+| `syncInvoiceToSquare` Firestore trigger (draft → sent → Square; sent → void → cancel) | **Complete** | `libs/firebase/maple-functions/sync-invoice-to-square/` |
+| `square-webhook` extended to handle `invoice.payment_made` | **Complete** | `libs/firebase/maple-functions/square-webhook/src/lib/square-webhook.ts` |
+| `InvoiceRepository.markPaidBySquareWebhook` + `findBySquareInvoiceId` | **Complete** | `libs/firebase/database/src/lib/invoice.repository.ts` |
+| Payment attribution — manual mark-paid stamps `source: 'admin-manual'` | **Complete** | `InvoiceRepository.update` stamp on paid transition |
+| `InvoiceList` surfaces "Paid via Square" / "Marked paid manually" / sync-error chips | **Complete** | `libs/react/invoices/src/lib/InvoiceList.tsx` |
+| Unit tests: webhook handler + invoice domain paymentRecord shapes | **Complete** | 4 new (13 total in square-webhook.spec) + 2 new in invoice.spec |
+| Integration test: manual mark-paid stamps admin-manual attribution | **Complete** | `apps/functions-integration-tests-invoice/` |
+| Storybook interaction tests: attribution badges, sync-error badge | **Complete** | 4 new (32 total in Invoices family) |
+| Drive-by: migrated `invoiceValidation` from `create` → `staticSuite` | **Complete** | matches #293 |
+
 ### Invoice Initiation — Private Pay (#280, Complete)
 
 | Feature | Status | Location |

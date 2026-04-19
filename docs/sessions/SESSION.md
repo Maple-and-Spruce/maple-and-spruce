@@ -6,8 +6,28 @@
 
 ## Current Status
 
-**Date**: 2026-04-09
-**Status**: Class registration launch prep — wave 1 code complete, manual ops remaining. Image2Pages widget shipped on `feat/image2pages-widget`.
+**Date**: 2026-04-19
+**Status**: Phase 4 Music Lessons complete. PR #304 (teacher payout tracking) all CI green, ready to merge. Requirements and docs updated.
+
+### Phase 4 Music Lessons — Complete
+
+Branch: `feature/283-teacher-payouts` (PR #304)
+
+All 6 sub-issues of epic #10 implemented:
+- #278 Student records + admin UI
+- #279 Lesson scheduling + recurring series
+- #280 Private-pay invoice initiation
+- #281 Square invoice delivery + webhook payment attribution
+- #282 Hope Scholarship handling (rates, rendered-lesson tracking, invoice guard)
+- #283 Teacher payout tracking (aggregation from both sources, substitute attribution)
+
+**Requirements reviewed and updated** — REQUIREMENTS.md Phase 4 section rewritten to match actual implementation. Deferred items documented (lesson packages, teacher availability, public profiles).
+
+### Next Steps
+
+- Merge PR #304
+- Close sub-issues #278–#283 and epic #10
+- Begin Phase 5 planning (Store Opening & Sales Tracking, epic #8)
 
 ### Image2Pages Webflow Widget (in flight)
 

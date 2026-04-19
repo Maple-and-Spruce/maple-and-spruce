@@ -32,6 +32,15 @@ export interface Lesson {
   durationMinutes: number;
   /** Actual teacher — primary for most lessons, substitute when applicable */
   teacherId: string;
+  /**
+   * Student's primary teacher at the time this lesson was created.
+   * Snapshotted so substitute-attribution in #283 payout tracking doesn't
+   * retroactively flip if Katie later reassigns the student's primary
+   * teacher. Optional for backwards-compat with lessons created before
+   * this field was introduced — `wasTaughtBySubstitute` falls back to
+   * the student's current `primaryTeacherId` when unset.
+   */
+  primaryTeacherAtCreateId?: string;
   /** Groups lessons generated together as a recurring series */
   seriesId?: string;
   status: LessonStatus;
@@ -43,7 +52,9 @@ export interface Lesson {
 /**
  * Input for creating a single lesson. No id / timestamps / seriesId —
  * seriesId is only set when generating a recurring series via
- * CreateLessonSeriesInput.
+ * CreateLessonSeriesInput. `primaryTeacherAtCreateId` is stamped by the
+ * cloud function at create time from the student's current primary
+ * teacher.
  */
 export type CreateLessonInput = Omit<
   Lesson,
@@ -60,6 +71,8 @@ export type UpdateLessonInput = Partial<
  * Input for generating a recurring series. The client computes the final
  * date list (allowing per-date skips in the preview step) and submits it
  * here; the server writes all N lessons atomically with a shared seriesId.
+ * `primaryTeacherAtCreateId` is stamped by the server from the student's
+ * current primary teacher at create time.
  */
 export interface CreateLessonSeriesInput {
   studentId: string;
@@ -68,6 +81,8 @@ export interface CreateLessonSeriesInput {
   /** Concrete list of scheduled start times to create, in order. */
   scheduledAts: Date[];
   notes?: string;
+  /** Snapshot stamp applied to every lesson in the series; set server-side. */
+  primaryTeacherAtCreateId?: string;
 }
 
 export function isLessonUpcoming(lesson: Lesson, now: Date = new Date()): boolean {
@@ -76,4 +91,26 @@ export function isLessonUpcoming(lesson: Lesson, now: Date = new Date()): boolea
 
 export function isLessonPast(lesson: Lesson, now: Date = new Date()): boolean {
   return lesson.scheduledAt.getTime() <= now.getTime();
+}
+
+/**
+ * Was this lesson taught by someone other than the student's primary
+ * teacher? Uses the snapshot `primaryTeacherAtCreateId` when available,
+ * falls back to the student's current `primaryTeacherId` for legacy
+ * lessons created before the snapshot field was introduced.
+ *
+ * Payout attribution in #283 relies on this: substitutes get credit for
+ * lessons they actually taught, regardless of which teacher the student
+ * is currently assigned to.
+ */
+export function wasTaughtBySubstitute(
+  lesson: Pick<Lesson, 'teacherId' | 'primaryTeacherAtCreateId'>,
+  currentPrimaryTeacherId?: string
+): boolean {
+  const baseline = lesson.primaryTeacherAtCreateId ?? currentPrimaryTeacherId;
+  if (!baseline) {
+    // No snapshot and no current primary — cannot conclude substitute.
+    return false;
+  }
+  return lesson.teacherId !== baseline;
 }

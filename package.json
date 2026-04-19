@@ -4,8 +4,12 @@
   "license": "MIT",
   "packageManager": "pnpm@11.0.0-rc.1+sha512.0d7d837668eb35b81d28f560ef8ec5e103ff5d162e249fd0d30c546c39a551d290ac9cf15709353b94d2df6eb445bfa465c7a05148d328eda32950c02e40d060",
   "scripts": {
+    "dev": "nx dev maple-spruce",
+    "dev:functions": "nx run functions:serve",
+    "storybook": "nx run maple-spruce:storybook",
     "test": "nx run-many --target=test --all",
-    "test:coverage": "nx run-many --target=test --all --coverage"
+    "test:coverage": "nx run-many --target=test --all --coverage",
+    "dup:check": "jscpd apps libs"
   },
   "private": true,
   "devDependencies": {
@@ -51,8 +55,11 @@
     "esbuild": "^0.27.4",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-sonarjs": "^4.0.3",
     "firebase-tools": "^15.11.0",
     "http-server": "^14.1.1",
+    "jscpd": "^4.0.9",
     "jsdom": "^27.1.0",
     "jsonc-eslint-parser": "^2.1.0",
     "node-ical": "^0.25.6",

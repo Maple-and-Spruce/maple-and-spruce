@@ -13,7 +13,7 @@ import {
   consumeOAuthState,
   updateTokenShopId,
 } from '@maple/firebase/database';
-import { EtsyClient } from '@maple/firebase/etsy';
+import { EtsyClient, fetchUserShopId } from '@maple/firebase/etsy';
 import type {
   EtsyAuthCallbackRequest,
   EtsyAuthCallbackResponse,
@@ -59,38 +59,31 @@ export const etsyAuthCallback = Functions.endpoint
         codeVerifier,
       });
 
-      // Fetch the shop ID from Etsy.
-      // The token response includes the user ID but not the shop ID.
-      // We need to call the API to get it.
-      let shopId = '';
-      try {
-        const response = await fetch(
-          `https://api.etsy.com/v3/application/users/${tokenData.userId}/shops`,
-          {
-            headers: {
-              'x-api-key': `${secrets.ETSY_API_KEY}:${secrets.ETSY_SHARED_SECRET}`,
-              Authorization: `Bearer ${tokenData.accessToken}`,
-            },
-          }
-        );
+      // Fetch the shop ID from Etsy. Non-fatal — if it fails here, the
+      // settings page exposes a manual "Refresh shop ID" button that
+      // re-runs this same call without forcing the admin to re-auth.
+      const etsyApiBase =
+        process.env['ETSY_API_BASE'] ?? 'https://api.etsy.com/v3/application';
+      const shopResult = await fetchUserShopId({
+        apiBase: etsyApiBase,
+        apiKey: secrets.ETSY_API_KEY,
+        sharedSecret: secrets.ETSY_SHARED_SECRET,
+        userId: tokenData.userId,
+        accessToken: tokenData.accessToken,
+      });
 
-        if (response.ok) {
-          const shopData = (await response.json()) as {
-            results?: Array<{ shop_id: number }>;
-          };
-          if (shopData.results?.length && shopData.results.length > 0) {
-            shopId = String(shopData.results[0].shop_id);
-            await updateTokenShopId(shopId);
-          }
-        }
-      } catch (error) {
-        // Non-fatal — shop ID can be set later
-        console.warn('Failed to fetch shop ID from Etsy:', error);
+      if (shopResult.shopId) {
+        await updateTokenShopId(shopResult.shopId);
+      } else {
+        console.warn(
+          `Etsy shop ID fetch failed during OAuth callback (status=${shopResult.status}):`,
+          shopResult.reason
+        );
       }
 
       return {
         success: true,
-        shopId: shopId || undefined,
+        shopId: shopResult.shopId ?? undefined,
         userId: tokenData.userId,
       };
     }

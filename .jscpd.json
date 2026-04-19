@@ -1,0 +1,19 @@
+{
+  "threshold": 1,
+  "reporters": ["html", "console", "markdown"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.stories.tsx",
+    "**/coverage/**",
+    "**/.next/**"
+  ],
+  "absolute": true,
+  "gitignore": true,
+  "format": ["typescript", "tsx", "javascript", "jsx"],
+  "output": "./reports/jscpd"
+}

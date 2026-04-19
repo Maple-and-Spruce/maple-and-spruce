@@ -6,7 +6,7 @@
   "tags": ["scope:firebase", "type:feature"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
+      "executor": "@nx/vitest:test",
       "options": {
         "config": "libs/firebase/maple-functions/detect-sync-conflicts/vitest.config.ts"
       }

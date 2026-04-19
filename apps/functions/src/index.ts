@@ -89,6 +89,9 @@ export { createInvoice } from '@maple/firebase/maple-functions/create-invoice';
 export { updateInvoice } from '@maple/firebase/maple-functions/update-invoice';
 export { deleteInvoice } from '@maple/firebase/maple-functions/delete-invoice';
 
+// Teacher payout aggregation (Phase 4, #283)
+export { getTeacherPayouts } from '@maple/firebase/maple-functions/get-teacher-payouts';
+
 // Class functions
 export { getClasses } from '@maple/firebase/maple-functions/get-classes';
 export { getClass } from '@maple/firebase/maple-functions/get-class';
@@ -141,3 +144,6 @@ export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calcu
 export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';
 export { saveEtsyCategoryTemplate } from '@maple/firebase/maple-functions/save-etsy-category-template';
 export { saveEtsyArtistTemplate } from '@maple/firebase/maple-functions/save-etsy-artist-template';
+
+// Etsy listing read (for import review UI — calls Etsy API, no Square dep)
+export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-listings';

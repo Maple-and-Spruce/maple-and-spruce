@@ -269,6 +269,12 @@ export type {
   DeleteInvoiceResponse,
 } from './invoice.types';
 
+// Phase 4: Music Lessons - Teacher payout aggregation
+export type {
+  GetTeacherPayoutsRequest,
+  GetTeacherPayoutsResponse,
+} from './teacher-payout.types';
+
 // Calendar Embed Config types
 export type {
   GetCalendarEmbedConfigRequest,
@@ -289,6 +295,8 @@ export type {
   EtsyAuthCallbackResponse,
   GetEtsyConnectionStatusRequest,
   GetEtsyConnectionStatusResponse,
+  RefreshEtsyShopIdRequest,
+  RefreshEtsyShopIdResponse,
 } from './etsy.types';
 
 // Etsy Template types
@@ -300,3 +308,14 @@ export type {
   SaveEtsyArtistTemplateRequest,
   SaveEtsyArtistTemplateResponse,
 } from './etsy-template.types';
+
+// Etsy Import types (read-only pull from Etsy into our catalog)
+export type {
+  ListEtsyListingsRequest,
+  ListEtsyListingsResponse,
+  EtsyListingWithSyncInfo,
+  ImportEtsyListingInput,
+  ImportEtsyListingsRequest,
+  ImportEtsyListingsResponse,
+  ImportEtsyListingResult,
+} from './etsy-import.types';

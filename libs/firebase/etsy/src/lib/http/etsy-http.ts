@@ -10,9 +10,17 @@
  * This module has zero external dependencies — uses only Node.js fetch.
  */
 import type { OAuthService } from '../oauth/oauth.service.js';
-import type { EtsyApiError } from '../types/common.types.js';
 
-const ETSY_API_BASE = 'https://api.etsy.com/v3/application';
+const ETSY_API_BASE_DEFAULT = 'https://api.etsy.com/v3/application';
+
+/**
+ * API base URL for all `/application/*` calls. Integration tests point
+ * this at a mock server via the ETSY_API_BASE env var; production uses
+ * the default Etsy endpoint.
+ */
+function getEtsyApiBase(): string {
+  return process.env['ETSY_API_BASE'] ?? ETSY_API_BASE_DEFAULT;
+}
 
 /** Minimum delay between requests to stay under 5 QPS */
 const MIN_REQUEST_INTERVAL_MS = 210;
@@ -180,7 +188,7 @@ export class EtsyHttp {
    * Build a full API URL from a path and optional query parameters.
    */
   private buildUrl(path: string, params?: Record<string, string>): string {
-    const url = new URL(`${ETSY_API_BASE}${path}`);
+    const url = new URL(`${getEtsyApiBase()}${path}`);
     if (params) {
       for (const [key, value] of Object.entries(params)) {
         url.searchParams.set(key, value);

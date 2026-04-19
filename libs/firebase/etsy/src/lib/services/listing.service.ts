@@ -164,7 +164,15 @@ export class ListingService {
   ): Promise<EtsyListingImage> {
     const id = await this.shopId();
     const formData = new FormData();
-    const blob = new Blob([imageBuffer], { type: contentType });
+    // Node's Buffer is accepted by Blob at runtime in both Node and the
+    // browser, but its TypeScript type doesn't line up with the DOM
+    // BlobPart definition on every tsconfig. Cast the parts array to
+    // `unknown[]` to stay off DOM-only types (the functions build is
+    // Node-only).
+    const blob = new Blob(
+      [imageBuffer] as unknown as ConstructorParameters<typeof Blob>[0],
+      { type: contentType }
+    );
     formData.append('image', blob, filename);
     formData.append('rank', String(rank));
 

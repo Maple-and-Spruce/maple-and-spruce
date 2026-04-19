@@ -19,7 +19,7 @@ import type {
   ProductStatus,
   SquareProductResult,
 } from '@maple/ts/domain';
-import { generateSku, isCacheStale } from '@maple/ts/domain';
+import { isCacheStale } from '@maple/ts/domain';
 
 const COLLECTION = 'products';
 
@@ -353,6 +353,39 @@ export const ProductRepository = {
     }
 
     return docToProduct(snapshot.docs[0]);
+  },
+
+  /**
+   * Find products for a batch of Etsy listing IDs.
+   *
+   * Used by the Etsy import page to cross-reference which listings are
+   * already synced. Firestore's `in` clause caps at 30 values, so requests
+   * larger than that are chunked transparently.
+   */
+  async findByEtsyListingIds(
+    etsyListingIds: string[]
+  ): Promise<Product[]> {
+    if (etsyListingIds.length === 0) return [];
+
+    const CHUNK_SIZE = 30;
+    const chunks: string[][] = [];
+    for (let i = 0; i < etsyListingIds.length; i += CHUNK_SIZE) {
+      chunks.push(etsyListingIds.slice(i, i + CHUNK_SIZE));
+    }
+
+    const results = await Promise.all(
+      chunks.map(async (chunk) => {
+        const snapshot = await db
+          .collection(COLLECTION)
+          .where('etsyListingId', 'in', chunk)
+          .get();
+        return snapshot.docs
+          .map((doc) => docToProduct(doc))
+          .filter((p): p is Product => p !== undefined);
+      })
+    );
+
+    return results.flat();
   },
 
   /**

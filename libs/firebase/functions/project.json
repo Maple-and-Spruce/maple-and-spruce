@@ -3,29 +3,21 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/firebase/functions/src",
   "projectType": "library",
-  "tags": [
-    "scope:firebase",
-    "type:util"
-  ],
+  "tags": ["scope:firebase", "type:util"],
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*",
-      "functionsEnv"
-    ]
+    "default": ["{projectRoot}/**/*", "functionsEnv"]
   },
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint"
     },
     "test": {
-      "executor": "@nx/vite:test",
+      "executor": "@nx/vitest:test",
       "defaultConfiguration": "default",
       "configurations": {
         "default": {}
       },
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
+      "outputs": ["{options.reportsDirectory}"],
       "options": {
         "reportsDirectory": "{projectRoot}/../../../coverage/libs/firebase/functions"
       }

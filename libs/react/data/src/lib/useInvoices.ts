@@ -32,6 +32,12 @@ function hydrateInvoice(invoice: Invoice): Invoice {
     ...invoice,
     issuedAt: invoice.issuedAt ? new Date(invoice.issuedAt) : undefined,
     paidAt: invoice.paidAt ? new Date(invoice.paidAt) : undefined,
+    paymentRecord: invoice.paymentRecord
+      ? {
+          ...invoice.paymentRecord,
+          recordedAt: new Date(invoice.paymentRecord.recordedAt),
+        }
+      : undefined,
     createdAt: new Date(invoice.createdAt),
     updatedAt: new Date(invoice.updatedAt),
   };

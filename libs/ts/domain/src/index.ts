@@ -12,6 +12,7 @@ export * from './lib/sync-conflict';
 
 // Phase 5: Etsy Integration
 export * from './lib/etsy';
+export * from './lib/etsy-import';
 
 // Phase 3: Classes & Workshops
 export * from './lib/instructor';
@@ -25,6 +26,8 @@ export * from './lib/tax';
 export * from './lib/student';
 export * from './lib/lesson';
 export * from './lib/invoice';
+export * from './lib/hope-rates';
+export * from './lib/teacher-payout';
 
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';
