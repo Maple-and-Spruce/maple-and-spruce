@@ -37,7 +37,13 @@ function main() {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
-  const allProjects = JSON.parse(raw);
+  // `nx show projects` outputs JSON array in some versions, newline-separated in others
+  let allProjects;
+  try {
+    allProjects = JSON.parse(raw);
+  } catch {
+    allProjects = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  }
   const suites = allProjects
     .filter(
       (name) =>

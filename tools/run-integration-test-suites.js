@@ -26,7 +26,13 @@ function main() {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    suites = JSON.parse(raw)
+    let allProjects;
+    try {
+      allProjects = JSON.parse(raw);
+    } catch {
+      allProjects = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+    }
+    suites = allProjects
       .filter((name) => name.startsWith('functions-integration-tests-'))
       .sort();
   }
