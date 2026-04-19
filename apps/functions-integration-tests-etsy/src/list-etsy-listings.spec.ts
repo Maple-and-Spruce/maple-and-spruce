@@ -47,7 +47,8 @@ describe('listEtsyListings', () => {
 
     // Seed the Etsy token so the function thinks OAuth is already connected.
     // listEtsyListings reads tokenStorage.getTokens() to resolve the shop ID.
-    await setFirestoreDoc('etsy-tokens', 'default', {
+    // Token storage path is _config/etsy-tokens (see etsy-token.repository.ts).
+    await setFirestoreDoc('_config', 'etsy-tokens', {
       accessToken: '11111.valid-access-token',
       refreshToken: '11111.valid-refresh',
       expiresAt: Date.now() + 3600000,
