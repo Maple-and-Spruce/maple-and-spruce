@@ -167,6 +167,26 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 ## Phase 4: Music Lessons - Epic #10
 
+### Invoice Initiation — Private Pay (#280, Complete)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Invoice domain type + status transition rules | **Complete** | `libs/ts/domain/src/lib/invoice.ts` (+ 26 unit tests) |
+| Invoice Vest validation | **Complete** | `libs/ts/validation/src/lib/invoice.validation.ts` (+ 17 tests) |
+| InvoiceRepository (CRUD + issuedAt/paidAt stamps + totals) | **Complete** | `libs/firebase/database/src/lib/invoice.repository.ts` |
+| API types | **Complete** | `libs/ts/firebase/api-types/src/lib/invoice.types.ts` |
+| Cloud functions (create/get/update/delete) | **Complete** | `libs/firebase/maple-functions/{create,get,update,delete}-invoice*/` |
+| **Hope Scholarship server guard** on `createInvoice` | **Complete** | `create-invoice.ts` rejects when `student.isHopeScholarship` |
+| **Status-transition enforcement** on `updateInvoice` | **Complete** | `isInvoiceStatusTransitionAllowed` rejects e.g. paid → sent |
+| **Draft-only hard delete** on `deleteInvoice` | **Complete** | `isInvoiceDeletable` — sent/paid/void require void instead |
+| Integration tests (auth, Hope guard, CRUD lifecycle, transitions, delete-while-draft) | **Complete** | `apps/functions-integration-tests-invoice/` |
+| `useInvoices` hook | **Complete** | `libs/react/data/src/lib/useInvoices.ts` |
+| `InvoiceList` (status-aware action buttons) | **Complete** | `libs/react/invoices/src/lib/InvoiceList.tsx` |
+| `InvoiceBuilderDialog` (signals, Vest, "Add from lesson" picker) | **Complete** | `libs/react/invoices/src/lib/InvoiceBuilderDialog.tsx` |
+| Storybook interaction tests | **Complete** | 28 new (action visibility per status, line editing, picker, totals) |
+| Wired into `/students/[id]` with Hope guard in UI | **Complete** | `apps/maple-spruce/src/app/students/[id]/page.tsx` |
+| Parent invoice email + online payment | **Deferred to #281** | |
+
 ### Hope Scholarship Handling (#282, Complete)
 
 | Feature | Status | Location |

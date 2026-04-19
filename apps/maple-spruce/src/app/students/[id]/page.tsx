@@ -15,9 +15,12 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import StarsIcon from '@mui/icons-material/Stars';
 import type {
+  CreateInvoiceInput,
   CreateLessonInput,
   CreateLessonSeriesInput,
+  Invoice,
   Lesson,
+  UpdateInvoiceInput,
   UpdateLessonInput,
 } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
@@ -28,11 +31,20 @@ import {
   ScheduleLessonDialog,
 } from '@maple/react/lessons';
 import {
+  InvoiceBuilderDialog,
+  InvoiceList,
+} from '@maple/react/invoices';
+import {
   INSTRUMENT_LABELS,
   LESSON_LENGTH_LABELS,
 } from '@maple/react/students';
 import { AppShell } from '../../../components/layout';
-import { useInstructors, useLessons, useStudents } from '../../../hooks';
+import {
+  useInstructors,
+  useInvoices,
+  useLessons,
+  useStudents,
+} from '../../../hooks';
 
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
@@ -46,6 +58,12 @@ export default function StudentDetailPage() {
     createLessonSeries,
     updateLesson,
   } = useLessons({ studentId });
+  const {
+    invoicesState,
+    createInvoice,
+    updateInvoice,
+    deleteInvoice,
+  } = useInvoices({ studentId });
 
   const student = useMemo(() => {
     if (studentsState.status !== 'success') return undefined;
@@ -65,6 +83,20 @@ export default function StudentDetailPage() {
   const [editLesson, setEditLesson] = useState<Lesson | undefined>();
   const [cancelLesson, setCancelLesson] = useState<Lesson | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Invoice state
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | undefined>();
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(
+    null
+  );
+  const [invoiceToVoid, setInvoiceToVoid] = useState<Invoice | null>(null);
+
+  const lessons = useMemo(
+    () =>
+      lessonsState.status === 'success' ? lessonsState.data : [],
+    [lessonsState]
+  );
 
   const handleCreateSingle = async (input: CreateLessonInput) => {
     setIsSubmitting(true);
@@ -99,6 +131,69 @@ export default function StudentDetailPage() {
     try {
       await updateLesson({ id: cancelLesson.id, status: 'cancelled' });
       setCancelLesson(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInvoiceCreate = async (input: CreateInvoiceInput) => {
+    setIsSubmitting(true);
+    try {
+      await createInvoice(input);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInvoiceUpdate = async (input: UpdateInvoiceInput) => {
+    setIsSubmitting(true);
+    try {
+      await updateInvoice(input);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInvoiceEdit = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setInvoiceDialogOpen(true);
+  };
+
+  const handleInvoiceSend = async (invoice: Invoice) => {
+    setIsSubmitting(true);
+    try {
+      await updateInvoice({ id: invoice.id, status: 'sent' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInvoiceMarkPaid = async (invoice: Invoice) => {
+    setIsSubmitting(true);
+    try {
+      await updateInvoice({ id: invoice.id, status: 'paid' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInvoiceVoidConfirm = async () => {
+    if (!invoiceToVoid) return;
+    setIsSubmitting(true);
+    try {
+      await updateInvoice({ id: invoiceToVoid.id, status: 'void' });
+      setInvoiceToVoid(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInvoiceDeleteConfirm = async () => {
+    if (!invoiceToDelete) return;
+    setIsSubmitting(true);
+    try {
+      await deleteInvoice(invoiceToDelete.id);
+      setInvoiceToDelete(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -226,6 +321,68 @@ export default function StudentDetailPage() {
         onMarkRendered={handleMarkRendered}
       />
 
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mt: 4,
+          mb: 2,
+          gap: 2,
+          flexWrap: 'wrap',
+        }}
+      >
+        <Typography variant="h6" component="h2">
+          Invoices
+        </Typography>
+        {student.isHopeScholarship ? (
+          <Button
+            variant="outlined"
+            disabled
+            startIcon={<AddIcon />}
+            title="Hope Scholarship students are invoiced via the EMA portal"
+          >
+            New invoice (disabled for Hope)
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditingInvoice(undefined);
+              setInvoiceDialogOpen(true);
+            }}
+          >
+            New invoice
+          </Button>
+        )}
+      </Box>
+
+      {!student.isHopeScholarship && (
+        <InvoiceList
+          invoicesState={invoicesState}
+          onEdit={handleInvoiceEdit}
+          onSend={handleInvoiceSend}
+          onMarkPaid={handleInvoiceMarkPaid}
+          onVoid={(invoice) => setInvoiceToVoid(invoice)}
+          onDelete={(invoice) => setInvoiceToDelete(invoice)}
+        />
+      )}
+
+      <InvoiceBuilderDialog
+        open={invoiceDialogOpen}
+        onClose={() => {
+          setInvoiceDialogOpen(false);
+          setEditingInvoice(undefined);
+        }}
+        studentId={student.id}
+        invoice={editingInvoice}
+        lessons={lessons}
+        onCreate={handleInvoiceCreate}
+        onUpdate={handleInvoiceUpdate}
+        isSubmitting={isSubmitting}
+      />
+
       <ScheduleLessonDialog
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
@@ -275,6 +432,49 @@ export default function StudentDetailPage() {
           <Alert severity="info">
             The lesson stays on record with status &quot;cancelled&quot;. For
             recurring series, other occurrences are unaffected.
+          </Alert>
+        }
+      />
+
+      <DeleteConfirmDialog
+        open={!!invoiceToVoid}
+        onClose={() => setInvoiceToVoid(null)}
+        onConfirm={handleInvoiceVoidConfirm}
+        isDeleting={isSubmitting}
+        title="Void this invoice?"
+        itemName={
+          invoiceToVoid
+            ? `Invoice for ${invoiceToVoid.lineItems.length} line${
+                invoiceToVoid.lineItems.length === 1 ? '' : 's'
+              }`
+            : ''
+        }
+        warningContent={
+          <Alert severity="warning">
+            Voiding preserves the invoice for history but marks it as
+            cancelled. Use this for refunds or mistakes once an invoice has
+            been sent — drafts can be deleted outright.
+          </Alert>
+        }
+      />
+
+      <DeleteConfirmDialog
+        open={!!invoiceToDelete}
+        onClose={() => setInvoiceToDelete(null)}
+        onConfirm={handleInvoiceDeleteConfirm}
+        isDeleting={isSubmitting}
+        title="Delete this draft invoice?"
+        itemName={
+          invoiceToDelete
+            ? `Draft invoice with ${invoiceToDelete.lineItems.length} line${
+                invoiceToDelete.lineItems.length === 1 ? '' : 's'
+              }`
+            : ''
+        }
+        warningContent={
+          <Alert severity="warning">
+            Drafts can be hard-deleted. Sent or paid invoices must be
+            voided instead to preserve history.
           </Alert>
         }
       />

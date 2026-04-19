@@ -164,6 +164,18 @@
       "@maple/firebase/maple-functions/delete-lesson": [
         "libs/firebase/maple-functions/delete-lesson/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/create-invoice": [
+        "libs/firebase/maple-functions/create-invoice/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-invoices": [
+        "libs/firebase/maple-functions/get-invoices/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-invoice": [
+        "libs/firebase/maple-functions/update-invoice/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-invoice": [
+        "libs/firebase/maple-functions/delete-invoice/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-classes": [
         "libs/firebase/maple-functions/get-classes/src/index.ts"
       ],
@@ -269,6 +281,7 @@
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
       "@maple/react/students": ["libs/react/students/src/index.ts"],
       "@maple/react/lessons": ["libs/react/lessons/src/index.ts"],
+      "@maple/react/invoices": ["libs/react/invoices/src/index.ts"],
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],
