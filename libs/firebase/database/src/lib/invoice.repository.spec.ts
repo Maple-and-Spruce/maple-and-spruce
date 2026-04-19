@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the database config module
 vi.mock('./utilities/database.config', () => ({
   db: {
     collection: vi.fn(),
@@ -42,7 +41,6 @@ function mockDocSnapshot(
   };
 }
 
-/** Minimal invoice data stored in Firestore */
 function firestoreInvoice(overrides: Record<string, unknown> = {}) {
   return {
     studentId: 'student-1',
@@ -64,237 +62,409 @@ function firestoreInvoice(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('InvoiceRepository (new methods added in #281)', () => {
+describe('InvoiceRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // ── findBySquareInvoiceId ────────────────────────────────────────────
-
-  describe('findBySquareInvoiceId', () => {
-    it('returns the invoice when one matches', async () => {
-      const snap = mockDocSnapshot(
-        'inv-1',
-        firestoreInvoice({
-          squareOrderId: 'SQ-ORDER',
-          squareInvoiceId: 'SQ-INVOICE-1',
-        })
+  describe('findAll', () => {
+    it('returns all invoices ordered by createdAt desc', async () => {
+      const snap1 = mockDocSnapshot('inv-1', firestoreInvoice());
+      const snap2 = mockDocSnapshot(
+        'inv-2',
+        firestoreInvoice({ studentId: 'student-2', status: 'draft' })
       );
-      const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [snap] });
-      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-      vi.mocked(db.collection).mockReturnValue({
-        where: mockWhere,
-      } as unknown as FirebaseFirestore.CollectionReference);
+      const mockGet = vi
+        .fn()
+        .mockResolvedValue({ docs: [snap1, snap2] });
+      const mockOrderBy = vi.fn().mockReturnValue({ get: mockGet });
+      const mockCollection = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
 
-      const invoice = await InvoiceRepository.findBySquareInvoiceId(
-        'SQ-INVOICE-1'
-      );
+      const invoices = await InvoiceRepository.findAll();
 
-      expect(mockWhere).toHaveBeenCalledWith(
-        'squareInvoiceId',
-        '==',
-        'SQ-INVOICE-1'
-      );
-      expect(mockLimit).toHaveBeenCalledWith(1);
-      expect(invoice?.id).toBe('inv-1');
-      expect(invoice?.squareInvoiceId).toBe('SQ-INVOICE-1');
+      expect(mockOrderBy).toHaveBeenCalledWith('createdAt', 'desc');
+      expect(invoices).toHaveLength(2);
+      expect(invoices[0].id).toBe('inv-1');
+      expect(invoices[1].studentId).toBe('student-2');
     });
 
-    it('returns undefined when no invoice matches', async () => {
-      const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-      vi.mocked(db.collection).mockReturnValue({
-        where: mockWhere,
-      } as unknown as FirebaseFirestore.CollectionReference);
+    it('filters by studentId when provided', async () => {
+      const snap = mockDocSnapshot('inv-1', firestoreInvoice());
+      const mockGet = vi.fn().mockResolvedValue({ docs: [snap] });
+      const mockOrderBy = vi.fn().mockReturnValue({ get: mockGet });
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockCollection = vi.fn().mockReturnValue({ where: mockWhere });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
 
-      const invoice = await InvoiceRepository.findBySquareInvoiceId(
-        'SQ-UNKNOWN'
+      await InvoiceRepository.findAll({ studentId: 'student-1' });
+
+      expect(mockWhere).toHaveBeenCalledWith(
+        'studentId',
+        '==',
+        'student-1'
       );
-      expect(invoice).toBeUndefined();
+    });
+
+    it('filters by status when provided', async () => {
+      const snap = mockDocSnapshot('inv-1', firestoreInvoice());
+      const mockGet = vi.fn().mockResolvedValue({ docs: [snap] });
+      const mockOrderBy = vi.fn().mockReturnValue({ get: mockGet });
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockCollection = vi.fn().mockReturnValue({ where: mockWhere });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+
+      await InvoiceRepository.findAll({ status: 'sent' });
+
+      expect(mockWhere).toHaveBeenCalledWith('status', '==', 'sent');
+    });
+
+    it('applies both filters when both provided', async () => {
+      const mockGet = vi.fn().mockResolvedValue({ docs: [] });
+      const mockOrderBy = vi.fn().mockReturnValue({ get: mockGet });
+      const mockWhere2 = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2 });
+      const mockCollection = vi.fn().mockReturnValue({ where: mockWhere1 });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+
+      await InvoiceRepository.findAll({
+        studentId: 'student-1',
+        status: 'paid',
+      });
+
+      expect(mockWhere1).toHaveBeenCalledWith(
+        'studentId',
+        '==',
+        'student-1'
+      );
+      expect(mockWhere2).toHaveBeenCalledWith('status', '==', 'paid');
     });
   });
 
-  // ── markPaidBySquareWebhook ──────────────────────────────────────────
-
-  describe('markPaidBySquareWebhook', () => {
-    function setupDoc(existing: Record<string, unknown>, id = 'inv-1') {
-      const snapBefore = mockDocSnapshot(id, existing);
-      const snapAfter = mockDocSnapshot(id, {
-        ...existing,
-        status: 'paid',
-        paymentRecord: {
-          source: 'square-webhook',
-          squarePaymentId: 'SQ-PAY-1',
-          recordedAt: new Date(),
-        },
-        paidAt: new Date(),
-      });
-
-      const mockUpdate = vi.fn().mockResolvedValue(undefined);
-      const mockGet = vi
-        .fn()
-        // First call: current state before update
-        .mockResolvedValueOnce(snapBefore)
-        // Second call: state after update
-        .mockResolvedValueOnce(snapAfter);
-      const mockDoc = vi.fn().mockReturnValue({
-        get: mockGet,
-        update: mockUpdate,
-      });
-      vi.mocked(db.collection).mockReturnValue({
-        doc: mockDoc,
-      } as unknown as FirebaseFirestore.CollectionReference);
-
-      return { mockUpdate, mockGet, mockDoc };
-    }
-
-    it('flips a sent invoice to paid with square-webhook attribution', async () => {
-      const { mockUpdate } = setupDoc(
-        firestoreInvoice({ squareInvoiceId: 'SQ-1' })
-      );
-
-      const result = await InvoiceRepository.markPaidBySquareWebhook({
-        id: 'inv-1',
-        squarePaymentId: 'SQ-PAY-1',
-      });
-
-      expect(mockUpdate).toHaveBeenCalledTimes(1);
-      const payload = mockUpdate.mock.calls[0][0];
-      expect(payload.status).toBe('paid');
-      expect(payload.paymentRecord.source).toBe('square-webhook');
-      expect(payload.paymentRecord.squarePaymentId).toBe('SQ-PAY-1');
-      expect(payload.paymentRecord.recordedAt).toBeInstanceOf(Date);
-      expect(result.status).toBe('paid');
-    });
-
-    it('is idempotent when invoice is already paid — returns early without writing', async () => {
-      const existing = firestoreInvoice({
-        status: 'paid',
-        paidAt: new Date('2026-04-23'),
-        paymentRecord: {
-          source: 'admin-manual',
-          recordedAt: new Date('2026-04-23'),
-        },
-      });
-      const snap = mockDocSnapshot('inv-1', existing);
-      const mockUpdate = vi.fn();
+  describe('findById', () => {
+    it('returns the invoice when it exists', async () => {
+      const snap = mockDocSnapshot('inv-1', firestoreInvoice());
       const mockGet = vi.fn().mockResolvedValue(snap);
-      const mockDoc = vi.fn().mockReturnValue({
-        get: mockGet,
-        update: mockUpdate,
-      });
+      const mockDoc = vi.fn().mockReturnValue({ get: mockGet });
       vi.mocked(db.collection).mockReturnValue({
         doc: mockDoc,
       } as unknown as FirebaseFirestore.CollectionReference);
 
-      const result = await InvoiceRepository.markPaidBySquareWebhook({
-        id: 'inv-1',
-        squarePaymentId: 'SQ-PAY-LATE',
-      });
+      const invoice = await InvoiceRepository.findById('inv-1');
 
-      expect(mockUpdate).not.toHaveBeenCalled();
-      // Existing attribution preserved (admin-manual stays)
-      expect(result.paymentRecord?.source).toBe('admin-manual');
+      expect(invoice).toBeDefined();
+      expect(invoice?.id).toBe('inv-1');
+      expect(invoice?.studentId).toBe('student-1');
+      expect(invoice?.status).toBe('sent');
+      expect(invoice?.lineItems).toHaveLength(1);
+      expect(invoice?.totalCents).toBe(13000);
+      expect(invoice?.issuedAt).toEqual(new Date('2026-04-20T10:00:00Z'));
     });
 
-    it('throws when invoice does not exist', async () => {
+    it('returns undefined when the invoice does not exist', async () => {
       const snap = mockDocSnapshot('inv-missing', null);
       const mockGet = vi.fn().mockResolvedValue(snap);
+      const mockDoc = vi.fn().mockReturnValue({ get: mockGet });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      const invoice = await InvoiceRepository.findById('inv-missing');
+      expect(invoice).toBeUndefined();
+    });
+
+    it('handles missing optional fields gracefully', async () => {
+      const snap = mockDocSnapshot(
+        'inv-1',
+        firestoreInvoice({ issuedAt: undefined, paidAt: undefined, notes: undefined })
+      );
+      const mockGet = vi.fn().mockResolvedValue(snap);
+      const mockDoc = vi.fn().mockReturnValue({ get: mockGet });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      const invoice = await InvoiceRepository.findById('inv-1');
+      expect(invoice?.issuedAt).toBeUndefined();
+      expect(invoice?.paidAt).toBeUndefined();
+    });
+  });
+
+  describe('create', () => {
+    it('creates a draft invoice with computed subtotals and total', async () => {
+      const mockSet = vi.fn().mockResolvedValue(undefined);
+      const mockDoc = vi.fn().mockReturnValue({ id: 'new-inv', set: mockSet });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      const invoice = await InvoiceRepository.create({
+        studentId: 'student-1',
+        lineItems: [
+          {
+            id: 'line-1',
+            description: 'Lesson',
+            quantity: 2,
+            unitAmountCents: 5000,
+            subtotalCents: 0,
+          },
+        ],
+      });
+
+      expect(mockSet).toHaveBeenCalledTimes(1);
+      expect(invoice.id).toBe('new-inv');
+      expect(invoice.status).toBe('draft');
+      expect(invoice.lineItems[0].subtotalCents).toBe(10000);
+      expect(invoice.totalCents).toBe(10000);
+      expect(invoice.issuedAt).toBeUndefined();
+      expect(invoice.paidAt).toBeUndefined();
+    });
+
+    it('stamps issuedAt when created directly as sent', async () => {
+      const mockSet = vi.fn().mockResolvedValue(undefined);
+      const mockDoc = vi.fn().mockReturnValue({ id: 'new-inv', set: mockSet });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      const invoice = await InvoiceRepository.create({
+        studentId: 'student-1',
+        status: 'sent',
+        lineItems: [
+          {
+            id: 'line-1',
+            description: 'Lesson',
+            quantity: 1,
+            unitAmountCents: 3250,
+            subtotalCents: 0,
+          },
+        ],
+      });
+
+      expect(invoice.status).toBe('sent');
+      expect(invoice.issuedAt).toBeInstanceOf(Date);
+      expect(invoice.paidAt).toBeUndefined();
+    });
+
+    it('stamps both issuedAt and paidAt when created directly as paid', async () => {
+      const mockSet = vi.fn().mockResolvedValue(undefined);
+      const mockDoc = vi.fn().mockReturnValue({ id: 'new-inv', set: mockSet });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      const invoice = await InvoiceRepository.create({
+        studentId: 'student-1',
+        status: 'paid',
+        lineItems: [
+          {
+            id: 'line-1',
+            description: 'Lesson',
+            quantity: 1,
+            unitAmountCents: 3250,
+            subtotalCents: 0,
+          },
+        ],
+      });
+
+      expect(invoice.status).toBe('paid');
+      expect(invoice.issuedAt).toBeInstanceOf(Date);
+      expect(invoice.paidAt).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('update', () => {
+    const existing = {
+      id: 'inv-1',
+      studentId: 'student-1',
+      status: 'draft' as const,
+      lineItems: [
+        {
+          id: 'line-1',
+          description: 'Lesson',
+          quantity: 2,
+          unitAmountCents: 5000,
+          subtotalCents: 10000,
+        },
+      ],
+      totalCents: 10000,
+      createdAt: new Date('2026-04-20T10:00:00Z'),
+      updatedAt: new Date('2026-04-20T10:00:00Z'),
+    };
+
+    it('updates status from draft to sent and stamps issuedAt', async () => {
+      const updatedSnap = mockDocSnapshot(
+        'inv-1',
+        firestoreInvoice({ status: 'sent', issuedAt: new Date() })
+      );
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockGet = vi.fn().mockResolvedValue(updatedSnap);
       const mockDoc = vi.fn().mockReturnValue({
+        update: mockUpdate,
         get: mockGet,
-        update: vi.fn(),
+      });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      const result = await InvoiceRepository.update(
+        { id: 'inv-1', status: 'sent' },
+        existing
+      );
+
+      const payload = mockUpdate.mock.calls[0][0];
+      expect(payload.status).toBe('sent');
+      expect(payload.issuedAt).toBeInstanceOf(Date);
+      expect(payload.paidAt).toBeUndefined();
+      expect(result.id).toBe('inv-1');
+    });
+
+    it('stamps both issuedAt and paidAt when transitioning to paid from draft', async () => {
+      const updatedSnap = mockDocSnapshot(
+        'inv-1',
+        firestoreInvoice({ status: 'paid', issuedAt: new Date(), paidAt: new Date() })
+      );
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockGet = vi.fn().mockResolvedValue(updatedSnap);
+      const mockDoc = vi.fn().mockReturnValue({
+        update: mockUpdate,
+        get: mockGet,
+      });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await InvoiceRepository.update(
+        { id: 'inv-1', status: 'paid' },
+        existing
+      );
+
+      const payload = mockUpdate.mock.calls[0][0];
+      expect(payload.issuedAt).toBeInstanceOf(Date);
+      expect(payload.paidAt).toBeInstanceOf(Date);
+    });
+
+    it('preserves existing issuedAt when transitioning from sent to paid', async () => {
+      const issuedAt = new Date('2026-04-21T10:00:00Z');
+      const sentExisting = {
+        ...existing,
+        status: 'sent' as const,
+        issuedAt,
+      };
+      const updatedSnap = mockDocSnapshot(
+        'inv-1',
+        firestoreInvoice({ status: 'paid', issuedAt, paidAt: new Date() })
+      );
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockGet = vi.fn().mockResolvedValue(updatedSnap);
+      const mockDoc = vi.fn().mockReturnValue({
+        update: mockUpdate,
+        get: mockGet,
+      });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await InvoiceRepository.update(
+        { id: 'inv-1', status: 'paid' },
+        sentExisting
+      );
+
+      const payload = mockUpdate.mock.calls[0][0];
+      expect(payload.issuedAt).toBe(issuedAt);
+      expect(payload.paidAt).toBeInstanceOf(Date);
+    });
+
+    it('recomputes subtotals and total when lineItems change', async () => {
+      const updatedSnap = mockDocSnapshot(
+        'inv-1',
+        firestoreInvoice({ totalCents: 6500 })
+      );
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockGet = vi.fn().mockResolvedValue(updatedSnap);
+      const mockDoc = vi.fn().mockReturnValue({
+        update: mockUpdate,
+        get: mockGet,
+      });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await InvoiceRepository.update(
+        {
+          id: 'inv-1',
+          lineItems: [
+            {
+              id: 'line-1',
+              description: 'Lesson',
+              quantity: 1,
+              unitAmountCents: 6500,
+              subtotalCents: 0,
+            },
+          ],
+        },
+        existing
+      );
+
+      const payload = mockUpdate.mock.calls[0][0];
+      expect(payload.lineItems[0].subtotalCents).toBe(6500);
+      expect(payload.totalCents).toBe(6500);
+    });
+
+    it('updates notes when provided', async () => {
+      const updatedSnap = mockDocSnapshot(
+        'inv-1',
+        firestoreInvoice({ notes: 'Updated note' })
+      );
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockGet = vi.fn().mockResolvedValue(updatedSnap);
+      const mockDoc = vi.fn().mockReturnValue({
+        update: mockUpdate,
+        get: mockGet,
+      });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await InvoiceRepository.update(
+        { id: 'inv-1', notes: 'Updated note' },
+        existing
+      );
+
+      const payload = mockUpdate.mock.calls[0][0];
+      expect(payload.notes).toBe('Updated note');
+    });
+
+    it('throws if invoice not found after update', async () => {
+      const missingSnap = mockDocSnapshot('inv-1', null);
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockGet = vi.fn().mockResolvedValue(missingSnap);
+      const mockDoc = vi.fn().mockReturnValue({
+        update: mockUpdate,
+        get: mockGet,
       });
       vi.mocked(db.collection).mockReturnValue({
         doc: mockDoc,
       } as unknown as FirebaseFirestore.CollectionReference);
 
       await expect(
-        InvoiceRepository.markPaidBySquareWebhook({
-          id: 'inv-missing',
-          squarePaymentId: 'SQ-PAY-1',
-        })
-      ).rejects.toThrow(/not found/);
+        InvoiceRepository.update({ id: 'inv-1', status: 'sent' }, existing)
+      ).rejects.toThrow('Invoice inv-1 not found after update');
     });
   });
 
-  // ── markSquareSynced ─────────────────────────────────────────────────
-
-  describe('markSquareSynced', () => {
-    it('stamps square ids and clears prior error', async () => {
-      const mockUpdate = vi.fn().mockResolvedValue(undefined);
-      const mockDoc = vi.fn().mockReturnValue({ update: mockUpdate });
+  describe('delete', () => {
+    it('deletes the invoice document', async () => {
+      const mockDelete = vi.fn().mockResolvedValue(undefined);
+      const mockDoc = vi.fn().mockReturnValue({ delete: mockDelete });
       vi.mocked(db.collection).mockReturnValue({
         doc: mockDoc,
       } as unknown as FirebaseFirestore.CollectionReference);
 
-      await InvoiceRepository.markSquareSynced({
-        id: 'inv-1',
-        squareOrderId: 'SQ-ORDER',
-        squareInvoiceId: 'SQ-INVOICE',
-      });
+      await InvoiceRepository.delete('inv-1');
 
-      const payload = mockUpdate.mock.calls[0][0];
-      expect(payload.squareOrderId).toBe('SQ-ORDER');
-      expect(payload.squareInvoiceId).toBe('SQ-INVOICE');
-      expect(payload.squareSyncError).toBeNull();
-      expect(payload.updatedAt).toBeInstanceOf(Date);
-    });
-  });
-
-  // ── recordSquareSyncError ────────────────────────────────────────────
-
-  describe('recordSquareSyncError', () => {
-    it('writes the error message and bumps updatedAt', async () => {
-      const mockUpdate = vi.fn().mockResolvedValue(undefined);
-      const mockDoc = vi.fn().mockReturnValue({ update: mockUpdate });
-      vi.mocked(db.collection).mockReturnValue({
-        doc: mockDoc,
-      } as unknown as FirebaseFirestore.CollectionReference);
-
-      await InvoiceRepository.recordSquareSyncError({
-        id: 'inv-1',
-        error: 'Square API timeout',
-      });
-
-      const payload = mockUpdate.mock.calls[0][0];
-      expect(payload.squareSyncError).toBe('Square API timeout');
-      expect(payload.updatedAt).toBeInstanceOf(Date);
-    });
-  });
-
-  // ── paymentRecord round-trip ────────────────────────────────────────
-
-  describe('paymentRecord round-trip via docToInvoice', () => {
-    it('hydrates paymentRecord from Firestore-shaped data', async () => {
-      const snap = mockDocSnapshot(
-        'inv-1',
-        firestoreInvoice({
-          squareInvoiceId: 'SQ-1',
-          paymentRecord: {
-            source: 'square-webhook',
-            squarePaymentId: 'SQ-PAY',
-            recordedAt: new Date('2026-04-23T14:00:00Z'),
-          },
-        })
-      );
-      const mockGet = vi.fn().mockResolvedValue({
-        empty: false,
-        docs: [snap],
-      });
-      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-      vi.mocked(db.collection).mockReturnValue({
-        where: mockWhere,
-      } as unknown as FirebaseFirestore.CollectionReference);
-
-      const invoice = await InvoiceRepository.findBySquareInvoiceId('SQ-1');
-      expect(invoice?.paymentRecord).toEqual({
-        source: 'square-webhook',
-        squarePaymentId: 'SQ-PAY',
-        recordedAt: new Date('2026-04-23T14:00:00Z'),
-      });
+      expect(mockDoc).toHaveBeenCalledWith('inv-1');
+      expect(mockDelete).toHaveBeenCalledTimes(1);
     });
   });
 });

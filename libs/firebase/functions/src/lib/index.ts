@@ -22,9 +22,14 @@ export {
   createPublicFunction,
   createAuthenticatedFunction,
   createAdminFunction,
+  assertValid,
+  runChecks,
   type FunctionContext,
   type FunctionOptions,
   type RuntimeOptions,
+  type ValidationResultLike,
+  type ValidatorFn,
+  type UniquenessCheck,
 } from './functions.utility';
 
 // Auth utilities
