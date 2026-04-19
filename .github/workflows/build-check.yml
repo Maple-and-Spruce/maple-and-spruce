@@ -360,12 +360,18 @@ jobs:
     steps:
       - name: Check matrix result
         run: |
-          if [ "${{ needs.integration-test-matrix.result }}" != "success" ]; then
-            echo "Matrix setup failed or was skipped"
+          matrix="${{ needs.integration-test-matrix.result }}"
+          tests="${{ needs.integration-tests.result }}"
+          echo "integration-test-matrix: $matrix"
+          echo "integration-tests: $tests"
+
+          # Fail on actual failures or cancellations — skipped is OK (repo filter)
+          if [[ "$matrix" == "failure" || "$matrix" == "cancelled" ]]; then
+            echo "::error::Matrix setup failed"
             exit 1
           fi
-          if [ "${{ needs.integration-tests.result }}" != "success" ]; then
-            echo "One or more integration test groups failed"
+          if [[ "$tests" == "failure" || "$tests" == "cancelled" ]]; then
+            echo "::error::One or more integration test groups failed"
             exit 1
           fi
 
