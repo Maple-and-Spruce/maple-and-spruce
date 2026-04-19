@@ -331,6 +331,9 @@
       "@maple/firebase/integration-test-mock-server": [
         "libs/firebase/integration-test-mock-server/src/index.ts"
       ],
+      "@maple/firebase/etsy-test-mock-server": [
+        "libs/firebase/etsy-test-mock-server/src/index.ts"
+      ],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }
