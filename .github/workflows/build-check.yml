@@ -251,6 +251,11 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -269,7 +274,7 @@ jobs:
 
       - name: Generate test matrix
         id: matrix
-        run: echo "matrix=$(node tools/ci-integration-test-matrix.js --max-per-group 5)" >> $GITHUB_OUTPUT
+        run: echo "matrix=$(node tools/ci-integration-test-matrix.js --max-per-group 5 --affected)" >> $GITHUB_OUTPUT
 
   integration-tests:
     name: Integration Tests (${{ matrix.group.index }}/${{ matrix.group.total }})
@@ -365,7 +370,7 @@ jobs:
           echo "integration-test-matrix: $matrix"
           echo "integration-tests: $tests"
 
-          # Fail on actual failures or cancellations — skipped is OK (repo filter)
+          # Fail on actual failures or cancellations — skipped is OK (no affected suites or repo filter)
           if [[ "$matrix" == "failure" || "$matrix" == "cancelled" ]]; then
             echo "::error::Matrix setup failed"
             exit 1
