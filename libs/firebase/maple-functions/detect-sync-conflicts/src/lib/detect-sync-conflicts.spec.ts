@@ -88,6 +88,14 @@ describe('Sync Conflict Detection Logic', () => {
     squareItemId: overrides.squareItemId ?? `SQ_ITEM_${id}`,
     squareVariationId: overrides.squareVariationId ?? `SQ_VAR_${id}`,
     squareCatalogVersion: 1,
+    variants: [{
+      id: 'var_1',
+      label: 'Regular',
+      sku: `SKU_${id}`,
+      priceCents: overrides.cachedPrice ?? 2500,
+      quantity: overrides.cachedQuantity ?? 5,
+      squareVariationId: overrides.squareVariationId ?? `SQ_VAR_${id}`,
+    }],
     squareCache: {
       name: overrides.cachedName ?? `Product ${id}`,
       priceCents: overrides.cachedPrice ?? 2500,

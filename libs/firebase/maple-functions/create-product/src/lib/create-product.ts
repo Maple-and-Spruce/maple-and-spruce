@@ -79,6 +79,7 @@ export const createProduct = Functions.endpoint
         squareCatalogVersion: catalogResult.squareCatalogVersion,
         squareLocationId: square.locationId,
         sku: catalogResult.sku,
+        variations: [{ variantId: 'var_compat', squareVariationId: catalogResult.squareVariationId, sku: catalogResult.sku }],
       });
 
       return { product };

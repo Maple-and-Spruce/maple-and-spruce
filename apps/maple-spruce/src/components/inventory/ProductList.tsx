@@ -64,7 +64,7 @@ function ProductCard({
               {product.squareCache.description || 'No description'}
             </Typography>
             <Typography variant="h5" color="primary" sx={{ mb: 1 }}>
-              {formatPrice(product.squareCache.priceCents)}
+              {formatPrice(product.squareCache.priceCents ?? 0)}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Chip
@@ -73,7 +73,7 @@ function ProductCard({
                 color={statusColors[product.status]}
               />
               <Chip
-                label={`Qty: ${product.squareCache.quantity}`}
+                label={`Qty: ${product.squareCache.quantity ?? 0}`}
                 size="small"
                 variant="outlined"
               />
