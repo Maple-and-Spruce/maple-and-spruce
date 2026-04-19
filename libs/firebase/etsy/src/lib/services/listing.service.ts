@@ -164,12 +164,15 @@ export class ListingService {
   ): Promise<EtsyListingImage> {
     const id = await this.shopId();
     const formData = new FormData();
-    // Cast through BlobPart[]: Node's Buffer extends Uint8Array and is a
-    // valid BlobPart at runtime, but lib.dom's Uint8Array generic doesn't
-    // accept the widened ArrayBufferLike that Node uses.
-    const blob = new Blob([imageBuffer as unknown as BlobPart], {
-      type: contentType,
-    });
+    // Node's Buffer is accepted by Blob at runtime in both Node and the
+    // browser, but its TypeScript type doesn't line up with the DOM
+    // BlobPart definition on every tsconfig. Cast the parts array to
+    // `unknown[]` to stay off DOM-only types (the functions build is
+    // Node-only).
+    const blob = new Blob(
+      [imageBuffer] as unknown as ConstructorParameters<typeof Blob>[0],
+      { type: contentType }
+    );
     formData.append('image', blob, filename);
     formData.append('rank', String(rank));
 
