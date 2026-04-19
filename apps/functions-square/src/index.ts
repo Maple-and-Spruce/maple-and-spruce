@@ -30,3 +30,6 @@ export { resolveSyncConflict } from '@maple/firebase/maple-functions/resolve-syn
 
 // Invoice → Square sync (Firestore trigger on invoices/{id})
 export { syncInvoiceToSquare } from '@maple/firebase/maple-functions/sync-invoice-to-square';
+
+// Etsy listing import (pull-only; creates Square catalog items for imported listings)
+export { importEtsyListings } from '@maple/firebase/maple-functions/import-etsy-listings';

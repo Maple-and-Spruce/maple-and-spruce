@@ -14,3 +14,4 @@ export * from './registrations';
 export * from './students';
 export * from './lessons';
 export * from './invoices';
+export * from './etsy-listings';
