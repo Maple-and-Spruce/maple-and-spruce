@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, userEvent, waitFor } from 'storybook/test';
+import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
 import { InstructorList } from './InstructorList';
 import {
   mockInstructors,
@@ -134,7 +134,6 @@ export const EditButtonCallsOnEdit: Story = {
     } as RequestState<Instructor[]>,
   },
   play: async ({ args, canvasElement }) => {
-    const { within } = await import('storybook/test');
     const canvas = within(canvasElement);
 
     // Find and click the edit button
@@ -160,7 +159,6 @@ export const DeleteButtonCallsOnDelete: Story = {
     } as RequestState<Instructor[]>,
   },
   play: async ({ args, canvasElement }) => {
-    const { within } = await import('storybook/test');
     const canvas = within(canvasElement);
 
     // Find and click the delete button
