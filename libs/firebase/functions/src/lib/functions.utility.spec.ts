@@ -52,15 +52,10 @@ vi.mock('firebase-admin', () => ({
   },
 }));
 
-vi.mock('./auth.utility', async () => {
-  const actual = await vi.importActual<typeof import('./auth.utility')>(
-    './auth.utility'
-  );
-  return {
-    ...actual,
-    hasRole: mocks.hasRole,
-  };
-});
+vi.mock('./auth.utility', () => ({
+  Role: { Admin: 'admin' },
+  hasRole: mocks.hasRole,
+}));
 
 import {
   assertValid,
@@ -70,6 +65,11 @@ import {
   createAuthenticatedFunction,
   createAdminFunction,
 } from './functions.utility';
+import {
+  throwNotFound,
+  throwInvalidArgument,
+  throwFailedPrecondition,
+} from './errors.utility';
 import { Role } from './auth.utility';
 
 type MockResponse = {
@@ -158,6 +158,38 @@ describe('assertValid', () => {
     expect(caught).toBeInstanceOf(HttpsError);
     expect((caught as HttpsError).code).toBe('invalid-argument');
     expect((caught as HttpsError).message).toContain('email: is required');
+  });
+});
+
+describe('error utilities', () => {
+  it('throwNotFound throws HttpsError with not-found code', () => {
+    expect(() => throwNotFound('Artist', 'abc')).toThrow(HttpsError);
+    try {
+      throwNotFound('Artist', 'abc');
+    } catch (e) {
+      expect((e as HttpsError).code).toBe('not-found');
+      expect((e as HttpsError).message).toContain('Artist');
+    }
+  });
+
+  it('throwInvalidArgument throws HttpsError with invalid-argument code', () => {
+    expect(() => throwInvalidArgument('bad input')).toThrow(HttpsError);
+    try {
+      throwInvalidArgument('bad input');
+    } catch (e) {
+      expect((e as HttpsError).code).toBe('invalid-argument');
+      expect((e as HttpsError).message).toBe('bad input');
+    }
+  });
+
+  it('throwFailedPrecondition throws HttpsError with failed-precondition code', () => {
+    expect(() => throwFailedPrecondition('cannot modify')).toThrow(HttpsError);
+    try {
+      throwFailedPrecondition('cannot modify');
+    } catch (e) {
+      expect((e as HttpsError).code).toBe('failed-precondition');
+      expect((e as HttpsError).message).toBe('cannot modify');
+    }
   });
 });
 
