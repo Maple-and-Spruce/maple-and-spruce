@@ -22,16 +22,17 @@ export const updateLesson = createAdminFunction<
     throwNotFound('Lesson', data.id);
   }
 
-  // Coerce scheduledAt if caller sent a string
-  const coercedUpdates = {
-    ...data,
-    scheduledAt:
-      data.scheduledAt === undefined
-        ? undefined
-        : data.scheduledAt instanceof Date
-          ? data.scheduledAt
-          : new Date(data.scheduledAt as unknown as string),
-  };
+  // Coerce scheduledAt if caller sent a string, but only include it in
+  // the update payload when it was actually provided — spreading
+  // `scheduledAt: undefined` into `merged` below would wipe the
+  // existing value during the merge-for-validation step.
+  const coercedUpdates: UpdateLessonRequest = { ...data };
+  if (data.scheduledAt !== undefined) {
+    coercedUpdates.scheduledAt =
+      data.scheduledAt instanceof Date
+        ? data.scheduledAt
+        : new Date(data.scheduledAt as unknown as string);
+  }
 
   // Merge with existing so partial updates still pass full validation
   const merged = { ...existing, ...coercedUpdates };
