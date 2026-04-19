@@ -1,0 +1,27 @@
+{
+  "name": "functions-integration-tests-etsy",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-etsy/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-list-etsy-listings",
+    "firebase-maple-functions-import-etsy-listings",
+    "firebase-maple-functions-get-etsy-templates",
+    "firebase-maple-functions-save-etsy-category-template",
+    "firebase-maple-functions-save-etsy-artist-template",
+    "firebase-maple-functions-etsy-auth-url",
+    "firebase-maple-functions-etsy-auth-callback",
+    "firebase-maple-functions-get-etsy-connection-status",
+    "firebase-integration-test-utils",
+    "firebase-etsy-test-mock-server"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-etsy/vitest.config.ts"
+      }
+    }
+  }
+}

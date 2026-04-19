@@ -20,7 +20,15 @@ import {
 } from './pkce.js';
 
 const ETSY_AUTH_URL = 'https://www.etsy.com/oauth/connect';
-const ETSY_TOKEN_URL = 'https://api.etsy.com/v3/public/oauth/token';
+const ETSY_TOKEN_URL_DEFAULT = 'https://api.etsy.com/v3/public/oauth/token';
+
+/**
+ * OAuth token endpoint. Overridable via ETSY_TOKEN_URL for integration
+ * tests; production uses the default Etsy endpoint.
+ */
+function getEtsyTokenUrl(): string {
+  return process.env['ETSY_TOKEN_URL'] ?? ETSY_TOKEN_URL_DEFAULT;
+}
 
 /** Buffer before expiry to trigger refresh (5 minutes) */
 const EXPIRY_BUFFER_MS = 5 * 60 * 1000;
@@ -89,7 +97,7 @@ export class OAuthService {
       code_verifier: params.codeVerifier,
     });
 
-    const response = await fetch(ETSY_TOKEN_URL, {
+    const response = await fetch(getEtsyTokenUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
@@ -147,7 +155,7 @@ export class OAuthService {
       refresh_token: refreshToken,
     });
 
-    const response = await fetch(ETSY_TOKEN_URL, {
+    const response = await fetch(getEtsyTokenUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
