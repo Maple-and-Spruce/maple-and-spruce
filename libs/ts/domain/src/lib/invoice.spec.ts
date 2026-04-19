@@ -117,5 +117,64 @@ describe('Invoice domain helpers', () => {
       };
       expect(invoice.lineItems[0].subtotalCents).toBe(13000);
     });
+
+    it('accepts a paid invoice with Square payment attribution', () => {
+      const invoice: Invoice = {
+        id: 'inv-2',
+        studentId: 'student-1',
+        status: 'paid',
+        lineItems: [
+          {
+            id: 'l1',
+            description: 'April tuition',
+            quantity: 1,
+            unitAmountCents: 13000,
+            subtotalCents: 13000,
+          },
+        ],
+        totalCents: 13000,
+        issuedAt: new Date('2026-04-20T10:00:00Z'),
+        paidAt: new Date('2026-04-23T14:00:00Z'),
+        paymentRecord: {
+          source: 'square-webhook',
+          squarePaymentId: 'SQ-PAYMENT-123',
+          recordedAt: new Date('2026-04-23T14:00:00Z'),
+        },
+        squareOrderId: 'SQ-ORDER-1',
+        squareInvoiceId: 'SQ-INVOICE-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      expect(invoice.paymentRecord?.source).toBe('square-webhook');
+      expect(invoice.squareInvoiceId).toBe('SQ-INVOICE-1');
+    });
+
+    it('accepts a paid invoice attributed to a manual admin action', () => {
+      const invoice: Invoice = {
+        id: 'inv-3',
+        studentId: 'student-1',
+        status: 'paid',
+        lineItems: [
+          {
+            id: 'l1',
+            description: 'April tuition',
+            quantity: 1,
+            unitAmountCents: 13000,
+            subtotalCents: 13000,
+          },
+        ],
+        totalCents: 13000,
+        issuedAt: new Date('2026-04-20T10:00:00Z'),
+        paidAt: new Date('2026-04-21T09:00:00Z'),
+        paymentRecord: {
+          source: 'admin-manual',
+          recordedAt: new Date('2026-04-21T09:00:00Z'),
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      expect(invoice.paymentRecord?.source).toBe('admin-manual');
+      expect(invoice.paymentRecord?.squarePaymentId).toBeUndefined();
+    });
   });
 });

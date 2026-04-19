@@ -15,6 +15,7 @@ import { CatalogService } from './catalog.service';
 import { InventoryService } from './inventory.service';
 import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
+import { InvoicesService } from './invoices.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -81,6 +82,7 @@ export class Square {
   private readonly _inventoryService: InventoryService;
   private readonly _ordersService: OrdersService;
   private readonly _paymentsService: PaymentsService;
+  private readonly _invoicesService: InvoicesService;
   public readonly locationId: string;
   public readonly taxRatePercent: number;
 
@@ -125,6 +127,7 @@ export class Square {
     this._inventoryService = new InventoryService(this.client);
     this._ordersService = new OrdersService(this.client);
     this._paymentsService = new PaymentsService(this.client);
+    this._invoicesService = new InvoicesService(this.client);
   }
 
   /**
@@ -167,6 +170,13 @@ export class Square {
    */
   get paymentsService(): PaymentsService {
     return this._paymentsService;
+  }
+
+  /**
+   * Get the invoices service for sending hosted-payment invoices
+   */
+  get invoicesService(): InvoicesService {
+    return this._invoicesService;
   }
 
   /**

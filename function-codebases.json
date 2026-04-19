@@ -20,6 +20,7 @@
     "firebase-maple-functions-cancel-registration": "maple-square",
     "firebase-maple-functions-detect-sync-conflicts": "maple-square",
     "firebase-maple-functions-resolve-sync-conflict": "maple-square",
+    "firebase-maple-functions-sync-invoice-to-square": "maple-square",
     "firebase-maple-functions-sync-artist-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-instructor-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-class-to-webflow": "maple-sync",

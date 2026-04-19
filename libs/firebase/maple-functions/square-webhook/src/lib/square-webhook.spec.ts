@@ -11,15 +11,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => {
   return {
     findAll: vi.fn(),
+    findBySquareItemId: vi.fn(),
     updateCachedQuantity: vi.fn(),
+    updateSquareCache: vi.fn(),
+    createProduct: vi.fn(),
+    findBySquareInvoiceId: vi.fn(),
+    markPaidBySquareWebhook: vi.fn(),
+    // Square catalogService
+    getItem: vi.fn(),
+    listItems: vi.fn(),
+    getItemImageUrl: vi.fn(),
   };
 });
 
-// Mock ProductRepository
+// Mock ProductRepository + InvoiceRepository
 vi.mock('@maple/firebase/database', () => ({
   ProductRepository: {
     findAll: mocks.findAll,
+    findBySquareItemId: mocks.findBySquareItemId,
     updateCachedQuantity: mocks.updateCachedQuantity,
+    updateSquareCache: mocks.updateSquareCache,
+    create: mocks.createProduct,
+  },
+  InvoiceRepository: {
+    findBySquareInvoiceId: mocks.findBySquareInvoiceId,
+    markPaidBySquareWebhook: mocks.markPaidBySquareWebhook,
   },
 }));
 
@@ -40,7 +56,15 @@ vi.mock('firebase-functions/params', () => ({
 vi.mock('@maple/firebase/functions', () => ({
   FirebaseProject: {
     functionUrl: vi.fn().mockReturnValue('https://mock-url.com/squareWebhook'),
+    isDev: false,
+    projectId: 'mock-project',
   },
+}));
+
+// Mock firebase-functions/v2/https — return the handler directly so we
+// can invoke squareWebhook as a plain function.
+vi.mock('firebase-functions/v2/https', () => ({
+  onRequest: vi.fn((_config, handler) => handler),
 }));
 
 describe('Square Webhook - Inventory Handler', () => {
@@ -233,5 +257,788 @@ describe('Square Webhook - Inventory Handler', () => {
 
       expect(mocks.updateCachedQuantity).toHaveBeenCalledWith('prod-001', 9);
     });
+  });
+});
+
+describe('Square Webhook - invoice.payment_made handler', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** Realistic-ish Square invoice.payment_made payload. */
+  const makeEvent = (
+    squareInvoiceId: string,
+    squarePaymentId: string
+  ) => ({
+    merchant_id: 'ML1TB2DX6N1B0',
+    type: 'invoice.payment_made' as const,
+    event_id: 'evt-1',
+    created_at: '2026-04-23T14:00:00Z',
+    data: {
+      type: 'invoice',
+      id: squareInvoiceId,
+      object: {
+        invoice: {
+          id: squareInvoiceId,
+          payment_requests: [
+            {
+              completed_payment_ids: [squarePaymentId],
+            },
+          ],
+        },
+      },
+    },
+  });
+
+  it('flips a matching Firestore invoice to paid with square-webhook attribution', async () => {
+    mocks.findBySquareInvoiceId.mockResolvedValue({
+      id: 'firebase-inv-1',
+      status: 'sent',
+    });
+    mocks.markPaidBySquareWebhook.mockResolvedValue({ id: 'firebase-inv-1' });
+
+    const { handleInvoicePaymentMade } = await import('./square-webhook');
+    const result = await handleInvoicePaymentMade(
+      makeEvent('SQ-INV-1', 'SQ-PAY-1')
+    );
+
+    expect(mocks.findBySquareInvoiceId).toHaveBeenCalledWith('SQ-INV-1');
+    expect(mocks.markPaidBySquareWebhook).toHaveBeenCalledWith({
+      id: 'firebase-inv-1',
+      squarePaymentId: 'SQ-PAY-1',
+    });
+    expect(result.action).toBe('paid');
+  });
+
+  it('is idempotent when the invoice is already paid', async () => {
+    mocks.findBySquareInvoiceId.mockResolvedValue({
+      id: 'firebase-inv-2',
+      status: 'paid',
+    });
+
+    const { handleInvoicePaymentMade } = await import('./square-webhook');
+    const result = await handleInvoicePaymentMade(
+      makeEvent('SQ-INV-2', 'SQ-PAY-2')
+    );
+
+    expect(mocks.markPaidBySquareWebhook).not.toHaveBeenCalled();
+    expect(result.action).toBe('skipped');
+    expect(result.details).toMatch(/already paid/i);
+  });
+
+  it('skips gracefully when no matching Firestore invoice exists', async () => {
+    mocks.findBySquareInvoiceId.mockResolvedValue(undefined);
+
+    const { handleInvoicePaymentMade } = await import('./square-webhook');
+    const result = await handleInvoicePaymentMade(
+      makeEvent('SQ-INV-UNKNOWN', 'SQ-PAY-3')
+    );
+
+    expect(mocks.markPaidBySquareWebhook).not.toHaveBeenCalled();
+    expect(result.action).toBe('skipped');
+  });
+
+  it('falls back to "unknown" when no completed_payment_ids in payload', async () => {
+    mocks.findBySquareInvoiceId.mockResolvedValue({
+      id: 'firebase-inv-3',
+      status: 'sent',
+    });
+    mocks.markPaidBySquareWebhook.mockResolvedValue({ id: 'firebase-inv-3' });
+
+    const event = {
+      merchant_id: 'ML1TB2DX6N1B0',
+      type: 'invoice.payment_made' as const,
+      event_id: 'evt-4',
+      created_at: '2026-04-23T14:00:00Z',
+      data: {
+        type: 'invoice',
+        id: 'SQ-INV-3',
+        object: {
+          invoice: { id: 'SQ-INV-3' }, // no payment_requests
+        },
+      },
+    };
+
+    const { handleInvoicePaymentMade } = await import('./square-webhook');
+    await handleInvoicePaymentMade(event);
+
+    expect(mocks.markPaidBySquareWebhook).toHaveBeenCalledWith({
+      id: 'firebase-inv-3',
+      squarePaymentId: 'unknown',
+    });
+  });
+});
+
+describe('Square Webhook - handleCatalogUpdate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const makeCatalogEvent = (catalogObjectId?: string) => ({
+    merchant_id: 'ML1TB2DX6N1B0',
+    type: 'catalog.version.updated' as const,
+    event_id: 'evt-cat',
+    created_at: '2026-04-23T14:00:00Z',
+    data: {
+      type: 'catalog_item',
+      id: catalogObjectId ?? '',
+    },
+  });
+
+  const makeSquare = () => ({
+    locationId: 'LW0MMBZ',
+    catalogService: {
+      getItem: mocks.getItem,
+      listItems: mocks.listItems,
+      getItemImageUrl: mocks.getItemImageUrl,
+    },
+  });
+
+  describe('single-item path', () => {
+    it('updates an existing product when the catalog item is already tracked', async () => {
+      const existing = {
+        id: 'prod-1',
+        squareItemId: 'ITEM_1',
+        squareCache: {
+          name: 'Old name',
+          description: 'Old desc',
+          priceCents: 1000,
+          sku: 'OLD-SKU',
+          imageUrl: 'old.jpg',
+        },
+      };
+      mocks.findBySquareItemId.mockResolvedValue(existing);
+      mocks.getItem.mockResolvedValue({
+        id: 'ITEM_1',
+        type: 'ITEM',
+        version: 42,
+        itemData: {
+          name: 'New name',
+          description: 'New desc',
+          variations: [
+            {
+              id: 'VAR_1',
+              itemVariationData: {
+                sku: 'NEW-SKU',
+                priceMoney: { amount: 2500n },
+              },
+            },
+          ],
+        },
+      });
+      mocks.getItemImageUrl.mockResolvedValue('new.jpg');
+      mocks.updateSquareCache.mockResolvedValue(undefined);
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent('ITEM_1'),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(mocks.updateSquareCache).toHaveBeenCalledWith(
+        'prod-1',
+        expect.objectContaining({
+          name: 'New name',
+          description: 'New desc',
+          priceCents: 2500,
+          sku: 'NEW-SKU',
+          imageUrl: 'new.jpg',
+        }),
+        42
+      );
+      expect(result.action).toBe('updated');
+    });
+
+    it('creates a draft product when the catalog item is new', async () => {
+      mocks.findBySquareItemId.mockResolvedValue(undefined);
+      mocks.getItem.mockResolvedValue({
+        id: 'ITEM_NEW',
+        type: 'ITEM',
+        version: 1,
+        itemData: {
+          name: 'Brand new',
+          description: 'desc',
+          variations: [
+            {
+              id: 'VAR_NEW',
+              itemVariationData: {
+                sku: 'SKU-NEW',
+                priceMoney: { amount: 5000n },
+              },
+            },
+          ],
+        },
+      });
+      mocks.getItemImageUrl.mockResolvedValue(undefined);
+      mocks.createProduct.mockResolvedValue({ id: 'prod-new' });
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent('ITEM_NEW'),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(mocks.createProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Brand new',
+          status: 'draft',
+          priceCents: 5000,
+        }),
+        expect.objectContaining({
+          squareItemId: 'ITEM_NEW',
+          squareVariationId: 'VAR_NEW',
+          sku: 'SKU-NEW',
+        })
+      );
+      expect(result.action).toBe('created');
+    });
+
+    it('skips a single-item update when the catalog object is not an ITEM', async () => {
+      mocks.getItem.mockResolvedValue({
+        id: 'CAT_1',
+        type: 'CATEGORY',
+      });
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent('CAT_1'),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(result.action).toBe('skipped');
+      expect(result.details).toMatch(/non-ITEM/);
+    });
+
+    it('skips when the catalog object is not found in Square (deleted)', async () => {
+      mocks.getItem.mockResolvedValue(undefined);
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent('ITEM_GONE'),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(result.action).toBe('skipped');
+      expect(result.details).toMatch(/not found/);
+    });
+
+    it('skips when a new item has no variation', async () => {
+      mocks.findBySquareItemId.mockResolvedValue(undefined);
+      mocks.getItem.mockResolvedValue({
+        id: 'ITEM_NO_VAR',
+        type: 'ITEM',
+        itemData: { name: 'No variation', variations: [] },
+      });
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent('ITEM_NO_VAR'),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(mocks.createProduct).not.toHaveBeenCalled();
+      expect(result.action).toBe('skipped');
+    });
+  });
+
+  describe('batch path (no catalogObjectId — version bump)', () => {
+    it('syncs every Square item, updating tracked + creating new', async () => {
+      mocks.findAll.mockResolvedValue([
+        {
+          id: 'prod-1',
+          squareItemId: 'ITEM_A',
+          squareCache: {
+            name: 'A',
+            description: 'a',
+            priceCents: 100,
+            sku: 'A',
+            imageUrl: '',
+          },
+        },
+      ]);
+      mocks.listItems.mockResolvedValue([
+        {
+          id: 'ITEM_A',
+          type: 'ITEM',
+          version: 2,
+          itemData: {
+            name: 'A updated',
+            variations: [
+              {
+                id: 'VAR_A',
+                itemVariationData: {
+                  sku: 'A',
+                  priceMoney: { amount: 150n },
+                },
+              },
+            ],
+          },
+        },
+        {
+          id: 'ITEM_B',
+          type: 'ITEM',
+          version: 1,
+          itemData: {
+            name: 'B new',
+            variations: [
+              {
+                id: 'VAR_B',
+                itemVariationData: {
+                  sku: 'B',
+                  priceMoney: { amount: 200n },
+                },
+              },
+            ],
+          },
+        },
+      ]);
+      mocks.getItemImageUrl.mockResolvedValue('image.jpg');
+      mocks.updateSquareCache.mockResolvedValue(undefined);
+      mocks.createProduct.mockResolvedValue({ id: 'prod-new' });
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent(undefined),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(mocks.updateSquareCache).toHaveBeenCalled(); // prod-1 updated
+      expect(mocks.createProduct).toHaveBeenCalled(); // ITEM_B created as new product
+      expect(result.action).toBe('synced');
+    });
+
+    it('ignores non-ITEM catalog objects during batch sync', async () => {
+      mocks.findAll.mockResolvedValue([]);
+      mocks.listItems.mockResolvedValue([
+        { id: 'CAT_1', type: 'CATEGORY' },
+        { id: 'TAX_1', type: 'TAX' },
+      ]);
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent(undefined),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(mocks.createProduct).not.toHaveBeenCalled();
+      expect(mocks.updateSquareCache).not.toHaveBeenCalled();
+      expect(result.action).toBe('synced');
+    });
+
+    it('skips Square items with no variation during batch sync', async () => {
+      mocks.findAll.mockResolvedValue([]);
+      mocks.listItems.mockResolvedValue([
+        {
+          id: 'ITEM_X',
+          type: 'ITEM',
+          itemData: { name: 'X', variations: [] },
+        },
+      ]);
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent(undefined),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(mocks.createProduct).not.toHaveBeenCalled();
+      expect(result.action).toBe('synced');
+    });
+
+    it('logs and skips when updateSquareCache throws (degrades gracefully)', async () => {
+      mocks.findAll.mockResolvedValue([
+        {
+          id: 'prod-1',
+          squareItemId: 'ITEM_A',
+          squareCache: { name: 'A', priceCents: 100, sku: 'A', imageUrl: '' },
+        },
+      ]);
+      mocks.listItems.mockResolvedValue([
+        {
+          id: 'ITEM_A',
+          type: 'ITEM',
+          version: 2,
+          itemData: {
+            name: 'A',
+            variations: [
+              {
+                id: 'VAR_A',
+                itemVariationData: { sku: 'A', priceMoney: { amount: 150n } },
+              },
+            ],
+          },
+        },
+      ]);
+      mocks.getItemImageUrl.mockResolvedValue('image.jpg');
+      mocks.updateSquareCache.mockRejectedValueOnce(new Error('Firestore down'));
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent(undefined),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      // Failure is caught internally — the trigger still returns 'synced' to
+      // ack the webhook (we don't want Square to retry forever).
+      expect(result.action).toBe('synced');
+    });
+
+    it('logs and skips when createProduct throws during batch path', async () => {
+      mocks.findAll.mockResolvedValue([]);
+      mocks.listItems.mockResolvedValue([
+        {
+          id: 'ITEM_NEW',
+          type: 'ITEM',
+          itemData: {
+            name: 'Z',
+            variations: [
+              {
+                id: 'VAR_Z',
+                itemVariationData: { sku: 'Z', priceMoney: { amount: 10n } },
+              },
+            ],
+          },
+        },
+      ]);
+      mocks.createProduct.mockRejectedValueOnce(new Error('create failed'));
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent(undefined),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(result.action).toBe('synced');
+    });
+  });
+
+  describe('image fetch edge cases', () => {
+    it('falls back to undefined image URL when getItemImageUrl throws', async () => {
+      mocks.findBySquareItemId.mockResolvedValue(undefined);
+      mocks.getItem.mockResolvedValue({
+        id: 'ITEM_1',
+        type: 'ITEM',
+        itemData: {
+          name: 'no-image',
+          variations: [
+            {
+              id: 'VAR_1',
+              itemVariationData: { sku: 'X', priceMoney: { amount: 100n } },
+            },
+          ],
+        },
+      });
+      mocks.getItemImageUrl.mockRejectedValueOnce(new Error('image 404'));
+      mocks.createProduct.mockResolvedValue({ id: 'prod-new' });
+
+      const { handleCatalogUpdate } = await import('./square-webhook');
+      const result = await handleCatalogUpdate(
+        makeCatalogEvent('ITEM_1'),
+        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
+      );
+
+      expect(result.action).toBe('created');
+    });
+  });
+});
+
+describe('Square Webhook - handleInventoryUpdate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const makeInventoryEvent = (
+    counts: Array<{
+      catalog_object_id?: string;
+      quantity?: string;
+      location_id?: string;
+      state?: string;
+    }>
+  ) => ({
+    merchant_id: 'ML1TB2DX6N1B0',
+    type: 'inventory.count.updated' as const,
+    event_id: 'evt-inv',
+    created_at: '2026-04-23T14:00:00Z',
+    data: {
+      type: 'inventory_counts',
+      id: 'a8c7a224',
+      object: { inventory_counts: counts },
+    },
+  });
+
+  it('updates cached quantity for each tracked variation', async () => {
+    mocks.findAll.mockResolvedValue([
+      {
+        id: 'prod-001',
+        squareItemId: 'ITEM_001',
+        squareVariationId: 'VAR_A',
+      },
+      {
+        id: 'prod-002',
+        squareItemId: 'ITEM_002',
+        squareVariationId: 'VAR_B',
+      },
+    ]);
+    mocks.updateCachedQuantity.mockResolvedValue(undefined);
+
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    const result = await handleInventoryUpdate(
+      makeInventoryEvent([
+        { catalog_object_id: 'VAR_A', quantity: '5', state: 'IN_STOCK' },
+        { catalog_object_id: 'VAR_B', quantity: '9', state: 'IN_STOCK' },
+      ])
+    );
+
+    expect(mocks.updateCachedQuantity).toHaveBeenCalledWith('prod-001', 5);
+    expect(mocks.updateCachedQuantity).toHaveBeenCalledWith('prod-002', 9);
+    expect(result.action).toBe('updated');
+  });
+
+  it('skips variations that we do not track (no product match)', async () => {
+    mocks.findAll.mockResolvedValue([
+      {
+        id: 'prod-001',
+        squareItemId: 'ITEM_001',
+        squareVariationId: 'VAR_A',
+      },
+    ]);
+
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    const result = await handleInventoryUpdate(
+      makeInventoryEvent([
+        { catalog_object_id: 'VAR_UNKNOWN', quantity: '5' },
+      ])
+    );
+
+    expect(mocks.updateCachedQuantity).not.toHaveBeenCalled();
+    expect(result.details).toMatch(/not tracked/);
+  });
+
+  it('skips counts with no catalog_object_id', async () => {
+    mocks.findAll.mockResolvedValue([]);
+
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    const result = await handleInventoryUpdate(
+      makeInventoryEvent([{ quantity: '5' }])
+    );
+
+    expect(mocks.updateCachedQuantity).not.toHaveBeenCalled();
+    expect(result.details).toMatch(/no catalog_object_id/);
+  });
+
+  it('returns skipped when inventory_counts is empty', async () => {
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    const result = await handleInventoryUpdate(makeInventoryEvent([]));
+
+    expect(result.action).toBe('skipped');
+    expect(result.details).toMatch(/No inventory_counts/);
+  });
+
+  it('returns skipped when inventory_counts is absent entirely', async () => {
+    const event = {
+      merchant_id: 'ML1TB2DX6N1B0',
+      type: 'inventory.count.updated' as const,
+      event_id: 'evt',
+      created_at: '2026-04-23T14:00:00Z',
+      data: {
+        type: 'inventory_counts',
+        id: 'a',
+        object: {}, // no inventory_counts key
+      },
+    };
+
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    const result = await handleInventoryUpdate(event);
+
+    expect(result.action).toBe('skipped');
+  });
+
+  it('defaults missing quantity to 0', async () => {
+    mocks.findAll.mockResolvedValue([
+      { id: 'prod-1', squareVariationId: 'VAR_A' },
+    ]);
+
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    await handleInventoryUpdate(
+      makeInventoryEvent([{ catalog_object_id: 'VAR_A' }])
+    );
+
+    expect(mocks.updateCachedQuantity).toHaveBeenCalledWith('prod-1', 0);
+  });
+});
+
+describe('Square Webhook - squareWebhook endpoint', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function makeReq(
+    body: Record<string, unknown>,
+    signature?: string,
+    method = 'POST'
+  ) {
+    return {
+      method,
+      body,
+      headers: signature
+        ? { 'x-square-hmacsha256-signature': signature }
+        : {},
+    };
+  }
+
+  function makeRes() {
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+    };
+    return res as unknown as {
+      status: ReturnType<typeof vi.fn>;
+      send: ReturnType<typeof vi.fn>;
+      json: ReturnType<typeof vi.fn>;
+    };
+  }
+
+  /** HMAC-SHA256 the same way the webhook verifier does. */
+  async function signBody(body: Record<string, unknown>): Promise<string> {
+    const { createHmac } = await import('crypto');
+    return createHmac('sha256', 'mock-secret')
+      .update('https://mock-url.com/squareWebhook' + JSON.stringify(body))
+      .digest('base64');
+  }
+
+  it('rejects non-POST with 405', async () => {
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (
+      req: unknown,
+      res: unknown
+    ) => Promise<void>;
+    const res = makeRes();
+    await fn(makeReq({}, undefined, 'GET'), res);
+
+    expect(res.status).toHaveBeenCalledWith(405);
+  });
+
+  it('rejects requests with no signature with 401', async () => {
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (
+      req: unknown,
+      res: unknown
+    ) => Promise<void>;
+    const res = makeRes();
+    await fn(makeReq({ type: 'catalog.version.updated' }), res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it('rejects requests with a bad signature with 401', async () => {
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (
+      req: unknown,
+      res: unknown
+    ) => Promise<void>;
+    const res = makeRes();
+    await fn(makeReq({ type: 'catalog.version.updated' }, 'not-the-right-hmac'), res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it('dispatches invoice.payment_made events to the invoice handler', async () => {
+    mocks.findBySquareInvoiceId.mockResolvedValue({
+      id: 'fb-inv-1',
+      status: 'sent',
+    });
+    mocks.markPaidBySquareWebhook.mockResolvedValue({
+      id: 'fb-inv-1',
+      status: 'paid',
+    });
+
+    const body = {
+      merchant_id: 'ML1',
+      type: 'invoice.payment_made',
+      event_id: 'evt-1',
+      created_at: '2026-04-23T14:00:00Z',
+      data: {
+        type: 'invoice',
+        id: 'SQ-INV-1',
+        object: {
+          invoice: {
+            id: 'SQ-INV-1',
+            payment_requests: [
+              { completed_payment_ids: ['SQ-PAY-1'] },
+            ],
+          },
+        },
+      },
+    };
+    const sig = await signBody(body);
+
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (
+      req: unknown,
+      res: unknown
+    ) => Promise<void>;
+    const res = makeRes();
+    await fn(makeReq(body, sig), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mocks.markPaidBySquareWebhook).toHaveBeenCalledWith({
+      id: 'fb-inv-1',
+      squarePaymentId: 'SQ-PAY-1',
+    });
+  });
+
+  it('acknowledges unhandled event types with 200 skipped', async () => {
+    const body = {
+      merchant_id: 'ML1',
+      type: 'some.unhandled.event',
+      event_id: 'evt-2',
+      created_at: '2026-04-23T14:00:00Z',
+      data: { type: 'x', id: 'y' },
+    };
+    const sig = await signBody(body);
+
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (
+      req: unknown,
+      res: unknown
+    ) => Promise<void>;
+    const res = makeRes();
+    await fn(makeReq(body, sig), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    // json body should include action: 'skipped'
+    const jsonArg = res.json.mock.calls[0][0];
+    expect(jsonArg.action).toBe('skipped');
+  });
+
+  it('returns 500 when a handler throws (so Square retries)', async () => {
+    // Force the invoice handler to throw by making the repository reject
+    mocks.findBySquareInvoiceId.mockRejectedValue(
+      new Error('Firestore unavailable')
+    );
+
+    const body = {
+      merchant_id: 'ML1',
+      type: 'invoice.payment_made',
+      event_id: 'evt-3',
+      created_at: '2026-04-23T14:00:00Z',
+      data: {
+        type: 'invoice',
+        id: 'SQ-INV-X',
+        object: { invoice: { id: 'SQ-INV-X' } },
+      },
+    };
+    const sig = await signBody(body);
+
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (
+      req: unknown,
+      res: unknown
+    ) => Promise<void>;
+    const res = makeRes();
+    await fn(makeReq(body, sig), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 });

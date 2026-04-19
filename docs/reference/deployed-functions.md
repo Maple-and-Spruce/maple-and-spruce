@@ -27,6 +27,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Music Lesson Invoices (private-pay)
 - `getInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`
+- `syncInvoiceToSquare` _(Firestore trigger on `invoices/{id}` — sends via Square Invoices API on draft → sent, cancels on sent → void)_
+- `squareWebhook` now additionally handles `invoice.payment_made` → flips matching invoice to `paid` with `paymentRecord.source = 'square-webhook'`
 
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`

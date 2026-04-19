@@ -34,6 +34,20 @@ export default defineConfig({
       reportsDirectory: './coverage/unit',
       // Merge coverage from all workspace projects
       all: false,
+      // Exclude test infrastructure + integration-test harness code from
+      // coverage — it's not production code and is only exercised by the
+      // (emulator-backed) integration tests, which don't run in the unit
+      // coverage path.
+      exclude: [
+        '**/*.spec.ts',
+        '**/*.spec.tsx',
+        '**/*.stories.tsx',
+        'libs/firebase/integration-test-mock-server/**',
+        'libs/firebase/integration-test-utils/**',
+        'apps/functions-integration-tests*/**',
+        'apps/maple-spruce-e2e/**',
+        'apps/maple-spruce/.storybook/**',
+      ],
       // Coverage thresholds enforced in CI via nyc check-coverage after
       // merging unit + Storybook coverage reports. See build-check.yml.
       // Local reference: lines 80%, functions 80%, statements 80%, branches 50%

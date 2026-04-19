@@ -167,6 +167,24 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 ## Phase 4: Music Lessons - Epic #10
 
+### Parent Invoice Delivery + Online Payment (#281, Complete)
+
+Uses Square Invoices API rather than a custom Webflow payment page — Square sends the parent the email + hosted payment page, handles receipts and reminders, and webhooks us back when paid.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Invoice extended with `paymentRecord` / `squareOrderId` / `squareInvoiceId` / `squareSyncError` | **Complete** | `libs/ts/domain/src/lib/invoice.ts` |
+| `InvoicesService` wrapper (Square Customers + Orders + Invoices APIs) | **Complete** | `libs/firebase/square/src/lib/invoices.service.ts` |
+| `syncInvoiceToSquare` Firestore trigger (draft → sent → Square; sent → void → cancel) | **Complete** | `libs/firebase/maple-functions/sync-invoice-to-square/` |
+| `square-webhook` extended to handle `invoice.payment_made` | **Complete** | `libs/firebase/maple-functions/square-webhook/src/lib/square-webhook.ts` |
+| `InvoiceRepository.markPaidBySquareWebhook` + `findBySquareInvoiceId` | **Complete** | `libs/firebase/database/src/lib/invoice.repository.ts` |
+| Payment attribution — manual mark-paid stamps `source: 'admin-manual'` | **Complete** | `InvoiceRepository.update` stamp on paid transition |
+| `InvoiceList` surfaces "Paid via Square" / "Marked paid manually" / sync-error chips | **Complete** | `libs/react/invoices/src/lib/InvoiceList.tsx` |
+| Unit tests: webhook handler + invoice domain paymentRecord shapes | **Complete** | 4 new (13 total in square-webhook.spec) + 2 new in invoice.spec |
+| Integration test: manual mark-paid stamps admin-manual attribution | **Complete** | `apps/functions-integration-tests-invoice/` |
+| Storybook interaction tests: attribution badges, sync-error badge | **Complete** | 4 new (32 total in Invoices family) |
+| Drive-by: migrated `invoiceValidation` from `create` → `staticSuite` | **Complete** | matches #293 |
+
 ### Invoice Initiation — Private Pay (#280, Complete)
 
 | Feature | Status | Location |
