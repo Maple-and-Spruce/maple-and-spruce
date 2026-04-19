@@ -140,8 +140,8 @@ export default function DashboardPage() {
   const lowStockProducts = useMemo(() => {
     if (productsState.status !== 'success') return [];
     return productsState.data
-      .filter((p) => p.status === 'active' && p.squareCache.quantity <= 2)
-      .sort((a, b) => a.squareCache.quantity - b.squareCache.quantity)
+      .filter((p) => p.status === 'active' && (p.squareCache.quantity ?? 0) <= 2)
+      .sort((a, b) => (a.squareCache.quantity ?? 0) - (b.squareCache.quantity ?? 0))
       .slice(0, 5);
   }, [productsState]);
 

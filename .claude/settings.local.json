@@ -173,7 +173,11 @@
       "Bash(sed -n '36,60p' libs/firebase/maple-functions/sync-invoice-to-square/src/lib/sync-invoice-to-square.ts)",
       "Bash(awk '{print $1, $3}')",
       "Bash(sort -k2 -n)",
-      "Bash(awk -F'|' '{gsub\\(/^[[:space:]]+|[[:space:]]+$/, \"\", $1\\); gsub\\(/^[[:space:]]+|[[:space:]]+$/, \"\", $2\\); if \\($2+0 < 75 && $2 != \"\"\\) print $1, \"|\", $2}')"
+      "Bash(awk -F'|' '{gsub\\(/^[[:space:]]+|[[:space:]]+$/, \"\", $1\\); gsub\\(/^[[:space:]]+|[[:space:]]+$/, \"\", $2\\); if \\($2+0 < 75 && $2 != \"\"\\) print $1, \"|\", $2}')",
+      "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce worktree list)",
+      "Bash(sort -t'|' -k2 -n)",
+      "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); if \\($2+0 < 60 && $2+0 > 0\\) print}')",
+      "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $6\\); if \\($2+0 < 70 && $2+0 > 0\\) print $6, $2\"%\", $0}')"
     ]
   }
 }

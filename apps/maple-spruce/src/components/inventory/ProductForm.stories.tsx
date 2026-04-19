@@ -337,7 +337,7 @@ export const EditModePreFillsData: Story = {
 
     // Verify price is converted from cents to dollars
     const priceInput = canvas.getByLabelText(/price/i) as HTMLInputElement;
-    const expectedPrice = (mockProduct.squareCache.priceCents / 100).toString();
+    const expectedPrice = ((mockProduct.squareCache.priceCents ?? 0) / 100).toString();
     await expect(priceInput.value).toBe(expectedPrice);
 
     // Verify quantity
@@ -345,7 +345,7 @@ export const EditModePreFillsData: Story = {
       /quantity/i
     ) as HTMLInputElement;
     await expect(quantityInput.value).toBe(
-      mockProduct.squareCache.quantity.toString()
+      (mockProduct.squareCache.quantity ?? 0).toString()
     );
 
     // Button should say "Update" not "Add"
@@ -485,14 +485,14 @@ export const RealEditFlow: WrapperStory = {
     // Verify other fields are populated correctly
     const priceInput = dialogCanvas.getByLabelText(/price/i) as HTMLInputElement;
     expect(priceInput.value).toBe(
-      (mockProduct.squareCache.priceCents / 100).toString()
+      ((mockProduct.squareCache.priceCents ?? 0) / 100).toString()
     );
 
     const quantityInput = dialogCanvas.getByLabelText(
       /quantity/i
     ) as HTMLInputElement;
     expect(quantityInput.value).toBe(
-      mockProduct.squareCache.quantity.toString()
+      (mockProduct.squareCache.quantity ?? 0).toString()
     );
 
     // Step 4: Modify the name field
@@ -512,8 +512,8 @@ export const RealEditFlow: WrapperStory = {
       .calls[0][0];
     expect(submittedData.name).toBe('Updated Ceramic Vase');
     // Other fields should retain their original values
-    expect(submittedData.priceCents).toBe(mockProduct.squareCache.priceCents);
-    expect(submittedData.quantity).toBe(mockProduct.squareCache.quantity);
+    expect(submittedData.priceCents).toBe(mockProduct.squareCache.priceCents ?? 0);
+    expect(submittedData.quantity).toBe(mockProduct.squareCache.quantity ?? 0);
   },
 };
 
@@ -570,7 +570,7 @@ export const EditMultipleProductsSequentially: WrapperStory = {
     // Verify price matches second product
     const priceInput = dialogCanvas.getByLabelText(/price/i) as HTMLInputElement;
     expect(priceInput.value).toBe(
-      (mockProductNoImage.squareCache.priceCents / 100).toString()
+      ((mockProductNoImage.squareCache.priceCents ?? 0) / 100).toString()
     );
   },
 };

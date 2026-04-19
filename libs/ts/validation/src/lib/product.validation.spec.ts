@@ -3,6 +3,7 @@ import { productValidation } from './product.validation';
 import type { CreateProductInput } from '@maple/ts/domain';
 
 describe('productValidation', () => {
+  // Legacy single-variant input (backward compatible)
   const validProduct: CreateProductInput = {
     artistId: 'artist-123',
     status: 'active',
@@ -11,8 +12,20 @@ describe('productValidation', () => {
     quantity: 5,
   };
 
+  // New variant-aware input
+  const validProductWithVariants: CreateProductInput = {
+    artistId: 'artist-123',
+    status: 'active',
+    name: 'Handmade Earrings',
+    variants: [
+      { label: 'Small', priceCents: 1500, quantity: 3 },
+      { label: 'Large', priceCents: 2500, quantity: 5 },
+    ],
+    variantProperties: ['Size'],
+  };
+
   describe('valid data', () => {
-    it('passes with all required fields', () => {
+    it('passes with all required fields (legacy)', () => {
       const result = productValidation(validProduct);
       expect(result.isValid()).toBe(true);
     });
@@ -23,6 +36,19 @@ describe('productValidation', () => {
         categoryId: 'cat-123',
         customCommissionRate: 0.25,
         description: 'A beautiful handmade bowl',
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes with variants', () => {
+      const result = productValidation(validProductWithVariants);
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes with single variant', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [{ label: 'Regular', priceCents: 2500, quantity: 5 }],
       });
       expect(result.isValid()).toBe(true);
     });
@@ -142,7 +168,9 @@ describe('productValidation', () => {
     });
   });
 
-  describe('priceCents field', () => {
+  // --- Legacy single-variant fields ---
+
+  describe('priceCents field (legacy)', () => {
     it('fails when price is missing', () => {
       const result = productValidation({
         ...validProduct,
@@ -199,7 +227,7 @@ describe('productValidation', () => {
     });
   });
 
-  describe('quantity field', () => {
+  describe('quantity field (legacy)', () => {
     it('fails when quantity is missing', () => {
       const result = productValidation({
         ...validProduct,
@@ -244,6 +272,97 @@ describe('productValidation', () => {
         ...validProduct,
         quantity: 100,
       });
+      expect(result.hasErrors('quantity')).toBe(false);
+    });
+  });
+
+  // --- Variant validation ---
+
+  describe('variants validation', () => {
+    it('fails when a variant label is blank', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [{ label: '', priceCents: 1000, quantity: 1 }],
+      });
+      expect(result.hasErrors('variants')).toBe(true);
+      expect(result.getErrors('variants')).toContain(
+        'Each variant must have a label'
+      );
+    });
+
+    it('fails when a variant price is 0', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [{ label: 'Small', priceCents: 0, quantity: 1 }],
+      });
+      expect(result.hasErrors('variants')).toBe(true);
+      expect(result.getErrors('variants')).toContain(
+        'Each variant price must be greater than 0'
+      );
+    });
+
+    it('fails when a variant price exceeds $100,000', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [{ label: 'Small', priceCents: 10000001, quantity: 1 }],
+      });
+      expect(result.hasErrors('variants')).toBe(true);
+      expect(result.getErrors('variants')).toContain(
+        'Each variant price cannot exceed $100,000'
+      );
+    });
+
+    it('fails when a variant quantity is negative', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [{ label: 'Small', priceCents: 1000, quantity: -1 }],
+      });
+      expect(result.hasErrors('variants')).toBe(true);
+      expect(result.getErrors('variants')).toContain(
+        'Each variant quantity must be 0 or greater'
+      );
+    });
+
+    it('fails when a variant quantity is not a whole number', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [{ label: 'Small', priceCents: 1000, quantity: 2.5 }],
+      });
+      expect(result.hasErrors('variants')).toBe(true);
+      expect(result.getErrors('variants')).toContain(
+        'Each variant quantity must be a whole number'
+      );
+    });
+
+    it('fails when variant labels are duplicated', () => {
+      const result = productValidation({
+        ...validProductWithVariants,
+        variants: [
+          { label: 'Small', priceCents: 1000, quantity: 1 },
+          { label: 'Small', priceCents: 1500, quantity: 2 },
+        ],
+      });
+      expect(result.hasErrors('variants')).toBe(true);
+      expect(result.getErrors('variants')).toContain(
+        'Variant labels must be unique'
+      );
+    });
+
+    it('passes with valid multi-variant input', () => {
+      const result = productValidation(validProductWithVariants);
+      expect(result.hasErrors('variants')).toBe(false);
+    });
+
+    it('does not validate legacy priceCents/quantity when variants are present', () => {
+      // variants present means legacy fields are ignored
+      const result = productValidation({
+        artistId: 'artist-123',
+        status: 'active',
+        name: 'Test',
+        variants: [{ label: 'Regular', priceCents: 1000, quantity: 1 }],
+        // Legacy fields deliberately omitted — should not cause errors
+      });
+      expect(result.hasErrors('priceCents')).toBe(false);
       expect(result.hasErrors('quantity')).toBe(false);
     });
   });
