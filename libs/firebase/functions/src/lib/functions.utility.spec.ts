@@ -125,7 +125,8 @@ async function invoke(
   // because our onRequest mock returns it directly. CORS middleware
   // fires next() without awaiting, so the outer await doesn't see the
   // inner async chain — drain microtasks until the response is set.
-  void (endpoint as (r: unknown, s: unknown) => Promise<void>)(req, res);
+  const promise = (endpoint as (r: unknown, s: unknown) => Promise<void>)(req, res);
+  promise.catch(() => { /* errors handled via res.status() */ });
   for (let i = 0; i < 100 && res.statusCode === 0; i++) {
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
