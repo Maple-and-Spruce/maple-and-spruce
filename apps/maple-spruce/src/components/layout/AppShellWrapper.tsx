@@ -8,6 +8,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import SchoolIcon from '@mui/icons-material/School';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import PaymentsIcon from '@mui/icons-material/Payments';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -91,6 +92,11 @@ export function AppShellWrapper({
             label: 'Students',
             href: '/students',
             icon: <MusicNoteIcon />,
+          },
+          {
+            label: 'Teacher Payouts',
+            href: '/payouts',
+            icon: <PaymentsIcon />,
           },
         ],
       },

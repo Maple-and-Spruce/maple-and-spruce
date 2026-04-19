@@ -179,6 +179,9 @@
       "@maple/firebase/maple-functions/delete-invoice": [
         "libs/firebase/maple-functions/delete-invoice/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-teacher-payouts": [
+        "libs/firebase/maple-functions/get-teacher-payouts/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-classes": [
         "libs/firebase/maple-functions/get-classes/src/index.ts"
       ],
@@ -285,6 +288,7 @@
       "@maple/react/students": ["libs/react/students/src/index.ts"],
       "@maple/react/lessons": ["libs/react/lessons/src/index.ts"],
       "@maple/react/invoices": ["libs/react/invoices/src/index.ts"],
+      "@maple/react/payouts": ["libs/react/payouts/src/index.ts"],
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],

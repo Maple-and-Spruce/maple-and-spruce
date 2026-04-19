@@ -28,7 +28,7 @@
 - Music lessons (Suzuki method)
 
 **Current State**: Selling on Etsy. Building public website on Webflow.
-**Current Phase**: Phase 3 Complete -- Classes & Workshops (All subphases done)
+**Current Phase**: Phase 4 Complete -- Music Lessons (All sub-issues done)
 
 ## Phased Roadmap
 
@@ -37,10 +37,10 @@
 | 1 | Admin Foundation & Artist Platform | Complete |
 | 2 | Public Website (Webflow Integration) | Complete |
 | 3 | Classes & Workshops (3a/3b/3c) | Complete |
-| 4 | Music Lessons | Next |
-| 5 | Store Opening & Sales Tracking | Future |
+| 4 | Music Lessons | Complete |
+| 5 | Store Opening & Sales Tracking | Next |
 
-**Deferred** (Phase 5): #4 Etsy API, #5 Sales tracking, #6 Payout reports
+**Deferred** (Phase 5): #5 Sales tracking, #6 Payout reports
 
 ## Tech Stack
 

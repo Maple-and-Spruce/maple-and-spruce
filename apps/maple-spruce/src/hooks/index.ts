@@ -7,6 +7,7 @@ export {
   useStudents,
   useLessons,
   useInvoices,
+  useTeacherPayouts,
   useClasses,
   useClassCategories,
   useDiscounts,
