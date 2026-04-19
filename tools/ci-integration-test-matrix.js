@@ -31,6 +31,7 @@ function main() {
 
   // Ask Nx for every project name, then filter to integration test suites.
   // `nx show projects` outputs a JSON array.
+  // eslint-disable-next-line sonarjs/no-os-command-from-path -- CI tooling script, command is a fixed string
   const raw = execSync('pnpm exec nx show projects', {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
