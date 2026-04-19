@@ -8,6 +8,8 @@
 export interface InventoryMovement {
   id: string;
   productId: string;
+  /** Optional variant ID when the product has multiple variants */
+  variantId?: string;
 
   type: InventoryMovementType;
   /** Change in quantity (+/- delta) */

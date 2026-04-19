@@ -57,6 +57,10 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getCalendarEmbedConfig`, `updateCalendarEmbedConfig`, `addCalendarEmbedSource`, `removeCalendarEmbedSource`
 - `calendarEmbed` — HTTP: `/calendar/embed`
 
+### Sales (Phase 5)
+- `recordSale` — manually record a product sale with automatic commission calculation, inventory movement, and quantity decrement
+- `getSales` — retrieve sales with optional filters (artistId, source, date range)
+
 ### Auth
 - `checkAdminStatus`
 
