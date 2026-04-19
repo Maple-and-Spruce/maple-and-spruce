@@ -4,7 +4,7 @@
  * Vest validation for instructor forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateInstructorInput } from '@maple/ts/domain';
 
 /**
@@ -20,8 +20,8 @@ import type { CreateInstructorInput } from '@maple/ts/domain';
  *   // Submit form
  * }
  */
-export const instructorValidation = create(
-  (data: Partial<CreateInstructorInput>, field?: string) => {
+export const instructorValidation = staticSuite(
+  (data: Partial<CreateInstructorInput>, field?: string | string[]) => {
     only(field);
 
     test('name', 'Name is required', () => {

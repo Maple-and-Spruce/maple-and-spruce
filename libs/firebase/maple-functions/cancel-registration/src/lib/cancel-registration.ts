@@ -4,7 +4,13 @@
  * Admin-only endpoint for cancelling a registration with optional Square refund.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { Functions, Role } from '@maple/firebase/functions';
+import {
+  Functions,
+  Role,
+  throwFailedPrecondition,
+  throwInvalidArgument,
+  throwNotFound,
+} from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
 import {
   Square,
@@ -23,14 +29,19 @@ export const cancelRegistration = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<CancelRegistrationRequest, CancelRegistrationResponse>(
     async (data, _context, secrets, strings) => {
+      // The `registrationValidation` Vest suite covers registration form
+      // fields (classId, customerName/Email/Phone, quantity, notes). None
+      // of those are part of the cancel payload ({id, refund?}), so the
+      // suite is not applicable here — the entity was already validated
+      // when it was created. We keep narrow type/status guards instead.
       if (!data.id) {
-        throw new Error('Registration ID is required');
+        throwInvalidArgument('Registration ID is required');
       }
 
       // Look up the registration
       const registration = await RegistrationRepository.findById(data.id);
       if (!registration) {
-        throw new Error(`Registration not found: ${data.id}`);
+        throwNotFound('Registration', data.id);
       }
 
       // Check if already cancelled/refunded
@@ -38,7 +49,7 @@ export const cancelRegistration = Functions.endpoint
         registration.status === 'cancelled' ||
         registration.status === 'refunded'
       ) {
-        throw new Error(
+        throwFailedPrecondition(
           `Registration is already ${registration.status}`
         );
       }
@@ -48,7 +59,7 @@ export const cancelRegistration = Functions.endpoint
       // Process refund if requested and payment exists
       if (data.refund && registration.squarePaymentId) {
         if (!canRefundRegistration(registration)) {
-          throw new Error(
+          throwFailedPrecondition(
             `Cannot refund a registration with status '${registration.status}'`
           );
         }

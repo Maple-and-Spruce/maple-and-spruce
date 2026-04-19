@@ -4,7 +4,7 @@
  * Vest validation for calendar event forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateCalendarEventInput } from '@maple/ts/domain';
 import { CALENDAR_EVENT_TYPES } from '@maple/ts/domain';
 
@@ -14,8 +14,8 @@ import { CALENDAR_EVENT_TYPES } from '@maple/ts/domain';
  * @param data - Partial calendar event data to validate
  * @param field - Optional field to validate (for single-field validation)
  */
-export const calendarEventValidation = create(
-  (data: Partial<CreateCalendarEventInput>, field?: string) => {
+export const calendarEventValidation = staticSuite(
+  (data: Partial<CreateCalendarEventInput>, field?: string | string[]) => {
     only(field);
 
     // Title validation

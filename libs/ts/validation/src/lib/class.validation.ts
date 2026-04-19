@@ -4,7 +4,7 @@
  * Vest validation for class/workshop forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateClassInput } from '@maple/ts/domain';
 
 /**
@@ -20,8 +20,8 @@ import type { CreateClassInput } from '@maple/ts/domain';
  *   // Submit form
  * }
  */
-export const classValidation = create(
-  (data: Partial<CreateClassInput>, field?: string) => {
+export const classValidation = staticSuite(
+  (data: Partial<CreateClassInput>, field?: string | string[]) => {
     only(field);
 
     // Name validation

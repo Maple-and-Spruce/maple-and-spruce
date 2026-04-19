@@ -4,7 +4,7 @@
  * Vest validation for class category forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateClassCategoryInput } from '@maple/ts/domain';
 
 /**
@@ -20,8 +20,8 @@ import type { CreateClassCategoryInput } from '@maple/ts/domain';
  *   // Submit form
  * }
  */
-export const classCategoryValidation = create(
-  (data: Partial<CreateClassCategoryInput>, field?: string) => {
+export const classCategoryValidation = staticSuite(
+  (data: Partial<CreateClassCategoryInput>, field?: string | string[]) => {
     only(field);
 
     test('name', 'Name is required', () => {

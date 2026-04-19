@@ -3,7 +3,7 @@
  *
  * Vest validation for music lesson forms (single + series).
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type {
   CreateLessonInput,
   CreateLessonSeriesInput,
@@ -13,8 +13,8 @@ import { LESSON_STATUSES } from '@maple/ts/domain';
 /** Allowed lesson durations in minutes. Mirrors LessonLength tiers on Student. */
 const ALLOWED_DURATIONS = [30, 45, 60] as const;
 
-export const lessonValidation = create(
-  (data: Partial<CreateLessonInput>, field?: string) => {
+export const lessonValidation = staticSuite(
+  (data: Partial<CreateLessonInput>, field?: string | string[]) => {
     only(field);
 
     test('studentId', 'Student is required', () => {
@@ -70,8 +70,8 @@ export const lessonValidation = create(
   }
 );
 
-export const lessonSeriesValidation = create(
-  (data: Partial<CreateLessonSeriesInput>, field?: string) => {
+export const lessonSeriesValidation = staticSuite(
+  (data: Partial<CreateLessonSeriesInput>, field?: string | string[]) => {
     only(field);
 
     test('studentId', 'Student is required', () => {

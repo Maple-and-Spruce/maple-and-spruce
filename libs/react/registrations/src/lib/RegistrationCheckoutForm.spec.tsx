@@ -65,6 +65,92 @@ describe('RegistrationCheckoutForm submit flow', () => {
     vi.clearAllMocks();
   });
 
+  it('blocks submit and surfaces validation errors when the form is empty', async () => {
+    const user = userEvent.setup();
+
+    const onSubmit = vi.fn();
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onSuccess = vi.fn();
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+
+    // Submit without filling anything — the Vest suite should reject.
+    await user.click(registerButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/name is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+    });
+
+    // Backend must not be called.
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit on an invalid email and lets it through once corrected', async () => {
+    const user = userEvent.setup();
+
+    const onSubmit = vi.fn().mockResolvedValue(mockRegistrationResponse);
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onSuccess = vi.fn();
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+
+    fireEvent.change(screen.getByLabelText(/Full Name/), {
+      target: { value: 'Jane Doe' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'not-an-email' },
+    });
+
+    await user.click(registerButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/email must be a valid email address/i)
+      ).toBeInTheDocument();
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    // Fix the email and resubmit — it should now pass.
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'jane@example.com' },
+    });
+
+    await user.click(registerButton);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
   it('disables the Register button immediately on click and ignores repeat clicks while the backend is cold-starting', async () => {
     const user = userEvent.setup();
 

@@ -40,3 +40,11 @@ export {
 
 // Phase 4.5: Calendar
 export { calendarEventValidation } from './calendar-event.validation';
+
+// Shared helpers
+export {
+  imageUploadValidation,
+  DEFAULT_IMAGE_MIME_TYPES,
+  DEFAULT_IMAGE_MAX_BYTES,
+  type ImageUploadValidationInput,
+} from './image-upload.validation';

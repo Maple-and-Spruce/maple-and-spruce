@@ -4,7 +4,7 @@
  * Vest validation for payout generation forms.
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { GeneratePayoutInput } from '@maple/ts/domain';
 
 /**
@@ -19,8 +19,8 @@ import type { GeneratePayoutInput } from '@maple/ts/domain';
  *   // Generate payout
  * }
  */
-export const payoutValidation = create(
-  (data: Partial<GeneratePayoutInput>, field?: string) => {
+export const payoutValidation = staticSuite(
+  (data: Partial<GeneratePayoutInput>, field?: string | string[]) => {
     only(field);
 
     test('artistId', 'Artist is required', () => {

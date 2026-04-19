@@ -5,8 +5,14 @@
  * Admin-only endpoint.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createAdminFunction,
+  throwInvalidArgument,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
+import { registrationValidation } from '@maple/ts/validation';
 import type {
   UpdateRegistrationRequest,
   UpdateRegistrationResponse,
@@ -17,13 +23,23 @@ export const updateRegistration = createAdminFunction<
   UpdateRegistrationResponse
 >(async (data) => {
   if (!data.id) {
-    throw new Error('Registration ID is required');
+    throwInvalidArgument('Registration ID is required');
   }
 
-  // Check if registration exists
   const existing = await RegistrationRepository.findById(data.id);
   if (!existing) {
-    throw new Error(`Registration not found: ${data.id}`);
+    throwNotFound('Registration', data.id);
+  }
+
+  const fields = Object.keys(data).filter((key) => key !== 'id');
+  if (fields.length > 0) {
+    const result = registrationValidation(
+      { ...existing, ...data },
+      fields
+    );
+    if (result.hasErrors()) {
+      throwValidationError(result.getErrors());
+    }
   }
 
   const registration = await RegistrationRepository.update(data);
