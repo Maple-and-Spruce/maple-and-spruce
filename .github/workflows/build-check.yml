@@ -82,6 +82,11 @@ jobs:
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -98,8 +103,8 @@ jobs:
           path: node_modules
           key: ${{ needs.install.outputs.cache_key }}
 
-      - name: TypeScript typecheck
-        run: pnpm exec nx run maple-spruce:typecheck
+      - name: TypeScript typecheck (affected)
+        run: pnpm exec nx affected -t typecheck
 
   lint:
     name: ESLint
@@ -137,6 +142,11 @@ jobs:
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -161,11 +171,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
-      - name: Build web app
-        run: pnpm exec nx run maple-spruce:build
-
-      - name: Build functions
-        run: pnpm exec nx run functions:build
+      - name: Build affected projects
+        run: pnpm exec nx affected -t build
 
   webflow-components-typecheck:
     name: Webflow Components Typecheck
@@ -304,6 +311,11 @@ jobs:
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -323,8 +335,8 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Build Storybook
-        run: pnpm exec nx run maple-spruce:build-storybook
+      - name: Build Storybook (affected)
+        run: pnpm exec nx affected -t build-storybook
 
       - name: Run Storybook interaction tests with coverage
         run: pnpm exec vitest run --config vitest.storybook.config.ts --coverage --coverage.reportsDirectory=${{ github.workspace }}/coverage/storybook
