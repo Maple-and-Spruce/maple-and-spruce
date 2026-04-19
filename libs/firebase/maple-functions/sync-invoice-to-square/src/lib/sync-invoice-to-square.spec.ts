@@ -352,6 +352,106 @@ describe('syncInvoiceToSquare trigger', () => {
     });
   });
 
+  describe('Firestore Timestamp / string coercion', () => {
+    it('coerces Timestamp-ish objects (with .toDate) to Date', async () => {
+      mocks.studentFindById.mockResolvedValue(sampleStudent);
+      mocks.sendInvoice.mockResolvedValue({
+        squareCustomerId: 'SQ-CUST',
+        squareOrderId: 'SQ-ORDER',
+        squareInvoiceId: 'SQ-INV',
+      });
+
+      const timestampLike = {
+        toDate: () => new Date('2026-04-20T10:00:00Z'),
+      };
+
+      await handler({
+        params: { invoiceId: 'inv-1' },
+        data: {
+          before: makeSnap(true, { ...baseSent, status: 'draft' }),
+          after: makeSnap(true, {
+            ...baseSent,
+            createdAt: timestampLike,
+            updatedAt: timestampLike,
+            issuedAt: timestampLike,
+          }),
+        },
+      });
+
+      expect(mocks.sendInvoice).toHaveBeenCalledTimes(1);
+    });
+
+    it('coerces ISO date strings to Date', async () => {
+      mocks.studentFindById.mockResolvedValue(sampleStudent);
+      mocks.sendInvoice.mockResolvedValue({
+        squareCustomerId: 'SQ-CUST',
+        squareOrderId: 'SQ-ORDER',
+        squareInvoiceId: 'SQ-INV',
+      });
+
+      await handler({
+        params: { invoiceId: 'inv-1' },
+        data: {
+          before: makeSnap(true, { ...baseSent, status: 'draft' }),
+          after: makeSnap(true, {
+            ...baseSent,
+            createdAt: '2026-04-20T10:00:00Z',
+            updatedAt: '2026-04-20T10:00:00Z',
+            issuedAt: '2026-04-20T10:00:00Z',
+          }),
+        },
+      });
+
+      expect(mocks.sendInvoice).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles an invalid date string gracefully (returns undefined)', async () => {
+      mocks.studentFindById.mockResolvedValue(sampleStudent);
+      mocks.sendInvoice.mockResolvedValue({
+        squareCustomerId: 'SQ-CUST',
+        squareOrderId: 'SQ-ORDER',
+        squareInvoiceId: 'SQ-INV',
+      });
+
+      await handler({
+        params: { invoiceId: 'inv-1' },
+        data: {
+          before: makeSnap(true, { ...baseSent, status: 'draft' }),
+          after: makeSnap(true, {
+            ...baseSent,
+            createdAt: 'not-a-real-date',
+          }),
+        },
+      });
+
+      expect(mocks.sendInvoice).toHaveBeenCalledTimes(1);
+    });
+
+    it('extracts paymentRecord when present on the Firestore doc', async () => {
+      // Paid status with partially-shaped paymentRecord — the extractor
+      // reads paymentRecord and coerces its recordedAt to Date.
+      await handler({
+        params: { invoiceId: 'inv-1' },
+        data: {
+          before: makeSnap(true, baseSent),
+          after: makeSnap(true, {
+            ...baseSent,
+            status: 'paid',
+            paymentRecord: {
+              source: 'square-webhook',
+              squarePaymentId: 'SQ-PAY-1',
+              // recordedAt absent — extractor falls back to new Date()
+            },
+            squareInvoiceId: 'SQ-INV-1',
+          }),
+        },
+      });
+
+      expect(mocks.sendInvoice).not.toHaveBeenCalled();
+      expect(mocks.cancelInvoice).not.toHaveBeenCalled();
+    });
+  });
+
   describe('no-op paths', () => {
     it('skips when the doc is deleted (no after snapshot)', async () => {
       await handler({

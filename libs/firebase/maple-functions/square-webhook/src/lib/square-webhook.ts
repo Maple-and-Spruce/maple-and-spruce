@@ -99,7 +99,7 @@ async function extractImageUrl(
  * Fired when a catalog item is created or updated in Square.
  * We need to sync the changes to our Firestore record.
  */
-async function handleCatalogUpdate(
+export async function handleCatalogUpdate(
   event: WebhookEvent,
   square: Square
 ): Promise<{ action: string; details: string }> {
@@ -321,7 +321,7 @@ async function handleCatalogUpdate(
  *   }
  * }
  */
-async function handleInventoryUpdate(
+export async function handleInventoryUpdate(
   event: WebhookEvent
 ): Promise<{ action: string; details: string }> {
   // The inventory counts are nested inside object.inventory_counts array

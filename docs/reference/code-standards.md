@@ -68,16 +68,17 @@ Always use MUI theme colors, not hardcoded hex values.
 
 ## Testing & Coverage
 
-CI runs `nyc check-coverage --lines 80 --functions 80 --statements 80 --branches 50` against the merged coverage report. That 80 is a **floor, not a target** — write enough tests that a PR comfortably clears it.
+CI runs `nyc check-coverage --lines 80 --functions 80 --statements 80 --branches 50` against the merged coverage report. **80% is the CI floor; aim for ~85% on new code.** PRs that scrape by at 80.1% are fragile — a single unrelated refactor elsewhere can drag the merged number back under the line and break CI without anyone changing the tested code. 85% gives headroom while staying achievable.
 
-**Aim for ~90% line/statement coverage on new code.** PRs that scrape by at 80.1% are fragile: a single unrelated refactor elsewhere can drag the merged number under the line and break CI without anyone changing the tested code. 90% gives headroom.
+What's in coverage: production `src/**/*.ts`/`*.tsx` under `libs/` and `apps/` excluding the integration-test mock server, integration-test harness, Storybook config, and e2e harness (see `vitest.config.ts` exclude list). Integration tests and Storybook interaction tests are complementary signals, not a substitute — line/branch coverage comes from unit tests only.
 
 Concretely, when you add a new file:
 
-- **Cloud function handler** (`*.ts` in `libs/firebase/maple-functions/{name}/src/lib/`) — add a sibling `.spec.ts`. Mock repositories + Square/Webflow services with `vi.mock()` per ADR-017. Test each branch: happy path, not-found / permission rejections, Square-side errors.
-- **Firestore trigger** — export the inner handler so the spec can invoke it directly; mock `onDocumentWritten` to return the handler. See `libs/firebase/maple-functions/sync-invoice-to-square/src/lib/sync-invoice-to-square.spec.ts` for the pattern.
-- **New repository method** — add a spec in `libs/firebase/database/src/lib/{entity}.repository.spec.ts`. Mock `./utilities/database.config`. See `invoice.repository.spec.ts` for the pattern.
-- **New Square / Webflow service method** — add a sibling spec mocking the SDK client at the method level. See `invoices.service.spec.ts`.
+- **Cloud function handler** (`libs/firebase/maple-functions/{name}/src/lib/`) — add a sibling `.spec.ts`. Mock the `createAdminFunction` / `createAuthenticatedFunction` wrapper to return the handler directly so you can invoke it as a plain function. Mock repositories + Square/Webflow services with `vi.mock()` per ADR-017. Test each branch: happy path, not-found / permission rejections, service-side errors. See `libs/firebase/maple-functions/create-invoice/src/lib/create-invoice.spec.ts` and `.../update-invoice.spec.ts`.
+- **Firestore trigger** — export the inner handler so the spec can invoke it directly; mock `onDocumentWritten` to return the handler. See `libs/firebase/maple-functions/sync-invoice-to-square/src/lib/sync-invoice-to-square.spec.ts` for the pattern (draft→sent happy path, each guard, status-transition no-ops, Timestamp/string coercion branches).
+- **HTTPS endpoint** — mock `onRequest` similarly; exercise signature verification, method rejection, event dispatch, and the catch-all error path. See `libs/firebase/maple-functions/square-webhook/src/lib/square-webhook.spec.ts` (endpoint describe block).
+- **Repository method** — add a spec in `libs/firebase/database/src/lib/{entity}.repository.spec.ts`. Mock `./utilities/database.config`. See `invoice.repository.spec.ts` and `registration.repository.spec.ts` for the mock-chain pattern.
+- **Square / Webflow service method** — add a sibling spec mocking the SDK client at the method level. See `libs/firebase/square/src/lib/invoices.service.spec.ts`.
 - **New lib with tests** — also add the lib's `vitest.config.ts` to `vitest.workspace.ts`, otherwise the merged coverage report won't include it.
 
-Integration tests (emulator-backed) and Storybook interaction tests are complementary, not a substitute — coverage is measured from unit tests only.
+If you're adding a new large handler to an existing test-covered file (like `square-webhook.ts`), **export the handler** so the spec can target it directly rather than going through the HTTPS endpoint wrapper for every branch.
