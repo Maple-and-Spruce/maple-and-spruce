@@ -18,10 +18,13 @@ All CI workflows use `pnpm/action-setup@v4` which reads the version from `packag
 
 **Jobs** (all depend on `install`):
 - Security audit (`pnpm audit --audit-level=high`)
-- TypeScript typecheck (`pnpm exec nx run maple-spruce:typecheck`)
-- Build web app and functions
+- TypeScript typecheck — `nx affected -t typecheck`
+- Build — `nx affected -t build`
 - Unit tests with coverage
-- Storybook build and interaction tests
+- Storybook build (`nx affected -t build-storybook`) and interaction tests
+- Integration tests (always builds the 4 functions codebases — affected conversion deferred until module boundary tags land)
+
+**Affected detection in PRs**: `nrwl/nx-set-shas@v4` derives the base/head SHAs from the PR event so `nx affected` only rebuilds projects whose source (or transitively a dependency) changed since the merge base. Jobs needing affected detection use `fetch-depth: 0` so the full git history is available.
 
 ## Functions Deploy
 
