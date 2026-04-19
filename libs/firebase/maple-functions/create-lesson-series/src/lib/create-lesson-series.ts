@@ -39,7 +39,13 @@ export const createLessonSeries = createAdminFunction<
     throw new Error(`Student not found: ${coerced.studentId}`);
   }
 
-  const { lessons, seriesId } = await LessonRepository.createSeries(coerced);
+  // Snapshot primary teacher on every lesson in the series so later
+  // reassignment can't retroactively flip substitute attribution (#283).
+  const { lessons, seriesId } = await LessonRepository.createSeries({
+    ...coerced,
+    primaryTeacherAtCreateId:
+      coerced.primaryTeacherAtCreateId ?? student.primaryTeacherId,
+  });
 
   return { lessons, seriesId };
 });

@@ -26,6 +26,8 @@ export * from './lib/tax';
 export * from './lib/student';
 export * from './lib/lesson';
 export * from './lib/invoice';
+export * from './lib/hope-rates';
+export * from './lib/teacher-payout';
 
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';
