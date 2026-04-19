@@ -5,7 +5,8 @@
   "packageManager": "pnpm@11.0.0-rc.1+sha512.0d7d837668eb35b81d28f560ef8ec5e103ff5d162e249fd0d30c546c39a551d290ac9cf15709353b94d2df6eb445bfa465c7a05148d328eda32950c02e40d060",
   "scripts": {
     "test": "nx run-many --target=test --all",
-    "test:coverage": "nx run-many --target=test --all --coverage"
+    "test:coverage": "nx run-many --target=test --all --coverage",
+    "dup:check": "jscpd apps libs"
   },
   "private": true,
   "devDependencies": {
