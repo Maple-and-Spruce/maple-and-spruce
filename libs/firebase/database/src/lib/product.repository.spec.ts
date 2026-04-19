@@ -214,6 +214,9 @@ describe('ProductRepository', () => {
         squareVariationId: 'sq-var-001',
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
+        variants: [
+          { id: 'var-001', label: 'Regular', sku: 'prd_existing', priceCents: 2500, quantity: 5, squareVariationId: 'sq-var-001' },
+        ],
         squareCache: {
           name: 'Existing Product',
           priceCents: 2500,

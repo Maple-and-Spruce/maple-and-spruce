@@ -153,7 +153,7 @@ describe('Sync Conflict Detection Logic', () => {
 
       // The detection would create a conflict because 5 !== 3
       // Testing the comparison logic
-      const cachedQuantity = product.squareCache.quantity;
+      const cachedQuantity = product.squareCache.quantity ?? 0;
       const squareQuantity = 3;
 
       expect(cachedQuantity).not.toBe(squareQuantity);
