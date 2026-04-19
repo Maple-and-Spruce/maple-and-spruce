@@ -1,0 +1,23 @@
+{
+  "name": "functions-integration-tests-invoice",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-invoice/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-invoice",
+    "firebase-maple-functions-get-invoices",
+    "firebase-maple-functions-update-invoice",
+    "firebase-maple-functions-delete-invoice",
+    "firebase-maple-functions-create-student",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "apps/functions-integration-tests-invoice/vitest.config.ts"
+      }
+    }
+  }
+}

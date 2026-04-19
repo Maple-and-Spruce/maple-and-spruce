@@ -257,6 +257,18 @@ export type {
   DeleteLessonResponse,
 } from './lesson.types';
 
+// Phase 4: Music Lessons - Invoice types (private-pay)
+export type {
+  GetInvoicesRequest,
+  GetInvoicesResponse,
+  CreateInvoiceRequest,
+  CreateInvoiceResponse,
+  UpdateInvoiceRequest,
+  UpdateInvoiceResponse,
+  DeleteInvoiceRequest,
+  DeleteInvoiceResponse,
+} from './invoice.types';
+
 // Calendar Embed Config types
 export type {
   GetCalendarEmbedConfigRequest,
