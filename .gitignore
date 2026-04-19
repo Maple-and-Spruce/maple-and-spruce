@@ -37,6 +37,9 @@ yarn-error.log
 testem.log
 /typings
 
+# jscpd output
+/reports
+
 # System Files
 .DS_Store
 Thumbs.db
