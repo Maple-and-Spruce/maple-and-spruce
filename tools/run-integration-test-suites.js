@@ -21,7 +21,6 @@ function main() {
     suites = process.argv[2].split(',').map((s) => s.trim());
   } else {
     // Discover all suites via Nx
-    // eslint-disable-next-line sonarjs/no-os-command-from-path -- CI tooling script, command is a fixed string
     const raw = execSync('pnpm exec nx show projects', {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -48,7 +47,7 @@ function main() {
   for (const suite of suites) {
     console.log(`\n--- ${suite} ---\n`);
     try {
-      // eslint-disable-next-line sonarjs/no-os-command-from-path, sonarjs/os-command -- suite names come from Nx project list, not user input
+      // eslint-disable-next-line sonarjs/os-command -- suite names come from Nx project list, not user input
       execSync(`pnpm exec nx run ${suite}:test`, {
         stdio: 'inherit',
       });

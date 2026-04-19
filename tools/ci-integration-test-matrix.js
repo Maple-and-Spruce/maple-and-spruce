@@ -50,7 +50,7 @@ function main() {
     ? 'pnpm exec nx show projects --affected'
     : 'pnpm exec nx show projects';
 
-  // eslint-disable-next-line sonarjs/no-os-command-from-path -- CI tooling script, command is a fixed string
+  // eslint-disable-next-line sonarjs/os-command -- CI tooling script, nxCmd is a fixed string (not user input)
   const raw = execSync(nxCmd, {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
