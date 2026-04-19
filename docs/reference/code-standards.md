@@ -65,3 +65,19 @@ const snapshot = await getDocs(collection(db, 'artists'));
 ```
 
 Always use MUI theme colors, not hardcoded hex values.
+
+## Testing & Coverage
+
+CI runs `nyc check-coverage --lines 80 --functions 80 --statements 80 --branches 50` against the merged coverage report. That 80 is a **floor, not a target** — write enough tests that a PR comfortably clears it.
+
+**Aim for ~90% line/statement coverage on new code.** PRs that scrape by at 80.1% are fragile: a single unrelated refactor elsewhere can drag the merged number under the line and break CI without anyone changing the tested code. 90% gives headroom.
+
+Concretely, when you add a new file:
+
+- **Cloud function handler** (`*.ts` in `libs/firebase/maple-functions/{name}/src/lib/`) — add a sibling `.spec.ts`. Mock repositories + Square/Webflow services with `vi.mock()` per ADR-017. Test each branch: happy path, not-found / permission rejections, Square-side errors.
+- **Firestore trigger** — export the inner handler so the spec can invoke it directly; mock `onDocumentWritten` to return the handler. See `libs/firebase/maple-functions/sync-invoice-to-square/src/lib/sync-invoice-to-square.spec.ts` for the pattern.
+- **New repository method** — add a spec in `libs/firebase/database/src/lib/{entity}.repository.spec.ts`. Mock `./utilities/database.config`. See `invoice.repository.spec.ts` for the pattern.
+- **New Square / Webflow service method** — add a sibling spec mocking the SDK client at the method level. See `invoices.service.spec.ts`.
+- **New lib with tests** — also add the lib's `vitest.config.ts` to `vitest.workspace.ts`, otherwise the merged coverage report won't include it.
+
+Integration tests (emulator-backed) and Storybook interaction tests are complementary, not a substitute — coverage is measured from unit tests only.
