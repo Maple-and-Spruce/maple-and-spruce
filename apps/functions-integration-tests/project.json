@@ -4,41 +4,11 @@
   "sourceRoot": "apps/functions-integration-tests/src",
   "projectType": "application",
   "tags": ["type:e2e"],
-  "implicitDependencies": [
-    "functions-integration-tests-artist",
-    "functions-integration-tests-class",
-    "functions-integration-tests-instructor",
-    "functions-integration-tests-student",
-    "functions-integration-tests-lesson",
-    "functions-integration-tests-invoice",
-    "functions-integration-tests-teacher-payout",
-    "functions-integration-tests-category",
-    "functions-integration-tests-discount",
-    "functions-integration-tests-calendar",
-    "functions-integration-tests-registration",
-    "functions-integration-tests-utility",
-    "functions-integration-tests-square"
-  ],
   "targets": {
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "commands": [
-          "npx nx run functions-integration-tests-artist:test",
-          "npx nx run functions-integration-tests-class:test",
-          "npx nx run functions-integration-tests-instructor:test",
-          "npx nx run functions-integration-tests-student:test",
-          "npx nx run functions-integration-tests-lesson:test",
-          "npx nx run functions-integration-tests-invoice:test",
-          "npx nx run functions-integration-tests-teacher-payout:test",
-          "npx nx run functions-integration-tests-category:test",
-          "npx nx run functions-integration-tests-discount:test",
-          "npx nx run functions-integration-tests-calendar:test",
-          "npx nx run functions-integration-tests-registration:test",
-          "npx nx run functions-integration-tests-utility:test",
-          "npx nx run functions-integration-tests-square:test"
-        ],
-        "parallel": false
+        "command": "node tools/run-integration-test-suites.js"
       }
     },
     "test-with-emulators": {

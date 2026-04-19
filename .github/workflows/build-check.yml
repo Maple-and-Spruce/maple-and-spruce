@@ -242,12 +242,44 @@ jobs:
           path: coverage/unit/coverage-final.json
           if-no-files-found: error
 
-  integration-tests:
-    name: Integration Tests
+  integration-test-matrix:
+    name: Plan Integration Tests
     needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Generate test matrix
+        id: matrix
+        run: echo "matrix=$(node tools/ci-integration-test-matrix.js --max-per-group 5)" >> $GITHUB_OUTPUT
+
+  integration-tests:
+    name: Integration Tests (${{ matrix.group.index }}/${{ matrix.group.total }})
+    needs: [install, integration-test-matrix]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.integration-test-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -287,21 +319,37 @@ jobs:
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
-          # Codebase-specific overrides
-          echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
-          printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square/.secret.local
+          # maple-core: Etsy mock server URL + fake secrets
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
 
+          # maple-square: mock server URL + fake secrets
+          echo "SQUARE_BASE_URL=http://localhost:9999" >> dist/apps/functions-square/.env
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
+          printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+
+          # maple-sync: mock server URL + fake secrets
           echo "WEBFLOW_BASE_URL=http://localhost:9999" >> dist/apps/functions-sync/.env
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-sync/.env
+          echo "ETSY_TOKEN_URL=http://localhost:9998/v3/public/oauth/token" >> dist/apps/functions-sync/.env
           printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
-      - name: Start mock server and run integration tests
+      - name: Start mock servers and run integration tests
         run: |
+          # Start mock HTTP servers (Square + Webflow + Etsy APIs)
           npx tsx libs/firebase/integration-test-mock-server/start.ts &
           MOCK_PID=$!
+          ETSY_MOCK_SERVER_PORT=9998 npx tsx libs/firebase/etsy-test-mock-server/start.ts &
+          ETSY_MOCK_PID=$!
           sleep 2
-          npx firebase emulators:exec --project=dev --only auth,firestore,functions "pnpm exec nx run functions-integration-tests:test"
+
+          # Run the suites assigned to this matrix group
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions \
+            "node tools/run-integration-test-suites.js ${{ matrix.group.suites }}"
           EXIT_CODE=$?
-          kill $MOCK_PID 2>/dev/null
+
+          kill $MOCK_PID 2>/dev/null || true
+          kill $ETSY_MOCK_PID 2>/dev/null || true
           exit $EXIT_CODE
 
   storybook:
