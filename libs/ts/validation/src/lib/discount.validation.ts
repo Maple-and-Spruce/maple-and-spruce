@@ -6,7 +6,7 @@
  *
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import { DISCOUNT_TYPES, DISCOUNT_STATUSES } from '@maple/ts/domain';
 import type { DiscountType, DiscountStatus } from '@maple/ts/domain';
 
@@ -29,10 +29,13 @@ export interface DiscountValidationInput {
  * Validate discount form data
  *
  * @param data - Partial discount data to validate
- * @param field - Optional field to validate (for single-field validation)
+ * @param field - Optional field (or list of fields) to validate. Pass a single
+ *   field name for per-field form validation, or an array of field names to
+ *   scope validation to a partial-update payload (only those fields are
+ *   tested). Omit to validate all fields.
  */
-export const discountValidation = create(
-  (data: DiscountValidationInput, field?: string) => {
+export const discountValidation = staticSuite(
+  (data: DiscountValidationInput, field?: string | string[]) => {
     only(field);
 
     // Code validation

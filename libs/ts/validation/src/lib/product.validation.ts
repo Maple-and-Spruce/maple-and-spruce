@@ -7,7 +7,7 @@
  *
  * @see https://vestjs.dev/
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateProductInput } from '@maple/ts/domain';
 
 /**
@@ -18,7 +18,10 @@ import type { CreateProductInput } from '@maple/ts/domain';
  * - Square-bound: name, description, priceCents, quantity
  *
  * @param data - Partial product data to validate
- * @param field - Optional field to validate (for single-field validation)
+ * @param field - Optional field(s) to validate (for single-field or
+ *                partial-update validation). Pass a string for a single
+ *                field, or an array of field names to validate only those
+ *                fields (useful for partial updates).
  *
  * @example
  * // Full validation
@@ -26,9 +29,13 @@ import type { CreateProductInput } from '@maple/ts/domain';
  * if (result.isValid()) {
  *   // Submit form
  * }
+ *
+ * @example
+ * // Partial update - only validate fields that were provided
+ * const result = productValidation(patch, Object.keys(patch));
  */
-export const productValidation = create(
-  (data: Partial<CreateProductInput>, field?: string) => {
+export const productValidation = staticSuite(
+  (data: Partial<CreateProductInput>, field?: string | string[]) => {
     only(field);
 
     // === Firestore-owned fields ===

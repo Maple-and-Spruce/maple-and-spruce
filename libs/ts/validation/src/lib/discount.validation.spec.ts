@@ -375,5 +375,30 @@ describe('discountValidation', () => {
       expect(result.hasErrors('type')).toBe(false);
       expect(result.hasErrors('description')).toBe(false);
     });
+
+    it('scopes validation to a list of fields (partial update)', () => {
+      // Simulates a partial update payload: only `code` and `percent` are
+      // being changed, with `type` merged in from the existing record so
+      // type-conditional tests still fire against the correct type.
+      const partialUpdate: DiscountValidationInput = {
+        type: 'percent',
+        code: 'BAD CODE!',
+        percent: 150,
+      };
+
+      const result = discountValidation(partialUpdate, ['code', 'percent']);
+      expect(result.hasErrors('code')).toBe(true);
+      expect(result.hasErrors('percent')).toBe(true);
+    });
+
+    it('passes when partial update contains only valid fields', () => {
+      const partialUpdate: DiscountValidationInput = {
+        type: 'percent',
+        description: 'Updated description',
+      };
+
+      const result = discountValidation(partialUpdate, ['description']);
+      expect(result.hasErrors()).toBe(false);
+    });
   });
 });

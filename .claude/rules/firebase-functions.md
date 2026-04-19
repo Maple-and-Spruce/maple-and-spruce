@@ -63,6 +63,57 @@ Functions.endpoint
   .handle<Req, Res>(async (data) => { ... });
 ```
 
+## Input Validation
+
+Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with `staticSuite` (never `create`) so they're pure functions — no retained state across invocations, safe to call from warm cloud function containers without `.reset()`.
+
+**Create pattern** — validate the full payload:
+
+```typescript
+import { createAdminFunction, throwValidationError } from '@maple/firebase/functions';
+import { classValidation } from '@maple/ts/validation';
+
+export const createClass = createAdminFunction<Req, Res>(async (data) => {
+  const result = classValidation(data);
+  if (result.hasErrors()) {
+    throwValidationError(result.getErrors());
+  }
+  // ...server-only validation (uniqueness, refs) and repository.create
+});
+```
+
+**Update (partial) pattern** — validate only the changed fields, using the existing record for cross-field context. Gate on `hasErrors()` (not `!isValid()`) because `only()` makes per-field `isValid()` unreliable:
+
+```typescript
+import {
+  createAdminFunction,
+  throwInvalidArgument,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
+import { classValidation } from '@maple/ts/validation';
+
+export const updateClass = createAdminFunction<Req, Res>(async (data) => {
+  if (!data.id) throwInvalidArgument('Class ID is required');
+
+  const existing = await Repository.findById(data.id);
+  if (!existing) throwNotFound('Class', data.id);
+
+  const fields = Object.keys(data).filter((key) => key !== 'id');
+  if (fields.length > 0) {
+    const result = classValidation({ ...existing, ...data }, fields);
+    if (result.hasErrors()) {
+      throwValidationError(result.getErrors());
+    }
+  }
+  // ...repository.update
+});
+```
+
+**Error helpers** (`throwInvalidArgument`, `throwNotFound`, `throwValidationError`) live in `@maple/firebase/functions` (`errors.utility.ts`). They throw typed `HttpsError` codes — prefer them over bare `throw new Error(...)` so clients can discriminate failures.
+
+**Validation must run BEFORE any external writes** (Square, Webflow, payments). Invalid data must never reach external APIs and fail halfway through.
+
 ## Testing
 
 **Unit tests**: Use `vi.mock()` to mock repositories and external services. See ADR-017 for patterns.

@@ -4,9 +4,11 @@ import path from 'node:path';
 export default defineConfig({
   root: __dirname,
   resolve: {
-    // Point @maple/react/signals at the real lib entry so vitest can
-    // resolve it without a full tsconfig-paths plugin. Tests can still
-    // mock specific exports via vi.mock.
+    // Resolve @maple/* workspace aliases via tsconfig paths (native Vite
+    // support). The explicit @maple/react/signals alias is kept so the
+    // local signals entry wins — the tsconfig path resolves to the same
+    // file but goes through a slower lookup.
+    tsconfigPaths: true,
     alias: {
       '@maple/react/signals': path.resolve(__dirname, '../signals/src/index.ts'),
     },

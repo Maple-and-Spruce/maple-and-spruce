@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import type { PublicClass } from '@maple/ts/domain';
@@ -63,6 +70,100 @@ const mockRegistrationResponse = {
 describe('RegistrationCheckoutForm submit flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  // @testing-library/react v13+ auto-registers cleanup only when Vitest
+  // globals are enabled. This spec runs under both the project config
+  // (globals: true) and the repo-root config during CI coverage runs
+  // (globals: false). Explicit cleanup keeps tests isolated under either.
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('blocks submit and surfaces validation errors when the form is empty', async () => {
+    const user = userEvent.setup();
+
+    const onSubmit = vi.fn();
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onSuccess = vi.fn();
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+
+    // Submit without filling anything — the Vest suite should reject.
+    await user.click(registerButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/name is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+    });
+
+    // Backend must not be called.
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit on an invalid email and lets it through once corrected', async () => {
+    const user = userEvent.setup();
+
+    const onSubmit = vi.fn().mockResolvedValue(mockRegistrationResponse);
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onSuccess = vi.fn();
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+
+    fireEvent.change(screen.getByLabelText(/Full Name/), {
+      target: { value: 'Jane Doe' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'not-an-email' },
+    });
+
+    await user.click(registerButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/email must be a valid email address/i)
+      ).toBeInTheDocument();
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    // Fix the email and resubmit — it should now pass.
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'jane@example.com' },
+    });
+
+    await user.click(registerButton);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
   });
 
   it('disables the Register button immediately on click and ignores repeat clicks while the backend is cold-starting', async () => {

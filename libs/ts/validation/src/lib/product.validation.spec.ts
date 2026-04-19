@@ -265,4 +265,66 @@ describe('productValidation', () => {
     });
 
   });
+
+  describe('partial-update validation (array of fields)', () => {
+    // When Vest's only() scopes validation to a subset of fields, the fields
+    // whose tests didn't run report valid:false at the per-field level, which
+    // makes the top-level isValid() unreliable. Callers gate on hasErrors()
+    // instead; these tests mirror that contract.
+
+    it('only validates the fields in the provided array', () => {
+      // A status-only update patch: name/priceCents/quantity are absent,
+      // which would normally fail the "required" tests. Passing only the
+      // fields that are present should scope validation to those fields.
+      const patch = { status: 'draft' as const };
+
+      const result = productValidation(patch, ['status']);
+      expect(result.hasErrors()).toBe(false);
+      expect(result.hasErrors('name')).toBe(false);
+      expect(result.hasErrors('priceCents')).toBe(false);
+      expect(result.hasErrors('quantity')).toBe(false);
+    });
+
+    it('catches invalid status in a partial update', () => {
+      const patch = { status: 'archived' as 'active' };
+
+      const result = productValidation(patch, ['status']);
+      expect(result.hasErrors()).toBe(true);
+      expect(result.getErrors('status')).toContain(
+        'Status must be active, draft, or discontinued'
+      );
+    });
+
+    it('catches out-of-range commission rate in a partial update', () => {
+      const patch = { customCommissionRate: 1.5 };
+
+      const result = productValidation(patch, ['customCommissionRate']);
+      expect(result.hasErrors()).toBe(true);
+      expect(result.getErrors('customCommissionRate')).toContain(
+        'Commission rate must be between 0 and 1'
+      );
+    });
+
+    it('allows a valid multi-field partial update (status + commission)', () => {
+      const patch = {
+        status: 'active' as const,
+        customCommissionRate: 0.3,
+      };
+
+      const result = productValidation(patch, [
+        'status',
+        'customCommissionRate',
+      ]);
+      expect(result.hasErrors()).toBe(false);
+    });
+
+    it('does not require name/price/quantity when not in the field list', () => {
+      // Simulates an artistId-only patch. Without array scoping this would
+      // fail "Name is required" / "Price is required" / "Quantity is required".
+      const patch = { artistId: 'artist-999' };
+
+      const result = productValidation(patch, ['artistId']);
+      expect(result.hasErrors()).toBe(false);
+    });
+  });
 });

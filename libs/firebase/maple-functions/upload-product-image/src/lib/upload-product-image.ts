@@ -12,32 +12,36 @@
  * 2. Upload image to Square via Catalog API
  * 3. Update Firestore cache with the new image URL
  */
-import { Functions, Role } from '@maple/firebase/functions';
+import {
+  Functions,
+  Role,
+  throwInvalidArgument,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
 import { ProductRepository } from '@maple/firebase/database';
 import {
   Square,
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
+import { imageUploadValidation } from '@maple/ts/validation';
 import type {
   UploadProductImageRequest,
   UploadProductImageResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Allowed image MIME types (matches Square's supported formats)
+ * Square's Catalog API rejects webp and caps images at 15MB, so we override
+ * the default allowlist + max size for product uploads.
  */
-const ALLOWED_IMAGE_TYPES = [
+const SQUARE_ALLOWED_IMAGE_TYPES = [
   'image/jpeg',
   'image/pjpeg',
   'image/png',
   'image/gif',
-];
-
-/**
- * Max file size: 15MB (Square's limit)
- */
-const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
+] as const;
+const SQUARE_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 export const uploadProductImage = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
@@ -47,36 +51,23 @@ export const uploadProductImage = Functions.endpoint
     async (data, _context, secrets, strings) => {
       const { productId, imageBase64, contentType, caption } = data;
 
-      // Validate required fields
       if (!productId) {
-        throw new Error('productId is required');
+        throwInvalidArgument('productId is required');
       }
 
-      if (!imageBase64) {
-        throw new Error('imageBase64 is required');
+      const validation = imageUploadValidation({
+        imageBase64,
+        contentType,
+        allowedMimeTypes: SQUARE_ALLOWED_IMAGE_TYPES,
+        maxSizeBytes: SQUARE_MAX_IMAGE_BYTES,
+      });
+      if (validation.hasErrors()) {
+        throwValidationError(validation.getErrors());
       }
 
-      if (!contentType) {
-        throw new Error('contentType is required');
-      }
-
-      // Validate content type
-      if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
-        throw new Error(
-          `Invalid content type. Allowed: ${ALLOWED_IMAGE_TYPES.join(', ')}`
-        );
-      }
-
-      // Validate base64 size (rough estimate)
-      const estimatedBytes = Math.ceil(imageBase64.length * 0.75);
-      if (estimatedBytes > MAX_IMAGE_SIZE_BYTES) {
-        throw new Error('Image too large. Maximum size is 15MB.');
-      }
-
-      // Find the product to get Square item ID
       const product = await ProductRepository.findById(productId);
       if (!product) {
-        throw new Error(`Product not found: ${productId}`);
+        throwNotFound('Product', productId);
       }
 
       if (!product.squareItemId) {

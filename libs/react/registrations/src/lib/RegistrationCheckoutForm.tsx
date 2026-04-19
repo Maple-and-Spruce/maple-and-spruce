@@ -22,6 +22,7 @@ import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
+import { registrationValidation } from '@maple/ts/validation';
 import { formatPhoneNumber } from './formatPhoneNumber';
 
 /**
@@ -127,6 +128,9 @@ export function RegistrationCheckoutForm({
   const submitError = useSignal<string | null>(null);
   const isCardReady = useSignal(false);
   const quantityWarning = useSignal<string | null>(null);
+  // Gate field errors until the user has attempted a submit once — mirrors
+  // the ClassForm/ArtistForm pattern so users aren't yelled at mid-typing.
+  const showValidationErrors = useSignal(false);
 
   // Derived state — guaranteed in sync with its inputs.
   const isFull = useComputed(() => publicClass.spotsRemaining <= 0);
@@ -139,6 +143,34 @@ export function RegistrationCheckoutForm({
   const isButtonDisabled = useComputed(
     () => isSubmitting.value || !isCardReady.value || isFull.value
   );
+
+  // ============================================================
+  // VALIDATION — Vest suite wired through computed signals.
+  // Note: discountCode is intentionally excluded — it's validated
+  // server-side by the lookup-discount function.
+  // ============================================================
+  const validation = useComputed(() =>
+    registrationValidation({
+      classId: publicClass.id,
+      customerName: customerName.value,
+      customerEmail: customerEmail.value,
+      customerPhone: customerPhone.value || undefined,
+      quantity: quantity.value,
+      notes: notes.value || undefined,
+    })
+  );
+
+  const errors = useComputed<Record<string, string[]>>(() => {
+    if (!showValidationErrors.value) return {};
+    return validation.value.getErrors();
+  });
+
+  const isValid = useComputed(() => validation.value.isValid());
+
+  const getFieldError = (field: string): string | null => {
+    const fieldErrors = errors.value[field];
+    return fieldErrors?.[0] ?? null;
+  };
 
   // Tokenize ref from SquareCardForm — a function handle, not state.
   const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
@@ -200,21 +232,19 @@ export function RegistrationCheckoutForm({
     // second click that arrives before React re-renders still sees
     // isSubmitting.value === true and bails out.
     if (isSubmitting.value) return;
+
+    // Reveal field-level errors on the first submit attempt. Read
+    // validity *after* flipping the flag so the computed error map
+    // is populated in the same tick.
+    showValidationErrors.value = true;
+    if (!isValid.value) {
+      return;
+    }
+
     isSubmitting.value = true;
     submitError.value = null;
 
     try {
-      if (!customerName.value.trim()) {
-        submitError.value = 'Please enter your name';
-        return;
-      }
-      if (
-        !customerEmail.value.trim() ||
-        !customerEmail.value.includes('@')
-      ) {
-        submitError.value = 'Please enter a valid email address';
-        return;
-      }
       if (!tokenizeRef.current) {
         submitError.value = 'Payment form not ready. Please wait and try again.';
         return;
@@ -257,6 +287,8 @@ export function RegistrationCheckoutForm({
     onSuccess,
     isSubmitting,
     submitError,
+    showValidationErrors,
+    isValid,
   ]);
 
   return (
@@ -283,6 +315,8 @@ export function RegistrationCheckoutForm({
             label="Full Name"
             value={customerName.value}
             onChange={(e) => (customerName.value = e.target.value)}
+            error={!!getFieldError('customerName')}
+            helperText={getFieldError('customerName')}
             required
             fullWidth
           />
@@ -291,9 +325,13 @@ export function RegistrationCheckoutForm({
             type="email"
             value={customerEmail.value}
             onChange={(e) => (customerEmail.value = e.target.value)}
+            error={!!getFieldError('customerEmail')}
+            helperText={
+              getFieldError('customerEmail') ||
+              'Confirmation will be sent to this address'
+            }
             required
             fullWidth
-            helperText="Confirmation will be sent to this address"
           />
           <TextField
             label="Phone Number (optional)"
@@ -302,6 +340,8 @@ export function RegistrationCheckoutForm({
             onChange={(e) =>
               (customerPhone.value = formatPhoneNumber(e.target.value))
             }
+            error={!!getFieldError('customerPhone')}
+            helperText={getFieldError('customerPhone')}
             fullWidth
             placeholder="(304) 555-1234"
           />
@@ -313,10 +353,12 @@ export function RegistrationCheckoutForm({
             inputProps={{ min: 1, max: maxQuantity.value }}
             fullWidth
             disabled={isFull.value}
+            error={!!getFieldError('quantity')}
             helperText={
-              isFull.value
+              getFieldError('quantity') ||
+              (isFull.value
                 ? 'No spots available'
-                : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available`
+                : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available`)
             }
           />
           {quantityWarning.value && (
@@ -332,6 +374,8 @@ export function RegistrationCheckoutForm({
             rows={2}
             fullWidth
             placeholder="Dietary restrictions, accessibility needs, etc."
+            error={!!getFieldError('notes')}
+            helperText={getFieldError('notes')}
           />
         </Box>
       </Box>
