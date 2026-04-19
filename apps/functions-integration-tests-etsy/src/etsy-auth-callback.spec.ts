@@ -24,7 +24,7 @@ import type {
   EtsyAuthCallbackRequest,
   EtsyAuthCallbackResponse,
 } from '@maple/ts/firebase/api-types';
-import { resetMock } from './helpers/etsy-mock-client';
+import { resetMock, setShopsMockConfig } from './helpers/etsy-mock-client';
 
 describe('etsyAuthCallback', () => {
   let adminUser: TestUser;
@@ -73,13 +73,17 @@ describe('etsyAuthCallback', () => {
     expect(result.status).not.toBe(200);
   });
 
-  it('exchanges the code, fetches shop ID, and persists tokens', async () => {
-    // Seed a valid OAuth state as if etsyAuthUrl had run before.
+  async function seedState() {
     await setFirestoreDoc('_config', 'etsy-oauth-state', {
       state: 'state-ok',
       codeVerifier: 'verifier-xyz',
       createdAt: new Date(),
     });
+  }
+
+  it('exchanges the code and persists tokens + paginated shop ID', async () => {
+    await seedState();
+    await setShopsMockConfig({ shape: 'paginated', shopId: 22222 });
 
     const result = await callFunction<
       EtsyAuthCallbackRequest,
@@ -99,5 +103,49 @@ describe('etsyAuthCallback', () => {
     expect(saved).not.toBeNull();
     expect(saved!.accessToken).toBe('11111.valid-access-token');
     expect(saved!.shopId).toBe('22222');
+  });
+
+  it('handles the top-level shop_id response shape', async () => {
+    await seedState();
+    await setShopsMockConfig({ shape: 'top-level', shopId: 33333 });
+
+    const result = await callFunction<
+      EtsyAuthCallbackRequest,
+      EtsyAuthCallbackResponse
+    >({
+      functionName: 'etsyAuthCallback',
+      data: { code: 'auth-code', state: 'state-ok' },
+      idToken: adminUser.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data!.shopId).toBe('33333');
+    const saved = await getFirestoreDoc('_config', 'etsy-tokens');
+    expect(saved!.shopId).toBe('33333');
+  });
+
+  it('completes auth even when Etsy returns no shop (shopId undefined)', async () => {
+    await seedState();
+    await setShopsMockConfig({ shape: 'empty-results' });
+
+    const result = await callFunction<
+      EtsyAuthCallbackRequest,
+      EtsyAuthCallbackResponse
+    >({
+      functionName: 'etsyAuthCallback',
+      data: { code: 'auth-code', state: 'state-ok' },
+      idToken: adminUser.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data!.success).toBe(true);
+    expect(result.data!.shopId).toBeUndefined();
+
+    const saved = await getFirestoreDoc('_config', 'etsy-tokens');
+    expect(saved).not.toBeNull();
+    // Token persisted, but shopId left unset so the UI can surface the
+    // refresh button.
+    expect(saved!.accessToken).toBe('11111.valid-access-token');
+    expect(saved!.shopId ?? '').toBe('');
   });
 });
