@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, userEvent, waitFor } from 'storybook/test';
+import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
 import { ClassFilterToolbar } from './ClassFilterToolbar';
 import { mockClassCategories } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 import { mockActiveInstructors } from '../../../../../apps/maple-spruce/.storybook/fixtures';
@@ -140,7 +140,6 @@ export const UpcomingToggleChange: Story = {
     filters: {},
   },
   play: async ({ args, canvasElement }) => {
-    const { within } = await import('storybook/test');
     const canvas = within(canvasElement);
 
     // Find and click the switch

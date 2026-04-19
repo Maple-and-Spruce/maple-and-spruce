@@ -75,7 +75,7 @@ describe('calculateTax', () => {
   });
 
   it('works with non-6% rates', () => {
-    // 7% rate (in case county tax is added)
+    // Verify calculation works with arbitrary rate values
     const result = calculateTax(5000, 7.0);
     expect(result.taxAmountCents).toBe(350);
     expect(result.totalCents).toBe(5350);
