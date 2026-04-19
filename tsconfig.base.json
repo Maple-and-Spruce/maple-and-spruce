@@ -319,6 +319,12 @@
       "@maple/firebase/maple-functions/save-etsy-artist-template": [
         "libs/firebase/maple-functions/save-etsy-artist-template/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/list-etsy-listings": [
+        "libs/firebase/maple-functions/list-etsy-listings/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/import-etsy-listings": [
+        "libs/firebase/maple-functions/import-etsy-listings/src/index.ts"
+      ],
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],

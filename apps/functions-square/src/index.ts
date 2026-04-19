@@ -27,3 +27,6 @@ export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-regis
 // Sync conflict resolution (Square catalog comparison)
 export { detectSyncConflicts } from '@maple/firebase/maple-functions/detect-sync-conflicts';
 export { resolveSyncConflict } from '@maple/firebase/maple-functions/resolve-sync-conflict';
+
+// Etsy listing import (pull-only; creates Square catalog items for imported listings)
+export { importEtsyListings } from '@maple/firebase/maple-functions/import-etsy-listings';

@@ -141,3 +141,6 @@ export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calcu
 export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';
 export { saveEtsyCategoryTemplate } from '@maple/firebase/maple-functions/save-etsy-category-template';
 export { saveEtsyArtistTemplate } from '@maple/firebase/maple-functions/save-etsy-artist-template';
+
+// Etsy listing read (for import review UI — calls Etsy API, no Square dep)
+export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-listings';

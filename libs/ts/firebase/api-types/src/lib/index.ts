@@ -300,3 +300,14 @@ export type {
   SaveEtsyArtistTemplateRequest,
   SaveEtsyArtistTemplateResponse,
 } from './etsy-template.types';
+
+// Etsy Import types (read-only pull from Etsy into our catalog)
+export type {
+  ListEtsyListingsRequest,
+  ListEtsyListingsResponse,
+  EtsyListingWithSyncInfo,
+  ImportEtsyListingInput,
+  ImportEtsyListingsRequest,
+  ImportEtsyListingsResponse,
+  ImportEtsyListingResult,
+} from './etsy-import.types';
