@@ -254,7 +254,9 @@ export class CatalogService {
     // Match response variations to input variants by SKU
     const variations: SquareVariationResult[] = variantInputs.map((v) => {
       const matched = responseVariations.find(
-        (rv) => rv.itemVariationData?.sku === v.sku
+        (rv) =>
+          (rv as { itemVariationData?: { sku?: string } }).itemVariationData
+            ?.sku === v.sku
       );
       return {
         variantId: v.variantId,
@@ -324,7 +326,8 @@ export class CatalogService {
           );
         }
 
-        const currentData = existing.itemVariationData;
+        const existingTyped = existing as { itemVariationData?: Square.CatalogItemVariation };
+        const currentData = existingTyped.itemVariationData;
         const updatedData: Square.CatalogItemVariation = {
           ...currentData,
           itemId: input.squareItemId,

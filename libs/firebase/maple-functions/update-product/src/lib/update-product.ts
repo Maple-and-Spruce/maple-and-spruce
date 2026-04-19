@@ -103,22 +103,21 @@ export const updateProduct = Functions.endpoint
 
           if (hasVariantUpdates) {
             // Map incoming variant data to existing variants by label match or index
-            variationUpdates = data.variants!
-              .map((v) => {
-                const match = existing.variants.find(
-                  (ev) => ev.label === v.label
-                );
-                if (!match?.squareVariationId) return null;
-                return {
+            const mapped: UpdateCatalogVariationInput[] = [];
+            for (const v of data.variants!) {
+              const match = existing.variants.find(
+                (ev) => ev.label === v.label
+              );
+              if (match?.squareVariationId) {
+                mapped.push({
                   squareVariationId: match.squareVariationId,
                   name: v.label,
                   priceCents: v.priceCents,
                   sku: v.sku,
-                };
-              })
-              .filter(
-                (u): u is UpdateCatalogVariationInput => u !== null
-              );
+                });
+              }
+            }
+            variationUpdates = mapped.length > 0 ? mapped : undefined;
           } else if (hasLegacyCatalogUpdate && existing.squareVariationId) {
             variationUpdates = [
               {
