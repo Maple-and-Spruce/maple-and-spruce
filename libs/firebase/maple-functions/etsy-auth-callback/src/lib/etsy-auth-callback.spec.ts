@@ -3,7 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 /**
  * Tests for etsy-auth-callback Cloud Function
  *
- * Tests the handler logic: state validation, code exchange, and shop ID fetch.
+ * Tests the handler logic: state validation, code exchange, and the
+ * shop-ID fetch (which now goes through fetchUserShopId from the etsy
+ * lib — we assert both a happy path and a "shop ID not found" path so
+ * the OAuth completes either way).
  */
 
 const mocks = vi.hoisted(() => {
@@ -11,7 +14,7 @@ const mocks = vi.hoisted(() => {
     consumeOAuthState: vi.fn(),
     updateTokenShopId: vi.fn(),
     exchangeCode: vi.fn(),
-    mockFetch: vi.fn(),
+    fetchUserShopId: vi.fn(),
     capturedHandler: null as ((...args: unknown[]) => Promise<unknown>) | null,
   };
 });
@@ -29,6 +32,7 @@ vi.mock('@maple/firebase/etsy', () => ({
   EtsyClient: class {
     oauth = { exchangeCode: mocks.exchangeCode };
   },
+  fetchUserShopId: mocks.fetchUserShopId,
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -54,10 +58,9 @@ describe('etsyAuthCallback', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal('fetch', mocks.mockFetch);
   });
 
-  it('exchanges code for tokens and fetches shop ID', async () => {
+  function tokenExchange() {
     mocks.consumeOAuthState.mockResolvedValue('verifier-123');
     mocks.exchangeCode.mockResolvedValue({
       accessToken: '99999.token',
@@ -66,13 +69,15 @@ describe('etsyAuthCallback', () => {
       shopId: '',
       userId: '99999',
     });
-    mocks.mockFetch.mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({
-        results: [{ shop_id: 12345 }],
-      }),
-    });
     mocks.updateTokenShopId.mockResolvedValue(undefined);
+  }
+
+  it('exchanges code for tokens and persists the shop ID', async () => {
+    tokenExchange();
+    mocks.fetchUserShopId.mockResolvedValue({
+      shopId: '12345',
+      status: 200,
+    });
 
     const result = await mocks.capturedHandler!(
       { code: 'auth-code', state: 'valid-state' },
@@ -86,10 +91,41 @@ describe('etsyAuthCallback', () => {
       code: 'auth-code',
       codeVerifier: 'verifier-123',
     });
+    expect(mocks.fetchUserShopId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: '99999',
+        accessToken: '99999.token',
+        apiKey: 'key',
+        sharedSecret: 'secret',
+      })
+    );
     expect(mocks.updateTokenShopId).toHaveBeenCalledWith('12345');
     expect(result).toEqual({
       success: true,
       shopId: '12345',
+      userId: '99999',
+    });
+  });
+
+  it('still succeeds when the shop-ID lookup returns null', async () => {
+    tokenExchange();
+    mocks.fetchUserShopId.mockResolvedValue({
+      shopId: null,
+      status: 200,
+      reason: 'Unrecognized response shape',
+    });
+
+    const result = await mocks.capturedHandler!(
+      { code: 'auth-code', state: 'valid-state' },
+      { uid: 'admin-1' },
+      secrets,
+      strings
+    );
+
+    expect(mocks.updateTokenShopId).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      success: true,
+      shopId: undefined,
       userId: '99999',
     });
   });
@@ -111,30 +147,5 @@ describe('etsyAuthCallback', () => {
     await expect(
       mocks.capturedHandler!({}, { uid: 'admin-1' }, secrets, strings)
     ).rejects.toThrow('Missing required parameters');
-  });
-
-  it('succeeds even if shop ID fetch fails', async () => {
-    mocks.consumeOAuthState.mockResolvedValue('verifier');
-    mocks.exchangeCode.mockResolvedValue({
-      accessToken: '99999.token',
-      refreshToken: '99999.refresh',
-      expiresAt: Date.now() + 3600000,
-      shopId: '',
-      userId: '99999',
-    });
-    mocks.mockFetch.mockRejectedValue(new Error('Network error'));
-
-    const result = await mocks.capturedHandler!(
-      { code: 'code', state: 'state' },
-      { uid: 'admin-1' },
-      secrets,
-      strings
-    );
-
-    expect(result).toEqual({
-      success: true,
-      shopId: undefined,
-      userId: '99999',
-    });
   });
 });

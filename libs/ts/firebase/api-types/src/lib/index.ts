@@ -289,6 +289,8 @@ export type {
   EtsyAuthCallbackResponse,
   GetEtsyConnectionStatusRequest,
   GetEtsyConnectionStatusResponse,
+  RefreshEtsyShopIdRequest,
+  RefreshEtsyShopIdResponse,
 } from './etsy.types';
 
 // Etsy Template types
