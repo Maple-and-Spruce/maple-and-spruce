@@ -313,6 +313,9 @@
       "@maple/firebase/maple-functions/get-etsy-connection-status": [
         "libs/firebase/maple-functions/get-etsy-connection-status/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/refresh-etsy-shop-id": [
+        "libs/firebase/maple-functions/refresh-etsy-shop-id/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-etsy-templates": [
         "libs/firebase/maple-functions/get-etsy-templates/src/index.ts"
       ],

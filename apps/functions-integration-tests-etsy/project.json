@@ -13,6 +13,7 @@
     "firebase-maple-functions-etsy-auth-url",
     "firebase-maple-functions-etsy-auth-callback",
     "firebase-maple-functions-get-etsy-connection-status",
+    "firebase-maple-functions-refresh-etsy-shop-id",
     "firebase-integration-test-utils",
     "firebase-etsy-test-mock-server"
   ],

@@ -15,6 +15,30 @@ import {
 } from '../listing-fixtures';
 import { resetOAuthState } from './etsy-oauth';
 
+/**
+ * Response-shape config for `GET /users/:userId/shops`.
+ *
+ * Defaults to the paginated `{ results: [...] }` shape, which is what
+ * the original auth-callback test suite was written against. Tests that
+ * need to exercise the top-level or failure paths can override this via
+ * POST /_mock/shops-config.
+ */
+type ShopsResponseShape = 'paginated' | 'top-level' | 'empty-results';
+interface ShopsConfig {
+  shape: ShopsResponseShape;
+  status: number;
+  shopId: number;
+}
+let shopsConfig: ShopsConfig = {
+  shape: 'paginated',
+  status: 200,
+  shopId: 22222,
+};
+
+export function resetShopsConfig(): void {
+  shopsConfig = { shape: 'paginated', status: 200, shopId: 22222 };
+}
+
 export function registerEtsyListingRoutes(server: EtsyMockServer): void {
   // GET /v3/application/listings/:listingId
   server.get('/v3/application/listings/:listingId', (req) => {
@@ -49,16 +73,40 @@ export function registerEtsyListingRoutes(server: EtsyMockServer): void {
   });
 
   // GET /v3/application/users/:userId/shops — used by etsy-auth-callback
-  // to resolve the shop ID after token exchange. Stateless; always returns
-  // a single shop owned by the user.
+  // and refreshEtsyShopId to resolve the shop ID. Shape is configurable
+  // via POST /_mock/shops-config so tests can exercise the paginated,
+  // top-level, and failure cases without restarting the server.
   server.get('/v3/application/users/:userId/shops', (req) => {
+    if (shopsConfig.status !== 200) {
+      return {
+        status: shopsConfig.status,
+        body: { error: 'mock_error', status: shopsConfig.status },
+      };
+    }
     const userId = Number(req.params['userId']);
+    if (shopsConfig.shape === 'top-level') {
+      return {
+        status: 200,
+        body: {
+          shop_id: shopsConfig.shopId,
+          user_id: userId,
+          shop_name: 'MockShop',
+        },
+      };
+    }
+    if (shopsConfig.shape === 'empty-results') {
+      return {
+        status: 200,
+        body: { count: 0, results: [] },
+      };
+    }
     return {
       status: 200,
       body: {
+        count: 1,
         results: [
           {
-            shop_id: 22222,
+            shop_id: shopsConfig.shopId,
             user_id: userId,
             shop_name: 'MockShop',
           },
@@ -101,9 +149,23 @@ export function registerEtsyListingRoutes(server: EtsyMockServer): void {
     return { status: 200, body: { ok: true, count: body.seeds.length } };
   });
 
+  server.post('/_mock/shops-config', (req) => {
+    const body = req.body as Partial<ShopsConfig> | undefined;
+    if (!body) {
+      return { status: 400, body: { error: 'Expected ShopsConfig body' } };
+    }
+    shopsConfig = {
+      shape: body.shape ?? shopsConfig.shape,
+      status: body.status ?? shopsConfig.status,
+      shopId: body.shopId ?? shopsConfig.shopId,
+    };
+    return { status: 200, body: { ok: true, config: shopsConfig } };
+  });
+
   server.post('/_mock/reset', () => {
     clearListings();
     resetOAuthState();
+    resetShopsConfig();
     return { status: 200, body: { ok: true } };
   });
 }

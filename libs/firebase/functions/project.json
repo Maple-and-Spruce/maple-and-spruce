@@ -3,27 +3,21 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/firebase/functions/src",
   "projectType": "library",
-  "tags": [
-    "scope:firebase",
-    "type:util"
-  ],
+  "tags": ["scope:firebase", "type:util"],
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*",
-      "functionsEnv"
-    ]
+    "default": ["{projectRoot}/**/*", "functionsEnv"]
   },
   "targets": {
     "build": {
-      "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/firebase/functions",
         "main": "libs/firebase/functions/src/index.ts",
         "tsConfig": "libs/firebase/functions/tsconfig.lib.json",
-        "assets": []
+        "assets": [],
+        "format": ["cjs"],
+        "generatePackageJson": true
       }
     },
     "lint": {
@@ -35,9 +29,7 @@
       "configurations": {
         "default": {}
       },
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
+      "outputs": ["{options.reportsDirectory}"],
       "options": {
         "reportsDirectory": "{projectRoot}/../../../coverage/libs/firebase/functions"
       }

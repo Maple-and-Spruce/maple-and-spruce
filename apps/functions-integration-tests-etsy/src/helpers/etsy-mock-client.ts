@@ -34,3 +34,26 @@ export async function resetMock(): Promise<void> {
     throw new Error(`Failed to reset mock: ${res.status}`);
   }
 }
+
+export interface ShopsMockConfig {
+  shape?: 'paginated' | 'top-level' | 'empty-results';
+  status?: number;
+  shopId?: number;
+}
+
+/** Control what shape `GET /users/:id/shops` returns. */
+export async function setShopsMockConfig(
+  config: ShopsMockConfig
+): Promise<void> {
+  const res = await fetch(
+    `${EMULATOR_CONFIG.etsyMockServerUrl}/_mock/shops-config`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to set shops config: ${res.status}`);
+  }
+}

@@ -28,6 +28,7 @@
     "firebase-maple-functions-etsy-auth-url": "maple-sync",
     "firebase-maple-functions-etsy-auth-callback": "maple-sync",
     "firebase-maple-functions-get-etsy-connection-status": "maple-sync",
+    "firebase-maple-functions-refresh-etsy-shop-id": "maple-sync",
     "firebase-maple-functions-list-etsy-listings": "maple-core",
     "firebase-maple-functions-import-etsy-listings": "maple-square"
   },

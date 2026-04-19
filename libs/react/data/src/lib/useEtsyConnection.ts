@@ -11,6 +11,8 @@ import type {
   EtsyAuthCallbackResponse,
   GetEtsyConnectionStatusRequest,
   GetEtsyConnectionStatusResponse,
+  RefreshEtsyShopIdRequest,
+  RefreshEtsyShopIdResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -29,6 +31,10 @@ export function useEtsyConnection() {
 
   const [callbackState, setCallbackState] = useState<
     RequestState<EtsyAuthCallbackResponse>
+  >({ status: 'idle' });
+
+  const [refreshShopIdState, setRefreshShopIdState] = useState<
+    RequestState<RefreshEtsyShopIdResponse>
   >({ status: 'idle' });
 
   const fetchConnectionStatus = useCallback(async () => {
@@ -111,6 +117,36 @@ export function useEtsyConnection() {
     [fetchConnectionStatus]
   );
 
+  const refreshShopId = useCallback(async () => {
+    setRefreshShopIdState({ status: 'loading' });
+    try {
+      const functions = getMapleFunctions();
+      const refresh = httpsCallable<
+        RefreshEtsyShopIdRequest,
+        RefreshEtsyShopIdResponse
+      >(functions, 'refreshEtsyShopId');
+
+      const result = await refresh({});
+      setRefreshShopIdState({ status: 'success', data: result.data });
+
+      // Refresh connection status so the UI picks up the new shop ID.
+      if (result.data.success) {
+        await fetchConnectionStatus();
+      }
+      return result.data;
+    } catch (error) {
+      console.error('Failed to refresh Etsy shop ID:', error);
+      setRefreshShopIdState({
+        status: 'error',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to refresh Etsy shop ID',
+      });
+      return null;
+    }
+  }, [fetchConnectionStatus]);
+
   useEffect(() => {
     fetchConnectionStatus();
   }, [fetchConnectionStatus]);
@@ -119,8 +155,10 @@ export function useEtsyConnection() {
     connectionState,
     authUrlState,
     callbackState,
+    refreshShopIdState,
     fetchConnectionStatus,
     generateAuthUrl,
     handleCallback,
+    refreshShopId,
   };
 }

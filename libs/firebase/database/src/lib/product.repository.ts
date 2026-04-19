@@ -19,7 +19,7 @@ import type {
   ProductStatus,
   SquareProductResult,
 } from '@maple/ts/domain';
-import { generateSku, isCacheStale } from '@maple/ts/domain';
+import { isCacheStale } from '@maple/ts/domain';
 
 const COLLECTION = 'products';
 

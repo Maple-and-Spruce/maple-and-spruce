@@ -51,6 +51,14 @@ export type {
   EtsyTaxonomyResponse,
 } from './lib/types/taxonomy.types.js';
 
+// Shop utilities
+export {
+  fetchUserShopId,
+  parseShopId,
+  type FetchUserShopOptions,
+  type FetchUserShopResult,
+} from './lib/shops/fetch-user-shop.js';
+
 // Common types
 export type {
   EtsyApiError,

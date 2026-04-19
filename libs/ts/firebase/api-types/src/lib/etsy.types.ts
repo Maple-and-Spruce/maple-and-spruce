@@ -58,3 +58,20 @@ export interface GetEtsyConnectionStatusResponse {
   /** When the access token expires */
   tokenExpiresAt?: number;
 }
+
+// ============================================================================
+// Refresh Etsy Shop ID
+// ============================================================================
+
+export interface RefreshEtsyShopIdRequest {}
+
+export interface RefreshEtsyShopIdResponse {
+  /** Whether the shop ID was successfully resolved and persisted. */
+  success: boolean;
+  /** The resolved shop ID on success. */
+  shopId?: string;
+  /** HTTP status from Etsy when the lookup failed at the transport level. */
+  status?: number;
+  /** Human-readable reason when success=false. */
+  error?: string;
+}

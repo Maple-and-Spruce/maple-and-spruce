@@ -21,3 +21,4 @@ export { syncInstructorToWebflow } from '@maple/firebase/maple-functions/sync-in
 export { etsyAuthUrl } from '@maple/firebase/maple-functions/etsy-auth-url';
 export { etsyAuthCallback } from '@maple/firebase/maple-functions/etsy-auth-callback';
 export { getEtsyConnectionStatus } from '@maple/firebase/maple-functions/get-etsy-connection-status';
+export { refreshEtsyShopId } from '@maple/firebase/maple-functions/refresh-etsy-shop-id';

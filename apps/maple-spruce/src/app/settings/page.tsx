@@ -10,12 +10,18 @@ import Stack from '@mui/material/Stack';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEtsyConnection } from '@maple/react/data';
 import { AppShell } from '../../components/layout';
 
 export default function SettingsPage(): React.ReactNode {
-  const { connectionState, authUrlState, generateAuthUrl } =
-    useEtsyConnection();
+  const {
+    connectionState,
+    authUrlState,
+    refreshShopIdState,
+    generateAuthUrl,
+    refreshShopId,
+  } = useEtsyConnection();
 
   const handleConnectEtsy = useCallback(async () => {
     const result = await generateAuthUrl();
@@ -28,6 +34,18 @@ export default function SettingsPage(): React.ReactNode {
     connectionState.status === 'success' && connectionState.data.connected;
   const isTokenValid =
     connectionState.status === 'success' && connectionState.data.tokenValid;
+  const storedShopId =
+    connectionState.status === 'success'
+      ? connectionState.data.shopId
+      : undefined;
+  const shopIdMissing = isConnected && !storedShopId;
+  const isRefreshingShopId = refreshShopIdState.status === 'loading';
+  const refreshError =
+    refreshShopIdState.status === 'success' && !refreshShopIdState.data.success
+      ? refreshShopIdState.data.error
+      : refreshShopIdState.status === 'error'
+        ? refreshShopIdState.error
+        : undefined;
 
   return (
     <AppShell>
@@ -73,7 +91,7 @@ export default function SettingsPage(): React.ReactNode {
             {connectionState.status === 'success' && isConnected && (
               <Stack spacing={1}>
                 <Typography variant="body2" color="text.secondary">
-                  Shop ID: {connectionState.data.shopId ?? 'Unknown'}
+                  Shop ID: {storedShopId ?? 'Unknown'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   User ID: {connectionState.data.userId ?? 'Unknown'}
@@ -81,6 +99,36 @@ export default function SettingsPage(): React.ReactNode {
                 {!isTokenValid && (
                   <Alert severity="warning">
                     Access token has expired. Click below to re-authorize.
+                  </Alert>
+                )}
+                {shopIdMissing && (
+                  <Alert
+                    severity="warning"
+                    action={
+                      <Button
+                        color="inherit"
+                        size="small"
+                        onClick={refreshShopId}
+                        disabled={isRefreshingShopId}
+                        startIcon={
+                          isRefreshingShopId ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <RefreshIcon />
+                          )
+                        }
+                      >
+                        Refresh
+                      </Button>
+                    }
+                  >
+                    Shop ID is missing. Etsy listings can't be fetched until
+                    it's resolved.
+                  </Alert>
+                )}
+                {refreshError && (
+                  <Alert severity="error">
+                    Couldn't resolve shop ID: {refreshError}
                   </Alert>
                 )}
               </Stack>
