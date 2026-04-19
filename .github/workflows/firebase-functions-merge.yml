@@ -1,4 +1,4 @@
-name: Deploy Firebase Functions on merge
+name: Deploy on merge
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy_all:
-        description: 'Deploy all functions (ignore affected check)'
+        description: 'Deploy all functions and publish webflow components (ignore affected check)'
         required: false
         default: 'false'
         type: boolean
@@ -24,6 +24,7 @@ jobs:
       has_changes: ${{ steps.get_affected.outputs.has_changes }}
       cache_key: ${{ steps.set_cache_key.outputs.key }}
       affected_codebases: ${{ steps.get_affected.outputs.affected_codebases }}
+      webflow_components_affected: ${{ steps.get_affected.outputs.webflow_components_affected }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Get affected functions
+      - name: Get affected projects
         id: get_affected
         run: |
           DEPLOY_ALL="${{ github.event.inputs.deploy_all }}"
@@ -58,14 +59,35 @@ jobs:
           MAPPING=$(cat function-codebases.json)
           DEFAULT_CODEBASE=$(echo "$MAPPING" | jq -r '.defaultCodebase')
 
-          # If deploy_all is true (manual trigger), skip affected check
+          # Compute affected projects once — shared by both the functions
+          # deploy and the webflow components publish below.
+          if [ "$DEPLOY_ALL" != "true" ]; then
+            ALL_AFFECTED=$(pnpm exec nx show projects --affected --base=${{ steps.base.outputs.commit }})
+            echo "Affected projects:"
+            echo "$ALL_AFFECTED"
+          fi
+
+          # --- webflow-components (code components library) ---
+          # Nx's project graph follows imports, so changes in e.g.
+          # libs/react/registrations transitively mark webflow-components
+          # as affected. `nx show projects` outputs a JSON array, so we
+          # parse with jq rather than substring-grepping.
+          WEBFLOW_AFFECTED=false
+          if [ "$DEPLOY_ALL" == "true" ]; then
+            WEBFLOW_AFFECTED=true
+          elif echo "$ALL_AFFECTED" | jq -e 'any(. == "webflow-components")' > /dev/null 2>&1; then
+            WEBFLOW_AFFECTED=true
+          fi
+          if [ "$WEBFLOW_AFFECTED" == "true" ]; then
+            echo "webflow-components is affected — will publish"
+          fi
+          echo "webflow_components_affected=$WEBFLOW_AFFECTED" >> $GITHUB_OUTPUT
+
+          # --- firebase functions ---
           if [ "$DEPLOY_ALL" == "true" ]; then
             echo "Manual deploy_all requested - deploying all functions"
             AFFECTED_LIBS=$(pnpm exec nx show projects | grep 'firebase-maple-functions-' || true)
           else
-            # Get all affected projects comparing to previous commit
-            ALL_AFFECTED=$(pnpm exec nx show projects --affected --base=${{ steps.base.outputs.commit }})
-
             # Check if any functions app is affected (e.g., env file changes)
             FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep -E '^functions(-calendar|-square|-sync)?$' || true)
 
@@ -189,7 +211,9 @@ jobs:
           done
 
       - name: Cache node_modules for deploy
-        if: steps.get_affected.outputs.has_changes == 'true'
+        if: >-
+          steps.get_affected.outputs.has_changes == 'true' ||
+          steps.get_affected.outputs.webflow_components_affected == 'true'
         uses: actions/cache/save@v4
         with:
           path: node_modules
@@ -274,3 +298,35 @@ jobs:
         run: |
           echo "Skipping deployment for empty function group"
           exit 0
+
+  publish_webflow_components:
+    needs: prepare_and_build
+    if: needs.prepare_and_build.outputs.webflow_components_affected == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.prepare_and_build.outputs.cache_key }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Share webflow components library
+        env:
+          WEBFLOW_WORKSPACE_API_TOKEN: ${{ secrets.WEBFLOW_WORKSPACE_API_TOKEN }}
+        run: pnpm exec webflow library share --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
