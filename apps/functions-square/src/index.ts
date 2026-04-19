@@ -27,3 +27,6 @@ export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-regis
 // Sync conflict resolution (Square catalog comparison)
 export { detectSyncConflicts } from '@maple/firebase/maple-functions/detect-sync-conflicts';
 export { resolveSyncConflict } from '@maple/firebase/maple-functions/resolve-sync-conflict';
+
+// Invoice → Square sync (Firestore trigger on invoices/{id})
+export { syncInvoiceToSquare } from '@maple/firebase/maple-functions/sync-invoice-to-square';

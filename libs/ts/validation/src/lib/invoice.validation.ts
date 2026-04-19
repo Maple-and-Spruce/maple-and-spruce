@@ -4,12 +4,12 @@
  * Vest validation for private-pay music lesson invoices. Used both by the
  * admin form and the cloud-function createInvoice/updateInvoice handlers.
  */
-import { create, test, enforce, only } from 'vest';
+import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateInvoiceInput } from '@maple/ts/domain';
 import { INVOICE_STATUSES } from '@maple/ts/domain';
 
-export const invoiceValidation = create(
-  (data: Partial<CreateInvoiceInput>, field?: string) => {
+export const invoiceValidation = staticSuite(
+  (data: Partial<CreateInvoiceInput>, field?: string | string[]) => {
     only(field);
 
     test('studentId', 'Student is required', () => {

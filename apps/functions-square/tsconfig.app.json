@@ -14,6 +14,7 @@
     "../../libs/firebase/maple-functions/cancel-registration/**/*.ts",
     "../../libs/firebase/maple-functions/detect-sync-conflicts/**/*.ts",
     "../../libs/firebase/maple-functions/resolve-sync-conflict/**/*.ts",
+    "../../libs/firebase/maple-functions/sync-invoice-to-square/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
     "../../libs/firebase/square/src/**/*.ts",
