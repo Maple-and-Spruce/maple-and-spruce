@@ -167,6 +167,23 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 ## Phase 4: Music Lessons - Epic #10
 
+### Lesson Scheduling (#279, Complete)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Lesson domain type (status incl. `rendered` for #282 forward-compat) | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
+| Lesson + LessonSeries validation (Vest) | **Complete** | `libs/ts/validation/src/lib/lesson.validation.ts` |
+| LessonRepository (CRUD + atomic series batch write) | **Complete** | `libs/firebase/database/src/lib/lesson.repository.ts` |
+| Lesson API types | **Complete** | `libs/ts/firebase/api-types/src/lib/lesson.types.ts` |
+| Lesson Cloud Functions (5) | **Complete** | `libs/firebase/maple-functions/{create,create-series,get,update,delete}-lesson*/` |
+| Lesson unit + integration tests | **Complete** | `libs/ts/{domain,validation}/src/lib/lesson*.spec.ts`, `apps/functions-integration-tests-lesson/` |
+| useLessons hook (scoped by studentId) | **Complete** | `libs/react/data/src/lib/useLessons.ts` |
+| Recurring-date generation helper + tests | **Complete** | `libs/react/lessons/src/lib/series-dates.ts` |
+| LessonList + ScheduleLessonDialog + EditLessonDialog (signals, Vest) | **Complete** | `libs/react/lessons/src/lib/` |
+| Storybook interaction tests (20) | **Complete** | `libs/react/lessons/src/lib/*.stories.tsx` |
+| Student detail page `/students/[id]` | **Complete** | `apps/maple-spruce/src/app/students/[id]/page.tsx` |
+| Student list row links to detail page | **Complete** | `StudentList.tsx` + `/students/page.tsx` |
+
 ### Student Records (#278, Complete)
 
 | Feature | Status | Location |

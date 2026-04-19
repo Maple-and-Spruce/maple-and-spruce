@@ -243,6 +243,20 @@ export type {
   DeleteStudentResponse,
 } from './student.types';
 
+// Phase 4: Music Lessons - Lesson types
+export type {
+  GetLessonsRequest,
+  GetLessonsResponse,
+  CreateLessonRequest,
+  CreateLessonResponse,
+  CreateLessonSeriesRequest,
+  CreateLessonSeriesResponse,
+  UpdateLessonRequest,
+  UpdateLessonResponse,
+  DeleteLessonRequest,
+  DeleteLessonResponse,
+} from './lesson.types';
+
 // Calendar Embed Config types
 export type {
   GetCalendarEmbedConfigRequest,

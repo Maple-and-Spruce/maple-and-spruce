@@ -119,6 +119,7 @@ export default function StudentsPage() {
         instructors={instructors}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
+        detailHrefBase="/students"
       />
 
       <StudentForm

@@ -12,3 +12,4 @@ export * from './classes';
 export * from './discounts';
 export * from './registrations';
 export * from './students';
+export * from './lessons';

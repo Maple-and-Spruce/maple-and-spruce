@@ -11,6 +11,7 @@ export { useClassCategories } from './lib/useClassCategories';
 
 // Phase 4: Music Lessons
 export { useStudents } from './lib/useStudents';
+export { useLessons, type UseLessonsOptions } from './lib/useLessons';
 
 // Phase 4.5: Calendar
 export {
