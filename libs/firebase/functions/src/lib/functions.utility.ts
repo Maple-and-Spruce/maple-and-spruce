@@ -22,6 +22,7 @@ import {
 import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'express';
 import { Role, hasRole } from './auth.utility';
+import { throwAlreadyExists, throwValidationError } from './errors.utility';
 import { getAuth } from 'firebase-admin/auth';
 import admin from 'firebase-admin';
 
@@ -50,6 +51,52 @@ export interface RuntimeOptions {
 }
 
 /**
+ * Shape of a vest (or vest-like) suite result.
+ *
+ * Validators only need to expose `isValid()` and `getErrors()` — anything
+ * that satisfies this shape works with `assertValid` and `.validating()`.
+ */
+export interface ValidationResultLike {
+  isValid(): boolean;
+  getErrors(): Record<string, string[]>;
+}
+
+/**
+ * A function that validates request data and returns a vest-style result.
+ *
+ * The parameter is `any` so vest `staticSuite(...)` instances — which type
+ * their data as `Partial<TInput>` — pass the structural check. The
+ * runtime contract is just "returns something with isValid() and
+ * getErrors()".
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ValidatorFn = (data: any) => ValidationResultLike;
+
+/**
+ * Declarative uniqueness check for a request field.
+ *
+ * Used with `.ensuringUnique()` to declare "this value must not already
+ * exist in storage" without writing imperative checks in every handler.
+ *
+ * The distributive mapped type lets TypeScript narrow the `exists`
+ * parameter to the actual field's value type — so for
+ * `{ field: 'email', ... }` on `CreateArtistRequest`, `exists` receives
+ * a `string`, not the union of every property type.
+ */
+export type UniquenessCheck<T = Record<string, unknown>> = {
+  [K in keyof T & string]: {
+    /** Field on the request data to read for uniqueness */
+    field: K;
+    /** Returns true if a record with this value already exists */
+    exists: (value: T[K]) => Promise<boolean>;
+    /** Entity name used in the default error message ("Artist", "Instructor"...) */
+    entity?: string;
+    /** Optional predicate; the check is skipped when this returns false */
+    when?: (data: T) => boolean;
+  };
+}[keyof T & string];
+
+/**
  * Options for creating a function
  */
 export interface FunctionOptions {
@@ -59,6 +106,57 @@ export interface FunctionOptions {
   requiredRole?: Role;
   /** Runtime configuration for the Cloud Function */
   runtime?: RuntimeOptions;
+  /** Run this validator on the request data before invoking the handler */
+  validator?: ValidatorFn;
+  /** Run these uniqueness checks before invoking the handler */
+  uniquenessChecks?: ReadonlyArray<UniquenessCheck>;
+}
+
+/**
+ * Throw a validation error if the result is invalid.
+ *
+ * Useful when the validation needs custom orchestration (e.g. merging
+ * existing data) that doesn't fit the declarative `.validating()` chain.
+ *
+ * @example
+ * const existing = await ArtistRepository.findById(data.id);
+ * if (!existing) throwNotFound('Artist', data.id);
+ * assertValid(artistValidation({ ...existing, ...data }));
+ */
+export function assertValid(result: ValidationResultLike): void {
+  if (!result.isValid()) {
+    throwValidationError(result.getErrors());
+  }
+}
+
+/**
+ * Run validator + uniqueness checks against request data.
+ *
+ * Exported so the policy is testable in isolation, without spinning up
+ * the Firebase Functions request machinery. The function builder calls
+ * this from `handle()` after auth/role checks pass.
+ */
+export async function runChecks(
+  data: unknown,
+  options: Pick<FunctionOptions, 'validator' | 'uniquenessChecks'>
+): Promise<void> {
+  if (options.validator) {
+    assertValid(options.validator(data));
+  }
+  for (const check of options.uniquenessChecks ?? []) {
+    const typedData = data as Record<string, unknown>;
+    if (check.when && !check.when(typedData as never)) continue;
+    const value = typedData[check.field];
+    if (value === undefined || value === null) continue;
+    const exists = await check.exists(value as never);
+    if (exists) {
+      throwAlreadyExists(
+        check.entity ?? 'Record',
+        check.field,
+        String(value)
+      );
+    }
+  }
 }
 
 /**
@@ -275,6 +373,58 @@ class FunctionBuilder<
   }
 
   /**
+   * Validate the request body before calling the handler.
+   *
+   * If `validator(data)` returns an invalid result, throws a 400 with
+   * `Validation failed: <field>: <message>; ...`. The handler never runs.
+   *
+   * @example
+   * Functions.endpoint
+   *   .requiringRole(Role.Admin)
+   *   .validating(artistValidation)
+   *   .handle<CreateArtistRequest, CreateArtistResponse>(...)
+   */
+  validating(
+    validator: ValidatorFn
+  ): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      validator,
+    });
+  }
+
+  /**
+   * Assert a request field is unique before calling the handler.
+   *
+   * Chainable — call multiple times to assert several fields. Each check
+   * runs sequentially after validation. The handler never runs if any
+   * uniqueness check finds a conflict.
+   *
+   * @example
+   * Functions.endpoint
+   *   .requiringRole(Role.Admin)
+   *   .validating(artistValidation)
+   *   .ensuringUnique<CreateArtistRequest>({
+   *     entity: 'Artist',
+   *     field: 'email',
+   *     exists: async (email) =>
+   *       (await ArtistRepository.findByEmail(email)) !== undefined,
+   *   })
+   *   .handle<CreateArtistRequest, CreateArtistResponse>(...)
+   */
+  ensuringUnique<T = Record<string, unknown>>(
+    check: UniquenessCheck<T>
+  ): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      uniquenessChecks: [
+        ...(this.options.uniquenessChecks ?? []),
+        check as UniquenessCheck,
+      ],
+    });
+  }
+
+  /**
    * Create the function with a handler
    *
    * @param handler - Function that receives request data, context, secrets, and strings
@@ -359,6 +509,9 @@ class FunctionBuilder<
 
             // Parse request data from body
             const data = (req.body?.data ?? req.body ?? {}) as TRequest;
+
+            // Run validator + uniqueness checks (no-op when neither is set)
+            await runChecks(data, this.options);
 
             // Execute handler
             const result = await handler(
