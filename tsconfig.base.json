@@ -335,6 +335,12 @@
       "@maple/firebase/maple-functions/import-etsy-listings": [
         "libs/firebase/maple-functions/import-etsy-listings/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/push-product-to-etsy": [
+        "libs/firebase/maple-functions/push-product-to-etsy/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-etsy-listing": [
+        "libs/firebase/maple-functions/update-etsy-listing/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/record-sale": [
         "libs/firebase/maple-functions/record-sale/src/index.ts"
       ],

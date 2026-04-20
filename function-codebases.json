@@ -30,7 +30,9 @@
     "firebase-maple-functions-get-etsy-connection-status": "maple-sync",
     "firebase-maple-functions-refresh-etsy-shop-id": "maple-sync",
     "firebase-maple-functions-list-etsy-listings": "maple-core",
-    "firebase-maple-functions-import-etsy-listings": "maple-square"
+    "firebase-maple-functions-import-etsy-listings": "maple-square",
+    "firebase-maple-functions-push-product-to-etsy": "maple-sync",
+    "firebase-maple-functions-update-etsy-listing": "maple-sync"
   },
   "defaultCodebase": "maple-core"
 }
