@@ -33,5 +33,10 @@ export * from './lib/teacher-payout';
 export * from './lib/calendar-event';
 export * from './lib/calendar-embed-config';
 
+// Agreements & Waivers
+export * from './lib/agreement-template';
+export * from './lib/agreement-request';
+export * from './lib/signed-agreement';
+
 // State management
 export * from './lib/request-state';

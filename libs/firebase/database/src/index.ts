@@ -50,6 +50,20 @@ export {
   type InventoryMovementFilters,
 } from './lib/inventory-movement.repository';
 
+// Agreements & Waivers
+export {
+  AgreementTemplateRepository,
+  type AgreementTemplateFilters,
+} from './lib/agreement-template.repository';
+export {
+  AgreementRequestRepository,
+  type AgreementRequestFilters,
+} from './lib/agreement-request.repository';
+export {
+  SignedAgreementRepository,
+  type SignedAgreementFilters,
+} from './lib/signed-agreement.repository';
+
 // Phase 5: Etsy
 export {
   FirestoreTokenStorage,
