@@ -33,3 +33,6 @@ export { syncInvoiceToSquare } from '@maple/firebase/maple-functions/sync-invoic
 
 // Etsy listing import (pull-only; creates Square catalog items for imported listings)
 export { importEtsyListings } from '@maple/firebase/maple-functions/import-etsy-listings';
+
+// Cross-channel inventory sync (Square)
+export { syncInventoryToSquare } from '@maple/firebase/maple-functions/sync-inventory-to-square';
