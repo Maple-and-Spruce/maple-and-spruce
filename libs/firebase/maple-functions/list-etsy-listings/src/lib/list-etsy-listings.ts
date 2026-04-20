@@ -68,7 +68,7 @@ export const listEtsyListings = Functions.endpoint
             imported: product !== undefined,
             productId: product?.id,
             variantCount,
-            isSimple: variantCount <= 1,
+            isSimple: true,
           };
         }
       );

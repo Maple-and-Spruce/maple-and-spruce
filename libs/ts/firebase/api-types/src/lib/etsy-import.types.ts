@@ -34,7 +34,10 @@ export interface EtsyListingWithSyncInfo {
   productId?: string;
   /** Number of product variants (1 for simple listings, >1 for variations) */
   variantCount: number;
-  /** Whether this is a simple single-variant listing (supported for import) */
+  /**
+   * @deprecated Always true. Multi-variant listings are now supported.
+   * Kept for backward compatibility with any cached UI state.
+   */
   isSimple: boolean;
 }
 
@@ -84,7 +87,6 @@ export interface ImportEtsyListingResult {
   /** Error code for programmatic handling */
   errorCode?:
     | 'ALREADY_IMPORTED'
-    | 'MULTI_VARIANT_NOT_SUPPORTED'
     | 'LISTING_NOT_FOUND'
     | 'SQUARE_CREATE_FAILED'
     | 'INTERNAL_ERROR';
