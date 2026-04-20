@@ -2,24 +2,29 @@
  * Square API mock routes.
  *
  * Implements the Square API endpoints used by our functions:
+ * - POST /v2/orders (create order)
  * - POST /v2/payments (create payment)
- * - POST /v2/refunds (refund payment)
  * - GET /v2/payments/:paymentId (get payment)
+ * - POST /v2/refunds (refund payment)
  * - POST /v2/catalog/batch-upsert (create/update catalog items)
  * - GET /v2/catalog/object/:objectId (get catalog item)
  * - DELETE /v2/catalog/object/:objectId (delete catalog item)
+ * - POST /v2/catalog/images (upload catalog image)
+ * - POST /v2/inventory/changes/batch-create (set/adjust inventory)
  */
-import { MockServer } from '../mock-server.js';
+import { SquareMockServer } from '../square-mock-server';
 
 let orderCounter = 0;
 let paymentCounter = 0;
 let refundCounter = 0;
 let catalogCounter = 0;
+let imageCounter = 0;
+let inventoryChangeCounter = 0;
 
 /** In-memory store of created payments for get/refund lookups */
 const payments = new Map<string, Record<string, unknown>>();
 
-export function registerSquareRoutes(server: MockServer): void {
+export function registerSquareRoutes(server: SquareMockServer): void {
   // Create order (required before payment in registration flow)
   server.post('/v2/orders', (req) => {
     const body = req.body as Record<string, unknown>;
@@ -134,7 +139,7 @@ export function registerSquareRoutes(server: MockServer): void {
     const mappings: Array<Record<string, string>> = [];
     const resolvedObjects: Array<Record<string, unknown>> = [];
 
-    // Build a map of client temp ID → server ID so nested references resolve.
+    // Build a map of client temp ID -> server ID so nested references resolve.
     // The SDK serializes to snake_case, so item_data and variations use
     // snake_case keys in the request body.
     const idMap = new Map<string, string>();
@@ -173,9 +178,6 @@ export function registerSquareRoutes(server: MockServer): void {
     }
 
     // Build resolved objects with server IDs, preserving nested structure.
-    // The Square SDK serializes request bodies to snake_case and parses
-    // responses from snake_case, so both the incoming keys and our response
-    // keys use snake_case (e.g., item_data, not itemData).
     for (const batch of batches) {
       const objects =
         (batch['objects'] as Array<Record<string, unknown>>) ?? [];
@@ -200,7 +202,6 @@ export function registerSquareRoutes(server: MockServer): void {
             };
           });
           resolved['item_data'] = { ...itemData, variations };
-          // Remove camelCase key if present (shouldn't be, but defensive)
           delete resolved['itemData'];
         }
         resolvedObjects.push(resolved);
@@ -244,6 +245,70 @@ export function registerSquareRoutes(server: MockServer): void {
       },
     };
   });
+
+  // Upload catalog image
+  // Square SDK sends multipart/form-data to POST /v2/catalog/images.
+  // The mock ignores the multipart body and returns a canned image response.
+  server.post('/v2/catalog/images', () => {
+    imageCounter++;
+    const imageId = `mock-image-${imageCounter}`;
+
+    return {
+      status: 200,
+      body: {
+        image: {
+          type: 'IMAGE',
+          id: imageId,
+          image_data: {
+            name: `mock-image-${imageCounter}.jpg`,
+            url: `https://square-mock.example.com/images/${imageId}.jpg`,
+          },
+        },
+      },
+    };
+  });
+
+  // Batch create inventory changes
+  // Square SDK sends POST to /v2/inventory/changes/batch-create
+  server.post('/v2/inventory/changes/batch-create', (req) => {
+    const body = req.body as Record<string, unknown>;
+    const changes = (body['changes'] as Array<Record<string, unknown>>) ?? [];
+    inventoryChangeCounter++;
+
+    const counts = changes.map((change) => {
+      const physicalCount = change['physical_count'] as Record<string, unknown> | undefined;
+      const adjustment = change['adjustment'] as Record<string, unknown> | undefined;
+
+      if (physicalCount) {
+        return {
+          catalog_object_id: physicalCount['catalog_object_id'],
+          catalog_object_type: 'ITEM_VARIATION',
+          location_id: physicalCount['location_id'],
+          quantity: physicalCount['quantity'],
+          state: physicalCount['state'] ?? 'IN_STOCK',
+          calculated_at: new Date().toISOString(),
+        };
+      }
+
+      if (adjustment) {
+        return {
+          catalog_object_id: adjustment['catalog_object_id'],
+          catalog_object_type: 'ITEM_VARIATION',
+          location_id: adjustment['location_id'],
+          quantity: adjustment['quantity'],
+          state: adjustment['to_state'] ?? 'IN_STOCK',
+          calculated_at: new Date().toISOString(),
+        };
+      }
+
+      return {};
+    });
+
+    return {
+      status: 200,
+      body: { counts },
+    };
+  });
 }
 
 /**
@@ -254,5 +319,7 @@ export function resetSquareState(): void {
   paymentCounter = 0;
   refundCounter = 0;
   catalogCounter = 0;
+  imageCounter = 0;
+  inventoryChangeCounter = 0;
   payments.clear();
 }
