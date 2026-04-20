@@ -8,22 +8,34 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import SendIcon from '@mui/icons-material/Send';
-import type { AgreementTemplate } from '@maple/ts/domain';
+import type {
+  AgreementTemplate,
+  AgreementSection,
+  CreateAgreementTemplateInput,
+} from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   AgreementTemplateList,
+  AgreementTemplateForm,
   AgreementRequestList,
   SendAgreementDialog,
 } from '@maple/react/agreements';
 import { AppShell } from '../../components/layout';
-import { useAgreementTemplates, useAgreementRequests } from '../../hooks';
+import {
+  useAgreementTemplates,
+  useAgreementRequests,
+  useClassCategories,
+} from '../../hooks';
 
 export default function AgreementsPage() {
   const [tab, setTab] = useState(0);
 
   const {
     templatesState,
+    createTemplate,
+    updateTemplate,
     deleteTemplate: deleteTemplateApi,
   } = useAgreementTemplates();
 
@@ -32,6 +44,15 @@ export default function AgreementsPage() {
     sendRequest,
     resendRequest,
   } = useAgreementRequests();
+
+  const { categoriesState: classCategoriesState } = useClassCategories();
+
+  // Template form dialog state
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<
+    AgreementTemplate | undefined
+  >();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Send dialog state
   const [isSendOpen, setIsSendOpen] = useState(false);
@@ -44,6 +65,43 @@ export default function AgreementsPage() {
 
   // Resend state
   const [isResending, setIsResending] = useState(false);
+
+  const handleOpenForm = useCallback((template?: AgreementTemplate) => {
+    setEditingTemplate(template);
+    setIsFormOpen(true);
+  }, []);
+
+  const handleCloseForm = useCallback(() => {
+    setIsFormOpen(false);
+    setEditingTemplate(undefined);
+  }, []);
+
+  const handleSubmitForm = useCallback(
+    async (data: {
+      name: string;
+      description?: string;
+      sections: AgreementSection[];
+      classCategoryIds: string[];
+      autoAttach: boolean;
+      supportsMinor: boolean;
+    }) => {
+      setIsSubmitting(true);
+      try {
+        if (editingTemplate) {
+          await updateTemplate({ id: editingTemplate.id, ...data });
+        } else {
+          await createTemplate(data as CreateAgreementTemplateInput);
+        }
+        handleCloseForm();
+      } catch (error) {
+        console.error('Failed to save template:', error);
+        throw error;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [editingTemplate, handleCloseForm, createTemplate, updateTemplate]
+  );
 
   const handleSendWaiver = useCallback(
     async (data: {
@@ -92,13 +150,12 @@ export default function AgreementsPage() {
     }
   }, [templateToDelete, deleteTemplateApi]);
 
-  const handleEditTemplate = useCallback((_template: AgreementTemplate) => {
-    // TODO: Open template editor dialog (Phase 4 enhancement)
-    console.log('Edit template:', _template.id);
-  }, []);
-
   const templates =
     templatesState.status === 'success' ? templatesState.data : [];
+  const classCategories =
+    classCategoriesState.status === 'success'
+      ? classCategoriesState.data
+      : [];
 
   return (
     <AppShell>
@@ -114,6 +171,15 @@ export default function AgreementsPage() {
           Agreements & Waivers
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {tab === 0 && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenForm()}
+            >
+              New Template
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<SendIcon />}
@@ -136,7 +202,7 @@ export default function AgreementsPage() {
       {tab === 0 && (
         <AgreementTemplateList
           templatesState={templatesState}
-          onEdit={handleEditTemplate}
+          onEdit={handleOpenForm}
           onDelete={setTemplateToDelete}
         />
       )}
@@ -148,6 +214,15 @@ export default function AgreementsPage() {
           isResending={isResending}
         />
       )}
+
+      <AgreementTemplateForm
+        open={isFormOpen}
+        onClose={handleCloseForm}
+        onSubmit={handleSubmitForm}
+        template={editingTemplate}
+        classCategories={classCategories}
+        isSubmitting={isSubmitting}
+      />
 
       <SendAgreementDialog
         open={isSendOpen}
