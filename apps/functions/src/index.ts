@@ -140,6 +140,26 @@ export { getRegistration } from '@maple/firebase/maple-functions/get-registratio
 export { updateRegistration } from '@maple/firebase/maple-functions/update-registration';
 export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calculate-registration-cost';
 
+// Agreement template functions
+export { getAgreementTemplates } from '@maple/firebase/maple-functions/get-agreement-templates';
+export { getAgreementTemplate } from '@maple/firebase/maple-functions/get-agreement-template';
+export { createAgreementTemplate } from '@maple/firebase/maple-functions/create-agreement-template';
+export { updateAgreementTemplate } from '@maple/firebase/maple-functions/update-agreement-template';
+export { deleteAgreementTemplate } from '@maple/firebase/maple-functions/delete-agreement-template';
+
+// Agreement request functions
+export { getAgreementRequests } from '@maple/firebase/maple-functions/get-agreement-requests';
+export { sendAgreementRequest } from '@maple/firebase/maple-functions/send-agreement-request';
+export { resendAgreementRequest } from '@maple/firebase/maple-functions/resend-agreement-request';
+
+// Signed agreement functions
+export { getSignedAgreements } from '@maple/firebase/maple-functions/get-signed-agreements';
+export { getSignedAgreement } from '@maple/firebase/maple-functions/get-signed-agreement';
+
+// Public signing functions (no auth required)
+export { getAgreementForSigning } from '@maple/firebase/maple-functions/get-agreement-for-signing';
+export { submitSignedAgreement } from '@maple/firebase/maple-functions/submit-signed-agreement';
+
 // Etsy template functions (read/write Firestore only — no Etsy API dep)
 export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';
 export { saveEtsyCategoryTemplate } from '@maple/firebase/maple-functions/save-etsy-category-template';
@@ -151,3 +171,8 @@ export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-list
 // Phase 5: Sales tracking
 export { recordSale } from '@maple/firebase/maple-functions/record-sale';
 export { getSales } from '@maple/firebase/maple-functions/get-sales';
+
+// Phase 5: Artist payouts (#313)
+export { generatePayout } from '@maple/firebase/maple-functions/generate-payout';
+export { markPayoutPaid } from '@maple/firebase/maple-functions/mark-payout-paid';
+export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';
