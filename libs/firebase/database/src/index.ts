@@ -50,6 +50,13 @@ export {
   type InventoryMovementFilters,
 } from './lib/inventory-movement.repository';
 
+// Phase 5: Payouts
+export {
+  PayoutRepository,
+  type PayoutFilters,
+  type CreatePayoutInput,
+} from './lib/payout.repository';
+
 // Agreements & Waivers
 export {
   AgreementTemplateRepository,
