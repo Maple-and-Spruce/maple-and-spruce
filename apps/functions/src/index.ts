@@ -160,6 +160,9 @@ export { getSignedAgreement } from '@maple/firebase/maple-functions/get-signed-a
 export { getAgreementForSigning } from '@maple/firebase/maple-functions/get-agreement-for-signing';
 export { submitSignedAgreement } from '@maple/firebase/maple-functions/submit-signed-agreement';
 
+// Agreement scheduled functions
+export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-agreement-requests';
+
 // Etsy template functions (read/write Firestore only — no Etsy API dep)
 export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';
 export { saveEtsyCategoryTemplate } from '@maple/firebase/maple-functions/save-etsy-category-template';

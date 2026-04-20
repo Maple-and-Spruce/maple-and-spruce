@@ -5,12 +5,9 @@
  *   Etsy listing fetch (mocked) → Square catalog create (mocked)
  *   → Firestore Product + etsyCache + etsy-imports snapshot.
  *
- * Scope caveat: the monolithic mock server doesn't currently implement
- * Square's /v2/inventory/changes or /v2/catalog/images endpoints. Until
- * those land (tracked by the mock-server-split issue), these tests seed
- * listings with quantity=0 and no images so the import skips the
- * best-effort inventory + image-copy paths. Unit tests cover those paths
- * via vi.mock() on the Square services directly.
+ * The per-service Square mock server provides /v2/inventory/changes/batch-create
+ * and /v2/catalog/images endpoints, so tests exercise inventory + image-copy
+ * paths end-to-end.
  */
 import {
   createTestUser,
@@ -19,6 +16,7 @@ import {
   setFirestoreDoc,
   getFirestoreDoc,
   callFunction,
+  EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import {
@@ -193,8 +191,8 @@ describe('importEtsyListings', () => {
         priceDivisor: 100,
         taxonomy_id: 99,
         tags: ['pottery', 'gift'],
-        quantity: 0, // avoid hitting inventory endpoint (not in monolith mock)
-        imageUrls: [], // avoid hitting image endpoint (not in monolith mock)
+        quantity: 0,
+        imageUrls: [],
         productSkus: ['etsy-sku-9200'],
       }),
     ]);
@@ -245,6 +243,60 @@ describe('importEtsyListings', () => {
     expect(snapshot!.listingId).toBe('9200');
     expect(snapshot!.importedBy).toBe(adminUser.uid);
     expect(snapshot!.variantCount).toBe(1);
+  });
+
+  it('imports a listing with inventory and images (exercises Square inventory + image endpoints)', async () => {
+    // Use mock image URL that the Etsy mock server serves at /mock-images/:name
+    const mockImageUrl = `${EMULATOR_CONFIG.etsyMockServerUrl}/mock-images/pottery-bowl.jpg`;
+
+    await setMockListings([
+      makeListing({
+        listing_id: 9300,
+        title: 'Handmade Pottery Bowl',
+        description: 'A beautiful stoneware bowl',
+        priceAmount: 4800,
+        priceDivisor: 100,
+        taxonomy_id: 42,
+        tags: ['pottery', 'stoneware', 'bowl'],
+        quantity: 5,
+        imageUrls: [mockImageUrl],
+        productSkus: ['etsy-sku-9300'],
+      }),
+    ]);
+
+    const result = await callFunction<
+      ImportEtsyListingsRequest,
+      ImportEtsyListingsResponse
+    >({
+      functionName: 'importEtsyListings',
+      data: {
+        listings: [{ listingId: '9300' }],
+        artistId: 'artist-inventory',
+        categoryId: 'cat-pottery',
+        status: 'active',
+      },
+      idToken: adminUser.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data!.successCount).toBe(1);
+    const row = result.data!.results[0];
+    expect(row.success).toBe(true);
+    const productId = row.productId!;
+    expect(productId).toBeTruthy();
+
+    // Firestore product exists with correct data
+    const product = await getFirestoreDoc('products', productId);
+    expect(product).not.toBeNull();
+    expect(product!.etsyListingId).toBe('9300');
+    expect(product!.artistId).toBe('artist-inventory');
+    expect(product!.status).toBe('active');
+
+    // etsyCache reflects the inventory quantity
+    const etsyCache = product!.etsyCache as Record<string, unknown>;
+    expect(etsyCache.title).toBe('Handmade Pottery Bowl');
+    expect(etsyCache.priceCents).toBe(4800);
+    expect(etsyCache.quantity).toBe(5);
   });
 
   it('reports LISTING_NOT_FOUND when Etsy returns 404', async () => {
