@@ -1,15 +1,10 @@
 /**
  * Payout API request/response types
  *
- * Types for Firebase Cloud Function calls related to payouts.
+ * Types for Firebase Cloud Function calls related to artist payouts.
  * These are shared between client and server for type-safe API calls.
  */
-import type {
-  Payout,
-  PayoutSummary,
-  GeneratePayoutInput,
-  PayoutStatus,
-} from '@maple/ts/domain';
+import type { Payout, PayoutStatus } from '@maple/ts/domain';
 
 // ============================================================================
 // Get Payouts
@@ -23,7 +18,7 @@ export interface GetPayoutsRequest {
 }
 
 export interface GetPayoutsResponse {
-  payouts: PayoutSummary[];
+  payouts: Payout[];
 }
 
 // ============================================================================
@@ -42,7 +37,13 @@ export interface GetPayoutResponse {
 // Generate Payout
 // ============================================================================
 
-export interface GeneratePayoutRequest extends GeneratePayoutInput {}
+export interface GeneratePayoutRequest {
+  artistId: string;
+  /** ISO date string */
+  periodStart: string;
+  /** ISO date string */
+  periodEnd: string;
+}
 
 export interface GeneratePayoutResponse {
   payout: Payout;
@@ -56,7 +57,13 @@ export interface GeneratePayoutResponse {
  * Preview what a payout would look like without creating it.
  * Useful for showing totals before committing.
  */
-export interface PreviewPayoutRequest extends GeneratePayoutInput {}
+export interface PreviewPayoutRequest {
+  artistId: string;
+  /** ISO date string */
+  periodStart: string;
+  /** ISO date string */
+  periodEnd: string;
+}
 
 export interface PreviewPayoutResponse {
   /** Total sales amount */
@@ -66,7 +73,7 @@ export interface PreviewPayoutResponse {
   /** Amount owed to artist */
   amountOwed: number;
   /** Number of items */
-  itemCount: number;
+  saleCount: number;
   /** IDs of sales that would be included */
   saleIds: string[];
 }
@@ -76,8 +83,11 @@ export interface PreviewPayoutResponse {
 // ============================================================================
 
 export interface MarkPayoutPaidRequest {
-  id: string;
-  notes?: string;
+  payoutId: string;
+  /** How the artist was paid (e.g., "check", "venmo", "cash") */
+  paymentMethod: string;
+  /** Reference number or note for the payment */
+  paymentReference?: string;
 }
 
 export interface MarkPayoutPaidResponse {

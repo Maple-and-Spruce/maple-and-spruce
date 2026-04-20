@@ -61,6 +61,11 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `recordSale` — manually record a product sale with automatic commission calculation, inventory movement, and quantity decrement
 - `getSales` — retrieve sales with optional filters (artistId, source, date range)
 
+### Artist Payouts (Phase 5, #313)
+- `generatePayout` — aggregates unpaid sales for an artist over a date range, creates a Payout record, marks each sale with the payoutId
+- `markPayoutPaid` — marks a pending payout as paid with payment method and optional reference
+- `getPayouts` — retrieves artist payouts with optional filters (artistId, status)
+
 ### Auth
 - `checkAdminStatus`
 

@@ -33,6 +33,12 @@ export {
 } from './lib/useEtsyListings';
 export { useEtsyImport } from './lib/useEtsyImport';
 
+// Phase 5: Artist Payouts
+export {
+  useArtistPayouts,
+  type UseArtistPayoutsOptions,
+} from './lib/useArtistPayouts';
+
 // Phase 3c: Registration & Discounts
 export {
   useDiscounts,

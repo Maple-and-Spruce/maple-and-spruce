@@ -347,6 +347,15 @@
       "@maple/firebase/maple-functions/get-sales": [
         "libs/firebase/maple-functions/get-sales/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/generate-payout": [
+        "libs/firebase/maple-functions/generate-payout/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/mark-payout-paid": [
+        "libs/firebase/maple-functions/mark-payout-paid/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-payouts": [
+        "libs/firebase/maple-functions/get-payouts/src/index.ts"
+      ],
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],

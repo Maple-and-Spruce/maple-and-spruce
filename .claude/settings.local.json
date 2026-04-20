@@ -177,7 +177,9 @@
       "Bash(git -C /Users/davidmccoy/GitHub/maple-and-spruce worktree list)",
       "Bash(sort -t'|' -k2 -n)",
       "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); if \\($2+0 < 60 && $2+0 > 0\\) print}')",
-      "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $6\\); if \\($2+0 < 70 && $2+0 > 0\\) print $6, $2\"%\", $0}')"
+      "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $6\\); if \\($2+0 < 70 && $2+0 > 0\\) print $6, $2\"%\", $0}')",
+      "Bash(git worktree:*)",
+      "Bash(git branch:*)"
     ]
   }
 }

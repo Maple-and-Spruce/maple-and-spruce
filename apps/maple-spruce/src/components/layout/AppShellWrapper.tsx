@@ -12,6 +12,7 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TuneIcon from '@mui/icons-material/Tune';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
@@ -55,6 +56,11 @@ export function AppShellWrapper({
             icon: <CategoryIcon />,
           },
           { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
+          {
+            label: 'Artist Payouts',
+            href: '/payouts/artist-payouts',
+            icon: <AccountBalanceWalletIcon />,
+          },
           {
             label: 'Sync',
             href: '/sync-conflicts',
