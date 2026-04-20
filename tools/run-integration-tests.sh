@@ -87,6 +87,10 @@ printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake
 # ---------------------------------------------------------------------------
 # 4. Start per-service mock HTTP servers (Square, Webflow, Etsy)
 # ---------------------------------------------------------------------------
+# Pre-warm npx tsx cache to avoid race condition when parallel invocations
+# try to download tsx simultaneously
+npx tsx --version >/dev/null 2>&1
+
 echo "Starting Square mock server on :$SQUARE_MOCK_SERVER_PORT..."
 SQUARE_MOCK_SERVER_PORT="$SQUARE_MOCK_SERVER_PORT" npx tsx libs/firebase/square-test-mock-server/start.ts &
 SQUARE_MOCK_PID=$!
