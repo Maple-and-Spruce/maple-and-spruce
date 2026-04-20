@@ -11,8 +11,9 @@
  * 6. Create Square Order with tax line item
  * 7. Process Square payment against the order
  * 8. Create registration record
- * 9. Write to `mail` collection for confirmation email
- * 10. Return registration + confirmation number
+ * 9. Auto-attach agreement/waiver requests for matching class category
+ * 10. Write to `mail` collection for confirmation email (with waiver link if applicable)
+ * 11. Return registration + confirmation number
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
@@ -21,6 +22,8 @@ import {
   ClassRepository,
   DiscountRepository,
   RegistrationRepository,
+  AgreementTemplateRepository,
+  AgreementRequestRepository,
   getDb,
 } from '@maple/firebase/database';
 import {
@@ -57,9 +60,18 @@ function generateConfirmationNumber(): string {
   return `MS-${code}`;
 }
 
+/**
+ * Extract the first HTTPS origin from ALLOWED_ORIGINS for signing URLs.
+ */
+function getAppUrl(allowedOrigins: string): string {
+  const origins = allowedOrigins.split(',').map((o) => o.trim());
+  const httpsOrigin = origins.find((o) => o.startsWith('https://'));
+  return httpsOrigin ?? origins[0] ?? 'http://localhost:3000';
+}
+
 export const createRegistration = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
-  .usingStrings(...SQUARE_STRING_NAMES)
+  .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
   .handle<CreateRegistrationRequest, CreateRegistrationResponse>(
     async (data, _context, secrets, strings) => {
       // 1. Validate input
@@ -250,7 +262,53 @@ export const createRegistration = Functions.endpoint
         );
       }
 
-      // 8. Write to mail collection for confirmation email
+      // 8. Auto-attach agreement/waiver requests for this class category
+      let waiverUrl: string | undefined;
+      try {
+        if (classEntity.categoryId) {
+          const templates =
+            await AgreementTemplateRepository.findAutoAttachForCategory(
+              classEntity.categoryId
+            );
+
+          if (templates.length > 0) {
+            const appUrl = getAppUrl(strings.ALLOWED_ORIGINS);
+
+            for (const template of templates) {
+              const signingToken = randomBytes(32).toString('hex');
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + 30);
+
+              await AgreementRequestRepository.create({
+                templateId: template.id,
+                templateVersion: template.version,
+                signerEmail: data.customerEmail,
+                signerName: data.customerName,
+                signerPhone: data.customerPhone,
+                deliveryMethod: 'registration',
+                registrationId: registrationDocRef.id,
+                classId: data.classId,
+                signingToken,
+                expiresAt,
+                status: 'pending',
+              });
+
+              // Use the first template's signing URL for the confirmation email
+              if (!waiverUrl) {
+                waiverUrl = `${appUrl}/sign/${signingToken}`;
+              }
+            }
+          }
+        }
+      } catch (agreementError) {
+        // Don't fail the registration if agreement creation fails
+        console.error(
+          'Failed to create agreement requests:',
+          agreementError
+        );
+      }
+
+      // 9. Write to mail collection for confirmation email
       try {
         const formatCurrency = (cents: number): string =>
           `$${(cents / 100).toFixed(2)}`;
@@ -287,6 +345,7 @@ export const createRegistration = Functions.endpoint
                 : squareReceiptUrl,
               materialsIncluded: classEntity.materialsIncluded,
               whatToBring: classEntity.whatToBring,
+              waiverUrl,
             },
           },
         });
@@ -295,7 +354,7 @@ export const createRegistration = Functions.endpoint
         console.error('Failed to queue confirmation email:', emailError);
       }
 
-      // 9. Fetch and return the final registration
+      // 11. Fetch and return the final registration
       const registration = await RegistrationRepository.findById(
         registrationDocRef.id
       );
