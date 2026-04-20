@@ -10,6 +10,17 @@ import {
   onConfigUpdate,
 } from '@maple/ts/firebase/firebase-config';
 
+function activateConfig(
+  setReady: (v: boolean) => void,
+  setTick: React.Dispatch<React.SetStateAction<number>>,
+): void {
+  const rc = getMapleRemoteConfig();
+  fetchAndActivate(rc).then(() => {
+    setReady(true);
+    setTick((t) => t + 1);
+  });
+}
+
 /**
  * Hook that fetches Remote Config on mount and subscribes to real-time updates.
  * Returns helpers to read flag values — they always reflect the latest activated config.
@@ -21,24 +32,16 @@ import {
  */
 export function useFeatureFlags() {
   const [ready, setReady] = useState(false);
-  // Increment to force re-render when remote values change
   const [, setTick] = useState(0);
 
   useEffect(() => {
     const rc = getMapleRemoteConfig();
-
-    fetchAndActivate(rc).then(() => setReady(true));
+    activateConfig(setReady, setTick);
 
     const unsubscribe = onConfigUpdate(rc, {
-      next: () => {
-        fetchAndActivate(rc).then(() => setTick((t) => t + 1));
-      },
-      error: () => {
-        /* config update stream error — will retry on next interval */
-      },
-      complete: () => {
-        /* no-op */
-      },
+      next: () => activateConfig(setReady, setTick),
+      error: () => undefined,
+      complete: () => undefined,
     });
 
     return () => {
