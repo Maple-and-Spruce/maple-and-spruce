@@ -151,3 +151,8 @@ export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-list
 // Phase 5: Sales tracking
 export { recordSale } from '@maple/firebase/maple-functions/record-sale';
 export { getSales } from '@maple/firebase/maple-functions/get-sales';
+
+// Phase 5: Artist payouts (#313)
+export { generatePayout } from '@maple/firebase/maple-functions/generate-payout';
+export { markPayoutPaid } from '@maple/firebase/maple-functions/mark-payout-paid';
+export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';

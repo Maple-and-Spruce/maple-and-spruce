@@ -127,6 +127,21 @@ export const SaleRepository = {
     return docToSale(snapshot.docs[0]);
   },
 
+  async updatePayoutId(saleId: string, payoutId: string): Promise<void> {
+    await db.collection(COLLECTION).doc(saleId).update({ payoutId });
+  },
+
+  async findUnpaidByArtist(
+    artistId: string,
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<Sale[]> {
+    // Firestore doesn't support "field is null" queries well,
+    // so we fetch all sales for the artist in range and filter in memory.
+    const sales = await this.findAll({ artistId, dateFrom, dateTo });
+    return sales.filter((s) => !s.payoutId);
+  },
+
   async findByEtsyReceiptId(
     etsyReceiptId: string
   ): Promise<Sale | undefined> {

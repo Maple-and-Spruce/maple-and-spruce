@@ -13,5 +13,6 @@ export {
   useDiscounts,
   useRegistrations,
   useCalendarEvents,
+  useArtistPayouts,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
