@@ -1,11 +1,9 @@
 /**
- * Mock HTTP server for external API dependencies.
+ * Standalone Webflow mock HTTP server.
  *
- * Intercepts Square and Webflow API calls during integration tests
- * by running a local Express server that the SDK clients are pointed
- * at via SQUARE_BASE_URL and WEBFLOW_BASE_URL env vars.
- *
- * Provides request recording so tests can assert on what was sent.
+ * Serves Webflow CMS API responses for integration tests. Independent from
+ * other mock servers so Webflow-related tests can iterate without coupling
+ * to Square/Etsy concerns.
  */
 import http from 'http';
 
@@ -23,7 +21,9 @@ interface RouteHandler {
   pattern: string;
   handler: (
     req: ParsedRequest
-  ) => { status: number; body: unknown } | Promise<{ status: number; body: unknown }>;
+  ) =>
+    | { status: number; body: unknown }
+    | Promise<{ status: number; body: unknown }>;
 }
 
 interface ParsedRequest {
@@ -34,14 +34,11 @@ interface ParsedRequest {
   headers: Record<string, string | string[] | undefined>;
 }
 
-export class MockServer {
+export class WebflowMockServer {
   private server: http.Server | null = null;
   private routes: RouteHandler[] = [];
   private _requests: RecordedRequest[] = [];
 
-  /**
-   * Register a route handler.
-   */
   route(
     method: string,
     pattern: string,
@@ -71,30 +68,20 @@ export class MockServer {
     return this.route('DELETE', pattern, handler);
   }
 
-  /**
-   * All recorded requests since last reset.
-   */
+  /** All recorded requests since last reset. */
   get requests(): readonly RecordedRequest[] {
     return this._requests;
   }
 
-  /**
-   * Get requests matching a path pattern.
-   */
+  /** Get requests matching a path prefix. */
   getRequests(pathPrefix: string): RecordedRequest[] {
     return this._requests.filter((r) => r.path.startsWith(pathPrefix));
   }
 
-  /**
-   * Clear recorded requests.
-   */
   clearRequests(): void {
     this._requests = [];
   }
 
-  /**
-   * Start the server on the given port.
-   */
   async start(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server = http.createServer(async (req, res) => {
@@ -102,7 +89,6 @@ export class MockServer {
         const method = req.method?.toUpperCase() ?? 'GET';
         const path = req.url ?? '/';
 
-        // Record the request
         this._requests.push({
           method,
           path,
@@ -111,15 +97,16 @@ export class MockServer {
           timestamp: new Date(),
         });
 
-        // Find matching route
+        const cleanPath = path.split('?')[0];
+
         for (const route of this.routes) {
           if (route.method !== method) continue;
-          const params = matchPattern(route.pattern, path);
+          const params = matchPattern(route.pattern, cleanPath);
           if (params !== null) {
             try {
               const result = await route.handler({
                 method,
-                path,
+                path: cleanPath,
                 params,
                 body,
                 headers: req.headers,
@@ -140,11 +127,10 @@ export class MockServer {
           }
         }
 
-        // No route matched — return 404 with helpful info
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({
-            error: 'Mock server: no route matched',
+            error: 'Webflow mock server: no route matched',
             method,
             path,
           })
@@ -156,9 +142,6 @@ export class MockServer {
     });
   }
 
-  /**
-   * Stop the server.
-   */
   async stop(): Promise<void> {
     return new Promise((resolve) => {
       if (this.server) {
@@ -170,9 +153,6 @@ export class MockServer {
   }
 }
 
-/**
- * Read request body as JSON or string.
- */
 function readBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
@@ -192,19 +172,12 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
   });
 }
 
-/**
- * Match a URL path against a pattern with :param placeholders.
- * Returns params object if match, null otherwise.
- *
- * Strips query string before matching.
- */
 function matchPattern(
   pattern: string,
-  path: string
+  pathname: string
 ): Record<string, string> | null {
-  const cleanPath = path.split('?')[0];
   const patternParts = pattern.split('/');
-  const pathParts = cleanPath.split('/');
+  const pathParts = pathname.split('/');
 
   if (patternParts.length !== pathParts.length) return null;
 
