@@ -26,3 +26,7 @@ export { refreshEtsyShopId } from '@maple/firebase/maple-functions/refresh-etsy-
 // Etsy push (catalog → Etsy)
 export { pushProductToEtsy } from '@maple/firebase/maple-functions/push-product-to-etsy';
 export { updateEtsyListing } from '@maple/firebase/maple-functions/update-etsy-listing';
+
+// Etsy order polling + inventory sync
+export { pollEtsyOrders } from '@maple/firebase/maple-functions/poll-etsy-orders';
+export { syncInventoryToEtsy } from '@maple/firebase/maple-functions/sync-inventory-to-etsy';
