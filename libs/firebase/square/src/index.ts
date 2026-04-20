@@ -10,10 +10,12 @@ export {
 // Catalog service
 export {
   CatalogService,
+  type CatalogVariationInput,
   type CreateCatalogItemInput,
   type CreateCatalogItemResult,
   type UpdateCatalogItemInput,
   type UpdateCatalogItemResult,
+  type UpdateCatalogVariationInput,
   type UploadCatalogImageInput,
   type UploadCatalogImageResult,
 } from './lib/catalog.service';
