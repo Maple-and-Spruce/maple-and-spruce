@@ -350,8 +350,11 @@
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],
-      "@maple/firebase/integration-test-mock-server": [
-        "libs/firebase/integration-test-mock-server/src/index.ts"
+      "@maple/firebase/square-test-mock-server": [
+        "libs/firebase/square-test-mock-server/src/index.ts"
+      ],
+      "@maple/firebase/webflow-test-mock-server": [
+        "libs/firebase/webflow-test-mock-server/src/index.ts"
       ],
       "@maple/firebase/etsy-test-mock-server": [
         "libs/firebase/etsy-test-mock-server/src/index.ts"

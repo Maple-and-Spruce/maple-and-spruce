@@ -122,7 +122,7 @@ export const updateClass = createAdminFunction<Req, Res>(async (data) => {
 
 - Run locally: `./tools/run-integration-tests.sh` (all suites) or `./tools/run-integration-tests.sh square` (one suite)
 - Test suites: `apps/functions-integration-tests-{artist,class,instructor,category,discount,calendar,registration,utility,square}/`
-- Mock server: `libs/firebase/integration-test-mock-server/` — intercepts Square and Webflow SDK calls via `SQUARE_BASE_URL` / `WEBFLOW_BASE_URL` env vars
+- Mock servers: `libs/firebase/{square,webflow,etsy}-test-mock-server/` — per-service mock HTTP servers intercepting SDK calls via `SQUARE_BASE_URL` / `WEBFLOW_BASE_URL` / `ETSY_API_BASE` env vars
 - Test utilities: `libs/firebase/integration-test-utils/` (auth-helper, firestore-helper, http-client, fixtures)
 - For verbose output on a failing suite: `npx vitest run --config apps/functions-integration-tests-<suite>/vitest.config.ts --reporter=verbose` (while emulators + mock server are running)
 
@@ -147,16 +147,17 @@ This guard is required on `syncClassToWebflow`, `syncArtistToWebflow`, and `sync
 
 ### Mock server routes
 
-When an external API adds a new endpoint to the payment/sync flow, add a matching route to `libs/firebase/integration-test-mock-server/src/lib/routes/`. Current routes:
+Each external service has its own mock server library under `libs/firebase/{service}-test-mock-server/`. When adding a new endpoint, add a matching route to the appropriate server's `src/lib/routes/` directory. Current routes:
 
-- **Square**: `POST /v2/orders`, `POST /v2/payments`, `GET /v2/payments/:id`, `POST /v2/refunds`, catalog CRUD
-- **Webflow**: CMS item CRUD + publish on `/collections/:id/items`
+- **Square** (`libs/firebase/square-test-mock-server/`, port 9997): `POST /v2/orders`, `POST /v2/payments`, `GET /v2/payments/:id`, `POST /v2/refunds`, catalog CRUD, `POST /v2/catalog/images`, `POST /v2/inventory/changes/batch-create`
+- **Webflow** (`libs/firebase/webflow-test-mock-server/`, port 9996): CMS item CRUD + publish on `/collections/:id/items`
+- **Etsy** (`libs/firebase/etsy-test-mock-server/`, port 9998): listings, OAuth, mock images
 
 ## CI/CD Notes
 
 - CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
 - Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
-- Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds all 4 codebases, copies `.env.dev` to each, starts the mock server, and runs `firebase emulators:exec`.
+- Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds all 4 codebases, copies `.env.dev` to each, starts per-service mock servers (Square, Webflow, Etsy), and runs `firebase emulators:exec`.
 
 ## After Changes
 
