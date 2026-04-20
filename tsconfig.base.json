@@ -359,6 +359,42 @@
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-agreement-templates": [
+        "libs/firebase/maple-functions/get-agreement-templates/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-template": [
+        "libs/firebase/maple-functions/get-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-agreement-template": [
+        "libs/firebase/maple-functions/create-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-agreement-template": [
+        "libs/firebase/maple-functions/update-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-agreement-template": [
+        "libs/firebase/maple-functions/delete-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-requests": [
+        "libs/firebase/maple-functions/get-agreement-requests/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/send-agreement-request": [
+        "libs/firebase/maple-functions/send-agreement-request/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/resend-agreement-request": [
+        "libs/firebase/maple-functions/resend-agreement-request/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-signed-agreements": [
+        "libs/firebase/maple-functions/get-signed-agreements/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-signed-agreement": [
+        "libs/firebase/maple-functions/get-signed-agreement/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-for-signing": [
+        "libs/firebase/maple-functions/get-agreement-for-signing/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/submit-signed-agreement": [
+        "libs/firebase/maple-functions/submit-signed-agreement/src/index.ts"
+      ],
       "@maple/firebase/integration-test-mock-server": [
         "libs/firebase/integration-test-mock-server/src/index.ts"
       ],

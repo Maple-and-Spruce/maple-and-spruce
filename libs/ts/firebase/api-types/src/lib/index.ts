@@ -309,6 +309,34 @@ export type {
   SaveEtsyArtistTemplateResponse,
 } from './etsy-template.types';
 
+// Agreements & Waivers
+export type {
+  GetAgreementTemplatesRequest,
+  GetAgreementTemplatesResponse,
+  GetAgreementTemplateRequest,
+  GetAgreementTemplateResponse,
+  CreateAgreementTemplateRequest,
+  CreateAgreementTemplateResponse,
+  UpdateAgreementTemplateRequest,
+  UpdateAgreementTemplateResponse,
+  DeleteAgreementTemplateRequest,
+  DeleteAgreementTemplateResponse,
+  GetAgreementRequestsRequest,
+  GetAgreementRequestsResponse,
+  SendAgreementRequestRequest,
+  SendAgreementRequestResponse,
+  ResendAgreementRequestRequest,
+  ResendAgreementRequestResponse,
+  GetSignedAgreementsRequest,
+  GetSignedAgreementsResponse,
+  GetSignedAgreementRequest,
+  GetSignedAgreementResponse,
+  GetAgreementForSigningRequest,
+  GetAgreementForSigningResponse,
+  SubmitSignedAgreementRequest,
+  SubmitSignedAgreementResponse,
+} from './agreement.types';
+
 // Etsy Import types (read-only pull from Etsy into our catalog)
 export type {
   ListEtsyListingsRequest,
