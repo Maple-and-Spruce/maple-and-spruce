@@ -292,6 +292,7 @@
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],
+      "@maple/react/agreements": ["libs/react/agreements/src/index.ts"],
       "@maple/react/events": ["libs/react/events/src/index.ts"],
       "@maple/firebase/maple-functions/get-calendar-embed-config": [
         "libs/firebase/maple-functions/get-calendar-embed-config/src/index.ts"
@@ -347,8 +348,53 @@
       "@maple/firebase/maple-functions/get-sales": [
         "libs/firebase/maple-functions/get-sales/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/generate-payout": [
+        "libs/firebase/maple-functions/generate-payout/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/mark-payout-paid": [
+        "libs/firebase/maple-functions/mark-payout-paid/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-payouts": [
+        "libs/firebase/maple-functions/get-payouts/src/index.ts"
+      ],
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-templates": [
+        "libs/firebase/maple-functions/get-agreement-templates/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-template": [
+        "libs/firebase/maple-functions/get-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-agreement-template": [
+        "libs/firebase/maple-functions/create-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-agreement-template": [
+        "libs/firebase/maple-functions/update-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-agreement-template": [
+        "libs/firebase/maple-functions/delete-agreement-template/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-requests": [
+        "libs/firebase/maple-functions/get-agreement-requests/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/send-agreement-request": [
+        "libs/firebase/maple-functions/send-agreement-request/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/resend-agreement-request": [
+        "libs/firebase/maple-functions/resend-agreement-request/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-signed-agreements": [
+        "libs/firebase/maple-functions/get-signed-agreements/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-signed-agreement": [
+        "libs/firebase/maple-functions/get-signed-agreement/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-agreement-for-signing": [
+        "libs/firebase/maple-functions/get-agreement-for-signing/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/submit-signed-agreement": [
+        "libs/firebase/maple-functions/submit-signed-agreement/src/index.ts"
       ],
       "@maple/firebase/integration-test-mock-server": [
         "libs/firebase/integration-test-mock-server/src/index.ts"
