@@ -81,6 +81,7 @@ vi.mock('firebase-functions/params', () => ({
 // Import after mocks
 import {
   extractClassId,
+  isCountRelevantChange,
   syncRegistrationCount,
 } from './sync-registration-count';
 
@@ -164,6 +165,166 @@ describe('Sync Registration Count', () => {
       );
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('isCountRelevantChange', () => {
+    it('returns true for create (no before snapshot)', () => {
+      const before = makeSnapshot(false) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(true);
+    });
+
+    it('returns true for delete (no after snapshot)', () => {
+      const before = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(false) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(true);
+    });
+
+    it('returns true when status changes', () => {
+      const before = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'pending',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'cancelled',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(true);
+    });
+
+    it('returns true when quantity changes', () => {
+      const before = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 2,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(true);
+    });
+
+    it('returns true when classId changes', () => {
+      const before = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(true, {
+        classId: 'class-002',
+        status: 'confirmed',
+        quantity: 1,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(true);
+    });
+
+    it('returns false when only non-count fields change (e.g. squarePaymentId)', () => {
+      const before = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+        squarePaymentId: null,
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+        squarePaymentId: 'sq-pay-123',
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(false);
+    });
+
+    it('returns false when only updatedAt changes', () => {
+      const before = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+        updatedAt: new Date('2026-01-01'),
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+      const after = makeSnapshot(true, {
+        classId: 'class-001',
+        status: 'confirmed',
+        quantity: 1,
+        updatedAt: new Date('2026-01-02'),
+      }) as import('firebase-functions/v2/firestore').DocumentSnapshot;
+
+      expect(isCountRelevantChange(before, after)).toBe(false);
+    });
+  });
+
+  describe('handler — feedback loop guard', () => {
+    it('skips sync when only non-count fields change on update', async () => {
+      await handler({
+        params: { registrationId: 'reg-loop' },
+        data: {
+          after: makeSnapshot(true, {
+            classId: 'class-001',
+            status: 'confirmed',
+            quantity: 1,
+            squarePaymentId: 'sq-pay-123',
+            updatedAt: new Date(),
+          }),
+          before: makeSnapshot(true, {
+            classId: 'class-001',
+            status: 'confirmed',
+            quantity: 1,
+            squarePaymentId: null,
+            updatedAt: new Date('2026-01-01'),
+          }),
+        },
+      });
+
+      expect(mocks.classFindById).not.toHaveBeenCalled();
+      expect(mocks.syncClass).not.toHaveBeenCalled();
+    });
+
+    it('proceeds with sync when status changes from pending to confirmed', async () => {
+      const classEntity = createMockClass();
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.registrationCountByClassId.mockResolvedValue(1);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-1',
+        isNew: false,
+      });
+
+      await handler({
+        params: { registrationId: 'reg-status-change' },
+        data: {
+          after: makeSnapshot(true, {
+            classId: 'class-001',
+            status: 'confirmed',
+            quantity: 1,
+          }),
+          before: makeSnapshot(true, {
+            classId: 'class-001',
+            status: 'pending',
+            quantity: 1,
+          }),
+        },
+      });
+
+      expect(mocks.classFindById).toHaveBeenCalledWith('class-001');
+      expect(mocks.syncClass).toHaveBeenCalled();
     });
   });
 
