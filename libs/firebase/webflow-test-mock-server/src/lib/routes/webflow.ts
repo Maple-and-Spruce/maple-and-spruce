@@ -9,11 +9,11 @@
  * - DELETE /collections/:collectionId/items/:itemId/live (live delete; auto-publishes)
  * - PUT /collections/:collectionId/items/publish (publish items)
  */
-import { MockServer } from '../mock-server.js';
+import { WebflowMockServer } from '../webflow-mock-server';
 
 let itemCounter = 0;
 
-/** In-memory CMS items store, keyed by collection → itemId */
+/** In-memory CMS items store, keyed by collection -> itemId */
 const collections = new Map<string, Map<string, Record<string, unknown>>>();
 
 /**
@@ -31,7 +31,7 @@ function getCollection(
   return collections.get(collectionId)!;
 }
 
-export function registerWebflowRoutes(server: MockServer): void {
+export function registerWebflowRoutes(server: WebflowMockServer): void {
   // List collection items
   server.get('/collections/:collectionId/items', (req) => {
     const collection = getCollection(req.params['collectionId']);

@@ -10,7 +10,7 @@
     "firebase-maple-functions-sync-class-to-webflow",
     "firebase-maple-functions-sync-artist-to-webflow",
     "firebase-integration-test-utils",
-    "firebase-integration-test-mock-server"
+    "firebase-square-test-mock-server"
   ],
   "targets": {
     "test": {

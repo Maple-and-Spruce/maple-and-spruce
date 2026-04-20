@@ -21,11 +21,11 @@ import {
 import { WebflowClient } from 'webflow-api';
 import type { Artist, Class, Instructor } from '@maple/ts/domain';
 import {
-  MockServer,
+  WebflowMockServer,
   registerWebflowRoutes,
   resetWebflowState,
   getWebflowDeleteLog,
-} from '@maple/firebase/integration-test-mock-server';
+} from '@maple/firebase/webflow-test-mock-server';
 import { ClassService } from './class.service';
 import { ArtistService } from './artist.service';
 import { InstructorService } from './instructor.service';
@@ -39,11 +39,11 @@ const INSTRUCTORS_COLLECTION = 'col-instructors';
 const PORT = 19999;
 const BASE_URL = `http://localhost:${PORT}`;
 
-let server: MockServer;
+let server: WebflowMockServer;
 let client: WebflowClient;
 
 beforeAll(async () => {
-  server = new MockServer();
+  server = new WebflowMockServer();
   registerWebflowRoutes(server);
   await server.start(PORT);
 

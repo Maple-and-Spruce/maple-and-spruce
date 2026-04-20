@@ -1,8 +1,9 @@
 /**
- * Standalone Etsy mock HTTP server.
+ * Standalone Square mock HTTP server.
  *
- * Serves Etsy v3 API responses for integration tests.
- * One of three per-service mock servers (Square, Webflow, Etsy).
+ * Serves Square v2 API responses for integration tests. Independent from
+ * other mock servers so Square-related tests can iterate without coupling
+ * to Webflow/Etsy concerns.
  */
 import http from 'http';
 
@@ -21,30 +22,19 @@ interface RouteHandler {
   handler: (
     req: ParsedRequest
   ) =>
-    | {
-        status: number;
-        body: unknown;
-        contentType?: string;
-        rawBody?: Buffer;
-      }
-    | Promise<{
-        status: number;
-        body: unknown;
-        contentType?: string;
-        rawBody?: Buffer;
-      }>;
+    | { status: number; body: unknown }
+    | Promise<{ status: number; body: unknown }>;
 }
 
 interface ParsedRequest {
   method: string;
   path: string;
-  query: Record<string, string>;
   params: Record<string, string>;
   body: unknown;
   headers: Record<string, string | string[] | undefined>;
 }
 
-export class EtsyMockServer {
+export class SquareMockServer {
   private server: http.Server | null = null;
   private routes: RouteHandler[] = [];
   private _requests: RecordedRequest[] = [];
@@ -66,6 +56,18 @@ export class EtsyMockServer {
     return this.route('POST', pattern, handler);
   }
 
+  put(pattern: string, handler: RouteHandler['handler']): this {
+    return this.route('PUT', pattern, handler);
+  }
+
+  patch(pattern: string, handler: RouteHandler['handler']): this {
+    return this.route('PATCH', pattern, handler);
+  }
+
+  delete(pattern: string, handler: RouteHandler['handler']): this {
+    return this.route('DELETE', pattern, handler);
+  }
+
   /** All recorded requests since last reset. */
   get requests(): readonly RecordedRequest[] {
     return this._requests;
@@ -83,10 +85,9 @@ export class EtsyMockServer {
   async start(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server = http.createServer(async (req, res) => {
-        const rawBody = await readRawBody(req);
+        const body = await readBody(req);
         const method = req.method?.toUpperCase() ?? 'GET';
         const path = req.url ?? '/';
-        const body = parseBody(rawBody, req.headers['content-type']);
 
         this._requests.push({
           method,
@@ -96,32 +97,24 @@ export class EtsyMockServer {
           timestamp: new Date(),
         });
 
-        const { pathname, query } = splitQuery(path);
+        const cleanPath = path.split('?')[0];
 
         for (const route of this.routes) {
           if (route.method !== method) continue;
-          const params = matchPattern(route.pattern, pathname);
+          const params = matchPattern(route.pattern, cleanPath);
           if (params !== null) {
             try {
               const result = await route.handler({
                 method,
-                path: pathname,
-                query,
+                path: cleanPath,
                 params,
                 body,
                 headers: req.headers,
               });
-              if (result.rawBody) {
-                res.writeHead(result.status, {
-                  'Content-Type': result.contentType ?? 'application/octet-stream',
-                });
-                res.end(result.rawBody);
-              } else {
-                res.writeHead(result.status, {
-                  'Content-Type': result.contentType ?? 'application/json',
-                });
-                res.end(JSON.stringify(result.body));
-              }
+              res.writeHead(result.status, {
+                'Content-Type': 'application/json',
+              });
+              res.end(JSON.stringify(result.body));
             } catch (err) {
               res.writeHead(500, { 'Content-Type': 'application/json' });
               res.end(
@@ -137,7 +130,7 @@ export class EtsyMockServer {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({
-            error: 'Etsy mock server: no route matched',
+            error: 'Square mock server: no route matched',
             method,
             path,
           })
@@ -160,42 +153,23 @@ export class EtsyMockServer {
   }
 }
 
-function readRawBody(req: http.IncomingMessage): Promise<Buffer> {
+function readBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString();
+      if (!raw) {
+        resolve(undefined);
+        return;
+      }
+      try {
+        resolve(JSON.parse(raw));
+      } catch {
+        resolve(raw);
+      }
+    });
   });
-}
-
-function parseBody(raw: Buffer, contentType?: string): unknown {
-  if (raw.length === 0) return undefined;
-  const text = raw.toString();
-  if (contentType?.includes('application/x-www-form-urlencoded')) {
-    const params = new URLSearchParams(text);
-    const obj: Record<string, string> = {};
-    for (const [k, v] of params) obj[k] = v;
-    return obj;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-function splitQuery(path: string): {
-  pathname: string;
-  query: Record<string, string>;
-} {
-  const [pathname, queryString = ''] = path.split('?');
-  const query: Record<string, string> = {};
-  if (queryString) {
-    for (const [k, v] of new URLSearchParams(queryString)) {
-      query[k] = v;
-    }
-  }
-  return { pathname, query };
 }
 
 function matchPattern(

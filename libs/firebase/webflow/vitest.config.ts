@@ -5,9 +5,9 @@ export default defineConfig({
   root: __dirname,
   resolve: {
     alias: {
-      '@maple/firebase/integration-test-mock-server': resolve(
+      '@maple/firebase/webflow-test-mock-server': resolve(
         __dirname,
-        '../../../libs/firebase/integration-test-mock-server/src/index.ts'
+        '../../../libs/firebase/webflow-test-mock-server/src/index.ts'
       ),
     },
   },

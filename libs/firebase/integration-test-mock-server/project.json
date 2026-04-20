@@ -1,7 +1,0 @@
-{
-  "name": "firebase-integration-test-mock-server",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/firebase/integration-test-mock-server/src",
-  "projectType": "library",
-  "tags": ["type:util"]
-}

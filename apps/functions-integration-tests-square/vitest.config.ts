@@ -8,9 +8,9 @@ export default defineConfig({
         __dirname,
         '../../libs/firebase/integration-test-utils/src/index.ts'
       ),
-      '@maple/firebase/integration-test-mock-server': path.resolve(
+      '@maple/firebase/square-test-mock-server': path.resolve(
         __dirname,
-        '../../libs/firebase/integration-test-mock-server/src/index.ts'
+        '../../libs/firebase/square-test-mock-server/src/index.ts'
       ),
       '@maple/ts/firebase/api-types': path.resolve(
         __dirname,
