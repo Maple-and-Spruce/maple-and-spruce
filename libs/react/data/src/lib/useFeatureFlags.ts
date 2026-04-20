@@ -29,8 +29,16 @@ export function useFeatureFlags() {
 
     fetchAndActivate(rc).then(() => setReady(true));
 
-    const unsubscribe = onConfigUpdate(rc, () => {
-      fetchAndActivate(rc).then(() => setTick((t) => t + 1));
+    const unsubscribe = onConfigUpdate(rc, {
+      next: () => {
+        fetchAndActivate(rc).then(() => setTick((t) => t + 1));
+      },
+      error: () => {
+        /* config update stream error — will retry on next interval */
+      },
+      complete: () => {
+        /* no-op */
+      },
     });
 
     return () => {
