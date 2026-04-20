@@ -124,6 +124,16 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
     </div>
     {{/if}}
 
+    {{#if waiverUrl}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Action Required: Sign Your Waiver</strong><br>
+      <p>Please review and sign your class waiver before attending. This is required for participation.</p>
+      <p style="text-align: center; margin: 12px 0 4px;">
+        <a href="{{waiverUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 10px 28px; text-decoration: none; border-radius: 4px; font-weight: bold;">Sign Waiver</a>
+      </p>
+    </div>
+    {{/if}}
+
     <p>If you have any questions, please reach out at
       <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
       call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,

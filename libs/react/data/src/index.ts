@@ -39,6 +39,16 @@ export {
   type UseArtistPayoutsOptions,
 } from './lib/useArtistPayouts';
 
+// Agreements & Waivers
+export {
+  useAgreementTemplates,
+  type UseAgreementTemplatesFilters,
+} from './lib/useAgreementTemplates';
+export {
+  useAgreementRequests,
+  type UseAgreementRequestsFilters,
+} from './lib/useAgreementRequests';
+
 // Phase 3c: Registration & Discounts
 export {
   useDiscounts,
