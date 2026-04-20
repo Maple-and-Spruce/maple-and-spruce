@@ -106,6 +106,9 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `detectSyncConflicts` _(memory: 512MiB, concurrency: 10)_
 - `resolveSyncConflict`
 
+### Cross-Channel Inventory Sync
+- `syncInventoryToSquare` — pushes current Firestore product quantities to Square via physical count adjustments
+
 ---
 
 ## Codebase: `maple-sync` (`apps/functions-sync/`)
@@ -125,3 +128,9 @@ Webflow CMS synchronization. Isolates `webflow-api`.
 ### Etsy Push (catalog to Etsy)
 - `pushProductToEtsy` — creates a draft Etsy listing from a Firestore Product, uploads image, sets variant inventory
 - `updateEtsyListing` — syncs current product data to an existing Etsy listing (title, description, prices, quantities)
+
+### Etsy Order Polling
+- `pollEtsyOrders` — polls Etsy Receipts API for new sales, creates Sale records + InventoryMovements, decrements variant quantities
+
+### Cross-Channel Inventory Sync
+- `syncInventoryToEtsy` — pushes current Firestore product quantities to the linked Etsy listing

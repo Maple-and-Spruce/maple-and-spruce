@@ -1,12 +1,8 @@
 /**
  * Standalone Etsy mock HTTP server.
  *
- * Serves Etsy v3 API responses for integration tests. Independent from the
- * monolithic `integration-test-mock-server` so Etsy-related tests can
- * iterate without coupling to Square/Webflow concerns.
- *
- * See the follow-up issue for splitting the existing monolith into
- * per-service mock servers to match this pattern.
+ * Serves Etsy v3 API responses for integration tests.
+ * One of three per-service mock servers (Square, Webflow, Etsy).
  */
 import http from 'http';
 
