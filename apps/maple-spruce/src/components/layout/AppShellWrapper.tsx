@@ -16,6 +16,7 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import GavelIcon from '@mui/icons-material/Gavel';
 import { AppShell, type NavGroup } from '@maple/react/layout';
 import { useSyncConflictSummary } from '@maple/react/data';
 
@@ -88,6 +89,11 @@ export function AppShellWrapper({
             label: 'Registrations',
             href: '/registrations',
             icon: <HowToRegIcon />,
+          },
+          {
+            label: 'Agreements',
+            href: '/agreements',
+            icon: <GavelIcon />,
           },
         ],
       },
