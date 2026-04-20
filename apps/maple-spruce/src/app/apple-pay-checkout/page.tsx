@@ -11,12 +11,6 @@ interface SquareTokenizeResult {
   errors?: Array<{ message: string }>;
 }
 
-interface SquarePaymentRequest {
-  countryCode: string;
-  currencyCode: string;
-  total: { amount: string; label: string };
-}
-
 interface SquareApplePay {
   attach: (selector: string) => Promise<void>;
   addEventListener: (
@@ -25,20 +19,20 @@ interface SquareApplePay {
   ) => void;
 }
 
-interface SquarePayments {
-  paymentRequest: (req: SquarePaymentRequest) => unknown;
+interface SquarePaymentsInstance {
+  paymentRequest: (req: {
+    countryCode: string;
+    currencyCode: string;
+    total: { amount: string; label: string };
+  }) => unknown;
   applePay: (paymentRequest: unknown) => Promise<SquareApplePay>;
 }
 
-declare global {
-  interface Window {
-    Square?: {
-      payments: (
-        applicationId: string,
-        locationId: string
-      ) => Promise<SquarePayments>;
-    };
-  }
+interface SquareSDK {
+  payments: (
+    applicationId: string,
+    locationId: string
+  ) => Promise<SquarePaymentsInstance>;
 }
 
 /* ---------- Styles ---------- */
@@ -143,11 +137,12 @@ function ApplePayCheckoutInner(): React.ReactElement {
   );
 
   const initializeApplePay = useCallback(async (): Promise<void> => {
-    if (!window.Square) {
+    const square = (window as unknown as { Square?: SquareSDK }).Square;
+    if (!square) {
       throw new Error('Square SDK failed to load.');
     }
 
-    const payments = await window.Square.payments(applicationId, locationId);
+    const payments = await square.payments(applicationId, locationId);
     const paymentRequest = payments.paymentRequest({
       countryCode: 'US',
       currencyCode: 'USD',

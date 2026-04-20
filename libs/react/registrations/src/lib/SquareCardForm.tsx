@@ -17,13 +17,9 @@ interface SquarePayments {
     countryCode: string;
     currencyCode: string;
     total: { amount: string; label: string };
-  }) => SquarePaymentRequest;
-  applePay: (
-    paymentRequest: SquarePaymentRequest
-  ) => Promise<SquareDigitalWallet>;
-  googlePay: (
-    paymentRequest: SquarePaymentRequest
-  ) => Promise<SquareDigitalWallet>;
+  }) => unknown;
+  applePay: (paymentRequest: unknown) => Promise<SquareDigitalWallet>;
+  googlePay: (paymentRequest: unknown) => Promise<SquareDigitalWallet>;
 }
 
 interface SquareCard {
@@ -318,7 +314,7 @@ export function SquareCardForm({
         countryCode: 'US',
         currencyCode: 'USD',
         total: { amount, label: 'Total' },
-      });
+      }) as SquarePaymentRequest;
       paymentRequestRef.current = paymentRequest;
 
       // Helper: handle a digital wallet tokenization result
