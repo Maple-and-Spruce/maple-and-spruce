@@ -341,6 +341,15 @@
       "@maple/firebase/maple-functions/update-etsy-listing": [
         "libs/firebase/maple-functions/update-etsy-listing/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/poll-etsy-orders": [
+        "libs/firebase/maple-functions/poll-etsy-orders/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/sync-inventory-to-etsy": [
+        "libs/firebase/maple-functions/sync-inventory-to-etsy/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/sync-inventory-to-square": [
+        "libs/firebase/maple-functions/sync-inventory-to-square/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/record-sale": [
         "libs/firebase/maple-functions/record-sale/src/index.ts"
       ],

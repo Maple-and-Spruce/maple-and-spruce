@@ -16,6 +16,8 @@
     "../../libs/firebase/maple-functions/refresh-etsy-shop-id/**/*.ts",
     "../../libs/firebase/maple-functions/push-product-to-etsy/**/*.ts",
     "../../libs/firebase/maple-functions/update-etsy-listing/**/*.ts",
+    "../../libs/firebase/maple-functions/poll-etsy-orders/**/*.ts",
+    "../../libs/firebase/maple-functions/sync-inventory-to-etsy/**/*.ts",
     "../../libs/firebase/etsy/src/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
