@@ -98,8 +98,8 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `createRegistration`, `cancelRegistration`
 
 ### Sync conflict resolution
-- `detectSyncConflicts` _(memory: 512MiB, concurrency: 10)_
-- `resolveSyncConflict`
+- `detectSyncConflicts` _(memory: 512MiB, concurrency: 10)_ — detects mismatches between Firestore and Square/Etsy; accepts optional `system` filter (`square` | `etsy`)
+- `resolveSyncConflict` — resolves detected conflicts by pushing/pulling data to/from Square or Etsy
 
 ---
 
