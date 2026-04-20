@@ -292,6 +292,7 @@
       "@maple/react/classes": ["libs/react/classes/src/index.ts"],
       "@maple/react/discounts": ["libs/react/discounts/src/index.ts"],
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],
+      "@maple/react/agreements": ["libs/react/agreements/src/index.ts"],
       "@maple/react/events": ["libs/react/events/src/index.ts"],
       "@maple/firebase/maple-functions/get-calendar-embed-config": [
         "libs/firebase/maple-functions/get-calendar-embed-config/src/index.ts"

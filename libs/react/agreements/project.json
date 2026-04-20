@@ -1,0 +1,8 @@
+{
+  "name": "react-agreements",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/react/agreements/src",
+  "projectType": "library",
+  "tags": ["scope:react", "type:feature"],
+  "targets": {}
+}
