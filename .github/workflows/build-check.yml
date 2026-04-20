@@ -281,7 +281,7 @@ jobs:
     needs: [install, integration-test-matrix]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce' && fromJson(needs.integration-test-matrix.outputs.matrix).group[0] != null
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.integration-test-matrix.outputs.matrix) }}
@@ -374,6 +374,12 @@ jobs:
           if [[ "$matrix" == "failure" || "$matrix" == "cancelled" ]]; then
             echo "::error::Matrix setup failed"
             exit 1
+          fi
+          # When no integration test suites are affected, the matrix emits {"group": []}
+          # which causes zero shard jobs. GitHub reports this as "skipped" — that's fine.
+          if [[ "$tests" == "skipped" ]]; then
+            echo "No integration test suites affected — skipping"
+            exit 0
           fi
           if [[ "$tests" == "failure" || "$tests" == "cancelled" ]]; then
             echo "::error::One or more integration test groups failed"
