@@ -42,6 +42,16 @@ export { invoiceValidation } from './invoice.validation';
 // Phase 4.5: Calendar
 export { calendarEventValidation } from './calendar-event.validation';
 
+// Agreements & Waivers
+export {
+  agreementTemplateValidation,
+  type AgreementTemplateValidationInput,
+} from './agreement-template.validation';
+export {
+  agreementSigningValidation,
+  type AgreementSigningValidationInput,
+} from './agreement-signing.validation';
+
 // Shared helpers
 export {
   imageUploadValidation,
