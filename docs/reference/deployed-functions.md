@@ -57,6 +57,10 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getCalendarEmbedConfig`, `updateCalendarEmbedConfig`, `addCalendarEmbedSource`, `removeCalendarEmbedSource`
 - `calendarEmbed` — HTTP: `/calendar/embed`
 
+### Sales (Phase 5)
+- `recordSale` — manually record a product sale with automatic commission calculation, inventory movement, and quantity decrement
+- `getSales` — retrieve sales with optional filters (artistId, source, date range)
+
 ### Auth
 - `checkAdminStatus`
 
@@ -106,3 +110,13 @@ Webflow CMS synchronization. Isolates `webflow-api`.
 - `syncArtistToWebflow` — Firestore trigger: syncs artist data to Webflow CMS
 - `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS
 - `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)
+
+### Etsy OAuth
+- `etsyAuthUrl` — generates OAuth authorization URL for Etsy
+- `etsyAuthCallback` — exchanges authorization code for tokens
+- `getEtsyConnectionStatus` — checks if Etsy OAuth tokens are valid
+- `refreshEtsyShopId` — re-resolves the Etsy shop ID from the API
+
+### Etsy Push (catalog to Etsy)
+- `pushProductToEtsy` — creates a draft Etsy listing from a Firestore Product, uploads image, sets variant inventory
+- `updateEtsyListing` — syncs current product data to an existing Etsy listing (title, description, prices, quantities)

@@ -54,17 +54,22 @@ export interface RecordSaleResponse {
 // ============================================================================
 
 /**
- * Record a sale for an existing product.
- * The sale price defaults to the product price but can be overridden.
+ * Record a sale for an existing product (manual recording).
+ * Automatically looks up product/artist, calculates commission,
+ * creates a sale record, an inventory movement, and decrements quantity.
  */
 export interface RecordProductSaleRequest {
   productId: string;
-  /** Override the product price if different (e.g., discount) */
-  salePrice?: number;
-  source: SaleSource;
+  /** Optional variant ID — required for multi-variant products */
+  variantId?: string;
+  /** Quantity sold (defaults to 1) */
+  quantitySold?: number;
+  /** Override the product price if different (e.g., discount). In cents. */
+  salePriceCents?: number;
+  source?: SaleSource;
   etsyOrderId?: string;
   etsyReceiptId?: string;
-  soldAt: string;
+  soldAt?: string;
 }
 
 export interface RecordProductSaleResponse {

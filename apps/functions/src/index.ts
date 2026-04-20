@@ -167,3 +167,7 @@ export { saveEtsyArtistTemplate } from '@maple/firebase/maple-functions/save-ets
 
 // Etsy listing read (for import review UI — calls Etsy API, no Square dep)
 export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-listings';
+
+// Phase 5: Sales tracking
+export { recordSale } from '@maple/firebase/maple-functions/record-sale';
+export { getSales } from '@maple/firebase/maple-functions/get-sales';

@@ -347,3 +347,11 @@ export type {
   ImportEtsyListingsResponse,
   ImportEtsyListingResult,
 } from './etsy-import.types';
+
+// Etsy Push types (push products from our catalog to Etsy)
+export type {
+  PushProductToEtsyRequest,
+  PushProductToEtsyResponse,
+  UpdateEtsyListingRequest,
+  UpdateEtsyListingResponse,
+} from './etsy-push.types';

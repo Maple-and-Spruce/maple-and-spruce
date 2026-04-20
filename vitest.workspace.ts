@@ -16,5 +16,7 @@ export default defineWorkspace([
   'libs/firebase/maple-functions/calendar-embed/vitest.config.ts',
   'libs/react/classes/vitest.config.ts',
   'libs/react/signals/vitest.config.ts',
+  'libs/firebase/maple-functions/push-product-to-etsy/vitest.config.ts',
+  'libs/firebase/maple-functions/update-etsy-listing/vitest.config.ts',
   'vitest.storybook.config.ts',
 ]);

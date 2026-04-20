@@ -22,3 +22,7 @@ export { etsyAuthUrl } from '@maple/firebase/maple-functions/etsy-auth-url';
 export { etsyAuthCallback } from '@maple/firebase/maple-functions/etsy-auth-callback';
 export { getEtsyConnectionStatus } from '@maple/firebase/maple-functions/get-etsy-connection-status';
 export { refreshEtsyShopId } from '@maple/firebase/maple-functions/refresh-etsy-shop-id';
+
+// Etsy push (catalog → Etsy)
+export { pushProductToEtsy } from '@maple/firebase/maple-functions/push-product-to-etsy';
+export { updateEtsyListing } from '@maple/firebase/maple-functions/update-etsy-listing';

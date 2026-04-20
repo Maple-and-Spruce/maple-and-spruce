@@ -3,8 +3,8 @@
  *
  * Creates a new product by:
  * 1. Validating input
- * 2. Creating catalog item in Square
- * 3. Setting initial inventory quantity in Square
+ * 2. Creating catalog item in Square (with one or more variations)
+ * 3. Setting initial inventory quantities in Square
  * 4. Creating linking record in Firestore
  *
  * Admin only.
@@ -17,6 +17,7 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 import { productValidation } from '@maple/ts/validation';
+import { resolveVariants } from '@maple/ts/domain';
 import type {
   CreateProductRequest,
   CreateProductResponse,
@@ -32,6 +33,7 @@ export const createProduct = Functions.endpoint
         name: data.name,
         priceCents: data.priceCents,
         quantity: data.quantity,
+        variantCount: data.variants?.length,
       });
 
       // Validate input
@@ -54,35 +56,44 @@ export const createProduct = Functions.endpoint
 
       console.log('Square client initialized, creating catalog item...');
 
-      // 1. Create catalog item in Square
-      const priceCents = data.priceCents ?? 0;
-      const quantity = data.quantity ?? 0;
+      // Resolve variants from input (handles both single and multi-variant)
+      const resolvedVariants = resolveVariants(data);
 
+      // 1. Create catalog item in Square with all variations
       const catalogResult = await square.catalogService.createItem({
         name: data.name,
         description: data.description,
-        priceCents,
+        variants: resolvedVariants.map((v) => ({
+          label: v.label,
+          priceCents: v.priceCents,
+          sku: v.sku,
+        })),
       });
 
       console.log('Square catalog item created:', catalogResult);
 
-      // 2. Set initial inventory quantity
-      if (quantity > 0) {
-        await square.inventoryService.setQuantity({
-          squareVariationId: catalogResult.squareVariationId,
+      // 2. Set initial inventory quantities for each variation
+      const inventoryEntries = resolvedVariants
+        .map((v, i) => ({
+          squareVariationId: catalogResult.variations[i]?.squareVariationId ?? '',
           locationId: square.locationId,
-          quantity,
-        });
+          quantity: v.quantity,
+        }))
+        .filter((e) => e.quantity > 0 && e.squareVariationId);
+
+      if (inventoryEntries.length > 0) {
+        await square.inventoryService.setQuantities(inventoryEntries);
       }
 
       // 3. Create Firestore record with Square IDs
       const product = await ProductRepository.create(data, {
         squareItemId: catalogResult.squareItemId,
-        squareVariationId: catalogResult.squareVariationId,
         squareCatalogVersion: catalogResult.squareCatalogVersion,
         squareLocationId: square.locationId,
+        variations: catalogResult.variations,
+        // Legacy fields for backward compatibility
+        squareVariationId: catalogResult.squareVariationId,
         sku: catalogResult.sku,
-        variations: [{ variantId: 'var_compat', squareVariationId: catalogResult.squareVariationId, sku: catalogResult.sku }],
       });
 
       return { product };
