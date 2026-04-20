@@ -132,6 +132,12 @@ export function registerSquareRoutes(server: MockServer): void {
     const body = req.body as Record<string, unknown>;
     const batches = (body['batches'] as Array<Record<string, unknown>>) ?? [];
     const mappings: Array<Record<string, string>> = [];
+    const resolvedObjects: Array<Record<string, unknown>> = [];
+
+    // Build a map of client temp ID → server ID so nested references resolve.
+    // The SDK serializes to snake_case, so item_data and variations use
+    // snake_case keys in the request body.
+    const idMap = new Map<string, string>();
 
     for (const batch of batches) {
       const objects =
@@ -142,16 +148,69 @@ export function registerSquareRoutes(server: MockServer): void {
         const serverId = clientId.startsWith('#')
           ? `mock-catalog-${catalogCounter}`
           : clientId;
+        idMap.set(clientId, serverId);
         mappings.push({
           client_object_id: clientId,
           object_id: serverId,
         });
+
+        // Also map nested variation IDs (inside item_data.variations)
+        const itemData = (obj['item_data'] ?? obj['itemData']) as Record<string, unknown> | undefined;
+        const variations = (itemData?.['variations'] as Array<Record<string, unknown>>) ?? [];
+        for (const v of variations) {
+          catalogCounter++;
+          const vClientId = (v['id'] as string) ?? `#temp-var-${catalogCounter}`;
+          const vServerId = vClientId.startsWith('#')
+            ? `mock-catalog-${catalogCounter}`
+            : vClientId;
+          idMap.set(vClientId, vServerId);
+          mappings.push({
+            client_object_id: vClientId,
+            object_id: vServerId,
+          });
+        }
+      }
+    }
+
+    // Build resolved objects with server IDs, preserving nested structure.
+    // The Square SDK serializes request bodies to snake_case and parses
+    // responses from snake_case, so both the incoming keys and our response
+    // keys use snake_case (e.g., item_data, not itemData).
+    for (const batch of batches) {
+      const objects =
+        (batch['objects'] as Array<Record<string, unknown>>) ?? [];
+      for (const obj of objects) {
+        const clientId = (obj['id'] as string) ?? '';
+        const serverId = idMap.get(clientId) ?? clientId;
+        const resolved: Record<string, unknown> = {
+          ...obj,
+          id: serverId,
+          version: 1,
+        };
+        // Resolve nested variation IDs inside item_data (snake_case from SDK)
+        const itemData = (obj['item_data'] ?? obj['itemData']) as Record<string, unknown> | undefined;
+        if (itemData?.['variations']) {
+          const variations = (
+            itemData['variations'] as Array<Record<string, unknown>>
+          ).map((v) => {
+            const vClientId = (v['id'] as string) ?? '';
+            return {
+              ...v,
+              id: idMap.get(vClientId) ?? vClientId,
+            };
+          });
+          resolved['item_data'] = { ...itemData, variations };
+          // Remove camelCase key if present (shouldn't be, but defensive)
+          delete resolved['itemData'];
+        }
+        resolvedObjects.push(resolved);
       }
     }
 
     return {
       status: 200,
       body: {
+        objects: resolvedObjects,
         id_mappings: mappings,
       },
     };
