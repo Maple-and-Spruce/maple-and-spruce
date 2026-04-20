@@ -210,6 +210,59 @@ const registrationCancelledHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: agreement-signing-request
+// ---------------------------------------------------------------------------
+
+const agreementSigningRequestSubject =
+  'Action Required: Please sign your {{templateName}}';
+
+const agreementSigningRequestHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agreement Signing Request</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>Please Sign Your Agreement</h2>
+    <p>Hi {{signerName}},</p>
+    <p>We need you to review and sign the <strong>{{templateName}}</strong> before your visit.</p>
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Sign Your Agreement</strong><br>
+      <p>Please click the link below to review and sign your agreement. You'll need to provide your signature electronically.</p>
+      <p style="text-align: center; margin: 16px 0;">
+        <a href="{{signingUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 4px; font-weight: bold;">Review &amp; Sign Agreement</a>
+      </p>
+    </div>
+
+    <p style="font-size: 14px; color: #999;">
+      This link will expire in 30 days. If you have trouble with the link, copy and paste this URL into your browser:<br>
+      <a href="{{signingUrl}}" style="color: #6B7B5E; word-break: break-all;">{{signingUrl}}</a>
+    </p>
+
+    <p>If you have any questions, please reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
+      call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
+      or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
 
@@ -226,6 +279,10 @@ const templates: Record<string, EmailTemplate> = {
   'registration-cancelled': {
     subject: registrationCancelledSubject,
     html: registrationCancelledHtml,
+  },
+  'agreement-signing-request': {
+    subject: agreementSigningRequestSubject,
+    html: agreementSigningRequestHtml,
   },
 };
 
