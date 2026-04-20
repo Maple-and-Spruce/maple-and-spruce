@@ -14,5 +14,7 @@ export {
   useRegistrations,
   useCalendarEvents,
   useArtistPayouts,
+  useAgreementTemplates,
+  useAgreementRequests,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
