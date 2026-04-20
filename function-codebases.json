@@ -32,7 +32,10 @@
     "firebase-maple-functions-list-etsy-listings": "maple-core",
     "firebase-maple-functions-import-etsy-listings": "maple-square",
     "firebase-maple-functions-push-product-to-etsy": "maple-sync",
-    "firebase-maple-functions-update-etsy-listing": "maple-sync"
+    "firebase-maple-functions-update-etsy-listing": "maple-sync",
+    "firebase-maple-functions-poll-etsy-orders": "maple-sync",
+    "firebase-maple-functions-sync-inventory-to-etsy": "maple-sync",
+    "firebase-maple-functions-sync-inventory-to-square": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

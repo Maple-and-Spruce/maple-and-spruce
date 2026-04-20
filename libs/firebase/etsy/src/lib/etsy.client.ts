@@ -37,6 +37,7 @@ import { EtsyHttp } from './http/etsy-http.js';
 import { ListingService } from './services/listing.service.js';
 import { InventoryService } from './services/inventory.service.js';
 import { TaxonomyService } from './services/taxonomy.service.js';
+import { ReceiptService } from './services/receipt.service.js';
 
 export class EtsyClient {
   private readonly _oauth: OAuthService;
@@ -44,6 +45,7 @@ export class EtsyClient {
   private readonly _listings: ListingService;
   private readonly _inventory: InventoryService;
   private readonly _taxonomy: TaxonomyService;
+  private readonly _receipts: ReceiptService;
   private readonly tokenStorage: TokenStorage;
 
   constructor(config: EtsyClientConfig) {
@@ -73,6 +75,7 @@ export class EtsyClient {
 
     this._inventory = new InventoryService(this._http);
     this._taxonomy = new TaxonomyService(this._http);
+    this._receipts = new ReceiptService(this._http);
   }
 
   /** OAuth 2.0 service for authorization and token management */
@@ -93,5 +96,10 @@ export class EtsyClient {
   /** Seller taxonomy (categories) for listing creation */
   get taxonomy(): TaxonomyService {
     return this._taxonomy;
+  }
+
+  /** Receipts (orders) for polling sales */
+  get receipts(): ReceiptService {
+    return this._receipts;
   }
 }

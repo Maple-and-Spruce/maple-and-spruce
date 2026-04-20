@@ -24,6 +24,8 @@ export { EtsyHttp, EtsyHttpError } from './lib/http/etsy-http.js';
 export { ListingService } from './lib/services/listing.service.js';
 export { InventoryService } from './lib/services/inventory.service.js';
 export { TaxonomyService } from './lib/services/taxonomy.service.js';
+export { ReceiptService } from './lib/services/receipt.service.js';
+export type { GetShopReceiptsOptions } from './lib/services/receipt.service.js';
 
 // Listing types
 export type {
@@ -58,6 +60,12 @@ export {
   type FetchUserShopOptions,
   type FetchUserShopResult,
 } from './lib/shops/fetch-user-shop.js';
+
+// Receipt types
+export type {
+  EtsyReceipt,
+  EtsyTransaction,
+} from './lib/types/receipt.types.js';
 
 // Common types
 export type {

@@ -179,7 +179,10 @@
       "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); if \\($2+0 < 60 && $2+0 > 0\\) print}')",
       "Bash(awk -F'|' '{gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $2\\); gsub\\(/^[ \\\\t]+|[ \\\\t]+$/, \"\", $6\\); if \\($2+0 < 70 && $2+0 > 0\\) print $6, $2\"%\", $0}')",
       "Bash(git worktree:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "mcp__webflow__webflow_guide_tool",
+      "Bash(mkdir -p libs/firebase/square-test-mock-server/src/lib/routes)",
+      "Bash(mkdir -p libs/firebase/webflow-test-mock-server/src/lib/routes)"
     ]
   }
 }
