@@ -19,28 +19,30 @@ const captured = vi.hoisted(() => ({
   ) => Promise<unknown>,
 }));
 
-vi.mock('@maple/firebase/functions', () => ({
-  Functions: {
-    endpoint: {
-      usingSecrets: () => ({
-        usingStrings: () => ({
-          requiringRole: () => ({
-            handle: <TReq, TRes>(
-              handler: (
-                data: TReq,
-                ctx: unknown,
-                secrets: Record<string, string>,
-                strings: Record<string, string>
-              ) => Promise<TRes>
-            ) => {
-              captured.handler = handler as typeof captured.handler;
-              return handler;
-            },
-          }),
-        }),
+const mockFunctionsEndpoint = vi.hoisted(() => {
+  function handle<TReq, TRes>(
+    handler: (
+      data: TReq,
+      ctx: unknown,
+      secrets: Record<string, string>,
+      strings: Record<string, string>
+    ) => Promise<TRes>
+  ) {
+    captured.handler = handler as typeof captured.handler;
+    return handler;
+  }
+
+  return {
+    usingSecrets: () => ({
+      usingStrings: () => ({
+        requiringRole: () => ({ handle }),
       }),
-    },
-  },
+    }),
+  };
+});
+
+vi.mock('@maple/firebase/functions', () => ({
+  Functions: { endpoint: mockFunctionsEndpoint },
   Role: { Admin: 'admin' },
 }));
 
