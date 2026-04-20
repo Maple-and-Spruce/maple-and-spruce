@@ -52,6 +52,46 @@ export function extractClassId(
 }
 
 /**
+ * Fields on the registration document that affect the registration count.
+ * If none of these changed, syncing would produce the same result and we
+ * can skip the (expensive) Webflow call — preventing a trigger feedback
+ * loop where an unrelated field update re-fires this function endlessly.
+ */
+const COUNT_RELEVANT_FIELDS = ['classId', 'status', 'quantity'] as const;
+
+/**
+ * Check whether a write event actually changes the registration count.
+ *
+ * - Create (no before) or delete (no after): always relevant.
+ * - Update: relevant only when classId, status, or quantity changed.
+ */
+export function isCountRelevantChange(
+  before: DocumentSnapshot | undefined,
+  after: DocumentSnapshot | undefined
+): boolean {
+  const beforeExists = before?.exists ?? false;
+  const afterExists = after?.exists ?? false;
+
+  // Create or delete — always relevant
+  if (!beforeExists || !afterExists) {
+    return true;
+  }
+
+  const beforeData = before!.data();
+  const afterData = after!.data();
+
+  // If either snapshot has no data, treat as relevant (defensive)
+  if (!beforeData || !afterData) {
+    return true;
+  }
+
+  // Check if any count-relevant field changed
+  return COUNT_RELEVANT_FIELDS.some(
+    (field) => beforeData[field] !== afterData[field]
+  );
+}
+
+/**
  * Sync Registration Count to Webflow CMS
  *
  * Firestore trigger on the registrations collection.
@@ -66,6 +106,17 @@ export const syncRegistrationCount = onDocumentWritten(
   },
   async (event) => {
     const change: Change<DocumentSnapshot> = event.data!;
+
+    // Guard: skip if the write didn't change any count-relevant fields.
+    // This prevents a trigger feedback loop where an unrelated update
+    // (e.g. squarePaymentId, updatedAt) re-fires this function and
+    // causes it to loop dozens of times in the emulator.
+    if (!isCountRelevantChange(change.before, change.after)) {
+      console.log(
+        'Registration write did not change count-relevant fields, skipping sync'
+      );
+      return;
+    }
 
     // Get classId from before or after snapshot (covers create, update, delete)
     const classId =
