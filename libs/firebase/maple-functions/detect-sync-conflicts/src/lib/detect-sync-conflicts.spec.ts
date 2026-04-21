@@ -5,7 +5,7 @@ import type { Product, SyncConflict } from '@maple/ts/domain';
  * Tests for detect-sync-conflicts.ts
  *
  * Tests the business logic for detecting mismatches between
- * Firestore product data and Square catalog/inventory.
+ * Firestore product data and Square/Etsy catalog/inventory.
  */
 
 // Define mocks using vi.hoisted
@@ -19,11 +19,15 @@ const mocks = vi.hoisted(() => {
     // Square mocks
     catalogListItems: vi.fn(),
     inventoryGetCounts: vi.fn(),
+    // Etsy mocks
+    etsyGetListing: vi.fn(),
+    capturedHandler: null as ((...args: unknown[]) => Promise<unknown>) | null,
   };
 });
 
 // Mock ProductRepository
 vi.mock('@maple/firebase/database', () => ({
+  FirestoreTokenStorage: { getTokens: vi.fn() },
   ProductRepository: {
     findAll: mocks.productFindAll,
   },
@@ -49,20 +53,47 @@ vi.mock('@maple/firebase/square', () => ({
   SQUARE_STRING_NAMES: ['SQUARE_ENV', 'SQUARE_LOCATION_ID'],
 }));
 
-// Mock firebase functions
+// Mock Etsy client
+vi.mock('@maple/firebase/etsy', () => ({
+  EtsyClient: class {
+    listings = { getListing: mocks.etsyGetListing };
+    inventory = {};
+  },
+}));
+
+// Mock firebase functions - capture the handler
 vi.mock('@maple/firebase/functions', () => ({
   Functions: {
     endpoint: {
       usingSecrets: vi.fn().mockReturnThis(),
       usingStrings: vi.fn().mockReturnThis(),
       requiringRole: vi.fn().mockReturnThis(),
-      handle: vi.fn(),
+      withOptions: vi.fn().mockReturnThis(),
+      handle: vi.fn((handler: (...args: unknown[]) => Promise<unknown>) => {
+        mocks.capturedHandler = handler;
+        return 'mock-function';
+      }),
     },
   },
   Role: {
     Admin: 'admin',
   },
 }));
+
+// Import to trigger handler capture
+import './detect-sync-conflicts';
+
+const secrets = {
+  SQUARE_ACCESS_TOKEN: 'sq-token',
+  ETSY_API_KEY: 'etsy-key',
+  ETSY_SHARED_SECRET: 'etsy-secret',
+};
+const strings = {
+  SQUARE_ENV: 'sandbox',
+  SQUARE_LOCATION_ID: 'loc-1',
+  ETSY_REDIRECT_URI: 'https://example.com/callback',
+};
+const context = { uid: 'admin-1' };
 
 describe('Sync Conflict Detection Logic', () => {
   beforeEach(() => {
@@ -344,5 +375,354 @@ describe('Sync Conflict Detection Logic', () => {
 
       expect(counts).toHaveLength(2);
     });
+  });
+});
+
+// ============================================================================
+// Etsy conflict detection tests (integration-style via captured handler)
+// ============================================================================
+
+function makeEtsyProduct(overrides: Record<string, unknown> = {}): Product {
+  return {
+    id: 'prod-etsy-1',
+    artistId: 'artist-1',
+    status: 'active',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    etsyListingId: '12345',
+    squareItemId: '',
+    variants: [
+      {
+        id: 'var-1',
+        label: 'Regular',
+        sku: 'prd_abc',
+        priceCents: 2500,
+        quantity: 5,
+        etsyProductId: 1001,
+      },
+    ],
+    squareCache: {
+      name: 'Handmade Bowl',
+      syncedAt: new Date(),
+    },
+    etsyCache: {
+      title: 'Handmade Bowl',
+      syncedAt: new Date(),
+      state: 'active',
+      taxonomyId: 100,
+    },
+    ...overrides,
+  } as Product;
+}
+
+function makeEtsyListing(overrides: Record<string, unknown> = {}) {
+  return {
+    listing_id: 12345,
+    title: 'Handmade Bowl',
+    quantity: 5,
+    price: { amount: 2500, divisor: 100, currency_code: 'USD' },
+    inventory: {
+      products: [
+        {
+          product_id: 1001,
+          sku: 'prd_abc',
+          is_deleted: false,
+          offerings: [
+            {
+              offering_id: 1,
+              quantity: 5,
+              is_enabled: true,
+              is_deleted: false,
+              price: { amount: 2500, divisor: 100, currency_code: 'USD' },
+            },
+          ],
+          property_values: [],
+        },
+      ],
+      price_on_property: [],
+      quantity_on_property: [],
+      sku_on_property: [],
+    },
+    ...overrides,
+  };
+}
+
+describe('Etsy Sync Conflict Detection (via handler)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.conflictFindPending.mockResolvedValue([]);
+    mocks.conflictFindExisting.mockResolvedValue(null);
+    mocks.conflictCreate.mockResolvedValue({ id: 'conflict-new' });
+    // Prevent Square detection from running
+    mocks.catalogListItems.mockResolvedValue([]);
+    mocks.inventoryGetCounts.mockResolvedValue([]);
+  });
+
+  it('detects quantity mismatch between Firestore variant and Etsy offering', async () => {
+    mocks.productFindAll.mockResolvedValue([makeEtsyProduct()]);
+    mocks.etsyGetListing.mockResolvedValue(
+      makeEtsyListing({
+        inventory: {
+          products: [
+            {
+              product_id: 1001,
+              sku: 'prd_abc',
+              is_deleted: false,
+              offerings: [
+                {
+                  offering_id: 1,
+                  quantity: 3, // Etsy has 3, Firestore has 5
+                  is_enabled: true,
+                  is_deleted: false,
+                  price: { amount: 2500, divisor: 100, currency_code: 'USD' },
+                },
+              ],
+              property_values: [],
+            },
+          ],
+          price_on_property: [],
+          quantity_on_property: [],
+          sku_on_property: [],
+        },
+      })
+    );
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number; updated: number };
+
+    expect(result.detected).toBe(1);
+    expect(mocks.conflictCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: 'prod-etsy-1',
+        variantId: 'var-1',
+        variantLabel: 'Regular',
+        type: 'quantity_mismatch',
+        localState: expect.objectContaining({ quantity: 5 }),
+        externalState: expect.objectContaining({
+          system: 'etsy',
+          quantity: 3,
+        }),
+      })
+    );
+  });
+
+  it('detects price mismatch between Firestore variant and Etsy offering', async () => {
+    mocks.productFindAll.mockResolvedValue([makeEtsyProduct()]);
+    mocks.etsyGetListing.mockResolvedValue(
+      makeEtsyListing({
+        inventory: {
+          products: [
+            {
+              product_id: 1001,
+              sku: 'prd_abc',
+              is_deleted: false,
+              offerings: [
+                {
+                  offering_id: 1,
+                  quantity: 5,
+                  is_enabled: true,
+                  is_deleted: false,
+                  price: { amount: 3000, divisor: 100, currency_code: 'USD' },
+                },
+              ],
+              property_values: [],
+            },
+          ],
+          price_on_property: [],
+          quantity_on_property: [],
+          sku_on_property: [],
+        },
+      })
+    );
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number };
+
+    expect(result.detected).toBe(1);
+    expect(mocks.conflictCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'price_mismatch',
+        localState: expect.objectContaining({ price: 2500 }),
+        externalState: expect.objectContaining({
+          system: 'etsy',
+          price: 3000,
+        }),
+      })
+    );
+  });
+
+  it('detects missing_external when Etsy listing is not found', async () => {
+    mocks.productFindAll.mockResolvedValue([makeEtsyProduct()]);
+    mocks.etsyGetListing.mockRejectedValue(new Error('Not found'));
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number };
+
+    expect(result.detected).toBe(1);
+    expect(mocks.conflictCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'missing_external',
+        externalState: expect.objectContaining({
+          system: 'etsy',
+          name: '(deleted from Etsy)',
+        }),
+      })
+    );
+  });
+
+  it('skips products without etsyListingId', async () => {
+    mocks.productFindAll.mockResolvedValue([
+      makeEtsyProduct({ etsyListingId: undefined }),
+    ]);
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number };
+
+    expect(result.detected).toBe(0);
+    expect(mocks.etsyGetListing).not.toHaveBeenCalled();
+  });
+
+  it('does not create duplicate when pending conflict exists', async () => {
+    mocks.productFindAll.mockResolvedValue([makeEtsyProduct()]);
+    mocks.etsyGetListing.mockResolvedValue(
+      makeEtsyListing({
+        inventory: {
+          products: [
+            {
+              product_id: 1001,
+              sku: 'prd_abc',
+              is_deleted: false,
+              offerings: [
+                {
+                  offering_id: 1,
+                  quantity: 3,
+                  is_enabled: true,
+                  is_deleted: false,
+                  price: { amount: 2500, divisor: 100, currency_code: 'USD' },
+                },
+              ],
+              property_values: [],
+            },
+          ],
+          price_on_property: [],
+          quantity_on_property: [],
+          sku_on_property: [],
+        },
+      })
+    );
+    mocks.conflictFindExisting.mockResolvedValue({ id: 'existing' });
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number; updated: number };
+
+    expect(result.detected).toBe(0);
+    expect(result.updated).toBe(1);
+    expect(mocks.conflictCreate).not.toHaveBeenCalled();
+  });
+
+  it('creates no conflicts when Etsy data matches Firestore', async () => {
+    mocks.productFindAll.mockResolvedValue([makeEtsyProduct()]);
+    mocks.etsyGetListing.mockResolvedValue(makeEtsyListing());
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number };
+
+    expect(result.detected).toBe(0);
+    expect(mocks.conflictCreate).not.toHaveBeenCalled();
+  });
+
+  it('only runs Etsy detection when system filter is etsy', async () => {
+    mocks.productFindAll.mockResolvedValue([]);
+
+    await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    );
+
+    // Square methods should NOT be called
+    expect(mocks.catalogListItems).not.toHaveBeenCalled();
+    expect(mocks.inventoryGetCounts).not.toHaveBeenCalled();
+  });
+
+  it('detects conflicts for multi-variant products', async () => {
+    const product = makeEtsyProduct({
+      variants: [
+        { id: 'var-sm', label: 'Small', sku: 'sku-sm', priceCents: 2000, quantity: 3, etsyProductId: 2001 },
+        { id: 'var-lg', label: 'Large', sku: 'sku-lg', priceCents: 3000, quantity: 2, etsyProductId: 2002 },
+      ],
+    });
+    mocks.productFindAll.mockResolvedValue([product]);
+    mocks.etsyGetListing.mockResolvedValue(
+      makeEtsyListing({
+        inventory: {
+          products: [
+            {
+              product_id: 2001,
+              sku: 'sku-sm',
+              is_deleted: false,
+              offerings: [
+                { offering_id: 1, quantity: 3, is_enabled: true, is_deleted: false, price: { amount: 2000, divisor: 100, currency_code: 'USD' } },
+              ],
+              property_values: [],
+            },
+            {
+              product_id: 2002,
+              sku: 'sku-lg',
+              is_deleted: false,
+              offerings: [
+                { offering_id: 2, quantity: 1, is_enabled: true, is_deleted: false, price: { amount: 3000, divisor: 100, currency_code: 'USD' } },
+              ],
+              property_values: [],
+            },
+          ],
+          price_on_property: [],
+          quantity_on_property: [],
+          sku_on_property: [],
+        },
+      })
+    );
+
+    const result = (await mocks.capturedHandler!(
+      { system: 'etsy' },
+      context,
+      secrets,
+      strings
+    )) as { detected: number };
+
+    // Only Large has quantity mismatch (2 vs 1)
+    expect(result.detected).toBe(1);
+    expect(mocks.conflictCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variantId: 'var-lg',
+        variantLabel: 'Large',
+        type: 'quantity_mismatch',
+      })
+    );
   });
 });

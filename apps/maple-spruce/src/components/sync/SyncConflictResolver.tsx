@@ -51,8 +51,8 @@ const resolutionOptions: Array<{
   },
   {
     value: 'use_external',
-    label: 'Use Square',
-    description: 'Pull Square data to us',
+    label: 'Use External',
+    description: 'Pull external data to us',
     icon: <ArrowBackIcon />,
   },
   {
@@ -160,11 +160,13 @@ export function SyncConflictResolver({
 
   if (!conflict) return null;
 
+  const systemName = conflict.externalState.system === 'etsy' ? 'Etsy' : 'Square';
+
   const typeLabels: Record<string, string> = {
     quantity_mismatch: 'Quantity Mismatch',
     price_mismatch: 'Price Mismatch',
     missing_local: 'Missing Locally',
-    missing_external: 'Missing in Square',
+    missing_external: `Missing in ${systemName}`,
     unexpected_sale: 'Unexpected Sale',
   };
 
@@ -267,8 +269,8 @@ export function SyncConflictResolver({
         {/* Warning for destructive actions */}
         {selectedResolution === 'use_local' && conflict.type === 'missing_external' && (
           <Alert severity="warning" sx={{ mt: 2 }}>
-            This product was deleted from Square. You&apos;ll need to recreate it
-            manually in Square to sync.
+            This product was deleted from {systemName}. You&apos;ll need to recreate it
+            manually in {systemName} to sync.
           </Alert>
         )}
 

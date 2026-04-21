@@ -48,10 +48,16 @@ function main() {
   for (const suite of suites) {
     console.log(`\n--- ${suite} ---\n`);
     try {
+      // Run vitest directly instead of through the Nx executor so that
+      // test output (failures, assertion errors) is visible in CI logs.
+      // The Nx @nx/vitest:test executor captures stdout and only prints
+      // a summary, which makes debugging CI failures very difficult.
+      const configPath = `apps/${suite}/vitest.config.ts`;
       // eslint-disable-next-line sonarjs/os-command -- suite names come from Nx project list, not user input
-      execSync(`pnpm exec nx run ${suite}:test`, {
-        stdio: 'inherit',
-      });
+      execSync(
+        `pnpm exec vitest run --config ${configPath} --reporter=verbose`,
+        { stdio: 'inherit' }
+      );
     } catch {
       failed = true;
       console.error(`\n*** FAILED: ${suite} ***\n`);
