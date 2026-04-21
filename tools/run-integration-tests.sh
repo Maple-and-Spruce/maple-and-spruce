@@ -124,16 +124,18 @@ fi
 # ---------------------------------------------------------------------------
 # 6. Run tests inside Firebase emulators
 # ---------------------------------------------------------------------------
-# Determine which test suites to run
+# Determine which test suites to run.
+# Run vitest directly (not through the Nx executor) so assertion errors
+# and stack traces are visible in the terminal output.
 if [ $# -gt 0 ]; then
   TEST_CMD=""
   for suite in "$@"; do
-    TEST_CMD="${TEST_CMD}pnpm exec nx run functions-integration-tests-${suite}:test && "
+    TEST_CMD="${TEST_CMD}pnpm exec vitest run --config apps/functions-integration-tests-${suite}/vitest.config.ts --reporter=verbose && "
   done
   # Remove trailing " && "
   TEST_CMD="${TEST_CMD% && }"
 else
-  TEST_CMD="pnpm exec nx run functions-integration-tests:test"
+  TEST_CMD="node tools/run-integration-test-suites.js"
 fi
 
 echo "Running: $TEST_CMD"

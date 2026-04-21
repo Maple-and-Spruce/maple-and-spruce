@@ -10,9 +10,13 @@ import {
   Chip,
   Alert,
   CircularProgress,
+  ButtonGroup,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import SyncIcon from '@mui/icons-material/Sync';
-import type { SyncConflict, SyncConflictStatus, SyncResolution } from '@maple/ts/domain';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import type { SyncConflict, SyncConflictStatus, SyncResolution, ExternalSystem } from '@maple/ts/domain';
 import { SyncConflictDataTable, SyncConflictResolver } from '../../components/sync';
 import { AppShell } from '../../components/layout';
 import { useSyncConflicts } from '@maple/react/data';
@@ -35,6 +39,9 @@ export default function SyncConflictsPage() {
   // Resolver dialog state
   const [conflictToResolve, setConflictToResolve] = useState<SyncConflict | null>(null);
   const [isResolving, setIsResolving] = useState(false);
+
+  // System filter for detection
+  const [detectMenuAnchor, setDetectMenuAnchor] = useState<HTMLElement | null>(null);
 
   // Filter conflicts based on active tab
   const filteredConflicts = useMemo(() => {
@@ -66,8 +73,9 @@ export default function SyncConflictsPage() {
     []
   );
 
-  const handleDetectConflicts = useCallback(async () => {
-    await detectConflicts();
+  const handleDetectConflicts = useCallback(async (system?: ExternalSystem) => {
+    setDetectMenuAnchor(null);
+    await detectConflicts(system ? { system } : undefined);
   }, [detectConflicts]);
 
   const handleOpenResolver = useCallback((conflict: SyncConflict) => {
@@ -112,16 +120,32 @@ export default function SyncConflictsPage() {
         <Typography variant="h4" component="h1">
           Sync Conflicts
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={
-            isDetecting ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />
-          }
-          onClick={handleDetectConflicts}
-          disabled={isDetecting}
+        <ButtonGroup variant="contained" disabled={isDetecting}>
+          <Button
+            startIcon={
+              isDetecting ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />
+            }
+            onClick={() => handleDetectConflicts()}
+          >
+            {isDetecting ? 'Detecting...' : 'Detect All'}
+          </Button>
+          <Button
+            size="small"
+            onClick={(e) => setDetectMenuAnchor(e.currentTarget)}
+            aria-label="select system to detect"
+          >
+            <ArrowDropDownIcon />
+          </Button>
+        </ButtonGroup>
+        <Menu
+          anchorEl={detectMenuAnchor}
+          open={!!detectMenuAnchor}
+          onClose={() => setDetectMenuAnchor(null)}
         >
-          {isDetecting ? 'Detecting...' : 'Detect Now'}
-        </Button>
+          <MenuItem onClick={() => handleDetectConflicts()}>All Systems</MenuItem>
+          <MenuItem onClick={() => handleDetectConflicts('square')}>Square Only</MenuItem>
+          <MenuItem onClick={() => handleDetectConflicts('etsy')}>Etsy Only</MenuItem>
+        </Menu>
       </Box>
 
       {/* Show detection results */}

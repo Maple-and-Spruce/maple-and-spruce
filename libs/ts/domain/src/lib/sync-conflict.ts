@@ -9,6 +9,11 @@ export interface SyncConflict {
   id: string;
   productId: string;
 
+  /** Optional variant ID for variant-level conflicts (Etsy multi-variant) */
+  variantId?: string;
+  /** Optional variant label for display (e.g. "Small", "Blue") */
+  variantLabel?: string;
+
   type: SyncConflictType;
   detectedAt: Date;
 
