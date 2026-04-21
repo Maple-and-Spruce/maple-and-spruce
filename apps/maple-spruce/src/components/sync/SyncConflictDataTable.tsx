@@ -35,8 +35,13 @@ const typeLabels: Record<SyncConflictType, string> = {
   quantity_mismatch: 'Quantity Mismatch',
   price_mismatch: 'Price Mismatch',
   missing_local: 'Missing Locally',
-  missing_external: 'Missing in Square',
+  missing_external: 'Missing Externally',
   unexpected_sale: 'Unexpected Sale',
+};
+
+const systemLabels: Record<string, string> = {
+  square: 'Square',
+  etsy: 'Etsy',
 };
 
 const typeColors: Record<SyncConflictType, 'error' | 'warning' | 'info'> = {
@@ -117,8 +122,10 @@ export function SyncConflictDataTable({
         headerName: 'Product',
         flex: 1,
         minWidth: 180,
-        valueGetter: (_value, row: SyncConflict) =>
-          row.localState.name || row.externalState.name || row.productId,
+        valueGetter: (_value, row: SyncConflict) => {
+          const name = row.localState.name || row.externalState.name || row.productId;
+          return row.variantLabel ? `${name} (${row.variantLabel})` : name;
+        },
       },
       {
         field: 'localState',
@@ -149,8 +156,22 @@ export function SyncConflictDataTable({
         },
       },
       {
+        field: 'system',
+        headerName: 'System',
+        width: 90,
+        valueGetter: (_value, row: SyncConflict) =>
+          systemLabels[row.externalState.system] ?? row.externalState.system,
+        renderCell: (params: GridRenderCellParams<SyncConflict>) => (
+          <Chip
+            label={systemLabels[params.row.externalState.system] ?? params.row.externalState.system}
+            size="small"
+            variant="outlined"
+          />
+        ),
+      },
+      {
         field: 'externalState',
-        headerName: 'Square State',
+        headerName: 'External State',
         width: 150,
         renderCell: (params: GridRenderCellParams<SyncConflict>) => {
           const state = params.row.externalState;
@@ -252,9 +273,10 @@ export function SyncConflictDataTable({
             );
           }
 
+          const systemName = systemLabels[params.row.externalState.system] ?? params.row.externalState.system;
           const resolutionLabels: Record<string, string> = {
             use_local: 'Used Local',
-            use_external: 'Used Square',
+            use_external: `Used ${systemName}`,
             manual: 'Manual',
             ignored: 'Ignored',
           };
@@ -330,7 +352,7 @@ export function SyncConflictDataTable({
       >
         <CheckCircleIcon sx={{ fontSize: 48, mb: 2, color: 'success.main' }} />
         <Typography variant="h6">No sync conflicts</Typography>
-        <Typography>All inventory is in sync with Square</Typography>
+        <Typography>All inventory is in sync with external systems</Typography>
       </Box>
     );
   }
