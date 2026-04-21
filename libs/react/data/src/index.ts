@@ -49,6 +49,9 @@ export {
   type UseAgreementRequestsFilters,
 } from './lib/useAgreementRequests';
 
+// Feature Flags
+export { useFeatureFlags } from './lib/useFeatureFlags';
+
 // Phase 3c: Registration & Discounts
 export {
   useDiscounts,
