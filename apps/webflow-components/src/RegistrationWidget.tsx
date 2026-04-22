@@ -139,6 +139,7 @@ interface RegistrationWidgetProps {
   squareAppId: string;
   squareLocationId: string;
   env: string;
+  applePayCheckoutUrl?: string;
 }
 
 type WidgetState =
@@ -166,6 +167,7 @@ export function RegistrationWidget({
   squareAppId,
   squareLocationId,
   env,
+  applePayCheckoutUrl,
 }: RegistrationWidgetProps) {
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
 
@@ -367,6 +369,7 @@ export function RegistrationWidget({
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
                   env={env}
+                  applePayCheckoutUrl={applePayCheckoutUrl}
                   requiredAgreements={state.requiredAgreements}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
