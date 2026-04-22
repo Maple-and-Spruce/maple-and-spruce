@@ -107,6 +107,10 @@ export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class
 
 // Class category functions
 export { getClassCategories } from '@maple/firebase/maple-functions/get-class-categories';
+export { createClassCategory } from '@maple/firebase/maple-functions/create-class-category';
+export { updateClassCategory } from '@maple/firebase/maple-functions/update-class-category';
+export { deleteClassCategory } from '@maple/firebase/maple-functions/delete-class-category';
+export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-class-categories';
 
 // Discount functions
 export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';
