@@ -62,7 +62,7 @@ jobs:
           # Compute affected projects once — shared by both the functions
           # deploy and the webflow components publish below.
           if [ "$DEPLOY_ALL" != "true" ]; then
-            ALL_AFFECTED=$(pnpm exec nx show projects --affected --base=${{ steps.base.outputs.commit }})
+            ALL_AFFECTED=$(pnpm exec nx show projects --affected --base=${{ steps.base.outputs.commit }} 2>/dev/null)
             echo "Affected projects:"
             echo "$ALL_AFFECTED"
           fi
