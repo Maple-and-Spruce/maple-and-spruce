@@ -209,6 +209,18 @@
       "@maple/firebase/maple-functions/get-class-categories": [
         "libs/firebase/maple-functions/get-class-categories/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/create-class-category": [
+        "libs/firebase/maple-functions/create-class-category/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-class-category": [
+        "libs/firebase/maple-functions/update-class-category/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-class-category": [
+        "libs/firebase/maple-functions/delete-class-category/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/reorder-class-categories": [
+        "libs/firebase/maple-functions/reorder-class-categories/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-discounts": [
         "libs/firebase/maple-functions/get-discounts/src/index.ts"
       ],

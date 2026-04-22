@@ -76,6 +76,11 @@ export function AppShellWrapper({
         items: [
           { label: 'Classes', href: '/classes', icon: <EventIcon /> },
           {
+            label: 'Class Categories',
+            href: '/class-categories',
+            icon: <CategoryIcon />,
+          },
+          {
             label: 'Instructors',
             href: '/instructors',
             icon: <SchoolIcon />,
