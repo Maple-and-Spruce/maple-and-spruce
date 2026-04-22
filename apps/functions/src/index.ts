@@ -159,6 +159,7 @@ export { getSignedAgreement } from '@maple/firebase/maple-functions/get-signed-a
 // Public signing functions (no auth required)
 export { getAgreementForSigning } from '@maple/firebase/maple-functions/get-agreement-for-signing';
 export { submitSignedAgreement } from '@maple/firebase/maple-functions/submit-signed-agreement';
+export { getRequiredAgreementsForClass } from '@maple/firebase/maple-functions/get-required-agreements-for-class';
 
 // Agreement scheduled functions
 export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-agreement-requests';

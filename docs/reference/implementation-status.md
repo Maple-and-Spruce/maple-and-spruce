@@ -364,6 +364,50 @@ Square foundation is complete. Ready for Product Management integration.
 | Vercel deployment | Pending | `storybook.maple-and-spruce.com` |
 | Chromatic project token | Pending | Add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets |
 
+## Agreement & Waiver System - Epic #320
+
+### Phase 1: Foundation (Complete, #321)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Domain types (template, request, signed agreement) | **Complete** | `libs/ts/domain/src/lib/agreement-*.ts` |
+| Repositories (3 collections) | **Complete** | `libs/firebase/database/src/lib/agreement-*.repository.ts` |
+| Validation suites (template + signing) | **Complete** | `libs/ts/validation/src/lib/agreement-*.validation.ts` |
+| 12 Cloud Functions (CRUD, signing, admin) | **Complete** | `libs/firebase/maple-functions/*-agreement-*/` |
+| Auto-attach agreements during registration | **Complete** | `libs/firebase/maple-functions/create-registration/` |
+| Agreement request expiry cleanup | **Complete** | `libs/firebase/maple-functions/expire-agreement-requests/` |
+
+### Phase 2: Signing Flow (Complete)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| SigningForm component (signature_pad) | **Complete** | `libs/react/agreements/src/lib/SigningForm.tsx` |
+| SignatureCanvas component | **Complete** | `libs/react/agreements/src/lib/SignatureCanvas.tsx` |
+| Public signing page `/sign/:token` | **Complete** | `apps/maple-spruce/src/app/sign/[token]/page.tsx` |
+| Kiosk mode support | **Complete** | `?kiosk=true` query param |
+| Agreement template editor dialog | **Complete** | `libs/react/agreements/src/lib/AgreementTemplateForm.tsx` (#333) |
+
+### Phase 3: Registration Integration (PR #343)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| `signingRequirement` field on templates | **Complete** | `libs/ts/domain/src/lib/agreement-template.ts` |
+| `getRequiredAgreementsForClass` Cloud Function | **Complete** | `libs/firebase/maple-functions/get-required-agreements-for-class/` |
+| Required agreement validation before payment | **Complete** | `libs/firebase/maple-functions/create-registration/` |
+| Inline signing step in checkout form | **Complete** | `libs/react/registrations/src/lib/RegistrationCheckoutForm.tsx` |
+| Webflow widget agreement integration | **Complete** | `apps/webflow-components/src/RegistrationWidget.tsx` |
+| Signing requirement admin UI | **Complete** | Radio group in `AgreementTemplateForm.tsx` |
+| Confirmation email: signed vs deferred states | **Complete** | `tools/seed-email-templates.ts` |
+
+### Phase 4: Enhancements (Not Started)
+
+| Feature | Status | Issue |
+|---------|--------|-------|
+| SMS delivery via Twilio | Not Started | #335 |
+| Kiosk mode improvements | Not Started | — |
+| Bulk re-send | Not Started | — |
+| PDF export | Not Started | — |
+
 ## External Dependencies
 
 - [x] Firebase projects created (`maple-and-spruce` prod, `maple-and-spruce-dev` dev)

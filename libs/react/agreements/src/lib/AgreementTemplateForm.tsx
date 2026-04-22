@@ -21,6 +21,9 @@ import {
   Select,
   MenuItem,
   Chip,
+  Radio,
+  RadioGroup,
+  FormLabel,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -30,6 +33,7 @@ import type {
   AgreementTemplate,
   AgreementSection,
   AgreementSectionResponseType,
+  SigningRequirement,
   ClassCategory,
 } from '@maple/ts/domain';
 import {
@@ -55,6 +59,7 @@ interface AgreementTemplateFormProps {
     sections: AgreementSection[];
     classCategoryIds: string[];
     autoAttach: boolean;
+    signingRequirement: SigningRequirement;
     supportsMinor: boolean;
   }) => Promise<void>;
   template?: AgreementTemplate;
@@ -81,6 +86,7 @@ export function AgreementTemplateForm({
   const name = useSignal('');
   const description = useSignal('');
   const autoAttach = useSignal(false);
+  const signingRequirement = useSignal<SigningRequirement>('deferred');
   const supportsMinor = useSignal(false);
   const classCategoryIds = useSignal<string[]>([]);
   const sections = useSignal<SectionFormData[]>([]);
@@ -110,6 +116,7 @@ export function AgreementTemplateForm({
         name.value = template.name;
         description.value = template.description ?? '';
         autoAttach.value = template.autoAttach;
+        signingRequirement.value = template.signingRequirement ?? 'deferred';
         supportsMinor.value = template.supportsMinor;
         classCategoryIds.value = [...template.classCategoryIds];
         sections.value = template.sections.map((s) => ({
@@ -126,6 +133,7 @@ export function AgreementTemplateForm({
         name.value = '';
         description.value = '';
         autoAttach.value = false;
+        signingRequirement.value = 'deferred';
         supportsMinor.value = false;
         classCategoryIds.value = [];
         sections.value = [];
@@ -189,6 +197,7 @@ export function AgreementTemplateForm({
         })),
         classCategoryIds: classCategoryIds.value,
         autoAttach: autoAttach.value,
+        signingRequirement: signingRequirement.value,
         supportsMinor: supportsMinor.value,
       });
     } catch (error: unknown) {
@@ -250,33 +259,56 @@ export function AgreementTemplateForm({
           </Box>
 
           {autoAttach.value && (
-            <FormControl fullWidth>
-              <InputLabel>Class Categories</InputLabel>
-              <Select
-                multiple
-                value={classCategoryIds.value}
-                label="Class Categories"
-                onChange={(e) => {
-                  classCategoryIds.value = e.target.value as string[];
-                }}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((id) => {
-                      const cat = classCategories.find((c) => c.id === id);
-                      return (
-                        <Chip key={id} label={cat?.name ?? id} size="small" />
-                      );
-                    })}
-                  </Box>
-                )}
-              >
-                {classCategories.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <>
+              <FormControl fullWidth>
+                <InputLabel>Class Categories</InputLabel>
+                <Select
+                  multiple
+                  value={classCategoryIds.value}
+                  label="Class Categories"
+                  onChange={(e) => {
+                    classCategoryIds.value = e.target.value as string[];
+                  }}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((id) => {
+                        const cat = classCategories.find((c) => c.id === id);
+                        return (
+                          <Chip key={id} label={cat?.name ?? id} size="small" />
+                        );
+                      })}
+                    </Box>
+                  )}
+                >
+                  {classCategories.map((cat) => (
+                    <MenuItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Signing Requirement</FormLabel>
+                <RadioGroup
+                  value={signingRequirement.value}
+                  onChange={(e) => {
+                    signingRequirement.value = e.target.value as SigningRequirement;
+                  }}
+                >
+                  <FormControlLabel
+                    value="required"
+                    control={<Radio size="small" />}
+                    label="Required at checkout — must sign before payment"
+                  />
+                  <FormControlLabel
+                    value="deferred"
+                    control={<Radio size="small" />}
+                    label="Deferred — sign later via emailed link"
+                  />
+                </RadioGroup>
+              </FormControl>
+            </>
           )}
 
           <Divider />
