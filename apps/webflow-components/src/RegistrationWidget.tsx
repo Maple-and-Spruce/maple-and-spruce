@@ -140,6 +140,7 @@ interface RegistrationWidgetProps {
   squareLocationId: string;
   env: string;
   applePayCheckoutUrl?: string;
+  showDigitalWallets?: string;
 }
 
 type WidgetState =
@@ -168,7 +169,9 @@ export function RegistrationWidget({
   squareLocationId,
   env,
   applePayCheckoutUrl,
+  showDigitalWallets,
 }: RegistrationWidgetProps) {
+  const digitalWalletsEnabled = showDigitalWallets === 'show';
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
 
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
@@ -369,7 +372,8 @@ export function RegistrationWidget({
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
                   env={env}
-                  applePayCheckoutUrl={applePayCheckoutUrl}
+                  applePayCheckoutUrl={digitalWalletsEnabled ? applePayCheckoutUrl : undefined}
+                  showDigitalWallets={digitalWalletsEnabled}
                   requiredAgreements={state.requiredAgreements}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
