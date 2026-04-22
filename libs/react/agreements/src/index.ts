@@ -4,3 +4,4 @@ export { AgreementTemplateList } from './lib/AgreementTemplateList';
 export { AgreementTemplateForm } from './lib/AgreementTemplateForm';
 export { AgreementRequestList } from './lib/AgreementRequestList';
 export { SendAgreementDialog } from './lib/SendAgreementDialog';
+export { SignedAgreementDetailDialog } from './lib/SignedAgreementDetailDialog';

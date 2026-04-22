@@ -13,6 +13,7 @@ import SendIcon from '@mui/icons-material/Send';
 import type {
   AgreementTemplate,
   AgreementSection,
+  AgreementRequest,
   CreateAgreementTemplateInput,
 } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
@@ -21,12 +22,14 @@ import {
   AgreementTemplateForm,
   AgreementRequestList,
   SendAgreementDialog,
+  SignedAgreementDetailDialog,
 } from '@maple/react/agreements';
 import { AppShell } from '../../components/layout';
 import {
   useAgreementTemplates,
   useAgreementRequests,
   useClassCategories,
+  useSignedAgreement,
 } from '../../hooks';
 
 export default function AgreementsPage() {
@@ -47,6 +50,12 @@ export default function AgreementsPage() {
 
   const { categoriesState: classCategoriesState } = useClassCategories();
 
+  const {
+    detailState: signedAgreementState,
+    fetchSignedAgreement,
+    clearDetail: clearSignedAgreement,
+  } = useSignedAgreement();
+
   // Template form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<
@@ -65,6 +74,10 @@ export default function AgreementsPage() {
 
   // Resend state
   const [isResending, setIsResending] = useState(false);
+
+  // Signed agreement detail state
+  const [viewingSignerName, setViewingSignerName] = useState<string>();
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleOpenForm = useCallback((template?: AgreementTemplate) => {
     setEditingTemplate(template);
@@ -136,6 +149,22 @@ export default function AgreementsPage() {
     },
     [resendRequest]
   );
+
+  const handleViewSigned = useCallback(
+    (request: AgreementRequest) => {
+      if (!request.signedAgreementId) return;
+      setViewingSignerName(request.signerName);
+      setIsDetailOpen(true);
+      fetchSignedAgreement(request.signedAgreementId);
+    },
+    [fetchSignedAgreement]
+  );
+
+  const handleCloseDetail = useCallback(() => {
+    setIsDetailOpen(false);
+    setViewingSignerName(undefined);
+    clearSignedAgreement();
+  }, [clearSignedAgreement]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!templateToDelete) return;
@@ -211,6 +240,7 @@ export default function AgreementsPage() {
         <AgreementRequestList
           requestsState={requestsState}
           onResend={handleResend}
+          onViewSigned={handleViewSigned}
           isResending={isResending}
         />
       )}
@@ -230,6 +260,13 @@ export default function AgreementsPage() {
         onSend={handleSendWaiver}
         templates={templates}
         isSending={isSending}
+      />
+
+      <SignedAgreementDetailDialog
+        open={isDetailOpen}
+        onClose={handleCloseDetail}
+        detailState={signedAgreementState}
+        signerName={viewingSignerName}
       />
 
       <DeleteConfirmDialog

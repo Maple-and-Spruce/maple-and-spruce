@@ -16,5 +16,6 @@ export {
   useArtistPayouts,
   useAgreementTemplates,
   useAgreementRequests,
+  useSignedAgreement,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
