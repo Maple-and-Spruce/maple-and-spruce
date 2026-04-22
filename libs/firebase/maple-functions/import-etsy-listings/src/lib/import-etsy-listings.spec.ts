@@ -122,8 +122,17 @@ function makeSimpleListing(overrides: Record<string, unknown> = {}) {
     inventory: {
       products: [
         {
+          product_id: 100,
           sku: 'etsy-sku-1',
-          offerings: [],
+          offerings: [
+            {
+              offering_id: 1,
+              quantity: 5,
+              is_enabled: true,
+              is_deleted: false,
+              price: { amount: 2500, divisor: 100, currency_code: 'USD' },
+            },
+          ],
           property_values: [],
         },
       ],
@@ -132,15 +141,37 @@ function makeSimpleListing(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * Helper: make createItem mock echo back the variant IDs from input,
+ * simulating real Square CatalogService behavior.
+ */
+function mockCreateItemEcho(
+  squareItemId: string,
+  squareCatalogVersion = 1
+) {
+  mocks.createItem.mockImplementation(
+    (input: { variants?: Array<{ variantId: string; sku: string; label: string; priceCents: number }> }) => {
+      const variants = input.variants ?? [];
+      const first = variants[0];
+      return Promise.resolve({
+        squareItemId,
+        squareVariationId: `sqv-${first?.variantId ?? 'default'}`,
+        squareCatalogVersion,
+        sku: first?.sku ?? 'generated-sku',
+        variations: variants.map((v, i) => ({
+          variantId: v.variantId,
+          squareVariationId: `sqv-${v.variantId}`,
+          sku: v.sku,
+        })),
+      });
+    }
+  );
+}
+
 function happyPathMocks() {
   mocks.findByEtsyListingId.mockResolvedValue(undefined);
   mocks.getListing.mockResolvedValue(makeSimpleListing());
-  mocks.createItem.mockResolvedValue({
-    squareItemId: 'sqi-1',
-    squareVariationId: 'sqv-1',
-    squareCatalogVersion: 1,
-    sku: 'etsy-sku-1',
-  });
+  mockCreateItemEcho('sqi-1');
   mocks.setQuantity.mockResolvedValue(undefined);
   mocks.mockFetch.mockResolvedValue({
     ok: true,
@@ -196,18 +227,86 @@ describe('importEtsyListings', () => {
     expect(mocks.createItem).not.toHaveBeenCalled();
   });
 
-  it('flags multi-variant listings and skips Square calls', async () => {
+  it('imports multi-variant listings with per-variant data', async () => {
     mocks.findByEtsyListingId.mockResolvedValue(undefined);
     mocks.getListing.mockResolvedValue(
       makeSimpleListing({
         inventory: {
           products: [
-            { sku: 'v1', offerings: [], property_values: [] },
-            { sku: 'v2', offerings: [], property_values: [] },
+            {
+              product_id: 101,
+              sku: 'v1-sku',
+              offerings: [
+                {
+                  offering_id: 1,
+                  quantity: 3,
+                  is_enabled: true,
+                  is_deleted: false,
+                  price: { amount: 2000, divisor: 100, currency_code: 'USD' },
+                },
+              ],
+              property_values: [
+                {
+                  property_id: 200,
+                  property_name: 'Size',
+                  scale_id: null,
+                  scale_name: null,
+                  value_ids: [1],
+                  values: ['Small'],
+                },
+              ],
+            },
+            {
+              product_id: 102,
+              sku: 'v2-sku',
+              offerings: [
+                {
+                  offering_id: 2,
+                  quantity: 7,
+                  is_enabled: true,
+                  is_deleted: false,
+                  price: { amount: 3000, divisor: 100, currency_code: 'USD' },
+                },
+              ],
+              property_values: [
+                {
+                  property_id: 200,
+                  property_name: 'Size',
+                  scale_id: null,
+                  scale_name: null,
+                  value_ids: [2],
+                  values: ['Large'],
+                },
+              ],
+            },
           ],
         },
       })
     );
+    mockCreateItemEcho('sqi-multi');
+    mocks.setQuantity.mockResolvedValue(undefined);
+    mocks.mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+      headers: { get: () => 'image/jpeg' },
+    });
+    mocks.uploadImage.mockResolvedValue({
+      squareImageId: 'img-1',
+      imageUrl: 'https://square.com/img/1',
+      squareCatalogVersion: 2,
+    });
+    mocks.createProduct.mockResolvedValue({
+      id: 'prod-multi',
+      squareItemId: 'sqi-multi',
+    });
+    mocks.updateEtsyCache.mockResolvedValue(undefined);
+    mocks.createImport.mockResolvedValue({ id: 'prod-multi' });
+    mocks.findById.mockResolvedValue({
+      id: 'prod-multi',
+      etsyListingId: '1001',
+      squareCache: {},
+      etsyCache: {},
+    });
 
     const result = (await mocks.capturedHandler!(
       {
@@ -218,11 +317,59 @@ describe('importEtsyListings', () => {
       { uid: 'admin-1' },
       secrets,
       strings
-    )) as { results: Array<{ errorCode: string; success: boolean }> };
+    )) as {
+      results: Array<{ success: boolean; productId: string }>;
+      successCount: number;
+    };
 
-    expect(result.results[0].success).toBe(false);
-    expect(result.results[0].errorCode).toBe('MULTI_VARIANT_NOT_SUPPORTED');
-    expect(mocks.createItem).not.toHaveBeenCalled();
+    expect(result.successCount).toBe(1);
+    expect(result.results[0].success).toBe(true);
+    expect(result.results[0].productId).toBe('prod-multi');
+
+    // Should pass variants to Square
+    expect(mocks.createItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Handmade Mug',
+        variants: expect.arrayContaining([
+          expect.objectContaining({
+            label: 'Small',
+            priceCents: 2000,
+            sku: 'v1-sku',
+          }),
+          expect.objectContaining({
+            label: 'Large',
+            priceCents: 3000,
+            sku: 'v2-sku',
+          }),
+        ]),
+      })
+    );
+
+    // Should set inventory per variant
+    expect(mocks.setQuantity).toHaveBeenCalledTimes(2);
+
+    // Should create product with variants
+    expect(mocks.createProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variants: expect.arrayContaining([
+          expect.objectContaining({ label: 'Small', priceCents: 2000, quantity: 3 }),
+          expect.objectContaining({ label: 'Large', priceCents: 3000, quantity: 7 }),
+        ]),
+        variantProperties: ['Size'],
+      }),
+      expect.objectContaining({
+        squareItemId: 'sqi-multi',
+        variations: expect.arrayContaining([
+          expect.objectContaining({ sku: 'v1-sku' }),
+          expect.objectContaining({ sku: 'v2-sku' }),
+        ]),
+      })
+    );
+
+    // Should record variantCount=2 in snapshot
+    expect(mocks.createImport).toHaveBeenCalledWith(
+      expect.objectContaining({ variantCount: 2 })
+    );
   });
 
   it('maps Etsy 404 to LISTING_NOT_FOUND', async () => {
@@ -268,28 +415,36 @@ describe('importEtsyListings', () => {
     expect(result.results[0].success).toBe(true);
     expect(result.results[0].productId).toBe('prod-1');
 
-    expect(mocks.createItem).toHaveBeenCalledWith({
-      name: 'Handmade Mug',
-      description: 'A mug',
-      priceCents: 2500,
-      sku: 'etsy-sku-1',
-    });
-    expect(mocks.setQuantity).toHaveBeenCalledWith({
-      squareVariationId: 'sqv-1',
-      locationId: 'location-abc',
-      quantity: 5,
-    });
+    expect(mocks.createItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Handmade Mug',
+        description: 'A mug',
+        variants: expect.arrayContaining([
+          expect.objectContaining({
+            label: expect.any(String),
+            priceCents: 2500,
+            sku: 'etsy-sku-1',
+          }),
+        ]),
+      })
+    );
+    expect(mocks.setQuantity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locationId: 'location-abc',
+        quantity: 5,
+      })
+    );
     expect(mocks.createProduct).toHaveBeenCalledWith(
       expect.objectContaining({
         artistId: 'artist-1',
         categoryId: 'cat-1',
         status: 'active',
-        priceCents: 2500,
-        quantity: 5,
+        variants: expect.arrayContaining([
+          expect.objectContaining({ priceCents: 2500, quantity: 5 }),
+        ]),
       }),
       expect.objectContaining({
         squareItemId: 'sqi-1',
-        squareVariationId: 'sqv-1',
       })
     );
     expect(mocks.updateEtsyCache).toHaveBeenCalledWith(
@@ -332,8 +487,8 @@ describe('importEtsyListings', () => {
     expect(mocks.createProduct).toHaveBeenCalled();
   });
 
-  it('processes multiple listings and counts per-row outcomes', async () => {
-    // Listing A succeeds; listing B is already imported; listing C is multi-variant
+  it('processes multiple listings including multi-variant and counts per-row outcomes', async () => {
+    // Listing A succeeds (simple); listing B is already imported; listing C succeeds (multi-variant)
     mocks.findByEtsyListingId
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce({ id: 'p-existing', etsyListingId: '1002' })
@@ -345,18 +500,13 @@ describe('importEtsyListings', () => {
           listing_id: 1003,
           inventory: {
             products: [
-              { sku: 'v1', offerings: [], property_values: [] },
-              { sku: 'v2', offerings: [], property_values: [] },
+              { product_id: 201, sku: 'v1', offerings: [{ offering_id: 1, quantity: 2, is_enabled: true, is_deleted: false, price: { amount: 2500, divisor: 100, currency_code: 'USD' } }], property_values: [] },
+              { product_id: 202, sku: 'v2', offerings: [{ offering_id: 2, quantity: 3, is_enabled: true, is_deleted: false, price: { amount: 3500, divisor: 100, currency_code: 'USD' } }], property_values: [] },
             ],
           },
         })
       );
-    mocks.createItem.mockResolvedValue({
-      squareItemId: 'sqi',
-      squareVariationId: 'sqv',
-      squareCatalogVersion: 1,
-      sku: 'sk',
-    });
+    mockCreateItemEcho('sqi');
     mocks.setQuantity.mockResolvedValue(undefined);
     mocks.mockFetch.mockResolvedValue({
       ok: true,
@@ -392,11 +542,11 @@ describe('importEtsyListings', () => {
       failureCount: number;
     };
 
-    expect(result.successCount).toBe(1);
-    expect(result.failureCount).toBe(2);
+    expect(result.successCount).toBe(2);
+    expect(result.failureCount).toBe(1);
     expect(result.results[0].success).toBe(true);
     expect(result.results[1].errorCode).toBe('ALREADY_IMPORTED');
-    expect(result.results[2].errorCode).toBe('MULTI_VARIANT_NOT_SUPPORTED');
+    expect(result.results[2].success).toBe(true);
   });
 
   it('returns empty results for empty input', async () => {
