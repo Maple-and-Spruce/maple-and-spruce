@@ -11,6 +11,7 @@ import type {
   AgreementRequestStatus,
   AgreementDeliveryMethod,
   SignedAgreement,
+  SigningRequirement,
   MediaReleaseChoice,
   AgreementSection,
 } from '@maple/ts/domain';
@@ -41,6 +42,7 @@ export interface CreateAgreementTemplateRequest {
   sections: AgreementSection[];
   classCategoryIds: string[];
   autoAttach: boolean;
+  signingRequirement: SigningRequirement;
   supportsMinor: boolean;
 }
 
@@ -55,6 +57,7 @@ export interface UpdateAgreementTemplateRequest {
   sections?: AgreementSection[];
   classCategoryIds?: string[];
   autoAttach?: boolean;
+  signingRequirement?: SigningRequirement;
   supportsMinor?: boolean;
   status?: AgreementTemplateStatus;
 }
@@ -171,4 +174,39 @@ export interface SubmitSignedAgreementRequest {
 
 export interface SubmitSignedAgreementResponse {
   signedAgreement: SignedAgreement;
+}
+
+// ============================================================================
+// Required Agreements for Class (Public - for checkout form)
+// ============================================================================
+
+export interface GetRequiredAgreementsForClassRequest {
+  classId: string;
+}
+
+export interface GetRequiredAgreementsForClassResponse {
+  agreements: Array<{
+    templateId: string;
+    templateName: string;
+    sections: AgreementSection[];
+    supportsMinor: boolean;
+  }>;
+}
+
+// ============================================================================
+// Inline Agreement Signing Data (used in CreateRegistrationRequest)
+// ============================================================================
+
+/** Signature data submitted inline during checkout for required agreements */
+export interface InlineAgreementSigningData {
+  templateId: string;
+  /** Base64-encoded PNG of the signature canvas */
+  signatureData: string;
+  printedName: string;
+  mediaReleaseChoice?: MediaReleaseChoice;
+  isMinor: boolean;
+  minorName?: string;
+  guardianName?: string;
+  /** Base64-encoded PNG of guardian signature */
+  guardianSignatureData?: string;
 }

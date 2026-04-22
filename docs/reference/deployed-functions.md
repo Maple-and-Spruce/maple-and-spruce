@@ -66,6 +66,15 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `markPayoutPaid` — marks a pending payout as paid with payment method and optional reference
 - `getPayouts` — retrieves artist payouts with optional filters (artistId, status)
 
+### Agreements & Waivers
+- `getAgreementTemplates`, `getAgreementTemplate`, `createAgreementTemplate`, `updateAgreementTemplate`, `deleteAgreementTemplate`
+- `getAgreementRequests`, `sendAgreementRequest`, `resendAgreementRequest`
+- `getSignedAgreements`, `getSignedAgreement`
+- `getAgreementForSigning` _(public, token-based)_
+- `submitSignedAgreement` _(public, token-based, 120s timeout)_
+- `getRequiredAgreementsForClass` _(public — returns required-at-checkout templates for a class)_
+- `expireAgreementRequests` _(scheduled — marks expired requests)_
+
 ### Auth
 - `checkAdminStatus`
 

@@ -8,6 +8,7 @@ import { db, toDate } from './utilities/database.config';
 import type {
   AgreementTemplate,
   AgreementTemplateStatus,
+  SigningRequirement,
   CreateAgreementTemplateInput,
   UpdateAgreementTemplateInput,
 } from '@maple/ts/domain';
@@ -29,6 +30,7 @@ function docToAgreementTemplate(
     sections: data.sections ?? [],
     classCategoryIds: data.classCategoryIds ?? [],
     autoAttach: data.autoAttach ?? false,
+    signingRequirement: (data.signingRequirement as SigningRequirement) ?? 'deferred',
     supportsMinor: data.supportsMinor ?? false,
     version: data.version ?? 1,
     status: data.status as AgreementTemplateStatus,
@@ -41,6 +43,7 @@ export interface AgreementTemplateFilters {
   status?: AgreementTemplateStatus;
   classCategoryId?: string;
   autoAttach?: boolean;
+  signingRequirement?: SigningRequirement;
 }
 
 export const AgreementTemplateRepository = {
@@ -55,6 +58,14 @@ export const AgreementTemplateRepository = {
 
     if (filters?.autoAttach !== undefined) {
       query = query.where('autoAttach', '==', filters.autoAttach);
+    }
+
+    if (filters?.signingRequirement) {
+      query = query.where(
+        'signingRequirement',
+        '==',
+        filters.signingRequirement
+      );
     }
 
     if (filters?.classCategoryId) {
@@ -88,6 +99,20 @@ export const AgreementTemplateRepository = {
       status: 'active',
       autoAttach: true,
       classCategoryId,
+    });
+  },
+
+  /**
+   * Find active required-at-checkout templates for a given class category
+   */
+  async findRequiredForCategory(
+    classCategoryId: string
+  ): Promise<AgreementTemplate[]> {
+    return this.findAll({
+      status: 'active',
+      autoAttach: true,
+      classCategoryId,
+      signingRequirement: 'required',
     });
   },
 

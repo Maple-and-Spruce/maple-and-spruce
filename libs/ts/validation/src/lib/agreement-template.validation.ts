@@ -19,6 +19,7 @@ export interface AgreementTemplateValidationInput {
   }>;
   classCategoryIds?: string[];
   autoAttach?: boolean;
+  signingRequirement?: string;
   supportsMinor?: boolean;
 }
 
@@ -80,5 +81,15 @@ export const agreementTemplateValidation = staticSuite(
         enforce(ids.length).equals(new Set(ids).size);
       }
     });
+
+    test(
+      'signingRequirement',
+      'Signing requirement must be required or deferred',
+      () => {
+        if (data.signingRequirement) {
+          enforce(data.signingRequirement).inside(['required', 'deferred']);
+        }
+      }
+    );
   }
 );

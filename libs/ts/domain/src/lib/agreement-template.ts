@@ -38,6 +38,13 @@ export interface AgreementSection {
 
 export type AgreementTemplateStatus = 'active' | 'archived';
 
+/**
+ * Controls when the agreement must be signed relative to checkout.
+ * - 'required': Must be signed before payment is processed (inline during checkout)
+ * - 'deferred': Signing link sent after payment via confirmation email
+ */
+export type SigningRequirement = 'required' | 'deferred';
+
 export const AGREEMENT_TEMPLATE_STATUSES: AgreementTemplateStatus[] = [
   'active',
   'archived',
@@ -58,6 +65,8 @@ export interface AgreementTemplate {
   classCategoryIds: string[];
   /** Whether to auto-create agreement requests on registration for matching categories */
   autoAttach: boolean;
+  /** When the agreement must be signed relative to checkout (default: deferred) */
+  signingRequirement: SigningRequirement;
   /** Whether this template includes minor/guardian co-signature fields */
   supportsMinor: boolean;
   /** Version number, incremented on each edit */
@@ -74,6 +83,7 @@ export type CreateAgreementTemplateInput = {
   sections: AgreementSection[];
   classCategoryIds: string[];
   autoAttach: boolean;
+  signingRequirement: SigningRequirement;
   supportsMinor: boolean;
 };
 
@@ -85,6 +95,7 @@ export type UpdateAgreementTemplateInput = {
   sections?: AgreementSection[];
   classCategoryIds?: string[];
   autoAttach?: boolean;
+  signingRequirement?: SigningRequirement;
   supportsMinor?: boolean;
   status?: AgreementTemplateStatus;
 };
