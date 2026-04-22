@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * Tests for listEtsyListings Cloud Function
  *
  * Focus: the cross-reference logic that maps Etsy listings to Firestore
- * Products and flags multi-variant listings as unsupported for import.
+ * Products and provides variant count information.
  */
 
 const mocks = vi.hoisted(() => {
@@ -100,7 +100,7 @@ describe('listEtsyListings', () => {
     expect(result.listings[1].productId).toBeUndefined();
   });
 
-  it('flags multi-variant listings as not simple', async () => {
+  it('reports variant count and marks all listings as importable', async () => {
     mocks.getListings.mockResolvedValue({
       count: 2,
       results: [
