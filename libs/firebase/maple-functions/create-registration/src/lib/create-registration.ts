@@ -11,9 +11,11 @@
  * 6. Create Square Order with tax line item
  * 7. Process Square payment against the order
  * 8. Create registration record
- * 9. Auto-attach agreement/waiver requests for matching class category
- * 10. Write to `mail` collection for confirmation email (with waiver link if applicable)
- * 11. Return registration + confirmation number
+ * 9. Validate required agreement signatures (if any) — before payment
+ * 10. Process required agreements (upload signatures, create records) — after payment
+ * 11. Auto-attach deferred agreement/waiver requests for matching class category
+ * 12. Write to `mail` collection for confirmation email (with waiver link if applicable)
+ * 13. Return registration + confirmation number
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
@@ -24,6 +26,7 @@ import {
   RegistrationRepository,
   AgreementTemplateRepository,
   AgreementRequestRepository,
+  SignedAgreementRepository,
   getDb,
 } from '@maple/firebase/database';
 import {
@@ -43,7 +46,10 @@ import { registrationValidation } from '@maple/ts/validation';
 import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
+  InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
+import type { AgreementTemplate, MediaReleaseChoice } from '@maple/ts/domain';
+import { getStorage } from 'firebase-admin/storage';
 import { randomBytes } from 'crypto';
 
 /**
@@ -69,6 +75,103 @@ function getAppUrl(allowedOrigins: string): string {
   return httpsOrigin ?? origins[0] ?? 'http://localhost:3000';
 }
 
+/**
+ * Upload a base64 PNG to Firebase Storage and return the file path.
+ */
+async function uploadSignature(
+  signedAgreementId: string,
+  filename: string,
+  base64Data: string
+): Promise<string> {
+  const bucket = getStorage().bucket();
+  const filePath = `agreements/${signedAgreementId}/${filename}`;
+  const file = bucket.file(filePath);
+
+  const raw = base64Data.includes(',')
+    ? base64Data.split(',')[1]
+    : base64Data;
+  const buffer = Buffer.from(raw, 'base64');
+
+  await file.save(buffer, {
+    metadata: { contentType: 'image/png' },
+  });
+
+  return filePath;
+}
+
+/**
+ * Render agreement sections into an HTML snapshot for the legal record.
+ */
+function renderAgreementHtml(
+  templateName: string,
+  sections: Array<{ title: string; content: string }>
+): string {
+  const sectionHtml = sections
+    .map(
+      (s) =>
+        `<section><h2>${s.title}</h2><div>${s.content}</div></section>`
+    )
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html>
+<head><title>${templateName}</title></head>
+<body>
+<h1>${templateName}</h1>
+${sectionHtml}
+</body>
+</html>`;
+}
+
+/**
+ * Validate that all required agreement templates have matching signature data.
+ */
+function validateRequiredAgreements(
+  requiredTemplates: AgreementTemplate[],
+  agreements: InlineAgreementSigningData[] | undefined
+): void {
+  if (requiredTemplates.length === 0) return;
+
+  if (!agreements || agreements.length === 0) {
+    throw new Error(
+      'Required agreements must be signed before checkout can complete'
+    );
+  }
+
+  const submittedIds = new Set(agreements.map((a) => a.templateId));
+  const missingTemplates = requiredTemplates.filter(
+    (t) => !submittedIds.has(t.id)
+  );
+
+  if (missingTemplates.length > 0) {
+    const names = missingTemplates.map((t) => t.name).join(', ');
+    throw new Error(
+      `The following agreements must be signed before checkout: ${names}`
+    );
+  }
+
+  // Validate each submitted agreement has required fields
+  for (const agreement of agreements) {
+    if (!agreement.signatureData) {
+      throw new Error('Signature is required for all agreements');
+    }
+    if (!agreement.printedName?.trim()) {
+      throw new Error('Printed name is required for all agreements');
+    }
+    if (agreement.isMinor) {
+      if (!agreement.minorName?.trim()) {
+        throw new Error("Minor's name is required");
+      }
+      if (!agreement.guardianName?.trim()) {
+        throw new Error('Parent/guardian name is required');
+      }
+      if (!agreement.guardianSignatureData) {
+        throw new Error('Parent/guardian signature is required');
+      }
+    }
+  }
+}
+
 export const createRegistration = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
@@ -92,6 +195,17 @@ export const createRegistration = Functions.endpoint
 
       if (!isClassRegistrationOpen(classEntity)) {
         throw new Error('This class is not currently open for registration');
+      }
+
+      // 2b. Check for required agreements and validate signatures before payment
+      const requiredTemplates = classEntity.categoryId
+        ? await AgreementTemplateRepository.findRequiredForCategory(
+            classEntity.categoryId
+          )
+        : [];
+
+      if (requiredTemplates.length > 0) {
+        validateRequiredAgreements(requiredTemplates, data.agreements);
       }
 
       // 3. Calculate cost (with optional discount)
@@ -262,19 +376,125 @@ export const createRegistration = Functions.endpoint
         );
       }
 
-      // 8. Auto-attach agreement/waiver requests for this class category
+      // 8. Process required agreements (signed at checkout)
+      let agreementsSigned = false;
+      try {
+        if (requiredTemplates.length > 0 && data.agreements) {
+          const templateMap = new Map(
+            requiredTemplates.map((t) => [t.id, t])
+          );
+
+          for (const agreementData of data.agreements) {
+            const template = templateMap.get(agreementData.templateId);
+            if (!template) continue;
+
+            const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+            // Upload signature images
+            const signatureImagePath = await uploadSignature(
+              tempId,
+              'signature.png',
+              agreementData.signatureData
+            );
+
+            let guardianSignatureImagePath: string | undefined;
+            if (agreementData.isMinor && agreementData.guardianSignatureData) {
+              guardianSignatureImagePath = await uploadSignature(
+                tempId,
+                'guardian-signature.png',
+                agreementData.guardianSignatureData
+              );
+            }
+
+            // Create agreement request (already signed)
+            const signingToken = randomBytes(32).toString('hex');
+            const request = await AgreementRequestRepository.create({
+              templateId: template.id,
+              templateVersion: template.version,
+              signerEmail: data.customerEmail,
+              signerName: data.customerName,
+              signerPhone: data.customerPhone,
+              deliveryMethod: 'registration',
+              registrationId: registrationDocRef.id,
+              classId: data.classId,
+              signingToken,
+              expiresAt: new Date(), // Already signed, expiry irrelevant
+              status: 'pending', // Will be marked signed immediately
+            });
+
+            // Create signed agreement record
+            const agreementHtmlSnapshot = renderAgreementHtml(
+              template.name,
+              template.sections
+            );
+
+            const signedAgreement = await SignedAgreementRepository.create({
+              requestId: request.id,
+              templateId: template.id,
+              templateVersion: template.version,
+              agreementHtmlSnapshot,
+              signerEmail: data.customerEmail,
+              printedName: agreementData.printedName.trim(),
+              signatureImagePath,
+              mediaReleaseChoice: agreementData.mediaReleaseChoice as
+                | MediaReleaseChoice
+                | undefined,
+              isMinor: agreementData.isMinor ?? false,
+              minorName: agreementData.minorName,
+              guardianName: agreementData.guardianName,
+              guardianSignatureImagePath,
+              signedAt: new Date(),
+              ipAddress: 'inline-checkout',
+              userAgent: 'inline-checkout',
+            });
+
+            // Rename storage files to use the actual signed agreement ID
+            const bucket = getStorage().bucket();
+            const newSignaturePath = `agreements/${signedAgreement.id}/signature.png`;
+            await bucket.file(signatureImagePath).move(newSignaturePath);
+
+            if (guardianSignatureImagePath) {
+              const newGuardianPath = `agreements/${signedAgreement.id}/guardian-signature.png`;
+              await bucket
+                .file(guardianSignatureImagePath)
+                .move(newGuardianPath);
+            }
+
+            // Mark request as signed
+            await AgreementRequestRepository.markSigned(
+              request.id,
+              signedAgreement.id
+            );
+          }
+
+          agreementsSigned = true;
+        }
+      } catch (requiredAgreementError) {
+        // Log but don't fail — payment already processed
+        console.error(
+          'Failed to process required agreements after payment:',
+          requiredAgreementError
+        );
+      }
+
+      // 9. Auto-attach deferred agreement requests for this class category
       let waiverUrl: string | undefined;
       try {
         if (classEntity.categoryId) {
-          const templates =
+          const allTemplates =
             await AgreementTemplateRepository.findAutoAttachForCategory(
               classEntity.categoryId
             );
 
-          if (templates.length > 0) {
+          // Only create pending requests for deferred templates
+          const deferredTemplates = allTemplates.filter(
+            (t) => (t.signingRequirement ?? 'deferred') === 'deferred'
+          );
+
+          if (deferredTemplates.length > 0) {
             const appUrl = getAppUrl(strings.ALLOWED_ORIGINS);
 
-            for (const template of templates) {
+            for (const template of deferredTemplates) {
               const signingToken = randomBytes(32).toString('hex');
               const expiresAt = new Date();
               expiresAt.setDate(expiresAt.getDate() + 30);
@@ -301,14 +521,14 @@ export const createRegistration = Functions.endpoint
           }
         }
       } catch (agreementError) {
-        // Don't fail the registration if agreement creation fails
+        // Don't fail the registration if deferred agreement creation fails
         console.error(
-          'Failed to create agreement requests:',
+          'Failed to create deferred agreement requests:',
           agreementError
         );
       }
 
-      // 9. Write to mail collection for confirmation email
+      // 10. Write to mail collection for confirmation email
       try {
         const formatCurrency = (cents: number): string =>
           `$${(cents / 100).toFixed(2)}`;
@@ -345,6 +565,7 @@ export const createRegistration = Functions.endpoint
                 : squareReceiptUrl,
               materialsIncluded: classEntity.materialsIncluded,
               whatToBring: classEntity.whatToBring,
+              agreementsSigned: agreementsSigned || undefined,
               waiverUrl,
             },
           },
@@ -366,6 +587,8 @@ export const createRegistration = Functions.endpoint
       return {
         registration,
         confirmationNumber,
+        waiverUrl,
+        agreementsSigned: agreementsSigned || undefined,
       };
     }
   );

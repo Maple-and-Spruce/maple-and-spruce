@@ -335,6 +335,9 @@ export type {
   GetAgreementForSigningResponse,
   SubmitSignedAgreementRequest,
   SubmitSignedAgreementResponse,
+  GetRequiredAgreementsForClassRequest,
+  GetRequiredAgreementsForClassResponse,
+  InlineAgreementSigningData,
 } from './agreement.types';
 
 // Etsy Import types (read-only pull from Etsy into our catalog)
