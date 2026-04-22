@@ -274,6 +274,7 @@ export function RegistrationCheckoutForm({
 
       showValidationErrors.value = true;
       if (!isValid.value) return;
+      if (!allAgreementsSigned.value) return;
 
       isSubmitting.value = true;
       submitError.value = null;
@@ -326,6 +327,7 @@ export function RegistrationCheckoutForm({
       isValid,
       hasRequiredAgreements,
       signedAgreements,
+      allAgreementsSigned,
     ]
   );
 
@@ -650,7 +652,7 @@ export function RegistrationCheckoutForm({
             <button
               type="button"
               onClick={handleApplePayClick}
-              disabled={isSubmitting.value || isFull.value}
+              disabled={isButtonDisabled.value}
               style={{
                 backgroundColor: '#000',
                 color: '#fff',
@@ -660,11 +662,8 @@ export function RegistrationCheckoutForm({
                 fontSize: 16,
                 fontWeight: 600,
                 border: 'none',
-                cursor:
-                  isSubmitting.value || isFull.value
-                    ? 'not-allowed'
-                    : 'pointer',
-                opacity: isSubmitting.value || isFull.value ? 0.5 : 1,
+                cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
+                opacity: isButtonDisabled.value ? 0.7 : 1,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 letterSpacing: '0.02em',
                 marginBottom: 16,
