@@ -215,13 +215,6 @@ export function SquareCardForm({
     document.head.appendChild(script);
   }, [applicationId, locationId, env]);
 
-  // Initialize payments once SDK is ready AND we have a valid amount
-  useEffect(() => {
-    if (!sdkReady || initializedRef.current || !totalCents) return;
-    initializedRef.current = true;
-    initializePayments();
-  }, [sdkReady, totalCents, initializePayments]);
-
   const initializePayments = useCallback(async () => {
     try {
       if (!window.Square) {
@@ -389,6 +382,13 @@ export function SquareCardForm({
       setIsLoading(false);
     }
   }, [applicationId, locationId, totalCents, onReady, onTokenizeRef]);
+
+  // Initialize payments once SDK is ready AND we have a valid amount
+  useEffect(() => {
+    if (!sdkReady || initializedRef.current || !totalCents) return;
+    initializedRef.current = true;
+    initializePayments();
+  }, [sdkReady, totalCents, initializePayments]);
 
   const showDivider = (hasApplePay || hasGooglePay) && !isLoading;
 
