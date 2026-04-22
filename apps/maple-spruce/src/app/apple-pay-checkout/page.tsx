@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 /* ---------- Square SDK types (local, no external imports) ---------- */
@@ -12,7 +13,7 @@ interface SquareTokenizeResult {
 }
 
 interface SquareApplePay {
-  attach: (selector: string) => Promise<void>;
+  attach: (selectorOrElement: string | HTMLElement) => Promise<void>;
   addEventListener: (
     event: string,
     cb: (result: SquareTokenizeResult) => void
@@ -111,6 +112,7 @@ function ApplePayCheckoutInner(): React.ReactElement {
   >('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const sdkLoaded = useRef(false);
+  const applePayButtonRef = useRef<HTMLDivElement>(null);
 
   const handleClose = useCallback((): void => {
     window.close();
@@ -142,6 +144,10 @@ function ApplePayCheckoutInner(): React.ReactElement {
       throw new Error('Square SDK failed to load.');
     }
 
+    if (!applePayButtonRef.current) {
+      throw new Error('Apple Pay button container not found.');
+    }
+
     const payments = await square.payments(applicationId, locationId);
     const paymentRequest = payments.paymentRequest({
       countryCode: 'US',
@@ -150,7 +156,7 @@ function ApplePayCheckoutInner(): React.ReactElement {
     });
 
     const applePay = await payments.applePay(paymentRequest);
-    await applePay.attach('#apple-pay-button');
+    await applePay.attach(applePayButtonRef.current);
     setStatus('ready');
     applePay.addEventListener('token', handleToken);
   }, [applicationId, locationId, amountCents, label, handleToken]);
@@ -183,7 +189,9 @@ function ApplePayCheckoutInner(): React.ReactElement {
           err instanceof Error ? err.message : 'Failed to initialize Apple Pay';
         if (
           message.includes('not supported') ||
-          message.includes('not available')
+          message.includes('not available') ||
+          message.includes('not a function') ||
+          message.includes('is undefined')
         ) {
           setErrorMessage(
             'Apple Pay is not available on this device or browser. Please use Safari on an Apple device with Apple Pay configured.'
@@ -209,31 +217,34 @@ function ApplePayCheckoutInner(): React.ReactElement {
 
   return (
     <div style={styles.container}>
-      {status === 'loading' && (
+      {status !== 'success' && (
         <>
           <p style={styles.label}>{label}</p>
           <p style={styles.amount}>{displayAmount}</p>
-          <p style={styles.status}>Initializing Apple Pay...</p>
         </>
       )}
 
+      {status === 'loading' && (
+        <p style={styles.status}>Initializing Apple Pay...</p>
+      )}
+
+      {/* Always in DOM so Square SDK can attach to it */}
+      <div
+        ref={applePayButtonRef}
+        style={{
+          ...styles.buttonContainer,
+          display: status === 'ready' ? 'block' : 'none',
+        }}
+      />
+
       {status === 'ready' && (
-        <>
-          <p style={styles.label}>{label}</p>
-          <p style={styles.amount}>{displayAmount}</p>
-          <div id="apple-pay-button" style={styles.buttonContainer} />
-          <button type="button" onClick={handleClose} style={styles.cancel}>
-            Cancel
-          </button>
-        </>
+        <button type="button" onClick={handleClose} style={styles.cancel}>
+          Cancel
+        </button>
       )}
 
       {status === 'processing' && (
-        <>
-          <p style={styles.label}>{label}</p>
-          <p style={styles.amount}>{displayAmount}</p>
-          <p style={styles.status}>Processing...</p>
-        </>
+        <p style={styles.status}>Processing...</p>
       )}
 
       {status === 'success' && (
@@ -245,39 +256,30 @@ function ApplePayCheckoutInner(): React.ReactElement {
 
       {status === 'error' && (
         <>
-          <p style={styles.label}>{label}</p>
-          <p style={styles.amount}>{displayAmount}</p>
           <p style={styles.error}>{errorMessage}</p>
           <button type="button" onClick={handleClose} style={styles.cancel}>
             Close
           </button>
         </>
       )}
-
-      {typeof window !== 'undefined' &&
-        !window.opener &&
-        status !== 'error' &&
-        status !== 'loading' && (
-          <p style={{ ...styles.status, fontSize: '12px', marginTop: '24px' }}>
-            This page should be opened as a popup from the registration form.
-          </p>
-        )}
     </div>
   );
 }
 
-/* ---------- Page component with Suspense boundary ---------- */
+/* ---------- Page component — SSR disabled ---------- */
+
+const ApplePayCheckoutClient = dynamic(
+  () => Promise.resolve({ default: ApplePayCheckoutInner }),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={styles.container}>
+        <p style={styles.status}>Loading...</p>
+      </div>
+    ),
+  }
+);
 
 export default function ApplePayCheckoutPage(): React.ReactElement {
-  return (
-    <Suspense
-      fallback={
-        <div style={styles.container}>
-          <p style={styles.status}>Loading...</p>
-        </div>
-      }
-    >
-      <ApplePayCheckoutInner />
-    </Suspense>
-  );
+  return <ApplePayCheckoutClient />;
 }

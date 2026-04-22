@@ -69,6 +69,8 @@ interface SquareCardFormProps {
   env?: string;
   /** Total amount in cents — used for Apple Pay / Google Pay payment sheet */
   totalCents?: number;
+  /** Whether to initialize digital wallet buttons (Apple Pay / Google Pay). Default false. */
+  showDigitalWallets?: boolean;
   /** Called when the form is ready to tokenize */
   onReady?: () => void;
   /** Ref function to expose tokenize to parent */
@@ -129,6 +131,7 @@ export function SquareCardForm({
   locationId,
   env,
   totalCents,
+  showDigitalWallets = false,
   onReady,
   onTokenizeRef,
   onDigitalWalletToken,
@@ -153,6 +156,8 @@ export function SquareCardForm({
   const cardContainerRef = useRef<HTMLDivElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const initializedRef = useRef(false);
+  const sdkLoadedRef = useRef(false);
+  const [sdkReady, setSdkReady] = useState(false);
 
   // Keep the payment request amount in sync with the total
   useEffect(() => {
@@ -187,8 +192,13 @@ export function SquareCardForm({
 
   // Load the Square SDK script
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
+    if (sdkLoadedRef.current) return;
+    sdkLoadedRef.current = true;
+
+    if (window.Square) {
+      setSdkReady(true);
+      return;
+    }
 
     const isSandbox = env
       ? env !== 'prod'
@@ -197,21 +207,16 @@ export function SquareCardForm({
       ? 'https://sandbox.web.squarecdn.com/v1/square.js'
       : 'https://web.squarecdn.com/v1/square.js';
 
-    if (window.Square) {
-      initializePayments();
-      return;
-    }
-
     const script = document.createElement('script');
     script.src = scriptUrl;
     script.async = true;
-    script.onload = () => initializePayments();
+    script.onload = () => setSdkReady(true);
     script.onerror = () => {
       setError('Failed to load payment form. Please refresh and try again.');
       setIsLoading(false);
     };
     document.head.appendChild(script);
-  }, [applicationId, locationId]);
+  }, [applicationId, locationId, env]);
 
   const initializePayments = useCallback(async () => {
     try {
@@ -307,43 +312,44 @@ export function SquareCardForm({
         locationId
       );
 
-      // Create payment request for digital wallets
-      const amount =
-        totalCents != null ? (totalCents / 100).toFixed(2) : '0.00';
-      const paymentRequest = payments.paymentRequest({
-        countryCode: 'US',
-        currencyCode: 'USD',
-        total: { amount, label: 'Total' },
-      }) as SquarePaymentRequest;
-      paymentRequestRef.current = paymentRequest;
+      // Digital wallets — only initialize when enabled
+      if (showDigitalWallets) {
+        const amount =
+          totalCents != null ? (totalCents / 100).toFixed(2) : '0.00';
+        const paymentRequest = payments.paymentRequest({
+          countryCode: 'US',
+          currencyCode: 'USD',
+          total: { amount, label: 'Total' },
+        }) as SquarePaymentRequest;
+        paymentRequestRef.current = paymentRequest;
 
-      // Helper: handle a digital wallet tokenization result
-      const handleWalletToken = (result: SquareTokenizeResult): void => {
-        if (result.status === 'OK' && result.token) {
-          onDigitalWalletTokenRef.current?.(result.token);
+        const handleWalletToken = (result: SquareTokenizeResult): void => {
+          if (result.status === 'OK' && result.token) {
+            onDigitalWalletTokenRef.current?.(result.token);
+          }
+        };
+
+        // Initialize Apple Pay (fails gracefully if not supported)
+        try {
+          const applePay = await payments.applePay(paymentRequest);
+          await applePay.attach(applePayTarget);
+          applePay.addEventListener('token', handleWalletToken);
+          applePayRef.current = applePay;
+          setHasApplePay(true);
+        } catch {
+          // Apple Pay not available — browser/device doesn't support it
         }
-      };
 
-      // Initialize Apple Pay (fails gracefully if not supported)
-      try {
-        const applePay = await payments.applePay(paymentRequest);
-        await applePay.attach(applePayTarget);
-        applePay.addEventListener('token', handleWalletToken);
-        applePayRef.current = applePay;
-        setHasApplePay(true);
-      } catch {
-        // Apple Pay not available — browser/device doesn't support it
-      }
-
-      // Initialize Google Pay (fails gracefully if not supported)
-      try {
-        const googlePay = await payments.googlePay(paymentRequest);
-        await googlePay.attach(googlePayTarget);
-        googlePay.addEventListener('token', handleWalletToken);
-        googlePayRef.current = googlePay;
-        setHasGooglePay(true);
-      } catch {
-        // Google Pay not available — browser/device doesn't support it
+        // Initialize Google Pay (fails gracefully if not supported)
+        try {
+          const googlePay = await payments.googlePay(paymentRequest);
+          await googlePay.attach(googlePayTarget);
+          googlePay.addEventListener('token', handleWalletToken);
+          googlePayRef.current = googlePay;
+          setHasGooglePay(true);
+        } catch {
+          // Google Pay not available — browser/device doesn't support it
+        }
       }
 
       // Initialize card form
@@ -379,7 +385,14 @@ export function SquareCardForm({
       setError(message);
       setIsLoading(false);
     }
-  }, [applicationId, locationId, onReady, onTokenizeRef]);
+  }, [applicationId, locationId, totalCents, showDigitalWallets, onReady, onTokenizeRef]);
+
+  // Initialize payments once SDK is ready AND we have a valid amount
+  useEffect(() => {
+    if (!sdkReady || initializedRef.current || !totalCents) return;
+    initializedRef.current = true;
+    initializePayments();
+  }, [sdkReady, totalCents, initializePayments]);
 
   const showDivider = (hasApplePay || hasGooglePay) && !isLoading;
 

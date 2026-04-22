@@ -83,6 +83,8 @@ interface RegistrationCheckoutFormProps {
   env?: string;
   /** URL of the Apple Pay checkout page hosted on a domain verified for Apple Pay */
   applePayCheckoutUrl?: string;
+  /** Whether to show digital wallet buttons (Apple Pay / Google Pay). Default false. */
+  showDigitalWallets?: boolean;
   /** Required agreements that must be signed before checkout */
   requiredAgreements?: RequiredAgreementTemplate[];
   onCalculateCost: (
@@ -117,6 +119,7 @@ export function RegistrationCheckoutForm({
   squareLocationId,
   env,
   applePayCheckoutUrl,
+  showDigitalWallets = false,
   requiredAgreements = [],
   onCalculateCost,
   onSubmit,
@@ -647,46 +650,29 @@ export function RegistrationCheckoutForm({
           Payment
         </Typography>
 
-        {applePayCheckoutUrl && (
-          <>
-            <button
-              type="button"
-              onClick={handleApplePayClick}
-              disabled={isButtonDisabled.value}
-              style={{
-                backgroundColor: '#000',
-                color: '#fff',
-                borderRadius: 8,
-                padding: '14px 24px',
-                width: '100%',
-                fontSize: 16,
-                fontWeight: 600,
-                border: 'none',
-                cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
-                opacity: isButtonDisabled.value ? 0.7 : 1,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                letterSpacing: '0.02em',
-                marginBottom: 16,
-              }}
-            >
-              {'\uF8FF'} Pay with Apple Pay
-            </button>
-
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                my: 2,
-              }}
-            >
-              <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
-              <Typography variant="body2" color="text.secondary">
-                Or pay with card
-              </Typography>
-              <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
-            </Box>
-          </>
+        {applePayCheckoutUrl && showDigitalWallets && (
+          <button
+            type="button"
+            onClick={handleApplePayClick}
+            disabled={isButtonDisabled.value}
+            style={{
+              backgroundColor: '#000',
+              color: '#fff',
+              borderRadius: 8,
+              padding: '14px 24px',
+              width: '100%',
+              fontSize: 16,
+              fontWeight: 600,
+              border: 'none',
+              cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
+              opacity: isButtonDisabled.value ? 0.7 : 1,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              letterSpacing: '0.02em',
+              marginBottom: 8,
+            }}
+          >
+            {'\uF8FF'} Pay with Apple Pay
+          </button>
         )}
 
         <SquareCardForm
@@ -694,6 +680,7 @@ export function RegistrationCheckoutForm({
           locationId={squareLocationId}
           env={env}
           totalCents={costBreakdown.value?.totalCents}
+          showDigitalWallets={showDigitalWallets}
           onReady={() => (isCardReady.value = true)}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;

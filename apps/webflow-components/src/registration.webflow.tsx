@@ -36,5 +36,10 @@ export default declareComponent(RegistrationWidget, {
       name: 'Apple Pay Checkout URL',
       defaultValue: 'https://business.mapleandsprucefolkarts.com/apple-pay-checkout',
     }),
+    showDigitalWallets: props.Variant({
+      name: 'Digital Wallets',
+      options: ['show', 'hide'],
+      defaultValue: 'hide',
+    }),
   },
 });
