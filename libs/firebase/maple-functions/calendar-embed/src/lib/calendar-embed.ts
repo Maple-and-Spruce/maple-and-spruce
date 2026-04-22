@@ -59,6 +59,7 @@ export interface CalendarEmbedRequest {
 }
 
 export interface CalendarEmbedResponse {
+  set(header: string, value: string): void;
   redirect(status: number, url: string): void;
   status(code: number): { json(body: unknown): void };
 }
@@ -100,6 +101,13 @@ export async function handleCalendarEmbedRequest(
     }
 
     const owcUrl = `${config.owcBaseUrl}/calendar.html?${params.toString()}`;
+
+    // Cache the redirect for 5 minutes so repeat visits skip this
+    // Cloud Function entirely and go straight to the OWC URL.
+    response.set(
+      'Cache-Control',
+      'public, max-age=300, s-maxage=300, stale-while-revalidate=600'
+    );
     response.redirect(302, owcUrl);
   } catch (error) {
     console.error('Error generating calendar embed redirect:', error);
