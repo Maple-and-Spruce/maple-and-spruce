@@ -336,9 +336,17 @@ export function RegistrationCheckoutForm({
 
   const handleDigitalWalletToken = useCallback(
     (token: string) => {
+      // Validate before submitting — if invalid, show errors and surface
+      // a message so the user knows why nothing happened after wallet auth.
+      showValidationErrors.value = true;
+      if (!isValid.value || !allAgreementsSigned.value) {
+        submitError.value =
+          'Please complete all required fields and agreements before paying.';
+        return;
+      }
       submitWithNonce(token);
     },
-    [submitWithNonce]
+    [submitWithNonce, showValidationErrors, isValid, allAgreementsSigned, submitError]
   );
 
 
@@ -383,6 +391,11 @@ export function RegistrationCheckoutForm({
   const handleApplePayClick = useCallback((): void => {
     if (!applePayCheckoutUrl || !costBreakdown.value) return;
 
+    // Validate customer info before opening popup
+    showValidationErrors.value = true;
+    if (!isValid.value) return;
+    if (!allAgreementsSigned.value) return;
+
     const totalCents = costBreakdown.value.totalCents;
     const params = new URLSearchParams({
       amount: String(totalCents),
@@ -409,6 +422,9 @@ export function RegistrationCheckoutForm({
     squareApplicationId,
     squareLocationId,
     publicClass.name,
+    showValidationErrors,
+    isValid,
+    allAgreementsSigned,
   ]);
 
   // Listen for Apple Pay token messages from the popup window
