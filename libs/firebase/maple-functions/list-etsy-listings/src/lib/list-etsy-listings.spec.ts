@@ -122,7 +122,7 @@ describe('listEtsyListings', () => {
     expect(result.listings[0].variantCount).toBe(1);
     expect(result.listings[0].isSimple).toBe(true);
     expect(result.listings[1].variantCount).toBe(3);
-    expect(result.listings[1].isSimple).toBe(true);
+    expect(result.listings[1].isSimple).toBe(false);
   });
 
   it('defaults variantCount to 1 when inventory is missing', async () => {
