@@ -48,6 +48,10 @@ export {
   useAgreementRequests,
   type UseAgreementRequestsFilters,
 } from './lib/useAgreementRequests';
+export {
+  useSignedAgreement,
+  type SignedAgreementDetail,
+} from './lib/useSignedAgreement';
 
 // Feature Flags
 export { useFeatureFlags } from './lib/useFeatureFlags';
