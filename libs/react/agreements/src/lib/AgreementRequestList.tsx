@@ -17,6 +17,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import type { AgreementRequest, RequestState } from '@maple/ts/domain';
 
 function formatDate(date: Date): string {
@@ -40,12 +41,14 @@ const statusColors: Record<
 interface AgreementRequestListProps {
   requestsState: RequestState<AgreementRequest[]>;
   onResend: (id: string) => void;
+  onViewSigned: (request: AgreementRequest) => void;
   isResending?: boolean;
 }
 
 export function AgreementRequestList({
   requestsState,
   onResend,
+  onViewSigned,
   isResending,
 }: AgreementRequestListProps) {
   if (
@@ -124,6 +127,16 @@ export function AgreementRequestList({
               <TableCell>{formatDate(request.createdAt)}</TableCell>
               <TableCell>{formatDate(request.expiresAt)}</TableCell>
               <TableCell align="right">
+                {request.status === 'signed' && request.signedAgreementId && (
+                  <Tooltip title="View signed agreement">
+                    <IconButton
+                      size="small"
+                      onClick={() => onViewSigned(request)}
+                    >
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 {request.status === 'pending' && (
                   <Tooltip title="Resend signing email">
                     <IconButton
