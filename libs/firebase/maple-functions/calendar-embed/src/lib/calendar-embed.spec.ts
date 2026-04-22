@@ -19,15 +19,18 @@ import {
 
 function makeResponse(): {
   res: CalendarEmbedResponse;
+  set: ReturnType<typeof vi.fn>;
   redirect: ReturnType<typeof vi.fn>;
   status: ReturnType<typeof vi.fn>;
   json: ReturnType<typeof vi.fn>;
 } {
+  const set = vi.fn();
   const redirect = vi.fn();
   const json = vi.fn();
   const status = vi.fn().mockReturnValue({ json });
   return {
-    res: { redirect, status } as CalendarEmbedResponse,
+    res: { set, redirect, status } as CalendarEmbedResponse,
+    set,
     redirect,
     status,
     json,
@@ -235,6 +238,21 @@ describe('handleCalendarEmbedRequest', () => {
     expect(params.has('timezone')).toBe(false);
     expect(params.has('title')).toBe(false);
     expect(params.has('css_url')).toBe(false);
+  });
+
+  it('sets Cache-Control headers on the redirect response', async () => {
+    mocks.get.mockResolvedValue(baseConfig);
+    const { res, set } = makeResponse();
+
+    await handleCalendarEmbedRequest(
+      { hostname: 'maple-and-spruce-api.web.app', protocol: 'https' },
+      res
+    );
+
+    expect(set).toHaveBeenCalledWith(
+      'Cache-Control',
+      'public, max-age=300, s-maxage=300, stale-while-revalidate=600'
+    );
   });
 
   it('returns 500 JSON when the repository throws', async () => {
