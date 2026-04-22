@@ -83,6 +83,8 @@ interface RegistrationCheckoutFormProps {
   env?: string;
   /** URL of the Apple Pay checkout page hosted on a domain verified for Apple Pay */
   applePayCheckoutUrl?: string;
+  /** Whether to show digital wallet buttons (Apple Pay / Google Pay). Default false. */
+  showDigitalWallets?: boolean;
   /** Required agreements that must be signed before checkout */
   requiredAgreements?: RequiredAgreementTemplate[];
   onCalculateCost: (
@@ -117,6 +119,7 @@ export function RegistrationCheckoutForm({
   squareLocationId,
   env,
   applePayCheckoutUrl,
+  showDigitalWallets = false,
   requiredAgreements = [],
   onCalculateCost,
   onSubmit,
@@ -647,7 +650,7 @@ export function RegistrationCheckoutForm({
           Payment
         </Typography>
 
-        {applePayCheckoutUrl && (
+        {applePayCheckoutUrl && showDigitalWallets && (
           <button
             type="button"
             onClick={handleApplePayClick}
@@ -677,6 +680,7 @@ export function RegistrationCheckoutForm({
           locationId={squareLocationId}
           env={env}
           totalCents={costBreakdown.value?.totalCents}
+          showDigitalWallets={showDigitalWallets}
           onReady={() => (isCardReady.value = true)}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
