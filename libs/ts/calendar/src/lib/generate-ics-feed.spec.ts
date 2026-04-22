@@ -150,4 +150,22 @@ describe('generateIcsFeed', () => {
     expect(ics).toContain('PRODID:');
     expect(ics).toContain('Maple & Spruce');
   });
+
+  it('converts UTC dates to Eastern time in DTSTART/DTEND', () => {
+    // 2030-06-14T23:00:00Z = 7:00 PM ET (EDT, UTC-4)
+    const event = makeEvent({
+      startDateTime: new Date('2030-06-14T23:00:00Z'),
+      endDateTime: new Date('2030-06-15T01:00:00Z'),
+    });
+
+    const ics = generateIcsFeed([event], 'Test');
+    const veventBlock = ics.split('BEGIN:VEVENT')[1]?.split('END:VEVENT')[0] ?? '';
+
+    // DTSTART should reflect 7:00 PM ET (190000), not 11:00 PM UTC (230000)
+    expect(veventBlock).toContain('T190000');
+    expect(veventBlock).not.toContain('T230000');
+
+    // DTEND should reflect 9:00 PM ET (210000), not 1:00 AM UTC (010000)
+    expect(veventBlock).toContain('T210000');
+  });
 });
