@@ -166,6 +166,12 @@ export const submitSignedAgreement = Functions.endpoint
         await bucket.file(guardianSignatureImagePath).move(newGuardianPath);
       }
 
+      // Update Firestore record with final storage paths
+      await SignedAgreementRepository.updateStoragePaths(signedAgreement.id, {
+        signatureImagePath: newSignaturePath,
+        guardianSignatureImagePath: newGuardianPath,
+      });
+
       // Mark request as signed
       await AgreementRequestRepository.markSigned(
         request.id,

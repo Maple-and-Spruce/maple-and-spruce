@@ -82,6 +82,22 @@ export const SignedAgreementRepository = {
     return docToSignedAgreement(doc);
   },
 
+  async updateStoragePaths(
+    id: string,
+    paths: {
+      signatureImagePath: string;
+      guardianSignatureImagePath?: string;
+    }
+  ): Promise<void> {
+    const update: Record<string, string> = {
+      signatureImagePath: paths.signatureImagePath,
+    };
+    if (paths.guardianSignatureImagePath) {
+      update.guardianSignatureImagePath = paths.guardianSignatureImagePath;
+    }
+    await db.collection(COLLECTION).doc(id).update(update);
+  },
+
   async create(
     input: CreateSignedAgreementInput
   ): Promise<SignedAgreement> {
