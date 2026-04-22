@@ -19,7 +19,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { SquareCardForm } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
 import { SigningForm } from '@maple/react/agreements';
-import type { PublicClass, AgreementSection, MediaReleaseChoice } from '@maple/ts/domain';
+import type { PublicClass, AgreementSection } from '@maple/ts/domain';
 import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
