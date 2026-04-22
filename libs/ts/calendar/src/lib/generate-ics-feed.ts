@@ -11,6 +11,18 @@ import type { CalendarEvent } from '@maple/ts/domain';
 const TIMEZONE = 'America/New_York';
 
 /**
+ * Convert a UTC Date to a Date whose local-time getters (getHours, etc.)
+ * return values in the target timezone.
+ *
+ * ical-generator extracts time components via local getters and labels them
+ * with TZID. Without this conversion, UTC values get mislabeled as Eastern,
+ * shifting events by 4-5 hours.
+ */
+function toTimezoneDate(utcDate: Date, timezone: string): Date {
+  return new Date(utcDate.toLocaleString('en-US', { timeZone: timezone }));
+}
+
+/**
  * Parse an RFC 5545 RRULE string into ical-generator repeating options.
  *
  * Supports common patterns:
@@ -62,8 +74,8 @@ export function generateIcsFeed(
 
     const icalEvent = calendar.createEvent({
       id: event.id,
-      start: startDate,
-      end: endDate,
+      start: toTimezoneDate(startDate, TIMEZONE),
+      end: toTimezoneDate(endDate, TIMEZONE),
       timezone: TIMEZONE,
       summary: event.title,
       description: event.description || undefined,
