@@ -17,6 +17,12 @@ import type {
   CreateRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
 
+// Mock @maple/react/agreements — SigningForm depends on signature_pad
+// which isn't available in jsdom.
+vi.mock('@maple/react/agreements', () => ({
+  SigningForm: () => <div data-testid="mock-signing-form">Mock Signing Form</div>,
+}));
+
 // Mock SquareCardForm — the real one loads Square's Web Payments SDK
 // from a CDN, which isn't available in jsdom. We emulate the minimum
 // surface the parent depends on: signalling ready, exposing a tokenize

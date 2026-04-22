@@ -21,6 +21,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
 import { RegistrationCheckoutForm } from '@maple/react/registrations';
+import type { RequiredAgreementTemplate } from '@maple/react/registrations';
 import type { PublicClass } from '@maple/ts/domain';
 import type {
   GetPublicClassRequest,
@@ -29,6 +30,9 @@ import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationRequest,
   CreateRegistrationResponse,
+  GetRequiredAgreementsForClassRequest,
+  GetRequiredAgreementsForClassResponse,
+  InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 
@@ -140,7 +144,7 @@ interface RegistrationWidgetProps {
 type WidgetState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; publicClass: PublicClass }
+  | { status: 'ready'; publicClass: PublicClass; requiredAgreements: RequiredAgreementTemplate[] }
   | {
       status: 'confirmed';
       confirmationNumber: string;
@@ -154,6 +158,7 @@ type WidgetState =
       classDurationMinutes: number;
       skillLevel: string;
       location?: string;
+      agreementsSigned?: boolean;
     };
 
 export function RegistrationWidget({
@@ -181,8 +186,24 @@ export function RegistrationWidget({
           GetPublicClassResponse
         >(functions, 'getPublicClass');
 
-        const result = await getPublicClass({ id: classId });
-        setState({ status: 'ready', publicClass: result.data.class });
+        const getRequiredAgreements = httpsCallable<
+          GetRequiredAgreementsForClassRequest,
+          GetRequiredAgreementsForClassResponse
+        >(functions, 'getRequiredAgreementsForClass');
+
+        // Fetch class and required agreements in parallel
+        const [classResult, agreementsResult] = await Promise.all([
+          getPublicClass({ id: classId }),
+          getRequiredAgreements({ classId }).catch(() => ({
+            data: { agreements: [] as GetRequiredAgreementsForClassResponse['agreements'] },
+          })),
+        ]);
+
+        setState({
+          status: 'ready',
+          publicClass: classResult.data.class,
+          requiredAgreements: agreementsResult.data.agreements,
+        });
       } catch (err) {
         console.error('Failed to fetch class:', err);
         setState({
@@ -226,6 +247,7 @@ export function RegistrationWidget({
       discountCode?: string;
       notes?: string;
       paymentNonce: string;
+      agreements?: InlineAgreementSigningData[];
     }): Promise<CreateRegistrationResponse> => {
       const createRegistration = httpsCallable<
         CreateRegistrationRequest,
@@ -245,6 +267,7 @@ export function RegistrationWidget({
       customerEmail: string;
       pricePaidCents: number;
       quantity: number;
+      agreementsSigned?: boolean;
     }) => {
       if (state.status !== 'ready') return;
 
@@ -297,6 +320,7 @@ export function RegistrationWidget({
         classDurationMinutes: pc.durationMinutes,
         skillLevel: pc.skillLevel,
         location: pc.location,
+        agreementsSigned: details.agreementsSigned,
       });
     },
     [state]
@@ -343,6 +367,7 @@ export function RegistrationWidget({
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
                   env={env}
+                  requiredAgreements={state.requiredAgreements}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
                   onSuccess={handleSuccess}
@@ -388,6 +413,17 @@ export function RegistrationWidget({
                 ${(state.pricePaidCents / 100).toFixed(2)} paid
               </Typography>
             </Box>
+
+            {/* Waiver signed indicator */}
+            {state.agreementsSigned && (
+              <Alert
+                severity="success"
+                icon={<CheckCircleOutlineIcon />}
+                sx={{ mb: 2, textAlign: 'left' }}
+              >
+                Waiver signed — no further action needed.
+              </Alert>
+            )}
 
             {/* Confirmation number — de-emphasized */}
             <Typography

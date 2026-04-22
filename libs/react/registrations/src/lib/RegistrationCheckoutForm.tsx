@@ -15,15 +15,26 @@ import {
   useSignals,
   batch,
 } from '@maple/react/signals';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { SquareCardForm } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
-import type { PublicClass } from '@maple/ts/domain';
+import { SigningForm } from '@maple/react/agreements';
+import type { PublicClass, AgreementSection } from '@maple/ts/domain';
 import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
+  InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
 import { registrationValidation } from '@maple/ts/validation';
 import { formatPhoneNumber } from './formatPhoneNumber';
+
+/** Template summary returned by getRequiredAgreementsForClass */
+export interface RequiredAgreementTemplate {
+  templateId: string;
+  templateName: string;
+  sections: AgreementSection[];
+  supportsMinor: boolean;
+}
 
 /**
  * Firebase callable errors have a `code` and `message` property.
@@ -72,6 +83,8 @@ interface RegistrationCheckoutFormProps {
   env?: string;
   /** URL of the Apple Pay checkout page hosted on a domain verified for Apple Pay */
   applePayCheckoutUrl?: string;
+  /** Required agreements that must be signed before checkout */
+  requiredAgreements?: RequiredAgreementTemplate[];
   onCalculateCost: (
     classId: string,
     quantity: number,
@@ -86,6 +99,7 @@ interface RegistrationCheckoutFormProps {
     discountCode?: string;
     notes?: string;
     paymentNonce: string;
+    agreements?: InlineAgreementSigningData[];
   }) => Promise<CreateRegistrationResponse>;
   onSuccess: (details: {
     confirmationNumber: string;
@@ -93,6 +107,7 @@ interface RegistrationCheckoutFormProps {
     customerEmail: string;
     pricePaidCents: number;
     quantity: number;
+    agreementsSigned?: boolean;
   }) => void;
 }
 
@@ -102,6 +117,7 @@ export function RegistrationCheckoutForm({
   squareLocationId,
   env,
   applePayCheckoutUrl,
+  requiredAgreements = [],
   onCalculateCost,
   onSubmit,
   onSuccess,
@@ -135,6 +151,20 @@ export function RegistrationCheckoutForm({
   // the ClassForm/ArtistForm pattern so users aren't yelled at mid-typing.
   const showValidationErrors = useSignal(false);
 
+  // Agreement signing state — tracks completed inline signatures
+  const signedAgreements = useSignal<Map<string, InlineAgreementSigningData>>(
+    new Map()
+  );
+  const currentAgreementIndex = useSignal(0);
+  const hasRequiredAgreements = requiredAgreements.length > 0;
+  const allAgreementsSigned = useComputed(
+    () =>
+      !hasRequiredAgreements ||
+      requiredAgreements.every((a) =>
+        signedAgreements.value.has(a.templateId)
+      )
+  );
+
   // Derived state — guaranteed in sync with its inputs.
   const isFull = useComputed(() => publicClass.spotsRemaining <= 0);
   const maxQuantity = useComputed(() =>
@@ -144,7 +174,11 @@ export function RegistrationCheckoutForm({
     () => (costBreakdown.value?.discountAmountCents ?? 0) > 0
   );
   const isButtonDisabled = useComputed(
-    () => isSubmitting.value || !isCardReady.value || isFull.value
+    () =>
+      isSubmitting.value ||
+      !isCardReady.value ||
+      isFull.value ||
+      !allAgreementsSigned.value
   );
 
   // ============================================================
@@ -245,6 +279,11 @@ export function RegistrationCheckoutForm({
       submitError.value = null;
 
       try {
+        // Collect signed agreement data if any
+        const agreementsData = hasRequiredAgreements
+          ? Array.from(signedAgreements.value.values())
+          : undefined;
+
         const result = await onSubmit({
           classId: publicClass.id,
           customerEmail: customerEmail.value.trim(),
@@ -254,6 +293,7 @@ export function RegistrationCheckoutForm({
           discountCode: discountCode.value.trim() || undefined,
           notes: notes.value.trim() || undefined,
           paymentNonce: nonce,
+          agreements: agreementsData,
         });
 
         onSuccess({
@@ -262,6 +302,7 @@ export function RegistrationCheckoutForm({
           customerEmail: customerEmail.value.trim(),
           pricePaidCents: result.registration.pricePaidCents,
           quantity: quantity.value,
+          agreementsSigned: result.agreementsSigned,
         });
       } catch (error) {
         submitError.value = extractErrorMessage(error);
@@ -283,6 +324,8 @@ export function RegistrationCheckoutForm({
       submitError,
       showValidationErrors,
       isValid,
+      hasRequiredAgreements,
+      signedAgreements,
     ]
   );
 
@@ -512,6 +555,88 @@ export function RegistrationCheckoutForm({
           quantity={quantity.value}
           pricePerItemCents={publicClass.priceCents}
         />
+      )}
+
+      {/* Required Agreements Section */}
+      {hasRequiredAgreements && (
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            {requiredAgreements.length === 1
+              ? 'Sign Waiver'
+              : `Sign Waivers (${signedAgreements.value.size}/${requiredAgreements.length})`}
+          </Typography>
+
+          {requiredAgreements.map((agreement, index) => {
+            const isSigned = signedAgreements.value.has(agreement.templateId);
+            const isActive = currentAgreementIndex.value === index;
+
+            if (isSigned) {
+              return (
+                <Alert
+                  key={agreement.templateId}
+                  severity="success"
+                  icon={<CheckCircleOutlineIcon />}
+                  sx={{ mb: 2 }}
+                >
+                  {agreement.templateName} — Signed
+                </Alert>
+              );
+            }
+
+            if (!isActive) {
+              return (
+                <Alert
+                  key={agreement.templateId}
+                  severity="info"
+                  sx={{ mb: 2 }}
+                >
+                  {agreement.templateName} — Pending
+                </Alert>
+              );
+            }
+
+            return (
+              <Box key={agreement.templateId} sx={{ mb: 2 }}>
+                <SigningForm
+                  templateName={agreement.templateName}
+                  sections={agreement.sections}
+                  supportsMinor={agreement.supportsMinor}
+                  signerName={customerName.value}
+                  signerEmail={customerEmail.value}
+                  className={publicClass.name}
+                  onSubmit={async (signingData) => {
+                    const newMap = new Map(signedAgreements.value);
+                    newMap.set(agreement.templateId, {
+                      templateId: agreement.templateId,
+                      signatureData: signingData.signatureData,
+                      printedName: signingData.printedName,
+                      mediaReleaseChoice: signingData.mediaReleaseChoice,
+                      isMinor: signingData.isMinor,
+                      minorName: signingData.minorName,
+                      guardianName: signingData.guardianName,
+                      guardianSignatureData: signingData.guardianSignatureData,
+                    });
+                    signedAgreements.value = newMap;
+
+                    // Advance to next unsigned agreement
+                    const nextIndex = requiredAgreements.findIndex(
+                      (a, i) => i > index && !newMap.has(a.templateId)
+                    );
+                    if (nextIndex !== -1) {
+                      currentAgreementIndex.value = nextIndex;
+                    }
+                  }}
+                />
+              </Box>
+            );
+          })}
+
+          {!allAgreementsSigned.value && !customerName.value.trim() && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Please fill in your name and email above before signing.
+            </Alert>
+          )}
+        </Box>
       )}
 
       {/* Payment Section */}

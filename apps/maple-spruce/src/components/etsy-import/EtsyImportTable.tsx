@@ -3,16 +3,15 @@
 /**
  * Table of Etsy listings for review + bulk import selection.
  *
- * Shows each Etsy listing with its current sync status (imported,
- * unsupported due to variants, or available for import). Multi-variant
- * rows are disabled with a tooltip so admins can't select them.
+ * Shows each Etsy listing with its current sync status (imported or
+ * available for import). All listings including multi-variant are
+ * importable.
  */
 import { useMemo } from 'react';
 import {
   Box,
   Chip,
   Typography,
-  Tooltip,
 } from '@mui/material';
 import {
   DataGrid,
@@ -124,16 +123,14 @@ export function EtsyImportTable({
         renderCell: (
           params: GridRenderCellParams<EtsyListingWithSyncInfo>
         ) =>
-          params.row.isSimple ? (
+          params.row.variantCount <= 1 ? (
             <Chip size="small" label="Simple" variant="outlined" />
           ) : (
-            <Tooltip title="Multi-variant listings are not yet supported for import. Flagged for future support.">
-              <Chip
-                size="small"
-                label={`${params.row.variantCount} variants`}
-                color="warning"
-              />
-            </Tooltip>
+            <Chip
+              size="small"
+              label={`${params.row.variantCount} variants`}
+              color="info"
+            />
           ),
       },
       {
@@ -146,11 +143,6 @@ export function EtsyImportTable({
           if (params.row.imported) {
             return <Chip size="small" label="Imported" color="success" />;
           }
-          if (!params.row.isSimple) {
-            return (
-              <Chip size="small" label="Unsupported" color="warning" />
-            );
-          }
           return <Chip size="small" label="Available" variant="outlined" />;
         },
       },
@@ -159,7 +151,7 @@ export function EtsyImportTable({
   );
 
   const isRowSelectable = (params: GridRowParams<EtsyListingWithSyncInfo>) =>
-    !params.row.imported && params.row.isSimple;
+    !params.row.imported;
 
   return (
     <DataGrid

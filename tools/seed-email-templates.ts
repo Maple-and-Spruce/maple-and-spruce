@@ -124,6 +124,13 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
     </div>
     {{/if}}
 
+    {{#if agreementsSigned}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Waiver Signed &#10003;</strong><br>
+      <p>Your class waiver has been signed and recorded. No further action is needed.</p>
+    </div>
+    {{/if}}
+
     {{#if waiverUrl}}
     <div class="highlight-box">
       <strong style="color: #4A3728;">Action Required: Sign Your Waiver</strong><br>

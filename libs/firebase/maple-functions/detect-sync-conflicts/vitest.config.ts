@@ -21,6 +21,7 @@ export default defineConfig({
       '@maple/ts/domain': resolve(__dirname, '../../../ts/domain/src/index.ts'),
       '@maple/firebase/database': resolve(__dirname, '../../../firebase/database/src/index.ts'),
       '@maple/firebase/square': resolve(__dirname, '../../../firebase/square/src/index.ts'),
+      '@maple/firebase/etsy': resolve(__dirname, '../../../firebase/etsy/src/index.ts'),
       '@maple/firebase/functions': resolve(__dirname, '../../../firebase/functions/src/index.ts'),
     },
   },

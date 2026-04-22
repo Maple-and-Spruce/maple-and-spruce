@@ -129,7 +129,7 @@ export const SelectUseLocal: Story = {
 };
 
 /**
- * Select "Use Square" resolution
+ * Select "Use External" resolution
  */
 export const SelectUseExternal: Story = {
   args: {
@@ -141,8 +141,8 @@ export const SelectUseExternal: Story = {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
-    // Click "Use Square" button
-    const useExternalBtn = screen.getByRole('button', { name: /use square/i });
+    // Click "Use External" button
+    const useExternalBtn = screen.getByRole('button', { name: /use external/i });
     await userEvent.click(useExternalBtn);
 
     // Verify it's selected
@@ -248,7 +248,7 @@ export const SubmitWithOptionalNotes: Story = {
     });
 
     // Select resolution
-    const useExternalBtn = screen.getByRole('button', { name: /use square/i });
+    const useExternalBtn = screen.getByRole('button', { name: /use external/i });
     await userEvent.click(useExternalBtn);
 
     // Add optional notes
@@ -322,8 +322,8 @@ export const MissingLocalHidesUseLocal: Story = {
     const useLocalBtn = screen.queryByRole('button', { name: /use local/i });
     expect(useLocalBtn).not.toBeInTheDocument();
 
-    // But "Use Square" should exist
-    const useExternalBtn = screen.getByRole('button', { name: /use square/i });
+    // But "Use External" should exist
+    const useExternalBtn = screen.getByRole('button', { name: /use external/i });
     await expect(useExternalBtn).toBeInTheDocument();
   },
 };
@@ -341,8 +341,8 @@ export const MissingExternalHidesUseExternal: Story = {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
-    // "Use Square" button should not exist for missing_external conflicts
-    const useExternalBtn = screen.queryByRole('button', { name: /use square/i });
+    // "Use External" button should not exist for missing_external conflicts
+    const useExternalBtn = screen.queryByRole('button', { name: /use external/i });
     expect(useExternalBtn).not.toBeInTheDocument();
 
     // But "Use Local" should exist

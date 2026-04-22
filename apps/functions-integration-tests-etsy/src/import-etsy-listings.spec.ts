@@ -91,13 +91,14 @@ describe('importEtsyListings', () => {
     expect(result.data!.successCount).toBe(0);
   });
 
-  it('flags multi-variant listings without calling Square', async () => {
+  it('imports a multi-variant listing with all variants', async () => {
     await setMockListings([
       makeListing({
         listing_id: 9001,
         title: 'Multi-variant',
         productSkus: ['v1', 'v2', 'v3'],
-        quantity: 0,
+        quantity: 0, // avoid hitting inventory endpoint (not in monolith mock)
+        imageUrls: [], // avoid hitting image endpoint (not in monolith mock)
       }),
     ]);
 
@@ -115,9 +116,29 @@ describe('importEtsyListings', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.data!.successCount).toBe(0);
-    expect(result.data!.results[0].success).toBe(false);
-    expect(result.data!.results[0].errorCode).toBe('MULTI_VARIANT_NOT_SUPPORTED');
+    expect(result.data!.successCount).toBe(1);
+    const row = result.data!.results[0];
+    expect(row.success).toBe(true);
+    const productId = row.productId!;
+    expect(productId).toBeTruthy();
+
+    // Firestore product has 3 variants
+    const product = await getFirestoreDoc('products', productId);
+    expect(product).not.toBeNull();
+    expect(product!.etsyListingId).toBe('9001');
+    expect(product!.artistId).toBe('artist-1');
+
+    // Variants array should have 3 entries matching the SKUs
+    const variants = product!.variants as Array<Record<string, unknown>>;
+    expect(variants).toHaveLength(3);
+    expect(variants.map((v) => v.sku)).toEqual(
+      expect.arrayContaining(['v1', 'v2', 'v3'])
+    );
+
+    // Raw snapshot records the variant count
+    const snapshot = await getFirestoreDoc('etsy-imports', productId);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.variantCount).toBe(3);
   });
 
   it('short-circuits listings that are already imported', async () => {
@@ -204,6 +225,11 @@ describe('importEtsyListings', () => {
     expect(product!.artistId).toBe('artist-import');
     expect(product!.categoryId).toBe('cat-import');
     expect(product!.status).toBe('active');
+
+    // Single variant with the provided SKU
+    const variants = product!.variants as Array<Record<string, unknown>>;
+    expect(variants).toHaveLength(1);
+    expect(variants[0].sku).toBe('etsy-sku-9200');
 
     // etsyCache populated
     const etsyCache = product!.etsyCache as Record<string, unknown>;

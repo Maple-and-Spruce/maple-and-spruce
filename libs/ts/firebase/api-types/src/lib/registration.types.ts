@@ -9,6 +9,7 @@ import type {
   UpdateRegistrationInput,
   RegistrationStatus,
 } from '@maple/ts/domain';
+import type { InlineAgreementSigningData } from './agreement.types';
 
 // ============================================================================
 // Get Registrations (Admin)
@@ -106,9 +107,15 @@ export interface CreateRegistrationRequest {
   notes?: string;
   /** Nonce from Square Web Payments SDK (card tokenization) */
   paymentNonce: string;
+  /** Signed agreement data for required-at-checkout agreements */
+  agreements?: InlineAgreementSigningData[];
 }
 
 export interface CreateRegistrationResponse {
   registration: Registration;
   confirmationNumber: string;
+  /** Signing URL for deferred agreements (included in email too) */
+  waiverUrl?: string;
+  /** True if all agreements were signed at checkout */
+  agreementsSigned?: boolean;
 }

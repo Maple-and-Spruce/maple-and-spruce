@@ -107,6 +107,10 @@ export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class
 
 // Class category functions
 export { getClassCategories } from '@maple/firebase/maple-functions/get-class-categories';
+export { createClassCategory } from '@maple/firebase/maple-functions/create-class-category';
+export { updateClassCategory } from '@maple/firebase/maple-functions/update-class-category';
+export { deleteClassCategory } from '@maple/firebase/maple-functions/delete-class-category';
+export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-class-categories';
 
 // Discount functions
 export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';
@@ -159,6 +163,7 @@ export { getSignedAgreement } from '@maple/firebase/maple-functions/get-signed-a
 // Public signing functions (no auth required)
 export { getAgreementForSigning } from '@maple/firebase/maple-functions/get-agreement-for-signing';
 export { submitSignedAgreement } from '@maple/firebase/maple-functions/submit-signed-agreement';
+export { getRequiredAgreementsForClass } from '@maple/firebase/maple-functions/get-required-agreements-for-class';
 
 // Agreement scheduled functions
 export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-agreement-requests';
