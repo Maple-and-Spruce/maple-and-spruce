@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -81,6 +81,8 @@ interface RegistrationCheckoutFormProps {
   squareLocationId: string;
   /** Square environment — passed through to SquareCardForm */
   env?: string;
+  /** URL of the Apple Pay checkout page hosted on a domain verified for Apple Pay */
+  applePayCheckoutUrl?: string;
   /** Required agreements that must be signed before checkout */
   requiredAgreements?: RequiredAgreementTemplate[];
   onCalculateCost: (
@@ -114,6 +116,7 @@ export function RegistrationCheckoutForm({
   squareApplicationId,
   squareLocationId,
   env,
+  applePayCheckoutUrl,
   requiredAgreements = [],
   onCalculateCost,
   onSubmit,
@@ -261,76 +264,165 @@ export function RegistrationCheckoutForm({
     }
   }, [quantity, discountCode, calculateCost]);
 
+  /**
+   * Submit the registration with a given payment nonce.
+   * Shared by the card form submit, Google Pay callback, and Apple Pay popup.
+   */
+  const submitWithNonce = useCallback(
+    async (nonce: string) => {
+      if (isSubmitting.value) return;
+
+      showValidationErrors.value = true;
+      if (!isValid.value) return;
+      if (!allAgreementsSigned.value) return;
+
+      isSubmitting.value = true;
+      submitError.value = null;
+
+      try {
+        // Collect signed agreement data if any
+        const agreementsData = hasRequiredAgreements
+          ? Array.from(signedAgreements.value.values())
+          : undefined;
+
+        const result = await onSubmit({
+          classId: publicClass.id,
+          customerEmail: customerEmail.value.trim(),
+          customerName: customerName.value.trim(),
+          customerPhone: customerPhone.value.trim() || undefined,
+          quantity: quantity.value,
+          discountCode: discountCode.value.trim() || undefined,
+          notes: notes.value.trim() || undefined,
+          paymentNonce: nonce,
+          agreements: agreementsData,
+        });
+
+        onSuccess({
+          confirmationNumber: result.confirmationNumber,
+          customerName: customerName.value.trim(),
+          customerEmail: customerEmail.value.trim(),
+          pricePaidCents: result.registration.pricePaidCents,
+          quantity: quantity.value,
+          agreementsSigned: result.agreementsSigned,
+        });
+      } catch (error) {
+        submitError.value = extractErrorMessage(error);
+      } finally {
+        isSubmitting.value = false;
+      }
+    },
+    [
+      customerName,
+      customerEmail,
+      customerPhone,
+      quantity,
+      discountCode,
+      notes,
+      publicClass.id,
+      onSubmit,
+      onSuccess,
+      isSubmitting,
+      submitError,
+      showValidationErrors,
+      isValid,
+      hasRequiredAgreements,
+      signedAgreements,
+      allAgreementsSigned,
+    ]
+  );
+
+  const handleDigitalWalletToken = useCallback(
+    (token: string) => {
+      submitWithNonce(token);
+    },
+    [submitWithNonce]
+  );
+
+
   const handleSubmit = useCallback(async () => {
-    // Synchronous re-entry check: signal writes are immediate, so a
-    // second click that arrives before React re-renders still sees
-    // isSubmitting.value === true and bails out.
     if (isSubmitting.value) return;
 
-    // Reveal field-level errors on the first submit attempt. Read
-    // validity *after* flipping the flag so the computed error map
-    // is populated in the same tick.
     showValidationErrors.value = true;
     if (!isValid.value) {
       return;
     }
 
-    isSubmitting.value = true;
     submitError.value = null;
+
 
     try {
       if (!tokenizeRef.current) {
-        submitError.value = 'Payment form not ready. Please wait and try again.';
+        submitError.value =
+          'Payment form not ready. Please wait and try again.';
         return;
       }
 
       const nonce = await tokenizeRef.current();
-
-      // Collect signed agreement data if any
-      const agreementsData = hasRequiredAgreements
-        ? Array.from(signedAgreements.value.values())
-        : undefined;
-
-      const result = await onSubmit({
-        classId: publicClass.id,
-        customerEmail: customerEmail.value.trim(),
-        customerName: customerName.value.trim(),
-        customerPhone: customerPhone.value.trim() || undefined,
-        quantity: quantity.value,
-        discountCode: discountCode.value.trim() || undefined,
-        notes: notes.value.trim() || undefined,
-        paymentNonce: nonce,
-        agreements: agreementsData,
-      });
-
-      onSuccess({
-        confirmationNumber: result.confirmationNumber,
-        customerName: customerName.value.trim(),
-        customerEmail: customerEmail.value.trim(),
-        pricePaidCents: result.registration.pricePaidCents,
-        quantity: quantity.value,
-        agreementsSigned: result.agreementsSigned,
-      });
+      await submitWithNonce(nonce);
     } catch (error) {
       submitError.value = extractErrorMessage(error);
-    } finally {
       isSubmitting.value = false;
     }
+  }, [isSubmitting, submitError, showValidationErrors, isValid, submitWithNonce]);
+
+  // ============================================================
+  // APPLE PAY POPUP
+  // ============================================================
+  const applePayOrigin = useMemo(() => {
+    if (!applePayCheckoutUrl) return null;
+    try {
+      return new URL(applePayCheckoutUrl).origin;
+    } catch {
+      return null;
+    }
+  }, [applePayCheckoutUrl]);
+
+  const handleApplePayClick = useCallback((): void => {
+    if (!applePayCheckoutUrl || !costBreakdown.value) return;
+
+    const totalCents = costBreakdown.value.totalCents;
+    const params = new URLSearchParams({
+      amount: String(totalCents),
+      applicationId: squareApplicationId,
+      locationId: squareLocationId,
+      label: publicClass.name,
+      origin: window.location.origin,
+    });
+
+    const url = `${applePayCheckoutUrl}?${params.toString()}`;
+    const width = 440;
+    const height = 600;
+    const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+
+    window.open(
+      url,
+      'apple-pay-checkout',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
   }, [
-    customerName,
-    customerEmail,
-    customerPhone,
-    quantity,
-    discountCode,
-    notes,
-    publicClass.id,
-    onSubmit,
-    onSuccess,
-    isSubmitting,
-    submitError,
-    showValidationErrors,
-    isValid,
+    applePayCheckoutUrl,
+    costBreakdown,
+    squareApplicationId,
+    squareLocationId,
+    publicClass.name,
   ]);
+
+  // Listen for Apple Pay token messages from the popup window
+  useEffect(() => {
+    if (!applePayOrigin) return;
+
+    const handler = (event: MessageEvent): void => {
+      if (event.origin !== applePayOrigin) return;
+      if (event.data?.type !== 'APPLE_PAY_TOKEN') return;
+      if (typeof event.data.token === 'string') {
+        submitWithNonce(event.data.token);
+      }
+    };
+
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [applePayOrigin, submitWithNonce]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -554,14 +646,59 @@ export function RegistrationCheckoutForm({
         <Typography variant="h6" gutterBottom>
           Payment
         </Typography>
+
+        {applePayCheckoutUrl && (
+          <>
+            <button
+              type="button"
+              onClick={handleApplePayClick}
+              disabled={isButtonDisabled.value}
+              style={{
+                backgroundColor: '#000',
+                color: '#fff',
+                borderRadius: 8,
+                padding: '14px 24px',
+                width: '100%',
+                fontSize: 16,
+                fontWeight: 600,
+                border: 'none',
+                cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
+                opacity: isButtonDisabled.value ? 0.7 : 1,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                letterSpacing: '0.02em',
+                marginBottom: 16,
+              }}
+            >
+              {'\uF8FF'} Pay with Apple Pay
+            </button>
+
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                my: 2,
+              }}
+            >
+              <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
+              <Typography variant="body2" color="text.secondary">
+                Or pay with card
+              </Typography>
+              <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
+            </Box>
+          </>
+        )}
+
         <SquareCardForm
           applicationId={squareApplicationId}
           locationId={squareLocationId}
           env={env}
+          totalCents={costBreakdown.value?.totalCents}
           onReady={() => (isCardReady.value = true)}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
           }}
+          onDigitalWalletToken={handleDigitalWalletToken}
           afterCardContent={
             <button
               type="button"
