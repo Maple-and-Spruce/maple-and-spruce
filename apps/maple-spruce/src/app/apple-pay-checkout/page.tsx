@@ -183,7 +183,9 @@ function ApplePayCheckoutInner(): React.ReactElement {
           err instanceof Error ? err.message : 'Failed to initialize Apple Pay';
         if (
           message.includes('not supported') ||
-          message.includes('not available')
+          message.includes('not available') ||
+          message.includes('not a function') ||
+          message.includes('is undefined')
         ) {
           setErrorMessage(
             'Apple Pay is not available on this device or browser. Please use Safari on an Apple device with Apple Pay configured.'

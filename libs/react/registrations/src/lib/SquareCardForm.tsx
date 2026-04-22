@@ -153,6 +153,8 @@ export function SquareCardForm({
   const cardContainerRef = useRef<HTMLDivElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const initializedRef = useRef(false);
+  const sdkLoadedRef = useRef(false);
+  const [sdkReady, setSdkReady] = useState(false);
 
   // Keep the payment request amount in sync with the total
   useEffect(() => {
@@ -187,8 +189,13 @@ export function SquareCardForm({
 
   // Load the Square SDK script
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
+    if (sdkLoadedRef.current) return;
+    sdkLoadedRef.current = true;
+
+    if (window.Square) {
+      setSdkReady(true);
+      return;
+    }
 
     const isSandbox = env
       ? env !== 'prod'
@@ -197,21 +204,23 @@ export function SquareCardForm({
       ? 'https://sandbox.web.squarecdn.com/v1/square.js'
       : 'https://web.squarecdn.com/v1/square.js';
 
-    if (window.Square) {
-      initializePayments();
-      return;
-    }
-
     const script = document.createElement('script');
     script.src = scriptUrl;
     script.async = true;
-    script.onload = () => initializePayments();
+    script.onload = () => setSdkReady(true);
     script.onerror = () => {
       setError('Failed to load payment form. Please refresh and try again.');
       setIsLoading(false);
     };
     document.head.appendChild(script);
-  }, [applicationId, locationId]);
+  }, [applicationId, locationId, env]);
+
+  // Initialize payments once SDK is ready AND we have a valid amount
+  useEffect(() => {
+    if (!sdkReady || initializedRef.current || !totalCents) return;
+    initializedRef.current = true;
+    initializePayments();
+  }, [sdkReady, totalCents, initializePayments]);
 
   const initializePayments = useCallback(async () => {
     try {
@@ -379,7 +388,7 @@ export function SquareCardForm({
       setError(message);
       setIsLoading(false);
     }
-  }, [applicationId, locationId, onReady, onTokenizeRef]);
+  }, [applicationId, locationId, totalCents, onReady, onTokenizeRef]);
 
   const showDivider = (hasApplePay || hasGooglePay) && !isLoading;
 
