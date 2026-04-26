@@ -6,6 +6,8 @@ import {
   mockClassDraft,
   mockClassNoImage,
   mockClassCategories,
+  mockClassWithGallery,
+  mockClassCategoriesWithPool,
 } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 import {
   mockActiveInstructors,
@@ -507,5 +509,66 @@ export const SelectInstructor: Story = {
     if (options.length > 1) {
       await userEvent.click(options[1]); // skip "None" option
     }
+  },
+};
+
+// ============================================================
+// GALLERY
+// ============================================================
+
+/**
+ * Edit a class that already has gallery images set. Visual story —
+ * confirms the editor renders three reorderable rows with their alt text.
+ */
+export const EditWithGallery: Story = {
+  args: {
+    open: true,
+    classItem: mockClassWithGallery,
+    categories: mockClassCategoriesWithPool,
+    isSubmitting: false,
+  },
+};
+
+/**
+ * Edit a class whose category has a populated image pool. Verifies the
+ * "Add from {category} pool" button is enabled and that clicking it
+ * opens the picker dialog with the pool's images visible.
+ */
+export const WithCategoryPoolPicker: Story = {
+  args: {
+    open: true,
+    classItem: mockClassWithGallery,
+    categories: mockClassCategoriesWithPool,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // Pool button is enabled because the class's category has a pool.
+    const poolButton = canvas.getByRole('button', {
+      name: /add from fiber arts pool/i,
+    });
+    await waitFor(() => expect(poolButton).toBeEnabled());
+
+    await userEvent.click(poolButton);
+
+    // The picker dialog opens — its title should be visible somewhere
+    // in the document (still under document.body, since it's a Dialog).
+    await waitFor(() => {
+      expect(
+        canvas.getByRole('heading', { name: /add from fiber arts pool/i })
+      ).toBeInTheDocument();
+    });
+
+    // Pool has 5 images; the 3 already in the gallery should appear as
+    // disabled checkboxes, leaving 2 available to add.
+    const allCheckboxes = canvas
+      .getAllByRole('checkbox')
+      .filter((cb) => cb.closest('[role="dialog"]'));
+    const enabled = allCheckboxes.filter(
+      (cb) => !(cb as HTMLInputElement).disabled
+    );
+    expect(allCheckboxes.length).toBeGreaterThanOrEqual(5);
+    expect(enabled.length).toBe(2);
   },
 };

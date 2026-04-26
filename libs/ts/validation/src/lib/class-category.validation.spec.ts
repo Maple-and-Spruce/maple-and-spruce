@@ -158,6 +158,53 @@ describe('classCategoryValidation', () => {
     });
   });
 
+  describe('galleryImages field', () => {
+    it('passes when galleryImages is undefined (optional)', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        galleryImages: undefined,
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes with valid pool images', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        galleryImages: [
+          { url: 'https://example.com/a.jpg', alt: 'Hands at the loom' },
+        ],
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('fails when more than 10 pool images', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        galleryImages: Array.from({ length: 11 }, (_, i) => ({
+          url: `https://example.com/${i}.jpg`,
+          alt: `Image ${i}`,
+        })),
+      });
+      expect(result.hasErrors('galleryImages')).toBe(true);
+    });
+
+    it('fails when an image is missing alt text', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        galleryImages: [{ url: 'https://example.com/a.jpg', alt: '' }],
+      });
+      expect(result.hasErrors('galleryImages')).toBe(true);
+    });
+
+    it('fails when an image is missing url', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        galleryImages: [{ url: '   ', alt: 'Has alt text' }],
+      });
+      expect(result.hasErrors('galleryImages')).toBe(true);
+    });
+  });
+
   describe('single-field validation', () => {
     it('only validates specified field', () => {
       const invalidData = {

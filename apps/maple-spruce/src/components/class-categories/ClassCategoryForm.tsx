@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -11,14 +11,37 @@ import {
   TextField,
   Alert,
 } from '@mui/material';
-import type { ClassCategory, CreateClassCategoryInput } from '@maple/ts/domain';
+import { httpsCallable } from 'firebase/functions';
+import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import type {
+  ClassCategory,
+  CreateClassCategoryInput,
+  GalleryImage,
+} from '@maple/ts/domain';
+import type {
+  UploadCategoryGalleryImageRequest,
+  UploadCategoryGalleryImageResponse,
+} from '@maple/ts/firebase/api-types';
 import { classCategoryValidation } from '@maple/ts/validation';
+import { GalleryEditor } from '@maple/react/ui';
 import {
   useSignal,
   useComputed,
   batch,
   useSignals,
 } from '@maple/react/signals';
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 interface ClassCategoryFormProps {
   open: boolean;
@@ -41,6 +64,7 @@ export function ClassCategoryForm({
 
   const name = useSignal('');
   const description = useSignal('');
+  const galleryImages = useSignal<GalleryImage[]>([]);
 
   const showValidationErrors = useSignal(false);
   const submitError = useSignal<string | null>(null);
@@ -52,6 +76,8 @@ export function ClassCategoryForm({
       name: name.value,
       description: description.value || undefined,
       order: isEdit ? category.order : nextOrder,
+      galleryImages:
+        galleryImages.value.length > 0 ? galleryImages.value : undefined,
     });
   });
 
@@ -67,6 +93,31 @@ export function ClassCategoryForm({
     return fieldErrors?.[0] ?? null;
   };
 
+  const uploadGalleryImage = useCallback(
+    async (file: File): Promise<string> => {
+      const functions = getMapleFunctions();
+      const upload = httpsCallable<
+        UploadCategoryGalleryImageRequest,
+        UploadCategoryGalleryImageResponse
+      >(functions, 'uploadCategoryGalleryImage');
+
+      const imageBase64 = await readFileAsBase64(file);
+
+      const result = await upload({
+        categoryId: category?.id,
+        imageBase64,
+        contentType: file.type,
+      });
+
+      if (!result.data.success) {
+        throw new Error('Pool image upload failed');
+      }
+
+      return result.data.url;
+    },
+    [category?.id]
+  );
+
   useEffect(() => {
     if (!open) return;
 
@@ -74,6 +125,9 @@ export function ClassCategoryForm({
       batch(() => {
         name.value = category.name;
         description.value = category.description ?? '';
+        galleryImages.value = category.galleryImages
+          ? category.galleryImages.map((img) => ({ ...img }))
+          : [];
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -81,6 +135,7 @@ export function ClassCategoryForm({
       batch(() => {
         name.value = '';
         description.value = '';
+        galleryImages.value = [];
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -102,6 +157,13 @@ export function ClassCategoryForm({
         name: name.value.trim(),
         description: description.value.trim() || undefined,
         order: isEdit ? category.order : nextOrder,
+        galleryImages:
+          galleryImages.value.length > 0
+            ? galleryImages.value.map((img) => ({
+                url: img.url,
+                alt: img.alt.trim(),
+              }))
+            : undefined,
       };
 
       await onSubmit(input);
@@ -122,7 +184,7 @@ export function ClassCategoryForm({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         {isEdit ? 'Edit Class Category' : 'Add Class Category'}
       </DialogTitle>
@@ -155,6 +217,14 @@ export function ClassCategoryForm({
             multiline
             rows={2}
             fullWidth
+          />
+
+          <GalleryEditor
+            label="Image pool (shared across classes in this category)"
+            value={galleryImages.value}
+            onChange={(next) => (galleryImages.value = next)}
+            onUploadFile={uploadGalleryImage}
+            error={getFieldError('galleryImages') ?? undefined}
           />
         </Box>
       </DialogContent>

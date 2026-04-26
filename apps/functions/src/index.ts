@@ -99,6 +99,7 @@ export { createClass } from '@maple/firebase/maple-functions/create-class';
 export { updateClass } from '@maple/firebase/maple-functions/update-class';
 export { deleteClass } from '@maple/firebase/maple-functions/delete-class';
 export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-image';
+export { uploadClassGalleryImage } from '@maple/firebase/maple-functions/upload-class-gallery-image';
 export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-class-sessions';
 
 // Public class API (no auth required - for Webflow integration)
@@ -111,6 +112,7 @@ export { createClassCategory } from '@maple/firebase/maple-functions/create-clas
 export { updateClassCategory } from '@maple/firebase/maple-functions/update-class-category';
 export { deleteClassCategory } from '@maple/firebase/maple-functions/delete-class-category';
 export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-class-categories';
+export { uploadCategoryGalleryImage } from '@maple/firebase/maple-functions/upload-category-gallery-image';
 
 // Discount functions
 export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';

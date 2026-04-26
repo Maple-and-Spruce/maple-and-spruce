@@ -203,6 +203,12 @@
       "@maple/firebase/maple-functions/upload-class-image": [
         "libs/firebase/maple-functions/upload-class-image/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/upload-class-gallery-image": [
+        "libs/firebase/maple-functions/upload-class-gallery-image/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/upload-category-gallery-image": [
+        "libs/firebase/maple-functions/upload-category-gallery-image/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-public-classes": [
         "libs/firebase/maple-functions/get-public-classes/src/index.ts"
       ],

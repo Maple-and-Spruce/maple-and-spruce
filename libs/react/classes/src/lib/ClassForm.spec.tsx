@@ -26,6 +26,9 @@ vi.mock('@maple/react/ui', () => ({
   ImageUpload: (props: Record<string, unknown>) => (
     <div data-testid="image-upload">{String(props['label'] ?? '')}</div>
   ),
+  GalleryEditor: (props: Record<string, unknown>) => (
+    <div data-testid="gallery-editor">{String(props['label'] ?? '')}</div>
+  ),
 }));
 
 import { ClassForm } from './ClassForm';

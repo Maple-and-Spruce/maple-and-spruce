@@ -6,6 +6,7 @@
  *
  * Examples: Fiber Arts, Woodworking, Ceramics, Natural Dyeing
  */
+import type { GalleryImage } from './gallery-image';
 
 /**
  * Class Category entity
@@ -20,6 +21,13 @@ export interface ClassCategory {
   order: number;
   /** Icon or emoji for visual display (e.g., "🧶" or icon name) */
   icon?: string;
+  /**
+   * Shared image pool for classes in this category. Classes can copy
+   * URLs from this pool into their own `galleryImages` without
+   * re-uploading. Order is encoded by array position; capped at
+   * `GALLERY_IMAGE_MAX`.
+   */
+  galleryImages?: GalleryImage[];
   createdAt: Date;
   updatedAt: Date;
 }

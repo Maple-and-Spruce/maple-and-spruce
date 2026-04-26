@@ -1,5 +1,6 @@
 // Shared interfaces
 export * from './lib/payee';
+export * from './lib/gallery-image';
 
 // Domain types
 export * from './lib/artist';

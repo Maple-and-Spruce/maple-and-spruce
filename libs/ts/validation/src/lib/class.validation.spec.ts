@@ -631,6 +631,57 @@ describe('classValidation', () => {
     });
   });
 
+  describe('galleryImages field', () => {
+    it('passes when galleryImages is undefined (optional)', () => {
+      const result = classValidation({
+        ...validClass,
+        galleryImages: undefined,
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes with valid gallery images', () => {
+      const result = classValidation({
+        ...validClass,
+        galleryImages: [
+          { url: 'https://example.com/a.jpg', alt: 'Loom up close' },
+          { url: 'https://example.com/b.jpg', alt: 'Finished tapestry' },
+        ],
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('fails when more than 10 gallery images', () => {
+      const result = classValidation({
+        ...validClass,
+        galleryImages: Array.from({ length: 11 }, (_, i) => ({
+          url: `https://example.com/${i}.jpg`,
+          alt: `Image ${i}`,
+        })),
+      });
+      expect(result.hasErrors('galleryImages')).toBe(true);
+    });
+
+    it('fails when an image is missing alt text', () => {
+      const result = classValidation({
+        ...validClass,
+        galleryImages: [
+          { url: 'https://example.com/a.jpg', alt: 'Good description' },
+          { url: 'https://example.com/b.jpg', alt: '   ' },
+        ],
+      });
+      expect(result.hasErrors('galleryImages')).toBe(true);
+    });
+
+    it('fails when an image is missing url', () => {
+      const result = classValidation({
+        ...validClass,
+        galleryImages: [{ url: '', alt: 'Some description' }],
+      });
+      expect(result.hasErrors('galleryImages')).toBe(true);
+    });
+  });
+
   describe('single-field validation', () => {
     it('only validates specified field', () => {
       const invalidData = {

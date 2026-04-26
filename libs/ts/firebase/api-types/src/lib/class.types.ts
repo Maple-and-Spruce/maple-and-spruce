@@ -96,6 +96,25 @@ export interface UploadClassImageResponse {
 }
 
 // ============================================================================
+// Upload Class Gallery Image
+// ============================================================================
+
+export interface UploadClassGalleryImageRequest {
+  /** Class ID (optional - can upload before creating class) */
+  classId?: string;
+  /** Base64-encoded image data */
+  imageBase64: string;
+  /** MIME type of the image (e.g., 'image/jpeg', 'image/png') */
+  contentType: string;
+}
+
+export interface UploadClassGalleryImageResponse {
+  success: boolean;
+  /** Public URL of the uploaded gallery image */
+  url: string;
+}
+
+// ============================================================================
 // Get Public Classes (no auth required - for website/Webflow)
 // ============================================================================
 

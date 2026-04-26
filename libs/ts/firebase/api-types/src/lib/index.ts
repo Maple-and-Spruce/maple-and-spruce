@@ -157,6 +157,8 @@ export type {
   DeleteClassResponse,
   UploadClassImageRequest,
   UploadClassImageResponse,
+  UploadClassGalleryImageRequest,
+  UploadClassGalleryImageResponse,
   GetPublicClassesRequest,
   GetPublicClassesResponse,
   GetPublicClassRequest,
@@ -177,6 +179,8 @@ export type {
   DeleteClassCategoryResponse,
   ReorderClassCategoriesRequest,
   ReorderClassCategoriesResponse,
+  UploadCategoryGalleryImageRequest,
+  UploadCategoryGalleryImageResponse,
 } from './class-category.types';
 
 // Phase 3c: Discount types

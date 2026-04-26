@@ -3,3 +3,4 @@ export {
   DeleteConfirmDialog,
   type DeleteConfirmDialogProps,
 } from './lib/DeleteConfirmDialog';
+export { GalleryEditor, type GalleryEditorProps } from './lib/GalleryEditor';

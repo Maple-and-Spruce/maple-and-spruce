@@ -82,3 +82,22 @@ export interface ReorderClassCategoriesResponse {
   /** Categories with updated order values */
   categories: ClassCategory[];
 }
+
+// ============================================================================
+// Upload Class Category Gallery Image (shared pool)
+// ============================================================================
+
+export interface UploadCategoryGalleryImageRequest {
+  /** Category ID (optional - can upload before creating the category) */
+  categoryId?: string;
+  /** Base64-encoded image data */
+  imageBase64: string;
+  /** MIME type of the image (e.g., 'image/jpeg', 'image/png') */
+  contentType: string;
+}
+
+export interface UploadCategoryGalleryImageResponse {
+  success: boolean;
+  /** Public URL of the uploaded pool image */
+  url: string;
+}
