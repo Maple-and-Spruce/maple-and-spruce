@@ -44,12 +44,16 @@ import type {
   ClassSkillLevel,
   Instructor,
   ClassCategory,
+  GalleryImage,
 } from '@maple/ts/domain';
 import type {
   UploadClassImageRequest,
   UploadClassImageResponse,
+  UploadClassGalleryImageRequest,
+  UploadClassGalleryImageResponse,
 } from '@maple/ts/firebase/api-types';
-import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
+import { GalleryEditor, ImageUpload, type ImageUploadState } from '@maple/react/ui';
+import { CategoryGalleryPickerDialog } from './CategoryGalleryPickerDialog';
 import { classValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -166,6 +170,8 @@ export function ClassForm({
   const priceCents = useSignal(0);
   const priceDisplay = useSignal('0.00');
   const imageUrl = useSignal('');
+  const galleryImages = useSignal<GalleryImage[]>([]);
+  const isPoolPickerOpen = useSignal(false);
   const categoryId = useSignal('');
   const skillLevel = useSignal<ClassSkillLevel>('all-levels');
   const status = useSignal<ClassStatus>('draft');
@@ -234,6 +240,8 @@ export function ClassForm({
       materialsIncluded: materialsIncluded.value || undefined,
       whatToBring: whatToBring.value || undefined,
       minimumAge: minimumAge.value,
+      galleryImages:
+        galleryImages.value.length > 0 ? galleryImages.value : undefined,
     });
   });
 
@@ -264,6 +272,7 @@ export function ClassForm({
     minimumAge: 'Minimum Age',
     materialsIncluded: 'Materials Included',
     whatToBring: 'What to Bring',
+    galleryImages: 'Gallery',
   };
 
   const hasValidationErrors = useComputed(() => {
@@ -315,6 +324,9 @@ export function ClassForm({
         priceCents.value = classItem.priceCents;
         priceDisplay.value = (classItem.priceCents / 100).toFixed(2);
         imageUrl.value = classItem.imageUrl ?? '';
+        galleryImages.value = classItem.galleryImages
+          ? classItem.galleryImages.map((img) => ({ ...img }))
+          : [];
         categoryId.value = classItem.categoryId ?? '';
         skillLevel.value = classItem.skillLevel;
         status.value = classItem.status;
@@ -364,6 +376,7 @@ export function ClassForm({
         priceCents.value = 4500;
         priceDisplay.value = '45.00';
         imageUrl.value = '';
+        galleryImages.value = [];
         categoryId.value = '';
         skillLevel.value = 'all-levels';
         status.value = 'draft';
@@ -452,6 +465,31 @@ export function ClassForm({
     return result.data.url;
   };
 
+  const uploadGalleryImage = useCallback(
+    async (file: File): Promise<string> => {
+      const functions = getMapleFunctions();
+      const upload = httpsCallable<
+        UploadClassGalleryImageRequest,
+        UploadClassGalleryImageResponse
+      >(functions, 'uploadClassGalleryImage');
+
+      const imageBase64 = await readFileAsBase64(file);
+
+      const result = await upload({
+        classId: classItem?.id,
+        imageBase64,
+        contentType: file.type,
+      });
+
+      if (!result.data.success) {
+        throw new Error('Gallery image upload failed');
+      }
+
+      return result.data.url;
+    },
+    [classItem?.id]
+  );
+
   // ============================================================
   // SUBMIT
   // ============================================================
@@ -512,6 +550,8 @@ export function ClassForm({
         capacity: capacity.value,
         priceCents: priceCents.value,
         imageUrl: currentImageUrl || undefined,
+        galleryImages:
+          galleryImages.value.length > 0 ? galleryImages.value : undefined,
         categoryId: categoryId.value || undefined,
         skillLevel: skillLevel.value,
         status: status.value,
@@ -582,6 +622,64 @@ export function ClassForm({
               existingImageUrl={classItem?.imageUrl}
               label="Class Image"
             />
+
+            {/* Gallery */}
+            {(() => {
+              const selectedCategory = categories.find(
+                (c) => c.id === categoryId.value
+              );
+              const pool = selectedCategory?.galleryImages ?? [];
+              const alreadyAdded = new Set(
+                galleryImages.value.map((img) => img.url)
+              );
+              const remainingCapacity = Math.max(
+                0,
+                10 - galleryImages.value.length
+              );
+              const poolDisabledHint = !selectedCategory
+                ? 'Select a category to access its image pool'
+                : pool.length === 0
+                  ? "This category's pool is empty"
+                  : undefined;
+
+              return (
+                <>
+                  <GalleryEditor
+                    label="Gallery"
+                    value={galleryImages.value}
+                    onChange={(next) => (galleryImages.value = next)}
+                    onUploadFile={uploadGalleryImage}
+                    onPickFromPool={() => (isPoolPickerOpen.value = true)}
+                    pickFromPoolLabel={
+                      selectedCategory
+                        ? `Add from ${selectedCategory.name} pool`
+                        : 'Add from category pool'
+                    }
+                    pickFromPoolDisabled={
+                      !selectedCategory || pool.length === 0
+                    }
+                    pickFromPoolDisabledHint={poolDisabledHint}
+                    error={getFieldError('galleryImages') ?? undefined}
+                  />
+                  {selectedCategory && (
+                    <CategoryGalleryPickerDialog
+                      open={isPoolPickerOpen.value}
+                      categoryName={selectedCategory.name}
+                      pool={pool}
+                      alreadyAdded={alreadyAdded}
+                      remainingCapacity={remainingCapacity}
+                      onClose={() => (isPoolPickerOpen.value = false)}
+                      onConfirm={(picks) => {
+                        galleryImages.value = [
+                          ...galleryImages.value,
+                          ...picks.map((img) => ({ ...img })),
+                        ];
+                      }}
+                    />
+                  )}
+                </>
+              );
+            })()}
 
             {/* Row 1: Name and Status */}
             <Box sx={{ display: 'flex', gap: 2 }}>

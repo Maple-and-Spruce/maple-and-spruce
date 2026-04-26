@@ -84,6 +84,7 @@ function docToClass(
     capacity: data.capacity,
     priceCents: data.priceCents,
     imageUrl: data.imageUrl,
+    galleryImages: data.galleryImages,
     categoryId: data.categoryId,
     skillLevel: data.skillLevel,
     status: data.status,

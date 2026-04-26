@@ -5,7 +5,7 @@
  * @see https://vestjs.dev/
  */
 import { staticSuite, test, enforce, only } from 'vest';
-import type { CreateClassInput } from '@maple/ts/domain';
+import { GALLERY_IMAGE_MAX, type CreateClassInput } from '@maple/ts/domain';
 
 /**
  * Validate class form data
@@ -219,5 +219,33 @@ export const classValidation = staticSuite(
         enforce(data.whatToBring).shorterThanOrEquals(500);
       }
     });
+
+    // Gallery images validation (optional)
+    test(
+      'galleryImages',
+      `Gallery is limited to ${GALLERY_IMAGE_MAX} images`,
+      () => {
+        if (Array.isArray(data.galleryImages)) {
+          enforce(data.galleryImages.length).lessThanOrEquals(GALLERY_IMAGE_MAX);
+        }
+      }
+    );
+
+    test(
+      'galleryImages',
+      'Every gallery image needs a URL and a description for accessibility',
+      () => {
+        if (Array.isArray(data.galleryImages)) {
+          const allValid = data.galleryImages.every(
+            (img) =>
+              typeof img?.url === 'string' &&
+              img.url.trim().length > 0 &&
+              typeof img?.alt === 'string' &&
+              img.alt.trim().length > 0
+          );
+          enforce(allValid).isTruthy();
+        }
+      }
+    );
   }
 );
