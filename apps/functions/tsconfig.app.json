@@ -36,6 +36,8 @@
     "../../libs/firebase/maple-functions/update-class/**/*.ts",
     "../../libs/firebase/maple-functions/delete-class/**/*.ts",
     "../../libs/firebase/maple-functions/upload-class-image/**/*.ts",
+    "../../libs/firebase/maple-functions/upload-class-gallery-image/**/*.ts",
+    "../../libs/firebase/maple-functions/upload-category-gallery-image/**/*.ts",
     "../../libs/firebase/maple-functions/get-public-classes/**/*.ts",
     "../../libs/firebase/maple-functions/get-public-class/**/*.ts",
     "../../libs/firebase/maple-functions/get-class-categories/**/*.ts",

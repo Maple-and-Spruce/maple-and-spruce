@@ -34,12 +34,12 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getTeacherPayouts` — aggregates what Katie owes each teacher over a date range from paid private-pay invoice lines + rendered Hope Scholarship lessons
 
 ### Classes
-- `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`
+- `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `uploadClassGalleryImage`
 - `getPublicClasses` _(minInstances: 1, concurrency: 80)_
 - `getPublicClass` _(minInstances: 1, concurrency: 80)_
 
 ### Class Categories
-- `getClassCategories`
+- `getClassCategories`, `uploadCategoryGalleryImage`
 
 ### Discounts
 - `getDiscounts`, `createDiscount`, `updateDiscount`, `deleteDiscount`, `lookupDiscount`

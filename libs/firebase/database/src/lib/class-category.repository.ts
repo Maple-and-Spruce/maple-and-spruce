@@ -30,6 +30,7 @@ function docToClassCategory(
     description: data.description,
     order: data.order,
     icon: data.icon,
+    galleryImages: data.galleryImages,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

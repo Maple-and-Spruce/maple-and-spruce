@@ -10,6 +10,7 @@
  *
  * Future payments will use Square (consistent with existing POS integration).
  */
+import type { GalleryImage } from './gallery-image';
 
 /**
  * Skill level recommendation for a class
@@ -67,6 +68,11 @@ export interface Class {
   priceCents: number;
   /** Primary image URL */
   imageUrl?: string;
+  /**
+   * Optional supplementary images shown alongside the primary `imageUrl`.
+   * Order is encoded by array position. Capped at `GALLERY_IMAGE_MAX`.
+   */
+  galleryImages?: GalleryImage[];
   /** Class category ID for filtering */
   categoryId?: string;
   /** Skill level recommendation */
@@ -136,6 +142,7 @@ export interface PublicClass {
   spotsRemaining: number;
   priceCents: number;
   imageUrl?: string;
+  galleryImages?: GalleryImage[];
   categoryId?: string;
   /** Enriched from ClassCategory.name */
   categoryName?: string;
@@ -210,6 +217,7 @@ export function toPublicClass(
     spotsRemaining: Math.max(0, classEntity.capacity - registrationCount),
     priceCents: classEntity.priceCents,
     imageUrl: classEntity.imageUrl,
+    galleryImages: classEntity.galleryImages,
     categoryId: classEntity.categoryId,
     categoryName,
     skillLevel: classEntity.skillLevel,
