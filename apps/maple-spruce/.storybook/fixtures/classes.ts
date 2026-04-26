@@ -1,4 +1,4 @@
-import type { Class, ClassCategory } from '@maple/ts/domain';
+import type { Class, ClassCategory, GalleryImage } from '@maple/ts/domain';
 
 /**
  * Mock class data for Storybook stories
@@ -219,6 +219,60 @@ export const mockClassCategory3: ClassCategory = {
 
 export const mockClassCategories: ClassCategory[] = [
   mockClassCategory,
+  mockClassCategory2,
+  mockClassCategory3,
+];
+
+/**
+ * Reusable gallery image fixtures (3 images).
+ */
+export const mockGalleryImages: GalleryImage[] = [
+  {
+    url: 'https://picsum.photos/seed/gallery-1/600/400',
+    alt: 'Hands shaping wet clay on a wheel',
+  },
+  {
+    url: 'https://picsum.photos/seed/gallery-2/600/400',
+    alt: 'A row of finished bowls cooling on a shelf',
+  },
+  {
+    url: 'https://picsum.photos/seed/gallery-3/600/400',
+    alt: 'Studio bench with tools laid out before class',
+  },
+];
+
+/**
+ * Class with a gallery (3 images) used to demo the supplementary
+ * gallery rendering on top of the existing primary `imageUrl`.
+ */
+export const mockClassWithGallery: Class = {
+  ...mockClass,
+  id: 'class-with-gallery',
+  galleryImages: mockGalleryImages,
+};
+
+/**
+ * Class category whose pool has 5 reusable images shared with the
+ * fiber-arts class above.
+ */
+export const mockClassCategoryWithPool: ClassCategory = {
+  ...mockClassCategory,
+  galleryImages: [
+    ...mockGalleryImages,
+    {
+      url: 'https://picsum.photos/seed/gallery-4/600/400',
+      alt: 'Close-up of yarn skeins in earthy tones',
+    },
+    {
+      url: 'https://picsum.photos/seed/gallery-5/600/400',
+      alt: 'Loom warped and ready for a new tapestry',
+    },
+  ],
+};
+
+/** Categories list with the fiber-arts category swapped for the pool variant. */
+export const mockClassCategoriesWithPool: ClassCategory[] = [
+  mockClassCategoryWithPool,
   mockClassCategory2,
   mockClassCategory3,
 ];
