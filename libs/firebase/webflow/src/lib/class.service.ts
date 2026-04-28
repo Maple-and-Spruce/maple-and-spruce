@@ -170,6 +170,13 @@ export function mapClassToFieldData(
     };
   }
 
+  if (classEntity.galleryImages && classEntity.galleryImages.length > 0) {
+    fieldData['class-gallery'] = classEntity.galleryImages.map((img) => ({
+      url: img.url,
+      alt: img.alt,
+    }));
+  }
+
   if (classEntity.location) {
     fieldData['location'] = classEntity.location;
   }

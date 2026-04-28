@@ -211,6 +211,45 @@ describe('mapClassToFieldData', () => {
     expect(result['instructor-bio']).toBeUndefined();
     expect(result['instructor-image']).toBeUndefined();
     expect(result['category-name']).toBeUndefined();
+    expect(result['class-gallery']).toBeUndefined();
+  });
+
+  it('maps galleryImages to the class-gallery MultiImage field', () => {
+    const classWithGallery: Class = {
+      ...mockClass,
+      galleryImages: [
+        {
+          url: 'https://storage.example.com/g1.jpg',
+          alt: 'Hands centering clay on the wheel',
+        },
+        {
+          url: 'https://storage.example.com/g2.jpg',
+          alt: 'Finished bowls on a drying rack',
+        },
+      ],
+    };
+
+    const result = mapClassToFieldData(classWithGallery, { isDev: false });
+
+    expect(result['class-gallery']).toEqual([
+      {
+        url: 'https://storage.example.com/g1.jpg',
+        alt: 'Hands centering clay on the wheel',
+      },
+      {
+        url: 'https://storage.example.com/g2.jpg',
+        alt: 'Finished bowls on a drying rack',
+      },
+    ]);
+  });
+
+  it('omits class-gallery when galleryImages is empty', () => {
+    const result = mapClassToFieldData(
+      { ...mockClass, galleryImages: [] },
+      { isDev: false }
+    );
+
+    expect(result['class-gallery']).toBeUndefined();
   });
 });
 

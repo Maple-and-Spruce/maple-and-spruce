@@ -17,9 +17,42 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   callFunction,
+  EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
+
+/**
+ * The Webflow Classes collection ID. Mirrors `WEBFLOW_CLASSES_COLLECTION_ID`
+ * in `.env.dev`, which the function process reads from
+ * `dist/apps/functions-sync/.env`. The mock server stores items under this
+ * exact ID, so the test can fetch them back from the mock.
+ */
+const WEBFLOW_CLASSES_COLLECTION_ID = '69d0fb7572d9e153c22ce489';
+
+interface WebflowMockItem {
+  id: string;
+  fieldData: Record<string, unknown>;
+}
+
+/**
+ * Fetch the items the syncClassToWebflow trigger sent to the Webflow mock
+ * server. Returns the item whose `firebase-id` field matches `classId`, or
+ * `undefined` if no such item exists.
+ */
+async function findMockItemByFirebaseId(
+  classId: string
+): Promise<WebflowMockItem | undefined> {
+  const url = `${EMULATOR_CONFIG.webflowMockServerUrl}/collections/${WEBFLOW_CLASSES_COLLECTION_ID}/items`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(
+      `Webflow mock server returned ${res.status}: ${await res.text()}`
+    );
+  }
+  const body = (await res.json()) as { items: WebflowMockItem[] };
+  return body.items.find((item) => item.fieldData['firebase-id'] === classId);
+}
 import type {
   CreateClassRequest,
   CreateClassResponse,
@@ -150,6 +183,80 @@ describe('syncClassToWebflow Trigger', () => {
       );
       expect(webflowItemId).toBeDefined();
       expect(webflowItemId).toMatch(/^mock-webflow-item-/);
+    });
+  });
+
+  // ===========================================================================
+  // Class with gallery images surfaces them on the Webflow CMS item
+  // ===========================================================================
+
+  describe('Published class with galleryImages', () => {
+    let classId: string;
+
+    afterAll(async () => {
+      if (classId) {
+        await callFunction<DeleteClassRequest>({
+          functionName: 'deleteClass',
+          data: { id: classId },
+          idToken: adminUser.idToken,
+        });
+        await waitForTrigger();
+      }
+    });
+
+    it('should send galleryImages as the class-gallery MultiImage field', async () => {
+      const galleryImages = [
+        {
+          url: 'https://storage.example.com/gallery-1.jpg',
+          alt: 'Hands centering clay on the wheel',
+        },
+        {
+          url: 'https://storage.example.com/gallery-2.jpg',
+          alt: 'Finished bowls on a drying rack',
+        },
+      ];
+
+      const createResult = await callFunction<
+        CreateClassRequest,
+        CreateClassResponse
+      >({
+        functionName: 'createClass',
+        data: {
+          name: 'Webflow Gallery Sync Test',
+          description: 'A class with gallery images for sync verification.',
+          sessions: [{ dateTime: futureDate() }],
+          durationMinutes: 90,
+          capacity: 8,
+          priceCents: 3500,
+          skillLevel: 'all-levels',
+          status: 'published',
+          instructorId,
+          imageUrl: 'https://storage.example.com/hero.jpg',
+          galleryImages,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(createResult.status).toBe(200);
+      classId = createResult.data!.class.id;
+
+      await waitForTrigger();
+
+      // The class should have synced to the mock server.
+      const item = await findMockItemByFirebaseId(classId);
+      expect(item).toBeDefined();
+
+      // The class-gallery field should hold the same {url, alt} array we sent.
+      expect(item!.fieldData['class-gallery']).toEqual([
+        { url: galleryImages[0].url, alt: galleryImages[0].alt },
+        { url: galleryImages[1].url, alt: galleryImages[1].alt },
+      ]);
+
+      // Sanity: the existing class-image field should still flow.
+      expect(item!.fieldData['class-image']).toEqual({
+        url: 'https://storage.example.com/hero.jpg',
+        alt: 'Webflow Gallery Sync Test class image',
+      });
     });
   });
 
