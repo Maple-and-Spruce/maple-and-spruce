@@ -15,6 +15,9 @@ import {
   EXPIRED_EARLY_BIRD_DISCOUNT,
   INACTIVE_DISCOUNT,
   LARGE_AMOUNT_DISCOUNT,
+  PAIR_PERCENT_DISCOUNT,
+  PAIR_AMOUNT_DISCOUNT,
+  PAIR_AMOUNT_OVERSIZED,
   DISCOUNT_IDS,
 } from '@maple/firebase/integration-test-utils';
 import type {
@@ -46,6 +49,21 @@ describe('calculateRegistrationCost', () => {
       setFirestoreDoc('discounts', DISCOUNT_IDS.expired, EXPIRED_EARLY_BIRD_DISCOUNT),
       setFirestoreDoc('discounts', DISCOUNT_IDS.inactive, INACTIVE_DISCOUNT),
       setFirestoreDoc('discounts', DISCOUNT_IDS.large, LARGE_AMOUNT_DISCOUNT),
+      setFirestoreDoc(
+        'discounts',
+        DISCOUNT_IDS.pairPercent,
+        PAIR_PERCENT_DISCOUNT
+      ),
+      setFirestoreDoc(
+        'discounts',
+        DISCOUNT_IDS.pairAmount,
+        PAIR_AMOUNT_DISCOUNT
+      ),
+      setFirestoreDoc(
+        'discounts',
+        DISCOUNT_IDS.pairOversized,
+        PAIR_AMOUNT_OVERSIZED
+      ),
     ]);
   });
 
@@ -467,6 +485,177 @@ describe('calculateRegistrationCost', () => {
 
       expect(result.status).toBe(200);
       expect(result.data?.discountAmountCents).toBe(0);
+      expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+    });
+  });
+
+  // ===========================================================================
+  // Quantity-tier discount (appliesTo: 'nth-slot-onward')
+  // ===========================================================================
+
+  describe('Quantity-tier discount — percent (PAIR50, 50% off slot 2+)', () => {
+    it('applies no discount when quantity is below the threshold (qty=1)', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 1,
+          discountCode: 'PAIR50',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.originalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+      expect(result.data?.discountAmountCents).toBe(0);
+      expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+    });
+
+    it('discounts exactly one slot at qty=2 (50% off slot 2)', async () => {
+      // qty=2 × $45 = $90; slot 2 gets 50% off = $22.50 off → $67.50 final
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 2,
+          discountCode: 'PAIR50',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      const expectedDiscount = Math.round(PUBLISHED_CLASS.priceCents * 0.5);
+      expect(result.data?.originalCostCents).toBe(
+        PUBLISHED_CLASS.priceCents * 2
+      );
+      expect(result.data?.discountAmountCents).toBe(expectedDiscount);
+      expect(result.data?.finalCostCents).toBe(
+        PUBLISHED_CLASS.priceCents * 2 - expectedDiscount
+      );
+    });
+
+    it('discounts two slots at qty=3 (50% off slots 2 and 3)', async () => {
+      // qty=3 × $45 = $135; slots 2 and 3 each get 50% off = $45 off → $90 final
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 3,
+          discountCode: 'PAIR50',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      const expectedDiscount = Math.round(PUBLISHED_CLASS.priceCents * 0.5) * 2;
+      expect(result.data?.originalCostCents).toBe(
+        PUBLISHED_CLASS.priceCents * 3
+      );
+      expect(result.data?.discountAmountCents).toBe(expectedDiscount);
+      expect(result.data?.finalCostCents).toBe(
+        PUBLISHED_CLASS.priceCents * 3 - expectedDiscount
+      );
+    });
+
+    it('returns description with "(slots N+)" suffix', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 2,
+          discountCode: 'PAIR50',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountDescription).toBe('50% off (slots 2+)');
+    });
+  });
+
+  describe('Quantity-tier discount — amount (TRIO10, $10 off slot 3+)', () => {
+    it('applies no discount when quantity is below the threshold (qty=2)', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 2,
+          discountCode: 'TRIO10',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(0);
+    });
+
+    it('discounts one slot at qty=3 ($10 off slot 3)', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 3,
+          discountCode: 'TRIO10',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(1000);
+      expect(result.data?.finalCostCents).toBe(
+        PUBLISHED_CLASS.priceCents * 3 - 1000
+      );
+    });
+
+    it('discounts two slots at qty=4 ($20 off — $10 × 2 slots)', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 4,
+          discountCode: 'TRIO10',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(2000);
+    });
+  });
+
+  describe('Quantity-tier discount — per-slot cap (OVERSIZED-PAIR)', () => {
+    it('caps the per-slot discount at the unit price (slot floors at $0)', async () => {
+      // OVERSIZED-PAIR is $500 off slots 2+; at qty=2 with $45 unit price,
+      // slot 2 is capped at $45 off (not $500). Slot 1 is full price.
+      // Expected: $45 + $0 = $45 final, $45 discount.
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 2,
+          discountCode: 'OVERSIZED-PAIR',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(PUBLISHED_CLASS.priceCents);
       expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
     });
   });

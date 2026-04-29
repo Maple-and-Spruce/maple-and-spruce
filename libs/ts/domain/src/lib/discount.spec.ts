@@ -5,6 +5,7 @@ import {
   formatDiscount,
   DISCOUNT_TYPES,
   DISCOUNT_STATUSES,
+  DISCOUNT_APPLIES_TO,
 } from './discount';
 import type {
   PercentDiscountData,
@@ -17,11 +18,13 @@ const baseFields = {
   code: 'TEST10',
   description: 'Test discount',
   status: 'active' as const,
+  appliesTo: 'order' as const,
+  nthSlot: 1,
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
 };
 
-describe('applyDiscount', () => {
+describe('applyDiscount — appliesTo: order', () => {
   describe('percent discount', () => {
     const discount: PercentDiscountData = {
       ...baseFields,
@@ -30,56 +33,72 @@ describe('applyDiscount', () => {
     };
 
     it('applies 10% off correctly', () => {
-      const result = applyDiscount(discount, 4500);
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(4050);
       expect(result.discountAmountCents).toBe(450);
     });
 
     it('applies 100% off (free)', () => {
-      const fullDiscount: PercentDiscountData = {
-        ...discount,
-        percent: 100,
-      };
-      const result = applyDiscount(fullDiscount, 4500);
+      const fullDiscount: PercentDiscountData = { ...discount, percent: 100 };
+      const result = applyDiscount(fullDiscount, {
+        unitPriceCents: 4500,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(0);
       expect(result.discountAmountCents).toBe(4500);
     });
 
     it('applies 50% off correctly', () => {
-      const halfDiscount: PercentDiscountData = {
-        ...discount,
-        percent: 50,
-      };
-      const result = applyDiscount(halfDiscount, 4500);
+      const halfDiscount: PercentDiscountData = { ...discount, percent: 50 };
+      const result = applyDiscount(halfDiscount, {
+        unitPriceCents: 4500,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(2250);
       expect(result.discountAmountCents).toBe(2250);
     });
 
     it('rounds discount amount correctly', () => {
       // 33% of 100 = 33 cents
-      const oddDiscount: PercentDiscountData = {
-        ...discount,
-        percent: 33,
-      };
-      const result = applyDiscount(oddDiscount, 100);
+      const oddDiscount: PercentDiscountData = { ...discount, percent: 33 };
+      const result = applyDiscount(oddDiscount, {
+        unitPriceCents: 100,
+        quantity: 1,
+      });
       expect(result.discountAmountCents).toBe(33);
       expect(result.updatedCents).toBe(67);
     });
 
     it('handles 1% discount', () => {
-      const smallDiscount: PercentDiscountData = {
-        ...discount,
-        percent: 1,
-      };
-      const result = applyDiscount(smallDiscount, 4500);
+      const smallDiscount: PercentDiscountData = { ...discount, percent: 1 };
+      const result = applyDiscount(smallDiscount, {
+        unitPriceCents: 4500,
+        quantity: 1,
+      });
       expect(result.discountAmountCents).toBe(45);
       expect(result.updatedCents).toBe(4455);
     });
 
     it('handles zero total', () => {
-      const result = applyDiscount(discount, 0);
+      const result = applyDiscount(discount, {
+        unitPriceCents: 0,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(0);
       expect(result.discountAmountCents).toBe(0);
+    });
+
+    it('applies uniformly across multiple slots', () => {
+      // 10% off 2 × $45 = 10% off $90 = $9 off
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 2,
+      });
+      expect(result.updatedCents).toBe(8100);
+      expect(result.discountAmountCents).toBe(900);
     });
   });
 
@@ -91,28 +110,49 @@ describe('applyDiscount', () => {
     };
 
     it('deducts $5 from $45', () => {
-      const result = applyDiscount(discount, 4500);
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(4000);
       expect(result.discountAmountCents).toBe(500);
     });
 
     it('does not go below zero', () => {
-      const result = applyDiscount(discount, 300);
+      const result = applyDiscount(discount, {
+        unitPriceCents: 300,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(0);
-      // discountAmountCents should be capped at the total
       expect(result.discountAmountCents).toBe(300);
     });
 
     it('handles exact match (discount equals total)', () => {
-      const result = applyDiscount(discount, 500);
+      const result = applyDiscount(discount, {
+        unitPriceCents: 500,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(0);
       expect(result.discountAmountCents).toBe(500);
     });
 
     it('handles zero total', () => {
-      const result = applyDiscount(discount, 0);
+      const result = applyDiscount(discount, {
+        unitPriceCents: 0,
+        quantity: 1,
+      });
       expect(result.updatedCents).toBe(0);
       expect(result.discountAmountCents).toBe(0);
+    });
+
+    it('applies once to multi-slot order subtotal', () => {
+      // $5 off the order, regardless of slot count
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 3,
+      });
+      expect(result.updatedCents).toBe(13000);
+      expect(result.discountAmountCents).toBe(500);
     });
   });
 
@@ -127,28 +167,44 @@ describe('applyDiscount', () => {
 
     it('applies discount when before cutoff date', () => {
       const now = new Date('2025-05-01T00:00:00Z');
-      const result = applyDiscount(discount, 4500, now);
+      const result = applyDiscount(
+        discount,
+        { unitPriceCents: 4500, quantity: 1 },
+        now
+      );
       expect(result.updatedCents).toBe(3500);
       expect(result.discountAmountCents).toBe(1000);
     });
 
     it('applies discount on the cutoff date itself', () => {
       const now = new Date('2025-06-01T00:00:00Z');
-      const result = applyDiscount(discount, 4500, now);
+      const result = applyDiscount(
+        discount,
+        { unitPriceCents: 4500, quantity: 1 },
+        now
+      );
       expect(result.updatedCents).toBe(3500);
       expect(result.discountAmountCents).toBe(1000);
     });
 
     it('does not apply after cutoff date', () => {
       const now = new Date('2025-06-02T00:00:00Z');
-      const result = applyDiscount(discount, 4500, now);
+      const result = applyDiscount(
+        discount,
+        { unitPriceCents: 4500, quantity: 1 },
+        now
+      );
       expect(result.updatedCents).toBe(4500);
       expect(result.discountAmountCents).toBe(0);
     });
 
     it('does not go below zero before cutoff', () => {
       const now = new Date('2025-05-01T00:00:00Z');
-      const result = applyDiscount(discount, 500, now);
+      const result = applyDiscount(
+        discount,
+        { unitPriceCents: 500, quantity: 1 },
+        now
+      );
       expect(result.updatedCents).toBe(0);
       expect(result.discountAmountCents).toBe(500);
     });
@@ -159,9 +215,143 @@ describe('applyDiscount', () => {
         cutoffDate: '2025-06-01T00:00:00Z' as unknown as Date,
       };
       const now = new Date('2025-05-01T00:00:00Z');
-      const result = applyDiscount(discountWithStringDate, 4500, now);
+      const result = applyDiscount(
+        discountWithStringDate,
+        { unitPriceCents: 4500, quantity: 1 },
+        now
+      );
       expect(result.updatedCents).toBe(3500);
       expect(result.discountAmountCents).toBe(1000);
+    });
+  });
+});
+
+describe('applyDiscount — appliesTo: nth-slot-onward', () => {
+  describe('percent (50% off second slot onward)', () => {
+    const discount: PercentDiscountData = {
+      ...baseFields,
+      appliesTo: 'nth-slot-onward',
+      nthSlot: 2,
+      type: 'percent',
+      percent: 50,
+    };
+
+    it('does not discount when quantity is below the threshold', () => {
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 1,
+      });
+      expect(result.updatedCents).toBe(4500);
+      expect(result.discountAmountCents).toBe(0);
+    });
+
+    it('discounts exactly one slot at quantity = nthSlot', () => {
+      // qty=2, slot 2 gets 50% off → $45 + $22.50 = $67.50, $22.50 off
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 2,
+      });
+      expect(result.updatedCents).toBe(6750);
+      expect(result.discountAmountCents).toBe(2250);
+    });
+
+    it('discounts two slots at quantity = nthSlot + 1', () => {
+      // qty=3, slots 2 and 3 each get 50% off → $45 + $22.50 + $22.50 = $90, $45 off
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 3,
+      });
+      expect(result.updatedCents).toBe(9000);
+      expect(result.discountAmountCents).toBe(4500);
+    });
+
+    it('rounds per-slot before multiplying (33% of $1 × 2 slots)', () => {
+      const oddDiscount: PercentDiscountData = { ...discount, percent: 33 };
+      const result = applyDiscount(oddDiscount, {
+        unitPriceCents: 100,
+        quantity: 3,
+      });
+      // per-slot: round(100 * 0.33) = 33; × 2 discounted slots = 66
+      expect(result.discountAmountCents).toBe(66);
+      expect(result.updatedCents).toBe(234);
+    });
+  });
+
+  describe('amount ($10 off third slot onward)', () => {
+    const discount: AmountDiscountData = {
+      ...baseFields,
+      appliesTo: 'nth-slot-onward',
+      nthSlot: 3,
+      type: 'amount',
+      amountCents: 1000,
+    };
+
+    it('does not discount when quantity < nthSlot', () => {
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 2,
+      });
+      expect(result.updatedCents).toBe(9000);
+      expect(result.discountAmountCents).toBe(0);
+    });
+
+    it('discounts exactly one slot at quantity = nthSlot', () => {
+      // qty=3, slot 3 gets $10 off
+      const result = applyDiscount(discount, {
+        unitPriceCents: 4500,
+        quantity: 3,
+      });
+      expect(result.updatedCents).toBe(12500);
+      expect(result.discountAmountCents).toBe(1000);
+    });
+
+    it('caps per-slot amount at unit price (slot cannot go negative)', () => {
+      // $20 off when each slot is only $5 → cap at $5 per discounted slot
+      const bigAmount: AmountDiscountData = {
+        ...discount,
+        amountCents: 2000,
+      };
+      const result = applyDiscount(bigAmount, {
+        unitPriceCents: 500,
+        quantity: 3,
+      });
+      // slot 3 capped at $5 off; slots 1+2 full price = $5 + $5 + $0 = $10
+      expect(result.updatedCents).toBe(1000);
+      expect(result.discountAmountCents).toBe(500);
+    });
+  });
+
+  describe('amount-before-date with nth-slot-onward', () => {
+    const cutoffDate = new Date('2025-06-01T00:00:00Z');
+    const discount: AmountBeforeDateDiscountData = {
+      ...baseFields,
+      appliesTo: 'nth-slot-onward',
+      nthSlot: 2,
+      type: 'amount-before-date',
+      amountCents: 1000,
+      cutoffDate,
+    };
+
+    it('applies per-slot before cutoff', () => {
+      const now = new Date('2025-05-01T00:00:00Z');
+      const result = applyDiscount(
+        discount,
+        { unitPriceCents: 4500, quantity: 2 },
+        now
+      );
+      expect(result.updatedCents).toBe(8000);
+      expect(result.discountAmountCents).toBe(1000);
+    });
+
+    it('does not apply after cutoff', () => {
+      const now = new Date('2025-06-02T00:00:00Z');
+      const result = applyDiscount(
+        discount,
+        { unitPriceCents: 4500, quantity: 2 },
+        now
+      );
+      expect(result.updatedCents).toBe(9000);
+      expect(result.discountAmountCents).toBe(0);
     });
   });
 });
@@ -290,6 +480,28 @@ describe('formatDiscount', () => {
     };
     expect(formatDiscount(discount)).toBe('$15.50 off');
   });
+
+  it('appends "(slots N+)" for nth-slot-onward percent discounts', () => {
+    const discount: PercentDiscountData = {
+      ...baseFields,
+      appliesTo: 'nth-slot-onward',
+      nthSlot: 2,
+      type: 'percent',
+      percent: 50,
+    };
+    expect(formatDiscount(discount)).toBe('50% off (slots 2+)');
+  });
+
+  it('appends "(slots N+)" for nth-slot-onward amount discounts', () => {
+    const discount: AmountDiscountData = {
+      ...baseFields,
+      appliesTo: 'nth-slot-onward',
+      nthSlot: 3,
+      type: 'amount',
+      amountCents: 1000,
+    };
+    expect(formatDiscount(discount)).toBe('$10.00 off (slots 3+)');
+  });
 });
 
 describe('DISCOUNT_TYPES', () => {
@@ -301,5 +513,11 @@ describe('DISCOUNT_TYPES', () => {
 describe('DISCOUNT_STATUSES', () => {
   it('contains all valid statuses', () => {
     expect(DISCOUNT_STATUSES).toEqual(['active', 'inactive']);
+  });
+});
+
+describe('DISCOUNT_APPLIES_TO', () => {
+  it('contains all valid applies-to values', () => {
+    expect(DISCOUNT_APPLIES_TO).toEqual(['order', 'nth-slot-onward']);
   });
 });

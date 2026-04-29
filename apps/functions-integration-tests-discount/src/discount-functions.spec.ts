@@ -39,6 +39,8 @@ const PERCENT_DISCOUNT: CreatePercentDiscount = {
   type: 'percent',
   description: '20% off any class',
   status: 'active',
+  appliesTo: 'order',
+  nthSlot: 1,
   percent: 20,
 };
 
@@ -47,6 +49,8 @@ const AMOUNT_DISCOUNT: CreateAmountDiscount = {
   type: 'amount',
   description: '$10 off any class',
   status: 'active',
+  appliesTo: 'order',
+  nthSlot: 1,
   amountCents: 1000,
 };
 
@@ -55,8 +59,20 @@ const EARLY_BIRD_DISCOUNT: CreateAmountBeforeDateDiscount = {
   type: 'amount-before-date',
   description: '$15 off if registered before cutoff',
   status: 'active',
+  appliesTo: 'order',
+  nthSlot: 1,
   amountCents: 1500,
   cutoffDate: futureCutoff(),
+};
+
+const PAIR_DISCOUNT: CreatePercentDiscount = {
+  code: 'PAIR-CRUD',
+  type: 'percent',
+  description: '50% off second slot',
+  status: 'active',
+  appliesTo: 'nth-slot-onward',
+  nthSlot: 2,
+  percent: 50,
 };
 
 describe('Discount Functions', () => {
@@ -325,6 +341,81 @@ describe('Discount Functions', () => {
 
       expect(result.status).toBe(200);
       expect(result.data?.discount).toBeUndefined();
+    });
+  });
+
+  describe('Quantity-tier discounts', () => {
+    let pairId: string;
+
+    afterAll(async () => {
+      if (pairId) {
+        await callFunction<DeleteDiscountRequest>({
+          functionName: 'deleteDiscount',
+          data: { id: pairId },
+          idToken: adminUser.idToken,
+        });
+      }
+    });
+
+    it('should create a nth-slot-onward discount with appliesTo + nthSlot persisted', async () => {
+      const result = await callFunction<
+        CreatePercentDiscount,
+        CreateDiscountResponse
+      >({
+        functionName: 'createDiscount',
+        data: PAIR_DISCOUNT,
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discount.appliesTo).toBe('nth-slot-onward');
+      expect(result.data?.discount.nthSlot).toBe(2);
+      pairId = result.data!.discount.id;
+    });
+
+    it('should expose appliesTo + nthSlot via public lookup', async () => {
+      const result = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'PAIR-CRUD' },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discount?.appliesTo).toBe('nth-slot-onward');
+      expect(result.data?.discount?.nthSlot).toBe(2);
+    });
+
+    it('should reject create with nthSlot < 2 for nth-slot-onward', async () => {
+      const result = await callFunction({
+        functionName: 'createDiscount',
+        data: {
+          ...PAIR_DISCOUNT,
+          code: 'BAD-NTH',
+          nthSlot: 1,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+    });
+
+    it('should reject create when appliesTo=nth-slot-onward but nthSlot is missing', async () => {
+      const result = await callFunction({
+        functionName: 'createDiscount',
+        data: {
+          code: 'NTH-MISSING',
+          type: 'percent',
+          description: 'no nth slot specified',
+          status: 'active',
+          appliesTo: 'nth-slot-onward',
+          percent: 50,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
     });
   });
 
