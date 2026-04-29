@@ -93,6 +93,15 @@ function docToClass(
     whatToBring: data.whatToBring,
     minimumAge: data.minimumAge,
     webflowItemId: data.webflowItemId,
+    referralDiscount:
+      data.referralDiscount &&
+      typeof data.referralDiscount.percent === 'number' &&
+      typeof data.referralDiscount.expiresAfterDays === 'number'
+        ? {
+            percent: data.referralDiscount.percent,
+            expiresAfterDays: data.referralDiscount.expiresAfterDays,
+          }
+        : undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

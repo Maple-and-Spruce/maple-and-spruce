@@ -39,6 +39,39 @@ export async function getFirestoreDoc(
   return parseFirestoreFields(body.fields);
 }
 
+/**
+ * List all documents in a Firestore collection. Used by integration tests
+ * to verify side-effects of cloud functions (e.g., that a discount or mail
+ * doc was created with the expected shape).
+ */
+export async function listFirestoreDocs(
+  collectionPath: string
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  const url = `${FIRESTORE_URL}/v1/projects/${EMULATOR_CONFIG.projectId}/databases/(default)/documents/${collectionPath}`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: 'Bearer owner' },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) return [];
+    throw new Error(
+      `Failed to list Firestore docs at ${collectionPath}: ${await response.text()}`
+    );
+  }
+
+  const body = (await response.json()) as {
+    documents?: Array<{ name: string; fields?: Record<string, unknown> }>;
+  };
+  if (!body.documents) return [];
+
+  return body.documents.map((doc) => {
+    const id = doc.name.split('/').pop()!;
+    const data = doc.fields ? parseFirestoreFields(doc.fields) : {};
+    return { id, data };
+  });
+}
+
 export async function deleteFirestoreDoc(
   collectionPath: string,
   docId: string
