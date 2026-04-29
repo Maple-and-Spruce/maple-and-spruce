@@ -12,6 +12,7 @@ export {
   clearFirestoreEmulator,
   setFirestoreDoc,
   getFirestoreDoc,
+  listFirestoreDocs,
   deleteFirestoreDoc,
   FirestoreRef,
   FirestoreTimestamp,
