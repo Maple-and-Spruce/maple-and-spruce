@@ -1,9 +1,25 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Class } from '@maple/ts/domain';
+
+const mocks = vi.hoisted(() => ({
+  classFindAll: vi.fn(),
+  classCountRegistrations: vi.fn(),
+}));
+
+vi.mock('@maple/firebase/database', () => ({
+  ClassRepository: {
+    findAll: mocks.classFindAll,
+    countRegistrations: mocks.classCountRegistrations,
+  },
+}));
+
 import {
   buildFeedFromClasses,
+  CATALOG_FEED_HEADERS,
   generateClassSlug,
+  handleCatalogFeedRequest,
   mapClassToFeedItem,
+  type CatalogFeedResponse,
 } from './class-catalog-feed';
 
 function makeClass(overrides: Partial<Class> = {}): Class {
@@ -119,5 +135,115 @@ describe('buildFeedFromClasses', () => {
     expect(xml).toContain('<channel>');
     expect(xml).not.toContain('<item>');
     expect(xml.trim().endsWith('</rss>')).toBe(true);
+  });
+});
+
+interface FakeResponse extends CatalogFeedResponse {
+  statusCode: number;
+  body: string | unknown;
+  headers: Record<string, string>;
+}
+
+function createFakeResponse(): FakeResponse {
+  const fake = {
+    statusCode: 0,
+    body: undefined as string | unknown,
+    headers: {} as Record<string, string>,
+  } as FakeResponse;
+
+  fake.setHeader = (name: string, value: string) => {
+    fake.headers[name] = value;
+  };
+
+  fake.status = (code: number) => {
+    fake.statusCode = code;
+    return {
+      send: (body?: string) => {
+        fake.body = body ?? '';
+      },
+      json: (body: unknown) => {
+        fake.body = body;
+      },
+    };
+  };
+
+  return fake;
+}
+
+describe('handleCatalogFeedRequest', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.classFindAll.mockResolvedValue([]);
+    mocks.classCountRegistrations.mockResolvedValue(0);
+  });
+
+  it('short-circuits OPTIONS preflight requests with 204', async () => {
+    const res = createFakeResponse();
+    await handleCatalogFeedRequest({ method: 'OPTIONS' }, res);
+
+    expect(res.statusCode).toBe(204);
+    expect(mocks.classFindAll).not.toHaveBeenCalled();
+  });
+
+  it('queries published, upcoming classes only', async () => {
+    const res = createFakeResponse();
+    await handleCatalogFeedRequest({ method: 'GET' }, res);
+
+    expect(mocks.classFindAll).toHaveBeenCalledWith({
+      status: 'published',
+      upcoming: true,
+    });
+  });
+
+  it('writes the catalog headers and a 200 status on success', async () => {
+    mocks.classFindAll.mockResolvedValue([
+      makeClass({ id: 'class-1', name: 'Class One' }),
+    ]);
+
+    const res = createFakeResponse();
+    await handleCatalogFeedRequest({ method: 'GET' }, res);
+
+    expect(res.statusCode).toBe(200);
+    Object.entries(CATALOG_FEED_HEADERS).forEach(([key, value]) => {
+      expect(res.headers[key]).toBe(value);
+    });
+    expect(typeof res.body).toBe('string');
+    expect(res.body).toContain('<g:id>class-1</g:id>');
+  });
+
+  it('emits one item per class with its registration count', async () => {
+    mocks.classFindAll.mockResolvedValue([
+      makeClass({ id: 'sold-out', name: 'Sold Out', capacity: 4 }),
+      makeClass({ id: 'open', name: 'Open Class', capacity: 8 }),
+    ]);
+    mocks.classCountRegistrations.mockImplementation(async (id: string) =>
+      id === 'sold-out' ? 4 : 0
+    );
+
+    const res = createFakeResponse();
+    await handleCatalogFeedRequest({ method: 'GET' }, res);
+
+    const xml = res.body as string;
+    const items = xml.split('<item>');
+    const soldOutItem = items.find((s) => s.includes('<g:id>sold-out</g:id>'));
+    const openItem = items.find((s) => s.includes('<g:id>open</g:id>'));
+
+    expect(soldOutItem).toContain('<g:availability>out_of_stock</g:availability>');
+    expect(openItem).toContain('<g:availability>in_stock</g:availability>');
+  });
+
+  it('returns 500 with a JSON error body when the repository throws', async () => {
+    mocks.classFindAll.mockRejectedValue(new Error('boom'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+      /* swallow expected error log */
+    });
+
+    const res = createFakeResponse();
+    await handleCatalogFeedRequest({ method: 'GET' }, res);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: 'Failed to generate feed' });
+
+    consoleError.mockRestore();
   });
 });

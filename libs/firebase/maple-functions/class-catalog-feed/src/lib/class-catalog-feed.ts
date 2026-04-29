@@ -105,40 +105,61 @@ export function buildFeedFromClasses(
   );
 }
 
+/**
+ * Minimal request/response shapes for `handleCatalogFeedRequest` so the
+ * handler can be unit-tested without spinning up an HTTP server.
+ */
+export interface CatalogFeedRequest {
+  method: string;
+}
+
+export interface CatalogFeedResponse {
+  setHeader(name: string, value: string): void;
+  status(code: number): {
+    send(body?: string): void;
+    json(body: unknown): void;
+  };
+}
+
+export async function handleCatalogFeedRequest(
+  request: CatalogFeedRequest,
+  response: CatalogFeedResponse
+): Promise<void> {
+  if (request.method === 'OPTIONS') {
+    response.status(204).send('');
+    return;
+  }
+
+  try {
+    const classes = await ClassRepository.findAll({
+      status: 'published',
+      upcoming: true,
+    });
+
+    const enriched: ClassWithRegistrations[] = await Promise.all(
+      classes.map(async (classEntity) => ({
+        classEntity,
+        registrationCount: await ClassRepository.countRegistrations(
+          classEntity.id
+        ),
+      }))
+    );
+
+    const xml = buildFeedFromClasses(enriched);
+
+    Object.entries(CATALOG_FEED_HEADERS).forEach(([key, value]) => {
+      response.setHeader(key, value);
+    });
+    response.status(200).send(xml);
+  } catch (error) {
+    console.error('Error generating class catalog feed:', error);
+    response.status(500).json({ error: 'Failed to generate feed' });
+  }
+}
+
 export const classCatalogFeed = onRequest(
   // No minInstances — the 15-minute CDN cache from CATALOG_FEED_HEADERS
   // absorbs cold starts between Meta/Google fetch cycles.
   { region: 'us-east4', cors: true, concurrency: 80 },
-  async (request, response) => {
-    if (request.method === 'OPTIONS') {
-      response.status(204).send('');
-      return;
-    }
-
-    try {
-      const classes = await ClassRepository.findAll({
-        status: 'published',
-        upcoming: true,
-      });
-
-      const enriched: ClassWithRegistrations[] = await Promise.all(
-        classes.map(async (classEntity) => ({
-          classEntity,
-          registrationCount: await ClassRepository.countRegistrations(
-            classEntity.id
-          ),
-        }))
-      );
-
-      const xml = buildFeedFromClasses(enriched);
-
-      Object.entries(CATALOG_FEED_HEADERS).forEach(([key, value]) => {
-        response.setHeader(key, value);
-      });
-      response.status(200).send(xml);
-    } catch (error) {
-      console.error('Error generating class catalog feed:', error);
-      response.status(500).json({ error: 'Failed to generate feed' });
-    }
-  }
+  (request, response) => handleCatalogFeedRequest(request, response)
 );
