@@ -18,8 +18,12 @@ import type {
   GetPublicClassResponse,
 } from '@maple/ts/firebase/api-types';
 
+// Keep warm in prod only — dev/emulator/CI run cold (no latency-sensitive users).
+const minInstances =
+  process.env['GCLOUD_PROJECT'] === 'maple-and-spruce' ? 1 : 0;
+
 export const getPublicClass = Functions.endpoint
-  .withOptions({ minInstances: 1, concurrency: 80 })
+  .withOptions({ minInstances, concurrency: 80 })
   .handle<GetPublicClassRequest, GetPublicClassResponse>(async (data) => {
   if (!data.id) {
     throw new Error('Class ID is required');

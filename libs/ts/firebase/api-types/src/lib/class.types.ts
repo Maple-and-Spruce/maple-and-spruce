@@ -9,7 +9,6 @@ import type {
   CreateClassInput,
   UpdateClassInput,
   ClassStatus,
-  ClassSkillLevel,
   PublicClass,
 } from '@maple/ts/domain';
 
@@ -112,26 +111,6 @@ export interface UploadClassGalleryImageResponse {
   success: boolean;
   /** Public URL of the uploaded gallery image */
   url: string;
-}
-
-// ============================================================================
-// Get Public Classes (no auth required - for website/Webflow)
-// ============================================================================
-
-export interface GetPublicClassesRequest {
-  /** Filter by category */
-  categoryId?: string;
-  /** Filter by skill level */
-  skillLevel?: ClassSkillLevel;
-  /** Only return upcoming classes (default: true) */
-  upcoming?: boolean;
-  /** Limit number of results */
-  limit?: number;
-}
-
-export interface GetPublicClassesResponse {
-  /** Published classes with enriched data (instructor name, spots remaining) */
-  classes: PublicClass[];
 }
 
 // ============================================================================

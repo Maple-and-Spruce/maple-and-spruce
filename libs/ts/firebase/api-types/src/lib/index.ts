@@ -43,8 +43,6 @@ export type {
   DeleteArtistResponse,
   UploadArtistImageRequest,
   UploadArtistImageResponse,
-  GetPublicArtistsRequest,
-  GetPublicArtistsResponse,
 } from './artist.types';
 
 // Category types
@@ -159,8 +157,6 @@ export type {
   UploadClassImageResponse,
   UploadClassGalleryImageRequest,
   UploadClassGalleryImageResponse,
-  GetPublicClassesRequest,
-  GetPublicClassesResponse,
   GetPublicClassRequest,
   GetPublicClassResponse,
 } from './class.types';
