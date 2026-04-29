@@ -54,7 +54,10 @@ export const calculateRegistrationCost = Functions.endpoint
         const discount = await DiscountRepository.findByCode(data.discountCode);
 
         if (discount && isDiscountValid(discount)) {
-          const result = applyDiscount(discount, originalCostCents);
+          const result = applyDiscount(discount, {
+            unitPriceCents: classEntity.priceCents,
+            quantity: data.quantity,
+          });
           discountAmountCents = result.discountAmountCents;
           discountDescription = formatDiscount(discount);
         }

@@ -10,6 +10,8 @@ describe('discountValidation', () => {
     code: 'SAVE10',
     description: '10% off your registration',
     status: 'active',
+    appliesTo: 'order',
+    nthSlot: 1,
     percent: 10,
   };
 
@@ -18,6 +20,8 @@ describe('discountValidation', () => {
     code: 'FIVER',
     description: '$5 off your registration',
     status: 'active',
+    appliesTo: 'order',
+    nthSlot: 1,
     amountCents: 500,
   };
 
@@ -26,8 +30,20 @@ describe('discountValidation', () => {
     code: 'EARLYBIRD',
     description: '$10 off before June 15',
     status: 'active',
+    appliesTo: 'order',
+    nthSlot: 1,
     amountCents: 1000,
     cutoffDate: futureDate,
+  };
+
+  const validNthSlot: DiscountValidationInput = {
+    type: 'percent',
+    code: 'PAIR50',
+    description: '50% off second slot',
+    status: 'active',
+    appliesTo: 'nth-slot-onward',
+    nthSlot: 2,
+    percent: 50,
   };
 
   beforeEach(() => {
@@ -69,6 +85,85 @@ describe('discountValidation', () => {
         code: 'EARLY-BIRD-2025',
       });
       expect(result.isValid()).toBe(true);
+    });
+
+    it('passes with nth-slot-onward applies rule', () => {
+      const result = discountValidation(validNthSlot);
+      expect(result.isValid()).toBe(true);
+    });
+  });
+
+  describe('appliesTo field', () => {
+    it('fails when appliesTo is missing', () => {
+      const result = discountValidation({
+        ...validPercent,
+        appliesTo: '' as 'order',
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('appliesTo')).toContain(
+        'Application rule is required'
+      );
+    });
+
+    it('fails when appliesTo is invalid', () => {
+      const result = discountValidation({
+        ...validPercent,
+        appliesTo: 'somewhere-else' as 'order',
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('appliesTo')).toContain(
+        'Application rule must be valid'
+      );
+    });
+  });
+
+  describe('nthSlot field', () => {
+    it('fails when nthSlot is missing for nth-slot-onward', () => {
+      const result = discountValidation({
+        ...validNthSlot,
+        nthSlot: undefined as unknown as number,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('nthSlot')).toContain(
+        'Slot number is required for nth-slot-onward discounts'
+      );
+    });
+
+    it('fails when nthSlot is 1 for nth-slot-onward (would discount everything)', () => {
+      const result = discountValidation({
+        ...validNthSlot,
+        nthSlot: 1,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('nthSlot')).toContain(
+        'Slot number must be 2 or greater'
+      );
+    });
+
+    it('fails when nthSlot exceeds 100', () => {
+      const result = discountValidation({
+        ...validNthSlot,
+        nthSlot: 101,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('nthSlot')).toContain(
+        'Slot number must be 100 or less'
+      );
+    });
+
+    it('passes at boundary values 2 and 100', () => {
+      [2, 100].forEach((nthSlot) => {
+        const result = discountValidation({ ...validNthSlot, nthSlot });
+        expect(result.hasErrors('nthSlot')).toBe(false);
+      });
+    });
+
+    it('does not require nthSlot for order applies rule', () => {
+      const result = discountValidation({
+        ...validPercent,
+        nthSlot: undefined as unknown as number,
+      });
+      expect(result.hasErrors('nthSlot')).toBe(false);
     });
   });
 

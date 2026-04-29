@@ -38,6 +38,19 @@ export type DiscountStatus = 'active' | 'inactive';
 export const DISCOUNT_STATUSES: DiscountStatus[] = ['active', 'inactive'];
 
 /**
+ * How a discount applies to a multi-slot registration.
+ * - 'order': discount applies to the order subtotal (current behavior)
+ * - 'nth-slot-onward': discount applies per slot, starting at slot N (1-indexed).
+ *   Used for pair-pricing promos like "second slot 50% off" (nthSlot=2).
+ */
+export type DiscountAppliesTo = 'order' | 'nth-slot-onward';
+
+export const DISCOUNT_APPLIES_TO: DiscountAppliesTo[] = [
+  'order',
+  'nth-slot-onward',
+];
+
+/**
  * Shared fields across all discount types
  */
 interface DiscountBase {
@@ -48,6 +61,14 @@ interface DiscountBase {
   description: string;
   /** Whether this discount can currently be used */
   status: DiscountStatus;
+  /** How the discount applies to multi-slot registrations */
+  appliesTo: DiscountAppliesTo;
+  /**
+   * For appliesTo='nth-slot-onward', the 1-indexed slot at which the
+   * discount starts applying (and applies to that slot and every slot after).
+   * Ignored when appliesTo='order'.
+   */
+  nthSlot: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -106,6 +127,8 @@ export type UpdateDiscountInput = {
   code?: string;
   description?: string;
   status?: DiscountStatus;
+  appliesTo?: DiscountAppliesTo;
+  nthSlot?: number;
   percent?: number;
   amountCents?: number;
   cutoffDate?: Date;
@@ -122,20 +145,85 @@ export interface DiscountApplicationResult {
 }
 
 /**
- * Apply a discount to a total amount.
+ * Pricing context for applyDiscount: a unit price and a quantity.
+ * The function needs both (not just a total) so it can apply per-slot
+ * discounts like "second slot 50% off."
+ */
+export interface DiscountPricingContext {
+  unitPriceCents: number;
+  quantity: number;
+}
+
+/**
+ * Apply a discount to a registration's pricing.
  *
  * Ensures the result is never negative (minimum $0).
- * For amount-before-date discounts, checks the cutoff date
- * against the current time.
+ * For amount-before-date discounts, checks the cutoff date against `now`.
+ * For appliesTo='nth-slot-onward', the discount applies per slot starting
+ * at `nthSlot` (1-indexed); slots before that are charged at full price.
  *
  * @param discount The discount to apply
- * @param totalCents The total in cents before discount
- * @param now Optional current time (for testing)
+ * @param context  unitPriceCents and quantity
+ * @param now      Optional current time (for testing)
  */
 export function applyDiscount(
   discount: Discount,
-  totalCents: number,
+  context: DiscountPricingContext,
   now: Date = new Date()
+): DiscountApplicationResult {
+  const { unitPriceCents, quantity } = context;
+  const baseTotalCents = unitPriceCents * quantity;
+
+  // Past-cutoff short-circuit for amount-before-date.
+  if (discount.type === 'amount-before-date') {
+    const cutoff =
+      discount.cutoffDate instanceof Date
+        ? discount.cutoffDate
+        : new Date(discount.cutoffDate);
+    if (now > cutoff) {
+      return { updatedCents: baseTotalCents, discountAmountCents: 0 };
+    }
+  }
+
+  if (discount.appliesTo === 'nth-slot-onward') {
+    const discountedSlots = Math.max(0, quantity - discount.nthSlot + 1);
+    if (discountedSlots === 0) {
+      return { updatedCents: baseTotalCents, discountAmountCents: 0 };
+    }
+    const perSlotDiscountCents = computePerSlotDiscount(
+      discount,
+      unitPriceCents
+    );
+    const totalDiscountCents = Math.min(
+      perSlotDiscountCents * discountedSlots,
+      baseTotalCents
+    );
+    return {
+      updatedCents: Math.max(0, baseTotalCents - totalDiscountCents),
+      discountAmountCents: totalDiscountCents,
+    };
+  }
+
+  // appliesTo === 'order' — apply to the order subtotal as a whole.
+  return computeOrderDiscount(discount, baseTotalCents);
+}
+
+function computePerSlotDiscount(
+  discount: Discount,
+  unitPriceCents: number
+): number {
+  switch (discount.type) {
+    case 'percent':
+      return Math.round(unitPriceCents * (discount.percent / 100));
+    case 'amount':
+    case 'amount-before-date':
+      return Math.min(discount.amountCents, unitPriceCents);
+  }
+}
+
+function computeOrderDiscount(
+  discount: Discount,
+  totalCents: number
 ): DiscountApplicationResult {
   switch (discount.type) {
     case 'percent': {
@@ -147,32 +235,12 @@ export function applyDiscount(
         discountAmountCents,
       };
     }
-    case 'amount': {
+    case 'amount':
+    case 'amount-before-date': {
       const discountAmountCents = Math.min(discount.amountCents, totalCents);
       return {
-        updatedCents: Math.max(0, totalCents - discount.amountCents),
+        updatedCents: Math.max(0, totalCents - discountAmountCents),
         discountAmountCents,
-      };
-    }
-    case 'amount-before-date': {
-      const cutoff =
-        discount.cutoffDate instanceof Date
-          ? discount.cutoffDate
-          : new Date(discount.cutoffDate);
-      if (now <= cutoff) {
-        const discountAmountCents = Math.min(
-          discount.amountCents,
-          totalCents
-        );
-        return {
-          updatedCents: Math.max(0, totalCents - discount.amountCents),
-          discountAmountCents,
-        };
-      }
-      // Past cutoff date — no discount
-      return {
-        updatedCents: totalCents,
-        discountAmountCents: 0,
       };
     }
   }
@@ -202,20 +270,24 @@ export function isDiscountValid(
 }
 
 /**
- * Format a discount for display (e.g., "10% off", "$5.00 off")
+ * Format a discount for display (e.g., "10% off", "$5.00 off (slots 2+)")
  */
 export function formatDiscount(discount: Discount): string {
+  const suffix =
+    discount.appliesTo === 'nth-slot-onward'
+      ? ` (slots ${discount.nthSlot}+)`
+      : '';
   switch (discount.type) {
     case 'percent':
-      return `${discount.percent}% off`;
+      return `${discount.percent}% off${suffix}`;
     case 'amount':
-      return `$${(discount.amountCents / 100).toFixed(2)} off`;
+      return `$${(discount.amountCents / 100).toFixed(2)} off${suffix}`;
     case 'amount-before-date': {
       const cutoff =
         discount.cutoffDate instanceof Date
           ? discount.cutoffDate
           : new Date(discount.cutoffDate);
-      return `$${(discount.amountCents / 100).toFixed(2)} off (before ${cutoff.toLocaleDateString()})`;
+      return `$${(discount.amountCents / 100).toFixed(2)} off${suffix} (before ${cutoff.toLocaleDateString()})`;
     }
   }
 }

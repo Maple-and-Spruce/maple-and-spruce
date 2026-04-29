@@ -10,6 +10,7 @@ import type {
   CreateDiscountInput,
   UpdateDiscountInput,
   DiscountStatus,
+  DiscountAppliesTo,
 } from '@maple/ts/domain';
 
 const COLLECTION = 'discounts';
@@ -26,11 +27,18 @@ function docToDiscount(
 
   const data = doc.data()!;
 
+  // Default appliesTo='order' / nthSlot=1 for documents written before
+  // these fields existed — keeps legacy codes working without a migration.
+  const appliesTo: DiscountAppliesTo =
+    data.appliesTo === 'nth-slot-onward' ? 'nth-slot-onward' : 'order';
+
   const base = {
     id: doc.id,
     code: data.code,
     description: data.description,
     status: data.status as DiscountStatus,
+    appliesTo,
+    nthSlot: typeof data.nthSlot === 'number' ? data.nthSlot : 1,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

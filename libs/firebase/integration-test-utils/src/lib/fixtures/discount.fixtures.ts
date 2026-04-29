@@ -82,6 +82,53 @@ export const LARGE_AMOUNT_DISCOUNT = {
   updatedAt: new Date().toISOString(),
 };
 
+/**
+ * Quantity-tier: 50% off slots 2+ (e.g., "register a pair, second slot 50% off").
+ * No discount for qty=1; one slot discounted at qty=2; two slots at qty=3, etc.
+ */
+export const PAIR_PERCENT_DISCOUNT = {
+  code: 'PAIR50',
+  description: 'Bring a friend — 50% off second slot',
+  type: 'percent',
+  percent: 50,
+  appliesTo: 'nth-slot-onward',
+  nthSlot: 2,
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+/**
+ * Quantity-tier: $10 off slots 3+ (group-of-3 promo).
+ */
+export const PAIR_AMOUNT_DISCOUNT = {
+  code: 'TRIO10',
+  description: '$10 off each slot from the third onward',
+  type: 'amount',
+  amountCents: 1000,
+  appliesTo: 'nth-slot-onward',
+  nthSlot: 3,
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+/**
+ * Quantity-tier: per-slot amount that *exceeds* the unit price.
+ * Used to verify the per-slot cap (slot price floors at $0).
+ */
+export const PAIR_AMOUNT_OVERSIZED = {
+  code: 'OVERSIZED-PAIR',
+  description: '$500 off slots 2+ (oversized — caps per slot)',
+  type: 'amount',
+  amountCents: 50000,
+  appliesTo: 'nth-slot-onward',
+  nthSlot: 2,
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 /** Well-known doc IDs for test discounts */
 export const DISCOUNT_IDS = {
   percent: 'test-discount-percent',
@@ -90,4 +137,7 @@ export const DISCOUNT_IDS = {
   expired: 'test-discount-expired',
   inactive: 'test-discount-inactive',
   large: 'test-discount-large',
+  pairPercent: 'test-discount-pair-percent',
+  pairAmount: 'test-discount-pair-amount',
+  pairOversized: 'test-discount-pair-oversized',
 } as const;

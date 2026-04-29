@@ -297,8 +297,13 @@ describe('createRegistration', () => {
   });
 
   describe('Discount application', () => {
+    // Quantity-tier tests need their own class — TEST_CLASS_ID has only 5 spots
+    // and earlier tests in this file fill it before we get here.
+    const PAIR_TEST_CLASS_ID = 'test-reg-pair-class';
+
     beforeAll(async () => {
-      // Seed a discount code
+      // Legacy-shape doc (no appliesTo/nthSlot) — verifies repo defaults
+      // back-fill 'order' so existing discounts continue to work.
       await setFirestoreDoc('discounts', 'test-discount-percent', {
         code: 'TESTDISCOUNT',
         type: 'percent',
@@ -307,6 +312,26 @@ describe('createRegistration', () => {
         percent: 50,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+      });
+
+      // Quantity-tier: 50% off second slot onward
+      await setFirestoreDoc('discounts', 'test-discount-pair', {
+        code: 'PAIRDEAL',
+        type: 'percent',
+        description: 'Bring a friend — 50% off second slot',
+        status: 'active',
+        appliesTo: 'nth-slot-onward',
+        nthSlot: 2,
+        percent: 50,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Dedicated class with extra capacity for the pair-pricing tests.
+      await setFirestoreDoc('classes', PAIR_TEST_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Pair Pricing Workshop',
+        capacity: 10,
       });
     });
 
@@ -331,6 +356,55 @@ describe('createRegistration', () => {
       // 50% off $45 = $22.50 + 6% tax = 2385 cents
       expect(result.data?.registration.pricePaidCents).toBe(2385);
       expect(result.data?.registration.discountCode).toBe('TESTDISCOUNT');
+    });
+
+    it('should not discount when quantity-tier code is below threshold', async () => {
+      // PAIRDEAL discounts slot 2+; at qty=1 nothing is discounted.
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: PAIR_TEST_CLASS_ID,
+          customerEmail: 'pair-solo@test.com',
+          customerName: 'Solo Student',
+          quantity: 1,
+          discountCode: 'PAIRDEAL',
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      // 4500 base + 6% tax = 4770; no discount applied
+      expect(result.data?.registration.pricePaidCents).toBe(4770);
+      // Code is silently ignored at sub-threshold quantities (no discount stored)
+      expect(result.data?.registration.discountAmountCents ?? 0).toBe(0);
+    });
+
+    it('should apply quantity-tier discount only to slots from nthSlot onward', async () => {
+      // qty=2 × $45 = $90 base; slot 2 gets 50% off ($22.50 off);
+      // subtotal $67.50; +6% tax → $71.55 = 7155 cents
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: PAIR_TEST_CLASS_ID,
+          customerEmail: 'pair-duo@test.com',
+          customerName: 'Pair Student',
+          quantity: 2,
+          discountCode: 'PAIRDEAL',
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.registration.discountCode).toBe('PAIRDEAL');
+      expect(result.data?.registration.discountAmountCents).toBe(2250);
+      expect(result.data?.registration.subtotalCents).toBe(6750);
+      expect(result.data?.registration.pricePaidCents).toBe(7155);
     });
   });
 });
