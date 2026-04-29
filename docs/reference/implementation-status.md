@@ -44,7 +44,7 @@
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Public Artist API | Complete | #93 | `libs/firebase/maple-functions/get-public-artists/` |
+| Public Artist API | Removed | #93 | Superseded by `syncArtistToWebflow` push to Webflow CMS |
 | Webflow integration | Complete | #93 | `libs/firebase/webflow/`, `syncArtistToWebflow` |
 | Sync Conflict Resolution | Complete | #28 | `/sync-conflicts` page, 4 Cloud Functions |
 | Artist showcase | Complete | #93 | Webflow CMS sync working |
@@ -83,9 +83,9 @@
 | Square PaymentsService | Complete | #9 | `libs/firebase/square/src/lib/payments.service.ts` |
 | createRegistration (public, with payment) | Complete | #9 | `libs/firebase/maple-functions/create-registration/` |
 | cancelRegistration (admin, with refund) | Complete | #9 | `libs/firebase/maple-functions/cancel-registration/` |
-| Enhanced getPublicClasses + getPublicClass | Complete | #9 | Instructor names, categories, spot counts |
+| Enhanced getPublicClass | Complete | #9 | Instructor names, categories, spot counts (single-class endpoint; `getPublicClasses` removed in favor of Webflow CMS list) |
 | Admin UI (Discounts + Registrations pages) | Complete | #9 | `/discounts`, `/registrations` |
-| Public registration flow | Complete | #9 | `/register`, `/register/[classId]`, `/register/[classId]/confirm` |
+| Public registration flow | Complete | #9 | Webflow embed via `apps/webflow-components/src/RegistrationWidget.tsx` (admin-app POC `/register` pages removed) |
 | useDiscounts + useRegistrations hooks | Complete | #9 | `libs/react/data/src/lib/` |
 | Storybook fixtures | Complete | #9 | `apps/maple-spruce/.storybook/fixtures/` |
 
