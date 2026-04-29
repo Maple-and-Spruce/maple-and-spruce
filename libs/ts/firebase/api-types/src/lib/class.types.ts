@@ -9,7 +9,6 @@ import type {
   CreateClassInput,
   UpdateClassInput,
   ClassStatus,
-  ClassSkillLevel,
   PublicClass,
 } from '@maple/ts/domain';
 
@@ -126,26 +125,6 @@ export interface DuplicateClassRequest {
 export interface DuplicateClassResponse {
   /** The newly created class (status: draft, sessions: empty, name suffixed). */
   class: Class;
-}
-
-// ============================================================================
-// Get Public Classes (no auth required - for website/Webflow)
-// ============================================================================
-
-export interface GetPublicClassesRequest {
-  /** Filter by category */
-  categoryId?: string;
-  /** Filter by skill level */
-  skillLevel?: ClassSkillLevel;
-  /** Only return upcoming classes (default: true) */
-  upcoming?: boolean;
-  /** Limit number of results */
-  limit?: number;
-}
-
-export interface GetPublicClassesResponse {
-  /** Published classes with enriched data (instructor name, spots remaining) */
-  classes: PublicClass[];
 }
 
 // ============================================================================

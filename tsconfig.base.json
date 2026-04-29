@@ -32,9 +32,6 @@
       "@maple/firebase/maple-functions/delete-artist": [
         "libs/firebase/maple-functions/delete-artist/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-public-artists": [
-        "libs/firebase/maple-functions/get-public-artists/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/upload-artist-image": [
         "libs/firebase/maple-functions/upload-artist-image/src/index.ts"
       ],
@@ -211,9 +208,6 @@
       ],
       "@maple/firebase/maple-functions/duplicate-class": [
         "libs/firebase/maple-functions/duplicate-class/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-classes": [
-        "libs/firebase/maple-functions/get-public-classes/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-class-categories": [
         "libs/firebase/maple-functions/get-class-categories/src/index.ts"

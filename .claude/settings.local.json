@@ -182,7 +182,9 @@
       "Bash(git branch:*)",
       "mcp__webflow__webflow_guide_tool",
       "Bash(mkdir -p libs/firebase/square-test-mock-server/src/lib/routes)",
-      "Bash(mkdir -p libs/firebase/webflow-test-mock-server/src/lib/routes)"
+      "Bash(mkdir -p libs/firebase/webflow-test-mock-server/src/lib/routes)",
+      "Bash(EMULATOR_PORT_OFFSET=20 ./tools/run-integration-tests.sh class)",
+      "mcp__webflow__data_pages_tool"
     ]
   }
 }

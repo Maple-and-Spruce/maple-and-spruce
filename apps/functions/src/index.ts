@@ -42,9 +42,6 @@ export { updateArtist } from '@maple/firebase/maple-functions/update-artist';
 export { deleteArtist } from '@maple/firebase/maple-functions/delete-artist';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
-// Public API (no auth required - for Webflow integration)
-export { getPublicArtists } from '@maple/firebase/maple-functions/get-public-artists';
-
 // Category functions
 export { getCategories } from '@maple/firebase/maple-functions/get-categories';
 export { createCategory } from '@maple/firebase/maple-functions/create-category';
@@ -104,7 +101,6 @@ export { uploadClassGalleryImage } from '@maple/firebase/maple-functions/upload-
 export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-class-sessions';
 
 // Public class API (no auth required - for Webflow integration)
-export { getPublicClasses } from '@maple/firebase/maple-functions/get-public-classes';
 export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
 
 // Class category functions

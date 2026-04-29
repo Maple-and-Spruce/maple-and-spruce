@@ -10,7 +10,6 @@
     "firebase-maple-functions-get-artist",
     "firebase-maple-functions-update-artist",
     "firebase-maple-functions-delete-artist",
-    "firebase-maple-functions-get-public-artists",
     "firebase-integration-test-utils"
   ],
   "targets": {

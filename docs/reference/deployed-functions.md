@@ -35,8 +35,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `uploadClassGalleryImage`
-- `getPublicClasses` _(minInstances: 1, concurrency: 80)_
-- `getPublicClass` _(minInstances: 1, concurrency: 80)_
+- `getPublicClass` _(minInstances: 1 in prod / 0 in dev, concurrency: 80)_
 
 ### Class Categories
 - `getClassCategories`, `uploadCategoryGalleryImage`
@@ -80,7 +79,6 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Infrastructure
 - `healthCheck`
-- `getPublicArtists` _(minInstances: 1, concurrency: 80)_
 - `getSyncConflicts`, `getSyncConflictSummary`
 
 ---
@@ -89,7 +87,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ICS feed generation. Isolates `ical-generator` and `@touch4it/ical-timezones`.
 
-- `calendarClassesFeed` — HTTP: `/calendar/classes.ics` _(minInstances: 1, concurrency: 80)_
+- `calendarClassesFeed` — HTTP: `/calendar/classes.ics` _(concurrency: 80; CDN-cached 5min)_
 - `calendarMusicFeed` — HTTP: `/calendar/music.ics` _(concurrency: 80)_
 - `calendarEventsFeed` — HTTP: `/calendar/events.ics` _(concurrency: 80)_
 - `calendarHoursFeed` — HTTP: `/calendar/hours.ics` _(concurrency: 80)_
