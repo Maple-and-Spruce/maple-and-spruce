@@ -278,6 +278,9 @@
       "@maple/firebase/maple-functions/calendar-classes-feed": [
         "libs/firebase/maple-functions/calendar-classes-feed/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/class-catalog-feed": [
+        "libs/firebase/maple-functions/class-catalog-feed/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/calendar-music-feed": [
         "libs/firebase/maple-functions/calendar-music-feed/src/index.ts"
       ],

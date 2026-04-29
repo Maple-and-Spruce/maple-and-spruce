@@ -36,6 +36,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `uploadClassGalleryImage`
 - `getPublicClass` _(minInstances: 1 in prod / 0 in dev, concurrency: 80)_
+- `classCatalogFeed` _(public RSS 2.0 feed at `/catalog/classes.xml`; consumed by Meta Commerce Manager + Google Merchant Center; 15-min cache)_
 
 ### Class Categories
 - `getClassCategories`, `uploadCategoryGalleryImage`
