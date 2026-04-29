@@ -159,6 +159,8 @@ export type {
   UploadClassImageResponse,
   UploadClassGalleryImageRequest,
   UploadClassGalleryImageResponse,
+  DuplicateClassRequest,
+  DuplicateClassResponse,
   GetPublicClassesRequest,
   GetPublicClassesResponse,
   GetPublicClassRequest,

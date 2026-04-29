@@ -13,6 +13,7 @@ import {
   Alert,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
@@ -27,7 +28,10 @@ interface ClassListProps {
   categories?: ClassCategory[];
   onEdit: (classItem: Class) => void;
   onDelete: (classItem: Class) => void;
+  onDuplicate?: (classItem: Class) => void;
   onViewRoster?: (classItem: Class) => void;
+  /** ID of the class currently being duplicated — disables its Copy button. */
+  duplicatingClassId?: string;
 }
 
 const statusColors: Record<string, 'success' | 'default' | 'error' | 'warning'> = {
@@ -65,14 +69,18 @@ function ClassCard({
   categoryName,
   onEdit,
   onDelete,
+  onDuplicate,
   onViewRoster,
+  isDuplicating,
 }: {
   classItem: Class;
   instructorName?: string;
   categoryName?: string;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
   onViewRoster?: () => void;
+  isDuplicating?: boolean;
 }) {
   const firstSession = getFirstSession(classItem);
   const firstDateTime =
@@ -182,6 +190,17 @@ function ClassCard({
             <IconButton onClick={onEdit} size="small" aria-label="Edit">
               <EditIcon />
             </IconButton>
+            {onDuplicate && (
+              <IconButton
+                onClick={onDuplicate}
+                size="small"
+                aria-label="Copy class"
+                title="Copy class"
+                disabled={isDuplicating}
+              >
+                <ContentCopyIcon />
+              </IconButton>
+            )}
             <IconButton
               onClick={onDelete}
               size="small"
@@ -227,7 +246,9 @@ export function ClassList({
   categories = [],
   onEdit,
   onDelete,
+  onDuplicate,
   onViewRoster,
+  duplicatingClassId,
 }: ClassListProps) {
   if (classesState.status === 'loading') {
     return <LoadingSkeleton />;
@@ -284,6 +305,10 @@ export function ClassList({
             }
             onEdit={() => onEdit(classItem)}
             onDelete={() => onDelete(classItem)}
+            onDuplicate={
+              onDuplicate ? () => onDuplicate(classItem) : undefined
+            }
+            isDuplicating={duplicatingClassId === classItem.id}
             onViewRoster={onViewRoster ? () => onViewRoster(classItem) : undefined}
           />
         </Grid>

@@ -98,6 +98,7 @@ export { getClass } from '@maple/firebase/maple-functions/get-class';
 export { createClass } from '@maple/firebase/maple-functions/create-class';
 export { updateClass } from '@maple/firebase/maple-functions/update-class';
 export { deleteClass } from '@maple/firebase/maple-functions/delete-class';
+export { duplicateClass } from '@maple/firebase/maple-functions/duplicate-class';
 export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-image';
 export { uploadClassGalleryImage } from '@maple/firebase/maple-functions/upload-class-gallery-image';
 export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-class-sessions';
