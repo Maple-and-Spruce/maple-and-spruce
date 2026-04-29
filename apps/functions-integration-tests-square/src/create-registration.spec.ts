@@ -11,6 +11,7 @@ import {
   clearAuthEmulator,
   clearFirestoreEmulator,
   setFirestoreDoc,
+  listFirestoreDocs,
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -535,6 +536,181 @@ describe('createRegistration', () => {
 
       const loser = both.find((r) => r !== redeemed[0])!;
       expect(loser.status).not.toBe(200);
+    });
+  });
+
+  describe('Referral program (auto-generated codes in confirmation email)', () => {
+    const REFERRAL_OFF_CLASS_ID = 'test-reg-referral-off-class';
+    const REFERRAL_ON_CLASS_ID = 'test-reg-referral-on-class';
+    const FRIEND_CLASS_ID = 'test-reg-friend-class';
+
+    beforeAll(async () => {
+      // Class WITHOUT referralDiscount — control case.
+      await setFirestoreDoc('classes', REFERRAL_OFF_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'No-Referral Workshop',
+        capacity: 10,
+      });
+
+      // Class WITH referralDiscount — opted in.
+      await setFirestoreDoc('classes', REFERRAL_ON_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Referral Workshop',
+        capacity: 10,
+        referralDiscount: {
+          percent: 50,
+          expiresAfterDays: 60,
+        },
+      });
+
+      // Class for the friend to redeem the referral code on.
+      await setFirestoreDoc('classes', FRIEND_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Friend Workshop',
+        capacity: 10,
+      });
+    });
+
+    it('does not create a referral code for classes without referralDiscount', async () => {
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: REFERRAL_OFF_CLASS_ID,
+          customerEmail: 'no-referral@test.com',
+          customerName: 'No Referral',
+          quantity: 1,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      expect(result.status).toBe(200);
+      const registrationId = result.data?.registration.id;
+
+      // No discount doc was generated from this registration.
+      const discounts = await listFirestoreDocs('discounts');
+      const generated = discounts.filter(
+        (d) => d.data.generatedFromRegistrationId === registrationId
+      );
+      expect(generated.length).toBe(0);
+
+      // Mail doc for this registration has no referralCode field.
+      const mail = await listFirestoreDocs('mail');
+      const ours = mail.find((m) => {
+        const tmpl = m.data.template as { data?: { confirmationNumber?: string } } | undefined;
+        return tmpl?.data?.confirmationNumber === result.data?.confirmationNumber;
+      });
+      expect(ours).toBeDefined();
+      const tmpl = ours!.data.template as { data: Record<string, unknown> };
+      expect(tmpl.data.referralCode).toBeFalsy();
+    });
+
+    it('generates a single-use referral code and includes it in the email payload', async () => {
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: REFERRAL_ON_CLASS_ID,
+          customerEmail: 'referrer@test.com',
+          customerName: 'Referrer Person',
+          quantity: 1,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      expect(result.status).toBe(200);
+      const registrationId = result.data?.registration.id;
+
+      // Exactly one discount doc was generated for this registration.
+      const discounts = await listFirestoreDocs('discounts');
+      const generated = discounts.filter(
+        (d) => d.data.generatedFromRegistrationId === registrationId
+      );
+      expect(generated.length).toBe(1);
+      const referral = generated[0].data;
+      expect(referral.code).toMatch(/^FR-[A-Z0-9]{6}$/);
+      expect(referral.type).toBe('percent');
+      expect(referral.percent).toBe(50);
+      expect(referral.usageLimit).toBe(1);
+      expect(referral.usageCount).toBe(0);
+      expect(referral.appliesTo).toBe('order');
+      expect(referral.status).toBe('active');
+      // expiresAt is ~60 days out; allow a generous window for test timing.
+      expect(referral.expiresAt).toBeDefined();
+
+      // Mail doc has the same code in its template payload.
+      const mail = await listFirestoreDocs('mail');
+      const ours = mail.find((m) => {
+        const tmpl = m.data.template as { data?: { confirmationNumber?: string } } | undefined;
+        return tmpl?.data?.confirmationNumber === result.data?.confirmationNumber;
+      });
+      expect(ours).toBeDefined();
+      const tmpl = ours!.data.template as { data: Record<string, unknown> };
+      expect(tmpl.data.referralCode).toBe(referral.code);
+      expect(tmpl.data.referralPercent).toBe(50);
+      expect(typeof tmpl.data.referralExpires).toBe('string');
+    });
+
+    it('generated code is redeemable as a single-use discount on a different class', async () => {
+      // First, generate a referral code via the referrer's registration.
+      const referrer = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: REFERRAL_ON_CLASS_ID,
+          customerEmail: 'referrer-2@test.com',
+          customerName: 'Second Referrer',
+          quantity: 1,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      expect(referrer.status).toBe(200);
+      const referrerRegId = referrer.data?.registration.id;
+
+      const discounts = await listFirestoreDocs('discounts');
+      const generated = discounts.find(
+        (d) => d.data.generatedFromRegistrationId === referrerRegId
+      );
+      expect(generated).toBeDefined();
+      const code = generated!.data.code as string;
+
+      // Friend uses the code on a different class.
+      const friend = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: FRIEND_CLASS_ID,
+          customerEmail: 'friend@test.com',
+          customerName: 'The Friend',
+          quantity: 1,
+          discountCode: code,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      expect(friend.status).toBe(200);
+      expect(friend.data?.registration.discountCode).toBe(code);
+      // 50% off $45 = $22.50 + 6% tax = 2385 cents
+      expect(friend.data?.registration.pricePaidCents).toBe(2385);
+
+      // Second redemption of the same code must fail (single-use).
+      const friendOfFriend = await callFunction<CreateRegistrationRequest>({
+        functionName: 'createRegistration',
+        data: {
+          classId: FRIEND_CLASS_ID,
+          customerEmail: 'friend-of-friend@test.com',
+          customerName: 'Friend of Friend',
+          quantity: 1,
+          discountCode: code,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      expect(friendOfFriend.status).not.toBe(200);
     });
   });
 });

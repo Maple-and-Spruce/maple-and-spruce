@@ -141,6 +141,17 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
     </div>
     {{/if}}
 
+    {{#if referralCode}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Bring a friend &#8212; share this code</strong><br>
+      <p>We'd love to have a friend join you. Share this single-use code and they'll get <strong>{{referralPercent}}% off</strong> their first registration:</p>
+      <p style="text-align: center; margin: 12px 0;">
+        <span style="display: inline-block; background-color: #ffffff; border: 2px dashed #6B7B5E; color: #4A3728; font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; padding: 10px 20px; border-radius: 4px;">{{referralCode}}</span>
+      </p>
+      <p style="font-size: 14px; color: #7A7A6E; text-align: center;">Valid for one use, expires {{referralExpires}}.</p>
+    </div>
+    {{/if}}
+
     <p>If you have any questions, please reach out at
       <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
       call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,

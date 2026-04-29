@@ -49,7 +49,11 @@ import type {
   CreateRegistrationResponse,
   InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
-import type { AgreementTemplate, MediaReleaseChoice } from '@maple/ts/domain';
+import type {
+  AgreementTemplate,
+  MediaReleaseChoice,
+  PercentDiscountData,
+} from '@maple/ts/domain';
 import { getStorage } from 'firebase-admin/storage';
 import { randomBytes } from 'crypto';
 
@@ -65,6 +69,21 @@ function generateConfirmationNumber(): string {
     code += chars[bytes[i] % chars.length];
   }
   return `MS-${code}`;
+}
+
+/**
+ * Generate a referral discount code shared via the confirmation email.
+ * Distinct prefix (`FR-`) makes the code recognizable as a referral when
+ * customers redeem it.
+ */
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = randomBytes(6);
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[bytes[i] % chars.length];
+  }
+  return `FR-${code}`;
 }
 
 /**
@@ -597,6 +616,51 @@ export const createRegistration = Functions.endpoint
         );
       }
 
+      // 9b. Generate a referral code if the class opts into the program.
+      // Best-effort: a failure here must NOT fail the registration — the
+      // customer's class is paid for and reserved. We just won't include a
+      // referral code in their email.
+      let referralCode: string | undefined;
+      let referralExpiresFormatted: string | undefined;
+      if (classEntity.referralDiscount) {
+        try {
+          const { percent, expiresAfterDays } = classEntity.referralDiscount;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + expiresAfterDays);
+          const code = generateReferralCode();
+          // Construct an explicit PercentDiscountData shape so TypeScript
+          // can resolve the Discount discriminated union.
+          const referralInput: Omit<
+            PercentDiscountData,
+            'id' | 'createdAt' | 'updatedAt'
+          > = {
+            code,
+            description: `Friend referral from ${data.customerName} (${classEntity.name})`,
+            type: 'percent',
+            percent,
+            status: 'active',
+            appliesTo: 'order',
+            nthSlot: 1,
+            usageLimit: 1,
+            usageCount: 0,
+            expiresAt,
+            generatedFromRegistrationId: registrationDocRef.id,
+          };
+          await DiscountRepository.create(referralInput);
+          referralCode = code;
+          referralExpiresFormatted = expiresAt.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          });
+        } catch (referralError) {
+          console.error(
+            'Failed to generate referral code (registration unaffected):',
+            referralError
+          );
+        }
+      }
+
       // 10. Write to mail collection for confirmation email
       try {
         const formatCurrency = (cents: number): string =>
@@ -636,6 +700,9 @@ export const createRegistration = Functions.endpoint
               whatToBring: classEntity.whatToBring,
               agreementsSigned: agreementsSigned || undefined,
               waiverUrl,
+              referralCode,
+              referralExpires: referralExpiresFormatted,
+              referralPercent: classEntity.referralDiscount?.percent,
             },
           },
         });

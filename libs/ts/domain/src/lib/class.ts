@@ -92,8 +92,28 @@ export interface Class {
    * @see docs/decisions/ADR-016-webflow-integration-strategy.md
    */
   webflowItemId?: string;
+  /**
+   * Opt-in to the friend-referral program for this class. When set, every
+   * confirmed registration auto-generates a single-use Discount and the
+   * confirmation email includes a code the customer can share.
+   *
+   * Initially configured by editing the class document directly in
+   * Firestore; admin form controls will land in a follow-up.
+   */
+  referralDiscount?: ClassReferralDiscount;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Per-class friend-referral configuration.
+ * - `percent`: percentage off the friend's first registration (1–100).
+ * - `expiresAfterDays`: how long the generated code stays valid before
+ *   the friend must use it (1–365).
+ */
+export interface ClassReferralDiscount {
+  percent: number;
+  expiresAfterDays: number;
 }
 
 /**
