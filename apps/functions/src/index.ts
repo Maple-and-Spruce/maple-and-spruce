@@ -103,6 +103,9 @@ export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-cl
 // Public class API (no auth required - for Webflow integration)
 export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
 
+// Public class catalog feed (RSS 2.0 for Meta Commerce Manager + Google Merchant Center)
+export { classCatalogFeed } from '@maple/firebase/maple-functions/class-catalog-feed';
+
 // Class category functions
 export { getClassCategories } from '@maple/firebase/maple-functions/get-class-categories';
 export { createClassCategory } from '@maple/firebase/maple-functions/create-class-category';
