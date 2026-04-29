@@ -51,7 +51,8 @@
       { "source": "/calendar/hours.ics", "function": "calendarHoursFeed" },
       { "source": "/calendar/all.ics", "function": "calendarAllFeed" },
       { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" },
-      { "source": "/calendar/embed", "function": "calendarEmbed" }
+      { "source": "/calendar/embed", "function": "calendarEmbed" },
+      { "source": "/catalog/classes.xml", "function": "classCatalogFeed" }
     ]
   },
   "emulators": {

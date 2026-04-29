@@ -60,6 +60,7 @@
     "../../libs/firebase/maple-functions/add-calendar-embed-source/**/*.ts",
     "../../libs/firebase/maple-functions/remove-calendar-embed-source/**/*.ts",
     "../../libs/firebase/maple-functions/calendar-embed/**/*.ts",
+    "../../libs/firebase/maple-functions/class-catalog-feed/**/*.ts",
     "../../libs/firebase/maple-functions/get-registrations/**/*.ts",
     "../../libs/firebase/maple-functions/get-registration/**/*.ts",
     "../../libs/firebase/maple-functions/update-registration/**/*.ts",
