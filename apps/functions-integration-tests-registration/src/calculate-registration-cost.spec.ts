@@ -18,6 +18,8 @@ import {
   PAIR_PERCENT_DISCOUNT,
   PAIR_AMOUNT_DISCOUNT,
   PAIR_AMOUNT_OVERSIZED,
+  EXHAUSTED_DISCOUNT,
+  EXPIRED_BY_DATE_DISCOUNT,
   DISCOUNT_IDS,
 } from '@maple/firebase/integration-test-utils';
 import type {
@@ -63,6 +65,16 @@ describe('calculateRegistrationCost', () => {
         'discounts',
         DISCOUNT_IDS.pairOversized,
         PAIR_AMOUNT_OVERSIZED
+      ),
+      setFirestoreDoc(
+        'discounts',
+        DISCOUNT_IDS.exhausted,
+        EXHAUSTED_DISCOUNT
+      ),
+      setFirestoreDoc(
+        'discounts',
+        DISCOUNT_IDS.expiredByDate,
+        EXPIRED_BY_DATE_DISCOUNT
       ),
     ]);
   });
@@ -486,6 +498,44 @@ describe('calculateRegistrationCost', () => {
       expect(result.status).toBe(200);
       expect(result.data?.discountAmountCents).toBe(0);
       expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+    });
+
+    it('should silently ignore an exhausted limited-use code (USED-UP, usageCount=usageLimit)', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 1,
+          discountCode: 'USED-UP',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(0);
+      expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+      expect(result.data?.discountDescription).toBeUndefined();
+    });
+
+    it('should silently ignore a globally-expired code (TIMEOUT, expiresAt in past)', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 1,
+          discountCode: 'TIMEOUT',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(0);
+      expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+      expect(result.data?.discountDescription).toBeUndefined();
     });
   });
 

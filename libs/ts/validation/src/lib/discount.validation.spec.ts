@@ -167,6 +167,70 @@ describe('discountValidation', () => {
     });
   });
 
+  describe('usageLimit field', () => {
+    it('passes when usageLimit is omitted (unlimited)', () => {
+      const result = discountValidation(validPercent);
+      expect(result.hasErrors('usageLimit')).toBe(false);
+    });
+
+    it('passes when usageLimit is null (explicit unlimited)', () => {
+      const result = discountValidation({ ...validPercent, usageLimit: null });
+      expect(result.hasErrors('usageLimit')).toBe(false);
+    });
+
+    it('fails when usageLimit is 0', () => {
+      const result = discountValidation({ ...validPercent, usageLimit: 0 });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('usageLimit')).toContain(
+        'Usage limit must be at least 1'
+      );
+    });
+
+    it('fails when usageLimit exceeds 10,000', () => {
+      const result = discountValidation({
+        ...validPercent,
+        usageLimit: 10001,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('usageLimit')).toContain(
+        'Usage limit must be 10,000 or less'
+      );
+    });
+
+    it('passes at boundary values 1 and 10,000', () => {
+      [1, 10000].forEach((usageLimit) => {
+        const result = discountValidation({ ...validPercent, usageLimit });
+        expect(result.hasErrors('usageLimit')).toBe(false);
+      });
+    });
+  });
+
+  describe('expiresAt field', () => {
+    it('passes when expiresAt is omitted', () => {
+      const result = discountValidation(validPercent);
+      expect(result.hasErrors('expiresAt')).toBe(false);
+    });
+
+    it('passes with a future expiry', () => {
+      const result = discountValidation({
+        ...validPercent,
+        expiresAt: futureDate,
+      });
+      expect(result.hasErrors('expiresAt')).toBe(false);
+    });
+
+    it('fails when expiresAt is in the past', () => {
+      const result = discountValidation({
+        ...validPercent,
+        expiresAt: new Date('2020-01-01'),
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('expiresAt')).toContain(
+        'Expiration date must be in the future'
+      );
+    });
+  });
+
   describe('code field', () => {
     it('fails when code is missing', () => {
       const result = discountValidation({ ...validPercent, code: '' });

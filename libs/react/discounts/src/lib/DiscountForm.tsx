@@ -61,6 +61,9 @@ export function DiscountForm({
   const status = useSignal<DiscountStatus>('active');
   const appliesTo = useSignal<DiscountAppliesTo>('order');
   const nthSlot = useSignal<number>(2);
+  // null = unlimited; number = max redemptions before code becomes invalid.
+  const usageLimit = useSignal<number | null>(null);
+  const expiresAt = useSignal<Date | undefined>(undefined);
   const percent = useSignal<number | undefined>(undefined);
   const amountCents = useSignal<number | undefined>(undefined);
   const cutoffDate = useSignal<Date | undefined>(undefined);
@@ -84,6 +87,8 @@ export function DiscountForm({
       status: status.value,
       appliesTo: appliesTo.value,
       nthSlot: nthSlot.value,
+      usageLimit: usageLimit.value,
+      expiresAt: expiresAt.value,
       percent: percent.value,
       amountCents: amountCents.value,
       cutoffDate: cutoffDate.value,
@@ -118,6 +123,10 @@ export function DiscountForm({
         // 'order'-mode placeholder of 1, so toggling to nth-slot-onward shows
         // a sensible starting value.
         nthSlot.value = discount.nthSlot >= 2 ? discount.nthSlot : 2;
+        usageLimit.value = discount.usageLimit;
+        expiresAt.value = discount.expiresAt
+          ? new Date(discount.expiresAt)
+          : undefined;
         percent.value =
           discount.type === 'percent' ? discount.percent : undefined;
         amountCents.value =
@@ -139,6 +148,8 @@ export function DiscountForm({
         status.value = 'active';
         appliesTo.value = 'order';
         nthSlot.value = 2;
+        usageLimit.value = null;
+        expiresAt.value = undefined;
         percent.value = undefined;
         amountCents.value = undefined;
         cutoffDate.value = undefined;
@@ -167,6 +178,9 @@ export function DiscountForm({
         // Keep nthSlot=1 for 'order' so the stored doc has a deterministic
         // value (the runtime ignores it for non-nth-slot discounts).
         nthSlot: isNthSlot ? nthSlot.value : 1,
+        usageLimit: usageLimit.value,
+        usageCount: 0,
+        ...(expiresAt.value ? { expiresAt: expiresAt.value } : {}),
       };
 
       let input: CreateDiscountInput;
@@ -200,7 +214,7 @@ export function DiscountForm({
       submitError.value =
         error instanceof Error ? error.message : 'Failed to save discount';
     }
-  }, [onSubmit, validation, type, code, description, status, appliesTo, nthSlot, percent, amountCents, cutoffDate]);
+  }, [onSubmit, validation, type, code, description, status, appliesTo, nthSlot, usageLimit, expiresAt, percent, amountCents, cutoffDate]);
 
   const handleAmountChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -402,6 +416,41 @@ export function DiscountForm({
               inputProps={{ min: 2, max: 100, step: 1 }}
             />
           )}
+
+          <TextField
+            label="Limit total uses (optional)"
+            type="number"
+            value={usageLimit.value ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              usageLimit.value = val === '' ? null : Number(val);
+            }}
+            error={!!getFieldError('usageLimit')}
+            helperText={
+              getFieldError('usageLimit') ||
+              'Leave blank for unlimited uses. Set to 1 for a single-use code.'
+            }
+            fullWidth
+            inputProps={{ min: 1, max: 10000, step: 1 }}
+          />
+
+          <DatePicker
+            label="Expires (optional)"
+            value={expiresAt.value ?? null}
+            onChange={(newValue) => {
+              expiresAt.value = newValue ?? undefined;
+            }}
+            disablePast
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                error: !!getFieldError('expiresAt'),
+                helperText:
+                  getFieldError('expiresAt') ||
+                  'Code stops working after this date, regardless of remaining uses.',
+              },
+            }}
+          />
 
           <FormControl fullWidth required error={!!getFieldError('status')}>
             <InputLabel>Status</InputLabel>

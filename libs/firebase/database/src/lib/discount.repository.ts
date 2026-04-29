@@ -32,6 +32,18 @@ function docToDiscount(
   const appliesTo: DiscountAppliesTo =
     data.appliesTo === 'nth-slot-onward' ? 'nth-slot-onward' : 'order';
 
+  // Usage tracking back-fill: legacy docs are unlimited (usageLimit=null)
+  // with zero usages. expiresAt and generatedFromRegistrationId are optional.
+  const usageLimit =
+    typeof data.usageLimit === 'number' ? data.usageLimit : null;
+  const usageCount =
+    typeof data.usageCount === 'number' ? data.usageCount : 0;
+  const expiresAt = data.expiresAt ? toDate(data.expiresAt) : undefined;
+  const generatedFromRegistrationId =
+    typeof data.generatedFromRegistrationId === 'string'
+      ? data.generatedFromRegistrationId
+      : undefined;
+
   const base = {
     id: doc.id,
     code: data.code,
@@ -39,6 +51,10 @@ function docToDiscount(
     status: data.status as DiscountStatus,
     appliesTo,
     nthSlot: typeof data.nthSlot === 'number' ? data.nthSlot : 1,
+    usageLimit,
+    usageCount,
+    ...(expiresAt ? { expiresAt } : {}),
+    ...(generatedFromRegistrationId ? { generatedFromRegistrationId } : {}),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -140,6 +156,16 @@ export const DiscountRepository = {
       ...(inputRecord.cutoffDate
         ? { cutoffDate: new Date(inputRecord.cutoffDate) }
         : {}),
+      // Default usage tracking. usageLimit=null means unlimited; usageCount
+      // starts at 0 and is incremented atomically by create-registration.
+      usageLimit:
+        inputRecord.usageLimit === undefined
+          ? null
+          : inputRecord.usageLimit,
+      usageCount: 0,
+      ...(inputRecord.expiresAt
+        ? { expiresAt: new Date(inputRecord.expiresAt) }
+        : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -170,6 +196,12 @@ export const DiscountRepository = {
       ...(updates.cutoffDate
         ? { cutoffDate: new Date(updates.cutoffDate) }
         : {}),
+      // Coerce expiresAt to Date when set, or clear it when explicitly null.
+      ...(updates.expiresAt instanceof Date
+        ? { expiresAt: updates.expiresAt }
+        : updates.expiresAt
+          ? { expiresAt: new Date(updates.expiresAt) }
+          : {}),
       updatedAt: new Date(),
     };
 
@@ -195,5 +227,13 @@ export const DiscountRepository = {
    */
   async delete(id: string): Promise<void> {
     await db.collection(COLLECTION).doc(id).delete();
+  },
+
+  /**
+   * Get a Firestore document reference for use inside a transaction.
+   * Used by create-registration to atomically check + increment usageCount.
+   */
+  getDocRef(id: string) {
+    return db.collection(COLLECTION).doc(id);
   },
 };

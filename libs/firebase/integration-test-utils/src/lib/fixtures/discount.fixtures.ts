@@ -129,6 +129,61 @@ export const PAIR_AMOUNT_OVERSIZED = {
   updatedAt: new Date().toISOString(),
 };
 
+/**
+ * Single-use code: usageLimit=1, fresh (usageCount=0). First redemption
+ * should succeed; a second attempt — even concurrently — must fail.
+ */
+export const SINGLE_USE_DISCOUNT = {
+  code: 'ONESHOT',
+  description: '50% off — single-use referral',
+  type: 'percent',
+  percent: 50,
+  appliesTo: 'order',
+  nthSlot: 1,
+  usageLimit: 1,
+  usageCount: 0,
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+/**
+ * Already-exhausted code: usageLimit=1 with usageCount=1.
+ * Should be silently ignored at compute time and never be applied.
+ */
+export const EXHAUSTED_DISCOUNT = {
+  code: 'USED-UP',
+  description: 'Single-use code that has already been redeemed',
+  type: 'percent',
+  percent: 50,
+  appliesTo: 'order',
+  nthSlot: 1,
+  usageLimit: 1,
+  usageCount: 1,
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+/**
+ * Code with a past expiresAt (distinct from amount-before-date's cutoffDate
+ * which only ungates the early-bird type). Should be rejected by lookup.
+ */
+export const EXPIRED_BY_DATE_DISCOUNT = {
+  code: 'TIMEOUT',
+  description: 'Discount with a past global expiry',
+  type: 'percent',
+  percent: 50,
+  appliesTo: 'order',
+  nthSlot: 1,
+  usageLimit: null,
+  usageCount: 0,
+  expiresAt: pastCutoff(),
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 /** Well-known doc IDs for test discounts */
 export const DISCOUNT_IDS = {
   percent: 'test-discount-percent',
@@ -140,4 +195,7 @@ export const DISCOUNT_IDS = {
   pairPercent: 'test-discount-pair-percent',
   pairAmount: 'test-discount-pair-amount',
   pairOversized: 'test-discount-pair-oversized',
+  singleUse: 'test-discount-single-use',
+  exhausted: 'test-discount-exhausted',
+  expiredByDate: 'test-discount-expired-by-date',
 } as const;

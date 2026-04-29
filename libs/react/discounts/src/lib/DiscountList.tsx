@@ -79,6 +79,7 @@ export function DiscountList({
             <TableCell>Description</TableCell>
             <TableCell>Type</TableCell>
             <TableCell>Value</TableCell>
+            <TableCell>Uses</TableCell>
             <TableCell>Status</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -120,6 +121,22 @@ export function DiscountList({
                       Before {formatDate(discount.cutoffDate)}
                     </Typography>
                   )}
+                {discount.expiresAt && (
+                  <Typography
+                    variant="caption"
+                    display="block"
+                    color="text.secondary"
+                  >
+                    Expires {formatDate(discount.expiresAt)}
+                  </Typography>
+                )}
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2">
+                  {discount.usageLimit === null
+                    ? `${discount.usageCount}`
+                    : `${discount.usageCount} / ${discount.usageLimit}`}
+                </Typography>
               </TableCell>
               <TableCell>
                 <Chip
