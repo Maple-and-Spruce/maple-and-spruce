@@ -114,6 +114,20 @@ export interface UploadClassGalleryImageResponse {
 }
 
 // ============================================================================
+// Duplicate Class
+// ============================================================================
+
+export interface DuplicateClassRequest {
+  /** ID of the source class to copy. */
+  sourceClassId: string;
+}
+
+export interface DuplicateClassResponse {
+  /** The newly created class (status: draft, sessions: empty, name suffixed). */
+  class: Class;
+}
+
+// ============================================================================
 // Get Public Class by ID (no auth required - for website/Webflow)
 // ============================================================================
 

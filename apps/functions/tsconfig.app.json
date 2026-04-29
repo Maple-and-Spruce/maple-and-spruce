@@ -34,6 +34,7 @@
     "../../libs/firebase/maple-functions/create-class/**/*.ts",
     "../../libs/firebase/maple-functions/update-class/**/*.ts",
     "../../libs/firebase/maple-functions/delete-class/**/*.ts",
+    "../../libs/firebase/maple-functions/duplicate-class/**/*.ts",
     "../../libs/firebase/maple-functions/upload-class-image/**/*.ts",
     "../../libs/firebase/maple-functions/upload-class-gallery-image/**/*.ts",
     "../../libs/firebase/maple-functions/upload-category-gallery-image/**/*.ts",

@@ -157,6 +157,8 @@ export type {
   UploadClassImageResponse,
   UploadClassGalleryImageRequest,
   UploadClassGalleryImageResponse,
+  DuplicateClassRequest,
+  DuplicateClassResponse,
   GetPublicClassRequest,
   GetPublicClassResponse,
 } from './class.types';
