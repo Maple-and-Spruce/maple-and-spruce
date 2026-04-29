@@ -34,6 +34,13 @@ export interface CatalogFeedItem {
   currency: string;
   available: boolean;
   brand: string;
+  /**
+   * Comma-separated postal codes where this item can be purchased.
+   * Required for non-shippable / locally-fulfilled items in Meta Commerce
+   * Manager — without it, items are rejected with "Locality fields are
+   * missing or incomplete".
+   */
+  availabilityPostalCodes: string;
 }
 
 /**
@@ -100,6 +107,7 @@ function renderItem(item: CatalogFeedItem): string {
     '      <g:condition>new</g:condition>',
     `      <g:brand>${escapeXml(item.brand)}</g:brand>`,
     '      <g:identifier_exists>false</g:identifier_exists>',
+    `      <g:availability_postal_codes>${escapeXml(item.availabilityPostalCodes)}</g:availability_postal_codes>`,
     '    </item>',
   ].join('\n');
 }
