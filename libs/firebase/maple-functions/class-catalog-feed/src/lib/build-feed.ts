@@ -8,6 +8,10 @@
  * output validates against both.
  */
 
+// XML namespace URI required verbatim by both Meta Commerce Manager and
+// Google Merchant Center. It is an identifier, not a URL we fetch — the
+// `http://` form is what the spec mandates.
+// eslint-disable-next-line sonarjs/no-clear-text-protocols
 const XMLNS_GOOGLE = 'http://base.google.com/ns/1.0';
 
 const TITLE_MAX = 150;
