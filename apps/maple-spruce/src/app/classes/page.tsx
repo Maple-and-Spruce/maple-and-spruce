@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Typography, Button, Alert } from '@mui/material';
+import { Box, Typography, Button, Alert, Snackbar } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { Class, CreateClassInput } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
@@ -26,6 +26,7 @@ export default function ClassesPage() {
     classesState,
     createClass,
     updateClass,
+    duplicateClass: duplicateClassApi,
     deleteClass: deleteClassApi,
   } = useClasses(filters);
 
@@ -51,6 +52,11 @@ export default function ClassesPage() {
   // Delete dialog state
   const [classToDelete, setClassToDelete] = useState<Class | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Copy state
+  const [duplicatingClassId, setDuplicatingClassId] = useState<string | undefined>();
+  const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const handleFiltersChange = useCallback(
     (newFilters: ClassFilters) => {
@@ -97,6 +103,27 @@ export default function ClassesPage() {
   const handleCloseDelete = useCallback(() => {
     setClassToDelete(null);
   }, []);
+
+  const handleDuplicate = useCallback(
+    async (classItem: Class) => {
+      setDuplicatingClassId(classItem.id);
+      setDuplicateError(null);
+      try {
+        const copy = await duplicateClassApi(classItem.id);
+        setDuplicateMessage(`Created "${copy.name}". Set new dates to publish.`);
+        // Open the new class in the edit form so Katie can fill in dates.
+        setEditingClass(copy);
+        setIsFormOpen(true);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to copy class';
+        setDuplicateError(message);
+      } finally {
+        setDuplicatingClassId(undefined);
+      }
+    },
+    [duplicateClassApi]
+  );
 
   const handleConfirmDelete = useCallback(async () => {
     if (!classToDelete) return;
@@ -148,6 +175,8 @@ export default function ClassesPage() {
         categories={categories}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
+        onDuplicate={handleDuplicate}
+        duplicatingClassId={duplicatingClassId}
         onViewRoster={(classItem) => router.push(`/classes/${classItem.id}/roster`)}
       />
 
@@ -160,6 +189,36 @@ export default function ClassesPage() {
         categories={categories}
         isSubmitting={isSubmitting}
       />
+
+      <Snackbar
+        open={!!duplicateMessage}
+        autoHideDuration={4000}
+        onClose={() => setDuplicateMessage(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity="success"
+          onClose={() => setDuplicateMessage(null)}
+          variant="filled"
+        >
+          {duplicateMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!duplicateError}
+        autoHideDuration={6000}
+        onClose={() => setDuplicateError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity="error"
+          onClose={() => setDuplicateError(null)}
+          variant="filled"
+        >
+          {duplicateError}
+        </Alert>
+      </Snackbar>
 
       <DeleteConfirmDialog
         open={!!classToDelete}

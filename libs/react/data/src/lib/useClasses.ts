@@ -19,6 +19,8 @@ import type {
   UpdateClassResponse,
   DeleteClassRequest,
   DeleteClassResponse,
+  DuplicateClassRequest,
+  DuplicateClassResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -129,6 +131,32 @@ export function useClasses(filters?: UseClassesFilters) {
     []
   );
 
+  const duplicateClass = useCallback(
+    async (sourceClassId: string): Promise<Class> => {
+      const functions = getMapleFunctions();
+      const duplicate = httpsCallable<
+        DuplicateClassRequest,
+        DuplicateClassResponse
+      >(functions, 'duplicateClass');
+
+      const result = await duplicate({ sourceClassId });
+
+      // Add the duplicate to local state and re-sort.
+      setClassesState((prev) => {
+        if (prev.status !== 'success') return prev;
+        const newData = [...prev.data, result.data.class].sort(
+          (a, b) =>
+            new Date(a.sessions?.[0]?.dateTime ?? 0).getTime() -
+            new Date(b.sessions?.[0]?.dateTime ?? 0).getTime()
+        );
+        return { ...prev, data: newData };
+      });
+
+      return result.data.class;
+    },
+    []
+  );
+
   const deleteClass = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
     const del = httpsCallable<DeleteClassRequest, DeleteClassResponse>(
@@ -158,6 +186,7 @@ export function useClasses(filters?: UseClassesFilters) {
     fetchClasses,
     createClass,
     updateClass,
+    duplicateClass,
     deleteClass,
   };
 }
