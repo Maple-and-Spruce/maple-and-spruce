@@ -27,6 +27,10 @@ const CHANNEL_DESCRIPTION =
   'In-person art and craft classes at Maple & Spruce Folk Arts in Morgantown, WV.';
 const BRAND = 'Maple & Spruce';
 const CURRENCY = 'USD';
+// Studio postal code in Morgantown, WV. Meta requires `availability_postal_codes`
+// for non-shippable / locally-fulfilled items; without it, every row fails
+// catalog ingestion with "Locality fields are missing or incomplete".
+const STUDIO_POSTAL_CODES = '26508';
 
 /**
  * Generate the URL slug for a class name. Mirrors the slug logic used by
@@ -83,6 +87,7 @@ export function mapClassToFeedItem(
     currency: CURRENCY,
     available: spotsRemaining > 0,
     brand: BRAND,
+    availabilityPostalCodes: STUDIO_POSTAL_CODES,
   };
 }
 

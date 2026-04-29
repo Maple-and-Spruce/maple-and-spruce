@@ -24,6 +24,7 @@ const baseItem: CatalogFeedItem = {
   currency: 'USD',
   available: true,
   brand: 'Maple & Spruce',
+  availabilityPostalCodes: '26508',
 };
 
 describe('escapeXml', () => {
@@ -96,6 +97,18 @@ describe('buildClassCatalogFeed', () => {
     expect(xml).toContain('<g:condition>new</g:condition>');
     expect(xml).toContain('<g:brand>Maple &amp; Spruce</g:brand>');
     expect(xml).toContain('<g:identifier_exists>false</g:identifier_exists>');
+    expect(xml).toContain(
+      '<g:availability_postal_codes>26508</g:availability_postal_codes>'
+    );
+  });
+
+  it('emits availability_postal_codes for each item (Meta locality requirement)', () => {
+    const xml = buildClassCatalogFeed(channel, [
+      { ...baseItem, availabilityPostalCodes: '26505,26508' },
+    ]);
+    expect(xml).toContain(
+      '<g:availability_postal_codes>26505,26508</g:availability_postal_codes>'
+    );
   });
 
   it('marks items with no availability as out_of_stock', () => {

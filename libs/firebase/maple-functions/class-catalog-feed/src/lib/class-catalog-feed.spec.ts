@@ -103,6 +103,12 @@ describe('mapClassToFeedItem', () => {
       4500
     );
   });
+
+  it('attaches the studio postal code so Meta accepts the row as locally available', () => {
+    expect(mapClassToFeedItem(makeClass(), 0)?.availabilityPostalCodes).toBe(
+      '26508'
+    );
+  });
 });
 
 describe('buildFeedFromClasses', () => {
