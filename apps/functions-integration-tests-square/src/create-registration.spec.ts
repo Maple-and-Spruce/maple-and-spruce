@@ -407,4 +407,134 @@ describe('createRegistration', () => {
       expect(result.data?.registration.pricePaidCents).toBe(7155);
     });
   });
+
+  describe('Atomic redemption (single-use codes)', () => {
+    // Each test seeds a fresh single-use discount and a fresh class so
+    // tests don't share state. The class needs enough capacity for two
+    // concurrent registrations.
+    const REDEEM_CLASS_ID = 'test-reg-redeem-class';
+
+    beforeAll(async () => {
+      await setFirestoreDoc('classes', REDEEM_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Atomic Redemption Workshop',
+        capacity: 20,
+      });
+    });
+
+    it('redeems a single-use code on the first attempt and rejects the second', async () => {
+      // Fresh single-use code for this test.
+      await setFirestoreDoc('discounts', 'test-discount-single-use-A', {
+        code: 'SINGLEUSE-A',
+        type: 'percent',
+        description: 'single-use, sequential redemption',
+        status: 'active',
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: 1,
+        usageCount: 0,
+        percent: 50,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const first = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: REDEEM_CLASS_ID,
+          customerEmail: 'first@test.com',
+          customerName: 'First Redeemer',
+          quantity: 1,
+          discountCode: 'SINGLEUSE-A',
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      expect(first.status).toBe(200);
+      expect(first.data?.registration.discountCode).toBe('SINGLEUSE-A');
+      expect(first.data?.registration.discountAmountCents).toBe(2250);
+
+      const second = await callFunction<CreateRegistrationRequest>({
+        functionName: 'createRegistration',
+        data: {
+          classId: REDEEM_CLASS_ID,
+          customerEmail: 'second@test.com',
+          customerName: 'Second Redeemer',
+          quantity: 1,
+          discountCode: 'SINGLEUSE-A',
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+      // Customer included the code in the request, expecting the discounted
+      // price they saw in the preview. The code is now exhausted, so the
+      // registration MUST fail rather than silently charge them full price.
+      expect(second.status).not.toBe(200);
+    });
+
+    it('rejects a concurrent second redemption when both pass the pre-flight check', async () => {
+      // This test seeds a discount, then fires two registration requests
+      // *in parallel* to force them through the transaction at the same
+      // time. Both will pass the pre-transaction lookup (usageCount=0),
+      // but Firestore's transactional check inside create-registration
+      // must allow exactly one to succeed.
+      await setFirestoreDoc('discounts', 'test-discount-single-use-B', {
+        code: 'SINGLEUSE-B',
+        type: 'percent',
+        description: 'single-use, concurrent redemption',
+        status: 'active',
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: 1,
+        usageCount: 0,
+        percent: 50,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const both = await Promise.all([
+        callFunction<CreateRegistrationRequest, CreateRegistrationResponse>({
+          functionName: 'createRegistration',
+          data: {
+            classId: REDEEM_CLASS_ID,
+            customerEmail: 'racer-1@test.com',
+            customerName: 'Racer One',
+            quantity: 1,
+            discountCode: 'SINGLEUSE-B',
+            paymentNonce: 'cnon:card-nonce-ok',
+          },
+        }),
+        callFunction<CreateRegistrationRequest, CreateRegistrationResponse>({
+          functionName: 'createRegistration',
+          data: {
+            classId: REDEEM_CLASS_ID,
+            customerEmail: 'racer-2@test.com',
+            customerName: 'Racer Two',
+            quantity: 1,
+            discountCode: 'SINGLEUSE-B',
+            paymentNonce: 'cnon:card-nonce-ok',
+          },
+        }),
+      ]);
+
+      // Exactly one redemption succeeds; the other call must FAIL —
+      // never silently fall back to full price (the customer didn't
+      // consent to that charge). The loser hits one of two paths:
+      //   (a) both pre-flight reads see usageCount=0; both enter the
+      //       transaction; Firestore aborts one; the loser retries,
+      //       re-reads usageCount=1, throws inside the transaction.
+      //   (b) loser's pre-flight read happens after the winner commits;
+      //       lookup says invalid → throws before the transaction.
+      // Either way the loser returns non-200.
+      const redeemed = both.filter(
+        (r) => r.status === 200 && r.data?.registration.discountCode === 'SINGLEUSE-B'
+      );
+      expect(redeemed.length).toBe(1);
+      expect(redeemed[0].data?.registration.discountAmountCents).toBe(2250);
+
+      const loser = both.find((r) => r !== redeemed[0])!;
+      expect(loser.status).not.toBe(200);
+    });
+  });
 });

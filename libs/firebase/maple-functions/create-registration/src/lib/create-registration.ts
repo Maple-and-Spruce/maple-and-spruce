@@ -19,6 +19,7 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
+import admin from 'firebase-admin';
 import { Functions } from '@maple/firebase/functions';
 import {
   ClassRepository,
@@ -212,18 +213,37 @@ export const createRegistration = Functions.endpoint
       const originalCostCents = classEntity.priceCents * data.quantity;
       let discountAmountCents = 0;
       let discountCode: string | undefined;
+      // The discount doc id (if any) is used inside the capacity transaction
+      // to atomically check + increment usageCount. Looked up here so the
+      // transaction body has it without a second findByCode roundtrip.
+      let discountIdToRedeem: string | undefined;
 
       if (data.discountCode) {
         const discount = await DiscountRepository.findByCode(data.discountCode);
-        if (discount && isDiscountValid(discount)) {
-          const result = applyDiscount(discount, {
-            unitPriceCents: classEntity.priceCents,
-            quantity: data.quantity,
-          });
+        // The frontend has already shown the customer a price that depends
+        // on this code. If the code isn't valid at submit time, we MUST NOT
+        // silently fall back to full price — the customer hasn't consented
+        // to that charge. Fail the registration with a clear error so the
+        // customer can refresh and retry.
+        if (!discount || !isDiscountValid(discount)) {
+          throw new Error(
+            `Discount code "${data.discountCode}" is no longer valid. Please refresh and try again.`
+          );
+        }
+        const result = applyDiscount(discount, {
+          unitPriceCents: classEntity.priceCents,
+          quantity: data.quantity,
+        });
+        // For quantity-tier codes that don't trigger at this quantity (e.g.,
+        // "second slot 50% off" with qty=1), applyDiscount returns 0. The
+        // code is structurally valid, the preview correctly showed no
+        // discount, and the customer's expected price matches the no-discount
+        // total — so this is fine. We just don't reserve a usage.
+        if (result.discountAmountCents > 0) {
           discountAmountCents = result.discountAmountCents;
           discountCode = data.discountCode.toUpperCase();
+          discountIdToRedeem = discount.id;
         }
-        // Silently ignore invalid discount codes (UI already validated)
       }
 
       const subtotalCents = Math.max(0, originalCostCents - discountAmountCents);
@@ -248,6 +268,8 @@ export const createRegistration = Functions.endpoint
       const confirmationNumber = generateConfirmationNumber();
 
       await db.runTransaction(async (transaction) => {
+        // === All reads must come before any writes ===
+
         // Count existing registrations for this class (pending + confirmed)
         const existingSnapshot = await transaction.get(
           db
@@ -255,6 +277,18 @@ export const createRegistration = Functions.endpoint
             .where('classId', '==', data.classId)
             .where('status', 'in', ['pending', 'confirmed'])
         );
+
+        // Re-read the discount inside the transaction so the usage check
+        // is atomic with the increment below. Single-use codes redeemed by
+        // a parallel registration will be caught here.
+        const discountRef = discountIdToRedeem
+          ? DiscountRepository.getDocRef(discountIdToRedeem)
+          : undefined;
+        const discountSnap = discountRef
+          ? await transaction.get(discountRef)
+          : undefined;
+
+        // === Validation ===
 
         // Sum up quantities (each registration can have quantity > 1)
         const currentSpotsTaken = existingSnapshot.docs.reduce((sum, doc) => {
@@ -270,6 +304,28 @@ export const createRegistration = Functions.endpoint
               : `Only ${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`
           );
         }
+
+        if (discountRef && discountSnap) {
+          const fresh = discountSnap.data();
+          if (!fresh || fresh.status !== 'active') {
+            throw new Error('Discount code is no longer available');
+          }
+          const expiresAt = fresh.expiresAt?.toDate?.() ?? fresh.expiresAt;
+          if (expiresAt && new Date() > new Date(expiresAt)) {
+            throw new Error('Discount code has expired');
+          }
+          const usageLimit =
+            typeof fresh.usageLimit === 'number' ? fresh.usageLimit : null;
+          const usageCount =
+            typeof fresh.usageCount === 'number' ? fresh.usageCount : 0;
+          if (usageLimit !== null && usageCount >= usageLimit) {
+            throw new Error(
+              'Discount code has reached its usage limit'
+            );
+          }
+        }
+
+        // === Writes ===
 
         // Reserve the spot by creating the registration with 'pending' status
         // inside the transaction so it's atomic with the capacity check
@@ -292,6 +348,16 @@ export const createRegistration = Functions.endpoint
           createdAt: now,
           updatedAt: now,
         });
+
+        // Atomically consume one usage of the discount. Per ADR product
+        // decision, usage is NOT restored if the registration is later
+        // cancelled — single-use means single-use.
+        if (discountRef) {
+          transaction.update(discountRef, {
+            usageCount: admin.firestore.FieldValue.increment(1),
+            updatedAt: now,
+          });
+        }
       });
 
       // 6. Create Square Order and process payment

@@ -20,6 +20,8 @@ const baseFields = {
   status: 'active' as const,
   appliesTo: 'order' as const,
   nthSlot: 1,
+  usageLimit: null,
+  usageCount: 0,
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
 };
@@ -428,6 +430,82 @@ describe('isDiscountValid', () => {
       };
       const now = new Date('2025-05-01T00:00:00Z');
       expect(isDiscountValid(discountWithStringDate, now)).toBe(true);
+    });
+  });
+
+  describe('usage limit', () => {
+    const baseDiscount: PercentDiscountData = {
+      ...baseFields,
+      type: 'percent',
+      percent: 10,
+    };
+
+    it('returns true when usageLimit is null (unlimited)', () => {
+      expect(
+        isDiscountValid({ ...baseDiscount, usageLimit: null, usageCount: 999 })
+      ).toBe(true);
+    });
+
+    it('returns true when usageCount is below the limit', () => {
+      expect(
+        isDiscountValid({ ...baseDiscount, usageLimit: 5, usageCount: 4 })
+      ).toBe(true);
+    });
+
+    it('returns false when usageCount has reached the limit', () => {
+      expect(
+        isDiscountValid({ ...baseDiscount, usageLimit: 1, usageCount: 1 })
+      ).toBe(false);
+    });
+
+    it('returns false when usageCount has exceeded the limit', () => {
+      expect(
+        isDiscountValid({ ...baseDiscount, usageLimit: 5, usageCount: 7 })
+      ).toBe(false);
+    });
+  });
+
+  describe('expiresAt', () => {
+    const baseDiscount: PercentDiscountData = {
+      ...baseFields,
+      type: 'percent',
+      percent: 10,
+    };
+    const expiresAt = new Date('2025-06-01T00:00:00Z');
+
+    it('returns true before expiry', () => {
+      const now = new Date('2025-05-01T00:00:00Z');
+      expect(isDiscountValid({ ...baseDiscount, expiresAt }, now)).toBe(true);
+    });
+
+    it('returns true at the moment of expiry (boundary inclusive)', () => {
+      const now = new Date('2025-06-01T00:00:00Z');
+      expect(isDiscountValid({ ...baseDiscount, expiresAt }, now)).toBe(true);
+    });
+
+    it('returns false after expiry', () => {
+      const now = new Date('2025-06-02T00:00:00Z');
+      expect(isDiscountValid({ ...baseDiscount, expiresAt }, now)).toBe(false);
+    });
+
+    it('handles expiresAt as ISO string', () => {
+      const now = new Date('2025-05-01T00:00:00Z');
+      const withString = {
+        ...baseDiscount,
+        expiresAt: '2025-06-01T00:00:00Z' as unknown as Date,
+      };
+      expect(isDiscountValid(withString, now)).toBe(true);
+    });
+
+    it('rejects expired even when usageLimit is unmet', () => {
+      const now = new Date('2025-06-02T00:00:00Z');
+      const withRoom = {
+        ...baseDiscount,
+        expiresAt,
+        usageLimit: 10,
+        usageCount: 0,
+      };
+      expect(isDiscountValid(withRoom, now)).toBe(false);
     });
   });
 });

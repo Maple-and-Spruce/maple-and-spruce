@@ -29,6 +29,10 @@ export interface DiscountValidationInput {
   status?: DiscountStatus;
   appliesTo?: DiscountAppliesTo;
   nthSlot?: number;
+  /** Maximum redemptions; null/undefined = unlimited. */
+  usageLimit?: number | null;
+  /** Optional global expiry. */
+  expiresAt?: Date | null;
   description?: string;
   percent?: number;
   amountCents?: number;
@@ -129,6 +133,30 @@ export const discountValidation = staticSuite(
         data.nthSlot !== null
       ) {
         enforce(data.nthSlot).lessThanOrEquals(100);
+      }
+    });
+
+    // Usage limit (optional). null/undefined means unlimited.
+    test('usageLimit', 'Usage limit must be at least 1', () => {
+      if (data.usageLimit !== undefined && data.usageLimit !== null) {
+        enforce(data.usageLimit).greaterThanOrEquals(1);
+      }
+    });
+
+    test('usageLimit', 'Usage limit must be 10,000 or less', () => {
+      if (data.usageLimit !== undefined && data.usageLimit !== null) {
+        enforce(data.usageLimit).lessThanOrEquals(10000);
+      }
+    });
+
+    // Expiry date (optional). When set on create/update, must be in the future.
+    test('expiresAt', 'Expiration date must be in the future', () => {
+      if (data.expiresAt) {
+        const expires =
+          data.expiresAt instanceof Date
+            ? data.expiresAt
+            : new Date(data.expiresAt);
+        enforce(expires.getTime()).greaterThan(Date.now());
       }
     });
 
