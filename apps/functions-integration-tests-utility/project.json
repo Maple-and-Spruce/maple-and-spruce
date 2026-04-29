@@ -6,7 +6,6 @@
   "tags": ["type:e2e"],
   "implicitDependencies": [
     "firebase-maple-functions-check-admin-status",
-    "firebase-maple-functions-get-public-artists",
     "firebase-integration-test-utils"
   ],
   "targets": {

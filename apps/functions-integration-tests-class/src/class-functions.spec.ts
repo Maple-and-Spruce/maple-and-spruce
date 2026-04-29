@@ -18,8 +18,6 @@ import type {
   UpdateClassResponse,
   DeleteClassRequest,
   DeleteClassResponse,
-  GetPublicClassesRequest,
-  GetPublicClassesResponse,
   GetPublicClassRequest,
   GetPublicClassResponse,
   CreateInstructorRequest,
@@ -184,7 +182,7 @@ describe('Class Functions', () => {
       expect(result.data?.class.skillLevel).toBe(SAMPLE_CLASS.skillLevel);
     });
 
-    it('should publish and appear in public classes', async () => {
+    it('should publish and be readable via getPublicClass', async () => {
       // Publish the class
       const publishResult = await callFunction<
         UpdateClassRequest,
@@ -197,25 +195,7 @@ describe('Class Functions', () => {
       expect(publishResult.status).toBe(200);
       expect(publishResult.data?.class.status).toBe('published');
 
-      // Fetch public classes (no auth required)
-      const publicResult = await callFunction<
-        GetPublicClassesRequest,
-        GetPublicClassesResponse
-      >({
-        functionName: 'getPublicClasses',
-        data: {},
-      });
-
-      expect(publicResult.status).toBe(200);
-      expect(publicResult.data?.classes).toBeDefined();
-
-      const found = publicResult.data?.classes.find((c) => c.id === classId);
-      expect(found).toBeDefined();
-      expect(found?.name).toBe('Updated Pottery Workshop');
-      expect(found?.spotsRemaining).toBe(15);
-    });
-
-    it('should get public class by id', async () => {
+      // Fetch the published class via the public endpoint (no auth required)
       const result = await callFunction<
         GetPublicClassRequest,
         GetPublicClassResponse
@@ -227,7 +207,7 @@ describe('Class Functions', () => {
       expect(result.status).toBe(200);
       expect(result.data?.class.id).toBe(classId);
       expect(result.data?.class.name).toBe('Updated Pottery Workshop');
-      expect(result.data?.class.spotsRemaining).toBeDefined();
+      expect(result.data?.class.spotsRemaining).toBe(15);
     });
 
     it('should delete a class', async () => {
@@ -314,21 +294,6 @@ describe('Class Functions', () => {
       const names = result.data?.classes.map((c) => c.name) ?? [];
       expect(names).toContain('Draft Weaving Class');
       expect(names).not.toContain('Published Knitting Class');
-    });
-
-    it('should not include draft classes in public endpoint', async () => {
-      const result = await callFunction<
-        GetPublicClassesRequest,
-        GetPublicClassesResponse
-      >({
-        functionName: 'getPublicClasses',
-        data: {},
-      });
-
-      expect(result.status).toBe(200);
-      const ids = result.data?.classes.map((c) => c.id) ?? [];
-      expect(ids).not.toContain(draftClassId);
-      expect(ids).toContain(publishedClassId);
     });
   });
 
