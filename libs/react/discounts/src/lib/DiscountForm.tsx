@@ -23,6 +23,7 @@ import type {
   CreateDiscountInput,
   DiscountType,
   DiscountStatus,
+  DiscountAppliesTo,
   PercentDiscountData,
   AmountDiscountData,
   AmountBeforeDateDiscountData,
@@ -58,6 +59,8 @@ export function DiscountForm({
   const type = useSignal<DiscountType>('percent');
   const description = useSignal('');
   const status = useSignal<DiscountStatus>('active');
+  const appliesTo = useSignal<DiscountAppliesTo>('order');
+  const nthSlot = useSignal<number>(2);
   const percent = useSignal<number | undefined>(undefined);
   const amountCents = useSignal<number | undefined>(undefined);
   const cutoffDate = useSignal<Date | undefined>(undefined);
@@ -79,6 +82,8 @@ export function DiscountForm({
       type: type.value,
       description: description.value,
       status: status.value,
+      appliesTo: appliesTo.value,
+      nthSlot: nthSlot.value,
       percent: percent.value,
       amountCents: amountCents.value,
       cutoffDate: cutoffDate.value,
@@ -108,6 +113,11 @@ export function DiscountForm({
         type.value = discount.type;
         description.value = discount.description;
         status.value = discount.status;
+        appliesTo.value = discount.appliesTo;
+        // Default the form's editable nthSlot to 2 when the saved value is the
+        // 'order'-mode placeholder of 1, so toggling to nth-slot-onward shows
+        // a sensible starting value.
+        nthSlot.value = discount.nthSlot >= 2 ? discount.nthSlot : 2;
         percent.value =
           discount.type === 'percent' ? discount.percent : undefined;
         amountCents.value =
@@ -127,6 +137,8 @@ export function DiscountForm({
         type.value = 'percent';
         description.value = '';
         status.value = 'active';
+        appliesTo.value = 'order';
+        nthSlot.value = 2;
         percent.value = undefined;
         amountCents.value = undefined;
         cutoffDate.value = undefined;
@@ -146,10 +158,15 @@ export function DiscountForm({
     try {
       // Build the discriminated union input
       // Use explicit typed objects to satisfy the discriminated union
+      const isNthSlot = appliesTo.value === 'nth-slot-onward';
       const base = {
         code: code.value.toUpperCase(),
         description: description.value,
         status: status.value,
+        appliesTo: appliesTo.value,
+        // Keep nthSlot=1 for 'order' so the stored doc has a deterministic
+        // value (the runtime ignores it for non-nth-slot discounts).
+        nthSlot: isNthSlot ? nthSlot.value : 1,
       };
 
       let input: CreateDiscountInput;
@@ -183,7 +200,7 @@ export function DiscountForm({
       submitError.value =
         error instanceof Error ? error.message : 'Failed to save discount';
     }
-  }, [onSubmit, validation, type, code, description, status, percent, amountCents, cutoffDate]);
+  }, [onSubmit, validation, type, code, description, status, appliesTo, nthSlot, percent, amountCents, cutoffDate]);
 
   const handleAmountChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,6 +354,52 @@ export function DiscountForm({
                     'Discount only valid before this date',
                 },
               }}
+            />
+          )}
+
+          <FormControl
+            fullWidth
+            required
+            error={!!getFieldError('appliesTo')}
+          >
+            <InputLabel>Applies To</InputLabel>
+            <Select
+              value={appliesTo.value}
+              label="Applies To"
+              onChange={(e) => {
+                appliesTo.value = e.target.value as DiscountAppliesTo;
+              }}
+            >
+              <MenuItem value="order">Whole order</MenuItem>
+              <MenuItem value="nth-slot-onward">
+                Nth slot onward (pair pricing)
+              </MenuItem>
+            </Select>
+            <FormHelperText>
+              {getFieldError('appliesTo') ||
+                (appliesTo.value === 'nth-slot-onward'
+                  ? 'Discount applies per slot, starting at the slot you choose below.'
+                  : 'Discount applies once to the order subtotal.')}
+            </FormHelperText>
+          </FormControl>
+
+          {appliesTo.value === 'nth-slot-onward' && (
+            <TextField
+              label="Discount starts at slot"
+              type="number"
+              value={nthSlot.value}
+              onChange={(e) => {
+                const val = e.target.value;
+                nthSlot.value = val === '' ? 0 : Number(val);
+              }}
+              error={!!getFieldError('nthSlot')}
+              helperText={
+                getFieldError('nthSlot') ||
+                'e.g., 2 = "second slot onward gets the discount"'
+              }
+              required
+              fullWidth
+              inputProps={{ min: 2, max: 100, step: 1 }}
             />
           )}
 

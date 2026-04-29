@@ -7,8 +7,16 @@
  * @see https://vestjs.dev/
  */
 import { staticSuite, test, enforce, only } from 'vest';
-import { DISCOUNT_TYPES, DISCOUNT_STATUSES } from '@maple/ts/domain';
-import type { DiscountType, DiscountStatus } from '@maple/ts/domain';
+import {
+  DISCOUNT_TYPES,
+  DISCOUNT_STATUSES,
+  DISCOUNT_APPLIES_TO,
+} from '@maple/ts/domain';
+import type {
+  DiscountType,
+  DiscountStatus,
+  DiscountAppliesTo,
+} from '@maple/ts/domain';
 
 /**
  * Flat input shape for validation.
@@ -19,6 +27,8 @@ export interface DiscountValidationInput {
   code?: string;
   type?: DiscountType;
   status?: DiscountStatus;
+  appliesTo?: DiscountAppliesTo;
+  nthSlot?: number;
   description?: string;
   percent?: number;
   amountCents?: number;
@@ -76,6 +86,49 @@ export const discountValidation = staticSuite(
     test('status', 'Status must be valid', () => {
       if (data.status) {
         enforce(data.status).inside(DISCOUNT_STATUSES);
+      }
+    });
+
+    // Application-rule validation
+    test('appliesTo', 'Application rule is required', () => {
+      enforce(data.appliesTo).isNotBlank();
+    });
+
+    test('appliesTo', 'Application rule must be valid', () => {
+      if (data.appliesTo) {
+        enforce(data.appliesTo).inside(DISCOUNT_APPLIES_TO);
+      }
+    });
+
+    // nthSlot is required (and must be ≥2) only when appliesTo='nth-slot-onward'.
+    // For appliesTo='order' it is ignored — the form should still send 1 as a placeholder.
+    test(
+      'nthSlot',
+      'Slot number is required for nth-slot-onward discounts',
+      () => {
+        if (data.appliesTo === 'nth-slot-onward') {
+          enforce(data.nthSlot).isNotNullish();
+        }
+      }
+    );
+
+    test('nthSlot', 'Slot number must be 2 or greater', () => {
+      if (
+        data.appliesTo === 'nth-slot-onward' &&
+        data.nthSlot !== undefined &&
+        data.nthSlot !== null
+      ) {
+        enforce(data.nthSlot).greaterThanOrEquals(2);
+      }
+    });
+
+    test('nthSlot', 'Slot number must be 100 or less', () => {
+      if (
+        data.appliesTo === 'nth-slot-onward' &&
+        data.nthSlot !== undefined &&
+        data.nthSlot !== null
+      ) {
+        enforce(data.nthSlot).lessThanOrEquals(100);
       }
     });
 

@@ -216,7 +216,10 @@ export const createRegistration = Functions.endpoint
       if (data.discountCode) {
         const discount = await DiscountRepository.findByCode(data.discountCode);
         if (discount && isDiscountValid(discount)) {
-          const result = applyDiscount(discount, originalCostCents);
+          const result = applyDiscount(discount, {
+            unitPriceCents: classEntity.priceCents,
+            quantity: data.quantity,
+          });
           discountAmountCents = result.discountAmountCents;
           discountCode = data.discountCode.toUpperCase();
         }
