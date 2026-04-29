@@ -69,6 +69,30 @@ interface DiscountBase {
    * Ignored when appliesTo='order'.
    */
   nthSlot: number;
+  /**
+   * Maximum number of times this code can be redeemed. `null` means
+   * unlimited. Once `usageCount` reaches this value, the code is rejected
+   * by `isDiscountValid`. Usage is consumed at reservation time and is NOT
+   * restored if the registration is later cancelled — single-use means
+   * single-use.
+   */
+  usageLimit: number | null;
+  /** Total successful redemptions; incremented atomically at reservation. */
+  usageCount: number;
+  /**
+   * Optional global expiration. Once `now > expiresAt`, the code is
+   * rejected regardless of status. Distinct from
+   * `amount-before-date.cutoffDate`, which only ungates the early-bird
+   * pricing for that one type.
+   */
+  expiresAt?: Date;
+  /**
+   * For codes auto-generated from a successful registration (referral
+   * codes), the registration ID that produced this code. Set by the
+   * referral-program flow; ignored otherwise. Reserved for the follow-up
+   * referral PR.
+   */
+  generatedFromRegistrationId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -129,6 +153,8 @@ export type UpdateDiscountInput = {
   status?: DiscountStatus;
   appliesTo?: DiscountAppliesTo;
   nthSlot?: number;
+  usageLimit?: number | null;
+  expiresAt?: Date | null;
   percent?: number;
   amountCents?: number;
   cutoffDate?: Date;
@@ -247,7 +273,13 @@ function computeOrderDiscount(
 }
 
 /**
- * Check if a discount is currently valid (active and not expired).
+ * Check if a discount is currently valid: active, not past its global
+ * expiry, and has remaining usage allowance. For amount-before-date,
+ * also checks the type-specific cutoff date.
+ *
+ * Note: this is the read-time check used by lookup/calculate. The
+ * authoritative usage check happens transactionally inside
+ * `create-registration` when the redemption is reserved.
  *
  * @param discount The discount to check
  * @param now Optional current time (for testing)
@@ -257,6 +289,19 @@ export function isDiscountValid(
   now: Date = new Date()
 ): boolean {
   if (discount.status !== 'active') {
+    return false;
+  }
+  if (discount.expiresAt) {
+    const expires =
+      discount.expiresAt instanceof Date
+        ? discount.expiresAt
+        : new Date(discount.expiresAt);
+    if (now > expires) return false;
+  }
+  if (
+    discount.usageLimit !== null &&
+    discount.usageCount >= discount.usageLimit
+  ) {
     return false;
   }
   if (discount.type === 'amount-before-date') {
