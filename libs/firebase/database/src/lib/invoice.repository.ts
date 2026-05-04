@@ -22,6 +22,19 @@ import { computeInvoiceTotalCents } from '@maple/ts/domain';
 
 const COLLECTION = 'invoices';
 
+/**
+ * Detect Firestore's NOT_FOUND error (gRPC code 5). Used by Square-sync
+ * writebacks that race against doc deletion.
+ */
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: unknown }).code === 5
+  );
+}
+
 function docToInvoice(
   doc: FirebaseFirestore.DocumentSnapshot
 ): Invoice | undefined {
@@ -279,33 +292,49 @@ export const InvoiceRepository = {
   /**
    * Persist the Square ids stamped during a successful send, and clear
    * any prior sync error.
+   *
+   * Tolerates the doc being deleted in flight: the syncInvoiceToSquare
+   * trigger runs asynchronously, and an admin (or test teardown) can
+   * delete the invoice between when the trigger started and when this
+   * writeback lands. In that case there's nothing to update — silently
+   * skip rather than crashing the function with NOT_FOUND.
    */
   async markSquareSynced(args: {
     id: string;
     squareOrderId: string;
     squareInvoiceId: string;
   }): Promise<void> {
-    await db.collection(COLLECTION).doc(args.id).update({
-      squareOrderId: args.squareOrderId,
-      squareInvoiceId: args.squareInvoiceId,
-      squareSyncError: null,
-      updatedAt: new Date(),
-    });
+    try {
+      await db.collection(COLLECTION).doc(args.id).update({
+        squareOrderId: args.squareOrderId,
+        squareInvoiceId: args.squareInvoiceId,
+        squareSyncError: null,
+        updatedAt: new Date(),
+      });
+    } catch (error) {
+      if (isNotFoundError(error)) return;
+      throw error;
+    }
   },
 
   /**
    * Persist a Square sync error so the admin UI can surface it. The
    * invoice stays in whatever status it was in; only the error field is
-   * updated.
+   * updated. Same NOT_FOUND tolerance as `markSquareSynced`.
    */
   async recordSquareSyncError(args: {
     id: string;
     error: string;
   }): Promise<void> {
-    await db.collection(COLLECTION).doc(args.id).update({
-      squareSyncError: args.error,
-      updatedAt: new Date(),
-    });
+    try {
+      await db.collection(COLLECTION).doc(args.id).update({
+        squareSyncError: args.error,
+        updatedAt: new Date(),
+      });
+    } catch (error) {
+      if (isNotFoundError(error)) return;
+      throw error;
+    }
   },
 
   async delete(id: string): Promise<void> {

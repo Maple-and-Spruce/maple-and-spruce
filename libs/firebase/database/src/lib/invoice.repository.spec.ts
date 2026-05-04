@@ -467,4 +467,67 @@ describe('InvoiceRepository', () => {
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Square sync writebacks tolerate missing doc', () => {
+    // Firestore throws NOT_FOUND (gRPC code 5) when update() targets a
+    // doc that no longer exists. The syncInvoiceToSquare trigger races
+    // against admin/test deletion; these writebacks must swallow that
+    // case rather than crashing the function.
+    function firestoreNotFoundError() {
+      return Object.assign(
+        new Error(
+          '5 NOT_FOUND: no entity to update: app: "dev~maple-and-spruce-dev"'
+        ),
+        { code: 5 }
+      );
+    }
+
+    it('markSquareSynced resolves silently when the invoice was deleted in flight', async () => {
+      const mockUpdate = vi.fn().mockRejectedValue(firestoreNotFoundError());
+      const mockDoc = vi.fn().mockReturnValue({ update: mockUpdate });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await expect(
+        InvoiceRepository.markSquareSynced({
+          id: 'inv-deleted',
+          squareOrderId: 'sq-order',
+          squareInvoiceId: 'sq-invoice',
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('markSquareSynced rethrows non-NOT_FOUND errors', async () => {
+      const otherError = Object.assign(new Error('5 INTERNAL'), { code: 13 });
+      const mockUpdate = vi.fn().mockRejectedValue(otherError);
+      const mockDoc = vi.fn().mockReturnValue({ update: mockUpdate });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await expect(
+        InvoiceRepository.markSquareSynced({
+          id: 'inv-1',
+          squareOrderId: 'sq-order',
+          squareInvoiceId: 'sq-invoice',
+        })
+      ).rejects.toThrow('5 INTERNAL');
+    });
+
+    it('recordSquareSyncError resolves silently when the invoice was deleted in flight', async () => {
+      const mockUpdate = vi.fn().mockRejectedValue(firestoreNotFoundError());
+      const mockDoc = vi.fn().mockReturnValue({ update: mockUpdate });
+      vi.mocked(db.collection).mockReturnValue({
+        doc: mockDoc,
+      } as unknown as FirebaseFirestore.CollectionReference);
+
+      await expect(
+        InvoiceRepository.recordSquareSyncError({
+          id: 'inv-deleted',
+          error: 'Square API timeout',
+        })
+      ).resolves.toBeUndefined();
+    });
+  });
 });
