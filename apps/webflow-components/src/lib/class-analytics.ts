@@ -168,26 +168,22 @@ export function buildPurchaseDataLayerEvent(
 
 type FbqFn = (...args: unknown[]) => void;
 
-/**
- * Accepts `unknown` rather than a structural `Window` type so callers can pass
- * the real `window` object without fighting third-party global augmentations
- * (gtag.js, fbevents, etc. each declare their own shape for `window.fbq` /
- * `window.dataLayer`).
- */
-type WindowLike = unknown;
-
 interface AnalyticsWindow {
   fbq?: FbqFn;
   dataLayer?: Record<string, unknown>[];
 }
 
-function asAnalyticsWindow(win: WindowLike): AnalyticsWindow | null {
+// Trackers accept `unknown` (rather than a structural Window type) so callers
+// can pass the real `window` object without fighting third-party global
+// augmentations — gtag.js, fbevents, etc. each declare their own shapes for
+// `window.fbq` / `window.dataLayer`.
+function asAnalyticsWindow(win: unknown): AnalyticsWindow | null {
   if (win === null || typeof win !== 'object') return null;
   return win as AnalyticsWindow;
 }
 
 function dispatch(
-  win: WindowLike,
+  win: unknown,
   pixel: MetaPixelEvent,
   dataLayer: DataLayerEvent
 ): void {
@@ -202,7 +198,7 @@ function dispatch(
 }
 
 export function trackViewClass(
-  win: WindowLike,
+  win: unknown,
   input: ViewClassInput
 ): void {
   dispatch(
@@ -213,7 +209,7 @@ export function trackViewClass(
 }
 
 export function trackAddClassToCart(
-  win: WindowLike,
+  win: unknown,
   input: AddClassToCartInput
 ): void {
   dispatch(
@@ -224,7 +220,7 @@ export function trackAddClassToCart(
 }
 
 export function trackPurchaseClass(
-  win: WindowLike,
+  win: unknown,
   input: PurchaseClassInput
 ): void {
   dispatch(
