@@ -473,18 +473,18 @@ describe('InvoiceRepository', () => {
   // Square responds, the writeback used to crash the function. These tests
   // lock in that NOT_FOUND is swallowed and other errors still propagate.
   // Regression test for #380.
-  describe('markSquareSynced', () => {
-    function mockUpdate(impl: () => Promise<unknown>) {
-      const update = vi.fn().mockImplementation(impl);
-      const mockDoc = vi.fn().mockReturnValue({ update });
-      vi.mocked(db.collection).mockReturnValue({
-        doc: mockDoc,
-      } as unknown as FirebaseFirestore.CollectionReference);
-      return { update, mockDoc };
-    }
+  function mockDocUpdate(impl: () => Promise<unknown>) {
+    const update = vi.fn().mockImplementation(impl);
+    const mockDoc = vi.fn().mockReturnValue({ update });
+    vi.mocked(db.collection).mockReturnValue({
+      doc: mockDoc,
+    } as unknown as FirebaseFirestore.CollectionReference);
+    return { update, mockDoc };
+  }
 
+  describe('markSquareSynced', () => {
     it('writes the Square ids and clears prior error on the happy path', async () => {
-      const { update } = mockUpdate(() => Promise.resolve(undefined));
+      const { update } = mockDocUpdate(() => Promise.resolve(undefined));
 
       await InvoiceRepository.markSquareSynced({
         id: 'inv-1',
@@ -506,7 +506,7 @@ describe('InvoiceRepository', () => {
         new Error('5 NOT_FOUND: no entity to update'),
         { code: 5 }
       );
-      mockUpdate(() => Promise.reject(notFound));
+      mockDocUpdate(() => Promise.reject(notFound));
 
       await expect(
         InvoiceRepository.markSquareSynced({
@@ -522,7 +522,7 @@ describe('InvoiceRepository', () => {
         new Error('7 PERMISSION_DENIED'),
         { code: 7 }
       );
-      mockUpdate(() => Promise.reject(permissionDenied));
+      mockDocUpdate(() => Promise.reject(permissionDenied));
 
       await expect(
         InvoiceRepository.markSquareSynced({
@@ -535,17 +535,8 @@ describe('InvoiceRepository', () => {
   });
 
   describe('recordSquareSyncError', () => {
-    function mockUpdate(impl: () => Promise<unknown>) {
-      const update = vi.fn().mockImplementation(impl);
-      const mockDoc = vi.fn().mockReturnValue({ update });
-      vi.mocked(db.collection).mockReturnValue({
-        doc: mockDoc,
-      } as unknown as FirebaseFirestore.CollectionReference);
-      return { update, mockDoc };
-    }
-
     it('writes the error message on the happy path', async () => {
-      const { update } = mockUpdate(() => Promise.resolve(undefined));
+      const { update } = mockDocUpdate(() => Promise.resolve(undefined));
 
       await InvoiceRepository.recordSquareSyncError({
         id: 'inv-1',
@@ -563,7 +554,7 @@ describe('InvoiceRepository', () => {
         new Error('5 NOT_FOUND: no entity to update'),
         { code: 5 }
       );
-      mockUpdate(() => Promise.reject(notFound));
+      mockDocUpdate(() => Promise.reject(notFound));
 
       await expect(
         InvoiceRepository.recordSquareSyncError({
@@ -578,7 +569,7 @@ describe('InvoiceRepository', () => {
         new Error('13 INTERNAL'),
         { code: 13 }
       );
-      mockUpdate(() => Promise.reject(internal));
+      mockDocUpdate(() => Promise.reject(internal));
 
       await expect(
         InvoiceRepository.recordSquareSyncError({
