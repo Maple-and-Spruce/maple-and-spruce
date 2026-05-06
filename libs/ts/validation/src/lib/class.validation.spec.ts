@@ -682,6 +682,63 @@ describe('classValidation', () => {
     });
   });
 
+  describe('referralDiscount field', () => {
+    it('passes when omitted (program off)', () => {
+      const result = classValidation(validClass);
+      expect(result.hasErrors('referralDiscount')).toBe(false);
+    });
+
+    it('passes with valid percent and expiresAfterDays', () => {
+      const result = classValidation({
+        ...validClass,
+        referralDiscount: { percent: 50, expiresAfterDays: 60 },
+      });
+      expect(result.hasErrors('referralDiscount')).toBe(false);
+    });
+
+    it('passes at boundary values (1% / 1 day, 100% / 365 days)', () => {
+      [
+        { percent: 1, expiresAfterDays: 1 },
+        { percent: 100, expiresAfterDays: 365 },
+      ].forEach((referralDiscount) => {
+        const result = classValidation({ ...validClass, referralDiscount });
+        expect(result.hasErrors('referralDiscount')).toBe(false);
+      });
+    });
+
+    it('fails when percent is 0', () => {
+      const result = classValidation({
+        ...validClass,
+        referralDiscount: { percent: 0, expiresAfterDays: 60 },
+      });
+      expect(result.hasErrors('referralDiscount')).toBe(true);
+    });
+
+    it('fails when percent exceeds 100', () => {
+      const result = classValidation({
+        ...validClass,
+        referralDiscount: { percent: 101, expiresAfterDays: 60 },
+      });
+      expect(result.hasErrors('referralDiscount')).toBe(true);
+    });
+
+    it('fails when expiresAfterDays is 0', () => {
+      const result = classValidation({
+        ...validClass,
+        referralDiscount: { percent: 50, expiresAfterDays: 0 },
+      });
+      expect(result.hasErrors('referralDiscount')).toBe(true);
+    });
+
+    it('fails when expiresAfterDays exceeds 365', () => {
+      const result = classValidation({
+        ...validClass,
+        referralDiscount: { percent: 50, expiresAfterDays: 400 },
+      });
+      expect(result.hasErrors('referralDiscount')).toBe(true);
+    });
+  });
+
   describe('single-field validation', () => {
     it('only validates specified field', () => {
       const invalidData = {

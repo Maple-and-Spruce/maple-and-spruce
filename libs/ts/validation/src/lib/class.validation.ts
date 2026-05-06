@@ -220,6 +220,31 @@ export const classValidation = staticSuite(
       }
     });
 
+    // Referral discount validation (optional). When set, both inner fields
+    // must be in valid ranges. We test under the parent key so the form can
+    // surface a single error message regardless of which inner field is bad.
+    test(
+      'referralDiscount',
+      'Referral percent must be between 1 and 100',
+      () => {
+        if (data.referralDiscount) {
+          enforce(data.referralDiscount.percent).greaterThanOrEquals(1);
+          enforce(data.referralDiscount.percent).lessThanOrEquals(100);
+        }
+      }
+    );
+
+    test(
+      'referralDiscount',
+      'Code expiry must be between 1 and 365 days',
+      () => {
+        if (data.referralDiscount) {
+          enforce(data.referralDiscount.expiresAfterDays).greaterThanOrEquals(1);
+          enforce(data.referralDiscount.expiresAfterDays).lessThanOrEquals(365);
+        }
+      }
+    );
+
     // Gallery images validation (optional)
     test(
       'galleryImages',
