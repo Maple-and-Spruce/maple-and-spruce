@@ -1,0 +1,64 @@
+<!--
+  Maple & Spruce — Tally email-signup analytics tracking
+
+  Pushes a `generate_lead` event to the GA4 dataLayer AND a `Lead` event to
+  Meta Pixel whenever the Tally email-signup popup form is submitted.
+
+  Paste destination:
+    Webflow Designer → Site Settings (gear icon) → Custom Code →
+    "Footer Code". Append this snippet (do not replace existing footer code).
+
+  After pasting:
+    1. Save site settings.
+    2. Publish the site (top right → Publish).
+    3. Verify in GA4 → Admin → DebugView: open the email-signup popup on
+       the live site, submit a real or test entry, watch for a
+       `generate_lead` event row.
+    4. Verify in Meta Events Manager → Test Events: confirm a `Lead` event
+       fires for pixel 1625932185289127.
+    5. In GA4 → Admin → Events: mark `generate_lead` as a conversion event.
+       (Without this step the event fires but is not counted as a conversion.)
+
+  Why match by string instead of origin:
+    Tally posts the FormSubmitted message from the popup iframe (origin
+    https://tally.so) but the popup is also wrapped by Webflow CDN-hosted
+    glue scripts that may relay events from the same origin as the page.
+    Matching on the literal string "Tally.FormSubmitted" is the pattern
+    Tally's own docs recommend and is robust to either path.
+-->
+
+<script>
+  (function () {
+    var FORM_NAME = 'email-signup';
+
+    window.addEventListener('message', function (event) {
+      if (typeof event.data !== 'string') return;
+      if (event.data.indexOf('Tally.FormSubmitted') === -1) return;
+
+      var formId = null;
+      try {
+        var parsed = JSON.parse(event.data);
+        formId = (parsed && parsed.payload && parsed.payload.formId) || null;
+      } catch (_e) {
+        // not JSON — keep formId null and continue
+      }
+
+      // GA4 via dataLayer (GTM container GTM-P5NDCZSX forwards to G-TY0E9X31V6)
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: 'generate_lead',
+        form_id: formId,
+        form_name: FORM_NAME,
+      });
+
+      // Meta Pixel — Lead standard event so Meta can optimize ads for email
+      // signups and report on them in Ads Manager
+      if (typeof window.fbq === 'function') {
+        window.fbq('track', 'Lead', {
+          content_name: FORM_NAME,
+          content_category: 'newsletter',
+        });
+      }
+    });
+  })();
+</script>
