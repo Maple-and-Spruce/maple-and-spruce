@@ -4,7 +4,7 @@ import {
   mapClassToFieldData,
   ClassService,
 } from './class.service';
-import type { Class } from '@maple/ts/domain';
+import type { PublishableClass } from '@maple/ts/domain';
 import { formatSessions } from '@maple/ts/domain';
 
 describe('generateClassSlug', () => {
@@ -30,7 +30,7 @@ describe('generateClassSlug', () => {
 });
 
 describe('mapClassToFieldData', () => {
-  const mockClass: Class = {
+  const mockClass: PublishableClass = {
     id: 'class-abc',
     name: 'Pottery 101',
     description: 'Learn the basics of pottery',
@@ -185,7 +185,7 @@ describe('mapClassToFieldData', () => {
   });
 
   it('omits optional fields when not present', () => {
-    const minimalClass: Class = {
+    const minimalClass: PublishableClass = {
       id: 'class-min',
       name: 'Basic Class',
       description: 'A basic class',
@@ -215,7 +215,7 @@ describe('mapClassToFieldData', () => {
   });
 
   it('maps galleryImages to the class-gallery MultiImage field', () => {
-    const classWithGallery: Class = {
+    const classWithGallery: PublishableClass = {
       ...mockClass,
       galleryImages: [
         {
@@ -274,7 +274,7 @@ describe('ClassService', () => {
 
   let service: ClassService;
 
-  const mockClass: Class = {
+  const mockClass: PublishableClass = {
     id: 'class-abc',
     name: 'Pottery 101',
     description: 'Learn the basics of pottery',

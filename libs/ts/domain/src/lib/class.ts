@@ -51,8 +51,11 @@ export interface Class {
   /** Instructor ID (references Instructor entity) */
   instructorId?: string;
   /**
-   * Scheduled sessions for the class. Must contain at least one session.
-   * Ordered earliest-first after normalization.
+   * Scheduled sessions for the class. Ordered earliest-first after
+   * normalization. May be empty for drafts produced by the Copy admin
+   * action; non-empty is enforced by `classValidation` for any class
+   * about to be `published`. Use `asPublishable` / `PublishableClass`
+   * when downstream code needs the non-empty guarantee at the type level.
    */
   sessions: ClassSession[];
   /** Duration in minutes (applies to every session) */
@@ -188,22 +191,42 @@ export function getSortedSessions(classEntity: Class): ClassSession[] {
 }
 
 /**
- * Return the earliest session of a class. Throws if the class has no sessions,
- * which should never happen for a valid persisted class.
+ * A `Class` whose `sessions` is statically known to be non-empty.
+ *
+ * Use this when downstream code (Webflow CMS mapping, registration cutoff,
+ * "first session" displays) genuinely cannot do its job without at least
+ * one session. Narrow a `Class` with `asPublishable` at the boundary so
+ * the type carries the invariant the rest of the way through.
  */
-export function getFirstSession(classEntity: Class): ClassSession {
-  if (classEntity.sessions.length === 0) {
-    throw new Error(`Class ${classEntity.id} has no sessions`);
-  }
+export type PublishableClass = Class & {
+  sessions: [ClassSession, ...ClassSession[]];
+};
+
+/**
+ * Narrow a `Class` to `PublishableClass` if it has at least one session.
+ * Returns `null` for empty-sessions drafts (e.g., produced by the Copy
+ * admin action).
+ */
+export function asPublishable(classEntity: Class): PublishableClass | null {
+  return classEntity.sessions.length > 0
+    ? (classEntity as PublishableClass)
+    : null;
+}
+
+/**
+ * Return the earliest session of a publishable class. Total — the
+ * non-empty guarantee comes from the input type, not a runtime check.
+ */
+export function getFirstSession(classEntity: PublishableClass): ClassSession {
   return getSortedSessions(classEntity)[0];
 }
 
 /**
- * Return the `Date` at which registration closes for a class.
+ * Return the `Date` at which registration closes for a publishable class.
  * Prefers the explicit `registrationClosesAt` override; otherwise falls back
  * to the first session's start time.
  */
-export function getRegistrationCutoff(classEntity: Class): Date {
+export function getRegistrationCutoff(classEntity: PublishableClass): Date {
   return ensureDate(classEntity.registrationClosesAt ?? getFirstSession(classEntity).dateTime);
 }
 
@@ -266,10 +289,10 @@ export function formatClassPrice(priceCents: number): string {
  * (explicit `registrationClosesAt` or earliest session) is in the future.
  */
 export function isClassRegistrationOpen(classEntity: Class): boolean {
-  return (
-    classEntity.status === 'published' &&
-    getRegistrationCutoff(classEntity) > new Date()
-  );
+  if (classEntity.status !== 'published') return false;
+  const publishable = asPublishable(classEntity);
+  if (!publishable) return false;
+  return getRegistrationCutoff(publishable) > new Date();
 }
 
 /**

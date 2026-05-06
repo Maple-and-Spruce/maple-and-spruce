@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
+  asPublishable,
   toPublicClass,
   formatClassPrice,
   isClassRegistrationOpen,
@@ -11,10 +12,11 @@ import {
   formatSessions,
   type Class,
   type ClassSession,
+  type PublishableClass,
 } from './class';
 
 describe('Class domain helpers', () => {
-  const baseClass: Class = {
+  const baseClass: PublishableClass = {
     id: 'class-123',
     name: 'Introduction to Weaving',
     description: 'Learn the basics of weaving in this hands-on workshop.',
@@ -36,7 +38,7 @@ describe('Class domain helpers', () => {
     updatedAt: new Date('2025-01-02T00:00:00Z'),
   };
 
-  const multiSessionClass: Class = {
+  const multiSessionClass: PublishableClass = {
     ...baseClass,
     sessions: [
       { dateTime: new Date('2030-06-22T14:00:00Z') },
@@ -51,9 +53,20 @@ describe('Class domain helpers', () => {
       expect(first.dateTime).toEqual(new Date('2030-06-15T14:00:00Z'));
     });
 
-    it('throws for a class with no sessions', () => {
+  });
+
+  describe('asPublishable', () => {
+    it('returns the class as PublishableClass when it has at least one session', () => {
+      const result = asPublishable(baseClass);
+      expect(result).not.toBeNull();
+      expect(result?.sessions[0].dateTime).toEqual(
+        new Date('2030-06-15T14:00:00Z')
+      );
+    });
+
+    it('returns null for a class with no sessions', () => {
       const empty: Class = { ...baseClass, sessions: [] };
-      expect(() => getFirstSession(empty)).toThrow('has no sessions');
+      expect(asPublishable(empty)).toBeNull();
     });
   });
 
@@ -83,7 +96,7 @@ describe('Class domain helpers', () => {
 
     it('uses registrationClosesAt when set', () => {
       const cutoff = new Date('2030-06-10T00:00:00Z');
-      const withOverride: Class = {
+      const withOverride: PublishableClass = {
         ...baseClass,
         registrationClosesAt: cutoff,
       };
@@ -332,12 +345,12 @@ describe('Class domain helpers', () => {
     // Firebase callable functions serialize Date objects to ISO strings.
     // All domain helpers must handle string dateTime values gracefully.
 
-    const isoClass = {
+    const isoClass: PublishableClass = {
       ...baseClass,
       sessions: [{ dateTime: '2030-06-15T14:00:00.000Z' as unknown as Date }],
     };
 
-    const isoMultiSession = {
+    const isoMultiSession: PublishableClass = {
       ...baseClass,
       sessions: [
         { dateTime: '2030-06-29T14:00:00.000Z' as unknown as Date },
