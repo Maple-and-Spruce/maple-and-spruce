@@ -298,6 +298,7 @@ describe('ClassService', () => {
     collections: {
       items: {
         listItems: vi.fn(),
+        getItem: vi.fn(),
         createItem: vi.fn(),
         updateItem: vi.fn(),
         deleteItem: vi.fn(),
@@ -408,6 +409,12 @@ describe('ClassService', () => {
           }),
         })
       );
+
+      // Slug must not be sent on update — Webflow rejects with 400 when
+      // a slug collides (it auto-suffixes on create but not on update).
+      const sentFieldData = mockClient.collections.items.updateItem.mock
+        .calls[0][2].fieldData;
+      expect(sentFieldData).not.toHaveProperty('slug');
     });
 
     it('publishes the item after sync when publish is true', async () => {
@@ -481,6 +488,89 @@ describe('ClassService', () => {
         url: 'https://example.com/jane.jpg',
         alt: 'Jane profile photo',
       });
+    });
+
+    it('uses existingWebflowItemId fast path and skips listItems scan', async () => {
+      mockClient.collections.items.getItem.mockResolvedValue({
+        id: 'wf-known',
+        fieldData: { 'firebase-id': 'class-abc' },
+      });
+      mockClient.collections.items.updateItem.mockResolvedValue({});
+
+      const result = await service.syncClass({
+        classEntity: mockClass,
+        existingWebflowItemId: 'wf-known',
+        registrationCount: 4,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        webflowItemId: 'wf-known',
+        isNew: false,
+      });
+      expect(mockClient.collections.items.getItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-known'
+      );
+      // No collection scan needed when we have the ID.
+      expect(mockClient.collections.items.listItems).not.toHaveBeenCalled();
+      expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-known',
+        expect.any(Object)
+      );
+    });
+
+    it('falls back to listItems scan when known Webflow item is gone (404)', async () => {
+      // getItem rejects (item deleted in Webflow)
+      mockClient.collections.items.getItem.mockRejectedValue(
+        new Error('Not found')
+      );
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-recreated',
+      });
+
+      const result = await service.syncClass({
+        classEntity: mockClass,
+        existingWebflowItemId: 'wf-deleted',
+      });
+
+      expect(result.isNew).toBe(true);
+      expect(result.webflowItemId).toBe('wf-recreated');
+      expect(mockClient.collections.items.listItems).toHaveBeenCalled();
+      expect(mockClient.collections.items.createItem).toHaveBeenCalled();
+    });
+
+    it('paginates findByFirebaseId past the first 100 items', async () => {
+      const fillerItems = Array.from({ length: 100 }, (_, i) => ({
+        id: `wf-other-${i}`,
+        fieldData: { 'firebase-id': `other-class-${i}` },
+      }));
+      // First page: 100 items, none matching → caller pages forward
+      // Second page: contains the match
+      mockClient.collections.items.listItems
+        .mockResolvedValueOnce({ items: fillerItems })
+        .mockResolvedValueOnce({
+          items: [
+            {
+              id: 'wf-needle',
+              fieldData: { 'firebase-id': 'class-abc' },
+            },
+          ],
+        });
+      mockClient.collections.items.updateItem.mockResolvedValue({});
+
+      const result = await service.syncClass({ classEntity: mockClass });
+
+      expect(result.isNew).toBe(false);
+      expect(result.webflowItemId).toBe('wf-needle');
+      expect(mockClient.collections.items.listItems).toHaveBeenCalledTimes(2);
+      expect(mockClient.collections.items.listItems).toHaveBeenNthCalledWith(
+        2,
+        COLLECTION_ID,
+        { limit: 100, offset: 100 }
+      );
     });
   });
 
