@@ -4,8 +4,17 @@ import {
   mapClassToFieldData,
   ClassService,
 } from './class.service';
-import type { Class } from '@maple/ts/domain';
+import type { ClassSession, PublishableClass } from '@maple/ts/domain';
 import { formatSessions } from '@maple/ts/domain';
+
+// CI's nx-esbuild typecheck pulls these spec files into the apps/functions-*
+// programs, where contextual typing for the literal `[{ dateTime: ... }]`
+// doesn't always widen the array to the non-empty `[T, ...T[]]` tuple
+// PublishableClass requires. Declaring the literal with an explicit tuple
+// type sidesteps the inconsistency.
+const oneSession: [ClassSession, ...ClassSession[]] = [
+  { dateTime: new Date('2026-05-15T14:00:00.000Z') },
+];
 
 describe('generateClassSlug', () => {
   it('converts name to lowercase with hyphens', () => {
@@ -30,13 +39,13 @@ describe('generateClassSlug', () => {
 });
 
 describe('mapClassToFieldData', () => {
-  const mockClass: Class = {
+  const mockClass: PublishableClass = {
     id: 'class-abc',
     name: 'Pottery 101',
     description: 'Learn the basics of pottery',
     shortDescription: 'Intro to pottery',
     instructorId: 'inst-1',
-    sessions: [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
+    sessions: oneSession,
     durationMinutes: 120,
     capacity: 10,
     priceCents: 4500,
@@ -100,20 +109,24 @@ describe('mapClassToFieldData', () => {
   });
 
   it('appends "each" to duration when class has multiple sessions', () => {
-    const multiSession = {
+    const multiSessionDates = [
+      { dateTime: new Date('2026-05-31T17:00:00.000Z') },
+      { dateTime: new Date('2026-06-07T17:00:00.000Z') },
+      { dateTime: new Date('2026-06-14T17:00:00.000Z') },
+    ] satisfies [ClassSession, ...ClassSession[]];
+    const multiSession: PublishableClass = {
       ...mockClass,
       durationMinutes: 90,
-      sessions: [
-        { dateTime: new Date('2026-05-31T17:00:00.000Z') },
-        { dateTime: new Date('2026-06-07T17:00:00.000Z') },
-        { dateTime: new Date('2026-06-14T17:00:00.000Z') },
-      ],
+      sessions: multiSessionDates,
     };
     expect(mapClassToFieldData(multiSession, { isDev: false })['duration-display']).toBe(
       '1.5 hours each'
     );
 
-    const multiSessionShort = { ...multiSession, durationMinutes: 45 };
+    const multiSessionShort: PublishableClass = {
+      ...multiSession,
+      durationMinutes: 45,
+    };
     expect(mapClassToFieldData(multiSessionShort, { isDev: false })['duration-display']).toBe(
       '45 min each'
     );
@@ -205,11 +218,13 @@ describe('mapClassToFieldData', () => {
   });
 
   it('omits optional fields when not present', () => {
-    const minimalClass: Class = {
+    const minimalClass: PublishableClass = {
       id: 'class-min',
       name: 'Basic Class',
       description: 'A basic class',
-      sessions: [{ dateTime: new Date('2026-06-01T10:00:00.000Z') }],
+      sessions: [
+        { dateTime: new Date('2026-06-01T10:00:00.000Z') },
+      ] satisfies [ClassSession, ...ClassSession[]],
       durationMinutes: 60,
       capacity: 8,
       priceCents: 2500,
@@ -235,7 +250,7 @@ describe('mapClassToFieldData', () => {
   });
 
   it('maps galleryImages to the class-gallery MultiImage field', () => {
-    const classWithGallery: Class = {
+    const classWithGallery: PublishableClass = {
       ...mockClass,
       galleryImages: [
         {
@@ -294,13 +309,13 @@ describe('ClassService', () => {
 
   let service: ClassService;
 
-  const mockClass: Class = {
+  const mockClass: PublishableClass = {
     id: 'class-abc',
     name: 'Pottery 101',
     description: 'Learn the basics of pottery',
     shortDescription: 'Intro to pottery',
     instructorId: 'inst-1',
-    sessions: [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
+    sessions: oneSession,
     durationMinutes: 120,
     capacity: 10,
     priceCents: 4500,

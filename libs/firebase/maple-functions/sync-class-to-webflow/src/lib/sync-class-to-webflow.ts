@@ -18,6 +18,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import type { Class } from '@maple/ts/domain';
+import { asPublishable } from '@maple/ts/domain';
 import {
   Webflow,
   WEBFLOW_SECRET_NAMES,
@@ -186,21 +187,31 @@ export const syncClassToWebflow = onDocumentWritten(
         return;
       }
 
-      // Case 4: Class is published — enrich and sync to Webflow
+      // Case 4: Class is published — enrich and sync to Webflow.
+      // Narrow to PublishableClass before mapping so the Webflow CMS
+      // mapper can rely on at least one session existing.
+      const publishable = asPublishable(afterClass);
+      if (!publishable) {
+        console.warn(
+          'Published class has no sessions, skipping Webflow sync',
+          { classId: afterClass.id, name: afterClass.name }
+        );
+        return;
+      }
 
       // Fetch enrichment data in parallel
       const [instructor, category, registrationCount] = await Promise.all([
-        afterClass.instructorId
-          ? InstructorRepository.findById(afterClass.instructorId)
+        publishable.instructorId
+          ? InstructorRepository.findById(publishable.instructorId)
           : Promise.resolve(null),
-        afterClass.categoryId
-          ? ClassCategoryRepository.findById(afterClass.categoryId)
+        publishable.categoryId
+          ? ClassCategoryRepository.findById(publishable.categoryId)
           : Promise.resolve(null),
-        RegistrationRepository.countByClassId(afterClass.id),
+        RegistrationRepository.countByClassId(publishable.id),
       ]);
 
       console.log('Syncing published class to Webflow:', {
-        name: afterClass.name,
+        name: publishable.name,
         isDev,
         autoPublish: shouldPublish,
         instructorName: instructor?.name,
@@ -209,7 +220,7 @@ export const syncClassToWebflow = onDocumentWritten(
       });
 
       const result = await webflow.classService.syncClass({
-        classEntity: afterClass,
+        classEntity: publishable,
         publish: shouldPublish,
         isDev,
         instructorName: instructor?.name,
@@ -229,9 +240,9 @@ export const syncClassToWebflow = onDocumentWritten(
 
       // Store the Webflow item ID back in Firestore
       // Uses bare update (no updatedAt) to prevent re-triggering sync
-      if (result.success && result.webflowItemId && afterClass.webflowItemId !== result.webflowItemId) {
+      if (result.success && result.webflowItemId && publishable.webflowItemId !== result.webflowItemId) {
         await ClassRepository.updateWebflowItemId(
-          afterClass.id,
+          publishable.id,
           result.webflowItemId
         );
         console.log('Updated Firestore with Webflow item ID');

@@ -24,7 +24,7 @@ import {
   ClassWaitlistRepository,
   getDb,
 } from '@maple/firebase/database';
-import { getFirstSession } from '@maple/ts/domain';
+import { asPublishable, getFirstSession } from '@maple/ts/domain';
 import type { RegistrationStatus } from '@maple/ts/domain';
 
 /**
@@ -129,10 +129,22 @@ export const notifyWaitlistOnSpotOpen = onDocumentWritten(
       return;
     }
 
+    const publishable = asPublishable(classEntity);
+    if (!publishable) {
+      // Published class with no sessions can happen briefly for drafts that
+      // were toggled to published before dates were set. Clear the waitlist
+      // rather than emailing a date-less link.
+      console.warn('Published class has no sessions, clearing waitlist', {
+        classId,
+      });
+      await ClassWaitlistRepository.clearByClassId(classId);
+      return;
+    }
+
     const appUrl = getAppUrl(allowedOriginsParam.value());
-    const slug = generateClassSlug(classEntity.name);
+    const slug = generateClassSlug(publishable.name);
     const classUrl = `${appUrl}/classes/${slug}`;
-    const firstSession = getFirstSession(classEntity);
+    const firstSession = getFirstSession(publishable);
     const classDate = formatSessionDate(firstSession.dateTime);
 
     const db = getDb();
@@ -145,7 +157,7 @@ export const notifyWaitlistOnSpotOpen = onDocumentWritten(
         template: {
           name: 'class-spot-available',
           data: {
-            className: classEntity.name,
+            className: publishable.name,
             classDate,
             classUrl,
           },
@@ -157,7 +169,7 @@ export const notifyWaitlistOnSpotOpen = onDocumentWritten(
 
     console.log('Notified waitlist of spot opening', {
       classId,
-      className: classEntity.name,
+      className: publishable.name,
       notified: waitlistEntries.length,
     });
 
