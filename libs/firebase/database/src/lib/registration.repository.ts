@@ -4,6 +4,7 @@
  * Handles all Firestore operations for class registrations.
  * All database access should go through this repository.
  */
+import { FieldPath } from 'firebase-admin/firestore';
 import { db, toDate } from './utilities/database.config';
 import type {
   Registration,
@@ -49,9 +50,35 @@ function docToRegistration(
     reminderSentAt: data.reminderSentAt
       ? toDate(data.reminderSentAt)
       : undefined,
+    reminderSentForSessions: parseReminderSentForSessions(
+      data.reminderSentForSessions
+    ),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
+}
+
+/**
+ * Convert the persisted `reminderSentForSessions` map into a
+ * `Record<string, Date>`. The persisted form is `{ [sessionIso]: Timestamp }`
+ * (or ISO string in tests); this normalizes either shape.
+ */
+function parseReminderSentForSessions(
+  raw: unknown
+): Record<string, Date> | undefined {
+  if (!raw || typeof raw !== 'object') {
+    return undefined;
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const result: Record<string, Date> = {};
+  for (const [key, value] of entries) {
+    if (value === undefined || value === null) continue;
+    result[key] = toDate(value);
+  }
+  return result;
 }
 
 /**
@@ -177,6 +204,41 @@ export const RegistrationRepository = {
    */
   async delete(id: string): Promise<void> {
     await db.collection(COLLECTION).doc(id).delete();
+  },
+
+  /**
+   * Stamp the reminder-sent fields for a specific session of a multi-session
+   * class. Used by the `sendClassReminders` scheduled function to guarantee
+   * idempotency: the second run on the same day must not re-send.
+   *
+   * Updates two fields atomically:
+   * - `reminderSentForSessions[sessionIso]` — per-session timestamp,
+   *   our authoritative idempotency key.
+   * - `reminderSentAt` — most recent reminder timestamp (any session),
+   *   useful for admin UI and at-a-glance queries.
+   *
+   * @param id The registration ID
+   * @param sessionIso The ISO string of the session's start dateTime
+   *   (used as the map key — must match exactly across runs)
+   * @param now Optional timestamp; defaults to `new Date()`
+   */
+  async markReminderSentForSession(
+    id: string,
+    sessionIso: string,
+    now: Date = new Date()
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    // Use FieldPath rather than dotted-key syntax: the ISO string contains
+    // literal `.` characters (e.g. `.000Z`) which Firestore would otherwise
+    // parse as nested path segments, splitting the key into a sub-map.
+    await docRef.update(
+      new FieldPath('reminderSentForSessions', sessionIso),
+      now,
+      'reminderSentAt',
+      now,
+      'updatedAt',
+      now
+    );
   },
 
   /**

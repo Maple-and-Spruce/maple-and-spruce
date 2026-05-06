@@ -56,8 +56,21 @@ export interface Registration {
   notes?: string;
   /** Confirmation email sent */
   confirmationSentAt?: Date;
-  /** Reminder email sent */
+  /**
+   * Most recent day-of class reminder email sent for this registration.
+   * Used as the simple "any reminder ever sent?" sentinel.
+   */
   reminderSentAt?: Date;
+  /**
+   * Per-session reminder timestamps for multi-session classes.
+   * Key: session start `dateTime` as ISO 8601 string. Value: when the
+   * reminder for that session was queued.
+   *
+   * Only `sendClassReminders` writes to this map. It's the source of truth
+   * for idempotency — a reminder is sent only when the key is missing for
+   * today's session.
+   */
+  reminderSentForSessions?: Record<string, Date>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,7 +80,12 @@ export interface Registration {
  */
 export type CreateRegistrationInput = Omit<
   Registration,
-  'id' | 'createdAt' | 'updatedAt' | 'confirmationSentAt' | 'reminderSentAt'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'confirmationSentAt'
+  | 'reminderSentAt'
+  | 'reminderSentForSessions'
 >;
 
 /**
