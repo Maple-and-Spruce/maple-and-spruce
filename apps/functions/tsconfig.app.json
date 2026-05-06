@@ -104,6 +104,7 @@
     "../../libs/firebase/maple-functions/submit-signed-agreement/**/*.ts",
     "../../libs/firebase/maple-functions/get-required-agreements-for-class/**/*.ts",
     "../../libs/firebase/maple-functions/expire-agreement-requests/**/*.ts",
+    "../../libs/firebase/maple-functions/send-class-reminders/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
     "../../libs/ts/domain/src/**/*.ts",
