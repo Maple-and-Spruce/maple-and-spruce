@@ -27,13 +27,27 @@ import type {
 /**
  * End-to-end test: seed one private-pay student + one Hope student,
  * schedule lessons, render the Hope one, send + pay the private-pay
- * invoice, then call getTeacherPayouts for April 2026. Verify each
- * teacher's aggregated total, per-line payout math, and substitute
+ * invoice, then call getTeacherPayouts for the current month. Verify
+ * each teacher's aggregated total, per-line payout math, and substitute
  * attribution using the primaryTeacherAtCreateId snapshot.
  */
 
-const FROM = new Date('2026-04-01T00:00:00Z');
-const TO = new Date('2026-04-30T23:59:59Z');
+// Query window = the current calendar month. The aggregation gates paid
+// invoices on `paidAt`, which the repository auto-stamps to `new Date()`
+// when status transitions to 'paid' — there's no API to override it. So
+// the only way to keep the assertion stable across wall-clock months is
+// to keep the query window aligned with whenever the test actually runs.
+// Lessons scheduledAt below are computed from this same `now` for the
+// same reason.
+const NOW = new Date();
+const FROM = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
+const TO = new Date(
+  Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() + 1, 0, 23, 59, 59, 999)
+);
+
+function dayInCurrentMonth(day: number): Date {
+  return new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), day, 15));
+}
 
 describe('getTeacherPayouts integration', () => {
   let adminUser: TestUser;
@@ -181,9 +195,9 @@ describe('getTeacherPayouts integration', () => {
       // 1. Schedule three lessons for private student, taught by primary,
       //    then invoice + mark paid.
       const privateLessonDates = [
-        new Date('2026-04-07T15:00:00Z'),
-        new Date('2026-04-14T15:00:00Z'),
-        new Date('2026-04-21T15:00:00Z'),
+        dayInCurrentMonth(7),
+        dayInCurrentMonth(14),
+        dayInCurrentMonth(21),
       ];
       const privateLessonIds: string[] = [];
       for (const scheduledAt of privateLessonDates) {
@@ -256,7 +270,7 @@ describe('getTeacherPayouts integration', () => {
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,
-          scheduledAt: new Date('2026-04-10T15:00:00Z'),
+          scheduledAt: dayInCurrentMonth(10),
           durationMinutes: 45,
           status: 'scheduled',
         },
@@ -276,7 +290,7 @@ describe('getTeacherPayouts integration', () => {
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,
-          scheduledAt: new Date('2026-04-17T15:00:00Z'),
+          scheduledAt: dayInCurrentMonth(17),
           durationMinutes: 45,
           status: 'scheduled',
         },

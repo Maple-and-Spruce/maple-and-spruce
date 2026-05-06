@@ -467,4 +467,84 @@ describe('InvoiceRepository', () => {
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });
   });
+
+  // Repo methods used by the syncInvoiceToSquare trigger. They throw any
+  // Firestore error (including NOT_FOUND) verbatim — discrimination of
+  // "benign mid-sync delete" vs. "real bug like wrong id" is the trigger
+  // handler's job because only it has the surrounding context.
+  function mockDocUpdate(impl: () => Promise<unknown>) {
+    const update = vi.fn().mockImplementation(impl);
+    const mockDoc = vi.fn().mockReturnValue({ update });
+    vi.mocked(db.collection).mockReturnValue({
+      doc: mockDoc,
+    } as unknown as FirebaseFirestore.CollectionReference);
+    return { update, mockDoc };
+  }
+
+  describe('markSquareSynced', () => {
+    it('writes the Square ids and clears prior error on the happy path', async () => {
+      const { update } = mockDocUpdate(() => Promise.resolve(undefined));
+
+      await InvoiceRepository.markSquareSynced({
+        id: 'inv-1',
+        squareOrderId: 'order-1',
+        squareInvoiceId: 'sq-inv-1',
+      });
+
+      expect(update).toHaveBeenCalledTimes(1);
+      const payload = update.mock.calls[0][0];
+      expect(payload).toMatchObject({
+        squareOrderId: 'order-1',
+        squareInvoiceId: 'sq-inv-1',
+        squareSyncError: null,
+      });
+    });
+
+    it('propagates Firestore errors (caller decides what to swallow)', async () => {
+      const notFound = Object.assign(
+        new Error('5 NOT_FOUND: no entity to update'),
+        { code: 5 }
+      );
+      mockDocUpdate(() => Promise.reject(notFound));
+
+      await expect(
+        InvoiceRepository.markSquareSynced({
+          id: 'deleted-inv',
+          squareOrderId: 'order-1',
+          squareInvoiceId: 'sq-inv-1',
+        })
+      ).rejects.toThrow('NOT_FOUND');
+    });
+  });
+
+  describe('recordSquareSyncError', () => {
+    it('writes the error message on the happy path', async () => {
+      const { update } = mockDocUpdate(() => Promise.resolve(undefined));
+
+      await InvoiceRepository.recordSquareSyncError({
+        id: 'inv-1',
+        error: 'Square 500',
+      });
+
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(update.mock.calls[0][0]).toMatchObject({
+        squareSyncError: 'Square 500',
+      });
+    });
+
+    it('propagates Firestore errors (caller decides what to swallow)', async () => {
+      const notFound = Object.assign(
+        new Error('5 NOT_FOUND: no entity to update'),
+        { code: 5 }
+      );
+      mockDocUpdate(() => Promise.reject(notFound));
+
+      await expect(
+        InvoiceRepository.recordSquareSyncError({
+          id: 'deleted-inv',
+          error: 'Square 500',
+        })
+      ).rejects.toThrow('NOT_FOUND');
+    });
+  });
 });
