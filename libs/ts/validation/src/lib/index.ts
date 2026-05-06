@@ -30,6 +30,10 @@ export { classCategoryValidation } from './class-category.validation';
 // Phase 3c: Registration & Discounts
 export { discountValidation, type DiscountValidationInput } from './discount.validation';
 export { registrationValidation, type RegistrationValidationInput } from './registration.validation';
+export {
+  classWaitlistValidation,
+  type ClassWaitlistValidationInput,
+} from './class-waitlist.validation';
 
 // Phase 4: Music Lessons
 export { studentValidation } from './student.validation';

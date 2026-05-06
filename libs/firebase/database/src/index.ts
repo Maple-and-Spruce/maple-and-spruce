@@ -21,6 +21,10 @@ export {
   RegistrationRepository,
   type RegistrationFilters,
 } from './lib/registration.repository';
+export {
+  ClassWaitlistRepository,
+  emailKey,
+} from './lib/class-waitlist.repository';
 
 // Phase 4: Music Lessons
 export { StudentRepository } from './lib/student.repository';

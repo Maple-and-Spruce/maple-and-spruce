@@ -20,6 +20,7 @@ import { RegistrationCheckoutForm } from './RegistrationCheckoutForm';
 const mockPublicClass: PublicClass = {
   id: 'class-001',
   name: 'Introduction to Weaving',
+  slug: 'introduction-to-weaving',
   description:
     'Learn the fundamentals of weaving in this beginner-friendly workshop.',
   shortDescription: 'Create your first woven wall hanging.',

@@ -181,6 +181,14 @@ export type {
   UploadCategoryGalleryImageResponse,
 } from './class-category.types';
 
+// Class Waitlist + Related Classes (public widget endpoints)
+export type {
+  AddToClassWaitlistRequest,
+  AddToClassWaitlistResponse,
+  GetRelatedPublicClassesRequest,
+  GetRelatedPublicClassesResponse,
+} from './class-waitlist.types';
+
 // Phase 3c: Discount types
 export type {
   GetDiscountsRequest,

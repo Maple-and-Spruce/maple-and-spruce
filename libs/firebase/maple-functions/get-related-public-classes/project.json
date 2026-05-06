@@ -1,0 +1,15 @@
+{
+  "name": "firebase-maple-functions-get-related-public-classes",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/get-related-public-classes/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "libs/firebase/maple-functions/get-related-public-classes/vitest.config.ts"
+      }
+    }
+  }
+}

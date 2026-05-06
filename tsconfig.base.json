@@ -107,6 +107,15 @@
       "@maple/firebase/maple-functions/sync-registration-count": [
         "libs/firebase/maple-functions/sync-registration-count/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/notify-waitlist-on-spot-open": [
+        "libs/firebase/maple-functions/notify-waitlist-on-spot-open/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/add-to-class-waitlist": [
+        "libs/firebase/maple-functions/add-to-class-waitlist/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-related-public-classes": [
+        "libs/firebase/maple-functions/get-related-public-classes/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-sync-conflicts": [
         "libs/firebase/maple-functions/get-sync-conflicts/src/index.ts"
       ],

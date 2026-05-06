@@ -22,6 +22,7 @@ export * from './lib/class-category';
 export * from './lib/registration';
 export * from './lib/discount';
 export * from './lib/tax';
+export * from './lib/class-waitlist';
 
 // Phase 4: Music Lessons
 export * from './lib/student';
