@@ -15,7 +15,7 @@
  */
 import { WebflowClient } from 'webflow-api';
 import type { CollectionItem } from 'webflow-api/api';
-import type { Class } from '@maple/ts/domain';
+import type { PublishableClass } from '@maple/ts/domain';
 import { getFirstSession, formatSessions } from '@maple/ts/domain';
 
 /**
@@ -32,7 +32,7 @@ export function generateClassSlug(name: string): string {
  * Input for syncing a class to Webflow CMS
  */
 export interface SyncClassInput {
-  classEntity: Class;
+  classEntity: PublishableClass;
   /** If true, publish the item to the live site after sync */
   publish?: boolean;
   /** Whether this sync is from a dev environment */
@@ -93,7 +93,7 @@ export interface MapClassOptions {
  * Map Firebase Class to Webflow CMS field data.
  */
 export function mapClassToFieldData(
-  classEntity: Class,
+  classEntity: PublishableClass,
   options: MapClassOptions
 ): ClassWebflowFieldData {
   const spotsRemaining =

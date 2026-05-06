@@ -16,6 +16,7 @@ import {
   type DocumentSnapshot,
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
+import { asPublishable } from '@maple/ts/domain';
 import {
   Webflow,
   WEBFLOW_SECRET_NAMES,
@@ -150,6 +151,15 @@ export const syncRegistrationCount = onDocumentWritten(
       return;
     }
 
+    const publishable = asPublishable(classEntity);
+    if (!publishable) {
+      console.warn(
+        'Published class has no sessions, skipping Webflow sync',
+        { classId }
+      );
+      return;
+    }
+
     const secrets = Object.fromEntries(
       webflowSecretParams.map((s) => [s.name, s.value()])
     ) as Record<(typeof WEBFLOW_SECRET_NAMES)[number], string>;
@@ -166,26 +176,26 @@ export const syncRegistrationCount = onDocumentWritten(
 
       // Fetch enrichment data in parallel
       const [instructor, category, registrationCount] = await Promise.all([
-        classEntity.instructorId
-          ? InstructorRepository.findById(classEntity.instructorId)
+        publishable.instructorId
+          ? InstructorRepository.findById(publishable.instructorId)
           : Promise.resolve(null),
-        classEntity.categoryId
-          ? ClassCategoryRepository.findById(classEntity.categoryId)
+        publishable.categoryId
+          ? ClassCategoryRepository.findById(publishable.categoryId)
           : Promise.resolve(null),
-        RegistrationRepository.countByClassId(classEntity.id),
+        RegistrationRepository.countByClassId(publishable.id),
       ]);
 
       console.log('Re-syncing class to Webflow with updated count:', {
         classId,
-        className: classEntity.name,
+        className: publishable.name,
         registrationCount,
-        capacity: classEntity.capacity,
-        spotsRemaining: classEntity.capacity - registrationCount,
+        capacity: publishable.capacity,
+        spotsRemaining: publishable.capacity - registrationCount,
         autoPublish: shouldPublish,
       });
 
       const result = await webflow.classService.syncClass({
-        classEntity,
+        classEntity: publishable,
         publish: shouldPublish,
         isDev,
         instructorName: instructor?.name,

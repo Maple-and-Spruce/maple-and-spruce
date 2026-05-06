@@ -20,7 +20,7 @@ import EventIcon from '@mui/icons-material/Event';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GroupIcon from '@mui/icons-material/Group';
 import type { Class, Instructor, ClassCategory, RequestState } from '@maple/ts/domain';
-import { formatClassPrice, getFirstSession, formatSessions } from '@maple/ts/domain';
+import { asPublishable, formatClassPrice, getFirstSession, formatSessions } from '@maple/ts/domain';
 
 interface ClassListProps {
   classesState: RequestState<Class[]>;
@@ -82,13 +82,20 @@ function ClassCard({
   onViewRoster?: () => void;
   isDuplicating?: boolean;
 }) {
-  const firstSession = getFirstSession(classItem);
-  const firstDateTime =
-    firstSession.dateTime instanceof Date
-      ? firstSession.dateTime
-      : new Date(firstSession.dateTime);
-  const isPast = firstDateTime < new Date();
+  // Drafts produced by the Copy admin action land here with no sessions
+  // until Katie sets dates. Treat that as "no schedule yet": skip the
+  // first-session lookup and never mark the card past.
+  const publishable = asPublishable(classItem);
+  let firstDateTime: Date | null = null;
+  if (publishable) {
+    const dt = getFirstSession(publishable).dateTime;
+    firstDateTime = dt instanceof Date ? dt : new Date(dt);
+  }
+  const isPast = firstDateTime !== null && firstDateTime < new Date();
   const { dateDisplay, timeDisplay } = formatSessions(classItem.sessions);
+  const timeSuffix =
+    timeDisplay && timeDisplay !== 'Varies' ? ` · ${timeDisplay}` : '';
+  const scheduleLine = publishable ? `${dateDisplay}${timeSuffix}` : 'No dates set';
 
   return (
     <Card sx={{ opacity: isPast && classItem.status !== 'completed' ? 0.7 : 1 }}>
@@ -131,7 +138,7 @@ function ClassCard({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               <EventIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
               <Typography variant="body2" color="text.secondary">
-                {dateDisplay}{timeDisplay && timeDisplay !== 'Varies' ? ` \u00B7 ${timeDisplay}` : ''}
+                {scheduleLine}
               </Typography>
             </Box>
 
