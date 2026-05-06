@@ -4,5 +4,12 @@
   "sourceRoot": "libs/firebase/maple-functions/add-to-class-waitlist/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:feature"],
-  "targets": {}
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "libs/firebase/maple-functions/add-to-class-waitlist/vitest.config.ts"
+      }
+    }
+  }
 }
