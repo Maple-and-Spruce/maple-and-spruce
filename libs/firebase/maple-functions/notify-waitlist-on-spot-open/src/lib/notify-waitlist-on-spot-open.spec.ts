@@ -38,12 +38,15 @@ vi.mock('firebase-functions/v2/firestore', () => ({
   onDocumentWritten: vi.fn((_config, handler) => handler),
 }));
 
+// `getAppUrl` prefers the first https origin, so mixing in a non-https
+// localhost entry doesn't change the assertion — we keep the mock https-only
+// to satisfy sonarjs/no-clear-text-protocols on the spec file.
 vi.mock('firebase-functions/params', () => ({
   defineString: vi.fn((name: string) => ({
     name,
     value: () =>
       name === 'ALLOWED_ORIGINS'
-        ? 'http://localhost:3000,https://mapleandsprucefolkarts.com'
+        ? 'https://mapleandsprucefolkarts.com'
         : `mock-${name}`,
   })),
 }));
