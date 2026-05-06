@@ -201,6 +201,7 @@ export const syncRegistrationCount = onDocumentWritten(
         instructorName: instructor?.name,
         categoryName: category?.name,
         registrationCount,
+        existingWebflowItemId: publishable.webflowItemId,
       });
 
       console.log('Webflow sync result:', {

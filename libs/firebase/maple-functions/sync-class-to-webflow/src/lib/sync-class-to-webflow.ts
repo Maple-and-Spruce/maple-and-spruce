@@ -153,7 +153,8 @@ export const syncClassToWebflow = onDocumentWritten(
         console.log('Class deleted, removing from Webflow');
         const removed = await webflow.classService.removeClass(
           event.params.classId,
-          shouldPublish
+          shouldPublish,
+          beforeClass?.webflowItemId
         );
         console.log(
           removed
@@ -171,7 +172,8 @@ export const syncClassToWebflow = onDocumentWritten(
         console.log('Class unpublished, removing from Webflow');
         const removed = await webflow.classService.removeClass(
           afterClass.id,
-          shouldPublish
+          shouldPublish,
+          afterClass.webflowItemId
         );
         console.log(
           removed
@@ -228,6 +230,7 @@ export const syncClassToWebflow = onDocumentWritten(
         instructorImage: instructor?.photoUrl,
         categoryName: category?.name,
         registrationCount,
+        existingWebflowItemId: publishable.webflowItemId,
       });
 
       console.log('Webflow sync result:', {

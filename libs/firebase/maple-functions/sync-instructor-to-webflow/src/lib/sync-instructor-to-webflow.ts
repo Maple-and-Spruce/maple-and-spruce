@@ -100,7 +100,8 @@ export const syncInstructorToWebflow = onDocumentWritten(
         console.log('Instructor deleted, removing from Webflow');
         const removed = await webflow.instructorService.removeInstructor(
           event.params.instructorId,
-          shouldPublish
+          shouldPublish,
+          beforeInstructor?.webflowItemId
         );
         console.log(
           removed
@@ -118,7 +119,8 @@ export const syncInstructorToWebflow = onDocumentWritten(
         console.log('Instructor became inactive, removing from Webflow');
         const removed = await webflow.instructorService.removeInstructor(
           afterInstructor.id,
-          shouldPublish
+          shouldPublish,
+          afterInstructor.webflowItemId
         );
         console.log(
           removed
@@ -147,6 +149,7 @@ export const syncInstructorToWebflow = onDocumentWritten(
         instructor: afterInstructor,
         publish: shouldPublish,
         isDev,
+        existingWebflowItemId: afterInstructor.webflowItemId,
       });
 
       console.log('Webflow sync result:', {
