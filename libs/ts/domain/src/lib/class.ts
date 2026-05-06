@@ -341,11 +341,15 @@ export function formatSessions(
     });
 
   const dateOf = (d: Date | string): string =>
-    ensureDate(d).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      timeZone,
-    });
+    // Glue month + day with a non-breaking space so e.g. "Jun 13" never wraps
+    // mid-token in a comma-separated list of dates.
+    ensureDate(d)
+      .toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        timeZone,
+      })
+      .replace(' ', ' ');
 
   const firstTime = timeOf(sorted[0].dateTime);
   const sharedTime = sorted.every((s) => timeOf(s.dateTime) === firstTime);
