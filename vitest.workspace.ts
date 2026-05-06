@@ -18,5 +18,8 @@ export default defineWorkspace([
   'libs/react/signals/vitest.config.ts',
   'libs/firebase/maple-functions/push-product-to-etsy/vitest.config.ts',
   'libs/firebase/maple-functions/update-etsy-listing/vitest.config.ts',
+  'libs/firebase/maple-functions/add-to-class-waitlist/vitest.config.ts',
+  'libs/firebase/maple-functions/get-related-public-classes/vitest.config.ts',
+  'libs/firebase/maple-functions/notify-waitlist-on-spot-open/vitest.config.ts',
   'vitest.storybook.config.ts',
 ]);
