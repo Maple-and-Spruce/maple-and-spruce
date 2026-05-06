@@ -22,24 +22,6 @@ import { computeInvoiceTotalCents } from '@maple/ts/domain';
 
 const COLLECTION = 'invoices';
 
-/**
- * gRPC NOT_FOUND status code — Firestore throws this from `update()` when
- * the target doc has been deleted. The `syncInvoiceToSquare` trigger fires
- * async after status transitions; if the invoice is deleted (test cleanup,
- * admin churn, rapid status flips) before Square responds, the writeback
- * here would otherwise crash the function.
- */
-const GRPC_NOT_FOUND = 5;
-
-function isNotFoundError(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: unknown }).code === GRPC_NOT_FOUND
-  );
-}
-
 function docToInvoice(
   doc: FirebaseFirestore.DocumentSnapshot
 ): Invoice | undefined {
@@ -303,17 +285,12 @@ export const InvoiceRepository = {
     squareOrderId: string;
     squareInvoiceId: string;
   }): Promise<void> {
-    try {
-      await db.collection(COLLECTION).doc(args.id).update({
-        squareOrderId: args.squareOrderId,
-        squareInvoiceId: args.squareInvoiceId,
-        squareSyncError: null,
-        updatedAt: new Date(),
-      });
-    } catch (err) {
-      if (isNotFoundError(err)) return;
-      throw err;
-    }
+    await db.collection(COLLECTION).doc(args.id).update({
+      squareOrderId: args.squareOrderId,
+      squareInvoiceId: args.squareInvoiceId,
+      squareSyncError: null,
+      updatedAt: new Date(),
+    });
   },
 
   /**
@@ -325,15 +302,10 @@ export const InvoiceRepository = {
     id: string;
     error: string;
   }): Promise<void> {
-    try {
-      await db.collection(COLLECTION).doc(args.id).update({
-        squareSyncError: args.error,
-        updatedAt: new Date(),
-      });
-    } catch (err) {
-      if (isNotFoundError(err)) return;
-      throw err;
-    }
+    await db.collection(COLLECTION).doc(args.id).update({
+      squareSyncError: args.error,
+      updatedAt: new Date(),
+    });
   },
 
   async delete(id: string): Promise<void> {

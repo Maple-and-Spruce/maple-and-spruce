@@ -34,6 +34,49 @@ import {
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
 const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
 
+/** gRPC NOT_FOUND — Firestore throws this from `update()` when the doc is gone. */
+const GRPC_NOT_FOUND = 5;
+
+function isFirestoreNotFound(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: unknown }).code === GRPC_NOT_FOUND
+  );
+}
+
+/**
+ * Run a writeback to a doc whose existence we already confirmed (the
+ * trigger fired because it existed). If the doc has since been deleted
+ * — test cleanup, admin churn, rapid status flips — Firestore throws
+ * NOT_FOUND. That's benign here, but log loudly with `context` so any
+ * unexpected occurrence stays visible. Rethrow anything else.
+ *
+ * The swallow lives at this layer, not in the repository: a generic
+ * `update(id)` can't tell "benign mid-sync delete" apart from "caller
+ * bug with the wrong id", so a repo-level swallow would silence real
+ * bugs. Here we have positive context — we know we just synced this
+ * exact invoice with Square — and can swallow narrowly.
+ */
+async function tolerateMidSyncDelete(
+  invoiceId: string,
+  context: string,
+  fn: () => Promise<void>
+): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    if (isFirestoreNotFound(err)) {
+      console.warn(
+        `[sync-invoice] ${invoiceId} ${context}: invoice deleted mid-sync, dropping writeback`
+      );
+      return;
+    }
+    throw err;
+  }
+}
+
 /** Firestore Timestamp-ish → Date helper. */
 function toDateLike(value: unknown): Date | undefined {
   if (!value) return undefined;
@@ -165,11 +208,13 @@ export const syncInvoiceToSquare = onDocumentWritten(
           })),
         });
 
-        await InvoiceRepository.markSquareSynced({
-          id: invoiceId,
-          squareOrderId: result.squareOrderId,
-          squareInvoiceId: result.squareInvoiceId,
-        });
+        await tolerateMidSyncDelete(invoiceId, 'send-success writeback', () =>
+          InvoiceRepository.markSquareSynced({
+            id: invoiceId,
+            squareOrderId: result.squareOrderId,
+            squareInvoiceId: result.squareInvoiceId,
+          })
+        );
 
         console.log(
           `[sync-invoice] ${invoiceId} sent via Square (invoice=${result.squareInvoiceId})`
@@ -178,10 +223,12 @@ export const syncInvoiceToSquare = onDocumentWritten(
         const message =
           error instanceof Error ? error.message : 'Unknown Square sync error';
         console.error(`[sync-invoice] ${invoiceId} send failed:`, message);
-        await InvoiceRepository.recordSquareSyncError({
-          id: invoiceId,
-          error: message,
-        });
+        await tolerateMidSyncDelete(invoiceId, 'send-error writeback', () =>
+          InvoiceRepository.recordSquareSyncError({
+            id: invoiceId,
+            error: message,
+          })
+        );
       }
       return;
     }
@@ -189,10 +236,12 @@ export const syncInvoiceToSquare = onDocumentWritten(
     if (needsCancel && after.squareInvoiceId) {
       try {
         await square.invoicesService.cancelInvoice(after.squareInvoiceId);
-        await InvoiceRepository.recordSquareSyncError({
-          id: invoiceId,
-          error: '',
-        });
+        await tolerateMidSyncDelete(invoiceId, 'cancel-success writeback', () =>
+          InvoiceRepository.recordSquareSyncError({
+            id: invoiceId,
+            error: '',
+          })
+        );
         console.log(
           `[sync-invoice] ${invoiceId} cancelled on Square (invoice=${after.squareInvoiceId})`
         );
@@ -200,10 +249,12 @@ export const syncInvoiceToSquare = onDocumentWritten(
         const message =
           error instanceof Error ? error.message : 'Unknown Square sync error';
         console.error(`[sync-invoice] ${invoiceId} cancel failed:`, message);
-        await InvoiceRepository.recordSquareSyncError({
-          id: invoiceId,
-          error: message,
-        });
+        await tolerateMidSyncDelete(invoiceId, 'cancel-error writeback', () =>
+          InvoiceRepository.recordSquareSyncError({
+            id: invoiceId,
+            error: message,
+          })
+        );
       }
     }
   }
