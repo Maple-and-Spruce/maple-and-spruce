@@ -35,6 +35,11 @@ import type {
   InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
+import {
+  trackAddClassToCart,
+  trackPurchaseClass,
+  trackViewClass,
+} from './lib/class-analytics';
 
 
 /**
@@ -204,11 +209,20 @@ export function RegistrationWidget({
           })),
         ]);
 
+        const publicClass = classResult.data.class;
         setState({
           status: 'ready',
-          publicClass: classResult.data.class,
+          publicClass,
           requiredAgreements: agreementsResult.data.agreements,
         });
+        trackViewClass(
+          typeof window !== 'undefined' ? window : null,
+          {
+            classId: publicClass.id,
+            className: publicClass.name,
+            priceCents: publicClass.priceCents,
+          }
+        );
       } catch (err) {
         console.error('Failed to fetch class:', err);
         setState({
@@ -259,10 +273,22 @@ export function RegistrationWidget({
         CreateRegistrationResponse
       >(functions, 'createRegistration');
 
+      if (state.status === 'ready') {
+        trackAddClassToCart(
+          typeof window !== 'undefined' ? window : null,
+          {
+            classId: state.publicClass.id,
+            className: state.publicClass.name,
+            priceCents: state.publicClass.priceCents,
+            quantity: data.quantity,
+          }
+        );
+      }
+
       const result = await createRegistration(data);
       return result.data;
     },
-    [functions]
+    [functions, state]
   );
 
   const handleSuccess = useCallback(
@@ -278,7 +304,6 @@ export function RegistrationWidget({
 
       const pc = state.publicClass;
       const className = pc.name;
-      const value = details.pricePaidCents / 100;
 
       // Calculate class end time (use first session)
       const firstSessionIso = pc.sessions?.[0]?.dateTime ?? '';
@@ -287,30 +312,16 @@ export function RegistrationWidget({
         startDate.getTime() + pc.durationMinutes * 60 * 1000
       );
 
-      // Meta Pixel: CompleteRegistration event
-      const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;
-      if (win?.fbq) {
-        (win.fbq as (...args: unknown[]) => void)(
-          'track', 'CompleteRegistration', {
-            value,
-            currency: 'USD',
-            content_name: className,
-          }
-        );
-      }
-
-      // GTM dataLayer: for GA4 and other tags
-      if (win) {
-        const dataLayer = (win.dataLayer || []) as Record<string, unknown>[];
-        dataLayer.push({
-          event: 'complete_registration',
-          registration_value: value,
-          registration_currency: 'USD',
-          class_name: className,
-          confirmation_number: details.confirmationNumber,
-        });
-        win.dataLayer = dataLayer;
-      }
+      trackPurchaseClass(
+        typeof window !== 'undefined' ? window : null,
+        {
+          classId: pc.id,
+          className,
+          pricePaidCents: details.pricePaidCents,
+          quantity: details.quantity,
+          confirmationNumber: details.confirmationNumber,
+        }
+      );
 
       setState({
         status: 'confirmed',
