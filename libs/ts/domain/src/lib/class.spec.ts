@@ -103,6 +103,7 @@ describe('Class domain helpers', () => {
       expect(result).toEqual({
         id: 'class-123',
         name: 'Introduction to Weaving',
+        slug: 'introduction-to-weaving',
         shortDescription: 'A beginner-friendly weaving workshop.',
         description: 'Learn the basics of weaving in this hands-on workshop.',
         instructorId: 'instructor-456',
