@@ -4,6 +4,7 @@
  * Handles all Firestore operations for class registrations.
  * All database access should go through this repository.
  */
+import { FieldPath } from 'firebase-admin/firestore';
 import { db, toDate } from './utilities/database.config';
 import type {
   Registration,
@@ -227,11 +228,17 @@ export const RegistrationRepository = {
     now: Date = new Date()
   ): Promise<void> {
     const docRef = db.collection(COLLECTION).doc(id);
-    await docRef.update({
-      [`reminderSentForSessions.${sessionIso}`]: now,
-      reminderSentAt: now,
-      updatedAt: now,
-    });
+    // Use FieldPath rather than dotted-key syntax: the ISO string contains
+    // literal `.` characters (e.g. `.000Z`) which Firestore would otherwise
+    // parse as nested path segments, splitting the key into a sub-map.
+    await docRef.update(
+      new FieldPath('reminderSentForSessions', sessionIso),
+      now,
+      'reminderSentAt',
+      now,
+      'updatedAt',
+      now
+    );
   },
 
   /**
