@@ -181,6 +181,13 @@ export function ClassForm({
   const whatToBring = useSignal('');
   const minimumAge = useSignal<number | undefined>(undefined);
 
+  // Referral program (per-class opt-in). When the toggle is on, every
+  // confirmed registration auto-generates a single-use code in the
+  // confirmation email — see #373/#375.
+  const referralEnabled = useSignal(false);
+  const referralPercent = useSignal<number>(50);
+  const referralExpiresAfterDays = useSignal<number>(60);
+
   // ============================================================
   // UI STATE SIGNALS
   // ============================================================
@@ -242,6 +249,12 @@ export function ClassForm({
       minimumAge: minimumAge.value,
       galleryImages:
         galleryImages.value.length > 0 ? galleryImages.value : undefined,
+      referralDiscount: referralEnabled.value
+        ? {
+            percent: referralPercent.value,
+            expiresAfterDays: referralExpiresAfterDays.value,
+          }
+        : undefined,
     });
   });
 
@@ -335,6 +348,13 @@ export function ClassForm({
         materialsIncluded.value = classItem.materialsIncluded ?? '';
         whatToBring.value = classItem.whatToBring ?? '';
         minimumAge.value = classItem.minimumAge;
+        // Hydrate the toggle from the class doc; keep editable defaults of
+        // 50% / 60d so toggling ON for a previously-disabled class shows
+        // sensible starting values without requiring extra typing.
+        referralEnabled.value = !!classItem.referralDiscount;
+        referralPercent.value = classItem.referralDiscount?.percent ?? 50;
+        referralExpiresAfterDays.value =
+          classItem.referralDiscount?.expiresAfterDays ?? 60;
 
         if (classItem.imageUrl) {
           imageUploadState.value = {
@@ -384,6 +404,9 @@ export function ClassForm({
         materialsIncluded.value = '';
         whatToBring.value = '';
         minimumAge.value = undefined;
+        referralEnabled.value = false;
+        referralPercent.value = 50;
+        referralExpiresAfterDays.value = 60;
         imageUploadState.value = { status: 'idle' };
         pendingImageFile.value = null;
         showValidationErrors.value = false;
@@ -559,6 +582,12 @@ export function ClassForm({
         materialsIncluded: materialsIncluded.value || undefined,
         whatToBring: whatToBring.value || undefined,
         minimumAge: minimumAge.value,
+        referralDiscount: referralEnabled.value
+          ? {
+              percent: referralPercent.value,
+              expiresAfterDays: referralExpiresAfterDays.value,
+            }
+          : undefined,
       };
 
       await onSubmit(input);
@@ -1085,6 +1114,66 @@ export function ClassForm({
               helperText="Optional age requirement (leave blank for no minimum)"
               sx={{ width: 160 }}
             />
+
+            {/* Friend referral program (per-class opt-in) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={referralEnabled.value}
+                    onChange={(e) => (referralEnabled.value = e.target.checked)}
+                  />
+                }
+                label="Enable friend referral program"
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                When enabled, every confirmed registration includes a unique
+                single-use code in the confirmation email that the customer
+                can share with a friend.
+              </Typography>
+              {referralEnabled.value && (
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField
+                    label="Friend gets"
+                    type="number"
+                    value={referralPercent.value}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      referralPercent.value = isNaN(val) ? 0 : val;
+                    }}
+                    error={!!getFieldError('referralDiscount')}
+                    helperText={
+                      getFieldError('referralDiscount') ?? '1–100% off'
+                    }
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">% off</InputAdornment>
+                      ),
+                    }}
+                    inputProps={{ min: 1, max: 100, step: 1 }}
+                    sx={{ width: 200 }}
+                  />
+                  <TextField
+                    label="Code expires after"
+                    type="number"
+                    value={referralExpiresAfterDays.value}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      referralExpiresAfterDays.value = isNaN(val) ? 0 : val;
+                    }}
+                    error={!!getFieldError('referralDiscount')}
+                    helperText="1–365 days"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">days</InputAdornment>
+                      ),
+                    }}
+                    inputProps={{ min: 1, max: 365, step: 1 }}
+                    sx={{ width: 220 }}
+                  />
+                </Box>
+              )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>

@@ -52,6 +52,19 @@ export const mockClass2: Class = {
   updatedAt: new Date('2024-05-15T16:45:00Z'),
 };
 
+/** Class opted into the friend-referral program. */
+export const mockClassWithReferral: Class = {
+  ...mockClass,
+  id: 'class-005',
+  name: 'Hand-Stitched Journal Workshop',
+  description:
+    'Bring a friend and stitch your own custom journal in this two-evening workshop. We will cover signatures, kettle stitch binding, and decorative covers — you will leave with a finished book to fill with your own writing or sketches.',
+  shortDescription: 'Bind your own journal — bring a friend and split the price.',
+  sessions: [{ dateTime: new Date('2030-05-04T18:00:00Z') }],
+  imageUrl: 'https://picsum.photos/seed/journal/800/600',
+  referralDiscount: { percent: 50, expiresAfterDays: 60 },
+};
+
 export const mockClassDraft: Class = {
   id: 'class-003',
   name: 'Advanced Tapestry Techniques',
