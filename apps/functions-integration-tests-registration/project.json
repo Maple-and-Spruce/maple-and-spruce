@@ -8,6 +8,7 @@
     "firebase-maple-functions-calculate-registration-cost",
     "firebase-maple-functions-sync-registration-count",
     "firebase-maple-functions-update-registration",
+    "firebase-maple-functions-send-class-reminders",
     "firebase-integration-test-utils"
   ],
   "targets": {

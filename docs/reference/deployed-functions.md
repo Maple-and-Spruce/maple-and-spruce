@@ -49,6 +49,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Registrations (read/update)
 - `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`
+- `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_
 
 ### Calendar Events
 - `getCalendarEvents`, `getCalendarEvent`, `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent`

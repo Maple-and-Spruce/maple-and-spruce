@@ -238,6 +238,77 @@ const registrationCancelledHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: class-reminder
+//
+// Day-of reminder email sent by `sendClassReminders` (scheduled, 8am ET) to
+// every paid registrant whose class meets that day. Transactional under
+// CAN-SPAM (relationship message), so no unsubscribe link. Includes a
+// small Google review CTA at the bottom; physical address is shown in the
+// footer for legitimacy.
+// ---------------------------------------------------------------------------
+
+const classReminderSubject =
+  'Reminder: {{className}} today at Maple & Spruce';
+
+const classReminderHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Reminder</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>See you today!</h2>
+    <p>Hi {{customerName}},</p>
+    <p>Just a friendly reminder that your <strong>{{className}}</strong> class at Maple &amp; Spruce is today.</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">When</td>
+        <td>{{classStartTime}}, {{classDate}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{classLocation}}</td>
+      </tr>
+      {{#if instructorName}}
+      <tr>
+        <td class="label">Instructor</td>
+        <td>{{instructorName}}</td>
+      </tr>
+      {{/if}}
+    </table>
+
+    <p>If you need to make any changes, please reply to this email or call us at
+      <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+
+    <p>See you soon!<br>The Maple &amp; Spruce team</p>
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Enjoying your class?</strong><br>
+      <p>A quick Google review helps other Morgantown crafters find us.</p>
+      <p style="text-align: center; margin: 12px 0 4px;">
+        <a href="{{googleReviewUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 10px 28px; text-decoration: none; border-radius: 4px; font-weight: bold;">Leave a review</a>
+      </p>
+    </div>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts Collective</strong><br>
+    688 Beulah Rd, Morgantown, WV 26508<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Template: class-spot-available
 //
 // Broadcast notification sent to everyone on a class waitlist when a spot
@@ -367,6 +438,10 @@ const templates: Record<string, EmailTemplate> = {
   'registration-cancelled': {
     subject: registrationCancelledSubject,
     html: registrationCancelledHtml,
+  },
+  'class-reminder': {
+    subject: classReminderSubject,
+    html: classReminderHtml,
   },
   'class-spot-available': {
     subject: classSpotAvailableSubject,
