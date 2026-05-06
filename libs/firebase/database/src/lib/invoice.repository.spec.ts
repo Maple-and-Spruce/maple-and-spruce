@@ -468,11 +468,10 @@ describe('InvoiceRepository', () => {
     });
   });
 
-  // syncInvoiceToSquare fires async after invoice status transitions; if the
-  // invoice is deleted (test cleanup, admin churn, rapid status flips) before
-  // Square responds, the writeback used to crash the function. These tests
-  // lock in that NOT_FOUND is swallowed and other errors still propagate.
-  // Regression test for #380.
+  // Repo methods used by the syncInvoiceToSquare trigger. They throw any
+  // Firestore error (including NOT_FOUND) verbatim — discrimination of
+  // "benign mid-sync delete" vs. "real bug like wrong id" is the trigger
+  // handler's job because only it has the surrounding context.
   function mockDocUpdate(impl: () => Promise<unknown>) {
     const update = vi.fn().mockImplementation(impl);
     const mockDoc = vi.fn().mockReturnValue({ update });
@@ -501,7 +500,7 @@ describe('InvoiceRepository', () => {
       });
     });
 
-    it('swallows gRPC NOT_FOUND when the invoice was deleted mid-sync', async () => {
+    it('propagates Firestore errors (caller decides what to swallow)', async () => {
       const notFound = Object.assign(
         new Error('5 NOT_FOUND: no entity to update'),
         { code: 5 }
@@ -514,23 +513,7 @@ describe('InvoiceRepository', () => {
           squareOrderId: 'order-1',
           squareInvoiceId: 'sq-inv-1',
         })
-      ).resolves.toBeUndefined();
-    });
-
-    it('rethrows other Firestore errors (e.g. PERMISSION_DENIED)', async () => {
-      const permissionDenied = Object.assign(
-        new Error('7 PERMISSION_DENIED'),
-        { code: 7 }
-      );
-      mockDocUpdate(() => Promise.reject(permissionDenied));
-
-      await expect(
-        InvoiceRepository.markSquareSynced({
-          id: 'inv-1',
-          squareOrderId: 'order-1',
-          squareInvoiceId: 'sq-inv-1',
-        })
-      ).rejects.toThrow('PERMISSION_DENIED');
+      ).rejects.toThrow('NOT_FOUND');
     });
   });
 
@@ -549,7 +532,7 @@ describe('InvoiceRepository', () => {
       });
     });
 
-    it('swallows gRPC NOT_FOUND when the invoice was deleted mid-sync', async () => {
+    it('propagates Firestore errors (caller decides what to swallow)', async () => {
       const notFound = Object.assign(
         new Error('5 NOT_FOUND: no entity to update'),
         { code: 5 }
@@ -561,22 +544,7 @@ describe('InvoiceRepository', () => {
           id: 'deleted-inv',
           error: 'Square 500',
         })
-      ).resolves.toBeUndefined();
-    });
-
-    it('rethrows other Firestore errors', async () => {
-      const internal = Object.assign(
-        new Error('13 INTERNAL'),
-        { code: 13 }
-      );
-      mockDocUpdate(() => Promise.reject(internal));
-
-      await expect(
-        InvoiceRepository.recordSquareSyncError({
-          id: 'inv-1',
-          error: 'Square 500',
-        })
-      ).rejects.toThrow('INTERNAL');
+      ).rejects.toThrow('NOT_FOUND');
     });
   });
 });

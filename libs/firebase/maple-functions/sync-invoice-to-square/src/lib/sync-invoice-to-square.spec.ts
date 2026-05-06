@@ -500,4 +500,96 @@ describe('syncInvoiceToSquare trigger', () => {
       expect(mocks.cancelInvoice).not.toHaveBeenCalled();
     });
   });
+
+  // Race: doc deleted between trigger fire and Square-call completion. The
+  // trigger has positive context that the doc existed (it just fired on a
+  // change to it), so a NOT_FOUND on the writeback is benign. Anything
+  // else from the writeback is a real failure and must propagate.
+  describe('writeback NOT_FOUND tolerance (mid-sync delete)', () => {
+    const grpcNotFound = (): Error =>
+      Object.assign(new Error('5 NOT_FOUND: no entity to update'), { code: 5 });
+
+    beforeEach(() => {
+      mocks.studentFindById.mockResolvedValue(sampleStudent);
+      mocks.sendInvoice.mockResolvedValue({
+        squareCustomerId: 'SQ-CUST',
+        squareOrderId: 'SQ-ORDER',
+        squareInvoiceId: 'SQ-INV',
+      });
+    });
+
+    it('returns cleanly when send-success writeback hits NOT_FOUND', async () => {
+      mocks.markSquareSynced.mockRejectedValueOnce(grpcNotFound());
+
+      await expect(
+        handler({
+          params: { invoiceId: 'inv-1' },
+          data: {
+            before: makeSnap(true, { ...baseSent, status: 'draft' }),
+            after: makeSnap(true, baseSent),
+          },
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('returns cleanly when send-error writeback hits NOT_FOUND', async () => {
+      mocks.sendInvoice.mockRejectedValueOnce(new Error('Square 500'));
+      mocks.recordSquareSyncError.mockRejectedValueOnce(grpcNotFound());
+
+      await expect(
+        handler({
+          params: { invoiceId: 'inv-1' },
+          data: {
+            before: makeSnap(true, { ...baseSent, status: 'draft' }),
+            after: makeSnap(true, baseSent),
+          },
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('returns cleanly when cancel-success writeback hits NOT_FOUND', async () => {
+      mocks.cancelInvoice.mockResolvedValueOnce(undefined);
+      mocks.recordSquareSyncError.mockRejectedValueOnce(grpcNotFound());
+
+      await expect(
+        handler({
+          params: { invoiceId: 'inv-1' },
+          data: {
+            before: makeSnap(true, {
+              ...baseSent,
+              squareInvoiceId: 'SQ-INV-1',
+            }),
+            after: makeSnap(true, {
+              ...baseSent,
+              status: 'void',
+              squareInvoiceId: 'SQ-INV-1',
+            }),
+          },
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('propagates non-NOT_FOUND errors from the error-writeback', async () => {
+      // Square call fails → outer catch records a sync error → that
+      // recordSquareSyncError write hits PERMISSION_DENIED. NOT_FOUND
+      // would be benign; PERMISSION_DENIED is a real config bug we want
+      // surfaced (Firestore will retry the trigger).
+      mocks.sendInvoice.mockRejectedValueOnce(new Error('Square 500'));
+      const permissionDenied = Object.assign(
+        new Error('7 PERMISSION_DENIED: caller missing iam.firestore.update'),
+        { code: 7 }
+      );
+      mocks.recordSquareSyncError.mockRejectedValueOnce(permissionDenied);
+
+      await expect(
+        handler({
+          params: { invoiceId: 'inv-1' },
+          data: {
+            before: makeSnap(true, { ...baseSent, status: 'draft' }),
+            after: makeSnap(true, baseSent),
+          },
+        })
+      ).rejects.toThrow('PERMISSION_DENIED');
+    });
+  });
 });
