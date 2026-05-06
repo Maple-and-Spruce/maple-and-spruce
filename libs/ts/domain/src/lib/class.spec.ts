@@ -116,6 +116,7 @@ describe('Class domain helpers', () => {
       expect(result).toEqual({
         id: 'class-123',
         name: 'Introduction to Weaving',
+        slug: 'introduction-to-weaving',
         shortDescription: 'A beginner-friendly weaving workshop.',
         description: 'Learn the basics of weaving in this hands-on workshop.',
         instructorId: 'instructor-456',
@@ -323,9 +324,11 @@ describe('Class domain helpers', () => {
         'America/New_York'
       );
       expect(result.sharedTime).toBe(true);
-      // Both dates should be listed
-      expect(result.dateDisplay).toContain('Jun 15');
-      expect(result.dateDisplay).toContain('Jun 22');
+      // Month + day are joined with a non-breaking space so "Jun 15" never
+      // wraps across lines in a comma-separated list of dates.
+      expect(result.dateDisplay).toContain('Jun 15');
+      expect(result.dateDisplay).toContain('Jun 22');
+      expect(result.dateDisplay).not.toContain('Jun 15');
     });
 
     it('detects different times across sessions', () => {
@@ -401,8 +404,8 @@ describe('Class domain helpers', () => {
         'America/New_York'
       );
       expect(result.sharedTime).toBe(true);
-      expect(result.dateDisplay).toContain('Jun 15');
-      expect(result.dateDisplay).toContain('Jun 22');
+      expect(result.dateDisplay).toContain('Jun 15');
+      expect(result.dateDisplay).toContain('Jun 22');
     });
   });
 });

@@ -108,6 +108,26 @@ describe('mapClassToFieldData', () => {
     expect(mapClassToFieldData(short, { isDev: false })['duration-display']).toBe('45 min');
   });
 
+  it('appends "each" to duration when class has multiple sessions', () => {
+    const multiSession = {
+      ...mockClass,
+      durationMinutes: 90,
+      sessions: [
+        { dateTime: new Date('2026-05-31T17:00:00.000Z') },
+        { dateTime: new Date('2026-06-07T17:00:00.000Z') },
+        { dateTime: new Date('2026-06-14T17:00:00.000Z') },
+      ],
+    };
+    expect(mapClassToFieldData(multiSession, { isDev: false })['duration-display']).toBe(
+      '1.5 hours each'
+    );
+
+    const multiSessionShort = { ...multiSession, durationMinutes: 45 };
+    expect(mapClassToFieldData(multiSessionShort, { isDev: false })['duration-display']).toBe(
+      '45 min each'
+    );
+  });
+
   it('formats spots display correctly', () => {
     expect(
       mapClassToFieldData(mockClass, { isDev: false, registrationCount: 9 })['spots-display']

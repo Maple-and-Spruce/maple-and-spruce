@@ -109,11 +109,15 @@ export function mapClassToFieldData(
       ? `$${priceDollars}`
       : `$${priceDollars.toFixed(2)}`;
 
-  const durationDisplay = classEntity.durationMinutes >= 60
+  const baseDuration = classEntity.durationMinutes >= 60
     ? classEntity.durationMinutes % 60 === 0
       ? `${classEntity.durationMinutes / 60} hour${classEntity.durationMinutes / 60 === 1 ? '' : 's'}`
       : `${(classEntity.durationMinutes / 60).toFixed(1)} hours`
     : `${classEntity.durationMinutes} min`;
+  // Multi-session classes: clarify duration is per session, not summed across sessions
+  const durationDisplay = classEntity.sessions.length > 1
+    ? `${baseDuration} each`
+    : baseDuration;
 
   const spotsDisplay = spotsRemaining <= 0
     ? 'Class Full'

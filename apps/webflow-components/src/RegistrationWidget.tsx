@@ -13,6 +13,8 @@ import {
   Alert,
   Button,
   Divider,
+  TextField,
+  Stack,
   ThemeProvider,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -33,6 +35,10 @@ import type {
   GetRequiredAgreementsForClassRequest,
   GetRequiredAgreementsForClassResponse,
   InlineAgreementSigningData,
+  GetRelatedPublicClassesRequest,
+  GetRelatedPublicClassesResponse,
+  AddToClassWaitlistRequest,
+  AddToClassWaitlistResponse,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import {
@@ -137,6 +143,216 @@ function generateIcsFile(opts: {
     'END:VCALENDAR',
   ];
   return lines.join('\r\n');
+}
+
+/**
+ * Format the first session date for the related-class card. Shorter than the
+ * confirmation-page formatter because we only need date + time, not weekday.
+ */
+function formatRelatedClassDate(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Sold-out fallback shown when `spotsRemaining <= 0`. Loads sibling
+ * classes (same category, future, available) and offers an informal
+ * waitlist signup. Both pieces are independent — the waitlist form
+ * still renders even if no related classes are found.
+ */
+function SoldOutPanel({
+  classId,
+  className,
+  functions,
+}: {
+  classId: string;
+  className: string;
+  functions: ReturnType<typeof getWidgetFunctions>;
+}) {
+  const [related, setRelated] = useState<PublicClass[] | null>(null);
+  const [email, setEmail] = useState('');
+  const [waitlistState, setWaitlistState] = useState<
+    | { status: 'idle' }
+    | { status: 'submitting' }
+    | { status: 'success'; alreadyOnList: boolean }
+    | { status: 'error'; message: string }
+  >({ status: 'idle' });
+
+  useEffect(() => {
+    const fetchRelated = async () => {
+      try {
+        const call = httpsCallable<
+          GetRelatedPublicClassesRequest,
+          GetRelatedPublicClassesResponse
+        >(functions, 'getRelatedPublicClasses');
+        const result = await call({ classId });
+        setRelated(result.data.classes);
+      } catch (err) {
+        console.error('Failed to fetch related classes:', err);
+        setRelated([]);
+      }
+    };
+    fetchRelated();
+  }, [classId, functions]);
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setWaitlistState({
+        status: 'error',
+        message: 'Please enter your email.',
+      });
+      return;
+    }
+    setWaitlistState({ status: 'submitting' });
+    try {
+      const call = httpsCallable<
+        AddToClassWaitlistRequest,
+        AddToClassWaitlistResponse
+      >(functions, 'addToClassWaitlist');
+      const result = await call({ classId, email: trimmed });
+      setWaitlistState({
+        status: 'success',
+        alreadyOnList: !result.data.added,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Something went wrong. Please try again.';
+      setWaitlistState({ status: 'error', message });
+    }
+  };
+
+  return (
+    <Box>
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <strong>{className}</strong> is currently full.
+      </Alert>
+
+      {related && related.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Typography
+            variant="h6"
+            fontWeight={600}
+            gutterBottom
+            sx={{ color: 'text.primary' }}
+          >
+            Other upcoming dates
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            We're offering this class on other dates that still have spots.
+          </Typography>
+          <Stack spacing={1.5}>
+            {related.map((rc) => {
+              const firstSession = rc.sessions[0]?.dateTime;
+              return (
+                <Box
+                  key={rc.id}
+                  sx={{
+                    p: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    justifyContent: 'space-between',
+                    gap: 1.5,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {rc.name}
+                    </Typography>
+                    {firstSession && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                      >
+                        {formatRelatedClassDate(firstSession)} ·{' '}
+                        {rc.spotsRemaining} spot
+                        {rc.spotsRemaining === 1 ? '' : 's'} left
+                      </Typography>
+                    )}
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    href={`/classes/${rc.slug}`}
+                  >
+                    View class
+                  </Button>
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
+      )}
+
+      <Divider sx={{ my: 3 }} />
+
+      <Box>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          Notify me if a spot opens
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Add your email and we'll let you know if a registration is cancelled.
+          Spots are first-come, first-served — we email everyone on the list.
+        </Typography>
+
+        {waitlistState.status === 'success' ? (
+          <Alert severity="success">
+            {waitlistState.alreadyOnList
+              ? "You're already on the list — we'll email you if a spot opens."
+              : "You're on the list. We'll email you if a spot opens."}
+          </Alert>
+        ) : (
+          <Box component="form" onSubmit={handleWaitlistSubmit}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.5}
+              alignItems={{ sm: 'flex-start' }}
+            >
+              <TextField
+                type="email"
+                label="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                size="small"
+                fullWidth
+                required
+                disabled={waitlistState.status === 'submitting'}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={waitlistState.status === 'submitting'}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                {waitlistState.status === 'submitting'
+                  ? 'Adding…'
+                  : 'Notify me'}
+              </Button>
+            </Stack>
+            {waitlistState.status === 'error' && (
+              <Alert severity="error" sx={{ mt: 1.5 }}>
+                {waitlistState.message}
+              </Alert>
+            )}
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
 }
 
 interface RegistrationWidgetProps {
@@ -368,9 +584,11 @@ export function RegistrationWidget({
           <>
             {/* Registration Form */}
             {state.publicClass.spotsRemaining <= 0 ? (
-              <Alert severity="info">
-                This class is currently full. Please check back later.
-              </Alert>
+              <SoldOutPanel
+                classId={state.publicClass.id}
+                className={state.publicClass.name}
+                functions={functions}
+              />
             ) : !squareAppId ? (
               <Alert severity="warning">
                 Registration is not currently available. Please contact us at
