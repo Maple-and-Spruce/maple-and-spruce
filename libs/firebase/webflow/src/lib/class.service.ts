@@ -47,6 +47,12 @@ export interface SyncClassInput {
   categoryName?: string;
   /** Current registration count for spots remaining calculation */
   registrationCount?: number;
+  /**
+   * Known Webflow item ID from a prior sync (stored on the class entity).
+   * When provided, we skip the by-firebase-id list scan and update directly.
+   * Falls back to the scan if the item has been deleted from Webflow.
+   */
+  existingWebflowItemId?: string;
 }
 
 /**
@@ -244,9 +250,13 @@ export class ClassService {
       instructorImage,
       categoryName,
       registrationCount,
+      existingWebflowItemId,
     } = input;
 
-    const existingItem = await this.findByFirebaseId(classEntity.id);
+    const existingItemId = await this.resolveExistingItemId(
+      classEntity.id,
+      existingWebflowItemId
+    );
 
     let webflowItemId: string;
     let isNew: boolean;
@@ -260,9 +270,9 @@ export class ClassService {
       registrationCount,
     });
 
-    if (existingItem) {
-      await this.updateItem(existingItem.id, fieldData);
-      webflowItemId = existingItem.id;
+    if (existingItemId) {
+      await this.updateItem(existingItemId, fieldData);
+      webflowItemId = existingItemId;
       isNew = false;
     } else {
       const newItem = await this.createItem(fieldData);
@@ -291,46 +301,110 @@ export class ClassService {
    * When publish=true, uses deleteItemLive so the deletion is reflected on
    * the live site without a manual republish.
    */
-  async removeClass(firebaseId: string, publish = false): Promise<boolean> {
-    const existingItem = await this.findByFirebaseId(firebaseId);
-    if (!existingItem) return false;
+  async removeClass(
+    firebaseId: string,
+    publish = false,
+    knownWebflowItemId?: string
+  ): Promise<boolean> {
+    const existingItemId = await this.resolveExistingItemId(
+      firebaseId,
+      knownWebflowItemId
+    );
+    if (!existingItemId) return false;
 
     if (publish) {
       await this.client.collections.items.deleteItemLive(
         this.collectionId,
-        existingItem.id
+        existingItemId
       );
     } else {
       await this.client.collections.items.deleteItem(
         this.collectionId,
-        existingItem.id
+        existingItemId
       );
     }
     return true;
   }
 
   /**
-   * Find a Webflow CMS item by Firebase ID
+   * Resolve the Webflow item ID for a class, preferring a known ID over a
+   * collection scan. Returns `null` if no matching item exists yet (caller
+   * should create one).
+   */
+  private async resolveExistingItemId(
+    firebaseId: string,
+    knownWebflowItemId: string | undefined
+  ): Promise<string | null> {
+    if (knownWebflowItemId) {
+      const verified = await this.getItemById(knownWebflowItemId);
+      if (verified) return verified.id;
+      // Item was deleted in Webflow; fall through to a fresh scan so we can
+      // recreate (or pick up a different item with this firebase-id).
+    }
+
+    const found = await this.findByFirebaseId(firebaseId);
+    return found?.id ?? null;
+  }
+
+  /**
+   * Fetch a Webflow item by its Webflow ID. Returns `null` if missing —
+   * 404s and transient errors are treated as "not found" so the caller can
+   * fall back to a scan or recreate.
+   */
+  private async getItemById(
+    itemId: string
+  ): Promise<WebflowItemWithId | null> {
+    try {
+      const item = await this.client.collections.items.getItem(
+        this.collectionId,
+        itemId
+      );
+      return item?.id ? (item as WebflowItemWithId) : null;
+    } catch (error) {
+      console.warn('Webflow getItem failed, falling back to scan:', {
+        itemId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Find a Webflow CMS item by Firebase ID. Paginates through the entire
+   * collection — Webflow's listItems caps page size at 100, so we must
+   * page until we either match or exhaust the collection.
    */
   private async findByFirebaseId(
     firebaseId: string
   ): Promise<WebflowItemWithId | null> {
+    const PAGE_SIZE = 100;
+    let offset = 0;
+
     try {
-      const response = await this.client.collections.items.listItems(
-        this.collectionId,
-        { limit: 100 }
-      );
+      // Bound the loop so a misbehaving API can't spin forever; 5000 items
+      // is far above any realistic collection size for this site.
+      while (offset < 5000) {
+        const response = await this.client.collections.items.listItems(
+          this.collectionId,
+          { limit: PAGE_SIZE, offset }
+        );
 
-      const items = response.items ?? [];
-      const matchingItem = items.find((item) => {
-        const fieldData = item.fieldData as Record<string, unknown>;
-        return fieldData?.['firebase-id'] === firebaseId;
-      });
+        const items = response.items ?? [];
+        const matchingItem = items.find((item) => {
+          const fieldData = item.fieldData as Record<string, unknown>;
+          return fieldData?.['firebase-id'] === firebaseId;
+        });
 
-      if (matchingItem?.id) {
-        return matchingItem as WebflowItemWithId;
+        if (matchingItem?.id) {
+          return matchingItem as WebflowItemWithId;
+        }
+
+        if (items.length < PAGE_SIZE) {
+          return null;
+        }
+
+        offset += PAGE_SIZE;
       }
-
       return null;
     } catch (error) {
       console.error('Error finding Webflow class item:', error);
@@ -357,10 +431,15 @@ export class ClassService {
     itemId: string,
     fieldData: ClassWebflowFieldData
   ): Promise<void> {
+    // Omit `slug` on update — Webflow auto-suffixes slug collisions on
+    // create (e.g. `name-94fde` when `name` is taken), but on update it
+    // 400s with a uniqueness error. Re-sending the deterministic slug
+    // would freeze every later sync (incl. spots-remaining).
+    const { slug: _slug, ...fieldDataWithoutSlug } = fieldData;
     await this.client.collections.items.updateItem(this.collectionId, itemId, {
       isArchived: false,
       isDraft: false,
-      fieldData,
+      fieldData: fieldDataWithoutSlug,
     });
   }
 }

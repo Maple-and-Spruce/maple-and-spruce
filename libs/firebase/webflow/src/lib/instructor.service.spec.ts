@@ -160,6 +160,7 @@ function createMockClient() {
     collections: {
       items: {
         listItems: vi.fn(),
+        getItem: vi.fn(),
         createItem: vi.fn(),
         updateItem: vi.fn(),
         deleteItem: vi.fn(),
@@ -188,6 +189,7 @@ describe('InstructorService', () => {
   const items = () =>
     mockClient.collections.items as unknown as {
       listItems: ReturnType<typeof vi.fn>;
+      getItem: ReturnType<typeof vi.fn>;
       createItem: ReturnType<typeof vi.fn>;
       updateItem: ReturnType<typeof vi.fn>;
       deleteItem: ReturnType<typeof vi.fn>;
@@ -234,6 +236,11 @@ describe('InstructorService', () => {
         'wf-existing',
         expect.objectContaining({ isArchived: false, isDraft: false })
       );
+
+      // Slug must not be sent on update — Webflow rejects with 400 when
+      // a slug collides (it auto-suffixes on create but not on update).
+      const sentFieldData = items().updateItem.mock.calls[0][2].fieldData;
+      expect(sentFieldData).not.toHaveProperty('slug');
     });
 
     it('publishes item when publish is true', async () => {
@@ -272,6 +279,72 @@ describe('InstructorService', () => {
       await expect(
         service.syncInstructor({ instructor: testInstructor, isDev: false })
       ).rejects.toThrow('Webflow API did not return an item ID after creation');
+    });
+
+    it('uses existingWebflowItemId fast path and skips listItems scan', async () => {
+      items().getItem.mockResolvedValue({
+        id: 'wf-known',
+        fieldData: { 'firebase-id': 'inst-001' },
+      });
+      items().updateItem.mockResolvedValue({});
+
+      const result = await service.syncInstructor({
+        instructor: testInstructor,
+        existingWebflowItemId: 'wf-known',
+      });
+
+      expect(result).toEqual({
+        success: true,
+        webflowItemId: 'wf-known',
+        isNew: false,
+      });
+      expect(items().getItem).toHaveBeenCalledWith(collectionId, 'wf-known');
+      expect(items().listItems).not.toHaveBeenCalled();
+    });
+
+    it('falls back to listItems scan when known Webflow item is gone', async () => {
+      items().getItem.mockRejectedValue(new Error('Not found'));
+      items().listItems.mockResolvedValue({ items: [] });
+      items().createItem.mockResolvedValue({ id: 'wf-recreated' });
+
+      const result = await service.syncInstructor({
+        instructor: testInstructor,
+        existingWebflowItemId: 'wf-deleted',
+      });
+
+      expect(result.isNew).toBe(true);
+      expect(result.webflowItemId).toBe('wf-recreated');
+      expect(items().listItems).toHaveBeenCalled();
+    });
+
+    it('paginates findByFirebaseId past the first 100 items', async () => {
+      const fillerItems = Array.from({ length: 100 }, (_, i) => ({
+        id: `wf-other-${i}`,
+        fieldData: { 'firebase-id': `other-inst-${i}` },
+      }));
+      items()
+        .listItems.mockResolvedValueOnce({ items: fillerItems })
+        .mockResolvedValueOnce({
+          items: [
+            {
+              id: 'wf-needle',
+              fieldData: { 'firebase-id': 'inst-001' },
+            },
+          ],
+        });
+      items().updateItem.mockResolvedValue({});
+
+      const result = await service.syncInstructor({
+        instructor: testInstructor,
+      });
+
+      expect(result.isNew).toBe(false);
+      expect(result.webflowItemId).toBe('wf-needle');
+      expect(items().listItems).toHaveBeenCalledTimes(2);
+      expect(items().listItems).toHaveBeenNthCalledWith(2, collectionId, {
+        limit: 100,
+        offset: 100,
+      });
     });
   });
 

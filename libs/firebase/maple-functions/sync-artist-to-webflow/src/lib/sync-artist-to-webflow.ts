@@ -100,7 +100,8 @@ export const syncArtistToWebflow = onDocumentWritten(
         console.log('Artist deleted, removing from Webflow');
         const removed = await webflow.artistService.removeArtist(
           event.params.artistId,
-          publishRemoval
+          publishRemoval,
+          beforeArtist?.webflowItemId
         );
         console.log(
           removed
@@ -118,7 +119,8 @@ export const syncArtistToWebflow = onDocumentWritten(
         console.log('Artist became inactive, removing from Webflow');
         const removed = await webflow.artistService.removeArtist(
           afterArtist.id,
-          publishRemoval
+          publishRemoval,
+          afterArtist.webflowItemId
         );
         console.log(
           removed
@@ -148,6 +150,7 @@ export const syncArtistToWebflow = onDocumentWritten(
         artist: afterArtist,
         publish: shouldPublish,
         isDev,
+        existingWebflowItemId: afterArtist.webflowItemId,
       });
 
       console.log('Webflow sync result:', {
