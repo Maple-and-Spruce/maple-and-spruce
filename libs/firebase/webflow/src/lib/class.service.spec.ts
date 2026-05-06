@@ -4,8 +4,17 @@ import {
   mapClassToFieldData,
   ClassService,
 } from './class.service';
-import type { PublishableClass } from '@maple/ts/domain';
+import type { ClassSession, PublishableClass } from '@maple/ts/domain';
 import { formatSessions } from '@maple/ts/domain';
+
+// CI's nx-esbuild typecheck pulls these spec files into the apps/functions-*
+// programs, where contextual typing for the literal `[{ dateTime: ... }]`
+// doesn't always widen the array to the non-empty `[T, ...T[]]` tuple
+// PublishableClass requires. Declaring the literal with an explicit tuple
+// type sidesteps the inconsistency.
+const oneSession: [ClassSession, ...ClassSession[]] = [
+  { dateTime: new Date('2026-05-15T14:00:00.000Z') },
+];
 
 describe('generateClassSlug', () => {
   it('converts name to lowercase with hyphens', () => {
@@ -36,7 +45,7 @@ describe('mapClassToFieldData', () => {
     description: 'Learn the basics of pottery',
     shortDescription: 'Intro to pottery',
     instructorId: 'inst-1',
-    sessions: [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
+    sessions: oneSession,
     durationMinutes: 120,
     capacity: 10,
     priceCents: 4500,
@@ -189,7 +198,9 @@ describe('mapClassToFieldData', () => {
       id: 'class-min',
       name: 'Basic Class',
       description: 'A basic class',
-      sessions: [{ dateTime: new Date('2026-06-01T10:00:00.000Z') }],
+      sessions: [
+        { dateTime: new Date('2026-06-01T10:00:00.000Z') },
+      ] satisfies [ClassSession, ...ClassSession[]],
       durationMinutes: 60,
       capacity: 8,
       priceCents: 2500,
@@ -280,7 +291,7 @@ describe('ClassService', () => {
     description: 'Learn the basics of pottery',
     shortDescription: 'Intro to pottery',
     instructorId: 'inst-1',
-    sessions: [{ dateTime: new Date('2026-05-15T14:00:00.000Z') }],
+    sessions: oneSession,
     durationMinutes: 120,
     capacity: 10,
     priceCents: 4500,

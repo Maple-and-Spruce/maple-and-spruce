@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { Class, RequestState } from '@maple/ts/domain';
 import { ClassList } from './ClassList';
+
+// Vitest doesn't run testing-library cleanup between tests when many spec
+// files share the same vitest run (e.g. the root coverage job), so a stray
+// previous render can leak its DOM into the next test's `screen` queries.
+afterEach(cleanup);
 
 const baseClass: Class = {
   id: 'class-1',
