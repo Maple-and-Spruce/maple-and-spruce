@@ -147,6 +147,11 @@ export interface PublicClassSession {
 export interface PublicClass {
   id: string;
   name: string;
+  /**
+   * URL-safe slug derived from `name`. Mirrors the slug used by the Webflow
+   * CMS sync, so `/classes/{slug}` resolves to the public class detail page.
+   */
+  slug: string;
   shortDescription?: string;
   description: string;
   instructorId?: string;
@@ -215,6 +220,18 @@ export function getRegistrationCutoff(classEntity: Class): Date {
  * @param categoryName Optional category name for enrichment
  * @param registrationCount Number of confirmed registrations (default 0)
  */
+/**
+ * Build the URL slug for a class name. Mirrors the logic in
+ * `@maple/firebase/webflow`'s `generateClassSlug` — kept inline here so the
+ * domain layer doesn't reach into the firebase layer. Keep the two in sync.
+ */
+function buildClassSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export function toPublicClass(
   classEntity: Class,
   instructorName?: string,
@@ -224,6 +241,7 @@ export function toPublicClass(
   return {
     id: classEntity.id,
     name: classEntity.name,
+    slug: buildClassSlug(classEntity.name),
     shortDescription: classEntity.shortDescription,
     description: classEntity.description,
     instructorId: classEntity.instructorId,
@@ -341,11 +359,15 @@ export function formatSessions(
     });
 
   const dateOf = (d: Date | string): string =>
-    ensureDate(d).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      timeZone,
-    });
+    // Glue month + day with a non-breaking space so e.g. "Jun 13" never wraps
+    // mid-token in a comma-separated list of dates.
+    ensureDate(d)
+      .toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        timeZone,
+      })
+      .replace(' ', ' ');
 
   const firstTime = timeOf(sorted[0].dateTime);
   const sharedTime = sorted.every((s) => timeOf(s.dateTime) === firstTime);

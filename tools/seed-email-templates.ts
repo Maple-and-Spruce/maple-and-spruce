@@ -309,6 +309,66 @@ const classReminderHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: class-spot-available
+//
+// Broadcast notification sent to everyone on a class waitlist when a spot
+// opens (registration cancelled/refunded). Generic — does not assume the
+// recipient is the only one notified — so the body says "a spot has
+// opened" rather than "the spot is yours".
+// ---------------------------------------------------------------------------
+
+const classSpotAvailableSubject =
+  'A spot opened in {{className}}';
+
+const classSpotAvailableHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Spot Opened</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>A spot just opened up!</h2>
+    <p>You asked us to let you know if a spot opened in
+      <strong>{{className}}</strong> on {{classDate}} — and one just did.</p>
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">First come, first served</strong><br>
+      <p>We're emailing everyone who joined this waitlist, so the spot
+        will go to whoever registers first. If you're still interested,
+        head over to the class page and grab it now.</p>
+      <p style="text-align: center; margin: 16px 0;">
+        <a href="{{classUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 4px; font-weight: bold;">Register Now</a>
+      </p>
+    </div>
+
+    <p style="font-size: 14px; color: #999;">
+      If the link doesn't work, copy and paste this URL into your browser:<br>
+      <a href="{{classUrl}}" style="color: #6B7B5E; word-break: break-all;">{{classUrl}}</a>
+    </p>
+
+    <p>If you have any questions, please reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
+      call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
+      or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Template: agreement-signing-request
 // ---------------------------------------------------------------------------
 
@@ -382,6 +442,10 @@ const templates: Record<string, EmailTemplate> = {
   'class-reminder': {
     subject: classReminderSubject,
     html: classReminderHtml,
+  },
+  'class-spot-available': {
+    subject: classSpotAvailableSubject,
+    html: classSpotAvailableHtml,
   },
   'agreement-signing-request': {
     subject: agreementSigningRequestSubject,

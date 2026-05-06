@@ -7,6 +7,7 @@ import {
   mockClassNoImage,
   mockClassCategories,
   mockClassWithGallery,
+  mockClassWithReferral,
   mockClassCategoriesWithPool,
 } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 import {
@@ -279,6 +280,26 @@ export const WithInstructor: Story = {
     await waitFor(() => {
       expect(canvas.getByLabelText(/class name/i)).toHaveValue(mockClass.name);
     });
+  },
+};
+
+/**
+ * Editing a class that's opted into the friend-referral program — toggle
+ * is on and the percent + expiry fields show the saved values.
+ */
+export const EditWithReferralProgram: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassWithReferral,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/enable friend referral program/i)).toBeChecked();
+    });
+    expect(canvas.getByLabelText(/friend gets/i)).toHaveValue(50);
+    expect(canvas.getByLabelText(/code expires after/i)).toHaveValue(60);
   },
 };
 
