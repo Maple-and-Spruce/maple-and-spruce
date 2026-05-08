@@ -33,7 +33,14 @@ export {
 } from './functions.utility';
 
 // Auth utilities
-export { Role, hasRole, grantAdminRole, revokeAdminRole, getAdminUids } from './auth.utility';
+export {
+  Role,
+  hasRole,
+  getCurrentRole,
+  grantAdminRole,
+  revokeAdminRole,
+  getAdminUids,
+} from './auth.utility';
 
 // Error utilities
 export {

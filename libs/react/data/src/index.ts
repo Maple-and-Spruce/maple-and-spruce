@@ -65,3 +65,10 @@ export {
   useRegistrations,
   type UseRegistrationsFilters,
 } from './lib/useRegistrations';
+
+// Timekeeping
+export {
+  useTimeEntries,
+  type UseTimeEntriesOptions,
+} from './lib/useTimeEntries';
+export { useEmployees } from './lib/useEmployees';

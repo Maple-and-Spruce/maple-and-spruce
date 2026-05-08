@@ -87,3 +87,10 @@ export {
   EtsyImportRepository,
   type CreateEtsyImportInput,
 } from './lib/etsy-import.repository';
+
+// Timekeeping
+export {
+  TimeEntryRepository,
+  type TimeEntryFilters,
+} from './lib/time-entry.repository';
+export { EmployeeRepository } from './lib/employee.repository';
