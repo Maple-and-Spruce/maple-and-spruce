@@ -41,6 +41,33 @@ Modes:
 | `font-size-body` | `variable-fca0c8af-8495-2ac9-afb3-adb425c4f25b` | 16px | 16px | 16px | 15px |
 | `font-size-caption` | `variable-10ba276e-ed81-3c5d-bd0d-082afbb166c9` | 14px | 14px | 13px | 13px |
 
+#### Font Families — TO ADD
+
+The React MUI theme now uses **Lora** for headings and **Archivo** for body
+(see `libs/react/theme/src/lib/theme.ts`). Webflow does NOT yet have matching
+`font-family-*` variables, so the published site falls back to the template's
+default fonts — meaning Webflow and the admin app are currently **inconsistent**.
+
+To bring them into parity, add these variables to the Typography collection:
+
+| Token | Value | Used by |
+|-------|-------|---------|
+| `font-family-heading` | `"Lora", Georgia, "Times New Roman", serif` | `heading-1`, `heading-2`, `heading-3` |
+| `font-family-body` | `"Archivo", system-ui, -apple-system, sans-serif` | `subtitle-text`, `body-text`, `caption-text`, button styles |
+
+After creating the variables:
+1. Apply `font-family-heading` to `heading-1`, `heading-2`, `heading-3` styles.
+2. Apply `font-family-body` to `body-text` (and inherit through `subtitle-text`, `caption-text`, button styles).
+3. In Webflow Project Settings → Custom Code (Head), add the same Google Fonts link served by the admin app:
+   ```html
+   <link rel="preconnect" href="https://fonts.googleapis.com" />
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Lora:wght@400;500;700&display=swap" />
+   ```
+4. Republish the site.
+
+Required weights (must match the admin app): **Lora 400/500/700**, **Archivo 400/500/600/700**.
+
 ### Sizes
 
 Collection ID: `collection-07974992-4727-b048-2eda-34e778530074`
@@ -102,11 +129,11 @@ The tokens and styles are created but not yet applied to existing page elements.
 2. **Replace inline styles** — Swap hardcoded values for the new design token variables
 3. **Apply typography classes** — Set `heading-1`, `heading-2`, `heading-3`, `subtitle-text`, `body-text`, `caption-text` on text elements
 4. **Apply button classes** — Set `btn-primary`, `btn-secondary`, `btn-outline` on buttons/links
-5. **Add font family tokens** — Once fonts are finalized, add `font-family-heading` and `font-family-body` variables to the Typography collection
+5. **Add font family tokens** — Add `font-family-heading` (Lora) and `font-family-body` (Archivo) variables to the Typography collection (see "Font Families — TO ADD" above for exact values)
 6. **Review at all breakpoints** — Verify responsive scaling looks correct on tablet and mobile
 
 ### Notes
 
 - The site has ~1050 existing styles from a template. Many may use hardcoded values that should migrate to tokens.
-- Font family variables were not created yet — add them once heading/body fonts are confirmed.
+- Font family variables are NOT yet defined in Webflow. The React MUI theme uses Lora (headings) and Archivo (body) as of the typography font PR — Webflow needs matching variables and a Google Fonts link in the site head to stay in sync.
 - The MUI theme in the React app uses the same brand colors (see `.claude/rules/react-components.md`).
