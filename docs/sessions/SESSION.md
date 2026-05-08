@@ -7,7 +7,19 @@
 ## Current Status
 
 **Date**: 2026-05-08
-**Status**: Phase 4 complete; Phase 5 in progress; Timekeeping MVP shipped.
+**Status**: Phase 4 complete; Phase 5 in progress; Timekeeping MVP + User/Role admin page shipped.
+
+### User & Role Administration — Shipped (2026-05-08)
+
+Admin `/users` page where Katie/David can see everyone who's signed up to the admin app and assign roles. Replaces the prior UID-paste-only flow on `/employees`.
+
+- 3 new Cloud Functions: `listUsers` (admin SDK + role joins), `grantAdminRole`, `revokeAdminRole`
+- Self-protection: admins cannot revoke their own admin role (would lock themselves out)
+- New domain type: `AppUser` (Firebase Auth user + roles)
+- New components lib: `libs/react/users/` (`UserList`, `UserRolesDialog`)
+- Single dialog handles all role mutations: instant grant/revoke for admin, inline forms for employee role (rate + status)
+- Nav: added "Users" under Admin group
+- 14 new unit tests; full suite at 1713 tests
 
 ### Timekeeping MVP — Shipped (2026-05-08)
 

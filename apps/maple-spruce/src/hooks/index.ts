@@ -19,5 +19,6 @@ export {
   useSignedAgreement,
   useTimeEntries,
   useEmployees,
+  useUsers,
 } from '@maple/react/data';
 export { useAuth, useUserRole } from '@maple/react/auth';
