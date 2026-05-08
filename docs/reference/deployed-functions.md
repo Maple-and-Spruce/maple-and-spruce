@@ -80,7 +80,13 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `expireAgreementRequests` _(scheduled — marks expired requests)_
 
 ### Auth
-- `checkAdminStatus`
+- `checkAdminStatus` _(returns `{ isAdmin, isEmployee, role }` — `role` is the highest-privilege role)_
+
+### Timekeeping
+- `createTimeEntry`, `updateTimeEntry`, `deleteTimeEntry`, `getTimeEntries` _(any authenticated user — non-admin scoped to own entries; non-admin can only edit/delete own unpaid entries)_
+- `markTimeEntriesPaid` _(admin only — batch transitions unpaid → paid)_
+- `getEmployees` _(admin only — returns employees with unpaid hour totals + computed `$ owed`)_
+- `createEmployee`, `updateEmployee` _(admin only — granting `employees/{uid}` doc grants `Role.Employee`)_
 
 ### Infrastructure
 - `healthCheck`

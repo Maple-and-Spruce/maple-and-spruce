@@ -6,8 +6,20 @@
 
 ## Current Status
 
-**Date**: 2026-04-19
-**Status**: Phase 4 complete (PR #304 ready to merge). Phase 5 planning complete, implementation starting.
+**Date**: 2026-05-08
+**Status**: Phase 4 complete; Phase 5 in progress; Timekeeping MVP shipped.
+
+### Timekeeping MVP — Shipped (2026-05-08)
+
+Foundational hour-tracking + "$ owed" feature for hourly workers (initial use case: Nathan). New `Role.Employee` admits a logged-in user to `/timesheet` only — they cannot reach any other admin route. Admin sees a new **Payroll** nav group with **Timesheets** + **Employees**.
+
+- 2 new Firestore collections: `employees/{uid}`, `timeEntries/{id}`
+- 8 new Cloud Functions in `maple-core` codebase (CRUD + `markTimeEntriesPaid`)
+- Existing `checkAdminStatus` extended to also return `isEmployee` and `role`
+- New libs: `libs/react/timesheet/` (form/list/card components)
+- Per-path guard selection: `/timesheet` uses `EmployeeGuard` (admits admin OR employee); everything else stays admin-only
+- Onboarding flow (manual): Nathan signs up → Katie pastes his Firebase Auth UID into `/employees` form + sets rate → he refreshes and sees the timesheet
+- Out of scope (future): payroll API integration, payment-method capture, rate history, approval workflow, integration tests
 
 ### Phase 4 Music Lessons — Complete
 

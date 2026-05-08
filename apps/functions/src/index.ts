@@ -195,3 +195,13 @@ export { getSales } from '@maple/firebase/maple-functions/get-sales';
 export { generatePayout } from '@maple/firebase/maple-functions/generate-payout';
 export { markPayoutPaid } from '@maple/firebase/maple-functions/mark-payout-paid';
 export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';
+
+// Timekeeping (employee hours + admin pay-out marking)
+export { createTimeEntry } from '@maple/firebase/maple-functions/create-time-entry';
+export { updateTimeEntry } from '@maple/firebase/maple-functions/update-time-entry';
+export { deleteTimeEntry } from '@maple/firebase/maple-functions/delete-time-entry';
+export { getTimeEntries } from '@maple/firebase/maple-functions/get-time-entries';
+export { markTimeEntriesPaid } from '@maple/firebase/maple-functions/mark-time-entries-paid';
+export { getEmployees } from '@maple/firebase/maple-functions/get-employees';
+export { createEmployee } from '@maple/firebase/maple-functions/create-employee';
+export { updateEmployee } from '@maple/firebase/maple-functions/update-employee';

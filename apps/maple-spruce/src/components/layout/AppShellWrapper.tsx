@@ -17,8 +17,11 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import GavelIcon from '@mui/icons-material/Gavel';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BadgeIcon from '@mui/icons-material/Badge';
 import { AppShell, type NavGroup } from '@maple/react/layout';
 import { useSyncConflictSummary } from '@maple/react/data';
+import { useUserRole } from '@maple/react/auth';
 
 interface AppShellWrapperProps {
   children: ReactNode;
@@ -28,11 +31,16 @@ interface AppShellWrapperProps {
 /**
  * App-specific wrapper around the library's AppShell component.
  * Provides the grouped navigation configuration for Maple & Spruce.
+ *
+ * Role-aware: employees only see the "Time" group. Until role resolves,
+ * default to the employee-only nav so non-admins never see admin links
+ * (admins briefly see the narrower nav, then it expands — acceptable).
  */
 export function AppShellWrapper({
   children,
   maxWidth = 'lg',
 }: AppShellWrapperProps): ReactNode {
+  const { isAdmin } = useUserRole();
   const { summaryState } = useSyncConflictSummary();
 
   const pendingConflicts = useMemo(() => {
@@ -40,7 +48,23 @@ export function AppShellWrapper({
     return summaryState.data.pending;
   }, [summaryState]);
 
-  const navGroups: NavGroup[] = useMemo(
+  const employeeNavGroups: NavGroup[] = useMemo(
+    () => [
+      {
+        label: 'Time',
+        items: [
+          {
+            label: 'My Timesheet',
+            href: '/timesheet',
+            icon: <AccessTimeIcon />,
+          },
+        ],
+      },
+    ],
+    []
+  );
+
+  const adminNavGroups: NavGroup[] = useMemo(
     () => [
       {
         label: 'Store',
@@ -118,6 +142,21 @@ export function AppShellWrapper({
         ],
       },
       {
+        label: 'Payroll',
+        items: [
+          {
+            label: 'Timesheets',
+            href: '/timesheet',
+            icon: <AccessTimeIcon />,
+          },
+          {
+            label: 'Employees',
+            href: '/employees',
+            icon: <BadgeIcon />,
+          },
+        ],
+      },
+      {
         label: 'Calendar',
         items: [
           {
@@ -145,6 +184,8 @@ export function AppShellWrapper({
     ],
     [pendingConflicts]
   );
+
+  const navGroups = isAdmin ? adminNavGroups : employeeNavGroups;
 
   return (
     <AppShell navGroups={navGroups} maxWidth={maxWidth}>

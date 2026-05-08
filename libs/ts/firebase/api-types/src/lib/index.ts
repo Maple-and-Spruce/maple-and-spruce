@@ -207,7 +207,30 @@ export type {
 export type {
   CheckAdminStatusRequest,
   CheckAdminStatusResponse,
+  UserRole,
 } from './auth.types';
+
+// Timekeeping
+export type {
+  GetTimeEntriesRequest,
+  GetTimeEntriesResponse,
+  CreateTimeEntryRequest,
+  CreateTimeEntryResponse,
+  UpdateTimeEntryRequest,
+  UpdateTimeEntryResponse,
+  DeleteTimeEntryRequest,
+  DeleteTimeEntryResponse,
+  MarkTimeEntriesPaidRequest,
+  MarkTimeEntriesPaidResponse,
+} from './time-entry.types';
+export type {
+  GetEmployeesRequest,
+  GetEmployeesResponse,
+  CreateEmployeeRequest,
+  CreateEmployeeResponse,
+  UpdateEmployeeRequest,
+  UpdateEmployeeResponse,
+} from './employee.types';
 
 // Phase 4.5: Calendar Event types
 export type {
