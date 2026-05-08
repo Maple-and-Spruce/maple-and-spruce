@@ -34,7 +34,13 @@ overrides:
   koa: '>=3.1.2'
   # GHSA-v2wj-q39q-566r (server.fs.deny bypass) and GHSA-p9ff-h696-f583 (arbitrary file read via dev server WebSocket). Transitive dep of @nx/vitest@22.6.4 > vitest@4.1.2. Added 2026-04-07.
   vite@>=7.0.0 <7.3.2: '>=7.3.2'
-  # GHSA-chqc-8p9q-pq6q (FTP command injection via CRLF) and GHSA-6v7q-wjvx-w8wg (incomplete CRLF protection). Transitive dep of firebase-tools@15.11.0 > proxy-agent > pac-proxy-agent > get-uri. Updated 2026-04-12.
-  basic-ftp: '>=5.2.2'
+  # GHSA-chqc-8p9q-pq6q (FTP command injection via CRLF), GHSA-6v7q-wjvx-w8wg (incomplete CRLF protection), and GHSA-rpmf-866q-6p89 (client-side DoS via unbounded multiline control response buffering, patched in 5.3.1). Transitive dep of firebase-tools > proxy-agent > pac-proxy-agent > get-uri. Pinned to 5.x because get-uri targets the 5.x API; 6.0.0 is a major bump. Updated 2026-05-08.
+  basic-ftp: '^5.3.1'
+  # GHSA-5wm8-gmm8-39j9: fast-xml-builder allows attribute values with unwanted quotes to bypass malicious or unwanted attributes (patched in 1.1.7). Transitive dep of firebase-admin > @google-cloud/storage > fast-xml-parser. Added 2026-05-08.
+  fast-xml-builder: '>=1.1.7'
+  # GHSA-q3j6-qgpj-74h6: fast-uri vulnerable to path traversal via percent-encoded dot segments (patched in 3.1.1). Transitive dep of @nx/next > @nx/react > @nx/module-federation > ajv. Added 2026-05-08.
+  fast-uri: '>=3.1.1'
+  # GHSA-fv7c-fp4j-7gwp: @babel/plugin-transform-modules-systemjs generates arbitrary code when compiling malicious input (patched in 7.29.4). Transitive dep of @nx/* > @nx/js > @babel/preset-env. Added 2026-05-08.
+  '@babel/plugin-transform-modules-systemjs': '>=7.29.4'
   # path-to-regexp override
   path-to-regexp@>=2: '>=8.4.0'
