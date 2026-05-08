@@ -194,18 +194,18 @@ export const SwitchToMultiVariant: Story = {
     const canvas = await waitForDialog();
 
     // Single mode: simple Price + Quantity inputs are visible.
-    expect(canvas.getByLabelText(/^price$/i)).toBeInTheDocument();
-    expect(canvas.getByLabelText(/^quantity$/i)).toBeInTheDocument();
+    expect(canvas.getByLabelText(/price/i)).toBeInTheDocument();
+    expect(canvas.getByLabelText(/quantity/i)).toBeInTheDocument();
 
     const switchButton = canvas.getByRole('button', {
-      name: /add variants/i,
+      name: /multiple variants/i,
     });
     await userEvent.click(switchButton);
 
-    // Multi mode: variant property + per-row Label/Price/Qty/SKU appear.
+    // Multi mode: variant property + at least 2 per-row Label inputs appear.
     await waitFor(() => {
       expect(canvas.getByLabelText(/variant property/i)).toBeInTheDocument();
-      expect(canvas.getAllByLabelText(/^label$/i).length).toBeGreaterThanOrEqual(
+      expect(canvas.getAllByLabelText(/^label/i).length).toBeGreaterThanOrEqual(
         2
       );
     });

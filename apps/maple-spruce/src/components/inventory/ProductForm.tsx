@@ -642,7 +642,7 @@ export function ProductForm({
                 onClick={handleSwitchToMulti}
                 sx={{ alignSelf: 'flex-start' }}
               >
-                + Add variants (size, color, …)
+                Use multiple variants (size, color, …)
               </Button>
             </>
           ) : (
