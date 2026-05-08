@@ -286,6 +286,22 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Firebase Hosting rewrites | **Complete** | `/calendar/*.ics` routes to feed functions |
 | Public calendar display | **Complete** | Open Web Calendar (self-hosted on Vercel), embedded in Webflow via iframe. See ADR-025. |
 
+## User & Role Administration — Complete
+
+Admin `/users` page lists every Firebase Auth user joined with their admin/employee role records. Admins can grant or revoke admin role on others, and add/edit/deactivate the employee role with rate. Self-protection: an admin cannot revoke their own admin role.
+
+| Layer | Status | Path |
+|------|--------|------|
+| `AppUser` domain type | **Complete** | `libs/ts/domain/src/lib/app-user.ts` |
+| API types | **Complete** | `libs/ts/firebase/api-types/src/lib/user.types.ts` |
+| Cloud functions (`listUsers`, `grantAdminRole`, `revokeAdminRole`) | **Complete** | `libs/firebase/maple-functions/{list-users,grant-admin-role,revoke-admin-role}/` |
+| `useUsers` data hook | **Complete** | `libs/react/data/src/lib/useUsers.ts` |
+| `UserList` + `UserRolesDialog` components | **Complete** | `libs/react/users/` |
+| `/users` admin page + nav link | **Complete** | `apps/maple-spruce/src/app/users/page.tsx` |
+| Unit tests (14 across 3 functions) | **Complete** | `*.spec.ts` colocated |
+
+**Out of scope (future):** user search/filter, pagination beyond 1000, deleting users from the admin app, password resets, granting employee role without payroll fields, custom claims for fine-grained permissions.
+
 ## Timekeeping (MVP) — Complete
 
 Foundation for tracking hourly worker time. Nathan signs up like any user; Katie grants the `Role.Employee` role and sets his hourly rate. He logs hours; she sees what's owed and presses "Mark paid". No payroll integration yet — this is the data foundation.
