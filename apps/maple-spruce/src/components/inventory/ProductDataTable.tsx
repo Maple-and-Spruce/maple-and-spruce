@@ -1,12 +1,21 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Box, Chip, IconButton, Typography, Alert, Paper } from '@mui/material';
+import {
+  Box,
+  Chip,
+  IconButton,
+  Stack,
+  Tooltip,
+  Typography,
+  Alert,
+  Paper,
+} from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import type { Product, Artist, Category, RequestState } from '@maple/ts/domain';
-import { formatPrice } from '@maple/ts/domain';
+import { formatPrice, getTotalQuantity, isMultiVariant } from '@maple/ts/domain';
 import { surfaces, borders, radii, shadows } from '@maple/react/theme';
 
 interface ProductDataTableProps {
@@ -80,6 +89,34 @@ export function ProductDataTable({
         flex: 1,
         minWidth: 200,
         valueGetter: (_value, row: Product) => row.squareCache?.name || '',
+        renderCell: (params: GridRenderCellParams<Product>) => {
+          const variantCount = params.row.variants?.length ?? 0;
+          const showBadge = isMultiVariant(params.row);
+          return (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography
+                variant="body2"
+                sx={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {(params.value as string) || ''}
+              </Typography>
+              {showBadge && (
+                <Tooltip title={`${variantCount} variants`}>
+                  <Chip
+                    label={`${variantCount} variants`}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              )}
+            </Stack>
+          );
+        },
       },
       {
         field: 'category',
@@ -109,20 +146,39 @@ export function ProductDataTable({
       {
         field: 'price',
         headerName: 'Price',
-        width: 100,
+        width: 110,
         valueGetter: (_value, row: Product) =>
-          row.squareCache?.priceCents || 0,
-        renderCell: (params: GridRenderCellParams) => (
-          <Typography variant="body2" fontWeight="medium">
-            {formatPrice(params.value as number)}
-          </Typography>
-        ),
+          row.variants?.[0]?.priceCents ?? row.squareCache?.priceCents ?? 0,
+        renderCell: (params: GridRenderCellParams<Product>) => {
+          const variants = params.row.variants ?? [];
+          if (variants.length > 1) {
+            const prices = variants.map((v) => v.priceCents);
+            const min = Math.min(...prices);
+            const max = Math.max(...prices);
+            return (
+              <Typography variant="body2" fontWeight="medium">
+                {min === max
+                  ? formatPrice(min)
+                  : `${formatPrice(min)} – ${formatPrice(max)}`}
+              </Typography>
+            );
+          }
+          return (
+            <Typography variant="body2" fontWeight="medium">
+              {formatPrice(params.value as number)}
+            </Typography>
+          );
+        },
       },
       {
         field: 'quantity',
         headerName: 'Qty',
         width: 80,
-        valueGetter: (_value, row: Product) => row.squareCache?.quantity || 0,
+        // Sum across all variants — surfaces total stock across sizes/colors.
+        valueGetter: (_value, row: Product) =>
+          row.variants?.length
+            ? getTotalQuantity(row)
+            : row.squareCache?.quantity || 0,
         renderCell: (params: GridRenderCellParams) => {
           const qty = params.value as number;
           return (
@@ -151,7 +207,10 @@ export function ProductDataTable({
         field: 'sku',
         headerName: 'SKU',
         width: 130,
-        valueGetter: (_value, row: Product) => row.squareCache?.sku || '',
+        valueGetter: (_value, row: Product) => {
+          if (isMultiVariant(row)) return '—';
+          return row.variants?.[0]?.sku ?? row.squareCache?.sku ?? '';
+        },
       },
       {
         field: 'actions',
