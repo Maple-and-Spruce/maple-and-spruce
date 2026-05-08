@@ -32,7 +32,19 @@ export function useUserRole() {
         CheckAdminStatusResponse
       >(getMapleFunctions(), 'checkAdminStatus');
       const result = await fn({});
-      setRoleState({ status: 'success', data: result.data.role });
+      // Tolerate the legacy response shape `{ isAdmin: true }` so the admin
+      // app keeps working during a deploy when the web app ships before the
+      // updated checkAdminStatus function. Once `role` is present, trust it.
+      const data = result.data;
+      const role: UserRole =
+        data.role !== undefined
+          ? data.role
+          : data.isAdmin
+            ? 'admin'
+            : data.isEmployee
+              ? 'employee'
+              : null;
+      setRoleState({ status: 'success', data: role });
     } catch (error) {
       console.error('Failed to check user role:', error);
       setRoleState({
