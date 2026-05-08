@@ -165,12 +165,61 @@ export const mockProductOutOfStock: Product = {
   },
 };
 
+export const mockProductMultiVariant: Product = {
+  id: 'prod-006',
+  artistId: 'artist-001',
+  categoryId: 'cat-002',
+  status: 'active',
+  squareItemId: 'sq-item-006',
+  squareCatalogVersion: 1,
+  squareLocationId: 'sq-loc-001',
+  createdAt: new Date('2024-09-10T12:00:00Z'),
+  updatedAt: new Date('2024-10-01T09:00:00Z'),
+  variantProperties: ['Size'],
+  variants: [
+    {
+      id: 'var-006a',
+      label: 'Small',
+      sku: 'prd_size_sm',
+      priceCents: 3000,
+      quantity: 4,
+      squareVariationId: 'sq-var-006a',
+    },
+    {
+      id: 'var-006b',
+      label: 'Medium',
+      sku: 'prd_size_md',
+      priceCents: 3500,
+      quantity: 7,
+      squareVariationId: 'sq-var-006b',
+    },
+    {
+      id: 'var-006c',
+      label: 'Large',
+      sku: 'prd_size_lg',
+      priceCents: 4000,
+      quantity: 2,
+      squareVariationId: 'sq-var-006c',
+    },
+  ],
+  squareCache: {
+    name: 'Hand-knit Wool Hat',
+    description: 'Soft merino wool hat, available in three sizes.',
+    priceCents: 3000,
+    quantity: 13,
+    sku: 'prd_size_sm',
+    imageUrl: 'https://picsum.photos/seed/product6/400/400',
+    syncedAt: new Date('2024-10-01T09:00:00Z'),
+  },
+};
+
 export const mockProducts: Product[] = [
   mockProduct,
   mockProductNoImage,
   mockProductDraft,
   mockProductDiscontinued,
   mockProductOutOfStock,
+  mockProductMultiVariant,
 ];
 
 export const mockActiveProducts: Product[] = mockProducts.filter(

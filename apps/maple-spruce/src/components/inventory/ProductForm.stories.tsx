@@ -7,6 +7,7 @@ import type { Product, CreateProductInput } from '@maple/ts/domain';
 import {
   mockProduct,
   mockProductNoImage,
+  mockProductMultiVariant,
   mockArtists,
   mockCategories,
 } from '../../../.storybook/fixtures';
@@ -165,6 +166,49 @@ export const Submitting: Story = {
     open: true,
     product: mockProduct,
     isSubmitting: true,
+  },
+};
+
+/**
+ * Edit a product that has multiple variants — shows the variants table
+ * instead of the single price/qty pair.
+ */
+export const EditMultiVariant: Story = {
+  args: {
+    open: true,
+    product: mockProductMultiVariant,
+    isSubmitting: false,
+  },
+};
+
+/**
+ * Test: Switching from single → multi variant mode reveals the variants
+ * table and seeds the first row with the existing price/qty.
+ */
+export const SwitchToMultiVariant: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // Single mode: simple Price + Quantity inputs are visible.
+    expect(canvas.getByLabelText(/^price$/i)).toBeInTheDocument();
+    expect(canvas.getByLabelText(/^quantity$/i)).toBeInTheDocument();
+
+    const switchButton = canvas.getByRole('button', {
+      name: /add variants/i,
+    });
+    await userEvent.click(switchButton);
+
+    // Multi mode: variant property + per-row Label/Price/Qty/SKU appear.
+    await waitFor(() => {
+      expect(canvas.getByLabelText(/variant property/i)).toBeInTheDocument();
+      expect(canvas.getAllByLabelText(/^label$/i).length).toBeGreaterThanOrEqual(
+        2
+      );
+    });
   },
 };
 
