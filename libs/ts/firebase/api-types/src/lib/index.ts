@@ -232,6 +232,16 @@ export type {
   UpdateEmployeeResponse,
 } from './employee.types';
 
+// User & role administration
+export type {
+  GetUsersRequest,
+  GetUsersResponse,
+  GrantAdminRoleRequest,
+  GrantAdminRoleResponse,
+  RevokeAdminRoleRequest,
+  RevokeAdminRoleResponse,
+} from './user.types';
+
 // Phase 4.5: Calendar Event types
 export type {
   GetCalendarEventsRequest,

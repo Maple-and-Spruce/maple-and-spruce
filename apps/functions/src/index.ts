@@ -205,3 +205,8 @@ export { markTimeEntriesPaid } from '@maple/firebase/maple-functions/mark-time-e
 export { getEmployees } from '@maple/firebase/maple-functions/get-employees';
 export { createEmployee } from '@maple/firebase/maple-functions/create-employee';
 export { updateEmployee } from '@maple/firebase/maple-functions/update-employee';
+
+// User & role administration (admin /users page)
+export { listUsers } from '@maple/firebase/maple-functions/list-users';
+export { grantAdminRole } from '@maple/firebase/maple-functions/grant-admin-role';
+export { revokeAdminRole } from '@maple/firebase/maple-functions/revoke-admin-role';

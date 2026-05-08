@@ -19,6 +19,7 @@ import HowToRegIcon from '@mui/icons-material/HowToReg';
 import GavelIcon from '@mui/icons-material/Gavel';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import BadgeIcon from '@mui/icons-material/Badge';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { AppShell, type NavGroup } from '@maple/react/layout';
 import { useSyncConflictSummary } from '@maple/react/data';
 import { useUserRole } from '@maple/react/auth';
@@ -174,6 +175,11 @@ export function AppShellWrapper({
       {
         label: 'Admin',
         items: [
+          {
+            label: 'Users',
+            href: '/users',
+            icon: <ManageAccountsIcon />,
+          },
           {
             label: 'Settings',
             href: '/settings',

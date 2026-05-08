@@ -44,5 +44,8 @@ export * from './lib/signed-agreement';
 export * from './lib/time-entry';
 export * from './lib/employee';
 
+// User & role administration
+export * from './lib/app-user';
+
 // State management
 export * from './lib/request-state';
