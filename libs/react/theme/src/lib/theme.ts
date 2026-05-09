@@ -123,14 +123,18 @@ export const shadows = {
 } as const;
 
 /**
- * Font family stacks
+ * Brand font stacks — mirror the live Webflow site so the admin app and
+ * marketing site share one type system. Verified against the published
+ * Webflow CSS (May 2026): heading + body are Georgia, button is Archivo.
  *
- * Loaded via Google Fonts <link> tags in apps/maple-spruce/src/app/layout.tsx.
- * Required weights: Lora 400/500/700, Archivo 400/500/600/700.
+ * Georgia is a system font, no Google Fonts load required. Archivo is loaded
+ * via <link> in apps/maple-spruce/src/app/layout.tsx (weights 400/500/600/700).
  */
 export const fonts = {
-  heading: '"Lora", Georgia, "Times New Roman", serif',
-  body: '"Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  body: 'Georgia, Times, "Times New Roman", serif',
+  heading: 'Georgia, Times, "Times New Roman", serif',
+  button: '"Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
 } as const;
 
 // =============================================================================
@@ -181,6 +185,7 @@ export const theme = createTheme({
     h4: { color: text.primary, fontFamily: fonts.heading, fontWeight: 600 },
     h5: { color: text.primary, fontFamily: fonts.heading, fontWeight: 500 },
     h6: { color: text.primary, fontFamily: fonts.heading, fontWeight: 500 },
+    button: { fontFamily: fonts.button, textTransform: 'none' },
   },
   components: {
     MuiButton: {
@@ -333,7 +338,9 @@ export const cssVariables = `
     --shadow-lg: ${shadows.lg};
 
     /* Fonts */
-    --font-heading: ${fonts.heading};
     --font-body: ${fonts.body};
+    --font-heading: ${fonts.heading};
+    --font-button: ${fonts.button};
+    --font-mono: ${fonts.mono};
   }
 `;
