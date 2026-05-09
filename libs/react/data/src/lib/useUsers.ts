@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
-import type { AppUser, RequestState } from '@maple/ts/domain';
+import type { AppUser, Employee, RequestState } from '@maple/ts/domain';
 import type {
   GetUsersRequest,
   GetUsersResponse,
@@ -12,6 +12,41 @@ import type {
   RevokeAdminRoleRequest,
   RevokeAdminRoleResponse,
 } from '@maple/ts/firebase/api-types';
+
+/**
+ * httpsCallable serializes the response to JSON, so server-side `Date`
+ * fields arrive as ISO strings even though the typed surface still says
+ * `Date`. Hydrate them at the boundary so consumers can call `.getTime()`,
+ * `toLocaleDateString()`, etc. without the type lying.
+ */
+function toDate(value: unknown): Date | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+function hydrateEmployee(raw: Employee | undefined): Employee | undefined {
+  if (!raw) return undefined;
+  return {
+    ...raw,
+    grantedAt: toDate(raw.grantedAt) ?? new Date(0),
+    createdAt: toDate(raw.createdAt) ?? new Date(0),
+    updatedAt: toDate(raw.updatedAt) ?? new Date(0),
+  };
+}
+
+function hydrateUser(raw: AppUser): AppUser {
+  return {
+    ...raw,
+    createdAt: toDate(raw.createdAt) ?? new Date(0),
+    lastSignInAt: toDate(raw.lastSignInAt),
+    employee: hydrateEmployee(raw.employee),
+  };
+}
 
 /**
  * Hook for the admin /users page.
@@ -35,7 +70,10 @@ export function useUsers() {
         'listUsers'
       );
       const result = await fn({});
-      setUsersState({ status: 'success', data: result.data.users });
+      setUsersState({
+        status: 'success',
+        data: result.data.users.map(hydrateUser),
+      });
       setHasMore(result.data.hasMore);
     } catch (error) {
       console.error('Failed to fetch users:', error);
