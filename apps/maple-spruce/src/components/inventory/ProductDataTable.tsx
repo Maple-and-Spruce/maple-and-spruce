@@ -14,6 +14,7 @@ import {
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import StoreIcon from '@mui/icons-material/Store';
 import type { Product, Artist, Category, RequestState } from '@maple/ts/domain';
 import { formatPrice, getTotalQuantity, isMultiVariant } from '@maple/ts/domain';
 import { surfaces, borders, radii, shadows } from '@maple/react/theme';
@@ -190,6 +191,27 @@ export function ProductDataTable({
             />
           );
         },
+      },
+      {
+        field: 'etsy',
+        headerName: 'Etsy',
+        width: 80,
+        sortable: false,
+        valueGetter: (_value, row: Product) => (row.etsyListingId ? 1 : 0),
+        renderCell: (params: GridRenderCellParams<Product>) => (
+          <Tooltip
+            title={
+              params.row.etsyListingId
+                ? 'Listed on Etsy'
+                : 'Not pushed to Etsy yet'
+            }
+          >
+            <StoreIcon
+              fontSize="small"
+              color={params.row.etsyListingId ? 'success' : 'disabled'}
+            />
+          </Tooltip>
+        ),
       },
       {
         field: 'status',

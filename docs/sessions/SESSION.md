@@ -64,8 +64,8 @@ All 6 sub-issues of epic #10 implemented:
 | 5 | #309 | Sale recording + InventoryMovement audit log | Merged (#317) |
 | 6 | #310 | Etsy order polling + cross-channel inventory sync | Merged (#324) |
 | 7 | #311 | Etsy sync conflict detection + resolution | Merged (#325) |
-| 8a | #312 | Admin UI — variants in ProductForm + DataTable | **In progress** (this PR) |
-| 8b | #312 | Admin UI — `/sales` page + Push-to-Etsy button | Not started |
+| 8a | #312 | Admin UI — variants in ProductForm + DataTable | Merged (#402) |
+| 8b | #312 | Admin UI — `/sales` page + Push-to-Etsy button | **In progress** (this PR) |
 | 9 | #313 | Artist payout calculation + admin page | Merged (#321) |
 
 **Full plan:** `.claude/plans/wild-scribbling-stearns.md`

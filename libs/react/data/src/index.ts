@@ -32,6 +32,10 @@ export {
   type UseEtsyListingsOptions,
 } from './lib/useEtsyListings';
 export { useEtsyImport } from './lib/useEtsyImport';
+export { useEtsyPush } from './lib/useEtsyPush';
+
+// Phase 5: Sales
+export { useSales, type UseSalesOptions } from './lib/useSales';
 
 // Phase 5: Artist Payouts
 export {

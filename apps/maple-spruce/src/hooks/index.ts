@@ -20,5 +20,7 @@ export {
   useTimeEntries,
   useEmployees,
   useUsers,
+  useSales,
+  useEtsyPush,
 } from '@maple/react/data';
 export { useAuth, useUserRole } from '@maple/react/auth';

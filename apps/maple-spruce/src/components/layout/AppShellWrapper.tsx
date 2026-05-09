@@ -3,6 +3,7 @@
 import { ReactNode, useMemo } from 'react';
 import HomeIcon from '@mui/icons-material/Home';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import PeopleIcon from '@mui/icons-material/People';
 import CategoryIcon from '@mui/icons-material/Category';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
@@ -75,6 +76,11 @@ export function AppShellWrapper({
             label: 'Inventory',
             href: '/inventory',
             icon: <InventoryIcon />,
+          },
+          {
+            label: 'Sales',
+            href: '/sales',
+            icon: <PointOfSaleIcon />,
           },
           {
             label: 'Categories',
