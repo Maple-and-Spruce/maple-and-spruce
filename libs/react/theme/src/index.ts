@@ -8,6 +8,7 @@ export {
   spacing,
   radii,
   shadows,
+  fonts,
   cssVariables,
 } from './lib/theme';
 

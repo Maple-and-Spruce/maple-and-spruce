@@ -640,14 +640,21 @@ export const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    // Brand fonts mirror the live Webflow site. See docs/reference/webflow-design-system.md.
+    fontFamily: 'Georgia, Times, "Times New Roman", serif',
     h1: {
       color: '#4A3728',
-      fontWeight: 600,
+      fontFamily: 'Georgia, Times, "Times New Roman", serif',
+      fontWeight: 700,
     },
     h2: {
       color: '#4A3728',
-      fontWeight: 600,
+      fontFamily: 'Georgia, Times, "Times New Roman", serif',
+      fontWeight: 700,
+    },
+    button: {
+      fontFamily: 'Archivo, system-ui, -apple-system, sans-serif',
+      textTransform: 'none',
     },
   },
   components: {

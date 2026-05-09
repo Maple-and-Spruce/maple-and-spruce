@@ -16,6 +16,7 @@ import {
   batch,
 } from '@maple/react/signals';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { fonts } from '@maple/react/theme';
 import { SquareCardForm } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
 import { SigningForm } from '@maple/react/agreements';
@@ -682,7 +683,8 @@ export function RegistrationCheckoutForm({
               border: 'none',
               cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
               opacity: isButtonDisabled.value ? 0.7 : 1,
-              fontFamily: 'system-ui, -apple-system, sans-serif',
+              // Apple Pay HIG: button text uses the system font, not brand fonts.
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               letterSpacing: '0.02em',
               marginBottom: 8,
             }}
@@ -712,7 +714,7 @@ export function RegistrationCheckoutForm({
                 padding: '14px 24px',
                 fontSize: '16px',
                 fontWeight: 600,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontFamily: fonts.button,
                 color: '#D5D6C8',
                 backgroundColor: isButtonDisabled.value ? '#8a7b6e' : '#4A3728',
                 border: 'none',
