@@ -41,32 +41,20 @@ Modes:
 | `font-size-body` | `variable-fca0c8af-8495-2ac9-afb3-adb425c4f25b` | 16px | 16px | 16px | 15px |
 | `font-size-caption` | `variable-10ba276e-ed81-3c5d-bd0d-082afbb166c9` | 14px | 14px | 13px | 13px |
 
-#### Font Families — TO ADD
+#### Font Family (live values)
 
-The React MUI theme now uses **Lora** for headings and **Archivo** for body
-(see `libs/react/theme/src/lib/theme.ts`). Webflow does NOT yet have matching
-`font-family-*` variables, so the published site falls back to the template's
-default fonts — meaning Webflow and the admin app are currently **inconsistent**.
+The Webflow Typography collection does not yet expose font-family as a token, but the published CSS resolves these stacks (verified 2026-05-09 against `cdn.prod.website-files.com/.../maple-spruce-folk-arts-collective.webflow.shared.2bd19ec02.css`):
 
-To bring them into parity, add these variables to the Typography collection:
+| Role | CSS variable | Stack |
+|------|--------------|-------|
+| Heading | `--_typography---font--heading-font` | `Georgia, Times, "Times New Roman", serif` |
+| Body | `--_typography---font--body-font` | `Georgia, Times, "Times New Roman", serif` |
+| Button | `--_typography---font--button-font` | `Archivo, sans-serif` |
+| Eyebrow / blockquote | (alias of body) | `Georgia, Times, "Times New Roman", serif` |
 
-| Token | Value | Used by |
-|-------|-------|---------|
-| `font-family-heading` | `"Lora", Georgia, "Times New Roman", serif` | `heading-1`, `heading-2`, `heading-3` |
-| `font-family-body` | `"Archivo", system-ui, -apple-system, sans-serif` | `subtitle-text`, `body-text`, `caption-text`, button styles |
+Google Fonts loaded by Webflow: `Archivo` (300–700) and `Lora` (300–700). **Lora is loaded but not referenced** by any active variable — leftover from the original Webflow template, do not introduce new uses.
 
-After creating the variables:
-1. Apply `font-family-heading` to `heading-1`, `heading-2`, `heading-3` styles.
-2. Apply `font-family-body` to `body-text` (and inherit through `subtitle-text`, `caption-text`, button styles).
-3. In Webflow Project Settings → Custom Code (Head), add the same Google Fonts link served by the admin app:
-   ```html
-   <link rel="preconnect" href="https://fonts.googleapis.com" />
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Lora:wght@400;500;700&display=swap" />
-   ```
-4. Republish the site.
-
-Required weights (must match the admin app): **Lora 400/500/700**, **Archivo 400/500/600/700**.
+The admin React app mirrors this stack via `fonts.body` / `fonts.heading` / `fonts.button` exported from `@maple/react/theme` (see `libs/react/theme/src/lib/theme.ts`). The `feat: brand fonts — Lora (headings) + Archivo (body)` change in PR #397 was based on a misread of the Webflow site; PR `feat/brand-fonts-georgia` corrects it.
 
 ### Sizes
 
@@ -129,11 +117,12 @@ The tokens and styles are created but not yet applied to existing page elements.
 2. **Replace inline styles** — Swap hardcoded values for the new design token variables
 3. **Apply typography classes** — Set `heading-1`, `heading-2`, `heading-3`, `subtitle-text`, `body-text`, `caption-text` on text elements
 4. **Apply button classes** — Set `btn-primary`, `btn-secondary`, `btn-outline` on buttons/links
-5. **Add font family tokens** — Add `font-family-heading` (Lora) and `font-family-body` (Archivo) variables to the Typography collection (see "Font Families — TO ADD" above for exact values)
+5. **Add font family tokens** — Promote the resolved heading/body/button stacks above into formal `font-family-heading`, `font-family-body`, `font-family-button` variables in the Typography collection so they're editable in the Designer rather than embedded in CSS.
 6. **Review at all breakpoints** — Verify responsive scaling looks correct on tablet and mobile
+7. **Drop unused Lora load** — Remove `Lora` from the Google Fonts loader once we've confirmed no class still references it. Keep `Archivo` (used by buttons).
 
 ### Notes
 
 - The site has ~1050 existing styles from a template. Many may use hardcoded values that should migrate to tokens.
-- Font family variables are NOT yet defined in Webflow. The React MUI theme uses Lora (headings) and Archivo (body) as of the typography font PR — Webflow needs matching variables and a Google Fonts link in the site head to stay in sync.
-- The MUI theme in the React app uses the same brand colors (see `.claude/rules/react-components.md`).
+- Heading + body fonts are confirmed: **Georgia** (with Times / Times New Roman / serif fallbacks). Buttons are **Archivo**. The live CSS uses these even though they aren't promoted to Designer variables yet.
+- The MUI theme in the React app mirrors both colors and fonts (see `.claude/rules/react-components.md` and the `fonts` export from `@maple/react/theme`).

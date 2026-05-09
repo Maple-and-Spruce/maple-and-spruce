@@ -7,6 +7,28 @@ globs:
 
 # React Component Rules
 
+## Brand Typography
+
+The admin React app mirrors the live Webflow type system. Do not substitute `system-ui`, `Inter`, `Roboto`, or `Lora` — those are not the brand fonts.
+
+| Role | Stack | Source |
+|------|-------|--------|
+| Body / heading | `Georgia, Times, "Times New Roman", serif` | `fonts.body` / `fonts.heading` |
+| Button | `Archivo, system-ui, -apple-system, sans-serif` | `fonts.button` |
+| Mono (codes, IDs) | `ui-monospace, SFMono-Regular, Menlo, Monaco, monospace` | `fonts.mono` |
+
+Import from `@maple/react/theme`:
+
+```typescript
+import { fonts } from '@maple/react/theme';
+// Inline overrides only when MUI's theme can't reach the element (e.g. native <button>).
+<button style={{ fontFamily: fonts.button }}>Pay</button>
+```
+
+The MUI theme already wires headings and `MuiButton` to the right stacks — most components need no overrides at all. Apple Pay buttons are the documented exception (HIG requires the system font).
+
+See `docs/reference/webflow-design-system.md` for the canonical Webflow values.
+
 ## MUI Theme Colors
 
 Always use MUI theme tokens, not hardcoded hex values.
