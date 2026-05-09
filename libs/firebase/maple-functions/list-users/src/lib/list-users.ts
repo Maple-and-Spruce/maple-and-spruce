@@ -1,19 +1,17 @@
 /**
  * List Users Cloud Function
  *
- * Admin-only listing of every Firebase Auth user, joined with their
- * admin and employee role records. Powers the /users admin page.
+ * Admin-only listing of every Firebase Auth user, joined with the admin
+ * role record. Powers the /users admin page.
  *
- * Avoids N+1 reads by fetching the admin UID set and the full employee
- * collection up-front and building lookup tables, then walking the auth
- * page once.
+ * Avoids N+1 reads by fetching the admin UID set up-front, then walking
+ * the auth page once.
  */
 import {
   createAdminFunction,
   getAdminUids,
   throwInvalidArgument,
 } from '@maple/firebase/functions';
-import { EmployeeRepository } from '@maple/firebase/database';
 import { getAuth } from 'firebase-admin/auth';
 import admin from 'firebase-admin';
 import type { AppUser } from '@maple/ts/domain';
@@ -41,14 +39,12 @@ export const listUsers = createAdminFunction<
 
   ensureAdmin();
 
-  const [adminUids, employees, page] = await Promise.all([
+  const [adminUids, page] = await Promise.all([
     getAdminUids(),
-    EmployeeRepository.findAll(),
     getAuth().listUsers(limit),
   ]);
 
   const adminSet = new Set(adminUids);
-  const employeeByUid = new Map(employees.map((e) => [e.id, e]));
 
   const users: AppUser[] = page.users.map((u) => ({
     uid: u.uid,
@@ -62,7 +58,6 @@ export const listUsers = createAdminFunction<
       ? new Date(u.metadata.lastSignInTime)
       : undefined,
     isAdmin: adminSet.has(u.uid),
-    employee: employeeByUid.get(u.uid),
   }));
 
   // Sort: most recent sign-in first; users who never signed in (e.g. just

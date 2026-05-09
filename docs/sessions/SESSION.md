@@ -6,32 +6,22 @@
 
 ## Current Status
 
-**Date**: 2026-05-08
-**Status**: Phase 4 complete; Phase 5 in progress; Timekeeping MVP + User/Role admin page shipped.
+**Date**: 2026-05-09
+**Status**: Phase 4 complete; Phase 5 in progress. Custom timesheet retired before usage in favor of Square Shifts + Square Payroll (now in trial).
 
-### User & Role Administration — Shipped (2026-05-08)
+### Timekeeping retired — replaced by Square (2026-05-09)
 
-Admin `/users` page where Katie/David can see everyone who's signed up to the admin app and assign roles. Replaces the prior UID-paste-only flow on `/employees`.
+Square Payroll trial in place; hours will flow from Square Shifts (clock-in via the Square POS app on iPad). Square owns hours, rates, and payroll end-to-end. The custom `/timesheet` and `/employees` pages plus the 8 time-entry/employee Cloud Functions, `Role.Employee`, `EmployeeGuard`, and the timesheet components lib were deleted. No data was in production yet — Nathan never saw the page.
 
-- 3 new Cloud Functions: `listUsers` (admin SDK + role joins), `grantAdminRole`, `revokeAdminRole`
+### Admin User Management — Shipped (2026-05-08)
+
+Admin `/users` page where Katie/David can see everyone who's signed up to the admin app and grant or revoke admin access.
+
+- 3 Cloud Functions: `listUsers` (Firebase Admin SDK + admin record join), `grantAdminRole`, `revokeAdminRole`
 - Self-protection: admins cannot revoke their own admin role (would lock themselves out)
-- New domain type: `AppUser` (Firebase Auth user + roles)
-- New components lib: `libs/react/users/` (`UserList`, `UserRolesDialog`)
-- Single dialog handles all role mutations: instant grant/revoke for admin, inline forms for employee role (rate + status)
-- Nav: added "Users" under Admin group
-- 14 new unit tests; full suite at 1713 tests
-
-### Timekeeping MVP — Shipped (2026-05-08)
-
-Foundational hour-tracking + "$ owed" feature for hourly workers (initial use case: Nathan). New `Role.Employee` admits a logged-in user to `/timesheet` only — they cannot reach any other admin route. Admin sees a new **Payroll** nav group with **Timesheets** + **Employees**.
-
-- 2 new Firestore collections: `employees/{uid}`, `timeEntries/{id}`
-- 8 new Cloud Functions in `maple-core` codebase (CRUD + `markTimeEntriesPaid`)
-- Existing `checkAdminStatus` extended to also return `isEmployee` and `role`
-- New libs: `libs/react/timesheet/` (form/list/card components)
-- Per-path guard selection: `/timesheet` uses `EmployeeGuard` (admits admin OR employee); everything else stays admin-only
-- Onboarding flow (manual): Nathan signs up → Katie pastes his Firebase Auth UID into `/employees` form + sets rate → he refreshes and sees the timesheet
-- Out of scope (future): payroll API integration, payment-method capture, rate history, approval workflow, integration tests
+- `AppUser` domain type (Firebase Auth user + isAdmin)
+- Components lib: `libs/react/users/` (`UserList`, `UserRolesDialog`)
+- Nav: "Users" under Admin group
 
 ### Phase 4 Music Lessons — Complete
 

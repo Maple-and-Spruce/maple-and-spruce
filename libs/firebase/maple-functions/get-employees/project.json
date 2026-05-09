@@ -1,8 +1,0 @@
-{
-  "name": "firebase-maple-functions-get-employees",
-  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/firebase/maple-functions/get-employees/src",
-  "projectType": "library",
-  "tags": ["scope:firebase", "type:feature"],
-  "targets": {}
-}
