@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+// Vitest doesn't auto-cleanup between tests when @testing-library/react is
+// loaded indirectly through nested specs in a single workspace run, so renders
+// from previous `it` blocks leak DOM into the next test's queries.
+afterEach(cleanup);
 
 /**
  * Helper to set an input's value in one shot (avoids per-keystroke
@@ -337,6 +342,95 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       expect(
         screen.getByRole('combobox', { name: /Category/ })
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('locked fields when class has registrations', () => {
+    const classWithRegistrants = {
+      id: 'class-1',
+      name: 'Existing Class',
+      description: 'A description for an existing class.',
+      shortDescription: 'Short desc',
+      instructorId: 'inst-1',
+      sessions: [{ dateTime: new Date('2099-06-15T14:00:00') }],
+      durationMinutes: 90,
+      capacity: 8,
+      priceCents: 5000,
+      skillLevel: 'beginner' as const,
+      status: 'published' as const,
+      location: '123 Main St',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const instructorsList = [
+      {
+        id: 'inst-1',
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        status: 'active' as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    it('shows the locked-fields info banner when registrationCount > 0', () => {
+      render(
+        <ClassForm
+          {...defaultProps}
+          classItem={classWithRegistrants}
+          instructors={instructorsList}
+          registrationCount={3}
+        />
+      );
+
+      const alerts = screen.getAllByRole('alert');
+      const banner = alerts.find((a) =>
+        a.textContent?.includes('3 customers have already registered')
+      );
+      expect(banner).toBeDefined();
+      expect(banner!.textContent).toContain(
+        'Dates, times, duration, price, instructor, and location are locked'
+      );
+    });
+
+    it('disables price, location, instructor, and duration when registrationCount > 0', () => {
+      render(
+        <ClassForm
+          {...defaultProps}
+          classItem={classWithRegistrants}
+          instructors={instructorsList}
+          registrationCount={1}
+        />
+      );
+
+      expect(screen.getByRole('textbox', { name: /Price/ })).toBeDisabled();
+      expect(screen.getByRole('textbox', { name: /Location/ })).toBeDisabled();
+      expect(
+        screen.getByRole('combobox', { name: /Instructor/ })
+      ).toHaveAttribute('aria-disabled', 'true');
+      expect(
+        screen.getByRole('combobox', { name: /Duration/ })
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('keeps fields editable when registrationCount is 0', () => {
+      render(
+        <ClassForm
+          {...defaultProps}
+          classItem={classWithRegistrants}
+          instructors={instructorsList}
+          registrationCount={0}
+        />
+      );
+
+      expect(
+        screen.queryByText(/customers? (?:have|has) already registered/)
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /Price/ })).not.toBeDisabled();
+      expect(
+        screen.getByRole('textbox', { name: /Location/ })
+      ).not.toBeDisabled();
     });
   });
 });

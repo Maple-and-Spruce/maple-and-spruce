@@ -21,6 +21,8 @@ export interface ClassFilters {
   categoryId?: string;
   instructorId?: string;
   upcoming?: boolean;
+  /** Hide classes whose filled count has reached capacity. */
+  hideFull?: boolean;
 }
 
 interface ClassFilterToolbarProps {
@@ -64,6 +66,13 @@ export function ClassFilterToolbar({
     onFiltersChange({
       ...filters,
       upcoming: event.target.checked ? true : undefined,
+    });
+  };
+
+  const handleHideFullChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onFiltersChange({
+      ...filters,
+      hideFull: event.target.checked ? true : undefined,
     });
   };
 
@@ -152,6 +161,17 @@ export function ClassFilterToolbar({
           />
         }
         label="Upcoming only"
+      />
+
+      {/* Hide Full Toggle */}
+      <FormControlLabel
+        control={
+          <Switch
+            checked={filters.hideFull ?? false}
+            onChange={handleHideFullChange}
+          />
+        }
+        label="Hide full"
       />
     </Box>
   );
