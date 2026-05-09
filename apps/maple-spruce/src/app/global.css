@@ -24,11 +24,16 @@ html {
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   line-height: inherit;
 }
 
-h1, h2, h3, h4, h5, h6, p, pre {
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  margin: 0;
+}
+
+p, pre {
   margin: 0;
 }
 
@@ -101,6 +106,10 @@ img, svg {
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Fonts (must match libs/react/theme/src/lib/theme.ts `fonts`) */
+  --font-heading: "Lora", Georgia, "Times New Roman", serif;
+  --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   /* Transitions */
   --transition-fast: 150ms ease;
