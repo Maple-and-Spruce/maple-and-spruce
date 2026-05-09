@@ -6,8 +6,32 @@
 
 ## Current Status
 
-**Date**: 2026-04-19
-**Status**: Phase 4 complete (PR #304 ready to merge). Phase 5 planning complete, implementation starting.
+**Date**: 2026-05-08
+**Status**: Phase 4 complete; Phase 5 in progress; Timekeeping MVP + User/Role admin page shipped.
+
+### User & Role Administration — Shipped (2026-05-08)
+
+Admin `/users` page where Katie/David can see everyone who's signed up to the admin app and assign roles. Replaces the prior UID-paste-only flow on `/employees`.
+
+- 3 new Cloud Functions: `listUsers` (admin SDK + role joins), `grantAdminRole`, `revokeAdminRole`
+- Self-protection: admins cannot revoke their own admin role (would lock themselves out)
+- New domain type: `AppUser` (Firebase Auth user + roles)
+- New components lib: `libs/react/users/` (`UserList`, `UserRolesDialog`)
+- Single dialog handles all role mutations: instant grant/revoke for admin, inline forms for employee role (rate + status)
+- Nav: added "Users" under Admin group
+- 14 new unit tests; full suite at 1713 tests
+
+### Timekeeping MVP — Shipped (2026-05-08)
+
+Foundational hour-tracking + "$ owed" feature for hourly workers (initial use case: Nathan). New `Role.Employee` admits a logged-in user to `/timesheet` only — they cannot reach any other admin route. Admin sees a new **Payroll** nav group with **Timesheets** + **Employees**.
+
+- 2 new Firestore collections: `employees/{uid}`, `timeEntries/{id}`
+- 8 new Cloud Functions in `maple-core` codebase (CRUD + `markTimeEntriesPaid`)
+- Existing `checkAdminStatus` extended to also return `isEmployee` and `role`
+- New libs: `libs/react/timesheet/` (form/list/card components)
+- Per-path guard selection: `/timesheet` uses `EmployeeGuard` (admits admin OR employee); everything else stays admin-only
+- Onboarding flow (manual): Nathan signs up → Katie pastes his Firebase Auth UID into `/employees` form + sets rate → he refreshes and sees the timesheet
+- Out of scope (future): payroll API integration, payment-method capture, rate history, approval workflow, integration tests
 
 ### Phase 4 Music Lessons — Complete
 
@@ -25,23 +49,24 @@ All 6 sub-issues of epic #10 implemented:
 
 ### Phase 5: Unified Inventory, Etsy Push, & Sales Tracking
 
-**Planning completed 2026-04-19.** Admin app becomes single source of truth for products, pushing to Etsy + Square. Sales on either channel auto-recorded with cross-channel inventory sync.
+**Planning completed 2026-04-19.** Admin app is single source of truth for products, pushing to Etsy + Square. Sales on either channel auto-record with cross-channel inventory sync.
 
 **Etsy API approved** (2026-03-27, `maplspruce-listings` app, Personal Access tier).
 
-| PR | Issue | Title | Depends On | Status |
-|----|-------|-------|------------|--------|
-| 1 | #305 | Product variant model refactor | — | **In progress** |
-| 2 | #306 | Square multi-variation catalog support | #305 | Not started |
-| 3 | #307 | Push-to-Etsy Cloud Function | #305 | Not started |
-| 4 | #308 | Etsy import multi-variant support | #305, #306 | Not started |
-| 5 | #309 | Sale recording + InventoryMovement audit log | #305 | Not started |
-| 6 | #310 | Etsy order polling + cross-channel inventory sync | #307, #309 | Not started |
-| 7 | #311 | Etsy sync conflict detection + resolution | #305, #307 | Not started |
-| 8 | #312 | Admin UI — variant management + sales page | #305, #306, #309 | Not started |
-| 9 | #313 | Artist payout calculation + admin page | #309 | Not started |
+8 of 9 PRs merged 2026-04-19 → 2026-04-22. Picking up the remaining admin UI work (#312) on 2026-05-08, split into two reviewable PRs.
 
-**Critical path:** PR 1 → PR 2 → PR 5 → PR 6 (end-to-end sales tracking)
+| PR | Issue | Title | Status |
+|----|-------|-------|--------|
+| 1 | #305 | Product variant model refactor | Merged (#314) |
+| 2 | #306 | Square multi-variation catalog support | Merged (#318) |
+| 3 | #307 | Push-to-Etsy Cloud Function | Merged (#319) |
+| 4 | #308 | Etsy import multi-variant support | Merged (#322) |
+| 5 | #309 | Sale recording + InventoryMovement audit log | Merged (#317) |
+| 6 | #310 | Etsy order polling + cross-channel inventory sync | Merged (#324) |
+| 7 | #311 | Etsy sync conflict detection + resolution | Merged (#325) |
+| 8a | #312 | Admin UI — variants in ProductForm + DataTable | Merged (#402) |
+| 8b | #312 | Admin UI — `/sales` page + Push-to-Etsy button | **In progress** (this PR) |
+| 9 | #313 | Artist payout calculation + admin page | Merged (#321) |
 
 **Full plan:** `.claude/plans/wild-scribbling-stearns.md`
 

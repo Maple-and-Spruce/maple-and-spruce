@@ -211,8 +211,8 @@ export function EtsyImportDialog({
           />
 
           <Typography variant="caption" color="text.secondary">
-            Listings with multiple variants are not supported in this import
-            pass and will be skipped automatically.
+            Multi-variant listings are imported with all variants — each
+            becomes a Product variant with its own price, quantity, and SKU.
           </Typography>
         </Box>
       </DialogContent>

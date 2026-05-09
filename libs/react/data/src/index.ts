@@ -32,6 +32,10 @@ export {
   type UseEtsyListingsOptions,
 } from './lib/useEtsyListings';
 export { useEtsyImport } from './lib/useEtsyImport';
+export { useEtsyPush } from './lib/useEtsyPush';
+
+// Phase 5: Sales
+export { useSales, type UseSalesOptions } from './lib/useSales';
 
 // Phase 5: Artist Payouts
 export {
@@ -65,3 +69,13 @@ export {
   useRegistrations,
   type UseRegistrationsFilters,
 } from './lib/useRegistrations';
+
+// Timekeeping
+export {
+  useTimeEntries,
+  type UseTimeEntriesOptions,
+} from './lib/useTimeEntries';
+export { useEmployees } from './lib/useEmployees';
+
+// User & role administration
+export { useUsers } from './lib/useUsers';

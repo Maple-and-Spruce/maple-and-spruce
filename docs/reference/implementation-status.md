@@ -286,6 +286,43 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Firebase Hosting rewrites | **Complete** | `/calendar/*.ics` routes to feed functions |
 | Public calendar display | **Complete** | Open Web Calendar (self-hosted on Vercel), embedded in Webflow via iframe. See ADR-025. |
 
+## User & Role Administration — Complete
+
+Admin `/users` page lists every Firebase Auth user joined with their admin/employee role records. Admins can grant or revoke admin role on others, and add/edit/deactivate the employee role with rate. Self-protection: an admin cannot revoke their own admin role.
+
+| Layer | Status | Path |
+|------|--------|------|
+| `AppUser` domain type | **Complete** | `libs/ts/domain/src/lib/app-user.ts` |
+| API types | **Complete** | `libs/ts/firebase/api-types/src/lib/user.types.ts` |
+| Cloud functions (`listUsers`, `grantAdminRole`, `revokeAdminRole`) | **Complete** | `libs/firebase/maple-functions/{list-users,grant-admin-role,revoke-admin-role}/` |
+| `useUsers` data hook | **Complete** | `libs/react/data/src/lib/useUsers.ts` |
+| `UserList` + `UserRolesDialog` components | **Complete** | `libs/react/users/` |
+| `/users` admin page + nav link | **Complete** | `apps/maple-spruce/src/app/users/page.tsx` |
+| Unit tests (14 across 3 functions) | **Complete** | `*.spec.ts` colocated |
+
+**Out of scope (future):** user search/filter, pagination beyond 1000, deleting users from the admin app, password resets, granting employee role without payroll fields, custom claims for fine-grained permissions.
+
+## Timekeeping (MVP) — Complete
+
+Foundation for tracking hourly worker time. Nathan signs up like any user; Katie grants the `Role.Employee` role and sets his hourly rate. He logs hours; she sees what's owed and presses "Mark paid". No payroll integration yet — this is the data foundation.
+
+| Layer | Status | Path |
+|------|--------|------|
+| Domain types (`TimeEntry`, `Employee`) | **Complete** | `libs/ts/domain/src/lib/{time-entry,employee}.ts` |
+| Vest validation suites | **Complete** | `libs/ts/validation/src/lib/{time-entry,employee}.validation.ts` |
+| Repositories | **Complete** | `libs/firebase/database/src/lib/{time-entry,employee}.repository.ts` |
+| Cloud functions (8 + extended `checkAdminStatus`) | **Complete** | `libs/firebase/maple-functions/{create,update,delete}-time-entry`, `get-time-entries`, `mark-time-entries-paid`, `{get,create,update}-employee` |
+| Role system extension (`Role.Employee`, `getCurrentRole`) | **Complete** | `libs/firebase/functions/src/lib/auth.utility.ts` |
+| EmployeeGuard + useUserRole | **Complete** | `libs/react/auth/src/lib/{EmployeeGuard,useUserRole}.{tsx,ts}` |
+| Per-path guard selection (`/timesheet` admits employees) | **Complete** | `apps/maple-spruce/src/app/auth-guard-wrapper.tsx` |
+| Role-aware admin nav | **Complete** | `apps/maple-spruce/src/components/layout/AppShellWrapper.tsx` |
+| Data hooks (`useTimeEntries`, `useEmployees`) | **Complete** | `libs/react/data/src/lib/{useTimeEntries,useEmployees}.ts` |
+| Components lib | **Complete** | `libs/react/timesheet/` |
+| Admin pages | **Complete** | `apps/maple-spruce/src/app/{timesheet,employees}/page.tsx` |
+| Unit tests (validation + 8 functions) | **Complete** | `*.spec.ts` colocated |
+
+**Out of scope (future):** real payroll integration (Square Payroll, ACH), payment amount/method capture on "Mark paid", rate history, approval workflow, bulk import of historical hours, email-based employee creation, integration tests.
+
 ## Deferred to Phase 5 (Store Opening)
 
 | Feature | Status | Issue | Notes |

@@ -17,5 +17,10 @@ export {
   useAgreementTemplates,
   useAgreementRequests,
   useSignedAgreement,
+  useTimeEntries,
+  useEmployees,
+  useUsers,
+  useSales,
+  useEtsyPush,
 } from '@maple/react/data';
-export { useAuth } from '@maple/react/auth';
+export { useAuth, useUserRole } from '@maple/react/auth';

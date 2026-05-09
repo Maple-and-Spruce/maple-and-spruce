@@ -450,6 +450,41 @@
       "@maple/firebase/etsy-test-mock-server": [
         "libs/firebase/etsy-test-mock-server/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/create-time-entry": [
+        "libs/firebase/maple-functions/create-time-entry/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-time-entry": [
+        "libs/firebase/maple-functions/update-time-entry/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-time-entry": [
+        "libs/firebase/maple-functions/delete-time-entry/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-time-entries": [
+        "libs/firebase/maple-functions/get-time-entries/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/mark-time-entries-paid": [
+        "libs/firebase/maple-functions/mark-time-entries-paid/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-employees": [
+        "libs/firebase/maple-functions/get-employees/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-employee": [
+        "libs/firebase/maple-functions/create-employee/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-employee": [
+        "libs/firebase/maple-functions/update-employee/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/list-users": [
+        "libs/firebase/maple-functions/list-users/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/grant-admin-role": [
+        "libs/firebase/maple-functions/grant-admin-role/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/revoke-admin-role": [
+        "libs/firebase/maple-functions/revoke-admin-role/src/index.ts"
+      ],
+      "@maple/react/timesheet": ["libs/react/timesheet/src/index.ts"],
+      "@maple/react/users": ["libs/react/users/src/index.ts"],
       "@/*": ["apps/maple-spruce/src/*"]
     }
   }
