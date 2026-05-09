@@ -70,12 +70,5 @@ export {
   type UseRegistrationsFilters,
 } from './lib/useRegistrations';
 
-// Timekeeping
-export {
-  useTimeEntries,
-  type UseTimeEntriesOptions,
-} from './lib/useTimeEntries';
-export { useEmployees } from './lib/useEmployees';
-
 // User & role administration
 export { useUsers } from './lib/useUsers';

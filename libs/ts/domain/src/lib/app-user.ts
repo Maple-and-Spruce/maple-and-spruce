@@ -9,8 +9,6 @@
  * but we keep the type honest.
  */
 
-import type { Employee } from './employee';
-
 export interface AppUser {
   uid: string;
   email: string | null;
@@ -22,10 +20,4 @@ export interface AppUser {
   lastSignInAt?: Date;
   /** True if the user has an `admins/{uid}` record. */
   isAdmin: boolean;
-  /**
-   * The employee record if one exists, regardless of active/inactive.
-   * `employee.status === 'inactive'` is how a revoked employee role looks —
-   * the doc stays for history.
-   */
-  employee?: Employee;
 }

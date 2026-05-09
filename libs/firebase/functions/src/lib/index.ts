@@ -36,7 +36,6 @@ export {
 export {
   Role,
   hasRole,
-  getCurrentRole,
   grantAdminRole,
   revokeAdminRole,
   getAdminUids,

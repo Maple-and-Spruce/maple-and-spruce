@@ -40,10 +40,6 @@ export * from './lib/agreement-template';
 export * from './lib/agreement-request';
 export * from './lib/signed-agreement';
 
-// Timekeeping
-export * from './lib/time-entry';
-export * from './lib/employee';
-
 // User & role administration
 export * from './lib/app-user';
 
