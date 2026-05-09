@@ -1,8 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
-import { AuthGuard, AdminGuard, isPublicRoute } from '@maple/react/auth';
+import { AuthGuard } from '@maple/react/auth';
 import { publicRoutes } from '../config/public-routes';
 
 interface AuthGuardWrapperProps {
@@ -10,18 +9,12 @@ interface AuthGuardWrapperProps {
 }
 
 /**
- * Client component wrapper for AuthGuard and AdminGuard.
+ * Root-level auth check.
  *
- * Public routes bypass both guards.
- * Non-public routes require authentication (AuthGuard) and admin access (AdminGuard).
+ * Forces sign-in for any route not listed in `publicRoutes`. Role-based
+ * gating (Admin vs Employee) lives in `app/(admin)/layout.tsx` so the
+ * guard switches don't unmount the app shell on navigation.
  */
 export function AuthGuardWrapper({ children }: AuthGuardWrapperProps) {
-  const pathname = usePathname();
-  const isPublic = isPublicRoute(publicRoutes, pathname);
-
-  return (
-    <AuthGuard publicRoutes={publicRoutes}>
-      {isPublic ? children : <AdminGuard>{children}</AdminGuard>}
-    </AuthGuard>
-  );
+  return <AuthGuard publicRoutes={publicRoutes}>{children}</AuthGuard>;
 }
