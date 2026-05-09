@@ -3,8 +3,10 @@
 import { useCallback, useEffect } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -17,7 +19,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import type { Employee } from '@maple/ts/domain';
+import type { AppUser, Employee } from '@maple/ts/domain';
 import { employeeValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -51,7 +53,29 @@ export interface EmployeeFormProps {
   onClose: () => void;
   onSubmit: (submit: EmployeeFormSubmit) => Promise<void>;
   employee?: Employee;
+  /**
+   * Signed-up Firebase Auth users available to grant the employee role to.
+   * Pass the list with employees already filtered out so the picker doesn't
+   * surface duplicates. Required for create mode.
+   */
+  availableUsers?: AppUser[];
+  /** Show a loading indicator in place of the picker while users load. */
+  usersLoading?: boolean;
   isSubmitting?: boolean;
+}
+
+/**
+ * Best-guess display name for a user — prefer their displayName, then their
+ * email's local part, then a placeholder. Used to seed the Name field when
+ * the admin picks a user from the dropdown.
+ */
+function defaultNameFor(user: AppUser): string {
+  if (user.displayName) return user.displayName;
+  if (user.email) {
+    const local = user.email.split('@')[0];
+    if (local) return local;
+  }
+  return '';
 }
 
 export function EmployeeForm({
@@ -59,6 +83,8 @@ export function EmployeeForm({
   onClose,
   onSubmit,
   employee,
+  availableUsers,
+  usersLoading = false,
   isSubmitting = false,
 }: EmployeeFormProps) {
   useSignals();
@@ -113,6 +139,25 @@ export function EmployeeForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, employee]);
 
+  const handleUserSelected = (user: AppUser | null) => {
+    batch(() => {
+      if (user) {
+        id.value = user.uid;
+        name.value = defaultNameFor(user);
+        email.value = user.email ?? '';
+      } else {
+        id.value = '';
+        name.value = '';
+        email.value = '';
+      }
+    });
+  };
+
+  const selectedUser =
+    !isEdit && id.value
+      ? availableUsers?.find((u) => u.uid === id.value) ?? null
+      : null;
+
   const handleSubmit = useCallback(async () => {
     showErrors.value = true;
     submitError.value = null;
@@ -156,9 +201,9 @@ export function EmployeeForm({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           {!isEdit && (
             <Typography variant="body2" color="text.secondary">
-              The employee must sign up at this admin app first. Then paste
-              their Firebase Auth UID below — find it in the Firebase Console
-              under Authentication.
+              Pick someone who&apos;s already signed up to the admin app and
+              set their hourly rate. If the person you&apos;re looking for
+              isn&apos;t here, have them sign up first.
             </Typography>
           )}
           {submitError.value && (
@@ -167,47 +212,94 @@ export function EmployeeForm({
             </Alert>
           )}
 
-          <TextField
-            label="Firebase Auth UID"
-            value={id.value}
-            onChange={(e) => (id.value = e.target.value)}
-            error={!!fieldError('id')}
-            helperText={fieldError('id') || 'Document ID — cannot be changed'}
-            disabled={isEdit}
-            required
-            fullWidth
-          />
-          <TextField
-            label="Name"
-            value={name.value}
-            onChange={(e) => (name.value = e.target.value)}
-            error={!!fieldError('name')}
-            helperText={fieldError('name')}
-            required
-            fullWidth
-          />
-          <TextField
-            label="Email"
-            type="email"
-            value={email.value}
-            onChange={(e) => (email.value = e.target.value)}
-            error={!!fieldError('email')}
-            helperText={fieldError('email')}
-            disabled={isEdit}
-            required
-            fullWidth
-          />
-          <TextField
-            label="Hourly rate ($)"
-            type="number"
-            value={hourlyRate.value}
-            onChange={(e) => (hourlyRate.value = e.target.value)}
-            error={!!fieldError('hourlyRate')}
-            helperText={fieldError('hourlyRate')}
-            slotProps={{ htmlInput: { step: 0.25, min: 0 } }}
-            required
-            fullWidth
-          />
+          {isEdit ? (
+            <>
+              <TextField
+                label="Email"
+                value={email.value}
+                disabled
+                fullWidth
+                helperText="Linked to the Firebase Auth account — cannot be changed"
+              />
+              <TextField
+                label="Name"
+                value={name.value}
+                onChange={(e) => (name.value = e.target.value)}
+                error={!!fieldError('name')}
+                helperText={fieldError('name')}
+                required
+                fullWidth
+              />
+            </>
+          ) : usersLoading ? (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                py: 3,
+              }}
+            >
+              <CircularProgress size={28} />
+            </Box>
+          ) : availableUsers && availableUsers.length === 0 ? (
+            <Alert severity="info">
+              Every signed-up user is already an employee. New people need to
+              sign up at the admin app before they can be added here.
+            </Alert>
+          ) : (
+            <>
+              <Autocomplete<AppUser>
+                options={availableUsers ?? []}
+                value={selectedUser}
+                onChange={(_, value) => handleUserSelected(value)}
+                getOptionLabel={(option) =>
+                  option.displayName
+                    ? `${option.displayName} · ${option.email ?? '(no email)'}`
+                    : option.email ?? option.uid
+                }
+                isOptionEqualToValue={(option, value) =>
+                  option.uid === value.uid
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="User"
+                    required
+                    error={!!fieldError('id')}
+                    helperText={fieldError('id') || 'Sign-up required first'}
+                  />
+                )}
+              />
+              {id.value && (
+                <TextField
+                  label="Name"
+                  value={name.value}
+                  onChange={(e) => (name.value = e.target.value)}
+                  error={!!fieldError('name')}
+                  helperText={
+                    fieldError('name') ?? 'Defaults from their account'
+                  }
+                  required
+                  fullWidth
+                />
+              )}
+            </>
+          )}
+
+          {(isEdit || id.value) && (
+            <TextField
+              label="Hourly rate ($)"
+              type="number"
+              value={hourlyRate.value}
+              onChange={(e) => (hourlyRate.value = e.target.value)}
+              error={!!fieldError('hourlyRate')}
+              helperText={fieldError('hourlyRate')}
+              slotProps={{ htmlInput: { step: 0.25, min: 0 } }}
+              required
+              fullWidth
+            />
+          )}
           {isEdit && (
             <FormControl fullWidth error={!!fieldError('status')}>
               <InputLabel>Status</InputLabel>
@@ -238,7 +330,11 @@ export function EmployeeForm({
           onClick={handleSubmit}
           variant="contained"
           color="primary"
-          disabled={isSubmitting}
+          disabled={
+            isSubmitting ||
+            (!isEdit && !id.value) ||
+            (!isEdit && availableUsers?.length === 0)
+          }
         >
           {isSubmitting ? 'Saving...' : isEdit ? 'Update' : 'Add'}
         </Button>
