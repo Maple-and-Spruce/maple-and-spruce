@@ -78,6 +78,29 @@ export const UpcomingOnly: Story = {
 };
 
 /**
+ * Hide-full toggle enabled
+ */
+export const HideFull: Story = {
+  args: {
+    filters: {
+      hideFull: true,
+    },
+  },
+};
+
+/**
+ * Default Katie view: upcoming + not full
+ */
+export const DefaultAdminView: Story = {
+  args: {
+    filters: {
+      upcoming: true,
+      hideFull: true,
+    },
+  },
+};
+
+/**
  * Multiple filters selected
  */
 export const MultipleFilters: Story = {
@@ -86,6 +109,7 @@ export const MultipleFilters: Story = {
       status: 'published',
       categoryId: 'cat-fiber',
       upcoming: true,
+      hideFull: true,
     },
   },
 };
