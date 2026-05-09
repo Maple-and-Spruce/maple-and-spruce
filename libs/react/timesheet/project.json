@@ -1,8 +1,0 @@
-{
-  "name": "react-timesheet",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/react/timesheet/src",
-  "projectType": "library",
-  "tags": ["scope:react", "type:feature"],
-  "targets": {}
-}

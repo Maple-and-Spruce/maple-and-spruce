@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getAdminUids: vi.fn(),
-  employeeFindAll: vi.fn(),
   authListUsers: vi.fn(),
   adminApps: [] as unknown[],
   adminInitializeApp: vi.fn(),
@@ -16,10 +15,6 @@ vi.mock('@maple/firebase/functions', () => ({
   throwInvalidArgument: (msg: string) => {
     throw new Error(msg);
   },
-}));
-
-vi.mock('@maple/firebase/database', () => ({
-  EmployeeRepository: { findAll: mocks.employeeFindAll },
 }));
 
 vi.mock('firebase-admin/auth', () => ({
@@ -85,42 +80,25 @@ describe('listUsers', () => {
     mocks.adminApps.length = 0;
   });
 
-  it('joins auth users with admin and employee role records', async () => {
+  it('marks users with admin records as isAdmin', async () => {
     mocks.getAdminUids.mockResolvedValue(['katie-uid']);
-    mocks.employeeFindAll.mockResolvedValue([
-      {
-        id: 'nathan-uid',
-        name: 'Nathan',
-        email: 'nathan@example.com',
-        hourlyRate: 18,
-        status: 'active',
-      },
-    ]);
     mocks.authListUsers.mockResolvedValue({
       users: [authUserNathan, authUserKatie, authUserNoSignIn],
     });
 
     const result = (await handler({}, { uid: 'katie-uid' })) as {
-      users: Array<{
-        uid: string;
-        isAdmin: boolean;
-        employee?: { id: string };
-      }>;
+      users: Array<{ uid: string; isAdmin: boolean }>;
       hasMore: boolean;
     };
 
     const byUid = new Map(result.users.map((u) => [u.uid, u]));
     expect(byUid.get('katie-uid')?.isAdmin).toBe(true);
-    expect(byUid.get('katie-uid')?.employee).toBeUndefined();
     expect(byUid.get('nathan-uid')?.isAdmin).toBe(false);
-    expect(byUid.get('nathan-uid')?.employee?.id).toBe('nathan-uid');
     expect(byUid.get('lurker-uid')?.isAdmin).toBe(false);
-    expect(byUid.get('lurker-uid')?.employee).toBeUndefined();
   });
 
   it('sorts users by most recent sign-in, with never-signed-in last', async () => {
     mocks.getAdminUids.mockResolvedValue([]);
-    mocks.employeeFindAll.mockResolvedValue([]);
     mocks.authListUsers.mockResolvedValue({
       users: [authUserNathan, authUserKatie, authUserNoSignIn],
     });
@@ -138,7 +116,6 @@ describe('listUsers', () => {
 
   it('initializes Firebase Admin if not yet initialized', async () => {
     mocks.getAdminUids.mockResolvedValue([]);
-    mocks.employeeFindAll.mockResolvedValue([]);
     mocks.authListUsers.mockResolvedValue({ users: [] });
 
     await handler({}, { uid: 'katie-uid' });
@@ -148,7 +125,6 @@ describe('listUsers', () => {
   it('skips initializeApp when admin SDK is already initialized', async () => {
     mocks.adminApps.push({});
     mocks.getAdminUids.mockResolvedValue([]);
-    mocks.employeeFindAll.mockResolvedValue([]);
     mocks.authListUsers.mockResolvedValue({ users: [] });
 
     await handler({}, { uid: 'katie-uid' });
@@ -157,7 +133,6 @@ describe('listUsers', () => {
 
   it('caps the limit at 1000 (Firebase Auth max)', async () => {
     mocks.getAdminUids.mockResolvedValue([]);
-    mocks.employeeFindAll.mockResolvedValue([]);
     mocks.authListUsers.mockResolvedValue({ users: [] });
 
     await handler({ limit: 5000 }, { uid: 'katie-uid' });
@@ -172,7 +147,6 @@ describe('listUsers', () => {
 
   it('reports hasMore when Firebase returns a page token', async () => {
     mocks.getAdminUids.mockResolvedValue([]);
-    mocks.employeeFindAll.mockResolvedValue([]);
     mocks.authListUsers.mockResolvedValue({
       users: [],
       pageToken: 'next-page-token',

@@ -18,16 +18,13 @@ import { getDb } from '@maple/firebase/database';
 export enum Role {
   /** Full administrative access */
   Admin = 'admin',
-  /** Hourly worker — limited to logging their own time */
-  Employee = 'employee',
 }
 
 /**
  * Check if a user has a specific role.
  *
  * Roles are stored in per-role collections keyed by UID:
- * - Role.Admin    -> admins/{uid}
- * - Role.Employee -> employees/{uid} (only counts when status !== 'inactive')
+ * - Role.Admin -> admins/{uid}
  *
  * @param uid - The user's Firebase Auth UID
  * @param role - The role to check
@@ -41,25 +38,9 @@ export async function hasRole(uid: string, role: Role): Promise<boolean> {
       const adminDoc = await db.collection('admins').doc(uid).get();
       return adminDoc.exists;
     }
-    case Role.Employee: {
-      const employeeDoc = await db.collection('employees').doc(uid).get();
-      if (!employeeDoc.exists) return false;
-      const data = employeeDoc.data();
-      return data?.['status'] !== 'inactive';
-    }
     default:
       return false;
   }
-}
-
-/**
- * Resolve the highest-privilege role the user holds, or null.
- * Order: Admin > Employee > null.
- */
-export async function getCurrentRole(uid: string): Promise<Role | null> {
-  if (await hasRole(uid, Role.Admin)) return Role.Admin;
-  if (await hasRole(uid, Role.Employee)) return Role.Employee;
-  return null;
 }
 
 /**

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
-import type { AppUser, Employee, RequestState } from '@maple/ts/domain';
+import type { AppUser, RequestState } from '@maple/ts/domain';
 import type {
   GetUsersRequest,
   GetUsersResponse,
@@ -29,32 +29,19 @@ function toDate(value: unknown): Date | undefined {
   return undefined;
 }
 
-function hydrateEmployee(raw: Employee | undefined): Employee | undefined {
-  if (!raw) return undefined;
-  return {
-    ...raw,
-    grantedAt: toDate(raw.grantedAt) ?? new Date(0),
-    createdAt: toDate(raw.createdAt) ?? new Date(0),
-    updatedAt: toDate(raw.updatedAt) ?? new Date(0),
-  };
-}
-
 function hydrateUser(raw: AppUser): AppUser {
   return {
     ...raw,
     createdAt: toDate(raw.createdAt) ?? new Date(0),
     lastSignInAt: toDate(raw.lastSignInAt),
-    employee: hydrateEmployee(raw.employee),
   };
 }
 
 /**
  * Hook for the admin /users page.
  *
- * Returns the list of all Firebase Auth users with their roles, plus
- * actions for granting and revoking admin. Employee role mutations
- * still flow through `useEmployees` (createEmployee / updateEmployee)
- * because the employee role carries a payroll record (rate, status).
+ * Returns the list of all Firebase Auth users with their admin status,
+ * plus actions for granting and revoking admin.
  */
 export function useUsers() {
   const [usersState, setUsersState] = useState<RequestState<AppUser[]>>({

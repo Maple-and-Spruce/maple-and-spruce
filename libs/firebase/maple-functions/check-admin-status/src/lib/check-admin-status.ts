@@ -1,15 +1,12 @@
 /**
  * Check Admin Status Cloud Function
  *
- * Returns the user's role(s). Originally just `isAdmin` — extended to also
- * report `isEmployee` and the highest-privilege `role` so the admin app can
- * route Nathan (employee) to a narrower view than Katie (admin).
- *
- * Requires authentication but NOT admin role (any logged-in user can check).
+ * Returns whether the authenticated user is an admin. Requires
+ * authentication but NOT admin role (any logged-in user can check).
  */
 import {
   createAuthenticatedFunction,
-  getCurrentRole,
+  hasRole,
   Role,
   type FunctionContext,
 } from '@maple/firebase/functions';
@@ -23,13 +20,9 @@ export const checkAdminStatus = createAuthenticatedFunction<
   CheckAdminStatusResponse
 >(async (_data, context: FunctionContext) => {
   if (!context.uid) {
-    return { isAdmin: false, isEmployee: false, role: null };
+    return { isAdmin: false };
   }
 
-  const role = await getCurrentRole(context.uid);
-  return {
-    isAdmin: role === Role.Admin,
-    isEmployee: role === Role.Employee,
-    role: role === null ? null : role === Role.Admin ? 'admin' : 'employee',
-  };
+  const isAdmin = await hasRole(context.uid, Role.Admin);
+  return { isAdmin };
 });
