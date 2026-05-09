@@ -156,20 +156,68 @@ async function main(): Promise<void> {
     dupGroups.push({ key, keep: sorted[0], drop: sorted.slice(1) });
   }
 
-  if (dupGroups.length === 0) {
+  // Second pass: even after (name, sku) dedup, multiple cluster keepers can
+  // share the same etsyListingId — happens when concurrent import rounds
+  // both pass findByEtsyListingId before either reaches updateEtsyCache.
+  // Re-cluster the linked keepers (plus singletons that have an
+  // etsyListingId) by listing ID, promote the best, demote the rest.
+  const linkedKeepers: RawProduct[] = [];
+  for (const dg of dupGroups) {
+    if (dg.keep.etsyListingId) linkedKeepers.push(dg.keep);
+  }
+  for (const [, group] of groups.entries()) {
+    if (group.length !== 1) continue;
+    const only = group[0];
+    if (only.etsyListingId) linkedKeepers.push(only);
+  }
+
+  const byEtsyListingId = new Map<string, RawProduct[]>();
+  for (const p of linkedKeepers) {
+    const id = p.etsyListingId as string;
+    const existing = byEtsyListingId.get(id);
+    if (existing) existing.push(p);
+    else byEtsyListingId.set(id, [p]);
+  }
+
+  const crossClusterDups: {
+    listingId: string;
+    keep: RawProduct;
+    drop: RawProduct[];
+  }[] = [];
+  for (const [listingId, candidates] of byEtsyListingId.entries()) {
+    if (candidates.length < 2) continue;
+    const sorted = [...candidates].sort((a, b) => {
+      const scoreDiff = score(b, validArtistIds) - score(a, validArtistIds);
+      if (scoreDiff !== 0) return scoreDiff;
+      return updatedAtMs(b) - updatedAtMs(a);
+    });
+    const [kept, ...losers] = sorted;
+    crossClusterDups.push({ listingId, keep: kept, drop: losers });
+  }
+
+  if (dupGroups.length === 0 && crossClusterDups.length === 0) {
     console.log('No duplicate Product groups found. Nothing to do.');
     return;
+  }
+
+  // Tag pass-1 keepers that get demoted in pass 2 so the report makes the
+  // chain obvious.
+  const demotedIds = new Set<string>();
+  for (const cc of crossClusterDups) {
+    for (const d of cc.drop) demotedIds.add(d.id);
   }
 
   let totalToDelete = 0;
   const orphanSquareItemIds: string[] = [];
   console.log('');
-  console.log('Duplicate groups:');
+  console.log('Pass 1 — duplicates within (name, sku) clusters:');
   for (const { key, keep, drop } of dupGroups) {
     const [name] = key.split('||');
     totalToDelete += drop.length;
     const keepBadge = keep.etsyListingId
-      ? `linked etsy=${keep.etsyListingId}`
+      ? `linked etsy=${keep.etsyListingId}${
+          demotedIds.has(keep.id) ? ' [demoted in pass 2]' : ''
+        }`
       : 'NO etsyListingId';
     console.log(
       `\n  ${name} — keeping ${keep.id} (${keep.status ?? '?'}, ${keepBadge})`
@@ -186,9 +234,34 @@ async function main(): Promise<void> {
     }
   }
 
+  if (crossClusterDups.length > 0) {
+    console.log('');
+    console.log(
+      'Pass 2 — multiple linked Products share an etsyListingId (concurrent imports):'
+    );
+    for (const { listingId, keep, drop } of crossClusterDups) {
+      totalToDelete += drop.length;
+      console.log(
+        `\n  etsy=${listingId} — keeping ${keep.id} (${keep.status ?? '?'}, ${
+          keep.squareCache?.name ?? 'no name'
+        })`
+      );
+      for (const d of drop) {
+        console.log(
+          `    drop ${d.id}  status=${d.status ?? '?'}  square=${
+            d.squareItemId ?? '?'
+          }  (cluster keeper duplicated)`
+        );
+        if (d.squareItemId) orphanSquareItemIds.push(d.squareItemId);
+      }
+    }
+  }
+
   console.log('');
   console.log(
-    `Summary: ${dupGroups.length} duplicate groups, ${totalToDelete} products to delete, ${
+    `Summary: ${dupGroups.length} pass-1 groups, ${
+      crossClusterDups.length
+    } pass-2 etsy-id collisions, ${totalToDelete} products to delete, ${
       products.length - totalToDelete
     } would remain.`
   );
@@ -208,17 +281,26 @@ async function main(): Promise<void> {
   let deleted = 0;
   let batch = db.batch();
   let opsInBatch = 0;
+  const commitIfFull = async (): Promise<void> => {
+    if (opsInBatch < BATCH_SIZE) return;
+    await batch.commit();
+    deleted += opsInBatch;
+    console.log(`  committed ${deleted}/${totalToDelete}`);
+    batch = db.batch();
+    opsInBatch = 0;
+  };
   for (const { drop } of dupGroups) {
     for (const d of drop) {
       batch.delete(db.collection('products').doc(d.id));
       opsInBatch++;
-      if (opsInBatch >= BATCH_SIZE) {
-        await batch.commit();
-        deleted += opsInBatch;
-        console.log(`  committed ${deleted}/${totalToDelete}`);
-        batch = db.batch();
-        opsInBatch = 0;
-      }
+      await commitIfFull();
+    }
+  }
+  for (const { drop } of crossClusterDups) {
+    for (const d of drop) {
+      batch.delete(db.collection('products').doc(d.id));
+      opsInBatch++;
+      await commitIfFull();
     }
   }
   if (opsInBatch > 0) {
