@@ -72,6 +72,13 @@ interface ClassFormProps {
   isSubmitting?: boolean;
   /** Override the default date/time for new classes (useful for deterministic snapshots). */
   defaultDateTime?: Date;
+  /**
+   * Number of active registrations for the class being edited. When > 0,
+   * fields that customers have already paid for and built expectations
+   * around (dates, times, duration, price, instructor, location) are
+   * disabled and a banner explains why.
+   */
+  registrationCount?: number;
 }
 
 /**
@@ -142,8 +149,11 @@ export function ClassForm({
   categories = [],
   isSubmitting = false,
   defaultDateTime,
+  registrationCount = 0,
 }: ClassFormProps) {
   useSignals();
+
+  const hasRegistrations = !!classItem && registrationCount > 0;
 
   // ============================================================
   // FORM FIELD SIGNALS
@@ -630,6 +640,19 @@ export function ClassForm({
               </Alert>
             )}
 
+            {hasRegistrations && (
+              <Alert severity="info">
+                {registrationCount}{' '}
+                {registrationCount === 1
+                  ? 'customer has'
+                  : 'customers have'}{' '}
+                already registered. Dates, times, duration, price,
+                instructor, and location are locked because customers paid
+                with those expectations. Cancel and re-issue the class if
+                you need to change them.
+              </Alert>
+            )}
+
             {hasValidationErrors.value && (
               <Alert severity="error">
                 Please fix the following errors:
@@ -780,6 +803,7 @@ export function ClassForm({
               {/* Calendar */}
               <DateCalendar
                 disablePast
+                disabled={hasRegistrations}
                 onChange={handleDateClick}
                 slots={{
                   day: (props) => (
@@ -802,7 +826,9 @@ export function ClassForm({
                         month: 'short',
                         day: 'numeric',
                       })}
-                      onDelete={() => removeDate(d)}
+                      onDelete={
+                        hasRegistrations ? undefined : () => removeDate(d)
+                      }
                       size="small"
                     />
                   ))}
@@ -827,6 +853,7 @@ export function ClassForm({
                             (useDifferentTimes.value = e.target.checked)
                           }
                           size="small"
+                          disabled={hasRegistrations}
                         />
                       }
                       label="Use different times for each date"
@@ -839,6 +866,7 @@ export function ClassForm({
                       label="Time (all dates)"
                       value={sharedTime.value}
                       onChange={(v) => (sharedTime.value = v)}
+                      disabled={hasRegistrations}
                       slotProps={{
                         textField: {
                           size: 'small',
@@ -884,6 +912,7 @@ export function ClassForm({
                                   perDateTimes.value = newMap;
                                 }
                               }}
+                              disabled={hasRegistrations}
                               slotProps={{
                                 textField: {
                                   size: 'small',
@@ -905,6 +934,7 @@ export function ClassForm({
               label="Registration closes (optional)"
               value={registrationClosesAt.value}
               onChange={(v) => (registrationClosesAt.value = v)}
+              disabled={hasRegistrations}
               slotProps={{
                 textField: {
                   error: !!getFieldError('registrationClosesAt'),
@@ -918,7 +948,7 @@ export function ClassForm({
 
             {/* Row: Duration, Price */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <FormControl sx={{ minWidth: 160 }} error={!!getFieldError('durationMinutes')} required>
+              <FormControl sx={{ minWidth: 160 }} error={!!getFieldError('durationMinutes')} required disabled={hasRegistrations}>
                 <InputLabel id="duration-label">Duration</InputLabel>
                 <Select
                   labelId="duration-label"
@@ -964,6 +994,7 @@ export function ClassForm({
                   value={durationMinutes.value}
                   onChange={(e) => (durationMinutes.value = parseInt(e.target.value) || 0)}
                   error={!!getFieldError('durationMinutes')}
+                  disabled={hasRegistrations}
                   InputProps={{
                     endAdornment: <InputAdornment position="end">min</InputAdornment>,
                   }}
@@ -987,6 +1018,7 @@ export function ClassForm({
                 }}
                 error={!!getFieldError('priceCents')}
                 helperText={getFieldError('priceCents')}
+                disabled={hasRegistrations}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">$</InputAdornment>,
                 }}
@@ -1047,7 +1079,7 @@ export function ClassForm({
 
             {/* Instructor */}
             {(instructors.length > 0 || !!getFieldError('instructorId')) && (
-              <FormControl fullWidth error={!!getFieldError('instructorId')}>
+              <FormControl fullWidth error={!!getFieldError('instructorId')} disabled={hasRegistrations}>
                 <InputLabel id="instructor-label">Instructor</InputLabel>
                 <Select
                   labelId="instructor-label"
@@ -1077,6 +1109,7 @@ export function ClassForm({
               value={location.value}
               onChange={(e) => (location.value = e.target.value)}
               helperText="Optional - defaults to store address if not specified"
+              disabled={hasRegistrations}
               fullWidth
             />
 
