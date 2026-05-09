@@ -50,6 +50,7 @@ import type {
   UploadProductImageResponse,
 } from '@maple/ts/firebase/api-types';
 import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
+import { ProductEtsySection } from './ProductEtsySection';
 import { productValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -811,6 +812,9 @@ export function ProductForm({
             existingImageUrl={product?.squareCache.imageUrl}
             label="Product Image"
           />
+
+          {/* Etsy push controls — edit mode only, since it needs a saved product */}
+          {isEdit && product && <ProductEtsySection product={product} />}
         </Box>
       </DialogContent>
       <DialogActions>
