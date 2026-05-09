@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,13 +11,14 @@ import {
   type EmployeeFormSubmit,
 } from '@maple/react/timesheet';
 import { AppShell } from '../../components/layout';
-import { useEmployees } from '../../hooks';
+import { useEmployees, useUsers } from '../../hooks';
 
 export default function EmployeesPage() {
   const router = useRouter();
   const { employeesState, createEmployee, updateEmployee } = useEmployees(
     true
   );
+  const { usersState } = useUsers();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | undefined>();
@@ -26,6 +27,15 @@ export default function EmployeesPage() {
 
   const employees =
     employeesState.status === 'success' ? employeesState.data : [];
+
+  // Users available for the picker — anyone signed up who doesn't already
+  // have an employee record. Users with `inactive` employee status are
+  // excluded too; the admin should reactivate via "Edit" instead of
+  // creating a duplicate record.
+  const availableUsers = useMemo(() => {
+    if (usersState.status !== 'success') return undefined;
+    return usersState.data.filter((u) => !u.employee);
+  }, [usersState]);
 
   const handleOpenAdd = () => {
     setEditing(undefined);
@@ -118,6 +128,10 @@ export default function EmployeesPage() {
         onClose={handleClose}
         onSubmit={handleSubmit}
         employee={editing}
+        availableUsers={availableUsers}
+        usersLoading={
+          usersState.status === 'idle' || usersState.status === 'loading'
+        }
         isSubmitting={isSubmitting}
       />
     </AppShell>
