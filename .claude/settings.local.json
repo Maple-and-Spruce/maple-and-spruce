@@ -184,7 +184,10 @@
       "Bash(mkdir -p libs/firebase/square-test-mock-server/src/lib/routes)",
       "Bash(mkdir -p libs/firebase/webflow-test-mock-server/src/lib/routes)",
       "Bash(EMULATOR_PORT_OFFSET=20 ./tools/run-integration-tests.sh class)",
-      "mcp__webflow__data_pages_tool"
+      "mcp__webflow__data_pages_tool",
+      "WebFetch(domain:fonts.googleapis.com)",
+      "mcp__webflow__variable_tool",
+      "mcp__webflow__style_tool"
     ]
   }
 }

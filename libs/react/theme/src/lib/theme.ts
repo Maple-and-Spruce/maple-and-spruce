@@ -122,6 +122,17 @@ export const shadows = {
   lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
 } as const;
 
+/**
+ * Font family stacks
+ *
+ * Loaded via Google Fonts <link> tags in apps/maple-spruce/src/app/layout.tsx.
+ * Required weights: Lora 400/500/700, Archivo 400/500/600/700.
+ */
+export const fonts = {
+  heading: '"Lora", Georgia, "Times New Roman", serif',
+  body: '"Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+} as const;
+
 // =============================================================================
 // MUI Theme
 // =============================================================================
@@ -163,13 +174,13 @@ export const theme = createTheme({
     borderRadius: radii.md,
   },
   typography: {
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    h1: { color: text.primary, fontWeight: 600 },
-    h2: { color: text.primary, fontWeight: 600 },
-    h3: { color: text.primary, fontWeight: 600 },
-    h4: { color: text.primary, fontWeight: 600 },
-    h5: { color: text.primary, fontWeight: 600 },
-    h6: { color: text.primary, fontWeight: 600 },
+    fontFamily: fonts.body,
+    h1: { color: text.primary, fontFamily: fonts.heading, fontWeight: 700 },
+    h2: { color: text.primary, fontFamily: fonts.heading, fontWeight: 700 },
+    h3: { color: text.primary, fontFamily: fonts.heading, fontWeight: 600 },
+    h4: { color: text.primary, fontFamily: fonts.heading, fontWeight: 600 },
+    h5: { color: text.primary, fontFamily: fonts.heading, fontWeight: 500 },
+    h6: { color: text.primary, fontFamily: fonts.heading, fontWeight: 500 },
   },
   components: {
     MuiButton: {
@@ -320,5 +331,9 @@ export const cssVariables = `
     --shadow-sm: ${shadows.sm};
     --shadow-md: ${shadows.md};
     --shadow-lg: ${shadows.lg};
+
+    /* Fonts */
+    --font-heading: ${fonts.heading};
+    --font-body: ${fonts.body};
   }
 `;

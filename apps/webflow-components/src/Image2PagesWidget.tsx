@@ -164,7 +164,6 @@ export function Image2PagesWidget({
       <Box
         sx={{
           width: '100%',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
           color: textTokens.primary,
         }}
       >
