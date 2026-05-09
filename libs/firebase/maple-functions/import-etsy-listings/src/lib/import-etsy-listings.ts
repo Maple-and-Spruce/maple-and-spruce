@@ -413,7 +413,11 @@ async function importSingleListing(options: {
   }
 }
 
+// Each listing is sequential: Etsy fetch + Square catalog create + per-variant
+// inventory + image upload + Firestore writes. Comfortably 3–5s per listing,
+// so 540s (the callable max) covers ~100+ listings in a single request.
 export const importEtsyListings = Functions.endpoint
+  .withOptions({ timeoutSeconds: 540, memory: '512MiB' })
   .usingSecrets(...SQUARE_SECRET_NAMES, ...ETSY_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, ...ETSY_STRING_NAMES)
   .requiringRole(Role.Admin)
