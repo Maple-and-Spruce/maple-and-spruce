@@ -239,6 +239,7 @@ describe('ProductRepository', () => {
         etsyListingId: '1234567890',
         etsyCache: {
           title: 'Etsy-imported product',
+          taxonomyId: 1,
           priceCents: 4500,
           quantity: 3,
           state: 'active',
