@@ -41,7 +41,7 @@ import type {
   ImportEtsyListingsResponse,
   ImportEtsyListingResult,
 } from '@maple/ts/firebase/api-types';
-import type { Product, ProductVariant } from '@maple/ts/domain';
+import type { ProductVariant } from '@maple/ts/domain';
 import { generateVariantId, generateSku } from '@maple/ts/domain';
 import type { EtsyInventoryProduct } from '@maple/firebase/etsy';
 
@@ -339,7 +339,13 @@ async function importSingleListing(options: {
       };
     });
 
-    // 5. Create Firestore Product with all variant data
+    // 5. Create Firestore Product with all variant data, atomically linked
+    //    to the Etsy listing. The etsyListingId + etsyCache are passed in
+    //    here (rather than via a follow-up updateEtsyCache call) so a
+    //    timeout between create and the cache write can't leave orphan
+    //    Products without etsyListingId — the prior shape leaked enough
+    //    duplicates on retry to need a one-off cleanup tool. See
+    //    tools/dedupe-etsy-imported-products.ts.
     const product = await ProductRepository.create(
       {
         artistId,
@@ -364,26 +370,27 @@ async function importSingleListing(options: {
         squareLocationId: square.locationId,
         sku: catalogResult.sku,
         variations: variationsWithEtsy,
+      },
+      {
+        etsyListingId: listingId,
+        etsyCache: {
+          title: listing.title,
+          description: listing.description,
+          priceCents,
+          quantity,
+          url: listing.url,
+          taxonomyId: listing.taxonomy_id,
+          tags: listing.tags,
+          state:
+            listing.state === 'active' || listing.state === 'draft'
+              ? listing.state
+              : 'inactive',
+          syncedAt: new Date(),
+        },
       }
     );
 
-    // 6. Link Etsy listing + populate etsyCache
-    await ProductRepository.updateEtsyCache(product.id, listingId, {
-      title: listing.title,
-      description: listing.description,
-      priceCents,
-      quantity,
-      url: listing.url,
-      taxonomyId: listing.taxonomy_id,
-      tags: listing.tags,
-      state:
-        listing.state === 'active' || listing.state === 'draft'
-          ? listing.state
-          : 'inactive',
-      syncedAt: new Date(),
-    });
-
-    // 7. Persist raw snapshot for later insights / template seeding
+    // 6. Persist raw snapshot for later insights / template seeding
     await EtsyImportRepository.create({
       productId: product.id,
       listingId,
@@ -393,14 +400,11 @@ async function importSingleListing(options: {
       importedBy,
     });
 
-    // Refetch to return the Product with populated etsyCache.
-    const refreshed = (await ProductRepository.findById(product.id)) as Product;
-
     return {
       listingId,
       success: true,
       productId: product.id,
-      product: refreshed,
+      product,
     };
   } catch (err) {
     console.error(`Failed to import Etsy listing ${listingId}:`, err);
