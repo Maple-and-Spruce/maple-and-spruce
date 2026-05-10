@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from 'storybook/test';
+import { fn, userEvent, within } from 'storybook/test';
 import type { PublicClass } from '@maple/ts/domain';
 import type { CalculateRegistrationCostResponse } from '@maple/ts/firebase/api-types';
 import { RegistrationCheckoutForm } from './RegistrationCheckoutForm';
@@ -114,5 +114,72 @@ export const WithDiscountApplied: Story = {
       totalCents: 6360,
       discountDescription: 'SAVE20 — 20% off',
     })),
+  },
+};
+
+/**
+ * Multi-attendee preview: opens the form with two attendee rows already
+ * added, one with a name + email (so the "Send them confirmation" path is
+ * visible) and one left at the default "Additional Person #2" label (so
+ * the "remind your friends" path is visible). Use this to eyeball the
+ * row-based pattern without clicking through.
+ */
+export const WithAdditionalAttendees: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const addButton = canvas.getByRole('button', {
+      name: /add another person/i,
+    });
+
+    // Two extras: one fully filled, one left as the default placeholder.
+    await userEvent.click(addButton);
+    await userEvent.click(addButton);
+
+    // Reveal name and email on the first row.
+    const updateNameLinks = canvas.getAllByRole('button', {
+      name: /update name/i,
+    });
+    await userEvent.click(updateNameLinks[0]);
+
+    const nameField = canvas.getByLabelText(/^name$/i);
+    await userEvent.type(nameField, 'Alice Friend');
+
+    const sendConfirmationCheckboxes = canvas.getAllByRole('checkbox', {
+      name: /send them a confirmation email/i,
+    });
+    await userEvent.click(sendConfirmationCheckboxes[0]);
+
+    const emailField = canvas.getByLabelText(/their email address/i);
+    await userEvent.type(emailField, 'alice@example.com');
+  },
+};
+
+/**
+ * Email validation feedback after submit attempt — confirms the per-row
+ * helper text + error styling on a malformed email.
+ */
+export const AttendeeEmailInvalid: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /add another person/i })
+    );
+    await userEvent.click(
+      canvas.getByRole('checkbox', {
+        name: /send them a confirmation email/i,
+      })
+    );
+    await userEvent.type(
+      canvas.getByLabelText(/their email address/i),
+      'not-an-email'
+    );
+
+    // Trigger validation by attempting Register & Pay.
+    const submitButton = canvas.getByRole('button', {
+      name: /register & pay/i,
+    });
+    await userEvent.click(submitButton);
   },
 };
