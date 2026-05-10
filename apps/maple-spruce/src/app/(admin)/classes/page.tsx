@@ -7,18 +7,38 @@ import AddIcon from '@mui/icons-material/Add';
 import type { Class, CreateClassInput } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
-  ClassList,
+  ClassTable,
   ClassForm,
   ClassFilterToolbar,
   type ClassFilters,
 } from '@maple/react/classes';
-import { useClasses, useInstructors, useClassCategories } from '../../../hooks';
+import {
+  useClasses,
+  useInstructors,
+  useClassCategories,
+  useRegistrations,
+} from '../../../hooks';
 
 export default function ClassesPage() {
   const router = useRouter();
 
-  // Filter state
-  const [filters, setFilters] = useState<ClassFilters>({});
+  // Default to the view Katie cares about: future classes that still have spots.
+  const [filters, setFilters] = useState<ClassFilters>({
+    upcoming: true,
+    hideFull: true,
+  });
+
+  // The server-side `useClasses` hook only knows about the upcoming/status/etc
+  // filters — `hideFull` is applied client-side after we join in counts.
+  const serverFilters = useMemo<ClassFilters>(
+    () => ({
+      status: filters.status,
+      categoryId: filters.categoryId,
+      instructorId: filters.instructorId,
+      upcoming: filters.upcoming,
+    }),
+    [filters.status, filters.categoryId, filters.instructorId, filters.upcoming]
+  );
 
   // Class state from hook (fetches on mount)
   const {
@@ -27,11 +47,25 @@ export default function ClassesPage() {
     updateClass,
     duplicateClass: duplicateClassApi,
     deleteClass: deleteClassApi,
-  } = useClasses(filters);
+  } = useClasses(serverFilters);
 
   // Instructors and categories for dropdowns
   const { instructorsState } = useInstructors();
   const { categoriesState } = useClassCategories();
+
+  // Registration counts per class (active = pending + confirmed). Mirrors the
+  // server's `RegistrationRepository.countByClassId` so "5/8" in the table
+  // matches what the registration cutoff/spots-remaining logic uses.
+  const { registrationsState } = useRegistrations();
+  const registrationCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (registrationsState.status !== 'success') return counts;
+    for (const r of registrationsState.data) {
+      if (r.status !== 'pending' && r.status !== 'confirmed') continue;
+      counts.set(r.classId, (counts.get(r.classId) ?? 0) + (r.quantity || 1));
+    }
+    return counts;
+  }, [registrationsState]);
 
   const instructors = useMemo(
     () => (instructorsState.status === 'success' ? instructorsState.data : []),
@@ -42,6 +76,20 @@ export default function ClassesPage() {
     () => (categoriesState.status === 'success' ? categoriesState.data : []),
     [categoriesState]
   );
+
+  // Apply the client-side `hideFull` filter while preserving the server-side
+  // request state shape so loading/error UI still flows through.
+  const filteredClassesState = useMemo(() => {
+    if (classesState.status !== 'success') return classesState;
+    if (!filters.hideFull) return classesState;
+    return {
+      ...classesState,
+      data: classesState.data.filter((c) => {
+        const filled = registrationCounts.get(c.id) ?? 0;
+        return c.capacity === 0 || filled < c.capacity;
+      }),
+    };
+  }, [classesState, filters.hideFull, registrationCounts]);
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -168,10 +216,11 @@ export default function ClassesPage() {
         categories={categories}
       />
 
-      <ClassList
-        classesState={classesState}
+      <ClassTable
+        classesState={filteredClassesState}
         instructors={instructors}
         categories={categories}
+        registrationCounts={registrationCounts}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
         onDuplicate={handleDuplicate}
@@ -187,6 +236,9 @@ export default function ClassesPage() {
         instructors={instructors}
         categories={categories}
         isSubmitting={isSubmitting}
+        registrationCount={
+          editingClass ? registrationCounts.get(editingClass.id) ?? 0 : 0
+        }
       />
 
       <Snackbar

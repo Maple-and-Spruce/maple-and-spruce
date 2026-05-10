@@ -107,9 +107,11 @@ img, svg {
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
-  /* Fonts (must match libs/react/theme/src/lib/theme.ts `fonts`) */
-  --font-heading: "Lora", Georgia, "Times New Roman", serif;
-  --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Fonts — mirror the live Webflow site. Must match libs/react/theme/src/lib/theme.ts `fonts`. */
+  --font-body: Georgia, Times, "Times New Roman", serif;
+  --font-heading: Georgia, Times, "Times New Roman", serif;
+  --font-button: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 
   /* Transitions */
   --transition-fast: 150ms ease;
