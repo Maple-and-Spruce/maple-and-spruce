@@ -35,7 +35,9 @@
     "firebase-maple-functions-update-etsy-listing": "maple-sync",
     "firebase-maple-functions-poll-etsy-orders": "maple-sync",
     "firebase-maple-functions-sync-inventory-to-etsy": "maple-sync",
-    "firebase-maple-functions-sync-inventory-to-square": "maple-square"
+    "firebase-maple-functions-sync-inventory-to-square": "maple-square",
+    "firebase-maple-functions-sync-class-to-square": "maple-square",
+    "firebase-maple-functions-sync-class-inventory-to-square": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

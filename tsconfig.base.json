@@ -104,6 +104,12 @@
       "@maple/firebase/maple-functions/sync-class-to-webflow": [
         "libs/firebase/maple-functions/sync-class-to-webflow/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-class-to-square": [
+        "libs/firebase/maple-functions/sync-class-to-square/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/sync-class-inventory-to-square": [
+        "libs/firebase/maple-functions/sync-class-inventory-to-square/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-registration-count": [
         "libs/firebase/maple-functions/sync-registration-count/src/index.ts"
       ],

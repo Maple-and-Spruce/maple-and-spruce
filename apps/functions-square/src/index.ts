@@ -36,3 +36,13 @@ export { importEtsyListings } from '@maple/firebase/maple-functions/import-etsy-
 
 // Cross-channel inventory sync (Square)
 export { syncInventoryToSquare } from '@maple/firebase/maple-functions/sync-inventory-to-square';
+
+// Class → Square catalog sync (Firestore trigger on classes/{id})
+// Mirrors a class as a Square catalog item + variation + required modifier
+// list so it can be rung up on POS in person.
+export { syncClassToSquare } from '@maple/firebase/maple-functions/sync-class-to-square';
+
+// Class capacity → Square inventory sync (Firestore trigger on registrations/{id})
+// Keeps Square inventory in sync with Firestore registration count so POS
+// refuses to ring up a sold-out class.
+export { syncClassInventoryToSquare } from '@maple/firebase/maple-functions/sync-class-inventory-to-square';

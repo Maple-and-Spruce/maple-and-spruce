@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
     createProduct: vi.fn(),
     findBySquareInvoiceId: vi.fn(),
     markPaidBySquareWebhook: vi.fn(),
+    classFindAll: vi.fn(),
     // Square catalogService
     getItem: vi.fn(),
     listItems: vi.fn(),
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock ProductRepository + InvoiceRepository
+// Mock ProductRepository + InvoiceRepository + ClassRepository
 vi.mock('@maple/firebase/database', () => ({
   ProductRepository: {
     findAll: mocks.findAll,
@@ -36,6 +37,9 @@ vi.mock('@maple/firebase/database', () => ({
   InvoiceRepository: {
     findBySquareInvoiceId: mocks.findBySquareInvoiceId,
     markPaidBySquareWebhook: mocks.markPaidBySquareWebhook,
+  },
+  ClassRepository: {
+    findAll: mocks.classFindAll,
   },
 }));
 
@@ -745,6 +749,8 @@ describe('Square Webhook - handleCatalogUpdate', () => {
 describe('Square Webhook - handleInventoryUpdate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no class variations so the class-skip guard is a no-op.
+    mocks.classFindAll.mockResolvedValue([]);
   });
 
   const makeInventoryEvent = (
@@ -812,6 +818,35 @@ describe('Square Webhook - handleInventoryUpdate', () => {
 
     expect(mocks.updateCachedQuantity).not.toHaveBeenCalled();
     expect(result.details).toMatch(/not tracked/);
+  });
+
+  it('skips class variations (Firestore is source of truth for class capacity)', async () => {
+    mocks.findAll.mockResolvedValue([
+      {
+        id: 'prod-001',
+        squareItemId: 'ITEM_001',
+        squareVariationId: 'VAR_PRODUCT',
+      },
+    ]);
+    mocks.classFindAll.mockResolvedValue([
+      {
+        id: 'class-001',
+        squareCatalogItemId: 'ITEM_CLASS_001',
+        squareVariationId: 'VAR_CLASS',
+      },
+    ]);
+
+    const { handleInventoryUpdate } = await import('./square-webhook');
+    const result = await handleInventoryUpdate(
+      makeInventoryEvent([
+        { catalog_object_id: 'VAR_CLASS', quantity: '4', state: 'IN_STOCK' },
+      ])
+    );
+
+    // Must not write to product cache for a class variation —
+    // would corrupt the Firestore-driven inventory mirror.
+    expect(mocks.updateCachedQuantity).not.toHaveBeenCalled();
+    expect(result.details).toMatch(/class — Firestore is source of truth/);
   });
 
   it('skips counts with no catalog_object_id', async () => {

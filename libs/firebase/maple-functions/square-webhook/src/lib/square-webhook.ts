@@ -21,6 +21,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { createHmac } from 'crypto';
 import {
+  ClassRepository,
   InvoiceRepository,
   ProductRepository,
 } from '@maple/firebase/database';
@@ -345,13 +346,33 @@ export async function handleInventoryUpdate(
     };
   }
 
-  // Process each inventory count update
-  const products = await ProductRepository.findAll();
+  // Process each inventory count update.
+  // Class variations are excluded: Firestore registration counts are the
+  // source of truth for class capacity, and `syncClassInventoryToSquare`
+  // mirrors them outward — accepting Square's count back here would create
+  // a write loop and could clobber the Firestore-driven value.
+  const [products, classes] = await Promise.all([
+    ProductRepository.findAll(),
+    ClassRepository.findAll(),
+  ]);
+  const classVariationIds = new Set(
+    classes
+      .map((c) => c.squareVariationId)
+      .filter((id): id is string => Boolean(id))
+  );
   const results: string[] = [];
 
   for (const count of inventoryCounts) {
     if (!count.catalog_object_id) {
       results.push('skipped (no catalog_object_id)');
+      continue;
+    }
+
+    // Skip class variations — Firestore is the source of truth.
+    if (classVariationIds.has(count.catalog_object_id)) {
+      results.push(
+        `skipped variation ${count.catalog_object_id} (class — Firestore is source of truth)`
+      );
       continue;
     }
 

@@ -93,6 +93,13 @@ function docToClass(
     whatToBring: data.whatToBring,
     minimumAge: data.minimumAge,
     webflowItemId: data.webflowItemId,
+    squareCatalogItemId: data.squareCatalogItemId,
+    squareVariationId: data.squareVariationId,
+    squareModifierListId: data.squareModifierListId,
+    squareCatalogVersion:
+      typeof data.squareCatalogVersion === 'number'
+        ? data.squareCatalogVersion
+        : undefined,
     referralDiscount:
       data.referralDiscount &&
       typeof data.referralDiscount.percent === 'number' &&
@@ -273,6 +280,56 @@ export const ClassRepository = {
   async updateWebflowItemId(id: string, webflowItemId: string): Promise<void> {
     const docRef = db.collection(COLLECTION).doc(id);
     await docRef.update({ webflowItemId });
+  },
+
+  /**
+   * Stamp the Square sync IDs onto a class after a successful sync.
+   *
+   * Deliberately bare update with NO `updatedAt` bump — the class document
+   * triggers `syncClassToSquare` on every write, and bumping `updatedAt`
+   * would re-fire the trigger in a loop. Same back-reference pattern as
+   * `updateWebflowItemId`.
+   */
+  async updateSquareSyncIds(
+    id: string,
+    ids: {
+      squareCatalogItemId?: string;
+      squareVariationId?: string;
+      squareModifierListId?: string;
+      squareCatalogVersion?: number;
+    }
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    const update: Record<string, unknown> = {};
+    if (ids.squareCatalogItemId !== undefined) {
+      update.squareCatalogItemId = ids.squareCatalogItemId;
+    }
+    if (ids.squareVariationId !== undefined) {
+      update.squareVariationId = ids.squareVariationId;
+    }
+    if (ids.squareModifierListId !== undefined) {
+      update.squareModifierListId = ids.squareModifierListId;
+    }
+    if (ids.squareCatalogVersion !== undefined) {
+      update.squareCatalogVersion = ids.squareCatalogVersion;
+    }
+    if (Object.keys(update).length === 0) return;
+    await docRef.update(update);
+  },
+
+  /**
+   * Clear all Square sync IDs (called after deleting the catalog item, e.g.
+   * when a class is unpublished). Not bumping `updatedAt` for the same
+   * reason as `updateSquareSyncIds`.
+   */
+  async clearSquareSyncIds(id: string): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    await docRef.update({
+      squareCatalogItemId: null,
+      squareVariationId: null,
+      squareModifierListId: null,
+      squareCatalogVersion: null,
+    });
   },
 
   /**

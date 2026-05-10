@@ -421,3 +421,138 @@ describe('CatalogService.updateItem', () => {
     expect(result.squareCatalogVersion).toBe(6);
   });
 });
+
+describe('CatalogService.createClassCatalogItem', () => {
+  let client: MockClient;
+  let service: CatalogService;
+
+  beforeEach(() => {
+    client = makeMockClient();
+    service = new CatalogService(client as unknown as SquareClient);
+  });
+
+  it('upserts a MODIFIER_LIST and ITEM (with one variation) in a single batch and returns parsed IDs', async () => {
+    client.catalog.batchUpsert.mockResolvedValue({
+      objects: [
+        { type: 'MODIFIER_LIST', id: 'SQ-MODLIST-1', version: 1n },
+        {
+          type: 'ITEM',
+          id: 'SQ-ITEM-CLASS-1',
+          version: 2n,
+          itemData: {
+            variations: [
+              {
+                type: 'ITEM_VARIATION',
+                id: 'SQ-VAR-CLASS-1',
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = await service.createClassCatalogItem({
+      classId: 'class-abc',
+      name: 'Sourdough Workshop',
+      description: 'Bring an apron',
+      priceCents: 4500,
+    });
+
+    // Result fields parsed correctly
+    expect(result.squareItemId).toBe('SQ-ITEM-CLASS-1');
+    expect(result.squareVariationId).toBe('SQ-VAR-CLASS-1');
+    expect(result.squareModifierListId).toBe('SQ-MODLIST-1');
+    expect(result.squareCatalogVersion).toBe(2);
+
+    // Inspect the request shape — modifier list, item, and variation
+    // must all live in one batches[0].objects so Square resolves the
+    // temp-id references between them atomically.
+    const call = client.catalog.batchUpsert.mock.calls[0][0];
+    const objects = call.batches[0].objects;
+    expect(objects).toHaveLength(2);
+
+    const modList = objects.find(
+      (o: { type: string }) => o.type === 'MODIFIER_LIST'
+    );
+    expect(modList).toBeDefined();
+    expect(modList.modifierListData.selectionType).toBe('SINGLE');
+    expect(modList.modifierListData.modifiers).toHaveLength(1);
+    expect(modList.modifierListData.modifiers[0].modifierData.name).toBe('Yes');
+
+    const item = objects.find((o: { type: string }) => o.type === 'ITEM');
+    expect(item).toBeDefined();
+    expect(item.itemData.name).toBe('Sourdough Workshop');
+    expect(item.itemData.modifierListInfo[0].modifierListId).toBe(
+      modList.id
+    );
+    expect(item.itemData.variations).toHaveLength(1);
+    expect(item.itemData.variations[0].itemVariationData.priceMoney.amount).toBe(
+      4500n
+    );
+    expect(
+      item.itemData.variations[0].itemVariationData.trackInventory
+    ).toBe(true);
+  });
+
+  it('uses the default modifier list name when none is provided', async () => {
+    client.catalog.batchUpsert.mockResolvedValue({
+      objects: [
+        { type: 'MODIFIER_LIST', id: 'M1', version: 1n },
+        {
+          type: 'ITEM',
+          id: 'I1',
+          version: 1n,
+          itemData: {
+            variations: [{ type: 'ITEM_VARIATION', id: 'V1' }],
+          },
+        },
+      ],
+    });
+
+    await service.createClassCatalogItem({
+      classId: 'class-1',
+      name: 'X',
+      priceCents: 1000,
+    });
+
+    const call = client.catalog.batchUpsert.mock.calls[0][0];
+    const modList = call.batches[0].objects.find(
+      (o: { type: string }) => o.type === 'MODIFIER_LIST'
+    );
+    expect(modList.modifierListData.name).toBe(
+      'Added customer email (required)?'
+    );
+  });
+
+  it('throws when the response is missing the ITEM or MODIFIER_LIST', async () => {
+    // Use a plain number version here — the catalog code logs the response
+    // via JSON.stringify on the error path, which can't serialize bigints.
+    // Real Square responses come back as plain JSON before the SDK has had
+    // a chance to widen any field to BigInt.
+    client.catalog.batchUpsert.mockResolvedValue({
+      objects: [{ type: 'MODIFIER_LIST', id: 'M1', version: 1 }],
+    });
+
+    await expect(
+      service.createClassCatalogItem({
+        classId: 'class-broken',
+        name: 'Broken',
+        priceCents: 100,
+      })
+    ).rejects.toThrow(/ITEM or MODIFIER_LIST missing/);
+  });
+
+  it('surfaces Square API errors', async () => {
+    client.catalog.batchUpsert.mockResolvedValue({
+      errors: [{ code: 'BAD_REQUEST', detail: 'invalid price' }],
+    });
+
+    await expect(
+      service.createClassCatalogItem({
+        classId: 'class-bad',
+        name: 'Bad',
+        priceCents: -1,
+      })
+    ).rejects.toThrow(/invalid price/);
+  });
+});

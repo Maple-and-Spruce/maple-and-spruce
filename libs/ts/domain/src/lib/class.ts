@@ -96,6 +96,27 @@ export interface Class {
    */
   webflowItemId?: string;
   /**
+   * Square catalog ITEM id, set by `syncClassToSquare` after the first
+   * successful sync. Presence is the signal that this class is sellable
+   * on Square POS in person.
+   */
+  squareCatalogItemId?: string;
+  /**
+   * Square catalog ITEM_VARIATION id (one variation per class). Used to
+   * adjust inventory and to identify the line item on POS-originated orders.
+   */
+  squareVariationId?: string;
+  /**
+   * Square MODIFIER_LIST id for the "Added customer email (required)?" prompt
+   * attached to the class item. Forces staff to acknowledge customer
+   * collection before tendering at POS.
+   */
+  squareModifierListId?: string;
+  /**
+   * Square catalog version for optimistic locking on subsequent updates.
+   */
+  squareCatalogVersion?: number;
+  /**
    * Opt-in to the friend-referral program for this class. When set, every
    * confirmed registration auto-generates a single-use Discount and the
    * confirmation email includes a code the customer can share.
@@ -120,11 +141,19 @@ export interface ClassReferralDiscount {
 }
 
 /**
- * Input for creating a new class (no id, timestamps, or webflowItemId)
+ * Input for creating a new class. External-system IDs (Webflow, Square) are
+ * populated by their respective sync functions, never by the create caller.
  */
 export type CreateClassInput = Omit<
   Class,
-  'id' | 'createdAt' | 'updatedAt' | 'webflowItemId'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'webflowItemId'
+  | 'squareCatalogItemId'
+  | 'squareVariationId'
+  | 'squareModifierListId'
+  | 'squareCatalogVersion'
 >;
 
 /**

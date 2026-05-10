@@ -62,6 +62,13 @@ export interface CreateOrderInput {
   discounts?: OrderDiscountInput[];
   /** External reference ID (e.g., registration ID) */
   referenceId?: string;
+  /**
+   * Optional Square order metadata (string→string map). The web registration
+   * flow tags orders with `{ source: 'web-registration', registrationId }`
+   * so the POS webhook handler can dedup and skip them — POS-originated
+   * orders won't carry this tag.
+   */
+  metadata?: Record<string, string>;
 }
 
 /**
@@ -94,6 +101,7 @@ export class OrdersService {
       order: {
         locationId: input.locationId,
         referenceId: input.referenceId,
+        metadata: input.metadata,
         lineItems: input.lineItems.map((item) => ({
           name: item.name,
           quantity: item.quantity,

@@ -386,11 +386,19 @@ export const createRegistration = Functions.endpoint
       let squareOrderId: string | undefined;
       try {
         if (subtotalCents > 0) {
-          // Create Square Order with line item and tax
+          // Create Square Order with line item and tax.
+          // Metadata tags this as a web-originated order so the (forthcoming)
+          // POS Square webhook handler skips it — POS orders won't carry
+          // the `web-registration` source tag and become the trigger to
+          // create a registration on our side.
           const orderResult = await square.ordersService.createOrder({
             locationId: square.locationId,
             idempotencyKey: `order-${registrationDocRef.id}-${Date.now()}`,
             referenceId: registrationDocRef.id,
+            metadata: {
+              source: 'web-registration',
+              registrationId: registrationDocRef.id,
+            },
             lineItems: [
               {
                 name: classEntity.name,
