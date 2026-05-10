@@ -201,6 +201,72 @@ describe('ProductRepository', () => {
       expect(result.categoryId).toBeUndefined();
       expect(savedData.categoryId).toBeUndefined();
     });
+
+    it('writes etsyListingId and etsyCache atomically when extras are passed', async () => {
+      const input: CreateProductInput = {
+        artistId: 'artist-1',
+        status: 'active',
+        name: 'Etsy-imported product',
+        priceCents: 4500,
+        quantity: 3,
+      };
+
+      const squareResult: SquareProductResult = {
+        squareItemId: 'sq-item-etsy',
+        squareVariationId: 'sq-var-etsy',
+        squareCatalogVersion: 1,
+        squareLocationId: 'sq-loc-001',
+        sku: 'prd_etsy',
+        variations: [
+          { variantId: 'var-etsy', squareVariationId: 'sq-var-etsy', sku: 'prd_etsy' },
+        ],
+      };
+
+      let savedData: Record<string, unknown> = {};
+      const mockSet = vi.fn().mockImplementation((data) => {
+        savedData = data;
+        return Promise.resolve();
+      });
+      const mockDocRef = vi
+        .fn()
+        .mockReturnValue({ id: 'prod-etsy', set: mockSet });
+      vi.mocked(db.collection).mockImplementation(
+        vi.fn().mockReturnValue({ doc: mockDocRef })
+      );
+
+      const syncedAt = new Date('2024-10-01T00:00:00Z');
+      const result = await ProductRepository.create(input, squareResult, {
+        etsyListingId: '1234567890',
+        etsyCache: {
+          title: 'Etsy-imported product',
+          priceCents: 4500,
+          quantity: 3,
+          state: 'active',
+          syncedAt,
+        },
+      });
+
+      // Both Etsy linkage fields land on the returned domain object …
+      expect(result.etsyListingId).toBe('1234567890');
+      expect(result.etsyCache?.title).toBe('Etsy-imported product');
+      expect(result.etsyCache?.syncedAt).toBe(syncedAt);
+
+      // … and on the Firestore doc body, in a single set() call. This is the
+      // race-closing assertion: prior versions wrote etsyListingId via a
+      // follow-up updateEtsyCache, leaving an orphan window if the import
+      // function timed out between the two writes.
+      expect(mockSet).toHaveBeenCalledTimes(1);
+      expect(savedData['etsyListingId']).toBe('1234567890');
+      // Listing-level Etsy fields land on the Firestore doc; per-variant
+      // priceCents/quantity are intentionally derived from variants[0] at
+      // read time (see EtsyCache backward-compat shape) so they're not
+      // serialized here.
+      const cache = savedData['etsyCache'] as Record<string, unknown>;
+      expect(cache).toMatchObject({
+        title: 'Etsy-imported product',
+        state: 'active',
+      });
+    });
   });
 
   describe('update', () => {

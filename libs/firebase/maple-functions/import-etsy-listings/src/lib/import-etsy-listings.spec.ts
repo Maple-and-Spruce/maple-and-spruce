@@ -445,18 +445,21 @@ describe('importEtsyListings', () => {
       }),
       expect.objectContaining({
         squareItemId: 'sqi-1',
-      })
-    );
-    expect(mocks.updateEtsyCache).toHaveBeenCalledWith(
-      'prod-1',
-      '1001',
+      }),
+      // Etsy linkage is written atomically with the Product create — no
+      // follow-up updateEtsyCache call. Closes the race that left orphan
+      // Products without etsyListingId on import timeouts.
       expect.objectContaining({
-        title: 'Handmade Mug',
-        priceCents: 2500,
-        taxonomyId: 42,
-        state: 'active',
+        etsyListingId: '1001',
+        etsyCache: expect.objectContaining({
+          title: 'Handmade Mug',
+          priceCents: 2500,
+          taxonomyId: 42,
+          state: 'active',
+        }),
       })
     );
+    expect(mocks.updateEtsyCache).not.toHaveBeenCalled();
     expect(mocks.createImport).toHaveBeenCalledWith(
       expect.objectContaining({
         productId: 'prod-1',

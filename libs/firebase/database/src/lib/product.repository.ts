@@ -283,10 +283,18 @@ export const ProductRepository = {
    *
    * Called after successfully creating the item in Square.
    * The Square result provides the IDs and SKU.
+   *
+   * Optional `extras` carries Etsy linkage fields. When provided, they're
+   * written to the same Firestore doc atomically with the rest of the
+   * Product — closes the timeout window where importEtsyListings used to
+   * leave orphan Products that had no `etsyListingId` (next retry's
+   * dedup check returned null and re-imported the same listing). Pass
+   * extras when the Product is born from an Etsy import; omit otherwise.
    */
   async create(
     input: CreateProductInput,
-    squareResult: SquareProductResult
+    squareResult: SquareProductResult,
+    extras?: { etsyListingId?: string; etsyCache?: EtsyCache }
   ): Promise<Product> {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
@@ -328,8 +336,9 @@ export const ProductRepository = {
       squareCatalogVersion: squareResult.squareCatalogVersion,
       squareLocationId: squareResult.squareLocationId,
 
-      // No Etsy yet
-      etsyListingId: undefined,
+      // Etsy linkage (optional, written atomically with the rest)
+      etsyListingId: extras?.etsyListingId,
+      etsyCache: extras?.etsyCache,
 
       // Listing-level cache + deprecated per-variant fields for compat
       squareCache: {
