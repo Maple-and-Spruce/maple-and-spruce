@@ -178,10 +178,20 @@ describe('createRegistration', () => {
       ]);
 
       const mailDocs = await listFirestoreDocs('mail');
-      const registrantMail = mailDocs.find(
-        (d) => d.to === 'registrant@test.com'
-      );
-      const attendeeMail = mailDocs.find((d) => d.to === 'alice@test.com');
+      type MailDocData = {
+        to?: string;
+        template?: {
+          name?: string;
+          data?: Record<string, unknown>;
+        };
+      };
+      const findMailTo = (email: string): MailDocData | undefined =>
+        (mailDocs.find((d) => (d.data as MailDocData).to === email)?.data as
+          | MailDocData
+          | undefined);
+
+      const registrantMail = findMailTo('registrant@test.com');
+      const attendeeMail = findMailTo('alice@test.com');
 
       expect(registrantMail?.template?.name).toBe('registration-confirmation');
       expect(registrantMail?.template?.data?.extrasWithoutEmailCount).toBe(1);
