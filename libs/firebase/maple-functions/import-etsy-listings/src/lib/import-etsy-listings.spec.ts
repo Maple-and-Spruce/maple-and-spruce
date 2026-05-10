@@ -348,7 +348,8 @@ describe('importEtsyListings', () => {
     // Should set inventory per variant
     expect(mocks.setQuantity).toHaveBeenCalledTimes(2);
 
-    // Should create product with variants
+    // Should create product with variants — and also pass the Etsy
+    // linkage atomically as the third arg (race-closing fix).
     expect(mocks.createProduct).toHaveBeenCalledWith(
       expect.objectContaining({
         variants: expect.arrayContaining([
@@ -363,6 +364,10 @@ describe('importEtsyListings', () => {
           expect.objectContaining({ sku: 'v1-sku' }),
           expect.objectContaining({ sku: 'v2-sku' }),
         ]),
+      }),
+      expect.objectContaining({
+        etsyListingId: expect.any(String),
+        etsyCache: expect.objectContaining({ state: 'active' }),
       })
     );
 
