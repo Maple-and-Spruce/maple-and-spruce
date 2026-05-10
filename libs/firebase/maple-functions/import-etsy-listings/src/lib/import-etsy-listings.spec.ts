@@ -75,6 +75,7 @@ vi.mock('@maple/firebase/square', () => ({
 vi.mock('@maple/firebase/functions', () => ({
   Functions: {
     endpoint: {
+      withOptions: vi.fn().mockReturnThis(),
       usingSecrets: vi.fn().mockReturnThis(),
       usingStrings: vi.fn().mockReturnThis(),
       requiringRole: vi.fn().mockReturnThis(),
