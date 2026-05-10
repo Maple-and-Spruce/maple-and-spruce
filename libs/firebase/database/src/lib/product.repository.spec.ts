@@ -258,14 +258,16 @@ describe('ProductRepository', () => {
       // function timed out between the two writes.
       expect(mockSet).toHaveBeenCalledTimes(1);
       expect(savedData['etsyListingId']).toBe('1234567890');
-      // Listing-level Etsy fields land on the Firestore doc; per-variant
-      // priceCents/quantity are intentionally derived from variants[0] at
-      // read time (see EtsyCache backward-compat shape) so they're not
-      // serialized here.
+      // Both listing-level fields AND the deprecated per-variant fields
+      // land on the Firestore doc — the latter so the atomic-create path
+      // produces the same stored doc shape as the prior
+      // create + updateEtsyCache pair (integration tests read raw docs).
       const cache = savedData['etsyCache'] as Record<string, unknown>;
       expect(cache).toMatchObject({
         title: 'Etsy-imported product',
         state: 'active',
+        priceCents: 4500,
+        quantity: 3,
       });
     });
   });

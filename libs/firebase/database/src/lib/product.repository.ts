@@ -204,6 +204,13 @@ function productToDoc(product: Omit<Product, 'id'>): Record<string, unknown> {
         tags: product.etsyCache.tags,
         state: product.etsyCache.state,
         syncedAt: product.etsyCache.syncedAt,
+        // Deprecated per-variant fields. docToProduct re-derives them
+        // from variants[0] at read time, but persisting them keeps the
+        // stored doc identical to what updateEtsyCache writes — so the
+        // atomic-create path round-trips the same way to integration
+        // tests that read raw Firestore docs.
+        priceCents: product.etsyCache.priceCents,
+        quantity: product.etsyCache.quantity,
       },
     }),
   };
