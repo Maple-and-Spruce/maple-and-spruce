@@ -362,6 +362,7 @@ export const createRegistration = Functions.endpoint
           discountCode: discountCode || null,
           discountAmountCents: discountAmountCents || null,
           status: 'pending',
+          source: 'web',
           notes: data.notes || null,
           confirmationNumber,
           createdAt: now,

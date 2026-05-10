@@ -8,6 +8,7 @@ import type {
   Registration,
   UpdateRegistrationInput,
   RegistrationStatus,
+  RegistrationSource,
 } from '@maple/ts/domain';
 import type { InlineAgreementSigningData } from './agreement.types';
 
@@ -22,6 +23,8 @@ export interface GetRegistrationsRequest {
   status?: RegistrationStatus;
   /** Filter by customer email */
   customerEmail?: string;
+  /** Filter by registration channel (web vs in-person POS) */
+  source?: RegistrationSource;
 }
 
 export interface GetRegistrationsResponse {

@@ -7,6 +7,7 @@ import type {
   Registration,
   UpdateRegistrationInput,
   RegistrationStatus,
+  RegistrationSource,
   RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -25,6 +26,7 @@ export interface UseRegistrationsFilters {
   classId?: string;
   status?: RegistrationStatus;
   customerEmail?: string;
+  source?: RegistrationSource;
 }
 
 /**
@@ -51,6 +53,7 @@ export function useRegistrations(filters?: UseRegistrationsFilters) {
         classId: filters?.classId,
         status: filters?.status,
         customerEmail: filters?.customerEmail,
+        source: filters?.source,
       });
       setRegistrationsState({
         status: 'success',
@@ -66,7 +69,12 @@ export function useRegistrations(filters?: UseRegistrationsFilters) {
             : 'Failed to fetch registrations',
       });
     }
-  }, [filters?.classId, filters?.status, filters?.customerEmail]);
+  }, [
+    filters?.classId,
+    filters?.status,
+    filters?.customerEmail,
+    filters?.source,
+  ]);
 
   const updateRegistration = useCallback(
     async (input: UpdateRegistrationInput): Promise<Registration> => {

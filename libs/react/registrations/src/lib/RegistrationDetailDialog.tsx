@@ -116,7 +116,7 @@ export function RegistrationDetailDialog({
             <Alert severity="success">{cancelSuccess}</Alert>
           )}
 
-          {/* Status */}
+          {/* Status + Source */}
           <Box
             sx={{
               display: 'flex',
@@ -127,10 +127,18 @@ export function RegistrationDetailDialog({
             <Typography variant="subtitle2" color="text.secondary">
               Status
             </Typography>
-            <Chip
-              label={registration.status}
-              color={getStatusColor(registration.status)}
-            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Chip
+                label={registration.source === 'pos' ? 'POS' : 'Web'}
+                size="small"
+                variant="outlined"
+                color={registration.source === 'pos' ? 'primary' : 'default'}
+              />
+              <Chip
+                label={registration.status}
+                color={getStatusColor(registration.status)}
+              />
+            </Box>
           </Box>
 
           <Divider />

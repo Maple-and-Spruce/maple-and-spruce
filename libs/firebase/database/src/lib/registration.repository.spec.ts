@@ -61,6 +61,7 @@ function firestoreRegData(overrides: Record<string, unknown> = {}) {
     discountCode: undefined,
     discountAmountCents: undefined,
     status: 'confirmed',
+    source: 'web',
     notes: undefined,
     confirmationSentAt: new Date('2026-03-01'),
     reminderSentAt: undefined,
@@ -146,6 +147,14 @@ describe('RegistrationRepository', () => {
       await RegistrationRepository.findAll({ status: 'cancelled' });
 
       expect(mockWhere).toHaveBeenCalledWith('status', '==', 'cancelled');
+    });
+
+    it('applies source filter when provided', async () => {
+      const { mockWhere } = setupFindAll([]);
+
+      await RegistrationRepository.findAll({ source: 'pos' });
+
+      expect(mockWhere).toHaveBeenCalledWith('source', '==', 'pos');
     });
 
     it('orders results by createdAt desc', async () => {
@@ -245,6 +254,36 @@ describe('RegistrationRepository', () => {
 
       expect(result!.confirmationSentAt).toBeInstanceOf(Date);
       expect(result!.reminderSentAt).toBeInstanceOf(Date);
+    });
+
+    it("defaults source to 'web' for documents missing the field (back-compat)", async () => {
+      const mockDoc = mockDocSnapshot(
+        'reg-old',
+        firestoreRegData({ source: undefined })
+      );
+      const mockGet = vi.fn().mockResolvedValue(mockDoc);
+      const mockDocFn = vi.fn().mockReturnValue({ get: mockGet });
+      const mockCollection = vi.fn().mockReturnValue({ doc: mockDocFn });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+
+      const result = await RegistrationRepository.findById('reg-old');
+
+      expect(result!.source).toBe('web');
+    });
+
+    it("reads source as 'pos' when set", async () => {
+      const mockDoc = mockDocSnapshot(
+        'reg-pos',
+        firestoreRegData({ source: 'pos' })
+      );
+      const mockGet = vi.fn().mockResolvedValue(mockDoc);
+      const mockDocFn = vi.fn().mockReturnValue({ get: mockGet });
+      const mockCollection = vi.fn().mockReturnValue({ doc: mockDocFn });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+
+      const result = await RegistrationRepository.findById('reg-pos');
+
+      expect(result!.source).toBe('pos');
     });
 
     it('leaves optional date fields undefined when not set', async () => {
@@ -442,6 +481,7 @@ describe('RegistrationRepository', () => {
         taxAmountCents: 600,
         taxRatePercent: 6,
         status: 'confirmed' as const,
+        source: 'web' as const,
       };
 
       const result = await RegistrationRepository.create(input);
@@ -474,6 +514,7 @@ describe('RegistrationRepository', () => {
         taxAmountCents: 300,
         taxRatePercent: 6,
         status: 'pending' as const,
+        source: 'web' as const,
       });
 
       expect(result.createdAt.getTime()).toBe(result.updatedAt.getTime());
@@ -504,6 +545,7 @@ describe('RegistrationRepository', () => {
         taxRatePercent: 6,
         squarePaymentId: 'sq-pay-5',
         status: 'confirmed' as const,
+        source: 'pos' as const,
         notes: 'Window seat please',
       });
 

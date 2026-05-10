@@ -16,7 +16,12 @@ import {
   Alert,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import type { Registration, RequestState, Class } from '@maple/ts/domain';
+import type {
+  Registration,
+  RegistrationSource,
+  RequestState,
+  Class,
+} from '@maple/ts/domain';
 
 interface RegistrationListProps {
   registrationsState: RequestState<Registration[]>;
@@ -55,6 +60,10 @@ function getStatusColor(
     default:
       return 'default';
   }
+}
+
+function getSourceLabel(source: RegistrationSource): string {
+  return source === 'pos' ? 'POS' : 'Web';
 }
 
 export function RegistrationList({
@@ -108,6 +117,7 @@ export function RegistrationList({
             <TableCell>Qty</TableCell>
             <TableCell>Amount</TableCell>
             <TableCell>Status</TableCell>
+            <TableCell>Source</TableCell>
             <TableCell>Date</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -133,6 +143,14 @@ export function RegistrationList({
                   label={registration.status}
                   size="small"
                   color={getStatusColor(registration.status)}
+                />
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={getSourceLabel(registration.source)}
+                  size="small"
+                  variant="outlined"
+                  color={registration.source === 'pos' ? 'primary' : 'default'}
                 />
               </TableCell>
               <TableCell>

@@ -18,6 +18,16 @@ export type RegistrationStatus =
   | 'no-show'; // Customer didn't attend
 
 /**
+ * Channel the registration was created through.
+ * Used for reporting and to gate the dedup logic in the Square POS webhook
+ * (a `web` registration's Square order carries metadata so the POS handler
+ * skips it).
+ */
+export type RegistrationSource =
+  | 'web' // Customer self-registered on the public Webflow site
+  | 'pos'; // Staff rang up the class on Square POS in person
+
+/**
  * Registration entity - customer signed up for a class
  */
 export interface Registration {
@@ -52,6 +62,11 @@ export interface Registration {
   discountAmountCents?: number;
   /** Registration status */
   status: RegistrationStatus;
+  /**
+   * Channel the registration came from. Defaults to `'web'` for any record
+   * predating the field — see `docToRegistration` for the back-compat read.
+   */
+  source: RegistrationSource;
   /** Notes from customer (e.g., dietary restrictions, accessibility needs) */
   notes?: string;
   /** Confirmation email sent */
