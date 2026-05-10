@@ -26,10 +26,12 @@ export function useEtsyImport() {
       setImportState({ status: 'loading' });
       try {
         const functions = getMapleFunctions();
+        // Match the server's 540s ceiling — the callable client SDK
+        // defaults to 70s and would abort large bulk imports otherwise.
         const importFn = httpsCallable<
           ImportEtsyListingsRequest,
           ImportEtsyListingsResponse
-        >(functions, 'importEtsyListings');
+        >(functions, 'importEtsyListings', { timeout: 540_000 });
         const result = await importFn(request);
         setImportState({ status: 'success', data: result.data });
         return result.data;
