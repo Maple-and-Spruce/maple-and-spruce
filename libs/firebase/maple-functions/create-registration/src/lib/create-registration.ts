@@ -207,6 +207,21 @@ export const createRegistration = Functions.endpoint
         throw new Error(`Validation failed: ${errorMessages}`);
       }
 
+      // When the client sent the new attendees array, cross-check that
+      // `quantity === 1 + additionalAttendees.length` so a stale UI can't
+      // book a different number of spots than the attendees it described.
+      // Callers that omit the field (legacy POS / API clients) are still
+      // trusted to send a correct `quantity` directly.
+      const additionalAttendees = data.additionalAttendees ?? [];
+      if (
+        data.additionalAttendees !== undefined &&
+        data.quantity !== 1 + additionalAttendees.length
+      ) {
+        throw new Error(
+          `Quantity (${data.quantity}) must equal 1 + additionalAttendees.length (${1 + additionalAttendees.length}).`
+        );
+      }
+
       // 2. Verify class exists and is open for registration
       const classEntity = await ClassRepository.findById(data.classId);
       if (!classEntity) {
@@ -349,12 +364,23 @@ export const createRegistration = Functions.endpoint
         // Reserve the spot by creating the registration with 'pending' status
         // inside the transaction so it's atomic with the capacity check
         const now = new Date();
+        // Filter out empty attendee rows for storage — only keep ones the
+        // user actually filled, so admin views aren't littered with blanks.
+        const persistedAttendees = additionalAttendees
+          .map((a) => ({
+            name: a.name?.trim() || undefined,
+            email: a.email?.trim() || undefined,
+          }))
+          .filter((a) => a.name || a.email);
+
         transaction.set(registrationDocRef, {
           classId: data.classId,
           customerEmail: data.customerEmail,
           customerName: data.customerName,
           customerPhone: data.customerPhone || null,
           quantity: data.quantity,
+          additionalAttendees:
+            persistedAttendees.length > 0 ? persistedAttendees : null,
           pricePaidCents,
           subtotalCents,
           taxAmountCents,
@@ -662,10 +688,34 @@ export const createRegistration = Functions.endpoint
         }
       }
 
-      // 10. Write to mail collection for confirmation email
+      // 10. Write to mail collection for confirmation emails
       try {
         const formatCurrency = (cents: number): string =>
           `$${(cents / 100).toFixed(2)}`;
+
+        const classDate = (() => {
+          const { dateDisplay, timeDisplay } = formatSessions(
+            classEntity.sessions,
+            'America/New_York'
+          );
+          return timeDisplay && timeDisplay !== 'Varies'
+            ? `${dateDisplay} \u00B7 ${timeDisplay}`
+            : dateDisplay;
+        })();
+        const classDuration =
+          classEntity.durationMinutes >= 60
+            ? `${Math.floor(classEntity.durationMinutes / 60)} hour${Math.floor(classEntity.durationMinutes / 60) > 1 ? 's' : ''}${classEntity.durationMinutes % 60 ? ` ${classEntity.durationMinutes % 60} min` : ''}`
+            : `${classEntity.durationMinutes} minutes`;
+        const classLocation = classEntity.location || 'Maple & Spruce';
+
+        // Partition attendees: those with email get their own confirmation,
+        // those without become a "remind your N friends" prompt to the
+        // registrant so they aren't left wondering how their friend hears about it.
+        const attendeesWithEmail = additionalAttendees.filter(
+          (a) => a.email && a.email.trim().length > 0
+        );
+        const extrasWithoutEmailCount =
+          additionalAttendees.length - attendeesWithEmail.length;
 
         await db.collection('mail').add({
           to: data.customerEmail,
@@ -674,20 +724,9 @@ export const createRegistration = Functions.endpoint
             data: {
               customerName: data.customerName,
               className: classEntity.name,
-              classDate: (() => {
-                const { dateDisplay, timeDisplay } = formatSessions(
-                  classEntity.sessions,
-                  'America/New_York'
-                );
-                return timeDisplay && timeDisplay !== 'Varies'
-                  ? `${dateDisplay} \u00B7 ${timeDisplay}`
-                  : dateDisplay;
-              })(),
-              classDuration:
-                classEntity.durationMinutes >= 60
-                  ? `${Math.floor(classEntity.durationMinutes / 60)} hour${Math.floor(classEntity.durationMinutes / 60) > 1 ? 's' : ''}${classEntity.durationMinutes % 60 ? ` ${classEntity.durationMinutes % 60} min` : ''}`
-                  : `${classEntity.durationMinutes} minutes`,
-              classLocation: classEntity.location || 'Maple & Spruce',
+              classDate,
+              classDuration,
+              classLocation,
               confirmationNumber,
               subtotal: formatCurrency(subtotalCents),
               taxRate: taxRatePercent,
@@ -704,9 +743,42 @@ export const createRegistration = Functions.endpoint
               referralCode,
               referralExpires: referralExpiresFormatted,
               referralPercent: classEntity.referralDiscount?.percent,
+              extrasWithoutEmailCount:
+                extrasWithoutEmailCount > 0
+                  ? extrasWithoutEmailCount
+                  : undefined,
+              extrasWithoutEmailNoun:
+                extrasWithoutEmailCount === 1 ? 'friend' : 'friends',
             },
           },
         });
+
+        // Per-attendee confirmation emails (class details only, no payment).
+        for (const attendee of attendeesWithEmail) {
+          try {
+            await db.collection('mail').add({
+              to: attendee.email,
+              template: {
+                name: 'registration-confirmation-attendee',
+                data: {
+                  attendeeName: attendee.name?.trim() || undefined,
+                  registrantName: data.customerName,
+                  className: classEntity.name,
+                  classDate,
+                  classDuration,
+                  classLocation,
+                  materialsIncluded: classEntity.materialsIncluded,
+                  whatToBring: classEntity.whatToBring,
+                },
+              },
+            });
+          } catch (attendeeEmailError) {
+            console.error(
+              `Failed to queue attendee confirmation email for ${attendee.email}:`,
+              attendeeEmailError
+            );
+          }
+        }
       } catch (emailError) {
         // Don't fail the registration if email fails
         console.error('Failed to queue confirmation email:', emailError);

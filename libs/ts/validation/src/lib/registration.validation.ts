@@ -18,6 +18,7 @@ export interface RegistrationValidationInput {
   customerPhone?: string;
   quantity?: number;
   notes?: string;
+  additionalAttendees?: Array<{ name?: string; email?: string }>;
 }
 
 /**
@@ -92,6 +93,28 @@ export const registrationValidation = staticSuite(
     test('notes', 'Notes must be less than 500 characters', () => {
       if (data.notes) {
         enforce(data.notes).shorterThanOrEquals(500);
+      }
+    });
+
+    // Additional attendees validation (optional). Both name and email are
+    // optional per attendee; we only validate format when something is provided.
+    test('additionalAttendees', 'Each attendee name must be less than 100 characters', () => {
+      if (data.additionalAttendees) {
+        for (const attendee of data.additionalAttendees) {
+          if (attendee.name) {
+            enforce(attendee.name).shorterThan(100);
+          }
+        }
+      }
+    });
+
+    test('additionalAttendees', 'Each attendee email must be a valid email address', () => {
+      if (data.additionalAttendees) {
+        for (const attendee of data.additionalAttendees) {
+          if (attendee.email) {
+            enforce(attendee.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+          }
+        }
       }
     });
   }

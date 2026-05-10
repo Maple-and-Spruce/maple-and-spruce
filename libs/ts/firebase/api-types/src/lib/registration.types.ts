@@ -9,6 +9,7 @@ import type {
   UpdateRegistrationInput,
   RegistrationStatus,
   RegistrationSource,
+  Attendee,
 } from '@maple/ts/domain';
 import type { InlineAgreementSigningData } from './agreement.types';
 
@@ -105,7 +106,14 @@ export interface CreateRegistrationRequest {
   customerEmail: string;
   customerName: string;
   customerPhone?: string;
+  /**
+   * Total spots requested. The server cross-checks against
+   * `1 + additionalAttendees.length` so the client and persisted record can
+   * never disagree on capacity.
+   */
   quantity: number;
+  /** Extra people on the registration. Per-attendee name and email are both optional. */
+  additionalAttendees?: Attendee[];
   discountCode?: string;
   notes?: string;
   /** Nonce from Square Web Payments SDK (card tokenization) */

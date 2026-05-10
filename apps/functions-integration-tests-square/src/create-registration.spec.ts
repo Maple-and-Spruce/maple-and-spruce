@@ -143,6 +143,89 @@ describe('createRegistration', () => {
       // Price should be multiplied by quantity: 4500 * 2 + 6% tax = 9540
       expect(result.data?.registration.pricePaidCents).toBe(9540);
     });
+
+    it('should persist additionalAttendees and queue per-attendee emails', async () => {
+      const MULTI_CLASS_ID = 'test-reg-multi-class';
+      await setFirestoreDoc('classes', MULTI_CLASS_ID, {
+        ...TEST_CLASS,
+        name: 'Multi Attendee Class',
+        capacity: 10,
+      });
+
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: MULTI_CLASS_ID,
+          customerEmail: 'registrant@test.com',
+          customerName: 'Pat Registrant',
+          quantity: 3,
+          additionalAttendees: [
+            { name: 'Alice Friend', email: 'alice@test.com' },
+            { name: 'Bob Friend' },
+          ],
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.registration.quantity).toBe(3);
+      expect(result.data?.registration.additionalAttendees).toEqual([
+        { name: 'Alice Friend', email: 'alice@test.com' },
+        { name: 'Bob Friend' },
+      ]);
+
+      const mailDocs = await listFirestoreDocs('mail');
+      type MailDocData = {
+        to?: string;
+        template?: {
+          name?: string;
+          data?: Record<string, unknown>;
+        };
+      };
+      const findMailTo = (email: string): MailDocData | undefined =>
+        (mailDocs.find((d) => (d.data as MailDocData).to === email)?.data as
+          | MailDocData
+          | undefined);
+
+      const registrantMail = findMailTo('registrant@test.com');
+      const attendeeMail = findMailTo('alice@test.com');
+
+      expect(registrantMail?.template?.name).toBe('registration-confirmation');
+      expect(registrantMail?.template?.data?.extrasWithoutEmailCount).toBe(1);
+
+      expect(attendeeMail?.template?.name).toBe(
+        'registration-confirmation-attendee'
+      );
+      expect(attendeeMail?.template?.data?.attendeeName).toBe('Alice Friend');
+      expect(attendeeMail?.template?.data?.registrantName).toBe(
+        'Pat Registrant'
+      );
+      // Class details only — no payment fields.
+      expect(attendeeMail?.template?.data?.amountPaid).toBeUndefined();
+      expect(attendeeMail?.template?.data?.subtotal).toBeUndefined();
+    });
+
+    it('should reject when quantity disagrees with additionalAttendees length', async () => {
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: TEST_CLASS_ID,
+          customerEmail: 'mismatch@test.com',
+          customerName: 'Mismatch User',
+          quantity: 3,
+          additionalAttendees: [{ name: 'Solo Friend' }],
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+
+      expect(result.status).not.toBe(200);
+    });
   });
 
   describe('Capacity enforcement', () => {

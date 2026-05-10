@@ -8,6 +8,10 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  IconButton,
+  Link,
 } from '@mui/material';
 import {
   useSignal,
@@ -16,11 +20,17 @@ import {
   batch,
 } from '@maple/react/signals';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import { fonts } from '@maple/react/theme';
 import { SquareCardForm } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
 import { SigningForm } from '@maple/react/agreements';
-import type { PublicClass, AgreementSection } from '@maple/ts/domain';
+import type {
+  PublicClass,
+  AgreementSection,
+  Attendee,
+} from '@maple/ts/domain';
 import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationResponse,
@@ -28,6 +38,20 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { registrationValidation } from '@maple/ts/validation';
 import { formatPhoneNumber } from './formatPhoneNumber';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * UI-side attendee row. `nameRevealed` and `sendConfirmation` are pure UI
+ * state — they decide whether the name field and email field are shown. The
+ * domain payload only carries `name` and `email` when the user filled them.
+ */
+interface AttendeeRow {
+  nameRevealed: boolean;
+  sendConfirmation: boolean;
+  name: string;
+  email: string;
+}
 
 /** Template summary returned by getRequiredAgreementsForClass */
 export interface RequiredAgreementTemplate {
@@ -99,6 +123,7 @@ interface RegistrationCheckoutFormProps {
     customerName: string;
     customerPhone?: string;
     quantity: number;
+    additionalAttendees?: Attendee[];
     discountCode?: string;
     notes?: string;
     paymentNonce: string;
@@ -132,9 +157,13 @@ export function RegistrationCheckoutForm({
   const customerName = useSignal('');
   const customerEmail = useSignal('');
   const customerPhone = useSignal('');
-  const quantity = useSignal(1);
+  const additionalAttendees = useSignal<AttendeeRow[]>([]);
   const discountCode = useSignal('');
   const notes = useSignal('');
+
+  // Quantity is derived: registrant + extras. Kept as a computed so all the
+  // existing pricing/capacity code that reads `quantity.value` still works.
+  const quantity = useComputed(() => 1 + additionalAttendees.value.length);
 
   // Cost state
   const costBreakdown = useSignal<CalculateRegistrationCostResponse | null>(
@@ -190,6 +219,20 @@ export function RegistrationCheckoutForm({
   // Note: discountCode is intentionally excluded — it's validated
   // server-side by the lookup-discount function.
   // ============================================================
+  // Build the domain payload of additional attendees (names/emails only when
+  // the user has actually filled them). Used for validation and for the
+  // submit payload — derived once so both stay consistent.
+  const additionalAttendeesPayload = useComputed<Attendee[]>(() =>
+    additionalAttendees.value.map((row) => {
+      const name = row.nameRevealed ? row.name.trim() : '';
+      const email = row.sendConfirmation ? row.email.trim() : '';
+      return {
+        name: name || undefined,
+        email: email || undefined,
+      };
+    })
+  );
+
   const validation = useComputed(() =>
     registrationValidation({
       classId: publicClass.id,
@@ -198,6 +241,7 @@ export function RegistrationCheckoutForm({
       customerPhone: customerPhone.value || undefined,
       quantity: quantity.value,
       notes: notes.value || undefined,
+      additionalAttendees: additionalAttendeesPayload.value,
     })
   );
 
@@ -240,25 +284,49 @@ export function RegistrationCheckoutForm({
     calculateCost(quantity.value, '');
   }, []);
 
-  const handleQuantityChange = useCallback(
-    (newQuantity: number) => {
+  const handleAddAttendee = useCallback(() => {
+    if (quantity.value >= maxQuantity.value) {
       const max = maxQuantity.value;
-      if (newQuantity > max) {
-        batch(() => {
-          quantityWarning.value = `Only ${max} spot${max === 1 ? '' : 's'} available. Quantity set to ${max}.`;
-          quantity.value = max;
-        });
-        calculateCost(max, discountCode.value);
-      } else {
-        const qty = Math.max(1, newQuantity);
-        batch(() => {
-          quantityWarning.value = null;
-          quantity.value = qty;
-        });
-        calculateCost(qty, discountCode.value);
-      }
+      quantityWarning.value = `Only ${max} spot${max === 1 ? '' : 's'} available for this class.`;
+      return;
+    }
+    batch(() => {
+      quantityWarning.value = null;
+      additionalAttendees.value = [
+        ...additionalAttendees.value,
+        { nameRevealed: false, sendConfirmation: false, name: '', email: '' },
+      ];
+    });
+    calculateCost(quantity.value + 1, discountCode.value);
+  }, [
+    additionalAttendees,
+    calculateCost,
+    discountCode,
+    maxQuantity,
+    quantity,
+    quantityWarning,
+  ]);
+
+  const handleRemoveAttendee = useCallback(
+    (index: number) => {
+      batch(() => {
+        quantityWarning.value = null;
+        additionalAttendees.value = additionalAttendees.value.filter(
+          (_, i) => i !== index
+        );
+      });
+      calculateCost(quantity.value - 1, discountCode.value);
     },
-    [calculateCost, discountCode, maxQuantity, quantity, quantityWarning]
+    [additionalAttendees, calculateCost, discountCode, quantity, quantityWarning]
+  );
+
+  const handleAttendeeFieldChange = useCallback(
+    (index: number, patch: Partial<AttendeeRow>) => {
+      additionalAttendees.value = additionalAttendees.value.map((row, i) =>
+        i === index ? { ...row, ...patch } : row
+      );
+    },
+    [additionalAttendees]
   );
 
   const handleApplyDiscount = useCallback(() => {
@@ -295,6 +363,10 @@ export function RegistrationCheckoutForm({
           customerName: customerName.value.trim(),
           customerPhone: customerPhone.value.trim() || undefined,
           quantity: quantity.value,
+          additionalAttendees:
+            additionalAttendeesPayload.value.length > 0
+              ? additionalAttendeesPayload.value
+              : undefined,
           discountCode: discountCode.value.trim() || undefined,
           notes: notes.value.trim() || undefined,
           paymentNonce: nonce,
@@ -320,6 +392,7 @@ export function RegistrationCheckoutForm({
       customerEmail,
       customerPhone,
       quantity,
+      additionalAttendeesPayload,
       discountCode,
       notes,
       publicClass.id,
@@ -499,27 +572,6 @@ export function RegistrationCheckoutForm({
             placeholder="(304) 555-1234"
           />
           <TextField
-            label="Number of Spots"
-            type="number"
-            value={quantity.value}
-            onChange={(e) => handleQuantityChange(Number(e.target.value))}
-            inputProps={{ min: 1, max: maxQuantity.value }}
-            fullWidth
-            disabled={isFull.value}
-            error={!!getFieldError('quantity')}
-            helperText={
-              getFieldError('quantity') ||
-              (isFull.value
-                ? 'No spots available'
-                : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available`)
-            }
-          />
-          {quantityWarning.value && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              {quantityWarning.value}
-            </Alert>
-          )}
-          <TextField
             label="Notes (optional)"
             value={notes.value}
             onChange={(e) => (notes.value = e.target.value)}
@@ -531,6 +583,138 @@ export function RegistrationCheckoutForm({
             helperText={getFieldError('notes')}
           />
         </Box>
+      </Box>
+
+      {/* Additional Attendees Section */}
+      <Box>
+        <Typography variant="h6" gutterBottom>
+          Anyone else coming with you?
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: 'text.secondary', mb: 1 }}
+        >
+          {isFull.value
+            ? 'No spots available.'
+            : `${publicClass.spotsRemaining} spot${publicClass.spotsRemaining === 1 ? '' : 's'} available — register up to ${maxQuantity.value} ${maxQuantity.value === 1 ? 'person' : 'people'} total.`}
+        </Typography>
+
+        {additionalAttendees.value.map((attendee, index) => {
+          const displayLabel =
+            attendee.nameRevealed && attendee.name.trim()
+              ? attendee.name
+              : `Additional Person #${index + 1}`;
+          const emailLooksInvalid =
+            attendee.sendConfirmation &&
+            attendee.email.length > 0 &&
+            !EMAIL_REGEX.test(attendee.email);
+          return (
+            <Box
+              key={index}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                p: 2,
+                mb: 1,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <Typography sx={{ fontWeight: 500 }}>{displayLabel}</Typography>
+                <IconButton
+                  size="small"
+                  aria-label={`Remove additional person ${index + 1}`}
+                  onClick={() => handleRemoveAttendee(index)}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              {attendee.nameRevealed ? (
+                <TextField
+                  label="Name"
+                  size="small"
+                  value={attendee.name}
+                  onChange={(e) =>
+                    handleAttendeeFieldChange(index, { name: e.target.value })
+                  }
+                  fullWidth
+                />
+              ) : (
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  underline="hover"
+                  onClick={() =>
+                    handleAttendeeFieldChange(index, { nameRevealed: true })
+                  }
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Update name
+                </Link>
+              )}
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={attendee.sendConfirmation}
+                    onChange={(e) =>
+                      handleAttendeeFieldChange(index, {
+                        sendConfirmation: e.target.checked,
+                      })
+                    }
+                  />
+                }
+                label="Send them a confirmation email"
+              />
+
+              {attendee.sendConfirmation && (
+                <TextField
+                  label="Their email address"
+                  type="email"
+                  size="small"
+                  value={attendee.email}
+                  onChange={(e) =>
+                    handleAttendeeFieldChange(index, { email: e.target.value })
+                  }
+                  fullWidth
+                  error={showValidationErrors.value && emailLooksInvalid}
+                  helperText={
+                    showValidationErrors.value && emailLooksInvalid
+                      ? 'Please enter a valid email address'
+                      : "We'll send them class details — no payment info."
+                  }
+                />
+              )}
+            </Box>
+          );
+        })}
+
+        <Button
+          variant="outlined"
+          startIcon={<AddIcon />}
+          onClick={handleAddAttendee}
+          disabled={isFull.value || quantity.value >= maxQuantity.value}
+          sx={{ mt: 1 }}
+        >
+          Add another person
+        </Button>
+
+        {quantityWarning.value && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {quantityWarning.value}
+          </Alert>
+        )}
       </Box>
 
       {/* Discount Code Section */}
