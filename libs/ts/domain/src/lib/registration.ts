@@ -28,6 +28,16 @@ export type RegistrationSource =
   | 'pos'; // Staff rang up the class on Square POS in person
 
 /**
+ * Additional person included on a registration beyond the registrant.
+ * Both fields are optional — the registrant may add a row to reserve a
+ * spot for a friend without supplying their info.
+ */
+export interface Attendee {
+  name?: string;
+  email?: string;
+}
+
+/**
  * Registration entity - customer signed up for a class
  */
 export interface Registration {
@@ -40,8 +50,16 @@ export interface Registration {
   customerName: string;
   /** Customer phone (optional) */
   customerPhone?: string;
-  /** Number of spots registered (usually 1, but could be group registration) */
+  /**
+   * Number of spots. Server derives this from `1 + additionalAttendees.length`
+   * so capacity rollups, pricing, and admin views keep working unchanged.
+   */
   quantity: number;
+  /**
+   * Extra people beyond the registrant. Empty/absent = solo registration.
+   * Attendees with an `email` receive a class-details-only confirmation.
+   */
+  additionalAttendees?: Attendee[];
   /** Total amount paid in cents (includes tax) */
   pricePaidCents: number;
   /** Post-discount, pre-tax amount in cents */

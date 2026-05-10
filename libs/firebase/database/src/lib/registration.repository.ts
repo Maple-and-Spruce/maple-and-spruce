@@ -12,6 +12,7 @@ import type {
   UpdateRegistrationInput,
   RegistrationStatus,
   RegistrationSource,
+  Attendee,
 } from '@maple/ts/domain';
 
 const COLLECTION = 'registrations';
@@ -34,6 +35,7 @@ function docToRegistration(
     customerName: data.customerName,
     customerPhone: data.customerPhone,
     quantity: data.quantity,
+    additionalAttendees: parseAdditionalAttendees(data.additionalAttendees),
     pricePaidCents: data.pricePaidCents,
     subtotalCents: data.subtotalCents,
     taxAmountCents: data.taxAmountCents,
@@ -60,6 +62,25 @@ function docToRegistration(
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
+}
+
+/**
+ * Normalize the persisted `additionalAttendees` array. Older rows wrote `null`
+ * when there were no extras; coerce to undefined so callers consistently see
+ * "absent" rather than two falsy values.
+ */
+function parseAdditionalAttendees(raw: unknown): Attendee[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const parsed: Attendee[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as { name?: unknown; email?: unknown };
+    parsed.push({
+      name: typeof e.name === 'string' ? e.name : undefined,
+      email: typeof e.email === 'string' ? e.email : undefined,
+    });
+  }
+  return parsed.length > 0 ? parsed : undefined;
 }
 
 /**

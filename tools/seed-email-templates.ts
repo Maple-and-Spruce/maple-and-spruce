@@ -141,6 +141,13 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
     </div>
     {{/if}}
 
+    {{#if extrasWithoutEmailCount}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Don't forget to remind your {{extrasWithoutEmailNoun}}!</strong><br>
+      <p>You registered {{extrasWithoutEmailCount}} additional {{extrasWithoutEmailNoun}} without an email — they won't get a confirmation from us, so be sure to share the class date and details with them.</p>
+    </div>
+    {{/if}}
+
     {{#if referralCode}}
     <div class="highlight-box">
       <strong style="color: #4A3728;">Bring a friend &#8212; share this code</strong><br>
@@ -226,6 +233,89 @@ const registrationCancelledHtml = `<!DOCTYPE html>
       <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
       call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
       or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: registration-confirmation-attendee
+//
+// Sent to additional attendees on a multi-person registration when the
+// registrant supplied their email. Class details only — no payment info,
+// no receipt, no referral code. The registrant gets the receipt-bearing
+// confirmation; this email tells the attendee that someone signed them up
+// so they don't show up confused on class day.
+// ---------------------------------------------------------------------------
+
+const registrationConfirmationAttendeeSubject =
+  '{{registrantName}} signed you up for {{className}}';
+
+const registrationConfirmationAttendeeHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You've been registered for a class</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>You're registered!</h2>
+    <p>{{#if attendeeName}}Hi {{attendeeName}},{{else}}Hello,{{/if}}</p>
+    <p><strong>{{registrantName}}</strong> signed you up for <strong>{{className}}</strong>. We're excited to have you join us! No action is needed on your end &mdash; they've already taken care of payment.</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Class</td>
+        <td>{{className}}</td>
+      </tr>
+      <tr>
+        <td class="label">Date</td>
+        <td>{{classDate}}</td>
+      </tr>
+      <tr>
+        <td class="label">Duration</td>
+        <td>{{classDuration}}</td>
+      </tr>
+      <tr>
+        <td class="label">Location</td>
+        <td>{{classLocation}}</td>
+      </tr>
+    </table>
+
+    {{#if materialsIncluded}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Materials Included</strong><br>
+      {{materialsIncluded}}
+    </div>
+    {{/if}}
+
+    {{#if whatToBring}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">What to Bring</strong><br>
+      {{whatToBring}}
+    </div>
+    {{/if}}
+
+    <p>If you have any questions, please reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>,
+      call us at <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>,
+      or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
+
+    <p style="font-size: 14px; color: #999;">
+      For payment questions or refunds, please contact {{registrantName}} directly &mdash; they hold the receipt for this registration.
+    </p>
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
@@ -434,6 +524,10 @@ const templates: Record<string, EmailTemplate> = {
   'registration-confirmation': {
     subject: registrationConfirmationSubject,
     html: registrationConfirmationHtml,
+  },
+  'registration-confirmation-attendee': {
+    subject: registrationConfirmationAttendeeSubject,
+    html: registrationConfirmationAttendeeHtml,
   },
   'registration-cancelled': {
     subject: registrationCancelledSubject,

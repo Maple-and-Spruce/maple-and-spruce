@@ -236,6 +236,62 @@ describe('registrationValidation', () => {
     });
   });
 
+  describe('additionalAttendees field', () => {
+    it('passes when undefined (optional)', () => {
+      const result = registrationValidation(validRegistration);
+      expect(result.hasErrors('additionalAttendees')).toBe(false);
+    });
+
+    it('passes with empty array', () => {
+      const result = registrationValidation({
+        ...validRegistration,
+        additionalAttendees: [],
+      });
+      expect(result.hasErrors('additionalAttendees')).toBe(false);
+    });
+
+    it('passes with attendees that have no name or email', () => {
+      const result = registrationValidation({
+        ...validRegistration,
+        additionalAttendees: [{}, {}],
+      });
+      expect(result.hasErrors('additionalAttendees')).toBe(false);
+    });
+
+    it('passes with attendees that have valid name and email', () => {
+      const result = registrationValidation({
+        ...validRegistration,
+        additionalAttendees: [
+          { name: 'Alice', email: 'alice@example.com' },
+          { name: 'Bob' },
+        ],
+      });
+      expect(result.hasErrors('additionalAttendees')).toBe(false);
+    });
+
+    it('fails when an attendee email is invalid', () => {
+      const result = registrationValidation({
+        ...validRegistration,
+        additionalAttendees: [{ email: 'not-an-email' }],
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('additionalAttendees')).toContain(
+        'Each attendee email must be a valid email address'
+      );
+    });
+
+    it('fails when an attendee name exceeds 100 characters', () => {
+      const result = registrationValidation({
+        ...validRegistration,
+        additionalAttendees: [{ name: 'a'.repeat(100) }],
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('additionalAttendees')).toContain(
+        'Each attendee name must be less than 100 characters'
+      );
+    });
+  });
+
   describe('single-field validation', () => {
     it('only validates specified field', () => {
       const invalidData: RegistrationValidationInput = {
