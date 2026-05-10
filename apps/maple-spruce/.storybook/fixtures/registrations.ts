@@ -13,6 +13,7 @@ export const mockRegistrationConfirmed: Registration = {
   taxRatePercent: 6.0,
   squarePaymentId: 'sq-pay-abc123',
   status: 'confirmed',
+  source: 'web',
   notes: 'Please let me know about parking.',
   createdAt: new Date('2024-08-01T14:30:00Z'),
   updatedAt: new Date('2024-08-01T14:30:00Z'),
@@ -31,6 +32,7 @@ export const mockRegistrationPending: Registration = {
   discountCode: 'SAVE10',
   discountAmountCents: 1500,
   status: 'pending',
+  source: 'web',
   createdAt: new Date('2024-08-02T10:00:00Z'),
   updatedAt: new Date('2024-08-02T10:00:00Z'),
 };
@@ -47,6 +49,7 @@ export const mockRegistrationCancelled: Registration = {
   taxRatePercent: 6.0,
   squarePaymentId: 'sq-pay-def456',
   status: 'cancelled',
+  source: 'web',
   notes: 'Cancelled due to scheduling conflict.',
   createdAt: new Date('2024-07-15T09:00:00Z'),
   updatedAt: new Date('2024-07-20T11:00:00Z'),
@@ -64,6 +67,7 @@ export const mockRegistrationRefunded: Registration = {
   taxRatePercent: 6.0,
   squarePaymentId: 'sq-pay-ghi789',
   status: 'refunded',
+  source: 'pos',
   createdAt: new Date('2024-07-10T16:00:00Z'),
   updatedAt: new Date('2024-07-22T08:00:00Z'),
 };

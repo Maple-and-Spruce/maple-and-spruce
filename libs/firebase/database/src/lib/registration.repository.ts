@@ -11,6 +11,7 @@ import type {
   CreateRegistrationInput,
   UpdateRegistrationInput,
   RegistrationStatus,
+  RegistrationSource,
 } from '@maple/ts/domain';
 
 const COLLECTION = 'registrations';
@@ -43,6 +44,9 @@ function docToRegistration(
     discountCode: data.discountCode,
     discountAmountCents: data.discountAmountCents,
     status: data.status as RegistrationStatus,
+    // Default to 'web' so registrations created before the source field
+    // existed (all of which were web checkouts) read back with a usable value.
+    source: (data.source as RegistrationSource | undefined) ?? 'web',
     notes: data.notes,
     confirmationSentAt: data.confirmationSentAt
       ? toDate(data.confirmationSentAt)
@@ -88,6 +92,7 @@ export interface RegistrationFilters {
   classId?: string;
   customerEmail?: string;
   status?: RegistrationStatus;
+  source?: RegistrationSource;
 }
 
 /**
@@ -110,6 +115,10 @@ export const RegistrationRepository = {
 
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
+    }
+
+    if (filters?.source) {
+      query = query.where('source', '==', filters.source);
     }
 
     query = query.orderBy('createdAt', 'desc');

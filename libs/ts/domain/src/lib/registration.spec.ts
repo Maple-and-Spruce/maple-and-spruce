@@ -17,6 +17,7 @@ const baseRegistration: Registration = {
   taxAmountCents: 300,
   taxRatePercent: 6.0,
   status: 'confirmed',
+  source: 'web',
   createdAt: new Date(),
   updatedAt: new Date(),
 };

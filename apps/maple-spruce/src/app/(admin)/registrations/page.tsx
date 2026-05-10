@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import type {
   Registration,
+  RegistrationSource,
   RegistrationStatus,
 } from '@maple/ts/domain';
 import {
@@ -126,6 +127,26 @@ export default function RegistrationsPage() {
             <MenuItem value="cancelled">Cancelled</MenuItem>
             <MenuItem value="refunded">Refunded</MenuItem>
             <MenuItem value="no-show">No Show</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Filter by Source</InputLabel>
+          <Select
+            value={filters.source ?? ''}
+            label="Filter by Source"
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                source: (e.target.value as RegistrationSource) || undefined,
+              }))
+            }
+          >
+            <MenuItem value="">
+              <em>All Sources</em>
+            </MenuItem>
+            <MenuItem value="web">Web</MenuItem>
+            <MenuItem value="pos">POS (in person)</MenuItem>
           </Select>
         </FormControl>
       </Box>

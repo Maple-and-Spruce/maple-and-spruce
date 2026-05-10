@@ -20,6 +20,7 @@ export const getRegistrations = createAdminFunction<
     classId: data.classId,
     status: data.status,
     customerEmail: data.customerEmail,
+    source: data.source,
   });
 
   return { registrations };
