@@ -104,7 +104,9 @@ jobs:
       # composite indexes, so a green test suite is not proof the query
       # will run in prod. See .claude/rules/firebase-functions.md.
       - name: Check Firestore indexes
-        run: pnpm exec tsx tools/check-firestore-indexes.ts
+        # tsx isn't a project dep — npx fetches it on demand (same pattern as
+        # integration-tests step). Other CI jobs use it via `npx tsx`.
+        run: npx tsx tools/check-firestore-indexes.ts
 
   typecheck:
     name: TypeScript Check

@@ -549,14 +549,13 @@ function findRepositoryExport(sf: ts.SourceFile): string | undefined {
 function main(): void {
   const files = listSourceFiles();
   const allChains: QueryChain[] = [];
-  /** All conditional chains, with metadata used to bind callers to them. */
+  /** Conditional chains with metadata used to bind callers to them. */
   type ConditionalChain = PartialChain & {
     sourceFile: string;
     sourceLine: number;
     /** `AgreementTemplateRepository` if this chain lives in a Repository export. */
     repositoryName?: string;
   };
-  const conditionalChains: ConditionalChain[] = [];
   /** Maps `<Name>Repository` → list of conditional chains in its file. */
   const chainsByRepository = new Map<string, ConditionalChain[]>();
   /** Maps source file path → list of conditional chains in it. */
@@ -586,7 +585,6 @@ function main(): void {
           sourceLine: line + 1,
           repositoryName,
         };
-        conditionalChains.push(cc);
         if (repositoryName) {
           const list = chainsByRepository.get(repositoryName) || [];
           list.push(cc);
