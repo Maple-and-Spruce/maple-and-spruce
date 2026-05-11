@@ -672,6 +672,49 @@ function main(): void {
   // ordering than the worst-case chain index).
   for (const r of perCallSiteRequirements) required.push(r);
 
+  // Pass 3: for every conditional-filter chain with an orderBy, emit a
+  // single-filter + orderBy index for each conditional filter individually.
+  //
+  // Why this is needed: request-forwarding Cloud Functions (e.g., getInvoices,
+  // getLessons) pass `findAll({ a: data.a, b: data.b, ... })` with values that
+  // may independently be `undefined` at runtime. The per-call-site pass above
+  // sees both keys present and emits a 2+orderBy index, missing the case
+  // where only one filter actually activates. This pass fills that gap by
+  // declaring an index for each individual filter.
+  //
+  // We intentionally do NOT enumerate every intermediate subset (would be 2^N
+  // indexes per chain — too many). Single-filter and all-filters are by far
+  // the most common runtime shapes; the analyzer will catch any genuine middle
+  // subset in CI when a new caller is added.
+  for (const ccList of chainsByFile.values()) {
+    for (const cc of ccList) {
+      if (!cc.conditionalFilters) continue;
+      if (!cc.staticOrderBys || cc.staticOrderBys.length === 0) continue;
+      for (const filter of cc.conditionalFilters.values()) {
+        const synthChain: PartialChain = {
+          collection: cc.collection,
+          filters: [filter],
+          orderBys: cc.staticOrderBys,
+          startNode: cc.startNode,
+        };
+        if (!needsCompositeIndex(synthChain)) continue;
+        const fields = deriveIndexFields(synthChain);
+        required.push({
+          spec: { collectionGroup: cc.collection!, queryScope: 'COLLECTION', fields },
+          chain: {
+            collection: cc.collection!,
+            filters: [filter],
+            orderBys: cc.staticOrderBys,
+            file: cc.sourceFile,
+            line: cc.sourceLine,
+            ignore: false,
+            ignoreReason: `single-filter (runtime subset of ${cc.sourceFile})`,
+          },
+        });
+      }
+    }
+  }
+
   // Step 1: drop any required index already covered by a declared one.
   const stillNeeded = required.filter(
     (r) => !declared.some((d) => coversRequired(d, r.spec))

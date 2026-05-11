@@ -299,6 +299,81 @@ jobs:
           echo "Skipping deployment for empty function group"
           exit 0
 
+  deploy_firestore_indexes:
+    # Runs in parallel with the functions deploy. Independent of prepare_and_build
+    # because the index deploy doesn't need built artifacts — just the JSON file.
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if firestore.indexes.json changed
+        id: changed
+        run: |
+          # On workflow_dispatch we always deploy (caller asked for it).
+          # On push, gate on the file actually changing this commit.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only HEAD~1 HEAD | grep -q '^firestore.indexes.json$'; then
+            echo "firestore.indexes.json changed in this push — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "firestore.indexes.json unchanged — skipping"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup gcloud CLI
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      # firebase-tools is invoked via `npx -y` so we don't need a full pnpm
+      # install on this job — keeps it fast (~30s vs ~3min).
+      - name: Deploy Firestore indexes
+        if: steps.changed.outputs.changed == 'true'
+        timeout-minutes: 10
+        # We DO NOT pass `--force`. In non-TTY (CI) the "delete extra indexes?"
+        # prompt defaults to N — so additions from the file are applied, but
+        # any index that exists in prod and not in firestore.indexes.json is
+        # left untouched. After the deploy we grep stdout for the orphan
+        # warning Firebase emits when this case triggers, and fail the job.
+        # The user then resolves by either (a) adding the orphan to the file
+        # in a follow-up PR, or (b) deleting from prod with
+        # `firebase firestore:indexes:delete`. The next merge won't deploy
+        # cleanly until the discrepancy is resolved.
+        #
+        # Why not `--force`: deletes would be silent and irreversible from
+        # this job. A click-the-URL-to-create-an-index workflow (used in
+        # incidents) would lose its work on the next unrelated merge.
+        run: |
+          set -eo pipefail
+          OUTPUT=$(mktemp)
+          trap 'rm -f "$OUTPUT"' EXIT
+
+          npx -y firebase-tools@latest deploy --only firestore:indexes \
+            --project maple-and-spruce \
+            --token "$(gcloud auth print-access-token)" \
+            < /dev/null 2>&1 | tee "$OUTPUT"
+
+          if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
+            echo ""
+            echo "::error title=Firestore index orphans::Prod has composite indexes that aren't declared in firestore.indexes.json. The new indexes from this merge were applied, but the orphans were NOT deleted. Resolve before the next merge: either add the listed orphans to firestore.indexes.json, or delete them with 'pnpm exec firebase firestore:indexes:delete --project maple-and-spruce'."
+            exit 1
+          fi
+
   publish_webflow_components:
     needs: prepare_and_build
     if: needs.prepare_and_build.outputs.webflow_components_affected == 'true'
