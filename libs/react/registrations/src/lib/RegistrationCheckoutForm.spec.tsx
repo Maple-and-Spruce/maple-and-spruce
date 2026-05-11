@@ -50,6 +50,12 @@ vi.mock('@maple/react/agreements', () => ({
 // Google Pay / Apple Pay token events from outside the component.
 let capturedDigitalWalletTokenCallback: ((token: string) => void) | undefined;
 
+// Allow individual tests to override how the mocked tokenize function
+// behaves (e.g. to keep the promise pending and simulate Square's SDK
+// taking a moment to produce a nonce). Default is an instant resolve.
+let mockTokenizeImpl: () => Promise<string> = () =>
+  Promise.resolve('test-nonce');
+
 // Mock SquareCardForm — the real one loads Square's Web Payments SDK
 // from a CDN, which isn't available in jsdom. We emulate the minimum
 // surface the parent depends on: signalling ready, exposing a tokenize
@@ -67,7 +73,7 @@ vi.mock('./SquareCardForm', () => ({
     afterCardContent?: React.ReactNode;
   }) => {
     useEffect(() => {
-      onTokenizeRef(() => Promise.resolve('test-nonce'));
+      onTokenizeRef(() => mockTokenizeImpl());
       onReady?.();
     }, [onReady, onTokenizeRef]);
     useEffect(() => {
@@ -111,6 +117,7 @@ const mockRegistrationResponse = {
 describe('RegistrationCheckoutForm submit flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTokenizeImpl = () => Promise.resolve('test-nonce');
   });
 
   // @testing-library/react v13+ auto-registers cleanup only when Vitest
@@ -205,6 +212,112 @@ describe('RegistrationCheckoutForm submit flow', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
+  it('flips the Register button to its loading state while Square tokenization is still pending', async () => {
+    const user = userEvent.setup();
+
+    // Square's tokenize call is the first await in the click handler. Hold
+    // its promise pending so we can observe the button state *before* the
+    // backend onSubmit is ever reached.
+    let resolveTokenize!: (nonce: string) => void;
+    mockTokenizeImpl = () =>
+      new Promise<string>((resolve) => {
+        resolveTokenize = resolve;
+      });
+
+    const onSubmit = vi.fn().mockResolvedValue(mockRegistrationResponse);
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onSuccess = vi.fn();
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+
+    fireEvent.change(screen.getByLabelText(/Full Name/), {
+      target: { value: 'Jane Doe' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'jane@example.com' },
+    });
+
+    await user.click(registerButton);
+
+    // While tokenize is still pending, the button must already show its
+    // loading state — that's the regression this test guards against.
+    const processingButton = await screen.findByRole('button', {
+      name: /Processing/,
+    });
+    expect(processingButton).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    // Resolve tokenize → onSubmit runs → onSuccess fires.
+    await act(async () => {
+      resolveTokenize('square-nonce');
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentNonce: 'square-nonce' })
+    );
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
+  it('restores the Register button to its default state when the backend call fails', async () => {
+    const user = userEvent.setup();
+
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValue(new Error('Payment declined by issuer'));
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onSuccess = vi.fn();
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+
+    fireEvent.change(screen.getByLabelText(/Full Name/), {
+      target: { value: 'Jane Doe' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'jane@example.com' },
+    });
+
+    await user.click(registerButton);
+
+    // After the rejection, the button must flip back from "Processing..."
+    // to its default label so the user can correct + retry.
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Register & Pay/ })
+      ).toBeEnabled();
+    });
+    expect(screen.getByText(/Payment declined by issuer/)).toBeInTheDocument();
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 
   it('disables the Register button immediately on click and ignores repeat clicks while the backend is cold-starting', async () => {
