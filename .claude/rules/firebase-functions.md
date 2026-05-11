@@ -5,6 +5,7 @@ globs:
   - "apps/functions-calendar/**"
   - "apps/functions-square/**"
   - "apps/functions-sync/**"
+  - "libs/firebase/database/**"
 ---
 
 # Firebase Cloud Functions Rules
@@ -113,6 +114,50 @@ export const updateClass = createAdminFunction<Req, Res>(async (data) => {
 **Error helpers** (`throwInvalidArgument`, `throwNotFound`, `throwValidationError`) live in `@maple/firebase/functions` (`errors.utility.ts`). They throw typed `HttpsError` codes — prefer them over bare `throw new Error(...)` so clients can discriminate failures.
 
 **Validation must run BEFORE any external writes** (Square, Webflow, payments). Invalid data must never reach external APIs and fail halfway through.
+
+## Firestore Composite Indexes
+
+**Every `.where()` chain that requires a composite index MUST have a matching entry in `firestore.indexes.json` in the same PR that introduces it.** A 20-day production outage was caused by an undeclared agreementTemplates index in 2026-05; the CI guardrail below was added to prevent recurrence.
+
+### When a composite index is required
+
+Firestore auto-creates single-field indexes; everything below needs a composite index declared in `firestore.indexes.json`:
+
+- Two or more `.where()` filters on the same query (any combination of `==`, `!=`, `<`, `>`, etc.)
+- A `.where()` + a `.orderBy()` on a *different* field
+- `array-contains` or `array-contains-any` combined with any other filter or orderBy
+
+### The Firestore emulator does NOT enforce composite indexes
+
+Integration tests against the emulator will pass even when a query requires an index that isn't declared. A green test suite is **not** proof the query will run in prod. The only reliable verification is the analyzer (below) plus deploying to a real Firestore instance.
+
+### Run the analyzer before committing
+
+```bash
+npx tsx tools/check-firestore-indexes.ts            # exits non-zero if any required index is undeclared
+npx tsx tools/check-firestore-indexes.ts --verbose  # shows every query chain it found
+```
+
+The analyzer scans `libs/firebase/database/**/*.repository.ts`, `libs/firebase/maple-functions/**`, and `tools/`. When it finds an undeclared index, it emits the exact JSON object to paste into the `indexes` array of `firestore.indexes.json`. CI runs the same script on every PR (`build-check.yml` → `firestore-indexes` job).
+
+### Adding a new query
+
+1. Write the `.where()` / `.orderBy()` chain.
+2. Run `npx tsx tools/check-firestore-indexes.ts`.
+3. If it flags missing indexes, paste the emitted JSON object(s) into the `indexes` array in `firestore.indexes.json`.
+4. Re-run the analyzer until it passes.
+5. CI/CD applies index changes via `firebase deploy --only firestore:indexes` on merge — there is no manual deploy step.
+
+### Opt-out
+
+If the analyzer flags a query that genuinely doesn't need a declared index (rare — usually only for queries we accept will never run in prod), add this comment on the line immediately above the query:
+
+```typescript
+// firestore-index-analyzer-ignore: <reason>
+let query = db.collection('foo').where(...)
+```
+
+Prefer declaring the index over ignoring; the cost of an unused index is small, the cost of a missing one is a production outage.
 
 ## Testing
 

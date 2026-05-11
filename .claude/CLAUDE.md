@@ -24,7 +24,7 @@ Check for a matching skill before building workflows from scratch.
 ## Path-Specific Rules
 
 Rules in `.claude/rules/` are auto-loaded when working on matching file paths:
-- `firebase-functions.md` -- Applies to `libs/firebase/maple-functions/**`, `apps/functions/**`
+- `firebase-functions.md` -- Applies to `libs/firebase/maple-functions/**`, `apps/functions/**`, `libs/firebase/database/**` (also covers Firestore composite-index guardrails)
 - `react-components.md` -- Applies to `libs/react/**`, `apps/maple-spruce/src/components/**`
 
 ---
