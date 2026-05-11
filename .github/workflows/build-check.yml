@@ -75,6 +75,37 @@ jobs:
       - name: Run pnpm audit
         run: pnpm audit --audit-level=high
 
+  firestore-indexes:
+    name: Firestore Indexes
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      # Every composite-index-requiring Firestore query in repositories,
+      # Cloud Functions, and tools must have a matching entry in
+      # firestore.indexes.json. The Firestore emulator does NOT enforce
+      # composite indexes, so a green test suite is not proof the query
+      # will run in prod. See .claude/rules/firebase-functions.md.
+      - name: Check Firestore indexes
+        run: pnpm exec tsx tools/check-firestore-indexes.ts
+
   typecheck:
     name: TypeScript Check
     needs: [install]

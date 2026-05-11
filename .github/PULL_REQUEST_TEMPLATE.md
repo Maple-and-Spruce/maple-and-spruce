@@ -1,22 +1,7 @@
-## Summary
+<!-- Describe what changed and why. Link the issue (Closes #NN) if there is one. -->
 
-<!-- Brief description of the changes -->
-
-## Changes
-
-- <!-- Change 1 -->
-- <!-- Change 2 -->
-
-## Testing
-
-- [ ] Unit tests added/updated
-- [ ] All tests pass (`npm test`)
-- [ ] Storybook stories added (if UI changes)
-
-## Checklist
-
-- [ ] Code follows project patterns (see PATTERNS-AND-PRACTICES.md)
-- [ ] No secrets or credentials committed
-- [ ] Documentation updated (if needed)
-
-<!-- Link to issue: Closes #XX -->
+<!--
+Guardrails are automated: CI runs typecheck, lint, build, unit + integration
+tests, security audit, and a Firestore-composite-index analyzer on every PR.
+Nothing to check by hand — just make sure all jobs are green.
+-->
