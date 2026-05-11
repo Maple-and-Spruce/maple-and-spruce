@@ -337,8 +337,62 @@ export function RegistrationCheckoutForm({
   }, [quantity, discountCode, calculateCost]);
 
   /**
-   * Submit the registration with a given payment nonce.
-   * Shared by the card form submit, Google Pay callback, and Apple Pay popup.
+   * Run the registration API call and onSuccess callback for a given nonce.
+   * Assumes the caller has already flipped `isSubmitting` to true and will
+   * clear it in their own finally block. Throws on backend error so the
+   * caller can map it to `submitError`.
+   */
+  const performSubmit = useCallback(
+    async (nonce: string) => {
+      const agreementsData = hasRequiredAgreements
+        ? Array.from(signedAgreements.value.values())
+        : undefined;
+
+      const result = await onSubmit({
+        classId: publicClass.id,
+        customerEmail: customerEmail.value.trim(),
+        customerName: customerName.value.trim(),
+        customerPhone: customerPhone.value.trim() || undefined,
+        quantity: quantity.value,
+        additionalAttendees:
+          additionalAttendeesPayload.value.length > 0
+            ? additionalAttendeesPayload.value
+            : undefined,
+        discountCode: discountCode.value.trim() || undefined,
+        notes: notes.value.trim() || undefined,
+        paymentNonce: nonce,
+        agreements: agreementsData,
+      });
+
+      onSuccess({
+        confirmationNumber: result.confirmationNumber,
+        customerName: customerName.value.trim(),
+        customerEmail: customerEmail.value.trim(),
+        pricePaidCents: result.registration.pricePaidCents,
+        quantity: quantity.value,
+        agreementsSigned: result.agreementsSigned,
+      });
+    },
+    [
+      customerName,
+      customerEmail,
+      customerPhone,
+      quantity,
+      additionalAttendeesPayload,
+      discountCode,
+      notes,
+      publicClass.id,
+      onSubmit,
+      onSuccess,
+      hasRequiredAgreements,
+      signedAgreements,
+    ]
+  );
+
+  /**
+   * Submit with a nonce that arrived from outside the card form (Google Pay
+   * or Apple Pay popup). These flows don't go through `handleSubmit`, so this
+   * wrapper handles the validation guard and `isSubmitting` toggle itself.
    */
   const submitWithNonce = useCallback(
     async (nonce: string) => {
@@ -352,35 +406,7 @@ export function RegistrationCheckoutForm({
       submitError.value = null;
 
       try {
-        // Collect signed agreement data if any
-        const agreementsData = hasRequiredAgreements
-          ? Array.from(signedAgreements.value.values())
-          : undefined;
-
-        const result = await onSubmit({
-          classId: publicClass.id,
-          customerEmail: customerEmail.value.trim(),
-          customerName: customerName.value.trim(),
-          customerPhone: customerPhone.value.trim() || undefined,
-          quantity: quantity.value,
-          additionalAttendees:
-            additionalAttendeesPayload.value.length > 0
-              ? additionalAttendeesPayload.value
-              : undefined,
-          discountCode: discountCode.value.trim() || undefined,
-          notes: notes.value.trim() || undefined,
-          paymentNonce: nonce,
-          agreements: agreementsData,
-        });
-
-        onSuccess({
-          confirmationNumber: result.confirmationNumber,
-          customerName: customerName.value.trim(),
-          customerEmail: customerEmail.value.trim(),
-          pricePaidCents: result.registration.pricePaidCents,
-          quantity: quantity.value,
-          agreementsSigned: result.agreementsSigned,
-        });
+        await performSubmit(nonce);
       } catch (error) {
         submitError.value = extractErrorMessage(error);
       } finally {
@@ -388,23 +414,12 @@ export function RegistrationCheckoutForm({
       }
     },
     [
-      customerName,
-      customerEmail,
-      customerPhone,
-      quantity,
-      additionalAttendeesPayload,
-      discountCode,
-      notes,
-      publicClass.id,
-      onSubmit,
-      onSuccess,
       isSubmitting,
       submitError,
       showValidationErrors,
       isValid,
-      hasRequiredAgreements,
-      signedAgreements,
       allAgreementsSigned,
+      performSubmit,
     ]
   );
 
@@ -428,12 +443,15 @@ export function RegistrationCheckoutForm({
     if (isSubmitting.value) return;
 
     showValidationErrors.value = true;
-    if (!isValid.value) {
-      return;
-    }
+    if (!isValid.value) return;
+    if (!allAgreementsSigned.value) return;
 
+    // Flip the submitting state BEFORE awaiting Square tokenization. The
+    // tokenize call can take a noticeable moment, and without this the
+    // button stays in its default state until the network round-trip
+    // completes, leaving the user wondering whether their click registered.
+    isSubmitting.value = true;
     submitError.value = null;
-
 
     try {
       if (!tokenizeRef.current) {
@@ -443,12 +461,20 @@ export function RegistrationCheckoutForm({
       }
 
       const nonce = await tokenizeRef.current();
-      await submitWithNonce(nonce);
+      await performSubmit(nonce);
     } catch (error) {
       submitError.value = extractErrorMessage(error);
+    } finally {
       isSubmitting.value = false;
     }
-  }, [isSubmitting, submitError, showValidationErrors, isValid, submitWithNonce]);
+  }, [
+    isSubmitting,
+    submitError,
+    showValidationErrors,
+    isValid,
+    allAgreementsSigned,
+    performSubmit,
+  ]);
 
   // ============================================================
   // APPLE PAY POPUP
