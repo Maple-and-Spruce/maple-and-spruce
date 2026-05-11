@@ -146,7 +146,37 @@ The analyzer scans `libs/firebase/database/**/*.repository.ts`, `libs/firebase/m
 2. Run `npx tsx tools/check-firestore-indexes.ts`.
 3. If it flags missing indexes, paste the emitted JSON object(s) into the `indexes` array in `firestore.indexes.json`.
 4. Re-run the analyzer until it passes.
-5. CI/CD applies index changes via `firebase deploy --only firestore:indexes` on merge — there is no manual deploy step.
+5. On merge to main, CI runs `firebase deploy --only firestore:indexes` automatically (see `firebase-functions-merge.yml` → `deploy_firestore_indexes` job, gated on the file actually changing). Each new composite index takes a few minutes to build; queries succeed once each one flips to `READY`.
+
+### `firestore.indexes.json` is the source of truth — orphans block deploys
+
+The merge-time deploy does NOT pass `--force`. The behavior is fail-loud rather than silently-deletes:
+
+- New indexes from `firestore.indexes.json` are applied normally.
+- Any index that exists in prod but isn't in the file (an "orphan") is **left untouched** — but the CI job fails after the deploy completes, with the orphan list printed.
+- The next merge that touches `firestore.indexes.json` will fail the same way until the orphan is resolved.
+
+Two ways to resolve an orphan:
+
+1. **Add it to `firestore.indexes.json`** (preferred when the query is real and lives somewhere — even if outside the analyzer's scan, like a one-off console query or a script).
+2. **Delete it from prod** with `pnpm exec firebase firestore:indexes:delete --project maple-and-spruce` (if it's stale and nothing queries it).
+
+Common cause: clicking the auto-create-index URL in a Firestore error message creates an index in prod but not in the file. After doing that, immediately open a tiny PR adding the same index to `firestore.indexes.json` so the next merge isn't blocked.
+
+The analyzer prevents this gap for **code-derived** queries — it enforces "every required index is declared". It can't see queries that aren't in this repo. Those queries must either be reflected in the file or accepted as ephemeral (and re-added each time prod gets recreated).
+
+### Request-forwarding callers and single-filter indexes
+
+A Cloud Function pattern like:
+
+```typescript
+const invoices = await InvoiceRepository.findAll({
+  studentId: data.studentId,
+  status: data.status,
+});
+```
+
+passes `data.studentId` / `data.status` — either of which can be `undefined` at runtime. The analyzer treats this as needing not just the all-filters index, but also a `studentId + orderBy` and a `status + orderBy` index, because requests can independently leave either filter unset. This is intentional defensive indexing; the cost is a few extra indexes per repository, the alternative is a hidden outage when a real request comes in with only one filter set.
 
 ### Opt-out
 
