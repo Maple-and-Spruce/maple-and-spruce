@@ -146,7 +146,27 @@ The analyzer scans `libs/firebase/database/**/*.repository.ts`, `libs/firebase/m
 2. Run `npx tsx tools/check-firestore-indexes.ts`.
 3. If it flags missing indexes, paste the emitted JSON object(s) into the `indexes` array in `firestore.indexes.json`.
 4. Re-run the analyzer until it passes.
-5. CI/CD applies index changes via `firebase deploy --only firestore:indexes` on merge — there is no manual deploy step.
+5. On merge to main, CI runs `firebase deploy --only firestore:indexes` automatically (see `firebase-functions-merge.yml` → `deploy_firestore_indexes` job, gated on the file actually changing). Each new composite index takes a few minutes to build; queries succeed once each one flips to `READY`.
+
+### `firestore.indexes.json` is the source of truth
+
+The merge-time deploy passes `--force`, which means **any composite index in prod that isn't in `firestore.indexes.json` will be deleted** on the next merge that touches the file. Two consequences:
+
+- If you ever create an index by clicking the URL in a Firestore error message (in prod or dev), you MUST also add the matching entry to `firestore.indexes.json` before the next merge — otherwise that index gets deleted and the query breaks again.
+- The analyzer prevents this for code-derived queries (it enforces "every required index is declared"). It can't see queries that aren't in this repo (one-off console queries, scripts run outside the codebase). Those must be reflected in the file or accepted as ephemeral.
+
+### Request-forwarding callers and single-filter indexes
+
+A Cloud Function pattern like:
+
+```typescript
+const invoices = await InvoiceRepository.findAll({
+  studentId: data.studentId,
+  status: data.status,
+});
+```
+
+passes `data.studentId` / `data.status` — either of which can be `undefined` at runtime. The analyzer treats this as needing not just the all-filters index, but also a `studentId + orderBy` and a `status + orderBy` index, because requests can independently leave either filter unset. This is intentional defensive indexing; the cost is a few extra indexes per repository, the alternative is a hidden outage when a real request comes in with only one filter set.
 
 ### Opt-out
 

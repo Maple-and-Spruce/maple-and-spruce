@@ -299,6 +299,63 @@ jobs:
           echo "Skipping deployment for empty function group"
           exit 0
 
+  deploy_firestore_indexes:
+    # Runs in parallel with the functions deploy. Independent of prepare_and_build
+    # because the index deploy doesn't need built artifacts — just the JSON file.
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if firestore.indexes.json changed
+        id: changed
+        run: |
+          # On workflow_dispatch we always deploy (caller asked for it).
+          # On push, gate on the file actually changing this commit.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only HEAD~1 HEAD | grep -q '^firestore.indexes.json$'; then
+            echo "firestore.indexes.json changed in this push — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "firestore.indexes.json unchanged — skipping"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup gcloud CLI
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      # firebase-tools is invoked via `npx -y` so we don't need a full pnpm
+      # install on this job — keeps it fast (~30s vs ~3min).
+      - name: Deploy Firestore indexes
+        if: steps.changed.outputs.changed == 'true'
+        # `--force` skips the interactive "delete extra indexes?" prompt by
+        # answering yes. SAFE because the analyzer enforces that every code-
+        # derived index is in firestore.indexes.json; any index in prod but
+        # not in the file is either (a) prod-only data we intentionally keep
+        # (must be added to the file by hand) or (b) something stale.
+        # Untracked indexes get deleted here — the file is the source of truth.
+        run: |
+          npx -y firebase-tools@latest deploy --only firestore:indexes \
+            --project maple-and-spruce \
+            --force \
+            --token "$(gcloud auth print-access-token)"
+
   publish_webflow_components:
     needs: prepare_and_build
     if: needs.prepare_and_build.outputs.webflow_components_affected == 'true'
