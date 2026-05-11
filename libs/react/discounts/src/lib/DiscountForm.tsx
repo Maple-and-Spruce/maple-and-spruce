@@ -18,6 +18,8 @@ import {
   InputAdornment,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import type {
   Discount,
   CreateDiscountInput,
@@ -232,7 +234,8 @@ export function DiscountForm({
   );
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {discount ? 'Edit Discount' : 'Add Discount Code'}
       </DialogTitle>
@@ -489,6 +492,7 @@ export function DiscountForm({
               : 'Create'}
         </Button>
       </DialogActions>
-    </Dialog>
+      </Dialog>
+    </LocalizationProvider>
   );
 }
