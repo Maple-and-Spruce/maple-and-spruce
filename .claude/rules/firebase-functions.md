@@ -148,12 +148,22 @@ The analyzer scans `libs/firebase/database/**/*.repository.ts`, `libs/firebase/m
 4. Re-run the analyzer until it passes.
 5. On merge to main, CI runs `firebase deploy --only firestore:indexes` automatically (see `firebase-functions-merge.yml` → `deploy_firestore_indexes` job, gated on the file actually changing). Each new composite index takes a few minutes to build; queries succeed once each one flips to `READY`.
 
-### `firestore.indexes.json` is the source of truth
+### `firestore.indexes.json` is the source of truth — orphans block deploys
 
-The merge-time deploy passes `--force`, which means **any composite index in prod that isn't in `firestore.indexes.json` will be deleted** on the next merge that touches the file. Two consequences:
+The merge-time deploy does NOT pass `--force`. The behavior is fail-loud rather than silently-deletes:
 
-- If you ever create an index by clicking the URL in a Firestore error message (in prod or dev), you MUST also add the matching entry to `firestore.indexes.json` before the next merge — otherwise that index gets deleted and the query breaks again.
-- The analyzer prevents this for code-derived queries (it enforces "every required index is declared"). It can't see queries that aren't in this repo (one-off console queries, scripts run outside the codebase). Those must be reflected in the file or accepted as ephemeral.
+- New indexes from `firestore.indexes.json` are applied normally.
+- Any index that exists in prod but isn't in the file (an "orphan") is **left untouched** — but the CI job fails after the deploy completes, with the orphan list printed.
+- The next merge that touches `firestore.indexes.json` will fail the same way until the orphan is resolved.
+
+Two ways to resolve an orphan:
+
+1. **Add it to `firestore.indexes.json`** (preferred when the query is real and lives somewhere — even if outside the analyzer's scan, like a one-off console query or a script).
+2. **Delete it from prod** with `pnpm exec firebase firestore:indexes:delete --project maple-and-spruce` (if it's stale and nothing queries it).
+
+Common cause: clicking the auto-create-index URL in a Firestore error message creates an index in prod but not in the file. After doing that, immediately open a tiny PR adding the same index to `firestore.indexes.json` so the next merge isn't blocked.
+
+The analyzer prevents this gap for **code-derived** queries — it enforces "every required index is declared". It can't see queries that aren't in this repo. Those queries must either be reflected in the file or accepted as ephemeral (and re-added each time prod gets recreated).
 
 ### Request-forwarding callers and single-filter indexes
 
