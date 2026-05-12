@@ -527,3 +527,105 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
     await waitFor(() => expect(registerButton).toBeEnabled());
   });
 });
+
+// ============================================================
+// Quantity recalculation when attendees are added / removed
+//
+// Regression: PR #417 introduced a multi-attendee flow that called
+// `calculateCost(quantity.value + 1)` after pushing a new attendee
+// into the signal. Because `quantity` is a computed of
+// `additionalAttendees.length + 1`, reading it after the write
+// already reflects the new total — the +1 double-counted and the
+// backend returned cost for N+1 people while the UI displayed N.
+// Customers were overcharged by one ticket. These tests lock in
+// the corrected behaviour.
+// ============================================================
+describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('recalculates cost with the new total (not total+1) when an attendee is added', async () => {
+    const user = userEvent.setup();
+
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    // Initial mount fires onCalculateCost with quantity 1.
+    await waitFor(() =>
+      expect(onCalculateCost).toHaveBeenCalledWith('class-1', 1, undefined)
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: /Add another person/ })
+    );
+
+    // Adding one attendee → 2 people total, not 3.
+    await waitFor(() =>
+      expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 2, undefined)
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: /Add another person/ })
+    );
+
+    // Adding a second attendee → 3 people total, not 4.
+    await waitFor(() =>
+      expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 3, undefined)
+    );
+  });
+
+  it('recalculates cost with the new total (not total-1) when an attendee is removed', async () => {
+    const user = userEvent.setup();
+
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(onCalculateCost).toHaveBeenCalledWith('class-1', 1, undefined)
+    );
+
+    // Add two attendees so we can remove one.
+    await user.click(
+      screen.getByRole('button', { name: /Add another person/ })
+    );
+    await user.click(
+      screen.getByRole('button', { name: /Add another person/ })
+    );
+    await waitFor(() =>
+      expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 3, undefined)
+    );
+
+    // Remove the first attendee → 2 people total, not 1.
+    await user.click(
+      screen.getByRole('button', { name: /Remove additional person 1/ })
+    );
+    await waitFor(() =>
+      expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 2, undefined)
+    );
+  });
+});

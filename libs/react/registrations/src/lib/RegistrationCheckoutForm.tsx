@@ -297,7 +297,9 @@ export function RegistrationCheckoutForm({
         { nameRevealed: false, sendConfirmation: false, name: '', email: '' },
       ];
     });
-    calculateCost(quantity.value + 1, discountCode.value);
+    // `quantity` is computed from additionalAttendees.length, so reading it
+    // after the batch already reflects the new total — no +1 offset.
+    calculateCost(quantity.value, discountCode.value);
   }, [
     additionalAttendees,
     calculateCost,
@@ -315,7 +317,7 @@ export function RegistrationCheckoutForm({
           (_, i) => i !== index
         );
       });
-      calculateCost(quantity.value - 1, discountCode.value);
+      calculateCost(quantity.value, discountCode.value);
     },
     [additionalAttendees, calculateCost, discountCode, quantity, quantityWarning]
   );
