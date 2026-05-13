@@ -106,6 +106,18 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
       </tr>
     </table>
 
+    {{#if attendees}}
+    <h3 style="color: #4A3728; font-size: 18px; margin: 24px 0 8px;">Registered attendees</h3>
+    <table class="detail-table">
+      {{#each attendees}}
+      <tr>
+        <td class="label">{{#if name}}{{name}}{{else}}(no name){{/if}}</td>
+        <td>{{#if email}}{{email}}{{else}}<span style="color: #999;">no email provided</span>{{/if}}</td>
+      </tr>
+      {{/each}}
+    </table>
+    {{/if}}
+
     {{#if receiptUrl}}
     <p><a href="{{receiptUrl}}" style="color: #6B7B5E; font-weight: bold;">View Payment Receipt</a></p>
     {{/if}}
