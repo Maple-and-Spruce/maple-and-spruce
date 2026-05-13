@@ -22,6 +22,19 @@ import { createRoot } from 'react-dom/client';
 // to avoid pulling in @webflow/react.
 import { RegistrationWidget } from '../../webflow-components/src/RegistrationWidget';
 
+// Tell firebase-init which emulator port to point at. Set BEFORE the
+// widget mounts so the very first `connectFunctionsEmulator` call
+// uses it. Read from VITE_FUNCTIONS_EMULATOR_PORT (defined at build
+// time in vite.config.ts so EMULATOR_PORT_OFFSET in worktrees flows
+// through). 5001 is the Firebase default when no offset.
+const port = Number.parseInt(
+  import.meta.env['VITE_FUNCTIONS_EMULATOR_PORT'] ?? '5001',
+  10
+);
+(
+  globalThis as { __MAPLE_FUNCTIONS_EMULATOR_PORT__?: number }
+).__MAPLE_FUNCTIONS_EMULATOR_PORT__ = port;
+
 function App() {
   const params = new URLSearchParams(window.location.search);
   const classId = params.get('classId') ?? '';

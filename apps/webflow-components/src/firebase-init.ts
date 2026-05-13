@@ -32,18 +32,19 @@ let emulatorConnected = false;
 
 /**
  * Resolve the local emulator host:port for `env="emulator"`. Host is
- * always 127.0.0.1; the port is read from `VITE_FUNCTIONS_EMULATOR_PORT`
- * (set by the registration-test-harness Vite app) and falls back to the
- * Firebase default 5001. The env var is what lets parallel worktrees
- * (EMULATOR_PORT_OFFSET) target their own emulator without colliding.
+ * always 127.0.0.1; the port comes from a global the harness sets at
+ * boot (`globalThis.__MAPLE_FUNCTIONS_EMULATOR_PORT__`) and defaults
+ * to the Firebase default 5001 when the global isn't there.
+ *
+ * The global indirection (instead of `import.meta.env`) keeps this
+ * file compatible with the CommonJS tsconfig the Webflow component
+ * build uses — `import.meta` triggers TS1470 there. The Vite harness
+ * sets the global from its own ESM entry point.
  */
 function getEmulatorEndpoint(): { host: string; port: number } {
-  const portEnv =
-    typeof import.meta !== 'undefined'
-      ? (import.meta as { env?: Record<string, string | undefined> }).env
-          ?.VITE_FUNCTIONS_EMULATOR_PORT
-      : undefined;
-  const port = portEnv ? Number.parseInt(portEnv, 10) : 5001;
+  const port =
+    (globalThis as { __MAPLE_FUNCTIONS_EMULATOR_PORT__?: number })
+      .__MAPLE_FUNCTIONS_EMULATOR_PORT__ ?? 5001;
   return { host: '127.0.0.1', port };
 }
 
