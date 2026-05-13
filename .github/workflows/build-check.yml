@@ -426,6 +426,102 @@ jobs:
             exit 1
           fi
 
+  registration-e2e:
+    # Phase-1 FE→BE end-to-end: drives the production RegistrationWidget
+    # (mounted in apps/registration-test-harness) against the local
+    # Firebase emulator. Catches bugs neither the Storybook interaction
+    # tests nor the cloud-function integration tests can see — i.e. the
+    # arg-shape contract between the form and the callable, and the
+    # render contract between the cost-calc response and the cost
+    # summary. The same suite is reused in Phase 2 against the deployed
+    # dev project; the only difference is HARNESS_BASE_URL.
+    name: Registration E2E
+    needs: [install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java
+        # Required by Firestore emulator (same as integration-tests job).
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Install Playwright chromium
+        # Mirrors the storybook job — chromium only, with system deps.
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build function codebases
+        # All four are required because firebase.json declares them all;
+        # the emulator refuses to boot if any source dir is missing,
+        # even if the test only exercises maple-core functions.
+        run: |
+          pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
+          pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
+
+      - name: Create emulator .env
+        # Same shape as the integration-tests job — every codebase
+        # needs ALL project-level params or the emulator silently hangs
+        # on a stdin prompt. The Phase-1 E2E doesn't actually exercise
+        # Square / Webflow / Etsy paths but the emulator still loads
+        # those codebases at boot.
+        #
+        # ALLOWED_ORIGINS is extended with the harness origin
+        # (127.0.0.1:4173). Without this every callable comes back as
+        # `permission-denied` — the function CORS middleware returns
+        # 403 for any origin not in the allowlist, which the Firebase
+        # SDK maps to permission-denied.
+        run: |
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
+          done
+          echo "ETSY_API_BASE=http://localhost:99999/v3/application" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
+          printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
+
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
+            echo "ALLOWED_ORIGINS=$EXISTING,http://127.0.0.1:4173,http://localhost:4173" >> "$dir/.env"
+          done
+
+      - name: Run Playwright against emulator
+        # firebase emulators:exec handles emulator lifecycle (boot →
+        # run → teardown). Playwright's webServer config inside the
+        # nx target boots the Vite test harness on 127.0.0.1:4173.
+        run: |
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions \
+            "pnpm exec nx run registration-e2e:e2e"
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-registration-e2e
+          path: apps/registration-e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
   storybook:
     name: Storybook Build & Tests
     needs: [install]

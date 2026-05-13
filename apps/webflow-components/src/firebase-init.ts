@@ -5,7 +5,7 @@
  * Environment is passed explicitly as a prop from the Webflow component.
  */
 import { initializeApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getFunctions } from 'firebase/functions';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const prodConfig: FirebaseOptions = {
   apiKey: 'AIzaSyCPcBR2xmErLQKo-fipRbM6pnOSbLMgi2U',
@@ -28,11 +28,30 @@ const devConfig: FirebaseOptions = {
 const FUNCTIONS_REGION = 'us-east4';
 
 let cachedEnv: string | null = null;
+let emulatorConnected = false;
+
+/**
+ * Resolve the local emulator host:port for `env="emulator"`. Host is
+ * always 127.0.0.1; the port is read from `VITE_FUNCTIONS_EMULATOR_PORT`
+ * (set by the registration-test-harness Vite app) and falls back to the
+ * Firebase default 5001. The env var is what lets parallel worktrees
+ * (EMULATOR_PORT_OFFSET) target their own emulator without colliding.
+ */
+function getEmulatorEndpoint(): { host: string; port: number } {
+  const portEnv =
+    typeof import.meta !== 'undefined'
+      ? (import.meta as { env?: Record<string, string | undefined> }).env
+          ?.VITE_FUNCTIONS_EMULATOR_PORT
+      : undefined;
+  const port = portEnv ? Number.parseInt(portEnv, 10) : 5001;
+  return { host: '127.0.0.1', port };
+}
 
 export function getWidgetFunctions(env: string) {
-  const config = env === 'dev' ? devConfig : prodConfig;
+  // 'emulator' uses the dev project so projectId/region match what
+  // `firebase emulators:exec --project=maple-and-spruce-dev` boots.
+  const config = env === 'prod' ? prodConfig : devConfig;
 
-  // Only initialize if not already done (or if env changed)
   if (getApps().length === 0 || cachedEnv !== env) {
     if (getApps().length === 0) {
       initializeApp(config);
@@ -40,5 +59,13 @@ export function getWidgetFunctions(env: string) {
     cachedEnv = env;
   }
 
-  return getFunctions(undefined, FUNCTIONS_REGION);
+  const functions = getFunctions(undefined, FUNCTIONS_REGION);
+
+  if (env === 'emulator' && !emulatorConnected) {
+    const { host, port } = getEmulatorEndpoint();
+    connectFunctionsEmulator(functions, host, port);
+    emulatorConnected = true;
+  }
+
+  return functions;
 }
