@@ -500,6 +500,16 @@ jobs:
           printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
           printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
+          # Point the Webflow / Etsy SDKs at a closed local port so the
+          # Firestore triggers that fire from the seed (syncClassToWebflow,
+          # etc.) fail fast with ECONNREFUSED instead of round-tripping to
+          # api.webflow.com / api.etsy.com with the fake tokens. Removes
+          # ~700ms of noise per run and stops every CI invocation from
+          # generating an outbound auth-failure on a third-party API.
+          echo "WEBFLOW_BASE_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+          echo "ETSY_API_BASE=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+          echo "ETSY_TOKEN_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+
           for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
             EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
             echo "ALLOWED_ORIGINS=$EXISTING,http://127.0.0.1:4173,http://localhost:4173" >> "$dir/.env"

@@ -63,6 +63,15 @@ printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.sec
 printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
 printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
+# Point Webflow / Etsy at a closed local port so the Firestore triggers
+# that fire from the seed (syncClassToWebflow, etc.) fail fast with
+# ECONNREFUSED instead of round-tripping to api.webflow.com / api.etsy.com
+# with the fake tokens. Same intent as the integration-test setup, but
+# without spinning up the mock servers (Phase-1 doesn't exercise them).
+echo "WEBFLOW_BASE_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+echo "ETSY_API_BASE=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+echo "ETSY_TOKEN_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+
 # Add the harness origin to the CORS allowlist for every codebase. The
 # .env in dist already carries the standard ALLOWED_ORIGINS from .env.dev;
 # Firebase's dotenv parser takes the last value on duplicate keys, so an
