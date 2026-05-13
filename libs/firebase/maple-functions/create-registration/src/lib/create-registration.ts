@@ -717,6 +717,18 @@ export const createRegistration = Functions.endpoint
         const extrasWithoutEmailCount =
           additionalAttendees.length - attendeesWithEmail.length;
 
+        // Full roster shown in the registrant's confirmation: primary
+        // purchaser first, then each additional attendee they entered.
+        const attendees = [
+          { name: data.customerName, email: data.customerEmail },
+          ...additionalAttendees
+            .map((a) => ({
+              name: a.name?.trim() || undefined,
+              email: a.email?.trim() || undefined,
+            }))
+            .filter((a) => a.name || a.email),
+        ];
+
         await db.collection('mail').add({
           to: data.customerEmail,
           template: {
@@ -749,6 +761,7 @@ export const createRegistration = Functions.endpoint
                   : undefined,
               extrasWithoutEmailNoun:
                 extrasWithoutEmailCount === 1 ? 'friend' : 'friends',
+              attendees,
             },
           },
         });

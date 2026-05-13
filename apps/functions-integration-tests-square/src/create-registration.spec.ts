@@ -195,6 +195,13 @@ describe('createRegistration', () => {
 
       expect(registrantMail?.template?.name).toBe('registration-confirmation');
       expect(registrantMail?.template?.data?.extrasWithoutEmailCount).toBe(1);
+      // Full attendee roster (primary purchaser first, then additional
+      // attendees) is included so the registrant can see who they signed up.
+      expect(registrantMail?.template?.data?.attendees).toEqual([
+        { name: 'Pat Registrant', email: 'registrant@test.com' },
+        { name: 'Alice Friend', email: 'alice@test.com' },
+        { name: 'Bob Friend' },
+      ]);
 
       expect(attendeeMail?.template?.name).toBe(
         'registration-confirmation-attendee'
