@@ -3,5 +3,17 @@
     "default": "maple-and-spruce",
     "dev": "maple-and-spruce-dev",
     "prod": "maple-and-spruce"
+  },
+  "targets": {
+    "maple-and-spruce": {
+      "hosting": {
+        "api": ["maple-and-spruce-api"]
+      }
+    },
+    "maple-and-spruce-dev": {
+      "hosting": {
+        "registration-test": ["maple-spruce-registration-test"]
+      }
+    }
   }
 }
