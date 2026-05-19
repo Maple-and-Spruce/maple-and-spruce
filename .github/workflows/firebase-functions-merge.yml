@@ -1,20 +1,26 @@
 name: Deploy on merge
 
-# Phase 2 pipeline ("known-good dev"):
+# Pipeline ("known-good dev" + manual prod approval):
 #
 #   merge to main
 #     ├── prepare_and_build  (compute affected, build artifacts)
 #     ├── deploy_functions_dev   (deploy affected functions → maple-and-spruce-dev)
 #     ├── deploy_harness_dev     (build + deploy harness → maple-spruce-registration-test)
-#     ├── e2e_dev                (Playwright → deployed dev URL; GATES prod)
+#     ├── e2e_dev                (Playwright → deployed dev URL)
 #     │     │
-#     │     ├── deploy_functions_prod        (only if e2e_dev passed)
-#     │     ├── publish_webflow_components   (only if e2e_dev passed)
-#     │     └── deploy_vercel_prod           (only if e2e_dev passed)
+#     │     └── approve_prod  ← MANUAL APPROVAL via `production` Environment
+#     │            │
+#     │            ├── deploy_functions_prod        (only if approve_prod passed)
+#     │            ├── publish_webflow_components   (only if approve_prod passed)
+#     │            └── deploy_vercel_prod           (only if approve_prod passed)
 #     │
 #     └── deploy_firestore_indexes_prod  (independent — index changes don't block on E2E
 #                                          because they take minutes to build and are
 #                                          additive; analyzer enforces declaration at PR)
+#
+# Setup: a "production" GitHub Environment must exist in repo Settings →
+# Environments, with at least one required reviewer. Without it, approve_prod
+# auto-passes (any user counts as approver) — defeating the purpose.
 #
 # Per-feature-branch dev deploys are gone — the old
 # firebase-functions-dev.yml has been deleted. Dev is the post-merge
@@ -469,10 +475,26 @@ jobs:
             apps/registration-e2e/test-results/
           retention-days: 7
 
+  approve_prod:
+    # Phase 3 manual gate: every prod-side job depends on this, and this
+    # job uses the `production` Environment which is configured (in repo
+    # Settings → Environments) with required reviewers. GitHub pauses
+    # the job until a reviewer clicks "Review pending deployments".
+    #
+    # A single gate covers all three prod jobs (functions, webflow,
+    # vercel) — one approval click unlocks the whole prod side.
+    needs: e2e_dev
+    if: needs.e2e_dev.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Approved for production deploy
+        run: echo "Production deploys unlocked by approver — proceeding."
+
   deploy_functions_prod:
-    needs: [prepare_and_build, e2e_dev]
+    needs: [prepare_and_build, approve_prod]
     if: >-
-      needs.e2e_dev.result == 'success' &&
+      needs.approve_prod.result == 'success' &&
       needs.prepare_and_build.outputs.has_changes == 'true' &&
       needs.prepare_and_build.outputs.matrix != '' &&
       toJson(fromJson(needs.prepare_and_build.outputs.matrix).include) != '[]'
@@ -623,12 +645,12 @@ jobs:
           fi
 
   publish_webflow_components:
-    needs: [prepare_and_build, e2e_dev]
-    # Gate the webflow-components publish on E2E because the published
-    # bundle becomes the live widget — if the dev E2E fails on the new
-    # widget code, we don't want it propagating to the live Webflow site.
+    needs: [prepare_and_build, approve_prod]
+    # Gate the webflow-components publish on the manual approval (which
+    # itself depends on E2E passing). The published bundle becomes the
+    # live widget, so it's treated as a prod-side action.
     if: >-
-      needs.e2e_dev.result == 'success' &&
+      needs.approve_prod.result == 'success' &&
       needs.prepare_and_build.outputs.webflow_components_affected == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -662,10 +684,11 @@ jobs:
   deploy_vercel_prod:
     # Vercel's auto-deploy-on-main is disabled via vercel.json
     # (git.deploymentEnabled.main = false). Prod promotion happens here,
-    # gated on the same E2E that gates Firebase prod. PR previews still
-    # auto-deploy from Vercel because the disable only covers `main`.
-    needs: e2e_dev
-    if: needs.e2e_dev.result == 'success'
+    # gated on the manual approval (which itself requires E2E success).
+    # PR previews still auto-deploy from Vercel because the disable only
+    # covers `main`.
+    needs: approve_prod
+    if: needs.approve_prod.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
