@@ -175,8 +175,15 @@ jobs:
           CODEBASES_JSON=$(printf '%s\n' "${AFFECTED_CODEBASES_SET[@]}" | sort -u | jq -R . | jq -sc .)
           echo "affected_codebases=$CODEBASES_JSON" >> $GITHUB_OUTPUT
 
-          # Group functions by codebase, then split into batches of 5
-          GROUP_SIZE=5
+          # One matrix entry per codebase. Firebase deploys functions
+          # within a codebase serially regardless of how we batch them
+          # (a single `firebase deploy` command iterates through them),
+          # but DIFFERENT codebases are independent and safe to deploy
+          # in parallel. Earlier this was GROUP_SIZE=5 with max-parallel:1,
+          # which produced ~22 sequential batches and ~60 min of wall time
+          # per side. One entry per codebase + max-parallel:4 collapses
+          # that to ~4 parallel deploys.
+          GROUP_SIZE=10000
           VALID_GROUPS=()
 
           for CODEBASE in "${!CODEBASE_FUNCTIONS[@]}"; do
@@ -270,7 +277,12 @@ jobs:
       contents: read
       id-token: write
     strategy:
-      max-parallel: 1
+      # max-parallel = number of Firebase codebases. The matrix is now
+      # one entry per codebase (see prepare_and_build's GROUP_SIZE
+      # comment), so this caps concurrent deploys at one per codebase,
+      # which is the safe upper bound — concurrent deploys within a
+      # codebase race on Firebase's "deployment in progress" check.
+      max-parallel: 4
       matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
@@ -524,7 +536,12 @@ jobs:
       contents: read
       id-token: write
     strategy:
-      max-parallel: 1
+      # max-parallel = number of Firebase codebases. The matrix is now
+      # one entry per codebase (see prepare_and_build's GROUP_SIZE
+      # comment), so this caps concurrent deploys at one per codebase,
+      # which is the safe upper bound — concurrent deploys within a
+      # codebase race on Firebase's "deployment in progress" check.
+      max-parallel: 4
       matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
