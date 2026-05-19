@@ -100,14 +100,28 @@ const mockPublicClass = {
   skillLevel: 'All Levels',
 } as unknown as PublicClass;
 
-const mockCostResponse: CalculateRegistrationCostResponse = {
-  originalCostCents: 5000,
-  discountAmountCents: 0,
-  finalCostCents: 5000,
-  taxRatePercent: 0,
-  taxAmountCents: 0,
-  totalCents: 5000,
-};
+// Each test that exercises the add/remove attendee path patches
+// onCalculateCost to return a per-call response that echoes back the
+// quantity it was called with — the new server-truth contract — so
+// the CostSummary line item ("N x $price") reflects what the server
+// actually priced rather than a locally-derived count.
+function makeCostResponse(
+  quantity: number,
+  pricePerItemCents = 5000
+): CalculateRegistrationCostResponse {
+  return {
+    quantity,
+    pricePerItemCents,
+    originalCostCents: pricePerItemCents * quantity,
+    discountAmountCents: 0,
+    finalCostCents: pricePerItemCents * quantity,
+    taxRatePercent: 0,
+    taxAmountCents: 0,
+    totalCents: pricePerItemCents * quantity,
+  };
+}
+
+const mockCostResponse: CalculateRegistrationCostResponse = makeCostResponse(1);
 
 const mockRegistrationResponse = {
   registration: { pricePaidCents: 5000 },
@@ -552,7 +566,11 @@ describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
   it('recalculates cost with the new total (not total+1) when an attendee is added', async () => {
     const user = userEvent.setup();
 
-    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onCalculateCost = vi
+      .fn()
+      .mockImplementation(async (_classId: string, qty: number) =>
+        makeCostResponse(qty)
+      );
 
     render(
       <RegistrationCheckoutForm
@@ -578,6 +596,8 @@ describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
     await waitFor(() =>
       expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 2, undefined)
     );
+    // And the user-visible cost summary line item reflects that.
+    expect(screen.getByText(/2 x \$50\.00/)).toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', { name: /Add another person/ })
@@ -587,12 +607,19 @@ describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
     await waitFor(() =>
       expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 3, undefined)
     );
+    await waitFor(() =>
+      expect(screen.getByText(/3 x \$50\.00/)).toBeInTheDocument()
+    );
   });
 
   it('recalculates cost with the new total (not total-1) when an attendee is removed', async () => {
     const user = userEvent.setup();
 
-    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const onCalculateCost = vi
+      .fn()
+      .mockImplementation(async (_classId: string, qty: number) =>
+        makeCostResponse(qty)
+      );
 
     render(
       <RegistrationCheckoutForm
@@ -627,5 +654,48 @@ describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
     await waitFor(() =>
       expect(onCalculateCost).toHaveBeenLastCalledWith('class-1', 2, undefined)
     );
+    await waitFor(() =>
+      expect(screen.getByText(/2 x \$50\.00/)).toBeInTheDocument()
+    );
+  });
+
+  it('renders the cost summary line item from the server response, not from local state', async () => {
+    // Source-of-truth contract: even if the server priced a different
+    // quantity than the UI thinks it asked for, the cost summary
+    // displays what the server said. This is the structural guarantee
+    // that prevents the line-item / totals divergence from #423.
+    const onCalculateCost = vi.fn().mockResolvedValue({
+      quantity: 7,
+      pricePerItemCents: 1234,
+      originalCostCents: 8638,
+      discountAmountCents: 0,
+      finalCostCents: 8638,
+      taxRatePercent: 0,
+      taxAmountCents: 0,
+      totalCents: 8638,
+    } satisfies CalculateRegistrationCostResponse);
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        onCalculateCost={onCalculateCost}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    // Backend was asked for qty=1, but it (hypothetically) returned
+    // qty=7 / $12.34 ea. The UI must render the server's numbers —
+    // the line-item multiplier and per-item price come straight from
+    // the response object.
+    await waitFor(() => {
+      expect(screen.getByText(/7 x \$12\.34/)).toBeInTheDocument();
+    });
+    // $86.38 appears in originalCost line, Total line, AND the Pay
+    // button label — use getAllByText since we only need to confirm
+    // the value is present, not that it's unique.
+    expect(screen.getAllByText(/\$86\.38/).length).toBeGreaterThanOrEqual(2);
   });
 });

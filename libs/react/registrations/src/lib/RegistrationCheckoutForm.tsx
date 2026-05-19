@@ -776,20 +776,10 @@ export function RegistrationCheckoutForm({
         )}
       </Box>
 
-      {/* Cost Summary */}
-      {costBreakdown.value && (
-        <CostSummary
-          originalCostCents={costBreakdown.value.originalCostCents}
-          discountAmountCents={costBreakdown.value.discountAmountCents}
-          finalCostCents={costBreakdown.value.finalCostCents}
-          taxAmountCents={costBreakdown.value.taxAmountCents}
-          taxRatePercent={costBreakdown.value.taxRatePercent}
-          totalCents={costBreakdown.value.totalCents}
-          discountDescription={costBreakdown.value.discountDescription}
-          quantity={quantity.value}
-          pricePerItemCents={publicClass.priceCents}
-        />
-      )}
+      {/* Cost Summary — every number (including quantity and per-item
+          price) comes from the server response so the line item and
+          totals can't silently disagree. */}
+      {costBreakdown.value && <CostSummary cost={costBreakdown.value} />}
 
       {/* Required Agreements Section */}
       {hasRequiredAgreements && (
