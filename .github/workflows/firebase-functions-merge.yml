@@ -318,7 +318,28 @@ jobs:
 
       - name: Deploy functions group to Dev
         if: matrix.functions != ''
-        run: pnpm exec firebase deploy --only ${{ matrix.functions }} --project maple-and-spruce-dev --force --token "$(gcloud auth print-access-token)"
+        # Retry up to 3 times. The upload step regularly hits transient
+        # GCS 5xx (storage.googleapis.com → /gcf-v2-uploads/…). A single
+        # 503 used to fail-fast the whole matrix and force a manual
+        # re-run-failed-jobs — three attempts with a 30s gap absorbs
+        # the noise we've seen in practice.
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if pnpm exec firebase deploy \
+              --only ${{ matrix.functions }} \
+              --project maple-and-spruce-dev \
+              --force \
+              --token "$(gcloud auth print-access-token)"; then
+              exit 0
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "::warning::firebase deploy attempt $attempt failed; retrying in 30s"
+              sleep 30
+            fi
+          done
+          echo "::error::firebase deploy failed after 3 attempts"
+          exit 1
 
       - name: Skip empty function group
         if: matrix.functions == ''
@@ -538,7 +559,24 @@ jobs:
 
       - name: Deploy functions group
         if: matrix.functions != ''
-        run: pnpm exec firebase deploy --only ${{ matrix.functions }} --project maple-and-spruce --force --token "$(gcloud auth print-access-token)"
+        # Same retry shape as deploy_functions_dev — see there for rationale.
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if pnpm exec firebase deploy \
+              --only ${{ matrix.functions }} \
+              --project maple-and-spruce \
+              --force \
+              --token "$(gcloud auth print-access-token)"; then
+              exit 0
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "::warning::firebase deploy attempt $attempt failed; retrying in 30s"
+              sleep 30
+            fi
+          done
+          echo "::error::firebase deploy failed after 3 attempts"
+          exit 1
 
       - name: Skip empty function group
         if: matrix.functions == ''
