@@ -73,3 +73,18 @@ Run `./tools/validate-function-tsconfigs.sh` to check that:
 - Vercel uses `corepack enable && pnpm install` for installation
 - Dev app: `dev.mapleandsprucefolkarts.com`
 - Prod app: `mapleandsprucefolkarts.com`
+
+## Registration E2E (PR-time)
+
+**Workflow**: `.github/workflows/build-check.yml` → `registration-e2e` job.
+
+**What it covers**: Drives the production `RegistrationWidget` (mounted in `apps/registration-test-harness`, a minimal Vite app) against the local Firebase emulator, end-to-end through Chromium. Closes the gap between Storybook interaction tests (which mock callable args) and cloud-function integration tests (which can't see frontend arg-shape bugs). The same suite is intended to run again in Phase 2 against the deployed dev project — only difference is `HARNESS_BASE_URL`.
+
+**Components**:
+- `apps/registration-test-harness/` — Vite app, mounts `RegistrationWidget` with `env="emulator"` so `firebase-init.ts` calls `connectFunctionsEmulator(127.0.0.1, 5001)`.
+- `apps/registration-e2e/` — Playwright suite + `global-setup.ts` that seeds Firestore via `@maple/firebase/integration-test-utils` (same fixtures the cloud-function integration tests use).
+- `tools/run-registration-e2e.sh` — local runner; respects `EMULATOR_PORT_OFFSET` for parallel worktrees. Pass `--ui` or `--debug` for Playwright's interactive modes.
+
+**Scope (Phase 1)**: load → cost recalc on attendee add/remove → discount apply → invalid discount. **Stops before Square tokenization** — the "Register & Pay" button stays disabled until the Square Web Payments SDK marks the card form ready, which requires real Sandbox credentials. That's a Phase 2/3 concern.
+
+**Why ALLOWED_ORIGINS gets extended at boot**: the function CORS middleware returns 403 for unknown origins, which the Firebase SDK maps to `permission-denied`. The CI step (and the local script) appends `http://127.0.0.1:4173` to `ALLOWED_ORIGINS` in each codebase's `.env` before booting the emulator.

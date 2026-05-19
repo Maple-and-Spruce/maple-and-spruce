@@ -1,0 +1,34 @@
+{
+  "name": "registration-test-harness",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/registration-test-harness/src",
+  "projectType": "application",
+  "tags": ["scope:webflow", "type:app"],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/registration-test-harness",
+        "command": "vite"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "cwd": "apps/registration-test-harness",
+        "command": "vite build"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/registration-test-harness",
+        "command": "eslint ."
+      },
+      "metadata": {
+        "technologies": ["eslint"]
+      }
+    }
+  }
+}
