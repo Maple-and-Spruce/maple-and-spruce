@@ -1,5 +1,31 @@
 name: Deploy on merge
 
+# Pipeline ("known-good dev" + manual prod approval):
+#
+#   merge to main
+#     ├── prepare_and_build  (compute affected, build artifacts)
+#     ├── deploy_functions_dev   (deploy affected functions → maple-and-spruce-dev)
+#     ├── deploy_harness_dev     (build + deploy harness → maple-spruce-registration-test)
+#     ├── e2e_dev                (Playwright → deployed dev URL)
+#     │     │
+#     │     └── approve_prod  ← MANUAL APPROVAL via `production` Environment
+#     │            │
+#     │            ├── deploy_functions_prod        (only if approve_prod passed)
+#     │            ├── publish_webflow_components   (only if approve_prod passed)
+#     │            └── deploy_vercel_prod           (only if approve_prod passed)
+#     │
+#     └── deploy_firestore_indexes_prod  (independent — index changes don't block on E2E
+#                                          because they take minutes to build and are
+#                                          additive; analyzer enforces declaration at PR)
+#
+# Setup: a "production" GitHub Environment must exist in repo Settings →
+# Environments, with at least one required reviewer. Without it, approve_prod
+# auto-passes (any user counts as approver) — defeating the purpose.
+#
+# Per-feature-branch dev deploys are gone — the old
+# firebase-functions-dev.yml has been deleted. Dev is the post-merge
+# CI environment, not a per-branch playground.
+
 on:
   push:
     branches:
@@ -14,6 +40,15 @@ on:
 
 env:
   NX_DAEMON: 'false'
+
+# Serialize merge-pipeline runs. Two back-to-back merges otherwise race
+# on the shared dev project (B's dev deploy overwrites A's mid-E2E),
+# producing flaky failures whose root cause is invisible from the job
+# logs. `cancel-in-progress: false` lets the in-flight run finish — we
+# never want to cancel a deploy halfway.
+concurrency:
+  group: deploy-on-merge
+  cancel-in-progress: false
 
 jobs:
   prepare_and_build:
@@ -140,8 +175,15 @@ jobs:
           CODEBASES_JSON=$(printf '%s\n' "${AFFECTED_CODEBASES_SET[@]}" | sort -u | jq -R . | jq -sc .)
           echo "affected_codebases=$CODEBASES_JSON" >> $GITHUB_OUTPUT
 
-          # Group functions by codebase, then split into batches of 5
-          GROUP_SIZE=5
+          # One matrix entry per codebase. Firebase deploys functions
+          # within a codebase serially regardless of how we batch them
+          # (a single `firebase deploy` command iterates through them),
+          # but DIFFERENT codebases are independent and safe to deploy
+          # in parallel. Earlier this was GROUP_SIZE=5 with max-parallel:1,
+          # which produced ~22 sequential batches and ~60 min of wall time
+          # per side. One entry per codebase + max-parallel:4 collapses
+          # that to ~4 parallel deploys.
+          GROUP_SIZE=10000
           VALID_GROUPS=()
 
           for CODEBASE in "${!CODEBASE_FUNCTIONS[@]}"; do
@@ -198,17 +240,9 @@ jobs:
           # Cloud Build do a fresh pnpm install with proper resolution.
           find dist/apps -name 'pnpm-lock.yaml' -delete
 
-      - name: Copy env file to dist
-        if: steps.get_affected.outputs.has_changes == 'true'
-        run: |
-          MAPPING=$(cat function-codebases.json)
-          CODEBASES='${{ steps.get_affected.outputs.affected_codebases }}'
-
-          for CODEBASE in $(echo "$CODEBASES" | jq -r '.[]'); do
-            PROJECT=$(echo "$MAPPING" | jq -r --arg cb "$CODEBASE" '.codebaseProjects[$cb]')
-            echo "Copying .env.prod to dist/apps/${PROJECT}/"
-            cp .env.prod dist/apps/${PROJECT}/.env
-          done
+      # Note: env file is no longer copied here. Each deploy job (dev/prod)
+      # owns its own env copy so the same artifact can be deployed to
+      # multiple projects.
 
       - name: Cache node_modules for deploy
         if: >-
@@ -232,7 +266,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-  deploy:
+  deploy_functions_dev:
     needs: prepare_and_build
     if: >-
       needs.prepare_and_build.outputs.has_changes == 'true' &&
@@ -243,14 +277,278 @@ jobs:
       contents: read
       id-token: write
     strategy:
-      max-parallel: 1
+      # max-parallel = number of Firebase codebases. The matrix is now
+      # one entry per codebase (see prepare_and_build's GROUP_SIZE
+      # comment), so this caps concurrent deploys at one per codebase,
+      # which is the safe upper bound — concurrent deploys within a
+      # codebase race on Firebase's "deployment in progress" check.
+      max-parallel: 4
       matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (Dev)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-functions
+          path: dist/apps
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.prepare_and_build.outputs.cache_key }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Copy .env.dev into dist
+        run: |
+          MAPPING=$(cat function-codebases.json)
+          CODEBASES='${{ needs.prepare_and_build.outputs.affected_codebases }}'
+          for CODEBASE in $(echo "$CODEBASES" | jq -r '.[]'); do
+            PROJECT=$(echo "$MAPPING" | jq -r --arg cb "$CODEBASE" '.codebaseProjects[$cb]')
+            cp .env.dev dist/apps/${PROJECT}/.env
+          done
+
+      - name: Deploy functions group to Dev
+        if: matrix.functions != ''
+        # Retry up to 3 times. The upload step regularly hits transient
+        # GCS 5xx (storage.googleapis.com → /gcf-v2-uploads/…). A single
+        # 503 used to fail-fast the whole matrix and force a manual
+        # re-run-failed-jobs — three attempts with a 30s gap absorbs
+        # the noise we've seen in practice.
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if pnpm exec firebase deploy \
+              --only ${{ matrix.functions }} \
+              --project maple-and-spruce-dev \
+              --force \
+              --token "$(gcloud auth print-access-token)"; then
+              exit 0
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "::warning::firebase deploy attempt $attempt failed; retrying in 30s"
+              sleep 30
+            fi
+          done
+          echo "::error::firebase deploy failed after 3 attempts"
+          exit 1
+
+      - name: Skip empty function group
+        if: matrix.functions == ''
+        run: echo "Skipping deployment for empty function group"
+
+  deploy_harness_dev:
+    # Build + deploy the registration test harness to Firebase Hosting on
+    # the dev project so the E2E suite can hit a stable public URL. Runs
+    # whenever functions or webflow-components changed — anything that
+    # could affect what the widget calls or how it renders.
+    needs: prepare_and_build
+    if: >-
+      needs.prepare_and_build.outputs.has_changes == 'true' ||
+      needs.prepare_and_build.outputs.webflow_components_affected == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Authenticate to Google Cloud (Dev)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.prepare_and_build.outputs.cache_key }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build harness for dev
+        env:
+          VITE_TARGET_ENV: dev
+        run: pnpm exec nx build registration-test-harness
+
+      - name: Ensure Hosting site exists
+        # Idempotent — the first deploy after the site is created
+        # succeeds; subsequent deploys see "site already exists" and
+        # `|| true` swallows the non-zero exit. Stable site name so the
+        # Playwright config can hard-code the URL.
+        run: |
+          npx -y firebase-tools@latest hosting:sites:create \
+            maple-spruce-registration-test \
+            --project maple-and-spruce-dev \
+            --token "$(gcloud auth print-access-token)" \
+            < /dev/null || true
+
+      - name: Deploy harness to dev Hosting
+        run: |
+          pnpm exec firebase deploy \
+            --only hosting:registration-test \
+            --project maple-and-spruce-dev \
+            --force \
+            --token "$(gcloud auth print-access-token)"
+
+  e2e_dev:
+    # The gate: run the registration E2E suite against the deployed dev
+    # backend + deployed harness. Any failure here blocks the prod deploy.
+    needs: [prepare_and_build, deploy_functions_dev, deploy_harness_dev]
+    # Run if either of the upstream deploys actually executed. Both deploys
+    # honor the same conditions (functions or webflow-components affected),
+    # so this matches them. `always()` is needed because deploy_functions_dev
+    # is conditional and skipping it would otherwise skip this job too.
+    if: >-
+      always() &&
+      (needs.deploy_functions_dev.result == 'success' || needs.deploy_functions_dev.result == 'skipped') &&
+      needs.deploy_harness_dev.result == 'success' &&
+      (needs.prepare_and_build.outputs.has_changes == 'true' ||
+        needs.prepare_and_build.outputs.webflow_components_affected == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Authenticate to Google Cloud (Dev)
+        # Needed so the globalSetup's Admin SDK seed can write to dev's
+        # Firestore via Application Default Credentials.
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.prepare_and_build.outputs.cache_key }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run registration E2E against dev
+        env:
+          E2E_TARGET: dev
+          HARNESS_BASE_URL: https://maple-spruce-registration-test.web.app
+          GOOGLE_CLOUD_PROJECT: maple-and-spruce-dev
+        run: pnpm exec nx run registration-e2e:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-dev
+          path: |
+            apps/registration-e2e/playwright-report/
+            apps/registration-e2e/test-results/
+          retention-days: 7
+
+  approve_prod:
+    # Phase 3 manual gate: every prod-side job depends on this, and this
+    # job uses the `production` Environment which is configured (in repo
+    # Settings → Environments) with required reviewers. GitHub pauses
+    # the job until a reviewer clicks "Review pending deployments".
+    #
+    # A single gate covers all three prod jobs (functions, webflow,
+    # vercel) — one approval click unlocks the whole prod side.
+    needs: e2e_dev
+    if: needs.e2e_dev.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Approved for production deploy
+        run: echo "Production deploys unlocked by approver — proceeding."
+
+  deploy_functions_prod:
+    needs: [prepare_and_build, approve_prod]
+    if: >-
+      needs.approve_prod.result == 'success' &&
+      needs.prepare_and_build.outputs.has_changes == 'true' &&
+      needs.prepare_and_build.outputs.matrix != '' &&
+      toJson(fromJson(needs.prepare_and_build.outputs.matrix).include) != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      # max-parallel = number of Firebase codebases. The matrix is now
+      # one entry per codebase (see prepare_and_build's GROUP_SIZE
+      # comment), so this caps concurrent deploys at one per codebase,
+      # which is the safe upper bound — concurrent deploys within a
+      # codebase race on Firebase's "deployment in progress" check.
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Authenticate to Google Cloud (Prod)
         id: auth
         uses: google-github-actions/auth@v2
         with:
@@ -289,19 +587,46 @@ jobs:
         if: steps.restore-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
+      - name: Copy .env.prod into dist
+        run: |
+          MAPPING=$(cat function-codebases.json)
+          CODEBASES='${{ needs.prepare_and_build.outputs.affected_codebases }}'
+          for CODEBASE in $(echo "$CODEBASES" | jq -r '.[]'); do
+            PROJECT=$(echo "$MAPPING" | jq -r --arg cb "$CODEBASE" '.codebaseProjects[$cb]')
+            cp .env.prod dist/apps/${PROJECT}/.env
+          done
+
       - name: Deploy functions group
         if: matrix.functions != ''
-        run: pnpm exec firebase deploy --only ${{ matrix.functions }} --project maple-and-spruce --force --token "$(gcloud auth print-access-token)"
+        # Same retry shape as deploy_functions_dev — see there for rationale.
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if pnpm exec firebase deploy \
+              --only ${{ matrix.functions }} \
+              --project maple-and-spruce \
+              --force \
+              --token "$(gcloud auth print-access-token)"; then
+              exit 0
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "::warning::firebase deploy attempt $attempt failed; retrying in 30s"
+              sleep 30
+            fi
+          done
+          echo "::error::firebase deploy failed after 3 attempts"
+          exit 1
 
       - name: Skip empty function group
         if: matrix.functions == ''
-        run: |
-          echo "Skipping deployment for empty function group"
-          exit 0
+        run: echo "Skipping deployment for empty function group"
 
   deploy_firestore_indexes:
-    # Runs in parallel with the functions deploy. Independent of prepare_and_build
-    # because the index deploy doesn't need built artifacts — just the JSON file.
+    # Independent of the dev→E2E→prod chain. Index additions take minutes
+    # to build on Firestore servers and are forward-compatible (queries
+    # work without them, just slower or with errors). The PR-time analyzer
+    # enforces declaration; gating here would only add wall-clock time
+    # without catching anything new.
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
@@ -375,8 +700,13 @@ jobs:
           fi
 
   publish_webflow_components:
-    needs: prepare_and_build
-    if: needs.prepare_and_build.outputs.webflow_components_affected == 'true'
+    needs: [prepare_and_build, approve_prod]
+    # Gate the webflow-components publish on the manual approval (which
+    # itself depends on E2E passing). The published bundle becomes the
+    # live widget, so it's treated as a prod-side action.
+    if: >-
+      needs.approve_prod.result == 'success' &&
+      needs.prepare_and_build.outputs.webflow_components_affected == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -405,3 +735,45 @@ jobs:
         env:
           WEBFLOW_WORKSPACE_API_TOKEN: ${{ secrets.WEBFLOW_WORKSPACE_API_TOKEN }}
         run: pnpm exec webflow library share --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
+
+  deploy_vercel_prod:
+    # Vercel's auto-deploy-on-main is disabled via vercel.json
+    # (git.deploymentEnabled.main = false). Prod promotion happens here,
+    # gated on the manual approval (which itself requires E2E success).
+    # PR previews still auto-deploy from Vercel because the disable only
+    # covers `main`.
+    needs: approve_prod
+    if: needs.approve_prod.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # `vercel pull` writes .vercel/project.json + the production env
+      # to the working dir; `vercel build` and `vercel deploy --prebuilt`
+      # both read it. VERCEL_ORG_ID / VERCEL_PROJECT_ID let the link
+      # happen non-interactively without a committed .vercel directory.
+      - name: Pull Vercel environment (production)
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build for Vercel
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel production
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

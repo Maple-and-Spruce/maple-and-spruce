@@ -28,12 +28,62 @@ All CI workflows use `pnpm/action-setup@v4` which reads the version from `packag
 
 ## Functions Deploy
 
-**Workflows**:
-- `.github/workflows/firebase-functions-merge.yml` — Deploys affected functions on merge to main (prod)
-- `.github/workflows/firebase-functions-dev.yml` — Deploys affected functions on push to feature/fix branches (dev)
+**Workflow**: `.github/workflows/firebase-functions-merge.yml` — the only deploy pipeline. Per-branch dev deploys (`firebase-functions-dev.yml`) were removed in Phase 2 (#TBD); dev is a post-merge-only environment now.
 
-**Auth**: Workload Identity Federation (keyless) — no secrets required
+**Pipeline shape**:
+
+```
+merge to main
+  ├── prepare_and_build  (build affected codebases, upload artifacts)
+  ├── deploy_functions_dev   → maple-and-spruce-dev
+  ├── deploy_harness_dev     → maple-spruce-registration-test.web.app
+  └── e2e_dev (registration Playwright suite vs deployed dev)
+       └── approve_prod  ← MANUAL APPROVAL via `production` Environment
+            ├── deploy_functions_prod        → maple-and-spruce
+            ├── publish_webflow_components   → Webflow library share
+            └── deploy_vercel_prod           → maple-spruce on Vercel
+
+  + deploy_firestore_indexes  (independent — runs in parallel with everything)
+```
+
+**Two gates**:
+1. **`e2e_dev`** must pass — the suite hits deployed dev callables + dev Firestore. Failures here mean prod stays on the previous deploy.
+2. **`approve_prod`** requires a human to click "Review pending deployments" in the GitHub UI. Uses the `production` Environment (Settings → Environments) which has required reviewers configured. One approval unlocks all three prod jobs.
+
+**Why Firestore indexes don't gate**: index additions are forward-compatible (queries work without them, just slower or with a "missing index" error). Index builds take minutes server-side after the deploy submits the spec, so gating E2E on index readiness would add a lot of wall-clock without catching anything new. The PR-time analyzer (`tools/check-firestore-indexes.ts`) enforces declaration; that's the load-bearing check.
+
+**Concurrency**: `concurrency.group: deploy-on-merge`, `cancel-in-progress: false`. Two back-to-back merges otherwise race on the shared dev project (B's dev deploy overwrites A's mid-E2E). Cancel-in-progress stays off so we never abort a deploy halfway.
+
+**Auth**: Workload Identity Federation (keyless) for Firebase deploys.
+- Dev: `github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com`
+- Prod: `github-deployer@maple-and-spruce.iam.gserviceaccount.com`
+
 **Region**: All functions deploy to `us-east4` (Northern Virginia)
+
+### Required GitHub Environment
+
+A `production` Environment must exist (Settings → Environments → New environment). Without it, `approve_prod` auto-passes for any actor — defeating the gate.
+
+Configure:
+- **Required reviewers**: at minimum the repo owner. Multiple is fine — any one can approve.
+- **Wait timer**: leave at 0 (the dev E2E is already the substantive check).
+- **Deployment branches**: restrict to `main` only.
+
+Optional but recommended: move `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` from repo-level secrets to Environment secrets scoped to `production`. That way only post-approval runs can read them.
+
+### Required secrets
+
+The Vercel job needs three secrets (set once in repo settings → Secrets and variables → Actions):
+
+- `VERCEL_TOKEN` — generated at <https://vercel.com/account/tokens>
+- `VERCEL_ORG_ID` — from `.vercel/project.json` after `vercel link`
+- `VERCEL_PROJECT_ID` — same
+
+Without these, the `deploy_vercel_prod` job fails and prod Vercel stays on the previous deploy. (Firebase prod deploy is unaffected.)
+
+### Required Firebase Hosting site
+
+The harness deploys to a dedicated Hosting site `maple-spruce-registration-test` on the dev project. The workflow runs `firebase hosting:sites:create … || true` so it's idempotent — first deploy creates the site, subsequent deploys reuse it. The site URL `https://maple-spruce-registration-test.web.app` is hard-coded into `apps/registration-e2e/playwright.config.ts` (override with `HARNESS_BASE_URL` env if you need to redirect it).
 
 ### Codebases
 
@@ -69,7 +119,37 @@ Run `./tools/validate-function-tsconfigs.sh` to check that:
 
 ## Web App Deploy
 
-- Web app deploys to Vercel automatically on merge to main
+**Previews (PRs)**: Vercel auto-deploys a preview from every PR. Unchanged by Phase 2.
+
+**Production**: Auto-deploy-from-main is **disabled** in `vercel.json` (`git.deploymentEnabled.main = false`). Prod promotion happens from the merge workflow's `deploy_vercel_prod` job, gated on the dev E2E. See "Functions Deploy" above for the full chain.
+
 - Vercel uses `corepack enable && pnpm install` for installation
-- Dev app: `dev.mapleandsprucefolkarts.com`
 - Prod app: `mapleandsprucefolkarts.com`
+
+## Registration E2E
+
+The same Playwright suite runs in two places, picked by `E2E_TARGET`:
+
+| Target | When | Backend | Harness | Seeding |
+|--------|------|---------|---------|---------|
+| `emulator` (default) | PR-time (`build-check.yml` → `registration-e2e`) | local Firebase emulator | local Vite (`webServer` in playwright.config) | REST against the emulator |
+| `dev` | Post-merge (`firebase-functions-merge.yml` → `e2e_dev`) | deployed `maple-and-spruce-dev` | deployed `maple-spruce-registration-test.web.app` | Admin SDK against dev Firestore (auth via WIF / GOOGLE_APPLICATION_CREDENTIALS) |
+
+**Why both**: emulator catches arg-shape and render-contract bugs cheaply on every PR. The dev target catches the things emulator can't — missing Firestore composite indexes (the emulator doesn't enforce them), CORS / auth differences, callable cold-start behavior.
+
+**Components**:
+- `apps/registration-test-harness/` — Vite app, mounts `RegistrationWidget`. Build mode (`VITE_TARGET_ENV`) picks whether `firebase-init.ts` connects the emulator or hits the deployed dev project.
+- `apps/registration-e2e/` — Playwright suite + `global-setup.ts` that branches on `E2E_TARGET` (REST seed for emulator, Admin SDK seed for dev). Same spec assertions run against either backend.
+- `tools/run-registration-e2e.sh` — local runner for the emulator path; respects `EMULATOR_PORT_OFFSET` for parallel worktrees. Pass `--ui` or `--debug` for Playwright's interactive modes.
+
+**Scope**: load → cost recalc on attendee add/remove → discount apply → invalid discount. **Stops before Square tokenization** — the "Register & Pay" button stays disabled until the Square Web Payments SDK marks the card form ready, which requires real Sandbox credentials.
+
+**Why ALLOWED_ORIGINS gets extended**: the function CORS middleware returns 403 for unknown origins, which the Firebase SDK maps to `permission-denied`.
+- Emulator mode (local + PR-time CI): the script/job appends `http://127.0.0.1:4173` to `ALLOWED_ORIGINS` in each codebase's `.env` before booting the emulator.
+- Dev mode: `https://maple-spruce-registration-test.web.app` and `.firebaseapp.com` are baked into `.env.dev` so dev's deployed callables accept calls from the harness without per-run injection.
+
+**Webflow side effects from dev seeding**: when `global-setup.ts` writes the seeded class to dev Firestore, the `syncClassToWebflow` trigger fires. Dev runs with `FirebaseProject.isDev = true`, which:
+- Sets `is-dev-environment: true` on the resulting CMS item
+- Sets `shouldPublish = false` — the item exists in the Webflow CMS but is **never published to the live site**
+
+Since the seed uses deterministic IDs, repeated runs update the same CMS item rather than accumulating new ones.

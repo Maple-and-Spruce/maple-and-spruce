@@ -25,6 +25,7 @@ export default defineConfig({
       '**/dist/**',
       '.claude/**',
       'apps/maple-spruce-e2e/**',
+      'apps/registration-e2e/**',
       'apps/functions-integration-tests/**',
       'apps/functions-integration-tests-*/**',
     ],
