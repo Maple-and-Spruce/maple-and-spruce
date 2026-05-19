@@ -1,13 +1,17 @@
 /**
- * Playwright globalSetup: seed the Firebase emulator before tests run.
+ * Playwright globalSetup: seed test fixtures before tests run.
  *
- * Reuses the fixtures and helpers from `@maple/firebase/integration-test-utils`
- * so the seeded state is identical to what the cloud-function integration
- * tests assume. Keeping a single source of fixture truth means a future
- * fixture rename only has to happen once.
+ * Two modes, picked by `E2E_TARGET`:
+ * - default / `emulator` — seed the local Firestore emulator via REST
+ *   (full wipe + reseed, fast and isolated).
+ * - `dev` — seed the deployed `maple-and-spruce-dev` project via the
+ *   Admin SDK. Overwrites the same deterministic IDs each run rather
+ *   than wiping the collection (we don't want to nuke dev data that
+ *   isn't ours).
  *
- * Idempotent by design — `clearFirestoreEmulator` wipes everything first,
- * so re-running locally against a long-lived emulator session is safe.
+ * Same fixture set in both modes (shared from
+ * `@maple/firebase/integration-test-utils`) so the spec assertions
+ * don't have to know which backend they're running against.
  */
 import {
   clearFirestoreEmulator,
@@ -19,18 +23,27 @@ import {
   AMOUNT_DISCOUNT,
 } from '@maple/firebase/integration-test-utils';
 
-async function globalSetup(): Promise<void> {
-  // eslint-disable-next-line no-console -- visible test-run progress
-  console.log('[e2e] Seeding Firestore emulator…');
-  await clearFirestoreEmulator();
+import { seedDev } from './seed-dev';
 
+async function seedEmulator(): Promise<void> {
+  await clearFirestoreEmulator();
   await Promise.all([
     setFirestoreDoc('classes', CLASS_IDS.published, PUBLISHED_CLASS),
     setFirestoreDoc('discounts', DISCOUNT_IDS.percent, PERCENT_DISCOUNT),
     setFirestoreDoc('discounts', DISCOUNT_IDS.amount, AMOUNT_DISCOUNT),
   ]);
+}
 
-  // eslint-disable-next-line no-console
+async function globalSetup(): Promise<void> {
+  const target = process.env['E2E_TARGET'] ?? 'emulator';
+  console.log(`[e2e] Seeding fixtures for target=${target}…`);
+
+  if (target === 'dev') {
+    await seedDev();
+  } else {
+    await seedEmulator();
+  }
+
   console.log(
     `[e2e] Seeded class=${CLASS_IDS.published}, discounts=[${DISCOUNT_IDS.percent}, ${DISCOUNT_IDS.amount}]`
   );

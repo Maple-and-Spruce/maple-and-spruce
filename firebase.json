@@ -28,33 +28,44 @@
       "codebase": "maple-sync"
     }
   ],
-  "hosting": {
-    "site": "maple-and-spruce-api",
-    "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      { "source": "/getArtists", "function": "getArtists" },
-      { "source": "/getArtist", "function": "getArtist" },
-      { "source": "/createArtist", "function": "createArtist" },
-      { "source": "/updateArtist", "function": "updateArtist" },
-      { "source": "/deleteArtist", "function": "deleteArtist" },
-      { "source": "/getProducts", "function": "getProducts" },
-      { "source": "/getProduct", "function": "getProduct" },
-      { "source": "/createProduct", "function": "createProduct" },
-      { "source": "/updateProduct", "function": "updateProduct" },
-      { "source": "/deleteProduct", "function": "deleteProduct" },
-      { "source": "/uploadArtistImage", "function": "uploadArtistImage" },
-      { "source": "/healthCheck", "function": "healthCheck" },
-      { "source": "/calendar/classes.ics", "function": "calendarClassesFeed" },
-      { "source": "/calendar/music.ics", "function": "calendarMusicFeed" },
-      { "source": "/calendar/events.ics", "function": "calendarEventsFeed" },
-      { "source": "/calendar/hours.ics", "function": "calendarHoursFeed" },
-      { "source": "/calendar/all.ics", "function": "calendarAllFeed" },
-      { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" },
-      { "source": "/calendar/embed", "function": "calendarEmbed" },
-      { "source": "/catalog/classes.xml", "function": "classCatalogFeed" }
-    ]
-  },
+  "hosting": [
+    {
+      "target": "api",
+      "public": "public",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [
+        { "source": "/getArtists", "function": "getArtists" },
+        { "source": "/getArtist", "function": "getArtist" },
+        { "source": "/createArtist", "function": "createArtist" },
+        { "source": "/updateArtist", "function": "updateArtist" },
+        { "source": "/deleteArtist", "function": "deleteArtist" },
+        { "source": "/getProducts", "function": "getProducts" },
+        { "source": "/getProduct", "function": "getProduct" },
+        { "source": "/createProduct", "function": "createProduct" },
+        { "source": "/updateProduct", "function": "updateProduct" },
+        { "source": "/deleteProduct", "function": "deleteProduct" },
+        { "source": "/uploadArtistImage", "function": "uploadArtistImage" },
+        { "source": "/healthCheck", "function": "healthCheck" },
+        {
+          "source": "/calendar/classes.ics",
+          "function": "calendarClassesFeed"
+        },
+        { "source": "/calendar/music.ics", "function": "calendarMusicFeed" },
+        { "source": "/calendar/events.ics", "function": "calendarEventsFeed" },
+        { "source": "/calendar/hours.ics", "function": "calendarHoursFeed" },
+        { "source": "/calendar/all.ics", "function": "calendarAllFeed" },
+        { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" },
+        { "source": "/calendar/embed", "function": "calendarEmbed" },
+        { "source": "/catalog/classes.xml", "function": "classCatalogFeed" }
+      ]
+    },
+    {
+      "target": "registration-test",
+      "public": "apps/registration-test-harness/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9099

@@ -1,11 +1,15 @@
 /**
  * Registration FE→BE wiring smoke tests.
  *
- * These run against the `registration-test-harness` Vite app, which
- * mounts the production `RegistrationWidget` and points it at the
- * local Firebase emulator. Seeded data comes from
- * `@maple/firebase/integration-test-utils` (same fixtures the cloud-
- * function integration tests use), via `global-setup.ts`.
+ * Runs against the `registration-test-harness` Vite app, which mounts
+ * the production `RegistrationWidget`. The same specs cover two
+ * targets, picked by `E2E_TARGET`:
+ *   - emulator (default) — local Vite harness + local Firebase emulator
+ *   - dev                — deployed harness + deployed maple-and-spruce-dev
+ *
+ * Seeded fixtures come from `@maple/firebase/integration-test-utils`
+ * via `global-setup.ts` so the spec assertions don't care which
+ * backend is on the other side.
  *
  * Why these tests exist:
  * - Storybook interaction tests mock `onCalculateCost`; they cannot
@@ -13,15 +17,14 @@
  *   exactly that — quantity off by one).
  * - Cloud-function integration tests verify the backend in isolation;
  *   they cannot see a frontend that lies about its own state.
- * - Real Firestore enforces composite indexes; emulator does not.
- *   When this same suite is re-run against the deployed dev project
- *   in Phase 2, a missing index will trip these tests too.
+ * - Real Firestore enforces composite indexes; the emulator does not.
+ *   The dev target catches missing indexes that emulator E2E silently
+ *   passes.
  *
  * Scope: load → attendee management → cost recalc → discount apply.
- * Square tokenization is intentionally out of scope for Phase 1 (the
- * widget's "Register & Pay" button stays disabled until the Square
- * Web Payments SDK marks the card form ready, which requires real
- * sandbox credentials — that's a Phase 2/3 problem).
+ * Square tokenization is intentionally out of scope (the "Register &
+ * Pay" button stays disabled until the Square Web Payments SDK marks
+ * the card form ready, which requires real sandbox credentials).
  */
 import { test, expect, Page } from '@playwright/test';
 
@@ -34,14 +37,15 @@ async function openWidget(page: Page) {
   // the registration view (it lives in the success view post-purchase).
   // Wait for the cost-summary line item to appear instead — its
   // presence is proof BOTH `getPublicClass` and the initial
-  // `calculateRegistrationCost` round-trip succeeded against the
-  // emulator. Generous timeout covers cold-start of the first call.
+  // `calculateRegistrationCost` round-trip succeeded. Generous timeout
+  // covers cold-start of the first call (longer in dev-target mode,
+  // where the deployed callable container may need to warm up).
   await expect(page.getByText(`1 x ${PRICE_LABEL}`)).toBeVisible({
-    timeout: 20_000,
+    timeout: 30_000,
   });
 }
 
-test('loads cost summary from the emulator', async ({ page }) => {
+test('loads cost summary from the backend', async ({ page }) => {
   await openWidget(page);
   // openWidget already proved the first round-trips ran; this asserts
   // the totals math the server returned (4500 + 6% tax = 4770). The

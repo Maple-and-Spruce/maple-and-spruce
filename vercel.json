@@ -3,5 +3,10 @@
   "buildCommand": "pnpm exec nx run maple-spruce:build",
   "outputDirectory": "apps/maple-spruce/.next",
   "installCommand": "corepack enable && pnpm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  }
 }
