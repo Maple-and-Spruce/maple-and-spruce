@@ -30,22 +30,25 @@ All CI workflows use `pnpm/action-setup@v4` which reads the version from `packag
 
 **Workflow**: `.github/workflows/firebase-functions-merge.yml` — the only deploy pipeline. Per-branch dev deploys (`firebase-functions-dev.yml`) were removed in Phase 2 (#TBD); dev is a post-merge-only environment now.
 
-**Pipeline shape (Phase 2 — "known-good dev")**:
+**Pipeline shape**:
 
 ```
 merge to main
   ├── prepare_and_build  (build affected codebases, upload artifacts)
   ├── deploy_functions_dev   → maple-and-spruce-dev
   ├── deploy_harness_dev     → maple-spruce-registration-test.web.app
-  └── e2e_dev (registration Playwright suite vs deployed dev) ← GATE
-       ├── deploy_functions_prod        → maple-and-spruce
-       ├── publish_webflow_components   → Webflow library share
-       └── deploy_vercel_prod           → maple-spruce on Vercel
+  └── e2e_dev (registration Playwright suite vs deployed dev)
+       └── approve_prod  ← MANUAL APPROVAL via `production` Environment
+            ├── deploy_functions_prod        → maple-and-spruce
+            ├── publish_webflow_components   → Webflow library share
+            └── deploy_vercel_prod           → maple-spruce on Vercel
 
   + deploy_firestore_indexes  (independent — runs in parallel with everything)
 ```
 
-**The gate**: `e2e_dev` must pass before any prod-facing job runs. If it fails, prod functions stay on the previous deploy, the Webflow widget library isn't re-shared, and Vercel doesn't promote.
+**Two gates**:
+1. **`e2e_dev`** must pass — the suite hits deployed dev callables + dev Firestore. Failures here mean prod stays on the previous deploy.
+2. **`approve_prod`** requires a human to click "Review pending deployments" in the GitHub UI. Uses the `production` Environment (Settings → Environments) which has required reviewers configured. One approval unlocks all three prod jobs.
 
 **Why Firestore indexes don't gate**: index additions are forward-compatible (queries work without them, just slower or with a "missing index" error). Index builds take minutes server-side after the deploy submits the spec, so gating E2E on index readiness would add a lot of wall-clock without catching anything new. The PR-time analyzer (`tools/check-firestore-indexes.ts`) enforces declaration; that's the load-bearing check.
 
@@ -56,6 +59,17 @@ merge to main
 - Prod: `github-deployer@maple-and-spruce.iam.gserviceaccount.com`
 
 **Region**: All functions deploy to `us-east4` (Northern Virginia)
+
+### Required GitHub Environment
+
+A `production` Environment must exist (Settings → Environments → New environment). Without it, `approve_prod` auto-passes for any actor — defeating the gate.
+
+Configure:
+- **Required reviewers**: at minimum the repo owner. Multiple is fine — any one can approve.
+- **Wait timer**: leave at 0 (the dev E2E is already the substantive check).
+- **Deployment branches**: restrict to `main` only.
+
+Optional but recommended: move `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` from repo-level secrets to Environment secrets scoped to `production`. That way only post-approval runs can read them.
 
 ### Required secrets
 
