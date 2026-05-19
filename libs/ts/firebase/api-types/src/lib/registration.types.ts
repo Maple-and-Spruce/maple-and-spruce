@@ -81,7 +81,15 @@ export interface CalculateRegistrationCostRequest {
 }
 
 export interface CalculateRegistrationCostResponse {
-  /** Original price (class price * quantity) */
+  /**
+   * Quantity the server priced for. Echoed back so the UI cost summary
+   * can render the canonical multiplier rather than a locally-derived one
+   * (which can silently drift from what the backend actually used).
+   */
+  quantity: number;
+  /** Per-attendee price the server used (class price at calc time). */
+  pricePerItemCents: number;
+  /** Original price (pricePerItemCents * quantity) */
   originalCostCents: number;
   /** Discount amount applied */
   discountAmountCents: number;

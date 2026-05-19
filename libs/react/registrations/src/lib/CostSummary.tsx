@@ -1,34 +1,37 @@
 'use client';
 
 import { Box, Typography, Divider } from '@mui/material';
+import type { CalculateRegistrationCostResponse } from '@maple/ts/firebase/api-types';
 
 interface CostSummaryProps {
-  originalCostCents: number;
-  discountAmountCents: number;
-  finalCostCents: number;
-  taxAmountCents: number;
-  taxRatePercent: number;
-  totalCents: number;
-  discountDescription?: string;
-  quantity: number;
-  pricePerItemCents: number;
+  /**
+   * The full response from `calculateRegistrationCost`. Every value
+   * displayed — including the `N x $price` line — comes from this
+   * object so the UI can't disagree with what the server actually
+   * priced. Locally-derived totals were the source of an overcharge
+   * bug (#423) where the line item read "2 x $100" while the totals
+   * reflected a different quantity the server had been told to price.
+   */
+  cost: CalculateRegistrationCostResponse;
 }
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function CostSummary({
-  originalCostCents,
-  discountAmountCents,
-  finalCostCents,
-  taxAmountCents,
-  taxRatePercent,
-  totalCents,
-  discountDescription,
-  quantity,
-  pricePerItemCents,
-}: CostSummaryProps): React.ReactElement {
+export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
+  const {
+    quantity,
+    pricePerItemCents,
+    originalCostCents,
+    discountAmountCents,
+    finalCostCents,
+    taxAmountCents,
+    taxRatePercent,
+    totalCents,
+    discountDescription,
+  } = cost;
+
   return (
     <Box
       sx={{

@@ -194,6 +194,12 @@ describe('calculateRegistrationCost', () => {
       expect(result.data?.originalCostCents).toBe(
         PUBLISHED_CLASS.priceCents * quantity
       );
+      // Server echoes back the quantity and per-item price it used so
+      // the checkout UI can render the cost summary line item directly
+      // from this response, avoiding any locally-derived multiplier
+      // drift (regression guard for #423).
+      expect(result.data?.quantity).toBe(quantity);
+      expect(result.data?.pricePerItemCents).toBe(PUBLISHED_CLASS.priceCents);
     });
 
     it('AC-9: should return zero discount when no discount code provided', async () => {

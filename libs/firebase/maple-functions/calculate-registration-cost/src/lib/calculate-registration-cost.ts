@@ -75,6 +75,8 @@ export const calculateRegistrationCost = Functions.endpoint
       );
 
       return {
+        quantity: data.quantity,
+        pricePerItemCents: classEntity.priceCents,
         originalCostCents,
         discountAmountCents,
         finalCostCents,

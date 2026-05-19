@@ -39,6 +39,8 @@ const mockPublicClass: PublicClass = {
 };
 
 const mockCostResponse: CalculateRegistrationCostResponse = {
+  quantity: 1,
+  pricePerItemCents: 7500,
   originalCostCents: 7500,
   discountAmountCents: 0,
   finalCostCents: 7500,
@@ -106,6 +108,8 @@ export const FullyBooked: Story = {
 export const WithDiscountApplied: Story = {
   args: {
     onCalculateCost: fn(async () => ({
+      quantity: 1,
+      pricePerItemCents: 7500,
       originalCostCents: 7500,
       discountAmountCents: 1500,
       finalCostCents: 6000,
