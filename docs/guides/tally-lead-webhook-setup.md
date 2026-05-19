@@ -235,6 +235,61 @@ without a real attribution benefit. If we ever see significant
 duplicate volume in GA4, the dedupe key to use is
 `payload.data.submissionId`.
 
+## Dev / prod isolation
+
+By default, the dev and prod Firebase projects both point at the **same**
+production GA4 stream (`G-TY0E9X31V6`) and Meta pixel
+(`1625932185289127`). Tokens are separate but destinations are not — so
+dev test submissions land in production attribution and (worse) feed
+Meta's ad-delivery algorithm if you ever optimize a campaign for the
+`Lead` event.
+
+Three ways to handle this, in order of how much work they are:
+
+1. **Do nothing** — at low test volume the noise is rounding-error. Fine
+   to defer until you actually start running Meta Lead-optimization
+   campaigns.
+2. **Separate dev pixel + dev GA4 stream** — best long-term setup,
+   ~15 minutes:
+   - Events Manager → Datasets → **Connect data** → create a pixel
+     called "Maple & Spruce — Dev"; copy its ID.
+   - Add the new pixel as a "Use events dataset" asset on the existing
+     `Conversions API System User` (Business Settings → System users →
+     Assigned assets → Add). The existing CAPI token will now write to
+     either pixel based on the URL.
+   - GA4 → Admin → Data Streams → Add stream for a dev hostname; copy
+     the new Measurement ID; create a fresh Measurement Protocol API
+     secret on it.
+   - The function reads `GA4_MEASUREMENT_ID` and `META_PIXEL_ID` as
+     `defineString` params with prod defaults baked into the code.
+     Override for dev by adding the project-scoped `.env.maple-and-spruce-dev`
+     file at the functions codebase root (`apps/functions/.env.maple-and-spruce-dev`)
+     — Firebase auto-loads it on deploy to the dev project, and prod
+     deploys keep the hard-coded defaults:
+
+     ```ini
+     # apps/functions/.env.maple-and-spruce-dev
+     GA4_MEASUREMENT_ID=G-DEVXXXXXX
+     META_PIXEL_ID=9999999999999999
+     ```
+
+     Then rotate the dev `GA4_API_SECRET` to the new stream's secret
+     (the existing Meta CAPI token works against any pixel its system
+     user has access to, so no token rotation needed there):
+
+     ```bash
+     firebase use maple-and-spruce-dev
+     firebase functions:secrets:set GA4_API_SECRET   # paste dev secret
+     ```
+3. **`test_event_code` for interactive validation only** — Meta's
+   Events Manager → Test events tab shows a code like `TEST14336` that
+   excludes events from production attribution. **Don't** bake it into
+   the dev env: per Meta's docs, the code rotates each time the tab is
+   opened and expires on inactivity, so a stale code silently re-enters
+   production attribution. Useful for sitting in front of Events
+   Manager and watching events arrive in real-time during a debug
+   session, not for a persistent dev environment.
+
 ## Operational notes
 
 - The function is in the **maple-core** codebase. It has no heavy SDK
