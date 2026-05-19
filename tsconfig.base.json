@@ -459,6 +459,15 @@
       "@maple/firebase/maple-functions/revoke-admin-role": [
         "libs/firebase/maple-functions/revoke-admin-role/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/tally-lead-webhook": [
+        "libs/firebase/maple-functions/tally-lead-webhook/src/index.ts"
+      ],
+      "@maple/firebase/ga4-test-mock-server": [
+        "libs/firebase/ga4-test-mock-server/src/index.ts"
+      ],
+      "@maple/firebase/meta-capi-test-mock-server": [
+        "libs/firebase/meta-capi-test-mock-server/src/index.ts"
+      ],
       "@maple/react/users": ["libs/react/users/src/index.ts"],
       "@/*": ["apps/maple-spruce/src/*"]
     }

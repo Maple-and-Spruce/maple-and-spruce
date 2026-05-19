@@ -359,7 +359,13 @@ jobs:
 
           # maple-core: Etsy mock server URL + fake secrets
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
+          # Tally lead webhook → GA4 + Meta CAPI mock servers
+          echo "GA4_BASE_URL=http://localhost:9995" >> dist/apps/functions/.env
+          echo "META_CAPI_BASE_URL=http://localhost:9994" >> dist/apps/functions/.env
+          echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions/.env
+          echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions/.env
+          echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
           # maple-square: Square mock server URL + fake secrets
           echo "SQUARE_BASE_URL=http://localhost:9997" >> dist/apps/functions-square/.env
@@ -378,13 +384,17 @@ jobs:
           # parallel invocations try to download tsx simultaneously
           npx tsx --version
 
-          # Start per-service mock HTTP servers (Square, Webflow, Etsy)
+          # Start per-service mock HTTP servers (Square, Webflow, Etsy, GA4, Meta CAPI)
           SQUARE_MOCK_SERVER_PORT=9997 npx tsx libs/firebase/square-test-mock-server/start.ts &
           SQUARE_MOCK_PID=$!
           WEBFLOW_MOCK_SERVER_PORT=9996 npx tsx libs/firebase/webflow-test-mock-server/start.ts &
           WEBFLOW_MOCK_PID=$!
           ETSY_MOCK_SERVER_PORT=9998 npx tsx libs/firebase/etsy-test-mock-server/start.ts &
           ETSY_MOCK_PID=$!
+          GA4_MOCK_SERVER_PORT=9995 npx tsx libs/firebase/ga4-test-mock-server/start.ts &
+          GA4_MOCK_PID=$!
+          META_CAPI_MOCK_SERVER_PORT=9994 npx tsx libs/firebase/meta-capi-test-mock-server/start.ts &
+          META_CAPI_MOCK_PID=$!
           sleep 2
 
           # Run the suites assigned to this matrix group
@@ -395,6 +405,8 @@ jobs:
           kill $SQUARE_MOCK_PID 2>/dev/null || true
           kill $WEBFLOW_MOCK_PID 2>/dev/null || true
           kill $ETSY_MOCK_PID 2>/dev/null || true
+          kill $GA4_MOCK_PID 2>/dev/null || true
+          kill $META_CAPI_MOCK_PID 2>/dev/null || true
           exit $EXIT_CODE
 
   integration-tests-result:

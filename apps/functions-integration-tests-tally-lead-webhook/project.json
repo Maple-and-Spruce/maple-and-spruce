@@ -1,0 +1,21 @@
+{
+  "name": "functions-integration-tests-tally-lead-webhook",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-tally-lead-webhook/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-tally-lead-webhook",
+    "firebase-integration-test-utils",
+    "firebase-ga4-test-mock-server",
+    "firebase-meta-capi-test-mock-server"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "apps/functions-integration-tests-tally-lead-webhook/vitest.config.ts"
+      }
+    }
+  }
+}
