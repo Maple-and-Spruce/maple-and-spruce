@@ -73,5 +73,20 @@ overrides:
   # via unescaped delimiters (patched in 5.7.0). Transitive dep of
   # firebase-admin > @google-cloud/storage. Added 2026-05-12.
   fast-xml-parser: '>=5.7.0'
+  # GHSA-vpq2-c234-7xj6: @tootallnate/once incorrect control flow scoping
+  # (patched in 3.0.1). Transitive (optional) dep of firebase-admin >
+  # @google-cloud/* > teeny-request > http-proxy-agent. Added 2026-05-18.
+  '@tootallnate/once': '>=3.0.1'
+  # GHSA-79cf-xcqc-c78w: webpack-dev-server cross-origin source code
+  # exposure on non-HTTPS origins (patched in 5.2.4). Dev-only transitive
+  # dep of @nx/next > @nx/webpack. Added 2026-05-18.
+  webpack-dev-server: '>=5.2.4'
+  # GHSA-jxxr-4gwj-5jf2: brace-expansion large numeric range defeats the
+  # documented `max` DoS protection (patched in 5.0.6). Dev-only transitive
+  # dep of @nx/* > minimatch. Added 2026-05-18.
+  brace-expansion@>=5.0.0 <5.0.6: '>=5.0.6'
+  # GHSA-58qx-3vcg-4xpx: ws uninitialized memory disclosure (patched in
+  # 8.20.1). Transitive dep present via several SDKs. Added 2026-05-18.
+  ws@>=8.0.0 <8.20.1: '>=8.20.1'
   # path-to-regexp override
   path-to-regexp@>=2: '>=8.4.0'
