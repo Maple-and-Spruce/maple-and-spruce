@@ -4,16 +4,18 @@ import { workspaceRoot } from '@nx/devkit';
 /**
  * Registration E2E config — runs the same specs against either:
  *
- * - `E2E_TARGET=emulator` (default) — Phase 1: harness on local Vite
- *   server, callables on local Firebase emulator. Boots the harness
- *   itself via the `webServer` block. Pair with `firebase emulators:exec`
- *   (see `tools/run-registration-e2e.sh`).
+ * - `E2E_TARGET=emulator` (default) — PR check: harness on local Vite
+ *   server, callables on local Firebase emulator with the PR's own
+ *   code, real Square sandbox, and HTTP mock servers for Webflow +
+ *   Etsy. Boots the harness itself via the `webServer` block. Pair
+ *   with `firebase emulators:exec` (see `tools/run-registration-e2e.sh`).
  *
- * - `E2E_TARGET=dev` — Phase 2: harness on the deployed Firebase
- *   Hosting site `maple-spruce-registration-test`, callables on the
- *   deployed `maple-and-spruce-dev` project. No `webServer`; baseURL
- *   points at the deployed harness URL. Seed runs against real
- *   Firestore via Admin SDK (Application Default Credentials).
+ * - `E2E_TARGET=dev` — post-merge gate: harness on the deployed
+ *   Firebase Hosting site `maple-spruce-registration-test`, callables
+ *   on the deployed `maple-and-spruce-dev` project, real Square
+ *   sandbox, real Webflow + Etsy dev integrations. No `webServer`;
+ *   baseURL points at the deployed harness URL. Seed runs against
+ *   real Firestore via Admin SDK (Application Default Credentials).
  */
 const target = process.env['E2E_TARGET'] ?? 'emulator';
 const offset = Number.parseInt(process.env['EMULATOR_PORT_OFFSET'] ?? '0', 10);
@@ -26,7 +28,12 @@ const baseURL =
   process.env['HARNESS_BASE_URL'] ??
   (target === 'dev'
     ? DEFAULT_DEV_HARNESS_URL
-    : `http://127.0.0.1:${harnessPort}`);
+    : // Use `localhost` (not `127.0.0.1`) — Square's Web Payments SDK
+      // allows localhost as a secure-context exception but rejects raw
+      // IPs with "Web Payments SDK can only be embedded on sites that
+      // use HTTPS." Both resolve to the same loopback so Vite (bound
+      // to localhost) accepts either.
+      `http://localhost:${harnessPort}`);
 
 export default defineConfig({
   testDir: './src',
@@ -41,6 +48,7 @@ export default defineConfig({
     ? [['html', { open: 'never' }], ['list']]
     : 'list',
   globalSetup: require.resolve('./src/global-setup.ts'),
+  globalTeardown: require.resolve('./src/global-teardown.ts'),
   // Deployed-dev callables can cold-start past the 30s default,
   // especially on the very first request after a deploy.
   timeout: target === 'dev' ? 60_000 : 30_000,

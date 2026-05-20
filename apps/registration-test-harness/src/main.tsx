@@ -1,14 +1,11 @@
 /**
  * Registration test harness — minimal Vite app that mounts the
  * production `RegistrationWidget` against either local Firebase
- * emulators (Phase 1) or the deployed dev project (Phase 2).
+ * emulators (PR-check) or the deployed dev project (post-merge).
  *
  * Used by `apps/registration-e2e/` Playwright tests to exercise the
- * full FE→BE wiring (widget → callable → Firestore) end-to-end, the
- * same way a customer hits it in production. Catches the class of bug
- * that unit tests miss: arg shape between the form and the cloud
- * function, and the contract between the cost-calc response and the
- * cost summary render.
+ * full FE→BE wiring (widget → callable → Firestore + Square sandbox)
+ * end-to-end, the same way a customer hits it in production.
  *
  * Selecting which class to load:
  *   ?classId=<id>       — required (seeded ahead of time)
@@ -17,8 +14,12 @@
  *   VITE_TARGET_ENV=emulator (default) — 127.0.0.1 functions emulator
  *   VITE_TARGET_ENV=dev               — deployed maple-and-spruce-dev
  *
- * Square credentials are intentionally fake. The current E2E suite
- * stops short of Square tokenization.
+ * Square sandbox creds (both browser-public — not secrets):
+ *   VITE_SQUARE_APPLICATION_ID — sandbox app ID from Square Developer
+ *   VITE_SQUARE_LOCATION_ID    — sandbox location ID
+ * Sourced from `.env.dev` at build time and forwarded through
+ * vite.config.ts's `define` block (see build-check.yml +
+ * firebase-functions-merge.yml).
  */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -45,6 +46,12 @@ const port = Number.parseInt(
   globalThis as { __MAPLE_FUNCTIONS_EMULATOR_PORT__?: number }
 ).__MAPLE_FUNCTIONS_EMULATOR_PORT__ = port;
 
+// Real sandbox creds — the SDK loads from sandbox.web.squarecdn.com
+// (see SquareCardForm.tsx; any env !== 'prod' selects sandbox), and
+// the IDs below bind tokenization to our merchant.
+const squareApplicationId = import.meta.env['VITE_SQUARE_APPLICATION_ID'];
+const squareLocationId = import.meta.env['VITE_SQUARE_LOCATION_ID'];
+
 function App() {
   const params = new URLSearchParams(window.location.search);
   const classId = params.get('classId') ?? '';
@@ -64,12 +71,25 @@ function App() {
     );
   }
 
+  if (!squareApplicationId || !squareLocationId) {
+    return (
+      <div style={{ padding: 24, fontFamily: 'system-ui' }}>
+        <h2>Missing Square sandbox credentials</h2>
+        <p>
+          The harness build did not receive{' '}
+          <code>VITE_SQUARE_APPLICATION_ID</code> /{' '}
+          <code>VITE_SQUARE_LOCATION_ID</code>. Check the workflow that
+          built this bundle.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Small banner so a human visiting the deployed harness can tell
-          which backend it's pointing at. Phase 2 ships this to a public
-          Firebase Hosting URL; without the banner, it would be ambiguous
-          whether you're hitting dev or an emulator. */}
+          which backend it's pointing at. Without the banner it would be
+          ambiguous whether you're hitting dev or an emulator. */}
       <div
         data-testid="harness-banner"
         style={{
@@ -84,11 +104,8 @@ function App() {
       </div>
       <RegistrationWidget
         classId={classId}
-        // Square Web Payments SDK requires non-empty IDs to initialise.
-        // These are sandbox-formatted dummies — the form renders, but
-        // tokenization is never exercised by the current E2E suite.
-        squareAppId="sandbox-sq0idb-0000000000000000000000"
-        squareLocationId="L00000000000"
+        squareAppId={squareApplicationId}
+        squareLocationId={squareLocationId}
         env={targetEnv}
         showDigitalWallets="hide"
       />

@@ -412,9 +412,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build harness for dev
+        # Square sandbox IDs are sourced from .env.dev (public — they
+        # ship to every browser that opens the form anyway) so the
+        # workflow doesn't fork that source of truth.
         env:
           VITE_TARGET_ENV: dev
-        run: pnpm exec nx build registration-test-harness
+        run: |
+          export VITE_SQUARE_APPLICATION_ID=$(grep '^SQUARE_APPLICATION_ID=' .env.dev | cut -d= -f2-)
+          export VITE_SQUARE_LOCATION_ID=$(grep '^SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+          pnpm exec nx build registration-test-harness
 
       - name: Ensure Hosting site exists
         # Idempotent — the first deploy after the site is created

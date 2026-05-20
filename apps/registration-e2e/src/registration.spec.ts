@@ -4,12 +4,19 @@
  * Runs against the `registration-test-harness` Vite app, which mounts
  * the production `RegistrationWidget`. The same specs cover two
  * targets, picked by `E2E_TARGET`:
- *   - emulator (default) — local Vite harness + local Firebase emulator
- *   - dev                — deployed harness + deployed maple-and-spruce-dev
+ *   - emulator (default) — PR check: local Vite harness + local
+ *     Firebase emulator (PR's code) + real Square sandbox + HTTP mock
+ *     servers for Webflow / Etsy (no usable sandbox for either).
+ *   - dev               — post-merge gate: deployed harness + deployed
+ *     maple-and-spruce-dev + real Square sandbox + real Webflow / Etsy
+ *     dev integrations.
  *
  * Seeded fixtures come from `@maple/firebase/integration-test-utils`
- * via `global-setup.ts` so the spec assertions don't care which
- * backend is on the other side.
+ * via `global-setup.ts`. The class doc ID is generated per-run (UUID)
+ * and propagated through `process.env.TEST_CLASS_ID` so concurrent
+ * runs and the post-run teardown can attribute writes to the right
+ * suite. Discount fixtures keep deterministic IDs because the specs
+ * reference them by *code* (`SAVE10`, `TENOFF`), not doc ID.
  *
  * Why these tests exist:
  * - Storybook interaction tests mock `onCalculateCost`; they cannot
@@ -20,16 +27,33 @@
  * - Real Firestore enforces composite indexes; the emulator does not.
  *   The dev target catches missing indexes that emulator E2E silently
  *   passes.
- *
- * Scope: load → attendee management → cost recalc → discount apply.
- * Square tokenization is intentionally out of scope (the "Register &
- * Pay" button stays disabled until the Square Web Payments SDK marks
- * the card form ready, which requires real sandbox credentials).
+ * - Square Web Payments SDK + tokenize → createRegistration is the
+ *   highest-stakes single flow in the app; the Pay-flow specs below
+ *   exercise it against real Square sandbox infra so an SDK upgrade
+ *   or a Square API breaking change surfaces as a red CI run.
  */
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, FrameLocator } from '@playwright/test';
 
-const CLASS_ID = 'test-class-published';
+const CLASS_ID = process.env['TEST_CLASS_ID'];
+if (!CLASS_ID) {
+  throw new Error(
+    'TEST_CLASS_ID missing — globalSetup must run before specs to seed and publish the per-run class doc ID.'
+  );
+}
+
 const PRICE_LABEL = '$45.00'; // PUBLISHED_CLASS.priceCents = 4500
+
+// Square sandbox test card numbers. The full reference lives at
+// https://developer.squareup.com/docs/devtools/sandbox/payments. Visa
+// number → approved; the decline number triggers a `GENERIC_DECLINE`
+// from the Payments API.
+const SANDBOX_CARD_SUCCESS = '4111 1111 1111 1111';
+const SANDBOX_CARD_DECLINE = '4000 0000 0000 0002';
+// Any future expiration / any 3-digit CVV / any valid US ZIP — Square
+// doesn't validate these beyond format in sandbox.
+const SANDBOX_EXP = '12/30';
+const SANDBOX_CVV = '111';
+const SANDBOX_ZIP = '26554';
 
 async function openWidget(page: Page) {
   await page.goto(`/?classId=${CLASS_ID}`);
@@ -133,3 +157,161 @@ test('an invalid discount code is silently ignored', async ({ page }) => {
   // The base cost still reads as before the failed apply.
   await expect(page.getByText(`1 x ${PRICE_LABEL}`)).toBeVisible();
 });
+
+// ---------------------------------------------------------------------
+// Pay-flow specs — drive the real Square Web Payments SDK in sandbox
+// mode. These cost ~one sandbox tokenize + one sandbox order/payment
+// roundtrip each (sandbox is free). Bumped timeout: tokenize + payments
+// API roundtrip is 3-6s end to end, longer on a cold callable.
+// ---------------------------------------------------------------------
+
+test.describe('Pay flow', () => {
+  test.setTimeout(120_000);
+
+  test('completes a successful registration with a sandbox card', async ({
+    page,
+  }) => {
+    await openWidget(page);
+
+    await fillCustomerInfo(page, {
+      name: 'E2E Tester',
+      email: `e2e+${Date.now()}@maplespruce.test`,
+    });
+
+    await fillSquareCard(page, {
+      number: SANDBOX_CARD_SUCCESS,
+      exp: SANDBOX_EXP,
+      cvv: SANDBOX_CVV,
+      zip: SANDBOX_ZIP,
+    });
+
+    await page
+      .getByRole('button', { name: /Register & Pay \$/ })
+      .click();
+
+    // Success view shows "You're Registered!" + confirmation number +
+    // "$XX.XX paid". Asserting both proves: tokenize succeeded → token
+    // reached createRegistration → Square sandbox charged → Firestore
+    // registration doc written → widget transitioned to confirmed.
+    await expect(page.getByText(/You're Registered/i)).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByText('$47.70 paid')).toBeVisible();
+  });
+
+  test('surfaces a payment error when the sandbox card is declined', async ({
+    page,
+  }) => {
+    await openWidget(page);
+
+    await fillCustomerInfo(page, {
+      name: 'E2E Decline Tester',
+      email: `e2e-decline+${Date.now()}@maplespruce.test`,
+    });
+
+    await fillSquareCard(page, {
+      number: SANDBOX_CARD_DECLINE,
+      exp: SANDBOX_EXP,
+      cvv: SANDBOX_CVV,
+      zip: SANDBOX_ZIP,
+    });
+
+    await page
+      .getByRole('button', { name: /Register & Pay \$/ })
+      .click();
+
+    // Success view must NOT render — the user stays on the form with
+    // a visible error. Don't pin to a specific error string (Square
+    // wording changes) but require an alert and the absence of the
+    // success header.
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/You're Registered/i)).not.toBeVisible();
+  });
+});
+
+async function fillCustomerInfo(
+  page: Page,
+  { name, email }: { name: string; email: string }
+) {
+  await page.getByLabel('Full Name').fill(name);
+  await page.getByLabel('Email Address').fill(email);
+}
+
+/**
+ * Drive Square's Web Payments SDK card form.
+ *
+ * Strategy: wait for the Pay button to become enabled (proves the SDK
+ * loaded, `payments()` succeeded, `card.attach()` resolved, and
+ * SquareCardForm.onReady fired). At that point the iframe(s) under
+ * `#square-card-container` MUST exist. If it never enables, dump the
+ * page content + any visible alerts so the failure has a real cause
+ * in the log instead of just "iframe not found."
+ *
+ * Field selectors use HTML `autocomplete` attributes (`cc-number`,
+ * `cc-exp`, `cc-csc`, `postal-code`) — these are the stable, browser-
+ * level identifiers for credit card fields and survive Square SDK
+ * minor-version churn better than placeholder copy or DOM `name`s.
+ */
+async function fillSquareCard(
+  page: Page,
+  card: { number: string; exp: string; cvv: string; zip: string }
+) {
+  const payButton = page.getByRole('button', { name: /Register & Pay \$/ });
+  const alert = page.getByRole('alert');
+
+  try {
+    await expect(payButton).toBeEnabled({ timeout: 45_000 });
+  } catch (err) {
+    const original = err instanceof Error ? err.message : String(err);
+    const alertText = (await alert.count())
+      ? await alert.allInnerTexts()
+      : ['(no alert visible)'];
+    const bodyText = await page
+      .locator('body')
+      .innerText()
+      .catch((readErr: unknown) =>
+        `(could not read body: ${readErr instanceof Error ? readErr.message : String(readErr)})`
+      );
+    throw new Error(
+      `Pay button never enabled — SDK likely failed to initialize.\nOriginal wait error: ${original}\nAlerts: ${JSON.stringify(alertText)}\nPage text (first 600 chars):\n${bodyText.slice(0, 600)}`
+    );
+  }
+
+  // Single frame OR multi-frame: try each iframe under the container
+  // and fill whichever input is present.
+  const iframeNames = await page
+    .locator('#square-card-container iframe')
+    .evaluateAll((els) =>
+      (els as HTMLIFrameElement[]).map((el) => el.getAttribute('name') ?? '')
+    );
+
+  const fillers: Array<[selector: string, value: string]> = [
+    ['input[autocomplete="cc-number"]', card.number],
+    ['input[autocomplete="cc-exp"]', card.exp],
+    ['input[autocomplete="cc-csc"]', card.cvv],
+    ['input[autocomplete="postal-code"]', card.zip],
+  ];
+  const filled = new Set<string>();
+
+  for (const name of iframeNames) {
+    if (!name) continue;
+    const frame: FrameLocator = page.frameLocator(`iframe[name="${name}"]`);
+    for (const [selector, value] of fillers) {
+      if (filled.has(selector)) continue;
+      const input = frame.locator(selector);
+      if ((await input.count()) > 0) {
+        await input.fill(value);
+        filled.add(selector);
+      }
+    }
+  }
+
+  if (filled.size < fillers.length) {
+    const missing = fillers
+      .filter(([sel]) => !filled.has(sel))
+      .map(([sel]) => sel);
+    throw new Error(
+      `fillSquareCard: did not find input selectors ${JSON.stringify(missing)} in any iframe (saw frames=${JSON.stringify(iframeNames)})`
+    );
+  }
+}

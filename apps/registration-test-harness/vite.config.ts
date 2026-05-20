@@ -21,6 +21,8 @@ const offset = Number.parseInt(process.env['EMULATOR_PORT_OFFSET'] ?? '0', 10);
 const harnessPort = 4173 + offset;
 const functionsPort = 5001 + offset;
 const targetEnv = process.env['VITE_TARGET_ENV'] ?? 'emulator';
+const squareApplicationId = process.env['VITE_SQUARE_APPLICATION_ID'] ?? '';
+const squareLocationId = process.env['VITE_SQUARE_LOCATION_ID'] ?? '';
 
 export default defineConfig({
   root: __dirname,
@@ -30,20 +32,31 @@ export default defineConfig({
       projects: [resolve(__dirname, '../../tsconfig.base.json')],
     }),
   ],
+  // Bind to `localhost` (not 127.0.0.1) — Square's Web Payments SDK
+  // explicitly allows `localhost` as a secure-context exception, but
+  // raw IPs (127.0.0.1) trip its "HTTPS required" rejection even
+  // though Chromium considers both equivalent.
   server: {
     port: harnessPort,
     strictPort: true,
-    host: '127.0.0.1',
+    host: 'localhost',
   },
   preview: {
     port: harnessPort,
     strictPort: true,
-    host: '127.0.0.1',
+    host: 'localhost',
   },
+  // Forward selected process.env values into the client bundle. Vite's
+  // automatic VITE_*-from-.env loading doesn't read process.env, so
+  // anything CI sets must be mirrored explicitly here.
   define: {
     'import.meta.env.VITE_FUNCTIONS_EMULATOR_PORT': JSON.stringify(
       String(functionsPort)
     ),
     'import.meta.env.VITE_TARGET_ENV': JSON.stringify(targetEnv),
+    'import.meta.env.VITE_SQUARE_APPLICATION_ID':
+      JSON.stringify(squareApplicationId),
+    'import.meta.env.VITE_SQUARE_LOCATION_ID':
+      JSON.stringify(squareLocationId),
   },
 });
