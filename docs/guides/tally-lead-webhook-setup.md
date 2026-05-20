@@ -127,20 +127,27 @@ The function verifies `tally-signature` against
 
 ## 5. Webflow page snippet
 
-The hidden fields above only fire if something writes to the iframe
-before submit. Add this snippet to the Webflow page that embeds the
-Tally form. Use **Webflow Designer → page settings → Inside `<head>`
-tag** (or a Custom Code block at the bottom of the page body):
+The hidden fields above only fire if something writes to the Tally
+iframe URL before the form loads. Tally has two embed modes and they
+need slightly different handling — this snippet covers both:
+
+- **Modal popup** (`<button data-tally-open="formId" data-tally-layout="modal">`):
+  the embed library wires its own click handler that calls
+  `Tally.openPopup(formId, options)` internally. We intercept the
+  click in the capture phase, read the page cookies, and forward
+  them as `hiddenFields` on a manual `Tally.openPopup` call. The
+  existing `data-tally-*` attrs are replayed onto the options
+  object so layout / emoji / etc. survive.
+- **Inline iframe** (`<iframe data-tally-src="...">`): the embed
+  library rewrites these on load. We pre-rewrite the `src` on
+  DOMContentLoaded with the hidden-field params appended as query
+  string args, so Tally picks them up before the form first paints.
+
+Add this snippet to **Webflow Designer → page settings → Inside
+`<head>` tag**, then publish:
 
 ```html
 <script>
-  // Populate Tally hidden fields with GA / Meta cookies + page context.
-  //
-  // Works with Tally's inline embed (the form is rendered as an iframe
-  // hosted at tally.so). We listen for the iframe's "Tally.LoadedForm"
-  // postMessage and inject a `?fieldName=value` query string back into
-  // the iframe src — Tally reads URL params into the matching hidden
-  // fields automatically.
   (function () {
     function readCookie(name) {
       var match = document.cookie.match(
@@ -155,44 +162,81 @@ tag** (or a Custom Code block at the bottom of the page body):
       var raw = readCookie('_ga');
       if (!raw) return '';
       var parts = raw.split('.');
-      // Last two segments concatenated with a dot ARE the client id.
       if (parts.length < 4) return '';
       return parts[2] + '.' + parts[3];
     }
 
-    var params = {
-      _ga_client_id: gaClientId(),
-      _fbp: readCookie('_fbp'),
-      _fbc: readCookie('_fbc'),
-      referrer: document.referrer || '',
-      landing_page: window.location.href,
-    };
+    function getHiddenFields() {
+      return {
+        _ga_client_id: gaClientId(),
+        _fbp: readCookie('_fbp'),
+        _fbc: readCookie('_fbc'),
+        referrer: document.referrer || '',
+        landing_page: window.location.href,
+      };
+    }
 
+    function dataAttrToOption(attrCamel) {
+      // dataset key "tallyLayout" → option key "layout".
+      var key = attrCamel.replace(/^tally/, '');
+      return key.charAt(0).toLowerCase() + key.slice(1);
+    }
+
+    // -- Modal popup path: intercept clicks on [data-tally-open] --------------
+    document.addEventListener(
+      'click',
+      function (e) {
+        var target = e.target;
+        while (target && target !== document) {
+          if (target.dataset && target.dataset.tallyOpen) break;
+          target = target.parentElement;
+        }
+        if (!target || target === document) return;
+        var formId = target.dataset.tallyOpen;
+        if (!formId || !window.Tally || typeof window.Tally.openPopup !== 'function') return;
+
+        var options = { hiddenFields: getHiddenFields() };
+        Object.keys(target.dataset).forEach(function (key) {
+          if (key === 'tallyOpen') return;
+          options[dataAttrToOption(key)] = target.dataset[key];
+        });
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        window.Tally.openPopup(formId, options);
+      },
+      true // capture phase — beats the embed library's bubble-phase handler
+    );
+
+    // -- Inline iframe path: rewrite [data-tally-src] before Tally loads it ---
     function appendParams(srcUrl) {
       var url = new URL(srcUrl, window.location.origin);
-      Object.keys(params).forEach(function (key) {
-        if (params[key]) url.searchParams.set(key, params[key]);
+      var fields = getHiddenFields();
+      Object.keys(fields).forEach(function (k) {
+        if (fields[k]) url.searchParams.set(k, fields[k]);
       });
       return url.toString();
     }
-
-    // Tally posts a "Tally.LoadedForm" message once the iframe is ready.
-    window.addEventListener('message', function (event) {
-      if (
-        !event.data ||
-        typeof event.data !== 'object' ||
-        event.data.type !== 'Tally.LoadedForm'
-      ) {
-        return;
-      }
-      var iframes = document.querySelectorAll('iframe[src*="tally.so"]');
+    function rewriteInlineFrames() {
+      var iframes = document.querySelectorAll(
+        'iframe[data-tally-src], iframe[src*="tally.so/embed"], iframe[src*="tally.so/r/"]'
+      );
       iframes.forEach(function (iframe) {
-        if (!iframe.dataset.tallyParamsApplied) {
-          iframe.dataset.tallyParamsApplied = '1';
-          iframe.src = appendParams(iframe.src);
+        if (iframe.dataset.tallyParamsApplied) return;
+        iframe.dataset.tallyParamsApplied = '1';
+        var src = iframe.dataset.tallySrc || iframe.src;
+        if (iframe.dataset.tallySrc) {
+          iframe.dataset.tallySrc = appendParams(src);
+        } else {
+          iframe.src = appendParams(src);
         }
       });
-    });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', rewriteInlineFrames);
+    } else {
+      rewriteInlineFrames();
+    }
   })();
 </script>
 ```
