@@ -516,7 +516,9 @@ jobs:
 
           # maple-core: Etsy mock server URL + fake secrets
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
+          # tallyLeadWebhook (maple-core) declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
           # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
           # uses its built-in sandbox endpoint). Etsy still mocked.
