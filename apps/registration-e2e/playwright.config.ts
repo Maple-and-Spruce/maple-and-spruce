@@ -28,7 +28,12 @@ const baseURL =
   process.env['HARNESS_BASE_URL'] ??
   (target === 'dev'
     ? DEFAULT_DEV_HARNESS_URL
-    : `http://127.0.0.1:${harnessPort}`);
+    : // Use `localhost` (not `127.0.0.1`) — Square's Web Payments SDK
+      // allows localhost as a secure-context exception but rejects raw
+      // IPs with "Web Payments SDK can only be embedded on sites that
+      // use HTTPS." Both resolve to the same loopback so Vite (bound
+      // to localhost) accepts either.
+      `http://localhost:${harnessPort}`);
 
 export default defineConfig({
   testDir: './src',

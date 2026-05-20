@@ -32,15 +32,19 @@ export default defineConfig({
       projects: [resolve(__dirname, '../../tsconfig.base.json')],
     }),
   ],
+  // Bind to `localhost` (not 127.0.0.1) — Square's Web Payments SDK
+  // explicitly allows `localhost` as a secure-context exception, but
+  // raw IPs (127.0.0.1) trip its "HTTPS required" rejection even
+  // though Chromium considers both equivalent.
   server: {
     port: harnessPort,
     strictPort: true,
-    host: '127.0.0.1',
+    host: 'localhost',
   },
   preview: {
     port: harnessPort,
     strictPort: true,
-    host: '127.0.0.1',
+    host: 'localhost',
   },
   // Forward selected process.env values into the client bundle. Vite's
   // automatic VITE_*-from-.env loading doesn't read process.env, so
