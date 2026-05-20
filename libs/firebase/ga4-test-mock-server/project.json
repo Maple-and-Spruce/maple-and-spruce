@@ -1,0 +1,8 @@
+{
+  "name": "firebase-ga4-test-mock-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/ga4-test-mock-server/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:test-util"],
+  "targets": {}
+}

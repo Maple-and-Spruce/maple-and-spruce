@@ -111,6 +111,7 @@
     "../../libs/firebase/maple-functions/list-users/**/*.ts",
     "../../libs/firebase/maple-functions/grant-admin-role/**/*.ts",
     "../../libs/firebase/maple-functions/revoke-admin-role/**/*.ts",
+    "../../libs/firebase/maple-functions/tally-lead-webhook/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
     "../../libs/ts/domain/src/**/*.ts",

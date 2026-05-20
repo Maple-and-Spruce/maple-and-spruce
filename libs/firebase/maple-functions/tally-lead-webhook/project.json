@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-tally-lead-webhook",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/tally-lead-webhook/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}
