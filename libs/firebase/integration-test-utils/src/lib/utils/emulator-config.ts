@@ -7,6 +7,8 @@ const ORIGIN_PORT = 3000 + OFFSET;
 const SQUARE_MOCK_SERVER_PORT = 9997 + OFFSET;
 const WEBFLOW_MOCK_SERVER_PORT = 9996 + OFFSET;
 const ETSY_MOCK_SERVER_PORT = 9998 + OFFSET;
+const GA4_MOCK_SERVER_PORT = 9995 + OFFSET;
+const META_CAPI_MOCK_SERVER_PORT = 9994 + OFFSET;
 
 export const EMULATOR_CONFIG = {
   projectId: 'maple-and-spruce-dev',
@@ -21,6 +23,10 @@ export const EMULATOR_CONFIG = {
   webflowMockServerUrl: `http://localhost:${WEBFLOW_MOCK_SERVER_PORT}`,
   /** Dedicated Etsy mock server */
   etsyMockServerUrl: `http://localhost:${ETSY_MOCK_SERVER_PORT}`,
+  /** GA4 Measurement Protocol mock server */
+  ga4MockServerUrl: `http://localhost:${GA4_MOCK_SERVER_PORT}`,
+  /** Meta Conversions API mock server */
+  metaCapiMockServerUrl: `http://localhost:${META_CAPI_MOCK_SERVER_PORT}`,
   portOffset: OFFSET,
 } as const;
 

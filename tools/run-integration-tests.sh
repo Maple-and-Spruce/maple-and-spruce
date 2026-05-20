@@ -29,15 +29,17 @@ UI_PORT=$((4000 + OFFSET))
 SQUARE_MOCK_SERVER_PORT=$((9997 + OFFSET))
 WEBFLOW_MOCK_SERVER_PORT=$((9996 + OFFSET))
 ETSY_MOCK_SERVER_PORT=$((9998 + OFFSET))
+GA4_MOCK_SERVER_PORT=$((9995 + OFFSET))
+META_CAPI_MOCK_SERVER_PORT=$((9994 + OFFSET))
 
 if [ "$OFFSET" != "0" ]; then
-  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT"
+  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT"
 fi
 
 # ---------------------------------------------------------------------------
 # 1. Kill stale processes on OUR ports only (leave other worktrees alone)
 # ---------------------------------------------------------------------------
-for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
+for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
   lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 1
@@ -71,7 +73,13 @@ done
 
 # maple-core: Etsy mock server URL + fake secrets (for listEtsyListings, getEtsyTemplates)
 echo "ETSY_API_BASE=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/application" >> dist/apps/functions/.env
-printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
+# Tally lead webhook → GA4 + Meta CAPI mock servers
+echo "GA4_BASE_URL=http://localhost:$GA4_MOCK_SERVER_PORT" >> dist/apps/functions/.env
+echo "META_CAPI_BASE_URL=http://localhost:$META_CAPI_MOCK_SERVER_PORT" >> dist/apps/functions/.env
+echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions/.env
+echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions/.env
+echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
+printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
 # maple-square: Square mock server URL + fake secrets
 echo "SQUARE_BASE_URL=http://localhost:$SQUARE_MOCK_SERVER_PORT" >> dist/apps/functions-square/.env
@@ -85,7 +93,7 @@ echo "ETSY_TOKEN_URL=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/public/oauth/tok
 printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
 # ---------------------------------------------------------------------------
-# 4. Start per-service mock HTTP servers (Square, Webflow, Etsy)
+# 4. Start per-service mock HTTP servers (Square, Webflow, Etsy, GA4, Meta CAPI)
 # ---------------------------------------------------------------------------
 # Pre-warm npx tsx cache to avoid race condition when parallel invocations
 # try to download tsx simultaneously
@@ -102,6 +110,14 @@ WEBFLOW_MOCK_PID=$!
 echo "Starting Etsy mock server on :$ETSY_MOCK_SERVER_PORT..."
 ETSY_MOCK_SERVER_PORT="$ETSY_MOCK_SERVER_PORT" npx tsx libs/firebase/etsy-test-mock-server/start.ts &
 ETSY_MOCK_PID=$!
+
+echo "Starting GA4 mock server on :$GA4_MOCK_SERVER_PORT..."
+GA4_MOCK_SERVER_PORT="$GA4_MOCK_SERVER_PORT" npx tsx libs/firebase/ga4-test-mock-server/start.ts &
+GA4_MOCK_PID=$!
+
+echo "Starting Meta CAPI mock server on :$META_CAPI_MOCK_SERVER_PORT..."
+META_CAPI_MOCK_SERVER_PORT="$META_CAPI_MOCK_SERVER_PORT" npx tsx libs/firebase/meta-capi-test-mock-server/start.ts &
+META_CAPI_MOCK_PID=$!
 sleep 2
 
 # ---------------------------------------------------------------------------
@@ -151,6 +167,8 @@ EMULATOR_PORT_OFFSET="$OFFSET" npx firebase --config "$FIREBASE_CONFIG_FILE" emu
 kill $SQUARE_MOCK_PID 2>/dev/null || true
 kill $WEBFLOW_MOCK_PID 2>/dev/null || true
 kill $ETSY_MOCK_PID 2>/dev/null || true
+kill $GA4_MOCK_PID 2>/dev/null || true
+kill $META_CAPI_MOCK_PID 2>/dev/null || true
 
 if [ $EXIT_CODE -eq 0 ]; then
   echo ""

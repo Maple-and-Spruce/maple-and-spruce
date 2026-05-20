@@ -63,3 +63,9 @@ export {
   DEFAULT_IMAGE_MAX_BYTES,
   type ImageUploadValidationInput,
 } from './image-upload.validation';
+
+// Lead attribution (Tally → GA4 + Meta CAPI)
+export {
+  tallyLeadValidation,
+  type TallyLeadValidationInput,
+} from './tally-lead.validation';
