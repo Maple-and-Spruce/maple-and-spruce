@@ -28,6 +28,11 @@ import {
   type TallyLeadValidationInput,
 } from '@maple/ts/validation';
 
+// Secrets are set per-project via `firebase functions:secrets:set` and
+// are required to be present for the function to deploy successfully.
+// String params (below) MUST also have matching entries in .env.dev /
+// .env.prod — Firebase prompts via stdin for any unset param during
+// deploy-time function discovery, even when there's a default in code.
 const tallyWebhookSecret = defineSecret('TALLY_WEBHOOK_SECRET');
 const ga4ApiSecret = defineSecret('GA4_API_SECRET');
 const metaCapiToken = defineSecret('META_CAPI_TOKEN');
