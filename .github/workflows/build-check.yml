@@ -427,18 +427,23 @@ jobs:
           fi
 
   registration-e2e:
-    # Phase-1 FE→BE end-to-end: drives the production RegistrationWidget
+    # PR-time FE→BE end-to-end: drives the production RegistrationWidget
     # (mounted in apps/registration-test-harness) against the local
-    # Firebase emulator. Catches bugs neither the Storybook interaction
-    # tests nor the cloud-function integration tests can see — i.e. the
-    # arg-shape contract between the form and the callable, and the
-    # render contract between the cost-calc response and the cost
-    # summary. The same suite is reused in Phase 2 against the deployed
-    # dev project; the only difference is HARNESS_BASE_URL.
+    # Firebase emulator with the PR's own cloud-function code, the real
+    # Square sandbox, and HTTP mock servers for Webflow + Etsy (no real
+    # sandbox exists for those). Catches bugs neither the Storybook
+    # interaction tests nor the cloud-function integration tests can
+    # see: the arg-shape contract between the form and the callable,
+    # the cost-summary render contract, AND the Square tokenize →
+    # createRegistration → success flow against actual Square infra.
+    #
+    # The same spec set is reused post-merge against deployed dev
+    # (see firebase-functions-merge.yml :: e2e_dev) — that's the
+    # "real-everything including Webflow/Etsy" gate before prod.
     name: Registration E2E
     needs: [install]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
@@ -470,9 +475,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Build function codebases
-        # All four are required because firebase.json declares them all;
-        # the emulator refuses to boot if any source dir is missing,
-        # even if the test only exercises maple-core functions.
+        # All four are required: createRegistration lives in maple-square,
+        # the Firestore-trigger sync functions live in maple-sync, and
+        # firebase.json declares all four source dirs.
         run: |
           pnpm exec nx run functions:build
           pnpm exec nx run functions-square:build
@@ -480,48 +485,77 @@ jobs:
           pnpm exec nx run functions-calendar:build
 
       - name: Create emulator .env
-        # Same shape as the integration-tests job — every codebase
-        # needs ALL project-level params or the emulator silently hangs
-        # on a stdin prompt. The Phase-1 E2E doesn't actually exercise
-        # Square / Webflow / Etsy paths but the emulator still loads
-        # those codebases at boot.
+        # Mirrors the integration-tests job, with one critical difference:
+        # we DON'T set SQUARE_BASE_URL so the SDK uses its built-in
+        # sandbox base URL (connect.squareupsandbox.com) and we feed it
+        # the real sandbox access token from repo secrets. Webflow and
+        # Etsy still hit local mock servers because there's no usable
+        # sandbox for either.
         #
         # ALLOWED_ORIGINS is extended with the harness origin
-        # (127.0.0.1:4173). Without this every callable comes back as
-        # `permission-denied` — the function CORS middleware returns
-        # 403 for any origin not in the allowlist, which the Firebase
-        # SDK maps to permission-denied.
+        # (127.0.0.1:4173) so the function CORS middleware doesn't
+        # turn callables into permission-denied.
+        env:
+          SQUARE_SANDBOX_ACCESS_TOKEN: ${{ secrets.SQUARE_SANDBOX_ACCESS_TOKEN }}
         run: |
           for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
-          echo "ETSY_API_BASE=http://localhost:99999/v3/application" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
-          printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
-          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
-          # Point the Webflow / Etsy SDKs at a closed local port so the
-          # Firestore triggers that fire from the seed (syncClassToWebflow,
-          # etc.) fail fast with ECONNREFUSED instead of round-tripping to
-          # api.webflow.com / api.etsy.com with the fake tokens. Removes
-          # ~700ms of noise per run and stops every CI invocation from
-          # generating an outbound auth-failure on a third-party API.
-          echo "WEBFLOW_BASE_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
-          echo "ETSY_API_BASE=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
-          echo "ETSY_TOKEN_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+          # maple-core: Etsy mock server URL + fake secrets
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions/.secret.local
+
+          # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
+          # uses its built-in sandbox endpoint). Etsy still mocked.
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
+          printf "SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
+
+          # maple-sync: Webflow + Etsy mock servers
+          echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-sync/.env
+          echo "ETSY_TOKEN_URL=http://localhost:9998/v3/public/oauth/token" >> dist/apps/functions-sync/.env
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
           for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
             EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
             echo "ALLOWED_ORIGINS=$EXISTING,http://127.0.0.1:4173,http://localhost:4173" >> "$dir/.env"
           done
 
-      - name: Run Playwright against emulator
-        # firebase emulators:exec handles emulator lifecycle (boot →
-        # run → teardown). Playwright's webServer config inside the
-        # nx target boots the Vite test harness on 127.0.0.1:4173.
+      - name: Start mock servers (Webflow + Etsy)
+        # Square is intentionally NOT mocked — the spec exercises real
+        # tokenization against Square sandbox. Webflow and Etsy don't
+        # have a usable sandbox so we keep the in-repo mock servers.
         run: |
+          # Pre-warm npx tsx cache (matches integration-tests pattern)
+          npx tsx --version
+
+          WEBFLOW_MOCK_SERVER_PORT=9996 npx tsx libs/firebase/webflow-test-mock-server/start.ts &
+          echo "WEBFLOW_MOCK_PID=$!" >> $GITHUB_ENV
+          ETSY_MOCK_SERVER_PORT=9998 npx tsx libs/firebase/etsy-test-mock-server/start.ts &
+          echo "ETSY_MOCK_PID=$!" >> $GITHUB_ENV
+          sleep 2
+
+      - name: Run Playwright against emulator
+        # firebase emulators:exec handles emulator lifecycle. Playwright's
+        # webServer config (in playwright.config.ts) boots the Vite
+        # harness on 127.0.0.1:4173 with VITE_SQUARE_APPLICATION_ID /
+        # VITE_SQUARE_LOCATION_ID picked up from process.env via
+        # vite.config.ts. The IDs are extracted from .env.dev (public —
+        # they ship to browsers) so the workflow doesn't fork that
+        # source of truth.
+        run: |
+          export VITE_SQUARE_APPLICATION_ID=$(grep '^SQUARE_APPLICATION_ID=' .env.dev | cut -d= -f2-)
+          export VITE_SQUARE_LOCATION_ID=$(grep '^SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+
           npx firebase emulators:exec --project=dev --only auth,firestore,functions \
             "pnpm exec nx run registration-e2e:e2e"
+
+      - name: Stop mock servers
+        if: always()
+        run: |
+          kill "$WEBFLOW_MOCK_PID" 2>/dev/null || true
+          kill "$ETSY_MOCK_PID" 2>/dev/null || true
 
       - name: Upload Playwright report on failure
         if: failure()

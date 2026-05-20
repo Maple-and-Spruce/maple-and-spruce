@@ -7,17 +7,15 @@
  * google-github-actions/auth, or `gcloud auth application-default
  * login` locally).
  *
- * Idempotent: re-running overwrites the same doc IDs. The fixture
- * IDs are deterministic (`test-class-published`, etc.) so the
- * Webflow sync triggers find/update the same CMS item each run
- * rather than accumulating new ones — and because dev syncs with
- * isDev=true, those items are CMS drafts, never published to the
- * live site (see libs/firebase/maple-functions/sync-class-to-webflow).
+ * The class doc ID is unique per run (generated in globalSetup) so
+ * concurrent CI runs can't collide and the Pay-flow registrations
+ * created during the suite can be cleanly attributed/deleted. Discount
+ * fixtures use deterministic IDs and are simply overwritten each run
+ * — they're stable code fixtures, not per-run data.
  */
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import {
-  CLASS_IDS,
   PUBLISHED_CLASS,
   DISCOUNT_IDS,
   PERCENT_DISCOUNT,
@@ -37,11 +35,32 @@ function getAdminDb() {
   return getFirestore();
 }
 
-export async function seedDev(): Promise<void> {
+export async function seedDev(classId: string): Promise<void> {
   const db = getAdminDb();
   await Promise.all([
-    db.collection('classes').doc(CLASS_IDS.published).set(PUBLISHED_CLASS),
+    db.collection('classes').doc(classId).set(PUBLISHED_CLASS),
     db.collection('discounts').doc(DISCOUNT_IDS.percent).set(PERCENT_DISCOUNT),
     db.collection('discounts').doc(DISCOUNT_IDS.amount).set(AMOUNT_DISCOUNT),
   ]);
+}
+
+/**
+ * Remove the seeded class plus any registrations it accumulated during
+ * the run. Discount fixtures are left alone — they're stable. Idempotent:
+ * missing docs are silently ignored by Firestore.
+ *
+ * The registration cleanup matters: Pay-flow specs create real Square
+ * sandbox orders + Firestore registration docs. Without this they'd
+ * pile up in dev indefinitely.
+ */
+export async function teardownDev(classId: string): Promise<void> {
+  const db = getAdminDb();
+
+  const regs = await db
+    .collection('registrations')
+    .where('classId', '==', classId)
+    .get();
+  await Promise.all(regs.docs.map((d) => d.ref.delete()));
+
+  await db.collection('classes').doc(classId).delete();
 }
