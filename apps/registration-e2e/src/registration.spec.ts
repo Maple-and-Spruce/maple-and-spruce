@@ -262,15 +262,18 @@ async function fillSquareCard(
   try {
     await expect(payButton).toBeEnabled({ timeout: 45_000 });
   } catch (err) {
+    const original = err instanceof Error ? err.message : String(err);
     const alertText = (await alert.count())
       ? await alert.allInnerTexts()
       : ['(no alert visible)'];
     const bodyText = await page
       .locator('body')
       .innerText()
-      .catch(() => '(could not read body)');
+      .catch((readErr: unknown) =>
+        `(could not read body: ${readErr instanceof Error ? readErr.message : String(readErr)})`
+      );
     throw new Error(
-      `Pay button never enabled — SDK likely failed to initialize.\nAlerts: ${JSON.stringify(alertText)}\nPage text (first 600 chars):\n${bodyText.slice(0, 600)}`
+      `Pay button never enabled — SDK likely failed to initialize.\nOriginal wait error: ${original}\nAlerts: ${JSON.stringify(alertText)}\nPage text (first 600 chars):\n${bodyText.slice(0, 600)}`
     );
   }
 
