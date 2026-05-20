@@ -557,12 +557,27 @@ jobs:
           kill "$WEBFLOW_MOCK_PID" 2>/dev/null || true
           kill "$ETSY_MOCK_PID" 2>/dev/null || true
 
-      - name: Upload Playwright report on failure
+      - name: Locate Playwright report paths
+        if: failure()
+        # The HTML reporter's output path depends on Playwright's resolved
+        # cwd, which has been surprising under nx (the path differs from
+        # what `cwd: apps/registration-e2e` in project.json suggests).
+        # Find both report + raw test-results wherever they ended up.
+        run: |
+          find . -type d \( -name 'playwright-report' -o -name 'test-results' \) \
+            -not -path '*/node_modules/*' -not -path '*/.next/*' \
+            -print
+
+      - name: Upload Playwright artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-registration-e2e
-          path: apps/registration-e2e/playwright-report
+          # Tar everything under either dir name anywhere in the tree so
+          # we don't lose traces/screenshots to a path mismatch again.
+          path: |
+            **/playwright-report/**
+            **/test-results/**
           if-no-files-found: ignore
           retention-days: 7
 

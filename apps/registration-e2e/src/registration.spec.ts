@@ -185,13 +185,9 @@ test.describe('Pay flow', () => {
       zip: SANDBOX_ZIP,
     });
 
-    // Wait for SDK readiness — Pay button stays disabled until
-    // SquareCardForm.onReady fires (cardRef.current set).
-    const payButton = page.getByRole('button', {
-      name: /Register & Pay \$/,
-    });
-    await expect(payButton).toBeEnabled({ timeout: 30_000 });
-    await payButton.click();
+    await page
+      .getByRole('button', { name: /Register & Pay \$/ })
+      .click();
 
     // Success view shows "You're Registered!" + confirmation number +
     // "$XX.XX paid". Asserting both proves: tokenize succeeded → token
@@ -220,11 +216,9 @@ test.describe('Pay flow', () => {
       zip: SANDBOX_ZIP,
     });
 
-    const payButton = page.getByRole('button', {
-      name: /Register & Pay \$/,
-    });
-    await expect(payButton).toBeEnabled({ timeout: 30_000 });
-    await payButton.click();
+    await page
+      .getByRole('button', { name: /Register & Pay \$/ })
+      .click();
 
     // Success view must NOT render — the user stays on the form with
     // a visible error. Don't pin to a specific error string (Square
@@ -246,45 +240,75 @@ async function fillCustomerInfo(
 /**
  * Drive Square's Web Payments SDK card form.
  *
- * The SDK renders four separate iframes inside `#square-card-container`
- * (one per field, for PCI scope reduction). Each iframe contains a
- * single `<input>` we can locate by placeholder text — that's the most
- * stable selector across SDK versions, since Square's internal element
- * names include UUIDs.
+ * Strategy: wait for the Pay button to become enabled (proves the SDK
+ * loaded, `payments()` succeeded, `card.attach()` resolved, and
+ * SquareCardForm.onReady fired). At that point the iframe(s) under
+ * `#square-card-container` MUST exist. If it never enables, dump the
+ * page content + any visible alerts so the failure has a real cause
+ * in the log instead of just "iframe not found."
  *
- * If a future SDK update changes placeholder copy, this helper is the
- * one place to update.
+ * Field selectors use HTML `autocomplete` attributes (`cc-number`,
+ * `cc-exp`, `cc-csc`, `postal-code`) — these are the stable, browser-
+ * level identifiers for credit card fields and survive Square SDK
+ * minor-version churn better than placeholder copy or DOM `name`s.
  */
 async function fillSquareCard(
   page: Page,
   card: { number: string; exp: string; cvv: string; zip: string }
 ) {
-  const container = page.locator('#square-card-container');
-  // Wait for at least one iframe to mount.
-  await expect(container.locator('iframe').first()).toBeVisible({
-    timeout: 30_000,
-  });
+  const payButton = page.getByRole('button', { name: /Register & Pay \$/ });
+  const alert = page.getByRole('alert');
 
-  const fields = [
-    { placeholder: /card number/i, value: card.number },
-    { placeholder: /(MM ?\/ ?YY|expiration)/i, value: card.exp },
-    { placeholder: /CVV|CVC/i, value: card.cvv },
-    { placeholder: /(ZIP|postal)/i, value: card.zip },
+  try {
+    await expect(payButton).toBeEnabled({ timeout: 45_000 });
+  } catch (err) {
+    const alertText = (await alert.count())
+      ? await alert.allInnerTexts()
+      : ['(no alert visible)'];
+    const bodyText = await page
+      .locator('body')
+      .innerText()
+      .catch(() => '(could not read body)');
+    throw new Error(
+      `Pay button never enabled — SDK likely failed to initialize.\nAlerts: ${JSON.stringify(alertText)}\nPage text (first 600 chars):\n${bodyText.slice(0, 600)}`
+    );
+  }
+
+  // Single frame OR multi-frame: try each iframe under the container
+  // and fill whichever input is present.
+  const iframeNames = await page
+    .locator('#square-card-container iframe')
+    .evaluateAll((els) =>
+      (els as HTMLIFrameElement[]).map((el) => el.getAttribute('name') ?? '')
+    );
+
+  const fillers: Array<[selector: string, value: string]> = [
+    ['input[autocomplete="cc-number"]', card.number],
+    ['input[autocomplete="cc-exp"]', card.exp],
+    ['input[autocomplete="cc-csc"]', card.cvv],
+    ['input[autocomplete="postal-code"]', card.zip],
   ];
+  const filled = new Set<string>();
 
-  // Each frame holds exactly one of the four fields. Iterate the
-  // mounted iframes and match by placeholder content.
-  const frameElements = await container.locator('iframe').all();
-  for (const frameEl of frameElements) {
-    const name = await frameEl.getAttribute('name');
+  for (const name of iframeNames) {
     if (!name) continue;
     const frame: FrameLocator = page.frameLocator(`iframe[name="${name}"]`);
-    for (const field of fields) {
-      const input = frame.getByPlaceholder(field.placeholder);
+    for (const [selector, value] of fillers) {
+      if (filled.has(selector)) continue;
+      const input = frame.locator(selector);
       if ((await input.count()) > 0) {
-        await input.fill(field.value);
-        break;
+        await input.fill(value);
+        filled.add(selector);
       }
     }
+  }
+
+  if (filled.size < fillers.length) {
+    const missing = fillers
+      .filter(([sel]) => !filled.has(sel))
+      .map(([sel]) => sel);
+    throw new Error(
+      `fillSquareCard: did not find input selectors ${JSON.stringify(missing)} in any iframe (saw frames=${JSON.stringify(iframeNames)})`
+    );
   }
 }
