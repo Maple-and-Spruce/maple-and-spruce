@@ -17,14 +17,11 @@ const mocks = vi.hoisted(() => {
     createProduct: vi.fn(),
     findBySquareInvoiceId: vi.fn(),
     markPaidBySquareWebhook: vi.fn(),
-    // Square catalogService
-    getItem: vi.fn(),
-    listItems: vi.fn(),
-    getItemImageUrl: vi.fn(),
+    requestRefresh: vi.fn(),
   };
 });
 
-// Mock ProductRepository + InvoiceRepository
+// Mock ProductRepository + InvoiceRepository + CatalogSyncRequestRepository
 vi.mock('@maple/firebase/database', () => ({
   ProductRepository: {
     findAll: mocks.findAll,
@@ -37,13 +34,9 @@ vi.mock('@maple/firebase/database', () => ({
     findBySquareInvoiceId: mocks.findBySquareInvoiceId,
     markPaidBySquareWebhook: mocks.markPaidBySquareWebhook,
   },
-}));
-
-// Mock Square module (not used in inventory handler but needed for imports)
-vi.mock('@maple/firebase/square', () => ({
-  Square: vi.fn(),
-  SQUARE_SECRET_NAMES: ['SQUARE_ACCESS_TOKEN'],
-  SQUARE_STRING_NAMES: ['SQUARE_LOCATION_ID'],
+  CatalogSyncRequestRepository: {
+    requestRefresh: mocks.requestRefresh,
+  },
 }));
 
 // Mock firebase-functions params
@@ -369,376 +362,32 @@ describe('Square Webhook - invoice.payment_made handler', () => {
   });
 });
 
-describe('Square Webhook - handleCatalogUpdate', () => {
+describe('Square Webhook - handleCatalogUpdate (enqueue path)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  const makeCatalogEvent = (catalogObjectId?: string) => ({
-    merchant_id: 'ML1TB2DX6N1B0',
-    type: 'catalog.version.updated' as const,
-    event_id: 'evt-cat',
-    created_at: '2026-04-23T14:00:00Z',
-    data: {
-      type: 'catalog_item',
-      id: catalogObjectId ?? '',
-    },
+  // The catalog handler no longer performs a sync inline — it bumps the
+  // singleton `catalogSyncRequests/pending` doc and returns. The actual
+  // sync runs in `processCatalogSyncRequest` (separate cloud function).
+  // Tests for the sync work itself live in
+  // `process-catalog-sync-request.spec.ts`.
+
+  it('enqueues a sync request and returns immediately', async () => {
+    mocks.requestRefresh.mockResolvedValue(undefined);
+
+    const { handleCatalogUpdate } = await import('./square-webhook');
+    const result = await handleCatalogUpdate();
+
+    expect(mocks.requestRefresh).toHaveBeenCalledTimes(1);
+    expect(result.action).toBe('enqueued');
   });
 
-  const makeSquare = () => ({
-    locationId: 'LW0MMBZ',
-    catalogService: {
-      getItem: mocks.getItem,
-      listItems: mocks.listItems,
-      getItemImageUrl: mocks.getItemImageUrl,
-    },
-  });
+  it('propagates Firestore errors so the webhook returns 500 and Square retries', async () => {
+    mocks.requestRefresh.mockRejectedValue(new Error('Firestore unavailable'));
 
-  describe('single-item path', () => {
-    it('updates an existing product when the catalog item is already tracked', async () => {
-      const existing = {
-        id: 'prod-1',
-        squareItemId: 'ITEM_1',
-        squareCache: {
-          name: 'Old name',
-          description: 'Old desc',
-          priceCents: 1000,
-          sku: 'OLD-SKU',
-          imageUrl: 'old.jpg',
-        },
-      };
-      mocks.findBySquareItemId.mockResolvedValue(existing);
-      mocks.getItem.mockResolvedValue({
-        id: 'ITEM_1',
-        type: 'ITEM',
-        version: 42,
-        itemData: {
-          name: 'New name',
-          description: 'New desc',
-          variations: [
-            {
-              id: 'VAR_1',
-              itemVariationData: {
-                sku: 'NEW-SKU',
-                priceMoney: { amount: 2500n },
-              },
-            },
-          ],
-        },
-      });
-      mocks.getItemImageUrl.mockResolvedValue('new.jpg');
-      mocks.updateSquareCache.mockResolvedValue(undefined);
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent('ITEM_1'),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(mocks.updateSquareCache).toHaveBeenCalledWith(
-        'prod-1',
-        expect.objectContaining({
-          name: 'New name',
-          description: 'New desc',
-          priceCents: 2500,
-          sku: 'NEW-SKU',
-          imageUrl: 'new.jpg',
-        }),
-        42
-      );
-      expect(result.action).toBe('updated');
-    });
-
-    it('creates a draft product when the catalog item is new', async () => {
-      mocks.findBySquareItemId.mockResolvedValue(undefined);
-      mocks.getItem.mockResolvedValue({
-        id: 'ITEM_NEW',
-        type: 'ITEM',
-        version: 1,
-        itemData: {
-          name: 'Brand new',
-          description: 'desc',
-          variations: [
-            {
-              id: 'VAR_NEW',
-              itemVariationData: {
-                sku: 'SKU-NEW',
-                priceMoney: { amount: 5000n },
-              },
-            },
-          ],
-        },
-      });
-      mocks.getItemImageUrl.mockResolvedValue(undefined);
-      mocks.createProduct.mockResolvedValue({ id: 'prod-new' });
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent('ITEM_NEW'),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(mocks.createProduct).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Brand new',
-          status: 'draft',
-          priceCents: 5000,
-        }),
-        expect.objectContaining({
-          squareItemId: 'ITEM_NEW',
-          squareVariationId: 'VAR_NEW',
-          sku: 'SKU-NEW',
-        })
-      );
-      expect(result.action).toBe('created');
-    });
-
-    it('skips a single-item update when the catalog object is not an ITEM', async () => {
-      mocks.getItem.mockResolvedValue({
-        id: 'CAT_1',
-        type: 'CATEGORY',
-      });
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent('CAT_1'),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(result.action).toBe('skipped');
-      expect(result.details).toMatch(/non-ITEM/);
-    });
-
-    it('skips when the catalog object is not found in Square (deleted)', async () => {
-      mocks.getItem.mockResolvedValue(undefined);
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent('ITEM_GONE'),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(result.action).toBe('skipped');
-      expect(result.details).toMatch(/not found/);
-    });
-
-    it('skips when a new item has no variation', async () => {
-      mocks.findBySquareItemId.mockResolvedValue(undefined);
-      mocks.getItem.mockResolvedValue({
-        id: 'ITEM_NO_VAR',
-        type: 'ITEM',
-        itemData: { name: 'No variation', variations: [] },
-      });
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent('ITEM_NO_VAR'),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(mocks.createProduct).not.toHaveBeenCalled();
-      expect(result.action).toBe('skipped');
-    });
-  });
-
-  describe('batch path (no catalogObjectId — version bump)', () => {
-    it('syncs every Square item, updating tracked + creating new', async () => {
-      mocks.findAll.mockResolvedValue([
-        {
-          id: 'prod-1',
-          squareItemId: 'ITEM_A',
-          squareCache: {
-            name: 'A',
-            description: 'a',
-            priceCents: 100,
-            sku: 'A',
-            imageUrl: '',
-          },
-        },
-      ]);
-      mocks.listItems.mockResolvedValue([
-        {
-          id: 'ITEM_A',
-          type: 'ITEM',
-          version: 2,
-          itemData: {
-            name: 'A updated',
-            variations: [
-              {
-                id: 'VAR_A',
-                itemVariationData: {
-                  sku: 'A',
-                  priceMoney: { amount: 150n },
-                },
-              },
-            ],
-          },
-        },
-        {
-          id: 'ITEM_B',
-          type: 'ITEM',
-          version: 1,
-          itemData: {
-            name: 'B new',
-            variations: [
-              {
-                id: 'VAR_B',
-                itemVariationData: {
-                  sku: 'B',
-                  priceMoney: { amount: 200n },
-                },
-              },
-            ],
-          },
-        },
-      ]);
-      mocks.getItemImageUrl.mockResolvedValue('image.jpg');
-      mocks.updateSquareCache.mockResolvedValue(undefined);
-      mocks.createProduct.mockResolvedValue({ id: 'prod-new' });
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent(undefined),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(mocks.updateSquareCache).toHaveBeenCalled(); // prod-1 updated
-      expect(mocks.createProduct).toHaveBeenCalled(); // ITEM_B created as new product
-      expect(result.action).toBe('synced');
-    });
-
-    it('ignores non-ITEM catalog objects during batch sync', async () => {
-      mocks.findAll.mockResolvedValue([]);
-      mocks.listItems.mockResolvedValue([
-        { id: 'CAT_1', type: 'CATEGORY' },
-        { id: 'TAX_1', type: 'TAX' },
-      ]);
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent(undefined),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(mocks.createProduct).not.toHaveBeenCalled();
-      expect(mocks.updateSquareCache).not.toHaveBeenCalled();
-      expect(result.action).toBe('synced');
-    });
-
-    it('skips Square items with no variation during batch sync', async () => {
-      mocks.findAll.mockResolvedValue([]);
-      mocks.listItems.mockResolvedValue([
-        {
-          id: 'ITEM_X',
-          type: 'ITEM',
-          itemData: { name: 'X', variations: [] },
-        },
-      ]);
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent(undefined),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(mocks.createProduct).not.toHaveBeenCalled();
-      expect(result.action).toBe('synced');
-    });
-
-    it('logs and skips when updateSquareCache throws (degrades gracefully)', async () => {
-      mocks.findAll.mockResolvedValue([
-        {
-          id: 'prod-1',
-          squareItemId: 'ITEM_A',
-          squareCache: { name: 'A', priceCents: 100, sku: 'A', imageUrl: '' },
-        },
-      ]);
-      mocks.listItems.mockResolvedValue([
-        {
-          id: 'ITEM_A',
-          type: 'ITEM',
-          version: 2,
-          itemData: {
-            name: 'A',
-            variations: [
-              {
-                id: 'VAR_A',
-                itemVariationData: { sku: 'A', priceMoney: { amount: 150n } },
-              },
-            ],
-          },
-        },
-      ]);
-      mocks.getItemImageUrl.mockResolvedValue('image.jpg');
-      mocks.updateSquareCache.mockRejectedValueOnce(new Error('Firestore down'));
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent(undefined),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      // Failure is caught internally — the trigger still returns 'synced' to
-      // ack the webhook (we don't want Square to retry forever).
-      expect(result.action).toBe('synced');
-    });
-
-    it('logs and skips when createProduct throws during batch path', async () => {
-      mocks.findAll.mockResolvedValue([]);
-      mocks.listItems.mockResolvedValue([
-        {
-          id: 'ITEM_NEW',
-          type: 'ITEM',
-          itemData: {
-            name: 'Z',
-            variations: [
-              {
-                id: 'VAR_Z',
-                itemVariationData: { sku: 'Z', priceMoney: { amount: 10n } },
-              },
-            ],
-          },
-        },
-      ]);
-      mocks.createProduct.mockRejectedValueOnce(new Error('create failed'));
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent(undefined),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(result.action).toBe('synced');
-    });
-  });
-
-  describe('image fetch edge cases', () => {
-    it('falls back to undefined image URL when getItemImageUrl throws', async () => {
-      mocks.findBySquareItemId.mockResolvedValue(undefined);
-      mocks.getItem.mockResolvedValue({
-        id: 'ITEM_1',
-        type: 'ITEM',
-        itemData: {
-          name: 'no-image',
-          variations: [
-            {
-              id: 'VAR_1',
-              itemVariationData: { sku: 'X', priceMoney: { amount: 100n } },
-            },
-          ],
-        },
-      });
-      mocks.getItemImageUrl.mockRejectedValueOnce(new Error('image 404'));
-      mocks.createProduct.mockResolvedValue({ id: 'prod-new' });
-
-      const { handleCatalogUpdate } = await import('./square-webhook');
-      const result = await handleCatalogUpdate(
-        makeCatalogEvent('ITEM_1'),
-        makeSquare() as unknown as Parameters<typeof handleCatalogUpdate>[1]
-      );
-
-      expect(result.action).toBe('created');
-    });
+    const { handleCatalogUpdate } = await import('./square-webhook');
+    await expect(handleCatalogUpdate()).rejects.toThrow('Firestore unavailable');
   });
 });
 

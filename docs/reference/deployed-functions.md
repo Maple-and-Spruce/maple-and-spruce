@@ -117,7 +117,8 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `createProduct`, `updateProduct`, `uploadProductImage`
 
 ### Square webhook
-- `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_
+- `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. Inventory and invoice events run inline (fast).
+- `processCatalogSyncRequest` — Firestore trigger on `catalogSyncRequests/pending` _(memory: 512MiB, timeout: 540s)_. Lease-based: a burst of N catalog webhooks collapses to a single downstream sync. Reads all Firestore products + all Square catalog items, parallelizes image-URL fetches (concurrency 8), and reconciles.
 
 ### Registration operations (Square payments)
 - `createRegistration`, `cancelRegistration`

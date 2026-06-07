@@ -84,6 +84,9 @@
       "@maple/firebase/maple-functions/square-webhook": [
         "libs/firebase/maple-functions/square-webhook/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/process-catalog-sync-request": [
+        "libs/firebase/maple-functions/process-catalog-sync-request/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-invoice-to-square": [
         "libs/firebase/maple-functions/sync-invoice-to-square/src/index.ts"
       ],

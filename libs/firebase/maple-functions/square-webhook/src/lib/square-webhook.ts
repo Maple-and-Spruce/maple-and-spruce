@@ -2,33 +2,29 @@
  * Square Webhook Handler
  *
  * Handles incoming webhooks from Square for:
- * - catalog.version.updated: Item created/updated in Square
- * - inventory.count.updated: Inventory quantity changed
- *
- * Webhooks allow us to sync changes made directly in Square
- * (POS, Dashboard) back to our Firestore records.
+ * - catalog.version.updated: a catalog edit happened in Square. The
+ *   actual catalog re-sync runs asynchronously in
+ *   `processCatalogSyncRequest`; this handler just records a request
+ *   and returns 200 well within Square's 10-second delivery timeout.
+ *   See `CatalogSyncRequestRepository`.
+ * - inventory.count.updated: targeted per-variation update; fast
+ *   enough to run inline.
+ * - invoice.payment_made: single-record status flip; inline.
  *
  * With separate Firebase projects, each project has its own webhook signature key:
  * - maple-and-spruce-dev: sandbox webhook signature key
  * - maple-and-spruce: production webhook signature key
  *
- * IMPORTANT: This function uses inline secret definitions to avoid cold start delays.
- * Secrets are defined in the onRequest options, NOT at module level.
- *
  * @see https://developer.squareup.com/docs/webhooks/overview
  */
 import { onRequest } from 'firebase-functions/v2/https';
-import { defineSecret, defineString } from 'firebase-functions/params';
+import { defineSecret } from 'firebase-functions/params';
 import { createHmac } from 'crypto';
 import {
+  CatalogSyncRequestRepository,
   InvoiceRepository,
   ProductRepository,
 } from '@maple/firebase/database';
-import {
-  Square,
-  SQUARE_SECRET_NAMES,
-  SQUARE_STRING_NAMES,
-} from '@maple/firebase/square';
 import { FirebaseProject } from '@maple/firebase/functions';
 
 // Webhook event types we handle
@@ -75,236 +71,24 @@ function verifySignature(
 }
 
 /**
- * Extract the primary image URL from a catalog item
- *
- * Images are stored as separate CatalogImage objects referenced by imageIds.
- * We fetch the first (primary) image to get its URL.
- */
-async function extractImageUrl(
-  squareItemId: string,
-  square: Square
-): Promise<string | undefined> {
-  try {
-    const imageUrl = await square.catalogService.getItemImageUrl(squareItemId);
-    return imageUrl || undefined;
-  } catch (err) {
-    console.warn('Failed to fetch image URL:', err);
-    return undefined;
-  }
-}
-
-/**
  * Handle catalog.version.updated webhook
  *
- * Fired when a catalog item is created or updated in Square.
- * We need to sync the changes to our Firestore record.
+ * Square sends this every time the catalog version changes — for bulk
+ * POS or Dashboard edits, that's a burst of events in seconds. The
+ * actual re-sync is O(catalog size) and far exceeds Square's 10-second
+ * delivery deadline, so we defer: bump the singleton request doc and
+ * let the Firestore-triggered processor coalesce + run the work.
  */
-export async function handleCatalogUpdate(
-  event: WebhookEvent,
-  square: Square
-): Promise<{ action: string; details: string }> {
-  const catalogObjectId = event.data.id;
-
-  // catalog.version.updated events don't include a specific item ID
-  // They notify that the catalog version changed (batch update)
-  // We need to refresh all tracked products AND discover new ones
-  if (!catalogObjectId) {
-    console.log('Batch catalog update - syncing all items from Square');
-
-    // Fetch all products we track
-    const products = await ProductRepository.findAll();
-    const trackedSquareItemIds = new Set(
-      products.filter(p => p.squareItemId).map(p => p.squareItemId!)
-    );
-
-    console.log(`Found ${products.length} products in Firestore, ${trackedSquareItemIds.size} with Square IDs`);
-
-    // Fetch all items from Square catalog
-    const squareItems = await square.catalogService.listItems();
-    console.log(`Found ${squareItems.length} items in Square catalog`);
-
-    let updatedCount = 0;
-    let createdCount = 0;
-
-    for (const catalogObject of squareItems) {
-      if (catalogObject.type !== 'ITEM' || !catalogObject.id) {
-        continue;
-      }
-
-      const itemData = catalogObject.itemData;
-      const variation = itemData?.variations?.[0];
-      const variationData = (variation as { itemVariationData?: {
-        sku?: string;
-        priceMoney?: { amount?: bigint };
-      } })?.itemVariationData;
-
-      // Extract image URL from catalog item
-      const imageUrl = catalogObject.id ? await extractImageUrl(catalogObject.id, square) : undefined;
-
-      if (trackedSquareItemIds.has(catalogObject.id)) {
-        // Update existing product
-        const product = products.find(p => p.squareItemId === catalogObject.id);
-        if (product) {
-          try {
-            await ProductRepository.updateSquareCache(
-              product.id,
-              {
-                name: itemData?.name ?? product.squareCache.name,
-                description: itemData?.description ?? product.squareCache.description,
-                priceCents: variationData?.priceMoney?.amount
-                  ? Number(variationData.priceMoney.amount)
-                  : product.squareCache.priceCents,
-                sku: variationData?.sku ?? product.squareCache.sku,
-                imageUrl: imageUrl ?? product.squareCache.imageUrl,
-              },
-              Number(catalogObject.version || 0)
-            );
-            updatedCount++;
-          } catch (err) {
-            console.warn(`Failed to refresh product ${product.id}:`, err);
-          }
-        }
-      } else {
-        // Create new product from Square item
-        if (!variation) {
-          console.warn(`Skipping Square item ${catalogObject.id} - no variation`);
-          continue;
-        }
-
-        try {
-          const newProduct = await ProductRepository.create(
-            {
-              artistId: '', // Needs to be assigned manually
-              name: itemData?.name ?? 'Unnamed Product',
-              description: itemData?.description ?? undefined,
-              priceCents: variationData?.priceMoney?.amount
-                ? Number(variationData.priceMoney.amount)
-                : 0,
-              quantity: 0, // Will be updated by inventory webhook
-              status: 'draft', // Draft until artist is assigned
-            },
-            {
-              squareItemId: catalogObject.id,
-              squareVariationId: variation.id!,
-              squareCatalogVersion: Number(catalogObject.version || 0),
-              squareLocationId: square.locationId,
-              sku: variationData?.sku ?? '',
-              variations: [{ variantId: 'var_compat', squareVariationId: variation.id!, sku: variationData?.sku ?? '' }],
-            }
-          );
-          // Update image URL if available (create doesn't support imageUrl directly)
-          if (imageUrl) {
-            await ProductRepository.updateSquareCache(newProduct.id, { imageUrl });
-          }
-          console.log(`Created new product ${newProduct.id} from Square item ${catalogObject.id}`);
-          createdCount++;
-        } catch (err) {
-          console.warn(`Failed to create product from Square item ${catalogObject.id}:`, err);
-        }
-      }
-    }
-
-    return {
-      action: 'synced',
-      details: `Synced catalog: updated ${updatedCount}, created ${createdCount} from ${squareItems.length} Square items`,
-    };
-  }
-
-  // Fetch the full catalog object from Square
-  const catalogObject = await square.catalogService.getItem(catalogObjectId);
-
-  if (!catalogObject) {
-    return {
-      action: 'skipped',
-      details: `Catalog object ${catalogObjectId} not found in Square (may have been deleted)`,
-    };
-  }
-
-  // Only handle ITEM types (not categories, taxes, etc.)
-  if (catalogObject.type !== 'ITEM') {
-    return {
-      action: 'skipped',
-      details: `Skipping non-ITEM catalog object type: ${catalogObject.type}`,
-    };
-  }
-
-  // Check if we have this item in Firestore
-  const existingProduct = await ProductRepository.findBySquareItemId(catalogObjectId);
-
-  // Extract variation data - it's nested as CatalogObject with itemVariationData
-  const itemData = catalogObject.itemData;
-  const variation = itemData?.variations?.[0];
-  // Access itemVariationData from the variation object (typed as CatalogObject but has this property)
-  const variationData = (variation as { itemVariationData?: {
-    sku?: string;
-    priceMoney?: { amount?: bigint };
-  } })?.itemVariationData;
-
-  // Extract image URL from catalog item
-  const imageUrl = catalogObject.id ? await extractImageUrl(catalogObject.id, square) : undefined;
-
-  if (existingProduct) {
-    // Update existing product's cache
-    await ProductRepository.updateSquareCache(
-      existingProduct.id,
-      {
-        name: itemData?.name ?? existingProduct.squareCache.name,
-        description: itemData?.description ?? existingProduct.squareCache.description,
-        priceCents: variationData?.priceMoney?.amount
-          ? Number(variationData.priceMoney.amount)
-          : existingProduct.squareCache.priceCents,
-        sku: variationData?.sku ?? existingProduct.squareCache.sku,
-        imageUrl: imageUrl ?? existingProduct.squareCache.imageUrl,
-      },
-      Number(catalogObject.version || 0)
-    );
-
-    return {
-      action: 'updated',
-      details: `Updated product ${existingProduct.id} from Square item ${catalogObjectId}`,
-    };
-  } else {
-    // New item created in Square - create a placeholder in Firestore
-    // Note: This won't have an artistId, so it will need to be assigned manually
-    if (!variation) {
-      return {
-        action: 'skipped',
-        details: `Catalog item ${catalogObjectId} has no variation`,
-      };
-    }
-
-    // Create a draft product that needs artist assignment
-    const product = await ProductRepository.create(
-      {
-        artistId: '', // Needs to be assigned manually
-        name: itemData?.name ?? 'Unnamed Product',
-        description: itemData?.description ?? undefined,
-        priceCents: variationData?.priceMoney?.amount
-          ? Number(variationData.priceMoney.amount)
-          : 0,
-        quantity: 0, // Will be updated by inventory webhook
-        status: 'draft', // Draft until artist is assigned
-      },
-      {
-        squareItemId: catalogObject.id!,
-        squareVariationId: variation.id!,
-        squareCatalogVersion: Number(catalogObject.version || 0),
-        squareLocationId: square.locationId,
-        sku: variationData?.sku ?? '',
-        variations: [{ variantId: 'var_compat', squareVariationId: variation.id!, sku: variationData?.sku ?? '' }],
-      }
-    );
-
-    // Update image URL if available (create doesn't support imageUrl directly)
-    if (imageUrl) {
-      await ProductRepository.updateSquareCache(product.id, { imageUrl });
-    }
-
-    return {
-      action: 'created',
-      details: `Created draft product ${product.id} from Square item ${catalogObjectId} (needs artist assignment)`,
-    };
-  }
+export async function handleCatalogUpdate(): Promise<{
+  action: string;
+  details: string;
+}> {
+  await CatalogSyncRequestRepository.requestRefresh();
+  return {
+    action: 'enqueued',
+    details:
+      'catalogSyncRequests/pending bumped; processCatalogSyncRequest will run the sync',
+  };
 }
 
 /**
@@ -444,11 +228,9 @@ export async function handleInvoicePaymentMade(
   };
 }
 
-// Define secrets INLINE in the function options to avoid cold start delays
-// These are NOT defined at module level - they are created when the function is registered
+// Webhook signature key is the only secret we need here. Catalog sync
+// (which needs full Square credentials) runs in processCatalogSyncRequest.
 const webhookSignatureKey = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY');
-const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
-const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
 
 /**
  * Square webhook endpoint
@@ -465,7 +247,7 @@ export const squareWebhook = onRequest(
     region: 'us-east4',
     memory: '512MiB',
     concurrency: 10,
-    secrets: [webhookSignatureKey, ...squareSecretParams],
+    secrets: [webhookSignatureKey],
   },
   async (request, response) => {
     // Only accept POST
@@ -503,23 +285,12 @@ export const squareWebhook = onRequest(
       const event = request.body as WebhookEvent;
       console.log(`Received Square webhook: ${event.type} (${event.event_id})`);
 
-      // Build Square client for API calls - secrets accessed at runtime
-      const secrets = Object.fromEntries(
-        squareSecretParams.map((s) => [s.name, s.value()])
-      ) as Record<(typeof SQUARE_SECRET_NAMES)[number], string>;
-
-      const strings = Object.fromEntries(
-        squareStringParams.map((s) => [s.name, s.value()])
-      ) as Record<(typeof SQUARE_STRING_NAMES)[number], string>;
-
-      const square = new Square(secrets, strings);
-
       // Handle the event based on type
       let result: { action: string; details: string };
 
       switch (event.type) {
         case 'catalog.version.updated':
-          result = await handleCatalogUpdate(event, square);
+          result = await handleCatalogUpdate();
           break;
 
         case 'inventory.count.updated':
