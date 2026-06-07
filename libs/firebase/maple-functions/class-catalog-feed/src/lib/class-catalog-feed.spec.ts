@@ -136,6 +136,28 @@ describe('buildFeedFromClasses', () => {
     expect(xml).not.toContain('<g:id>no-image</g:id>');
   });
 
+  it('drops sold-out classes from the feed entirely (no out_of_stock rows)', () => {
+    const xml = buildFeedFromClasses([
+      {
+        classEntity: makeClass({ id: 'open', name: 'Open', capacity: 8 }),
+        registrationCount: 2,
+      },
+      {
+        classEntity: makeClass({ id: 'full', name: 'Full', capacity: 4 }),
+        registrationCount: 4,
+      },
+      {
+        classEntity: makeClass({ id: 'oversold', name: 'Over', capacity: 4 }),
+        registrationCount: 99,
+      },
+    ]);
+
+    expect(xml).toContain('<g:id>open</g:id>');
+    expect(xml).not.toContain('<g:id>full</g:id>');
+    expect(xml).not.toContain('<g:id>oversold</g:id>');
+    expect(xml).not.toContain('out_of_stock');
+  });
+
   it('produces an empty-channel document when no classes are passed', () => {
     const xml = buildFeedFromClasses([]);
     expect(xml).toContain('<channel>');
@@ -217,7 +239,7 @@ describe('handleCatalogFeedRequest', () => {
     expect(res.body).toContain('<g:id>class-1</g:id>');
   });
 
-  it('emits one item per class with its registration count', async () => {
+  it('drops sold-out classes and emits only open ones as in_stock', async () => {
     mocks.classFindAll.mockResolvedValue([
       makeClass({ id: 'sold-out', name: 'Sold Out', capacity: 4 }),
       makeClass({ id: 'open', name: 'Open Class', capacity: 8 }),
@@ -230,12 +252,10 @@ describe('handleCatalogFeedRequest', () => {
     await handleCatalogFeedRequest({ method: 'GET' }, res);
 
     const xml = res.body as string;
-    const items = xml.split('<item>');
-    const soldOutItem = items.find((s) => s.includes('<g:id>sold-out</g:id>'));
-    const openItem = items.find((s) => s.includes('<g:id>open</g:id>'));
-
-    expect(soldOutItem).toContain('<g:availability>out_of_stock</g:availability>');
-    expect(openItem).toContain('<g:availability>in_stock</g:availability>');
+    expect(xml).not.toContain('<g:id>sold-out</g:id>');
+    expect(xml).toContain('<g:id>open</g:id>');
+    expect(xml).toContain('<g:availability>in_stock</g:availability>');
+    expect(xml).not.toContain('out_of_stock');
   });
 
   it('returns 500 with a JSON error body when the repository throws', async () => {
