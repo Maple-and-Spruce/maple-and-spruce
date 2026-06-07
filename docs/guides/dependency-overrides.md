@@ -77,6 +77,12 @@ Overrides should be reviewed periodically (e.g., when updating Nx or other major
 - When `pnpm audit` reports no vulnerabilities — some overrides may be redundant
 - At least once per quarter
 
+## Automation
+
+- **New vulnerabilities** — Dependabot alerts are enabled at the repo level. When an alert fires, assign it to an AI agent from the Security → Dependabot tab (or the Agents tab). The agent reads this guide and opens a draft PR with either a top-level update or a scoped override.
+- **Stale overrides** — `.github/workflows/check-pnpm-overrides.yml` runs monthly. It temporarily removes each entry, re-runs `pnpm audit`, and opens a PR if any override is no longer needed.
+- **CI belt-and-suspenders** — the `security` job in `build-check.yml` keeps running `pnpm audit --audit-level=high` on every PR so a regression can't merge unnoticed.
+
 ## Notes
 
 - `overridesComments` is not a pnpm feature — it's a documentation convention stored as a sibling key. pnpm ignores unknown keys under `pnpm`.
