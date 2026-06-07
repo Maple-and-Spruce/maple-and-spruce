@@ -1,0 +1,19 @@
+{
+  "name": "functions-integration-tests-class-catalog-feed",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-class-catalog-feed/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-class-catalog-feed",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "apps/functions-integration-tests-class-catalog-feed/vitest.config.ts"
+      }
+    }
+  }
+}
