@@ -94,11 +94,16 @@ export function mapClassToFeedItem(
 export function buildFeedFromClasses(
   classes: ClassWithRegistrations[]
 ): string {
+  // Sold-out classes are dropped from the feed entirely rather than emitted
+  // as `out_of_stock`. Meta Advantage+ has been observed spending impressions
+  // on out-of-stock rows (2026-06), and a "Sold Out" first impression is
+  // worse than no impression — viewers remember the card as unavailable and
+  // are unlikely to re-engage when the next cohort opens.
   const items = classes
     .map(({ classEntity, registrationCount }) =>
       mapClassToFeedItem(classEntity, registrationCount)
     )
-    .filter((item): item is CatalogFeedItem => item !== null);
+    .filter((item): item is CatalogFeedItem => item !== null && item.available);
 
   return buildClassCatalogFeed(
     {
