@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh label create dependabot-alert --color B60205 --description "Filed by dependabot-alert-to-claude workflow" --force >/dev/null
+          gh label create dependabot-alert --repo "$REPO" --color B60205 --description "Filed by dependabot-alert-to-claude workflow" --force >/dev/null
 
           alerts=$(gh api "repos/$REPO/dependabot/alerts?state=open&severity=high,critical&per_page=100" \
             --jq '.[] | @base64')
