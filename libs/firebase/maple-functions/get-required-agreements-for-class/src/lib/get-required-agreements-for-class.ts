@@ -6,7 +6,7 @@
  * Used by the Webflow registration widget to show inline signing.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createPublicFunction } from '@maple/firebase/functions';
+import { Functions } from '@maple/firebase/functions';
 import {
   ClassRepository,
   AgreementTemplateRepository,
@@ -16,33 +16,40 @@ import type {
   GetRequiredAgreementsForClassResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getRequiredAgreementsForClass = createPublicFunction<
-  GetRequiredAgreementsForClassRequest,
-  GetRequiredAgreementsForClassResponse
->(async (data) => {
-  if (!data.classId) {
-    throw new Error('Class ID is required');
-  }
+// Keep warm in prod only — fires in the same Promise.all as getPublicClass
+// on widget mount, so a cold start here negates the warm getPublicClass.
+const minInstances =
+  process.env['GCLOUD_PROJECT'] === 'maple-and-spruce' ? 1 : 0;
 
-  const classEntity = await ClassRepository.findById(data.classId);
-  if (!classEntity) {
-    throw new Error(`Class not found: ${data.classId}`);
-  }
+export const getRequiredAgreementsForClass = Functions.endpoint
+  .withOptions({ minInstances, concurrency: 80 })
+  .handle<
+    GetRequiredAgreementsForClassRequest,
+    GetRequiredAgreementsForClassResponse
+  >(async (data) => {
+    if (!data.classId) {
+      throw new Error('Class ID is required');
+    }
 
-  if (!classEntity.categoryId) {
-    return { agreements: [] };
-  }
+    const classEntity = await ClassRepository.findById(data.classId);
+    if (!classEntity) {
+      throw new Error(`Class not found: ${data.classId}`);
+    }
 
-  const templates = await AgreementTemplateRepository.findRequiredForCategory(
-    classEntity.categoryId
-  );
+    if (!classEntity.categoryId) {
+      return { agreements: [] };
+    }
 
-  return {
-    agreements: templates.map((template) => ({
-      templateId: template.id,
-      templateName: template.name,
-      sections: template.sections,
-      supportsMinor: template.supportsMinor,
-    })),
-  };
-});
+    const templates = await AgreementTemplateRepository.findRequiredForCategory(
+      classEntity.categoryId
+    );
+
+    return {
+      agreements: templates.map((template) => ({
+        templateId: template.id,
+        templateName: template.name,
+        sections: template.sections,
+        supportsMinor: template.supportsMinor,
+      })),
+    };
+  });
