@@ -19,9 +19,17 @@ export function warmup(
   functions: Functions,
   ...functionNames: string[]
 ): Promise<void> {
+  // Wrapping each iteration in async/try-catch (not .catch()) catches BOTH
+  // sync throws from httpsCallable() / its returned callable AND async
+  // rejections. A bare .catch() would let a synchronous throw escape and
+  // break the widget mount effect that fired the warmup.
   return Promise.all(
-    functionNames.map((name) =>
-      httpsCallable(functions, name)({ __warmup: true }).catch(() => undefined)
-    )
+    functionNames.map(async (name) => {
+      try {
+        await httpsCallable(functions, name)({ __warmup: true });
+      } catch {
+        // best-effort
+      }
+    })
   ).then(() => undefined);
 }

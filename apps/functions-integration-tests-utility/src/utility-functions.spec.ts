@@ -49,6 +49,58 @@ describe('Utility Functions', () => {
     });
   });
 
+  describe('warmup sentinel (Functions.endpoint.handle())', () => {
+    // The shared function builder accepts `{ __warmup: true }` and returns
+    // 200 + { warm: true } without running auth, validator, or the handler.
+    // These tests assert the contract over a real HTTP layer (emulator),
+    // complementing the unit tests in functions.utility.spec.ts.
+
+    it('returns 200 + { warm: true } against a public endpoint', async () => {
+      const result = await callFunction<
+        { __warmup: true },
+        { warm: boolean }
+      >({
+        functionName: 'healthCheck',
+        data: { __warmup: true },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data).toEqual({ warm: true });
+    });
+
+    it('bypasses required auth — no idToken needed', async () => {
+      // checkAdminStatus normally returns 401 without an idToken (see test
+      // below). With the warmup sentinel it must short-circuit BEFORE the
+      // auth check and return 200 even anonymously.
+      const result = await callFunction<
+        { __warmup: true },
+        { warm: boolean }
+      >({
+        functionName: 'checkAdminStatus',
+        data: { __warmup: true },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data).toEqual({ warm: true });
+    });
+
+    it('does not short-circuit when __warmup is not strictly true', async () => {
+      // A real `healthCheck` payload that happens to carry a truthy-but-not-
+      // true `__warmup` should run the real handler, not the warmup branch.
+      const result = await callFunction<
+        { __warmup: string },
+        { status: string; timestamp: string }
+      >({
+        functionName: 'healthCheck',
+        data: { __warmup: 'yes' },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.status).toBe('ok');
+      expect(result.data?.timestamp).toBeDefined();
+    });
+  });
+
   describe('checkAdminStatus', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction({
