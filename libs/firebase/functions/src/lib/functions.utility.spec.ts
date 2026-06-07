@@ -559,6 +559,132 @@ describe('Functions.endpoint (chain + handle)', () => {
     });
   });
 
+  describe('warmup sentinel', () => {
+    it('short-circuits with 200 { warm: true } and skips the handler', async () => {
+      const handler = vi.fn();
+      const endpoint = Functions.endpoint.handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({ body: { data: { __warmup: true } } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ data: { warm: true } });
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('accepts unwrapped { __warmup: true } body too', async () => {
+      const handler = vi.fn();
+      const endpoint = Functions.endpoint.handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({ body: { __warmup: true } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ data: { warm: true } });
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('bypasses required auth — anonymous warmup is allowed', async () => {
+      const handler = vi.fn();
+      const endpoint = Functions.endpoint.requiringAuth().handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({ body: { data: { __warmup: true } } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(mocks.verifyIdToken).not.toHaveBeenCalled();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('bypasses required role check', async () => {
+      const handler = vi.fn();
+      const endpoint = Functions.endpoint
+        .requiringRole(Role.Admin)
+        .handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({ body: { data: { __warmup: true } } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(mocks.hasRole).not.toHaveBeenCalled();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('bypasses validator — warmup body is not a real request', async () => {
+      const handler = vi.fn();
+      const validator = vi.fn(() => ({
+        isValid: () => false,
+        getErrors: () => ({ name: ['required'] }),
+      }));
+      const endpoint = Functions.endpoint.validating(validator).handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({ body: { data: { __warmup: true } } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(validator).not.toHaveBeenCalled();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('bypasses uniqueness checks', async () => {
+      const handler = vi.fn();
+      const exists = vi.fn().mockResolvedValue(true);
+      const endpoint = Functions.endpoint
+        .ensuringUnique<{ email: string }>({ field: 'email', exists })
+        .handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({ body: { data: { __warmup: true } } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(exists).not.toHaveBeenCalled();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('still enforces CORS — warmup from a disallowed origin is rejected', async () => {
+      const handler = vi.fn();
+      const endpoint = Functions.endpoint.handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        makeReq({
+          body: { data: { __warmup: true } },
+          headers: { origin: 'https://evil.test' },
+        })
+      );
+
+      expect(res.statusCode).toBe(403);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does NOT short-circuit when __warmup is not strictly true', async () => {
+      const handler = vi.fn(async () => ({ ok: true }));
+      const endpoint = Functions.endpoint.handle(handler);
+
+      const res = await invoke(
+        endpoint,
+        // truthy but not === true; treated as a real request payload
+        makeReq({ body: { data: { __warmup: 'yes' } } })
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ data: { ok: true } });
+      expect(handler).toHaveBeenCalled();
+    });
+  });
+
   it('chain composition: validating + ensuringUnique runs validator first', async () => {
     const handler = vi.fn();
     const validator = vi.fn(() => ({
