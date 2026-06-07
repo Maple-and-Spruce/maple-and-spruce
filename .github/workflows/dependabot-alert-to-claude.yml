@@ -59,7 +59,11 @@ jobs:
           - Advisory: [$ghsa]($url)
           - Summary: $summary
 
-          Try updating the top-level dependency first; only fall back to a scoped \`pnpm.overrides\` entry if no parent release ships a fixed version. Add the matching \`overridesComments\` entry when you add an override. Open a draft PR.
+          Steps:
+          1. Try updating the top-level dependency first (\`pnpm update <pkg>\`).
+          2. Only fall back to a scoped \`pnpm.overrides\` entry if no parent release ships a fix; add a matching \`overridesComments\` entry with the GHSA ID, parent packages, and date.
+          3. **Run \`pnpm install\` and commit both \`package.json\` AND \`pnpm-lock.yaml\`** in the same PR. CI and Vercel use \`--frozen-lockfile\` and will reject overrides that aren't recorded in the lockfile.
+          4. Open a draft PR.
           EOF
           )
 

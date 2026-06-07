@@ -31,8 +31,9 @@ When an override is necessary:
    - A brief description of the vulnerability
    - Which top-level package(s) pull in the vulnerable transitive dep
    - The date added (e.g., `Added 2026-04-01`)
-3. Run `pnpm install` to apply
-4. Run `pnpm audit --audit-level=high` to verify
+3. Run `pnpm install` to apply the override and regenerate `pnpm-lock.yaml`
+4. **Commit BOTH `package.json` AND `pnpm-lock.yaml` in the same PR.** CI and Vercel install with `--frozen-lockfile`; a `pnpm.overrides` change with no matching lockfile update will fail with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` before any code runs.
+5. Run `pnpm audit --audit-level=high` to verify
 
 ### Override syntax
 
