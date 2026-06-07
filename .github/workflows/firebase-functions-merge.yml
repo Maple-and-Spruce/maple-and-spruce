@@ -105,12 +105,16 @@ jobs:
           # --- webflow-components (code components library) ---
           # Nx's project graph follows imports, so changes in e.g.
           # libs/react/registrations transitively mark webflow-components
-          # as affected. `nx show projects` outputs a JSON array, so we
-          # parse with jq rather than substring-grepping.
+          # as affected. `nx show projects --affected` prints one project
+          # per line (NOT a JSON array — an earlier comment here had this
+          # wrong, which silently skipped the publish on every merge that
+          # only touched webflow-components). Use grep -qx for a full-line
+          # match so substrings like "webflow-components-storybook" can't
+          # false-positive.
           WEBFLOW_AFFECTED=false
           if [ "$DEPLOY_ALL" == "true" ]; then
             WEBFLOW_AFFECTED=true
-          elif echo "$ALL_AFFECTED" | jq -e 'any(. == "webflow-components")' > /dev/null 2>&1; then
+          elif echo "$ALL_AFFECTED" | grep -qx 'webflow-components'; then
             WEBFLOW_AFFECTED=true
           fi
           if [ "$WEBFLOW_AFFECTED" == "true" ]; then
