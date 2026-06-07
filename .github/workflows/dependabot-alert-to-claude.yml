@@ -7,7 +7,6 @@ on:
 
 permissions:
   issues: write
-  security-events: read
 
 jobs:
   open-issues:
@@ -18,13 +17,15 @@ jobs:
       - name: Open one issue per unhandled alert
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPENDABOT_READ_TOKEN: ${{ secrets.DEPENDABOT_READ_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
           gh label create dependabot-alert --repo "$REPO" --color B60205 --description "Filed by dependabot-alert-to-claude workflow" --force >/dev/null
 
-          alerts=$(gh api "repos/$REPO/dependabot/alerts?state=open&severity=high,critical&per_page=100" \
+          alerts=$(GH_TOKEN="$DEPENDABOT_READ_TOKEN" gh api \
+            "repos/$REPO/dependabot/alerts?state=open&severity=high,critical&per_page=100" \
             --jq '.[] | @base64')
 
           if [[ -z "$alerts" ]]; then
