@@ -59,3 +59,6 @@ export {
   type EnvironmentMode,
   type FirebaseProjectId,
 } from './environment.utility';
+
+// Email utilities
+export { isE2ETestEmail } from './email.utility';
