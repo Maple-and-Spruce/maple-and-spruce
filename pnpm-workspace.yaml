@@ -90,3 +90,7 @@ overrides:
   ws@>=8.0.0 <8.20.1: '>=8.20.1'
   # path-to-regexp override
   path-to-regexp@>=2: '>=8.4.0'
+  # GHSA-ph9p-34f9-6g65: tmp Path Traversal via unsanitized prefix/postfix
+  # enables directory escape (patched in 0.2.6). Transitive dep of
+  # firebase-tools and nx. Added 2026-06-07.
+  tmp: '>=0.2.6'
