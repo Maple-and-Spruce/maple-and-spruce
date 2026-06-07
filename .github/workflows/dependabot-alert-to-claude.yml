@@ -1,0 +1,71 @@
+name: Dependabot alerts → @claude issue
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  security-events: read
+
+jobs:
+  open-issues:
+    name: Open @claude issues for new high+critical alerts
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - name: Open one issue per unhandled alert
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          gh label create dependabot-alert --color B60205 --description "Filed by dependabot-alert-to-claude workflow" --force >/dev/null
+
+          alerts=$(gh api "repos/$REPO/dependabot/alerts?state=open&severity=high,critical&per_page=100" \
+            --jq '.[] | @base64')
+
+          if [[ -z "$alerts" ]]; then
+            echo "No open high+critical alerts."
+            exit 0
+          fi
+
+          existing=$(gh issue list --repo "$REPO" --state open --label dependabot-alert --limit 200 \
+            --json title --jq '[.[].title] | join("\n")' || echo "")
+
+          for row in $alerts; do
+            alert=$(echo "$row" | base64 --decode)
+            number=$(echo "$alert" | jq -r '.number')
+            ghsa=$(echo "$alert" | jq -r '.security_advisory.ghsa_id')
+            severity=$(echo "$alert" | jq -r '.security_vulnerability.severity')
+            package=$(echo "$alert" | jq -r '.security_vulnerability.package.name')
+            summary=$(echo "$alert" | jq -r '.security_advisory.summary')
+            url=$(echo "$alert" | jq -r '.html_url')
+
+            title="deps: $package — $ghsa ($severity)"
+
+            if echo "$existing" | grep -qF "$ghsa"; then
+              echo "Skip $ghsa — issue already open."
+              continue
+            fi
+
+            body=$(cat <<EOF
+          @claude please resolve this Dependabot alert by following \`docs/guides/dependency-overrides.md\`.
+
+          - Package: \`$package\`
+          - Severity: **$severity**
+          - Advisory: [$ghsa]($url)
+          - Summary: $summary
+
+          Try updating the top-level dependency first; only fall back to a scoped \`pnpm.overrides\` entry if no parent release ships a fixed version. Add the matching \`overridesComments\` entry when you add an override. Open a draft PR.
+          EOF
+          )
+
+            echo "Opening issue for $ghsa"
+            gh issue create --repo "$REPO" \
+              --title "$title" \
+              --body "$body" \
+              --label dependabot-alert
+          done
