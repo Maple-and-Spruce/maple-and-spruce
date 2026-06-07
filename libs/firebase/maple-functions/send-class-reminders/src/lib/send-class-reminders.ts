@@ -39,7 +39,7 @@
 import admin from 'firebase-admin';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineString } from 'firebase-functions/params';
-import { Functions, Role } from '@maple/firebase/functions';
+import { Functions, Role, isE2ETestEmail } from '@maple/firebase/functions';
 import {
   ClassRepository,
   InstructorRepository,
@@ -281,6 +281,15 @@ export async function runSendClassReminders(
       }
       if (hasReminderForSession(reg, sessionIso)) {
         skippedAlreadySent += 1;
+        continue;
+      }
+      // Skip dev-DB rows created by the registration-e2e suite — the
+      // dev project's Send Email extension uses real Gmail SMTP and
+      // would NXDOMAIN-bounce against the `.test` TLD recipients.
+      if (isE2ETestEmail(reg.customerEmail)) {
+        console.log(
+          `[sendClassReminders] Skipping E2E test registration ${reg.id} (${reg.customerEmail})`
+        );
         continue;
       }
 
