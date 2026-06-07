@@ -43,6 +43,11 @@ export {
   type CalendarEventFilters,
 } from './lib/calendar-event.repository';
 export { CalendarEmbedConfigRepository } from './lib/calendar-embed-config.repository';
+export {
+  CatalogSyncRequestRepository,
+  LEASE_TTL_MS,
+  type CatalogSyncRequest,
+} from './lib/catalog-sync-request.repository';
 
 // Phase 5: Sales & Inventory
 export {
