@@ -1,0 +1,15 @@
+{
+  "name": "firebase-maple-functions-process-catalog-sync-request",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/process-catalog-sync-request/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "libs/firebase/maple-functions/process-catalog-sync-request/vitest.config.ts"
+      }
+    }
+  }
+}

@@ -20,6 +20,11 @@ export { uploadProductImage } from '@maple/firebase/maple-functions/upload-produ
 // Square webhook (HTTP endpoint, not callable)
 export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
 
+// Async catalog sync worker (Firestore-triggered, debounced via lease).
+// Decoupled from squareWebhook so the webhook can ack within Square's
+// 10-second delivery deadline; the heavy O(catalog) sync runs here.
+export { processCatalogSyncRequest } from '@maple/firebase/maple-functions/process-catalog-sync-request';
+
 // Registration operations (Square payments)
 export { createRegistration } from '@maple/firebase/maple-functions/create-registration';
 export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-registration';
