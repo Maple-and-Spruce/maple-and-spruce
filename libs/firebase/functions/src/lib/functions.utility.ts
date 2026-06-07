@@ -459,6 +459,19 @@ class FunctionBuilder<
         // Handle CORS
         corsMiddleware(req, res, async () => {
           try {
+            // Warmup short-circuit. A request body of `{ __warmup: true }`
+            // (sent as `{ data: { __warmup: true } }` by httpsCallable)
+            // boots this function instance without running auth, validation,
+            // or the handler. Lets clients pre-warm cold endpoints from the
+            // UI in the background while the user is reading the page.
+            const rawBody = (req.body?.data ?? req.body ?? {}) as {
+              __warmup?: unknown;
+            };
+            if (rawBody && rawBody.__warmup === true) {
+              res.status(200).json({ data: { warm: true } });
+              return;
+            }
+
             // Verify auth token if present
             const auth = await verifyAuthToken(req);
             const context: FunctionContext = {

@@ -64,6 +64,25 @@ Functions.endpoint
   .handle<Req, Res>(async (data) => { ... });
 ```
 
+## Warmup
+
+Every function built through `Functions.endpoint.handle()` automatically accepts a warmup sentinel — clients can boot a cold instance ahead of a real call without the function author opting in.
+
+The intercept lives in `functions.utility.ts` and short-circuits before auth, validator, role check, uniqueness checks, and the handler. CORS is still enforced.
+
+**Client (from the Webflow widget or any callable consumer):**
+
+```typescript
+import { warmup } from '../lib/warmup';
+
+// Fire-and-forget on widget mount for downstream calls the user will trigger soon
+warmup(functions, 'calculateRegistrationCost', 'createRegistration');
+```
+
+**When to warm**: downstream functions that aren't called on first paint — e.g. functions invoked after the user types in a form or clicks a button. For first-paint functions (called immediately on mount), warmup is too late; use env-gated `minInstances: 1` instead.
+
+**Don't**: schedule a recurring Cloud Scheduler ping to keep functions warm 24/7. That bills idle time when no users are visiting. Warmup should be driven by user presence on the page.
+
 ## Input Validation
 
 Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with `staticSuite` (never `create`) so they're pure functions — no retained state across invocations, safe to call from warm cloud function containers without `.reset()`.
