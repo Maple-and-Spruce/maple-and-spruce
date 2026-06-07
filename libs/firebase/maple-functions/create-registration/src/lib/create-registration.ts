@@ -20,7 +20,7 @@
  * Deployed to us-east4 via CI/CD pipeline.
  */
 import admin from 'firebase-admin';
-import { Functions } from '@maple/firebase/functions';
+import { Functions, isE2ETestEmail } from '@maple/firebase/functions';
 import {
   ClassRepository,
   DiscountRepository,
@@ -688,8 +688,19 @@ export const createRegistration = Functions.endpoint
         }
       }
 
-      // 10. Write to mail collection for confirmation emails
-      try {
+      // 10. Write to mail collection for confirmation emails.
+      // The registration-e2e Pay-flow specs run against the deployed dev
+      // project, whose Send Email extension delivers via real Gmail SMTP.
+      // Test recipients use a non-routable `.test` TLD, so without this
+      // guard every post-merge run produces a real NXDOMAIN bounce back
+      // to the configured From address.
+      const skipMail = isE2ETestEmail(data.customerEmail);
+      if (skipMail) {
+        console.log(
+          `Skipping confirmation email queue for E2E test recipient ${data.customerEmail}`
+        );
+      }
+      if (!skipMail) try {
         const formatCurrency = (cents: number): string =>
           `$${(cents / 100).toFixed(2)}`;
 
