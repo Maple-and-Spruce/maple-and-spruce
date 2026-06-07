@@ -21,14 +21,20 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-// Mock firebase/functions to extract the handler
-vi.mock('@maple/firebase/functions', () => ({
-  createPublicFunction: (handler: (data: unknown) => unknown) => handler,
-}));
+// Mock firebase/functions — the Functions.endpoint chain returns the
+// handler directly so the test can invoke it without spinning up the
+// Functions request machinery.
+vi.mock('@maple/firebase/functions', () => {
+  const chain = {
+    withOptions: () => chain,
+    handle: (handler: (data: unknown) => unknown) => handler,
+  };
+  return { Functions: { endpoint: chain } };
+});
 
 import { getRequiredAgreementsForClass } from './get-required-agreements-for-class';
 
-// The export is the handler function itself (createPublicFunction mock returns it)
+// The export is the handler function itself (handle() mock returns it)
 const handler = getRequiredAgreementsForClass as unknown as (
   data: { classId?: string }
 ) => Promise<{ agreements: unknown[] }>;
