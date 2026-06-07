@@ -81,7 +81,7 @@ Overrides should be reviewed periodically (e.g., when updating Nx or other major
 ## Automation
 
 - **New vulnerabilities** — Dependabot alerts are enabled at the repo level. `.github/workflows/dependabot-alert-to-claude.yml` runs daily and files an `@claude`-tagged issue per new high+critical alert; `.github/workflows/claude.yml` picks the issue up and opens a draft PR following this guide.
-- **Stale overrides** — `.github/workflows/check-pnpm-overrides.yml` runs monthly. It temporarily removes each entry, re-runs `pnpm audit`, and opens a PR if any override is no longer needed.
+- **Stale overrides** — review **manually** using the steps under "Cleaning Up Overrides" above. A previous attempt at an automated `mfranzke/check-pnpm-overrides` workflow was removed because its in-action audit didn't match our CI audit and it proposed removing currently-load-bearing entries (including a critical-severity fix).
 - **CI belt-and-suspenders** — the `security` job in `build-check.yml` keeps running `pnpm audit --audit-level=high` on every PR so a regression can't merge unnoticed.
 
 ## Notes
