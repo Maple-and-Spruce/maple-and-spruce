@@ -46,6 +46,7 @@ import {
   trackPurchaseClass,
   trackViewClass,
 } from './lib/class-analytics';
+import { warmup } from './lib/warmup';
 
 
 /**
@@ -403,6 +404,12 @@ export function RegistrationWidget({
       setState({ status: 'error', message: 'No class ID provided.' });
       return;
     }
+
+    // Pre-warm downstream callables the user will hit shortly (discount
+    // recalc + Pay submit). The page-mount fetches above can't benefit
+    // from warmup — they fire too early — but these typically run 5–60s
+    // later, by which point the warmup ping has spun their container up.
+    warmup(functions, 'calculateRegistrationCost', 'createRegistration');
 
     const fetchClass = async () => {
       setState({ status: 'loading' });
