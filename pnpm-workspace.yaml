@@ -94,3 +94,6 @@ overrides:
   # enables directory escape (patched in 0.2.6). Transitive dep of
   # firebase-tools and nx. Added 2026-06-07.
   tmp: '>=0.2.6'
+  # GHSA-5375-pq7m-f5r2: A malformed request can cause a server crash (patched
+  # in 1.9.16). Transitive dep of firebase > @firebase/firestore. Added 2026-06-11.
+  '@grpc/grpc-js': '>=1.9.16'
