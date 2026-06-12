@@ -58,6 +58,8 @@
     "../../libs/firebase/maple-functions/update-calendar-event/**/*.ts",
     "../../libs/firebase/maple-functions/delete-calendar-event/**/*.ts",
     "../../libs/firebase/maple-functions/on-class-write/**/*.ts",
+    "../../libs/firebase/maple-functions/on-lesson-write/**/*.ts",
+    "../../libs/firebase/maple-functions/get-room-schedule/**/*.ts",
     "../../libs/firebase/maple-functions/get-calendar-embed-config/**/*.ts",
     "../../libs/firebase/maple-functions/update-calendar-embed-config/**/*.ts",
     "../../libs/firebase/maple-functions/add-calendar-embed-source/**/*.ts",

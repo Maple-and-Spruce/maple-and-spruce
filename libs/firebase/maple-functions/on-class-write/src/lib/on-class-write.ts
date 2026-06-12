@@ -173,6 +173,7 @@ export const onClassWrite = onDocumentWritten(
             location: afterClass.location || DEFAULT_EVENT_LOCATION,
             type: 'class',
             public: true,
+            room: afterClass.room ?? null,
             sourceRef,
             createdBy: 'system',
           });

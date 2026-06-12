@@ -3,8 +3,9 @@
  *
  * Represents events displayed on the public calendar and managed via the admin UI.
  * Events can be manually created (jams, store hours, ad-hoc events) or
- * auto-generated from other entities (classes, future music lessons).
+ * auto-generated from other entities (classes, music lessons).
  */
+import type { Room } from './room';
 
 /**
  * Type of calendar event, used for filtering and color-coding on the public calendar.
@@ -48,6 +49,12 @@ export interface CalendarEvent {
   type: CalendarEventType;
   /** Controls inclusion in public ICS feeds. Default true. */
   public: boolean;
+  /**
+   * Which bookable room this event occupies, if any. Drives room
+   * availability displays and conflict checks. Null/absent for events that
+   * don't claim a room (e.g. store hours, off-site classes).
+   */
+  room?: Room | null;
   /** Optional reference to originating doc, e.g. "classes/abc123". Null for ad-hoc events. */
   sourceRef: string | null;
   /** Firebase Auth UID of creator */

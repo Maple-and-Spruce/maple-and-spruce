@@ -19,11 +19,22 @@ import type {
   CreateLessonSeriesResponse,
   GetLessonsRequest,
   GetLessonsResponse,
+  GetRoomScheduleRequest,
+  GetRoomScheduleResponse,
   UpdateLessonRequest,
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
 } from '@maple/ts/firebase/api-types';
+
+/**
+ * Wait for the onLessonWrite trigger to process. Firestore triggers in the
+ * emulator are async — there's a brief delay between the write and the
+ * trigger completing its work.
+ */
+function waitForTrigger(ms = 4000): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const TEACHER_ID = 'instructor-test-teacher';
 const SUBSTITUTE_ID = 'instructor-test-sub';
@@ -401,6 +412,122 @@ describe('Lesson Functions', () => {
           new Date('2026-06-20T23:59:59Z').getTime()
         );
       }
+    });
+  });
+
+  describe('Room schedule derivation (onLessonWrite + getRoomSchedule)', () => {
+    const SCHEDULED_AT = new Date('2026-07-01T15:00:00Z');
+    const DAY_START = '2026-07-01T00:00:00.000Z';
+    const DAY_END = '2026-07-02T00:00:00.000Z';
+    let roomLessonId: string;
+
+    async function getSpruceWindows() {
+      const result = await callFunction<
+        GetRoomScheduleRequest,
+        GetRoomScheduleResponse
+      >({
+        functionName: 'getRoomSchedule',
+        data: { room: 'spruce', start: DAY_START, end: DAY_END },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).toBe(200);
+      return result.data!.windows;
+    }
+
+    it('derives a private Spruce Room busy window when a lesson is scheduled', async () => {
+      const created = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: SCHEDULED_AT,
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(created.status).toBe(200);
+      roomLessonId = created.data!.lesson.id;
+
+      await waitForTrigger();
+
+      const windows = await getSpruceWindows();
+      const window = windows.find(
+        (w) => w.sourceRef === `lessons/${roomLessonId}`
+      );
+      expect(window).toBeDefined();
+      expect(window!.type).toBe('lesson');
+      expect(new Date(window!.start).toISOString()).toBe(
+        SCHEDULED_AT.toISOString()
+      );
+      expect(new Date(window!.end).toISOString()).toBe(
+        new Date(SCHEDULED_AT.getTime() + 30 * 60 * 1000).toISOString()
+      );
+      // Sanitized: the room schedule must not expose the student
+      expect(window!.title).toBe('Music Lesson');
+    });
+
+    it('rejects getRoomSchedule for non-admins and unknown rooms', async () => {
+      const nonAdmin = await callFunction<GetRoomScheduleRequest>({
+        functionName: 'getRoomSchedule',
+        data: { room: 'spruce', start: DAY_START, end: DAY_END },
+        idToken: nonAdminUser.idToken,
+      });
+      expect([403, 500]).toContain(nonAdmin.status);
+
+      const badRoom = await callFunction<Partial<GetRoomScheduleRequest>>({
+        functionName: 'getRoomSchedule',
+        data: { room: 'attic' as never, start: DAY_START, end: DAY_END },
+        idToken: adminUser.idToken,
+      });
+      expect(badRoom.status).not.toBe(200);
+    });
+
+    it('moves the busy window when the lesson is rescheduled', async () => {
+      const newTime = new Date('2026-07-01T18:00:00Z');
+      const updated = await callFunction<
+        UpdateLessonRequest,
+        UpdateLessonResponse
+      >({
+        functionName: 'updateLesson',
+        data: { id: roomLessonId, scheduledAt: newTime },
+        idToken: adminUser.idToken,
+      });
+      expect(updated.status).toBe(200);
+
+      await waitForTrigger();
+
+      const windows = await getSpruceWindows();
+      const matching = windows.filter(
+        (w) => w.sourceRef === `lessons/${roomLessonId}`
+      );
+      // Still exactly one window (stable deterministic ID), at the new time
+      expect(matching.length).toBe(1);
+      expect(new Date(matching[0].start).toISOString()).toBe(
+        newTime.toISOString()
+      );
+    });
+
+    it('frees the room when the lesson is cancelled', async () => {
+      const cancelled = await callFunction<
+        UpdateLessonRequest,
+        UpdateLessonResponse
+      >({
+        functionName: 'updateLesson',
+        data: { id: roomLessonId, status: 'cancelled' },
+        idToken: adminUser.idToken,
+      });
+      expect(cancelled.status).toBe(200);
+
+      await waitForTrigger();
+
+      const windows = await getSpruceWindows();
+      expect(
+        windows.find((w) => w.sourceRef === `lessons/${roomLessonId}`)
+      ).toBeUndefined();
     });
   });
 });

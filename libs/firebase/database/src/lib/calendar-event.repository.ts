@@ -9,6 +9,7 @@ import type {
   CalendarEvent,
   CalendarEventType,
   CreateCalendarEventInput,
+  Room,
   UpdateCalendarEventInput,
 } from '@maple/ts/domain';
 
@@ -35,6 +36,7 @@ function docToCalendarEvent(
     location: data.location,
     type: data.type,
     public: data.public,
+    room: data.room ?? null,
     sourceRef: data.sourceRef ?? null,
     createdBy: data.createdBy,
     createdAt: toDate(data.createdAt),
@@ -97,6 +99,36 @@ export const CalendarEventRepository = {
    */
   async findPublicByType(type: CalendarEventType): Promise<CalendarEvent[]> {
     return this.findAll({ type, publicOnly: true });
+  },
+
+  /**
+   * Find all events occupying a room that overlap the given time range.
+   *
+   * Firestore only allows a range filter on one field, so the query bounds
+   * `startDateTime` and the `endDateTime > rangeStart` overlap condition is
+   * applied in memory. A 24-hour lookback before `rangeStart` catches events
+   * that started before the range but spill into it — no room event is
+   * expected to span longer than a day.
+   */
+  async findByRoomInRange(
+    room: Room,
+    rangeStart: Date,
+    rangeEnd: Date
+  ): Promise<CalendarEvent[]> {
+    const lookback = new Date(rangeStart.getTime() - 24 * 60 * 60 * 1000);
+
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('room', '==', room)
+      .where('startDateTime', '>=', lookback)
+      .where('startDateTime', '<', rangeEnd)
+      .orderBy('startDateTime', 'asc')
+      .get();
+
+    return snapshot.docs
+      .map((doc) => docToCalendarEvent(doc))
+      .filter((e): e is CalendarEvent => e !== undefined)
+      .filter((e) => e.endDateTime.getTime() > rangeStart.getTime());
   },
 
   /**
