@@ -97,3 +97,7 @@ overrides:
   # GHSA-5375-pq7m-f5r2: A malformed request can cause a server crash (patched
   # in 1.9.16). Transitive dep of firebase > @firebase/firestore. Added 2026-06-11.
   '@grpc/grpc-js': '>=1.9.16'
+  # GHSA-w7jw-789q-3m8p: shell-quote quote() does not escape newlines in object
+  # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
+  # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
+  shell-quote: '>=1.8.4'
