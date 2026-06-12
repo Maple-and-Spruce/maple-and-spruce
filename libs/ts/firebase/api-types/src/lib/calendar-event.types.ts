@@ -8,6 +8,7 @@ import type {
   CalendarEvent,
   CalendarEventType,
   CreateCalendarEventInput,
+  Room,
   UpdateCalendarEventInput,
 } from '@maple/ts/domain';
 
@@ -56,6 +57,37 @@ export interface UpdateCalendarEventRequest extends UpdateCalendarEventInput {}
 
 export interface UpdateCalendarEventResponse {
   calendarEvent: CalendarEvent;
+}
+
+// ============================================================================
+// Get Room Schedule
+// ============================================================================
+
+export interface GetRoomScheduleRequest {
+  room: Room;
+  /** ISO date string — start of the range (inclusive) */
+  start: string;
+  /** ISO date string — end of the range (exclusive) */
+  end: string;
+}
+
+/**
+ * Serialized busy window. Mirrors `RoomBusyWindow` from @maple/ts/domain
+ * with ISO-string dates for the wire; clients re-hydrate with `new Date()`.
+ */
+export interface RoomScheduleWindow {
+  eventId: string;
+  title: string;
+  type: CalendarEventType;
+  sourceRef: string | null;
+  /** ISO date string */
+  start: string;
+  /** ISO date string */
+  end: string;
+}
+
+export interface GetRoomScheduleResponse {
+  windows: RoomScheduleWindow[];
 }
 
 // ============================================================================

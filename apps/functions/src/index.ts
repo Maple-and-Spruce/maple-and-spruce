@@ -135,6 +135,10 @@ export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-cale
 
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
+export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
+
+// Room availability
+export { getRoomSchedule } from '@maple/firebase/maple-functions/get-room-schedule';
 
 // Calendar embed config
 export { getCalendarEmbedConfig } from '@maple/firebase/maple-functions/get-calendar-embed-config';

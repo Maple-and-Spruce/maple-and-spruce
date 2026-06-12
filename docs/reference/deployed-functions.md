@@ -56,6 +56,10 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Calendar Triggers
 - `onClassWrite` — Firestore trigger: auto-generates CalendarEvents from published classes
+- `onLessonWrite` — Firestore trigger: auto-generates a private (`public: false`) Spruce Room CalendarEvent per scheduled lesson; removes it on cancel/delete
+
+### Room Availability (#467)
+- `getRoomSchedule` — admin-only: busy windows for a room over a time range (powers the dashboard "Spruce Room" widget and booking conflict checks)
 
 ### Calendar Embed Config
 - `getCalendarEmbedConfig`, `updateCalendarEmbedConfig`, `addCalendarEmbedSource`, `removeCalendarEmbedSource`

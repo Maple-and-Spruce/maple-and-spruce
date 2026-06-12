@@ -286,6 +286,20 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Firebase Hosting rewrites | **Complete** | `/calendar/*.ics` routes to feed functions |
 | Public calendar display | **Complete** | Open Web Calendar (self-hosted on Vercel), embedded in Webflow via iframe. See ADR-025. |
 
+## Spruce Room Availability — Epic #467 (In Progress)
+
+The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Room occupancy is tracked via `CalendarEvent.room`; the portal is the source of truth. See #467 for product decisions and architecture.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| `Room` domain type + `getRoomStatus` logic | **Complete** (PR 1, #468) | `libs/ts/domain/src/lib/room.ts` |
+| `room` field on CalendarEvent + Class | **Complete** (PR 1, #468) | flows through `onClassWrite` |
+| `onLessonWrite` trigger (lessons → private room events) | **Complete** (PR 1, #468) | `libs/firebase/maple-functions/on-lesson-write/` |
+| `getRoomSchedule` Cloud Function | **Complete** (PR 1, #468) | `libs/firebase/maple-functions/get-room-schedule/` |
+| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` |
+| Ad hoc room booking form | Planned (PR 2, #469) | — |
+| Day strip + conflict warnings in scheduling flows | Planned (PR 2, #469) | — |
+
 ## Admin User Management — Complete
 
 Admin `/users` page lists every Firebase Auth user with admin status. Admins can grant or revoke the admin role on others. Self-protection: an admin cannot revoke their own admin role.

@@ -34,6 +34,7 @@ export * from './lib/teacher-payout';
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';
 export * from './lib/calendar-embed-config';
+export * from './lib/room';
 
 // Agreements & Waivers
 export * from './lib/agreement-template';

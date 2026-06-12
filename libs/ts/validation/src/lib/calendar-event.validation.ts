@@ -6,7 +6,7 @@
  */
 import { staticSuite, test, enforce, only } from 'vest';
 import type { CreateCalendarEventInput } from '@maple/ts/domain';
-import { CALENDAR_EVENT_TYPES } from '@maple/ts/domain';
+import { CALENDAR_EVENT_TYPES, ROOMS } from '@maple/ts/domain';
 
 /**
  * Validate calendar event form data
@@ -77,6 +77,13 @@ export const calendarEventValidation = staticSuite(
     test('recurrenceRule', 'Recurrence rule must not be empty if provided', () => {
       if (data.recurrenceRule !== undefined && data.recurrenceRule !== null) {
         enforce(data.recurrenceRule).isNotBlank();
+      }
+    });
+
+    // Room validation (optional, but must be a known room when set)
+    test('room', 'Room must be valid', () => {
+      if (data.room !== undefined && data.room !== null) {
+        enforce(data.room).inside(ROOMS);
       }
     });
 

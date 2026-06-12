@@ -33,6 +33,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { formatClassPrice } from '@maple/ts/domain';
 import { useSyncConflictSummary } from '@maple/react/data';
+import { RoomStatusCard } from '@maple/react/events';
 import { useClasses, useRegistrations, useProducts } from '../../hooks';
 
 const quickLinks = [
@@ -163,6 +164,11 @@ export default function DashboardPage() {
       </Typography>
 
       <Grid container spacing={3}>
+        {/* Spruce Room status */}
+        <Grid size={12}>
+          <RoomStatusCard room="spruce" />
+        </Grid>
+
         {/* Upcoming Classes */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="h6" gutterBottom>
