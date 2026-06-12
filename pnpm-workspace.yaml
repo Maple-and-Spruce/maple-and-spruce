@@ -94,3 +94,7 @@ overrides:
   # enables directory escape (patched in 0.2.6). Transitive dep of
   # firebase-tools and nx. Added 2026-06-07.
   tmp: '>=0.2.6'
+  # GHSA-w7jw-789q-3m8p: shell-quote quote() does not escape newlines in object
+  # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
+  # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
+  shell-quote: '>=1.8.4'
