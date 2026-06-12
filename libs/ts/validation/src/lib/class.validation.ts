@@ -5,7 +5,7 @@
  * @see https://vestjs.dev/
  */
 import { staticSuite, test, enforce, only } from 'vest';
-import { GALLERY_IMAGE_MAX, type CreateClassInput } from '@maple/ts/domain';
+import { GALLERY_IMAGE_MAX, ROOMS, type CreateClassInput } from '@maple/ts/domain';
 
 /**
  * Validate class form data
@@ -195,6 +195,13 @@ export const classValidation = staticSuite(
     test('instructorId', 'Instructor is required for published classes', () => {
       if (data.status === 'published') {
         enforce(data.instructorId).isNotBlank();
+      }
+    });
+
+    // Room validation (optional, but must be a known room when set)
+    test('room', 'Room must be valid', () => {
+      if (data.room !== undefined && data.room !== null) {
+        enforce(data.room).inside(ROOMS);
       }
     });
 

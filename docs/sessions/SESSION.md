@@ -6,8 +6,20 @@
 
 ## Current Status
 
-**Date**: 2026-05-09
-**Status**: Phase 4 complete; Phase 5 in progress. Custom timesheet retired before usage in favor of Square Shifts + Square Payroll (now in trial).
+**Date**: 2026-06-11
+**Status**: Phase 4 complete; Phase 5 in progress. Spruce Room availability epic started (#467).
+
+### Spruce Room availability — PR 1 shipped (2026-06-11)
+
+The Spruce Room is going multi-tenant (music lessons, Music Together, ad hoc uses); David/Katie/Nathan need to know if it's free. Epic #467 holds the product decisions and architecture; the portal is the source of truth for room occupancy.
+
+PR 1 (#468 / PR #470): `room` field on CalendarEvent/Class, `onLessonWrite` trigger deriving private room-blocking events from scheduled lessons (closing the gap where lessons were invisible to the calendar aggregation), `getRoomSchedule` admin callable + composite index, and the dashboard "Spruce Room right now" widget.
+
+**Next steps**:
+- PR 2 (#469): ad hoc "Book the Spruce Room" form, day strip + warn-and-confirm conflict warnings in ScheduleLessonDialog / class form / event form
+- Ops: onboard Nathan (he signs up at `/login`, grant admin from `/users`) — decided full admin is fine
+
+### Timekeeping retired — replaced by Square (2026-05-09)
 
 ### Timekeeping retired — replaced by Square (2026-05-09)
 

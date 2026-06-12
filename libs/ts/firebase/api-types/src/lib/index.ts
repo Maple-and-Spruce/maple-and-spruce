@@ -231,6 +231,9 @@ export type {
   UpdateCalendarEventResponse,
   DeleteCalendarEventRequest,
   DeleteCalendarEventResponse,
+  GetRoomScheduleRequest,
+  GetRoomScheduleResponse,
+  RoomScheduleWindow,
 } from './calendar-event.types';
 
 // Phase 3c: Registration types

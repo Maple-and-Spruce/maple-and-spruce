@@ -24,6 +24,7 @@ export {
   type UseCalendarEventsFilters,
 } from './lib/useCalendarEvents';
 export { useCalendarEmbedConfig } from './lib/useCalendarEmbedConfig';
+export { useRoomSchedule } from './lib/useRoomSchedule';
 
 // Phase 5: Etsy Integration
 export { useEtsyConnection } from './lib/useEtsyConnection';

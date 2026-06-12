@@ -11,6 +11,7 @@
  * Future payments will use Square (consistent with existing POS integration).
  */
 import type { GalleryImage } from './gallery-image';
+import type { Room } from './room';
 
 /**
  * Skill level recommendation for a class
@@ -84,6 +85,11 @@ export interface Class {
   status: ClassStatus;
   /** Location (defaults to store address if not specified) */
   location?: string;
+  /**
+   * Which bookable room sessions occupy, if any. Flows through to the
+   * derived CalendarEvents so the class blocks the room's availability.
+   */
+  room?: Room | null;
   /** Materials included in the price */
   materialsIncluded?: string;
   /** What students should bring */
