@@ -101,3 +101,9 @@ overrides:
   # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
   # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
   shell-quote: '>=1.8.4'
+  # GHSA-gv7w-rqvm-qjhr: esbuild missing binary integrity verification in Deno
+  # module enables RCE via NPM_CONFIG_REGISTRY (patched in 0.28.1). Direct
+  # devDep updated to ^0.28.1; override covers transitive dep via
+  # @webflow/webflow-cli > @module-federation/enhanced >
+  # @module-federation/cli > @modern-js/node-bundle-require. Added 2026-06-14.
+  esbuild: '>=0.28.1'
