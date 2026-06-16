@@ -48,10 +48,12 @@ overrides:
   # GHSA-685m-2w69-288q (DoS via unbounded recursion), plus moderate
   # GHSA-q6x5-8v7m-xcrf (overlong UTF-8), GHSA-2pr8-phx7-x9h3 (DoS via
   # crafted field names), GHSA-fx83-v9x8-x52w (prototype injection in
-  # generated constructors). All patched in protobufjs 7.5.6. Transitive dep
+  # generated constructors). All patched in protobufjs 7.5.6.
+  # GHSA-wcpc-wj8m-hjx6 (DoS via unbounded Any expansion during JSON
+  # conversion). Patched in 7.6.1 (7.x) / 8.4.1 (8.x). Transitive dep
   # of firebase > @firebase/firestore > @grpc/* and firebase-admin >
-  # @google-cloud/firestore > google-gax. Added 2026-05-12.
-  protobufjs: '>=7.5.6'
+  # @google-cloud/firestore > google-gax. Updated 2026-06-16.
+  protobufjs: '>=8.4.1'
   # GHSA-w5hq-g745-h8pq: uuid missing buffer bounds check in v3/v5/v6 when
   # buf is provided (patched in 11.1.1). Transitive dep of firebase-admin.
   # Added 2026-05-12.
