@@ -101,3 +101,10 @@ overrides:
   # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
   # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
   shell-quote: '>=1.8.4'
+  # GHSA-gcq2-9pq2-cxqm: multipart/form-data field injection via unescaped CRLF
+  # in fixRequestBody (patched in 3.0.7). Only the 3.0.4–3.0.6 range is
+  # vulnerable; 2.x is unaffected. Constrained to <4 because 4.x requires
+  # Node 22.15+ and is a major API bump from what @nx/module-federation expects.
+  # Transitive dev dep of @nx/module-federation and @nx/react (Nx 22.6.5).
+  # Added 2026-06-20.
+  http-proxy-middleware@>=3.0.4 <3.0.7: '>=3.0.7 <4.0.0'
