@@ -101,3 +101,7 @@ overrides:
   # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
   # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
   shell-quote: '>=1.8.4'
+  # GHSA-x9g3-xrwr-cwfg: Prototype Pollution Gadget → RCE via inherited
+  # options.filename (patched in 4.10.0). Transitive dep of @swc/cli@0.8.1.
+  # Added 2026-06-20.
+  piscina: '>=4.10.0'
