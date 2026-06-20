@@ -62,9 +62,11 @@ overrides:
   postcss: '>=8.5.10'
   # GHSA-9vqf-7f2p-gf9v (bodyLimit() bypass for chunked / unknown-length
   # requests) and GHSA-69xw-7hcm-h432 (unvalidated JSX tag names allow HTML
-  # injection). Both patched in hono 4.12.16. Transitive dep of
-  # firebase-tools > @modelcontextprotocol/sdk. Added 2026-05-12.
-  hono: '>=4.12.16'
+  # injection). Both patched in hono 4.12.16. GHSA-88fw-hqm2-52qc (CORS
+  # Middleware reflects any Origin with credentials when `origin` defaults to
+  # the wildcard, patched in hono 4.12.25). Transitive dep of
+  # firebase-tools > @modelcontextprotocol/sdk. Updated 2026-06-20.
+  hono: '>=4.12.25'
   # GHSA-v2v4-37r5-5v8g: ip-address XSS in Address6 HTML-emitting methods
   # (patched in 10.1.1). Transitive dep of firebase-tools > proxy-agent and
   # firebase-tools > @modelcontextprotocol/sdk. Added 2026-05-12.
