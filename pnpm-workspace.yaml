@@ -101,3 +101,7 @@ overrides:
   # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
   # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
   shell-quote: '>=1.8.4'
+  # GHSA-vmh5-mc38-953g: undici drops requestTls when using a SOCKS5 ProxyAgent,
+  # bypassing TLS certificate validation (patched in 7.28.0). Transitive dep of
+  # @module-federation/dts-plugin@2.3.2 via @nx/*. Added 2026-06-20.
+  undici: '>=7.28.0'
