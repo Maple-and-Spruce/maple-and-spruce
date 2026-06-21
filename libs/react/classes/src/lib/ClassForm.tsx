@@ -45,7 +45,10 @@ import type {
   Instructor,
   ClassCategory,
   GalleryImage,
+  Room,
 } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel } from '@maple/ts/domain';
+import { RoomAvailability } from '@maple/react/rooms';
 import type {
   UploadClassImageRequest,
   UploadClassImageResponse,
@@ -186,6 +189,7 @@ export function ClassForm({
   const skillLevel = useSignal<ClassSkillLevel>('all-levels');
   const status = useSignal<ClassStatus>('draft');
   const location = useSignal('Maple & Spruce');
+  const room = useSignal<Room | null>(null);
   const durationMode = useSignal<'preset' | 'custom'>('preset');
   const materialsIncluded = useSignal('');
   const whatToBring = useSignal('');
@@ -254,6 +258,7 @@ export function ClassForm({
       skillLevel: skillLevel.value,
       status: status.value,
       location: location.value || undefined,
+      room: room.value,
       materialsIncluded: materialsIncluded.value || undefined,
       whatToBring: whatToBring.value || undefined,
       minimumAge: minimumAge.value,
@@ -354,6 +359,7 @@ export function ClassForm({
         skillLevel.value = classItem.skillLevel;
         status.value = classItem.status;
         location.value = classItem.location ?? '';
+        room.value = classItem.room ?? null;
         durationMode.value = [60, 90, 120, 150, 180].includes(classItem.durationMinutes) ? 'preset' : 'custom';
         materialsIncluded.value = classItem.materialsIncluded ?? '';
         whatToBring.value = classItem.whatToBring ?? '';
@@ -411,6 +417,7 @@ export function ClassForm({
         skillLevel.value = 'all-levels';
         status.value = 'draft';
         location.value = 'Maple & Spruce';
+        room.value = null;
         materialsIncluded.value = '';
         whatToBring.value = '';
         minimumAge.value = undefined;
@@ -589,6 +596,7 @@ export function ClassForm({
         skillLevel: skillLevel.value,
         status: status.value,
         location: location.value || undefined,
+        room: room.value,
         materialsIncluded: materialsIncluded.value || undefined,
         whatToBring: whatToBring.value || undefined,
         minimumAge: minimumAge.value,
@@ -1112,6 +1120,53 @@ export function ClassForm({
               disabled={hasRegistrations}
               fullWidth
             />
+
+            {/* Room */}
+            <FormControl fullWidth>
+              <InputLabel id="class-room-label">Room</InputLabel>
+              <Select
+                labelId="class-room-label"
+                value={room.value ?? ''}
+                label="Room"
+                onChange={(e) =>
+                  (room.value =
+                    e.target.value === '' ? null : (e.target.value as Room))
+                }
+              >
+                <MenuItem value="">No specific room</MenuItem>
+                {ROOMS.map((r) => (
+                  <MenuItem key={r} value={r}>
+                    {getRoomLabel(r)}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                Set this if the class is held in a bookable room — its
+                sessions block the room and flag conflicts.
+              </FormHelperText>
+            </FormControl>
+
+            {/* Per-session room availability when a room is chosen */}
+            {room.value && composedSessions.value.length > 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {composedSessions.value.map((session) => (
+                  <RoomAvailability
+                    key={session.dateTime.toISOString()}
+                    room={room.value as Room}
+                    start={session.dateTime}
+                    end={
+                      new Date(
+                        session.dateTime.getTime() +
+                          durationMinutes.value * 60_000
+                      )
+                    }
+                    ignoreSourceRef={
+                      classItem ? `classes/${classItem.id}` : undefined
+                    }
+                  />
+                ))}
+              </Box>
+            )}
 
             {/* Materials Included */}
             <TextField

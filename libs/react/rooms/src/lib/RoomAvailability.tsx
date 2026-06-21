@@ -9,7 +9,7 @@ import {
   type RoomBusyWindow,
   type RoomDaySegment,
 } from '@maple/ts/domain';
-import { useRoomScheduleForDate } from '@maple/react/data';
+import { useRoomScheduleForDate } from './useRoomScheduleForDate';
 
 /** Format a time as "4:30 PM". */
 function formatTime(date: Date): string {
@@ -69,6 +69,8 @@ interface RoomAvailabilityProps {
   end: Date;
   /** Skip this event when checking conflicts (edit flows — don't self-flag). */
   ignoreEventId?: string;
+  /** Skip every window from this source, e.g. a class's own sessions. */
+  ignoreSourceRef?: string;
 }
 
 /**
@@ -83,6 +85,7 @@ export function RoomAvailability({
   start,
   end,
   ignoreEventId,
+  ignoreSourceRef,
 }: RoomAvailabilityProps) {
   const { roomScheduleState } = useRoomScheduleForDate(room, start);
 
@@ -102,7 +105,11 @@ export function RoomAvailability({
   }
 
   const windows = roomScheduleState.data;
-  const conflicts = getRoomConflicts({ start, end }, windows, { ignoreEventId });
+  const conflicts = getRoomConflicts(
+    { start, end },
+    windows,
+    { ignoreEventId, ignoreSourceRef }
+  );
   const { dayStart, dayEnd } = dayBounds(start, { start, end }, windows);
   const strip = getDayStrip(windows, dayStart, dayEnd);
 
