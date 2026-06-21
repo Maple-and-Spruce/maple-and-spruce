@@ -48,10 +48,13 @@ overrides:
   # GHSA-685m-2w69-288q (DoS via unbounded recursion), plus moderate
   # GHSA-q6x5-8v7m-xcrf (overlong UTF-8), GHSA-2pr8-phx7-x9h3 (DoS via
   # crafted field names), GHSA-fx83-v9x8-x52w (prototype injection in
-  # generated constructors). All patched in protobufjs 7.5.6. Transitive dep
-  # of firebase > @firebase/firestore > @grpc/* and firebase-admin >
-  # @google-cloud/firestore > google-gax. Added 2026-05-12.
-  protobufjs: '>=7.5.6'
+  # generated constructors). All patched in protobufjs 7.5.6. Plus
+  # GHSA-wcpc-wj8m-hjx6 (DoS via unbounded Any expansion during JSON
+  # conversion), patched in 8.4.1. Transitive dep of firebase >
+  # @firebase/firestore > @grpc/* and firebase-admin >
+  # @google-cloud/firestore > google-gax (now on 8.x). Bumped from >=7.5.6
+  # to >=8.4.1 on 2026-06-20.
+  protobufjs: '>=8.4.1'
   # GHSA-w5hq-g745-h8pq: uuid missing buffer bounds check in v3/v5/v6 when
   # buf is provided (patched in 11.1.1). Transitive dep of firebase-admin.
   # Added 2026-05-12.
@@ -62,9 +65,11 @@ overrides:
   postcss: '>=8.5.10'
   # GHSA-9vqf-7f2p-gf9v (bodyLimit() bypass for chunked / unknown-length
   # requests) and GHSA-69xw-7hcm-h432 (unvalidated JSX tag names allow HTML
-  # injection). Both patched in hono 4.12.16. Transitive dep of
-  # firebase-tools > @modelcontextprotocol/sdk. Added 2026-05-12.
-  hono: '>=4.12.16'
+  # injection). Both patched in hono 4.12.16. Plus GHSA-88fw-hqm2-52qc (CORS
+  # middleware reflects any Origin with credentials when `origin` defaults to
+  # the wildcard), patched in 4.12.25. Transitive dep of firebase-tools >
+  # @modelcontextprotocol/sdk. Bumped from >=4.12.16 to >=4.12.25 on 2026-06-20.
+  hono: '>=4.12.25'
   # GHSA-v2v4-37r5-5v8g: ip-address XSS in Address6 HTML-emitting methods
   # (patched in 10.1.1). Transitive dep of firebase-tools > proxy-agent and
   # firebase-tools > @modelcontextprotocol/sdk. Added 2026-05-12.
@@ -86,18 +91,53 @@ overrides:
   # dep of @nx/* > minimatch. Added 2026-05-18.
   brace-expansion@>=5.0.0 <5.0.6: '>=5.0.6'
   # GHSA-58qx-3vcg-4xpx: ws uninitialized memory disclosure (patched in
-  # 8.20.1). Transitive dep present via several SDKs. Added 2026-05-18.
-  ws@>=8.0.0 <8.20.1: '>=8.20.1'
+  # 8.20.1). Plus GHSA-96hv-2xvq-fx4p (memory-exhaustion DoS from tiny
+  # fragments and data chunks), patched in 8.21.0. Transitive dep present via
+  # several SDKs. Bumped from >=8.20.1 to >=8.21.0 on 2026-06-20.
+  ws@>=8.0.0 <8.21.0: '>=8.21.0'
+  # GHSA-96hv-2xvq-fx4p also affects the ws 7.x line (patched in 7.5.11),
+  # pulled in via firebase-tools. Added 2026-06-20.
+  ws@>=7.0.0 <7.5.11: '>=7.5.11'
   # path-to-regexp override
   path-to-regexp@>=2: '>=8.4.0'
   # GHSA-ph9p-34f9-6g65: tmp Path Traversal via unsanitized prefix/postfix
   # enables directory escape (patched in 0.2.6). Transitive dep of
   # firebase-tools and nx. Added 2026-06-07.
   tmp: '>=0.2.6'
-  # GHSA-5375-pq7m-f5r2: A malformed request can cause a server crash (patched
-  # in 1.9.16). Transitive dep of firebase > @firebase/firestore. Added 2026-06-11.
-  '@grpc/grpc-js': '>=1.9.16'
+  # GHSA-5375-pq7m-f5r2 (malformed request → server crash) and
+  # GHSA-99f4-grh7-6pcq (malformed compressed message → client/server crash),
+  # both patched in 1.14.4. Transitive dep of firebase > @firebase/firestore.
+  # Bumped from >=1.9.16 to >=1.14.4 on 2026-06-20.
+  '@grpc/grpc-js': '>=1.14.4'
   # GHSA-w7jw-789q-3m8p: shell-quote quote() does not escape newlines in object
   # .op values (patched in 1.8.4). concurrently@9.2.1 exact-pins shell-quote
   # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Added 2026-06-11.
   shell-quote: '>=1.8.4'
+  # GHSA-vmh5-mc38-953g (TLS certificate validation bypass via dropped
+  # requestTls in SOCKS5 ProxyAgent), GHSA-vxpw-j846-p89q (WebSocket client
+  # DoS via fragment count bypass), and GHSA-hm92-r4w5-c3mj (cross-origin
+  # request routing via SOCKS5 proxy pool reuse). All patched in 7.28.0.
+  # Transitive dep of @nx/next > @nx/react > @nx/module-federation >
+  # @module-federation/* > undici. Added 2026-06-20.
+  undici@>=7.0.0 <7.28.0: '>=7.28.0'
+  # GHSA-fx2h-pf6j-xcff: vite `server.fs.deny` bypass on Windows alternate
+  # paths (patched in 8.0.16). The 8.x line is pulled in via @nx/vitest >
+  # vitest; the separate vite@7 override above covers the 7.x line.
+  # Added 2026-06-20.
+  vite@>=8.0.0 <8.0.16: '>=8.0.16'
+  # GHSA-hmw2-7cc7-3qxx: form-data CRLF injection via unescaped multipart
+  # field names and filenames (patched in 4.0.6). Transitive dep present via
+  # several SDKs. Added 2026-06-20.
+  form-data@>=4.0.0 <4.0.6: '>=4.0.6'
+  # GHSA-hmw2-7cc7-3qxx also affects the form-data 2.x line (patched in
+  # 2.5.6), pulled in via firebase-admin > @google-cloud/* > google-gax >
+  # retry-request > @types/request. Added 2026-06-20.
+  form-data@>=2.0.0 <2.5.6: '>=2.5.6'
+  # GHSA-gcq2-9pq2-cxqm: http-proxy-middleware multipart/form-data field
+  # injection via unescaped CRLF in `fixRequestBody` (patched in 3.0.7).
+  # Added 2026-06-20.
+  http-proxy-middleware@>=3.0.4 <3.0.7: '>=3.0.7'
+  # GHSA-x9g3-xrwr-cwfg: piscina prototype-pollution gadget → RCE via
+  # inherited options.filename (patched in 4.9.3). Transitive dep of @nx/*.
+  # Added 2026-06-20.
+  piscina@<4.9.3: '>=4.9.3'
