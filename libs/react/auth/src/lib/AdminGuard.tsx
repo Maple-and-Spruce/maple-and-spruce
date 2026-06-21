@@ -40,19 +40,29 @@ export function AdminGuardView({
   adminState,
   onSignOut,
 }: AdminGuardViewProps) {
-  // Show loading while checking admin status
+  // While checking admin status, keep children mounted (but hidden) so their
+  // data hooks fire in parallel with the admin check instead of waiting for it
+  // to resolve. The overlay hides any admin content until access is confirmed;
+  // the admin-only Cloud Functions reject non-admins server-side, so kicking
+  // off these fetches before the check completes is safe.
   if (isCheckingAdmin) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          bgcolor: 'background.default',
-        }}
-      >
-        <CircularProgress color="primary" />
+      <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+        <Box sx={{ visibility: 'hidden' }} aria-hidden>
+          {children}
+        </Box>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            bgcolor: 'background.default',
+          }}
+        >
+          <CircularProgress color="primary" />
+        </Box>
       </Box>
     );
   }
