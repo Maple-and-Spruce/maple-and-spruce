@@ -89,3 +89,112 @@ export function getRoomStatus(
 
   return { kind: 'in-use', current, freeAt, next };
 }
+
+/** A proposed time range to check against a room's existing bookings. */
+export interface TimeRange {
+  start: Date;
+  end: Date;
+}
+
+/**
+ * Return the busy windows that overlap a proposed time range — i.e. the
+ * room is already taken during part of it. Powers the warn-and-confirm
+ * conflict notices in the scheduling flows.
+ *
+ * Overlap is half-open: a proposed slot that starts exactly when a window
+ * ends (or ends exactly when one starts) does NOT conflict — back-to-back
+ * bookings share a boundary but not a moment. A zero-length proposed range
+ * never conflicts.
+ *
+ * `ignoreEventId` skips a specific event — used by edit flows so a booking
+ * doesn't flag a conflict against its own existing window.
+ */
+export function getRoomConflicts(
+  proposed: TimeRange,
+  windows: RoomBusyWindow[],
+  options?: { ignoreEventId?: string }
+): RoomBusyWindow[] {
+  const startMs = proposed.start.getTime();
+  const endMs = proposed.end.getTime();
+  return windows.filter(
+    (w) =>
+      w.eventId !== options?.ignoreEventId &&
+      startMs < w.end.getTime() &&
+      w.start.getTime() < endMs
+  );
+}
+
+/**
+ * One band in a room's day view: either `open` (available) or `busy`
+ * (occupied by one or more coalesced bookings). Segments are contiguous,
+ * non-overlapping, and together cover exactly [dayStart, dayEnd].
+ */
+export type RoomDaySegment =
+  | { kind: 'open'; start: Date; end: Date }
+  | { kind: 'busy'; start: Date; end: Date; windows: RoomBusyWindow[] };
+
+/**
+ * Build the day strip for a room: the open/busy bands across a day, e.g.
+ * "Open 9:00–4:30 · Music Together 4:30–6:00 · Open after 6:00". Windows
+ * are clipped to [dayStart, dayEnd]; overlapping and back-to-back windows
+ * are merged into a single busy band that carries all its source windows.
+ */
+export function getDayStrip(
+  windows: RoomBusyWindow[],
+  dayStart: Date,
+  dayEnd: Date
+): RoomDaySegment[] {
+  const dayStartMs = dayStart.getTime();
+  const dayEndMs = dayEnd.getTime();
+
+  // Clip to the day and drop anything fully outside it.
+  const clipped = windows
+    .map((w) => ({
+      window: w,
+      start: Math.max(w.start.getTime(), dayStartMs),
+      end: Math.min(w.end.getTime(), dayEndMs),
+    }))
+    .filter((c) => c.start < c.end)
+    .sort((a, b) => a.start - b.start);
+
+  // Merge overlapping/adjacent clipped windows into busy runs.
+  const runs: { start: number; end: number; windows: RoomBusyWindow[] }[] = [];
+  for (const c of clipped) {
+    const last = runs[runs.length - 1];
+    if (last && c.start <= last.end) {
+      last.end = Math.max(last.end, c.end);
+      last.windows.push(c.window);
+    } else {
+      runs.push({ start: c.start, end: c.end, windows: [c.window] });
+    }
+  }
+
+  // Walk the day, filling gaps with open segments.
+  const segments: RoomDaySegment[] = [];
+  let cursor = dayStartMs;
+  for (const run of runs) {
+    if (run.start > cursor) {
+      segments.push({
+        kind: 'open',
+        start: new Date(cursor),
+        end: new Date(run.start),
+      });
+    }
+    segments.push({
+      kind: 'busy',
+      start: new Date(run.start),
+      end: new Date(run.end),
+      windows: run.windows,
+    });
+    cursor = run.end;
+  }
+  if (cursor < dayEndMs) {
+    segments.push({
+      kind: 'open',
+      start: new Date(cursor),
+      end: new Date(dayEndMs),
+    });
+  }
+
+  return segments;
+}
