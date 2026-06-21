@@ -9,7 +9,7 @@ import {
   type RoomBusyWindow,
   type RoomDaySegment,
 } from '@maple/ts/domain';
-import { useRoomScheduleForDate } from '@maple/react/data';
+import { useRoomScheduleForDate } from './useRoomScheduleForDate';
 
 /** Format a time as "4:30 PM". */
 function formatTime(date: Date): string {

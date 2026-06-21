@@ -35,7 +35,7 @@ import {
   ROOMS,
 } from '@maple/ts/domain';
 import { calendarEventValidation } from '@maple/ts/validation';
-import { RoomAvailability } from './RoomAvailability';
+import { RoomAvailability } from '@maple/react/rooms';
 import {
   useSignal,
   useComputed,

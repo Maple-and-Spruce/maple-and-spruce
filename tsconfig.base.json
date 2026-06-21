@@ -330,6 +330,7 @@
       "@maple/react/registrations": ["libs/react/registrations/src/index.ts"],
       "@maple/react/agreements": ["libs/react/agreements/src/index.ts"],
       "@maple/react/events": ["libs/react/events/src/index.ts"],
+      "@maple/react/rooms": ["libs/react/rooms/src/index.ts"],
       "@maple/firebase/maple-functions/get-calendar-embed-config": [
         "libs/firebase/maple-functions/get-calendar-embed-config/src/index.ts"
       ],

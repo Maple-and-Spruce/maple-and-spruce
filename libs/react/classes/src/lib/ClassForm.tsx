@@ -48,7 +48,7 @@ import type {
   Room,
 } from '@maple/ts/domain';
 import { ROOMS, getRoomLabel } from '@maple/ts/domain';
-import { RoomAvailability } from '@maple/react/events';
+import { RoomAvailability } from '@maple/react/rooms';
 import type {
   UploadClassImageRequest,
   UploadClassImageResponse,
