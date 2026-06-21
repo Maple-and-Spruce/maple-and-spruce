@@ -6,10 +6,11 @@ name: Deploy on merge
 #     ├── prepare_and_build  (compute affected, build artifacts)
 #     ├── deploy_functions_dev   (deploy affected functions → maple-and-spruce-dev)
 #     ├── deploy_harness_dev     (build + deploy harness → maple-spruce-registration-test)
+#     ├── deploy_vercel_dev      (build + deploy admin app → dev Vercel project / business-dev)
 #     ├── e2e_dev                (Playwright → deployed dev URL)
 #     │     │
 #     │     └── approve_prod  ← MANUAL APPROVAL via `production` Environment
-#     │            │
+#     │            │                (gated on e2e_dev AND deploy_vercel_dev)
 #     │            ├── deploy_functions_prod        (only if approve_prod passed)
 #     │            ├── publish_webflow_components   (only if approve_prod passed)
 #     │            └── deploy_vercel_prod           (only if approve_prod passed)
@@ -446,6 +447,57 @@ jobs:
             --force \
             --token "$(gcloud auth print-access-token)"
 
+  deploy_vercel_dev:
+    # Auto-deploy the admin web app to the DEV Vercel project on every
+    # merge, so business-dev.* always mirrors main — the known-good dev
+    # environment we exercise before promoting to prod. Mirrors
+    # deploy_vercel_prod but targets the dev project (VERCEL_PROJECT_ID_DEV)
+    # and is NOT gated on approval: dev must lead prod, not follow it.
+    #
+    # vercel.json disables Vercel's own git auto-deploy on main for every
+    # project linked to this repo (git.deploymentEnabled.main = false), so
+    # without this job the dev project's production domain never updates —
+    # it was silently frozen at the last pre-disable commit. Runs
+    # unconditionally (no affected gate) so web-only changes — which don't
+    # flip the functions `has_changes` flag — still reach dev.
+    needs: prepare_and_build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # Same flow as deploy_vercel_prod, pointed at the dev project. The
+      # dev project's *production* domain is business-dev.*, so `--prod`
+      # here promotes to dev — not to the prod project. The dev project's
+      # Production env already carries NEXT_PUBLIC_FIREBASE_ENV=dev + the
+      # Square sandbox IDs, so `vercel build` bakes the dev config. ORG_ID
+      # and TOKEN are shared with prod (same Vercel team); only the project
+      # id differs.
+      - name: Pull Vercel environment (dev production)
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build for Vercel (dev)
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to dev Vercel (business-dev)
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
   e2e_dev:
     # The gate: run the registration E2E suite against the deployed dev
     # backend + deployed harness. Any failure here blocks the prod deploy.
@@ -526,8 +578,12 @@ jobs:
     #
     # A single gate covers all three prod jobs (functions, webflow,
     # vercel) — one approval click unlocks the whole prod side.
-    needs: e2e_dev
-    if: needs.e2e_dev.result == 'success'
+    #
+    # Also gated on deploy_vercel_dev: we never promote to prod unless the
+    # dev admin app actually deployed, so "known-good dev" includes the web
+    # app, not just functions + harness.
+    needs: [e2e_dev, deploy_vercel_dev]
+    if: needs.e2e_dev.result == 'success' && needs.deploy_vercel_dev.result == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
