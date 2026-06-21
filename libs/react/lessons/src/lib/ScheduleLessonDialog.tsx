@@ -52,6 +52,7 @@ import {
   useSignal,
   useSignals,
 } from '@maple/react/signals';
+import { RoomAvailability } from '@maple/react/events';
 import {
   generateWeeklyDates,
   type SeriesCadence,
@@ -294,21 +295,35 @@ export function ScheduleLessonDialog({
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             {mode.value === 'single' ? (
-              <DateTimePicker
-                label="Date & time"
-                value={scheduledAt.value}
-                onChange={(v) => {
-                  if (v) scheduledAt.value = v;
-                }}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    required: true,
-                    error: !!errorFor('scheduledAt'),
-                    helperText: errorFor('scheduledAt') ?? undefined,
-                  },
-                }}
-              />
+              <>
+                <DateTimePicker
+                  label="Date & time"
+                  value={scheduledAt.value}
+                  onChange={(v) => {
+                    if (v) scheduledAt.value = v;
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      required: true,
+                      error: !!errorFor('scheduledAt'),
+                      helperText: errorFor('scheduledAt') ?? undefined,
+                    },
+                  }}
+                />
+                {/* Lessons occupy the Spruce Room — surface that day's
+                    availability and warn (non-blocking) on overlaps. */}
+                <RoomAvailability
+                  room="spruce"
+                  start={scheduledAt.value}
+                  end={
+                    new Date(
+                      scheduledAt.value.getTime() +
+                        durationMinutes.value * 60_000
+                    )
+                  }
+                />
+              </>
             ) : (
               <>
                 <DateTimePicker
