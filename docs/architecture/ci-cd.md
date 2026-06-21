@@ -44,7 +44,8 @@ merge to main
             ├── publish_webflow_components   → Webflow library share
             └── deploy_vercel_prod           → maple-spruce on Vercel
 
-  + deploy_firestore_indexes  (independent — runs in parallel with everything)
+  + deploy_firestore_indexes_dev   (independent → maple-and-spruce-dev)
+  + deploy_firestore_indexes        (independent → maple-and-spruce, prod)
 ```
 
 **Two gates**:
@@ -54,6 +55,8 @@ merge to main
 **Why `deploy_vercel_dev` runs every merge and isn't approval-gated**: dev must *lead* prod — it's the known-good environment we check before promoting. `vercel.json` sets `git.deploymentEnabled.main = false`, which disables Vercel's native git auto-deploy for **every** project linked to this repo (prod *and* dev), so without this job the dev project's production domain (`business-dev.*`) silently freezes at the last pre-disable commit. It runs unconditionally (no affected gate) because web-only changes don't flip the functions `has_changes` flag.
 
 **Why Firestore indexes don't gate**: index additions are forward-compatible (queries work without them, just slower or with a "missing index" error). Index builds take minutes server-side after the deploy submits the spec, so gating E2E on index readiness would add a lot of wall-clock without catching anything new. The PR-time analyzer (`tools/check-firestore-indexes.ts`) enforces declaration; that's the load-bearing check.
+
+**Indexes deploy to dev *and* prod**: there are two index-deploy jobs — `deploy_firestore_indexes_dev` (→ `maple-and-spruce-dev`) and `deploy_firestore_indexes` (→ prod). Both fire only when `firestore.indexes.json` changed in the merge (or on manual `workflow_dispatch`). Dev needs its own because the emulator doesn't enforce composite indexes, so a query missing a dev index passes every test and only fails against the live dev project. To backfill all declared indexes into a freshly-recreated dev project, run the workflow via `workflow_dispatch` (deploys regardless of file diff).
 
 **Concurrency**: `concurrency.group: deploy-on-merge`, `cancel-in-progress: false`. Two back-to-back merges otherwise race on the shared dev project (B's dev deploy overwrites A's mid-E2E). Cancel-in-progress stays off so we never abort a deploy halfway.
 
