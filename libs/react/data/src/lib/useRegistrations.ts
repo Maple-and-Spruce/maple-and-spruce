@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { callDeduped } from './call-deduped';
 import type {
   Registration,
   UpdateRegistrationInput,
@@ -43,13 +44,10 @@ export function useRegistrations(filters?: UseRegistrationsFilters) {
     setRegistrationsState({ status: 'loading' });
 
     try {
-      const functions = getMapleFunctions();
-      const getRegistrations = httpsCallable<
+      const result = await callDeduped<
         GetRegistrationsRequest,
         GetRegistrationsResponse
-      >(functions, 'getRegistrations');
-
-      const result = await getRegistrations({
+      >('getRegistrations', {
         classId: filters?.classId,
         status: filters?.status,
         customerEmail: filters?.customerEmail,

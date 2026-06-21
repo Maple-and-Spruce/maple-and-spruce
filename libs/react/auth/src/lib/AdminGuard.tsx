@@ -40,33 +40,6 @@ export function AdminGuardView({
   adminState,
   onSignOut,
 }: AdminGuardViewProps) {
-  // While checking admin status, keep children mounted (but hidden) so their
-  // data hooks fire in parallel with the admin check instead of waiting for it
-  // to resolve. The overlay hides any admin content until access is confirmed;
-  // the admin-only Cloud Functions reject non-admins server-side, so kicking
-  // off these fetches before the check completes is safe.
-  if (isCheckingAdmin) {
-    return (
-      <Box sx={{ position: 'relative', minHeight: '100vh' }}>
-        <Box sx={{ visibility: 'hidden' }} aria-hidden>
-          {children}
-        </Box>
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            bgcolor: 'background.default',
-          }}
-        >
-          <CircularProgress color="primary" />
-        </Box>
-      </Box>
-    );
-  }
-
   // If check failed with error, show a generic message
   if (adminState.status === 'error') {
     return (
@@ -105,8 +78,9 @@ export function AdminGuardView({
     );
   }
 
-  // Not an admin - show friendly message
-  if (!isAdmin) {
+  // Resolved and not an admin — show the friendly onboarding message.
+  // (While still checking, fall through to render children hidden below.)
+  if (!isCheckingAdmin && !isAdmin) {
     return (
       <Box
         sx={{
@@ -147,8 +121,37 @@ export function AdminGuardView({
     );
   }
 
-  // User is admin, render children
-  return <>{children}</>;
+  // Admin confirmed, or still checking: render children in a STABLE wrapper
+  // so that resolving admin status doesn't remount them — a remount refires
+  // every data hook (the dashboard was fetching each query a second time the
+  // instant the check resolved). While still checking, hide the children
+  // behind a spinner overlay; their data hooks fetch in parallel with the
+  // admin check (admin-only functions reject non-admins server-side, so the
+  // early fetch is safe).
+  return (
+    <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+      <Box
+        sx={{ visibility: isCheckingAdmin ? 'hidden' : 'visible' }}
+        aria-hidden={isCheckingAdmin || undefined}
+      >
+        {children}
+      </Box>
+      {isCheckingAdmin && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            bgcolor: 'background.default',
+          }}
+        >
+          <CircularProgress color="primary" />
+        </Box>
+      )}
+    </Box>
+  );
 }
 
 /**
