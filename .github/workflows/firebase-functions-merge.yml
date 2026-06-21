@@ -10,7 +10,9 @@ name: Deploy on merge
 #     ├── e2e_dev                (Playwright → deployed dev URL)
 #     │     │
 #     │     └── approve_prod  ← MANUAL APPROVAL via `production` Environment
-#     │            │                (gated on e2e_dev AND deploy_vercel_dev)
+#     │            │                (gated on deploy_vercel_dev AND e2e_dev success;
+#     │            │                 a web-app-only merge skips e2e_dev, which is
+#     │            │                 treated as a pass so the portal still promotes)
 #     │            ├── deploy_functions_prod        (only if approve_prod passed)
 #     │            ├── publish_webflow_components   (only if approve_prod passed)
 #     │            └── deploy_vercel_prod           (only if approve_prod passed)
@@ -62,6 +64,7 @@ jobs:
       cache_key: ${{ steps.set_cache_key.outputs.key }}
       affected_codebases: ${{ steps.get_affected.outputs.affected_codebases }}
       webflow_components_affected: ${{ steps.get_affected.outputs.webflow_components_affected }}
+      web_app_affected: ${{ steps.get_affected.outputs.web_app_affected }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,6 +126,26 @@ jobs:
             echo "webflow-components is affected — will publish"
           fi
           echo "webflow_components_affected=$WEBFLOW_AFFECTED" >> $GITHUB_OUTPUT
+
+          # --- admin web app (maple-spruce) ---
+          # The registration E2E suite (e2e_dev) only runs when functions or
+          # webflow-components are affected, so a web-app-only merge skips
+          # e2e_dev and — without this flag — never reaches the prod gate
+          # (approve_prod), silently stranding portal changes at the last
+          # function-touching deploy. Detect the web app the same way as
+          # webflow-components: a full-line match (so "maple-spruce-e2e" can't
+          # false-positive), with nx's graph marking it affected transitively
+          # when an imported lib changes.
+          WEB_APP_AFFECTED=false
+          if [ "$DEPLOY_ALL" == "true" ]; then
+            WEB_APP_AFFECTED=true
+          elif echo "$ALL_AFFECTED" | grep -qx 'maple-spruce'; then
+            WEB_APP_AFFECTED=true
+          fi
+          if [ "$WEB_APP_AFFECTED" == "true" ]; then
+            echo "maple-spruce (admin web app) is affected — will deploy to prod Vercel after approval"
+          fi
+          echo "web_app_affected=$WEB_APP_AFFECTED" >> $GITHUB_OUTPUT
 
           # --- firebase functions ---
           if [ "$DEPLOY_ALL" == "true" ]; then
@@ -583,8 +606,22 @@ jobs:
     # Also gated on deploy_vercel_dev: we never promote to prod unless the
     # dev admin app actually deployed, so "known-good dev" includes the web
     # app, not just functions + harness.
-    needs: [e2e_dev, deploy_vercel_dev]
-    if: needs.e2e_dev.result == 'success' && needs.deploy_vercel_dev.result == 'success'
+    #
+    # e2e_dev is SKIPPED for web-app-only merges — it only runs when functions
+    # or webflow-components change, since it exercises the registration
+    # backend, not the admin portal. Treat that skip as a pass so a
+    # frontend-only portal change can still reach this gate; a genuine E2E
+    # *failure* (when functions did change) still blocks. `always()` is
+    # required because a skipped `needs` would otherwise skip this job too.
+    needs: [prepare_and_build, e2e_dev, deploy_vercel_dev]
+    if: >-
+      always() &&
+      needs.deploy_vercel_dev.result == 'success' &&
+      (needs.e2e_dev.result == 'success' ||
+        (needs.e2e_dev.result == 'skipped' &&
+          needs.prepare_and_build.outputs.has_changes != 'true' &&
+          needs.prepare_and_build.outputs.webflow_components_affected != 'true' &&
+          needs.prepare_and_build.outputs.web_app_affected == 'true'))
     runs-on: ubuntu-latest
     environment: production
     steps:
