@@ -52,7 +52,7 @@ import {
   useSignal,
   useSignals,
 } from '@maple/react/signals';
-import { RoomAvailability } from '@maple/react/events';
+import { RoomAvailability } from '@maple/react/rooms';
 import {
   generateWeeklyDates,
   type SeriesCadence,

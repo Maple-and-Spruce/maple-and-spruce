@@ -172,6 +172,24 @@ describe('getRoomConflicts', () => {
     expect(conflicts).toEqual([]);
   });
 
+  it('ignores every window from ignoreSourceRef (class edit flow)', () => {
+    const session1 = win('2026-06-11T16:30:00Z', '2026-06-11T17:30:00Z', {
+      eventId: 'class-abc-0',
+      sourceRef: 'classes/abc',
+    });
+    const session2 = win('2026-06-11T18:00:00Z', '2026-06-11T19:00:00Z', {
+      eventId: 'class-abc-1',
+      sourceRef: 'classes/abc',
+    });
+    const conflicts = getRoomConflicts(
+      { start: new Date('2026-06-11T17:00:00Z'), end: new Date('2026-06-11T17:30:00Z') },
+      [session1, session2, booked],
+      { ignoreSourceRef: 'classes/abc' }
+    );
+    // The class's own sessions are skipped; the unrelated booking still flags.
+    expect(conflicts.map((c) => c.eventId)).toEqual(['evt-mt']);
+  });
+
   it('returns multiple overlapping bookings', () => {
     const second = win('2026-06-11T17:00:00Z', '2026-06-11T17:45:00Z', {
       eventId: 'evt-lesson',

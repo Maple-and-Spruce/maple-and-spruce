@@ -106,19 +106,24 @@ export interface TimeRange {
  * bookings share a boundary but not a moment. A zero-length proposed range
  * never conflicts.
  *
- * `ignoreEventId` skips a specific event — used by edit flows so a booking
- * doesn't flag a conflict against its own existing window.
+ * Edit flows can exclude an item's own derived windows so it doesn't flag
+ * a conflict against itself:
+ * - `ignoreEventId` skips one event by id (e.g. an ad-hoc booking).
+ * - `ignoreSourceRef` skips every window from one source (e.g. all the
+ *   session events a class derives, `sourceRef: "classes/{id}"`).
  */
 export function getRoomConflicts(
   proposed: TimeRange,
   windows: RoomBusyWindow[],
-  options?: { ignoreEventId?: string }
+  options?: { ignoreEventId?: string; ignoreSourceRef?: string }
 ): RoomBusyWindow[] {
   const startMs = proposed.start.getTime();
   const endMs = proposed.end.getTime();
   return windows.filter(
     (w) =>
       w.eventId !== options?.ignoreEventId &&
+      (options?.ignoreSourceRef == null ||
+        w.sourceRef !== options.ignoreSourceRef) &&
       startMs < w.end.getTime() &&
       w.start.getTime() < endMs
   );
