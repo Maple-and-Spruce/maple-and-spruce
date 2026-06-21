@@ -224,7 +224,8 @@ export const AdminRendersChildren: Story = {
 };
 
 /**
- * Verifies loading state shows a spinner and not the content or lock screen.
+ * Verifies the loading state shows a spinner overlaying the (hidden) children,
+ * and not the lock or error screen.
  */
 export const LoadingShowsSpinner: Story = {
   args: {
@@ -240,8 +241,10 @@ export const LoadingShowsSpinner: Story = {
       expect(canvas.getByRole('progressbar')).toBeInTheDocument();
     });
 
-    // Verify no lock screen or children
-    expect(canvas.queryByText(/Admin Dashboard/i)).not.toBeInTheDocument();
+    // Children are kept mounted but hidden while checking, so their data
+    // hooks fetch in parallel with the admin check. The spinner overlays
+    // them until access resolves — so the content is present but not visible.
+    expect(canvas.getByText(/Admin Dashboard/i)).not.toBeVisible();
     expect(
       canvas.queryByText(/Welcome to Maple & Spruce/i)
     ).not.toBeInTheDocument();
