@@ -37,6 +37,7 @@ merge to main
   ├── prepare_and_build  (build affected codebases, upload artifacts)
   ├── deploy_functions_dev   → maple-and-spruce-dev
   ├── deploy_harness_dev     → maple-spruce-registration-test.web.app
+  ├── deploy_vercel_dev      → admin app on dev Vercel project (business-dev.*)
   └── e2e_dev (registration Playwright suite vs deployed dev)
        └── approve_prod  ← MANUAL APPROVAL via `production` Environment
             ├── deploy_functions_prod        → maple-and-spruce
@@ -47,8 +48,10 @@ merge to main
 ```
 
 **Two gates**:
-1. **`e2e_dev`** must pass — the suite hits deployed dev callables + dev Firestore. Failures here mean prod stays on the previous deploy.
+1. **`e2e_dev`** must pass — the suite hits deployed dev callables + dev Firestore. Failures here mean prod stays on the previous deploy. `approve_prod` is *also* gated on `deploy_vercel_dev` succeeding, so a broken dev admin-app deploy blocks prod promotion too.
 2. **`approve_prod`** requires a human to click "Review pending deployments" in the GitHub UI. Uses the `production` Environment (Settings → Environments) which has required reviewers configured. One approval unlocks all three prod jobs.
+
+**Why `deploy_vercel_dev` runs every merge and isn't approval-gated**: dev must *lead* prod — it's the known-good environment we check before promoting. `vercel.json` sets `git.deploymentEnabled.main = false`, which disables Vercel's native git auto-deploy for **every** project linked to this repo (prod *and* dev), so without this job the dev project's production domain (`business-dev.*`) silently freezes at the last pre-disable commit. It runs unconditionally (no affected gate) because web-only changes don't flip the functions `has_changes` flag.
 
 **Why Firestore indexes don't gate**: index additions are forward-compatible (queries work without them, just slower or with a "missing index" error). Index builds take minutes server-side after the deploy submits the spec, so gating E2E on index readiness would add a lot of wall-clock without catching anything new. The PR-time analyzer (`tools/check-firestore-indexes.ts`) enforces declaration; that's the load-bearing check.
 
@@ -73,13 +76,14 @@ Optional but recommended: move `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_
 
 ### Required secrets
 
-The Vercel job needs three secrets (set once in repo settings → Secrets and variables → Actions):
+The Vercel jobs need these secrets (set once in repo settings → Secrets and variables → Actions):
 
 - `VERCEL_TOKEN` — generated at <https://vercel.com/account/tokens>
 - `VERCEL_ORG_ID` — from `.vercel/project.json` after `vercel link`
-- `VERCEL_PROJECT_ID` — same
+- `VERCEL_PROJECT_ID` — prod project (`maple-and-spruce-maple-spruce`), used by `deploy_vercel_prod`
+- `VERCEL_PROJECT_ID_DEV` — dev project (`maple-and-spruce-dev`), used by `deploy_vercel_dev`. Same Vercel team, so `VERCEL_ORG_ID` and `VERCEL_TOKEN` are reused — only the project id differs.
 
-Without these, the `deploy_vercel_prod` job fails and prod Vercel stays on the previous deploy. (Firebase prod deploy is unaffected.)
+Without `VERCEL_PROJECT_ID`, `deploy_vercel_prod` fails and prod Vercel stays on the previous deploy. Without `VERCEL_PROJECT_ID_DEV`, `deploy_vercel_dev` fails and `business-dev` stays stale (which now also blocks prod promotion, since `approve_prod` depends on it). Firebase deploys are unaffected either way.
 
 ### Required Firebase Hosting site
 
