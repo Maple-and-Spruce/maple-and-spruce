@@ -12,6 +12,7 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import TuneIcon from '@mui/icons-material/Tune';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -134,6 +135,11 @@ export function AppShellWrapper({
             label: 'Events',
             href: '/events',
             icon: <CalendarMonthIcon />,
+          },
+          {
+            label: 'Book the Spruce Room',
+            href: '/book-room',
+            icon: <MeetingRoomIcon />,
           },
           {
             label: 'Embed Settings',
