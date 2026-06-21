@@ -25,6 +25,7 @@ export {
 } from './lib/useCalendarEvents';
 export { useCalendarEmbedConfig } from './lib/useCalendarEmbedConfig';
 export { useRoomSchedule } from './lib/useRoomSchedule';
+export { useRoomScheduleForDate } from './lib/useRoomScheduleForDate';
 
 // Phase 5: Etsy Integration
 export { useEtsyConnection } from './lib/useEtsyConnection';
