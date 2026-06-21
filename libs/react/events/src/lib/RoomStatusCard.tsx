@@ -1,6 +1,16 @@
 'use client';
 
-import { Alert, Box, Card, CardContent, Chip, Skeleton, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
+  Skeleton,
+  Typography,
+} from '@mui/material';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import {
   getRoomLabel,
@@ -28,7 +38,14 @@ function windowLabel(w: RoomBusyWindow): string {
  * "In use until 5:15 PM", with what's happening now and what's up next.
  * Answers the standing-in-the-building question without opening a calendar.
  */
-export function RoomStatusCard({ room }: { room: Room }) {
+export function RoomStatusCard({
+  room,
+  bookHref,
+}: {
+  room: Room;
+  /** When set, renders a "Book the room" action linking here. */
+  bookHref?: string;
+}) {
   const { roomScheduleState } = useRoomSchedule(room);
 
   const status =
@@ -62,6 +79,13 @@ export function RoomStatusCard({ room }: { room: Room }) {
           <RoomStatusLines status={status} />
         ) : null}
       </CardContent>
+      {bookHref && (
+        <CardActions>
+          <Button size="small" href={bookHref}>
+            Book the room
+          </Button>
+        </CardActions>
+      )}
     </Card>
   );
 }
