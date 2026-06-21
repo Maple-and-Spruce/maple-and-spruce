@@ -1,6 +1,7 @@
 import './global.css';
 import { ThemeProvider } from '@maple/react/theme';
 import { AuthGuardWrapper } from './auth-guard-wrapper';
+import { DashboardWarmup } from './dashboard-warmup';
 
 export const metadata = {
   title: 'Maple & Spruce - Inventory Management',
@@ -28,6 +29,7 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
+          <DashboardWarmup />
           <AuthGuardWrapper>{children}</AuthGuardWrapper>
         </ThemeProvider>
       </body>
