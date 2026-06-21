@@ -25,13 +25,17 @@ import type {
   CalendarEvent,
   CalendarEventType,
   CreateCalendarEventInput,
+  Room,
 } from '@maple/ts/domain';
 import {
   CALENDAR_EVENT_TYPES,
   DEFAULT_EVENT_LOCATION,
   getCalendarEventTypeLabel,
+  getRoomLabel,
+  ROOMS,
 } from '@maple/ts/domain';
 import { calendarEventValidation } from '@maple/ts/validation';
+import { RoomAvailability } from './RoomAvailability';
 import {
   useSignal,
   useComputed,
@@ -77,6 +81,7 @@ export function CalendarEventForm({
   const location = useSignal(DEFAULT_EVENT_LOCATION);
   const type = useSignal<CalendarEventType>('event');
   const isPublic = useSignal(true);
+  const room = useSignal<Room | null>(null);
 
   // UI state signals
   const showValidationErrors = useSignal(false);
@@ -100,6 +105,7 @@ export function CalendarEventForm({
       location: location.value,
       type: type.value,
       public: isPublic.value,
+      room: room.value,
     });
   });
 
@@ -151,6 +157,7 @@ export function CalendarEventForm({
         location.value = calendarEvent.location;
         type.value = calendarEvent.type;
         isPublic.value = calendarEvent.public;
+        room.value = calendarEvent.room ?? null;
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -173,6 +180,7 @@ export function CalendarEventForm({
         location.value = DEFAULT_EVENT_LOCATION;
         type.value = 'event';
         isPublic.value = true;
+        room.value = null;
         showValidationErrors.value = false;
         submitError.value = null;
       });
@@ -204,6 +212,7 @@ export function CalendarEventForm({
         location: location.value,
         type: type.value,
         public: isPublic.value,
+        room: room.value,
         sourceRef: calendarEvent?.sourceRef ?? null,
         createdBy: calendarEvent?.createdBy ?? '',
       });
@@ -357,6 +366,41 @@ export function CalendarEventForm({
             helperText={getFieldError('location')}
             fullWidth
           />
+
+          {/* Room */}
+          <FormControl fullWidth>
+            <InputLabel id="event-room-label">Room</InputLabel>
+            <Select
+              labelId="event-room-label"
+              value={room.value ?? ''}
+              label="Room"
+              onChange={(e) =>
+                (room.value =
+                  e.target.value === '' ? null : (e.target.value as Room))
+              }
+            >
+              <MenuItem value="">No specific room</MenuItem>
+              {ROOMS.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {getRoomLabel(r)}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              Set this if the event occupies a bookable room — it blocks the
+              room and flags conflicts.
+            </FormHelperText>
+          </FormControl>
+
+          {/* Room availability for the picked slot */}
+          {room.value && (
+            <RoomAvailability
+              room={room.value}
+              start={startDateTime.value}
+              end={endDateTime.value}
+              ignoreEventId={calendarEvent?.id}
+            />
+          )}
 
           {/* Public Toggle */}
           <FormControlLabel
