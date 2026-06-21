@@ -15,7 +15,8 @@ name: Deploy on merge
 #     │            ├── publish_webflow_components   (only if approve_prod passed)
 #     │            └── deploy_vercel_prod           (only if approve_prod passed)
 #     │
-#     └── deploy_firestore_indexes_prod  (independent — index changes don't block on E2E
+#     ├── deploy_firestore_indexes_dev   (independent — declared indexes → maple-and-spruce-dev)
+#     └── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
 #                                          because they take minutes to build and are
 #                                          additive; analyzer enforces declaration at PR)
 #
@@ -686,6 +687,76 @@ jobs:
       - name: Skip empty function group
         if: matrix.functions == ''
         run: echo "Skipping deployment for empty function group"
+
+  deploy_firestore_indexes_dev:
+    # Same as deploy_firestore_indexes but for the DEV project. Without
+    # this, composite indexes only ever reach prod — dev queries that need
+    # one fail at runtime with "requires an index", and the emulator never
+    # catches it (it doesn't enforce composite indexes). That stayed hidden
+    # while the dev web app was frozen; once it went live and called
+    # getRoomSchedule, the missing dev index surfaced immediately. Dev must
+    # mirror prod for pre-prod verification to mean anything.
+    #
+    # Independent of the dev→E2E→prod chain (index builds are async and
+    # forward-compatible). Runs early so dev has its indexes building as
+    # soon as possible.
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if firestore.indexes.json changed
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only HEAD~1 HEAD | grep -q '^firestore.indexes.json$'; then
+            echo "firestore.indexes.json changed in this push — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "firestore.indexes.json unchanged — skipping"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud (Dev)
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup gcloud CLI
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Firestore indexes (dev)
+        if: steps.changed.outputs.changed == 'true'
+        timeout-minutes: 10
+        # No `--force` — same orphan-safety stance as prod (see the prod
+        # job below). On dev an orphan is lower-stakes, but failing loud
+        # keeps dev's declared index set honest and matching prod's.
+        run: |
+          set -eo pipefail
+          OUTPUT=$(mktemp)
+          trap 'rm -f "$OUTPUT"' EXIT
+
+          npx -y firebase-tools@latest deploy --only firestore:indexes \
+            --project maple-and-spruce-dev \
+            --token "$(gcloud auth print-access-token)" \
+            < /dev/null 2>&1 | tee "$OUTPUT"
+
+          if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
+            echo ""
+            echo "::error title=Firestore index orphans (dev)::Dev has composite indexes that aren't declared in firestore.indexes.json. The new indexes from this merge were applied, but the orphans were NOT deleted. Resolve before the next merge: either add the listed orphans to firestore.indexes.json, or delete them with 'pnpm exec firebase firestore:indexes:delete --project maple-and-spruce-dev'."
+            exit 1
+          fi
 
   deploy_firestore_indexes:
     # Independent of the dev→E2E→prod chain. Index additions take minutes
