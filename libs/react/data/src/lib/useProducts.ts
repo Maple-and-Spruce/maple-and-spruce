@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { callDeduped } from './call-deduped';
 import type {
   Product,
   CreateProductInput,
@@ -34,13 +35,10 @@ export function useProducts() {
     setProductsState({ status: 'loading' });
 
     try {
-      const functions = getMapleFunctions();
-      const getProducts = httpsCallable<
+      const result = await callDeduped<
         GetProductsRequest,
         GetProductsResponse
-      >(functions, 'getProducts');
-
-      const result = await getProducts({});
+      >('getProducts', {});
       setProductsState({
         status: 'success',
         data: result.data.products,
