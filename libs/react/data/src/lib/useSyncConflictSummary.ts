@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { callDeduped } from './call-deduped';
 import type { SyncConflictSummary, RequestState } from '@maple/ts/domain';
 import type {
   GetSyncConflictSummaryRequest,
@@ -31,13 +30,10 @@ export function useSyncConflictSummary() {
     setSummaryState({ status: 'loading' });
 
     try {
-      const functions = getMapleFunctions();
-      const getSyncConflictSummary = httpsCallable<
+      const result = await callDeduped<
         GetSyncConflictSummaryRequest,
         GetSyncConflictSummaryResponse
-      >(functions, 'getSyncConflictSummary');
-
-      const result = await getSyncConflictSummary({});
+      >('getSyncConflictSummary', {});
       setSummaryState({
         status: 'success',
         data: result.data.summary,

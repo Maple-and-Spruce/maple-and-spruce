@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { callDeduped } from './call-deduped';
 import type { RequestState, Room, RoomBusyWindow } from '@maple/ts/domain';
 import type {
   GetRoomScheduleRequest,
@@ -26,21 +25,25 @@ export function useRoomSchedule(room: Room) {
     setRoomScheduleState({ status: 'loading' });
 
     try {
-      const functions = getMapleFunctions();
-      const getRoomSchedule = httpsCallable<
-        GetRoomScheduleRequest,
-        GetRoomScheduleResponse
-      >(functions, 'getRoomSchedule');
-
       const now = new Date();
       const endOfDay = new Date(now);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const result = await getRoomSchedule({
-        room,
-        start: now.toISOString(),
-        end: endOfDay.toISOString(),
-      });
+      // Dedupe by room only — `start`/`end` are derived from the current
+      // instant, so they differ by milliseconds between remounts and would
+      // otherwise defeat the in-flight dedupe.
+      const result = await callDeduped<
+        GetRoomScheduleRequest,
+        GetRoomScheduleResponse
+      >(
+        'getRoomSchedule',
+        {
+          room,
+          start: now.toISOString(),
+          end: endOfDay.toISOString(),
+        },
+        `getRoomSchedule:${room}`
+      );
 
       const windows: RoomBusyWindow[] = result.data.windows
         .map((w) => ({

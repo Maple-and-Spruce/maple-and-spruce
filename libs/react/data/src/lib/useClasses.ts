@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { callDeduped } from './call-deduped';
 import type {
   Class,
   CreateClassInput,
@@ -47,18 +48,15 @@ export function useClasses(filters?: UseClassesFilters) {
     setClassesState({ status: 'loading' });
 
     try {
-      const functions = getMapleFunctions();
-      const getClasses = httpsCallable<GetClassesRequest, GetClassesResponse>(
-        functions,
-        'getClasses'
+      const result = await callDeduped<GetClassesRequest, GetClassesResponse>(
+        'getClasses',
+        {
+          status: filters?.status,
+          categoryId: filters?.categoryId,
+          instructorId: filters?.instructorId,
+          upcoming: filters?.upcoming,
+        }
       );
-
-      const result = await getClasses({
-        status: filters?.status,
-        categoryId: filters?.categoryId,
-        instructorId: filters?.instructorId,
-        upcoming: filters?.upcoming,
-      });
       setClassesState({
         status: 'success',
         data: result.data.classes,
