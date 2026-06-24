@@ -630,7 +630,13 @@ jobs:
 
   deploy_functions_prod:
     needs: [prepare_and_build, approve_prod]
+    # `!cancelled()` is required because approve_prod uses `always()` in its
+    # own `if` (to survive a skipped e2e_dev on web-app-only merges). A job
+    # that depends on an `always()` job is implicitly skipped unless it also
+    # uses a status-check function in its `if` — without this, the prod
+    # deploy was silently skipped even after approve_prod succeeded.
     if: >-
+      !cancelled() &&
       needs.approve_prod.result == 'success' &&
       needs.prepare_and_build.outputs.has_changes == 'true' &&
       needs.prepare_and_build.outputs.matrix != '' &&
@@ -878,7 +884,10 @@ jobs:
     # Gate the webflow-components publish on the manual approval (which
     # itself depends on E2E passing). The published bundle becomes the
     # live widget, so it's treated as a prod-side action.
+    # `!cancelled()` is required because approve_prod uses `always()` — see
+    # deploy_functions_prod for why a status-check function is needed here.
     if: >-
+      !cancelled() &&
       needs.approve_prod.result == 'success' &&
       needs.prepare_and_build.outputs.webflow_components_affected == 'true'
     runs-on: ubuntu-latest
@@ -917,7 +926,11 @@ jobs:
     # PR previews still auto-deploy from Vercel because the disable only
     # covers `main`.
     needs: approve_prod
-    if: needs.approve_prod.result == 'success'
+    # `!cancelled()` is required because approve_prod uses `always()` — a job
+    # depending on an `always()` job is implicitly skipped unless it also uses
+    # a status-check function. Without this, deploy_vercel_prod was skipped on
+    # #493 despite approve_prod succeeding, so the portal never reached prod.
+    if: ${{ !cancelled() && needs.approve_prod.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
