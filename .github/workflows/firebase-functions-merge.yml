@@ -320,10 +320,14 @@ jobs:
 
       - name: Authenticate to Google Cloud (Dev)
         id: auth
+        # `firebase deploy --only functions` routes through the Firebase Admin
+        # SDK, which does NOT support keyless WIF (external_account) creds
+        # (firebase-admin-node#2168) — it needs a service-account key. So the
+        # functions jobs alone authenticate with a key; every other deploy
+        # (hosting, firestore, vercel) stays keyless WIF.
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          credentials_json: ${{ secrets.FIREBASE_DEPLOY_KEY_DEV }}
           create_credentials_file: true
 
       - name: Setup gcloud CLI
@@ -661,10 +665,11 @@ jobs:
 
       - name: Authenticate to Google Cloud (Prod)
         id: auth
+        # Service-account key — see deploy_functions_dev (functions deploy
+        # can't use keyless WIF). Other prod deploys stay keyless WIF.
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
+          credentials_json: ${{ secrets.FIREBASE_DEPLOY_KEY_PROD }}
           create_credentials_file: true
 
       - name: Setup gcloud CLI
