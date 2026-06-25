@@ -373,11 +373,14 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3; do
+            # Auth via ADC: google-github-actions/auth (create_credentials_file:
+            # true) exports GOOGLE_APPLICATION_CREDENTIALS, which firebase-tools
+            # uses. Passing a gcloud access token via `--token` is deprecated and
+            # firebase-tools@15 now rejects it ("credentials are no longer valid").
             if pnpm exec firebase deploy \
               --only ${{ matrix.functions }} \
               --project maple-and-spruce-dev \
-              --force \
-              --token "$(gcloud auth print-access-token)"; then
+              --force; then
               exit 0
             fi
             if [ $attempt -lt 3 ]; then
@@ -460,7 +463,6 @@ jobs:
           npx -y firebase-tools@latest hosting:sites:create \
             maple-spruce-registration-test \
             --project maple-and-spruce-dev \
-            --token "$(gcloud auth print-access-token)" \
             < /dev/null || true
 
       - name: Deploy harness to dev Hosting
@@ -468,8 +470,7 @@ jobs:
           pnpm exec firebase deploy \
             --only hosting:registration-test \
             --project maple-and-spruce-dev \
-            --force \
-            --token "$(gcloud auth print-access-token)"
+            --force
 
   deploy_vercel_dev:
     # Auto-deploy the admin web app to the DEV Vercel project on every
@@ -712,11 +713,11 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3; do
+            # Auth via ADC (GOOGLE_APPLICATION_CREDENTIALS) — see deploy_functions_dev.
             if pnpm exec firebase deploy \
               --only ${{ matrix.functions }} \
               --project maple-and-spruce \
-              --force \
-              --token "$(gcloud auth print-access-token)"; then
+              --force; then
               exit 0
             fi
             if [ $attempt -lt 3 ]; then
@@ -792,7 +793,6 @@ jobs:
 
           npx -y firebase-tools@latest deploy --only firestore:indexes \
             --project maple-and-spruce-dev \
-            --token "$(gcloud auth print-access-token)" \
             < /dev/null 2>&1 | tee "$OUTPUT"
 
           if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
@@ -870,7 +870,6 @@ jobs:
 
           npx -y firebase-tools@latest deploy --only firestore:indexes \
             --project maple-and-spruce \
-            --token "$(gcloud auth print-access-token)" \
             < /dev/null 2>&1 | tee "$OUTPUT"
 
           if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
