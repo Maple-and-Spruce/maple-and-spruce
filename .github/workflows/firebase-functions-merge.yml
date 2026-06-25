@@ -418,11 +418,17 @@ jobs:
           fetch-depth: 1
 
       - name: Authenticate to Google Cloud (Dev)
+        id: auth
+        # Also mint an access token: firebase-tools' ADC (external_account)
+        # exchange flakes intermittently ("Failed to authenticate"); a minted
+        # bearer token passed via --token is reliable (same as the functions
+        # jobs). create_credentials_file stays for the gcloud step / ADC.
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
           create_credentials_file: true
+          token_format: 'access_token'
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
@@ -467,6 +473,7 @@ jobs:
           npx -y firebase-tools@latest hosting:sites:create \
             maple-spruce-registration-test \
             --project maple-and-spruce-dev \
+            --token "${{ steps.auth.outputs.access_token }}" \
             < /dev/null || true
 
       - name: Deploy harness to dev Hosting
@@ -474,7 +481,8 @@ jobs:
           pnpm exec firebase deploy \
             --only hosting:registration-test \
             --project maple-and-spruce-dev \
-            --force
+            --force \
+            --token "${{ steps.auth.outputs.access_token }}"
 
   deploy_vercel_dev:
     # Auto-deploy the admin web app to the DEV Vercel project on every
@@ -775,12 +783,16 @@ jobs:
           fi
 
       - name: Authenticate to Google Cloud (Dev)
+        id: auth
         if: steps.changed.outputs.changed == 'true'
+        # Mint an access token for --token — see deploy_harness_dev (the ADC
+        # exchange flakes; a bearer token is reliable).
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
           create_credentials_file: true
+          token_format: 'access_token'
 
       - name: Setup gcloud CLI
         if: steps.changed.outputs.changed == 'true'
@@ -799,6 +811,7 @@ jobs:
 
           npx -y firebase-tools@latest deploy --only firestore:indexes \
             --project maple-and-spruce-dev \
+            --token "${{ steps.auth.outputs.access_token }}" \
             < /dev/null 2>&1 | tee "$OUTPUT"
 
           if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
@@ -840,12 +853,15 @@ jobs:
           fi
 
       - name: Authenticate to Google Cloud
+        id: auth
         if: steps.changed.outputs.changed == 'true'
+        # Mint an access token for --token — see deploy_harness_dev.
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
           create_credentials_file: true
+          token_format: 'access_token'
 
       - name: Setup gcloud CLI
         if: steps.changed.outputs.changed == 'true'
@@ -876,6 +892,7 @@ jobs:
 
           npx -y firebase-tools@latest deploy --only firestore:indexes \
             --project maple-and-spruce \
+            --token "${{ steps.auth.outputs.access_token }}" \
             < /dev/null 2>&1 | tee "$OUTPUT"
 
           if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
