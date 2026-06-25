@@ -320,11 +320,15 @@ jobs:
 
       - name: Authenticate to Google Cloud (Dev)
         id: auth
+        # functions deploy goes through the Firebase Admin SDK, which can't use
+        # the keyless external_account credential file (firebase-admin-node#2168).
+        # So mint a short-lived OAuth access token (still keyless, via WIF) and
+        # pass it to `firebase deploy --token` below instead.
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
-          create_credentials_file: true
+          token_format: 'access_token'
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
@@ -373,14 +377,14 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3; do
-            # Auth via ADC: google-github-actions/auth (create_credentials_file:
-            # true) exports GOOGLE_APPLICATION_CREDENTIALS, which firebase-tools
-            # uses. Passing a gcloud access token via `--token` is deprecated and
-            # firebase-tools@15 now rejects it ("credentials are no longer valid").
+            # Keyless WIF access token (minted by the auth step) — the Admin SDK
+            # can't consume the external_account credential file, but it accepts
+            # a plain bearer token via --token.
             if pnpm exec firebase deploy \
               --only ${{ matrix.functions }} \
               --project maple-and-spruce-dev \
-              --force; then
+              --force \
+              --token "${{ steps.auth.outputs.access_token }}"; then
               exit 0
             fi
             if [ $attempt -lt 3 ]; then
@@ -661,11 +665,12 @@ jobs:
 
       - name: Authenticate to Google Cloud (Prod)
         id: auth
+        # Keyless WIF access token — see deploy_functions_dev.
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
-          create_credentials_file: true
+          token_format: 'access_token'
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
@@ -713,11 +718,12 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3; do
-            # Auth via ADC (GOOGLE_APPLICATION_CREDENTIALS) — see deploy_functions_dev.
+            # Keyless WIF access token via --token — see deploy_functions_dev.
             if pnpm exec firebase deploy \
               --only ${{ matrix.functions }} \
               --project maple-and-spruce \
-              --force; then
+              --force \
+              --token "${{ steps.auth.outputs.access_token }}"; then
               exit 0
             fi
             if [ $attempt -lt 3 ]; then
