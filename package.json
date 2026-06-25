@@ -57,7 +57,7 @@
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-sonarjs": "^4.0.3",
-    "firebase-tools": "^15.11.0",
+    "firebase-tools": "^15.22.2",
     "http-server": "^14.1.1",
     "jscpd": "^4.0.9",
     "jsdom": "^27.1.0",
