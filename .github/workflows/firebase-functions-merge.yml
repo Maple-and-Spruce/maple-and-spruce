@@ -478,11 +478,25 @@ jobs:
 
       - name: Deploy harness to dev Hosting
         run: |
-          pnpm exec firebase deploy \
+          set -o pipefail
+          OUT=$(mktemp); trap 'rm -f "$OUT"' EXIT
+          if pnpm exec firebase deploy \
             --only hosting:registration-test \
             --project maple-and-spruce-dev \
             --force \
-            --token "${{ steps.auth.outputs.access_token }}"
+            --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee "$OUT"; then
+            exit 0
+          fi
+          # Idempotent: this job redeploys the harness on every run, so when the
+          # content is byte-identical to what's live (e.g. back-to-back deploys
+          # with no harness change) Firebase rejects the release with "is the
+          # current active version". The harness is already at the desired
+          # state, so treat that specific case as success.
+          if grep -q "is the current active version" "$OUT"; then
+            echo "::notice::Harness already at the live version — treating as success."
+            exit 0
+          fi
+          exit 1
 
   deploy_vercel_dev:
     # Auto-deploy the admin web app to the DEV Vercel project on every
