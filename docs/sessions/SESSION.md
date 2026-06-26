@@ -6,8 +6,17 @@
 
 ## Current Status
 
-**Date**: 2026-06-11
-**Status**: Phase 4 complete; Phase 5 in progress. Spruce Room availability epic started (#467).
+**Date**: 2026-06-26
+**Status**: Phase 4 complete; Phase 5 in progress. Spruce Room availability epic (#467) — PRs 1 & 2 shipped; adding the upcoming-schedule agenda (#504).
+
+### Spruce Room upcoming-schedule agenda (#504, 2026-06-26)
+
+The epic deferred a "check the calendar" view ("Add later only if missed"). It was missed — the portal could say if the room was free *right now* and warn on conflicts inline, but there was no way to see all upcoming usage to plan around. Added a read-only **agenda view** at `/room-schedule` (Calendar nav group + a "View schedule" link on the dashboard room widget): bookings over the next 2/4/8 weeks grouped by day, with consecutive free days collapsed into an "Open" range.
+
+Pure additive UI on top of the existing `getRoomSchedule` callable — **no backend or Firestore index changes**:
+- `groupRoomScheduleByDay` domain helper (`libs/ts/domain/room.ts`) + unit tests
+- `useRoomScheduleRange(room, start, end)` hook (`libs/react/rooms`) — generalizes `useRoomScheduleForDate` to an arbitrary span
+- `RoomScheduleAgenda` / `RoomScheduleAgendaList` components (`libs/react/rooms`) + tests
 
 ### Spruce Room availability — PR 1 shipped (2026-06-11)
 

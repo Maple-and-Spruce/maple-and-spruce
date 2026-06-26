@@ -203,3 +203,60 @@ export function getDayStrip(
 
   return segments;
 }
+
+/**
+ * One calendar day in a room's upcoming-schedule agenda: the day (local
+ * midnight) and the busy windows that touch it, sorted by start. Days with
+ * no bookings are still included with an empty `windows` array so the
+ * agenda can render them as "Open all day".
+ */
+export interface RoomScheduleDay {
+  /** Local midnight of the day. */
+  date: Date;
+  windows: RoomBusyWindow[];
+}
+
+/**
+ * Bucket a room's busy windows into one entry per local calendar day across
+ * [rangeStart, rangeEnd] — the upcoming-schedule agenda. Every day in the
+ * range gets an entry; an empty `windows` array means the room is open all
+ * day. A window is listed under each calendar day it overlaps, so a booking
+ * that spans midnight appears on both days. Windows within a day are sorted
+ * by start time.
+ *
+ * Days are enumerated in local time from the start of `rangeStart`'s day
+ * through the start of `rangeEnd`'s day, inclusive.
+ */
+export function groupRoomScheduleByDay(
+  windows: RoomBusyWindow[],
+  rangeStart: Date,
+  rangeEnd: Date
+): RoomScheduleDay[] {
+  const days: RoomScheduleDay[] = [];
+
+  const cursor = new Date(rangeStart);
+  cursor.setHours(0, 0, 0, 0);
+  const lastDay = new Date(rangeEnd);
+  lastDay.setHours(0, 0, 0, 0);
+
+  while (cursor.getTime() <= lastDay.getTime()) {
+    const dayStart = new Date(cursor);
+    const dayEnd = new Date(cursor);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dayWindows = windows
+      .filter(
+        (w) =>
+          // Half-open overlap with the day: a window that ends exactly at
+          // midnight belongs to the previous day, not this one.
+          w.start.getTime() <= dayEnd.getTime() &&
+          w.end.getTime() > dayStart.getTime()
+      )
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    days.push({ date: new Date(dayStart), windows: dayWindows });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return days;
+}

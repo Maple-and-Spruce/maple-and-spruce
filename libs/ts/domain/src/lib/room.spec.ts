@@ -4,6 +4,7 @@ import {
   getRoomLabel,
   getRoomConflicts,
   getDayStrip,
+  groupRoomScheduleByDay,
   type RoomBusyWindow,
 } from './room';
 
@@ -203,6 +204,100 @@ describe('getRoomConflicts', () => {
       'evt-lesson',
       'evt-mt',
     ]);
+  });
+});
+
+describe('groupRoomScheduleByDay', () => {
+  // Local-time helper so day bucketing is deterministic across runner TZ.
+  function localWin(
+    y: number,
+    mo: number,
+    d: number,
+    sh: number,
+    eh: number,
+    overrides?: Partial<RoomBusyWindow>
+  ): RoomBusyWindow {
+    return {
+      eventId: `evt-${y}-${mo}-${d}-${sh}`,
+      title: 'Music Together',
+      type: 'event',
+      sourceRef: null,
+      start: new Date(y, mo, d, sh, 0, 0, 0),
+      end: new Date(y, mo, d, eh, 0, 0, 0),
+      ...overrides,
+    };
+  }
+
+  it('returns one entry per calendar day across the range, inclusive', () => {
+    const days = groupRoomScheduleByDay(
+      [],
+      new Date(2026, 5, 26, 10, 0),
+      new Date(2026, 5, 28, 14, 0)
+    );
+    expect(days).toHaveLength(3);
+    expect(days.map((d) => d.date.getDate())).toEqual([26, 27, 28]);
+    // Each day starts at local midnight.
+    expect(days[0].date.getHours()).toBe(0);
+  });
+
+  it('leaves days with no bookings empty (open all day)', () => {
+    const days = groupRoomScheduleByDay(
+      [localWin(2026, 5, 26, 16, 17)],
+      new Date(2026, 5, 26, 0, 0),
+      new Date(2026, 5, 27, 0, 0)
+    );
+    expect(days[0].windows).toHaveLength(1);
+    expect(days[1].windows).toHaveLength(0);
+  });
+
+  it('assigns each window to its day and sorts within a day by start', () => {
+    const days = groupRoomScheduleByDay(
+      [
+        localWin(2026, 5, 26, 18, 19, { title: 'Late' }),
+        localWin(2026, 5, 26, 16, 17, { title: 'Early' }),
+        localWin(2026, 5, 27, 10, 11, { title: 'NextDay' }),
+      ],
+      new Date(2026, 5, 26, 0, 0),
+      new Date(2026, 5, 27, 0, 0)
+    );
+    expect(days[0].windows.map((w) => w.title)).toEqual(['Early', 'Late']);
+    expect(days[1].windows.map((w) => w.title)).toEqual(['NextDay']);
+  });
+
+  it('lists a window that spans midnight under both days', () => {
+    const spanning: RoomBusyWindow = {
+      eventId: 'overnight',
+      title: 'Overnight',
+      type: 'event',
+      sourceRef: null,
+      start: new Date(2026, 5, 26, 23, 0),
+      end: new Date(2026, 5, 27, 1, 0),
+    };
+    const days = groupRoomScheduleByDay(
+      [spanning],
+      new Date(2026, 5, 26, 0, 0),
+      new Date(2026, 5, 27, 0, 0)
+    );
+    expect(days[0].windows).toHaveLength(1);
+    expect(days[1].windows).toHaveLength(1);
+  });
+
+  it('excludes a window that ends exactly at the next midnight from that next day', () => {
+    const upToMidnight: RoomBusyWindow = {
+      eventId: 'till-midnight',
+      title: 'Closes out the day',
+      type: 'event',
+      sourceRef: null,
+      start: new Date(2026, 5, 26, 22, 0),
+      end: new Date(2026, 5, 27, 0, 0),
+    };
+    const days = groupRoomScheduleByDay(
+      [upToMidnight],
+      new Date(2026, 5, 26, 0, 0),
+      new Date(2026, 5, 27, 0, 0)
+    );
+    expect(days[0].windows).toHaveLength(1);
+    expect(days[1].windows).toHaveLength(0);
   });
 });
 
