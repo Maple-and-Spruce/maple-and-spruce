@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-cancel-craft-club-subscription",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/cancel-craft-club-subscription/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

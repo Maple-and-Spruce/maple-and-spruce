@@ -216,3 +216,7 @@ export { updateCraftClubMember } from '@maple/firebase/maple-functions/update-cr
 // Craft Club — public signup-gate endpoints (no Square dep)
 export { checkCraftClubEligibility } from '@maple/firebase/maple-functions/check-craft-club-eligibility';
 export { requestCraftClubAccess } from '@maple/firebase/maple-functions/request-craft-club-access';
+// Craft Club — self-service magic-link + session endpoints (no Square dep)
+export { requestCraftClubManageLink } from '@maple/firebase/maple-functions/request-craft-club-manage-link';
+export { startCraftClubSession } from '@maple/firebase/maple-functions/start-craft-club-session';
+export { getCraftClubSubscription } from '@maple/firebase/maple-functions/get-craft-club-subscription';

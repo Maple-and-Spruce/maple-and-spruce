@@ -44,3 +44,6 @@ export { syncInventoryToSquare } from '@maple/firebase/maple-functions/sync-inve
 
 // Craft Club subscription signup (public; Square customer + card + subscription)
 export { createCraftClubSubscription } from '@maple/firebase/maple-functions/create-craft-club-subscription';
+// Craft Club self-service (public, session-gated; Square subscription mutations)
+export { cancelCraftClubSubscription } from '@maple/firebase/maple-functions/cancel-craft-club-subscription';
+export { updateCraftClubPaymentMethod } from '@maple/firebase/maple-functions/update-craft-club-payment-method';

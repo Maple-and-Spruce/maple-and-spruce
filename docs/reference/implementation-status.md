@@ -448,8 +448,8 @@ magic-link self-service management. Delivered in phases.
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **Complete (PR #507)** |
-| 2 | Square $30/mo plan (`tools/create-craft-club-plan.ts`) + cards/subscriptions/customers services + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` (unit + interaction + integration tests) | **In Progress** |
-| 3 | Magic-link self-service: request link → session → cancel / change payment method | Not Started |
+| 2 | Square $30/mo plan (`tools/create-craft-club-plan.ts`) + cards/subscriptions/customers services + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` (unit + interaction + integration tests) | **Complete (PR #509)** |
+| 3 | Magic-link self-service: hashed single-use token + session repos, `requestCraftClubManageLink` / `startCraftClubSession` / `getCraftClubSubscription` / `cancelCraftClubSubscription` / `updateCraftClubPaymentMethod`, manage Webflow widget (unit + interaction + integration). E2E happy-path deferred to its own follow-up (needs a new Vite harness app + sandbox subscription fixtures). | **In Progress** |
 | 4 | Square subscription webhooks + admin pause/resume/cancel + welcome/cancel emails | Not Started |
 
 ## External Dependencies

@@ -8,6 +8,7 @@
 import type {
   CraftClubMember,
   CraftClubMemberStatus,
+  CraftClubMemberPublicView,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -126,4 +127,60 @@ export interface RequestCraftClubAccessRequest {
 export interface RequestCraftClubAccessResponse {
   /** Resulting status so the widget can confirm what happened. */
   status: 'requested' | 'approved' | 'active';
+}
+
+// ============================================================================
+// Self-service management (Phase 3 — magic link → session)
+// ============================================================================
+
+/** Request a magic-link email to manage an existing membership. */
+export interface RequestCraftClubManageLinkRequest {
+  email: string;
+}
+
+export interface RequestCraftClubManageLinkResponse {
+  /**
+   * Always true — the response is deliberately uniform whether or not the email
+   * is a member, to avoid leaking who has a membership.
+   */
+  ok: true;
+}
+
+/** Exchange a single-use magic-link token for a session. */
+export interface StartCraftClubSessionRequest {
+  token: string;
+}
+
+export interface StartCraftClubSessionResponse {
+  /** Short-lived session token; pass on every subsequent management call. */
+  sessionToken: string;
+  member: CraftClubMemberPublicView;
+}
+
+export interface GetCraftClubSubscriptionRequest {
+  sessionToken: string;
+}
+
+export interface GetCraftClubSubscriptionResponse {
+  member: CraftClubMemberPublicView;
+}
+
+export interface CancelCraftClubSubscriptionRequest {
+  sessionToken: string;
+}
+
+export interface CancelCraftClubSubscriptionResponse {
+  member: CraftClubMemberPublicView;
+}
+
+export interface UpdateCraftClubPaymentMethodRequest {
+  sessionToken: string;
+  /** New nonce from the Square Web Payments SDK card tokenization. */
+  paymentNonce: string;
+}
+
+export interface UpdateCraftClubPaymentMethodResponse {
+  member: CraftClubMemberPublicView;
+  /** Last 4 digits of the new card on file. */
+  cardLast4?: string;
 }
