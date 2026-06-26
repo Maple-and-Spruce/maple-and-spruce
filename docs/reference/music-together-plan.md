@@ -7,6 +7,8 @@
 
 This document captures the codebase investigation behind the plan and the rationale for the key decisions. The actionable work lives in the GitHub issues; this is the durable "why".
 
+> **Update 2026-06-26 (post-#509):** Craft Club Phase 2 (#509) landed a `CardsService.createCardOnFile` (`client.cards.create`) + `CustomersService.upsertByEmail` on the `Square` wrapper, with Square mock-server routes. **Card-on-file is therefore no longer net-new** — the original "Cards API entirely unused" finding below is superseded. Because these services hang off the wrapper's client, the Phase 0 multi-account work composes for free: `new Square(secrets, strings, MT_SQUARE_KEYS).cardsService` vaults to the MT account. `create-craft-club-subscription.ts:78-89` is the reuse template. **Phase 2 (#512) shrinks** to: confirm card-on-file + a stored-card charge against the MT account, plus `verifyBuyer` on the frontend if required.
+
 ---
 
 ## Decisions (locked)
