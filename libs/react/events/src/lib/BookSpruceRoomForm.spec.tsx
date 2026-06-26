@@ -32,6 +32,30 @@ describe('BookSpruceRoomForm', () => {
     expect(input.location).toBe('Spruce Room');
   });
 
+  it('submits with valid defaults late at night (block must not cross midnight)', async () => {
+    // Regression: before the 22:00 cap, the default 1-hour block starting at
+    // 23:00 wrapped the end time to 00:00, which combineDateTime folded back to
+    // the *same* day → end before start → "end after start" validation blocked
+    // submit. Fake only Date so waitFor's real timers still fire.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 5, 15, 22, 30, 0));
+    try {
+      const { onSubmit } = setup();
+      fireEvent.change(screen.getByLabelText(/what's the booking/i), {
+        target: { value: 'Late rental' },
+      });
+      fireEvent.click(bookButton());
+
+      await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      const input = onSubmit.mock.calls[0][0] as CreateCalendarEventInput;
+      expect(input.endDateTime.getTime()).toBeGreaterThan(
+        input.startDateTime.getTime()
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('does not submit when the title is blank', async () => {
     const { onSubmit } = setup();
     fireEvent.click(bookButton());

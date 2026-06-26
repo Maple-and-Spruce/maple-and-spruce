@@ -53,10 +53,16 @@ export function BookSpruceRoomForm({
 }: BookSpruceRoomFormProps) {
   useSignals();
 
-  // Defaults: next top of the hour today, a one-hour block.
+  // Defaults: next top of the hour today, a one-hour block. The form models a
+  // single calendar date (`combineDateTime` folds both times onto `date`'s
+  // Y/M/D), so the default block must not cross midnight — otherwise the end
+  // time wraps to 00:00 and lands *before* the start, failing "end after
+  // start" validation. Cap the start at 22:00 so the 1-hour block ends by
+  // 23:00 the same day, regardless of what time it currently is.
   const now = new Date();
   const defaultStart = new Date(now);
-  defaultStart.setHours(now.getHours() + 1, 0, 0, 0);
+  const defaultStartHour = Math.min(now.getHours() + 1, 22);
+  defaultStart.setHours(defaultStartHour, 0, 0, 0);
   const defaultEnd = new Date(defaultStart);
   defaultEnd.setHours(defaultStart.getHours() + 1);
 
