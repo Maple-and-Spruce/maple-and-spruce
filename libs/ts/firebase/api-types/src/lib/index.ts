@@ -390,4 +390,11 @@ export type {
   ApproveCraftClubMemberResponse,
   UpdateCraftClubMemberRequest,
   UpdateCraftClubMemberResponse,
+  CraftClubEligibilityStatus,
+  CheckCraftClubEligibilityRequest,
+  CheckCraftClubEligibilityResponse,
+  CreateCraftClubSubscriptionRequest,
+  CreateCraftClubSubscriptionResponse,
+  RequestCraftClubAccessRequest,
+  RequestCraftClubAccessResponse,
 } from './craft-club.types';
