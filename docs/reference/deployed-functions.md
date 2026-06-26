@@ -98,6 +98,12 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Lead attribution (Tally → GA4 + Meta CAPI)
 - `tallyLeadWebhook` — HTTP endpoint (Tally newsletter-signup webhook). Verifies `tally-signature` HMAC, extracts hidden fields, fans out to GA4 Measurement Protocol (`generate_lead`) and Meta Conversions API (`Lead`). _(concurrency: 80, memory: 256MiB.)_ Manual setup: `docs/guides/tally-lead-webhook-setup.md`.
 
+### Craft Club (recurring studio-access membership)
+- `getCraftClubMembers` _(admin)_ — lists members, optional status filter
+- `approveCraftClubMember` _(admin)_ — pre-approves an email (upsert by email; promotes a `requested` record to `approved`)
+- `updateCraftClubMember` _(admin)_ — edits a member's notes/contact/status (e.g. revoke approval)
+- _Public signup + subscribe, magic-link self-service, and subscription lifecycle webhooks land in later phases (maple-square codebase)._
+
 ---
 
 ## Codebase: `maple-calendar` (`apps/functions-calendar/`)

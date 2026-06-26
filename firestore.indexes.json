@@ -15,6 +15,20 @@
       ]
     },
     {
+      "collectionGroup": "craftClubMembers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "agreementRequests",
       "queryScope": "COLLECTION",
       "fields": [

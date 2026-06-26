@@ -80,6 +80,13 @@ export {
   type SignedAgreementFilters,
 } from './lib/signed-agreement.repository';
 
+// Craft Club (recurring studio-access membership)
+export {
+  CraftClubMemberRepository,
+  craftClubEmailKey,
+  type CraftClubMemberFilters,
+} from './lib/craft-club-member.repository';
+
 // Phase 5: Etsy
 export {
   FirestoreTokenStorage,
