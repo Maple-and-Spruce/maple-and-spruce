@@ -117,6 +117,8 @@
     "../../libs/firebase/maple-functions/get-craft-club-members/**/*.ts",
     "../../libs/firebase/maple-functions/approve-craft-club-member/**/*.ts",
     "../../libs/firebase/maple-functions/update-craft-club-member/**/*.ts",
+    "../../libs/firebase/maple-functions/check-craft-club-eligibility/**/*.ts",
+    "../../libs/firebase/maple-functions/request-craft-club-access/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
     "../../libs/ts/domain/src/**/*.ts",

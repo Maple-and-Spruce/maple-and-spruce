@@ -209,7 +209,10 @@ export { revokeAdminRole } from '@maple/firebase/maple-functions/revoke-admin-ro
 export { tallyLeadWebhook } from '@maple/firebase/maple-functions/tally-lead-webhook';
 
 // Craft Club — admin approval & management (no Square dep; subscribe/lifecycle
-// functions live in the maple-square codebase and arrive in later phases)
+// functions live in the maple-square codebase)
 export { getCraftClubMembers } from '@maple/firebase/maple-functions/get-craft-club-members';
 export { approveCraftClubMember } from '@maple/firebase/maple-functions/approve-craft-club-member';
 export { updateCraftClubMember } from '@maple/firebase/maple-functions/update-craft-club-member';
+// Craft Club — public signup-gate endpoints (no Square dep)
+export { checkCraftClubEligibility } from '@maple/firebase/maple-functions/check-craft-club-eligibility';
+export { requestCraftClubAccess } from '@maple/firebase/maple-functions/request-craft-club-access';

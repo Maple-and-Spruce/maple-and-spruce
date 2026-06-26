@@ -58,3 +58,24 @@ export {
   type InvoiceCustomerInput,
   type InvoiceLineItemInput,
 } from './lib/invoices.service';
+
+// Cards service (cards on file for subscription billing)
+export {
+  CardsService,
+  type CreateCardOnFileInput,
+  type CreateCardOnFileResult,
+} from './lib/cards.service';
+
+// Subscriptions service (recurring Craft Club billing)
+export {
+  SubscriptionsService,
+  type CreateSubscriptionInput,
+  type CreateSubscriptionResult,
+  type CancelSubscriptionResult,
+} from './lib/subscriptions.service';
+
+// Customers service (email-first upsert)
+export {
+  CustomersService,
+  type UpsertCustomerInput,
+} from './lib/customers.service';

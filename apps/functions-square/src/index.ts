@@ -41,3 +41,6 @@ export { importEtsyListings } from '@maple/firebase/maple-functions/import-etsy-
 
 // Cross-channel inventory sync (Square)
 export { syncInventoryToSquare } from '@maple/firebase/maple-functions/sync-inventory-to-square';
+
+// Craft Club subscription signup (public; Square customer + card + subscription)
+export { createCraftClubSubscription } from '@maple/firebase/maple-functions/create-craft-club-subscription';

@@ -67,3 +67,63 @@ export interface UpdateCraftClubMemberRequest {
 export interface UpdateCraftClubMemberResponse {
   member: CraftClubMember;
 }
+
+// ============================================================================
+// Check Eligibility (Public — signup widget gate)
+// ============================================================================
+
+/**
+ * Coarse eligibility status for an email at the signup gate:
+ * - `approved` — pre-approved, may subscribe now
+ * - `active` — already has a live subscription (send to manage)
+ * - `requested` — has asked for access, awaiting admin approval
+ * - `unknown` — not on file
+ */
+export type CraftClubEligibilityStatus =
+  | 'approved'
+  | 'active'
+  | 'requested'
+  | 'unknown';
+
+export interface CheckCraftClubEligibilityRequest {
+  email: string;
+}
+
+export interface CheckCraftClubEligibilityResponse {
+  status: CraftClubEligibilityStatus;
+  /** True when there is already an active/past-due subscription for this email. */
+  alreadyMember: boolean;
+}
+
+// ============================================================================
+// Create Subscription (Public — signup widget, with payment)
+// ============================================================================
+
+export interface CreateCraftClubSubscriptionRequest {
+  email: string;
+  name: string;
+  phone?: string;
+  /** Nonce from the Square Web Payments SDK card tokenization. */
+  paymentNonce: string;
+}
+
+export interface CreateCraftClubSubscriptionResponse {
+  member: CraftClubMember;
+  /** Last 4 digits of the card on file, for display. */
+  cardLast4?: string;
+}
+
+// ============================================================================
+// Request Access (Public — non-approved email capture)
+// ============================================================================
+
+export interface RequestCraftClubAccessRequest {
+  email: string;
+  name?: string;
+  phone?: string;
+}
+
+export interface RequestCraftClubAccessResponse {
+  /** Resulting status so the widget can confirm what happened. */
+  status: 'requested' | 'approved' | 'active';
+}

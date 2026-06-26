@@ -20,9 +20,14 @@ let refundCounter = 0;
 let catalogCounter = 0;
 let imageCounter = 0;
 let inventoryChangeCounter = 0;
+let customerCounter = 0;
+let cardCounter = 0;
+let subscriptionCounter = 0;
 
 /** In-memory store of created payments for get/refund lookups */
 const payments = new Map<string, Record<string, unknown>>();
+/** Craft Club: subscriptions are stored so cancel can look them up. */
+const subscriptions = new Map<string, Record<string, unknown>>();
 
 export function registerSquareRoutes(server: SquareMockServer): void {
   // Create order (required before payment in registration flow)
@@ -309,6 +314,84 @@ export function registerSquareRoutes(server: SquareMockServer): void {
       body: { counts },
     };
   });
+
+  registerCraftClubRoutes(server);
+}
+
+/**
+ * Craft Club routes: Square customers, cards on file, and subscriptions.
+ * Split out to keep `registerSquareRoutes` readable.
+ */
+function registerCraftClubRoutes(server: SquareMockServer): void {
+  // Search customers by email (upsert lookup). Default: none found → caller
+  // proceeds to create. Returns an empty list so each test starts clean.
+  server.post('/v2/customers/search', () => {
+    return { status: 200, body: { customers: [] } };
+  });
+
+  // Create customer
+  server.post('/v2/customers', (req) => {
+    const body = req.body as Record<string, unknown>;
+    customerCounter++;
+    const id = `mock-customer-${customerCounter}`;
+    const customer = {
+      id,
+      given_name: body['given_name'],
+      family_name: body['family_name'],
+      email_address: body['email_address'],
+      phone_number: body['phone_number'],
+      created_at: new Date().toISOString(),
+    };
+    return { status: 200, body: { customer } };
+  });
+
+  // Create card on file (from a Web Payments SDK nonce)
+  server.post('/v2/cards', (req) => {
+    const body = req.body as Record<string, unknown>;
+    cardCounter++;
+    const id = `ccof:mock-card-${cardCounter}`;
+    const cardInput = (body['card'] as Record<string, unknown>) ?? {};
+    const card = {
+      id,
+      card_brand: 'VISA',
+      last_4: '1111',
+      customer_id: cardInput['customer_id'],
+      cardholder_name: cardInput['cardholder_name'],
+      enabled: true,
+    };
+    return { status: 200, body: { card } };
+  });
+
+  // Create subscription
+  server.post('/v2/subscriptions', (req) => {
+    const body = req.body as Record<string, unknown>;
+    subscriptionCounter++;
+    const id = `mock-subscription-${subscriptionCounter}`;
+    const subscription = {
+      id,
+      location_id: body['location_id'],
+      plan_variation_id: body['plan_variation_id'],
+      customer_id: body['customer_id'],
+      card_id: body['card_id'],
+      status: 'ACTIVE',
+      charged_through_date: '2026-07-26',
+      created_at: new Date().toISOString(),
+    };
+    subscriptions.set(id, subscription);
+    return { status: 200, body: { subscription } };
+  });
+
+  // Cancel subscription (used by self-service management in a later phase)
+  server.post('/v2/subscriptions/:subscriptionId/cancel', (req) => {
+    const existing = subscriptions.get(req.params['subscriptionId']);
+    const subscription = {
+      ...(existing ?? { id: req.params['subscriptionId'] }),
+      status: 'CANCELED',
+      canceled_date: '2026-08-26',
+    };
+    subscriptions.set(req.params['subscriptionId'], subscription);
+    return { status: 200, body: { subscription } };
+  });
 }
 
 /**
@@ -321,5 +404,9 @@ export function resetSquareState(): void {
   catalogCounter = 0;
   imageCounter = 0;
   inventoryChangeCounter = 0;
+  customerCounter = 0;
+  cardCounter = 0;
+  subscriptionCounter = 0;
   payments.clear();
+  subscriptions.clear();
 }

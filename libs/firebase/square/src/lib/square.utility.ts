@@ -16,6 +16,9 @@ import { InventoryService } from './inventory.service';
 import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
 import { InvoicesService } from './invoices.service';
+import { CardsService } from './cards.service';
+import { SubscriptionsService } from './subscriptions.service';
+import { CustomersService } from './customers.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -83,6 +86,9 @@ export class Square {
   private readonly _ordersService: OrdersService;
   private readonly _paymentsService: PaymentsService;
   private readonly _invoicesService: InvoicesService;
+  private readonly _cardsService: CardsService;
+  private readonly _subscriptionsService: SubscriptionsService;
+  private readonly _customersService: CustomersService;
   public readonly locationId: string;
   public readonly taxRatePercent: number;
 
@@ -128,6 +134,9 @@ export class Square {
     this._ordersService = new OrdersService(this.client);
     this._paymentsService = new PaymentsService(this.client);
     this._invoicesService = new InvoicesService(this.client);
+    this._cardsService = new CardsService(this.client);
+    this._subscriptionsService = new SubscriptionsService(this.client);
+    this._customersService = new CustomersService(this.client);
   }
 
   /**
@@ -177,6 +186,27 @@ export class Square {
    */
   get invoicesService(): InvoicesService {
     return this._invoicesService;
+  }
+
+  /**
+   * Get the cards service for storing cards on file (subscription billing)
+   */
+  get cardsService(): CardsService {
+    return this._cardsService;
+  }
+
+  /**
+   * Get the subscriptions service for recurring Craft Club billing
+   */
+  get subscriptionsService(): SubscriptionsService {
+    return this._subscriptionsService;
+  }
+
+  /**
+   * Get the customers service for email-first customer upsert
+   */
+  get customersService(): CustomersService {
+    return this._customersService;
   }
 
   /**
