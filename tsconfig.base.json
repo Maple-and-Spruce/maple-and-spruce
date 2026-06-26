@@ -17,6 +17,15 @@
     "paths": {
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
       "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
+      "@maple/firebase/maple-functions/check-craft-club-eligibility": [
+        "libs/firebase/maple-functions/check-craft-club-eligibility/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-craft-club-subscription": [
+        "libs/firebase/maple-functions/create-craft-club-subscription/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/request-craft-club-access": [
+        "libs/firebase/maple-functions/request-craft-club-access/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-craft-club-members": [
         "libs/firebase/maple-functions/get-craft-club-members/src/index.ts"
       ],

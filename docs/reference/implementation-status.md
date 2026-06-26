@@ -447,8 +447,8 @@ magic-link self-service management. Delivered in phases.
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **In Progress** |
-| 2 | Square $30/mo plan + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` | Not Started |
+| 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **Complete (PR #507)** |
+| 2 | Square $30/mo plan (`tools/create-craft-club-plan.ts`) + cards/subscriptions/customers services + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` (unit + interaction + integration tests) | **In Progress** |
 | 3 | Magic-link self-service: request link → session → cancel / change payment method | Not Started |
 | 4 | Square subscription webhooks + admin pause/resume/cancel + welcome/cancel emails | Not Started |
 

@@ -102,7 +102,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getCraftClubMembers` _(admin)_ — lists members, optional status filter
 - `approveCraftClubMember` _(admin)_ — pre-approves an email (upsert by email; promotes a `requested` record to `approved`)
 - `updateCraftClubMember` _(admin)_ — edits a member's notes/contact/status (e.g. revoke approval)
-- _Public signup + subscribe, magic-link self-service, and subscription lifecycle webhooks land in later phases (maple-square codebase)._
+- `checkCraftClubEligibility` _(public)_ — signup-gate lookup: `approved` / `active` / `requested` / `unknown`
+- `requestCraftClubAccess` _(public)_ — captures a non-approved email as a pending request (idempotent by email)
+- _Subscribe (Square) lives in the `maple-square` codebase; magic-link self-service + subscription webhooks land in later phases._
 
 ---
 
@@ -139,6 +141,9 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 
 ### Cross-Channel Inventory Sync
 - `syncInventoryToSquare` — pushes current Firestore product quantities to Square via physical count adjustments
+
+### Craft Club subscription (Square)
+- `createCraftClubSubscription` _(public)_ — re-checks the approval gate server-side, then upserts the Square customer, stores the card on file from the Web Payments nonce, enrolls it in the $30/mo subscription plan, and mirrors the result onto the member record
 
 ---
 
