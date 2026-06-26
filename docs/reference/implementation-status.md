@@ -439,6 +439,19 @@ Square foundation is complete. Ready for Product Management integration.
 | Bulk re-send | Not Started | — |
 | PDF export | Not Started | — |
 
+## Craft Club — recurring studio-access membership (In Progress)
+
+Members pay a flat $30/month (Square Subscriptions API) for scheduled studio
+access; materials are charged separately at the POS. Approved-only signup, with
+magic-link self-service management. Delivered in phases.
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **In Progress** |
+| 2 | Square $30/mo plan + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` | Not Started |
+| 3 | Magic-link self-service: request link → session → cancel / change payment method | Not Started |
+| 4 | Square subscription webhooks + admin pause/resume/cancel + welcome/cancel emails | Not Started |
+
 ## External Dependencies
 
 - [x] Firebase projects created (`maple-and-spruce` prod, `maple-and-spruce-dev` dev)

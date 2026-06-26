@@ -41,6 +41,9 @@ export * from './lib/agreement-template';
 export * from './lib/agreement-request';
 export * from './lib/signed-agreement';
 
+// Craft Club (recurring studio-access membership)
+export * from './lib/craft-club-member';
+
 // User & role administration
 export * from './lib/app-user';
 
