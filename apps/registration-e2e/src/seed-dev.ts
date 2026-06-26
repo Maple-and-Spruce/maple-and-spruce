@@ -26,11 +26,29 @@ const DEV_PROJECT_ID = 'maple-and-spruce-dev';
 
 function getAdminDb() {
   if (getApps().length === 0) {
-    // `applicationDefault()` would work too, but being explicit about
-    // projectId avoids the "could not load default credentials" error
-    // when env carries a service account JSON without an embedded
-    // project_id (which is the case for some Workload Identity flows).
-    initializeApp({ projectId: DEV_PROJECT_ID });
+    // In CI, firebase-admin's own keyless token exchange against
+    // sts.googleapis.com fails ("Premature close") — so the workflow mints an
+    // access token (google-github-actions/auth token_format: access_token, the
+    // same reliable path the deploy jobs use) and passes it here. When present,
+    // authenticate with it directly and skip the SDK's in-process exchange.
+    const accessToken = process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+    if (accessToken) {
+      initializeApp({
+        projectId: DEV_PROJECT_ID,
+        credential: {
+          getAccessToken: async () => ({
+            access_token: accessToken,
+            expires_in: 3600,
+          }),
+        },
+      });
+    } else {
+      // Local dev: Application Default Credentials (`gcloud auth
+      // application-default login`). Explicit projectId avoids the "could not
+      // load default credentials" error when env carries an SA JSON without an
+      // embedded project_id (as in some Workload Identity flows).
+      initializeApp({ projectId: DEV_PROJECT_ID });
+    }
   }
   return getFirestore();
 }

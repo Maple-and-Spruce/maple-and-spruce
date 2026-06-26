@@ -573,13 +573,17 @@ jobs:
           fetch-depth: 1
 
       - name: Authenticate to Google Cloud (Dev)
-        # Needed so the globalSetup's Admin SDK seed can write to dev's
-        # Firestore via Application Default Credentials.
+        id: auth
+        # The globalSetup's Admin SDK seeds dev Firestore. Mint an access token
+        # here (token_format) and pass it to seed-dev.ts via GOOGLE_OAUTH_ACCESS_TOKEN:
+        # firebase-admin's own external_account (WIF) exchange against STS fails
+        # ("Premature close"), but auth@v2's token mint is reliable.
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
           create_credentials_file: true
+          token_format: 'access_token'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -609,6 +613,7 @@ jobs:
           E2E_TARGET: dev
           HARNESS_BASE_URL: https://maple-spruce-registration-test.web.app
           GOOGLE_CLOUD_PROJECT: maple-and-spruce-dev
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
         run: pnpm exec nx run registration-e2e:e2e
 
       - name: Upload Playwright report on failure
