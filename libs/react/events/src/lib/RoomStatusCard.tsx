@@ -41,10 +41,13 @@ function windowLabel(w: RoomBusyWindow): string {
 export function RoomStatusCard({
   room,
   bookHref,
+  scheduleHref,
 }: {
   room: Room;
   /** When set, renders a "Book the room" action linking here. */
   bookHref?: string;
+  /** When set, renders a "View schedule" action linking here. */
+  scheduleHref?: string;
 }) {
   const { roomScheduleState } = useRoomSchedule(room);
 
@@ -79,11 +82,18 @@ export function RoomStatusCard({
           <RoomStatusLines status={status} />
         ) : null}
       </CardContent>
-      {bookHref && (
+      {(bookHref || scheduleHref) && (
         <CardActions>
-          <Button size="small" href={bookHref}>
-            Book the room
-          </Button>
+          {scheduleHref && (
+            <Button size="small" href={scheduleHref}>
+              View schedule
+            </Button>
+          )}
+          {bookHref && (
+            <Button size="small" href={bookHref}>
+              Book the room
+            </Button>
+          )}
         </CardActions>
       )}
     </Card>

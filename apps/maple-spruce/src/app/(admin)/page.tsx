@@ -166,7 +166,11 @@ export default function DashboardPage() {
       <Grid container spacing={3}>
         {/* Spruce Room status */}
         <Grid size={12}>
-          <RoomStatusCard room="spruce" bookHref="/book-room" />
+          <RoomStatusCard
+            room="spruce"
+            bookHref="/book-room"
+            scheduleHref="/room-schedule"
+          />
         </Grid>
 
         {/* Upcoming Classes */}
