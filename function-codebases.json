@@ -37,7 +37,9 @@
     "firebase-maple-functions-poll-etsy-orders": "maple-sync",
     "firebase-maple-functions-sync-inventory-to-etsy": "maple-sync",
     "firebase-maple-functions-sync-inventory-to-square": "maple-square",
-    "firebase-maple-functions-create-craft-club-subscription": "maple-square"
+    "firebase-maple-functions-create-craft-club-subscription": "maple-square",
+    "firebase-maple-functions-cancel-craft-club-subscription": "maple-square",
+    "firebase-maple-functions-update-craft-club-payment-method": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

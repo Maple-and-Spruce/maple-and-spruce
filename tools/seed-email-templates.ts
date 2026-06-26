@@ -524,6 +524,62 @@ const agreementSigningRequestHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: craft-club-manage-link
+//
+// Magic link emailed when a Craft Club member asks to manage their membership.
+// The link carries a single-use token (~30 min) that lands them on the manage
+// page, where they can cancel or change their payment method. Transactional.
+// ---------------------------------------------------------------------------
+
+const craftClubManageLinkSubject = 'Manage your Craft Club membership';
+
+const craftClubManageLinkHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage your Craft Club membership</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>Manage your Craft Club membership</h2>
+    <p>You asked to manage your Craft Club membership. Use the secure link
+      below to view your subscription, change your payment method, or cancel.</p>
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Your secure link</strong><br>
+      <p style="text-align: center; margin: 16px 0;">
+        <a href="{{manageUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 4px; font-weight: bold;">Manage my membership</a>
+      </p>
+    </div>
+
+    <p style="font-size: 14px; color: #999;">
+      This link expires in 30 minutes and can be used once. If you didn't
+      request it, you can safely ignore this email. If the button doesn't work,
+      copy and paste this URL into your browser:<br>
+      <a href="{{manageUrl}}" style="color: #6B7B5E; word-break: break-all;">{{manageUrl}}</a>
+    </p>
+
+    <p>Questions? Reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
 
@@ -556,6 +612,10 @@ const templates: Record<string, EmailTemplate> = {
   'agreement-signing-request': {
     subject: agreementSigningRequestSubject,
     html: agreementSigningRequestHtml,
+  },
+  'craft-club-manage-link': {
+    subject: craftClubManageLinkSubject,
+    html: craftClubManageLinkHtml,
   },
 };
 
