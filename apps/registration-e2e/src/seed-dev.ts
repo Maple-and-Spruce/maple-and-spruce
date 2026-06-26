@@ -35,13 +35,53 @@ function getAdminDb() {
   return getFirestore();
 }
 
+/**
+ * Retry a Firestore operation on transient connection failures.
+ *
+ * In CI the Admin SDK gets credentials keylessly: the first call triggers a
+ * token exchange against sts.googleapis.com (Workload Identity Federation),
+ * and that HTTPS call intermittently drops with "Premature close" — a
+ * connection-layer blip, NOT a quota/auth error. gax's built-in retries don't
+ * always ride it out, which fails the whole E2E suite at setup/teardown. Retry
+ * with exponential backoff so a momentary STS hiccup doesn't sink the run;
+ * non-transient errors (e.g. permission denied) throw immediately.
+ */
+async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const MAX_ATTEMPTS = 4;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const transient =
+        /Premature close|metadata from plugin|sts\.googleapis\.com|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|fetch failed|UNAVAILABLE|DEADLINE_EXCEEDED|Getting metadata|503|429/i.test(
+          msg
+        );
+      if (!transient || attempt === MAX_ATTEMPTS) break;
+      const delayMs = 1000 * 2 ** (attempt - 1); // 1s, 2s, 4s
+      console.warn(
+        `[e2e] ${label} attempt ${attempt}/${MAX_ATTEMPTS} failed (${msg}); retrying in ${delayMs}ms`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 export async function seedDev(classId: string): Promise<void> {
   const db = getAdminDb();
-  await Promise.all([
-    db.collection('classes').doc(classId).set(PUBLISHED_CLASS),
-    db.collection('discounts').doc(DISCOUNT_IDS.percent).set(PERCENT_DISCOUNT),
-    db.collection('discounts').doc(DISCOUNT_IDS.amount).set(AMOUNT_DISCOUNT),
-  ]);
+  await withRetry('seedDev', () =>
+    Promise.all([
+      db.collection('classes').doc(classId).set(PUBLISHED_CLASS),
+      db
+        .collection('discounts')
+        .doc(DISCOUNT_IDS.percent)
+        .set(PERCENT_DISCOUNT),
+      db.collection('discounts').doc(DISCOUNT_IDS.amount).set(AMOUNT_DISCOUNT),
+    ])
+  );
 }
 
 /**
@@ -56,11 +96,14 @@ export async function seedDev(classId: string): Promise<void> {
 export async function teardownDev(classId: string): Promise<void> {
   const db = getAdminDb();
 
-  const regs = await db
-    .collection('registrations')
-    .where('classId', '==', classId)
-    .get();
-  await Promise.all(regs.docs.map((d) => d.ref.delete()));
+  const regs = await withRetry('teardownDev:query', () =>
+    db.collection('registrations').where('classId', '==', classId).get()
+  );
+  await withRetry('teardownDev:deleteRegistrations', () =>
+    Promise.all(regs.docs.map((d) => d.ref.delete()))
+  );
 
-  await db.collection('classes').doc(classId).delete();
+  await withRetry('teardownDev:deleteClass', () =>
+    db.collection('classes').doc(classId).delete()
+  );
 }
