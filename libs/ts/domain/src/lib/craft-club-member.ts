@@ -104,3 +104,31 @@ export function canSubscribeToCraftClub(member: CraftClubMember): boolean {
 export function isCraftClubAccessRequest(member: CraftClubMember): boolean {
   return member.status === 'requested';
 }
+
+/**
+ * Customer-safe projection of a member, returned by the self-service endpoints.
+ * Deliberately omits internal Square identifiers (customer/card/subscription
+ * IDs) so they never reach the browser.
+ */
+export interface CraftClubMemberPublicView {
+  email: string;
+  name?: string;
+  status: CraftClubMemberStatus;
+  subscribedAt?: Date;
+  cancelledAt?: Date;
+  currentPeriodEndsAt?: Date;
+}
+
+/** Project a member to its customer-safe view. */
+export function toCraftClubMemberPublicView(
+  member: CraftClubMember
+): CraftClubMemberPublicView {
+  return {
+    email: member.email,
+    name: member.name,
+    status: member.status,
+    subscribedAt: member.subscribedAt,
+    cancelledAt: member.cancelledAt,
+    currentPeriodEndsAt: member.currentPeriodEndsAt,
+  };
+}

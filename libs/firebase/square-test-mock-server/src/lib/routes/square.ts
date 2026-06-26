@@ -392,6 +392,18 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
     subscriptions.set(req.params['subscriptionId'], subscription);
     return { status: 200, body: { subscription } };
   });
+
+  // Update subscription (e.g. swap the card on file)
+  server.put('/v2/subscriptions/:subscriptionId', (req) => {
+    const body = req.body as Record<string, unknown>;
+    const patch = (body['subscription'] as Record<string, unknown>) ?? {};
+    const existing = subscriptions.get(req.params['subscriptionId']) ?? {
+      id: req.params['subscriptionId'],
+    };
+    const subscription = { ...existing, ...patch };
+    subscriptions.set(req.params['subscriptionId'], subscription);
+    return { status: 200, body: { subscription } };
+  });
 }
 
 /**

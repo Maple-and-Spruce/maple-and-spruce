@@ -104,7 +104,10 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `updateCraftClubMember` _(admin)_ — edits a member's notes/contact/status (e.g. revoke approval)
 - `checkCraftClubEligibility` _(public)_ — signup-gate lookup: `approved` / `active` / `requested` / `unknown`
 - `requestCraftClubAccess` _(public)_ — captures a non-approved email as a pending request (idempotent by email)
-- _Subscribe (Square) lives in the `maple-square` codebase; magic-link self-service + subscription webhooks land in later phases._
+- `requestCraftClubManageLink` _(public)_ — emails a single-use magic link to manage a membership; uniform response (no enumeration)
+- `startCraftClubSession` _(public)_ — exchanges a magic-link token (single-use) for a short-lived session token
+- `getCraftClubSubscription` _(public, session-gated)_ — returns the member's customer-safe subscription view
+- _Subscribe + self-service Square mutations live in the `maple-square` codebase; subscription webhooks land in a later phase._
 
 ---
 
@@ -144,6 +147,8 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 
 ### Craft Club subscription (Square)
 - `createCraftClubSubscription` _(public)_ — re-checks the approval gate server-side, then upserts the Square customer, stores the card on file from the Web Payments nonce, enrolls it in the $30/mo subscription plan, and mirrors the result onto the member record
+- `cancelCraftClubSubscription` _(public, session-gated)_ — cancels the Square subscription at period end and marks the member cancelled (access through the period end)
+- `updateCraftClubPaymentMethod` _(public, session-gated)_ — files a new card from a Web Payments nonce and points the subscription at it
 
 ---
 
