@@ -20,6 +20,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import GavelIcon from '@mui/icons-material/Gavel';
+import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { AppShell, type NavGroup } from '@maple/react/layout';
 import { useSyncConflictSummary } from '@maple/react/data';
@@ -111,6 +112,11 @@ export function AppShellWrapper({
             label: 'Agreements',
             href: '/agreements',
             icon: <GavelIcon />,
+          },
+          {
+            label: 'Craft Club',
+            href: '/craft-club',
+            icon: <CardMembershipIcon />,
           },
         ],
       },

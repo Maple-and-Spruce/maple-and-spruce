@@ -59,6 +59,12 @@ export {
   type SignedAgreementDetail,
 } from './lib/useSignedAgreement';
 
+// Craft Club (recurring studio-access membership)
+export {
+  useCraftClubMembers,
+  type UseCraftClubMembersFilters,
+} from './lib/useCraftClubMembers';
+
 // Feature Flags
 export { useFeatureFlags } from './lib/useFeatureFlags';
 

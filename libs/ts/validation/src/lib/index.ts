@@ -69,3 +69,9 @@ export {
   tallyLeadValidation,
   type TallyLeadValidationInput,
 } from './tally-lead.validation';
+
+// Craft Club (recurring studio-access membership)
+export {
+  craftClubMemberValidation,
+  type CraftClubMemberValidationInput,
+} from './craft-club-member.validation';

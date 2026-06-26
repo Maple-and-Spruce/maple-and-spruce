@@ -381,3 +381,13 @@ export type {
   UpdateEtsyListingRequest,
   UpdateEtsyListingResponse,
 } from './etsy-push.types';
+
+// Craft Club (recurring studio-access membership)
+export type {
+  GetCraftClubMembersRequest,
+  GetCraftClubMembersResponse,
+  ApproveCraftClubMemberRequest,
+  ApproveCraftClubMemberResponse,
+  UpdateCraftClubMemberRequest,
+  UpdateCraftClubMemberResponse,
+} from './craft-club.types';

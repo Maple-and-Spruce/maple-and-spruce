@@ -207,3 +207,9 @@ export { revokeAdminRole } from '@maple/firebase/maple-functions/revoke-admin-ro
 
 // Lead attribution (Tally newsletter signups → GA4 Measurement Protocol + Meta CAPI)
 export { tallyLeadWebhook } from '@maple/firebase/maple-functions/tally-lead-webhook';
+
+// Craft Club — admin approval & management (no Square dep; subscribe/lifecycle
+// functions live in the maple-square codebase and arrive in later phases)
+export { getCraftClubMembers } from '@maple/firebase/maple-functions/get-craft-club-members';
+export { approveCraftClubMember } from '@maple/firebase/maple-functions/approve-craft-club-member';
+export { updateCraftClubMember } from '@maple/firebase/maple-functions/update-craft-club-member';

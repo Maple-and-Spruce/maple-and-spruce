@@ -20,5 +20,6 @@ export {
   useUsers,
   useSales,
   useEtsyPush,
+  useCraftClubMembers,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
