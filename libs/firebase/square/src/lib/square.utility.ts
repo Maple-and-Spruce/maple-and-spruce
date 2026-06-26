@@ -55,6 +55,58 @@ export type SquareStrings = Record<
 >;
 
 /**
+ * Music Together (MT) is a SEPARATE business (Stephanie's single-member LLC)
+ * with its OWN Square account/checking. Its checkouts must route to MT's
+ * Square credentials, not Maple & Spruce's. These are the prefixed param names
+ * a Cloud Function declares via `.usingSecrets(...)` / `.usingStrings(...)`
+ * when it needs the MT account.
+ *
+ * The secret value (MT_SQUARE_ACCESS_TOKEN) lives in Secret Manager / .secret.local,
+ * never in the tracked .env files. The string params live in .env.dev/.env.prod
+ * (mirroring the default SQUARE_* set).
+ */
+export const MT_SQUARE_SECRET_NAMES = ['MT_SQUARE_ACCESS_TOKEN'] as const;
+
+export const MT_SQUARE_STRING_NAMES = [
+  'MT_SQUARE_ENV',
+  'MT_SQUARE_LOCATION_ID',
+  'MT_SALES_TAX_RATE',
+] as const;
+
+/**
+ * The four Firebase param names a {@link Square} instance reads, so the same
+ * client wrapper can be pointed at either the Maple & Spruce account (default)
+ * or a second program's account (e.g. Music Together) without touching any
+ * call site beyond which key set it passes.
+ */
+export interface SquareParamKeys {
+  /** defineSecret name holding the access token */
+  accessTokenSecret: string;
+  /** defineString name holding 'LOCAL' | 'PROD' */
+  envString: string;
+  /** defineString name holding the Square location ID */
+  locationIdString: string;
+  /** defineString name holding the sales-tax rate percent (e.g. '6.0') */
+  taxRateString: string;
+}
+
+/** Default Maple & Spruce account keys — preserves all existing behavior. */
+export const DEFAULT_SQUARE_KEYS: SquareParamKeys = {
+  accessTokenSecret: 'SQUARE_ACCESS_TOKEN',
+  envString: 'SQUARE_ENV',
+  locationIdString: 'SQUARE_LOCATION_ID',
+  taxRateString: 'SALES_TAX_RATE',
+};
+
+/** Music Together account keys (separate Square account). */
+export const MT_SQUARE_KEYS: SquareParamKeys = {
+  accessTokenSecret: 'MT_SQUARE_ACCESS_TOKEN',
+  envString: 'MT_SQUARE_ENV',
+  locationIdString: 'MT_SQUARE_LOCATION_ID',
+  taxRateString: 'MT_SALES_TAX_RATE',
+};
+
+/**
  * Square utility class
  *
  * Initialize with secrets and strings from Firebase Functions params.
@@ -92,29 +144,37 @@ export class Square {
   public readonly locationId: string;
   public readonly taxRatePercent: number;
 
+  /**
+   * @param secrets - Resolved Firebase secrets (keyed by secret name)
+   * @param strings - Resolved Firebase string params (keyed by param name)
+   * @param keys - Which param names to read. Defaults to the Maple & Spruce
+   *   account ({@link DEFAULT_SQUARE_KEYS}). Pass {@link MT_SQUARE_KEYS} to
+   *   route to the Music Together account.
+   */
   constructor(
-    private readonly secrets: SquareSecrets,
-    private readonly strings: SquareStrings
+    private readonly secrets: Record<string, string>,
+    private readonly strings: Record<string, string>,
+    keys: SquareParamKeys = DEFAULT_SQUARE_KEYS
   ) {
-    this.env = new ServiceEnvironment(this.strings.SQUARE_ENV);
+    this.env = new ServiceEnvironment(this.strings[keys.envString]);
     // With per-project secrets, just get the token directly - no suffix needed
     const accessToken = this.env.getSecret(
       this.secrets,
-      'SQUARE_ACCESS_TOKEN'
+      keys.accessTokenSecret
     );
 
-    this.locationId = this.strings.SQUARE_LOCATION_ID;
+    this.locationId = this.strings[keys.locationIdString];
 
     if (!this.locationId) {
       throw new Error(
-        'Square location ID not configured. Set SQUARE_LOCATION_ID.'
+        `Square location ID not configured. Set ${keys.locationIdString}.`
       );
     }
 
-    const taxRate = parseFloat(this.strings.SALES_TAX_RATE);
+    const taxRate = parseFloat(this.strings[keys.taxRateString]);
     if (isNaN(taxRate) || taxRate < 0) {
       throw new Error(
-        'Sales tax rate not configured or invalid. Set SALES_TAX_RATE (e.g., "6.0").'
+        `Sales tax rate not configured or invalid. Set ${keys.taxRateString} (e.g., "6.0").`
       );
     }
     this.taxRatePercent = taxRate;
