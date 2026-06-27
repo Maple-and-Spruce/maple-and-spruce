@@ -110,7 +110,11 @@ export class PaymentError extends Error {
  * Input for creating a payment
  */
 export interface CreatePaymentInput {
-  /** Payment source ID (nonce from Web Payments SDK card.tokenize()) */
+  /**
+   * Payment source ID. Either a single-use nonce from the Web Payments SDK
+   * `card.tokenize()`, OR a stored card-on-file ID (in which case `customerId`
+   * must also be set — Square requires it to charge a saved card).
+   */
   sourceId: string;
   /** Amount to charge in cents (e.g., 2500 = $25.00) */
   amountCents: number;
@@ -118,6 +122,11 @@ export interface CreatePaymentInput {
   idempotencyKey: string;
   /** Square location ID */
   locationId: string;
+  /**
+   * Square customer ID. Required when `sourceId` is a stored card-on-file ID;
+   * optional for one-time nonce payments.
+   */
+  customerId?: string;
   /** Customer email for receipt */
   buyerEmailAddress?: string;
   /** Description/note for the payment */
@@ -214,6 +223,7 @@ export class PaymentsService {
           currency: 'USD',
         },
         locationId: input.locationId,
+        customerId: input.customerId,
         autocomplete: true,
         buyerEmailAddress: input.buyerEmailAddress,
         note: input.note,

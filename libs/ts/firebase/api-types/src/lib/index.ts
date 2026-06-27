@@ -410,3 +410,12 @@ export type {
   AdminCraftClubSubscriptionActionRequest,
   AdminCraftClubSubscriptionActionResponse,
 } from './craft-club.types';
+
+export type {
+  GetPublicMusicTogetherSectionRequest,
+  GetPublicMusicTogetherSectionResponse,
+  PublicMusicTogetherSection,
+  MusicTogetherChildPayload,
+  CreateMusicTogetherRegistrationRequest,
+  CreateMusicTogetherRegistrationResponse,
+} from './music-together.types';
