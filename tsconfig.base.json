@@ -47,6 +47,9 @@
       "@maple/firebase/maple-functions/create-craft-club-subscription": [
         "libs/firebase/maple-functions/create-craft-club-subscription/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/create-music-together-registration": [
+        "libs/firebase/maple-functions/create-music-together-registration/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/request-craft-club-access": [
         "libs/firebase/maple-functions/request-craft-club-access/src/index.ts"
       ],
