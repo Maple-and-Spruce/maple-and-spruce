@@ -47,6 +47,7 @@ export { createCraftClubSubscription } from '@maple/firebase/maple-functions/cre
 
 // Music Together public checkout (routes to MT's separate Square account)
 export { createMusicTogetherRegistration } from '@maple/firebase/maple-functions/create-music-together-registration';
+export { cancelMusicTogetherRegistration } from '@maple/firebase/maple-functions/cancel-music-together-registration';
 
 // Music Together Week-5 auto-charge job (scheduled + admin-callable trigger)
 export {

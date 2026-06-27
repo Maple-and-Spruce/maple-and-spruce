@@ -421,4 +421,6 @@ export type {
   ChargeMusicTogetherInstallmentsRequest,
   MusicTogetherDueChargePreview,
   MusicTogetherInstallmentChargeResult,
+  CancelMusicTogetherRegistrationRequest,
+  CancelMusicTogetherRegistrationResponse,
 } from './music-together.types';

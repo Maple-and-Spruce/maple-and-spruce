@@ -53,6 +53,9 @@
       "@maple/firebase/maple-functions/charge-music-together-installments": [
         "libs/firebase/maple-functions/charge-music-together-installments/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/cancel-music-together-registration": [
+        "libs/firebase/maple-functions/cancel-music-together-registration/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/request-craft-club-access": [
         "libs/firebase/maple-functions/request-craft-club-access/src/index.ts"
       ],
