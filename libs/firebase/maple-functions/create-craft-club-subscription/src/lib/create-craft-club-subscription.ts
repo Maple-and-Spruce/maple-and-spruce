@@ -19,7 +19,7 @@ import {
   throwFailedPrecondition,
 } from '@maple/firebase/functions';
 import { Square, SQUARE_SECRET_NAMES, SQUARE_STRING_NAMES } from '@maple/firebase/square';
-import { CraftClubMemberRepository } from '@maple/firebase/database';
+import { CraftClubMemberRepository, getDb } from '@maple/firebase/database';
 import {
   isCraftClubMemberActive,
   canSubscribeToCraftClub,
@@ -116,6 +116,17 @@ export const createCraftClubSubscription = Functions.endpoint
         ? new Date(subscription.chargedThroughDate)
         : undefined,
     });
+
+    // 5. Welcome email (fire-and-forget via the mail collection).
+    await getDb()
+      .collection('mail')
+      .add({
+        to: updated.email,
+        template: {
+          name: 'craft-club-welcome',
+          data: { name: updated.name ?? '' },
+        },
+      });
 
     return { member: updated, cardLast4: card.last4 };
   });

@@ -82,6 +82,22 @@ export class SubscriptionsService {
     };
   }
 
+  /** Pause billing (admin action). Square stops charging until resumed. */
+  async pause(subscriptionId: string): Promise<{ status?: string }> {
+    const response = await this.client.subscriptions.pause({ subscriptionId });
+    throwIfErrors(response.errors, 'pause subscription');
+    return { status: response.subscription?.status };
+  }
+
+  /** Resume a paused subscription (admin action). */
+  async resume(subscriptionId: string): Promise<{ status?: string }> {
+    const response = await this.client.subscriptions.resume({
+      subscriptionId,
+    });
+    throwIfErrors(response.errors, 'resume subscription');
+    return { status: response.subscription?.status };
+  }
+
   /** Swap the card a subscription charges (used by self-service payment change). */
   async updateCard(subscriptionId: string, cardId: string): Promise<void> {
     const response = await this.client.subscriptions.update({

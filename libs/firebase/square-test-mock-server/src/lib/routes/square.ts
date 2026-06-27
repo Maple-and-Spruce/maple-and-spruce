@@ -404,6 +404,26 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
     subscriptions.set(req.params['subscriptionId'], subscription);
     return { status: 200, body: { subscription } };
   });
+
+  // Pause subscription (admin action)
+  server.post('/v2/subscriptions/:subscriptionId/pause', (req) => {
+    const existing = subscriptions.get(req.params['subscriptionId']) ?? {
+      id: req.params['subscriptionId'],
+    };
+    const subscription = { ...existing, status: 'PAUSED' };
+    subscriptions.set(req.params['subscriptionId'], subscription);
+    return { status: 200, body: { subscription } };
+  });
+
+  // Resume subscription (admin action)
+  server.post('/v2/subscriptions/:subscriptionId/resume', (req) => {
+    const existing = subscriptions.get(req.params['subscriptionId']) ?? {
+      id: req.params['subscriptionId'],
+    };
+    const subscription = { ...existing, status: 'ACTIVE' };
+    subscriptions.set(req.params['subscriptionId'], subscription);
+    return { status: 200, body: { subscription } };
+  });
 }
 
 /**

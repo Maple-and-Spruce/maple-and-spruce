@@ -22,16 +22,23 @@ import { defineSecret } from 'firebase-functions/params';
 import { createHmac } from 'crypto';
 import {
   CatalogSyncRequestRepository,
+  CraftClubMemberRepository,
   InvoiceRepository,
   ProductRepository,
 } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
+import type {
+  CraftClubMemberStatus,
+  UpdateCraftClubMemberInput,
+} from '@maple/ts/domain';
 
 // Webhook event types we handle
 type WebhookEventType =
   | 'catalog.version.updated'
   | 'inventory.count.updated'
-  | 'invoice.payment_made';
+  | 'invoice.payment_made'
+  | 'subscription.created'
+  | 'subscription.updated';
 
 interface WebhookEvent {
   merchant_id: string;
@@ -228,6 +235,97 @@ export async function handleInvoicePaymentMade(
   };
 }
 
+/**
+ * Map a Square subscription status to our member status. Square statuses that
+ * end billing (CANCELED/DEACTIVATED) collapse to `cancelled`.
+ */
+const SQUARE_TO_MEMBER_STATUS: Record<string, CraftClubMemberStatus> = {
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+  CANCELED: 'cancelled',
+  DEACTIVATED: 'cancelled',
+};
+
+/**
+ * Handle subscription.created / subscription.updated webhooks.
+ *
+ * Square owns the billing lifecycle; this reconciles our mirrored member record
+ * to the subscription's current status and paid-through date. Idempotent —
+ * duplicate/retried deliveries that carry no change are skipped, so we never
+ * thrash the member doc.
+ *
+ * Payload shape:
+ *   data.object.subscription.{ id, status, charged_through_date }
+ */
+export async function handleSubscriptionEvent(
+  event: WebhookEvent
+): Promise<{ action: string; details: string }> {
+  const subscription = (
+    event.data.object as
+      | {
+          subscription?: {
+            id?: string;
+            status?: string;
+            charged_through_date?: string;
+          };
+        }
+      | undefined
+  )?.subscription;
+
+  const subscriptionId = subscription?.id ?? event.data.id;
+  if (!subscriptionId) {
+    return { action: 'skipped', details: 'No subscription id in payload' };
+  }
+
+  const member = await CraftClubMemberRepository.findBySubscriptionId(
+    subscriptionId
+  );
+  if (!member) {
+    return {
+      action: 'skipped',
+      details: `No Craft Club member for subscription ${subscriptionId}`,
+    };
+  }
+
+  const mappedStatus = subscription?.status
+    ? SQUARE_TO_MEMBER_STATUS[subscription.status]
+    : undefined;
+  const periodEnd = subscription?.charged_through_date
+    ? new Date(subscription.charged_through_date)
+    : undefined;
+
+  const updates: UpdateCraftClubMemberInput = { id: member.id };
+  let changed = false;
+
+  if (mappedStatus && mappedStatus !== member.status) {
+    updates.status = mappedStatus;
+    if (mappedStatus === 'cancelled' && !member.cancelledAt) {
+      updates.cancelledAt = new Date();
+    }
+    changed = true;
+  }
+  if (
+    periodEnd &&
+    periodEnd.getTime() !== member.currentPeriodEndsAt?.getTime()
+  ) {
+    updates.currentPeriodEndsAt = periodEnd;
+    changed = true;
+  }
+
+  if (!changed) {
+    return {
+      action: 'skipped',
+      details: `Subscription ${subscriptionId} already in sync (idempotent)`,
+    };
+  }
+
+  await CraftClubMemberRepository.update(updates);
+  return {
+    action: 'updated',
+    details: `Member ${member.id} → ${updates.status ?? member.status}`,
+  };
+}
+
 // Webhook signature key is the only secret we need here. Catalog sync
 // (which needs full Square credentials) runs in processCatalogSyncRequest.
 const webhookSignatureKey = defineSecret('SQUARE_WEBHOOK_SIGNATURE_KEY');
@@ -299,6 +397,11 @@ export const squareWebhook = onRequest(
 
         case 'invoice.payment_made':
           result = await handleInvoicePaymentMade(event);
+          break;
+
+        case 'subscription.created':
+        case 'subscription.updated':
+          result = await handleSubscriptionEvent(event);
           break;
 
         default:

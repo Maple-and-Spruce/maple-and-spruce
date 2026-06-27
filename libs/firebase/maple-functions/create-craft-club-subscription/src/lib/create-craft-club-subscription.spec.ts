@@ -55,6 +55,7 @@ vi.mock('@maple/firebase/database', () => ({
     findByEmail: mocks.findByEmail,
     update: mocks.update,
   },
+  getDb: () => ({ collection: () => ({ add: vi.fn() }) }),
 }));
 
 import './create-craft-club-subscription';

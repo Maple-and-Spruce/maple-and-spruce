@@ -119,6 +119,17 @@ export interface CraftClubMemberPublicView {
   currentPeriodEndsAt?: Date;
 }
 
+/** Format a Craft Club date (e.g. period end) for emails, in Eastern time. */
+export function formatCraftClubDate(date?: Date): string {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'America/New_York',
+  });
+}
+
 /** Project a member to its customer-safe view. */
 export function toCraftClubMemberPublicView(
   member: CraftClubMember

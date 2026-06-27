@@ -184,3 +184,16 @@ export interface UpdateCraftClubPaymentMethodResponse {
   /** Last 4 digits of the new card on file. */
   cardLast4?: string;
 }
+
+// ============================================================================
+// Admin subscription lifecycle (Phase 4 — pause / resume / cancel)
+// ============================================================================
+
+/** Shared shape for the admin pause/resume/cancel actions — keyed by member id. */
+export interface AdminCraftClubSubscriptionActionRequest {
+  id: string;
+}
+
+export interface AdminCraftClubSubscriptionActionResponse {
+  member: CraftClubMember;
+}

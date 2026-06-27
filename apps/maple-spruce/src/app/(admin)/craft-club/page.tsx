@@ -64,7 +64,7 @@ export default function CraftClubPage() {
     [statusFilter]
   );
 
-  const { membersState, approveMember, updateMember } =
+  const { membersState, approveMember, updateMember, subscriptionAction } =
     useCraftClubMembers(filters);
 
   // Approve-by-email form
@@ -121,6 +121,24 @@ export default function CraftClubPage() {
       }
     },
     [updateMember]
+  );
+
+  const handleSubscriptionAction = useCallback(
+    async (action: 'pause' | 'resume' | 'cancel', member: CraftClubMember) => {
+      if (action === 'cancel') {
+        const ok = window.confirm(
+          `Cancel ${member.email}'s Craft Club membership? They keep access through the current period.`
+        );
+        if (!ok) return;
+      }
+      setRowBusyId(member.id);
+      try {
+        await subscriptionAction(action, member.id);
+      } finally {
+        setRowBusyId(null);
+      }
+    },
+    [subscriptionAction]
   );
 
   const members =
@@ -277,6 +295,54 @@ export default function CraftClubPage() {
                       >
                         Revoke
                       </Button>
+                    )}
+                    {(member.status === 'active' ||
+                      member.status === 'past_due') && (
+                      <>
+                        <Button
+                          size="small"
+                          disabled={rowBusyId === member.id}
+                          onClick={() =>
+                            handleSubscriptionAction('pause', member)
+                          }
+                        >
+                          Pause
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          disabled={rowBusyId === member.id}
+                          onClick={() =>
+                            handleSubscriptionAction('cancel', member)
+                          }
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    )}
+                    {member.status === 'paused' && (
+                      <>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={rowBusyId === member.id}
+                          onClick={() =>
+                            handleSubscriptionAction('resume', member)
+                          }
+                        >
+                          Resume
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          disabled={rowBusyId === member.id}
+                          onClick={() =>
+                            handleSubscriptionAction('cancel', member)
+                          }
+                        >
+                          Cancel
+                        </Button>
+                      </>
                     )}
                   </TableCell>
                 </TableRow>
