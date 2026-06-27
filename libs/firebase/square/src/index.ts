@@ -3,8 +3,13 @@ export {
   Square,
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
+  MT_SQUARE_SECRET_NAMES,
+  MT_SQUARE_STRING_NAMES,
+  DEFAULT_SQUARE_KEYS,
+  MT_SQUARE_KEYS,
   type SquareSecrets,
   type SquareStrings,
+  type SquareParamKeys,
 } from './lib/square.utility';
 
 // Catalog service

@@ -10,7 +10,11 @@
  * @see https://developer.squareup.com/docs/square-get-started
  */
 import { SquareClient, SquareEnvironment } from 'square';
-import { ServiceEnvironment } from '@maple/firebase/functions';
+import {
+  resolveSquareCredentials,
+  DEFAULT_SQUARE_KEYS,
+  type SquareParamKeys,
+} from './square-credentials';
 import { CatalogService } from './catalog.service';
 import { InventoryService } from './inventory.service';
 import { OrdersService } from './orders.service';
@@ -20,39 +24,23 @@ import { CardsService } from './cards.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { CustomersService } from './customers.service';
 
-/**
- * Secret names for Firebase Functions secrets
- * Use with defineSecret() from firebase-functions/params
- *
- * Each Firebase project has its own SQUARE_ACCESS_TOKEN with the appropriate value:
- * - maple-and-spruce-dev: sandbox token
- * - maple-and-spruce: production token
- */
-export const SQUARE_SECRET_NAMES = ['SQUARE_ACCESS_TOKEN'] as const;
-
-/**
- * String parameter names for Firebase Functions
- * Use with defineString() from firebase-functions/params
- *
- * SQUARE_ENV: 'LOCAL' (sandbox) or 'PROD' (production)
- * SQUARE_LOCATION_ID: The location ID for inventory operations
- * SALES_TAX_RATE: Sales tax rate as percentage (e.g., '6.0' for 6%)
- */
-export const SQUARE_STRING_NAMES = [
-  'SQUARE_ENV',
-  'SQUARE_LOCATION_ID',
-  'SALES_TAX_RATE',
-] as const;
-
-export type SquareSecrets = Record<
-  (typeof SQUARE_SECRET_NAMES)[number],
-  string
->;
-
-export type SquareStrings = Record<
-  (typeof SQUARE_STRING_NAMES)[number],
-  string
->;
+// Re-export the credential symbols so existing importers of './square.utility'
+// (and the lib barrel) keep working. The definitions live in the barrel-free
+// './square-credentials' module so unit tests can cover them without pulling
+// the functions/database layers into the coverage denominator.
+export {
+  SQUARE_SECRET_NAMES,
+  SQUARE_STRING_NAMES,
+  MT_SQUARE_SECRET_NAMES,
+  MT_SQUARE_STRING_NAMES,
+  DEFAULT_SQUARE_KEYS,
+  MT_SQUARE_KEYS,
+  resolveSquareCredentials,
+  type SquareSecrets,
+  type SquareStrings,
+  type SquareParamKeys,
+  type ResolvedSquareCredentials,
+} from './square-credentials';
 
 /**
  * Square utility class
@@ -80,7 +68,7 @@ export type SquareStrings = Record<
  */
 export class Square {
   private readonly client: SquareClient;
-  private readonly env: ServiceEnvironment;
+  private readonly _isProd: boolean;
   private readonly _catalogService: CatalogService;
   private readonly _inventoryService: InventoryService;
   private readonly _ordersService: OrdersService;
@@ -92,36 +80,30 @@ export class Square {
   public readonly locationId: string;
   public readonly taxRatePercent: number;
 
+  /**
+   * @param secrets - Resolved Firebase secrets (keyed by secret name)
+   * @param strings - Resolved Firebase string params (keyed by param name)
+   * @param keys - Which param names to read. Defaults to the Maple & Spruce
+   *   account ({@link DEFAULT_SQUARE_KEYS}). Pass {@link MT_SQUARE_KEYS} to
+   *   route to the Music Together account.
+   */
   constructor(
-    private readonly secrets: SquareSecrets,
-    private readonly strings: SquareStrings
+    private readonly secrets: Record<string, string>,
+    private readonly strings: Record<string, string>,
+    keys: SquareParamKeys = DEFAULT_SQUARE_KEYS
   ) {
-    this.env = new ServiceEnvironment(this.strings.SQUARE_ENV);
-    // With per-project secrets, just get the token directly - no suffix needed
-    const accessToken = this.env.getSecret(
-      this.secrets,
-      'SQUARE_ACCESS_TOKEN'
-    );
+    // Pure routing + validation lives in ./square-credentials so it can be
+    // unit-tested without loading this file's heavy imports.
+    const { accessToken, locationId, taxRatePercent, isProd } =
+      resolveSquareCredentials(this.secrets, this.strings, keys);
 
-    this.locationId = this.strings.SQUARE_LOCATION_ID;
-
-    if (!this.locationId) {
-      throw new Error(
-        'Square location ID not configured. Set SQUARE_LOCATION_ID.'
-      );
-    }
-
-    const taxRate = parseFloat(this.strings.SALES_TAX_RATE);
-    if (isNaN(taxRate) || taxRate < 0) {
-      throw new Error(
-        'Sales tax rate not configured or invalid. Set SALES_TAX_RATE (e.g., "6.0").'
-      );
-    }
-    this.taxRatePercent = taxRate;
+    this.locationId = locationId;
+    this.taxRatePercent = taxRatePercent;
+    this._isProd = isProd;
 
     this.client = new SquareClient({
       token: accessToken,
-      environment: this.env.isProd
+      environment: this._isProd
         ? SquareEnvironment.Production
         : SquareEnvironment.Sandbox,
       ...(process.env['SQUARE_BASE_URL']
@@ -150,7 +132,7 @@ export class Square {
    * Check if running in production mode
    */
   isProduction(): boolean {
-    return this.env.isProd;
+    return this._isProd;
   }
 
   /**
