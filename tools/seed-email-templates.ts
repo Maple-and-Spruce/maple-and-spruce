@@ -580,6 +580,96 @@ const craftClubManageLinkHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: craft-club-welcome
+//
+// Sent when a member starts their Craft Club subscription. Transactional.
+// ---------------------------------------------------------------------------
+
+const craftClubWelcomeSubject = 'Welcome to the Craft Club!';
+
+const craftClubWelcomeHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to the Craft Club</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>Welcome to the Craft Club!</h2>
+    <p>{{#if name}}Hi {{name}},{{else}}Hello,{{/if}}</p>
+    <p>Your Craft Club membership is active. You can come in and use the studio
+      during Craft Club hours for approved projects (stained glass and more).
+      Materials are billed separately at the register.</p>
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Manage your membership anytime</strong><br>
+      <p>Need to update your card or cancel? Visit the membership page and we'll
+        email you a secure link.</p>
+    </div>
+    <p>Questions? Reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: craft-club-cancelled
+//
+// Sent when a Craft Club membership is cancelled (self-service or by an admin).
+// Transactional. {{periodEnd}} is the access-through date.
+// ---------------------------------------------------------------------------
+
+const craftClubCancelledSubject = 'Your Craft Club membership has been cancelled';
+
+const craftClubCancelledHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Craft Club membership cancelled</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>Your membership is cancelled</h2>
+    <p>{{#if name}}Hi {{name}},{{else}}Hello,{{/if}}</p>
+    <p>Your Craft Club membership has been cancelled and you won't be billed
+      again.{{#if periodEnd}} You're welcome to keep using your studio access
+      through <strong>{{periodEnd}}</strong>.{{/if}}</p>
+    <p>We'd love to have you back anytime — just sign up again from the
+      membership page.</p>
+    <p>Questions? Reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
 
@@ -616,6 +706,14 @@ const templates: Record<string, EmailTemplate> = {
   'craft-club-manage-link': {
     subject: craftClubManageLinkSubject,
     html: craftClubManageLinkHtml,
+  },
+  'craft-club-welcome': {
+    subject: craftClubWelcomeSubject,
+    html: craftClubWelcomeHtml,
+  },
+  'craft-club-cancelled': {
+    subject: craftClubCancelledSubject,
+    html: craftClubCancelledHtml,
   },
 };
 

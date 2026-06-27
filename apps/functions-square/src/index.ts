@@ -47,3 +47,7 @@ export { createCraftClubSubscription } from '@maple/firebase/maple-functions/cre
 // Craft Club self-service (public, session-gated; Square subscription mutations)
 export { cancelCraftClubSubscription } from '@maple/firebase/maple-functions/cancel-craft-club-subscription';
 export { updateCraftClubPaymentMethod } from '@maple/firebase/maple-functions/update-craft-club-payment-method';
+// Craft Club admin lifecycle (admin-only; Square pause/resume/cancel)
+export { adminPauseCraftClubSubscription } from '@maple/firebase/maple-functions/admin-pause-craft-club-subscription';
+export { adminResumeCraftClubSubscription } from '@maple/firebase/maple-functions/admin-resume-craft-club-subscription';
+export { adminCancelCraftClubSubscription } from '@maple/firebase/maple-functions/admin-cancel-craft-club-subscription';

@@ -449,8 +449,10 @@ magic-link self-service management. Delivered in phases.
 |-------|-------|--------|
 | 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **Complete (PR #507)** |
 | 2 | Square $30/mo plan (`tools/create-craft-club-plan.ts`) + cards/subscriptions/customers services + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` (unit + interaction + integration tests) | **Complete (PR #509)** |
-| 3 | Magic-link self-service: hashed single-use token + session repos, `requestCraftClubManageLink` / `startCraftClubSession` / `getCraftClubSubscription` / `cancelCraftClubSubscription` / `updateCraftClubPaymentMethod`, manage Webflow widget (unit + interaction + integration). E2E happy-path deferred to its own follow-up (needs a new Vite harness app + sandbox subscription fixtures). | **In Progress** |
-| 4 | Square subscription webhooks + admin pause/resume/cancel + welcome/cancel emails | Not Started |
+| 3 | Magic-link self-service: hashed single-use token + session repos, `requestCraftClubManageLink` / `startCraftClubSession` / `getCraftClubSubscription` / `cancelCraftClubSubscription` / `updateCraftClubPaymentMethod`, manage Webflow widget (unit + interaction + integration). E2E happy-path deferred to its own follow-up (needs a new Vite harness app + sandbox subscription fixtures). | **Complete (PR #521)** |
+| 4 | `squareWebhook` subscription reconciliation (status + paid-through), admin pause/resume/cancel (`admin*CraftClubSubscription`) + UI buttons, welcome/cancellation emails. Unit + integration. | **In Progress** |
+
+**Remaining after Phase 4:** the deferred self-service E2E happy path (new Vite harness app + sandbox fixtures). One-time go-live setup: run `tools/create-craft-club-plan.ts` for sandbox + prod (fill `CRAFT_CLUB_PLAN_VARIATION_ID`), run `tools/seed-email-templates.ts`, and subscribe to `subscription.*` events in the Square dashboard.
 
 ## External Dependencies
 

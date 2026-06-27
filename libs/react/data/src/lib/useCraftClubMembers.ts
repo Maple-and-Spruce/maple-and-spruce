@@ -15,7 +15,17 @@ import type {
   ApproveCraftClubMemberResponse,
   UpdateCraftClubMemberRequest,
   UpdateCraftClubMemberResponse,
+  AdminCraftClubSubscriptionActionRequest,
+  AdminCraftClubSubscriptionActionResponse,
 } from '@maple/ts/firebase/api-types';
+
+export type CraftClubSubscriptionAction = 'pause' | 'resume' | 'cancel';
+
+const ACTION_FUNCTIONS: Record<CraftClubSubscriptionAction, string> = {
+  pause: 'adminPauseCraftClubSubscription',
+  resume: 'adminResumeCraftClubSubscription',
+  cancel: 'adminCancelCraftClubSubscription',
+};
 
 export interface UseCraftClubMembersFilters {
   status?: CraftClubMemberStatus;
@@ -96,6 +106,30 @@ export function useCraftClubMembers(filters?: UseCraftClubMembersFilters) {
     []
   );
 
+  const subscriptionAction = useCallback(
+    async (
+      action: CraftClubSubscriptionAction,
+      id: string
+    ): Promise<CraftClubMember> => {
+      const functions = getMapleFunctions();
+      const call = httpsCallable<
+        AdminCraftClubSubscriptionActionRequest,
+        AdminCraftClubSubscriptionActionResponse
+      >(functions, ACTION_FUNCTIONS[action]);
+      const result = await call({ id });
+      const member = result.data.member;
+      setMembersState((prev) => {
+        if (prev.status !== 'success') return prev;
+        return {
+          ...prev,
+          data: prev.data.map((m) => (m.id === member.id ? member : m)),
+        };
+      });
+      return member;
+    },
+    []
+  );
+
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
@@ -105,5 +139,6 @@ export function useCraftClubMembers(filters?: UseCraftClubMembersFilters) {
     fetchMembers,
     approveMember,
     updateMember,
+    subscriptionAction,
   };
 }

@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
     findBySquareInvoiceId: vi.fn(),
     markPaidBySquareWebhook: vi.fn(),
     requestRefresh: vi.fn(),
+    findBySubscriptionId: vi.fn(),
+    craftClubUpdate: vi.fn(),
   };
 });
 
@@ -36,6 +38,10 @@ vi.mock('@maple/firebase/database', () => ({
   },
   CatalogSyncRequestRepository: {
     requestRefresh: mocks.requestRefresh,
+  },
+  CraftClubMemberRepository: {
+    findBySubscriptionId: mocks.findBySubscriptionId,
+    update: mocks.craftClubUpdate,
   },
 }));
 
@@ -689,5 +695,90 @@ describe('Square Webhook - squareWebhook endpoint', () => {
     await fn(makeReq(body, sig), res);
 
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('handleSubscriptionEvent', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  function subEvent(object: Record<string, unknown>) {
+    return {
+      merchant_id: 'm',
+      type: 'subscription.updated',
+      event_id: 'evt-sub',
+      created_at: '2026-06-26',
+      data: { type: 'subscription', id: 'sub-1', object },
+    } as never;
+  }
+
+  it('reconciles a CANCELED subscription onto the member', async () => {
+    mocks.findBySubscriptionId.mockResolvedValue({
+      id: 'm1',
+      status: 'active',
+      currentPeriodEndsAt: undefined,
+    });
+    mocks.craftClubUpdate.mockResolvedValue({});
+
+    const { handleSubscriptionEvent } = await import('./square-webhook');
+    const result = await handleSubscriptionEvent(
+      subEvent({
+        subscription: {
+          id: 'sub-1',
+          status: 'CANCELED',
+          charged_through_date: '2026-08-01',
+        },
+      })
+    );
+
+    expect(result.action).toBe('updated');
+    expect(mocks.craftClubUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'm1',
+        status: 'cancelled',
+        cancelledAt: expect.any(Date),
+        currentPeriodEndsAt: expect.any(Date),
+      })
+    );
+  });
+
+  it('maps PAUSED → paused', async () => {
+    mocks.findBySubscriptionId.mockResolvedValue({ id: 'm1', status: 'active' });
+    mocks.craftClubUpdate.mockResolvedValue({});
+
+    const { handleSubscriptionEvent } = await import('./square-webhook');
+    await handleSubscriptionEvent(
+      subEvent({ subscription: { id: 'sub-1', status: 'PAUSED' } })
+    );
+
+    expect(mocks.craftClubUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'm1', status: 'paused' })
+    );
+  });
+
+  it('is idempotent — skips when nothing changed', async () => {
+    mocks.findBySubscriptionId.mockResolvedValue({
+      id: 'm1',
+      status: 'active',
+    });
+
+    const { handleSubscriptionEvent } = await import('./square-webhook');
+    const result = await handleSubscriptionEvent(
+      subEvent({ subscription: { id: 'sub-1', status: 'ACTIVE' } })
+    );
+
+    expect(result.action).toBe('skipped');
+    expect(mocks.craftClubUpdate).not.toHaveBeenCalled();
+  });
+
+  it('skips when no member matches the subscription', async () => {
+    mocks.findBySubscriptionId.mockResolvedValue(undefined);
+
+    const { handleSubscriptionEvent } = await import('./square-webhook');
+    const result = await handleSubscriptionEvent(
+      subEvent({ subscription: { id: 'sub-unknown', status: 'ACTIVE' } })
+    );
+
+    expect(result.action).toBe('skipped');
+    expect(mocks.craftClubUpdate).not.toHaveBeenCalled();
   });
 });

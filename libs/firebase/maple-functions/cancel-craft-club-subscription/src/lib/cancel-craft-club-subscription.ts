@@ -15,8 +15,12 @@ import { Square, SQUARE_SECRET_NAMES, SQUARE_STRING_NAMES } from '@maple/firebas
 import {
   CraftClubMemberRepository,
   CraftClubTokenRepository,
+  getDb,
 } from '@maple/firebase/database';
-import { toCraftClubMemberPublicView } from '@maple/ts/domain';
+import {
+  toCraftClubMemberPublicView,
+  formatCraftClubDate,
+} from '@maple/ts/domain';
 import type {
   CancelCraftClubSubscriptionRequest,
   CancelCraftClubSubscriptionResponse,
@@ -60,6 +64,19 @@ export const cancelCraftClubSubscription = Functions.endpoint
         ? new Date(result.canceledDate)
         : member.currentPeriodEndsAt,
     });
+
+    await getDb()
+      .collection('mail')
+      .add({
+        to: updated.email,
+        template: {
+          name: 'craft-club-cancelled',
+          data: {
+            name: updated.name ?? '',
+            periodEnd: formatCraftClubDate(updated.currentPeriodEndsAt),
+          },
+        },
+      });
 
     return { member: toCraftClubMemberPublicView(updated) };
   });

@@ -17,6 +17,15 @@
     "paths": {
       "@maple/firebase/database": ["libs/firebase/database/src/index.ts"],
       "@maple/firebase/functions": ["libs/firebase/functions/src/index.ts"],
+      "@maple/firebase/maple-functions/admin-pause-craft-club-subscription": [
+        "libs/firebase/maple-functions/admin-pause-craft-club-subscription/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/admin-resume-craft-club-subscription": [
+        "libs/firebase/maple-functions/admin-resume-craft-club-subscription/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/admin-cancel-craft-club-subscription": [
+        "libs/firebase/maple-functions/admin-cancel-craft-club-subscription/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/request-craft-club-manage-link": [
         "libs/firebase/maple-functions/request-craft-club-manage-link/src/index.ts"
       ],
