@@ -137,6 +137,26 @@ export const MusicTogetherScheduledChargeRepository = {
     await getDb().collection(COLLECTION).doc(id).delete();
   },
 
+  /**
+   * Atomically claim a charge for processing by flipping `scheduled → charging`
+   * in a transaction. Returns `true` if this caller won the lease, `false` if
+   * the charge is already in flight or terminal (another run claimed it, or it
+   * was cancelled). This is the overlap-prevention layer of the overcharge
+   * safety model — a charge can only be claimed once.
+   */
+  async tryClaimLease(id: string): Promise<boolean> {
+    const db = getDb();
+    const docRef = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.status !== 'scheduled') {
+        return false;
+      }
+      tx.update(docRef, { status: 'charging', updatedAt: new Date() });
+      return true;
+    });
+  },
+
   /** Document reference (for transactional lease claims in the charge job). */
   getDocRef(id?: string) {
     return id
