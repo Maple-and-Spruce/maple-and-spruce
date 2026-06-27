@@ -102,3 +102,21 @@ export interface MusicTogetherInstallmentChargeResult {
   /** Populated only on a dry run. */
   wouldCharge?: MusicTogetherDueChargePreview[];
 }
+
+// ============================================================================
+// Cancel Registration (admin — refund + cancel scheduled charges)
+// ============================================================================
+
+export interface CancelMusicTogetherRegistrationRequest {
+  registrationId: string;
+}
+
+export interface CancelMusicTogetherRegistrationResponse {
+  registrationId: string;
+  status: 'cancelled' | 'refunded';
+  /** Amount refunded in cents (0 when non-refundable / nothing to refund). */
+  refundCents: number;
+  refundId?: string;
+  /** How many scheduled future charges were cancelled. */
+  cancelledChargeCount: number;
+}

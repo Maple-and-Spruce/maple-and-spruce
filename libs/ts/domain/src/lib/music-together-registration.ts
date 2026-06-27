@@ -116,3 +116,31 @@ export function mtRegistrationHasScheduledCharges(
 ): boolean {
   return (registration.scheduledChargeCount ?? 0) > 0;
 }
+
+/** Non-refundable cancellation fee withheld on a pre-class cancellation, in cents ($25.00). */
+export const MT_CANCELLATION_FEE_CENTS = 2500;
+
+/**
+ * Refund owed when a registration is cancelled:
+ *   - BEFORE the first class → the amount paid at registration minus the $25
+ *     fee (never below 0).
+ *   - ON or AFTER the first class → nothing (non-refundable).
+ *
+ * `firstClassAt` is the section's earliest session. When it is undefined (a
+ * section with no sessions yet) the booking is treated as pre-class.
+ *
+ * Note: this is based on the registration-time charge (`pricePaidCents`). The
+ * second installment is due in week 5 — well after the first class — so a
+ * pre-class cancellation never has a second charge to refund; that charge is
+ * instead cancelled so it never runs.
+ */
+export function mtRefundCents(
+  pricePaidCents: number,
+  firstClassAt: Date | undefined,
+  now: Date
+): number {
+  if (firstClassAt && now.getTime() >= firstClassAt.getTime()) {
+    return 0;
+  }
+  return Math.max(0, pricePaidCents - MT_CANCELLATION_FEE_CENTS);
+}
