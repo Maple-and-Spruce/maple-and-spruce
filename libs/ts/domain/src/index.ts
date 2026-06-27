@@ -44,6 +44,10 @@ export * from './lib/signed-agreement';
 // Craft Club (recurring studio-access membership)
 export * from './lib/craft-club-member';
 
+// Music Together (separate-business early-childhood music program)
+export * from './lib/music-together-section';
+export * from './lib/music-together-registration';
+
 // User & role administration
 export * from './lib/app-user';
 

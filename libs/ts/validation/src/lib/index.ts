@@ -75,3 +75,15 @@ export {
   craftClubMemberValidation,
   type CraftClubMemberValidationInput,
 } from './craft-club-member.validation';
+
+// Music Together (separate-business early-childhood music program)
+export {
+  musicTogetherRegistrationValidation,
+  type MusicTogetherRegistrationValidationInput,
+  type MusicTogetherChildInput,
+} from './music-together-registration.validation';
+export {
+  musicTogetherSectionValidation,
+  type MusicTogetherSectionValidationInput,
+  type MusicTogetherSessionInput,
+} from './music-together-section.validation';
