@@ -17,6 +17,7 @@
 9. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
 10. **Function naming convention** -- `firebase-maple-functions-{name}`. See `create-cloud-function` skill.
 11. **gcloud commands OK** -- Run gcloud after user logs in via `gcloud auth login`.
+12. **Firebase/gcloud CLI account** -- This repo (and all `maple-and-spruce-*` worktrees) uses account `katie@mapleandsprucefolkarts.com`; Mountain SOL uses a different account. Firebase: `katie@` is the **global default** (covers all worktrees) — never `firebase login:use` from outside a repo. gcloud: use the **`maple`** named config (`export CLOUDSDK_ACTIVE_CONFIG_NAME=maple`). See `docs/guides/environment-setup.md` → "Firebase CLI Multi-Account" / "gcloud CLI Multi-Account".
 
 ---
 
