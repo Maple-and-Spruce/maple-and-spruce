@@ -418,4 +418,7 @@ export type {
   MusicTogetherChildPayload,
   CreateMusicTogetherRegistrationRequest,
   CreateMusicTogetherRegistrationResponse,
+  ChargeMusicTogetherInstallmentsRequest,
+  MusicTogetherDueChargePreview,
+  MusicTogetherInstallmentChargeResult,
 } from './music-together.types';

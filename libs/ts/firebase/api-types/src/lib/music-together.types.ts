@@ -71,3 +71,34 @@ export interface CreateMusicTogetherRegistrationResponse {
   cardLast4?: string;
   squareReceiptUrl?: string;
 }
+
+// ============================================================================
+// Charge due installments (admin trigger for the scheduled job)
+// ============================================================================
+
+export interface ChargeMusicTogetherInstallmentsRequest {
+  /** When set, only reports what would be charged — takes no payments. */
+  dryRun?: boolean;
+}
+
+/** One charge a dry run would have processed. */
+export interface MusicTogetherDueChargePreview {
+  chargeId: string;
+  registrationId: string;
+  amountCents: number;
+  installmentNumber: number;
+}
+
+export interface MusicTogetherInstallmentChargeResult {
+  /** Charges that were due (status scheduled, dueAt ≤ now). */
+  due: number;
+  /** Successfully charged. */
+  charged: number;
+  /** Failed (declined/errored) — parent emailed, surfaced to admin. */
+  failed: number;
+  /** Skipped because the lease was already taken or the reg isn't chargeable. */
+  skipped: number;
+  dryRun: boolean;
+  /** Populated only on a dry run. */
+  wouldCharge?: MusicTogetherDueChargePreview[];
+}
