@@ -407,4 +407,6 @@ export type {
   CancelCraftClubSubscriptionResponse,
   UpdateCraftClubPaymentMethodRequest,
   UpdateCraftClubPaymentMethodResponse,
+  AdminCraftClubSubscriptionActionRequest,
+  AdminCraftClubSubscriptionActionResponse,
 } from './craft-club.types';

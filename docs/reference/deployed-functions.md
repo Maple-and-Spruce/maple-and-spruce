@@ -147,8 +147,12 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 
 ### Craft Club subscription (Square)
 - `createCraftClubSubscription` _(public)_ — re-checks the approval gate server-side, then upserts the Square customer, stores the card on file from the Web Payments nonce, enrolls it in the $30/mo subscription plan, and mirrors the result onto the member record
-- `cancelCraftClubSubscription` _(public, session-gated)_ — cancels the Square subscription at period end and marks the member cancelled (access through the period end)
+- `cancelCraftClubSubscription` _(public, session-gated)_ — cancels the Square subscription at period end, marks the member cancelled, and emails a confirmation
 - `updateCraftClubPaymentMethod` _(public, session-gated)_ — files a new card from a Web Payments nonce and points the subscription at it
+- `adminPauseCraftClubSubscription` / `adminResumeCraftClubSubscription` / `adminCancelCraftClubSubscription` _(admin-only)_ — Square pause/resume/cancel + mirror member status (cancel also emails)
+- `createCraftClubSubscription` also emails a welcome on success.
+
+`squareWebhook` additionally handles `subscription.created` / `subscription.updated` — reconciles the member's status (ACTIVE/PAUSED/CANCELED/DEACTIVATED) and paid-through date from Square; idempotent on no-change.
 
 ---
 

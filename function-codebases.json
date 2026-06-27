@@ -39,7 +39,10 @@
     "firebase-maple-functions-sync-inventory-to-square": "maple-square",
     "firebase-maple-functions-create-craft-club-subscription": "maple-square",
     "firebase-maple-functions-cancel-craft-club-subscription": "maple-square",
-    "firebase-maple-functions-update-craft-club-payment-method": "maple-square"
+    "firebase-maple-functions-update-craft-club-payment-method": "maple-square",
+    "firebase-maple-functions-admin-pause-craft-club-subscription": "maple-square",
+    "firebase-maple-functions-admin-resume-craft-club-subscription": "maple-square",
+    "firebase-maple-functions-admin-cancel-craft-club-subscription": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

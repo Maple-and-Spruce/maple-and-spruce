@@ -101,6 +101,23 @@ export const CraftClubMemberRepository = {
     return docToMember(snapshot.docs[0]);
   },
 
+  /** Find a member by their Square subscription ID (used by webhooks). */
+  async findBySubscriptionId(
+    subscriptionId: string
+  ): Promise<CraftClubMember | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('squareSubscriptionId', '==', subscriptionId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return undefined;
+    }
+
+    return docToMember(snapshot.docs[0]);
+  },
+
   /** Create a new member. Email is normalized to its key form. */
   async create(input: CreateCraftClubMemberInput): Promise<CraftClubMember> {
     const docRef = db.collection(COLLECTION).doc();
