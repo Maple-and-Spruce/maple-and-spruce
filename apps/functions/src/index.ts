@@ -103,6 +103,7 @@ export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-cl
 // Public class API (no auth required - for Webflow integration)
 export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
 export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/get-public-music-together-section';
+export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
 export { getRelatedPublicClasses } from '@maple/firebase/maple-functions/get-related-public-classes';
 export { addToClassWaitlist } from '@maple/firebase/maple-functions/add-to-class-waitlist';
 export { notifyWaitlistOnSpotOpen } from '@maple/firebase/maple-functions/notify-waitlist-on-spot-open';

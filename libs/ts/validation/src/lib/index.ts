@@ -88,3 +88,7 @@ export {
   type MusicTogetherSessionInput,
   type MusicTogetherInstallmentInput,
 } from './music-together-section.validation';
+export {
+  musicTogetherWaitlistValidation,
+  type MusicTogetherWaitlistValidationInput,
+} from './music-together-waitlist.validation';

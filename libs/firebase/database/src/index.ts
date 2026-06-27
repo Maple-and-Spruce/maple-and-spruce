@@ -105,6 +105,10 @@ export {
   MusicTogetherScheduledChargeRepository,
   type MusicTogetherScheduledChargeFilters,
 } from './lib/music-together-scheduled-charge.repository';
+export {
+  MusicTogetherWaitlistRepository,
+  mtWaitlistEmailKey,
+} from './lib/music-together-waitlist.repository';
 
 // Phase 5: Etsy
 export {

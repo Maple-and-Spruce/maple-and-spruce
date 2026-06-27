@@ -326,6 +326,9 @@
       "@maple/firebase/maple-functions/get-public-music-together-section": [
         "libs/firebase/maple-functions/get-public-music-together-section/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/add-to-music-together-waitlist": [
+        "libs/firebase/maple-functions/add-to-music-together-waitlist/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/check-admin-status": [
         "libs/firebase/maple-functions/check-admin-status/src/index.ts"
       ],
