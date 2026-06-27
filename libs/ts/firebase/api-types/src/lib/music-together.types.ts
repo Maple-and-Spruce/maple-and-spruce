@@ -120,3 +120,20 @@ export interface CancelMusicTogetherRegistrationResponse {
   /** How many scheduled future charges were cancelled. */
   cancelledChargeCount: number;
 }
+
+// ============================================================================
+// Join Waitlist (public — shown when a section is full)
+// ============================================================================
+
+export interface AddToMusicTogetherWaitlistRequest {
+  sectionId: string;
+  name: string;
+  email: string;
+  /** "What days/times work for you?" */
+  availability?: string;
+}
+
+export interface AddToMusicTogetherWaitlistResponse {
+  /** False when the email was already on the list (idempotent no-op). */
+  added: boolean;
+}
