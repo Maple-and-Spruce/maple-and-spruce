@@ -122,6 +122,7 @@
     "../../libs/firebase/maple-functions/request-craft-club-manage-link/**/*.ts",
     "../../libs/firebase/maple-functions/start-craft-club-session/**/*.ts",
     "../../libs/firebase/maple-functions/get-craft-club-subscription/**/*.ts",
+    "../../libs/firebase/maple-functions/get-public-music-together-section/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
     "../../libs/ts/domain/src/**/*.ts",
