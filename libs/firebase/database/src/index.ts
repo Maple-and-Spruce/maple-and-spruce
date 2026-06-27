@@ -92,6 +92,20 @@ export {
   CRAFT_CLUB_SESSION_TTL_MS,
 } from './lib/craft-club-token.repository';
 
+// Music Together (separate-business early-childhood music program)
+export {
+  MusicTogetherSectionRepository,
+  type MusicTogetherSectionFilters,
+} from './lib/music-together-section.repository';
+export {
+  MusicTogetherRegistrationRepository,
+  type MusicTogetherRegistrationFilters,
+} from './lib/music-together-registration.repository';
+export {
+  MusicTogetherScheduledChargeRepository,
+  type MusicTogetherScheduledChargeFilters,
+} from './lib/music-together-scheduled-charge.repository';
+
 // Phase 5: Etsy
 export {
   FirestoreTokenStorage,
