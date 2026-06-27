@@ -9,7 +9,6 @@ import {
   MT_CAPACITY_STATUSES,
   type MusicTogetherRegistration,
   type MusicTogetherChild,
-  type MusicTogetherInstallment,
   type MusicTogetherPaymentPlan,
   type MusicTogetherRegistrationStatus,
   type CreateMusicTogetherRegistrationInput,
@@ -30,20 +29,6 @@ function parseChildren(raw: unknown): MusicTogetherChild[] {
     out.push({ name: e.name, dob: toDate(e.dob) });
   }
   return out;
-}
-
-function parseInstallment(raw: unknown): MusicTogetherInstallment | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const r = raw as Record<string, unknown>;
-  return {
-    status: r.status as MusicTogetherInstallment['status'],
-    dueAt: toDate(r.dueAt),
-    amountCents: r.amountCents as number,
-    idempotencyKey: r.idempotencyKey as string,
-    squarePaymentId: r.squarePaymentId as string | undefined,
-    lastError: r.lastError as string | undefined,
-    resolvedAt: r.resolvedAt ? toDate(r.resolvedAt) : undefined,
-  };
 }
 
 function docToRegistration(
@@ -70,7 +55,7 @@ function docToRegistration(
     squarePaymentId: data.squarePaymentId,
     squareOrderId: data.squareOrderId,
     squareReceiptUrl: data.squareReceiptUrl,
-    installment2: parseInstallment(data.installment2),
+    scheduledChargeCount: data.scheduledChargeCount,
     status: data.status as MusicTogetherRegistrationStatus,
     notes: data.notes,
     confirmationSentAt: data.confirmationSentAt

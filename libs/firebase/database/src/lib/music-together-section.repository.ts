@@ -9,6 +9,7 @@ import {
   mtSectionFirstSessionAt,
   type MusicTogetherSection,
   type MusicTogetherSession,
+  type MusicTogetherInstallmentPlanItem,
   type MusicTogetherSectionStatus,
   type CreateMusicTogetherSectionInput,
   type UpdateMusicTogetherSectionInput,
@@ -28,6 +29,22 @@ function parseSessions(raw: unknown): MusicTogetherSession[] {
   return out;
 }
 
+function parseInstallmentPlan(
+  raw: unknown
+): MusicTogetherInstallmentPlanItem[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: MusicTogetherInstallmentPlanItem[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as { amountCents?: unknown; dueAt?: unknown };
+    if (typeof e.amountCents !== 'number' || e.dueAt === undefined || e.dueAt === null) {
+      continue;
+    }
+    out.push({ amountCents: e.amountCents, dueAt: toDate(e.dueAt) });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 function docToSection(
   doc: FirebaseFirestore.DocumentSnapshot
 ): MusicTogetherSection | undefined {
@@ -40,9 +57,7 @@ function docToSection(
     sessions: parseSessions(data.sessions),
     capacityFamilies: data.capacityFamilies,
     priceFullCents: data.priceFullCents,
-    installmentCents: data.installmentCents,
-    installmentCount: data.installmentCount,
-    week5ChargeAt: toDate(data.week5ChargeAt),
+    installmentPlan: parseInstallmentPlan(data.installmentPlan),
     status: data.status as MusicTogetherSectionStatus,
     location: data.location,
     room: data.room,

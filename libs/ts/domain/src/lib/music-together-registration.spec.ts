@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isMtRegistrationConfirmed,
-  mtHasPendingInstallment,
+  mtRegistrationHasScheduledCharges,
   MT_CAPACITY_STATUSES,
 } from './music-together-registration';
 
@@ -19,33 +19,16 @@ describe('MT_CAPACITY_STATUSES', () => {
   });
 });
 
-describe('mtHasPendingInstallment', () => {
-  it('is true only when the second installment is still scheduled', () => {
+describe('mtRegistrationHasScheduledCharges', () => {
+  it('reflects the denormalized scheduled-charge count', () => {
+    expect(mtRegistrationHasScheduledCharges({ scheduledChargeCount: 1 })).toBe(
+      true
+    );
+    expect(mtRegistrationHasScheduledCharges({ scheduledChargeCount: 0 })).toBe(
+      false
+    );
     expect(
-      mtHasPendingInstallment({
-        installment2: {
-          status: 'scheduled',
-          dueAt: new Date(),
-          amountCents: 13200,
-          idempotencyKey: 'mt-installment2-abc',
-        },
-      })
-    ).toBe(true);
-  });
-
-  it('is false for terminal or absent installments', () => {
-    expect(mtHasPendingInstallment({ installment2: undefined })).toBe(false);
-    for (const status of ['charging', 'paid', 'failed', 'cancelled'] as const) {
-      expect(
-        mtHasPendingInstallment({
-          installment2: {
-            status,
-            dueAt: new Date(),
-            amountCents: 13200,
-            idempotencyKey: 'k',
-          },
-        })
-      ).toBe(false);
-    }
+      mtRegistrationHasScheduledCharges({ scheduledChargeCount: undefined })
+    ).toBe(false);
   });
 });

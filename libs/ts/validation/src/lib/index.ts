@@ -86,4 +86,5 @@ export {
   musicTogetherSectionValidation,
   type MusicTogetherSectionValidationInput,
   type MusicTogetherSessionInput,
+  type MusicTogetherInstallmentInput,
 } from './music-together-section.validation';

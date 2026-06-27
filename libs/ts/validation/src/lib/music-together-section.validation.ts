@@ -13,15 +13,23 @@ export interface MusicTogetherSessionInput {
   dateTime?: Date | string;
 }
 
+/** One configurable installment row from the admin form. */
+export interface MusicTogetherInstallmentInput {
+  amountCents?: number;
+  dueAt?: Date | string;
+}
+
 export interface MusicTogetherSectionValidationInput {
   name?: string;
   description?: string;
   sessions?: MusicTogetherSessionInput[];
   capacityFamilies?: number;
   priceFullCents?: number;
-  installmentCents?: number;
-  installmentCount?: number;
-  week5ChargeAt?: Date | string;
+  /**
+   * Optional configurable installment plan. Absent/empty ⇒ pay-in-full only.
+   * When present it must have 2+ rows (a single charge is just pay-in-full).
+   */
+  installmentPlan?: MusicTogetherInstallmentInput[];
   status?: string;
 }
 
@@ -65,20 +73,36 @@ export const musicTogetherSectionValidation = staticSuite(
       }
     });
 
-    test('installmentCents', 'Installment amount must be greater than 0', () => {
-      if (data.installmentCents !== undefined) {
-        enforce(data.installmentCents).greaterThan(0);
+    // Installment plan is optional. When offered it needs 2+ rows, each with a
+    // positive amount and a valid due date, in ascending date order.
+    test('installmentPlan', 'An installment plan must have at least 2 charges', () => {
+      if (data.installmentPlan !== undefined && data.installmentPlan.length > 0) {
+        enforce(data.installmentPlan.length).greaterThanOrEquals(2);
       }
     });
 
-    test('installmentCount', 'Installment count must be at least 1', () => {
-      if (data.installmentCount !== undefined) {
-        enforce(data.installmentCount).greaterThanOrEquals(1);
+    test('installmentPlan', 'Each installment needs an amount greater than 0', () => {
+      for (const item of data.installmentPlan ?? []) {
+        enforce(item.amountCents).isNotNullish();
+        if (item.amountCents !== undefined) {
+          enforce(item.amountCents).greaterThan(0);
+        }
       }
     });
 
-    test('week5ChargeAt', 'A valid second-installment charge date is required', () => {
-      enforce(parseDate(data.week5ChargeAt)).isNotNullish();
+    test('installmentPlan', 'Each installment needs a valid due date', () => {
+      for (const item of data.installmentPlan ?? []) {
+        enforce(parseDate(item.dueAt)).isNotNullish();
+      }
+    });
+
+    test('installmentPlan', 'Installment due dates must be in ascending order', () => {
+      const dates = (data.installmentPlan ?? [])
+        .map((i) => parseDate(i.dueAt))
+        .filter((d): d is Date => d !== undefined);
+      for (let i = 1; i < dates.length; i++) {
+        enforce(dates[i].getTime()).greaterThan(dates[i - 1].getTime());
+      }
     });
 
     test('status', 'Status must be valid', () => {

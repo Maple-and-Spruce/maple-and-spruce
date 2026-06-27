@@ -9,9 +9,10 @@ const valid: MusicTogetherSectionValidationInput = {
   sessions: [{ dateTime: new Date('2026-09-01T14:00:00Z') }],
   capacityFamilies: 8,
   priceFullCents: 25200,
-  installmentCents: 13200,
-  installmentCount: 2,
-  week5ChargeAt: new Date('2026-09-29T14:00:00Z'),
+  installmentPlan: [
+    { amountCents: 13200, dueAt: new Date('2026-09-01T14:00:00Z') },
+    { amountCents: 13200, dueAt: new Date('2026-09-29T14:00:00Z') },
+  ],
   status: 'open',
 };
 
@@ -40,13 +41,57 @@ describe('musicTogetherSectionValidation', () => {
     ).toBe(true);
   });
 
-  it('requires a valid week-5 charge date', () => {
+  it('allows a section with no installment plan (pay-in-full only)', () => {
+    const fullOnly = { ...valid };
+    delete fullOnly.installmentPlan;
+    expect(musicTogetherSectionValidation(fullOnly).hasErrors()).toBe(false);
+  });
+
+  it('rejects a one-row installment plan (that is just pay-in-full)', () => {
     expect(
       musicTogetherSectionValidation({
         ...valid,
-        week5ChargeAt: undefined,
-      }).hasErrors('week5ChargeAt')
+        installmentPlan: [
+          { amountCents: 13200, dueAt: new Date('2026-09-01T14:00:00Z') },
+        ],
+      }).hasErrors('installmentPlan')
     ).toBe(true);
+  });
+
+  it('rejects installments with bad amounts, dates, or order', () => {
+    // zero amount
+    expect(
+      musicTogetherSectionValidation({
+        ...valid,
+        installmentPlan: [
+          { amountCents: 0, dueAt: new Date('2026-09-01T14:00:00Z') },
+          { amountCents: 13200, dueAt: new Date('2026-09-29T14:00:00Z') },
+        ],
+      }).hasErrors('installmentPlan')
+    ).toBe(true);
+    // descending dates
+    expect(
+      musicTogetherSectionValidation({
+        ...valid,
+        installmentPlan: [
+          { amountCents: 13200, dueAt: new Date('2026-09-29T14:00:00Z') },
+          { amountCents: 13200, dueAt: new Date('2026-09-01T14:00:00Z') },
+        ],
+      }).hasErrors('installmentPlan')
+    ).toBe(true);
+  });
+
+  it('accepts an N-installment plan', () => {
+    expect(
+      musicTogetherSectionValidation({
+        ...valid,
+        installmentPlan: [
+          { amountCents: 10500, dueAt: new Date('2026-09-01T14:00:00Z') },
+          { amountCents: 10500, dueAt: new Date('2026-09-22T14:00:00Z') },
+          { amountCents: 10500, dueAt: new Date('2026-10-13T14:00:00Z') },
+        ],
+      }).hasErrors('installmentPlan')
+    ).toBe(false);
   });
 
   it('rejects non-positive prices and bad capacity', () => {

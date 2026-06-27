@@ -3,24 +3,51 @@ import {
   mtSectionFirstSessionAt,
   mtSpotsRemaining,
   mtSectionHasAvailability,
+  mtSectionOffersInstallments,
+  mtInstallmentPlanTotalCents,
   MT_DEFAULT_CAPACITY_FAMILIES,
   MT_PRICE_FULL_CENTS,
-  MT_INSTALLMENT_CENTS,
+  MT_DEFAULT_INSTALLMENT_CENTS,
   type MusicTogetherSection,
 } from './music-together-section';
 
-describe('Music Together pricing constants', () => {
-  it('matches the published prices ($252 full, $132 per installment)', () => {
+describe('Music Together prefill defaults', () => {
+  it('provides sensible form prefills (configurable per semester)', () => {
     expect(MT_PRICE_FULL_CENTS).toBe(25200);
-    expect(MT_INSTALLMENT_CENTS).toBe(13200);
-  });
-  it('paying in full is cheaper than two installments (a pay-in-full discount)', () => {
-    // Two installments total $264; paying in full is $252 — a $12 incentive.
-    expect(MT_INSTALLMENT_CENTS * 2).toBeGreaterThan(MT_PRICE_FULL_CENTS);
-    expect(MT_INSTALLMENT_CENTS * 2 - MT_PRICE_FULL_CENTS).toBe(1200);
-  });
-  it('default capacity is 8 families', () => {
+    expect(MT_DEFAULT_INSTALLMENT_CENTS).toBe(13200);
     expect(MT_DEFAULT_CAPACITY_FAMILIES).toBe(8);
+  });
+});
+
+describe('installment plan helpers', () => {
+  const plan = [
+    { amountCents: 13200, dueAt: new Date('2026-09-01T14:00:00Z') },
+    { amountCents: 13200, dueAt: new Date('2026-09-29T14:00:00Z') },
+  ];
+
+  it('offers installments only when the plan has 2+ items', () => {
+    expect(mtSectionOffersInstallments({ installmentPlan: plan })).toBe(true);
+    expect(
+      mtSectionOffersInstallments({ installmentPlan: [plan[0]] })
+    ).toBe(false);
+    expect(mtSectionOffersInstallments({ installmentPlan: undefined })).toBe(
+      false
+    );
+  });
+
+  it('sums the plan total', () => {
+    expect(mtInstallmentPlanTotalCents(plan)).toBe(26400);
+    expect(mtInstallmentPlanTotalCents(undefined)).toBe(0);
+  });
+
+  it('supports an arbitrary N-installment plan', () => {
+    const three = [
+      { amountCents: 10500, dueAt: new Date('2026-09-01T14:00:00Z') },
+      { amountCents: 10500, dueAt: new Date('2026-09-22T14:00:00Z') },
+      { amountCents: 10500, dueAt: new Date('2026-10-13T14:00:00Z') },
+    ];
+    expect(mtSectionOffersInstallments({ installmentPlan: three })).toBe(true);
+    expect(mtInstallmentPlanTotalCents(three)).toBe(31500);
   });
 });
 

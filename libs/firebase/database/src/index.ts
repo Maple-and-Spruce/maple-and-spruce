@@ -101,6 +101,10 @@ export {
   MusicTogetherRegistrationRepository,
   type MusicTogetherRegistrationFilters,
 } from './lib/music-together-registration.repository';
+export {
+  MusicTogetherScheduledChargeRepository,
+  type MusicTogetherScheduledChargeFilters,
+} from './lib/music-together-scheduled-charge.repository';
 
 // Phase 5: Etsy
 export {
