@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import {
-  Square,
+  resolveSquareCredentials,
   DEFAULT_SQUARE_KEYS,
   MT_SQUARE_KEYS,
   MT_SQUARE_SECRET_NAMES,
   MT_SQUARE_STRING_NAMES,
   SQUARE_SECRET_NAMES,
   SQUARE_STRING_NAMES,
-} from './square.utility';
+} from './square-credentials';
 
-// The Square constructor instantiates a SquareClient but makes no network
-// call at construction time, so these tests exercise pure credential-routing
-// logic: which param names each account reads.
+// These tests exercise pure credential-routing logic — which param names each
+// account reads. Importing only this barrel-free module keeps the functions +
+// database layers out of the coverage denominator (see file header).
 
 const MS_SECRETS = { SQUARE_ACCESS_TOKEN: 'ms-token' };
 const MS_STRINGS = {
@@ -53,55 +53,55 @@ describe('param name tuples', () => {
   });
 });
 
-describe('Square credential routing', () => {
+describe('resolveSquareCredentials', () => {
   it('defaults to the Maple & Spruce account', () => {
-    const square = new Square(MS_SECRETS, MS_STRINGS);
-    expect(square.locationId).toBe('MS_LOC');
-    expect(square.taxRatePercent).toBe(6.0);
-    expect(square.isProduction()).toBe(false);
+    const creds = resolveSquareCredentials(MS_SECRETS, MS_STRINGS);
+    expect(creds.accessToken).toBe('ms-token');
+    expect(creds.locationId).toBe('MS_LOC');
+    expect(creds.taxRatePercent).toBe(6.0);
+    expect(creds.isProd).toBe(false);
   });
 
   it('routes to the Music Together account when given MT keys', () => {
-    const square = new Square(MT_SECRETS, MT_STRINGS, MT_SQUARE_KEYS);
-    expect(square.locationId).toBe('MT_LOC');
-    expect(square.taxRatePercent).toBe(0.0); // non-taxable service
+    const creds = resolveSquareCredentials(MT_SECRETS, MT_STRINGS, MT_SQUARE_KEYS);
+    expect(creds.accessToken).toBe('mt-token');
+    expect(creds.locationId).toBe('MT_LOC');
+    expect(creds.taxRatePercent).toBe(0.0); // non-taxable service
   });
 
   it('reads PROD env per account independently', () => {
-    const square = new Square(
+    const creds = resolveSquareCredentials(
       { MT_SQUARE_ACCESS_TOKEN: 't' },
       { ...MT_STRINGS, MT_SQUARE_ENV: 'PROD' },
       MT_SQUARE_KEYS
     );
-    expect(square.isProduction()).toBe(true);
+    expect(creds.isProd).toBe(true);
   });
 
   it('does not read the wrong account’s token', () => {
     // MT keys against only-M&S secrets must fail — proves no cross-account leak.
-    expect(() => new Square(MS_SECRETS, MT_STRINGS, MT_SQUARE_KEYS)).toThrow(
-      /MT_SQUARE_ACCESS_TOKEN/
-    );
+    expect(() =>
+      resolveSquareCredentials(MS_SECRETS, MT_STRINGS, MT_SQUARE_KEYS)
+    ).toThrow(/MT_SQUARE_ACCESS_TOKEN/);
   });
 
   it('throws with the account-specific param name when location is missing', () => {
-    expect(
-      () =>
-        new Square(
-          MT_SECRETS,
-          { ...MT_STRINGS, MT_SQUARE_LOCATION_ID: '' },
-          MT_SQUARE_KEYS
-        )
+    expect(() =>
+      resolveSquareCredentials(
+        MT_SECRETS,
+        { ...MT_STRINGS, MT_SQUARE_LOCATION_ID: '' },
+        MT_SQUARE_KEYS
+      )
     ).toThrow(/MT_SQUARE_LOCATION_ID/);
   });
 
   it('throws with the account-specific param name when tax rate is invalid', () => {
-    expect(
-      () =>
-        new Square(
-          MT_SECRETS,
-          { ...MT_STRINGS, MT_SALES_TAX_RATE: 'abc' },
-          MT_SQUARE_KEYS
-        )
+    expect(() =>
+      resolveSquareCredentials(
+        MT_SECRETS,
+        { ...MT_STRINGS, MT_SALES_TAX_RATE: 'abc' },
+        MT_SQUARE_KEYS
+      )
     ).toThrow(/MT_SALES_TAX_RATE/);
   });
 });

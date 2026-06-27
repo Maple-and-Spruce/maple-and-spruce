@@ -10,7 +10,11 @@
  * @see https://developer.squareup.com/docs/square-get-started
  */
 import { SquareClient, SquareEnvironment } from 'square';
-import { ServiceEnvironment } from '@maple/firebase/functions';
+import {
+  resolveSquareCredentials,
+  DEFAULT_SQUARE_KEYS,
+  type SquareParamKeys,
+} from './square-credentials';
 import { CatalogService } from './catalog.service';
 import { InventoryService } from './inventory.service';
 import { OrdersService } from './orders.service';
@@ -20,91 +24,23 @@ import { CardsService } from './cards.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { CustomersService } from './customers.service';
 
-/**
- * Secret names for Firebase Functions secrets
- * Use with defineSecret() from firebase-functions/params
- *
- * Each Firebase project has its own SQUARE_ACCESS_TOKEN with the appropriate value:
- * - maple-and-spruce-dev: sandbox token
- * - maple-and-spruce: production token
- */
-export const SQUARE_SECRET_NAMES = ['SQUARE_ACCESS_TOKEN'] as const;
-
-/**
- * String parameter names for Firebase Functions
- * Use with defineString() from firebase-functions/params
- *
- * SQUARE_ENV: 'LOCAL' (sandbox) or 'PROD' (production)
- * SQUARE_LOCATION_ID: The location ID for inventory operations
- * SALES_TAX_RATE: Sales tax rate as percentage (e.g., '6.0' for 6%)
- */
-export const SQUARE_STRING_NAMES = [
-  'SQUARE_ENV',
-  'SQUARE_LOCATION_ID',
-  'SALES_TAX_RATE',
-] as const;
-
-export type SquareSecrets = Record<
-  (typeof SQUARE_SECRET_NAMES)[number],
-  string
->;
-
-export type SquareStrings = Record<
-  (typeof SQUARE_STRING_NAMES)[number],
-  string
->;
-
-/**
- * Music Together (MT) is a SEPARATE business (Stephanie's single-member LLC)
- * with its OWN Square account/checking. Its checkouts must route to MT's
- * Square credentials, not Maple & Spruce's. These are the prefixed param names
- * a Cloud Function declares via `.usingSecrets(...)` / `.usingStrings(...)`
- * when it needs the MT account.
- *
- * The secret value (MT_SQUARE_ACCESS_TOKEN) lives in Secret Manager / .secret.local,
- * never in the tracked .env files. The string params live in .env.dev/.env.prod
- * (mirroring the default SQUARE_* set).
- */
-export const MT_SQUARE_SECRET_NAMES = ['MT_SQUARE_ACCESS_TOKEN'] as const;
-
-export const MT_SQUARE_STRING_NAMES = [
-  'MT_SQUARE_ENV',
-  'MT_SQUARE_LOCATION_ID',
-  'MT_SALES_TAX_RATE',
-] as const;
-
-/**
- * The four Firebase param names a {@link Square} instance reads, so the same
- * client wrapper can be pointed at either the Maple & Spruce account (default)
- * or a second program's account (e.g. Music Together) without touching any
- * call site beyond which key set it passes.
- */
-export interface SquareParamKeys {
-  /** defineSecret name holding the access token */
-  accessTokenSecret: string;
-  /** defineString name holding 'LOCAL' | 'PROD' */
-  envString: string;
-  /** defineString name holding the Square location ID */
-  locationIdString: string;
-  /** defineString name holding the sales-tax rate percent (e.g. '6.0') */
-  taxRateString: string;
-}
-
-/** Default Maple & Spruce account keys — preserves all existing behavior. */
-export const DEFAULT_SQUARE_KEYS: SquareParamKeys = {
-  accessTokenSecret: 'SQUARE_ACCESS_TOKEN',
-  envString: 'SQUARE_ENV',
-  locationIdString: 'SQUARE_LOCATION_ID',
-  taxRateString: 'SALES_TAX_RATE',
-};
-
-/** Music Together account keys (separate Square account). */
-export const MT_SQUARE_KEYS: SquareParamKeys = {
-  accessTokenSecret: 'MT_SQUARE_ACCESS_TOKEN',
-  envString: 'MT_SQUARE_ENV',
-  locationIdString: 'MT_SQUARE_LOCATION_ID',
-  taxRateString: 'MT_SALES_TAX_RATE',
-};
+// Re-export the credential symbols so existing importers of './square.utility'
+// (and the lib barrel) keep working. The definitions live in the barrel-free
+// './square-credentials' module so unit tests can cover them without pulling
+// the functions/database layers into the coverage denominator.
+export {
+  SQUARE_SECRET_NAMES,
+  SQUARE_STRING_NAMES,
+  MT_SQUARE_SECRET_NAMES,
+  MT_SQUARE_STRING_NAMES,
+  DEFAULT_SQUARE_KEYS,
+  MT_SQUARE_KEYS,
+  resolveSquareCredentials,
+  type SquareSecrets,
+  type SquareStrings,
+  type SquareParamKeys,
+  type ResolvedSquareCredentials,
+} from './square-credentials';
 
 /**
  * Square utility class
@@ -132,7 +68,7 @@ export const MT_SQUARE_KEYS: SquareParamKeys = {
  */
 export class Square {
   private readonly client: SquareClient;
-  private readonly env: ServiceEnvironment;
+  private readonly _isProd: boolean;
   private readonly _catalogService: CatalogService;
   private readonly _inventoryService: InventoryService;
   private readonly _ordersService: OrdersService;
@@ -156,32 +92,18 @@ export class Square {
     private readonly strings: Record<string, string>,
     keys: SquareParamKeys = DEFAULT_SQUARE_KEYS
   ) {
-    this.env = new ServiceEnvironment(this.strings[keys.envString]);
-    // With per-project secrets, just get the token directly - no suffix needed
-    const accessToken = this.env.getSecret(
-      this.secrets,
-      keys.accessTokenSecret
-    );
+    // Pure routing + validation lives in ./square-credentials so it can be
+    // unit-tested without loading this file's heavy imports.
+    const { accessToken, locationId, taxRatePercent, isProd } =
+      resolveSquareCredentials(this.secrets, this.strings, keys);
 
-    this.locationId = this.strings[keys.locationIdString];
-
-    if (!this.locationId) {
-      throw new Error(
-        `Square location ID not configured. Set ${keys.locationIdString}.`
-      );
-    }
-
-    const taxRate = parseFloat(this.strings[keys.taxRateString]);
-    if (isNaN(taxRate) || taxRate < 0) {
-      throw new Error(
-        `Sales tax rate not configured or invalid. Set ${keys.taxRateString} (e.g., "6.0").`
-      );
-    }
-    this.taxRatePercent = taxRate;
+    this.locationId = locationId;
+    this.taxRatePercent = taxRatePercent;
+    this._isProd = isProd;
 
     this.client = new SquareClient({
       token: accessToken,
-      environment: this.env.isProd
+      environment: this._isProd
         ? SquareEnvironment.Production
         : SquareEnvironment.Sandbox,
       ...(process.env['SQUARE_BASE_URL']
@@ -210,7 +132,7 @@ export class Square {
    * Check if running in production mode
    */
   isProduction(): boolean {
-    return this.env.isProd;
+    return this._isProd;
   }
 
   /**
