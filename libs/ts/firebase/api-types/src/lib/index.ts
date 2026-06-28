@@ -412,6 +412,12 @@ export type {
 } from './craft-club.types';
 
 export type {
+  GetMusicTogetherSectionsRequest,
+  GetMusicTogetherSectionsResponse,
+  CreateMusicTogetherSectionRequest,
+  CreateMusicTogetherSectionResponse,
+  UpdateMusicTogetherSectionRequest,
+  UpdateMusicTogetherSectionResponse,
   GetPublicMusicTogetherSectionRequest,
   GetPublicMusicTogetherSectionResponse,
   PublicMusicTogetherSection,

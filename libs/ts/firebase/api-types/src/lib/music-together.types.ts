@@ -4,7 +4,36 @@
  * Shared between the public Webflow checkout widget and the Cloud Functions.
  * Dates cross the wire as ISO strings (e.g. child DOBs); the server parses them.
  */
-import type { MusicTogetherSection } from '@maple/ts/domain';
+import type {
+  MusicTogetherSection,
+  MusicTogetherSectionStatus,
+  CreateMusicTogetherSectionInput,
+  UpdateMusicTogetherSectionInput,
+} from '@maple/ts/domain';
+
+// ============================================================================
+// Section admin CRUD (authenticated read; admin writes)
+// ============================================================================
+
+export interface GetMusicTogetherSectionsRequest {
+  status?: MusicTogetherSectionStatus;
+}
+
+export interface GetMusicTogetherSectionsResponse {
+  sections: MusicTogetherSection[];
+}
+
+export type CreateMusicTogetherSectionRequest = CreateMusicTogetherSectionInput;
+
+export interface CreateMusicTogetherSectionResponse {
+  section: MusicTogetherSection;
+}
+
+export type UpdateMusicTogetherSectionRequest = UpdateMusicTogetherSectionInput;
+
+export interface UpdateMusicTogetherSectionResponse {
+  section: MusicTogetherSection;
+}
 
 // ============================================================================
 // Get Public Section (public — widget loads section + pricing)
