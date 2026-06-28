@@ -167,20 +167,27 @@ The analyzer scans `libs/firebase/database/**/*.repository.ts`, `libs/firebase/m
 4. Re-run the analyzer until it passes.
 5. On merge to main, CI runs `firebase deploy --only firestore:indexes` automatically (see `firebase-functions-merge.yml` → `deploy_firestore_indexes` job, gated on the file actually changing). Each new composite index takes a few minutes to build; queries succeed once each one flips to `READY`.
 
-### `firestore.indexes.json` is the source of truth — orphans block deploys
+### `firestore.indexes.json` is the source of truth — orphans warn, 409s retry
 
-The merge-time deploy does NOT pass `--force`. The behavior is fail-loud rather than silently-deletes:
+The merge-time deploy does NOT pass `--force`. Two behaviors to know about:
 
 - New indexes from `firestore.indexes.json` are applied normally.
-- Any index that exists in prod but isn't in the file (an "orphan") is **left untouched** — but the CI job fails after the deploy completes, with the orphan list printed.
-- The next merge that touches `firestore.indexes.json` will fail the same way until the orphan is resolved.
+- Any index that exists in prod but isn't in the file (an "orphan") is **left untouched** and surfaced as a CI **warning** (not a hard fail) — orphans are unused, low-risk indexes, and blocking unrelated merges on pre-existing drift is friction. The real outage risk (a *missing* index) is caught at PR time by the analyzer, not here.
+- A `409 "index already exists"` is **benign** and **auto-retried** (up to 12×) — it means the declared index is already present (a prior partial run, an auto-create-URL, or firebase-tools failing to match an index it just created). The job only fails if it's stuck on the *same* 409 twice (not converging) or hits a non-409 error. This mirrors the functions-deploy 409 retry from #537.
 
-Two ways to resolve an orphan:
+Two ways to resolve an orphan (optional — it only warns):
 
 1. **Add it to `firestore.indexes.json`** (preferred when the query is real and lives somewhere — even if outside the analyzer's scan, like a one-off console query or a script).
-2. **Delete it from prod** with `pnpm exec firebase firestore:indexes:delete --project maple-and-spruce` (if it's stale and nothing queries it).
+2. **Delete it** with gcloud (if it's stale and nothing queries it). There is no `firebase firestore:indexes:delete` command — use gcloud, targeting the index by ID:
 
-Common cause: clicking the auto-create-index URL in a Firestore error message creates an index in prod but not in the file. After doing that, immediately open a tiny PR adding the same index to `firestore.indexes.json` so the next merge isn't blocked.
+   ```bash
+   # list to find the ID
+   gcloud firestore indexes composite list --project maple-and-spruce
+   # delete by ID (add --account=<owner> if your active gcloud account lacks access)
+   gcloud firestore indexes composite delete <INDEX_ID> --project maple-and-spruce
+   ```
+
+Common cause: clicking the auto-create-index URL in a Firestore error message creates an index in prod but not in the file — and Firestore may lay it out with a different `__name__` direction than the declaration, which is what triggers the benign 409 churn. After clicking such a URL, open a tiny PR adding the same index to `firestore.indexes.json`.
 
 The analyzer prevents this gap for **code-derived** queries — it enforces "every required index is declared". It can't see queries that aren't in this repo. Those queries must either be reflected in the file or accepted as ephemeral (and re-added each time prod gets recreated).
 
