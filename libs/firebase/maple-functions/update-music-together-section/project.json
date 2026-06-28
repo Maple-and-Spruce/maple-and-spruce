@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-update-music-together-section",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/update-music-together-section/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}
