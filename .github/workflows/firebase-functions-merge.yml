@@ -387,9 +387,13 @@ jobs:
           #   1. Transient GCS 5xx during upload → non-zero exit.
           #   2. 409 "unable to queue the operation" races: firebase deploy
           #      exits 0 but SILENTLY drops the contended functions. So we also
-          #      scan the output for the 409 markers and retry until a clean run.
-          #      On retry the contended operations have cleared, so the dropped
-          #      functions create/update successfully.
+          #      scan for that exact marker and retry until a clean run — on
+          #      retry the contended operations have cleared and the dropped
+          #      functions deploy. We deliberately do NOT match "already exists"
+          #      / "failed to create": those are benign (the function IS
+          #      deployed; firebase just mis-tracked create vs update) and would
+          #      make the retry loop never converge. Genuine create/build
+          #      failures exit non-zero and are caught above.
           for attempt in 1 2 3 4; do
             # Keyless WIF access token (minted by the auth step) — the Admin SDK
             # can't consume the external_account credential file, but it accepts
@@ -400,7 +404,7 @@ jobs:
               --force \
               --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee /tmp/fb-deploy.log
             status=${PIPESTATUS[0]}
-            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation|failed to (create|update) function' /tmp/fb-deploy.log; then
+            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation' /tmp/fb-deploy.log; then
               exit 0
             fi
             if [ $attempt -lt 4 ]; then
@@ -776,7 +780,7 @@ jobs:
               --force \
               --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee /tmp/fb-deploy.log
             status=${PIPESTATUS[0]}
-            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation|failed to (create|update) function' /tmp/fb-deploy.log; then
+            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation' /tmp/fb-deploy.log; then
               exit 0
             fi
             if [ $attempt -lt 4 ]; then
