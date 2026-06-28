@@ -207,11 +207,13 @@ jobs:
           # One matrix entry per codebase. Firebase deploys functions
           # within a codebase serially regardless of how we batch them
           # (a single `firebase deploy` command iterates through them),
-          # but DIFFERENT codebases are independent and safe to deploy
-          # in parallel. Earlier this was GROUP_SIZE=5 with max-parallel:1,
-          # which produced ~22 sequential batches and ~60 min of wall time
-          # per side. One entry per codebase + max-parallel:4 collapses
-          # that to ~4 parallel deploys.
+          # DIFFERENT codebases were once assumed safe to deploy in parallel —
+          # they are NOT: four firebase processes hitting the same project at
+          # once saturate Cloud Functions' per-project operation queue and trip
+          # 409 "unable to queue the operation" races that silently drop
+          # functions. The deploy jobs now serialize codebases (max-parallel:1)
+          # with a 409-aware retry, so one entry per codebase is just a clean
+          # whole unit of work (no intra-codebase batching).
           GROUP_SIZE=10000
           VALID_GROUPS=()
 
@@ -306,12 +308,17 @@ jobs:
       contents: read
       id-token: write
     strategy:
-      # max-parallel = number of Firebase codebases. The matrix is now
-      # one entry per codebase (see prepare_and_build's GROUP_SIZE
-      # comment), so this caps concurrent deploys at one per codebase,
-      # which is the safe upper bound — concurrent deploys within a
-      # codebase race on Firebase's "deployment in progress" check.
-      max-parallel: 4
+      # Deploy ONE codebase at a time. The matrix is one entry per Firebase
+      # codebase; running them concurrently makes all four firebase processes
+      # submit Cloud Functions operations to the same project at once,
+      # saturating the per-project operation queue and triggering 409
+      # "unable to queue the operation" races that SILENTLY drop functions
+      # (firebase deploy still exits 0). Serializing — plus the 409-aware
+      # retry in the deploy step below — makes a full deploy reliable. Normal
+      # merges touch only 1–2 codebases, so the cost lands on rare full deploys.
+      max-parallel: 1
+      # One codebase failing shouldn't cancel the others mid-deploy.
+      fail-fast: false
       matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
@@ -376,23 +383,32 @@ jobs:
         # the noise we've seen in practice.
         run: |
           set -o pipefail
-          for attempt in 1 2 3; do
+          # Two failure modes to absorb:
+          #   1. Transient GCS 5xx during upload → non-zero exit.
+          #   2. 409 "unable to queue the operation" races: firebase deploy
+          #      exits 0 but SILENTLY drops the contended functions. So we also
+          #      scan the output for the 409 markers and retry until a clean run.
+          #      On retry the contended operations have cleared, so the dropped
+          #      functions create/update successfully.
+          for attempt in 1 2 3 4; do
             # Keyless WIF access token (minted by the auth step) — the Admin SDK
             # can't consume the external_account credential file, but it accepts
             # a plain bearer token via --token.
-            if pnpm exec firebase deploy \
+            pnpm exec firebase deploy \
               --only ${{ matrix.functions }} \
               --project maple-and-spruce-dev \
               --force \
-              --token "${{ steps.auth.outputs.access_token }}"; then
+              --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee /tmp/fb-deploy.log
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation|failed to (create|update) function' /tmp/fb-deploy.log; then
               exit 0
             fi
-            if [ $attempt -lt 3 ]; then
-              echo "::warning::firebase deploy attempt $attempt failed; retrying in 30s"
+            if [ $attempt -lt 4 ]; then
+              echo "::warning::firebase deploy attempt $attempt incomplete (exit=$status or 409 contention); retrying in 30s"
               sleep 30
             fi
           done
-          echo "::error::firebase deploy failed after 3 attempts"
+          echo "::error::firebase deploy failed or left functions undeployed after 4 attempts"
           exit 1
 
       - name: Skip empty function group
@@ -680,12 +696,17 @@ jobs:
       contents: read
       id-token: write
     strategy:
-      # max-parallel = number of Firebase codebases. The matrix is now
-      # one entry per codebase (see prepare_and_build's GROUP_SIZE
-      # comment), so this caps concurrent deploys at one per codebase,
-      # which is the safe upper bound — concurrent deploys within a
-      # codebase race on Firebase's "deployment in progress" check.
-      max-parallel: 4
+      # Deploy ONE codebase at a time. The matrix is one entry per Firebase
+      # codebase; running them concurrently makes all four firebase processes
+      # submit Cloud Functions operations to the same project at once,
+      # saturating the per-project operation queue and triggering 409
+      # "unable to queue the operation" races that SILENTLY drop functions
+      # (firebase deploy still exits 0). Serializing — plus the 409-aware
+      # retry in the deploy step below — makes a full deploy reliable. Normal
+      # merges touch only 1–2 codebases, so the cost lands on rare full deploys.
+      max-parallel: 1
+      # One codebase failing shouldn't cancel the others mid-deploy.
+      fail-fast: false
       matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
@@ -746,21 +767,24 @@ jobs:
         # Same retry shape as deploy_functions_dev — see there for rationale.
         run: |
           set -o pipefail
-          for attempt in 1 2 3; do
+          # 409-aware retry — see deploy_functions_dev for the rationale.
+          for attempt in 1 2 3 4; do
             # Keyless WIF access token via --token — see deploy_functions_dev.
-            if pnpm exec firebase deploy \
+            pnpm exec firebase deploy \
               --only ${{ matrix.functions }} \
               --project maple-and-spruce \
               --force \
-              --token "${{ steps.auth.outputs.access_token }}"; then
+              --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee /tmp/fb-deploy.log
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation|failed to (create|update) function' /tmp/fb-deploy.log; then
               exit 0
             fi
-            if [ $attempt -lt 3 ]; then
-              echo "::warning::firebase deploy attempt $attempt failed; retrying in 30s"
+            if [ $attempt -lt 4 ]; then
+              echo "::warning::firebase deploy attempt $attempt incomplete (exit=$status or 409 contention); retrying in 30s"
               sleep 30
             fi
           done
-          echo "::error::firebase deploy failed after 3 attempts"
+          echo "::error::firebase deploy failed or left functions undeployed after 4 attempts"
           exit 1
 
       - name: Skip empty function group
