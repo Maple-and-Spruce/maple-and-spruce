@@ -84,6 +84,13 @@ interface SquareCardFormProps {
    * Use this for the submit button.
    */
   afterCardContent?: React.ReactNode;
+  /**
+   * Optional max width (px) for the external Shadow-DOM wrapper. In Shadow DOM
+   * the card form is inserted as a sibling of the shadow host with width:100%,
+   * which escapes any maxWidth set inside the shadow root. Pass the host
+   * widget's maxWidth so the card + portaled button stay aligned with it.
+   */
+  maxWidth?: number;
 }
 
 /**
@@ -136,6 +143,7 @@ export function SquareCardForm({
   onTokenizeRef,
   onDigitalWalletToken,
   afterCardContent,
+  maxWidth,
 }: SquareCardFormProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -251,9 +259,19 @@ export function SquareCardForm({
         const shadowHost = findShadowHost(placeholder);
 
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = ['width: 100%', 'box-sizing: border-box'].join(
-          '; '
-        );
+        wrapper.style.cssText = [
+          'width: 100%',
+          'box-sizing: border-box',
+          // Match the host widget's maxWidth so the externally-inserted card
+          // form + portaled button don't stretch full-width past it.
+          ...(maxWidth
+            ? [
+                `max-width: ${maxWidth}px`,
+                'margin-left: auto',
+                'margin-right: auto',
+              ]
+            : []),
+        ].join('; ');
         wrapperRef.current = wrapper;
 
         // Apple Pay container
@@ -385,7 +403,7 @@ export function SquareCardForm({
       setError(message);
       setIsLoading(false);
     }
-  }, [applicationId, locationId, totalCents, showDigitalWallets, onReady, onTokenizeRef]);
+  }, [applicationId, locationId, totalCents, showDigitalWallets, onReady, onTokenizeRef, maxWidth]);
 
   // Initialize payments once SDK is ready AND we have a valid amount
   useEffect(() => {

@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { httpsCallable } from 'firebase/functions';
-import { theme } from '@maple/react/theme';
+import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
 import { CRAFT_CLUB_MONTHLY_PRICE_CENTS } from '@maple/ts/domain';
 import type {
@@ -80,6 +80,7 @@ export function CraftClubSignupWidget({
   const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
 
   const emailValid = EMAIL_RE.test(email.trim());
+  const payDisabled = busy || !cardReady || !name.trim();
 
   const handleCheckEmail = useCallback(
     async (e: React.FormEvent) => {
@@ -229,21 +230,40 @@ export function CraftClubSignupWidget({
               locationId={squareLocationId}
               env={env}
               totalCents={CRAFT_CLUB_MONTHLY_PRICE_CENTS}
+              maxWidth={480}
               onReady={() => setCardReady(true)}
               onTokenizeRef={(fn) => {
                 tokenizeRef.current = fn;
               }}
               afterCardContent={
-                <Button
-                  variant="contained"
-                  fullWidth
-                  disabled={busy || !cardReady || !name.trim()}
+                // Native button with inline brand styling. In Shadow DOM this
+                // content is portaled to the light DOM, where MUI/emotion theme
+                // CSS can't reach it (an MUI <Button> renders unstyled/gray).
+                // Mirrors RegistrationCheckoutForm's submit button.
+                <button
+                  type="button"
                   onClick={handlePay}
+                  disabled={payDisabled}
+                  style={{
+                    width: '100%',
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    fontFamily: fonts.button,
+                    color: '#D5D6C8',
+                    backgroundColor: payDisabled ? '#8a7b6e' : '#4A3728',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: payDisabled ? 'not-allowed' : 'pointer',
+                    opacity: payDisabled ? 0.7 : 1,
+                    transition: 'background-color 0.2s, opacity 0.2s',
+                    letterSpacing: '0.02em',
+                  }}
                 >
                   {busy
                     ? 'Starting membership…'
                     : `Subscribe — $${MONTHLY_PRICE}/month`}
-                </Button>
+                </button>
               }
             />
           </Stack>
