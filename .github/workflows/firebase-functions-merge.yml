@@ -846,23 +846,53 @@ jobs:
       - name: Deploy Firestore indexes (dev)
         if: steps.changed.outputs.changed == 'true'
         timeout-minutes: 10
-        # No `--force` — same orphan-safety stance as prod (see the prod
-        # job below). On dev an orphan is lower-stakes, but failing loud
-        # keeps dev's declared index set honest and matching prod's.
+        # No `--force` — same orphan-safety stance as prod (see the prod job).
+        # 409-aware retry: see deploy_firestore_indexes (prod) for the full
+        # rationale. Same shape, DEV project.
         run: |
-          set -eo pipefail
+          set -o pipefail
           OUTPUT=$(mktemp)
           trap 'rm -f "$OUTPUT"' EXIT
 
-          npx -y firebase-tools@latest deploy --only firestore:indexes \
-            --project maple-and-spruce-dev \
-            --token "${{ steps.auth.outputs.access_token }}" \
-            < /dev/null 2>&1 | tee "$OUTPUT"
+          # firebase-tools deploys declared indexes one create at a time and
+          # aborts on the FIRST error. A 409 "index already exists" is benign —
+          # the declared index is already present (a prior partial run, an
+          # auto-create-URL, or firebase-tools failing to match an index it
+          # just created). On the next pass it matches that index and moves on
+          # to the rest. So: retry while each attempt errors on a DIFFERENT
+          # index (forward progress); fail only if we're stuck on the same 409
+          # twice, or hit any non-409 error.
+          prev_err=""
+          for attempt in $(seq 1 12); do
+            npx -y firebase-tools@latest deploy --only firestore:indexes \
+              --project maple-and-spruce-dev \
+              --token "${{ steps.auth.outputs.access_token }}" \
+              < /dev/null 2>&1 | tee "$OUTPUT"
+            status=${PIPESTATUS[0]}
+            [ "$status" -eq 0 ] && break
 
-          if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
-            echo ""
-            echo "::error title=Firestore index orphans (dev)::Dev has composite indexes that aren't declared in firestore.indexes.json. The new indexes from this merge were applied, but the orphans were NOT deleted. Resolve before the next merge: either add the listed orphans to firestore.indexes.json, or delete them with 'pnpm exec firebase firestore:indexes:delete --project maple-and-spruce-dev'."
-            exit 1
+            if ! grep -qi "index already exists" "$OUTPUT"; then
+              echo "::error::firestore index deploy failed (exit=$status) with a non-409 error"
+              exit 1
+            fi
+            cur_err=$(grep -i "index already exists" "$OUTPUT" | tail -1)
+            if [ "$cur_err" = "$prev_err" ]; then
+              echo "::error::firestore index deploy stuck on the same 409 — not converging: $cur_err"
+              exit 1
+            fi
+            prev_err="$cur_err"
+            echo "::warning::benign 409 (index already exists); declared index is present, retrying ($attempt/12)"
+            sleep 15
+          done
+
+          # Orphans = indexes in the project but not in firestore.indexes.json.
+          # Firebase's wording: "there are N indexes defined in your project
+          # that are not present in your firestore indexes file." Surface as a
+          # warning (not a hard fail) — orphans are unused, low-risk indexes,
+          # and blocking unrelated merges on pre-existing drift is friction.
+          # Resolve by declaring them or deleting with gcloud (see message).
+          if grep -qi "not present in your firestore indexes file" "$OUTPUT"; then
+            echo "::warning title=Firestore index orphans (dev)::Dev has composite indexes not declared in firestore.indexes.json. Resolve by adding them to the file, or delete a stale one with: gcloud firestore indexes composite delete <INDEX_ID> --project maple-and-spruce-dev"
           fi
 
   deploy_firestore_indexes:
@@ -920,30 +950,51 @@ jobs:
         # We DO NOT pass `--force`. In non-TTY (CI) the "delete extra indexes?"
         # prompt defaults to N — so additions from the file are applied, but
         # any index that exists in prod and not in firestore.indexes.json is
-        # left untouched. After the deploy we grep stdout for the orphan
-        # warning Firebase emits when this case triggers, and fail the job.
-        # The user then resolves by either (a) adding the orphan to the file
-        # in a follow-up PR, or (b) deleting from prod with
-        # `firebase firestore:indexes:delete`. The next merge won't deploy
-        # cleanly until the discrepancy is resolved.
+        # left untouched (an "orphan"). Orphans are surfaced as a warning below.
         #
         # Why not `--force`: deletes would be silent and irreversible from
         # this job. A click-the-URL-to-create-an-index workflow (used in
         # incidents) would lose its work on the next unrelated merge.
+        #
+        # 409-aware retry: firebase-tools creates declared indexes one at a
+        # time and aborts on the FIRST error. A 409 "index already exists" is
+        # benign — the declared index is already present (a prior partial run,
+        # an auto-create-URL, or firebase-tools failing to match an index it
+        # just created), which used to fail this job on every merge that
+        # touched firestore.indexes.json. We retry while each attempt errors on
+        # a DIFFERENT index (forward progress) and fail only if stuck on the
+        # same 409 twice or on any non-409 error. Mirrors the functions-deploy
+        # 409 retry added in #537.
         run: |
-          set -eo pipefail
+          set -o pipefail
           OUTPUT=$(mktemp)
           trap 'rm -f "$OUTPUT"' EXIT
 
-          npx -y firebase-tools@latest deploy --only firestore:indexes \
-            --project maple-and-spruce \
-            --token "${{ steps.auth.outputs.access_token }}" \
-            < /dev/null 2>&1 | tee "$OUTPUT"
+          prev_err=""
+          for attempt in $(seq 1 12); do
+            npx -y firebase-tools@latest deploy --only firestore:indexes \
+              --project maple-and-spruce \
+              --token "${{ steps.auth.outputs.access_token }}" \
+              < /dev/null 2>&1 | tee "$OUTPUT"
+            status=${PIPESTATUS[0]}
+            [ "$status" -eq 0 ] && break
 
-          if grep -q "indexes are defined in your project but are not present" "$OUTPUT"; then
-            echo ""
-            echo "::error title=Firestore index orphans::Prod has composite indexes that aren't declared in firestore.indexes.json. The new indexes from this merge were applied, but the orphans were NOT deleted. Resolve before the next merge: either add the listed orphans to firestore.indexes.json, or delete them with 'pnpm exec firebase firestore:indexes:delete --project maple-and-spruce'."
-            exit 1
+            if ! grep -qi "index already exists" "$OUTPUT"; then
+              echo "::error::firestore index deploy failed (exit=$status) with a non-409 error"
+              exit 1
+            fi
+            cur_err=$(grep -i "index already exists" "$OUTPUT" | tail -1)
+            if [ "$cur_err" = "$prev_err" ]; then
+              echo "::error::firestore index deploy stuck on the same 409 — not converging: $cur_err"
+              exit 1
+            fi
+            prev_err="$cur_err"
+            echo "::warning::benign 409 (index already exists); declared index is present, retrying ($attempt/12)"
+            sleep 15
+          done
+
+          if grep -qi "not present in your firestore indexes file" "$OUTPUT"; then
+            echo "::warning title=Firestore index orphans::Prod has composite indexes not declared in firestore.indexes.json. Resolve by adding them to the file, or delete a stale one with: gcloud firestore indexes composite delete <INDEX_ID> --project maple-and-spruce"
           fi
 
   publish_webflow_components:
