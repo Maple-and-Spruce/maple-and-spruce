@@ -31,7 +31,7 @@ export default declareComponent(CraftClubSignupWidget, {
     }),
     manageUrl: props.Text({
       name: 'Manage Membership URL',
-      defaultValue: 'https://mapleandsprucewv.com/craft-club/manage',
+      defaultValue: 'https://mapleandsprucefolkarts.com/craft-club-manage',
     }),
   },
 });

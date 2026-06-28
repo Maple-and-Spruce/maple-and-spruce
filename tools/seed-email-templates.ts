@@ -608,8 +608,9 @@ const craftClubWelcomeHtml = `<!DOCTYPE html>
       Materials are billed separately at the register.</p>
     <div class="highlight-box">
       <strong style="color: #4A3728;">Manage your membership anytime</strong><br>
-      <p>Need to update your card or cancel? Visit the membership page and we'll
-        email you a secure link.</p>
+      <p>Need to update your card or cancel? Visit
+        <a href="https://mapleandsprucefolkarts.com/craft-club-manage" style="color: #6B7B5E;">the membership page</a>
+        and we'll email you a secure link.</p>
     </div>
     <p>Questions? Reach out at
       <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
