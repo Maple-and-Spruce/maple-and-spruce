@@ -7,6 +7,8 @@
 import type {
   MusicTogetherSection,
   MusicTogetherSectionStatus,
+  MusicTogetherRegistration,
+  MusicTogetherScheduledCharge,
   CreateMusicTogetherSectionInput,
   UpdateMusicTogetherSectionInput,
 } from '@maple/ts/domain';
@@ -33,6 +35,27 @@ export type UpdateMusicTogetherSectionRequest = UpdateMusicTogetherSectionInput;
 
 export interface UpdateMusicTogetherSectionResponse {
   section: MusicTogetherSection;
+}
+
+// ============================================================================
+// Roster (admin — enrolled families + payment/charge status)
+// ============================================================================
+
+export interface GetMusicTogetherRosterRequest {
+  sectionId: string;
+}
+
+/** One enrolled family, with its scheduled charges and a past-due flag. */
+export interface MusicTogetherRosterEntry {
+  registration: MusicTogetherRegistration;
+  charges: MusicTogetherScheduledCharge[];
+  /** True when any scheduled charge has failed (needs manual follow-up). */
+  pastDue: boolean;
+}
+
+export interface GetMusicTogetherRosterResponse {
+  section: MusicTogetherSection;
+  entries: MusicTogetherRosterEntry[];
 }
 
 // ============================================================================

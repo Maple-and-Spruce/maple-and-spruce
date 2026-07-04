@@ -2,9 +2,24 @@ import { describe, it, expect } from 'vitest';
 import {
   mtChargeIdempotencyKey,
   mtChargeIsPending,
+  mtHasFailedCharge,
   MT_TERMINAL_CHARGE_STATUSES,
   type MusicTogetherChargeStatus,
 } from './music-together-scheduled-charge';
+
+describe('mtHasFailedCharge', () => {
+  it('is true when any charge failed', () => {
+    expect(
+      mtHasFailedCharge([{ status: 'paid' }, { status: 'failed' }])
+    ).toBe(true);
+  });
+  it('is false when none failed', () => {
+    expect(
+      mtHasFailedCharge([{ status: 'paid' }, { status: 'scheduled' }])
+    ).toBe(false);
+    expect(mtHasFailedCharge([])).toBe(false);
+  });
+});
 
 describe('mtChargeIdempotencyKey', () => {
   it('derives a stable key from the charge id (never time-based)', () => {

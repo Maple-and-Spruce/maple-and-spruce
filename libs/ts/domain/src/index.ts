@@ -49,6 +49,7 @@ export * from './lib/music-together-section';
 export * from './lib/music-together-registration';
 export * from './lib/music-together-scheduled-charge';
 export * from './lib/music-together-waitlist';
+export * from './lib/music-together-licensee';
 
 // User & role administration
 export * from './lib/app-user';
