@@ -17,6 +17,15 @@ const config: StorybookConfig = {
     options: {},
   },
   staticDirs: ['../public'],
+  // Pre-bundle icons that only appear in a single story. Otherwise Vite's dep
+  // optimizer discovers them mid-run and reloads, which fails in-flight
+  // Storybook (vitest) tests — see RosterDialog's Download icon.
+  async viteFinal(viteConfig) {
+    const { mergeConfig } = await import('vite');
+    return mergeConfig(viteConfig, {
+      optimizeDeps: { include: ['@mui/icons-material/Download'] },
+    });
+  },
 };
 
 function getAbsolutePath(value: string): string {

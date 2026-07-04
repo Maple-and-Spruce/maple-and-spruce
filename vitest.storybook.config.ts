@@ -11,6 +11,9 @@ const dirname =
     : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Pre-bundle icons used in only one story so Vite's optimizer doesn't
+  // discover them mid-run and reload (which fails in-flight browser tests).
+  optimizeDeps: { include: ['@mui/icons-material/Download'] },
   plugins: [
     storybookTest({
       configDir: path.join(dirname, 'apps/maple-spruce/.storybook'),
