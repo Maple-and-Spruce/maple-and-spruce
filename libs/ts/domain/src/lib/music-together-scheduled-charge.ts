@@ -92,3 +92,13 @@ export function mtChargeIsPending(
 ): boolean {
   return charge.status === 'scheduled';
 }
+
+/**
+ * Whether any of a registration's scheduled charges failed — the "past due"
+ * signal surfaced to admins on the roster.
+ */
+export function mtHasFailedCharge(
+  charges: Pick<MusicTogetherScheduledCharge, 'status'>[]
+): boolean {
+  return charges.some((c) => c.status === 'failed');
+}

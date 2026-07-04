@@ -335,6 +335,9 @@
       "@maple/firebase/maple-functions/update-music-together-section": [
         "libs/firebase/maple-functions/update-music-together-section/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-music-together-roster": [
+        "libs/firebase/maple-functions/get-music-together-roster/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/add-to-music-together-waitlist": [
         "libs/firebase/maple-functions/add-to-music-together-waitlist/src/index.ts"
       ],
