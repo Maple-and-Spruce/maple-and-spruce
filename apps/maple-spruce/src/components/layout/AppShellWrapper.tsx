@@ -9,6 +9,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import SchoolIcon from '@mui/icons-material/School';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import ChildCareIcon from '@mui/icons-material/ChildCare';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -132,6 +133,16 @@ export function AppShellWrapper({
             label: 'Teacher Payouts',
             href: '/payouts',
             icon: <PaymentsIcon />,
+          },
+        ],
+      },
+      {
+        label: 'Music Together',
+        items: [
+          {
+            label: 'Sections',
+            href: '/music-together',
+            icon: <ChildCareIcon />,
           },
         ],
       },

@@ -21,5 +21,7 @@ export {
   useSales,
   useEtsyPush,
   useCraftClubMembers,
+  useMusicTogetherSections,
+  useMusicTogetherRoster,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
