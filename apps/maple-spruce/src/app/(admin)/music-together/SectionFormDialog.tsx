@@ -136,6 +136,22 @@ export function SectionFormDialog({
     }
   };
 
+  // Named list mutators keep the JSX handlers shallow (avoids deeply nested
+  // inline arrows).
+  const setSessionAt = (idx: number, value: string) =>
+    setSessions((prev) => prev.map((v, i) => (i === idx ? value : v)));
+  const removeSessionAt = (idx: number) =>
+    setSessions((prev) => prev.filter((_, i) => i !== idx));
+  const patchInstallmentAt = (
+    idx: number,
+    patch: Partial<{ amount: string; dueAt: string }>
+  ) =>
+    setInstallments((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, ...patch } : v))
+    );
+  const removeInstallmentAt = (idx: number) =>
+    setInstallments((prev) => prev.filter((_, i) => i !== idx));
+
   const prefillInstallments = () => {
     const firstSession = sessions[0]
       ? fromLocalInput(sessions[0])
@@ -231,19 +247,13 @@ export function SectionFormDialog({
               <TextField
                 type="datetime-local"
                 value={value}
-                onChange={(e) =>
-                  setSessions((s) =>
-                    s.map((v, i) => (i === idx ? e.target.value : v))
-                  )
-                }
+                onChange={(e) => setSessionAt(idx, e.target.value)}
                 fullWidth
                 inputProps={{ 'aria-label': `Session ${idx + 1}` }}
               />
               <IconButton
                 aria-label={`Remove session ${idx + 1}`}
-                onClick={() =>
-                  setSessions((s) => s.filter((_, i) => i !== idx))
-                }
+                onClick={() => removeSessionAt(idx)}
               >
                 <DeleteOutlineIcon />
               </IconButton>
@@ -277,33 +287,19 @@ export function SectionFormDialog({
               <TextField
                 label="Amount ($)"
                 value={inst.amount}
-                onChange={(e) =>
-                  setInstallments((s) =>
-                    s.map((v, i) =>
-                      i === idx ? { ...v, amount: e.target.value } : v
-                    )
-                  )
-                }
+                onChange={(e) => patchInstallmentAt(idx, { amount: e.target.value })}
                 sx={{ width: 130 }}
               />
               <TextField
                 type="datetime-local"
                 value={inst.dueAt}
-                onChange={(e) =>
-                  setInstallments((s) =>
-                    s.map((v, i) =>
-                      i === idx ? { ...v, dueAt: e.target.value } : v
-                    )
-                  )
-                }
+                onChange={(e) => patchInstallmentAt(idx, { dueAt: e.target.value })}
                 fullWidth
                 inputProps={{ 'aria-label': `Installment ${idx + 1} due date` }}
               />
               <IconButton
                 aria-label={`Remove installment ${idx + 1}`}
-                onClick={() =>
-                  setInstallments((s) => s.filter((_, i) => i !== idx))
-                }
+                onClick={() => removeInstallmentAt(idx)}
               >
                 <DeleteOutlineIcon />
               </IconButton>
