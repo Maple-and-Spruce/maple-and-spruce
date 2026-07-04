@@ -8,6 +8,11 @@ export { useSyncConflictSummary } from './lib/useSyncConflictSummary';
 // Phase 3: Classes & Workshops
 export { useInstructors } from './lib/useInstructors';
 export { useClasses, type UseClassesFilters } from './lib/useClasses';
+export {
+  useMusicTogetherSections,
+  type UseMusicTogetherSectionsFilters,
+} from './lib/useMusicTogetherSections';
+export { useMusicTogetherRoster } from './lib/useMusicTogetherRoster';
 export { useClassCategories } from './lib/useClassCategories';
 
 // Phase 4: Music Lessons
