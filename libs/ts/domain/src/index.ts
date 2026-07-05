@@ -45,6 +45,7 @@ export * from './lib/signed-agreement';
 export * from './lib/craft-club-member';
 
 // Music Together (separate-business early-childhood music program)
+export * from './lib/music-together-semester';
 export * from './lib/music-together-section';
 export * from './lib/music-together-registration';
 export * from './lib/music-together-scheduled-charge';

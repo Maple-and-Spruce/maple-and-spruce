@@ -22,6 +22,7 @@ import {
   MT_PRICE_FULL_CENTS,
   MT_DEFAULT_INSTALLMENT_CENTS,
   type MusicTogetherSection,
+  type MusicTogetherSemester,
   type CreateMusicTogetherSectionInput,
   type MusicTogetherSectionStatus,
 } from '@maple/ts/domain';
@@ -51,6 +52,8 @@ interface Props {
   onClose: () => void;
   onSubmit: (data: CreateMusicTogetherSectionInput) => Promise<void>;
   section?: MusicTogetherSection;
+  /** Semesters to choose from — a section is organized under one. */
+  semesters?: MusicTogetherSemester[];
   isSubmitting: boolean;
 }
 
@@ -59,10 +62,12 @@ export function SectionFormDialog({
   onClose,
   onSubmit,
   section,
+  semesters = [],
   isSubmitting,
 }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [semesterId, setSemesterId] = useState('');
   const [status, setStatus] = useState<MusicTogetherSectionStatus>('draft');
   const [capacity, setCapacity] = useState(String(MT_DEFAULT_CAPACITY_FAMILIES));
   const [priceFull, setPriceFull] = useState(dollars(MT_PRICE_FULL_CENTS));
@@ -81,6 +86,7 @@ export function SectionFormDialog({
     if (section) {
       setName(section.name);
       setDescription(section.description ?? '');
+      setSemesterId(section.semesterId ?? '');
       setStatus(section.status);
       setCapacity(String(section.capacityFamilies));
       setPriceFull(dollars(section.priceFullCents));
@@ -96,6 +102,7 @@ export function SectionFormDialog({
     } else {
       setName('');
       setDescription('');
+      setSemesterId('');
       setStatus('draft');
       setCapacity(String(MT_DEFAULT_CAPACITY_FAMILIES));
       setPriceFull(dollars(MT_PRICE_FULL_CENTS));
@@ -113,6 +120,7 @@ export function SectionFormDialog({
         name: name.trim(),
         description: description.trim() || undefined,
         status,
+        semesterId: semesterId || undefined,
         capacityFamilies: parseInt(capacity, 10),
         priceFullCents: toCents(priceFull),
         sessions: sessions
@@ -184,6 +192,24 @@ export function SectionFormDialog({
             fullWidth
             multiline
           />
+          <TextField
+            label="Semester"
+            select
+            value={semesterId}
+            onChange={(e) => setSemesterId(e.target.value)}
+            fullWidth
+            helperText="Which term this section belongs to"
+            inputProps={{ 'aria-label': 'Semester' }}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {semesters.map((sem) => (
+              <MenuItem key={sem.id} value={sem.id}>
+                {sem.name}
+              </MenuItem>
+            ))}
+          </TextField>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Status"

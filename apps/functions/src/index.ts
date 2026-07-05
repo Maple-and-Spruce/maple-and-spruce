@@ -106,6 +106,9 @@ export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/g
 export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
 
 // Music Together admin section management
+export { getMusicTogetherSemesters } from '@maple/firebase/maple-functions/get-music-together-semesters';
+export { createMusicTogetherSemester } from '@maple/firebase/maple-functions/create-music-together-semester';
+export { updateMusicTogetherSemester } from '@maple/firebase/maple-functions/update-music-together-semester';
 export { getMusicTogetherSections } from '@maple/firebase/maple-functions/get-music-together-sections';
 export { createMusicTogetherSection } from '@maple/firebase/maple-functions/create-music-together-section';
 export { updateMusicTogetherSection } from '@maple/firebase/maple-functions/update-music-together-section';

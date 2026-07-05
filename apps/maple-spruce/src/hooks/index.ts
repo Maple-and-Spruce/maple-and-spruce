@@ -22,6 +22,7 @@ export {
   useEtsyPush,
   useCraftClubMembers,
   useMusicTogetherSections,
+  useMusicTogetherSemesters,
   useMusicTogetherRoster,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';

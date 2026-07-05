@@ -7,11 +7,41 @@
 import type {
   MusicTogetherSection,
   MusicTogetherSectionStatus,
+  MusicTogetherSemester,
+  MusicTogetherSemesterStatus,
+  CreateMusicTogetherSemesterInput,
+  UpdateMusicTogetherSemesterInput,
   MusicTogetherRegistration,
   MusicTogetherScheduledCharge,
   CreateMusicTogetherSectionInput,
   UpdateMusicTogetherSectionInput,
 } from '@maple/ts/domain';
+
+// ============================================================================
+// Semester admin CRUD (authenticated read; admin writes)
+// ============================================================================
+
+export interface GetMusicTogetherSemestersRequest {
+  status?: MusicTogetherSemesterStatus;
+}
+
+export interface GetMusicTogetherSemestersResponse {
+  semesters: MusicTogetherSemester[];
+}
+
+export type CreateMusicTogetherSemesterRequest =
+  CreateMusicTogetherSemesterInput;
+
+export interface CreateMusicTogetherSemesterResponse {
+  semester: MusicTogetherSemester;
+}
+
+export type UpdateMusicTogetherSemesterRequest =
+  UpdateMusicTogetherSemesterInput;
+
+export interface UpdateMusicTogetherSemesterResponse {
+  semester: MusicTogetherSemester;
+}
 
 // ============================================================================
 // Section admin CRUD (authenticated read; admin writes)

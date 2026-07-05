@@ -92,3 +92,8 @@ export {
   musicTogetherWaitlistValidation,
   type MusicTogetherWaitlistValidationInput,
 } from './music-together-waitlist.validation';
+export {
+  musicTogetherSemesterValidation,
+  type MusicTogetherSemesterValidationInput,
+  type MusicTogetherSemesterBreakInput,
+} from './music-together-semester.validation';

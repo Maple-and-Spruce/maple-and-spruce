@@ -13,6 +13,9 @@
     "firebase-maple-functions-get-music-together-sections",
     "firebase-maple-functions-create-music-together-section",
     "firebase-maple-functions-update-music-together-section",
+    "firebase-maple-functions-get-music-together-semesters",
+    "firebase-maple-functions-create-music-together-semester",
+    "firebase-maple-functions-update-music-together-semester",
     "firebase-maple-functions-get-music-together-roster",
     "firebase-integration-test-utils",
     "firebase-square-test-mock-server"

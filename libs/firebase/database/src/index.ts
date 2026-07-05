@@ -94,6 +94,10 @@ export {
 
 // Music Together (separate-business early-childhood music program)
 export {
+  MusicTogetherSemesterRepository,
+  type MusicTogetherSemesterFilters,
+} from './lib/music-together-semester.repository';
+export {
   MusicTogetherSectionRepository,
   type MusicTogetherSectionFilters,
 } from './lib/music-together-section.repository';

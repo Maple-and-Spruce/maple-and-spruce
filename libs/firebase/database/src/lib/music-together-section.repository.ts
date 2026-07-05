@@ -61,6 +61,7 @@ function docToSection(
     status: data.status as MusicTogetherSectionStatus,
     location: data.location,
     room: data.room,
+    semesterId: data.semesterId,
     webflowItemId: data.webflowItemId,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -86,6 +87,8 @@ function toPersisted(
 
 export interface MusicTogetherSectionFilters {
   status?: MusicTogetherSectionStatus;
+  /** Only sections belonging to this semester. */
+  semesterId?: string;
 }
 
 export const MusicTogetherSectionRepository = {
@@ -96,6 +99,10 @@ export const MusicTogetherSectionRepository = {
 
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
+    }
+
+    if (filters?.semesterId) {
+      query = query.where('semesterId', '==', filters.semesterId);
     }
 
     query = query.orderBy('firstSessionAt', 'asc');
