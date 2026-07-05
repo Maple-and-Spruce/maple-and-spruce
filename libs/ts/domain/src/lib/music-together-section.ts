@@ -26,6 +26,14 @@ export const MT_DEFAULT_INSTALLMENT_CENTS = 13200;
 /** Default number of installments used to prefill the plan. */
 export const MT_DEFAULT_INSTALLMENT_COUNT = 2;
 
+/**
+ * Length of a single Music Together class, in minutes. MT classes are always
+ * 45 minutes, so sections don't store a per-session duration; the calendar
+ * sync (`onMusicTogetherSectionWrite`) uses this to compute each event's end
+ * time.
+ */
+export const MT_CLASS_DURATION_MINUTES = 45;
+
 /** One scheduled weekly meeting of a section. */
 export interface MusicTogetherSession {
   dateTime: Date;

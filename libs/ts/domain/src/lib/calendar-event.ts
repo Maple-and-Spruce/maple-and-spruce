@@ -10,7 +10,13 @@ import type { Room } from './room';
 /**
  * Type of calendar event, used for filtering and color-coding on the public calendar.
  */
-export type CalendarEventType = 'class' | 'lesson' | 'event' | 'jam' | 'hours';
+export type CalendarEventType =
+  | 'class'
+  | 'lesson'
+  | 'event'
+  | 'jam'
+  | 'hours'
+  | 'musictogether';
 
 /**
  * All valid calendar event types for validation
@@ -21,6 +27,7 @@ export const CALENDAR_EVENT_TYPES: CalendarEventType[] = [
   'event',
   'jam',
   'hours',
+  'musictogether',
 ];
 
 /**
@@ -90,6 +97,7 @@ export function getCalendarEventTypeLabel(type: CalendarEventType): string {
     event: 'Event',
     jam: 'Jam Session',
     hours: 'Store Hours',
+    musictogether: 'Music Together',
   };
   return labels[type];
 }

@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-on-music-together-section-write",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/on-music-together-section-write/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

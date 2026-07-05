@@ -18,3 +18,4 @@ export { calendarEventsFeed } from '@maple/firebase/maple-functions/calendar-eve
 export { calendarHoursFeed } from '@maple/firebase/maple-functions/calendar-hours-feed';
 export { calendarAllFeed } from '@maple/firebase/maple-functions/calendar-all-feed';
 export { calendarAdhocProxy } from '@maple/firebase/maple-functions/calendar-adhoc-proxy';
+export { calendarMusicTogetherFeed } from '@maple/firebase/maple-functions/calendar-music-together-feed';
