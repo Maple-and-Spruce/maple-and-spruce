@@ -1,0 +1,22 @@
+{
+  "name": "functions-integration-tests-music-together",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-music-together/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-create-music-together-registration",
+    "firebase-maple-functions-charge-music-together-installments",
+    "firebase-maple-functions-cancel-music-together-registration",
+    "firebase-integration-test-utils",
+    "firebase-square-test-mock-server"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "apps/functions-integration-tests-music-together/vitest.config.ts"
+      }
+    }
+  }
+}

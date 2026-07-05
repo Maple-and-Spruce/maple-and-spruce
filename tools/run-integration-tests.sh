@@ -84,7 +84,7 @@ printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-ta
 # maple-square: Square mock server URL + fake secrets
 echo "SQUARE_BASE_URL=http://localhost:$SQUARE_MOCK_SERVER_PORT" >> dist/apps/functions-square/.env
 echo "ETSY_API_BASE=http://localhost:$ETSY_MOCK_SERVER_PORT/v3/application" >> dist/apps/functions-square/.env
-printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+printf "SQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
 
 # maple-sync: Webflow mock server URL + fake secrets
 echo "WEBFLOW_BASE_URL=http://localhost:$WEBFLOW_MOCK_SERVER_PORT" >> dist/apps/functions-sync/.env
