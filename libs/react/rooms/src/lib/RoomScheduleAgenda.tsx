@@ -39,6 +39,7 @@ const TYPE_CHIP: Record<
   event: { label: 'Booking', color: 'secondary' },
   jam: { label: 'Jam', color: 'success' },
   hours: { label: 'Hours', color: 'default' },
+  musictogether: { label: 'Music Together', color: 'secondary' },
 };
 
 /** Format a time as "4:30 PM". */
