@@ -61,8 +61,8 @@ export interface MusicTogetherSemester {
   weeks?: number;
   /** Holiday / mid-term breaks. */
   breaks?: MusicTogetherSemesterBreak[];
-  /** Built-in snow makeup dates (Winter). */
-  snowMakeupDates?: Date[];
+  /** Built-in weather makeup dates (e.g. the two snow days held in Winter). */
+  weatherMakeupDates?: Date[];
   /** When re-registration opens for this term. */
   enrollmentOpensAt?: Date;
   status: MusicTogetherSemesterStatus;

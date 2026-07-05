@@ -56,7 +56,7 @@ function docToSemester(
     endDate: data.endDate ? toDate(data.endDate) : undefined,
     weeks: data.weeks,
     breaks: parseBreaks(data.breaks),
-    snowMakeupDates: parseDates(data.snowMakeupDates),
+    weatherMakeupDates: parseDates(data.weatherMakeupDates),
     enrollmentOpensAt: data.enrollmentOpensAt
       ? toDate(data.enrollmentOpensAt)
       : undefined,

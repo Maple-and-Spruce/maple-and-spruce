@@ -23,7 +23,7 @@ export interface MusicTogetherSemesterValidationInput {
   endDate?: Date | string;
   weeks?: number;
   breaks?: MusicTogetherSemesterBreakInput[];
-  snowMakeupDates?: (Date | string)[];
+  weatherMakeupDates?: (Date | string)[];
   enrollmentOpensAt?: Date | string;
   status?: string;
   notes?: string;
@@ -95,8 +95,8 @@ export const musicTogetherSemesterValidation = staticSuite(
       }
     });
 
-    test('snowMakeupDates', 'Each snow makeup date must be valid', () => {
-      for (const d of data.snowMakeupDates ?? []) {
+    test('weatherMakeupDates', 'Each weather makeup date must be valid', () => {
+      for (const d of data.weatherMakeupDates ?? []) {
         enforce(parseDate(d)).isNotNullish();
       }
     });
