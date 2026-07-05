@@ -64,6 +64,7 @@ import {
   createPublicFunction,
   createAuthenticatedFunction,
   createAdminFunction,
+  isOriginAllowed,
 } from './functions.utility';
 import {
   throwNotFound,
@@ -739,5 +740,34 @@ describe('legacy wrappers', () => {
       makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
     );
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('isOriginAllowed', () => {
+  const allow = ['http://localhost:3000', 'https://mapleandsprucefolkarts.com'];
+
+  it('allows an origin on the configured allowlist (any environment)', () => {
+    expect(isOriginAllowed('http://localhost:3000', allow, false)).toBe(true);
+    expect(
+      isOriginAllowed('https://mapleandsprucefolkarts.com', allow, false)
+    ).toBe(true);
+  });
+
+  it('allows any localhost / 127.0.0.1 port in the emulator', () => {
+    // Worktree offset ports (e.g. 3000+2610) aren't on the allowlist.
+    expect(isOriginAllowed('http://localhost:5610', allow, true)).toBe(true);
+    expect(isOriginAllowed('http://127.0.0.1:8123', allow, true)).toBe(true);
+  });
+
+  it('rejects off-allowlist localhost ports outside the emulator', () => {
+    expect(isOriginAllowed('http://localhost:5610', allow, false)).toBe(false);
+  });
+
+  it('rejects non-localhost origins even in the emulator', () => {
+    expect(isOriginAllowed('https://evil.example.com', allow, true)).toBe(false);
+    // Guard against a localhost-lookalike hostname.
+    expect(
+      isOriginAllowed('http://localhost.evil.com', allow, true)
+    ).toBe(false);
   });
 });
