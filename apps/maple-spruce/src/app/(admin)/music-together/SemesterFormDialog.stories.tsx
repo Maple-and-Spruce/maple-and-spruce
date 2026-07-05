@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
+import { fn, expect, within, userEvent, waitFor, fireEvent } from 'storybook/test';
 import type { MusicTogetherSemester } from '@maple/ts/domain';
 import { SemesterFormDialog } from './SemesterFormDialog';
 
@@ -130,5 +130,100 @@ export const CancelCloses: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /cancel/i }));
     await expect(args.onClose).toHaveBeenCalledTimes(1);
     await expect(args.onSubmit).not.toHaveBeenCalled();
+  },
+};
+
+/**
+ * Adds a break and a weather makeup date, edits them, and removes both —
+ * exercising the dynamic-list add/edit/remove handlers.
+ */
+export const EditsBreaksAndWeatherDates: Story = {
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    // Add + edit a break.
+    await userEvent.click(canvas.getByRole('button', { name: /add break/i }));
+    const breakLabel = canvas.getByLabelText(/break 1 label/i);
+    await userEvent.type(breakLabel, 'Holiday break');
+    await expect(breakLabel).toHaveValue('Holiday break');
+    fireEvent.change(canvas.getByLabelText(/break 1 start/i), {
+      target: { value: '2026-12-18' },
+    });
+
+    // Add + edit a weather makeup date.
+    await userEvent.click(canvas.getByRole('button', { name: /add date/i }));
+    fireEvent.change(canvas.getByLabelText('Weather makeup date 1'), {
+      target: { value: '2027-02-25' },
+    });
+
+    // Remove both.
+    await userEvent.click(
+      canvas.getByRole('button', { name: /remove weather makeup date 1/i })
+    );
+    await userEvent.click(
+      canvas.getByRole('button', { name: /remove break 1/i })
+    );
+    await expect(canvas.queryByLabelText(/break 1 label/i)).toBeNull();
+  },
+};
+
+/** Touch every field, then submit — exercises each field's change handler. */
+export const FillsAllFields: Story = {
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(canvas.getByLabelText(/semester name/i), 'Spring 2027');
+
+    const year = canvas.getByLabelText('Year');
+    await userEvent.clear(year);
+    await userEvent.type(year, '2027');
+
+    const weeks = canvas.getByLabelText('Weeks');
+    await userEvent.clear(weeks);
+    await userEvent.type(weeks, '10');
+
+    fireEvent.change(canvas.getByLabelText('Start date'), {
+      target: { value: '2027-03-11' },
+    });
+    fireEvent.change(canvas.getByLabelText('End date'), {
+      target: { value: '2027-05-13' },
+    });
+    fireEvent.change(canvas.getByLabelText(/re-enrollment opens/i), {
+      target: { value: '2027-02-18' },
+    });
+    await userEvent.type(canvas.getByLabelText('Notes'), 'Spring term.');
+
+    // Change the Status select.
+    await userEvent.click(canvas.getByRole('combobox', { name: /status/i }));
+    await userEvent.click(canvas.getByRole('option', { name: 'enrolling' }));
+
+    await userEvent.click(canvas.getByRole('button', { name: /save/i }));
+
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Spring 2027',
+          year: 2027,
+          weeks: 10,
+          status: 'enrolling',
+          notes: 'Spring term.',
+        })
+      )
+    );
+  },
+};
+
+/** A failing submit surfaces the error message (handleSubmit catch path). */
+export const SubmitShowsError: Story = {
+  args: {
+    onSubmit: fn(() => Promise.reject(new Error('Save failed on the server'))),
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await userEvent.type(canvas.getByLabelText(/semester name/i), 'Fall 2026');
+    await userEvent.click(canvas.getByRole('button', { name: /save/i }));
+    await waitFor(() =>
+      expect(canvas.getByText(/save failed on the server/i)).toBeInTheDocument()
+    );
   },
 };
