@@ -326,6 +326,15 @@
       "@maple/firebase/maple-functions/get-public-music-together-section": [
         "libs/firebase/maple-functions/get-public-music-together-section/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-music-together-semesters": [
+        "libs/firebase/maple-functions/get-music-together-semesters/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-music-together-semester": [
+        "libs/firebase/maple-functions/create-music-together-semester/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-music-together-semester": [
+        "libs/firebase/maple-functions/update-music-together-semester/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-music-together-sections": [
         "libs/firebase/maple-functions/get-music-together-sections/src/index.ts"
       ],

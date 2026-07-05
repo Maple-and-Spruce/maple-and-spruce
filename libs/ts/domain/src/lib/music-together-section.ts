@@ -84,6 +84,13 @@ export interface MusicTogetherSection {
   status: MusicTogetherSectionStatus;
   location?: string;
   room?: string;
+  /**
+   * The semester (term) this section belongs to, if organized under one. See
+   * `MusicTogetherSemester`. Optional so existing/standalone sections keep
+   * working; new sections created through the admin are grouped under a
+   * semester.
+   */
+  semesterId?: string;
   /** Webflow CMS item ID, once synced to the public site. */
   webflowItemId?: string;
   createdAt: Date;
