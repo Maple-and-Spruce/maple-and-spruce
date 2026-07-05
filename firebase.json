@@ -55,6 +55,7 @@
         { "source": "/calendar/hours.ics", "function": "calendarHoursFeed" },
         { "source": "/calendar/all.ics", "function": "calendarAllFeed" },
         { "source": "/calendar/adhoc.ics", "function": "calendarAdhocProxy" },
+        { "source": "/calendar/musictogether.ics", "function": "calendarMusicTogetherFeed" },
         { "source": "/calendar/embed", "function": "calendarEmbed" },
         { "source": "/catalog/classes.xml", "function": "classCatalogFeed" }
       ]

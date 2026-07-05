@@ -57,6 +57,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Calendar Triggers
 - `onClassWrite` — Firestore trigger: auto-generates CalendarEvents from published classes
 - `onLessonWrite` — Firestore trigger: auto-generates a private (`public: false`) Spruce Room CalendarEvent per scheduled lesson; removes it on cancel/delete
+- `onMusicTogetherSectionWrite` — Firestore trigger: auto-generates a public `musictogether` CalendarEvent per session of a live (`open`/`closed`) MT section; reconciles on edit and removes on draft/completed/delete
 
 ### Room Availability (#467)
 - `getRoomSchedule` — admin-only: busy windows for a room over a time range (powers the dashboard "Spruce Room" widget and booking conflict checks)
@@ -121,6 +122,7 @@ ICS feed generation. Isolates `ical-generator` and `@touch4it/ical-timezones`.
 - `calendarHoursFeed` — HTTP: `/calendar/hours.ics` _(concurrency: 80)_
 - `calendarAllFeed` — HTTP: `/calendar/all.ics` _(concurrency: 80)_
 - `calendarAdhocProxy` — HTTP: `/calendar/adhoc.ics` _(concurrency: 80)_
+- `calendarMusicTogetherFeed` — HTTP: `/calendar/musictogether.ics` — public Music Together events feed _(concurrency: 80; CDN-cached 5min)_
 
 ---
 

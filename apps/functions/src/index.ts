@@ -144,6 +144,7 @@ export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-cale
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
+export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-music-together-section-write';
 
 // Room availability
 export { getRoomSchedule } from '@maple/firebase/maple-functions/get-room-schedule';
