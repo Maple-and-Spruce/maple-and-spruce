@@ -33,6 +33,7 @@ const typeColors: Record<string, 'primary' | 'secondary' | 'warning' | 'info' | 
   event: 'warning',
   jam: 'info',
   hours: 'default',
+  musictogether: 'secondary',
 };
 
 function formatDateTime(date: Date): string {
