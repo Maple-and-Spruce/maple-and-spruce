@@ -8,6 +8,12 @@
     "firebase-maple-functions-create-music-together-registration",
     "firebase-maple-functions-charge-music-together-installments",
     "firebase-maple-functions-cancel-music-together-registration",
+    "firebase-maple-functions-get-public-music-together-section",
+    "firebase-maple-functions-add-to-music-together-waitlist",
+    "firebase-maple-functions-get-music-together-sections",
+    "firebase-maple-functions-create-music-together-section",
+    "firebase-maple-functions-update-music-together-section",
+    "firebase-maple-functions-get-music-together-roster",
     "firebase-integration-test-utils",
     "firebase-square-test-mock-server"
   ],
