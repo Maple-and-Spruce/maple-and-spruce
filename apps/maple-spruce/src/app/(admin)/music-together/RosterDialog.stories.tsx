@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from 'storybook/test';
+import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
 import type {
   MusicTogetherRegistration,
   MusicTogetherScheduledCharge,
@@ -114,5 +114,70 @@ export const Loading: Story = {
 export const ErrorState: Story = {
   args: {
     rosterState: { status: 'error', error: 'Failed to fetch roster' },
+  },
+};
+
+// ============================================================
+// INTERACTIONS (exercised automatically in CI)
+// ============================================================
+
+const body = () => within(document.body);
+
+/**
+ * Renders the roster and drives the licensee-CSV download. Verifies the
+ * past-due badge, a child's DOB, the confirmed count on the button, and that
+ * clicking the download triggers an anchor download without error.
+ */
+export const RostersAndDownloadsCsv: Story = {
+  args: { rosterState: { status: 'success', data: withFamilies } },
+  play: async ({ args }) => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    // Renders enrolled families with past-due + child DOBs.
+    await expect(canvas.getByText('Past due')).toBeInTheDocument();
+    await expect(
+      canvas.getByText(/Wren \(2022-01-10\)/)
+    ).toBeInTheDocument();
+
+    // Download button counts the 3 confirmed families and is enabled.
+    const download = canvas.getByRole('button', { name: /licensee csv \(3\)/i });
+    await expect(download).toBeEnabled();
+
+    // Clicking triggers a blob download via a temporary anchor — assert the
+    // anchor is created + clicked (spy the prototype so no file actually saves).
+    const clickSpy = fn();
+    const orig = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = clickSpy;
+    try {
+      await userEvent.click(download);
+      await waitFor(() => expect(clickSpy).toHaveBeenCalled());
+    } finally {
+      HTMLAnchorElement.prototype.click = orig;
+    }
+
+    await userEvent.click(canvas.getByRole('button', { name: /close/i }));
+    await expect(args.onClose).toHaveBeenCalled();
+  },
+};
+
+/** Empty roster disables the CSV export. */
+export const EmptyDisablesExport: Story = {
+  args: {
+    rosterState: {
+      status: 'success',
+      data: { section: withFamilies.section, entries: [] },
+    },
+  },
+  play: async () => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+    await expect(
+      canvas.getByRole('button', { name: /licensee csv \(0\)/i })
+    ).toBeDisabled();
   },
 };

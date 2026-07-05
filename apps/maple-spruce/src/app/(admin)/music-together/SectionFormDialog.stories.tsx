@@ -1,7 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from 'storybook/test';
+import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
 import type { MusicTogetherSection } from '@maple/ts/domain';
 import { SectionFormDialog } from './SectionFormDialog';
+
+// The dialog renders in a portal, so query document.body.
+const dialog = () => within(document.body);
+async function waitForDialog() {
+  const canvas = dialog();
+  await waitFor(
+    () => expect(canvas.getByRole('dialog')).toBeInTheDocument(),
+    { timeout: 5000 }
+  );
+  return canvas;
+}
 
 const mockSection: MusicTogetherSection = {
   id: 'sec-1',
@@ -49,4 +60,57 @@ export const Edit: Story = {
 
 export const Submitting: Story = {
   args: { section: mockSection, isSubmitting: true },
+};
+
+// ============================================================
+// INTERACTIONS (exercised automatically in CI)
+// ============================================================
+
+/**
+ * Fill the required name and submit — asserts the form builds the right
+ * CreateMusicTogetherSectionInput (prefilled defaults: $252 full, cap 8, draft).
+ */
+export const CreateSubmits: Story = {
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    const nameInput = canvas.getByLabelText(/section name/i);
+    await userEvent.type(nameInput, 'Fall 2026');
+
+    const save = canvas.getByRole('button', { name: /save/i });
+    await waitFor(() => expect(save).toBeEnabled());
+    await userEvent.click(save);
+
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Fall 2026',
+          status: 'draft',
+          capacityFamilies: 8,
+          priceFullCents: 25200,
+          sessions: [],
+        })
+      )
+    );
+  },
+};
+
+/** Save stays disabled until a name is entered (required-field guard). */
+export const SaveDisabledWithoutName: Story = {
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(
+      canvas.getByRole('button', { name: /save/i })
+    ).toBeDisabled();
+  },
+};
+
+/** Cancel closes without submitting. */
+export const CancelCloses: Story = {
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(canvas.getByRole('button', { name: /cancel/i }));
+    await expect(args.onClose).toHaveBeenCalledTimes(1);
+    await expect(args.onSubmit).not.toHaveBeenCalled();
+  },
 };
