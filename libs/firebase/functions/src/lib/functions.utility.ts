@@ -200,6 +200,28 @@ async function verifyAuthToken(
  * IMPORTANT: ALLOWED_ORIGINS is passed in as a parameter, not accessed
  * from module scope. This avoids cold start delays from defineString.
  */
+/**
+ * Decide whether a request Origin passes CORS.
+ *
+ * Beyond the configured allowlist, the Functions emulator additionally accepts
+ * any localhost / 127.0.0.1 origin regardless of port: worktree-based local dev
+ * and integration tests run the web app + emulators on offset ports
+ * (EMULATOR_PORT_OFFSET), so the request Origin is http://localhost:{3000+offset}
+ * — which the fixed ALLOWED_ORIGINS list can't enumerate. Guarded by
+ * `isEmulator` so production CORS is unchanged.
+ */
+export function isOriginAllowed(
+  origin: string,
+  allowedOrigins: string[],
+  isEmulator: boolean
+): boolean {
+  if (allowedOrigins.includes(origin)) return true;
+  if (isEmulator) {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  }
+  return false;
+}
+
 function createCorsMiddleware(allowedOriginsParam: StringParam) {
   return (req: Request, res: Response, next: () => void) => {
     const origin = req.headers.origin;
@@ -215,7 +237,9 @@ function createCorsMiddleware(allowedOriginsParam: StringParam) {
       .split(',')
       .map((o) => o.trim());
 
-    if (allowedOrigins.includes(origin)) {
+    const isEmulator = process.env['FUNCTIONS_EMULATOR'] === 'true';
+
+    if (isOriginAllowed(origin, allowedOrigins, isEmulator)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader(
         'Access-Control-Allow-Methods',
