@@ -260,7 +260,19 @@ export const createMusicTogetherRegistration = Functions.endpoint
     }
 
     // 8. Confirmation email (fire-and-forget via the mail collection).
-    //    Template `music-together-confirmation` is authored separately.
+    //    Template `music-together-confirmation` is seeded via
+    //    tools/seed-email-templates.ts. The extension's Handlebars can't format
+    //    currency/dates, so pass template-ready strings (raw cents/plan kept for
+    //    any downstream consumers).
+    const fmtMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+    const fmtDate = (d: Date) =>
+      d.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'America/New_York',
+      });
+    const secondInstallment = scheduledItems[0];
     await getDb()
       .collection('mail')
       .add({
@@ -273,6 +285,17 @@ export const createMusicTogetherRegistration = Functions.endpoint
             paymentPlan: data.paymentPlan,
             amountChargedCents: firstChargeCents,
             scheduledChargeCount: createdCharges,
+            // Template-ready presentation fields:
+            amountChargedLabel: fmtMoney(firstChargeCents),
+            isInstallments: data.paymentPlan === 'installments',
+            secondInstallmentLabel: secondInstallment
+              ? fmtMoney(secondInstallment.amountCents)
+              : '',
+            secondInstallmentDate: secondInstallment
+              ? fmtDate(new Date(secondInstallment.dueAt))
+              : '',
+            cardLast4: cardLast4 ?? '',
+            receiptUrl: squareReceiptUrl ?? '',
           },
         },
       });
