@@ -162,6 +162,28 @@ describe('MusicTogetherRegistrationWidget', () => {
     expect(payload.children[0].dob).toMatch(/^2024-03-15/);
   });
 
+  it('names the specific missing field(s) instead of a generic hint', async () => {
+    const user = userEvent.setup();
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    // Fill everything EXCEPT the child's date of birth, and accept policies —
+    // so the only thing missing is the DOB (the easiest field to overlook).
+    await user.type(screen.getByLabelText(/^Name/i), 'Jane Doe');
+    await user.type(screen.getByLabelText(/Child's name/i), 'Baby Doe');
+    await user.type(screen.getByLabelText(/^Email/i), 'jane@example.com');
+    await user.type(screen.getByLabelText(/^Phone/i), '304-555-0100');
+    await user.type(screen.getByLabelText(/Mailing address/i), '1 Main St');
+    await user.click(screen.getByLabelText(/I have read and agree/i));
+
+    expect(
+      await screen.findByText(/Still needed:.*date of birth/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Register — \$252\.00/i })
+    ).toBeDisabled();
+  });
+
   it('requires card-on-file authorization for the installment plan', async () => {
     const user = userEvent.setup();
     renderWidget();

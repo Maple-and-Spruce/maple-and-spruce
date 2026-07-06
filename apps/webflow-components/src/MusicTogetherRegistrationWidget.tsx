@@ -78,6 +78,13 @@ function formatDueDate(iso: string): string {
   });
 }
 
+/** Join a list into prose: ["a"] → "a", ["a","b"] → "a and b", more → "a, b, and c". */
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
 type PaymentPlan = 'full' | 'installments';
 
 interface FamilyChild {
@@ -324,6 +331,26 @@ export function MusicTogetherRegistrationWidget({
     (paymentPlan === 'full' || cardOnFileAuth);
 
   const payDisabled = busy || !cardReady || !formValid;
+
+  // Name exactly what's still missing so the disabled button isn't a mystery —
+  // the empty date-of-birth field is the easiest one to miss.
+  const missingFields: string[] = [];
+  if (cleanParents.length === 0)
+    missingFields.push('a parent or caregiver name');
+  if (cleanChildren.length === 0) {
+    const hasChildName = children.some((c) => c.name.trim().length > 0);
+    const hasChildDob = children.some((c) => c.dob);
+    if (!hasChildName) missingFields.push("your child's name");
+    else if (!hasChildDob) missingFields.push("your child's date of birth");
+    else missingFields.push("your child's name and date of birth");
+  }
+  if (!emailValid) missingFields.push('a valid email address');
+  if (phone.trim().length === 0) missingFields.push('your phone number');
+  if (address.trim().length === 0) missingFields.push('your mailing address');
+  if (!policiesAccepted)
+    missingFields.push('agreement to the Policies & FAQs');
+  if (paymentPlan === 'installments' && !cardOnFileAuth)
+    missingFields.push('authorization for the second installment');
 
   const addParent = () => setParentNames((p) => [...p, '']);
   const removeParent = (i: number) =>
@@ -684,13 +711,13 @@ export function MusicTogetherRegistrationWidget({
                       </button>
                     }
                   />
-                  {!formValid && (
+                  {!formValid && missingFields.length > 0 && (
                     <Typography
                       variant="caption"
                       color="text.secondary"
                       sx={{ display: 'block', mt: 1 }}
                     >
-                      Complete the form above and accept the policies to register.
+                      Still needed: {joinList(missingFields)}.
                     </Typography>
                   )}
                 </Box>
