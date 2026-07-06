@@ -14,6 +14,7 @@ import { ArtistService } from './artist.service';
 import { ClassService } from './class.service';
 import { InstructorService } from './instructor.service';
 import { MtSectionService } from './mt-section.service';
+import { MtSemesterService } from './mt-semester.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -36,6 +37,7 @@ export const WEBFLOW_STRING_NAMES = [
   'WEBFLOW_CLASSES_COLLECTION_ID',
   'WEBFLOW_INSTRUCTORS_COLLECTION_ID',
   'WEBFLOW_MT_SECTIONS_COLLECTION_ID',
+  'WEBFLOW_MT_SEMESTERS_COLLECTION_ID',
 ] as const;
 
 export type WebflowSecrets = Record<
@@ -72,11 +74,13 @@ export class Webflow {
   private readonly _classService: ClassService | null;
   private readonly _instructorService: InstructorService | null;
   private readonly _sectionService: MtSectionService | null;
+  private readonly _semesterService: MtSemesterService | null;
   public readonly siteId: string;
   public readonly artistsCollectionId: string;
   public readonly classesCollectionId: string;
   public readonly instructorsCollectionId: string;
   public readonly mtSectionsCollectionId: string;
+  public readonly mtSemestersCollectionId: string;
 
   constructor(
     private readonly secrets: WebflowSecrets,
@@ -95,6 +99,7 @@ export class Webflow {
     this.classesCollectionId = this.strings.WEBFLOW_CLASSES_COLLECTION_ID;
     this.instructorsCollectionId = this.strings.WEBFLOW_INSTRUCTORS_COLLECTION_ID;
     this.mtSectionsCollectionId = this.strings.WEBFLOW_MT_SECTIONS_COLLECTION_ID;
+    this.mtSemestersCollectionId = this.strings.WEBFLOW_MT_SEMESTERS_COLLECTION_ID;
 
     if (!this.siteId) {
       throw new Error('Webflow site ID not configured. Set WEBFLOW_SITE_ID.');
@@ -128,6 +133,10 @@ export class Webflow {
 
     this._sectionService = this.mtSectionsCollectionId
       ? new MtSectionService(this.client, this.mtSectionsCollectionId)
+      : null;
+
+    this._semesterService = this.mtSemestersCollectionId
+      ? new MtSemesterService(this.client, this.mtSemestersCollectionId)
       : null;
   }
 
@@ -179,6 +188,18 @@ export class Webflow {
       );
     }
     return this._sectionService;
+  }
+
+  /**
+   * Get the Music Together semester service for syncing semesters to Webflow CMS
+   */
+  get semesterService(): MtSemesterService {
+    if (!this._semesterService) {
+      throw new Error(
+        'Webflow MT semesters collection ID not configured. Set WEBFLOW_MT_SEMESTERS_COLLECTION_ID.'
+      );
+    }
+    return this._semesterService;
   }
 
   /**

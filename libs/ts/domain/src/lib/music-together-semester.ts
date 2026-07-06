@@ -68,6 +68,8 @@ export interface MusicTogetherSemester {
   status: MusicTogetherSemesterStatus;
   /** Free-text note, e.g. "exact dates confirmed by spring 2027" (Summer). */
   notes?: string;
+  /** Webflow CMS item ID, once synced to the public site. */
+  webflowItemId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
