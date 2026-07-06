@@ -161,6 +161,9 @@
       "@maple/firebase/maple-functions/sync-music-together-section-to-webflow": [
         "libs/firebase/maple-functions/sync-music-together-section-to-webflow/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-music-together-semester-to-webflow": [
+        "libs/firebase/maple-functions/sync-music-together-semester-to-webflow/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-registration-count": [
         "libs/firebase/maple-functions/sync-registration-count/src/index.ts"
       ],

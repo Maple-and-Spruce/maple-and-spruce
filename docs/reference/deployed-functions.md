@@ -165,6 +165,7 @@ Webflow CMS synchronization. Isolates `webflow-api`.
 - `syncArtistToWebflow` — Firestore trigger: syncs artist data to Webflow CMS
 - `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS
 - `syncMusicTogetherSectionToWebflow` — Firestore trigger: syncs Music Together section data to Webflow CMS (non-draft sections; enriches spots-remaining from live family count)
+- `syncMusicTogetherSemesterToWebflow` — Firestore trigger: syncs Music Together semester (term) data to Webflow CMS (all statuses incl. `planned`; only removed on delete)
 - `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)
 
 ### Etsy OAuth

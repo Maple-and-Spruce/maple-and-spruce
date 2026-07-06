@@ -45,3 +45,12 @@ export {
   type MtSectionWebflowFieldData,
   mapSectionToFieldData,
 } from './lib/mt-section.service';
+
+// Music Together semester service
+export {
+  MtSemesterService,
+  type SyncSemesterInput,
+  type SyncSemesterResult,
+  type MtSemesterWebflowFieldData,
+  mapSemesterToFieldData,
+} from './lib/mt-semester.service';

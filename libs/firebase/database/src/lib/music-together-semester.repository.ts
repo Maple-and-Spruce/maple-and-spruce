@@ -62,6 +62,7 @@ function docToSemester(
       : undefined,
     status: data.status as MusicTogetherSemesterStatus,
     notes: data.notes,
+    webflowItemId: data.webflowItemId,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -147,5 +148,14 @@ export const MusicTogetherSemesterRepository = {
 
   async delete(id: string): Promise<void> {
     await getDb().collection(COLLECTION).doc(id).delete();
+  },
+
+  /**
+   * Store the Webflow CMS item ID after a successful sync. Uses a bare
+   * `.update()` with NO `updatedAt` so it does not re-trigger the
+   * Firestore → Webflow sync (which would otherwise loop).
+   */
+  async updateWebflowItemId(id: string, webflowItemId: string): Promise<void> {
+    await getDb().collection(COLLECTION).doc(id).update({ webflowItemId });
   },
 };
