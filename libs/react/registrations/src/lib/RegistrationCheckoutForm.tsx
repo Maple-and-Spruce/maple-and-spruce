@@ -104,7 +104,11 @@ interface RegistrationCheckoutFormProps {
   publicClass: PublicClass;
   squareApplicationId: string;
   squareLocationId: string;
-  /** Square environment — passed through to SquareCardForm */
+  /**
+   * @deprecated No longer used. The Square SDK environment is derived from
+   * `squareApplicationId`'s prefix (sandbox- vs production), so it can differ
+   * from the data backend. Accepted for backwards compatibility only.
+   */
   env?: string;
   /** URL of the Apple Pay checkout page hosted on a domain verified for Apple Pay */
   applePayCheckoutUrl?: string;
@@ -143,7 +147,6 @@ export function RegistrationCheckoutForm({
   publicClass,
   squareApplicationId,
   squareLocationId,
-  env,
   applePayCheckoutUrl,
   showDigitalWallets = false,
   requiredAgreements = [],
@@ -898,7 +901,8 @@ export function RegistrationCheckoutForm({
         <SquareCardForm
           applicationId={squareApplicationId}
           locationId={squareLocationId}
-          env={env}
+          // No `env` — Square SDK environment follows the App ID prefix,
+          // decoupled from the data backend.
           totalCents={costBreakdown.value?.totalCents}
           showDigitalWallets={showDigitalWallets}
           onReady={() => (isCardReady.value = true)}

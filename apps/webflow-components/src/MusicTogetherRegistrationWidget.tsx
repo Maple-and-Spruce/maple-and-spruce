@@ -102,11 +102,20 @@ type WidgetState =
 export interface MusicTogetherRegistrationWidgetProps {
   /** The MT section (class time) this widget registers for. */
   sectionId: string;
-  /** Square application ID for MT's account (sandbox or production). */
+  /**
+   * Square application ID for MT's account. Its prefix (`sandbox-sq0idb…` vs
+   * `sq0idp…`) is what selects the Square SDK environment — independent of
+   * `env` below — so you can read prod section data while taking payment
+   * through a sandbox Square app for end-to-end testing.
+   */
   squareAppId: string;
-  /** Square location ID for MT's account. */
+  /** Square location ID for MT's account (must match squareAppId's environment). */
   squareLocationId: string;
-  /** 'dev' | 'prod' | 'emulator' — selects Firebase project + Square SDK. */
+  /**
+   * 'dev' | 'prod' | 'emulator' — selects the Firebase project that serves
+   * section data + registration. Does NOT drive the Square SDK environment;
+   * that follows `squareAppId`'s prefix (see SquareCardForm).
+   */
   env: string;
   /** URL of the public Policies & FAQs page (linked from the consent checkbox). */
   policiesUrl: string;
@@ -635,7 +644,10 @@ export function MusicTogetherRegistrationWidget({
                   <SquareCardForm
                     applicationId={squareAppId}
                     locationId={squareLocationId}
-                    env={env}
+                    // No `env` — the Square SDK environment is derived from the
+                    // App ID prefix (sandbox- vs production), decoupled from the
+                    // data `env`. Lets us pair prod section data with a sandbox
+                    // Square app for testing.
                     totalCents={amountNowCents}
                     maxWidth={WIDGET_MAX_WIDTH}
                     onReady={() => setCardReady(true)}
