@@ -13,6 +13,7 @@ import { WebflowClient } from 'webflow-api';
 import { ArtistService } from './artist.service';
 import { ClassService } from './class.service';
 import { InstructorService } from './instructor.service';
+import { MtSectionService } from './mt-section.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -34,6 +35,7 @@ export const WEBFLOW_STRING_NAMES = [
   'WEBFLOW_ARTISTS_COLLECTION_ID',
   'WEBFLOW_CLASSES_COLLECTION_ID',
   'WEBFLOW_INSTRUCTORS_COLLECTION_ID',
+  'WEBFLOW_MT_SECTIONS_COLLECTION_ID',
 ] as const;
 
 export type WebflowSecrets = Record<
@@ -69,10 +71,12 @@ export class Webflow {
   private readonly _artistService: ArtistService;
   private readonly _classService: ClassService | null;
   private readonly _instructorService: InstructorService | null;
+  private readonly _sectionService: MtSectionService | null;
   public readonly siteId: string;
   public readonly artistsCollectionId: string;
   public readonly classesCollectionId: string;
   public readonly instructorsCollectionId: string;
+  public readonly mtSectionsCollectionId: string;
 
   constructor(
     private readonly secrets: WebflowSecrets,
@@ -90,6 +94,7 @@ export class Webflow {
     this.artistsCollectionId = this.strings.WEBFLOW_ARTISTS_COLLECTION_ID;
     this.classesCollectionId = this.strings.WEBFLOW_CLASSES_COLLECTION_ID;
     this.instructorsCollectionId = this.strings.WEBFLOW_INSTRUCTORS_COLLECTION_ID;
+    this.mtSectionsCollectionId = this.strings.WEBFLOW_MT_SECTIONS_COLLECTION_ID;
 
     if (!this.siteId) {
       throw new Error('Webflow site ID not configured. Set WEBFLOW_SITE_ID.');
@@ -119,6 +124,10 @@ export class Webflow {
 
     this._instructorService = this.instructorsCollectionId
       ? new InstructorService(this.client, this.instructorsCollectionId)
+      : null;
+
+    this._sectionService = this.mtSectionsCollectionId
+      ? new MtSectionService(this.client, this.mtSectionsCollectionId)
       : null;
   }
 
@@ -158,6 +167,18 @@ export class Webflow {
       );
     }
     return this._instructorService;
+  }
+
+  /**
+   * Get the Music Together section service for syncing sections to Webflow CMS
+   */
+  get sectionService(): MtSectionService {
+    if (!this._sectionService) {
+      throw new Error(
+        'Webflow MT sections collection ID not configured. Set WEBFLOW_MT_SECTIONS_COLLECTION_ID.'
+      );
+    }
+    return this._sectionService;
   }
 
   /**

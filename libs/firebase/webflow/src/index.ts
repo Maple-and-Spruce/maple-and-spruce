@@ -36,3 +36,12 @@ export {
   type InstructorWebflowFieldData,
   mapInstructorToFieldData,
 } from './lib/instructor.service';
+
+// Music Together section service
+export {
+  MtSectionService,
+  type SyncSectionInput,
+  type SyncSectionResult,
+  type MtSectionWebflowFieldData,
+  mapSectionToFieldData,
+} from './lib/mt-section.service';

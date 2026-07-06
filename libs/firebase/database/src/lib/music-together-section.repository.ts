@@ -151,6 +151,15 @@ export const MusicTogetherSectionRepository = {
     await getDb().collection(COLLECTION).doc(id).delete();
   },
 
+  /**
+   * Store the Webflow CMS item ID after a successful sync. Uses a bare
+   * `.update()` with NO `updatedAt` so it does not re-trigger the
+   * Firestore → Webflow sync (which would otherwise loop).
+   */
+  async updateWebflowItemId(id: string, webflowItemId: string): Promise<void> {
+    await getDb().collection(COLLECTION).doc(id).update({ webflowItemId });
+  },
+
   /** Collection reference (for transactions). */
   getCollectionRef() {
     return getDb().collection(COLLECTION);
