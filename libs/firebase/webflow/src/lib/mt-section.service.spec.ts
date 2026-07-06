@@ -99,6 +99,56 @@ describe('mapSectionToFieldData', () => {
     expect(typeof fd['time-display']).toBe('string');
   });
 
+  it('renders time-display as day-of-week + time range (Thursday 10am ET)', () => {
+    // 2026-03-05T15:00:00Z is a Thursday; still EST (DST starts 2026-03-08),
+    // so 15:00 UTC = 10:00 AM America/New_York.
+    const fd = mapSectionToFieldData(
+      {
+        ...baseSection,
+        sessions: [
+          { dateTime: new Date('2026-03-05T15:00:00Z') },
+          { dateTime: new Date('2026-03-12T14:00:00Z') },
+        ],
+      },
+      prodOptions
+    );
+    expect(fd['time-display']).toBe('Thursdays, 10:00–10:45 AM');
+  });
+
+  it('renders time-display for a Saturday session', () => {
+    // 2026-03-07T15:00:00Z is a Saturday, still EST → 10:00 AM ET.
+    const fd = mapSectionToFieldData(
+      {
+        ...baseSection,
+        sessions: [{ dateTime: new Date('2026-03-07T15:00:00Z') }],
+      },
+      prodOptions
+    );
+    expect(fd['time-display']).toBe('Saturdays, 10:00–10:45 AM');
+  });
+
+  it('computes time-display correctly during EST (November session)', () => {
+    // 2026-11-05T15:00:00Z is a Thursday in EST (UTC-5) → 10:00 AM ET.
+    const fd = mapSectionToFieldData(
+      {
+        ...baseSection,
+        sessions: [{ dateTime: new Date('2026-11-05T15:00:00Z') }],
+      },
+      prodOptions
+    );
+    expect(fd['time-display']).toBe('Thursdays, 10:00–10:45 AM');
+  });
+
+  it('falls back to plain start-time display when there are no sessions', () => {
+    const fd = mapSectionToFieldData(
+      { ...baseSection, sessions: [] },
+      prodOptions
+    );
+    // No first session → formatSectionTimeDisplay returns the formatSessions
+    // fallback (empty string for an empty session list).
+    expect(fd['time-display']).toBe('');
+  });
+
   it('includes location, room, and description when present', () => {
     const fd = mapSectionToFieldData(baseSection, prodOptions);
     expect(fd['location']).toBe('Maple & Spruce Studio');

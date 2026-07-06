@@ -22,6 +22,7 @@ import {
   mtSectionFirstSessionAt,
   mtSpotsRemaining,
   mtSectionOffersInstallments,
+  MT_CLASS_DURATION_MINUTES,
 } from '@maple/ts/domain';
 import { generateSlug } from './artist.service';
 
@@ -90,6 +91,54 @@ function formatDollars(cents: number): string {
 }
 
 /**
+ * Format the recurring day-of-week + class time range for the Webflow
+ * `time-display` field, e.g. "Thursdays, 10:00–10:45 AM".
+ *
+ * Derived from the section's first session in America/New_York (DST-correct
+ * via `Intl.DateTimeFormat`, so November EST sessions render correctly). The
+ * end time is the start plus `MT_CLASS_DURATION_MINUTES`. Falls back to
+ * `fallback` (the plain start-time display) when the section has no sessions.
+ */
+export function formatSectionTimeDisplay(
+  section: Pick<MusicTogetherSection, 'sessions'>,
+  fallback = ''
+): string {
+  const firstStart = mtSectionFirstSessionAt(section);
+  if (!firstStart) return fallback;
+
+  const timeZone = 'America/New_York';
+
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    timeZone,
+  }).format(firstStart);
+  const weekdayPlural = `${weekday}s`;
+
+  // Intl emits a narrow no-break space (U+202F) before AM/PM in modern ICU;
+  // normalize it to a plain space so output is stable across runtimes.
+  const formatTime = (date: Date): string =>
+    new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone,
+    })
+      .format(date)
+      // Normalize narrow no-break (U+202F) / no-break (U+00A0) spaces to plain.
+      .replace(/[\u202f\u00a0]/g, ' ');
+
+  // Start time without its meridiem — the range carries a single "AM"/"PM".
+  const startHM = formatTime(firstStart).replace(/\s*[AP]M$/i, '');
+
+  const end = new Date(
+    firstStart.getTime() + MT_CLASS_DURATION_MINUTES * 60_000
+  );
+  const endHM = formatTime(end);
+
+  return `${weekdayPlural}, ${startHM}–${endHM}`;
+}
+
+/**
  * Map a Firebase Music Together section to Webflow CMS field data.
  */
 export function mapSectionToFieldData(
@@ -124,7 +173,9 @@ export function mapSectionToFieldData(
     'price-display': priceDisplay,
     'spots-display': spotsDisplay,
     'date-display': dateDisplay,
-    'time-display': timeDisplay,
+    // Day-of-week + class time range, e.g. "Thursdays, 10:00–10:45 AM".
+    // Falls back to the plain start-time display when there are no sessions.
+    'time-display': formatSectionTimeDisplay(section, timeDisplay),
   };
 
   // The `date-time` Webflow field is a native DateTime — use the first
