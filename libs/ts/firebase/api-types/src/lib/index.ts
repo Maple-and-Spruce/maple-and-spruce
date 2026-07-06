@@ -420,6 +420,7 @@ export type {
   UpdateMusicTogetherSemesterResponse,
   GetMusicTogetherSectionsRequest,
   GetMusicTogetherSectionsResponse,
+  MusicTogetherSectionCounts,
   CreateMusicTogetherSectionRequest,
   CreateMusicTogetherSectionResponse,
   UpdateMusicTogetherSectionRequest,
