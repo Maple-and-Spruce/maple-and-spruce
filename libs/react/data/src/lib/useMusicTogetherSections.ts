@@ -14,6 +14,7 @@ import type {
 import type {
   GetMusicTogetherSectionsRequest,
   GetMusicTogetherSectionsResponse,
+  MusicTogetherSectionCounts,
   CreateMusicTogetherSectionRequest,
   CreateMusicTogetherSectionResponse,
   UpdateMusicTogetherSectionRequest,
@@ -55,6 +56,10 @@ export function useMusicTogetherSections(
   const [sectionsState, setSectionsState] = useState<
     RequestState<MusicTogetherSection[]>
   >({ status: 'idle' });
+  // Per-section registration counts (families + children), keyed by section id.
+  const [countsBySection, setCountsBySection] = useState<
+    Record<string, MusicTogetherSectionCounts>
+  >({});
 
   const fetchSections = useCallback(async () => {
     setSectionsState({ status: 'loading' });
@@ -69,6 +74,7 @@ export function useMusicTogetherSections(
           .map(hydrateSection)
           .sort((a, b) => firstSessionMs(a) - firstSessionMs(b)),
       });
+      setCountsBySection(result.data.counts ?? {});
     } catch (error) {
       console.error('Failed to fetch Music Together sections:', error);
       setSectionsState({
@@ -133,5 +139,11 @@ export function useMusicTogetherSections(
     fetchSections();
   }, [fetchSections]);
 
-  return { sectionsState, fetchSections, createSection, updateSection };
+  return {
+    sectionsState,
+    countsBySection,
+    fetchSections,
+    createSection,
+    updateSection,
+  };
 }

@@ -51,8 +51,18 @@ export interface GetMusicTogetherSectionsRequest {
   status?: MusicTogetherSectionStatus;
 }
 
+/** Per-section registration counts (capacity statuses: pending + confirmed). */
+export interface MusicTogetherSectionCounts {
+  /** Registered families (one per registration). */
+  families: number;
+  /** Registered children summed across those families. */
+  children: number;
+}
+
 export interface GetMusicTogetherSectionsResponse {
   sections: MusicTogetherSection[];
+  /** Registration counts keyed by section id; sections with none are omitted. */
+  counts: Record<string, MusicTogetherSectionCounts>;
 }
 
 export type CreateMusicTogetherSectionRequest = CreateMusicTogetherSectionInput;

@@ -47,7 +47,7 @@ const fmtDay = (d?: Date) =>
 const fmtPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
 export default function MusicTogetherPage() {
-  const { sectionsState, createSection, updateSection } =
+  const { sectionsState, countsBySection, createSection, updateSection } =
     useMusicTogetherSections();
   const { semestersState, createSemester, updateSemester } =
     useMusicTogetherSemesters();
@@ -257,6 +257,7 @@ export default function MusicTogetherPage() {
               <TableCell>Status</TableCell>
               <TableCell>First session</TableCell>
               <TableCell>Capacity</TableCell>
+              <TableCell>Registered</TableCell>
               <TableCell>Full price</TableCell>
               <TableCell>Installments</TableCell>
               <TableCell align="right">Actions</TableCell>
@@ -280,6 +281,24 @@ export default function MusicTogetherPage() {
                 </TableCell>
                 <TableCell>{fmtDate(section.sessions?.[0]?.dateTime)}</TableCell>
                 <TableCell>{section.capacityFamilies} families</TableCell>
+                <TableCell>
+                  {(() => {
+                    const counts = countsBySection[section.id];
+                    const families = counts?.families ?? 0;
+                    const childCount = counts?.children ?? 0;
+                    return (
+                      <>
+                        <Typography variant="body2">
+                          {childCount}{' '}
+                          {childCount === 1 ? 'child' : 'children'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {families} / {section.capacityFamilies} families
+                        </Typography>
+                      </>
+                    );
+                  })()}
+                </TableCell>
                 <TableCell>{fmtPrice(section.priceFullCents)}</TableCell>
                 <TableCell>
                   {section.installmentPlan?.length
