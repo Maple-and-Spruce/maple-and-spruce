@@ -671,6 +671,134 @@ const craftClubCancelledHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: music-together-confirmation
+//
+// Sent when a family registers for a Music Together section. Transactional.
+// Routes payment to MT's Square account. Data: parentName, sectionName,
+// amountChargedLabel, isInstallments, secondInstallmentLabel,
+// secondInstallmentDate, cardLast4, receiptUrl.
+// ---------------------------------------------------------------------------
+
+const musicTogetherConfirmationSubject =
+  "You're registered for {{sectionName}}!";
+
+const musicTogetherConfirmationHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Together Registration Confirmed</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Music Together with Maple &amp; Spruce</h1>
+  </div>
+  <div class="content">
+    <h2>You're registered!</h2>
+    <p>{{#if parentName}}Hi {{parentName}},{{else}}Hello,{{/if}}</p>
+    <p>Your family is enrolled in <strong>{{sectionName}}</strong>. We can't wait
+      to make music with you!</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Class</td>
+        <td>{{sectionName}}</td>
+      </tr>
+      <tr>
+        <td class="label">Paid today</td>
+        <td><strong>{{amountChargedLabel}}</strong></td>
+      </tr>
+    </table>
+
+    {{#if isInstallments}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Your second installment</strong><br>
+      <p>We'll automatically charge <strong>{{secondInstallmentLabel}}</strong>
+        on <strong>{{secondInstallmentDate}}</strong>{{#if cardLast4}} to the card
+        ending in {{cardLast4}}{{/if}}. No action is needed — you're all set.</p>
+    </div>
+    {{/if}}
+
+    {{#if receiptUrl}}
+    <p><a href="{{receiptUrl}}" style="color: #6B7B5E; font-weight: bold;">View Payment Receipt</a></p>
+    {{/if}}
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">What's next</strong><br>
+      <p>Watch your inbox for class details before your first session. Your
+        Music Together songbook and materials will be mailed to the address you
+        provided.</p>
+    </div>
+
+    <p>Questions? Reach out at
+      <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Music Together with Maple &amp; Spruce</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Template: music-together-installment-failed
+//
+// Sent when a scheduled installment charge (card on file) fails. Transactional,
+// loud, no dunning. Data: installmentNumber, amountLabel, reason.
+// ---------------------------------------------------------------------------
+
+const musicTogetherInstallmentFailedSubject =
+  'Action needed: your Music Together payment didn’t go through';
+
+const musicTogetherInstallmentFailedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Together payment failed</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Music Together with Maple &amp; Spruce</h1>
+  </div>
+  <div class="content">
+    <h2>We couldn't process your payment</h2>
+    <p>Hello,</p>
+    <p>We tried to charge installment {{installmentNumber}} of
+      <strong>{{amountLabel}}</strong> to the card on file, but it didn't go
+      through.</p>
+    {{#if reason}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Reason</strong><br>
+      {{reason}}
+    </div>
+    {{/if}}
+    <p>Please get in touch so we can update your payment details and keep your
+      spot. Your enrollment isn't affected yet — we just need to sort out this
+      charge.</p>
+    <p>Reach out at
+      <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Music Together with Maple &amp; Spruce</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
 
@@ -715,6 +843,14 @@ const templates: Record<string, EmailTemplate> = {
   'craft-club-cancelled': {
     subject: craftClubCancelledSubject,
     html: craftClubCancelledHtml,
+  },
+  'music-together-confirmation': {
+    subject: musicTogetherConfirmationSubject,
+    html: musicTogetherConfirmationHtml,
+  },
+  'music-together-installment-failed': {
+    subject: musicTogetherInstallmentFailedSubject,
+    html: musicTogetherInstallmentFailedHtml,
   },
 };
 
