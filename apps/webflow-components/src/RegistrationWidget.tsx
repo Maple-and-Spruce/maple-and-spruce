@@ -607,7 +607,6 @@ export function RegistrationWidget({
                   publicClass={state.publicClass}
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
-                  env={env}
                   applePayCheckoutUrl={digitalWalletsEnabled ? applePayCheckoutUrl : undefined}
                   showDigitalWallets={digitalWalletsEnabled}
                   requiredAgreements={state.requiredAgreements}
