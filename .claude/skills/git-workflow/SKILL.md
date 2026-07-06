@@ -29,6 +29,27 @@ Patterns:
 - `fix/[issue-number]-[short-description]`
 - `chore/[description]`
 
+## Always Branch Off (and Verify Against) a Fresh `origin/main`
+
+**The local `main` checkout — and any `maple-and-spruce-*` worktree — can be far behind `origin/main`.** This repo moves fast and the local working copy is often not pulled. Merged work (Cloud Functions, domain entities, admin UI) will be *missing* from a stale local tree, which silently sends work down the wrong path — e.g. rebuilding something already merged, or a subagent reporting that merged code "doesn't exist" because it read the stale checkout.
+
+**Rules:**
+1. **`git fetch origin main` first**, and base new branches/worktrees on `origin/main`, not local `main`:
+   ```bash
+   git fetch origin main
+   git worktree add -b feature/{n}-{desc} ../maple-and-spruce-{desc} origin/main
+   # or, in-repo:  git checkout -B work origin/main
+   ```
+2. **To check whether code exists or a PR is merged, inspect `origin/main` — never the local worktree:**
+   ```bash
+   git ls-tree -r origin/main --name-only | grep <file>
+   git show origin/main:<path>
+   git log origin/main --oneline | grep <topic>
+   ```
+   Do not rely on `ls` or `git log HEAD` in a possibly-stale local checkout.
+3. **The many `feat/*` sibling worktrees may be stale duplicates of already-merged work** — diff against `origin/main` before assuming a branch still needs a PR.
+4. **When spawning subagents (Explore or implementation), tell them explicitly:** _"run `git fetch origin main` first; the local main worktree may be stale; verify code presence and branch off `origin/main`."_
+
 ## Commit Conventions
 
 **Format:**
