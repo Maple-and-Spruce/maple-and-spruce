@@ -173,7 +173,9 @@ async function queueFailureEmail(
   charge: MusicTogetherScheduledCharge,
   reason: string
 ): Promise<void> {
-  // Template `music-together-installment-failed` is authored separately.
+  // Template `music-together-installment-failed` is seeded via
+  // tools/seed-email-templates.ts. The extension's Handlebars can't format
+  // currency, so pass a template-ready amount string (raw cents kept too).
   await getDb()
     .collection('mail')
     .add({
@@ -183,6 +185,7 @@ async function queueFailureEmail(
         data: {
           installmentNumber: charge.installmentNumber,
           amountCents: charge.amountCents,
+          amountLabel: `$${(charge.amountCents / 100).toFixed(2)}`,
           reason,
         },
       },
