@@ -10,7 +10,7 @@
 2. **Keep documentation current** -- Follow the self-updating doc workflow in .claude/CLAUDE.md and the `session-management` skill.
 3. **Read before acting** -- Start sessions by reading AGENTS.md, .claude/CLAUDE.md, and `docs/sessions/SESSION.md`.
 4. **Check GitHub issues** -- Run `gh issue list` for current work. Issues are the source of truth.
-5. **Use feature branches** -- Never commit directly to main. See `git-workflow` skill.
+5. **Use feature branches** -- Never commit directly to main. Local `main`/worktrees can lag `origin/main`; `git fetch` and branch/verify off `origin/main`, and instruct spawned subagents to do the same. See `git-workflow` skill.
 6. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017). Aim for **~85% coverage on new code** — the 80% CI threshold is a floor, not a target. See `docs/reference/code-standards.md` for per-file-type guidance.
 7. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
 8. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
