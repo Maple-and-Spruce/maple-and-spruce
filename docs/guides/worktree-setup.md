@@ -8,13 +8,32 @@ test work already in progress there.
 This repo is configured so that emulators, mock servers, and integration
 tests can run in two or more trees at once without colliding.
 
+## Location: keep worktrees OUTSIDE the repo tree
+
+Worktrees live in a sibling directory next to the repo, **not** nested inside
+it: `../maple-and-spruce-worktrees/<name>` (i.e. `<repo>-worktrees/<name>`),
+not `.claude/worktrees/<name>`. Nesting worktrees inside the repo's own working
+tree confuses tooling (git status, coverage globs, file watchers) and clutters
+the checkout.
+
+- **Claude Code agents**: `EnterWorktree` places worktrees in the external dir
+  automatically via the `WorktreeCreate` hook wired in `.claude/settings.json`
+  (`tools/claude-worktree-create.sh` / `tools/claude-worktree-remove.sh`). No
+  action needed — new worktrees land in `<repo>-worktrees/` on branch
+  `worktree-<name>`, and removing one also deletes that branch.
+- **Manual `git worktree add`**: target the external dir yourself (see below).
+
+Existing `.claude/worktrees/*` trees are fine to leave in place; they age out as
+their branches merge. This is a forward-only convention — don't relocate a
+worktree that has live work.
+
 ## Quick start
 
 ```bash
 # From the main checkout
 git fetch origin main
-git worktree add -b feature/my-change .claude/worktrees/my-change origin/main
-cd .claude/worktrees/my-change
+git worktree add -b feature/my-change ../maple-and-spruce-worktrees/my-change origin/main
+cd ../maple-and-spruce-worktrees/my-change
 
 # Bootstrap: deterministic port offset + NX_DAEMON=false
 ./tools/bootstrap-worktree.sh
