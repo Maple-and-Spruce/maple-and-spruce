@@ -13,6 +13,7 @@
     "firebase-maple-functions-calendar-all-feed": "maple-calendar",
     "firebase-maple-functions-calendar-adhoc-proxy": "maple-calendar",
     "firebase-maple-functions-calendar-music-together-feed": "maple-calendar",
+    "firebase-maple-functions-calendar-private-feed": "maple-calendar",
     "firebase-maple-functions-create-product": "maple-square",
     "firebase-maple-functions-update-product": "maple-square",
     "firebase-maple-functions-upload-product-image": "maple-square",
