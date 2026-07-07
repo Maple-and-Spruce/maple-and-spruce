@@ -13,7 +13,7 @@ import AddIcon from '@mui/icons-material/Add';
 import type { CreateStudentInput, RequestState, Student } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { StudentForm, StudentList } from '@maple/react/students';
-import { useInstructors, useStudents } from '../../../hooks';
+import { useInstructors, useLessons, useStudents } from '../../../hooks';
 
 type HopeFilter = 'all' | 'hope' | 'private';
 
@@ -25,9 +25,15 @@ export default function StudentsPage() {
     deleteStudent: deleteStudentApi,
   } = useStudents();
   const { instructorsState } = useInstructors();
+  // All lessons — the table derives each student's recurring day/time slot
+  // from their scheduled lessons. The roster is small, so one unscoped fetch
+  // is fine.
+  const { lessonsState } = useLessons({});
 
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
+  const lessons =
+    lessonsState.status === 'success' ? lessonsState.data : undefined;
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -155,6 +161,7 @@ export default function StudentsPage() {
       <StudentList
         studentsState={filteredStudentsState}
         instructors={instructors}
+        lessons={lessons}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
         detailHrefBase="/students"
