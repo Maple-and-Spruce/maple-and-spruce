@@ -25,6 +25,8 @@ import {
   type MusicTogetherSemester,
   type CreateMusicTogetherSectionInput,
   type MusicTogetherSectionStatus,
+  ROOMS,
+  getRoomLabel,
 } from '@maple/ts/domain';
 
 const STATUSES: MusicTogetherSectionStatus[] = [
@@ -72,7 +74,11 @@ export function SectionFormDialog({
   const [capacity, setCapacity] = useState(String(MT_DEFAULT_CAPACITY_FAMILIES));
   const [priceFull, setPriceFull] = useState(dollars(MT_PRICE_FULL_CENTS));
   const [location, setLocation] = useState('');
-  const [room, setRoom] = useState('');
+  // Defaults to 'spruce' so MT-generated calendar events reliably carry
+  // room=='spruce' and surface on the /room-schedule. Constrained to a
+  // dropdown (ROOMS) — a free-text value that isn't exactly a Room string
+  // resolves to null and silently drops off the room schedule.
+  const [room, setRoom] = useState<string>('spruce');
   const [sessions, setSessions] = useState<string[]>([]);
   const [installments, setInstallments] = useState<
     { amount: string; dueAt: string }[]
@@ -107,7 +113,7 @@ export function SectionFormDialog({
       setCapacity(String(MT_DEFAULT_CAPACITY_FAMILIES));
       setPriceFull(dollars(MT_PRICE_FULL_CENTS));
       setLocation('');
-      setRoom('');
+      setRoom('spruce');
       setSessions([]);
       setInstallments([]);
     }
@@ -249,10 +255,18 @@ export function SectionFormDialog({
             />
             <TextField
               label="Room"
+              select
               value={room}
               onChange={(e) => setRoom(e.target.value)}
               sx={{ flex: 1 }}
-            />
+            >
+              <MenuItem value="">None</MenuItem>
+              {ROOMS.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {getRoomLabel(r)}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
 
           <Divider />
