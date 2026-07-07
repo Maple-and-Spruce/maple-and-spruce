@@ -18,9 +18,12 @@ name: Deploy on merge
 #     │            └── deploy_vercel_prod           (only if approve_prod passed)
 #     │
 #     ├── deploy_firestore_indexes_dev   (independent — declared indexes → maple-and-spruce-dev)
-#     └── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
-#                                          because they take minutes to build and are
-#                                          additive; analyzer enforces declaration at PR)
+#     ├── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
+#     │                                    because they take minutes to build and are
+#     │                                    additive; analyzer enforces declaration at PR)
+#     └── deploy_hosting_api (prod)        (independent — republishes the `api` Hosting
+#                                          target when firebase.json/public change, so new
+#                                          /calendar/*.ics rewrites actually go live)
 #
 # Setup: a "production" GitHub Environment must exist in repo Settings →
 # Environments, with at least one required reviewer. Without it, approve_prod
@@ -1000,6 +1003,85 @@ jobs:
           if grep -qi "not present in your firestore indexes file" "$OUTPUT"; then
             echo "::warning title=Firestore index orphans::Prod has composite indexes not declared in firestore.indexes.json. Resolve by adding them to the file, or delete a stale one with: gcloud firestore indexes composite delete <INDEX_ID> --project maple-and-spruce"
           fi
+
+  deploy_hosting_api:
+    # Independent of the dev→E2E→prod chain, mirroring deploy_firestore_indexes.
+    #
+    # The `api` Firebase Hosting target (maple-and-spruce-api) serves the
+    # /calendar/*.ics rewrites declared in firebase.json. CI deployed functions,
+    # the registration-test hosting target, and firestore indexes — but NEVER
+    # this hosting target. So a new calendar-feed rewrite (e.g.
+    # /calendar/musictogether.ics, added to firebase.json in #548) 404'd in prod
+    # even after its Cloud Function deployed, because the rewrite mapping it to
+    # the function was only ever pushed by a manual `firebase deploy --only
+    # hosting:api`. This job closes that gap: whenever firebase.json or public/
+    # changes on main (or on a manual workflow_dispatch), the api hosting config
+    # is redeployed. Rewrites are idempotent and forward-compatible, so — like
+    # firestore indexes — this doesn't need the manual prod approval gate.
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if hosting config changed
+        id: changed
+        run: |
+          # On workflow_dispatch we always deploy (caller asked for it).
+          # On push, gate on firebase.json or the public/ dir changing.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only HEAD~1 HEAD | grep -qE '^firebase.json$|^public/'; then
+            echo "hosting config changed in this push — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "hosting config unchanged — skipping"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        if: steps.changed.outputs.changed == 'true'
+        # Mint an access token for --token — see deploy_harness_dev.
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
+          create_credentials_file: true
+          token_format: 'access_token'
+
+      - name: Setup gcloud CLI
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      # firebase-tools is invoked via `npx -y` (no pnpm install) — the api
+      # target is defined in the committed .firebaserc, so no target:apply
+      # is needed. Keeps the job fast (~30s).
+      - name: Deploy api hosting target
+        if: steps.changed.outputs.changed == 'true'
+        timeout-minutes: 10
+        # Idempotent — republishes the static public/ site + rewrites for the
+        # `api` target. Light retry to ride out transient upload/5xx errors.
+        run: |
+          set -o pipefail
+          for attempt in $(seq 1 3); do
+            npx -y firebase-tools@latest deploy --only hosting:api \
+              --project maple-and-spruce \
+              --force \
+              --token "${{ steps.auth.outputs.access_token }}" \
+              < /dev/null 2>&1 | tee /tmp/hosting-deploy.log
+            status=${PIPESTATUS[0]}
+            [ "$status" -eq 0 ] && exit 0
+            echo "::warning::hosting:api deploy attempt $attempt failed (exit=$status); retrying in 15s"
+            sleep 15
+          done
+          echo "::error::hosting:api deploy failed after 3 attempts"
+          exit 1
 
   publish_webflow_components:
     needs: [prepare_and_build, approve_prod]
