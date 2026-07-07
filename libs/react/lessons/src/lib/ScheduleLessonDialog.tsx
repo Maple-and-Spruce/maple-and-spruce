@@ -41,7 +41,9 @@ import type {
   CreateLessonInput,
   CreateLessonSeriesInput,
   Instructor,
+  Room,
 } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel } from '@maple/ts/domain';
 import {
   lessonSeriesValidation,
   lessonValidation,
@@ -115,6 +117,7 @@ export function ScheduleLessonDialog({
   const mode = useSignal<Mode>('single');
   const teacherId = useSignal(defaultTeacherId);
   const durationMinutes = useSignal<30 | 45 | 60>(defaultDurationMinutes);
+  const room = useSignal<Room>('spruce');
   const notes = useSignal('');
 
   // Single-mode
@@ -148,6 +151,7 @@ export function ScheduleLessonDialog({
       mode.value = 'single';
       teacherId.value = defaultTeacherId;
       durationMinutes.value = defaultDurationMinutes;
+      room.value = 'spruce';
       notes.value = '';
       scheduledAt.value = startOfNextHour();
       seriesStart.value = startOfNextHour();
@@ -240,6 +244,7 @@ export function ScheduleLessonDialog({
           teacherId: teacherId.value,
           scheduledAt: scheduledAt.value,
           durationMinutes: durationMinutes.value,
+          room: room.value,
           status: 'scheduled',
           notes: notes.value || undefined,
         };
@@ -250,6 +255,7 @@ export function ScheduleLessonDialog({
           teacherId: teacherId.value,
           durationMinutes: durationMinutes.value,
           scheduledAts: keptDates.value,
+          room: room.value,
           notes: notes.value || undefined,
         };
         await onCreateSeries(input);
@@ -314,7 +320,7 @@ export function ScheduleLessonDialog({
                 {/* Lessons occupy the Spruce Room — surface that day's
                     availability and warn (non-blocking) on overlaps. */}
                 <RoomAvailability
-                  room="spruce"
+                  room={room.value}
                   start={scheduledAt.value}
                   end={
                     new Date(
@@ -436,6 +442,22 @@ export function ScheduleLessonDialog({
             {errorFor('durationMinutes') && (
               <FormHelperText>{errorFor('durationMinutes')}</FormHelperText>
             )}
+          </FormControl>
+
+          <FormControl fullWidth>
+            <InputLabel id="room-label">Room</InputLabel>
+            <Select
+              labelId="room-label"
+              label="Room"
+              value={room.value}
+              onChange={(e) => (room.value = e.target.value as Room)}
+            >
+              {ROOMS.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {getRoomLabel(r)}
+                </MenuItem>
+              ))}
+            </Select>
           </FormControl>
 
           <TextField

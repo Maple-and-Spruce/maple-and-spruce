@@ -95,6 +95,8 @@ export const SingleLessonSuccessfulSubmit: Story = {
           teacherId: mockInstructor.id,
           durationMinutes: 30,
           status: 'scheduled',
+          // Room selector defaults to Spruce and flows into the payload.
+          room: 'spruce',
         })
       );
     });
