@@ -163,14 +163,28 @@ export function ClassTable({
         valueGetter: (_value, row) => row.weekdaySortKey,
         renderCell: (params: GridRenderCellParams<ClassRow>) =>
           params.row.dayDisplay ? (
-            <Box sx={{ py: 0.5 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                minWidth: 0,
+              }}
+            >
+              <Typography
+                component="span"
+                variant="body2"
+                noWrap
+                sx={{ fontWeight: 500, lineHeight: 1.35 }}
+              >
                 {params.row.dayDisplay}
               </Typography>
               <Typography
+                component="span"
                 variant="caption"
                 color="text.secondary"
-                sx={{ lineHeight: 1.3 }}
+                noWrap
+                sx={{ lineHeight: 1.35 }}
               >
                 {params.row.timeBlockDisplay}
               </Typography>
@@ -189,14 +203,23 @@ export function ClassTable({
         valueGetter: (_value, row) => row.dateSortKey,
         renderCell: (params: GridRenderCellParams<ClassRow>) =>
           params.row.sessionCount > 0 ? (
-            <Box sx={{ py: 0.5 }}>
-              <Typography variant="body2" sx={{ lineHeight: 1.3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                minWidth: 0,
+              }}
+            >
+              <Typography component="span" variant="body2" noWrap sx={{ lineHeight: 1.35 }}>
                 {params.row.dateRangeDisplay}
               </Typography>
               <Typography
+                component="span"
                 variant="caption"
                 color="text.secondary"
-                sx={{ lineHeight: 1.3 }}
+                noWrap
+                sx={{ lineHeight: 1.35 }}
               >
                 {params.row.sessionCount} session
                 {params.row.sessionCount === 1 ? '' : 's'}
