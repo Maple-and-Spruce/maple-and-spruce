@@ -15,6 +15,8 @@
  * uses 'scheduled' and 'cancelled' in the UI.
  */
 
+import type { Room } from './room';
+
 export type LessonStatus = 'scheduled' | 'rendered' | 'cancelled';
 
 export const LESSON_STATUSES: LessonStatus[] = [
@@ -43,6 +45,13 @@ export interface Lesson {
   primaryTeacherAtCreateId?: string;
   /** Groups lessons generated together as a recurring series */
   seriesId?: string;
+  /**
+   * Bookable room the lesson occupies. Drives the room's calendar event
+   * (`onLessonWrite`) and thus the /room-schedule. Optional for backwards-
+   * compat with lessons created before this field existed; those fall back
+   * to the Spruce Room in the calendar trigger.
+   */
+  room?: Room;
   status: LessonStatus;
   notes?: string;
   createdAt: Date;
@@ -81,6 +90,8 @@ export interface CreateLessonSeriesInput {
   /** Concrete list of scheduled start times to create, in order. */
   scheduledAts: Date[];
   notes?: string;
+  /** Bookable room applied to every lesson in the series. */
+  room?: Room;
   /** Snapshot stamp applied to every lesson in the series; set server-side. */
   primaryTeacherAtCreateId?: string;
 }
