@@ -28,12 +28,7 @@ import type {
   Instructor,
   RequestState,
 } from '@maple/ts/domain';
-import {
-  asPublishable,
-  formatClassPrice,
-  formatSessions,
-  getFirstSession,
-} from '@maple/ts/domain';
+import { formatClassPrice, formatWeekdayTimeBlock } from '@maple/ts/domain';
 import { surfaces, borders, radii, shadows } from '@maple/react/theme';
 
 interface ClassTableProps {
@@ -64,30 +59,19 @@ interface ClassRow {
   classItem: Class;
   name: string;
   imageUrl?: string;
-  scheduleSortKey: number;
-  scheduleDisplay: string;
+  /** Weekly-planning schedule summary — day(s) of week + time block, dates secondary. */
+  dayDisplay: string;
+  timeBlockDisplay: string;
+  dateRangeDisplay: string;
+  sessionCount: number;
+  weekdaySortKey: number;
+  dateSortKey: number;
   instructorName: string;
   categoryName: string;
   filled: number;
   capacity: number;
   priceCents: number;
   status: Class['status'];
-}
-
-function buildScheduleDisplay(classItem: Class): {
-  sortKey: number;
-  display: string;
-} {
-  const publishable = asPublishable(classItem);
-  if (!publishable) {
-    return { sortKey: Number.POSITIVE_INFINITY, display: 'No dates set' };
-  }
-  const first = getFirstSession(publishable).dateTime;
-  const sortKey = (first instanceof Date ? first : new Date(first)).getTime();
-  const { dateDisplay, timeDisplay } = formatSessions(classItem.sessions);
-  const timeSuffix =
-    timeDisplay && timeDisplay !== 'Varies' ? ` · ${timeDisplay}` : '';
-  return { sortKey, display: `${dateDisplay}${timeSuffix}` };
 }
 
 export function ClassTable({
@@ -113,14 +97,21 @@ export function ClassTable({
   const rows = useMemo<ClassRow[]>(() => {
     if (classesState.status !== 'success') return [];
     return classesState.data.map((classItem) => {
-      const { sortKey, display } = buildScheduleDisplay(classItem);
+      const schedule = formatWeekdayTimeBlock(
+        classItem.sessions.map((s) => s.dateTime),
+        classItem.durationMinutes
+      );
       return {
         id: classItem.id,
         classItem,
         name: classItem.name,
         imageUrl: classItem.imageUrl,
-        scheduleSortKey: sortKey,
-        scheduleDisplay: display,
+        dayDisplay: schedule.dayDisplay,
+        timeBlockDisplay: schedule.timeBlockDisplay,
+        dateRangeDisplay: schedule.dateRangeDisplay,
+        sessionCount: schedule.count,
+        weekdaySortKey: schedule.weekdaySortKey,
+        dateSortKey: schedule.dateSortKey,
         instructorName: classItem.instructorId
           ? instructorMap.get(classItem.instructorId) ?? '—'
           : '—',
@@ -164,17 +155,58 @@ export function ClassTable({
         ),
       },
       {
-        field: 'scheduleSortKey',
-        headerName: 'Schedule',
+        field: 'weekdaySortKey',
+        headerName: 'Day / Time',
         flex: 1,
-        minWidth: 200,
+        minWidth: 150,
         sortComparator: (a: number, b: number) => a - b,
-        valueGetter: (_value, row) => row.scheduleSortKey,
-        renderCell: (params: GridRenderCellParams<ClassRow>) => (
-          <Typography variant="body2" color="text.secondary">
-            {params.row.scheduleDisplay}
-          </Typography>
-        ),
+        valueGetter: (_value, row) => row.weekdaySortKey,
+        renderCell: (params: GridRenderCellParams<ClassRow>) =>
+          params.row.dayDisplay ? (
+            <Box sx={{ py: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3 }}>
+                {params.row.dayDisplay}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ lineHeight: 1.3 }}
+              >
+                {params.row.timeBlockDisplay}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No dates set
+            </Typography>
+          ),
+      },
+      {
+        field: 'dateSortKey',
+        headerName: 'Dates',
+        width: 160,
+        sortComparator: (a: number, b: number) => a - b,
+        valueGetter: (_value, row) => row.dateSortKey,
+        renderCell: (params: GridRenderCellParams<ClassRow>) =>
+          params.row.sessionCount > 0 ? (
+            <Box sx={{ py: 0.5 }}>
+              <Typography variant="body2" sx={{ lineHeight: 1.3 }}>
+                {params.row.dateRangeDisplay}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ lineHeight: 1.3 }}
+              >
+                {params.row.sessionCount} session
+                {params.row.sessionCount === 1 ? '' : 's'}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              —
+            </Typography>
+          ),
       },
       {
         field: 'instructorName',
@@ -334,7 +366,7 @@ export function ClassTable({
         pageSizeOptions={[10, 25, 50, 100]}
         initialState={{
           pagination: { paginationModel: { pageSize: 25 } },
-          sorting: { sortModel: [{ field: 'scheduleSortKey', sort: 'asc' }] },
+          sorting: { sortModel: [{ field: 'weekdaySortKey', sort: 'asc' }] },
         }}
         disableRowSelectionOnClick
         autoHeight
