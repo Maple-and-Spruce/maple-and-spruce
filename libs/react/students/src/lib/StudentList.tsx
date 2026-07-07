@@ -180,15 +180,24 @@ export function StudentList({
         headerName: 'Instrument',
         width: 140,
         renderCell: (params: GridRenderCellParams<StudentRow>) => (
-          <Box sx={{ py: 0.5 }}>
-            <Typography variant="body2" sx={{ lineHeight: 1.3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minWidth: 0,
+            }}
+          >
+            <Typography component="span" variant="body2" noWrap sx={{ lineHeight: 1.35 }}>
               {params.row.instrumentLabel}
             </Typography>
             {params.row.lessonLengthLabel && (
               <Typography
+                component="span"
                 variant="caption"
                 color="text.secondary"
-                sx={{ lineHeight: 1.3 }}
+                noWrap
+                sx={{ lineHeight: 1.35 }}
               >
                 {params.row.lessonLengthLabel}
               </Typography>
@@ -205,14 +214,28 @@ export function StudentList({
         valueGetter: (_value, row) => row.weekdaySortKey,
         renderCell: (params: GridRenderCellParams<StudentRow>) =>
           params.row.dayDisplay ? (
-            <Box sx={{ py: 0.5 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                minWidth: 0,
+              }}
+            >
+              <Typography
+                component="span"
+                variant="body2"
+                noWrap
+                sx={{ fontWeight: 500, lineHeight: 1.35 }}
+              >
                 {params.row.dayDisplay}
               </Typography>
               <Typography
+                component="span"
                 variant="caption"
                 color="text.secondary"
-                sx={{ lineHeight: 1.3 }}
+                noWrap
+                sx={{ lineHeight: 1.35 }}
               >
                 {params.row.timeBlockDisplay}
               </Typography>
@@ -234,15 +257,23 @@ export function StudentList({
         flex: 1,
         minWidth: 170,
         renderCell: (params: GridRenderCellParams<StudentRow>) => (
-          <Box sx={{ py: 0.5, minWidth: 0 }}>
-            <Typography variant="body2" noWrap sx={{ lineHeight: 1.3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minWidth: 0,
+            }}
+          >
+            <Typography component="span" variant="body2" noWrap sx={{ lineHeight: 1.35 }}>
               {params.row.contactName}
             </Typography>
             <Typography
+              component="span"
               variant="caption"
               color="text.secondary"
               noWrap
-              sx={{ lineHeight: 1.3, display: 'block' }}
+              sx={{ lineHeight: 1.35 }}
             >
               {params.row.contactEmail}
             </Typography>
