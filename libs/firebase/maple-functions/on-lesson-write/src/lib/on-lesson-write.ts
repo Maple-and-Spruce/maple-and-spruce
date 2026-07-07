@@ -110,7 +110,9 @@ export const onLessonWrite = onDocumentWritten(
         location: DEFAULT_EVENT_LOCATION,
         type: 'lesson',
         public: false,
-        room: 'spruce',
+        // Honor the lesson's chosen room; fall back to Spruce for lessons
+        // created before the room field existed (they were all Spruce).
+        room: afterLesson.room ?? 'spruce',
         sourceRef: `lessons/${lessonId}`,
         createdBy: 'system',
       });

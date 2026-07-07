@@ -30,8 +30,10 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import type {
   Instructor,
   Lesson,
+  Room,
   UpdateLessonInput,
 } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel } from '@maple/ts/domain';
 import { lessonValidation } from '@maple/ts/validation';
 import {
   batch,
@@ -66,6 +68,7 @@ export function EditLessonDialog({
   const scheduledAt = useSignal<Date>(new Date());
   const durationMinutes = useSignal<30 | 45 | 60>(30);
   const teacherId = useSignal('');
+  const room = useSignal<Room>('spruce');
   const notes = useSignal('');
   const showValidationErrors = useSignal(false);
   const submitError = useSignal<string | null>(null);
@@ -76,6 +79,7 @@ export function EditLessonDialog({
       scheduledAt.value = new Date(lesson.scheduledAt);
       durationMinutes.value = lesson.durationMinutes as 30 | 45 | 60;
       teacherId.value = lesson.teacherId;
+      room.value = lesson.room ?? 'spruce';
       notes.value = lesson.notes ?? '';
       showValidationErrors.value = false;
       submitError.value = null;
@@ -117,6 +121,7 @@ export function EditLessonDialog({
         scheduledAt: scheduledAt.value,
         durationMinutes: durationMinutes.value,
         teacherId: teacherId.value,
+        room: room.value,
         notes: notes.value || undefined,
       };
       await onSubmit(input);
@@ -208,6 +213,22 @@ export function EditLessonDialog({
             {errorFor('durationMinutes') && (
               <FormHelperText>{errorFor('durationMinutes')}</FormHelperText>
             )}
+          </FormControl>
+
+          <FormControl fullWidth>
+            <InputLabel id="edit-room-label">Room</InputLabel>
+            <Select
+              labelId="edit-room-label"
+              label="Room"
+              value={room.value}
+              onChange={(e) => (room.value = e.target.value as Room)}
+            >
+              {ROOMS.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {getRoomLabel(r)}
+                </MenuItem>
+              ))}
+            </Select>
           </FormControl>
 
           <TextField

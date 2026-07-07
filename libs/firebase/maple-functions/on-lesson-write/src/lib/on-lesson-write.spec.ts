@@ -86,6 +86,20 @@ describe('onLessonWrite', () => {
     );
   });
 
+  it("uses the lesson's chosen room when set (not just the Spruce fallback)", async () => {
+    await handler({
+      params: { lessonId: 'abc' },
+      data: {
+        before: makeSnapshot(false),
+        // A distinct room value proves passthrough rather than the fallback.
+        after: makeSnapshot(true, { ...scheduledLessonData, room: 'maple' }),
+      },
+    });
+
+    const [, input] = mocks.upsertWithId.mock.calls[0];
+    expect(input.room).toBe('maple');
+  });
+
   it('keeps derived events off public feeds and free of student details', async () => {
     await handler({
       params: { lessonId: 'abc' },
