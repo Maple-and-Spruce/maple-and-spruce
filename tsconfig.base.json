@@ -398,6 +398,9 @@
       "@maple/firebase/maple-functions/calendar-music-together-feed": [
         "libs/firebase/maple-functions/calendar-music-together-feed/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/calendar-private-feed": [
+        "libs/firebase/maple-functions/calendar-private-feed/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/on-class-write": [
         "libs/firebase/maple-functions/on-class-write/src/index.ts"
       ],
