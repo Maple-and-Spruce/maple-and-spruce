@@ -51,6 +51,8 @@ export interface CalendarEventFilters {
   type?: CalendarEventType;
   /** Only return public events */
   publicOnly?: boolean;
+  /** Only return private (public == false) events */
+  privateOnly?: boolean;
 }
 
 /**
@@ -69,6 +71,10 @@ export const CalendarEventRepository = {
 
     if (filters?.publicOnly) {
       query = query.where('public', '==', true);
+    }
+
+    if (filters?.privateOnly) {
+      query = query.where('public', '==', false);
     }
 
     query = query.orderBy('startDateTime', 'asc');
@@ -92,6 +98,17 @@ export const CalendarEventRepository = {
    */
   async findPublic(): Promise<CalendarEvent[]> {
     return this.findAll({ publicOnly: true });
+  },
+
+  /**
+   * Find all private (public == false) calendar events.
+   *
+   * Backs the unauthenticated /calendar/private.ics planning feed. These are
+   * the room-occupying events that never reach the public feeds — lessons
+   * (auto-titled "Music Lesson", no student names) and ad-hoc private blocks.
+   */
+  async findPrivate(): Promise<CalendarEvent[]> {
+    return this.findAll({ privateOnly: true });
   },
 
   /**
