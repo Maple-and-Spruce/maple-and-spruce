@@ -14,16 +14,20 @@ name: Deploy on merge
 #     │            │                 a web-app-only merge skips e2e_dev, which is
 #     │            │                 treated as a pass so the portal still promotes)
 #     │            ├── deploy_functions_prod        (only if approve_prod passed)
+#     │            │      └── deploy_hosting_api (prod)  (republishes the `api` Hosting
+#     │            │                              target when firebase.json/public change;
+#     │            │                              runs AFTER functions so a new function
+#     │            │                              exists before its rewrite publishes.
+#     │            │                              Skips fast+ungated for hosting-only
+#     │            │                              changes since the approval chain
+#     │            │                              auto-skips when no fn/web-app changed)
 #     │            ├── publish_webflow_components   (only if approve_prod passed)
 #     │            └── deploy_vercel_prod           (only if approve_prod passed)
 #     │
 #     ├── deploy_firestore_indexes_dev   (independent — declared indexes → maple-and-spruce-dev)
-#     ├── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
-#     │                                    because they take minutes to build and are
-#     │                                    additive; analyzer enforces declaration at PR)
-#     └── deploy_hosting_api (prod)        (independent — republishes the `api` Hosting
-#                                          target when firebase.json/public change, so new
-#                                          /calendar/*.ics rewrites actually go live)
+#     └── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
+#                                          because they take minutes to build and are
+#                                          additive; analyzer enforces declaration at PR)
 #
 # Setup: a "production" GitHub Environment must exist in repo Settings →
 # Environments, with at least one required reviewer. Without it, approve_prod
@@ -1005,8 +1009,6 @@ jobs:
           fi
 
   deploy_hosting_api:
-    # Independent of the dev→E2E→prod chain, mirroring deploy_firestore_indexes.
-    #
     # The `api` Firebase Hosting target (maple-and-spruce-api) serves the
     # /calendar/*.ics rewrites declared in firebase.json. CI deployed functions,
     # the registration-test hosting target, and firestore indexes — but NEVER
@@ -1016,10 +1018,29 @@ jobs:
     # the function was only ever pushed by a manual `firebase deploy --only
     # hosting:api`. This job closes that gap: whenever firebase.json or public/
     # changes on main (or on a manual workflow_dispatch), the api hosting config
-    # is redeployed. Rewrites are idempotent and forward-compatible, so — like
-    # firestore indexes — this doesn't need the manual prod approval gate.
+    # is redeployed.
+    #
+    # ORDERING: runs AFTER deploy_functions_prod. A rewrite that targets a
+    # function is bound at hosting-deploy time — if the function doesn't exist
+    # yet, Firebase warns "Unable to find a valid endpoint" and the rewrite
+    # 404s until the next hosting deploy. When a PR ships a NEW function and its
+    # rewrite together (as #567 did for calendarPrivateFeed), deploying hosting
+    # first races the function into existence and strands the rewrite. Gating on
+    # deploy_functions_prod guarantees the function exists first.
+    #   - `!cancelled()` + `result != 'failure'`: deploy_functions_prod is
+    #     SKIPPED for hosting-only / static-file changes (empty function matrix,
+    #     and the whole approve_prod chain auto-skips when nothing function- or
+    #     web-app-related changed) — so hosting still deploys promptly and
+    #     ungated in that common case. Only a genuine function-deploy FAILURE
+    #     blocks it (don't publish rewrites pointing at functions that failed).
+    #   - When functions DO deploy, hosting waits for them (and the approval
+    #     they require) — which is exactly the ordering we want.
+    needs: [deploy_functions_prod]
     runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    if: >-
+      !cancelled() &&
+      github.repository == 'Maple-and-Spruce/maple-and-spruce' &&
+      needs.deploy_functions_prod.result != 'failure'
     permissions:
       contents: read
       id-token: write
