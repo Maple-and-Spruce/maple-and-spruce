@@ -18,6 +18,7 @@ export * from './lib/etsy-import';
 // Phase 3: Classes & Workshops
 export * from './lib/instructor';
 export * from './lib/class';
+export * from './lib/schedule-format';
 export * from './lib/class-category';
 export * from './lib/registration';
 export * from './lib/discount';

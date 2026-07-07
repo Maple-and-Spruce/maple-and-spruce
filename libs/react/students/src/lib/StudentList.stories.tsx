@@ -9,6 +9,7 @@ import {
   mockInstructor,
   mockInstructor2,
   mockInstructorPercentage,
+  mockLessons,
 } from '../../../../../apps/maple-spruce/.storybook/fixtures';
 import type { RequestState, Student } from '@maple/ts/domain';
 
@@ -22,6 +23,7 @@ const meta = {
     onEdit: fn(),
     onDelete: fn(),
     instructors,
+    lessons: mockLessons,
   },
 } satisfies Meta<typeof StudentList>;
 
@@ -159,10 +161,26 @@ export const TeacherNameRenderedFromInstructors: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // The Teacher column shows the resolved instructor name.
     await waitFor(() => {
-      expect(
-        canvas.getByText(new RegExp(`Teacher: ${mockInstructor.name}`))
-      ).toBeInTheDocument();
+      expect(canvas.getByText(mockInstructor.name)).toBeInTheDocument();
+    });
+  },
+};
+
+export const LessonDayTimeRendered: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudent],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Olive's scheduled lessons (Sundays, 11:00 AM ET) drive the Day/Time cell.
+    await waitFor(() => {
+      expect(canvas.getByText(/Sundays/)).toBeInTheDocument();
     });
   },
 };
