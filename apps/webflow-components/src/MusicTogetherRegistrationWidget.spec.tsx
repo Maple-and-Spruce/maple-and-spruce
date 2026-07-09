@@ -103,17 +103,24 @@ function renderWidget() {
   );
 }
 
+/**
+ * Set a controlled text field's value in a single event. Typing character by
+ * character with `user.type` re-renders the whole MUI form per keystroke, which
+ * is slow enough to blow the per-test timeout under CI + coverage.
+ */
+function setField(matcher: RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(matcher), { target: { value } });
+}
+
 /** Fill every required family field so the Register button can enable. */
-async function fillFamily(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/^First name/i), 'Jane');
-  await user.type(screen.getByLabelText(/^Last name/i), 'Doe');
-  await user.type(screen.getByLabelText(/Child's first name/i), 'Baby Doe');
-  fireEvent.change(screen.getByLabelText(/Date of birth/i), {
-    target: { value: '2024-03-15' },
-  });
-  await user.type(screen.getByLabelText(/^Email/i), 'jane@example.com');
-  await user.type(screen.getByLabelText(/^Phone/i), '304-555-0100');
-  await user.type(screen.getByLabelText(/Full mailing address/i), '1 Main St');
+function fillFamily() {
+  setField(/^First name/i, 'Jane');
+  setField(/^Last name/i, 'Doe');
+  setField(/Child's first name/i, 'Baby Doe');
+  setField(/Date of birth/i, '2024-03-15');
+  setField(/^Email/i, 'jane@example.com');
+  setField(/^Phone/i, '304-555-0100');
+  setField(/Full mailing address/i, '1 Main St');
 }
 
 /** Check both required consent boxes (policies + privacy notice). */
@@ -130,7 +137,7 @@ describe('MusicTogetherRegistrationWidget', () => {
   afterEach(() => cleanup());
 
   it('registers a family paying in full', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
 
     // Section header renders once loaded.
@@ -138,7 +145,7 @@ describe('MusicTogetherRegistrationWidget', () => {
       await screen.findByText(/Register — Thursday Morning/i)
     ).toBeInTheDocument();
 
-    await fillFamily(user);
+    fillFamily();
     // Accept the policies + privacy notice (both required).
     await acceptConsents(user);
 
@@ -173,18 +180,18 @@ describe('MusicTogetherRegistrationWidget', () => {
   });
 
   it('names the specific missing field(s) instead of a generic hint', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
 
     // Fill everything EXCEPT the child's date of birth, and accept both
     // consents — so the only thing missing is the DOB (easiest to overlook).
-    await user.type(screen.getByLabelText(/^First name/i), 'Jane');
-    await user.type(screen.getByLabelText(/^Last name/i), 'Doe');
-    await user.type(screen.getByLabelText(/Child's first name/i), 'Baby Doe');
-    await user.type(screen.getByLabelText(/^Email/i), 'jane@example.com');
-    await user.type(screen.getByLabelText(/^Phone/i), '304-555-0100');
-    await user.type(screen.getByLabelText(/Full mailing address/i), '1 Main St');
+    setField(/^First name/i, 'Jane');
+    setField(/^Last name/i, 'Doe');
+    setField(/Child's first name/i, 'Baby Doe');
+    setField(/^Email/i, 'jane@example.com');
+    setField(/^Phone/i, '304-555-0100');
+    setField(/Full mailing address/i, '1 Main St');
     await acceptConsents(user);
 
     expect(
@@ -196,10 +203,10 @@ describe('MusicTogetherRegistrationWidget', () => {
   });
 
   it('requires card-on-file authorization for the installment plan', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
-    await fillFamily(user);
+    fillFamily();
     await acceptConsents(user);
 
     // Switch to the two-installment plan.
@@ -229,10 +236,10 @@ describe('MusicTogetherRegistrationWidget', () => {
   });
 
   it('keeps Register disabled until both consents are accepted', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
-    await fillFamily(user);
+    fillFamily();
 
     const registerBtn = screen.getByRole('button', {
       name: /Register — \$252\.00/i,
@@ -250,7 +257,7 @@ describe('MusicTogetherRegistrationWidget', () => {
   });
 
   it('supports up to three children and hides Add at the cap', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
 
@@ -273,7 +280,7 @@ describe('MusicTogetherRegistrationWidget', () => {
 
   it('shows the waitlist when the section is full', async () => {
     nextSection = makeSection({ spotsRemaining: 0 });
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
 
     expect(
