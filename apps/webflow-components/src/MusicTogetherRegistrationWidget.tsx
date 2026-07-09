@@ -38,6 +38,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
+import { MT_MAX_CHILDREN } from '@maple/ts/domain';
 import type {
   GetPublicMusicTogetherSectionRequest,
   GetPublicMusicTogetherSectionResponse,
@@ -251,15 +252,19 @@ export function MusicTogetherRegistrationWidget({
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
 
   // Family form state
-  const [parentNames, setParentNames] = useState<string[]>(['']);
+  const [adultFirstName, setAdultFirstName] = useState('');
+  const [adultLastName, setAdultLastName] = useState('');
   const [children, setChildren] = useState<FamilyChild[]>([
     { name: '', dob: '' },
   ]);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [accommodations, setAccommodations] = useState('');
+  const [notes, setNotes] = useState('');
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlan>('full');
   const [policiesAccepted, setPoliciesAccepted] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [cardOnFileAuth, setCardOnFileAuth] = useState(false);
 
   const [busy, setBusy] = useState(false);
@@ -315,19 +320,25 @@ export function MusicTogetherRegistrationWidget({
         : section.priceFullCents;
 
   // Trimmed / cleaned form values
-  const cleanParents = parentNames.map((n) => n.trim()).filter(Boolean);
+  const adultFullName = `${adultFirstName.trim()} ${adultLastName.trim()}`.trim();
+  // parentNames is kept for the roster/licensee views; derive it from the
+  // enrolling adult's first + last name.
+  const cleanParents = adultFullName ? [adultFullName] : [];
   const cleanChildren = children
     .map((c) => ({ name: c.name.trim(), dob: c.dob }))
     .filter((c) => c.name && c.dob);
   const emailValid = EMAIL_RE.test(email.trim());
 
   const formValid =
-    cleanParents.length > 0 &&
+    adultFirstName.trim().length > 0 &&
+    adultLastName.trim().length > 0 &&
     cleanChildren.length > 0 &&
+    cleanChildren.length <= MT_MAX_CHILDREN &&
     emailValid &&
     phone.trim().length > 0 &&
     address.trim().length > 0 &&
     policiesAccepted &&
+    privacyConsent &&
     (paymentPlan === 'full' || cardOnFileAuth);
 
   const payDisabled = busy || !cardReady || !formValid;
@@ -335,31 +346,29 @@ export function MusicTogetherRegistrationWidget({
   // Name exactly what's still missing so the disabled button isn't a mystery —
   // the empty date-of-birth field is the easiest one to miss.
   const missingFields: string[] = [];
-  if (cleanParents.length === 0)
-    missingFields.push('a parent or caregiver name');
+  if (adultFirstName.trim().length === 0)
+    missingFields.push("the adult's first name");
+  if (adultLastName.trim().length === 0)
+    missingFields.push("the adult's last name");
   if (cleanChildren.length === 0) {
     const hasChildName = children.some((c) => c.name.trim().length > 0);
     const hasChildDob = children.some((c) => c.dob);
-    if (!hasChildName) missingFields.push("your child's name");
+    if (!hasChildName) missingFields.push("your child's first name");
     else if (!hasChildDob) missingFields.push("your child's date of birth");
-    else missingFields.push("your child's name and date of birth");
+    else missingFields.push("your child's first name and date of birth");
   }
   if (!emailValid) missingFields.push('a valid email address');
   if (phone.trim().length === 0) missingFields.push('your phone number');
   if (address.trim().length === 0) missingFields.push('your mailing address');
   if (!policiesAccepted)
     missingFields.push('agreement to the Policies & FAQs');
+  if (!privacyConsent) missingFields.push('agreement to the privacy notice');
   if (paymentPlan === 'installments' && !cardOnFileAuth)
     missingFields.push('authorization for the second installment');
 
-  const addParent = () => setParentNames((p) => [...p, '']);
-  const removeParent = (i: number) =>
-    setParentNames((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
-  const setParent = (i: number, value: string) =>
-    setParentNames((p) => p.map((n, idx) => (idx === i ? value : n)));
-
+  const canAddChild = children.length < MT_MAX_CHILDREN;
   const addChild = () =>
-    setChildren((c) => [...c, { name: '', dob: '' }]);
+    setChildren((c) => (c.length < MT_MAX_CHILDREN ? [...c, { name: '', dob: '' }] : c));
   const removeChild = (i: number) =>
     setChildren((c) => (c.length > 1 ? c.filter((_, idx) => idx !== i) : c));
   const setChild = (i: number, patch: Partial<FamilyChild>) =>
@@ -377,6 +386,8 @@ export function MusicTogetherRegistrationWidget({
       >(functions, 'createMusicTogetherRegistration');
       const result = await call({
         sectionId: section.id,
+        adultFirstName: adultFirstName.trim(),
+        adultLastName: adultLastName.trim(),
         parentNames: cleanParents,
         children: cleanChildren.map((c) => ({
           name: c.name,
@@ -387,10 +398,13 @@ export function MusicTogetherRegistrationWidget({
         email: email.trim(),
         phone: phone.trim(),
         address: address.trim(),
+        accommodations: accommodations.trim() || undefined,
         paymentPlan,
         policiesAccepted,
+        privacyConsent,
         cardOnFileAuth: paymentPlan === 'installments' ? cardOnFileAuth : undefined,
         paymentNonce: nonce,
+        notes: notes.trim() || undefined,
       });
       setState({
         status: 'confirmed',
@@ -412,13 +426,18 @@ export function MusicTogetherRegistrationWidget({
   }, [
     functions,
     section,
+    adultFirstName,
+    adultLastName,
     cleanParents,
     cleanChildren,
     email,
     phone,
     address,
+    accommodations,
+    notes,
     paymentPlan,
     policiesAccepted,
+    privacyConsent,
     cardOnFileAuth,
   ]);
 
@@ -469,40 +488,31 @@ export function MusicTogetherRegistrationWidget({
               <>
                 {payError && <Alert severity="error">{payError}</Alert>}
 
-                {/* Parents / caregivers */}
+                {/* Enrolling adult */}
                 <Box>
                   <Typography variant="subtitle1" gutterBottom>
-                    Parent / caregiver name(s)
+                    Adult / caregiver
                   </Typography>
-                  <Stack spacing={1.5}>
-                    {parentNames.map((name, i) => (
-                      <Stack key={i} direction="row" spacing={1} alignItems="center">
-                        <TextField
-                          label={i === 0 ? 'Name' : `Name ${i + 1}`}
-                          value={name}
-                          onChange={(e) => setParent(i, e.target.value)}
-                          required={i === 0}
-                          fullWidth
-                        />
-                        {parentNames.length > 1 && (
-                          <IconButton
-                            aria-label="Remove caregiver"
-                            onClick={() => removeParent(i)}
-                            size="small"
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Stack>
-                    ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={addParent}
-                      size="small"
-                      sx={{ alignSelf: 'flex-start' }}
-                    >
-                      Add another caregiver
-                    </Button>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                  >
+                    <TextField
+                      label="First name"
+                      value={adultFirstName}
+                      onChange={(e) => setAdultFirstName(e.target.value)}
+                      required
+                      fullWidth
+                      autoComplete="given-name"
+                    />
+                    <TextField
+                      label="Last name"
+                      value={adultLastName}
+                      onChange={(e) => setAdultLastName(e.target.value)}
+                      required
+                      fullWidth
+                      autoComplete="family-name"
+                    />
                   </Stack>
                 </Box>
 
@@ -512,7 +522,8 @@ export function MusicTogetherRegistrationWidget({
                     Child / children
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                    Music Together is for children birth through age 5.
+                    Music Together is for children birth through age 5. Up to{' '}
+                    {MT_MAX_CHILDREN} siblings per family.
                   </Typography>
                   <Stack spacing={2}>
                     {children.map((child, i) => (
@@ -523,7 +534,7 @@ export function MusicTogetherRegistrationWidget({
                         alignItems={{ sm: 'center' }}
                       >
                         <TextField
-                          label="Child's name"
+                          label="Child's first name"
                           value={child.name}
                           onChange={(e) => setChild(i, { name: e.target.value })}
                           required={i === 0}
@@ -549,14 +560,16 @@ export function MusicTogetherRegistrationWidget({
                         )}
                       </Stack>
                     ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={addChild}
-                      size="small"
-                      sx={{ alignSelf: 'flex-start' }}
-                    >
-                      Add another child
-                    </Button>
+                    {canAddChild && (
+                      <Button
+                        startIcon={<AddIcon />}
+                        onClick={addChild}
+                        size="small"
+                        sx={{ alignSelf: 'flex-start' }}
+                      >
+                        Add another child
+                      </Button>
+                    )}
                   </Stack>
                 </Box>
 
@@ -582,14 +595,41 @@ export function MusicTogetherRegistrationWidget({
                       fullWidth
                     />
                     <TextField
-                      label="Mailing address"
+                      label="Full mailing address"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       required
                       fullWidth
                       multiline
                       minRows={2}
-                      helperText="Where we should send your Music Together songbook and materials."
+                      helperText="Street address, city, state, and ZIP — where we should send your Music Together songbook and materials."
+                    />
+                  </Stack>
+                </Box>
+
+                {/* Accommodations + notes */}
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Anything we should know?
+                  </Typography>
+                  <Stack spacing={2}>
+                    <TextField
+                      label="Accommodations (optional)"
+                      value={accommodations}
+                      onChange={(e) => setAccommodations(e.target.value)}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      helperText="Special needs, allergies, or anything that helps us make class comfortable for your family."
+                    />
+                    <TextField
+                      label="Notes (optional)"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      helperText="Anything else you'd like us to know."
                     />
                   </Stack>
                 </Box>
@@ -639,6 +679,28 @@ export function MusicTogetherRegistrationWidget({
                   }
                 />
 
+                {/* Privacy notice consent */}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={privacyConsent}
+                      onChange={(e) => setPrivacyConsent(e.target.checked)}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2">
+                      I understand that my name, mailing address, and email may
+                      be shared with Music Together Worldwide as a licensed
+                      center, and that my children&apos;s information is never
+                      shared outside Maple &amp; Spruce. See the{' '}
+                      <Link href={policiesUrl} target="_blank" rel="noopener">
+                        privacy notice
+                      </Link>
+                      .
+                    </Typography>
+                  }
+                />
+
                 {/* Card-on-file authorization (installments only) */}
                 {paymentPlan === 'installments' &&
                   secondInstallment && (
@@ -651,7 +713,7 @@ export function MusicTogetherRegistrationWidget({
                       }
                       label={
                         <Typography variant="body2">
-                          I authorize Music Together at Maple &amp; Spruce to
+                          I authorize Music Together with Maple &amp; Spruce to
                           securely store my card and automatically charge the
                           second installment of{' '}
                           <strong>{formatMoney(secondInstallment.amountCents)}</strong>{' '}

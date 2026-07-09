@@ -39,13 +39,19 @@ function docToRegistration(
   return {
     id: doc.id,
     sectionId: data.sectionId,
+    adultFirstName: data.adultFirstName ?? '',
+    adultLastName: data.adultLastName ?? '',
     parentNames: Array.isArray(data.parentNames) ? data.parentNames : [],
     children: parseChildren(data.children),
     email: data.email,
     phone: data.phone,
     address: data.address,
+    accommodations: data.accommodations ?? undefined,
     paymentPlan: data.paymentPlan as MusicTogetherPaymentPlan,
     policiesAcceptedAt: toDate(data.policiesAcceptedAt),
+    privacyConsentAcceptedAt: data.privacyConsentAcceptedAt
+      ? toDate(data.privacyConsentAcceptedAt)
+      : undefined,
     cardOnFileAuthAt: data.cardOnFileAuthAt
       ? toDate(data.cardOnFileAuthAt)
       : undefined,

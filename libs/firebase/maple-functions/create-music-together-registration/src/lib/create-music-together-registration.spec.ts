@@ -132,12 +132,15 @@ const openWithInstallments = {
 
 const baseFamily = {
   sectionId: 'sec-1',
+  adultFirstName: 'Jamie',
+  adultLastName: 'Rivera',
   parentNames: ['Jamie Rivera'],
   children: [{ name: 'Sky', dob: '2023-04-01' }],
   email: 'jamie@example.com',
   phone: '304-555-1212',
   address: '123 Spruce St, Morgantown, WV',
   policiesAccepted: true,
+  privacyConsent: true,
   paymentNonce: 'cnon:card-nonce-abc',
 };
 
@@ -174,6 +177,18 @@ describe('createMusicTogetherRegistration', () => {
     expect(mocks.chargeCreate).not.toHaveBeenCalled();
     expect(result.amountChargedCents).toBe(25200);
     expect(result.scheduledChargeCount).toBe(0);
+    // The persisted registration carries the structured adult name, the
+    // derived parentNames, accommodations, and the privacy-consent timestamp.
+    expect(mocks.txSet).toHaveBeenCalledWith(
+      regRef,
+      expect.objectContaining({
+        adultFirstName: 'Jamie',
+        adultLastName: 'Rivera',
+        parentNames: ['Jamie Rivera'],
+        accommodations: null,
+        privacyConsentAcceptedAt: expect.any(Date),
+      })
+    );
     expect(mocks.regUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'confirmed' })
     );
@@ -250,6 +265,13 @@ describe('createMusicTogetherRegistration', () => {
   it('rejects invalid input before loading the section', async () => {
     await expect(
       run({ ...baseFamily, paymentPlan: 'full', policiesAccepted: false })
+    ).rejects.toThrow(/validation/);
+    expect(mocks.sectionFindById).not.toHaveBeenCalled();
+  });
+
+  it('rejects a registration without privacy consent', async () => {
+    await expect(
+      run({ ...baseFamily, paymentPlan: 'full', privacyConsent: false })
     ).rejects.toThrow(/validation/);
     expect(mocks.sectionFindById).not.toHaveBeenCalled();
   });

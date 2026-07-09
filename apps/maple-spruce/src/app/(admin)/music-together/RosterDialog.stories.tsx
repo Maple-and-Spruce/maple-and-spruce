@@ -13,6 +13,8 @@ function reg(
   return {
     id: 'reg-1',
     sectionId: 'sec-1',
+    adultFirstName: 'Jamie',
+    adultLastName: 'Rivera',
     parentNames: ['Jamie Rivera'],
     children: [{ name: 'Sky', dob: new Date('2023-04-01T00:00:00Z') }],
     email: 'jamie@example.com',
@@ -60,11 +62,15 @@ const withFamilies: GetMusicTogetherRosterResponse = {
     {
       registration: reg({
         id: 'reg-2',
+        adultFirstName: 'Pat',
+        adultLastName: 'Lee',
         parentNames: ['Pat Lee', 'Sam Lee'],
         children: [
           { name: 'Wren', dob: new Date('2022-01-10T00:00:00Z') },
           { name: 'Ash', dob: new Date('2024-06-05T00:00:00Z') },
         ],
+        accommodations: 'Wren has a peanut allergy.',
+        notes: 'Prefers the Saturday class if a spot opens.',
         paymentPlan: 'installments',
       }),
       charges: [charge('failed')],

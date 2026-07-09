@@ -86,6 +86,7 @@ export function RosterDialog({ open, onClose, sectionName, rosterState }: Props)
               <TableRow>
                 <TableCell>Parent(s)</TableCell>
                 <TableCell>Children (DOB)</TableCell>
+                <TableCell>Accommodations / notes</TableCell>
                 <TableCell>Plan</TableCell>
                 <TableCell>Status</TableCell>
               </TableRow>
@@ -98,6 +99,22 @@ export function RosterDialog({ open, onClose, sectionName, rosterState }: Props)
                     {entry.registration.children
                       .map((c) => `${c.name} (${mtFormatDob(new Date(c.dob))})`)
                       .join(', ')}
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 240, whiteSpace: 'pre-wrap' }}>
+                    {[
+                      entry.registration.accommodations
+                        ? `Accommodations: ${entry.registration.accommodations}`
+                        : null,
+                      entry.registration.notes
+                        ? `Notes: ${entry.registration.notes}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join('\n') || (
+                      <Typography variant="body2" color="text.disabled">
+                        —
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>{entry.registration.paymentPlan}</TableCell>
                   <TableCell>

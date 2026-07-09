@@ -6,6 +6,8 @@ import {
 
 const valid: MusicTogetherRegistrationValidationInput = {
   sectionId: 'sec-1',
+  adultFirstName: 'Jamie',
+  adultLastName: 'Rivera',
   parentNames: ['Jamie Rivera'],
   children: [{ name: 'Sky', dob: new Date('2023-04-01') }],
   email: 'jamie@example.com',
@@ -13,6 +15,7 @@ const valid: MusicTogetherRegistrationValidationInput = {
   address: '123 Spruce St, Morgantown, WV',
   paymentPlan: 'full',
   policiesAccepted: true,
+  privacyConsent: true,
 };
 
 describe('musicTogetherRegistrationValidation', () => {
@@ -33,9 +36,57 @@ describe('musicTogetherRegistrationValidation', () => {
     expect(r.hasErrors('parentNames')).toBe(true);
   });
 
+  it("requires the adult's first and last name", () => {
+    expect(
+      musicTogetherRegistrationValidation({
+        ...valid,
+        adultFirstName: '',
+      }).hasErrors('adultFirstName')
+    ).toBe(true);
+    expect(
+      musicTogetherRegistrationValidation({
+        ...valid,
+        adultLastName: '  ',
+      }).hasErrors('adultLastName')
+    ).toBe(true);
+  });
+
   it('requires at least one child', () => {
     const r = musicTogetherRegistrationValidation({ ...valid, children: [] });
     expect(r.hasErrors('children')).toBe(true);
+  });
+
+  it('rejects more than three children', () => {
+    const r = musicTogetherRegistrationValidation({
+      ...valid,
+      children: [
+        { name: 'A', dob: '2020-01-01' },
+        { name: 'B', dob: '2021-01-01' },
+        { name: 'C', dob: '2022-01-01' },
+        { name: 'D', dob: '2023-01-01' },
+      ],
+    });
+    expect(r.hasErrors('children')).toBe(true);
+  });
+
+  it('accepts exactly three children', () => {
+    const r = musicTogetherRegistrationValidation({
+      ...valid,
+      children: [
+        { name: 'A', dob: '2020-01-01' },
+        { name: 'B', dob: '2021-01-01' },
+        { name: 'C', dob: '2022-01-01' },
+      ],
+    });
+    expect(r.hasErrors('children')).toBe(false);
+  });
+
+  it('requires privacy-notice consent', () => {
+    const r = musicTogetherRegistrationValidation({
+      ...valid,
+      privacyConsent: false,
+    });
+    expect(r.hasErrors('privacyConsent')).toBe(true);
   });
 
   it('requires each child to have a name and valid DOB', () => {

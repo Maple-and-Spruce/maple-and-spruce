@@ -25,8 +25,12 @@ export type MusicTogetherRegistrationStatus =
   | 'cancelled' // Cancelled (may be partially refunded)
   | 'refunded'; // Refund issued
 
-/** An enrolled child (for the licensee report). */
+/** Maximum number of children (siblings) per enrolled family. */
+export const MT_MAX_CHILDREN = 3;
+
+/** An enrolled child. Internal use only — never shared outside Maple & Spruce. */
 export interface MusicTogetherChild {
+  /** Child's first name. */
   name: string;
   /** Date of birth. */
   dob: Date;
@@ -38,16 +42,33 @@ export interface MusicTogetherChild {
 export interface MusicTogetherRegistration {
   id: string;
   sectionId: string;
-  /** Parent/guardian name(s). At least one. */
+  /** Enrolling adult's first name (shared with Music Together Worldwide). */
+  adultFirstName: string;
+  /** Enrolling adult's last name (shared with Music Together Worldwide). */
+  adultLastName: string;
+  /**
+   * Parent/guardian name(s). At least one. Retained for the roster/licensee
+   * views; populated from the enrolling adult's first + last name.
+   */
   parentNames: string[];
-  /** Enrolled children with DOBs. At least one. */
+  /** Enrolled children (first name + DOB). At least one, at most {@link MT_MAX_CHILDREN}. */
   children: MusicTogetherChild[];
   email: string;
   phone: string;
+  /** Full mailing/street address (shared with Music Together Worldwide). */
   address: string;
+  /** Special needs, allergies, or other accommodation notes. Internal use only. */
+  accommodations?: string;
   paymentPlan: MusicTogetherPaymentPlan;
   /** When the family accepted the program policies. */
   policiesAcceptedAt: Date;
+  /**
+   * When the family accepted the privacy notice authorizing their adult
+   * contact details to be shared with Music Together Worldwide. Optional only
+   * for backward compatibility with pre-launch test registrations; always set
+   * on registrations created through the current form.
+   */
+  privacyConsentAcceptedAt?: Date;
   /**
    * When the family authorized storing a card for the second charge. Set only
    * on the installments plan.

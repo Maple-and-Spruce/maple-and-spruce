@@ -59,16 +59,35 @@ export const createMusicTogetherRegistration = Functions.endpoint
     CreateMusicTogetherRegistrationRequest,
     CreateMusicTogetherRegistrationResponse
   >(async (data, _context, secrets, strings) => {
+    // Structured adult name (shared with Music Together Worldwide) plus a
+    // parentNames array kept for the roster/licensee views. When a caller
+    // omits parentNames, fall back to the adult's first + last name.
+    const adultFirstName = (data.adultFirstName ?? '').trim();
+    const adultLastName = (data.adultLastName ?? '').trim();
+    const providedParentNames = (data.parentNames ?? [])
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    const parentNames =
+      providedParentNames.length > 0
+        ? providedParentNames
+        : [`${adultFirstName} ${adultLastName}`.trim()].filter(
+            (n) => n.length > 0
+          );
+
     // 1. Validate the payload before touching Square.
     const validation = musicTogetherRegistrationValidation({
       sectionId: data.sectionId,
-      parentNames: data.parentNames,
+      adultFirstName: data.adultFirstName,
+      adultLastName: data.adultLastName,
+      parentNames,
       children: data.children,
       email: data.email,
       phone: data.phone,
       address: data.address,
+      accommodations: data.accommodations,
       paymentPlan: data.paymentPlan,
       policiesAccepted: data.policiesAccepted,
+      privacyConsent: data.privacyConsent,
       cardOnFileAuth: data.cardOnFileAuth,
     });
     if (validation.hasErrors()) {
@@ -111,13 +130,11 @@ export const createMusicTogetherRegistration = Functions.endpoint
     const db = getDb();
     const regRef = MusicTogetherRegistrationRepository.getDocRef();
     const now = new Date();
-    const parentNames = data.parentNames
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0);
     const children = data.children.map((c) => ({
       name: c.name.trim(),
       dob: new Date(c.dob),
     }));
+    const accommodations = data.accommodations?.trim() || null;
 
     await db.runTransaction(async (tx) => {
       const existing = await tx.get(
@@ -132,13 +149,17 @@ export const createMusicTogetherRegistration = Functions.endpoint
       }
       tx.set(regRef, {
         sectionId: data.sectionId,
+        adultFirstName,
+        adultLastName,
         parentNames,
         children,
         email: data.email,
         phone: data.phone,
         address: data.address,
+        accommodations,
         paymentPlan: data.paymentPlan,
         policiesAcceptedAt: now,
+        privacyConsentAcceptedAt: now,
         cardOnFileAuthAt:
           data.paymentPlan === 'installments' ? now : null,
         pricePaidCents: firstChargeCents,
