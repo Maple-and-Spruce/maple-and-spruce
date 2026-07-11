@@ -103,16 +103,30 @@ function renderWidget() {
   );
 }
 
+/**
+ * Set a controlled text field's value in a single event. Typing character by
+ * character with `user.type` re-renders the whole MUI form per keystroke, which
+ * is slow enough to blow the per-test timeout under CI + coverage.
+ */
+function setField(matcher: RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(matcher), { target: { value } });
+}
+
 /** Fill every required family field so the Register button can enable. */
-async function fillFamily(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/^Name/i), 'Jane Doe');
-  await user.type(screen.getByLabelText(/Child's name/i), 'Baby Doe');
-  fireEvent.change(screen.getByLabelText(/Date of birth/i), {
-    target: { value: '2024-03-15' },
-  });
-  await user.type(screen.getByLabelText(/^Email/i), 'jane@example.com');
-  await user.type(screen.getByLabelText(/^Phone/i), '304-555-0100');
-  await user.type(screen.getByLabelText(/Mailing address/i), '1 Main St');
+function fillFamily() {
+  setField(/^First name/i, 'Jane');
+  setField(/^Last name/i, 'Doe');
+  setField(/Child's first name/i, 'Baby Doe');
+  setField(/Date of birth/i, '2024-03-15');
+  setField(/^Email/i, 'jane@example.com');
+  setField(/^Phone/i, '304-555-0100');
+  setField(/Full mailing address/i, '1 Main St');
+}
+
+/** Check both required consent boxes (policies + privacy notice). */
+async function acceptConsents(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByLabelText(/I have read and agree/i));
+  await user.click(screen.getByLabelText(/shared with Music Together Worldwide/i));
 }
 
 describe('MusicTogetherRegistrationWidget', () => {
@@ -123,7 +137,7 @@ describe('MusicTogetherRegistrationWidget', () => {
   afterEach(() => cleanup());
 
   it('registers a family paying in full', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
 
     // Section header renders once loaded.
@@ -131,9 +145,9 @@ describe('MusicTogetherRegistrationWidget', () => {
       await screen.findByText(/Register — Thursday Morning/i)
     ).toBeInTheDocument();
 
-    await fillFamily(user);
-    // Accept the policies (required).
-    await user.click(screen.getByRole('checkbox'));
+    fillFamily();
+    // Accept the policies + privacy notice (both required).
+    await acceptConsents(user);
 
     const registerBtn = await screen.findByRole('button', {
       name: /Register — \$252\.00/i,
@@ -146,12 +160,15 @@ describe('MusicTogetherRegistrationWidget', () => {
 
     expect(calls['createMusicTogetherRegistration']).toMatchObject({
       sectionId: 'sec-thu',
+      adultFirstName: 'Jane',
+      adultLastName: 'Doe',
       parentNames: ['Jane Doe'],
       email: 'jane@example.com',
       phone: '304-555-0100',
       address: '1 Main St',
       paymentPlan: 'full',
       policiesAccepted: true,
+      privacyConsent: true,
       paymentNonce: 'cnon:test-nonce',
     });
     const payload = calls['createMusicTogetherRegistration'] as {
@@ -163,18 +180,19 @@ describe('MusicTogetherRegistrationWidget', () => {
   });
 
   it('names the specific missing field(s) instead of a generic hint', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
 
-    // Fill everything EXCEPT the child's date of birth, and accept policies —
-    // so the only thing missing is the DOB (the easiest field to overlook).
-    await user.type(screen.getByLabelText(/^Name/i), 'Jane Doe');
-    await user.type(screen.getByLabelText(/Child's name/i), 'Baby Doe');
-    await user.type(screen.getByLabelText(/^Email/i), 'jane@example.com');
-    await user.type(screen.getByLabelText(/^Phone/i), '304-555-0100');
-    await user.type(screen.getByLabelText(/Mailing address/i), '1 Main St');
-    await user.click(screen.getByLabelText(/I have read and agree/i));
+    // Fill everything EXCEPT the child's date of birth, and accept both
+    // consents — so the only thing missing is the DOB (easiest to overlook).
+    setField(/^First name/i, 'Jane');
+    setField(/^Last name/i, 'Doe');
+    setField(/Child's first name/i, 'Baby Doe');
+    setField(/^Email/i, 'jane@example.com');
+    setField(/^Phone/i, '304-555-0100');
+    setField(/Full mailing address/i, '1 Main St');
+    await acceptConsents(user);
 
     expect(
       await screen.findByText(/Still needed:.*date of birth/i)
@@ -185,11 +203,11 @@ describe('MusicTogetherRegistrationWidget', () => {
   });
 
   it('requires card-on-file authorization for the installment plan', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
-    await fillFamily(user);
-    await user.click(screen.getByLabelText(/I have read and agree/i));
+    fillFamily();
+    await acceptConsents(user);
 
     // Switch to the two-installment plan.
     await user.click(screen.getByRole('radio', { name: /Two installments/i }));
@@ -217,36 +235,52 @@ describe('MusicTogetherRegistrationWidget', () => {
     });
   });
 
-  it('keeps Register disabled until the policies are accepted', async () => {
-    const user = userEvent.setup();
+  it('keeps Register disabled until both consents are accepted', async () => {
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
-    await fillFamily(user);
+    fillFamily();
 
     const registerBtn = screen.getByRole('button', {
       name: /Register — \$252\.00/i,
     });
     expect(registerBtn).toBeDisabled();
 
-    await user.click(screen.getByRole('checkbox'));
+    // Accepting only the policies is not enough — privacy is also required.
+    await user.click(screen.getByLabelText(/I have read and agree/i));
+    expect(registerBtn).toBeDisabled();
+
+    await user.click(
+      screen.getByLabelText(/shared with Music Together Worldwide/i)
+    );
     await waitFor(() => expect(registerBtn).toBeEnabled());
   });
 
-  it('supports adding a second child', async () => {
-    const user = userEvent.setup();
+  it('supports up to three children and hides Add at the cap', async () => {
+    const user = userEvent.setup({ delay: null });
     renderWidget();
     await screen.findByText(/Register — Thursday Morning/i);
+
+    // Starts with one child; add two more to reach the cap of three.
+    await user.click(
+      screen.getByRole('button', { name: /Add another child/i })
+    );
+    expect(screen.getAllByLabelText(/Child's first name/i)).toHaveLength(2);
 
     await user.click(
       screen.getByRole('button', { name: /Add another child/i })
     );
-    const nameInputs = screen.getAllByLabelText(/Child's name/i);
-    expect(nameInputs).toHaveLength(2);
+    expect(screen.getAllByLabelText(/Child's first name/i)).toHaveLength(3);
+
+    // At three children the Add button is gone.
+    expect(
+      screen.queryByRole('button', { name: /Add another child/i })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the waitlist when the section is full', async () => {
     nextSection = makeSection({ spotsRemaining: 0 });
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderWidget();
 
     expect(

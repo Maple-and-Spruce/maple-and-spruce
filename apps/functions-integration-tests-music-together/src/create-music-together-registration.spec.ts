@@ -45,6 +45,8 @@ function family(
 ): CreateMusicTogetherRegistrationRequest {
   return {
     sectionId: 'sec-open',
+    adultFirstName: 'Jamie',
+    adultLastName: 'Rivera',
     parentNames: ['Jamie Rivera'],
     children: [{ name: 'Sky', dob: '2023-04-01' }],
     email: 'jamie@test.com',
@@ -52,6 +54,7 @@ function family(
     address: '123 Spruce St, Morgantown, WV',
     paymentPlan: 'full',
     policiesAccepted: true,
+    privacyConsent: true,
     paymentNonce: 'cnon:card-nonce-ok',
     ...overrides,
   };
@@ -185,6 +188,14 @@ describe('createMusicTogetherRegistration', () => {
     const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
       functionName: 'createMusicTogetherRegistration',
       data: family({ email: 'nopolicy@test.com', policiesAccepted: false }),
+    });
+    expect(result.status).not.toBe(200);
+  });
+
+  it('rejects when the privacy notice is not accepted', async () => {
+    const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({ email: 'noprivacy@test.com', privacyConsent: false }),
     });
     expect(result.status).not.toBe(200);
   });

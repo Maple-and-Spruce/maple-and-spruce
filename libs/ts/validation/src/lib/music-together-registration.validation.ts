@@ -9,6 +9,7 @@
  * @see https://vestjs.dev/
  */
 import { staticSuite, test, enforce, only } from 'vest';
+import { MT_MAX_CHILDREN } from '@maple/ts/domain';
 
 /** One child row from the form. `dob` may arrive as a Date or ISO string. */
 export interface MusicTogetherChildInput {
@@ -21,14 +22,22 @@ export interface MusicTogetherChildInput {
  */
 export interface MusicTogetherRegistrationValidationInput {
   sectionId?: string;
+  /** Enrolling adult's first name. */
+  adultFirstName?: string;
+  /** Enrolling adult's last name. */
+  adultLastName?: string;
   parentNames?: string[];
   children?: MusicTogetherChildInput[];
   email?: string;
   phone?: string;
   address?: string;
+  /** Optional accommodation notes (special needs / allergies). */
+  accommodations?: string;
   paymentPlan?: 'full' | 'installments';
   /** Policies-accepted checkbox. */
   policiesAccepted?: boolean;
+  /** Privacy-notice consent checkbox. */
+  privacyConsent?: boolean;
   /** Card-on-file authorization checkbox (required for installments). */
   cardOnFileAuth?: boolean;
 }
@@ -60,6 +69,22 @@ export const musicTogetherRegistrationValidation = staticSuite(
       enforce(data.sectionId).isNotBlank();
     });
 
+    test('adultFirstName', "Adult's first name is required", () => {
+      enforce(data.adultFirstName).isNotBlank();
+    });
+
+    test('adultFirstName', 'First name must be less than 100 characters', () => {
+      if (data.adultFirstName) enforce(data.adultFirstName).shorterThan(100);
+    });
+
+    test('adultLastName', "Adult's last name is required", () => {
+      enforce(data.adultLastName).isNotBlank();
+    });
+
+    test('adultLastName', 'Last name must be less than 100 characters', () => {
+      if (data.adultLastName) enforce(data.adultLastName).shorterThan(100);
+    });
+
     // At least one non-blank parent/guardian name.
     test('parentNames', 'At least one parent or guardian name is required', () => {
       enforce(
@@ -73,10 +98,19 @@ export const musicTogetherRegistrationValidation = staticSuite(
       }
     });
 
-    // At least one child, each with a name and a valid past date of birth.
+    // At least one child, at most MT_MAX_CHILDREN, each with a name and a
+    // valid past date of birth.
     test('children', 'At least one child is required', () => {
       enforce(data.children ?? []).longerThanOrEquals(1);
     });
+
+    test(
+      'children',
+      `No more than ${MT_MAX_CHILDREN} children can be enrolled per family`,
+      () => {
+        enforce(data.children ?? []).shorterThanOrEquals(MT_MAX_CHILDREN);
+      }
+    );
 
     test('children', 'Each child needs a name', () => {
       for (const child of data.children ?? []) {
@@ -123,12 +157,21 @@ export const musicTogetherRegistrationValidation = staticSuite(
       if (data.address) enforce(data.address).shorterThanOrEquals(300);
     });
 
+    test('accommodations', 'Accommodations must be less than 1000 characters', () => {
+      if (data.accommodations)
+        enforce(data.accommodations).shorterThanOrEquals(1000);
+    });
+
     test('paymentPlan', 'Choose a payment option', () => {
       enforce(data.paymentPlan).inside(['full', 'installments']);
     });
 
     test('policiesAccepted', 'You must accept the program policies', () => {
       enforce(data.policiesAccepted).equals(true);
+    });
+
+    test('privacyConsent', 'You must accept the privacy notice', () => {
+      enforce(data.privacyConsent).equals(true);
     });
 
     // Card-on-file authorization is required only for the installment plan,
