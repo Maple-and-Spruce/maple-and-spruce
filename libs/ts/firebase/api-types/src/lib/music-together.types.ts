@@ -129,7 +129,7 @@ export interface GetPublicMusicTogetherSectionResponse {
 // Create Registration (public — checkout, with payment)
 // ============================================================================
 
-/** One child on the registration form; `dob` is an ISO date string. */
+/** One child on the registration form; `name` is the first name, `dob` an ISO date string. */
 export interface MusicTogetherChildPayload {
   name: string;
   dob: string;
@@ -137,14 +137,28 @@ export interface MusicTogetherChildPayload {
 
 export interface CreateMusicTogetherRegistrationRequest {
   sectionId: string;
-  parentNames: string[];
+  /** Enrolling adult's first name (shared with Music Together Worldwide). */
+  adultFirstName: string;
+  /** Enrolling adult's last name (shared with Music Together Worldwide). */
+  adultLastName: string;
+  /**
+   * Parent/guardian name(s). Optional; the server falls back to the adult's
+   * first + last name when omitted. Kept for backward compatibility.
+   */
+  parentNames?: string[];
+  /** Enrolled children (first name + DOB). At least one, at most three. */
   children: MusicTogetherChildPayload[];
   email: string;
   phone: string;
+  /** Full mailing/street address. */
   address: string;
+  /** Special needs, allergies, or other accommodation notes. Internal use only. */
+  accommodations?: string;
   /** 'full' = one charge; 'installments' = first charge now + scheduled rest. */
   paymentPlan: 'full' | 'installments';
   policiesAccepted: boolean;
+  /** Privacy notice consent (adult contact details shared with Music Together Worldwide). */
+  privacyConsent: boolean;
   /** Card-on-file authorization — required when paymentPlan is 'installments'. */
   cardOnFileAuth?: boolean;
   /** Nonce from the Square Web Payments SDK card tokenization. */
