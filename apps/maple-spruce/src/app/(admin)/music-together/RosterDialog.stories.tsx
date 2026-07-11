@@ -142,24 +142,35 @@ export const RostersAndDownloadsCsv: Story = {
       expect(canvas.getByRole('dialog')).toBeInTheDocument()
     );
 
-    // Renders enrolled families with past-due + child DOBs.
+    // Renders enrolled families with past-due, child DOBs, and the internal
+    // accommodations/notes column.
     await expect(canvas.getByText('Past due')).toBeInTheDocument();
     await expect(
       canvas.getByText(/Wren \(2022-01-10\)/)
     ).toBeInTheDocument();
+    await expect(
+      canvas.getByText(/peanut allergy/i)
+    ).toBeInTheDocument();
 
-    // Download button counts the 3 confirmed families and is enabled.
-    const download = canvas.getByRole('button', { name: /licensee csv \(3\)/i });
-    await expect(download).toBeEnabled();
+    // Both export buttons count the 3 confirmed families and are enabled.
+    const licensee = canvas.getByRole('button', {
+      name: /licensee csv[^(]*\(3\)/i,
+    });
+    const internal = canvas.getByRole('button', {
+      name: /internal roster \(3\)/i,
+    });
+    await expect(licensee).toBeEnabled();
+    await expect(internal).toBeEnabled();
 
-    // Clicking triggers a blob download via a temporary anchor — assert the
-    // anchor is created + clicked (spy the prototype so no file actually saves).
+    // Clicking either triggers a blob download via a temporary anchor — assert
+    // the anchor is created + clicked (spy the prototype so no file saves).
     const clickSpy = fn();
     const orig = HTMLAnchorElement.prototype.click;
     HTMLAnchorElement.prototype.click = clickSpy;
     try {
-      await userEvent.click(download);
-      await waitFor(() => expect(clickSpy).toHaveBeenCalled());
+      await userEvent.click(licensee);
+      await userEvent.click(internal);
+      await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(2));
     } finally {
       HTMLAnchorElement.prototype.click = orig;
     }
@@ -183,7 +194,10 @@ export const EmptyDisablesExport: Story = {
       expect(canvas.getByRole('dialog')).toBeInTheDocument()
     );
     await expect(
-      canvas.getByRole('button', { name: /licensee csv \(0\)/i })
+      canvas.getByRole('button', { name: /licensee csv[^(]*\(0\)/i })
+    ).toBeDisabled();
+    await expect(
+      canvas.getByRole('button', { name: /internal roster \(0\)/i })
     ).toBeDisabled();
   },
 };
