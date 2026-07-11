@@ -1,12 +1,21 @@
 /**
- * Music Together licensee report
+ * Music Together CSV exports
  *
- * The Music Together license requires a per-section export of every enrolled
- * child: the parent/guardian name(s), the child's name, and the child's date
- * of birth. This builds that report as CSV — one row per child.
+ * Two distinct exports with different audiences and privacy boundaries:
  *
- * Pure and dependency-free so it can be unit-tested and reused on the server
- * (a CSV-returning endpoint) or the client (a download button).
+ * 1. **Licensee report (Music Together Worldwide).** Enrolling families agree
+ *    that the *adult's* name, email, and street address may be shared with MTW
+ *    as a licensed center. Children's information is NEVER shared outside Maple
+ *    & Spruce, so this export carries adult contact details only — one row per
+ *    family. (This replaced an earlier child-level report; see the privacy
+ *    notice in the Policies page.)
+ *
+ * 2. **Internal roster (Maple & Spruce only).** Everything staff need to run
+ *    the class, including each child's first name and DOB plus any
+ *    accommodations/notes — one row per child. Never leaves Maple & Spruce.
+ *
+ * Both are pure and dependency-free so they can be unit-tested and reused on
+ * the server (a CSV-returning endpoint) or the client (a download button).
  */
 import type { MusicTogetherRegistration } from './music-together-registration';
 
@@ -20,27 +29,98 @@ export function mtFormatDob(dob: Date): string {
   return dob.toISOString().slice(0, 10);
 }
 
-/** Column headers for the licensee report, in order. */
+function toCsv(rows: string[][]): string {
+  return rows.map((row) => row.map(mtCsvEscape).join(',')).join('\r\n') + '\r\n';
+}
+
+// ============================================================================
+// Licensee report — shared with Music Together Worldwide (adults only)
+// ============================================================================
+
+/** Column headers for the licensee report, in order. Adult contact only. */
 export const MT_LICENSEE_CSV_HEADERS = [
-  'Parent(s)',
-  'Child Name',
-  'Child DOB',
+  'Adult First Name',
+  'Adult Last Name',
+  'Email',
+  'Street Address',
 ] as const;
 
+/** The registration fields the licensee report is allowed to include. */
+export type MtLicenseeRegistration = Pick<
+  MusicTogetherRegistration,
+  'adultFirstName' | 'adultLastName' | 'email' | 'address'
+>;
+
 /**
- * Build the licensee CSV for a set of registrations — one row per child.
- * Parents are joined with '; '. Caller decides which registrations to include
- * (typically confirmed enrollments).
+ * Build the licensee CSV for Music Together Worldwide — one row per family,
+ * adult contact details only. NO child information is included. Caller decides
+ * which registrations to include (typically confirmed enrollments).
  */
 export function buildMusicTogetherLicenseeCsv(
-  registrations: Pick<MusicTogetherRegistration, 'parentNames' | 'children'>[]
+  registrations: MtLicenseeRegistration[]
 ): string {
   const rows: string[][] = [[...MT_LICENSEE_CSV_HEADERS]];
   for (const reg of registrations) {
-    const parents = reg.parentNames.join('; ');
+    rows.push([
+      reg.adultFirstName,
+      reg.adultLastName,
+      reg.email,
+      reg.address,
+    ]);
+  }
+  return toCsv(rows);
+}
+
+// ============================================================================
+// Internal roster — Maple & Spruce only (includes children)
+// ============================================================================
+
+/** Column headers for the internal roster, in order. Never shared with MTW. */
+export const MT_INTERNAL_ROSTER_CSV_HEADERS = [
+  'Adult First Name',
+  'Adult Last Name',
+  'Email',
+  'Phone',
+  'Child First Name',
+  'Child DOB',
+  'Accommodations',
+  'Notes',
+] as const;
+
+/** The registration fields the internal roster includes. */
+export type MtInternalRosterRegistration = Pick<
+  MusicTogetherRegistration,
+  | 'adultFirstName'
+  | 'adultLastName'
+  | 'email'
+  | 'phone'
+  | 'children'
+  | 'accommodations'
+  | 'notes'
+>;
+
+/**
+ * Build the internal roster CSV for Maple & Spruce staff — one row per child,
+ * with the child's first name + DOB and the family's accommodations/notes.
+ * This never leaves Maple & Spruce; do not send it to Music Together Worldwide.
+ */
+export function buildMusicTogetherInternalRosterCsv(
+  registrations: MtInternalRosterRegistration[]
+): string {
+  const rows: string[][] = [[...MT_INTERNAL_ROSTER_CSV_HEADERS]];
+  for (const reg of registrations) {
     for (const child of reg.children) {
-      rows.push([parents, child.name, mtFormatDob(child.dob)]);
+      rows.push([
+        reg.adultFirstName,
+        reg.adultLastName,
+        reg.email,
+        reg.phone,
+        child.name,
+        mtFormatDob(child.dob),
+        reg.accommodations ?? '',
+        reg.notes ?? '',
+      ]);
     }
   }
-  return rows.map((row) => row.map(mtCsvEscape).join(',')).join('\r\n') + '\r\n';
+  return toCsv(rows);
 }

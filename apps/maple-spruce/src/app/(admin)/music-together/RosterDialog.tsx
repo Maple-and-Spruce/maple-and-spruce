@@ -21,6 +21,7 @@ import {
 import DownloadIcon from '@mui/icons-material/Download';
 import {
   buildMusicTogetherLicenseeCsv,
+  buildMusicTogetherInternalRosterCsv,
   mtFormatDob,
   type RequestState,
 } from '@maple/ts/domain';
@@ -55,12 +56,22 @@ export function RosterDialog({ open, onClose, sectionName, rosterState }: Props)
     [entries]
   );
 
-  const handleDownload = () => {
+  const safeName = sectionName.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+
+  // Licensee report → shared with Music Together Worldwide: adult contact only.
+  const handleDownloadLicensee = () => {
     const csv = buildMusicTogetherLicenseeCsv(
       confirmed.map((e) => e.registration)
     );
-    const safe = sectionName.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    downloadCsv(`music-together-licensee-${safe}.csv`, csv);
+    downloadCsv(`music-together-licensee-${safeName}.csv`, csv);
+  };
+
+  // Internal roster → Maple & Spruce only: includes children + accommodations.
+  const handleDownloadInternal = () => {
+    const csv = buildMusicTogetherInternalRosterCsv(
+      confirmed.map((e) => e.registration)
+    );
+    downloadCsv(`music-together-internal-roster-${safeName}.csv`, csv);
   };
 
   return (
@@ -143,10 +154,17 @@ export function RosterDialog({ open, onClose, sectionName, rosterState }: Props)
       <DialogActions>
         <Button
           startIcon={<DownloadIcon />}
-          onClick={handleDownload}
+          onClick={handleDownloadInternal}
           disabled={confirmed.length === 0}
         >
-          Licensee CSV ({confirmed.length})
+          Internal roster ({confirmed.length})
+        </Button>
+        <Button
+          startIcon={<DownloadIcon />}
+          onClick={handleDownloadLicensee}
+          disabled={confirmed.length === 0}
+        >
+          Licensee CSV — MTW ({confirmed.length})
         </Button>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
