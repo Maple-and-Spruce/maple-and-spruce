@@ -18,6 +18,8 @@ export {
   type CatalogVariationInput,
   type CreateCatalogItemInput,
   type CreateCatalogItemResult,
+  type CreateClassCatalogItemInput,
+  type CreateClassCatalogItemResult,
   type UpdateCatalogItemInput,
   type UpdateCatalogItemResult,
   type UpdateCatalogVariationInput,

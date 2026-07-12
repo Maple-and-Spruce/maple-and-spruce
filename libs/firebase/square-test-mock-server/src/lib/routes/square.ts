@@ -316,6 +316,31 @@ export function registerSquareRoutes(server: SquareMockServer): void {
   });
 
   registerCraftClubRoutes(server);
+  registerMockControlRoutes(server);
+}
+
+/**
+ * Test-control endpoints under /_mock/*.
+ *
+ * The mock server runs in its own process, separate from the test runner, so
+ * suites need an HTTP surface to reset state and read back the requests the
+ * function process sent. Mirrors the Etsy mock's `/_mock/*` pattern. These
+ * routes are prefixed with `_mock/` to stay obviously non-Square.
+ */
+function registerMockControlRoutes(server: SquareMockServer): void {
+  // Clear recorded requests + reset in-memory catalog/inventory/payment state.
+  server.post('/_mock/reset', () => {
+    server.clearRequests();
+    resetSquareState();
+    return { status: 200, body: { ok: true } };
+  });
+
+  // Return the recorded requests as JSON so tests can assert on the actual
+  // payloads the function sent to Square. Query filtering is done client-side
+  // by the test (the handler has no access to the query string).
+  server.get('/_mock/requests', () => {
+    return { status: 200, body: { requests: server.requests } };
+  });
 }
 
 /**
