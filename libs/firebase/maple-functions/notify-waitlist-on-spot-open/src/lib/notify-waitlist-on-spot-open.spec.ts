@@ -38,19 +38,6 @@ vi.mock('firebase-functions/v2/firestore', () => ({
   onDocumentWritten: vi.fn((_config, handler) => handler),
 }));
 
-// `getAppUrl` prefers the first https origin, so mixing in a non-https
-// localhost entry doesn't change the assertion — we keep the mock https-only
-// to satisfy sonarjs/no-clear-text-protocols on the spec file.
-vi.mock('firebase-functions/params', () => ({
-  defineString: vi.fn((name: string) => ({
-    name,
-    value: () =>
-      name === 'ALLOWED_ORIGINS'
-        ? 'https://mapleandsprucefolkarts.com'
-        : `mock-${name}`,
-  })),
-}));
-
 import {
   isSpotOpeningChange,
   notifyWaitlistOnSpotOpen,
@@ -219,11 +206,43 @@ describe('notifyWaitlistOnSpotOpen handler', () => {
     expect(firstCall.to).toBe('alice@example.com');
     expect(firstCall.template.name).toBe('class-spot-available');
     expect(firstCall.template.data.className).toBe('Try-It Stained Glass');
+    // No webflowSlug on this fixture → falls back to the name-derived slug.
     expect(firstCall.template.data.classUrl).toBe(
       'https://mapleandsprucefolkarts.com/classes/try-it-stained-glass'
     );
     expect(mocks.batchCommit).toHaveBeenCalledOnce();
     expect(mocks.waitlistClear).toHaveBeenCalledWith('class-1');
+  });
+
+  it('links to the real Webflow slug when the class has one', async () => {
+    // Webflow auto-suffixes slug collisions; the stored slug does not match
+    // the name-derived one, so the email must use the stored value verbatim.
+    mocks.classFindById.mockResolvedValue({
+      ...publishedClass,
+      webflowSlug: 'stained-glass-tryit-class-b192d',
+    });
+    mocks.waitlistFind.mockResolvedValue([
+      {
+        id: 'alice@example.com',
+        classId: 'class-1',
+        email: 'alice@example.com',
+        createdAt: new Date(),
+      },
+    ]);
+
+    await handler(
+      event(
+        snap({ status: 'confirmed', classId: 'class-1' }),
+        snap({ status: 'cancelled', classId: 'class-1' })
+      )
+    );
+
+    const firstCall = mocks.batchSet.mock.calls[0]?.[1] as {
+      template: { data: { classUrl: string } };
+    };
+    expect(firstCall.template.data.classUrl).toBe(
+      'https://mapleandsprucefolkarts.com/classes/stained-glass-tryit-class-b192d'
+    );
   });
 
   it('clears waitlist without emailing when class is unpublished or gone', async () => {
