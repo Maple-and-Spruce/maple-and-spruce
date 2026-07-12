@@ -42,6 +42,7 @@
     "firebase-maple-functions-sync-inventory-to-etsy": "maple-sync",
     "firebase-maple-functions-sync-inventory-to-square": "maple-square",
     "firebase-maple-functions-sync-class-to-square": "maple-square",
+    "firebase-maple-functions-sync-class-inventory-to-square": "maple-square",
     "firebase-maple-functions-create-craft-club-subscription": "maple-square",
     "firebase-maple-functions-create-music-together-registration": "maple-square",
     "firebase-maple-functions-charge-music-together-installments": "maple-square",
