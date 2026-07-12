@@ -185,6 +185,28 @@ export const RegistrationRepository = {
   },
 
   /**
+   * Find a registration by its Square order id.
+   *
+   * Used by the POS class-registration worker for idempotency: if a
+   * registration already carries this `squareOrderId`, the order has already
+   * been turned into a registration and must not be duplicated. Single-field
+   * equality query → covered by Firestore's automatic single-field index, no
+   * composite index required.
+   */
+  async findBySquareOrderId(
+    squareOrderId: string
+  ): Promise<Registration | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('squareOrderId', '==', squareOrderId)
+      .limit(1)
+      .get();
+
+    const doc = snapshot.docs[0];
+    return doc ? docToRegistration(doc) : undefined;
+  },
+
+  /**
    * Create a new registration
    */
   async create(input: CreateRegistrationInput): Promise<Registration> {

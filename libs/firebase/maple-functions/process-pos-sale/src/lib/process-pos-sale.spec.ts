@@ -1,0 +1,301 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+/**
+ * Tests for processPosSale — the Firestore-triggered worker that turns a
+ * completed in-person Square POS class sale into a source:'pos' registration.
+ *
+ * Covers: web-order dedup, squareOrderId idempotency, customer-with-email and
+ * customer-without-email (admin alert) creation, non-class line items,
+ * already-processed early-return, and the markFailed+rethrow error path.
+ */
+
+const mocks = vi.hoisted(() => ({
+  onDocumentWritten: vi.fn(),
+  // PosSaleRequestRepository
+  markProcessed: vi.fn(),
+  markFailed: vi.fn(),
+  // RegistrationRepository
+  findById: vi.fn(),
+  findBySquareOrderId: vi.fn(),
+  createRegistration: vi.fn(),
+  // ClassRepository
+  findBySquareVariationId: vi.fn(),
+  // Square services
+  getPayment: vi.fn(),
+  getOrder: vi.fn(),
+  getCustomer: vi.fn(),
+  // mail collection
+  mailAdd: vi.fn(),
+}));
+
+vi.mock('firebase-functions/v2/firestore', () => ({
+  onDocumentWritten: vi.fn((config, handler) => {
+    mocks.onDocumentWritten(config, handler);
+    return handler;
+  }),
+}));
+
+vi.mock('firebase-functions/params', () => ({
+  defineSecret: vi.fn((name: string) => ({ name, value: () => `mock-${name}` })),
+  defineString: vi.fn((name: string) => ({ name, value: () => `mock-${name}` })),
+}));
+
+vi.mock('@maple/firebase/database', () => ({
+  getDb: () => ({
+    collection: vi.fn(() => ({ add: mocks.mailAdd })),
+  }),
+  PosSaleRequestRepository: {
+    markProcessed: mocks.markProcessed,
+    markFailed: mocks.markFailed,
+  },
+  RegistrationRepository: {
+    findById: mocks.findById,
+    findBySquareOrderId: mocks.findBySquareOrderId,
+    create: mocks.createRegistration,
+  },
+  ClassRepository: {
+    findBySquareVariationId: mocks.findBySquareVariationId,
+  },
+}));
+
+vi.mock('@maple/firebase/square', () => ({
+  Square: class MockSquare {
+    taxRatePercent = 6;
+    paymentsService = { getPayment: mocks.getPayment };
+    ordersService = { getOrder: mocks.getOrder };
+    customersService = { get: mocks.getCustomer };
+  },
+  SQUARE_SECRET_NAMES: ['SQUARE_ACCESS_TOKEN'] as const,
+  SQUARE_STRING_NAMES: ['SQUARE_LOCATION_ID'] as const,
+}));
+
+vi.mock('@maple/ts/domain', () => ({
+  calculateTax: (subtotalCents: number, taxRatePercent: number) => {
+    const taxAmountCents = Math.round(subtotalCents * (taxRatePercent / 100));
+    return { taxAmountCents, totalCents: subtotalCents + taxAmountCents };
+  },
+}));
+
+import { processPosSale } from './process-pos-sale';
+
+type Handler = (event: unknown) => Promise<void>;
+const handler = processPosSale as unknown as Handler;
+
+function makeEvent(
+  after: Record<string, unknown> | undefined,
+  paymentId = 'PAY-1'
+): unknown {
+  return {
+    data: { after: { data: () => after } },
+    params: { paymentId },
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Safe defaults — most tests override.
+  mocks.getPayment.mockResolvedValue({
+    paymentId: 'PAY-1',
+    status: 'COMPLETED',
+    orderId: 'ORDER-1',
+    customerId: undefined,
+    receiptUrl: 'https://squareup.com/receipt/pos',
+  });
+  mocks.getOrder.mockResolvedValue({
+    orderId: 'ORDER-1',
+    referenceId: undefined,
+    customerId: undefined,
+    totalCents: 4770,
+    lineItems: [
+      { catalogObjectId: 'VAR_A', name: 'Pottery 101', quantity: 1 },
+    ],
+  });
+  mocks.findById.mockResolvedValue(undefined);
+  mocks.findBySquareOrderId.mockResolvedValue(undefined);
+  mocks.findBySquareVariationId.mockResolvedValue({
+    id: 'class-1',
+    name: 'Pottery 101',
+    priceCents: 4500,
+  });
+  mocks.createRegistration.mockResolvedValue({ id: 'reg-new' });
+});
+
+describe('processPosSale — early exits', () => {
+  it('returns without work when the doc was deleted (no after data)', async () => {
+    await handler(makeEvent(undefined));
+    expect(mocks.getPayment).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).not.toHaveBeenCalled();
+  });
+
+  it('returns immediately when the doc is already processed', async () => {
+    await handler(makeEvent({ processedAt: new Date(), orderId: 'ORDER-1' }));
+    expect(mocks.getPayment).not.toHaveBeenCalled();
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+  });
+
+  it('marks processed without creating when payment is not COMPLETED', async () => {
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'APPROVED',
+    });
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('marks processed without creating when there is no order id', async () => {
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: undefined,
+    });
+    await handler(makeEvent({})); // no orderId fallback on the doc either
+    expect(mocks.getOrder).not.toHaveBeenCalled();
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+});
+
+describe('processPosSale — dedup', () => {
+  it('skips a web-originated order (referenceId maps to an existing registration)', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-web-abc',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
+    });
+    mocks.findById.mockResolvedValue({ id: 'reg-web-abc', source: 'web' });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findById).toHaveBeenCalledWith('reg-web-abc');
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('skips an order already turned into a registration (squareOrderId idempotency)', async () => {
+    mocks.findBySquareOrderId.mockResolvedValue({ id: 'reg-existing' });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareOrderId).toHaveBeenCalledWith('ORDER-1');
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+});
+
+describe('processPosSale — registration creation', () => {
+  it('creates a source:pos registration with the customer email, no admin alert', async () => {
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: 'cust-1',
+      receiptUrl: 'https://squareup.com/receipt/pos',
+    });
+    mocks.getCustomer.mockResolvedValue({
+      emailAddress: 'buyer@example.com',
+      givenName: 'Grace',
+      familyName: 'Hopper',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [{ catalogObjectId: 'VAR_A', name: 'Pottery 101', quantity: 2 }],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.createRegistration).toHaveBeenCalledTimes(1);
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-1',
+        customerEmail: 'buyer@example.com',
+        customerName: 'Grace Hopper',
+        quantity: 2,
+        source: 'pos',
+        status: 'confirmed',
+        squareOrderId: 'ORDER-1',
+        squarePaymentId: 'PAY-1',
+        squareReceiptUrl: 'https://squareup.com/receipt/pos',
+        // 4500 * 2 = 9000 subtotal, 6% tax = 540, total 9540
+        subtotalCents: 9000,
+        taxAmountCents: 540,
+        taxRatePercent: 6,
+        pricePaidCents: 9540,
+      })
+    );
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('creates a placeholder registration and emails the admin when there is no email', async () => {
+    // No customer id → no email resolved.
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: undefined,
+      receiptUrl: 'https://squareup.com/receipt/pos',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [{ catalogObjectId: 'VAR_A', name: 'Pottery 101', quantity: 1 }],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerEmail: '',
+        customerName: 'POS Sale',
+        source: 'pos',
+      })
+    );
+    expect(mocks.getCustomer).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).toHaveBeenCalledTimes(1);
+    const mailDoc = mocks.mailAdd.mock.calls[0][0];
+    expect(mailDoc.to).toBe('katie@mapleandsprucefolkarts.com');
+    expect(mailDoc.message.subject).toMatch(/needs an attendee email/i);
+    expect(mailDoc.message.text).toContain('ORDER-1');
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('creates no registration for a line item that maps to no class', async () => {
+    mocks.findBySquareVariationId.mockResolvedValue(undefined);
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [{ catalogObjectId: 'VAR_RETAIL', name: 'A mug', quantity: 1 }],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('skips line items with no catalogObjectId', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [{ name: 'Custom amount', quantity: 1 }],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findBySquareVariationId).not.toHaveBeenCalled();
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+});
+
+describe('processPosSale — error handling', () => {
+  it('marks failed and re-throws when Square throws', async () => {
+    mocks.getPayment.mockRejectedValue(new Error('Square 500'));
+
+    await expect(handler(makeEvent({ orderId: 'ORDER-1' }))).rejects.toThrow(
+      'Square 500'
+    );
+
+    expect(mocks.markFailed).toHaveBeenCalledWith('PAY-1', 'Square 500');
+    expect(mocks.markProcessed).not.toHaveBeenCalled();
+  });
+});

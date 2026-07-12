@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
     requestRefresh: vi.fn(),
     findBySubscriptionId: vi.fn(),
     craftClubUpdate: vi.fn(),
+    posEnqueue: vi.fn(),
   };
 });
 
@@ -42,6 +43,9 @@ vi.mock('@maple/firebase/database', () => ({
   CraftClubMemberRepository: {
     findBySubscriptionId: mocks.findBySubscriptionId,
     update: mocks.craftClubUpdate,
+  },
+  PosSaleRequestRepository: {
+    enqueue: mocks.posEnqueue,
   },
 }));
 
@@ -695,6 +699,84 @@ describe('Square Webhook - squareWebhook endpoint', () => {
     await fn(makeReq(body, sig), res);
 
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('Square Webhook - handlePaymentUpsert (POS enqueue path)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  function paymentEvent(
+    payment: Record<string, unknown> | undefined,
+    type: 'payment.created' | 'payment.updated' = 'payment.updated'
+  ) {
+    return {
+      merchant_id: 'ML1TB2DX6N1B0',
+      type,
+      event_id: 'evt-pay',
+      created_at: '2026-07-11T10:00:00Z',
+      data: {
+        type: 'payment',
+        id: (payment?.id as string) ?? 'PAY-DATA-ID',
+        object: payment ? { payment } : {},
+      },
+    } as never;
+  }
+
+  it('enqueues a POS sale request for a COMPLETED payment', async () => {
+    mocks.posEnqueue.mockResolvedValue(undefined);
+
+    const { handlePaymentUpsert } = await import('./square-webhook');
+    const result = await handlePaymentUpsert(
+      paymentEvent({
+        id: 'PAY-1',
+        order_id: 'ORDER-1',
+        status: 'COMPLETED',
+      })
+    );
+
+    expect(mocks.posEnqueue).toHaveBeenCalledWith('PAY-1', {
+      orderId: 'ORDER-1',
+    });
+    expect(result.action).toBe('enqueued');
+    expect(result.details).toBe('PAY-1');
+  });
+
+  it('tolerates camelCase orderId in the payload', async () => {
+    mocks.posEnqueue.mockResolvedValue(undefined);
+
+    const { handlePaymentUpsert } = await import('./square-webhook');
+    await handlePaymentUpsert(
+      paymentEvent({ id: 'PAY-2', orderId: 'ORDER-2', status: 'COMPLETED' })
+    );
+
+    expect(mocks.posEnqueue).toHaveBeenCalledWith('PAY-2', {
+      orderId: 'ORDER-2',
+    });
+  });
+
+  it('skips (no enqueue) when the payment is not COMPLETED', async () => {
+    const { handlePaymentUpsert } = await import('./square-webhook');
+    const result = await handlePaymentUpsert(
+      paymentEvent({ id: 'PAY-3', order_id: 'ORDER-3', status: 'APPROVED' })
+    );
+
+    expect(mocks.posEnqueue).not.toHaveBeenCalled();
+    expect(result.action).toBe('skipped');
+    expect(result.details).toMatch(/not completed/i);
+  });
+
+  it('skips when there is no payment id', async () => {
+    const { handlePaymentUpsert } = await import('./square-webhook');
+    const result = await handlePaymentUpsert({
+      merchant_id: 'm',
+      type: 'payment.updated',
+      event_id: 'evt',
+      created_at: '2026-07-11T10:00:00Z',
+      data: { type: 'payment', id: '', object: {} },
+    } as never);
+
+    expect(mocks.posEnqueue).not.toHaveBeenCalled();
+    expect(result.action).toBe('skipped');
   });
 });
 
