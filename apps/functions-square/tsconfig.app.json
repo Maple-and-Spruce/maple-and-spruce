@@ -19,6 +19,7 @@
     "../../libs/firebase/maple-functions/import-etsy-listings/**/*.ts",
     "../../libs/firebase/maple-functions/sync-inventory-to-square/**/*.ts",
     "../../libs/firebase/maple-functions/sync-class-to-square/**/*.ts",
+    "../../libs/firebase/maple-functions/sync-class-inventory-to-square/**/*.ts",
     "../../libs/firebase/maple-functions/create-craft-club-subscription/**/*.ts",
     "../../libs/firebase/maple-functions/cancel-craft-club-subscription/**/*.ts",
     "../../libs/firebase/maple-functions/update-craft-club-payment-method/**/*.ts",
