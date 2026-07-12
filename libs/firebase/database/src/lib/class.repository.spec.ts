@@ -636,6 +636,43 @@ describe('ClassRepository', () => {
     });
   });
 
+  // ─── updateWebflowSync ───────────────────────────────────────────
+
+  describe('updateWebflowSync', () => {
+    function stubUpdate() {
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockDocFn = vi.fn().mockReturnValue({ update: mockUpdate });
+      const mockCollection = vi.fn().mockReturnValue({ doc: mockDocFn });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+      return { mockUpdate, mockDocFn, mockCollection };
+    }
+
+    it('writes both the item ID and slug', async () => {
+      const { mockUpdate, mockDocFn, mockCollection } = stubUpdate();
+
+      await ClassRepository.updateWebflowSync(
+        'class-1',
+        'wf-abc-123',
+        'stained-glass-tryit-class-b192d'
+      );
+
+      expect(mockCollection).toHaveBeenCalledWith('classes');
+      expect(mockDocFn).toHaveBeenCalledWith('class-1');
+      expect(mockUpdate).toHaveBeenCalledWith({
+        webflowItemId: 'wf-abc-123',
+        webflowSlug: 'stained-glass-tryit-class-b192d',
+      });
+    });
+
+    it('omits webflowSlug when empty so a good stored slug is not clobbered', async () => {
+      const { mockUpdate } = stubUpdate();
+
+      await ClassRepository.updateWebflowSync('class-1', 'wf-abc-123', '');
+
+      expect(mockUpdate).toHaveBeenCalledWith({ webflowItemId: 'wf-abc-123' });
+    });
+  });
+
   // ─── cancel ───────────────────────────────────────────────────────
 
   describe('cancel', () => {

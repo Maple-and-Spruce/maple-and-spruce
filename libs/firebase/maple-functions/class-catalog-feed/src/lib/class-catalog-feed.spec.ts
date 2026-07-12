@@ -58,10 +58,20 @@ describe('generateClassSlug', () => {
 });
 
 describe('mapClassToFeedItem', () => {
-  it('builds the public link from the class name slug', () => {
+  it('falls back to the name-derived slug when webflowSlug is absent', () => {
     const item = mapClassToFeedItem(makeClass(), 0);
     expect(item?.link).toBe(
       'https://mapleandsprucefolkarts.com/classes/stained-glass-studio-series'
+    );
+  });
+
+  it('builds the public link from the real Webflow slug when present', () => {
+    const item = mapClassToFeedItem(
+      makeClass({ webflowSlug: 'stained-glass-studio-series-b192d' }),
+      0
+    );
+    expect(item?.link).toBe(
+      'https://mapleandsprucefolkarts.com/classes/stained-glass-studio-series-b192d'
     );
   });
 

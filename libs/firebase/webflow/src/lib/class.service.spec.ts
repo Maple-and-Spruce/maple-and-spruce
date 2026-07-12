@@ -342,8 +342,10 @@ describe('ClassService', () => {
     it('creates a new Webflow item when class does not exist', async () => {
       // findByFirebaseId returns nothing
       mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      // Webflow auto-suffixed the slug on create — capture the real value.
       mockClient.collections.items.createItem.mockResolvedValue({
         id: 'wf-new-item',
+        fieldData: { slug: 'pottery-101-9f2a1' },
       });
 
       const result = await service.syncClass({
@@ -355,6 +357,7 @@ describe('ClassService', () => {
       expect(result).toEqual({
         success: true,
         webflowItemId: 'wf-new-item',
+        webflowSlug: 'pottery-101-9f2a1',
         isNew: true,
       });
       expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
@@ -379,7 +382,10 @@ describe('ClassService', () => {
           },
         ],
       });
-      mockClient.collections.items.updateItem.mockResolvedValue({});
+      // Update response echoes the item's existing (unchanged) slug.
+      mockClient.collections.items.updateItem.mockResolvedValue({
+        fieldData: { slug: 'pottery-101-9f2a1' },
+      });
 
       const result = await service.syncClass({
         classEntity: mockClass,
@@ -393,6 +399,7 @@ describe('ClassService', () => {
       expect(result).toEqual({
         success: true,
         webflowItemId: 'wf-existing',
+        webflowSlug: 'pottery-101-9f2a1',
         isNew: false,
       });
       expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
@@ -495,7 +502,9 @@ describe('ClassService', () => {
         id: 'wf-known',
         fieldData: { 'firebase-id': 'class-abc' },
       });
-      mockClient.collections.items.updateItem.mockResolvedValue({});
+      mockClient.collections.items.updateItem.mockResolvedValue({
+        fieldData: { slug: 'pottery-101' },
+      });
 
       const result = await service.syncClass({
         classEntity: mockClass,
@@ -506,6 +515,7 @@ describe('ClassService', () => {
       expect(result).toEqual({
         success: true,
         webflowItemId: 'wf-known',
+        webflowSlug: 'pottery-101',
         isNew: false,
       });
       expect(mockClient.collections.items.getItem).toHaveBeenCalledWith(

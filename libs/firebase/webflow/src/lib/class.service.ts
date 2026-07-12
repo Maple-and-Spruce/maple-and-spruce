@@ -61,6 +61,12 @@ export interface SyncClassInput {
 export interface SyncClassResult {
   success: boolean;
   webflowItemId: string;
+  /**
+   * The slug Webflow actually assigned the item (including any auto-appended
+   * collision suffix). Empty string if the API response omitted it. Persist
+   * this so public `/classes/{slug}` links resolve to the real page.
+   */
+  webflowSlug: string;
   isNew: boolean;
 }
 
@@ -69,6 +75,16 @@ export interface SyncClassResult {
  */
 interface WebflowItemWithId extends CollectionItem {
   id: string;
+}
+
+/**
+ * Pull the slug out of a Webflow item response. `fieldData.slug` is the real,
+ * Webflow-assigned slug; returns '' when the response shape lacks it so the
+ * caller can decline to overwrite a previously stored slug.
+ */
+function extractSlug(item: CollectionItem | undefined): string {
+  const fieldData = item?.fieldData as { slug?: unknown } | undefined;
+  return typeof fieldData?.slug === 'string' ? fieldData.slug : '';
 }
 
 /**
@@ -259,6 +275,7 @@ export class ClassService {
     );
 
     let webflowItemId: string;
+    let webflowSlug: string;
     let isNew: boolean;
 
     const fieldData = mapClassToFieldData(classEntity, {
@@ -271,12 +288,13 @@ export class ClassService {
     });
 
     if (existingItemId) {
-      await this.updateItem(existingItemId, fieldData);
+      webflowSlug = await this.updateItem(existingItemId, fieldData);
       webflowItemId = existingItemId;
       isNew = false;
     } else {
       const newItem = await this.createItem(fieldData);
       webflowItemId = newItem.id;
+      webflowSlug = extractSlug(newItem);
       isNew = true;
     }
 
@@ -284,7 +302,7 @@ export class ClassService {
       await this.publishItem(webflowItemId);
     }
 
-    return { success: true, webflowItemId, isNew };
+    return { success: true, webflowItemId, webflowSlug, isNew };
   }
 
   /**
@@ -427,19 +445,29 @@ export class ClassService {
     return response as WebflowItemWithId;
   }
 
+  /**
+   * Update an item's field data. Returns the item's real Webflow slug from
+   * the response (unchanged by the update — we never re-send it), or '' if the
+   * response omits it.
+   */
   private async updateItem(
     itemId: string,
     fieldData: ClassWebflowFieldData
-  ): Promise<void> {
+  ): Promise<string> {
     // Omit `slug` on update — Webflow auto-suffixes slug collisions on
     // create (e.g. `name-94fde` when `name` is taken), but on update it
     // 400s with a uniqueness error. Re-sending the deterministic slug
     // would freeze every later sync (incl. spots-remaining).
     const { slug: _slug, ...fieldDataWithoutSlug } = fieldData;
-    await this.client.collections.items.updateItem(this.collectionId, itemId, {
-      isArchived: false,
-      isDraft: false,
-      fieldData: fieldDataWithoutSlug,
-    });
+    const response = await this.client.collections.items.updateItem(
+      this.collectionId,
+      itemId,
+      {
+        isArchived: false,
+        isDraft: false,
+        fieldData: fieldDataWithoutSlug,
+      }
+    );
+    return extractSlug(response);
   }
 }

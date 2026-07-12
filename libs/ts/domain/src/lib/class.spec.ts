@@ -146,6 +146,20 @@ describe('Class domain helpers', () => {
       expect(result.spotsRemaining).toBe(8); // capacity - 0
     });
 
+    it('falls back to the name-derived slug when webflowSlug is absent', () => {
+      expect(toPublicClass(baseClass).slug).toBe('introduction-to-weaving');
+    });
+
+    it('prefers the real Webflow slug over the name-derived one', () => {
+      // Webflow auto-suffixes collisions, so the stored slug is not derivable
+      // from the name — the public URL must use it verbatim.
+      const result = toPublicClass({
+        ...baseClass,
+        webflowSlug: 'introduction-to-weaving-b192d',
+      });
+      expect(result.slug).toBe('introduction-to-weaving-b192d');
+    });
+
     it('calculates spotsRemaining correctly', () => {
       expect(toPublicClass(baseClass, undefined, undefined, 0).spotsRemaining).toBe(8);
       expect(toPublicClass(baseClass, undefined, undefined, 5).spotsRemaining).toBe(3);

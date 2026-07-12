@@ -93,6 +93,7 @@ function docToClass(
     whatToBring: data.whatToBring,
     minimumAge: data.minimumAge,
     webflowItemId: data.webflowItemId,
+    webflowSlug: data.webflowSlug,
     referralDiscount:
       data.referralDiscount &&
       typeof data.referralDiscount.percent === 'number' &&
@@ -273,6 +274,30 @@ export const ClassRepository = {
   async updateWebflowItemId(id: string, webflowItemId: string): Promise<void> {
     const docRef = db.collection(COLLECTION).doc(id);
     await docRef.update({ webflowItemId });
+  },
+
+  /**
+   * Persist the Webflow sync identifiers (item ID and the real slug) for a
+   * class. Called after syncing to Webflow CMS. Only the provided fields are
+   * written; `webflowSlug` is skipped when empty so we never clobber a good
+   * stored slug with a blank from a response that omitted it.
+   *
+   * Uses a bare `update` (no `updatedAt`) so it doesn't re-trigger the sync
+   * feedback loop beyond the caller's own change guard.
+   */
+  async updateWebflowSync(
+    id: string,
+    webflowItemId: string,
+    webflowSlug?: string
+  ): Promise<void> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    const payload: { webflowItemId: string; webflowSlug?: string } = {
+      webflowItemId,
+    };
+    if (webflowSlug) {
+      payload.webflowSlug = webflowSlug;
+    }
+    await docRef.update(payload);
   },
 
   /**
