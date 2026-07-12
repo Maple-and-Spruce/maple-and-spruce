@@ -86,6 +86,7 @@ export {
   useRegistrations,
   type UseRegistrationsFilters,
 } from './lib/useRegistrations';
+export { useClassWaitlist } from './lib/useClassWaitlist';
 
 // User & role administration
 export { useUsers } from './lib/useUsers';

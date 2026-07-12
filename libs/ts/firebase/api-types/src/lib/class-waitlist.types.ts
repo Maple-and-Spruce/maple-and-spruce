@@ -2,9 +2,9 @@
  * Class waitlist API request/response types
  *
  * Public endpoints used by the embedded Webflow registration widget when
- * a class is full.
+ * a class is full, plus an admin read endpoint for the portal roster.
  */
-import type { PublicClass } from '@maple/ts/domain';
+import type { ClassWaitlistEntry, PublicClass } from '@maple/ts/domain';
 
 // ============================================================================
 // Add to Class Waitlist (public — no auth)
@@ -34,4 +34,19 @@ export interface GetRelatedPublicClassesRequest {
 export interface GetRelatedPublicClassesResponse {
   /** Other published classes in the same category with future sessions and spots remaining. */
   classes: PublicClass[];
+}
+
+// ============================================================================
+// Get Class Waitlist (admin — portal roster)
+// ============================================================================
+
+export interface GetClassWaitlistRequest {
+  classId: string;
+}
+
+export interface GetClassWaitlistResponse {
+  /** Waitlist entries for the class, ordered earliest signup first. */
+  entries: ClassWaitlistEntry[];
+  /** Total number of entries (equals `entries.length`; sent explicitly for convenience). */
+  count: number;
 }
