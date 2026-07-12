@@ -6,6 +6,7 @@
   "tags": ["type:e2e"],
   "implicitDependencies": [
     "firebase-maple-functions-sync-class-to-square",
+    "firebase-maple-functions-sync-class-inventory-to-square",
     "firebase-integration-test-utils",
     "firebase-square-test-mock-server"
   ],

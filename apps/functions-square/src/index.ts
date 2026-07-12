@@ -66,3 +66,9 @@ export { adminCancelCraftClubSubscription } from '@maple/firebase/maple-function
 // Mirrors a published class as a Square catalog item + variation + required
 // modifier list so it can be rung up on POS in person.
 export { syncClassToSquare } from '@maple/firebase/maple-functions/sync-class-to-square';
+
+// Class registration → Square inventory sync (Firestore trigger on
+// registrations/{id}). Mirrors remaining seats (capacity - count) to the
+// class's Square variation via idempotent PHYSICAL_COUNT so POS stock stays
+// accurate as web registrations happen.
+export { syncClassInventoryToSquare } from '@maple/firebase/maple-functions/sync-class-inventory-to-square';
