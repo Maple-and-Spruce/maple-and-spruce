@@ -142,10 +142,168 @@ export interface UpdateCatalogItemResult {
 }
 
 /**
+ * Input for creating a class catalog item
+ */
+export interface CreateClassCatalogItemInput {
+  /** Firestore class id (used to derive a deterministic idempotency key) */
+  classId: string;
+  /** Class display name (becomes the catalog item name) */
+  name: string;
+  /** Optional class description */
+  description?: string;
+  /** Class price in cents (single-variation; classes have one price) */
+  priceCents: number;
+  /**
+   * Modifier list name shown to staff at POS. Defaults to
+   * `"Added customer email (required)?"` — required selection modifier
+   * with one Yes option whose only purpose is to force staff to acknowledge
+   * customer collection before tendering. There is no native way to *enforce*
+   * email collection at in-person POS, so this is the operational nudge.
+   */
+  modifierListName?: string;
+}
+
+/**
+ * Result of creating a class catalog item
+ */
+export interface CreateClassCatalogItemResult {
+  /** Square ITEM id */
+  squareItemId: string;
+  /** Square ITEM_VARIATION id (single variation per class) */
+  squareVariationId: string;
+  /** Square MODIFIER_LIST id attached to the item */
+  squareModifierListId: string;
+  /** Catalog version of the created ITEM (for optimistic locking) */
+  squareCatalogVersion: number;
+}
+
+/**
  * Catalog service for Square API operations
  */
 export class CatalogService {
   constructor(private readonly client: SquareClient) {}
+
+  /**
+   * Create a Square catalog ITEM, ITEM_VARIATION, and required MODIFIER_LIST
+   * for a class in a single batchUpsert. The modifier list is a single-option
+   * required selection ("Yes") so staff sees a prompt at POS — the closest
+   * thing Square offers to a per-item required field at in-person checkout
+   * (text-input modifiers don't render on the POS register; selection-only
+   * modifiers do).
+   */
+  async createClassCatalogItem(
+    input: CreateClassCatalogItemInput
+  ): Promise<CreateClassCatalogItemResult> {
+    const idempotencyKey = `class-create-${input.classId}-${Date.now()}`;
+    const itemTempId = `#class-item-${input.classId}`;
+    const variationTempId = `#class-variation-${input.classId}`;
+    const modifierListTempId = `#class-modlist-${input.classId}`;
+    const modifierTempId = `#class-mod-yes-${input.classId}`;
+    const modifierListName =
+      input.modifierListName ?? 'Added customer email (required)?';
+
+    const response = await this.client.catalog.batchUpsert({
+      idempotencyKey,
+      batches: [
+        {
+          objects: [
+            {
+              type: 'MODIFIER_LIST',
+              id: modifierListTempId,
+              modifierListData: {
+                name: modifierListName,
+                selectionType: 'SINGLE',
+                modifiers: [
+                  {
+                    type: 'MODIFIER',
+                    id: modifierTempId,
+                    modifierData: {
+                      name: 'Yes',
+                      priceMoney: { amount: 0n, currency: 'USD' },
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              type: 'ITEM',
+              id: itemTempId,
+              itemData: {
+                name: input.name,
+                description: input.description,
+                modifierListInfo: [
+                  {
+                    modifierListId: modifierListTempId,
+                    enabled: true,
+                    minSelectedModifiers: 1,
+                    maxSelectedModifiers: 1,
+                  },
+                ],
+                variations: [
+                  {
+                    type: 'ITEM_VARIATION',
+                    id: variationTempId,
+                    itemVariationData: {
+                      name: 'Registration',
+                      pricingType: 'FIXED_PRICING',
+                      priceMoney: {
+                        amount: BigInt(input.priceCents),
+                        currency: 'USD',
+                      },
+                      trackInventory: true,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    if (response.errors && response.errors.length > 0) {
+      const errorMessages = response.errors
+        .map((e) => e.detail || e.code || 'Unknown error')
+        .join(', ');
+      throw new Error(`Square API error: ${errorMessages}`);
+    }
+
+    const objects = response.objects || [];
+    const itemObject = objects.find(
+      (obj: Square.CatalogObject) => obj.type === 'ITEM'
+    );
+    const modListObject = objects.find(
+      (obj: Square.CatalogObject) => obj.type === 'MODIFIER_LIST'
+    );
+
+    if (!itemObject || !modListObject) {
+      console.error(
+        'Square batchUpsert response (class):',
+        JSON.stringify(response, null, 2)
+      );
+      throw new Error(
+        'Failed to create class catalog item: ITEM or MODIFIER_LIST missing'
+      );
+    }
+
+    const variation = itemObject.itemData?.variations?.[0];
+    if (!variation?.id) {
+      console.error(
+        'Square ITEM response (class):',
+        JSON.stringify(itemObject, null, 2)
+      );
+      throw new Error(
+        'Failed to create class catalog item: variation missing in response'
+      );
+    }
+
+    return {
+      squareItemId: itemObject.id!,
+      squareVariationId: variation.id,
+      squareModifierListId: modListObject.id!,
+      squareCatalogVersion: Number(itemObject.version || 0),
+    };
+  }
 
   /**
    * Create a new catalog item with one or more variations

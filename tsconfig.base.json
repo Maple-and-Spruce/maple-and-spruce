@@ -484,6 +484,9 @@
       "@maple/firebase/maple-functions/sync-inventory-to-square": [
         "libs/firebase/maple-functions/sync-inventory-to-square/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-class-to-square": [
+        "libs/firebase/maple-functions/sync-class-to-square/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/record-sale": [
         "libs/firebase/maple-functions/record-sale/src/index.ts"
       ],

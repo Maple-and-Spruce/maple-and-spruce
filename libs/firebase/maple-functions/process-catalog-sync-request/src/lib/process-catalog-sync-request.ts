@@ -27,6 +27,7 @@ import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import {
   CatalogSyncRequestRepository,
+  ClassRepository,
   ProductRepository,
 } from '@maple/firebase/database';
 import {
@@ -86,6 +87,15 @@ async function runCatalogSync(square: Square): Promise<SyncSummary> {
     products.filter((p) => p.squareItemId).map((p) => p.squareItemId!)
   );
 
+  // Square catalog items that are actually class mirrors (pushed by
+  // syncClassToSquare). These must NOT be reflected back into the Products
+  // collection — otherwise every published class would spawn a phantom
+  // `status:'draft'` Product here. Skip them entirely (neither update nor
+  // create). Sourced from findAll() + filter to avoid a composite index.
+  const classCatalogItemIds = new Set(
+    await ClassRepository.listSquareCatalogItemIds()
+  );
+
   const squareItems = await square.catalogService.listItems();
 
   console.log(
@@ -104,6 +114,13 @@ async function runCatalogSync(square: Square): Promise<SyncSummary> {
 
   for (const catalogObject of squareItems) {
     if (catalogObject.type !== 'ITEM' || !catalogObject.id) {
+      skipped++;
+      continue;
+    }
+
+    // Class catalog items are owned by syncClassToSquare. Skip them so this
+    // worker never mirrors a class back as a phantom draft Product.
+    if (classCatalogItemIds.has(catalogObject.id)) {
       skipped++;
       continue;
     }

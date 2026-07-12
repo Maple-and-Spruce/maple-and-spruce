@@ -61,3 +61,8 @@ export { updateCraftClubPaymentMethod } from '@maple/firebase/maple-functions/up
 export { adminPauseCraftClubSubscription } from '@maple/firebase/maple-functions/admin-pause-craft-club-subscription';
 export { adminResumeCraftClubSubscription } from '@maple/firebase/maple-functions/admin-resume-craft-club-subscription';
 export { adminCancelCraftClubSubscription } from '@maple/firebase/maple-functions/admin-cancel-craft-club-subscription';
+
+// Class → Square catalog sync (Firestore trigger on classes/{id})
+// Mirrors a published class as a Square catalog item + variation + required
+// modifier list so it can be rung up on POS in person.
+export { syncClassToSquare } from '@maple/firebase/maple-functions/sync-class-to-square';
