@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   productFindAll: vi.fn(),
   updateSquareCache: vi.fn(),
   createProduct: vi.fn(),
+  // ClassRepository
+  listSquareCatalogItemIds: vi.fn(),
   // Square catalog service
   listItems: vi.fn(),
   getItemImageUrl: vi.fn(),
@@ -49,6 +51,9 @@ vi.mock('@maple/firebase/database', () => ({
     findAll: mocks.productFindAll,
     updateSquareCache: mocks.updateSquareCache,
     create: mocks.createProduct,
+  },
+  ClassRepository: {
+    listSquareCatalogItemIds: mocks.listSquareCatalogItemIds,
   },
 }));
 
@@ -92,6 +97,7 @@ beforeEach(() => {
   });
   mocks.productFindAll.mockResolvedValue([]);
   mocks.listItems.mockResolvedValue([]);
+  mocks.listSquareCatalogItemIds.mockResolvedValue([]);
 });
 
 describe('processCatalogSyncRequest — lease coordination', () => {
@@ -225,6 +231,62 @@ describe('processCatalogSyncRequest — catalog sync correctness', () => {
     expect(mocks.createProduct).toHaveBeenCalled();
     expect(mocks.markCompleted).toHaveBeenCalledWith(
       expect.stringContaining('scanned 2')
+    );
+  });
+
+  it('skips class catalog items — never mirrors them back as draft products', async () => {
+    // A Square ITEM whose id is a class mirror (owned by syncClassToSquare).
+    // It is untracked as a Product, so without the guard it would be created
+    // as a phantom draft. The guard must skip it instead.
+    mocks.productFindAll.mockResolvedValue([]);
+    mocks.listSquareCatalogItemIds.mockResolvedValue(['CLASS_ITEM_1']);
+    mocks.listItems.mockResolvedValue([
+      {
+        id: 'CLASS_ITEM_1',
+        type: 'ITEM',
+        version: 3,
+        itemData: {
+          name: 'Intro to Pottery',
+          variations: [
+            {
+              id: 'CLASS_VAR_1',
+              itemVariationData: { sku: '', priceMoney: { amount: 4500n } },
+            },
+          ],
+        },
+      },
+      {
+        id: 'ITEM_REAL',
+        type: 'ITEM',
+        version: 1,
+        itemData: {
+          name: 'Real Product',
+          variations: [
+            {
+              id: 'VAR_REAL',
+              itemVariationData: { sku: 'R', priceMoney: { amount: 200n } },
+            },
+          ],
+        },
+      },
+    ]);
+    mocks.getItemImageUrl.mockResolvedValue('img');
+    mocks.createProduct.mockResolvedValue({ id: 'prod-real' });
+
+    await handler(makeEvent({ requestedAt: new Date(), running: false }));
+
+    // Exactly one create — for the real product, not the class item.
+    expect(mocks.createProduct).toHaveBeenCalledTimes(1);
+    expect(mocks.createProduct).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Real Product' }),
+      expect.objectContaining({ squareItemId: 'ITEM_REAL' })
+    );
+    // The class item was scanned but skipped (2 scanned, 1 created, 1 skipped).
+    expect(mocks.markCompleted).toHaveBeenCalledWith(
+      expect.stringContaining('scanned 2')
+    );
+    expect(mocks.markCompleted).toHaveBeenCalledWith(
+      expect.stringContaining('skipped 1')
     );
   });
 
