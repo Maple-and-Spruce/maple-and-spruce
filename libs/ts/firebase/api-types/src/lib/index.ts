@@ -181,12 +181,14 @@ export type {
   UploadCategoryGalleryImageResponse,
 } from './class-category.types';
 
-// Class Waitlist + Related Classes (public widget endpoints)
+// Class Waitlist + Related Classes (public widget endpoints + admin roster read)
 export type {
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
   GetRelatedPublicClassesRequest,
   GetRelatedPublicClassesResponse,
+  GetClassWaitlistRequest,
+  GetClassWaitlistResponse,
 } from './class-waitlist.types';
 
 // Phase 3c: Discount types

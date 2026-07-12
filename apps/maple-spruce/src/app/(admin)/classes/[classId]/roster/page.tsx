@@ -15,6 +15,12 @@ import {
   Select,
   MenuItem,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -26,7 +32,11 @@ import {
   RegistrationList,
   RegistrationDetailDialog,
 } from '@maple/react/registrations';
-import { useRegistrations, useClasses } from '../../../../../hooks';
+import {
+  useRegistrations,
+  useClasses,
+  useClassWaitlist,
+} from '../../../../../hooks';
 import type { UseRegistrationsFilters } from '@maple/react/data';
 
 function formatDate(date: Date | string): string {
@@ -69,6 +79,8 @@ export default function ClassRosterPage() {
 
   const { registrationsState, cancelRegistration, updateRegistration } =
     useRegistrations(filters);
+
+  const { waitlistState } = useClassWaitlist(classId);
 
   const { classesState } = useClasses();
 
@@ -137,10 +149,73 @@ export default function ClassRosterPage() {
     });
   }, [confirmedRegistrations]);
 
+  const waitlistEntries = useMemo(
+    () => (waitlistState.status === 'success' ? waitlistState.data : []),
+    [waitlistState]
+  );
+
+  const handleCopyWaitlistEmails = useCallback(() => {
+    const emails = waitlistEntries
+      .map((e) => e.email)
+      .filter((email, index, arr) => arr.indexOf(email) === index) // dedupe
+      .join(', ');
+
+    navigator.clipboard.writeText(emails).then(() => {
+      setCopySuccess(true);
+    });
+  }, [waitlistEntries]);
+
   const classMap = useMemo(
     () => new Map(classes.map((c) => [c.id, c.name])),
     [classes]
   );
+
+  const renderWaitlistBody = () => {
+    if (
+      waitlistState.status === 'loading' ||
+      waitlistState.status === 'idle'
+    ) {
+      return (
+        <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+      );
+    }
+    if (waitlistState.status === 'error') {
+      return <Alert severity="error">{waitlistState.error}</Alert>;
+    }
+    if (waitlistEntries.length === 0) {
+      return (
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            No one is on the waitlist for this class.
+          </Typography>
+        </Paper>
+      );
+    }
+    return (
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>#</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Joined</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {waitlistEntries.map((entry, index) => (
+              <TableRow key={entry.id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{entry.email}</TableCell>
+                <TableCell>
+                  {formatDate(entry.createdAt)} at {formatTime(entry.createdAt)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
 
   return (
     <>
@@ -263,6 +338,41 @@ export default function ClassRosterPage() {
         classes={classes}
         onViewDetail={handleViewDetail}
       />
+
+      {/* Waitlist */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mt: 4,
+          mb: 2,
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Typography variant="h6">Waitlist</Typography>
+          {waitlistState.status === 'success' && (
+            <Chip
+              label={`${waitlistEntries.length} waiting`}
+              size="small"
+              color={waitlistEntries.length > 0 ? 'primary' : 'default'}
+            />
+          )}
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<ContentCopyIcon />}
+          onClick={handleCopyWaitlistEmails}
+          disabled={waitlistEntries.length === 0}
+          size="small"
+        >
+          Copy Emails ({waitlistEntries.length})
+        </Button>
+      </Box>
+
+      {renderWaitlistBody()}
 
       {/* Detail Dialog */}
       <RegistrationDetailDialog
