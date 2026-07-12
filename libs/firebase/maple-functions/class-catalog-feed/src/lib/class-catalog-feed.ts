@@ -71,7 +71,9 @@ export function mapClassToFeedItem(
     return null;
   }
 
-  const slug = generateClassSlug(classEntity.name);
+  // Prefer the real Webflow slug (captured during sync); fall back to the
+  // name-derived slug only for classes that haven't synced/backfilled yet.
+  const slug = classEntity.webflowSlug ?? generateClassSlug(classEntity.name);
   const spotsRemaining = Math.max(
     0,
     classEntity.capacity - registrationCount

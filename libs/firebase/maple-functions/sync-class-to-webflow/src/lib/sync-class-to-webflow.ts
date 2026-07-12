@@ -236,19 +236,27 @@ export const syncClassToWebflow = onDocumentWritten(
       console.log('Webflow sync result:', {
         success: result.success,
         webflowItemId: result.webflowItemId,
+        webflowSlug: result.webflowSlug,
         isNew: result.isNew,
         isDev,
         published: shouldPublish,
       });
 
-      // Store the Webflow item ID back in Firestore
-      // Uses bare update (no updatedAt) to prevent re-triggering sync
-      if (result.success && result.webflowItemId && publishable.webflowItemId !== result.webflowItemId) {
-        await ClassRepository.updateWebflowItemId(
+      // Store the Webflow item ID and real slug back in Firestore. Uses a bare
+      // update (no updatedAt) and only writes when something actually changed,
+      // so the resulting write doesn't re-trigger this sync indefinitely.
+      const itemIdChanged =
+        !!result.webflowItemId &&
+        publishable.webflowItemId !== result.webflowItemId;
+      const slugChanged =
+        !!result.webflowSlug && publishable.webflowSlug !== result.webflowSlug;
+      if (result.success && (itemIdChanged || slugChanged)) {
+        await ClassRepository.updateWebflowSync(
           publishable.id,
-          result.webflowItemId
+          result.webflowItemId,
+          result.webflowSlug
         );
-        console.log('Updated Firestore with Webflow item ID');
+        console.log('Updated Firestore with Webflow item ID and slug');
       }
     } catch (error) {
       console.error('Webflow sync error:', error);

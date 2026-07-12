@@ -102,6 +102,15 @@ export interface Class {
    */
   webflowItemId?: string;
   /**
+   * The real Webflow CMS slug for this class, captured from the Webflow API
+   * response during sync. Webflow auto-suffixes slug collisions (e.g.
+   * `stained-glass-tryit-class-b192d`), so the live URL is NOT derivable from
+   * `name`. Prefer this over a name-derived slug when building public
+   * `/classes/{slug}` links. Undefined until the class has synced (or been
+   * backfilled) — callers must fall back to the name-derived slug.
+   */
+  webflowSlug?: string;
+  /**
    * Opt-in to the friend-referral program for this class. When set, every
    * confirmed registration auto-generates a single-use Discount and the
    * confirmation email includes a code the customer can share.
@@ -157,8 +166,10 @@ export interface PublicClass {
   id: string;
   name: string;
   /**
-   * URL-safe slug derived from `name`. Mirrors the slug used by the Webflow
-   * CMS sync, so `/classes/{slug}` resolves to the public class detail page.
+   * URL slug for the public class detail page, so `/classes/{slug}` resolves
+   * correctly. Prefers the real Webflow-assigned slug (`Class.webflowSlug`,
+   * which includes any auto-appended collision suffix) and falls back to a
+   * name-derived slug for classes that haven't synced yet.
    */
   slug: string;
   shortDescription?: string;
@@ -270,7 +281,7 @@ export function toPublicClass(
   return {
     id: classEntity.id,
     name: classEntity.name,
-    slug: buildClassSlug(classEntity.name),
+    slug: classEntity.webflowSlug ?? buildClassSlug(classEntity.name),
     shortDescription: classEntity.shortDescription,
     description: classEntity.description,
     instructorId: classEntity.instructorId,

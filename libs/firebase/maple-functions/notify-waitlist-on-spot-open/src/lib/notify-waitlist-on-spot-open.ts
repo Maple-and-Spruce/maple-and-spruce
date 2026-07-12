@@ -18,7 +18,6 @@ import {
   type Change,
   type DocumentSnapshot,
 } from 'firebase-functions/v2/firestore';
-import { defineString } from 'firebase-functions/params';
 import {
   ClassRepository,
   ClassWaitlistRepository,
@@ -26,6 +25,14 @@ import {
 } from '@maple/firebase/database';
 import { asPublishable, getFirstSession } from '@maple/ts/domain';
 import type { RegistrationStatus } from '@maple/ts/domain';
+
+/**
+ * Public marketing site that hosts the class detail pages. The spot-available
+ * email links customers to the live class page so they can re-register — NOT
+ * the admin/business app. Mirrors `PUBLIC_SITE_BASE_URL` in
+ * `class-catalog-feed.ts`; keep them in sync.
+ */
+const PUBLIC_SITE_BASE_URL = 'https://mapleandsprucefolkarts.com';
 
 /**
  * Inlined to avoid pulling in the webflow library (and its API SDK) into
@@ -38,8 +45,6 @@ function generateClassSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }
-
-const allowedOriginsParam = defineString('ALLOWED_ORIGINS');
 
 const ACTIVE_STATUSES: ReadonlySet<RegistrationStatus> = new Set([
   'pending',
@@ -72,17 +77,6 @@ export function isSpotOpeningChange(
     ACTIVE_STATUSES.has(afterData['status'] as RegistrationStatus);
 
   return wasActive && !isActive;
-}
-
-/**
- * Pull a https origin out of ALLOWED_ORIGINS for building public class URLs.
- * Mirrors the helper used by send-agreement-request — kept inline rather
- * than shared so each function stays self-contained.
- */
-function getAppUrl(allowedOrigins: string): string {
-  const origins = allowedOrigins.split(',').map((o) => o.trim());
-  const httpsOrigin = origins.find((o) => o.startsWith('https://'));
-  return httpsOrigin ?? origins[0] ?? 'http://localhost:3000';
 }
 
 function formatSessionDate(date: Date): string {
@@ -141,9 +135,10 @@ export const notifyWaitlistOnSpotOpen = onDocumentWritten(
       return;
     }
 
-    const appUrl = getAppUrl(allowedOriginsParam.value());
-    const slug = generateClassSlug(publishable.name);
-    const classUrl = `${appUrl}/classes/${slug}`;
+    // Prefer the real Webflow slug (captured during sync); fall back to the
+    // name-derived slug only for classes that haven't synced/backfilled yet.
+    const slug = publishable.webflowSlug ?? generateClassSlug(publishable.name);
+    const classUrl = `${PUBLIC_SITE_BASE_URL}/classes/${slug}`;
     const firstSession = getFirstSession(publishable);
     const classDate = formatSessionDate(firstSession.dateTime);
 
