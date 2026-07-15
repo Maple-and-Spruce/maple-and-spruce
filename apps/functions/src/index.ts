@@ -112,6 +112,7 @@ export { updateMusicTogetherSemester } from '@maple/firebase/maple-functions/upd
 export { getMusicTogetherSections } from '@maple/firebase/maple-functions/get-music-together-sections';
 export { createMusicTogetherSection } from '@maple/firebase/maple-functions/create-music-together-section';
 export { updateMusicTogetherSection } from '@maple/firebase/maple-functions/update-music-together-section';
+export { duplicateMusicTogetherSection } from '@maple/firebase/maple-functions/duplicate-music-together-section';
 export { getMusicTogetherRoster } from '@maple/firebase/maple-functions/get-music-together-roster';
 export { getRelatedPublicClasses } from '@maple/firebase/maple-functions/get-related-public-classes';
 export { addToClassWaitlist } from '@maple/firebase/maple-functions/add-to-class-waitlist';

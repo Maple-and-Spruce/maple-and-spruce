@@ -77,6 +77,16 @@ export interface UpdateMusicTogetherSectionResponse {
   section: MusicTogetherSection;
 }
 
+export interface DuplicateMusicTogetherSectionRequest {
+  /** ID of the source section to copy. */
+  sourceSectionId: string;
+}
+
+export interface DuplicateMusicTogetherSectionResponse {
+  /** The new section: hidden + enrollment-paused, name suffixed, sessions copied. */
+  section: MusicTogetherSection;
+}
+
 // ============================================================================
 // Roster (admin — enrolled families + payment/charge status)
 // ============================================================================

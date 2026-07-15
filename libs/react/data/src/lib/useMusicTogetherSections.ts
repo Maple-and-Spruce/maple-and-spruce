@@ -18,6 +18,8 @@ import type {
   CreateMusicTogetherSectionResponse,
   UpdateMusicTogetherSectionRequest,
   UpdateMusicTogetherSectionResponse,
+  DuplicateMusicTogetherSectionRequest,
+  DuplicateMusicTogetherSectionResponse,
 } from '@maple/ts/firebase/api-types';
 
 export interface UseMusicTogetherSectionsFilters {
@@ -135,6 +137,29 @@ export function useMusicTogetherSections(
     []
   );
 
+  const duplicateSection = useCallback(
+    async (sourceSectionId: string): Promise<MusicTogetherSection> => {
+      const functions = getMapleFunctions();
+      const duplicate = httpsCallable<
+        DuplicateMusicTogetherSectionRequest,
+        DuplicateMusicTogetherSectionResponse
+      >(functions, 'duplicateMusicTogetherSection');
+      const result = await duplicate({ sourceSectionId });
+      const section = hydrateSection(result.data.section);
+      setSectionsState((prev) => {
+        if (prev.status !== 'success') return prev;
+        return {
+          ...prev,
+          data: [...prev.data, section].sort(
+            (a, b) => firstSessionMs(a) - firstSessionMs(b)
+          ),
+        };
+      });
+      return section;
+    },
+    []
+  );
+
   useEffect(() => {
     fetchSections();
   }, [fetchSections]);
@@ -145,5 +170,6 @@ export function useMusicTogetherSections(
     fetchSections,
     createSection,
     updateSection,
+    duplicateSection,
   };
 }

@@ -429,6 +429,8 @@ export type {
   CreateMusicTogetherSectionResponse,
   UpdateMusicTogetherSectionRequest,
   UpdateMusicTogetherSectionResponse,
+  DuplicateMusicTogetherSectionRequest,
+  DuplicateMusicTogetherSectionResponse,
   GetMusicTogetherRosterRequest,
   GetMusicTogetherRosterResponse,
   MusicTogetherRosterEntry,

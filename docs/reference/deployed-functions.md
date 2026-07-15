@@ -59,7 +59,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Calendar Triggers
 - `onClassWrite` — Firestore trigger: auto-generates CalendarEvents from published classes
 - `onLessonWrite` — Firestore trigger: auto-generates a private (`public: false`) Spruce Room CalendarEvent per scheduled lesson; removes it on cancel/delete
-- `onMusicTogetherSectionWrite` — Firestore trigger: auto-generates a public `musictogether` CalendarEvent per session of a live (`open`/`closed`) MT section; reconciles on edit and removes on draft/completed/delete
+- `onMusicTogetherSectionWrite` — Firestore trigger: auto-generates a public `musictogether` CalendarEvent per session of a `visible` MT section; reconciles on edit and removes when the section is hidden or deleted
 
 ### Room Availability (#467)
 - `getRoomSchedule` — admin-only: busy windows for a room over a time range (powers the dashboard "Spruce Room" widget and booking conflict checks)
@@ -167,7 +167,7 @@ Webflow CMS synchronization. Isolates `webflow-api`.
 
 - `syncArtistToWebflow` — Firestore trigger: syncs artist data to Webflow CMS
 - `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS
-- `syncMusicTogetherSectionToWebflow` — Firestore trigger: syncs Music Together section data to Webflow CMS (non-draft sections; enriches spots-remaining from live family count)
+- `syncMusicTogetherSectionToWebflow` — Firestore trigger: syncs Music Together section data to Webflow CMS (`visible` sections; enriches spots-remaining from live family count; sends the derived section status)
 - `syncMusicTogetherSemesterToWebflow` — Firestore trigger: syncs Music Together semester (term) data to Webflow CMS (all statuses incl. `planned`; only removed on delete)
 - `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)
 
