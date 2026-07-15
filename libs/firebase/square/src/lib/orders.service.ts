@@ -88,6 +88,15 @@ export interface GetOrderLineItem {
   quantity: number;
   /** Base price per unit in cents, if present on the line item. */
   basePriceCents?: number;
+  /** Actual pre-tax, post-discount subtotal for this line, in cents
+   * (`grossSalesMoney`). What Square actually charged before tax — the source
+   * of truth when a POS discount or price override was applied. */
+  grossSalesCents?: number;
+  /** Actual tax charged on this line, in cents (`totalTaxMoney`). */
+  totalTaxCents?: number;
+  /** Actual total the buyer paid for this line incl. tax, in cents
+   * (`totalMoney`). */
+  totalCents?: number;
 }
 
 /**
@@ -205,6 +214,15 @@ export class OrdersService {
         quantity: Number(item.quantity ?? '1'),
         basePriceCents: item.basePriceMoney?.amount
           ? Number(item.basePriceMoney.amount)
+          : undefined,
+        grossSalesCents: item.grossSalesMoney?.amount
+          ? Number(item.grossSalesMoney.amount)
+          : undefined,
+        totalTaxCents: item.totalTaxMoney?.amount
+          ? Number(item.totalTaxMoney.amount)
+          : undefined,
+        totalCents: item.totalMoney?.amount
+          ? Number(item.totalMoney.amount)
           : undefined,
       })),
     };

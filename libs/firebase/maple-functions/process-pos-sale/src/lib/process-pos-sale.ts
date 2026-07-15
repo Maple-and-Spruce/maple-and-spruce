@@ -158,20 +158,22 @@ export const processPosSale = onDocumentWritten(
             ? Math.round(lineItem.quantity)
             : 1;
 
-        // Best-effort price/tax reconstruction to match the web registration's
-        // fields. We rebuild the subtotal from the class price (falling back to
-        // the line item's base price) times quantity, then apply the
+        // Prefer the ACTUAL amounts Square charged for this line item when
+        // present (grossSales/tax/total money) — Square is the source of truth
+        // for a POS sale, so a cashier's discount or price override is reflected
+        // faithfully. Fall back to reconstructing the subtotal from the class
+        // price (or the line item's base price) times quantity and applying the
         // configured tax rate — the same subtotal → calculateTax → pricePaid
-        // pipeline create-registration uses. This can differ slightly from the
-        // exact Square order total if a POS discount was applied; the Square
-        // order remains the source of truth for the actual amount charged.
+        // pipeline create-registration uses — only when Square omits the money
+        // fields. `taxRatePercent` stays the configured rate for reporting.
         const unitPriceCents =
           classEntity.priceCents || lineItem.basePriceCents || 0;
-        const subtotalCents = unitPriceCents * quantity;
-        const { taxAmountCents, totalCents: pricePaidCents } = calculateTax(
-          subtotalCents,
-          taxRatePercent
-        );
+        const subtotalCents = lineItem.grossSalesCents ?? unitPriceCents * quantity;
+        const taxAmountCents =
+          lineItem.totalTaxCents ??
+          calculateTax(subtotalCents, taxRatePercent).taxAmountCents;
+        const pricePaidCents =
+          lineItem.totalCents ?? subtotalCents + taxAmountCents;
 
         await RegistrationRepository.create({
           classId: classEntity.id,

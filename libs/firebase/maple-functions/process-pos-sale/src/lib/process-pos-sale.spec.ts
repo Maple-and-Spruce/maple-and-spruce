@@ -227,6 +227,56 @@ describe('processPosSale — registration creation', () => {
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
   });
 
+  it('prefers the actual Square line-item money (grossSales/tax/total) over reconstruction', async () => {
+    // Simulate a POS discount / price override: the class list price is 4500
+    // but Square actually charged a discounted 3500 subtotal, 210 tax, 3710
+    // total. The registration must reflect Square's real numbers, NOT the
+    // reconstructed 4500*1 + 6% = 4770.
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: 'cust-1',
+      receiptUrl: 'https://squareup.com/receipt/pos',
+    });
+    mocks.getCustomer.mockResolvedValue({
+      emailAddress: 'buyer@example.com',
+      givenName: 'Ada',
+      familyName: 'Lovelace',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [
+        {
+          catalogObjectId: 'VAR_A',
+          name: 'Pottery 101',
+          quantity: 1,
+          basePriceCents: 4500,
+          grossSalesCents: 3500,
+          totalTaxCents: 210,
+          totalCents: 3710,
+        },
+      ],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.createRegistration).toHaveBeenCalledTimes(1);
+    expect(mocks.createRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-1',
+        source: 'pos',
+        // Exact Square amounts, not the 4500/270/4770 reconstruction.
+        subtotalCents: 3500,
+        taxAmountCents: 210,
+        pricePaidCents: 3710,
+        // taxRatePercent stays the configured rate for reporting.
+        taxRatePercent: 6,
+      })
+    );
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
   it('creates a placeholder registration and emails the admin when there is no email', async () => {
     // No customer id → no email resolved.
     mocks.getPayment.mockResolvedValue({
