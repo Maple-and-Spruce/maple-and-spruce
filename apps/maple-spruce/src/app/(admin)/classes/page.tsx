@@ -17,6 +17,7 @@ import {
   useInstructors,
   useClassCategories,
   useRegistrations,
+  useClassWaitlistCounts,
 } from '../../../hooks';
 
 export default function ClassesPage() {
@@ -66,6 +67,17 @@ export default function ClassesPage() {
     }
     return counts;
   }, [registrationsState]);
+
+  // Waitlist counts per class (classId → count), for the "Waitlist" column.
+  const { waitlistCountsState } = useClassWaitlistCounts();
+  const waitlistCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (waitlistCountsState.status !== 'success') return counts;
+    for (const [classId, count] of Object.entries(waitlistCountsState.data)) {
+      counts.set(classId, count);
+    }
+    return counts;
+  }, [waitlistCountsState]);
 
   const instructors = useMemo(
     () => (instructorsState.status === 'success' ? instructorsState.data : []),
@@ -221,6 +233,7 @@ export default function ClassesPage() {
         instructors={instructors}
         categories={categories}
         registrationCounts={registrationCounts}
+        waitlistCounts={waitlistCounts}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
         onDuplicate={handleDuplicate}
