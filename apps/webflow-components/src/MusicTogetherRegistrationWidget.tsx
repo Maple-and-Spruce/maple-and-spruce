@@ -458,7 +458,22 @@ export function MusicTogetherRegistrationWidget({
           <WaitlistPanel section={section} functions={functions} />
         )}
 
-        {section && section.spotsRemaining > 0 && (
+        {section &&
+          section.spotsRemaining > 0 &&
+          !section.enrollmentOpen && (
+            <Alert severity="info">
+              Registration for <strong>{section.name}</strong> isn&apos;t open
+              yet
+              {section.enrollmentOpensAt
+                ? ` — it opens ${formatSessionDateTime(
+                    section.enrollmentOpensAt
+                  )}.`
+                : '.'}{' '}
+              Check back soon.
+            </Alert>
+          )}
+
+        {section && section.spotsRemaining > 0 && section.enrollmentOpen && (
           <Stack spacing={3}>
             {/* Section summary */}
             <Box>
