@@ -69,7 +69,8 @@ describe('cancelMusicTogetherRegistration', () => {
       sessions: [{ dateTime: future }],
       capacityFamilies: 8,
       priceFullCents: 25200,
-      status: 'open',
+      visible: true,
+      enrollmentActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -78,7 +79,8 @@ describe('cancelMusicTogetherRegistration', () => {
       sessions: [{ dateTime: pastDate }],
       capacityFamilies: 8,
       priceFullCents: 25200,
-      status: 'open',
+      visible: true,
+      enrollmentActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

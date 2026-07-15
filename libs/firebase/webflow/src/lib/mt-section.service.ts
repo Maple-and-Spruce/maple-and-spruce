@@ -21,6 +21,7 @@ import {
   formatSessions,
   mtSectionFirstSessionAt,
   mtSpotsRemaining,
+  mtSectionDerivedStatus,
   mtSectionOffersInstallments,
   MT_CLASS_DURATION_MINUTES,
 } from '@maple/ts/domain';
@@ -169,7 +170,11 @@ export function mapSectionToFieldData(
     'price-full-cents': section.priceFullCents,
     'capacity-families': section.capacityFamilies,
     'spots-remaining': spotsRemaining,
-    status: section.status,
+    // Derived from the section's explicit controls + live family count. Only
+    // visible sections reach Webflow, so this is one of upcoming/open/full/
+    // closed/completed. Time-based transitions (e.g. a scheduled open) refresh
+    // on the next section write.
+    status: mtSectionDerivedStatus(section, new Date(), familyCount),
     'price-display': priceDisplay,
     'spots-display': spotsDisplay,
     'date-display': dateDisplay,

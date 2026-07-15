@@ -2,8 +2,9 @@
  * Get Music Together Sections Cloud Function
  *
  * Lists Music Together sections for the admin app (authenticated). Optional
- * status filter. Also returns per-section registration counts so the admin
- * table can show how full each section is without opening the roster.
+ * semester filter. Also returns per-section registration counts so the admin
+ * table can show how full each section is without opening the roster. The
+ * section's overall status is DERIVED client-side from its explicit controls.
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
 import { createAuthenticatedFunction } from '@maple/firebase/functions';
@@ -23,7 +24,7 @@ export const getMusicTogetherSections = createAuthenticatedFunction<
   GetMusicTogetherSectionsResponse
 >(async (data) => {
   const sections = await MusicTogetherSectionRepository.findAll({
-    status: data.status,
+    semesterId: data.semesterId,
   });
 
   // Per-section registration counts in one query, grouped in memory. Count the

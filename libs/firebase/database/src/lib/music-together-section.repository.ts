@@ -10,7 +10,6 @@ import {
   type MusicTogetherSection,
   type MusicTogetherSession,
   type MusicTogetherInstallmentPlanItem,
-  type MusicTogetherSectionStatus,
   type CreateMusicTogetherSectionInput,
   type UpdateMusicTogetherSectionInput,
 } from '@maple/ts/domain';
@@ -58,7 +57,16 @@ function docToSection(
     capacityFamilies: data.capacityFamilies,
     priceFullCents: data.priceFullCents,
     installmentPlan: parseInstallmentPlan(data.installmentPlan),
-    status: data.status as MusicTogetherSectionStatus,
+    // Explicit controls; status is derived, never stored. Default false so any
+    // pre-existing docs (which lacked these fields) read as hidden + paused.
+    visible: data.visible ?? false,
+    enrollmentActive: data.enrollmentActive ?? false,
+    enrollmentOpensAt: data.enrollmentOpensAt
+      ? toDate(data.enrollmentOpensAt)
+      : undefined,
+    enrollmentClosesAt: data.enrollmentClosesAt
+      ? toDate(data.enrollmentClosesAt)
+      : undefined,
     location: data.location,
     room: data.room,
     semesterId: data.semesterId,
@@ -82,11 +90,19 @@ function toPersisted(
   if (input.sessions) {
     data.firstSessionAt = mtSectionFirstSessionAt({ sessions: input.sessions });
   }
+  // Optional scheduled-enrollment dates are clearable: persist `null` (not
+  // `undefined`) when absent so `update()` actually removes a previously-set
+  // date instead of leaving it stale.
+  if ('enrollmentOpensAt' in input && !input.enrollmentOpensAt) {
+    data.enrollmentOpensAt = null;
+  }
+  if ('enrollmentClosesAt' in input && !input.enrollmentClosesAt) {
+    data.enrollmentClosesAt = null;
+  }
   return data;
 }
 
 export interface MusicTogetherSectionFilters {
-  status?: MusicTogetherSectionStatus;
   /** Only sections belonging to this semester. */
   semesterId?: string;
 }
@@ -96,10 +112,6 @@ export const MusicTogetherSectionRepository = {
     filters?: MusicTogetherSectionFilters
   ): Promise<MusicTogetherSection[]> {
     let query: FirebaseFirestore.Query = getDb().collection(COLLECTION);
-
-    if (filters?.status) {
-      query = query.where('status', '==', filters.status);
-    }
 
     if (filters?.semesterId) {
       query = query.where('semesterId', '==', filters.semesterId);

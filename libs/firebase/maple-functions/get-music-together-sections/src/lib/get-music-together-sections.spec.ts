@@ -29,17 +29,17 @@ describe('getMusicTogetherSections', () => {
     mocks.regFindAll.mockResolvedValue([]);
   });
 
-  it('returns sections, passing the status filter through', async () => {
+  it('returns sections, passing the semester filter through', async () => {
     mocks.findAll.mockResolvedValue([{ id: 'sec-1' }]);
-    const result = await handler({ status: 'open' }, {});
-    expect(mocks.findAll).toHaveBeenCalledWith({ status: 'open' });
+    const result = await handler({ semesterId: 'sem-1' }, {});
+    expect(mocks.findAll).toHaveBeenCalledWith({ semesterId: 'sem-1' });
     expect(result.sections).toEqual([{ id: 'sec-1' }]);
   });
 
   it('works with no filter', async () => {
     mocks.findAll.mockResolvedValue([]);
     const result = await handler({}, {});
-    expect(mocks.findAll).toHaveBeenCalledWith({ status: undefined });
+    expect(mocks.findAll).toHaveBeenCalledWith({ semesterId: undefined });
     expect(result.sections).toEqual([]);
   });
 

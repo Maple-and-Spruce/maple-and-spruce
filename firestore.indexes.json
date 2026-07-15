@@ -1399,38 +1399,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "firstSessionAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "musicTogetherSections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "semesterId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "firstSessionAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "musicTogetherSections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "semesterId",
           "order": "ASCENDING"
         },

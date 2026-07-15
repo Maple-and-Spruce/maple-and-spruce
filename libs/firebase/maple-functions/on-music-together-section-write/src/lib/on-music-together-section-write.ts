@@ -6,11 +6,11 @@
  * session — the same "one entity drives registration AND the calendar" pattern
  * as `onClassWrite` does for classes.
  *
- * - Create/Update: if the section is live (status `open` or `closed`), upserts
- *   one event per session at a stable ID and deletes events whose session no
- *   longer exists.
- * - Not live (`draft` / `completed`) or deleted: removes every CalendarEvent
- *   tied to this section.
+ * - Create/Update: if the section is `visible`, upserts one event per session
+ *   at a stable ID and deletes events whose session no longer exists.
+ * - Not visible or deleted: removes every CalendarEvent tied to this section.
+ *   (Visibility is decoupled from registration — a section can be on the
+ *   calendar while enrollment is still closed.)
  *
  * MT classes are always 45 minutes (`MT_CLASS_DURATION_MINUTES`), so sections
  * carry no per-session duration; the end time is derived here.
@@ -33,7 +33,7 @@ interface SectionData {
   name: string;
   description?: string;
   sessions: MusicTogetherSession[];
-  status: string;
+  visible: boolean;
   location?: string;
   room?: string;
 }
@@ -83,7 +83,7 @@ function extractSection(
     description:
       typeof data['description'] === 'string' ? data['description'] : undefined,
     sessions: extractSessions(data),
-    status: typeof data['status'] === 'string' ? data['status'] : 'draft',
+    visible: data['visible'] === true,
     location:
       typeof data['location'] === 'string' ? data['location'] : undefined,
     room: typeof data['room'] === 'string' ? data['room'] : undefined,
@@ -106,10 +106,6 @@ function resolveRoom(room: string | undefined): Room | null {
   return room && (ROOMS as string[]).includes(room) ? (room as Room) : null;
 }
 
-/** A section shows on the public calendar once it's live (open or closed). */
-function isLive(status: string): boolean {
-  return status === 'open' || status === 'closed';
-}
 
 export const onMusicTogetherSectionWrite = onDocumentWritten(
   {
@@ -126,8 +122,8 @@ export const onMusicTogetherSectionWrite = onDocumentWritten(
       const existingEvents =
         await CalendarEventRepository.findAllBySourceRef(sourceRef);
 
-      // Deleted, not-live, or no sessions → remove all its events.
-      if (!after || !isLive(after.status) || after.sessions.length === 0) {
+      // Deleted, not visible, or no sessions → remove all its events.
+      if (!after || !after.visible || after.sessions.length === 0) {
         await Promise.all(
           existingEvents.map((e) => CalendarEventRepository.delete(e.id))
         );

@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * Covers the Firestore trigger handler:
  * 1. Deleted section → removeSection
  * 2. Draft section → removeSection
- * 3. Non-draft section → enrich with family count → syncSection + writeback
+ * 3. Visible section → enrich with family count → syncSection + writeback
  * 4. Webflow errors are swallowed (no retry loops)
  */
 
@@ -81,7 +81,8 @@ const openSectionData = {
   sessions: [{ dateTime: new Date('2026-03-03T15:00:00Z') }],
   capacityFamilies: 8,
   priceFullCents: 25200,
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
 };
 
 describe('syncMusicTogetherSectionToWebflow', () => {
@@ -112,7 +113,7 @@ describe('syncMusicTogetherSectionToWebflow', () => {
     expect(mocks.syncSection).not.toHaveBeenCalled();
   });
 
-  it('removes from Webflow when the section is a draft', async () => {
+  it('removes from Webflow when the section is hidden', async () => {
     mocks.removeSection.mockResolvedValue(true);
 
     await handler({
@@ -121,7 +122,7 @@ describe('syncMusicTogetherSectionToWebflow', () => {
         before: makeSnapshot(true, 'section-001', openSectionData),
         after: makeSnapshot(true, 'section-001', {
           ...openSectionData,
-          status: 'draft',
+          visible: false,
           webflowItemId: 'wf-draft',
         }),
       },

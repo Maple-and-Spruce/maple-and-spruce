@@ -116,7 +116,8 @@ function run(data: unknown) {
 const openFullOnly = {
   id: 'sec-1',
   name: 'Spring 2026',
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
   capacityFamilies: 8,
   priceFullCents: 25200,
   installmentPlan: undefined,
@@ -248,10 +249,24 @@ describe('createMusicTogetherRegistration', () => {
     expect(mocks.createPayment).not.toHaveBeenCalled();
   });
 
-  it('rejects a section that is not open', async () => {
-    mocks.sectionFindById.mockResolvedValue({ ...openFullOnly, status: 'closed' });
+  it('rejects a section whose enrollment is paused', async () => {
+    mocks.sectionFindById.mockResolvedValue({
+      ...openFullOnly,
+      enrollmentActive: false,
+    });
     await expect(run({ ...baseFamily, paymentPlan: 'full' })).rejects.toThrow(
-      /not open/i
+      /has closed/i
+    );
+  });
+
+  it("rejects a section whose enrollment hasn't opened yet", async () => {
+    mocks.sectionFindById.mockResolvedValue({
+      ...openFullOnly,
+      enrollmentActive: true,
+      enrollmentOpensAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+    await expect(run({ ...baseFamily, paymentPlan: 'full' })).rejects.toThrow(
+      /isn't open yet/i
     );
   });
 

@@ -8,7 +8,6 @@ import type {
   MusicTogetherSection,
   CreateMusicTogetherSectionInput,
   UpdateMusicTogetherSectionInput,
-  MusicTogetherSectionStatus,
   RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -22,7 +21,8 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export interface UseMusicTogetherSectionsFilters {
-  status?: MusicTogetherSectionStatus;
+  /** Optionally scope to a single semester. */
+  semesterId?: string;
 }
 
 /** Hydrate ISO date strings (callable serialization) back into Dates. */
@@ -67,7 +67,7 @@ export function useMusicTogetherSections(
       const result = await callDeduped<
         GetMusicTogetherSectionsRequest,
         GetMusicTogetherSectionsResponse
-      >('getMusicTogetherSections', { status: filters?.status });
+      >('getMusicTogetherSections', { semesterId: filters?.semesterId });
       setSectionsState({
         status: 'success',
         data: result.data.sections
@@ -83,7 +83,7 @@ export function useMusicTogetherSections(
           error instanceof Error ? error.message : 'Failed to fetch sections',
       });
     }
-  }, [filters?.status]);
+  }, [filters?.semesterId]);
 
   const createSection = useCallback(
     async (
