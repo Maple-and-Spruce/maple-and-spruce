@@ -18,6 +18,8 @@ import type {
   CreateMusicTogetherSectionResponse,
   GetMusicTogetherSectionsResponse,
   UpdateMusicTogetherSectionResponse,
+  DuplicateMusicTogetherSectionRequest,
+  DuplicateMusicTogetherSectionResponse,
   GetMusicTogetherRosterRequest,
   GetMusicTogetherRosterResponse,
 } from '@maple/ts/firebase/api-types';
@@ -106,6 +108,47 @@ describe('MT section admin CRUD', () => {
     });
     expect(updated.status).toBe(200);
     expect(updated.data?.section.name).toBe('Renamed Section');
+  });
+
+  it('duplicates a section (admin) into a hidden, paused copy', async () => {
+    const dup = await callFunction<
+      DuplicateMusicTogetherSectionRequest,
+      DuplicateMusicTogetherSectionResponse
+    >({
+      functionName: 'duplicateMusicTogetherSection',
+      data: { sourceSectionId: createdId },
+      idToken: admin.idToken,
+    });
+
+    expect(dup.status).toBe(200);
+    const copy = dup.data!.section;
+    expect(copy.id).not.toBe(createdId);
+    expect(copy.name).toBe('Renamed Section (Copy)');
+    // Hidden + paused so the overflow copy stays secret until released.
+    expect(copy.visible).toBe(false);
+    expect(copy.enrollmentActive).toBe(false);
+    // Sessions are copied (unlike duplicate-class).
+    expect(copy.sessions).toHaveLength(1);
+
+    // It shows up in the admin list as its own section.
+    const list = await callFunction<
+      Record<string, never>,
+      GetMusicTogetherSectionsResponse
+    >({
+      functionName: 'getMusicTogetherSections',
+      data: {},
+      idToken: admin.idToken,
+    });
+    expect(list.data?.sections.some((s) => s.id === copy.id)).toBe(true);
+  });
+
+  it('rejects duplicate for a non-admin', async () => {
+    const result = await callFunction<DuplicateMusicTogetherSectionRequest>({
+      functionName: 'duplicateMusicTogetherSection',
+      data: { sourceSectionId: createdId },
+      idToken: nonAdmin.idToken,
+    });
+    expect(result.status).not.toBe(200);
   });
 
   it('rejects create for a non-admin', async () => {

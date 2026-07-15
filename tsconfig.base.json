@@ -359,6 +359,9 @@
       "@maple/firebase/maple-functions/update-music-together-section": [
         "libs/firebase/maple-functions/update-music-together-section/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/duplicate-music-together-section": [
+        "libs/firebase/maple-functions/duplicate-music-together-section/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-music-together-roster": [
         "libs/firebase/maple-functions/get-music-together-roster/src/index.ts"
       ],

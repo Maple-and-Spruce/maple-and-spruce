@@ -19,6 +19,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import GroupIcon from '@mui/icons-material/Group';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
   getMusicTogetherSeasonLabel,
   mtSectionDerivedStatus,
@@ -48,8 +49,32 @@ const fmtDay = (d?: Date) =>
 const fmtPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
 export default function MusicTogetherPage() {
-  const { sectionsState, countsBySection, createSection, updateSection } =
-    useMusicTogetherSections();
+  const {
+    sectionsState,
+    countsBySection,
+    createSection,
+    updateSection,
+    duplicateSection,
+  } = useMusicTogetherSections();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  const handleDuplicate = useCallback(
+    async (sectionId: string) => {
+      setActionError(null);
+      setDuplicatingId(sectionId);
+      try {
+        await duplicateSection(sectionId);
+      } catch (e) {
+        setActionError(
+          e instanceof Error ? e.message : 'Failed to duplicate section'
+        );
+      } finally {
+        setDuplicatingId(null);
+      }
+    },
+    [duplicateSection]
+  );
   const { semestersState, createSemester, updateSemester } =
     useMusicTogetherSemesters();
 
@@ -236,6 +261,12 @@ export default function MusicTogetherPage() {
         </Button>
       </Box>
 
+      {actionError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+          {actionError}
+        </Alert>
+      )}
+
       {sectionsState.status === 'loading' && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
@@ -323,6 +354,17 @@ export default function MusicTogetherPage() {
                     >
                       <GroupIcon />
                     </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Duplicate (hidden copy)">
+                    <span>
+                      <IconButton
+                        aria-label={`Duplicate ${section.name}`}
+                        disabled={duplicatingId === section.id}
+                        onClick={() => handleDuplicate(section.id)}
+                      >
+                        <ContentCopyIcon />
+                      </IconButton>
+                    </span>
                   </Tooltip>
                   <Tooltip title="Edit">
                     <IconButton
