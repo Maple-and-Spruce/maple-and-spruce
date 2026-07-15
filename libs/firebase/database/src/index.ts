@@ -48,6 +48,7 @@ export {
   LEASE_TTL_MS,
   type CatalogSyncRequest,
 } from './lib/catalog-sync-request.repository';
+export { PosSaleRequestRepository } from './lib/pos-sale-request.repository';
 
 // Phase 5: Sales & Inventory
 export {

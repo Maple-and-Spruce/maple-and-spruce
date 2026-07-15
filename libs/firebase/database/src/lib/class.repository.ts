@@ -176,6 +176,27 @@ export const ClassRepository = {
   },
 
   /**
+   * Find the class mirrored to a given Square variation.
+   *
+   * Used by the POS class-registration worker to map a Square order line
+   * item's `catalogObjectId` back to the class it represents. Single-field
+   * equality query → Firestore's automatic single-field index covers it, no
+   * composite index required.
+   */
+  async findBySquareVariationId(
+    squareVariationId: string
+  ): Promise<Class | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('squareVariationId', '==', squareVariationId)
+      .limit(1)
+      .get();
+
+    const doc = snapshot.docs[0];
+    return doc ? docToClass(doc) : undefined;
+  },
+
+  /**
    * Create a new class
    */
   async create(input: CreateClassInput): Promise<Class> {

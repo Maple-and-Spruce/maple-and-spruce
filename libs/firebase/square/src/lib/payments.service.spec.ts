@@ -477,11 +477,34 @@ describe('PaymentsService', () => {
         refundedCents: 0,
         receiptUrl: 'https://squareup.com/receipt/123',
         createdAt: '2026-05-15T14:00:00Z',
+        orderId: undefined,
+        customerId: undefined,
       });
 
       expect(mockClient.payments.get).toHaveBeenCalledWith({
         paymentId: 'pay-001',
       });
+    });
+
+    it('surfaces orderId, customerId and status for POS sale processing', async () => {
+      mockClient.payments.get.mockResolvedValue({
+        payment: {
+          id: 'pay-pos',
+          status: 'COMPLETED',
+          orderId: 'order-99',
+          customerId: 'cust-42',
+          totalMoney: { amount: BigInt(4770) },
+          refundedMoney: { amount: BigInt(0) },
+          receiptUrl: 'https://squareup.com/receipt/pos',
+          createdAt: '2026-07-11T10:00:00Z',
+        },
+      });
+
+      const result = await service.getPayment('pay-pos');
+
+      expect(result.orderId).toBe('order-99');
+      expect(result.customerId).toBe('cust-42');
+      expect(result.status).toBe('COMPLETED');
     });
 
     it('throws when response contains errors', async () => {

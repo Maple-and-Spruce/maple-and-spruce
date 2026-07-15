@@ -25,6 +25,13 @@ export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
 // 10-second delivery deadline; the heavy O(catalog) sync runs here.
 export { processCatalogSyncRequest } from '@maple/firebase/maple-functions/process-catalog-sync-request';
 
+// In-person POS class sale → Firestore registration (Firestore-triggered
+// worker on posSaleRequests/{paymentId}). The lean squareWebhook enqueues the
+// request on a COMPLETED payment event; this worker fetches the Square
+// order/payment/customer, dedups against web orders, and creates a
+// source:'pos' registration per class line item.
+export { processPosSale } from '@maple/firebase/maple-functions/process-pos-sale';
+
 // Registration operations (Square payments)
 export { createRegistration } from '@maple/firebase/maple-functions/create-registration';
 export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-registration';

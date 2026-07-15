@@ -552,6 +552,43 @@ describe('ClassRepository', () => {
     });
   });
 
+  // ─── findBySquareVariationId ──────────────────────────────────────
+  describe('findBySquareVariationId', () => {
+    function setupQuery(docs: ReturnType<typeof fakeDoc>[]) {
+      const mockGet = vi.fn().mockResolvedValue({ docs });
+      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+      const mockCollection = vi.fn().mockReturnValue({ where: mockWhere });
+      vi.mocked(db.collection).mockImplementation(mockCollection);
+      return { mockWhere, mockLimit, mockGet };
+    }
+
+    it('returns the class matching the Square variation id', async () => {
+      const { mockWhere, mockLimit } = setupQuery([
+        fakeDoc('class-1', rawClassData({ squareVariationId: 'VAR_A' })),
+      ]);
+
+      const result = await ClassRepository.findBySquareVariationId('VAR_A');
+
+      expect(result).toBeDefined();
+      expect(result!.id).toBe('class-1');
+      expect(mockWhere).toHaveBeenCalledWith(
+        'squareVariationId',
+        '==',
+        'VAR_A'
+      );
+      expect(mockLimit).toHaveBeenCalledWith(1);
+    });
+
+    it('returns undefined when no class matches', async () => {
+      setupQuery([]);
+
+      const result = await ClassRepository.findBySquareVariationId('NOPE');
+
+      expect(result).toBeUndefined();
+    });
+  });
+
   // ─── delete ───────────────────────────────────────────────────────
 
   describe('delete', () => {

@@ -15,8 +15,35 @@ export interface UpsertCustomerInput {
   phone?: string;
 }
 
+/** Slim projection of a Square customer used by read-only callers. */
+export interface SquareCustomer {
+  emailAddress?: string;
+  givenName?: string;
+  familyName?: string;
+}
+
 export class CustomersService {
   constructor(private readonly client: SquareClient) {}
+
+  /**
+   * Fetch a Square customer by id. Returns null if the customer can't be
+   * found (missing id, or an error/empty response) so callers can treat an
+   * absent buyer the same way as a POS sale rung up with no customer attached.
+   */
+  async get(customerId: string): Promise<SquareCustomer | null> {
+    const response = await this.client.customers.get({ customerId });
+
+    const customer = response.customer;
+    if (!customer) {
+      return null;
+    }
+
+    return {
+      emailAddress: customer.emailAddress ?? undefined,
+      givenName: customer.givenName ?? undefined,
+      familyName: customer.familyName ?? undefined,
+    };
+  }
 
   /** Find a Square customer by exact email, or create one. Returns the ID. */
   async upsertByEmail(input: UpsertCustomerInput): Promise<string> {

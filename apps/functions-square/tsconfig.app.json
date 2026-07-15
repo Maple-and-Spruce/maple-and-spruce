@@ -11,6 +11,7 @@
     "../../libs/firebase/maple-functions/upload-product-image/**/*.ts",
     "../../libs/firebase/maple-functions/square-webhook/**/*.ts",
     "../../libs/firebase/maple-functions/process-catalog-sync-request/**/*.ts",
+    "../../libs/firebase/maple-functions/process-pos-sale/**/*.ts",
     "../../libs/firebase/maple-functions/create-registration/**/*.ts",
     "../../libs/firebase/maple-functions/cancel-registration/**/*.ts",
     "../../libs/firebase/maple-functions/detect-sync-conflicts/**/*.ts",

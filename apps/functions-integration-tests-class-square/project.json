@@ -7,6 +7,8 @@
   "implicitDependencies": [
     "firebase-maple-functions-sync-class-to-square",
     "firebase-maple-functions-sync-class-inventory-to-square",
+    "firebase-maple-functions-process-pos-sale",
+    "firebase-maple-functions-square-webhook",
     "firebase-integration-test-utils",
     "firebase-square-test-mock-server"
   ],

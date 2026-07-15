@@ -40,6 +40,8 @@ export {
   OrdersService,
   type CreateOrderInput,
   type CreateOrderResult,
+  type GetOrderResult,
+  type GetOrderLineItem,
   type OrderLineItemInput,
   type OrderTaxInput,
   type OrderDiscountInput,
@@ -85,4 +87,5 @@ export {
 export {
   CustomersService,
   type UpsertCustomerInput,
+  type SquareCustomer,
 } from './lib/customers.service';

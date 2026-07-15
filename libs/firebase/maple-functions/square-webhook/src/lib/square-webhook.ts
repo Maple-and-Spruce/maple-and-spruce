@@ -24,6 +24,7 @@ import {
   CatalogSyncRequestRepository,
   CraftClubMemberRepository,
   InvoiceRepository,
+  PosSaleRequestRepository,
   ProductRepository,
 } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
@@ -37,6 +38,8 @@ type WebhookEventType =
   | 'catalog.version.updated'
   | 'inventory.count.updated'
   | 'invoice.payment_made'
+  | 'payment.created'
+  | 'payment.updated'
   | 'subscription.created'
   | 'subscription.updated';
 
@@ -236,6 +239,60 @@ export async function handleInvoicePaymentMade(
 }
 
 /**
+ * Handle payment.created / payment.updated webhooks (lean enqueue).
+ *
+ * An in-person Square POS class sale surfaces here as a payment event. Turning
+ * it into a Firestore registration needs the Square SDK (fetch order +
+ * customer) — too heavy for the webhook path, which must ack within Square's
+ * 10-second timeout and must NOT pull the Square SDK into this codebase (that
+ * would regress cold starts for every webhook event). So this handler stays
+ * lean: on a COMPLETED payment it enqueues a `posSaleRequests/{paymentId}`
+ * doc and returns. The `processPosSale` Firestore trigger does the real work.
+ *
+ * Payload shape (snake_case from Square's webhook envelope):
+ *   data.object.payment.{ id, order_id, status }
+ * We tolerate camelCase (`orderId`) too in case the envelope differs.
+ */
+export async function handlePaymentUpsert(
+  event: WebhookEvent
+): Promise<{ action: string; details: string }> {
+  const payment = (
+    event.data.object as
+      | {
+          payment?: {
+            id?: string;
+            order_id?: string;
+            orderId?: string;
+            status?: string;
+          };
+        }
+      | undefined
+  )?.payment;
+
+  const paymentId = payment?.id ?? event.data.id;
+  if (!paymentId) {
+    return { action: 'skipped', details: 'No payment id in payload' };
+  }
+
+  // Only COMPLETED payments represent a settled sale worth registering. Square
+  // fires payment.created/updated for many intermediate states (APPROVED,
+  // PENDING, etc.) — ignore those; a later payment.updated will arrive as
+  // COMPLETED.
+  if (payment?.status !== 'COMPLETED') {
+    return {
+      action: 'skipped',
+      details: `payment not completed (status=${payment?.status ?? 'unknown'})`,
+    };
+  }
+
+  await PosSaleRequestRepository.enqueue(paymentId, {
+    orderId: payment.order_id ?? payment.orderId,
+  });
+
+  return { action: 'enqueued', details: paymentId };
+}
+
+/**
  * Map a Square subscription status to our member status. Square statuses that
  * end billing (CANCELED/DEACTIVATED) collapse to `cancelled`.
  */
@@ -397,6 +454,11 @@ export const squareWebhook = onRequest(
 
         case 'invoice.payment_made':
           result = await handleInvoicePaymentMade(event);
+          break;
+
+        case 'payment.created':
+        case 'payment.updated':
+          result = await handlePaymentUpsert(event);
           break;
 
         case 'subscription.created':

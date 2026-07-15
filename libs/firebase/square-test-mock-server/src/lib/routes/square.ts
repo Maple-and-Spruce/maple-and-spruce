@@ -29,6 +29,17 @@ const payments = new Map<string, Record<string, unknown>>();
 /** Craft Club: subscriptions are stored so cancel can look them up. */
 const subscriptions = new Map<string, Record<string, unknown>>();
 
+/**
+ * POS integration-test fixtures. Seeded via `POST /_mock/pos-fixture` so a
+ * test can stand up a deterministic payment → order → customer graph that the
+ * `processPosSale` worker fetches. Objects are stored in Square WIRE shape
+ * (snake_case) — the SDK's serde converts them to camelCase for our services.
+ * Reset by `resetSquareState()`.
+ */
+const posFixturePayments = new Map<string, Record<string, unknown>>();
+const posFixtureOrders = new Map<string, Record<string, unknown>>();
+const posFixtureCustomers = new Map<string, Record<string, unknown>>();
+
 export function registerSquareRoutes(server: SquareMockServer): void {
   // Create order (required before payment in registration flow)
   server.post('/v2/orders', (req) => {
@@ -85,8 +96,14 @@ export function registerSquareRoutes(server: SquareMockServer): void {
     };
   });
 
-  // Get payment
+  // Get payment. POS fixtures (seeded via /_mock/pos-fixture) take precedence
+  // so an integration test can serve a deterministic COMPLETED payment with a
+  // known order_id / customer_id / receipt_url.
   server.get('/v2/payments/:paymentId', (req) => {
+    const seeded = posFixturePayments.get(req.params['paymentId']);
+    if (seeded) {
+      return { status: 200, body: { payment: seeded } };
+    }
     const payment = payments.get(req.params['paymentId']);
     if (!payment) {
       return {
@@ -103,6 +120,40 @@ export function registerSquareRoutes(server: SquareMockServer): void {
       };
     }
     return { status: 200, body: { payment } };
+  });
+
+  // Get order. Served from POS fixtures — the `processPosSale` worker fetches
+  // the order to read line items (catalog_object_id → class variation, money),
+  // reference_id (web-order dedup), and customer_id (buyer).
+  server.get('/v2/orders/:orderId', (req) => {
+    const order = posFixtureOrders.get(req.params['orderId']);
+    if (!order) {
+      return {
+        status: 404,
+        body: {
+          errors: [
+            {
+              category: 'INVALID_REQUEST_ERROR',
+              code: 'NOT_FOUND',
+              detail: `Order ${req.params['orderId']} not found`,
+            },
+          ],
+        },
+      };
+    }
+    return { status: 200, body: { order } };
+  });
+
+  // Get customer. Served from POS fixtures. Returns 200 with an empty body
+  // when not seeded so the Square SDK doesn't throw on a non-2xx status —
+  // `CustomersService.get` sees no `customer` and resolves to null (the
+  // no-email path), matching a POS sale rung up with no customer attached.
+  server.get('/v2/customers/:customerId', (req) => {
+    const customer = posFixtureCustomers.get(req.params['customerId']);
+    if (!customer) {
+      return { status: 200, body: {} };
+    }
+    return { status: 200, body: { customer } };
   });
 
   // Refund payment
@@ -341,6 +392,31 @@ function registerMockControlRoutes(server: SquareMockServer): void {
   server.get('/_mock/requests', () => {
     return { status: 200, body: { requests: server.requests } };
   });
+
+  // Seed a deterministic payment → order → customer graph for the POS
+  // registration integration test. The body carries Square WIRE-shape
+  // (snake_case) objects keyed by id; the GET routes above serve them back so
+  // the `processPosSale` worker's SDK calls resolve to known data.
+  //   { payments?: { [id]: paymentObj },
+  //     orders?:   { [id]: orderObj },
+  //     customers?:{ [id]: customerObj } }
+  server.post('/_mock/pos-fixture', (req) => {
+    const body = (req.body ?? {}) as {
+      payments?: Record<string, Record<string, unknown>>;
+      orders?: Record<string, Record<string, unknown>>;
+      customers?: Record<string, Record<string, unknown>>;
+    };
+    for (const [id, obj] of Object.entries(body.payments ?? {})) {
+      posFixturePayments.set(id, obj);
+    }
+    for (const [id, obj] of Object.entries(body.orders ?? {})) {
+      posFixtureOrders.set(id, obj);
+    }
+    for (const [id, obj] of Object.entries(body.customers ?? {})) {
+      posFixtureCustomers.set(id, obj);
+    }
+    return { status: 200, body: { ok: true } };
+  });
 }
 
 /**
@@ -466,4 +542,7 @@ export function resetSquareState(): void {
   subscriptionCounter = 0;
   payments.clear();
   subscriptions.clear();
+  posFixturePayments.clear();
+  posFixtureOrders.clear();
+  posFixtureCustomers.clear();
 }
