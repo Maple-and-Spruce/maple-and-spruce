@@ -116,6 +116,7 @@ export { getMusicTogetherRoster } from '@maple/firebase/maple-functions/get-musi
 export { getRelatedPublicClasses } from '@maple/firebase/maple-functions/get-related-public-classes';
 export { addToClassWaitlist } from '@maple/firebase/maple-functions/add-to-class-waitlist';
 export { getClassWaitlist } from '@maple/firebase/maple-functions/get-class-waitlist';
+export { getClassWaitlistCounts } from '@maple/firebase/maple-functions/get-class-waitlist-counts';
 export { notifyWaitlistOnSpotOpen } from '@maple/firebase/maple-functions/notify-waitlist-on-spot-open';
 
 // Public class catalog feed (RSS 2.0 for Meta Commerce Manager + Google Merchant Center)

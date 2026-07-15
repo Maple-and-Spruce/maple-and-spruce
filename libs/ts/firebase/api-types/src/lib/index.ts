@@ -189,6 +189,8 @@ export type {
   GetRelatedPublicClassesResponse,
   GetClassWaitlistRequest,
   GetClassWaitlistResponse,
+  GetClassWaitlistCountsRequest,
+  GetClassWaitlistCountsResponse,
 } from './class-waitlist.types';
 
 // Phase 3c: Discount types
