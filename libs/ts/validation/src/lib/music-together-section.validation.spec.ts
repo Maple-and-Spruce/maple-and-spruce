@@ -13,7 +13,8 @@ const valid: MusicTogetherSectionValidationInput = {
     { amountCents: 13200, dueAt: new Date('2026-09-01T14:00:00Z') },
     { amountCents: 13200, dueAt: new Date('2026-09-29T14:00:00Z') },
   ],
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
 };
 
 describe('musicTogetherSectionValidation', () => {
@@ -109,12 +110,23 @@ describe('musicTogetherSectionValidation', () => {
     ).toBe(true);
   });
 
-  it('rejects an invalid status', () => {
+  it('rejects an enrollment close date before the open date', () => {
     expect(
       musicTogetherSectionValidation({
         ...valid,
-        status: 'archived',
-      }).hasErrors('status')
+        enrollmentOpensAt: new Date('2026-10-01T00:00:00Z'),
+        enrollmentClosesAt: new Date('2026-09-01T00:00:00Z'),
+      }).hasErrors('enrollmentClosesAt')
     ).toBe(true);
+  });
+
+  it('accepts a valid enrollment window', () => {
+    expect(
+      musicTogetherSectionValidation({
+        ...valid,
+        enrollmentOpensAt: new Date('2026-09-01T00:00:00Z'),
+        enrollmentClosesAt: new Date('2026-10-01T00:00:00Z'),
+      }).hasErrors()
+    ).toBe(false);
   });
 });

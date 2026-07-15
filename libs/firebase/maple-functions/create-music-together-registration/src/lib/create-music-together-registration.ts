@@ -43,6 +43,7 @@ import {
 import {
   MT_CAPACITY_STATUSES,
   mtSectionOffersInstallments,
+  mtSectionEnrollmentOpen,
 } from '@maple/ts/domain';
 import { musicTogetherRegistrationValidation } from '@maple/ts/validation';
 import type {
@@ -104,8 +105,21 @@ export const createMusicTogetherRegistration = Functions.endpoint
     if (!section) {
       throwNotFound('Music Together section', data.sectionId);
     }
-    if (section.status !== 'open') {
-      throwFailedPrecondition('This section is not open for registration.');
+    // Enrollment is gated by the explicit controls (live toggle + optional
+    // schedule), evaluated now — not a stored status. Capacity is enforced
+    // transactionally below, so the window-only check is used here.
+    const now = new Date();
+    if (!mtSectionEnrollmentOpen(section, now)) {
+      if (
+        section.enrollmentActive &&
+        section.enrollmentOpensAt &&
+        now < section.enrollmentOpensAt
+      ) {
+        throwFailedPrecondition(
+          "Registration for this section isn't open yet."
+        );
+      }
+      throwFailedPrecondition('Registration for this section has closed.');
     }
 
     // 3. Resolve the charge amounts from the section's configurable plan.
@@ -129,7 +143,6 @@ export const createMusicTogetherRegistration = Functions.endpoint
     // 4. Reserve the seat inside a transaction that enforces the family cap.
     const db = getDb();
     const regRef = MusicTogetherRegistrationRepository.getDocRef();
-    const now = new Date();
     const children = data.children.map((c) => ({
       name: c.name.trim(),
       dob: new Date(c.dob),

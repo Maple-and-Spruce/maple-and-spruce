@@ -7,7 +7,8 @@ import type { CalendarEvent } from '@maple/ts/domain';
  * Verifies that MT section create/update/delete reconciles CalendarEvents —
  * one per session, type `musictogether`, 45-minute duration — using
  * deterministic IDs of the form `mt-{sectionId}-{timestampMs}`, and that
- * events exist only while the section is live (status `open` or `closed`).
+ * events exist only while the section is `visible` (independent of whether
+ * enrollment is open).
  */
 
 const mocks = vi.hoisted(() => ({
@@ -56,7 +57,8 @@ const openSection = {
   name: 'Thursday Morning — Mixed Age (0–5)',
   description: 'Fall 2026',
   sessions: sessionDates.map((d) => ({ dateTime: ts(d) })),
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
   location: 'Spruce Room',
   room: 'spruce',
   capacityFamilies: 8,
@@ -120,29 +122,32 @@ describe('onMusicTogetherSectionWrite', () => {
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
-  it('still creates events for a closed (full) section', async () => {
+  it('still creates events for a visible section with enrollment closed', async () => {
     await handler({
       params: { sectionId: 'sec-1' },
       data: {
         before: makeSnapshot(true, openSection),
-        after: makeSnapshot(true, { ...openSection, status: 'closed' }),
+        after: makeSnapshot(true, {
+          ...openSection,
+          enrollmentActive: false,
+        }),
       },
     });
     expect(mocks.upsertWithId).toHaveBeenCalledTimes(3);
   });
 
-  it('does not create events for a draft section', async () => {
+  it('does not create events for a hidden section', async () => {
     await handler({
       params: { sectionId: 'sec-1' },
       data: {
         before: makeSnapshot(false),
-        after: makeSnapshot(true, { ...openSection, status: 'draft' }),
+        after: makeSnapshot(true, { ...openSection, visible: false }),
       },
     });
     expect(mocks.upsertWithId).not.toHaveBeenCalled();
   });
 
-  it('removes events when a section is completed', async () => {
+  it('removes events when a section becomes hidden', async () => {
     const existing = sessionDates.map((d) => makeCalendarEvent('sec-1', d));
     mocks.findAllBySourceRef.mockResolvedValue(existing);
 
@@ -150,7 +155,7 @@ describe('onMusicTogetherSectionWrite', () => {
       params: { sectionId: 'sec-1' },
       data: {
         before: makeSnapshot(true, openSection),
-        after: makeSnapshot(true, { ...openSection, status: 'completed' }),
+        after: makeSnapshot(true, { ...openSection, visible: false }),
       },
     });
 

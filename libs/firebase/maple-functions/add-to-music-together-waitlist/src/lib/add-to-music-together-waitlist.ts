@@ -7,8 +7,8 @@
  * repeat signup with the same email returns `added: false` and keeps the
  * family's place in line.
  *
- * The section must exist and not be a draft; beyond that there is no capacity
- * gate (a family may want to be waitlisted even before a section fills).
+ * The section must exist and be publicly visible; beyond that there is no
+ * capacity gate (a family may want to be waitlisted even before a section fills).
  *
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
@@ -50,7 +50,7 @@ export const addToMusicTogetherWaitlist = Functions.endpoint
     if (!section) {
       throwNotFound('Music Together section', data.sectionId);
     }
-    if (section.status === 'draft') {
+    if (!section.visible) {
       throwInvalidArgument(
         'This section is not available for waitlist signup'
       );

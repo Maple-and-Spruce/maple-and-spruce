@@ -30,10 +30,12 @@ export interface MusicTogetherSectionValidationInput {
    * When present it must have 2+ rows (a single charge is just pay-in-full).
    */
   installmentPlan?: MusicTogetherInstallmentInput[];
-  status?: string;
+  /** Explicit visibility/enrollment controls (status is derived, not stored). */
+  visible?: boolean;
+  enrollmentActive?: boolean;
+  enrollmentOpensAt?: Date | string;
+  enrollmentClosesAt?: Date | string;
 }
-
-const SECTION_STATUSES = ['draft', 'open', 'closed', 'completed'];
 
 function parseDate(value: Date | string | undefined): Date | undefined {
   if (value === undefined) return undefined;
@@ -105,10 +107,28 @@ export const musicTogetherSectionValidation = staticSuite(
       }
     });
 
-    test('status', 'Status must be valid', () => {
-      if (data.status !== undefined) {
-        enforce(data.status).inside(SECTION_STATUSES);
+    test('enrollmentOpensAt', 'Enrollment open date must be valid', () => {
+      if (data.enrollmentOpensAt !== undefined) {
+        enforce(parseDate(data.enrollmentOpensAt)).isNotNullish();
       }
     });
+
+    test('enrollmentClosesAt', 'Enrollment close date must be valid', () => {
+      if (data.enrollmentClosesAt !== undefined) {
+        enforce(parseDate(data.enrollmentClosesAt)).isNotNullish();
+      }
+    });
+
+    test(
+      'enrollmentClosesAt',
+      'Enrollment must close after it opens',
+      () => {
+        const opens = parseDate(data.enrollmentOpensAt);
+        const closes = parseDate(data.enrollmentClosesAt);
+        if (opens && closes) {
+          enforce(closes.getTime()).greaterThan(opens.getTime());
+        }
+      }
+    );
   }
 );

@@ -31,7 +31,7 @@ function makeSection(
     ],
     capacityFamilies: 8,
     spotsRemaining: 5,
-    status: 'open',
+    enrollmentOpen: true,
     ...overrides,
   };
 }
@@ -306,5 +306,21 @@ describe('MusicTogetherRegistrationWidget', () => {
       email: 'wait@example.com',
       availability: 'weekday mornings',
     });
+  });
+
+  it('shows an "opens soon" notice instead of the form when enrollment is closed', async () => {
+    nextSection = makeSection({
+      enrollmentOpen: false,
+      enrollmentOpensAt: '2026-10-01T13:00:00.000Z',
+    });
+    renderWidget();
+
+    expect(
+      await screen.findByText(/isn't open yet/i)
+    ).toBeInTheDocument();
+    // The registration form (Register button) must not render.
+    expect(
+      screen.queryByRole('button', { name: /Register — \$/i })
+    ).not.toBeInTheDocument();
   });
 });

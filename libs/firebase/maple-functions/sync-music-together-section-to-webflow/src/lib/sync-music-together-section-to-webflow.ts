@@ -112,6 +112,8 @@ function extractSection(
     ...data,
     sessions: parseSessions(data['sessions']),
     installmentPlan: parseInstallmentPlan(data['installmentPlan']),
+    enrollmentOpensAt: toDateLike(data['enrollmentOpensAt']),
+    enrollmentClosesAt: toDateLike(data['enrollmentClosesAt']),
     createdAt: toDateLike(data['createdAt']) ?? new Date(),
     updatedAt: toDateLike(data['updatedAt']) ?? new Date(),
   } as MusicTogetherSection;
@@ -138,10 +140,10 @@ export const syncMusicTogetherSectionToWebflow = onDocumentWritten(
     console.log('Sync MT section to Webflow triggered:', {
       sectionId: event.params.sectionId,
       before: beforeSection
-        ? { name: beforeSection.name, status: beforeSection.status }
+        ? { name: beforeSection.name, visible: beforeSection.visible }
         : null,
       after: afterSection
-        ? { name: afterSection.name, status: afterSection.status }
+        ? { name: afterSection.name, visible: afterSection.visible }
         : null,
     });
 
@@ -175,10 +177,11 @@ export const syncMusicTogetherSectionToWebflow = onDocumentWritten(
         return;
       }
 
-      // Case 2: Section is a draft — not publicly visible. Remove any prior
-      // Webflow item (covers "was open, now draft" as well as create-as-draft).
-      if (afterSection.status === 'draft') {
-        console.log('MT section is draft, removing from Webflow');
+      // Case 2: Section is not visible — hidden from the public site. Remove any
+      // prior Webflow item (covers "was visible, now hidden" as well as
+      // create-as-hidden).
+      if (!afterSection.visible) {
+        console.log('MT section is hidden, removing from Webflow');
         const removed = await webflow.sectionService.removeSection(
           afterSection.id,
           shouldPublish,
@@ -192,8 +195,8 @@ export const syncMusicTogetherSectionToWebflow = onDocumentWritten(
         return;
       }
 
-      // Case 3: Section is non-draft (open/closed/completed) — enrich with the
-      // live family count and sync to Webflow.
+      // Case 3: Section is visible — enrich with the live family count and sync
+      // to Webflow (the derived status is computed in the field mapping).
       const familyCount =
         await MusicTogetherRegistrationRepository.countBySectionId(
           afterSection.id
@@ -201,7 +204,7 @@ export const syncMusicTogetherSectionToWebflow = onDocumentWritten(
 
       console.log('Syncing MT section to Webflow:', {
         name: afterSection.name,
-        status: afterSection.status,
+        visible: afterSection.visible,
         isDev,
         autoPublish: shouldPublish,
         familyCount,

@@ -11,7 +11,7 @@ import {
   MusicTogetherSectionRepository,
   MusicTogetherRegistrationRepository,
 } from '@maple/firebase/database';
-import { mtSpotsRemaining } from '@maple/ts/domain';
+import { mtSpotsRemaining, mtSectionEnrollmentOpen } from '@maple/ts/domain';
 import type {
   GetPublicMusicTogetherSectionRequest,
   GetPublicMusicTogetherSectionResponse,
@@ -38,8 +38,8 @@ export const getPublicMusicTogetherSection = Functions.endpoint
     if (!section) {
       throw new Error(`Music Together section not found: ${data.sectionId}`);
     }
-    // Draft sections are not publicly visible.
-    if (section.status === 'draft') {
+    // Only visible sections are publicly available.
+    if (!section.visible) {
       throw new Error('This section is not available');
     }
 
@@ -60,7 +60,8 @@ export const getPublicMusicTogetherSection = Functions.endpoint
       })),
       capacityFamilies: section.capacityFamilies,
       spotsRemaining: mtSpotsRemaining(section, familyCount),
-      status: section.status,
+      enrollmentOpen: mtSectionEnrollmentOpen(section, new Date(), familyCount),
+      enrollmentOpensAt: section.enrollmentOpensAt?.toISOString(),
       location: section.location,
       room: section.room,
     };

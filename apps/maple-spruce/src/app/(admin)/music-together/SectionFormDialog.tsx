@@ -14,6 +14,9 @@ import {
   IconButton,
   Stack,
   Divider,
+  Switch,
+  FormControlLabel,
+  Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -21,20 +24,13 @@ import {
   MT_DEFAULT_CAPACITY_FAMILIES,
   MT_PRICE_FULL_CENTS,
   MT_DEFAULT_INSTALLMENT_CENTS,
+  mtSectionDerivedStatus,
   type MusicTogetherSection,
   type MusicTogetherSemester,
   type CreateMusicTogetherSectionInput,
-  type MusicTogetherSectionStatus,
   ROOMS,
   getRoomLabel,
 } from '@maple/ts/domain';
-
-const STATUSES: MusicTogetherSectionStatus[] = [
-  'draft',
-  'open',
-  'closed',
-  'completed',
-];
 
 /** Date <-> <input type="datetime-local"> string (local time). */
 function toLocalInput(date: Date): string {
@@ -70,7 +66,11 @@ export function SectionFormDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [semesterId, setSemesterId] = useState('');
-  const [status, setStatus] = useState<MusicTogetherSectionStatus>('draft');
+  // Explicit controls — the overall status is derived from these (see the Chip).
+  const [visible, setVisible] = useState(false);
+  const [enrollmentActive, setEnrollmentActive] = useState(false);
+  const [enrollmentOpensAt, setEnrollmentOpensAt] = useState('');
+  const [enrollmentClosesAt, setEnrollmentClosesAt] = useState('');
   const [capacity, setCapacity] = useState(String(MT_DEFAULT_CAPACITY_FAMILIES));
   const [priceFull, setPriceFull] = useState(dollars(MT_PRICE_FULL_CENTS));
   const [location, setLocation] = useState('');
@@ -93,7 +93,18 @@ export function SectionFormDialog({
       setName(section.name);
       setDescription(section.description ?? '');
       setSemesterId(section.semesterId ?? '');
-      setStatus(section.status);
+      setVisible(section.visible);
+      setEnrollmentActive(section.enrollmentActive);
+      setEnrollmentOpensAt(
+        section.enrollmentOpensAt
+          ? toLocalInput(new Date(section.enrollmentOpensAt))
+          : ''
+      );
+      setEnrollmentClosesAt(
+        section.enrollmentClosesAt
+          ? toLocalInput(new Date(section.enrollmentClosesAt))
+          : ''
+      );
       setCapacity(String(section.capacityFamilies));
       setPriceFull(dollars(section.priceFullCents));
       setLocation(section.location ?? '');
@@ -109,7 +120,10 @@ export function SectionFormDialog({
       setName('');
       setDescription('');
       setSemesterId('');
-      setStatus('draft');
+      setVisible(false);
+      setEnrollmentActive(false);
+      setEnrollmentOpensAt('');
+      setEnrollmentClosesAt('');
       setCapacity(String(MT_DEFAULT_CAPACITY_FAMILIES));
       setPriceFull(dollars(MT_PRICE_FULL_CENTS));
       setLocation('');
@@ -125,7 +139,14 @@ export function SectionFormDialog({
       const input: CreateMusicTogetherSectionInput = {
         name: name.trim(),
         description: description.trim() || undefined,
-        status,
+        visible,
+        enrollmentActive,
+        enrollmentOpensAt: enrollmentOpensAt
+          ? fromLocalInput(enrollmentOpensAt)
+          : undefined,
+        enrollmentClosesAt: enrollmentClosesAt
+          ? fromLocalInput(enrollmentClosesAt)
+          : undefined,
         semesterId: semesterId || undefined,
         capacityFamilies: parseInt(capacity, 10),
         priceFullCents: toCents(priceFull),
@@ -165,6 +186,26 @@ export function SectionFormDialog({
     );
   const removeInstallmentAt = (idx: number) =>
     setInstallments((prev) => prev.filter((_, i) => i !== idx));
+
+  // Live preview of the derived status from the current control values (no
+  // family count in the form, so this never shows 'full').
+  const derivedStatus = mtSectionDerivedStatus(
+    {
+      visible,
+      enrollmentActive,
+      enrollmentOpensAt: enrollmentOpensAt
+        ? fromLocalInput(enrollmentOpensAt)
+        : undefined,
+      enrollmentClosesAt: enrollmentClosesAt
+        ? fromLocalInput(enrollmentClosesAt)
+        : undefined,
+      capacityFamilies: parseInt(capacity, 10) || 0,
+      sessions: sessions
+        .filter((s) => s)
+        .map((s) => ({ dateTime: fromLocalInput(s) })),
+    },
+    new Date()
+  );
 
   const prefillInstallments = () => {
     const firstSession = sessions[0]
@@ -216,22 +257,62 @@ export function SectionFormDialog({
               </MenuItem>
             ))}
           </TextField>
+          <Divider />
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Typography variant="subtitle2">Visibility &amp; enrollment</Typography>
+            <Chip
+              size="small"
+              label={derivedStatus}
+              color={derivedStatus === 'open' ? 'success' : 'default'}
+            />
+          </Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={visible}
+                onChange={(e) => setVisible(e.target.checked)}
+                inputProps={{ 'aria-label': 'Show on calendar and site' }}
+              />
+            }
+            label="Show on calendar &amp; site (registration can still be closed)"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={enrollmentActive}
+                onChange={(e) => setEnrollmentActive(e.target.checked)}
+                inputProps={{ 'aria-label': 'Enrollment active' }}
+              />
+            }
+            label="Enrollment active (accept registrations now)"
+          />
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
-              label="Status"
-              select
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as MusicTogetherSectionStatus)
-              }
+              label="Enrollment opens (optional)"
+              type="datetime-local"
+              value={enrollmentOpensAt}
+              onChange={(e) => setEnrollmentOpensAt(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              helperText="Auto-opens at this time when active"
               sx={{ flex: 1 }}
-            >
-              {STATUSES.map((s) => (
-                <MenuItem key={s} value={s}>
-                  {s}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
+            <TextField
+              label="Enrollment closes (optional)"
+              type="datetime-local"
+              value={enrollmentClosesAt}
+              onChange={(e) => setEnrollmentClosesAt(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ flex: 1 }}
+            />
+          </Box>
+          <Divider />
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Capacity (families)"
               type="number"
@@ -239,8 +320,6 @@ export function SectionFormDialog({
               onChange={(e) => setCapacity(e.target.value)}
               sx={{ flex: 1 }}
             />
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Full price ($)"
               value={priceFull}

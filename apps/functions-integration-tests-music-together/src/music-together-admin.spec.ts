@@ -37,7 +37,8 @@ function createInput(
       { amountCents: 13200, dueAt: week1 },
       { amountCents: 13200, dueAt: week5 },
     ],
-    status: 'open',
+    visible: true,
+    enrollmentActive: true,
     ...overrides,
   };
 }
@@ -165,7 +166,8 @@ describe('getMusicTogetherRoster', () => {
       sessions: [{ dateTime: week1 }],
       capacityFamilies: 8,
       priceFullCents: 25200,
-      status: 'open',
+      visible: true,
+      enrollmentActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

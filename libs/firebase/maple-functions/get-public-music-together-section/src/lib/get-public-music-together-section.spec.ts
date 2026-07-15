@@ -34,7 +34,8 @@ const section = {
   id: 'sec-1',
   name: 'Spring 2026',
   description: 'Tuesdays 10am',
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
   capacityFamilies: 8,
   priceFullCents: 25200,
   sessions: [{ dateTime: new Date('2026-09-01T14:00:00Z') }],
@@ -89,11 +90,29 @@ describe('getPublicMusicTogetherSection', () => {
     await expect(run({ sectionId: 'nope' })).rejects.toThrow(/not found/i);
   });
 
-  it('hides draft sections', async () => {
-    mocks.findById.mockResolvedValue({ ...section, status: 'draft' });
+  it('hides sections that are not visible', async () => {
+    mocks.findById.mockResolvedValue({ ...section, visible: false });
     await expect(run({ sectionId: 'sec-1' })).rejects.toThrow(
       /not available/i
     );
     expect(mocks.countBySectionId).not.toHaveBeenCalled();
+  });
+
+  it('reports enrollmentOpen from the live controls', async () => {
+    mocks.findById.mockResolvedValue(section);
+    mocks.countBySectionId.mockResolvedValue(3);
+    const result = (await run({ sectionId: 'sec-1' })) as {
+      section: { enrollmentOpen: boolean };
+    };
+    expect(result.section.enrollmentOpen).toBe(true);
+  });
+
+  it('reports enrollmentOpen=false when enrollment is paused', async () => {
+    mocks.findById.mockResolvedValue({ ...section, enrollmentActive: false });
+    mocks.countBySectionId.mockResolvedValue(3);
+    const result = (await run({ sectionId: 'sec-1' })) as {
+      section: { enrollmentOpen: boolean };
+    };
+    expect(result.section.enrollmentOpen).toBe(false);
   });
 });

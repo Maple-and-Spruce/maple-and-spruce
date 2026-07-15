@@ -12,7 +12,8 @@ const baseSection: MusicTogetherSection = {
   ],
   capacityFamilies: 8,
   priceFullCents: 25200,
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
   location: 'Maple & Spruce Studio',
   room: 'Room A',
   createdAt: new Date('2026-01-01'),
@@ -45,6 +46,17 @@ describe('mapSectionToFieldData', () => {
     expect(fd['price-full-cents']).toBe(25200);
     expect(fd['capacity-families']).toBe(8);
     expect(fd['spots-remaining']).toBe(5);
+    // Derived from the controls: this fixture's sessions are in the past, so a
+    // visible section derives to 'completed'.
+    expect(fd['status']).toBe('completed');
+  });
+
+  it('derives status=open for a visible, enrolling, future-dated section', () => {
+    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const fd = mapSectionToFieldData(
+      { ...baseSection, sessions: [{ dateTime: future }] },
+      { isDev: false, familyCount: 3 }
+    );
     expect(fd['status']).toBe('open');
   });
 

@@ -21,6 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import GroupIcon from '@mui/icons-material/Group';
 import {
   getMusicTogetherSeasonLabel,
+  mtSectionDerivedStatus,
   type MusicTogetherSection,
   type MusicTogetherSemester,
   type CreateMusicTogetherSectionInput,
@@ -273,11 +274,20 @@ export default function MusicTogetherPage() {
                     : '—'}
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    size="small"
-                    label={section.status}
-                    color={section.status === 'open' ? 'success' : 'default'}
-                  />
+                  {(() => {
+                    const derived = mtSectionDerivedStatus(
+                      section,
+                      new Date(),
+                      countsBySection[section.id]?.families
+                    );
+                    return (
+                      <Chip
+                        size="small"
+                        label={derived}
+                        color={derived === 'open' ? 'success' : 'default'}
+                      />
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>{fmtDate(section.sessions?.[0]?.dateTime)}</TableCell>
                 <TableCell>{section.capacityFamilies} families</TableCell>

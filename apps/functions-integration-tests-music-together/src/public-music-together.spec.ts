@@ -30,7 +30,8 @@ function sectionDoc(overrides: Record<string, unknown> = {}) {
       { amountCents: 13200, dueAt: week1 },
       { amountCents: 13200, dueAt: week5 },
     ],
-    status: 'open',
+    visible: true,
+    enrollmentActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -62,7 +63,7 @@ describe('getPublicMusicTogetherSection', () => {
     await setFirestoreDoc(
       'musicTogetherSections',
       'sec-pub-draft',
-      sectionDoc({ status: 'draft' })
+      sectionDoc({ visible: false })
     );
     // two confirmed families → 6 of 8 spots remaining
     await setFirestoreDoc(
@@ -124,12 +125,12 @@ describe('addToMusicTogetherWaitlist', () => {
     await setFirestoreDoc(
       'musicTogetherSections',
       'sec-wl',
-      sectionDoc({ status: 'closed' })
+      sectionDoc({ enrollmentActive: false })
     );
     await setFirestoreDoc(
       'musicTogetherSections',
       'sec-wl-draft',
-      sectionDoc({ status: 'draft' })
+      sectionDoc({ visible: false })
     );
   });
 

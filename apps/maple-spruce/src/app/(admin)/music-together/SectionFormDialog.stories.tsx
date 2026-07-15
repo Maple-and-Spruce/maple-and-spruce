@@ -28,7 +28,8 @@ const mockSection: MusicTogetherSection = {
     { amountCents: 13200, dueAt: new Date('2030-04-02T14:00:00Z') },
     { amountCents: 13200, dueAt: new Date('2030-04-30T14:00:00Z') },
   ],
-  status: 'open',
+  visible: true,
+  enrollmentActive: true,
   location: 'Studio',
   room: 'spruce',
   createdAt: new Date('2030-01-01T00:00:00Z'),
@@ -85,7 +86,8 @@ export const CreateSubmits: Story = {
       expect(args.onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Fall 2026',
-          status: 'draft',
+          visible: false,
+          enrollmentActive: false,
           capacityFamilies: 8,
           priceFullCents: 25200,
           sessions: [],

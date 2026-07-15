@@ -54,7 +54,7 @@ const validEntry = {
 describe('addToMusicTogetherWaitlist', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', status: 'closed' });
+    mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', visible: true });
     mocks.waitlistAdd.mockResolvedValue({ created: true });
   });
 
@@ -72,8 +72,12 @@ describe('addToMusicTogetherWaitlist', () => {
     expect(result.added).toBe(false);
   });
 
-  it('works for an open section too (no capacity gate)', async () => {
-    mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', status: 'open' });
+  it('works for a visible section regardless of enrollment (no capacity gate)', async () => {
+    mocks.sectionFindById.mockResolvedValue({
+      id: 'sec-1',
+      visible: true,
+      enrollmentActive: true,
+    });
     const result = (await run(validEntry)) as { added: boolean };
     expect(result.added).toBe(true);
   });
@@ -89,8 +93,8 @@ describe('addToMusicTogetherWaitlist', () => {
     expect(mocks.waitlistAdd).not.toHaveBeenCalled();
   });
 
-  it('rejects a draft section', async () => {
-    mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', status: 'draft' });
+  it('rejects a hidden section', async () => {
+    mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', visible: false });
     await expect(run(validEntry)).rejects.toThrow(/not available/i);
   });
 });
