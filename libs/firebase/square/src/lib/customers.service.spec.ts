@@ -11,6 +11,52 @@ function makeClient(search: unknown, create: unknown): SquareClient {
   } as unknown as SquareClient;
 }
 
+function makeGetClient(get: unknown): SquareClient {
+  return {
+    customers: {
+      get: vi.fn().mockResolvedValue(get),
+    },
+  } as unknown as SquareClient;
+}
+
+describe('CustomersService.get', () => {
+  it('returns the mapped customer when found', async () => {
+    const client = makeGetClient({
+      customer: {
+        id: 'cust-1',
+        emailAddress: 'buyer@example.com',
+        givenName: 'Grace',
+        familyName: 'Hopper',
+      },
+    });
+
+    const result = await new CustomersService(client).get('cust-1');
+
+    expect(result).toEqual({
+      emailAddress: 'buyer@example.com',
+      givenName: 'Grace',
+      familyName: 'Hopper',
+    });
+    expect(client.customers.get).toHaveBeenCalledWith({ customerId: 'cust-1' });
+  });
+
+  it('returns null when no customer is in the response', async () => {
+    const client = makeGetClient({});
+    const result = await new CustomersService(client).get('missing');
+    expect(result).toBeNull();
+  });
+
+  it('maps missing optional fields to undefined', async () => {
+    const client = makeGetClient({ customer: { id: 'cust-2' } });
+    const result = await new CustomersService(client).get('cust-2');
+    expect(result).toEqual({
+      emailAddress: undefined,
+      givenName: undefined,
+      familyName: undefined,
+    });
+  });
+});
+
 describe('CustomersService.upsertByEmail', () => {
   it('returns an existing customer id without creating', async () => {
     const client = makeClient({ customers: [{ id: 'existing' }] }, {});

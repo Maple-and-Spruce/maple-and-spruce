@@ -19,6 +19,7 @@
     "firebase-maple-functions-upload-product-image": "maple-square",
     "firebase-maple-functions-square-webhook": "maple-square",
     "firebase-maple-functions-process-catalog-sync-request": "maple-square",
+    "firebase-maple-functions-process-pos-sale": "maple-square",
     "firebase-maple-functions-create-registration": "maple-square",
     "firebase-maple-functions-cancel-registration": "maple-square",
     "firebase-maple-functions-detect-sync-conflicts": "maple-square",

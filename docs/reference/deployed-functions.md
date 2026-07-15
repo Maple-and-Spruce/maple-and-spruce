@@ -136,8 +136,9 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `createProduct`, `updateProduct`, `uploadProductImage`
 
 ### Square webhook
-- `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. Inventory and invoice events run inline (fast).
+- `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).
 - `processCatalogSyncRequest` — Firestore trigger on `catalogSyncRequests/pending` _(memory: 512MiB, timeout: 540s)_. Lease-based: a burst of N catalog webhooks collapses to a single downstream sync. Reads all Firestore products + all Square catalog items, parallelizes image-URL fetches (concurrency 8), and reconciles.
+- `processPosSale` — Firestore trigger on `posSaleRequests/{paymentId}` _(memory: 512MiB)_. Turns a completed in-person Square POS class sale into a `source:'pos'` registration. Fetches the payment/order/customer from Square, skips web-originated orders (`referenceId` dedup) and already-processed orders (`squareOrderId` idempotency), creates a registration per class line item, and emails the admin via the `mail` collection when the sale has no customer email. Requires `payment.created` + `payment.updated` enabled on the Square webhook subscription (both sandbox and prod) — see `docs/guides/pos-class-registration.md`.
 
 ### Registration operations (Square payments)
 - `createRegistration`, `cancelRegistration`

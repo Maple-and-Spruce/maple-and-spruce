@@ -193,6 +193,10 @@ export interface GetPaymentResult {
   receiptUrl?: string;
   /** Payment creation timestamp */
   createdAt: string;
+  /** Square order id this payment paid for, if any (POS + web both set it). */
+  orderId?: string;
+  /** Square customer id attached to the payment, if any. */
+  customerId?: string;
 }
 
 /**
@@ -321,6 +325,8 @@ export class PaymentsService {
       refundedCents: Number(payment.refundedMoney?.amount ?? 0),
       receiptUrl: payment.receiptUrl ?? undefined,
       createdAt: payment.createdAt || new Date().toISOString(),
+      orderId: payment.orderId ?? undefined,
+      customerId: payment.customerId ?? undefined,
     };
   }
 }
