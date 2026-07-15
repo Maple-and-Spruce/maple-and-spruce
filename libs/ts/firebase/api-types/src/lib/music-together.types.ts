@@ -6,7 +6,6 @@
  */
 import type {
   MusicTogetherSection,
-  MusicTogetherSectionStatus,
   MusicTogetherSemester,
   MusicTogetherSemesterStatus,
   CreateMusicTogetherSemesterInput,
@@ -48,7 +47,8 @@ export interface UpdateMusicTogetherSemesterResponse {
 // ============================================================================
 
 export interface GetMusicTogetherSectionsRequest {
-  status?: MusicTogetherSectionStatus;
+  /** Optionally scope to a single semester. */
+  semesterId?: string;
 }
 
 /** Per-section registration counts (capacity statuses: pending + confirmed). */
@@ -116,7 +116,10 @@ export interface PublicMusicTogetherSection {
   installmentPlan?: { amountCents: number; dueAt: string }[];
   capacityFamilies: number;
   spotsRemaining: number;
-  status: MusicTogetherSection['status'];
+  /** Whether registration is open right now (window active + seats available). */
+  enrollmentOpen: boolean;
+  /** ISO instant registration opens, when scheduled and not yet open. */
+  enrollmentOpensAt?: string;
   location?: string;
   room?: string;
 }

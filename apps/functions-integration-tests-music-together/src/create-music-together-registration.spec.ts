@@ -33,7 +33,8 @@ function sectionDoc(overrides: Record<string, unknown> = {}) {
       { amountCents: 13200, dueAt: week1 },
       { amountCents: 13200, dueAt: week5 },
     ],
-    status: 'open',
+    visible: true,
+    enrollmentActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -68,7 +69,7 @@ describe('createMusicTogetherRegistration', () => {
     await setFirestoreDoc(
       'musicTogetherSections',
       'sec-draft',
-      sectionDoc({ status: 'draft' })
+      sectionDoc({ enrollmentActive: false })
     );
     await setFirestoreDoc(
       'musicTogetherSections',
