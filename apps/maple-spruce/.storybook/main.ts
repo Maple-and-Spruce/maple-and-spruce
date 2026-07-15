@@ -23,7 +23,14 @@ const config: StorybookConfig = {
   async viteFinal(viteConfig) {
     const { mergeConfig } = await import('vite');
     return mergeConfig(viteConfig, {
-      optimizeDeps: { include: ['@mui/icons-material/Download'] },
+      optimizeDeps: {
+        include: [
+          '@mui/icons-material/Download',
+          '@mui/icons-material/ContentCopy',
+          '@mui/icons-material/EventAvailable',
+          '@mui/icons-material/OpenInNew',
+        ],
+      },
     });
   },
 };
