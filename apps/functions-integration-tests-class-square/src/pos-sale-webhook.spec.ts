@@ -54,9 +54,9 @@ const SIGNATURE_KEY = 'mock-key';
 const ADMIN_EMAIL = 'katie@mapleandsprucefolkarts.com';
 
 /** Sign a webhook body exactly the way the function's verifier does. */
-function signWebhook(body: unknown): string {
+function signWebhook(body: unknown, secret: string): string {
   const raw = JSON.stringify(body);
-  return createHmac('sha256', SIGNATURE_KEY)
+  return createHmac('sha256', secret)
     .update(SIGNED_URL + raw)
     .digest('base64');
 }
@@ -70,7 +70,7 @@ async function postWebhook(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-square-hmacsha256-signature': signWebhook(body),
+      'x-square-hmacsha256-signature': signWebhook(body, SIGNATURE_KEY),
     },
     body: raw,
   });
