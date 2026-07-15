@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   set: vi.fn(),
   get: vi.fn(),
   collectionGet: vi.fn(),
+  collectionGroupGet: vi.fn(),
   countGet: vi.fn(),
   count: vi.fn(),
   batchSet: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('./utilities/database.config', () => {
   };
   const db = {
     collection: () => collection,
+    collectionGroup: () => ({ get: mocks.collectionGroupGet }),
     batch: () => ({
       delete: mocks.batchDelete,
       set: mocks.batchSet,
@@ -152,6 +154,44 @@ describe('ClassWaitlistRepository.countByClassId', () => {
     mocks.countGet.mockResolvedValue({ data: () => ({ count: 7 }) });
     const result = await ClassWaitlistRepository.countByClassId('class-1');
     expect(result).toBe(7);
+  });
+});
+
+describe('ClassWaitlistRepository.countsByClass', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // A `waitlist` collection-group doc: `<topCollection>/<parentId>/waitlist/<id>`.
+  const groupDoc = (topCollection: string, parentId: string) => ({
+    ref: {
+      parent: {
+        // the waitlist subcollection; its parent is the class/section doc
+        parent: { id: parentId, parent: { id: topCollection } },
+      },
+    },
+  });
+
+  it('tallies per class and excludes the Music Together waitlist', async () => {
+    mocks.collectionGroupGet.mockResolvedValue({
+      docs: [
+        groupDoc('classes', 'class-1'),
+        groupDoc('classes', 'class-1'),
+        groupDoc('classes', 'class-2'),
+        // Same `waitlist` subcollection name under MT — must NOT be counted.
+        groupDoc('musicTogetherSections', 'section-9'),
+      ],
+    });
+
+    const result = await ClassWaitlistRepository.countsByClass();
+
+    expect(result).toEqual({ 'class-1': 2, 'class-2': 1 });
+    expect(result['section-9']).toBeUndefined();
+  });
+
+  it('returns an empty map when no waitlists exist', async () => {
+    mocks.collectionGroupGet.mockResolvedValue({ docs: [] });
+    expect(await ClassWaitlistRepository.countsByClass()).toEqual({});
   });
 });
 

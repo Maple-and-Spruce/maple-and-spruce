@@ -50,3 +50,15 @@ export interface GetClassWaitlistResponse {
   /** Total number of entries (equals `entries.length`; sent explicitly for convenience). */
   count: number;
 }
+
+// ============================================================================
+// Get Class Waitlist Counts (admin — classes-list column)
+// ============================================================================
+
+/** No filters — returns waitlist counts for every class in one call. */
+export type GetClassWaitlistCountsRequest = Record<string, never>;
+
+export interface GetClassWaitlistCountsResponse {
+  /** `classId -> waitlist entry count`. Classes with no waitlist are omitted. */
+  counts: Record<string, number>;
+}

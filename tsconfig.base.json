@@ -314,6 +314,9 @@
       "@maple/firebase/maple-functions/get-class-waitlist": [
         "libs/firebase/maple-functions/get-class-waitlist/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-class-waitlist-counts": [
+        "libs/firebase/maple-functions/get-class-waitlist-counts/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-registration": [
         "libs/firebase/maple-functions/get-registration/src/index.ts"
       ],

@@ -13,6 +13,7 @@ export {
   useDiscounts,
   useRegistrations,
   useClassWaitlist,
+  useClassWaitlistCounts,
   useCalendarEvents,
   useArtistPayouts,
   useAgreementTemplates,

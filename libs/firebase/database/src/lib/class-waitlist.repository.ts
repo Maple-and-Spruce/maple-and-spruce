@@ -89,6 +89,30 @@ export const ClassWaitlistRepository = {
   },
 
   /**
+   * Waitlist counts for every class in one pass, as a `classId -> count` map
+   * (classes with no waitlist are simply absent). Powers the classes-list
+   * "Waitlist" column so the admin doesn't have to open each roster.
+   *
+   * Uses a `waitlist` collection-group scan. The Music Together waitlist also
+   * lives in a `waitlist` subcollection, so we must keep only entries whose
+   * grandparent is the top-level `classes` collection — otherwise MT signups
+   * would leak in under a sectionId masquerading as a classId.
+   */
+  async countsByClass(): Promise<Record<string, number>> {
+    const snapshot = await getDb().collectionGroup(SUBCOLLECTION).get();
+    const counts: Record<string, number> = {};
+    for (const doc of snapshot.docs) {
+      const parentClassDoc = doc.ref.parent.parent;
+      // parentClassDoc.parent is the top-level collection the doc belongs to.
+      if (!parentClassDoc || parentClassDoc.parent.id !== PARENT_COLLECTION) {
+        continue;
+      }
+      counts[parentClassDoc.id] = (counts[parentClassDoc.id] ?? 0) + 1;
+    }
+    return counts;
+  },
+
+  /**
    * Delete every entry for a class. Used after a broadcast notification
    * fires so we don't re-email everyone on the next cancellation.
    */

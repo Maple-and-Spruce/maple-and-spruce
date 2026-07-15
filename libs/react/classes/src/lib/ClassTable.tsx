@@ -37,6 +37,8 @@ interface ClassTableProps {
   categories?: ClassCategory[];
   /** Map of classId → number of active (pending+confirmed) registrations. */
   registrationCounts?: Map<string, number>;
+  /** Map of classId → number of people on the class waitlist. */
+  waitlistCounts?: Map<string, number>;
   onEdit: (classItem: Class) => void;
   onDelete: (classItem: Class) => void;
   onDuplicate?: (classItem: Class) => void;
@@ -70,6 +72,7 @@ interface ClassRow {
   categoryName: string;
   filled: number;
   capacity: number;
+  waitlist: number;
   priceCents: number;
   status: Class['status'];
 }
@@ -79,6 +82,7 @@ export function ClassTable({
   instructors = [],
   categories = [],
   registrationCounts,
+  waitlistCounts,
   onEdit,
   onDelete,
   onDuplicate,
@@ -120,11 +124,12 @@ export function ClassTable({
           : '—',
         filled: registrationCounts?.get(classItem.id) ?? 0,
         capacity: classItem.capacity,
+        waitlist: waitlistCounts?.get(classItem.id) ?? 0,
         priceCents: classItem.priceCents,
         status: classItem.status,
       };
     });
-  }, [classesState, instructorMap, categoryMap, registrationCounts]);
+  }, [classesState, instructorMap, categoryMap, registrationCounts, waitlistCounts]);
 
   const columns: GridColDef<ClassRow>[] = useMemo(
     () => [
@@ -254,6 +259,24 @@ export function ClassTable({
               {filled}/{capacity}
             </Typography>
           );
+        },
+      },
+      {
+        field: 'waitlist',
+        headerName: 'Waitlist',
+        width: 100,
+        type: 'number',
+        valueGetter: (_value, row) => row.waitlist,
+        renderCell: (params: GridRenderCellParams<ClassRow>) => {
+          const { waitlist } = params.row;
+          if (waitlist === 0) {
+            return (
+              <Typography variant="body2" color="text.disabled">
+                —
+              </Typography>
+            );
+          }
+          return <Chip label={waitlist} size="small" color="primary" />;
         },
       },
       {
