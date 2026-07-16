@@ -645,6 +645,43 @@ jobs:
           GOOGLE_CLOUD_PROJECT: maple-and-spruce-dev
         run: pnpm exec nx run registration-e2e:e2e
 
+      - name: Run POS real-delivery smoke against dev (Tier 2)
+        # Tier-2 of pos-sandbox-e2e in dev-target mode: create a REAL sandbox
+        # sale + inventory change and let Square ACTUALLY DELIVER payment.updated
+        # / inventory.count.updated to the DEPLOYED dev squareWebhook (real
+        # signature + delivery — the test does NOT self-sign or POST), then
+        # assert the source:'pos' registration and product-quantity reactions in
+        # dev Firestore via firebase-admin.
+        #
+        # Auth: firebase-admin reads/writes dev Firestore via Application
+        # Default Credentials — the SAME GOOGLE_APPLICATION_CREDENTIALS this job
+        # already exported from the "Authenticate to Google Cloud (Dev)" step
+        # (Workload Identity for github-deployer@maple-and-spruce-dev), which is
+        # what registration-e2e's Admin SDK seed relies on. No extra auth needed.
+        #
+        # The sandbox client needs the same Square creds the Tier-1 emulator job
+        # uses; SQUARE_LOCATION_ID / SALES_TAX_RATE are the public dev values
+        # (extracted from .env.dev, mirroring the Tier-1 pos-sandbox-e2e job).
+        # SQUARE_BASE_URL is intentionally NOT set so the client hits the real
+        # sandbox. E2E_TARGET=dev gates the Tier-2 suite on (and skips Tier-1's
+        # emulator specs).
+        #
+        # A failure here usually means real webhook-delivery lag or a missing /
+        # mis-pointed dev Square webhook SUBSCRIPTION, NOT a code regression —
+        # the suite's timeout messages say which event to check. It's post-merge
+        # and only reports within e2e_dev; it gates nothing beyond this job.
+        timeout-minutes: 10
+        continue-on-error: false
+        env:
+          E2E_TARGET: dev
+          GOOGLE_CLOUD_PROJECT: maple-and-spruce-dev
+          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_SANDBOX_ACCESS_TOKEN }}
+          SQUARE_ENV: LOCAL
+        run: |
+          export SQUARE_LOCATION_ID=$(grep '^SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+          export SALES_TAX_RATE=$(grep '^SALES_TAX_RATE=' .env.dev | cut -d= -f2-)
+          pnpm exec vitest run --config apps/pos-sandbox-e2e/vitest.config.ts --reporter=verbose
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

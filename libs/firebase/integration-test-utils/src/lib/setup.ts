@@ -1,6 +1,14 @@
 import { EMULATOR_CONFIG } from './utils/emulator-config.js';
 
 beforeAll(async () => {
+  // Dev-target suites (E2E_TARGET=dev, e.g. pos-sandbox-e2e's Tier-2
+  // pos-dev-smoke) talk to DEPLOYED dev over the network, not local emulators —
+  // there are no emulators to reach, so skip the readiness probe. Every
+  // emulator-backed suite leaves E2E_TARGET unset and still gets the check.
+  if (process.env['E2E_TARGET'] === 'dev') {
+    return;
+  }
+
   const checks = [
     {
       name: 'Functions',

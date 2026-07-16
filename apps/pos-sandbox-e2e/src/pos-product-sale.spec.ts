@@ -43,7 +43,10 @@ const INITIAL_QUANTITY = 10;
 const UPDATED_QUANTITY = 7;
 const INVENTORY_TIMEOUT_MS = 30000;
 
-describe('POS product inventory webhook against REAL Square sandbox', () => {
+// Tier-1: emulator-only. It self-signs + POSTs to the EMULATOR squareWebhook,
+// which doesn't exist in dev mode — the Tier-2 pos-dev-smoke.spec.ts covers the
+// real-delivery dev path instead. Skip this whole suite when E2E_TARGET=dev.
+describe.skipIf(process.env['E2E_TARGET'] === 'dev')('POS product inventory webhook against REAL Square sandbox', () => {
   beforeAll(async () => {
     const square = sandboxSquare();
     client = square.getClient();
