@@ -67,9 +67,21 @@ function docToRegistration(
     confirmationSentAt: data.confirmationSentAt
       ? toDate(data.confirmationSentAt)
       : undefined,
+    calendarToken: data.calendarToken ?? undefined,
+    reminderSentForSessions: parseReminderMap(data.reminderSentForSessions),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
+}
+
+function parseReminderMap(raw: unknown): Record<string, Date> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, Date> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value === undefined || value === null) continue;
+    out[key] = toDate(value);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 export interface MusicTogetherRegistrationFilters {
@@ -160,6 +172,58 @@ export const MusicTogetherRegistrationRepository = {
 
   async delete(id: string): Promise<void> {
     await getDb().collection(COLLECTION).doc(id).delete();
+  },
+
+  /**
+   * All registrations sharing a family calendar token. Single-field filter
+   * (auto-indexed) — the per-family calendar feed resolves the token to the
+   * family's sections. Unknown tokens simply return an empty list.
+   */
+  async findByCalendarToken(
+    token: string
+  ): Promise<MusicTogetherRegistration[]> {
+    const snapshot = await getDb()
+      .collection(COLLECTION)
+      .where('calendarToken', '==', token)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToRegistration(doc))
+      .filter((r): r is MusicTogetherRegistration => r !== undefined);
+  },
+
+  /**
+   * The existing family calendar token for an email, if any prior registration
+   * has one. Lets a returning family reuse a single subscribe link across
+   * sections instead of minting a new token per registration.
+   */
+  async findCalendarTokenByEmail(email: string): Promise<string | undefined> {
+    const snapshot = await getDb()
+      .collection(COLLECTION)
+      .where('email', '==', email)
+      .get();
+    for (const doc of snapshot.docs) {
+      const token = doc.data().calendarToken;
+      if (typeof token === 'string' && token.length > 0) return token;
+    }
+    return undefined;
+  },
+
+  /**
+   * Mark a day-of reminder as sent for one session (keyed by the session's ISO
+   * `dateTime`), making the reminder job idempotent across reruns.
+   */
+  async markReminderSentForSession(
+    id: string,
+    sessionIso: string,
+    at: Date = new Date()
+  ): Promise<void> {
+    await getDb()
+      .collection(COLLECTION)
+      .doc(id)
+      .update({
+        [`reminderSentForSessions.${sessionIso}`]: at,
+        updatedAt: new Date(),
+      });
   },
 
   /** Collection reference (for transactions / the Week-5 charge query). */

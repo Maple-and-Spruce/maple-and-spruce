@@ -26,6 +26,8 @@ import {
   throwNotFound,
   throwFailedPrecondition,
   throwValidationError,
+  generateFamilyCalendarToken,
+  familyCalendarSubscribeUrl,
 } from '@maple/firebase/functions';
 import {
   Square,
@@ -140,6 +142,14 @@ export const createMusicTogetherRegistration = Functions.endpoint
 
     const square = new Square(secrets, strings, MT_SQUARE_KEYS);
 
+    // Per-family calendar subscription token: reuse the family's existing token
+    // (matched by email) so one subscribe link tracks all their sections; mint
+    // a fresh unguessable one for a brand-new family.
+    const calendarToken =
+      (await MusicTogetherRegistrationRepository.findCalendarTokenByEmail(
+        data.email
+      )) ?? generateFamilyCalendarToken();
+
     // 4. Reserve the seat inside a transaction that enforces the family cap.
     const db = getDb();
     const regRef = MusicTogetherRegistrationRepository.getDocRef();
@@ -179,6 +189,7 @@ export const createMusicTogetherRegistration = Functions.endpoint
         scheduledChargeCount: scheduledItems.length,
         status: 'pending',
         notes: data.notes || null,
+        calendarToken,
         createdAt: now,
         updatedAt: now,
       });
@@ -330,6 +341,9 @@ export const createMusicTogetherRegistration = Functions.endpoint
               : '',
             cardLast4: cardLast4 ?? '',
             receiptUrl: squareReceiptUrl ?? '',
+            // Auto-updating per-family calendar subscription (webcal://). Stays
+            // current as the family registers/cancels or class times change.
+            calendarSubscribeUrl: familyCalendarSubscribeUrl(calendarToken),
           },
         },
       });

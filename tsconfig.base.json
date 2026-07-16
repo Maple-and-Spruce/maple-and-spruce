@@ -410,6 +410,9 @@
       "@maple/firebase/maple-functions/calendar-music-together-feed": [
         "libs/firebase/maple-functions/calendar-music-together-feed/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/calendar-family-music-together-feed": [
+        "libs/firebase/maple-functions/calendar-family-music-together-feed/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/calendar-private-feed": [
         "libs/firebase/maple-functions/calendar-private-feed/src/index.ts"
       ],
@@ -519,6 +522,9 @@
       ],
       "@maple/firebase/maple-functions/send-class-reminders": [
         "libs/firebase/maple-functions/send-class-reminders/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/send-music-together-reminders": [
+        "libs/firebase/maple-functions/send-music-together-reminders/src/index.ts"
       ],
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"

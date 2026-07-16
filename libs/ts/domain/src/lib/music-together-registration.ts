@@ -96,6 +96,20 @@ export interface MusicTogetherRegistration {
   status: MusicTogetherRegistrationStatus;
   notes?: string;
   confirmationSentAt?: Date;
+  /**
+   * Unguessable per-family capability token for the auto-updating calendar
+   * subscription feed (`/calendar/family/<token>.ics`). Generated on the
+   * family's first registration and reused (by email) across their later
+   * registrations, so a single subscribe link tracks all their sections.
+   * Optional for backward compatibility with pre-feature registrations.
+   */
+  calendarToken?: string;
+  /**
+   * Per-session reminder bookkeeping. Keys are a session's ISO `dateTime`;
+   * presence means a day-of reminder email was already queued for that
+   * session, making `sendMusicTogetherReminders` idempotent across reruns.
+   */
+  reminderSentForSessions?: Record<string, Date>;
   createdAt: Date;
   updatedAt: Date;
 }

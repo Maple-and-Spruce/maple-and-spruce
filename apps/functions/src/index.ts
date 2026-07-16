@@ -198,6 +198,12 @@ export {
   triggerClassReminders,
 } from '@maple/firebase/maple-functions/send-class-reminders';
 
+// Music Together scheduled functions
+export {
+  sendMusicTogetherReminders,
+  triggerMusicTogetherReminders,
+} from '@maple/firebase/maple-functions/send-music-together-reminders';
+
 // Etsy template functions (read/write Firestore only — no Etsy API dep)
 export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';
 export { saveEtsyCategoryTemplate } from '@maple/firebase/maple-functions/save-etsy-category-template';
