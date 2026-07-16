@@ -489,6 +489,11 @@ jobs:
         run: |
           export VITE_SQUARE_APPLICATION_ID=$(grep '^SQUARE_APPLICATION_ID=' .env.dev | cut -d= -f2-)
           export VITE_SQUARE_LOCATION_ID=$(grep '^SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+          # Music Together uses a SEPARATE Square account. The same harness
+          # serves the MT widget (?mtSectionId=) for the mt_e2e_dev gate, so
+          # bake MT's public sandbox IDs into the bundle too.
+          export VITE_MT_SQUARE_APPLICATION_ID=$(grep '^MT_SQUARE_APPLICATION_ID=' .env.dev | cut -d= -f2-)
+          export VITE_MT_SQUARE_LOCATION_ID=$(grep '^MT_SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
           pnpm exec nx build registration-test-harness
 
       - name: Ensure Hosting site exists
@@ -692,6 +697,79 @@ jobs:
             apps/registration-e2e/test-results/
           retention-days: 7
 
+  mt_e2e_dev:
+    # Gate: run the Music Together enrollment E2E against the deployed dev
+    # backend + deployed harness (same site as the class E2E, mounts the MT
+    # widget via ?mtSectionId=). Deployed dev already carries MT's sandbox
+    # Square creds in Secret Manager, so money routes to MT's real sandbox
+    # account here — no extra GitHub secret needed. Any failure blocks prod.
+    needs: [prepare_and_build, deploy_functions_dev, deploy_harness_dev]
+    if: >-
+      always() &&
+      (needs.deploy_functions_dev.result == 'success' || needs.deploy_functions_dev.result == 'skipped') &&
+      needs.deploy_harness_dev.result == 'success' &&
+      (needs.prepare_and_build.outputs.has_changes == 'true' ||
+        needs.prepare_and_build.outputs.webflow_components_affected == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Authenticate to Google Cloud (Dev)
+        # Needed so globalSetup's Admin SDK seed can write the MT section to
+        # dev's Firestore via Application Default Credentials.
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          create_credentials_file: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Pinned to 22.22.3 for the same node-fetch keep-alive reason as
+          # e2e_dev (the Admin SDK dev-Firestore seed).
+          node-version: '22.22.3'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.prepare_and_build.outputs.cache_key }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Music Together E2E against dev
+        env:
+          E2E_TARGET: dev
+          HARNESS_BASE_URL: https://maple-spruce-registration-test.web.app
+          GOOGLE_CLOUD_PROJECT: maple-and-spruce-dev
+        run: pnpm exec nx run music-together-e2e:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-mt-dev
+          path: |
+            apps/music-together-e2e/playwright-report/
+            apps/music-together-e2e/test-results/
+          retention-days: 7
+
   approve_prod:
     # Phase 3 manual gate: every prod-side job depends on this, and this
     # job uses the `production` Environment which is configured (in repo
@@ -711,12 +789,20 @@ jobs:
     # frontend-only portal change can still reach this gate; a genuine E2E
     # *failure* (when functions did change) still blocks. `always()` is
     # required because a skipped `needs` would otherwise skip this job too.
-    needs: [prepare_and_build, e2e_dev, deploy_vercel_dev]
+    #
+    # mt_e2e_dev mirrors e2e_dev (Music Together enrollment) and gates prod the
+    # same way: it must pass, or be skipped for the same web-app-only reason.
+    needs: [prepare_and_build, e2e_dev, mt_e2e_dev, deploy_vercel_dev]
     if: >-
       always() &&
       needs.deploy_vercel_dev.result == 'success' &&
       (needs.e2e_dev.result == 'success' ||
         (needs.e2e_dev.result == 'skipped' &&
+          needs.prepare_and_build.outputs.has_changes != 'true' &&
+          needs.prepare_and_build.outputs.webflow_components_affected != 'true' &&
+          needs.prepare_and_build.outputs.web_app_affected == 'true')) &&
+      (needs.mt_e2e_dev.result == 'success' ||
+        (needs.mt_e2e_dev.result == 'skipped' &&
           needs.prepare_and_build.outputs.has_changes != 'true' &&
           needs.prepare_and_build.outputs.webflow_components_affected != 'true' &&
           needs.prepare_and_build.outputs.web_app_affected == 'true'))

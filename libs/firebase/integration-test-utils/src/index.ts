@@ -38,6 +38,11 @@ export {
   CLASS_IDS,
 } from './lib/fixtures/class.fixtures.js';
 export {
+  PUBLISHED_MT_SECTION,
+  MT_SECTION_PRICE_FULL_CENTS,
+  MT_SECTION_INSTALLMENT_CENTS,
+} from './lib/fixtures/music-together.fixtures.js';
+export {
   PERCENT_DISCOUNT,
   AMOUNT_DISCOUNT,
   AMOUNT_BEFORE_DATE_DISCOUNT,

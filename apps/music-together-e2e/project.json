@@ -1,0 +1,27 @@
+{
+  "name": "music-together-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/music-together-e2e/src",
+  "projectType": "application",
+  "tags": ["scope:webflow", "type:e2e"],
+  "implicitDependencies": ["firebase-integration-test-utils"],
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/music-together-e2e",
+        "command": "playwright test"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/music-together-e2e",
+        "command": "eslint ."
+      },
+      "metadata": {
+        "technologies": ["eslint"]
+      }
+    }
+  }
+}

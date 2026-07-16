@@ -724,6 +724,161 @@ jobs:
           kill "$WEBFLOW_MOCK_PID" 2>/dev/null || true
           kill "$ETSY_MOCK_PID" 2>/dev/null || true
 
+  music-together-e2e:
+    # PR-time FE→BE end-to-end for Music Together enrollment — the higher-layer
+    # counterpart to the MT cloud-function integration suite. Drives the
+    # production MusicTogetherRegistrationWidget (mounted in the shared
+    # registration-test-harness via ?mtSectionId=) against the local Firebase
+    # emulator with the PR's own code, MT's REAL Square sandbox account, and
+    # HTTP mock servers for Webflow + Etsy.
+    #
+    # Money must route to MT's SEPARATE Square account (MT_SQUARE_KEYS), not
+    # Maple & Spruce's — the spec reads each payment back from MT's sandbox and
+    # asserts its location_id. This requires MT's sandbox access token, which
+    # M&S's SQUARE_SANDBOX_ACCESS_TOKEN is NOT (different Square account/app).
+    #
+    # Activation: set the repo secret MT_SQUARE_SANDBOX_ACCESS_TOKEN to MT's
+    # sandbox access token (same value as MT_SQUARE_ACCESS_TOKEN in the
+    # maple-and-spruce-dev Secret Manager). Until it's set, this job no-ops
+    # (steps are gated on the secret) so it stays green; the post-merge
+    # mt_e2e_dev gate already exercises the real flow against deployed dev.
+    name: Music Together E2E
+    needs: [install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    env:
+      MT_SQUARE_SANDBOX_ACCESS_TOKEN: ${{ secrets.MT_SQUARE_SANDBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Check MT sandbox secret
+        id: gate
+        run: |
+          if [ -n "$MT_SQUARE_SANDBOX_ACCESS_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Music Together E2E skipped::Set the repo secret MT_SQUARE_SANDBOX_ACCESS_TOKEN (MT's sandbox access token) to activate this gate. The post-merge mt_e2e_dev job still exercises the real flow."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
+
+      - name: Setup pnpm
+        if: steps.gate.outputs.enabled == 'true'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Restore node_modules cache
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Install Playwright chromium
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build function codebases
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
+          pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
+
+      - name: Create emulator .env
+        # Mirrors the Registration E2E job. No SQUARE_BASE_URL, so the Square
+        # SDK uses its built-in sandbox endpoint. The DEFAULT (M&S) Square
+        # client is never invoked by the MT flow, so its token can be a
+        # placeholder; MT_SQUARE_ACCESS_TOKEN gets the REAL MT sandbox token.
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
+          done
+
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
+          printf "SQUARE_ACCESS_TOKEN=unused-mock-token\nMT_SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$MT_SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
+
+          echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-sync/.env
+          echo "ETSY_TOKEN_URL=http://localhost:9998/v3/public/oauth/token" >> dist/apps/functions-sync/.env
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
+
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
+            echo "ALLOWED_ORIGINS=$EXISTING,http://127.0.0.1:4173,http://localhost:4173" >> "$dir/.env"
+          done
+
+      - name: Start mock servers (Webflow + Etsy)
+        # Square is intentionally NOT mocked — the spec charges MT's real Square
+        # sandbox. Webflow + Etsy have no usable sandbox so keep the mocks.
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          npx tsx --version
+          WEBFLOW_MOCK_SERVER_PORT=9996 npx tsx libs/firebase/webflow-test-mock-server/start.ts &
+          echo "WEBFLOW_MOCK_PID=$!" >> $GITHUB_ENV
+          ETSY_MOCK_SERVER_PORT=9998 npx tsx libs/firebase/etsy-test-mock-server/start.ts &
+          echo "ETSY_MOCK_PID=$!" >> $GITHUB_ENV
+          sleep 2
+
+      - name: Run Playwright against emulator
+        # The harness Vite build gets MT's public Square app/location IDs from
+        # .env.dev; the spec gets MT's token + location + env so it can read the
+        # payment back from MT's sandbox and assert correct account routing.
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          MT_SQUARE_ACCESS_TOKEN: ${{ secrets.MT_SQUARE_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          export VITE_MT_SQUARE_APPLICATION_ID=$(grep '^MT_SQUARE_APPLICATION_ID=' .env.dev | cut -d= -f2-)
+          export VITE_MT_SQUARE_LOCATION_ID=$(grep '^MT_SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+          export MT_SQUARE_LOCATION_ID=$(grep '^MT_SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+          export MT_SQUARE_ENV=$(grep '^MT_SQUARE_ENV=' .env.dev | cut -d= -f2-)
+
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions \
+            "pnpm exec nx run music-together-e2e:e2e"
+
+      - name: Stop mock servers
+        if: always() && steps.gate.outputs.enabled == 'true'
+        run: |
+          kill "$WEBFLOW_MOCK_PID" 2>/dev/null || true
+          kill "$ETSY_MOCK_PID" 2>/dev/null || true
+
+      - name: Locate Playwright report paths
+        if: failure() && steps.gate.outputs.enabled == 'true'
+        run: |
+          find . -type d \( -name 'playwright-report' -o -name 'test-results' \) \
+            -not -path '*/node_modules/*' -not -path '*/.next/*' \
+            -print
+
+      - name: Upload Playwright artifacts on failure
+        if: failure() && steps.gate.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-music-together-e2e
+          path: |
+            **/playwright-report/**
+            **/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
+
   storybook:
     name: Storybook Build & Tests
     needs: [install]
