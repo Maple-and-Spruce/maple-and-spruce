@@ -1,0 +1,22 @@
+{
+  "name": "pos-sandbox-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/pos-sandbox-e2e/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-process-pos-sale",
+    "firebase-maple-functions-square-webhook",
+    "firebase-maple-functions-sync-class-to-square",
+    "firebase-integration-test-utils",
+    "square"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "apps/pos-sandbox-e2e/vitest.config.ts"
+      }
+    }
+  }
+}
