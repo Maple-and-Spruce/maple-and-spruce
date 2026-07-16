@@ -231,6 +231,77 @@ describe('createMusicTogetherRegistration', () => {
     expect(result.cardLast4).toBe('4242');
   });
 
+  it('full pay: applies the sibling discount for 2 children ($378)', async () => {
+    mocks.sectionFindById.mockResolvedValue(openFullOnly);
+
+    const result = (await run({
+      ...baseFamily,
+      children: [
+        { name: 'Sky', dob: '2023-04-01' },
+        { name: 'River', dob: '2024-05-02' },
+      ],
+      paymentPlan: 'full',
+    })) as { amountChargedCents: number };
+
+    expect(mocks.createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 37800 })
+    );
+    expect(result.amountChargedCents).toBe(37800);
+    expect(mocks.txSet).toHaveBeenCalledWith(
+      regRef,
+      expect.objectContaining({ pricePaidCents: 37800 })
+    );
+  });
+
+  it('full pay: applies the sibling discount for 3 children ($504)', async () => {
+    mocks.sectionFindById.mockResolvedValue(openFullOnly);
+
+    const result = (await run({
+      ...baseFamily,
+      children: [
+        { name: 'Sky', dob: '2023-04-01' },
+        { name: 'River', dob: '2024-05-02' },
+        { name: 'Wren', dob: '2025-06-03' },
+      ],
+      paymentPlan: 'full',
+    })) as { amountChargedCents: number };
+
+    expect(mocks.createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 50400 })
+    );
+    expect(result.amountChargedCents).toBe(50400);
+  });
+
+  it('installments: discounts installment 1 AND the scheduled charge for 3 children', async () => {
+    mocks.sectionFindById.mockResolvedValue(openWithInstallments);
+
+    const result = (await run({
+      ...baseFamily,
+      children: [
+        { name: 'Sky', dob: '2023-04-01' },
+        { name: 'River', dob: '2024-05-02' },
+        { name: 'Wren', dob: '2025-06-03' },
+      ],
+      paymentPlan: 'installments',
+      cardOnFileAuth: true,
+    })) as { amountChargedCents: number; scheduledChargeCount: number };
+
+    // Installment 1 charged now at the discounted $264.
+    expect(mocks.createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 26400 })
+    );
+    // The scheduled Week-5 charge is discounted too.
+    expect(mocks.chargeCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        installmentNumber: 2,
+        amountCents: 26400,
+        status: 'scheduled',
+      })
+    );
+    expect(result.amountChargedCents).toBe(26400);
+    expect(result.scheduledChargeCount).toBe(1);
+  });
+
   it('rejects when the section is full — no payment taken', async () => {
     mocks.sectionFindById.mockResolvedValue(openFullOnly);
     mocks.txGetSize = 8; // at capacity

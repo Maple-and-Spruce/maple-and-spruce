@@ -38,7 +38,10 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
-import { MT_MAX_CHILDREN } from '@maple/ts/domain';
+import {
+  MT_MAX_CHILDREN,
+  computeMusicTogetherFamilyPrice,
+} from '@maple/ts/domain';
 import type {
   GetPublicMusicTogetherSectionRequest,
   GetPublicMusicTogetherSectionResponse,
@@ -306,18 +309,7 @@ export function MusicTogetherRegistrationWidget({
   const section = state.status === 'ready' ? state.section : null;
 
   // Two-installment plan is offered only when the section defines 2+ installments.
-  const installments = section?.installmentPlan ?? [];
-  const offersInstallments = installments.length >= 2;
-  const firstInstallment = installments[0];
-  const secondInstallment = installments[1];
-
-  // Amount charged at registration: full price, or the first installment.
-  const amountNowCents =
-    section == null
-      ? 0
-      : paymentPlan === 'installments' && firstInstallment
-        ? firstInstallment.amountCents
-        : section.priceFullCents;
+  const offersInstallments = (section?.installmentPlan?.length ?? 0) >= 2;
 
   // Trimmed / cleaned form values
   const adultFullName = `${adultFirstName.trim()} ${adultLastName.trim()}`.trim();
@@ -328,6 +320,34 @@ export function MusicTogetherRegistrationWidget({
     .map((c) => ({ name: c.name.trim(), dob: c.dob }))
     .filter((c) => c.name && c.dob);
   const emailValid = EMAIL_RE.test(email.trim());
+
+  // Per-child sibling pricing: first child full price, 50% off the 2nd & 3rd.
+  // Price the children the family will actually submit (`cleanChildren`), so
+  // the displayed total always matches what the server will charge. Clamp to
+  // 1..MT_MAX_CHILDREN so a baseline (one-child) price shows before any child
+  // row is complete.
+  const pricedChildCount = Math.min(
+    Math.max(cleanChildren.length, 1),
+    MT_MAX_CHILDREN
+  );
+  const familyPrice = useMemo(
+    () =>
+      section
+        ? computeMusicTogetherFamilyPrice(section, pricedChildCount)
+        : null,
+    [section, pricedChildCount]
+  );
+  const firstInstallment = familyPrice?.installments[0];
+  const secondInstallment = familyPrice?.installments[1];
+
+  // Amount charged at registration: discounted full price, or the discounted
+  // first installment.
+  const amountNowCents =
+    familyPrice == null
+      ? 0
+      : paymentPlan === 'installments' && firstInstallment
+        ? firstInstallment.amountCents
+        : familyPrice.fullCents;
 
   const formValid =
     adultFirstName.trim().length > 0 &&
@@ -652,6 +672,16 @@ export function MusicTogetherRegistrationWidget({
                 {/* Payment plan */}
                 <FormControl>
                   <FormLabel sx={{ mb: 1 }}>Tuition</FormLabel>
+                  {pricedChildCount > 1 && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
+                      Tuition for {pricedChildCount} children: first child full
+                      price, 50% off each additional child.
+                    </Typography>
+                  )}
                   <RadioGroup
                     value={paymentPlan}
                     onChange={(e) => setPaymentPlan(e.target.value as PaymentPlan)}
@@ -659,7 +689,9 @@ export function MusicTogetherRegistrationWidget({
                     <FormControlLabel
                       value="full"
                       control={<Radio />}
-                      label={`Pay in full — ${formatMoney(section.priceFullCents)}`}
+                      label={`Pay in full — ${formatMoney(
+                        familyPrice?.fullCents ?? section.priceFullCents
+                      )}`}
                     />
                     {offersInstallments && firstInstallment && secondInstallment && (
                       <FormControlLabel
