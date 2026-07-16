@@ -16,6 +16,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import TuneIcon from '@mui/icons-material/Tune';
+import LinkIcon from '@mui/icons-material/Link';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -168,6 +169,11 @@ export function AppShellWrapper({
             label: 'Embed Settings',
             href: '/calendar-embed',
             icon: <TuneIcon />,
+          },
+          {
+            label: 'Calendar Links',
+            href: '/calendar-links',
+            icon: <LinkIcon />,
           },
         ],
       },
