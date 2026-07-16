@@ -135,7 +135,9 @@ export async function createPosOrderAndPayment(
 
   const paymentResponse = await client.payments.create({
     sourceId: 'cnon:card-nonce-ok',
-    idempotencyKey: uniqueId('pos-pay'),
+    // Square caps the payment idempotency_key at 45 chars — a bare UUID (36)
+    // fits and is unique per attempt; `uniqueId()` (prefix + UUID + seq) is 46+.
+    idempotencyKey: randomUUID(),
     amountMoney: {
       amount: BigInt(totalCents),
       currency: 'USD',
