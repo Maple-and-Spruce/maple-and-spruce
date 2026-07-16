@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   txSet: vi.fn(),
   regUpdate: vi.fn(),
   mailAdd: vi.fn(),
+  findCalendarTokenByEmail: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -46,6 +47,9 @@ vi.mock('@maple/firebase/functions', () => {
     throwFailedPrecondition: (m: string) => {
       throw new HttpsError('failed-precondition', m);
     },
+    generateFamilyCalendarToken: () => 'fam-token-test',
+    familyCalendarSubscribeUrl: (token: string) =>
+      `webcal://maple-and-spruce-dev.web.app/calendar/family/${token}.ics`,
   };
 });
 
@@ -94,7 +98,10 @@ vi.mock('@maple/firebase/database', () => {
   return {
     getDb: () => db,
     MusicTogetherSectionRepository: { findById: mocks.sectionFindById },
-    MusicTogetherRegistrationRepository: { getDocRef: () => regRef },
+    MusicTogetherRegistrationRepository: {
+      getDocRef: () => regRef,
+      findCalendarTokenByEmail: mocks.findCalendarTokenByEmail,
+    },
     MusicTogetherScheduledChargeRepository: { create: mocks.chargeCreate },
   };
 });
