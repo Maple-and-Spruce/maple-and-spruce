@@ -14,6 +14,9 @@ import type {
   MusicTogetherChargeStatus,
   CreateMusicTogetherSectionInput,
   UpdateMusicTogetherSectionInput,
+  MusicTogetherSectionStatus,
+  MusicTogetherInterest,
+  MusicTogetherInterestDemand,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -341,4 +344,64 @@ export interface UpdateMusicTogetherPaymentMethodResponse {
   registration: MusicTogetherManageView;
   /** Last 4 digits of the new card on file, for display. */
   cardLast4?: string;
+}
+
+// ============================================================================
+// Public section options (public — drives the interest form checkboxes)
+// ============================================================================
+
+export interface GetPublicMusicTogetherSectionsRequest {
+  /** Reserved for future filtering (e.g. by semester). */
+  semesterId?: string;
+}
+
+/** Minimal, customer-safe section descriptor for the interest checkbox list. */
+export interface PublicMusicTogetherSectionOption {
+  id: string;
+  name: string;
+  /** Earliest session start, ISO string; absent when no sessions are set. */
+  firstSessionAt?: string;
+  location?: string;
+  /** Derived status (open / full / upcoming / closed / completed). */
+  status: MusicTogetherSectionStatus;
+}
+
+export interface GetPublicMusicTogetherSectionsResponse {
+  sections: PublicMusicTogetherSectionOption[];
+}
+
+// ============================================================================
+// Cross-section interest list (public submit + admin read)
+// ============================================================================
+
+export interface AddMusicTogetherInterestRequest {
+  name: string;
+  email: string;
+  /** Section ids the family would take if a spot opened (may be empty). */
+  interestedSectionIds: string[];
+  /** "If you checked multiple classes, which one(s) most interested in?" */
+  preferenceNote?: string;
+  /** "What other days/times would work best if we add another section?" */
+  alternateTimesNote?: string;
+  /** "Additional Notes" */
+  notes?: string;
+}
+
+export interface AddMusicTogetherInterestResponse {
+  /** False when the email already had an interest entry (it was updated). */
+  added: boolean;
+}
+
+export interface GetMusicTogetherInterestRequest {
+  // No parameters — returns the full interest list for the admin demand view.
+  _?: never;
+}
+
+export interface GetMusicTogetherInterestResponse {
+  /** All interest entries, most recent first. */
+  entries: MusicTogetherInterest[];
+  /** Per-section interest tally, highest demand first. */
+  demand: MusicTogetherInterestDemand[];
+  /** Section id → display name, for rendering the demand table + checkboxes. */
+  sectionNames: Record<string, string>;
 }

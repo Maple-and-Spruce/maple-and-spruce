@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-add-music-together-interest",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/add-music-together-interest/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}
