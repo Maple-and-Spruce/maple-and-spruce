@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { httpsCallable } from 'firebase/functions';
+import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import { callDeduped } from './call-deduped';
 import type { RequestState } from '@maple/ts/domain';
 import type {
   GetMusicTogetherRosterRequest,
   GetMusicTogetherRosterResponse,
   MusicTogetherRosterEntry,
+  CancelMusicTogetherRegistrationRequest,
+  CancelMusicTogetherRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
 
 /** Hydrate ISO date strings in a roster entry back into Dates. */
@@ -70,5 +74,31 @@ export function useMusicTogetherRoster(sectionId: string | undefined) {
     fetchRoster();
   }, [fetchRoster]);
 
-  return { rosterState, fetchRoster };
+  /**
+   * Cancel a family's registration with an optional refund. Omit `refundCents`
+   * to apply the program's policy refund (paid − $25 before the first class;
+   * $0 after); pass an explicit amount for a partial/full refund. Reloads the
+   * roster on success so the updated status shows.
+   */
+  const cancelRegistration = useCallback(
+    async (
+      registrationId: string,
+      refundCents?: number
+    ): Promise<CancelMusicTogetherRegistrationResponse> => {
+      const functions = getMapleFunctions();
+      const cancel = httpsCallable<
+        CancelMusicTogetherRegistrationRequest,
+        CancelMusicTogetherRegistrationResponse
+      >(functions, 'cancelMusicTogetherRegistration');
+      const result = await cancel({
+        registrationId,
+        ...(refundCents !== undefined ? { refundCents } : {}),
+      });
+      await fetchRoster();
+      return result.data;
+    },
+    [fetchRoster]
+  );
+
+  return { rosterState, fetchRoster, cancelRegistration };
 }

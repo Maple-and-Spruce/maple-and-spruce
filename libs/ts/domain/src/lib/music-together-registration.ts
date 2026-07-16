@@ -165,3 +165,58 @@ export function mtRefundCents(
   }
   return Math.max(0, pricePaidCents - MT_CANCELLATION_FEE_CENTS);
 }
+
+/**
+ * One captured Square payment that a refund can draw against — the
+ * registration-time charge, or a paid installment. `amountCents` is the amount
+ * captured on that payment (the ceiling for refunding it).
+ */
+export interface MtCapturedPayment {
+  squarePaymentId: string;
+  amountCents: number;
+}
+
+/** Sum of a set of captured payments — the maximum a refund may total. */
+export function mtTotalCapturedCents(payments: MtCapturedPayment[]): number {
+  return payments.reduce((sum, p) => sum + Math.max(0, p.amountCents), 0);
+}
+
+/** One payment's share of a refund (only payments with a non-zero share). */
+export interface MtRefundAllocation {
+  squarePaymentId: string;
+  amountCents: number;
+}
+
+/**
+ * Split a requested refund across captured payments, greedily and in order:
+ * drain the first payment up to its captured amount, then the next, until the
+ * requested amount is satisfied. Square refunds are per-payment, so an
+ * arbitrary partial refund on an installment registration may span more than
+ * one payment (registration charge + a paid installment).
+ *
+ * `amountCents` is clamped to the total captured, so the returned allocations
+ * always sum to `min(amountCents, totalCaptured)`. Payments that receive
+ * nothing are omitted. A non-positive request yields no allocations.
+ */
+export function mtAllocateRefund(
+  payments: MtCapturedPayment[],
+  amountCents: number
+): MtRefundAllocation[] {
+  let remaining = Math.min(
+    Math.max(0, Math.floor(amountCents)),
+    mtTotalCapturedCents(payments)
+  );
+  const allocations: MtRefundAllocation[] = [];
+  for (const payment of payments) {
+    if (remaining <= 0) break;
+    const capacity = Math.max(0, payment.amountCents);
+    if (capacity <= 0) continue;
+    const take = Math.min(capacity, remaining);
+    allocations.push({
+      squarePaymentId: payment.squarePaymentId,
+      amountCents: take,
+    });
+    remaining -= take;
+  }
+  return allocations;
+}

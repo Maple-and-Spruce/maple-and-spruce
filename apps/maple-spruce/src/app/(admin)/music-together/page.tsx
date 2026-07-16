@@ -93,7 +93,9 @@ export default function MusicTogetherPage() {
   const [rosterSection, setRosterSection] = useState<
     MusicTogetherSection | undefined
   >();
-  const { rosterState } = useMusicTogetherRoster(rosterSection?.id);
+  const { rosterState, cancelRegistration } = useMusicTogetherRoster(
+    rosterSection?.id
+  );
 
   const semesters = useMemo(
     () => (semestersState.status === 'success' ? semestersState.data : []),
@@ -412,6 +414,7 @@ export default function MusicTogetherPage() {
         onClose={() => setRosterSection(undefined)}
         sectionName={rosterSection?.name ?? ''}
         rosterState={rosterState}
+        onCancelRegistration={cancelRegistration}
       />
     </>
   );
