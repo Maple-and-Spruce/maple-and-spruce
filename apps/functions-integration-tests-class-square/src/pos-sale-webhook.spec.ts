@@ -51,7 +51,9 @@ const SIGNED_URL = `https://us-east4-${EMULATOR_CONFIG.projectId}.cloudfunctions
 // Must match SQUARE_WEBHOOK_SIGNATURE_KEY in tools/run-integration-tests.sh.
 const SIGNATURE_KEY = 'mock-key';
 
-const ADMIN_EMAIL = 'katie@mapleandsprucefolkarts.com';
+// The emulator loads .env.dev, where ADMIN_ALERT_EMAIL is the +dev alias — so
+// the alert routes there, not the production inbox.
+const ADMIN_EMAIL = 'katie+dev@mapleandsprucefolkarts.com';
 
 /** Sign a webhook body exactly the way the function's verifier does. */
 function signWebhook(body: unknown, secret: string): string {
