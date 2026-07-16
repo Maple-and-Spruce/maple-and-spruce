@@ -29,6 +29,8 @@ import { createRoot } from 'react-dom/client';
 // disabled inline here.
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { RegistrationWidget } from '../../webflow-components/src/RegistrationWidget';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { MusicTogetherRegistrationWidget } from '../../webflow-components/src/MusicTogetherRegistrationWidget';
 
 const targetEnv = import.meta.env['VITE_TARGET_ENV'] ?? 'emulator';
 
@@ -52,9 +54,74 @@ const port = Number.parseInt(
 const squareApplicationId = import.meta.env['VITE_SQUARE_APPLICATION_ID'];
 const squareLocationId = import.meta.env['VITE_SQUARE_LOCATION_ID'];
 
+// Music Together's SEPARATE Square account — bound to the MT widget so a card
+// tokenized here can only be charged by MT's account (see routing assertion in
+// the music-together-e2e spec).
+const mtSquareApplicationId = import.meta.env['VITE_MT_SQUARE_APPLICATION_ID'];
+const mtSquareLocationId = import.meta.env['VITE_MT_SQUARE_LOCATION_ID'];
+
+function HarnessBanner({ label }: { label: string }) {
+  // Small banner so a human visiting the deployed harness can tell which
+  // backend + widget it's pointing at.
+  return (
+    <div
+      data-testid="harness-banner"
+      style={{
+        padding: '4px 8px',
+        fontFamily: 'system-ui',
+        fontSize: 12,
+        background: targetEnv === 'dev' ? '#fff7c2' : '#e2e2e2',
+        borderBottom: '1px solid #ccc',
+      }}
+    >
+      {label} — backend: <strong>{targetEnv}</strong>
+    </div>
+  );
+}
+
+/**
+ * Music Together enrollment harness view. Selected by `?mtSectionId=<id>`.
+ * Mounts the production `MusicTogetherRegistrationWidget` with MT's own Square
+ * sandbox credentials so the enrollment E2E drives the real family checkout.
+ */
+function MusicTogetherApp({ sectionId }: { sectionId: string }) {
+  if (!mtSquareApplicationId || !mtSquareLocationId) {
+    return (
+      <div style={{ padding: 24, fontFamily: 'system-ui' }}>
+        <h2>Missing Music Together Square sandbox credentials</h2>
+        <p>
+          The harness build did not receive{' '}
+          <code>VITE_MT_SQUARE_APPLICATION_ID</code> /{' '}
+          <code>VITE_MT_SQUARE_LOCATION_ID</code>. Check the workflow that
+          built this bundle.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <HarnessBanner label="Music Together registration test harness" />
+      <MusicTogetherRegistrationWidget
+        sectionId={sectionId}
+        squareAppId={mtSquareApplicationId}
+        squareLocationId={mtSquareLocationId}
+        env={targetEnv}
+        policiesUrl="https://www.mapleandsprucefolkarts.com/music-together-policies"
+      />
+    </>
+  );
+}
+
 function App() {
   const params = new URLSearchParams(window.location.search);
+  const mtSectionId = params.get('mtSectionId') ?? '';
   const classId = params.get('classId') ?? '';
+
+  // Music Together enrollment flow takes precedence when its param is present.
+  if (mtSectionId) {
+    return <MusicTogetherApp sectionId={mtSectionId} />;
+  }
 
   if (!classId) {
     return (

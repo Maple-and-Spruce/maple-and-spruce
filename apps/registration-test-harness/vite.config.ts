@@ -23,6 +23,12 @@ const functionsPort = 5001 + offset;
 const targetEnv = process.env['VITE_TARGET_ENV'] ?? 'emulator';
 const squareApplicationId = process.env['VITE_SQUARE_APPLICATION_ID'] ?? '';
 const squareLocationId = process.env['VITE_SQUARE_LOCATION_ID'] ?? '';
+// Music Together uses a SEPARATE Square account (Stephanie's LLC). When the
+// harness mounts the MT widget (`?mtSectionId=`), tokenization must bind to
+// MT's sandbox app so payment routes to MT's account, not Maple & Spruce's.
+const mtSquareApplicationId =
+  process.env['VITE_MT_SQUARE_APPLICATION_ID'] ?? '';
+const mtSquareLocationId = process.env['VITE_MT_SQUARE_LOCATION_ID'] ?? '';
 
 export default defineConfig({
   root: __dirname,
@@ -58,5 +64,9 @@ export default defineConfig({
       JSON.stringify(squareApplicationId),
     'import.meta.env.VITE_SQUARE_LOCATION_ID':
       JSON.stringify(squareLocationId),
+    'import.meta.env.VITE_MT_SQUARE_APPLICATION_ID':
+      JSON.stringify(mtSquareApplicationId),
+    'import.meta.env.VITE_MT_SQUARE_LOCATION_ID':
+      JSON.stringify(mtSquareLocationId),
   },
 });

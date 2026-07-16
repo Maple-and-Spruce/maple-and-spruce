@@ -29,6 +29,7 @@ export default defineConfig({
       'apps/functions-integration-tests/**',
       'apps/functions-integration-tests-*/**',
       'apps/pos-sandbox-e2e/**',
+      'apps/music-together-e2e/**',
     ],
     coverage: {
       provider: 'istanbul',
@@ -50,6 +51,7 @@ export default defineConfig({
         'libs/firebase/integration-test-utils/**',
         'apps/functions-integration-tests*/**',
         'apps/pos-sandbox-e2e/**',
+        'apps/music-together-e2e/**',
         'apps/maple-spruce-e2e/**',
         'apps/maple-spruce/.storybook/**',
       ],
