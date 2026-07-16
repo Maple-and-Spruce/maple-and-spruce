@@ -1,0 +1,11 @@
+{
+  "name": "firebase-maple-functions-get-my-roles",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/get-my-roles/src",
+  "projectType": "library",
+  "tags": [
+    "scope:firebase",
+    "type:feature"
+  ],
+  "targets": {}
+}

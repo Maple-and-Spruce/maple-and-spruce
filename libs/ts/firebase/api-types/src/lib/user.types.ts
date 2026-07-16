@@ -2,6 +2,7 @@
  * User & role administration API types
  */
 import type { AppUser } from '@maple/ts/domain';
+import type { UserRole } from './auth.types';
 
 // ============================================================================
 // List Users (admin)
@@ -35,5 +36,29 @@ export interface RevokeAdminRoleRequest {
 }
 
 export interface RevokeAdminRoleResponse {
+  success: boolean;
+}
+
+// ============================================================================
+// Grant / Revoke Scoped Roles (mt-teacher, clerk, lesson-teacher)
+// ============================================================================
+
+export interface GrantRoleRequest {
+  uid: string;
+  /** Role to grant. 'admin' is rejected — use grantAdminRole. */
+  role: UserRole;
+}
+
+export interface GrantRoleResponse {
+  success: boolean;
+}
+
+export interface RevokeRoleRequest {
+  uid: string;
+  /** Role to revoke. 'admin' is rejected — use revokeAdminRole. */
+  role: UserRole;
+}
+
+export interface RevokeRoleResponse {
   success: boolean;
 }
