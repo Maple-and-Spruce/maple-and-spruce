@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-request-music-together-manage-link",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/request-music-together-manage-link/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

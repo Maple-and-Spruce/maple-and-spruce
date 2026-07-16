@@ -111,6 +111,11 @@ export {
   MusicTogetherWaitlistRepository,
   mtWaitlistEmailKey,
 } from './lib/music-together-waitlist.repository';
+export {
+  MusicTogetherTokenRepository,
+  MUSIC_TOGETHER_ACCESS_TOKEN_TTL_MS,
+  MUSIC_TOGETHER_SESSION_TTL_MS,
+} from './lib/music-together-token.repository';
 
 // Phase 5: Etsy
 export {

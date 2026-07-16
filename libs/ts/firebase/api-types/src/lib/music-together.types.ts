@@ -11,6 +11,7 @@ import type {
   UpdateMusicTogetherSemesterInput,
   MusicTogetherRegistration,
   MusicTogetherScheduledCharge,
+  MusicTogetherChargeStatus,
   CreateMusicTogetherSectionInput,
   UpdateMusicTogetherSectionInput,
 } from '@maple/ts/domain';
@@ -270,4 +271,74 @@ export interface AddToMusicTogetherWaitlistRequest {
 export interface AddToMusicTogetherWaitlistResponse {
   /** False when the email was already on the list (idempotent no-op). */
   added: boolean;
+}
+
+// ============================================================================
+// Self-service payment-method management (installment families — magic link)
+// ============================================================================
+
+/**
+ * Request a magic-link email to update the card on file for an installment
+ * registration (so the Week-5 charge hits the right card).
+ */
+export interface RequestMusicTogetherManageLinkRequest {
+  email: string;
+}
+
+export interface RequestMusicTogetherManageLinkResponse {
+  /**
+   * Always true — the response is deliberately uniform whether or not the email
+   * has a manageable installment registration, to avoid leaking who is
+   * enrolled.
+   */
+  ok: true;
+}
+
+/** The next upcoming/failed installment, shown for context on the manage page. */
+export interface MusicTogetherManageInstallment {
+  amountCents: number;
+  /** Presentation-ready amount, e.g. "$95.00". */
+  amountLabel: string;
+  /** ISO date string of when the charge is due. */
+  dueAt: string;
+  /** Presentation-ready due date, e.g. "September 15, 2026". */
+  dueLabel: string;
+  status: MusicTogetherChargeStatus;
+}
+
+/** Customer-safe snapshot of a registration for the manage page. */
+export interface MusicTogetherManageView {
+  registrationId: string;
+  sectionName: string;
+  /** Enrolling adult's name, for a friendly greeting. */
+  parentName: string;
+  /**
+   * The soonest installment still awaiting payment (scheduled or failed), when
+   * one exists — lets the page say which charge the new card will cover.
+   */
+  nextInstallment?: MusicTogetherManageInstallment;
+}
+
+/** Exchange a single-use magic-link token for a session. */
+export interface StartMusicTogetherManageSessionRequest {
+  token: string;
+}
+
+export interface StartMusicTogetherManageSessionResponse {
+  /** Short-lived session token; pass on every subsequent management call. */
+  sessionToken: string;
+  registration: MusicTogetherManageView;
+}
+
+/** Replace the card on file behind an installment registration. */
+export interface UpdateMusicTogetherPaymentMethodRequest {
+  sessionToken: string;
+  /** New nonce from the Square Web Payments SDK card tokenization. */
+  paymentNonce: string;
+}
+
+export interface UpdateMusicTogetherPaymentMethodResponse {
+  registration: MusicTogetherManageView;
+  /** Last 4 digits of the new card on file, for display. */
+  cardLast4?: string;
 }

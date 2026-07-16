@@ -241,3 +241,8 @@ export { requestCraftClubAccess } from '@maple/firebase/maple-functions/request-
 export { requestCraftClubManageLink } from '@maple/firebase/maple-functions/request-craft-club-manage-link';
 export { startCraftClubSession } from '@maple/firebase/maple-functions/start-craft-club-session';
 export { getCraftClubSubscription } from '@maple/firebase/maple-functions/get-craft-club-subscription';
+
+// Music Together — self-service card-on-file management magic-link + session
+// (no Square dep; the card update itself lives in the maple-square codebase).
+export { requestMusicTogetherManageLink } from '@maple/firebase/maple-functions/request-music-together-manage-link';
+export { startMusicTogetherManageSession } from '@maple/firebase/maple-functions/start-music-together-manage-session';
