@@ -42,12 +42,14 @@ const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name))
 const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
 
 /**
- * Where the "POS sale needs an attendee email" alert goes. This is the
- * business owner's inbox — the same address used as the global git identity
- * for the maple-and-spruce projects. There is no dedicated admin-notification
- * env var in this repo yet; if one is added, swap this constant for it.
+ * Where the "POS sale needs an attendee email" alert goes — configured per
+ * environment so lower environments never email the production inbox. Set in
+ * `.env.prod` (katie@…) and `.env.dev` (katie+dev@…, filterable). Defaults to
+ * the prod inbox as a fail-safe if the value is ever missing.
  */
-const ADMIN_EMAIL = 'katie@mapleandsprucefolkarts.com';
+const adminAlertEmail = defineString('ADMIN_ALERT_EMAIL', {
+  default: 'katie@mapleandsprucefolkarts.com',
+});
 
 function formatCurrency(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -197,7 +199,7 @@ export const processPosSale = onDocumentWritten(
         // phone and backfill the registration.
         if (!customerEmail) {
           await db.collection('mail').add({
-            to: ADMIN_EMAIL,
+            to: adminAlertEmail.value(),
             message: {
               subject: `POS class sale needs an attendee email — ${classEntity.name}`,
               text: [

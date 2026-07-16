@@ -303,7 +303,9 @@ describe('processPosSale — registration creation', () => {
     expect(mocks.getCustomer).not.toHaveBeenCalled();
     expect(mocks.mailAdd).toHaveBeenCalledTimes(1);
     const mailDoc = mocks.mailAdd.mock.calls[0][0];
-    expect(mailDoc.to).toBe('katie@mapleandsprucefolkarts.com');
+    // Recipient now comes from the ADMIN_ALERT_EMAIL param; the params mock
+    // returns `mock-<NAME>`, proving the alert reads the env-configured value.
+    expect(mailDoc.to).toBe('mock-ADMIN_ALERT_EMAIL');
     expect(mailDoc.message.subject).toMatch(/needs an attendee email/i);
     expect(mailDoc.message.text).toContain('ORDER-1');
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
