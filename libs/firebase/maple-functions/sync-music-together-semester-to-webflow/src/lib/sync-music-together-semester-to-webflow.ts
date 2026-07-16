@@ -138,12 +138,8 @@ export const syncMusicTogetherSemesterToWebflow = onDocumentWritten(
 
     console.log('Sync MT semester to Webflow triggered:', {
       semesterId: event.params.semesterId,
-      before: beforeSemester
-        ? { name: beforeSemester.name, status: beforeSemester.status }
-        : null,
-      after: afterSemester
-        ? { name: afterSemester.name, status: afterSemester.status }
-        : null,
+      before: beforeSemester ? { name: beforeSemester.name } : null,
+      after: afterSemester ? { name: afterSemester.name } : null,
     });
 
     const secrets = Object.fromEntries(
@@ -180,7 +176,6 @@ export const syncMusicTogetherSemesterToWebflow = onDocumentWritten(
       // status (planned/enrolling/active/completed all show publicly).
       console.log('Syncing MT semester to Webflow:', {
         name: afterSemester.name,
-        status: afterSemester.status,
         isDev,
         autoPublish: shouldPublish,
       });

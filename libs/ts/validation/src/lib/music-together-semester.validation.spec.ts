@@ -11,7 +11,6 @@ function valid(
     name: 'Fall 2026',
     season: 'fall',
     year: 2026,
-    status: 'planned',
     ...overrides,
   };
 }
@@ -70,11 +69,6 @@ describe('musicTogetherSemesterValidation', () => {
       valid({ breaks: [{ label: 'Holiday', startDate: '2026-12-18', endDate: '2027-01-06' }] })
     );
     expect(ok.hasErrors('breaks')).toBe(false);
-  });
-
-  it('rejects an invalid status', () => {
-    const result = musicTogetherSemesterValidation(valid({ status: 'archived' }));
-    expect(result.hasErrors('status')).toBe(true);
   });
 
   it('supports partial (single-field) validation for updates', () => {

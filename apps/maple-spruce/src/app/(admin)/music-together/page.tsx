@@ -23,6 +23,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
   getMusicTogetherSeasonLabel,
   mtSectionDerivedStatus,
+  mtSemesterDerivedStatus,
   type MusicTogetherSection,
   type MusicTogetherSemester,
   type CreateMusicTogetherSectionInput,
@@ -206,11 +207,16 @@ export default function MusicTogetherPage() {
                   {getMusicTogetherSeasonLabel(sem.season)} {sem.year}
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    size="small"
-                    label={sem.status}
-                    color={sem.status === 'enrolling' ? 'success' : 'default'}
-                  />
+                  {(() => {
+                    const derived = mtSemesterDerivedStatus(sem, new Date());
+                    return (
+                      <Chip
+                        size="small"
+                        label={derived}
+                        color={derived === 'enrolling' ? 'success' : 'default'}
+                      />
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {sem.startDate || sem.endDate

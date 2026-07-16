@@ -14,6 +14,7 @@ import {
   IconButton,
   Stack,
   Divider,
+  Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -21,18 +22,11 @@ import {
   MT_SEASONS,
   MT_SEASON_DEFAULT_WEEKS,
   getMusicTogetherSeasonLabel,
+  mtSemesterDerivedStatus,
   type MusicTogetherSemester,
   type MusicTogetherSeason,
   type CreateMusicTogetherSemesterInput,
-  type MusicTogetherSemesterStatus,
 } from '@maple/ts/domain';
-
-const STATUSES: MusicTogetherSemesterStatus[] = [
-  'planned',
-  'enrolling',
-  'active',
-  'completed',
-];
 
 /** Date <-> <input type="date"> string (local, day granularity). */
 function toDateInput(date?: Date): string {
@@ -70,7 +64,6 @@ export function SemesterFormDialog({
   const [name, setName] = useState('');
   const [season, setSeason] = useState<MusicTogetherSeason>('fall');
   const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [status, setStatus] = useState<MusicTogetherSemesterStatus>('planned');
   const [weeks, setWeeks] = useState(String(MT_SEASON_DEFAULT_WEEKS.fall));
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -88,7 +81,6 @@ export function SemesterFormDialog({
       setName(semester.name);
       setSeason(semester.season);
       setYear(String(semester.year));
-      setStatus(semester.status);
       setWeeks(semester.weeks != null ? String(semester.weeks) : '');
       setStartDate(toDateInput(semester.startDate));
       setEndDate(toDateInput(semester.endDate));
@@ -106,7 +98,6 @@ export function SemesterFormDialog({
       setName('');
       setSeason('fall');
       setYear(String(new Date().getFullYear()));
-      setStatus('planned');
       setWeeks(String(MT_SEASON_DEFAULT_WEEKS.fall));
       setStartDate('');
       setEndDate('');
@@ -147,7 +138,6 @@ export function SemesterFormDialog({
         name: name.trim(),
         season,
         year: parseInt(year, 10),
-        status,
         weeks: weeks ? parseInt(weeks, 10) : undefined,
         startDate: startDate ? fromDateInput(startDate) : undefined,
         endDate: endDate ? fromDateInput(endDate) : undefined,
@@ -163,6 +153,18 @@ export function SemesterFormDialog({
       setError(e instanceof Error ? e.message : 'Failed to save semester');
     }
   };
+
+  // Live preview of the derived status from the current date controls.
+  const derivedStatus = mtSemesterDerivedStatus(
+    {
+      startDate: startDate ? fromDateInput(startDate) : undefined,
+      endDate: endDate ? fromDateInput(endDate) : undefined,
+      enrollmentOpensAt: enrollmentOpensAt
+        ? fromDateInput(enrollmentOpensAt)
+        : undefined,
+    },
+    new Date()
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -202,22 +204,7 @@ export function SemesterFormDialog({
               sx={{ flex: 1 }}
             />
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              label="Status"
-              select
-              value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as MusicTogetherSemesterStatus)
-              }
-              sx={{ flex: 1 }}
-            >
-              {STATUSES.map((s) => (
-                <MenuItem key={s} value={s}>
-                  {s}
-                </MenuItem>
-              ))}
-            </TextField>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <TextField
               label="Weeks"
               type="number"
@@ -225,6 +212,18 @@ export function SemesterFormDialog({
               onChange={(e) => setWeeks(e.target.value)}
               sx={{ flex: 1 }}
             />
+            <Box
+              sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Status
+              </Typography>
+              <Chip
+                size="small"
+                label={derivedStatus}
+                color={derivedStatus === 'enrolling' ? 'success' : 'default'}
+              />
+            </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField

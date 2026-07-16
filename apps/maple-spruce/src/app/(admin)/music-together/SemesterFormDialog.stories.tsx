@@ -33,7 +33,6 @@ const mockSemester: MusicTogetherSemester = {
     new Date('2027-03-04T00:00:00'),
   ],
   enrollmentOpensAt: new Date('2026-11-12T00:00:00'),
-  status: 'enrolling',
   notes: 'Two snow makeup days built in.',
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -86,7 +85,6 @@ export const CreateSubmits: Story = {
         expect.objectContaining({
           name: 'Fall 2026',
           season: 'fall',
-          status: 'planned',
           weeks: 10,
         })
       )
@@ -193,10 +191,6 @@ export const FillsAllFields: Story = {
     });
     await userEvent.type(canvas.getByLabelText('Notes'), 'Spring term.');
 
-    // Change the Status select.
-    await userEvent.click(canvas.getByRole('combobox', { name: /status/i }));
-    await userEvent.click(canvas.getByRole('option', { name: 'enrolling' }));
-
     await userEvent.click(canvas.getByRole('button', { name: /save/i }));
 
     await waitFor(() =>
@@ -205,7 +199,6 @@ export const FillsAllFields: Story = {
           name: 'Spring 2027',
           year: 2027,
           weeks: 10,
-          status: 'enrolling',
           notes: 'Spring term.',
         })
       )

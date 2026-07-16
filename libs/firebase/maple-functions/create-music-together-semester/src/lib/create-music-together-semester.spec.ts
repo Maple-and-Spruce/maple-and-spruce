@@ -27,7 +27,7 @@ describe('createMusicTogetherSemester', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('creates a semester and returns it', async () => {
-    const input = { name: 'Fall 2026', season: 'fall', year: 2026, status: 'planned' };
+    const input = { name: 'Fall 2026', season: 'fall', year: 2026 };
     mocks.create.mockResolvedValue({ id: 'sem-1', ...input });
 
     const result = (await mocks.capturedHandler!(input)) as {

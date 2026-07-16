@@ -94,10 +94,7 @@ export {
 } from './lib/craft-club-token.repository';
 
 // Music Together (separate-business early-childhood music program)
-export {
-  MusicTogetherSemesterRepository,
-  type MusicTogetherSemesterFilters,
-} from './lib/music-together-semester.repository';
+export { MusicTogetherSemesterRepository } from './lib/music-together-semester.repository';
 export {
   MusicTogetherSectionRepository,
   type MusicTogetherSectionFilters,

@@ -9,7 +9,6 @@ import {
   type MusicTogetherSemester,
   type CreateMusicTogetherSemesterInput,
   type UpdateMusicTogetherSemesterInput,
-  type MusicTogetherSemesterStatus,
   type RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -20,10 +19,6 @@ import type {
   UpdateMusicTogetherSemesterRequest,
   UpdateMusicTogetherSemesterResponse,
 } from '@maple/ts/firebase/api-types';
-
-export interface UseMusicTogetherSemestersFilters {
-  status?: MusicTogetherSemesterStatus;
-}
 
 /** Hydrate ISO date strings (callable serialization) back into Dates. */
 function hydrateSemester(
@@ -54,9 +49,7 @@ function bySortValue(a: MusicTogetherSemester, b: MusicTogetherSemester): number
 /**
  * Hook for managing Music Together semester CRUD in the admin app.
  */
-export function useMusicTogetherSemesters(
-  filters?: UseMusicTogetherSemestersFilters
-) {
+export function useMusicTogetherSemesters() {
   const [semestersState, setSemestersState] = useState<
     RequestState<MusicTogetherSemester[]>
   >({ status: 'idle' });
@@ -67,7 +60,7 @@ export function useMusicTogetherSemesters(
       const result = await callDeduped<
         GetMusicTogetherSemestersRequest,
         GetMusicTogetherSemestersResponse
-      >('getMusicTogetherSemesters', { status: filters?.status });
+      >('getMusicTogetherSemesters', {});
       setSemestersState({
         status: 'success',
         data: result.data.semesters.map(hydrateSemester).sort(bySortValue),
@@ -80,7 +73,7 @@ export function useMusicTogetherSemesters(
           error instanceof Error ? error.message : 'Failed to fetch semesters',
       });
     }
-  }, [filters?.status]);
+  }, []);
 
   const createSemester = useCallback(
     async (

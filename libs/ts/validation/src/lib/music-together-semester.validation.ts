@@ -25,12 +25,10 @@ export interface MusicTogetherSemesterValidationInput {
   breaks?: MusicTogetherSemesterBreakInput[];
   weatherMakeupDates?: (Date | string)[];
   enrollmentOpensAt?: Date | string;
-  status?: string;
   notes?: string;
 }
 
 const SEASONS = ['fall', 'winter', 'spring', 'summer'];
-const SEMESTER_STATUSES = ['planned', 'enrolling', 'active', 'completed'];
 
 function parseDate(value: Date | string | undefined): Date | undefined {
   if (value === undefined) return undefined;
@@ -98,12 +96,6 @@ export const musicTogetherSemesterValidation = staticSuite(
     test('weatherMakeupDates', 'Each weather makeup date must be valid', () => {
       for (const d of data.weatherMakeupDates ?? []) {
         enforce(parseDate(d)).isNotNullish();
-      }
-    });
-
-    test('status', 'Status must be valid', () => {
-      if (data.status !== undefined) {
-        enforce(data.status).inside(SEMESTER_STATUSES);
       }
     });
   }

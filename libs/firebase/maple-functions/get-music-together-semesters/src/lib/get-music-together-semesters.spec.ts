@@ -19,17 +19,16 @@ const handler = getMusicTogetherSemesters as unknown as (
 describe('getMusicTogetherSemesters', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('returns semesters, passing the status filter through', async () => {
+  it('returns all semesters (no filter)', async () => {
     mocks.findAll.mockResolvedValue([{ id: 'sem-1' }]);
-    const result = await handler({ status: 'enrolling' }, {});
-    expect(mocks.findAll).toHaveBeenCalledWith({ status: 'enrolling' });
+    const result = await handler({}, {});
+    expect(mocks.findAll).toHaveBeenCalledWith();
     expect(result.semesters).toEqual([{ id: 'sem-1' }]);
   });
 
-  it('works with no filter', async () => {
+  it('works when there are no semesters', async () => {
     mocks.findAll.mockResolvedValue([]);
     const result = await handler({}, {});
-    expect(mocks.findAll).toHaveBeenCalledWith({ status: undefined });
     expect(result.semesters).toEqual([]);
   });
 });

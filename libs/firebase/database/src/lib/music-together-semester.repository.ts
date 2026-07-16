@@ -10,7 +10,6 @@ import {
   mtSemesterSortValue,
   type MusicTogetherSemester,
   type MusicTogetherSemesterBreak,
-  type MusicTogetherSemesterStatus,
   type MusicTogetherSeason,
   type CreateMusicTogetherSemesterInput,
   type UpdateMusicTogetherSemesterInput,
@@ -60,7 +59,6 @@ function docToSemester(
     enrollmentOpensAt: data.enrollmentOpensAt
       ? toDate(data.enrollmentOpensAt)
       : undefined,
-    status: data.status as MusicTogetherSemesterStatus,
     notes: data.notes,
     webflowItemId: data.webflowItemId,
     createdAt: toDate(data.createdAt),
@@ -90,21 +88,11 @@ function toPersisted(
   return data;
 }
 
-export interface MusicTogetherSemesterFilters {
-  status?: MusicTogetherSemesterStatus;
-}
-
 export const MusicTogetherSemesterRepository = {
-  async findAll(
-    filters?: MusicTogetherSemesterFilters
-  ): Promise<MusicTogetherSemester[]> {
-    let query: FirebaseFirestore.Query = getDb().collection(COLLECTION);
-
-    if (filters?.status) {
-      query = query.where('status', '==', filters.status);
-    }
-
-    query = query.orderBy('sortValue', 'asc');
+  async findAll(): Promise<MusicTogetherSemester[]> {
+    const query = getDb()
+      .collection(COLLECTION)
+      .orderBy('sortValue', 'asc');
 
     const snapshot = await query.get();
     return snapshot.docs

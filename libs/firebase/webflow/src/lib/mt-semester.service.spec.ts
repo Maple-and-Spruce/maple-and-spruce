@@ -11,7 +11,6 @@ const baseSemester: MusicTogetherSemester = {
   endDate: new Date('2026-11-12T14:00:00Z'),
   weeks: 10,
   enrollmentOpensAt: new Date('2026-08-01T12:00:00Z'),
-  status: 'enrolling',
   notes: 'Exact dates confirmed by summer.',
   breaks: [
     {
@@ -43,12 +42,22 @@ describe('mapSemesterToFieldData', () => {
     );
   });
 
-  it('maps season, season-label, year, and status', () => {
+  it('maps season, season-label, year, and derived status', () => {
     const fd = mapSemesterToFieldData(baseSemester, prodOptions);
     expect(fd['season']).toBe('fall');
     expect(fd['season-label']).toBe('Fall');
     expect(fd['year']).toBe(2026);
-    expect(fd['status']).toBe('enrolling');
+    // Status is DERIVED from the term's dates at sync time: registration open
+    // (yesterday) and the term hasn't started (next month) → 'enrolling'.
+    const enrolling = {
+      ...baseSemester,
+      enrollmentOpensAt: new Date(Date.now() - 86_400_000),
+      startDate: new Date(Date.now() + 30 * 86_400_000),
+      endDate: new Date(Date.now() + 90 * 86_400_000),
+    };
+    expect(mapSemesterToFieldData(enrolling, prodOptions)['status']).toBe(
+      'enrolling'
+    );
   });
 
   it('sets start-date and end-date to ISO strings', () => {
