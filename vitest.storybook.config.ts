@@ -11,9 +11,30 @@ const dirname =
     : path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  // Pre-bundle icons used in only one story so Vite's optimizer doesn't
-  // discover them mid-run and reload (which fails in-flight browser tests).
-  optimizeDeps: { include: ['@mui/icons-material/Download'] },
+  // Pre-bundle deep imports reachable only through a single story so Vite's
+  // optimizer doesn't discover them mid-run and reload (which fails in-flight
+  // browser tests). Covers RosterDialog's Download icon and the calendar-links
+  // page's icons + Material subcomponents (Snackbar et al. aren't scanned from
+  // other stories, so they'd otherwise trigger a mid-run re-optimize).
+  optimizeDeps: {
+    include: [
+      '@mui/icons-material/Download',
+      '@mui/icons-material/ContentCopy',
+      '@mui/icons-material/EventAvailable',
+      '@mui/icons-material/OpenInNew',
+      '@mui/material/Box',
+      '@mui/material/Card',
+      '@mui/material/CardContent',
+      '@mui/material/Chip',
+      '@mui/material/Divider',
+      '@mui/material/IconButton',
+      '@mui/material/Link',
+      '@mui/material/Snackbar',
+      '@mui/material/Stack',
+      '@mui/material/Tooltip',
+      '@mui/material/Typography',
+    ],
+  },
   plugins: [
     storybookTest({
       configDir: path.join(dirname, 'apps/maple-spruce/.storybook'),
