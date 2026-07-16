@@ -455,4 +455,11 @@ export type {
   StartMusicTogetherManageSessionResponse,
   UpdateMusicTogetherPaymentMethodRequest,
   UpdateMusicTogetherPaymentMethodResponse,
+  GetPublicMusicTogetherSectionsRequest,
+  GetPublicMusicTogetherSectionsResponse,
+  PublicMusicTogetherSectionOption,
+  AddMusicTogetherInterestRequest,
+  AddMusicTogetherInterestResponse,
+  GetMusicTogetherInterestRequest,
+  GetMusicTogetherInterestResponse,
 } from './music-together.types';

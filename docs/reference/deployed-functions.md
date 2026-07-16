@@ -43,6 +43,11 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `notifyWaitlistOnSpotOpen` _(Firestore trigger on `registrations/{id}`; on active → inactive transition or delete, queues `class-spot-available` mail to every waitlist email then clears the subcollection)_
 - `classCatalogFeed` _(public RSS 2.0 feed at `/catalog/classes.xml`; consumed by Meta Commerce Manager + Google Merchant Center; 15-min cache)_
 
+### Music Together — cross-section interest list (#602)
+- `getPublicMusicTogetherSections` _(public; customer-safe list of visible section options — id, name, first-session, location, derived status — drives the interest form's checkboxes)_
+- `addMusicTogetherInterest` _(public; idempotent-per-email upsert to `musicTogetherInterest/{emailKey}` capturing `interestedSectionIds[]` + preference/alternate-time/notes; validates + verifies referenced sections before writing. Broader than the per-section `addToMusicTogetherWaitlist` — works even when nothing is full)_
+- `getMusicTogetherInterest` _(admin; returns all interest entries, a per-section demand tally (highest first), and a section-id→name map; powers the MT admin "Interest list" dialog)_
+
 ### Class Categories
 - `getClassCategories`, `uploadCategoryGalleryImage`
 

@@ -116,6 +116,10 @@ export {
   MUSIC_TOGETHER_ACCESS_TOKEN_TTL_MS,
   MUSIC_TOGETHER_SESSION_TTL_MS,
 } from './lib/music-together-token.repository';
+export {
+  MusicTogetherInterestRepository,
+  mtInterestEmailKey,
+} from './lib/music-together-interest.repository';
 
 // Phase 5: Etsy
 export {

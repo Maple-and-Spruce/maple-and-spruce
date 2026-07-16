@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-get-public-music-together-sections",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/get-public-music-together-sections/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}
