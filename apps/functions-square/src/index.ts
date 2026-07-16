@@ -56,6 +56,9 @@ export { createCraftClubSubscription } from '@maple/firebase/maple-functions/cre
 export { createMusicTogetherRegistration } from '@maple/firebase/maple-functions/create-music-together-registration';
 export { cancelMusicTogetherRegistration } from '@maple/firebase/maple-functions/cancel-music-together-registration';
 
+// Music Together self-service card-on-file update (MT's separate Square account)
+export { updateMusicTogetherPaymentMethod } from '@maple/firebase/maple-functions/update-music-together-payment-method';
+
 // Music Together Week-5 auto-charge job (scheduled + admin-callable trigger)
 export {
   chargeMusicTogetherInstallments,

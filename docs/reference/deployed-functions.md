@@ -110,6 +110,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `requestCraftClubManageLink` _(public)_ — emails a single-use magic link to manage a membership; uniform response (no enumeration)
 - `startCraftClubSession` _(public)_ — exchanges a magic-link token (single-use) for a short-lived session token
 - `getCraftClubSubscription` _(public, session-gated)_ — returns the member's customer-safe subscription view
+- `requestMusicTogetherManageLink` _(public)_ — emails a single-use magic link to update the card on file for an installment registration; uniform response (no enumeration)
+- `startMusicTogetherManageSession` _(public)_ — exchanges an MT magic-link token (single-use) for a short-lived session token + a customer-safe manage view (section + next installment)
 - _Subscribe + self-service Square mutations live in the `maple-square` codebase; subscription webhooks land in a later phase._
 
 ---
@@ -154,6 +156,7 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `createCraftClubSubscription` _(public)_ — re-checks the approval gate server-side, then upserts the Square customer, stores the card on file from the Web Payments nonce, enrolls it in the $30/mo subscription plan, and mirrors the result onto the member record
 - `cancelCraftClubSubscription` _(public, session-gated)_ — cancels the Square subscription at period end, marks the member cancelled, and emails a confirmation
 - `updateCraftClubPaymentMethod` _(public, session-gated)_ — files a new card from a Web Payments nonce and points the subscription at it
+- `updateMusicTogetherPaymentMethod` _(public, session-gated, MT Square account)_ — vaults a new card on file for an installment registration, repoints `registration.squareCardId` at it (retargets pending Week-5 scheduled charges), and disables the old card
 - `adminPauseCraftClubSubscription` / `adminResumeCraftClubSubscription` / `adminCancelCraftClubSubscription` _(admin-only)_ — Square pause/resume/cancel + mirror member status (cancel also emails)
 - `createCraftClubSubscription` also emails a welcome on success.
 

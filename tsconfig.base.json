@@ -41,6 +41,15 @@
       "@maple/firebase/maple-functions/update-craft-club-payment-method": [
         "libs/firebase/maple-functions/update-craft-club-payment-method/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/request-music-together-manage-link": [
+        "libs/firebase/maple-functions/request-music-together-manage-link/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/start-music-together-manage-session": [
+        "libs/firebase/maple-functions/start-music-together-manage-session/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-music-together-payment-method": [
+        "libs/firebase/maple-functions/update-music-together-payment-method/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/check-craft-club-eligibility": [
         "libs/firebase/maple-functions/check-craft-club-eligibility/src/index.ts"
       ],

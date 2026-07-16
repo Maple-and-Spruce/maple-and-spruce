@@ -463,6 +463,18 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
     return { status: 200, body: { card } };
   });
 
+  // Disable a card on file (used when a customer replaces the card behind a
+  // card-on-file agreement — the old card is detached).
+  server.post('/v2/cards/:cardId/disable', (req) => {
+    const card = {
+      id: req.params['cardId'],
+      card_brand: 'VISA',
+      last_4: '1111',
+      enabled: false,
+    };
+    return { status: 200, body: { card } };
+  });
+
   // Create subscription
   server.post('/v2/subscriptions', (req) => {
     const body = req.body as Record<string, unknown>;
