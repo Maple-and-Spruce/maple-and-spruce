@@ -21,7 +21,7 @@ import {
 } from 'firebase-functions/params';
 import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'express';
-import { Role, hasRole } from './auth.utility';
+import { Role, hasAnyRole } from './auth.utility';
 import { throwAlreadyExists, throwValidationError } from './errors.utility';
 import { getAuth } from 'firebase-admin/auth';
 import admin from 'firebase-admin';
@@ -102,8 +102,8 @@ export type UniquenessCheck<T = Record<string, unknown>> = {
 export interface FunctionOptions {
   /** Require user to be authenticated */
   requireAuth?: boolean;
-  /** Require user to have a specific role */
-  requiredRole?: Role;
+  /** Require user to have a specific role (or ANY of an array of roles) */
+  requiredRole?: Role | readonly Role[];
   /** Runtime configuration for the Cloud Function */
   runtime?: RuntimeOptions;
   /** Run this validator on the request data before invoking the handler */
@@ -377,9 +377,15 @@ class FunctionBuilder<
   }
 
   /**
-   * Require a specific role
+   * Require a specific role, or ANY of an array of roles (any-of).
+   *
+   * @example
+   * .requiringRole(Role.Admin)                    // admin only
+   * .requiringRole([Role.Admin, Role.MtTeacher])  // admin OR MT teacher
    */
-  requiringRole(role: Role): FunctionBuilder<SecretNames, StringNames> {
+  requiringRole(
+    role: Role | readonly Role[]
+  ): FunctionBuilder<SecretNames, StringNames> {
     return new FunctionBuilder(this.secrets, this.strings, {
       ...this.options,
       requiredRole: role,
@@ -514,15 +520,17 @@ class FunctionBuilder<
               }
             }
 
-            // Check role if required
+            // Check role if required (any-of when an array is given)
             if (this.options.requiredRole) {
-              const userHasRole = await hasRole(
-                auth!.uid,
+              const requiredRoles: readonly Role[] = Array.isArray(
                 this.options.requiredRole
-              );
+              )
+                ? this.options.requiredRole
+                : [this.options.requiredRole as Role];
+              const userHasRole = await hasAnyRole(auth!.uid, requiredRoles);
               if (!userHasRole) {
                 res.status(403).json({
-                  error: `Forbidden: You must be a ${this.options.requiredRole} to perform this action`,
+                  error: `Forbidden: You must be a ${requiredRoles.join(' or ')} to perform this action`,
                 });
                 return;
               }

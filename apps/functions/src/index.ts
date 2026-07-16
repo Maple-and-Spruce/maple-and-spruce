@@ -228,6 +228,9 @@ export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';
 export { listUsers } from '@maple/firebase/maple-functions/list-users';
 export { grantAdminRole } from '@maple/firebase/maple-functions/grant-admin-role';
 export { revokeAdminRole } from '@maple/firebase/maple-functions/revoke-admin-role';
+export { getMyRoles } from '@maple/firebase/maple-functions/get-my-roles';
+export { grantRole } from '@maple/firebase/maple-functions/grant-role';
+export { revokeRole } from '@maple/firebase/maple-functions/revoke-role';
 
 // Lead attribution (Tally newsletter signups → GA4 Measurement Protocol + Meta CAPI)
 export { tallyLeadWebhook } from '@maple/firebase/maple-functions/tally-lead-webhook';

@@ -211,6 +211,9 @@ export type {
 export type {
   CheckAdminStatusRequest,
   CheckAdminStatusResponse,
+  UserRole,
+  GetMyRolesRequest,
+  GetMyRolesResponse,
 } from './auth.types';
 
 // User & role administration
@@ -221,6 +224,10 @@ export type {
   GrantAdminRoleResponse,
   RevokeAdminRoleRequest,
   RevokeAdminRoleResponse,
+  GrantRoleRequest,
+  GrantRoleResponse,
+  RevokeRoleRequest,
+  RevokeRoleResponse,
 } from './user.types';
 
 // Phase 4.5: Calendar Event types

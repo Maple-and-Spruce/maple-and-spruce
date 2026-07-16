@@ -1,0 +1,11 @@
+{
+  "name": "firebase-maple-functions-revoke-role",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/revoke-role/src",
+  "projectType": "library",
+  "tags": [
+    "scope:firebase",
+    "type:feature"
+  ],
+  "targets": {}
+}
