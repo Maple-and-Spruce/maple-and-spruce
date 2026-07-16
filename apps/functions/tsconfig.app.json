@@ -7,6 +7,9 @@
   "include": [
     "src/**/*.ts",
     "../../libs/firebase/maple-functions/check-admin-status/**/*.ts",
+    "../../libs/firebase/maple-functions/get-my-roles/**/*.ts",
+    "../../libs/firebase/maple-functions/grant-role/**/*.ts",
+    "../../libs/firebase/maple-functions/revoke-role/**/*.ts",
     "../../libs/firebase/maple-functions/get-artists/**/*.ts",
     "../../libs/firebase/maple-functions/get-artist/**/*.ts",
     "../../libs/firebase/maple-functions/create-artist/**/*.ts",

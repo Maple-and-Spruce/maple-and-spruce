@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   defineSecret: vi.fn(),
   defineString: vi.fn(),
   verifyIdToken: vi.fn(),
-  hasRole: vi.fn(),
+  hasAnyRole: vi.fn(),
   initializeApp: vi.fn(),
   apps: [] as unknown[],
 }));
@@ -53,8 +53,13 @@ vi.mock('firebase-admin', () => ({
 }));
 
 vi.mock('./auth.utility', () => ({
-  Role: { Admin: 'admin' },
-  hasRole: mocks.hasRole,
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  hasAnyRole: mocks.hasAnyRole,
 }));
 
 import {
@@ -341,7 +346,7 @@ describe('Functions.endpoint (chain + handle)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verifyIdToken.mockReset();
-    mocks.hasRole.mockReset();
+    mocks.hasAnyRole.mockReset();
     mocks.onRequest.mockClear();
     mocks.apps.length = 0;
   });
@@ -425,7 +430,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
   it('requiringRole(Admin): 403 when user lacks role', async () => {
     mocks.verifyIdToken.mockResolvedValue({ uid: 'u1' });
-    mocks.hasRole.mockResolvedValue(false);
+    mocks.hasAnyRole.mockResolvedValue(false);
     const handler = vi.fn();
     const endpoint = Functions.endpoint.requiringRole(Role.Admin).handle(handler);
 
@@ -440,7 +445,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
   it('requiringRole(Admin): passes when user has role', async () => {
     mocks.verifyIdToken.mockResolvedValue({ uid: 'admin-uid' });
-    mocks.hasRole.mockResolvedValue(true);
+    mocks.hasAnyRole.mockResolvedValue(true);
     const handler = vi.fn(async () => ({ ok: true }));
     const endpoint = Functions.endpoint.requiringRole(Role.Admin).handle(handler);
 
@@ -450,7 +455,45 @@ describe('Functions.endpoint (chain + handle)', () => {
     );
 
     expect(res.statusCode).toBe(200);
-    expect(mocks.hasRole).toHaveBeenCalledWith('admin-uid', Role.Admin);
+    expect(mocks.hasAnyRole).toHaveBeenCalledWith('admin-uid', [Role.Admin]);
+  });
+
+  it('requiringRole([Admin, MtTeacher]): passes the role set through (any-of)', async () => {
+    mocks.verifyIdToken.mockResolvedValue({ uid: 'stephanie-uid' });
+    mocks.hasAnyRole.mockResolvedValue(true);
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint
+      .requiringRole([Role.Admin, Role.MtTeacher])
+      .handle(handler);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(mocks.hasAnyRole).toHaveBeenCalledWith('stephanie-uid', [
+      Role.Admin,
+      Role.MtTeacher,
+    ]);
+  });
+
+  it('requiringRole([...]): 403 names every accepted role', async () => {
+    mocks.verifyIdToken.mockResolvedValue({ uid: 'u1' });
+    mocks.hasAnyRole.mockResolvedValue(false);
+    const handler = vi.fn();
+    const endpoint = Functions.endpoint
+      .requiringRole([Role.Admin, Role.Clerk])
+      .handle(handler);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect((res.body as { error: string }).error).toContain('admin or clerk');
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('validating: rejects invalid input before invoking handler', async () => {
@@ -615,7 +658,7 @@ describe('Functions.endpoint (chain + handle)', () => {
       );
 
       expect(res.statusCode).toBe(200);
-      expect(mocks.hasRole).not.toHaveBeenCalled();
+      expect(mocks.hasAnyRole).not.toHaveBeenCalled();
       expect(handler).not.toHaveBeenCalled();
     });
 
@@ -732,7 +775,7 @@ describe('legacy wrappers', () => {
 
   it('createAdminFunction: requires admin role', async () => {
     mocks.verifyIdToken.mockResolvedValue({ uid: 'u1' });
-    mocks.hasRole.mockResolvedValue(false);
+    mocks.hasAnyRole.mockResolvedValue(false);
     const handler = vi.fn();
     const endpoint = createAdminFunction(handler);
     const res = await invoke(
