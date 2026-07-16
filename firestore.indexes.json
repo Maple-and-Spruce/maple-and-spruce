@@ -1409,20 +1409,6 @@
       ]
     },
     {
-      "collectionGroup": "musicTogetherSemesters",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sortValue",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "musicTogetherRegistrations",
       "queryScope": "COLLECTION",
       "fields": [

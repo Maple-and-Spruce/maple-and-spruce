@@ -28,6 +28,7 @@ import type {
 import {
   getMusicTogetherSeasonLabel,
   mtSemesterSortValue,
+  mtSemesterDerivedStatus,
 } from '@maple/ts/domain';
 import { generateSlug } from './artist.service';
 
@@ -153,7 +154,8 @@ export function mapSemesterToFieldData(
     season: semester.season,
     'season-label': getMusicTogetherSeasonLabel(semester.season),
     year: semester.year,
-    status: semester.status,
+    // Derived from the term's dates (enrollmentOpensAt/start/end) at sync time.
+    status: mtSemesterDerivedStatus(semester, new Date()),
     'sort-value': mtSemesterSortValue(semester),
     'date-range-display': formatDateRangeDisplay(
       semester.startDate,

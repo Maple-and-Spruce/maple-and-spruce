@@ -45,7 +45,6 @@ function semData(overrides: Record<string, unknown> = {}) {
     ],
     weatherMakeupDates: [ts('2027-02-25T00:00:00.000Z')],
     enrollmentOpensAt: ts('2026-11-12T00:00:00.000Z'),
-    status: 'enrolling',
     notes: 'Two snow makeup days built in.',
     createdAt: ts('2026-01-01T00:00:00.000Z'),
     updatedAt: ts('2026-01-01T00:00:00.000Z'),
@@ -77,20 +76,6 @@ describe('MusicTogetherSemesterRepository', () => {
       expect(result[0].breaks?.[0].label).toBe('Holiday break');
       expect(result[0].startDate).toBeInstanceOf(Date);
       expect(result[0].weatherMakeupDates?.[0]).toBeInstanceOf(Date);
-    });
-
-    it('applies the status filter when provided', async () => {
-      const get = vi.fn().mockResolvedValue({ docs: [fakeDoc('s1', semData())] });
-      const orderBy = vi.fn().mockReturnValue({ get });
-      const where = vi.fn().mockReturnValue({ orderBy });
-      mocks.collection.mockReturnValue({ where });
-
-      const result = await MusicTogetherSemesterRepository.findAll({
-        status: 'enrolling',
-      });
-
-      expect(where).toHaveBeenCalledWith('status', '==', 'enrolling');
-      expect(result).toHaveLength(1);
     });
 
     it('drops non-existent docs', async () => {
@@ -156,7 +141,6 @@ describe('MusicTogetherSemesterRepository', () => {
         name: 'Winter 2026–2027',
         season: 'winter',
         year: 2026,
-        status: 'enrolling',
       });
 
       const written = set.mock.calls[0][0] as Record<string, unknown>;
@@ -179,7 +163,6 @@ describe('MusicTogetherSemesterRepository', () => {
           name: 'X',
           season: 'fall',
           year: 2026,
-          status: 'planned',
         })
       ).rejects.toThrow(/not found after create/);
     });
@@ -190,20 +173,20 @@ describe('MusicTogetherSemesterRepository', () => {
       const update = vi.fn().mockResolvedValue(undefined);
       const get = vi
         .fn()
-        .mockResolvedValue(fakeDoc('s1', semData({ status: 'active' })));
+        .mockResolvedValue(fakeDoc('s1', semData({ name: 'Renamed' })));
       mocks.collection.mockReturnValue({
         doc: vi.fn().mockReturnValue({ update, get }),
       });
 
       const result = await MusicTogetherSemesterRepository.update({
         id: 's1',
-        status: 'active',
+        name: 'Renamed',
       });
 
       expect(update).toHaveBeenCalled();
       const patch = update.mock.calls[0][0] as Record<string, unknown>;
       expect(patch.updatedAt).toBeInstanceOf(Date);
-      expect(result.status).toBe('active');
+      expect(result.name).toBe('Renamed');
     });
   });
 

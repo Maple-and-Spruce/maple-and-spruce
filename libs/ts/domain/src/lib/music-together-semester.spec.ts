@@ -5,6 +5,7 @@ import {
   getMusicTogetherSeasonLabel,
   mtSemesterSortValue,
   mtSemesterIsEnrolling,
+  mtSemesterDerivedStatus,
   type MusicTogetherSemester,
 } from './music-together-semester';
 
@@ -16,7 +17,6 @@ function semester(
     name: 'Fall 2026',
     season: 'fall',
     year: 2026,
-    status: 'planned',
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -66,9 +66,70 @@ describe('music-together-semester', () => {
     });
   });
 
-  it('reports enrolling status', () => {
-    expect(mtSemesterIsEnrolling(semester({ status: 'enrolling' }))).toBe(true);
-    expect(mtSemesterIsEnrolling(semester({ status: 'planned' }))).toBe(false);
-    expect(mtSemesterIsEnrolling(semester({ status: 'active' }))).toBe(false);
+  describe('mtSemesterDerivedStatus', () => {
+    const now = new Date('2026-08-01T12:00:00Z');
+
+    it('is planned before registration opens (or no dates set)', () => {
+      expect(mtSemesterDerivedStatus(semester(), now)).toBe('planned');
+      expect(
+        mtSemesterDerivedStatus(
+          semester({ enrollmentOpensAt: new Date('2026-08-15T00:00:00Z') }),
+          now
+        )
+      ).toBe('planned');
+    });
+
+    it('is enrolling once registration opens, before the term starts', () => {
+      expect(
+        mtSemesterDerivedStatus(
+          semester({
+            enrollmentOpensAt: new Date('2026-07-01T00:00:00Z'),
+            startDate: new Date('2026-09-10T00:00:00Z'),
+            endDate: new Date('2026-11-14T00:00:00Z'),
+          }),
+          now
+        )
+      ).toBe('enrolling');
+    });
+
+    it('is active once the term has started', () => {
+      expect(
+        mtSemesterDerivedStatus(
+          semester({
+            enrollmentOpensAt: new Date('2026-07-01T00:00:00Z'),
+            startDate: new Date('2026-07-20T00:00:00Z'),
+            endDate: new Date('2026-11-14T00:00:00Z'),
+          }),
+          now
+        )
+      ).toBe('active');
+    });
+
+    it('is completed after the end date', () => {
+      expect(
+        mtSemesterDerivedStatus(
+          semester({
+            startDate: new Date('2026-01-10T00:00:00Z'),
+            endDate: new Date('2026-03-14T00:00:00Z'),
+          }),
+          now
+        )
+      ).toBe('completed');
+    });
+  });
+
+  it('reports enrolling status (derived from dates)', () => {
+    expect(
+      mtSemesterIsEnrolling(
+        semester({
+          enrollmentOpensAt: new Date('2026-07-01T00:00:00Z'),
+          startDate: new Date('2026-09-10T00:00:00Z'),
+        }),
+        new Date('2026-08-01T12:00:00Z')
+      )
+    ).toBe(true);
+    expect(
+      mtSemesterIsEnrolling(semester(), new Date('2026-08-01T12:00:00Z'))
+    ).toBe(false);
   });
 });

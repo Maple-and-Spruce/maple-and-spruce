@@ -30,10 +30,14 @@ export const MT_SEASON_DEFAULT_WEEKS: Record<MusicTogetherSeason, number> = {
   summer: 6,
 };
 
-/** Semester lifecycle. `planned` terms may have no sections yet. */
+/**
+ * Semester lifecycle — DERIVED from the term's dates, never stored. Admins set
+ * the explicit date controls (`enrollmentOpensAt`, `startDate`, `endDate`) and
+ * the overall status falls out of them via `mtSemesterDerivedStatus`.
+ */
 export type MusicTogetherSemesterStatus =
   | 'planned' // On the calendar, not yet open for registration
-  | 'enrolling' // Sections open for registration
+  | 'enrolling' // Registration window open, term not started
   | 'active' // Term in progress
   | 'completed'; // Term finished
 
@@ -63,9 +67,8 @@ export interface MusicTogetherSemester {
   breaks?: MusicTogetherSemesterBreak[];
   /** Built-in weather makeup dates (e.g. the two snow days held in Winter). */
   weatherMakeupDates?: Date[];
-  /** When re-registration opens for this term. */
+  /** When registration opens for this term. Drives the `enrolling` status. */
   enrollmentOpensAt?: Date;
-  status: MusicTogetherSemesterStatus;
   /** Free-text note, e.g. "exact dates confirmed by spring 2027" (Summer). */
   notes?: string;
   /** Webflow CMS item ID, once synced to the public site. */
@@ -115,9 +118,41 @@ export function mtSemesterSortValue(
   return semester.year * 12 + seasonIndex;
 }
 
-/** Whether a semester is accepting registrations right now. */
+/**
+ * The overall semester status — DERIVED, never stored. Computed from the term's
+ * date controls + `now`:
+ *
+ * - `completed` — the end date has passed
+ * - `active` — the start date has passed (term in progress)
+ * - `enrolling` — registration has opened (`enrollmentOpensAt` reached) but the
+ *   term hasn't started
+ * - `planned` — none of the above (on the calendar, registration not open yet)
+ *
+ * Ordering matters: later phases win, so a term reads `active` once it starts
+ * even if `enrollmentOpensAt` is also in the past.
+ */
+export function mtSemesterDerivedStatus(
+  semester: Pick<
+    MusicTogetherSemester,
+    'startDate' | 'endDate' | 'enrollmentOpensAt'
+  >,
+  now: Date
+): MusicTogetherSemesterStatus {
+  if (semester.endDate && now >= semester.endDate) return 'completed';
+  if (semester.startDate && now >= semester.startDate) return 'active';
+  if (semester.enrollmentOpensAt && now >= semester.enrollmentOpensAt) {
+    return 'enrolling';
+  }
+  return 'planned';
+}
+
+/** Whether a semester is in its registration window right now (derived). */
 export function mtSemesterIsEnrolling(
-  semester: Pick<MusicTogetherSemester, 'status'>
+  semester: Pick<
+    MusicTogetherSemester,
+    'startDate' | 'endDate' | 'enrollmentOpensAt'
+  >,
+  now: Date = new Date()
 ): boolean {
-  return semester.status === 'enrolling';
+  return mtSemesterDerivedStatus(semester, now) === 'enrolling';
 }
