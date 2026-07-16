@@ -19,6 +19,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import GroupIcon from '@mui/icons-material/Group';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
   getMusicTogetherSeasonLabel,
@@ -33,10 +34,12 @@ import {
   useMusicTogetherSections,
   useMusicTogetherSemesters,
   useMusicTogetherRoster,
+  useMusicTogetherInterest,
 } from '../../../hooks';
 import { SectionFormDialog } from './SectionFormDialog';
 import { SemesterFormDialog } from './SemesterFormDialog';
 import { RosterDialog } from './RosterDialog';
+import { InterestListDialog } from './InterestListDialog';
 
 const fmtDate = (d?: Date) =>
   d
@@ -98,6 +101,9 @@ export default function MusicTogetherPage() {
     rosterSection?.id
   );
 
+  const [isInterestOpen, setIsInterestOpen] = useState(false);
+  const { interestState } = useMusicTogetherInterest();
+
   const semesters = useMemo(
     () => (semestersState.status === 'success' ? semestersState.data : []),
     [semestersState]
@@ -146,9 +152,25 @@ export default function MusicTogetherPage() {
 
   return (
     <>
-      <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-        Music Together
-      </Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+        }}
+      >
+        <Typography variant="h4" component="h1">
+          Music Together
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<FavoriteBorderIcon />}
+          onClick={() => setIsInterestOpen(true)}
+        >
+          Interest list
+        </Button>
+      </Box>
 
       {/* ── Semesters ─────────────────────────────────────────────── */}
       <Box
@@ -421,6 +443,12 @@ export default function MusicTogetherPage() {
         sectionName={rosterSection?.name ?? ''}
         rosterState={rosterState}
         onCancelRegistration={cancelRegistration}
+      />
+
+      <InterestListDialog
+        open={isInterestOpen}
+        onClose={() => setIsInterestOpen(false)}
+        interestState={interestState}
       />
     </>
   );

@@ -104,6 +104,9 @@ export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-cl
 export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
 export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/get-public-music-together-section';
 export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
+export { getPublicMusicTogetherSections } from '@maple/firebase/maple-functions/get-public-music-together-sections';
+export { addMusicTogetherInterest } from '@maple/firebase/maple-functions/add-music-together-interest';
+export { getMusicTogetherInterest } from '@maple/firebase/maple-functions/get-music-together-interest';
 
 // Music Together admin section management
 export { getMusicTogetherSemesters } from '@maple/firebase/maple-functions/get-music-together-semesters';
