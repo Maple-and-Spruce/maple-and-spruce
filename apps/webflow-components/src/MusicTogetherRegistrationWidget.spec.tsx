@@ -278,6 +278,81 @@ describe('MusicTogetherRegistrationWidget', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('updates the family total with the sibling discount as children are added', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    // Complete the first child's row → one-child price on both plans.
+    setField(/Child's first name/i, 'Sky');
+    setField(/Date of birth/i, '2023-04-01');
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$252\.00/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /\$132\.00 now, \$132\.00 on/i })
+    ).toBeInTheDocument();
+
+    // Add a 2nd child and complete the row → 2-child price ($378 / $198).
+    await user.click(
+      screen.getByRole('button', { name: /Add another child/i })
+    );
+    let names = screen.getAllByLabelText(/Child's first name/i);
+    let dobs = screen.getAllByLabelText(/Date of birth/i);
+    fireEvent.change(names[1], { target: { value: 'River' } });
+    fireEvent.change(dobs[1], { target: { value: '2024-05-02' } });
+
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$378\.00/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /\$198\.00 now, \$198\.00 on/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/first child full\s*price, 50% off each additional child/i)
+    ).toBeInTheDocument();
+
+    // Add a 3rd child and complete the row → 3-child price ($504 / $264).
+    await user.click(
+      screen.getByRole('button', { name: /Add another child/i })
+    );
+    names = screen.getAllByLabelText(/Child's first name/i);
+    dobs = screen.getAllByLabelText(/Date of birth/i);
+    fireEvent.change(names[2], { target: { value: 'Wren' } });
+    fireEvent.change(dobs[2], { target: { value: '2025-06-03' } });
+
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$504\.00/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /\$264\.00 now, \$264\.00 on/i })
+    ).toBeInTheDocument();
+  });
+
+  it('reflects the discounted multi-child total on the pay button', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    fillFamily();
+    // Add a second child so the family is priced for two ($378 total).
+    await user.click(
+      screen.getByRole('button', { name: /Add another child/i })
+    );
+    const names = screen.getAllByLabelText(/Child's first name/i);
+    const dobs = screen.getAllByLabelText(/Date of birth/i);
+    fireEvent.change(names[1], { target: { value: 'River' } });
+    fireEvent.change(dobs[1], { target: { value: '2024-05-02' } });
+    await acceptConsents(user);
+
+    // The pay button and the "today" line both show the discounted 2-child total.
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$378\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    expect(screen.getByText(/Payment — \$378\.00 today/i)).toBeInTheDocument();
+  });
+
   it('shows the waitlist when the section is full', async () => {
     nextSection = makeSection({ spotsRemaining: 0 });
     const user = userEvent.setup({ delay: null });

@@ -157,6 +157,65 @@ describe('createMusicTogetherRegistration', () => {
     expect(String(charges[0].idempotencyKey)).toMatch(/^mt-charge-/);
   });
 
+  it('full pay: charges the sibling-discounted total for a 2-child family', async () => {
+    const result = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'twokids@test.com',
+        children: [
+          { name: 'Sky', dob: '2023-04-01' },
+          { name: 'River', dob: '2024-05-02' },
+        ],
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    // $252 base × 1.5 (first child full, 50% off the 2nd) = $378.
+    expect(result.data?.amountChargedCents).toBe(37800);
+    expect(result.data?.scheduledChargeCount).toBe(0);
+
+    const reg = await getFirestoreDoc(
+      'musicTogetherRegistrations',
+      result.data!.registrationId
+    );
+    expect(reg?.pricePaidCents).toBe(37800);
+  });
+
+  it('installments: discounts installment 1 AND the scheduled charge for a 3-child family', async () => {
+    const result = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'threekids@test.com',
+        paymentPlan: 'installments',
+        cardOnFileAuth: true,
+        children: [
+          { name: 'Sky', dob: '2023-04-01' },
+          { name: 'River', dob: '2024-05-02' },
+          { name: 'Wren', dob: '2025-06-03' },
+        ],
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    // $132 base × 2.0 (first child full, 50% off the 2nd & 3rd) = $264 each.
+    expect(result.data?.amountChargedCents).toBe(26400); // installment 1
+    expect(result.data?.scheduledChargeCount).toBe(1);
+
+    const charges = (await listFirestoreDocs('musicTogetherScheduledCharges'))
+      .map((c) => c.data as Record<string, unknown>)
+      .filter((c) => c.registrationId === result.data!.registrationId);
+    expect(charges).toHaveLength(1);
+    // The scheduled Week-5 charge is discounted too.
+    expect(charges[0].amountCents).toBe(26400);
+    expect(charges[0].status).toBe('scheduled');
+  });
+
   it('rejects a section that is not open', async () => {
     const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
       functionName: 'createMusicTogetherRegistration',

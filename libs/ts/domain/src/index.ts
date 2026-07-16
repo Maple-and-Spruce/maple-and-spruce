@@ -50,6 +50,7 @@ export * from './lib/craft-club-member';
 export * from './lib/music-together-semester';
 export * from './lib/music-together-section';
 export * from './lib/music-together-registration';
+export * from './lib/music-together-pricing';
 export * from './lib/music-together-scheduled-charge';
 export * from './lib/music-together-waitlist';
 export * from './lib/music-together-licensee';
