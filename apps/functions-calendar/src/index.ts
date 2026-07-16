@@ -19,4 +19,5 @@ export { calendarHoursFeed } from '@maple/firebase/maple-functions/calendar-hour
 export { calendarAllFeed } from '@maple/firebase/maple-functions/calendar-all-feed';
 export { calendarAdhocProxy } from '@maple/firebase/maple-functions/calendar-adhoc-proxy';
 export { calendarMusicTogetherFeed } from '@maple/firebase/maple-functions/calendar-music-together-feed';
+export { calendarFamilyMusicTogetherFeed } from '@maple/firebase/maple-functions/calendar-family-music-together-feed';
 export { calendarPrivateFeed } from '@maple/firebase/maple-functions/calendar-private-feed';

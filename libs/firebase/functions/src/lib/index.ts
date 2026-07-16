@@ -62,3 +62,12 @@ export {
 
 // Email utilities
 export { isE2ETestEmail } from './email.utility';
+
+// Per-family calendar subscription utilities
+export {
+  FAMILY_CALENDAR_FEED_PATH_PREFIX,
+  generateFamilyCalendarToken,
+  apiHostingHost,
+  familyCalendarFeedUrl,
+  familyCalendarSubscribeUrl,
+} from './family-calendar.utility';

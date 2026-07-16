@@ -676,7 +676,7 @@ const craftClubCancelledHtml = `<!DOCTYPE html>
 // Sent when a family registers for a Music Together section. Transactional.
 // Routes payment to MT's Square account. Data: parentName, sectionName,
 // amountChargedLabel, isInstallments, secondInstallmentLabel,
-// secondInstallmentDate, cardLast4, receiptUrl.
+// secondInstallmentDate, cardLast4, receiptUrl, calendarSubscribeUrl.
 // ---------------------------------------------------------------------------
 
 const musicTogetherConfirmationSubject =
@@ -731,6 +731,18 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
         Music Together songbook and materials will be mailed to the address you
         provided.</p>
     </div>
+
+    {{#if calendarSubscribeUrl}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Add your classes to your calendar</strong><br>
+      <p>Subscribe once and your calendar stays up to date with your family's
+        class schedule — no need to add each session by hand, and any changes
+        sync automatically.</p>
+      <p><a href="{{calendarSubscribeUrl}}" style="color: #6B7B5E; font-weight: bold;">Subscribe to your class calendar</a></p>
+      <p style="font-size: 12px; color: #999;">Works with Apple Calendar, Google
+        Calendar, and Outlook. Keep this link private — it's unique to your family.</p>
+    </div>
+    {{/if}}
 
     <p>Questions? Reach out at
       <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>
@@ -799,6 +811,73 @@ const musicTogetherInstallmentFailedHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: music-together-reminder
+//
+// Day-of reminder email sent by `sendMusicTogetherReminders` (scheduled, 8am
+// ET) to every confirmed family whose section meets that day. Transactional
+// (relationship message), so no unsubscribe link. Carries the family's
+// auto-updating calendar subscribe link. Data: parentName, sectionName,
+// classDate, classStartTime, classLocation, calendarSubscribeUrl.
+// ---------------------------------------------------------------------------
+
+const musicTogetherReminderSubject =
+  'Reminder: {{sectionName}} is today';
+
+const musicTogetherReminderHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Together reminder</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Music Together with Maple &amp; Spruce</h1>
+  </div>
+  <div class="content">
+    <h2>See you today!</h2>
+    <p>{{#if parentName}}Hi {{parentName}},{{else}}Hello,{{/if}}</p>
+    <p>Just a friendly reminder that your <strong>{{sectionName}}</strong> Music
+      Together class is today. We can't wait to make music with you!</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">When</td>
+        <td>{{classStartTime}}, {{classDate}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{classLocation}}</td>
+      </tr>
+    </table>
+
+    {{#if calendarSubscribeUrl}}
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Keep your calendar in sync</strong><br>
+      <p>Subscribe once and your family's Music Together schedule stays up to
+        date automatically.</p>
+      <p><a href="{{calendarSubscribeUrl}}" style="color: #6B7B5E; font-weight: bold;">Subscribe to your class calendar</a></p>
+      <p style="font-size: 12px; color: #999;">Keep this link private — it's unique to your family.</p>
+    </div>
+    {{/if}}
+
+    <p>Questions? Reply to this email, reach out at
+      <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>,
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Music Together with Maple &amp; Spruce</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
 
@@ -851,6 +930,10 @@ const templates: Record<string, EmailTemplate> = {
   'music-together-installment-failed': {
     subject: musicTogetherInstallmentFailedSubject,
     html: musicTogetherInstallmentFailedHtml,
+  },
+  'music-together-reminder': {
+    subject: musicTogetherReminderSubject,
+    html: musicTogetherReminderHtml,
   },
 };
 
