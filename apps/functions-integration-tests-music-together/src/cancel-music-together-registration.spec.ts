@@ -173,4 +173,129 @@ describe('cancelMusicTogetherRegistration', () => {
     });
     expect(result.status).not.toBe(200);
   });
+
+  it('admin partial refund: refunds the chosen amount, cancels scheduled charges', async () => {
+    await setFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-partial',
+      reg({ email: 'partial@test.com' })
+    );
+    await setFirestoreDoc('musicTogetherScheduledCharges', 'chg-partial', {
+      registrationId: 'reg-partial',
+      sectionId: 'sec-future',
+      installmentNumber: 2,
+      amountCents: 12000,
+      dueAt: future,
+      status: 'scheduled',
+      idempotencyKey: 'mt-charge-partial',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const result = await callFunction<
+      CancelMusicTogetherRegistrationRequest,
+      CancelMusicTogetherRegistrationResponse
+    >({
+      functionName: 'cancelMusicTogetherRegistration',
+      data: { registrationId: 'reg-partial', refundCents: 5000 },
+      idToken: admin.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.status).toBe('refunded');
+    expect(result.data?.refundCents).toBe(5000);
+    expect(String(result.data?.refundId)).toMatch(/^mock-refund-/);
+    expect(result.data?.cancelledChargeCount).toBe(1);
+
+    const charge = await getFirestoreDoc(
+      'musicTogetherScheduledCharges',
+      'chg-partial'
+    );
+    expect(charge?.status).toBe('cancelled');
+    const updated = await getFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-partial'
+    );
+    expect(updated?.status).toBe('refunded');
+  });
+
+  it('admin full refund overrides the $25 policy fee', async () => {
+    await setFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-full',
+      reg({ email: 'full@test.com' })
+    );
+
+    const result = await callFunction<
+      CancelMusicTogetherRegistrationRequest,
+      CancelMusicTogetherRegistrationResponse
+    >({
+      functionName: 'cancelMusicTogetherRegistration',
+      data: { registrationId: 'reg-full', refundCents: 13200 },
+      idToken: admin.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.status).toBe('refunded');
+    expect(result.data?.refundCents).toBe(13200);
+  });
+
+  it('installment-aware: a partial refund spans a paid installment payment', async () => {
+    // Registration payment (13200) + a paid installment 2 (12000) captured.
+    await setFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-span',
+      reg({ email: 'span@test.com' })
+    );
+    await setFirestoreDoc('musicTogetherScheduledCharges', 'chg-span-paid', {
+      registrationId: 'reg-span',
+      sectionId: 'sec-future',
+      installmentNumber: 2,
+      amountCents: 12000,
+      dueAt: pastDate,
+      status: 'paid',
+      squarePaymentId: 'mock-payment-installment2',
+      idempotencyKey: 'mt-charge-span',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const result = await callFunction<
+      CancelMusicTogetherRegistrationRequest,
+      CancelMusicTogetherRegistrationResponse
+    >({
+      functionName: 'cancelMusicTogetherRegistration',
+      // 20000 = 13200 (reg payment) + 6800 (installment 2)
+      data: { registrationId: 'reg-span', refundCents: 20000 },
+      idToken: admin.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.status).toBe('refunded');
+    expect(result.data?.refundCents).toBe(20000);
+    // Two refunds issued — one per captured payment.
+    expect(result.data?.refundIds).toHaveLength(2);
+  });
+
+  it('rejects an over-refund above the captured amount (no state change)', async () => {
+    await setFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-over',
+      reg({ email: 'over@test.com' })
+    );
+
+    const result = await callFunction<CancelMusicTogetherRegistrationRequest>({
+      functionName: 'cancelMusicTogetherRegistration',
+      data: { registrationId: 'reg-over', refundCents: 13201 },
+      idToken: admin.idToken,
+    });
+
+    expect(result.status).not.toBe(200);
+    // Registration is untouched — still confirmed.
+    const untouched = await getFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-over'
+    );
+    expect(untouched?.status).toBe('confirmed');
+  });
 });
