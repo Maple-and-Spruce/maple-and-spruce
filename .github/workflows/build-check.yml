@@ -595,6 +595,135 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  pos-sandbox-e2e:
+    # Tier-1 real-Square-sandbox POS coverage. The Cloud Functions run in the
+    # Firebase emulator, but the maple-square codebase's .env DELIBERATELY omits
+    # SQUARE_BASE_URL — so the Square SDK inside those functions hits the REAL
+    # sandbox (connect.squareupsandbox.com) with the sandbox access token. The
+    # vitest suite drives the same sandbox directly to stand up real orders /
+    # payments / catalog items, and self-signs inbound webhooks with the known
+    # `mock-key`. This closes the mock-drift gap the mock-backed
+    # functions-integration-tests-class-square suite can't see: it proves the
+    # POS inbound paths (syncClassToSquare → order+payment → payment.updated →
+    # processPosSale; inventory.count.updated → product cache) against ACTUAL
+    # Square responses.
+    #
+    # Named pos-sandbox-e2e (NOT functions-integration-tests-*) so the standard
+    # integration-test matrix — which points SQUARE_BASE_URL at the mock — never
+    # picks it up; only this dedicated real-sandbox job runs it. Same reason
+    # registration-e2e is named that way.
+    name: POS Sandbox E2E
+    needs: [install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java
+        # Required by Firestore emulator (same as integration-tests job).
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Build function codebases
+        # All four are required: squareWebhook + processPosSale + syncClassToSquare
+        # live in maple-square, and the class write also fires syncClassToWebflow
+        # in maple-sync (which must reach a Webflow mock, not real Webflow).
+        # firebase.json declares all four source dirs, so the emulator loads them all.
+        run: |
+          pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
+          pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
+
+      - name: Create emulator .env
+        # Copied VERBATIM from the registration-e2e job: we DON'T set
+        # SQUARE_BASE_URL so the SDK uses its built-in sandbox base URL
+        # (connect.squareupsandbox.com) and we feed it the real sandbox access
+        # token. Webflow and Etsy still hit local mock servers because there's
+        # no usable sandbox for either — the class-write trigger's
+        # syncClassToWebflow call goes to the Webflow mock instead of hanging.
+        env:
+          SQUARE_SANDBOX_ACCESS_TOKEN: ${{ secrets.SQUARE_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
+          done
+
+          # maple-core: Etsy mock server URL + fake secrets
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
+          # tallyLeadWebhook (maple-core) declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+
+          # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
+          # uses its built-in sandbox endpoint). Etsy still mocked.
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
+          printf "SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
+
+          # maple-sync: Webflow + Etsy mock servers
+          echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
+          echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-sync/.env
+          echo "ETSY_TOKEN_URL=http://localhost:9998/v3/public/oauth/token" >> dist/apps/functions-sync/.env
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
+
+      - name: Start mock servers (Webflow + Etsy)
+        # Square is intentionally NOT mocked — the suite exercises the real
+        # sandbox. Webflow and Etsy have no usable sandbox, so the in-repo mock
+        # servers absorb the class-write sync triggers.
+        run: |
+          # Pre-warm npx tsx cache (matches integration-tests pattern)
+          npx tsx --version
+
+          WEBFLOW_MOCK_SERVER_PORT=9996 npx tsx libs/firebase/webflow-test-mock-server/start.ts &
+          echo "WEBFLOW_MOCK_PID=$!" >> $GITHUB_ENV
+          ETSY_MOCK_SERVER_PORT=9998 npx tsx libs/firebase/etsy-test-mock-server/start.ts &
+          echo "ETSY_MOCK_PID=$!" >> $GITHUB_ENV
+          sleep 2
+
+      - name: Run POS sandbox e2e against emulator
+        # firebase emulators:exec manages emulator lifecycle. The TEST process
+        # (vitest) needs the same Square sandbox credentials the functions read,
+        # so it can create real orders/payments/catalog items directly:
+        #   SQUARE_ACCESS_TOKEN  the real sandbox token (repo secret)
+        #   SQUARE_LOCATION_ID   sandbox location id (public, from .env.dev)
+        #   SQUARE_ENV=LOCAL     → SDK sandbox environment
+        #   SALES_TAX_RATE       sales-tax percent (public, from .env.dev)
+        # SQUARE_BASE_URL is intentionally NOT exported, so the test client also
+        # hits the real sandbox.
+        env:
+          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_SANDBOX_ACCESS_TOKEN }}
+          SQUARE_ENV: LOCAL
+        run: |
+          export SQUARE_LOCATION_ID=$(grep '^SQUARE_LOCATION_ID=' .env.dev | cut -d= -f2-)
+          export SALES_TAX_RATE=$(grep '^SALES_TAX_RATE=' .env.dev | cut -d= -f2-)
+
+          npx firebase emulators:exec --project=dev --only auth,firestore,functions \
+            "pnpm exec vitest run --config apps/pos-sandbox-e2e/vitest.config.ts --reporter=verbose"
+
+      - name: Stop mock servers
+        if: always()
+        run: |
+          kill "$WEBFLOW_MOCK_PID" 2>/dev/null || true
+          kill "$ETSY_MOCK_PID" 2>/dev/null || true
+
   storybook:
     name: Storybook Build & Tests
     needs: [install]

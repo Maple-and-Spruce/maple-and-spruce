@@ -28,6 +28,7 @@ export default defineConfig({
       'apps/registration-e2e/**',
       'apps/functions-integration-tests/**',
       'apps/functions-integration-tests-*/**',
+      'apps/pos-sandbox-e2e/**',
     ],
     coverage: {
       provider: 'istanbul',
@@ -48,6 +49,7 @@ export default defineConfig({
         'libs/firebase/etsy-test-mock-server/**',
         'libs/firebase/integration-test-utils/**',
         'apps/functions-integration-tests*/**',
+        'apps/pos-sandbox-e2e/**',
         'apps/maple-spruce-e2e/**',
         'apps/maple-spruce/.storybook/**',
       ],
