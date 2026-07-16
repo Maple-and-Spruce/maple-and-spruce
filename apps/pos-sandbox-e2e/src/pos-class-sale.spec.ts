@@ -59,7 +59,10 @@ const CLASS_SYNC_TIMEOUT_MS = 45000;
 /** How long to wait for the two async trigger hops + Square round-trips. */
 const REGISTRATION_TIMEOUT_MS = 60000;
 
-describe('POS class sale against REAL Square sandbox', () => {
+// Tier-1: emulator-only. It self-signs + POSTs to the EMULATOR squareWebhook,
+// which doesn't exist in dev mode — the Tier-2 pos-dev-smoke.spec.ts covers the
+// real-delivery dev path instead. Skip this whole suite when E2E_TARGET=dev.
+describe.skipIf(process.env['E2E_TARGET'] === 'dev')('POS class sale against REAL Square sandbox', () => {
   beforeAll(async () => {
     const square = sandboxSquare();
     client = square.getClient();
