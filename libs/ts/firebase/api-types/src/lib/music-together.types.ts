@@ -226,6 +226,16 @@ export interface MusicTogetherInstallmentChargeResult {
 
 export interface CancelMusicTogetherRegistrationRequest {
   registrationId: string;
+  /**
+   * Explicit refund amount in cents (admin discretion — full or partial). When
+   * omitted, the program's policy refund is applied (amount paid − the $25 fee
+   * before the first class; $0 on/after). Must be an integer between 0 and the
+   * total amount captured for the registration (registration-time charge plus
+   * any installments already paid); a value above that is rejected. The
+   * policy-default path (omit this field) is what a customer self-service
+   * cancellation uses.
+   */
+  refundCents?: number;
 }
 
 export interface CancelMusicTogetherRegistrationResponse {
@@ -233,7 +243,14 @@ export interface CancelMusicTogetherRegistrationResponse {
   status: 'cancelled' | 'refunded';
   /** Amount refunded in cents (0 when non-refundable / nothing to refund). */
   refundCents: number;
+  /** First Square refund id (the registration-time charge, when refunded). */
   refundId?: string;
+  /**
+   * All Square refund ids issued. A partial/full refund on an installment
+   * registration can span more than one payment (registration charge + a paid
+   * installment), so there may be more than one.
+   */
+  refundIds?: string[];
   /** How many scheduled future charges were cancelled. */
   cancelledChargeCount: number;
 }

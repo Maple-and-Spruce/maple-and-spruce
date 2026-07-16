@@ -23,6 +23,7 @@ function reg(
     paymentPlan: 'installments',
     policiesAcceptedAt: new Date('2030-01-01T00:00:00Z'),
     pricePaidCents: 13200,
+    squarePaymentId: 'pay-1',
     status: 'confirmed',
     createdAt: new Date('2030-01-01T00:00:00Z'),
     updatedAt: new Date('2030-01-01T00:00:00Z'),
@@ -177,6 +178,96 @@ export const RostersAndDownloadsCsv: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: /close/i }));
     await expect(args.onClose).toHaveBeenCalled();
+  },
+};
+
+/**
+ * Drives the admin cancel/refund flow: open the confirm dialog for a family,
+ * override the prefilled policy amount with a partial refund, confirm, and
+ * assert the callback fires with the chosen cents. The amount field prefills
+ * with the policy refund (paid − $25 fee) since the mock section is pre-class.
+ */
+export const CancelsWithPartialRefund: Story = {
+  args: {
+    rosterState: { status: 'success', data: withFamilies },
+    onCancelRegistration: fn(async () => ({
+      registrationId: 'reg-1',
+      status: 'refunded' as const,
+      refundCents: 5000,
+      refundId: 'ref-1',
+      cancelledChargeCount: 1,
+    })),
+  },
+  play: async ({ args }) => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    // Open the cancel dialog for the first family.
+    await userEvent.click(
+      canvas.getByRole('button', {
+        name: /cancel registration for Jamie Rivera/i,
+      })
+    );
+
+    // The amount field prefills with the policy refund ($132.00 − $25 fee).
+    const amount = (await waitFor(() =>
+      canvas.getByLabelText(/refund amount/i)
+    )) as HTMLInputElement;
+    await expect(amount).toHaveValue(107);
+
+    // Override with a partial refund of $50.00.
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '50');
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /confirm cancel/i })
+    );
+
+    await waitFor(() =>
+      expect(args.onCancelRegistration).toHaveBeenCalledWith('reg-1', 5000)
+    );
+  },
+};
+
+/**
+ * The refund field rejects an amount above what was captured, disabling the
+ * confirm button so an over-refund can't be submitted.
+ */
+export const RejectsOverRefund: Story = {
+  args: {
+    rosterState: { status: 'success', data: withFamilies },
+    onCancelRegistration: fn(async () => ({
+      registrationId: 'reg-1',
+      status: 'refunded' as const,
+      refundCents: 0,
+      cancelledChargeCount: 0,
+    })),
+  },
+  play: async ({ args }) => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    await userEvent.click(
+      canvas.getByRole('button', {
+        name: /cancel registration for Jamie Rivera/i,
+      })
+    );
+    const amount = (await waitFor(() =>
+      canvas.getByLabelText(/refund amount/i)
+    )) as HTMLInputElement;
+
+    // $200 exceeds the $132 captured on this registration.
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '200');
+
+    // The confirm button is disabled, so the over-refund can't be submitted.
+    const confirm = canvas.getByRole('button', { name: /confirm cancel/i });
+    await expect(confirm).toBeDisabled();
+    await expect(args.onCancelRegistration).not.toHaveBeenCalled();
   },
 };
 

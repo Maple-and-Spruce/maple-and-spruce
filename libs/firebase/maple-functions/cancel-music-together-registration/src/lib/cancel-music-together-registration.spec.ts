@@ -179,4 +179,145 @@ describe('cancelMusicTogetherRegistration', () => {
   it('requires a registration id', async () => {
     await expect(run({})).rejects.toThrow(/required/i);
   });
+
+  it('admin partial refund: refunds the chosen amount against the reg payment', async () => {
+    mocks.sectionFindById.mockResolvedValue(futureSection);
+
+    const result = (await run({
+      registrationId: 'reg-1',
+      refundCents: 5000,
+    })) as { status: string; refundCents: number; cancelledChargeCount: number };
+
+    expect(mocks.refundPayment).toHaveBeenCalledTimes(1);
+    expect(mocks.refundPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: 'pay-1',
+        amountCents: 5000,
+        idempotencyKey: 'mtrefund-reg-1', // stable
+      })
+    );
+    // Section policy is NOT consulted when an explicit amount is given.
+    expect(mocks.sectionFindById).not.toHaveBeenCalled();
+    expect(result.status).toBe('refunded');
+    expect(result.refundCents).toBe(5000);
+    expect(result.cancelledChargeCount).toBe(1);
+  });
+
+  it('admin full refund overrides the $25 policy fee', async () => {
+    mocks.sectionFindById.mockResolvedValue(futureSection);
+
+    const result = (await run({
+      registrationId: 'reg-1',
+      refundCents: 13200,
+    })) as { refundCents: number };
+
+    expect(mocks.refundPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentId: 'pay-1', amountCents: 13200 })
+    );
+    expect(result.refundCents).toBe(13200);
+  });
+
+  it('admin refund of 0 cancels without a Square refund', async () => {
+    const result = (await run({
+      registrationId: 'reg-1',
+      refundCents: 0,
+    })) as { status: string; refundCents: number };
+
+    expect(mocks.refundPayment).not.toHaveBeenCalled();
+    expect(result.status).toBe('cancelled');
+    expect(result.refundCents).toBe(0);
+  });
+
+  it('rejects an over-refund above the captured amount (before any Square call)', async () => {
+    await expect(
+      run({ registrationId: 'reg-1', refundCents: 13201 })
+    ).rejects.toThrow(/exceeds/i);
+    expect(mocks.refundPayment).not.toHaveBeenCalled();
+    expect(mocks.regUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a negative / non-integer refund amount', async () => {
+    await expect(
+      run({ registrationId: 'reg-1', refundCents: -1 })
+    ).rejects.toThrow(/whole number|non-negative/i);
+    await expect(
+      run({ registrationId: 'reg-1', refundCents: 12.5 })
+    ).rejects.toThrow(/whole number|non-negative/i);
+    expect(mocks.refundPayment).not.toHaveBeenCalled();
+  });
+
+  it('installment-aware: a partial refund spans a paid installment payment', async () => {
+    // Reg payment 13200 (installment 1) + a paid installment 2 of 12000.
+    mocks.chargesByReg.mockResolvedValue([
+      {
+        id: 'chg-2',
+        status: 'paid',
+        squarePaymentId: 'pay-2',
+        amountCents: 12000,
+        installmentNumber: 2,
+      },
+    ]);
+    mocks.refundPayment.mockImplementation(async (input: { paymentId: string }) => ({
+      refundId: `ref-${input.paymentId}`,
+    }));
+
+    const result = (await run({
+      registrationId: 'reg-1',
+      refundCents: 20000, // 13200 from reg payment + 6800 from installment 2
+    })) as { refundCents: number; refundId?: string; refundIds?: string[] };
+
+    expect(mocks.refundPayment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        paymentId: 'pay-1',
+        amountCents: 13200,
+        idempotencyKey: 'mtrefund-reg-1',
+      })
+    );
+    expect(mocks.refundPayment).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        paymentId: 'pay-2',
+        amountCents: 6800,
+        idempotencyKey: 'mtrefund-reg-1-pay-2', // stable, per-payment
+      })
+    );
+    expect(result.refundCents).toBe(20000);
+    expect(result.refundId).toBe('ref-pay-1');
+    expect(result.refundIds).toEqual(['ref-pay-1', 'ref-pay-2']);
+  });
+
+  it('installment-aware: over-refund rejected against total captured (reg + paid installment)', async () => {
+    mocks.chargesByReg.mockResolvedValue([
+      {
+        id: 'chg-2',
+        status: 'paid',
+        squarePaymentId: 'pay-2',
+        amountCents: 12000,
+        installmentNumber: 2,
+      },
+    ]);
+    // Total captured = 25200; 25201 must be rejected.
+    await expect(
+      run({ registrationId: 'reg-1', refundCents: 25201 })
+    ).rejects.toThrow(/exceeds/i);
+    expect(mocks.refundPayment).not.toHaveBeenCalled();
+  });
+
+  it('policy default clamps to captured when the reg has no payment on file', async () => {
+    mocks.sectionFindById.mockResolvedValue(futureSection);
+    mocks.regFindById.mockResolvedValue({
+      ...installmentReg,
+      squarePaymentId: undefined,
+    });
+
+    const result = (await run({ registrationId: 'reg-1' })) as {
+      status: string;
+      refundCents: number;
+    };
+
+    expect(mocks.refundPayment).not.toHaveBeenCalled();
+    expect(result.status).toBe('cancelled');
+    expect(result.refundCents).toBe(0);
+  });
 });

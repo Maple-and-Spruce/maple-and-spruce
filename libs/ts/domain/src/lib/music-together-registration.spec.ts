@@ -3,6 +3,8 @@ import {
   isMtRegistrationConfirmed,
   mtRegistrationHasScheduledCharges,
   mtRefundCents,
+  mtTotalCapturedCents,
+  mtAllocateRefund,
   MT_CANCELLATION_FEE_CENTS,
   MT_CAPACITY_STATUSES,
 } from './music-together-registration';
@@ -45,6 +47,63 @@ describe('mtRefundCents', () => {
 
   it('treats a section with no first class as pre-class (refundable)', () => {
     expect(mtRefundCents(25200, undefined, new Date())).toBe(25200 - fee);
+  });
+});
+
+describe('mtTotalCapturedCents', () => {
+  it('sums captured payment amounts', () => {
+    expect(
+      mtTotalCapturedCents([
+        { squarePaymentId: 'p1', amountCents: 13200 },
+        { squarePaymentId: 'p2', amountCents: 12000 },
+      ])
+    ).toBe(25200);
+  });
+
+  it('is 0 for no payments and ignores negative amounts', () => {
+    expect(mtTotalCapturedCents([])).toBe(0);
+    expect(
+      mtTotalCapturedCents([{ squarePaymentId: 'p1', amountCents: -5 }])
+    ).toBe(0);
+  });
+});
+
+describe('mtAllocateRefund', () => {
+  const payments = [
+    { squarePaymentId: 'reg', amountCents: 13200 },
+    { squarePaymentId: 'inst2', amountCents: 12000 },
+  ];
+
+  it('draws a partial refund from the first payment only', () => {
+    expect(mtAllocateRefund(payments, 5000)).toEqual([
+      { squarePaymentId: 'reg', amountCents: 5000 },
+    ]);
+  });
+
+  it('spans payments once the first is drained', () => {
+    expect(mtAllocateRefund(payments, 20000)).toEqual([
+      { squarePaymentId: 'reg', amountCents: 13200 },
+      { squarePaymentId: 'inst2', amountCents: 6800 },
+    ]);
+  });
+
+  it('a full refund allocates every payment to capacity', () => {
+    expect(mtAllocateRefund(payments, 25200)).toEqual([
+      { squarePaymentId: 'reg', amountCents: 13200 },
+      { squarePaymentId: 'inst2', amountCents: 12000 },
+    ]);
+  });
+
+  it('clamps a request above total captured to the captured total', () => {
+    expect(mtAllocateRefund(payments, 99999)).toEqual([
+      { squarePaymentId: 'reg', amountCents: 13200 },
+      { squarePaymentId: 'inst2', amountCents: 12000 },
+    ]);
+  });
+
+  it('allocates nothing for a zero or negative request', () => {
+    expect(mtAllocateRefund(payments, 0)).toEqual([]);
+    expect(mtAllocateRefund(payments, -100)).toEqual([]);
   });
 });
 
