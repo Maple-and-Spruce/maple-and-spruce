@@ -183,7 +183,7 @@ describe('mapSectionToFieldData', () => {
     expect(fd).not.toHaveProperty('installment-summary');
   });
 
-  it('summarizes equal installments as "N payments of $X"', () => {
+  it('summarizes equal installments as "N installments of $X"', () => {
     const fd = mapSectionToFieldData(
       {
         ...baseSection,
@@ -194,7 +194,7 @@ describe('mapSectionToFieldData', () => {
       },
       prodOptions
     );
-    expect(fd['installment-summary']).toBe('or 2 payments of $132');
+    expect(fd['installment-summary']).toBe('or 2 installments of $132');
   });
 
   it('summarizes unequal installments by total', () => {
@@ -208,7 +208,7 @@ describe('mapSectionToFieldData', () => {
       },
       prodOptions
     );
-    expect(fd['installment-summary']).toBe('or 2 payments totaling $252');
+    expect(fd['installment-summary']).toBe('or 2 installments totaling $252');
   });
 });
 

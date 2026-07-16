@@ -211,8 +211,8 @@ export function mapSectionToFieldData(
     );
     const total = plan.reduce((sum, item) => sum + item.amountCents, 0);
     fieldData['installment-summary'] = allEqual
-      ? `or ${plan.length} payments of ${formatDollars(plan[0].amountCents)}`
-      : `or ${plan.length} payments totaling ${formatDollars(total)}`;
+      ? `or ${plan.length} installments of ${formatDollars(plan[0].amountCents)}`
+      : `or ${plan.length} installments totaling ${formatDollars(total)}`;
   }
 
   return fieldData;
