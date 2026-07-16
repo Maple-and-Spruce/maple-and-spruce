@@ -58,6 +58,18 @@ export class CardsService {
       cardBrand: card.cardBrand as string | undefined,
     };
   }
+
+  /**
+   * Disable a card on file so it can never be charged again. Used when a
+   * customer replaces the card behind a card-on-file agreement — the old card
+   * is detached so only the new one remains chargeable. Disabling an already
+   * disabled (or unknown) card is a no-op on Square's side; we surface errors
+   * so callers can decide whether to treat them as fatal.
+   */
+  async disableCard(cardId: string): Promise<void> {
+    const response = await this.client.cards.disable({ cardId });
+    throwIfErrors(response.errors, 'disable card');
+  }
 }
 
 function throwIfErrors(

@@ -49,6 +49,7 @@
     "firebase-maple-functions-create-music-together-registration": "maple-square",
     "firebase-maple-functions-charge-music-together-installments": "maple-square",
     "firebase-maple-functions-cancel-music-together-registration": "maple-square",
+    "firebase-maple-functions-update-music-together-payment-method": "maple-square",
     "firebase-maple-functions-cancel-craft-club-subscription": "maple-square",
     "firebase-maple-functions-update-craft-club-payment-method": "maple-square",
     "firebase-maple-functions-admin-pause-craft-club-subscription": "maple-square",

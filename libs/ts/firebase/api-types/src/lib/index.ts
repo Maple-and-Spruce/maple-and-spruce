@@ -447,4 +447,12 @@ export type {
   CancelMusicTogetherRegistrationResponse,
   AddToMusicTogetherWaitlistRequest,
   AddToMusicTogetherWaitlistResponse,
+  RequestMusicTogetherManageLinkRequest,
+  RequestMusicTogetherManageLinkResponse,
+  MusicTogetherManageInstallment,
+  MusicTogetherManageView,
+  StartMusicTogetherManageSessionRequest,
+  StartMusicTogetherManageSessionResponse,
+  UpdateMusicTogetherPaymentMethodRequest,
+  UpdateMusicTogetherPaymentMethodResponse,
 } from './music-together.types';

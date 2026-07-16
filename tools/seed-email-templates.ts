@@ -878,6 +878,64 @@ const musicTogetherReminderHtml = `<!DOCTYPE html>
 </html>`;
 
 // ---------------------------------------------------------------------------
+// Template: music-together-manage-link
+//
+// Magic link emailed when an installment family asks to update the card on file
+// for their Week-5 second charge. Carries a single-use token (~30 min) that
+// lands them on the manage-payment page. Transactional.
+// ---------------------------------------------------------------------------
+
+const musicTogetherManageLinkSubject =
+  'Update your Music Together payment method';
+
+const musicTogetherManageLinkHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Update your Music Together payment method</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Maple &amp; Spruce Folk Arts</h1>
+  </div>
+  <div class="content">
+    <h2>Update your payment method</h2>
+    <p>You asked to update the card on file for your Music Together
+      installment plan. Use the secure link below to enter a new card — it will
+      be charged for your remaining installment.</p>
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">Your secure link</strong><br>
+      <p style="text-align: center; margin: 16px 0;">
+        <a href="{{manageUrl}}" style="display: inline-block; background-color: #6B7B5E; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 4px; font-weight: bold;">Update my card</a>
+      </p>
+    </div>
+
+    <p style="font-size: 14px; color: #999;">
+      This link expires in 30 minutes and can be used once. If you didn't
+      request it, you can safely ignore this email. If the button doesn't work,
+      copy and paste this URL into your browser:<br>
+      <a href="{{manageUrl}}" style="color: #6B7B5E; word-break: break-all;">{{manageUrl}}</a>
+    </p>
+
+    <p>Questions? Reach out at
+      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
+  </div>
+</div>
+</body>
+</html>`;
+
+// ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
 
@@ -934,6 +992,10 @@ const templates: Record<string, EmailTemplate> = {
   'music-together-reminder': {
     subject: musicTogetherReminderSubject,
     html: musicTogetherReminderHtml,
+  },
+  'music-together-manage-link': {
+    subject: musicTogetherManageLinkSubject,
+    html: musicTogetherManageLinkHtml,
   },
 };
 

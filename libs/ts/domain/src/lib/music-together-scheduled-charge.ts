@@ -102,3 +102,18 @@ export function mtHasFailedCharge(
 ): boolean {
   return charges.some((c) => c.status === 'failed');
 }
+
+/**
+ * The soonest charge a customer could still act on by updating their card —
+ * one that is `scheduled` (upcoming) or `failed` (needs a new card). Returns
+ * the earliest such charge by due date, or undefined when nothing is
+ * actionable (all paid/cancelled). Drives the "your $X charge on DATE will use
+ * the new card" context on the self-service manage page.
+ */
+export function mtNextActionableCharge(
+  charges: MusicTogetherScheduledCharge[]
+): MusicTogetherScheduledCharge | undefined {
+  return charges
+    .filter((c) => c.status === 'scheduled' || c.status === 'failed')
+    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())[0];
+}
