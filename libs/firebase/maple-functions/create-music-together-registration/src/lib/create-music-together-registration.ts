@@ -44,8 +44,10 @@ import {
 } from '@maple/firebase/database';
 import {
   MT_CAPACITY_STATUSES,
+  MT_MAX_CHILDREN,
   mtSectionOffersInstallments,
   mtSectionEnrollmentOpen,
+  computeMusicTogetherFamilyPrice,
 } from '@maple/ts/domain';
 import { musicTogetherRegistrationValidation } from '@maple/ts/validation';
 import type {
@@ -124,21 +126,35 @@ export const createMusicTogetherRegistration = Functions.endpoint
       throwFailedPrecondition('Registration for this section has closed.');
     }
 
-    // 3. Resolve the charge amounts from the section's configurable plan.
+    // 3. Resolve the charge amounts from the section's configurable plan,
+    //    applying the per-child sibling discount. This is AUTHORITATIVE — the
+    //    client never sends an amount; we recompute the family total here from
+    //    the section's base prices so a tampered client can't underpay.
     const offersInstallments = mtSectionOffersInstallments(section);
     if (data.paymentPlan === 'installments' && !offersInstallments) {
       throwFailedPrecondition(
         'This section does not offer an installment plan.'
       );
     }
+    const numChildren = data.children?.length ?? 0;
+    if (numChildren < 1 || numChildren > MT_MAX_CHILDREN) {
+      throwInvalidArgument(
+        `A family can enroll between 1 and ${MT_MAX_CHILDREN} children.`
+      );
+    }
     const plan = section.installmentPlan ?? [];
+    // First child full price, 50% off the 2nd & 3rd — applied identically to
+    // the pay-in-full total and to EACH installment (incl. the scheduled ones).
+    const familyPrice = computeMusicTogetherFamilyPrice(section, numChildren);
     const firstChargeCents =
       data.paymentPlan === 'installments'
-        ? plan[0].amountCents
-        : section.priceFullCents;
-    // Installments 2..N become scheduled card-on-file charges.
+        ? familyPrice.installments[0].amountCents
+        : familyPrice.fullCents;
+    // Installments 2..N become scheduled card-on-file charges (discounted too).
     const scheduledItems =
-      data.paymentPlan === 'installments' ? plan.slice(1) : [];
+      data.paymentPlan === 'installments'
+        ? familyPrice.installments.slice(1)
+        : [];
 
     const square = new Square(secrets, strings, MT_SQUARE_KEYS);
 
