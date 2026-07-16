@@ -2,8 +2,9 @@
  * Get Music Together Semesters Cloud Function
  *
  * Lists Music Together semesters (terms of the program year) for the admin
- * app (authenticated). Optional status filter; returned in chronological
- * program-year order. Deployed to us-east4 via CI/CD (maple-core codebase).
+ * app (authenticated), in chronological program-year order. The overall status
+ * is DERIVED client-side from each term's dates. Deployed to us-east4 via CI/CD
+ * (maple-core codebase).
  */
 import { createAuthenticatedFunction } from '@maple/firebase/functions';
 import { MusicTogetherSemesterRepository } from '@maple/firebase/database';
@@ -15,9 +16,7 @@ import type {
 export const getMusicTogetherSemesters = createAuthenticatedFunction<
   GetMusicTogetherSemestersRequest,
   GetMusicTogetherSemestersResponse
->(async (data) => {
-  const semesters = await MusicTogetherSemesterRepository.findAll({
-    status: data.status,
-  });
+>(async () => {
+  const semesters = await MusicTogetherSemesterRepository.findAll();
   return { semesters };
 });

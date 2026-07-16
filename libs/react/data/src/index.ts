@@ -12,10 +12,7 @@ export {
   useMusicTogetherSections,
   type UseMusicTogetherSectionsFilters,
 } from './lib/useMusicTogetherSections';
-export {
-  useMusicTogetherSemesters,
-  type UseMusicTogetherSemestersFilters,
-} from './lib/useMusicTogetherSemesters';
+export { useMusicTogetherSemesters } from './lib/useMusicTogetherSemesters';
 export { useMusicTogetherRoster } from './lib/useMusicTogetherRoster';
 export { useClassCategories } from './lib/useClassCategories';
 

@@ -28,7 +28,6 @@ function createInput(
     season: 'fall',
     year: 2026,
     weeks: 10,
-    status: 'planned',
     ...overrides,
   };
 }
@@ -88,15 +87,15 @@ describe('MT semester admin CRUD', () => {
 
   it('updates a semester (admin)', async () => {
     const updated = await callFunction<
-      { id: string; status: string },
+      { id: string; notes: string },
       UpdateMusicTogetherSemesterResponse
     >({
       functionName: 'updateMusicTogetherSemester',
-      data: { id: createdId, status: 'enrolling' },
+      data: { id: createdId, notes: 'Enrollment opens mid-August.' },
       idToken: admin.idToken,
     });
     expect(updated.status).toBe(200);
-    expect(updated.data?.semester.status).toBe('enrolling');
+    expect(updated.data?.semester.notes).toBe('Enrollment opens mid-August.');
   });
 
   it('rejects create for a non-admin', async () => {

@@ -7,7 +7,6 @@
 import type {
   MusicTogetherSection,
   MusicTogetherSemester,
-  MusicTogetherSemesterStatus,
   CreateMusicTogetherSemesterInput,
   UpdateMusicTogetherSemesterInput,
   MusicTogetherRegistration,
@@ -20,9 +19,8 @@ import type {
 // Semester admin CRUD (authenticated read; admin writes)
 // ============================================================================
 
-export interface GetMusicTogetherSemestersRequest {
-  status?: MusicTogetherSemesterStatus;
-}
+// No filters — semesters are returned in full (status is derived client-side).
+export type GetMusicTogetherSemestersRequest = Record<string, never>;
 
 export interface GetMusicTogetherSemestersResponse {
   semesters: MusicTogetherSemester[];

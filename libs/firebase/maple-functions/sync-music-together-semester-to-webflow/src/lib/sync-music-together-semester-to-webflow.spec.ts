@@ -78,8 +78,8 @@ const enrollingSemesterData = {
   year: 2026,
   startDate: new Date('2026-09-10T14:00:00Z'),
   endDate: new Date('2026-11-12T14:00:00Z'),
+  enrollmentOpensAt: new Date('2026-07-01T14:00:00Z'),
   weeks: 10,
-  status: 'enrolling',
 };
 
 describe('syncMusicTogetherSemesterToWebflow', () => {
@@ -150,17 +150,19 @@ describe('syncMusicTogetherSemesterToWebflow', () => {
         before: makeSnapshot(false),
         after: makeSnapshot(true, 'semester-001', {
           ...enrollingSemesterData,
-          status: 'planned',
+          enrollmentOpensAt: undefined,
           startDate: undefined,
           endDate: undefined,
         }),
       },
     });
 
+    // Semesters are never hidden — a term with no dates (derives 'planned')
+    // still syncs to Webflow.
     expect(mocks.removeSemester).not.toHaveBeenCalled();
     expect(mocks.syncSemester).toHaveBeenCalledWith(
       expect.objectContaining({
-        semester: expect.objectContaining({ status: 'planned' }),
+        semester: expect.objectContaining({ name: 'Fall 2026' }),
       })
     );
   });
