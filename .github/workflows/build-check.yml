@@ -108,6 +108,36 @@ jobs:
         # integration-tests step). Other CI jobs use it via `npx tsx`.
         run: npx tsx tools/check-firestore-indexes.ts
 
+  callable-roles:
+    name: Callable Roles
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      # Every function exported from a codebase entry point must declare a role
+      # (requiringRole / createAdminFunction / createRoleFunction), be a trigger,
+      # or be explicitly allowlisted as public / auth-only. Prevents a new
+      # callable shipping reachable without a role check. See epic #617.
+      - name: Check callable roles
+        run: npx tsx tools/check-callable-roles.ts
+
   typecheck:
     name: TypeScript Check
     needs: [install]
