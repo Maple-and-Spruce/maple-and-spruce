@@ -8,7 +8,13 @@ const mocks = vi.hoisted(() => ({
 // in a unit test — stub it to return the raw handler and surface the thrown
 // HttpsError codes verbatim.
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: <Req, Res>(handler: (data: Req) => Promise<Res>) =>
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  createRoleFunction: <Req, Res>(handler: (data: Req) => Promise<Res>) =>
     handler,
   throwInvalidArgument: (message: string) => {
     throw new Error(`invalid-argument: ${message}`);

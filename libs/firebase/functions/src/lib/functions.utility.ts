@@ -663,3 +663,18 @@ export function createAdminFunction<TRequest, TResponse>(
 ) {
   return createFunction(handler, { requiredRole: Role.Admin });
 }
+
+/**
+ * Create a function callable by ANY of the given roles (any-of).
+ *
+ * Legacy-style counterpart to createAdminFunction for the scoped-roles
+ * matrix (epic #617) — lets a createAdminFunction/createAuthenticatedFunction
+ * call site widen or tighten to a role set as a one-line change. For new
+ * functions prefer Functions.endpoint.requiringRole([...]).handle().
+ */
+export function createRoleFunction<TRequest, TResponse>(
+  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
+  roles: readonly Role[]
+) {
+  return createFunction(handler, { requiredRole: roles });
+}

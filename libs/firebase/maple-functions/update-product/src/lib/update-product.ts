@@ -38,7 +38,7 @@ import type {
 export const updateProduct = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.Clerk])
   .handle<UpdateProductRequest, UpdateProductResponse>(
     async (data, _context, secrets, strings) => {
       const existing = await ProductRepository.findById(data.id);

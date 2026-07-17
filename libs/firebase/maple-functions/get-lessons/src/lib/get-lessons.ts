@@ -4,14 +4,17 @@
  * Lists music lessons with optional filters. Dates arrive as ISO strings
  * over the wire and are coerced to Date before querying.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { LessonRepository } from '@maple/firebase/database';
 import type {
   GetLessonsRequest,
   GetLessonsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getLessons = createAuthenticatedFunction<
+export const getLessons = createRoleFunction<
   GetLessonsRequest,
   GetLessonsResponse
 >(async (data) => {
@@ -25,4 +28,4 @@ export const getLessons = createAuthenticatedFunction<
   });
 
   return { lessons };
-});
+}, [Role.Admin, Role.LessonTeacher]);

@@ -3,7 +3,10 @@
  *
  * Creates a new category (admin only).
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { CategoryRepository } from '@maple/firebase/database';
 import { categoryValidation } from '@maple/ts/validation';
 import type {
@@ -11,7 +14,7 @@ import type {
   CreateCategoryResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const createCategory = createAdminFunction<
+export const createCategory = createRoleFunction<
   CreateCategoryRequest,
   CreateCategoryResponse
 >(async (data) => {
@@ -34,4 +37,4 @@ export const createCategory = createAdminFunction<
   const category = await CategoryRepository.create(data);
 
   return { category };
-});
+}, [Role.Admin, Role.Clerk]);

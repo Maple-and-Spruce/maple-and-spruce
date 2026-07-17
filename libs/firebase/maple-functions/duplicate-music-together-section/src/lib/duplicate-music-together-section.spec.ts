@@ -17,7 +17,7 @@ vi.mock('@maple/firebase/functions', async () => {
     );
   return {
     ...actual,
-    createAdminFunction: <TReq, TRes>(
+    createRoleFunction: <TReq, TRes>(
       handler: (data: TReq, ctx: unknown) => Promise<TRes>
     ) => handler,
   };

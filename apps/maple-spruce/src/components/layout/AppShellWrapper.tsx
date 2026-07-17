@@ -22,8 +22,9 @@ export function AppShellWrapper({
   children,
   maxWidth = 'lg',
 }: AppShellWrapperProps): ReactNode {
-  const { summaryState } = useSyncConflictSummary();
-  const { roles } = useRoles();
+  const { roles, isAdmin } = useRoles();
+  // Sync badge is admin-only; skip the (admin-gated) call for other roles
+  const { summaryState } = useSyncConflictSummary(isAdmin);
 
   const pendingConflicts = useMemo(() => {
     if (summaryState.status !== 'success') return 0;

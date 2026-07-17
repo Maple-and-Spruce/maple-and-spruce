@@ -4,14 +4,17 @@
  * Retrieves all classes with optional filters.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { ClassRepository } from '@maple/firebase/database';
 import type {
   GetClassesRequest,
   GetClassesResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getClasses = createAuthenticatedFunction<
+export const getClasses = createRoleFunction<
   GetClassesRequest,
   GetClassesResponse
 >(async (data) => {
@@ -23,4 +26,4 @@ export const getClasses = createAuthenticatedFunction<
   });
 
   return { classes };
-});
+}, [Role.Admin, Role.Clerk]);

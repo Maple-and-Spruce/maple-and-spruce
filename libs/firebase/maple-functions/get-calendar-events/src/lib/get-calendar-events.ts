@@ -4,14 +4,17 @@
  * Retrieves all calendar events with optional filters.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import type {
   GetCalendarEventsRequest,
   GetCalendarEventsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getCalendarEvents = createAuthenticatedFunction<
+export const getCalendarEvents = createRoleFunction<
   GetCalendarEventsRequest,
   GetCalendarEventsResponse
 >(async (data) => {
@@ -21,4 +24,4 @@ export const getCalendarEvents = createAuthenticatedFunction<
   });
 
   return { calendarEvents };
-});
+}, [Role.Admin, Role.MtTeacher, Role.Clerk, Role.LessonTeacher]);

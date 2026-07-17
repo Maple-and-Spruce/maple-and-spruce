@@ -23,7 +23,7 @@ import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import type { NavGroup, NavItem } from '@maple/react/layout';
 import type { UserRole } from '@maple/ts/domain';
-import { filterNavGroupsByRoles } from './nav-filter';
+import { allowedRolesForPath, filterNavGroupsByRoles } from './nav-filter';
 
 /**
  * A nav item annotated with the roles that may see it. Omitted = admin
@@ -207,4 +207,14 @@ export function buildNavGroups(
   pendingConflicts: number
 ): NavGroup[] {
   return filterNavGroupsByRoles(roleNavGroups(pendingConflicts), roles);
+}
+
+/**
+ * Which roles may view a route — derived from the SAME role map as the
+ * nav, so page guarding can't drift from nav visibility. Longest-prefix
+ * match; unknown routes are admin-only. Used by PathRoleGuard in the
+ * (admin) layout. UX only — server enforcement is per-function.
+ */
+export function pageRolesForPath(pathname: string): readonly UserRole[] {
+  return allowedRolesForPath(roleNavGroups(0), pathname);
 }

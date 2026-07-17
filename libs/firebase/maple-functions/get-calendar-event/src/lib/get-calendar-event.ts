@@ -4,14 +4,17 @@
  * Retrieves a single calendar event by ID.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import type {
   GetCalendarEventRequest,
   GetCalendarEventResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getCalendarEvent = createAuthenticatedFunction<
+export const getCalendarEvent = createRoleFunction<
   GetCalendarEventRequest,
   GetCalendarEventResponse
 >(async (data) => {
@@ -22,4 +25,4 @@ export const getCalendarEvent = createAuthenticatedFunction<
   }
 
   return { calendarEvent };
-});
+}, [Role.Admin, Role.MtTeacher, Role.Clerk, Role.LessonTeacher]);

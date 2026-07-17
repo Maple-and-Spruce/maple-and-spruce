@@ -9,8 +9,9 @@
  * Deployed to us-east4 via CI/CD pipeline.
  */
 import {
-  createAdminFunction,
+  createRoleFunction,
   throwInvalidArgument,
+  Role,
 } from '@maple/firebase/functions';
 import { ClassWaitlistRepository } from '@maple/firebase/database';
 import type {
@@ -18,7 +19,7 @@ import type {
   GetClassWaitlistResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getClassWaitlist = createAdminFunction<
+export const getClassWaitlist = createRoleFunction<
   GetClassWaitlistRequest,
   GetClassWaitlistResponse
 >(async (data) => {
@@ -31,4 +32,4 @@ export const getClassWaitlist = createAdminFunction<
   entries.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   return { entries, count: entries.length };
-});
+}, [Role.Admin, Role.Clerk]);

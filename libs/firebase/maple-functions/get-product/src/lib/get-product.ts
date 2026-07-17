@@ -3,14 +3,18 @@
  *
  * Retrieves a single product by ID.
  */
-import { createAuthenticatedFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { ProductRepository } from '@maple/firebase/database';
 import type {
   GetProductRequest,
   GetProductResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getProduct = createAuthenticatedFunction<
+export const getProduct = createRoleFunction<
   GetProductRequest,
   GetProductResponse
 >(async (data) => {
@@ -21,4 +25,4 @@ export const getProduct = createAuthenticatedFunction<
   }
 
   return { product };
-});
+}, [Role.Admin, Role.Clerk]);

@@ -4,18 +4,21 @@
  * Retrieves all categories, ordered by display order.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { CategoryRepository } from '@maple/firebase/database';
 import type {
   GetCategoriesRequest,
   GetCategoriesResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getCategories = createAuthenticatedFunction<
+export const getCategories = createRoleFunction<
   GetCategoriesRequest,
   GetCategoriesResponse
 >(async () => {
   const categories = await CategoryRepository.findAll();
 
   return { categories };
-});
+}, [Role.Admin, Role.Clerk]);

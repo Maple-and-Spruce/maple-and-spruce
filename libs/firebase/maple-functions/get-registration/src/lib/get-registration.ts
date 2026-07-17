@@ -5,14 +5,17 @@
  * Admin-only endpoint.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
 import type {
   GetRegistrationRequest,
   GetRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getRegistration = createAdminFunction<
+export const getRegistration = createRoleFunction<
   GetRegistrationRequest,
   GetRegistrationResponse
 >(async (data) => {
@@ -26,4 +29,4 @@ export const getRegistration = createAdminFunction<
   }
 
   return { registration };
-});
+}, [Role.Admin, Role.Clerk]);

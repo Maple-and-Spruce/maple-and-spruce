@@ -13,6 +13,34 @@ export interface RoleAnnotated {
   roles?: readonly UserRole[];
 }
 
+/**
+ * Resolve which roles may view a route, from the same annotations that
+ * drive nav filtering. Longest-prefix match so detail routes inherit
+ * their section's roles (`/classes/abc` -> `/classes`); `/` only matches
+ * exactly (it would otherwise swallow every route). Unknown routes
+ * return [] = admin-only (safe default for new pages).
+ */
+export function allowedRolesForPath<
+  Item extends RoleAnnotated & { href: string },
+>(
+  groups: ReadonlyArray<{ label: string; items: Item[] }>,
+  pathname: string
+): readonly UserRole[] {
+  let best: { href: string; roles: readonly UserRole[] } | undefined;
+  for (const group of groups) {
+    for (const item of group.items) {
+      const matches =
+        item.href === '/'
+          ? pathname === '/'
+          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+      if (matches && (!best || item.href.length > best.href.length)) {
+        best = { href: item.href, roles: item.roles ?? [] };
+      }
+    }
+  }
+  return best?.roles ?? [];
+}
+
 export function filterNavGroupsByRoles<Item extends RoleAnnotated>(
   groups: ReadonlyArray<{ label: string; items: Item[] }>,
   roles: readonly UserRole[]

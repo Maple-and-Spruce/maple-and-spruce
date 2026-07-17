@@ -3,14 +3,18 @@
  *
  * Deletes a product (admin only).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { ProductRepository } from '@maple/firebase/database';
 import type {
   DeleteProductRequest,
   DeleteProductResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const deleteProduct = createAdminFunction<
+export const deleteProduct = createRoleFunction<
   DeleteProductRequest,
   DeleteProductResponse
 >(async (data) => {
@@ -23,4 +27,4 @@ export const deleteProduct = createAdminFunction<
   await ProductRepository.delete(data.id);
 
   return { success: true };
-});
+}, [Role.Admin, Role.Clerk]);
