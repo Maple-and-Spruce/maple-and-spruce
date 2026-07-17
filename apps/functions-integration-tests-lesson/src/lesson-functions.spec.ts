@@ -133,6 +133,151 @@ describe('Lesson Functions', () => {
     });
   });
 
+  describe('Lesson-teacher ownership (#617 phase 2)', () => {
+    // A lesson teacher = a portal user linked to an instructor record via
+    // instructor.uid, with the lesson-teacher role. They may manage only
+    // lessons whose teacherId is their linked instructor.
+    const OWN_INSTRUCTOR_ID = 'instructor-owned-by-teacher';
+    let teacherUser: TestUser;
+    let unlinkedTeacher: TestUser;
+    let ownLessonId: string;
+    let othersLessonId: string;
+
+    beforeAll(async () => {
+      teacherUser = await createTestUser(
+        'lesson-owner@test.maple',
+        'test-password-123!'
+      );
+      unlinkedTeacher = await createTestUser(
+        'lesson-unlinked@test.maple',
+        'test-password-123!'
+      );
+      // Both hold the lesson-teacher role...
+      await setFirestoreDoc('userRoles', teacherUser.uid, {
+        roles: ['lesson-teacher'],
+      });
+      await setFirestoreDoc('userRoles', unlinkedTeacher.uid, {
+        roles: ['lesson-teacher'],
+      });
+      // ...but only teacherUser is linked to an instructor record.
+      await setFirestoreDoc('instructors', OWN_INSTRUCTOR_ID, {
+        uid: teacherUser.uid,
+        name: 'Owning Teacher',
+        email: 'owning-teacher@test.maple',
+        status: 'active',
+      });
+
+      // A lesson taught by TEACHER_ID (NOT the linked teacher) — created by admin.
+      const others = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: new Date('2026-06-01T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: adminUser.idToken,
+      });
+      othersLessonId = others.data!.lesson.id;
+    });
+
+    it('lets a linked lesson teacher create a lesson they teach', async () => {
+      const result = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: OWN_INSTRUCTOR_ID,
+          scheduledAt: new Date('2026-06-02T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: teacherUser.idToken,
+      });
+      expect(result.status).toBe(200);
+      ownLessonId = result.data!.lesson.id;
+    });
+
+    it('denies creating a lesson assigned to a different teacher', async () => {
+      const result = await callFunction<CreateLessonRequest>({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: new Date('2026-06-03T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: teacherUser.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+
+    it('lets a linked lesson teacher update their own lesson', async () => {
+      const result = await callFunction<
+        UpdateLessonRequest,
+        UpdateLessonResponse
+      >({
+        functionName: 'updateLesson',
+        data: { id: ownLessonId, notes: 'practiced scales' },
+        idToken: teacherUser.idToken,
+      });
+      expect(result.status).toBe(200);
+      expect(result.data?.lesson.notes).toBe('practiced scales');
+    });
+
+    it("denies updating another teacher's lesson", async () => {
+      const result = await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: othersLessonId, notes: 'not mine' },
+        idToken: teacherUser.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+
+    it("denies deleting another teacher's lesson", async () => {
+      const result = await callFunction<DeleteLessonRequest>({
+        functionName: 'deleteLesson',
+        data: { id: othersLessonId },
+        idToken: teacherUser.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+
+    it('denies an unlinked lesson teacher (no instructor record) entirely', async () => {
+      const result = await callFunction<CreateLessonRequest>({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: OWN_INSTRUCTOR_ID,
+          scheduledAt: new Date('2026-06-04T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: unlinkedTeacher.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+
+    it('admin can still manage any lesson', async () => {
+      const result = await callFunction<
+        UpdateLessonRequest,
+        UpdateLessonResponse
+      >({
+        functionName: 'updateLesson',
+        data: { id: ownLessonId, notes: 'admin override' },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).toBe(200);
+    });
+  });
+
   describe('Single lesson CRUD', () => {
     let lessonId: string;
 

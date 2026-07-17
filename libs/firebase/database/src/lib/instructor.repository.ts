@@ -27,6 +27,8 @@ function docToInstructor(
   const data = doc.data()!;
   return {
     id: doc.id,
+    // Firestore may store null for an unlinked instructor; normalize to undefined.
+    uid: data.uid ?? undefined,
     name: data.name,
     email: data.email,
     phone: data.phone,
@@ -93,6 +95,25 @@ export const InstructorRepository = {
   },
 
   /**
+   * Find the instructor linked to a portal user (Firebase Auth UID), if any.
+   * Used to resolve a lesson-teacher caller to the instructor record whose
+   * lessons they own. Returns undefined when the user isn't linked.
+   */
+  async findByUid(uid: string): Promise<Instructor | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('uid', '==', uid)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return undefined;
+    }
+
+    return docToInstructor(snapshot.docs[0]);
+  },
+
+  /**
    * Create a new instructor
    */
   async create(input: CreateInstructorInput): Promise<Instructor> {
@@ -116,7 +137,11 @@ export const InstructorRepository = {
   /**
    * Update an existing instructor
    */
-  async update(input: UpdateInstructorInput): Promise<Instructor> {
+  async update(
+    // uid accepts null so callers can unlink a portal login (writes null;
+    // docToInstructor normalizes it back to undefined on read).
+    input: Omit<UpdateInstructorInput, 'uid'> & { uid?: string | null }
+  ): Promise<Instructor> {
     const { id, ...updates } = input;
     const docRef = db.collection(COLLECTION).doc(id);
 

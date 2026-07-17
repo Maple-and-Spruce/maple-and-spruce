@@ -55,7 +55,14 @@ export {
   throwInvalidArgument,
   throwValidationError,
   throwFailedPrecondition,
+  throwPermissionDenied,
 } from './errors.utility';
+
+// Resource-ownership checks (scoped-roles phase 2)
+export {
+  instructorIdForUser,
+  assertCanManageLesson,
+} from './ownership.utility';
 
 // Environment utilities
 export {

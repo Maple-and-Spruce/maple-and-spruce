@@ -6,7 +6,6 @@ import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type {
   Instructor,
   CreateInstructorInput,
-  UpdateInstructorInput,
   RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -88,7 +87,9 @@ export function useInstructors() {
   );
 
   const updateInstructor = useCallback(
-    async (input: UpdateInstructorInput): Promise<Instructor> => {
+    // UpdateInstructorRequest (not ...Input) so callers can pass uid: null to
+    // unlink a portal login (#617 phase 2).
+    async (input: UpdateInstructorRequest): Promise<Instructor> => {
       const functions = getMapleFunctions();
       const update = httpsCallable<
         UpdateInstructorRequest,

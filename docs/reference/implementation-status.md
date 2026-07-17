@@ -25,6 +25,8 @@
 | Scoped roles framework (PR 1 of epic #617) | Complete | `Role` enum (admin, mt-teacher, clerk, lesson-teacher) + `userRoles/{uid}` + any-of `requiringRole([...])` + `getMyRoles`/`grantRole`/`revokeRole`; behavior-neutral — client plumbing #614, re-scoping #615 |
 | Scoped roles client plumbing (PR 2 of epic #617) | Complete | `RolesProvider`/`useRoles`/`RoleGuard` (ADR-028), role-filtered nav (`nav-groups.tsx`), `/users` scoped-role toggles, `listUsers` roles join — enforcement re-scoping is #615 |
 | Scoped roles enforcement (PR 3 of epic #617) | Complete | 46 fns re-scoped to role sets (MT→mt-teacher, store/registrations→clerk, lesson reads→lesson-teacher, calendar→all staff); auth-only reads tightened; `PathRoleGuard` route gating; role-gated dashboard; matrix integration spec (`role-matrix.spec.ts`). Phase 2 ownership = #616, analyzer = #620 |
+| Callable-role analyzer (#620) | Complete | `tools/check-callable-roles.ts` + `callable-roles` CI job; every exported callable must be role-gated / trigger / allowlisted. Caught + fixed leftover auth-only `getArtist`/`getStudent` |
+| Lesson-teacher manage-own (phase 2 of epic #617, #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
 | Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
