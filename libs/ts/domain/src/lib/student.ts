@@ -97,6 +97,13 @@ export interface Student {
   primaryContactPhone?: string;
   secondaryContactEmail?: string;
   secondaryContactPhone?: string;
+  /**
+   * The payer's Venmo username (stored without the leading @), when they pay
+   * lesson invoices via Venmo. Lets the reconciliation tool (#630) match
+   * Venmo statement rows back to this student. Optional — most students pay
+   * by Square. See epic #626.
+   */
+  venmoUsername?: string;
   notes?: string;
   status: StudentStatus;
   createdAt: Date;

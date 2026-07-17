@@ -254,6 +254,9 @@
       "@maple/firebase/maple-functions/update-invoice": [
         "libs/firebase/maple-functions/update-invoice/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/record-invoice-payment": [
+        "libs/firebase/maple-functions/record-invoice-payment/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/delete-invoice": [
         "libs/firebase/maple-functions/delete-invoice/src/index.ts"
       ],

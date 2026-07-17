@@ -81,6 +81,7 @@ export function StudentForm({
   const primaryContactPhone = useSignal('');
   const secondaryContactEmail = useSignal('');
   const secondaryContactPhone = useSignal('');
+  const venmoUsername = useSignal('');
   const notes = useSignal('');
   const status = useSignal<StudentStatus>('active');
 
@@ -108,6 +109,7 @@ export function StudentForm({
       primaryContactPhone: primaryContactPhone.value || undefined,
       secondaryContactEmail: secondaryContactEmail.value || undefined,
       secondaryContactPhone: secondaryContactPhone.value || undefined,
+      venmoUsername: venmoUsername.value || undefined,
       notes: notes.value || undefined,
       status: status.value,
     });
@@ -144,6 +146,7 @@ export function StudentForm({
         primaryContactPhone.value = student.primaryContactPhone ?? '';
         secondaryContactEmail.value = student.secondaryContactEmail ?? '';
         secondaryContactPhone.value = student.secondaryContactPhone ?? '';
+        venmoUsername.value = student.venmoUsername ?? '';
         notes.value = student.notes ?? '';
         status.value = student.status;
         showValidationErrors.value = false;
@@ -162,6 +165,7 @@ export function StudentForm({
         primaryContactPhone.value = '';
         secondaryContactEmail.value = '';
         secondaryContactPhone.value = '';
+        venmoUsername.value = '';
         notes.value = '';
         status.value = 'active';
         showValidationErrors.value = false;
@@ -199,6 +203,9 @@ export function StudentForm({
         primaryContactPhone: primaryContactPhone.value || undefined,
         secondaryContactEmail: secondaryContactEmail.value || undefined,
         secondaryContactPhone: secondaryContactPhone.value || undefined,
+        // Store without the leading @ the user may have pasted.
+        venmoUsername:
+          venmoUsername.value.trim().replace(/^@/, '') || undefined,
         notes: notes.value || undefined,
         status: status.value,
       };
@@ -406,6 +413,24 @@ export function StudentForm({
             onChange={(e) => (secondaryContactPhone.value = e.target.value)}
             error={!!getFieldError('secondaryContactPhone')}
             helperText={getFieldError('secondaryContactPhone')}
+            fullWidth
+          />
+
+          <Divider />
+
+          {/* Payment */}
+          <Typography variant="overline" color="text.secondary">
+            Payment (optional)
+          </Typography>
+          <TextField
+            label="Venmo username"
+            value={venmoUsername.value}
+            onChange={(e) => (venmoUsername.value = e.target.value)}
+            error={!!getFieldError('venmoUsername')}
+            helperText={
+              getFieldError('venmoUsername') ||
+              'Used to match Venmo lesson payments during reconciliation.'
+            }
             fullWidth
           />
 

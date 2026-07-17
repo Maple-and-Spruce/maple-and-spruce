@@ -6,6 +6,7 @@ import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type {
   Invoice,
   CreateInvoiceInput,
+  ManualInvoicePaymentSource,
   UpdateInvoiceInput,
   RequestState,
 } from '@maple/ts/domain';
@@ -16,6 +17,8 @@ import type {
   CreateInvoiceResponse,
   UpdateInvoiceRequest,
   UpdateInvoiceResponse,
+  RecordInvoicePaymentRequest,
+  RecordInvoicePaymentResponse,
   DeleteInvoiceRequest,
   DeleteInvoiceResponse,
 } from '@maple/ts/firebase/api-types';
@@ -128,6 +131,34 @@ export function useInvoices({
     []
   );
 
+  const recordPayment = useCallback(
+    async (input: {
+      id: string;
+      source: ManualInvoicePaymentSource;
+      note?: string;
+    }): Promise<Invoice> => {
+      const functions = getMapleFunctions();
+      const record = httpsCallable<
+        RecordInvoicePaymentRequest,
+        RecordInvoicePaymentResponse
+      >(functions, 'recordInvoicePayment');
+
+      const result = await record(input);
+      const invoice = hydrateInvoice(result.data.invoice);
+
+      setInvoicesState((prev) => {
+        if (prev.status !== 'success') return prev;
+        return {
+          ...prev,
+          data: prev.data.map((i) => (i.id === invoice.id ? invoice : i)),
+        };
+      });
+
+      return invoice;
+    },
+    []
+  );
+
   const deleteInvoice = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
     const del = httpsCallable<DeleteInvoiceRequest, DeleteInvoiceResponse>(
@@ -153,6 +184,7 @@ export function useInvoices({
     fetchInvoices,
     createInvoice,
     updateInvoice,
+    recordPayment,
     deleteInvoice,
   };
 }

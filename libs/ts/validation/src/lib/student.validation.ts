@@ -90,6 +90,18 @@ export const studentValidation = staticSuite(
       }
     );
 
+    test(
+      'venmoUsername',
+      'Venmo username must be 5–30 characters (letters, numbers, hyphens, underscores)',
+      () => {
+        if (data.venmoUsername) {
+          // Venmo handles are 5–30 chars of [A-Za-z0-9_-]; tolerate a leading
+          // @ the user may paste (stripped before storage in the form).
+          enforce(data.venmoUsername).matches(/^@?[A-Za-z0-9_-]{5,30}$/);
+        }
+      }
+    );
+
     test('status', 'Status is required', () => {
       enforce(data.status).isNotBlank();
     });

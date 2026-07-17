@@ -19,6 +19,8 @@ import type {
   GetInvoicesResponse,
   UpdateInvoiceRequest,
   UpdateInvoiceResponse,
+  RecordInvoicePaymentRequest,
+  RecordInvoicePaymentResponse,
   DeleteInvoiceRequest,
   DeleteInvoiceResponse,
 } from '@maple/ts/firebase/api-types';
@@ -396,6 +398,132 @@ describe('Invoice Functions', () => {
         idToken: adminUser.idToken,
       });
       expect(result.status).not.toBe(200);
+    });
+  });
+
+  describe('recordInvoicePayment (manual / Venmo)', () => {
+    async function createSentInvoice(): Promise<string> {
+      const created = await callFunction<
+        CreateInvoiceRequest,
+        CreateInvoiceResponse
+      >({
+        functionName: 'createInvoice',
+        data: sampleInvoice(privateStudentId),
+        idToken: adminUser.idToken,
+      });
+      const id = created.data!.invoice.id;
+      await callFunction<UpdateInvoiceRequest>({
+        functionName: 'updateInvoice',
+        data: { id, status: 'sent' },
+        idToken: adminUser.idToken,
+      });
+      return id;
+    }
+
+    it('records a Venmo payment: flips to paid, attributes venmo-manual + caller uid', async () => {
+      const id = await createSentInvoice();
+
+      const result = await callFunction<
+        RecordInvoicePaymentRequest,
+        RecordInvoicePaymentResponse
+      >({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'venmo-manual', note: '@casey-nguyen' },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data!.invoice.status).toBe('paid');
+      expect(result.data!.invoice.paidAt).toBeTruthy();
+      expect(result.data!.invoice.paymentRecord?.source).toBe('venmo-manual');
+      expect(result.data!.invoice.paymentRecord?.note).toBe('@casey-nguyen');
+      expect(result.data!.invoice.paymentRecord?.recordedByUid).toBe(
+        adminUser.uid
+      );
+    });
+
+    it('records a cash/check (admin-manual) payment', async () => {
+      const id = await createSentInvoice();
+
+      const result = await callFunction<
+        RecordInvoicePaymentRequest,
+        RecordInvoicePaymentResponse
+      >({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'admin-manual' },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data!.invoice.paymentRecord?.source).toBe('admin-manual');
+    });
+
+    it('is idempotent: recording again leaves the first attribution intact', async () => {
+      const id = await createSentInvoice();
+
+      await callFunction<RecordInvoicePaymentRequest>({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'venmo-manual' },
+        idToken: adminUser.idToken,
+      });
+      const second = await callFunction<
+        RecordInvoicePaymentRequest,
+        RecordInvoicePaymentResponse
+      >({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'admin-manual' },
+        idToken: adminUser.idToken,
+      });
+
+      expect(second.status).toBe(200);
+      // First (venmo) attribution wins; the second call is a no-op.
+      expect(second.data!.invoice.paymentRecord?.source).toBe('venmo-manual');
+    });
+
+    it('rejects recording a payment on a draft invoice', async () => {
+      const created = await callFunction<
+        CreateInvoiceRequest,
+        CreateInvoiceResponse
+      >({
+        functionName: 'createInvoice',
+        data: sampleInvoice(privateStudentId),
+        idToken: adminUser.idToken,
+      });
+      const result = await callFunction<RecordInvoicePaymentRequest>({
+        functionName: 'recordInvoicePayment',
+        data: { id: created.data!.invoice.id, source: 'venmo-manual' },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('rejects a spoofed server-only source (square-webhook)', async () => {
+      const id = await createSentInvoice();
+      const result = await callFunction<
+        Record<string, unknown>
+      >({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'square-webhook' },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('rejects unauthenticated + non-admin callers', async () => {
+      const id = await createSentInvoice();
+
+      const unauth = await callFunction<RecordInvoicePaymentRequest>({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'venmo-manual' },
+      });
+      expect(unauth.status).toBe(401);
+
+      const nonAdmin = await callFunction<RecordInvoicePaymentRequest>({
+        functionName: 'recordInvoicePayment',
+        data: { id, source: 'venmo-manual' },
+        idToken: nonAdminUser.idToken,
+      });
+      expect([403, 500]).toContain(nonAdmin.status);
     });
   });
 
