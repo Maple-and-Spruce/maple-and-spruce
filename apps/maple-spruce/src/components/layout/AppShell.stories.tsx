@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, within } from 'storybook/test';
 import { Box, Typography } from '@mui/material';
+import { StaticRolesProvider } from '@maple/react/auth';
 import { AppShell } from '.';
 
 /**
@@ -7,11 +9,20 @@ import { AppShell } from '.';
  *
  * Note: This component uses Next.js navigation (usePathname) and
  * the UserMenu component which requires Firebase auth. In Storybook,
- * these are mocked via the nextjs framework integration.
+ * these are mocked via the nextjs framework integration. Nav items are
+ * filtered by the current user's roles, provided here via
+ * StaticRolesProvider (admin = full nav).
  */
 const meta = {
   component: AppShell,
   title: 'Layout/AppShell',
+  decorators: [
+    (Story) => (
+      <StaticRolesProvider roles={['admin']}>
+        <Story />
+      </StaticRolesProvider>
+    ),
+  ],
   parameters: {
     layout: 'fullscreen',
     nextjs: {
@@ -115,5 +126,59 @@ export const ArtistsPage: Story = {
         pathname: '/artists',
       },
     },
+  },
+};
+
+/**
+ * Nav filtered for an MT teacher (Stephanie): Music Together + shared
+ * calendar items only — no Store operations, no Admin group.
+ */
+export const MtTeacherNav: Story = {
+  args: {
+    children: <SampleContent />,
+    maxWidth: 'lg',
+  },
+  decorators: [
+    (Story) => (
+      <StaticRolesProvider roles={['mt-teacher']}>
+        <Story />
+      </StaticRolesProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Sections')).toBeInTheDocument();
+    await expect(canvas.getByText('Spruce Room Schedule')).toBeInTheDocument();
+    await expect(canvas.queryByText('Inventory')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Users')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Students')).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * Nav filtered for a clerk + lesson teacher (Nathan): store operations,
+ * registrations, and students — no class definitions, no Admin group.
+ */
+export const ClerkLessonTeacherNav: Story = {
+  args: {
+    children: <SampleContent />,
+    maxWidth: 'lg',
+  },
+  decorators: [
+    (Story) => (
+      <StaticRolesProvider roles={['clerk', 'lesson-teacher']}>
+        <Story />
+      </StaticRolesProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Inventory')).toBeInTheDocument();
+    await expect(canvas.getByText('Registrations')).toBeInTheDocument();
+    await expect(canvas.getByText('Students')).toBeInTheDocument();
+    await expect(canvas.queryByText('Instructors')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Teacher Payouts')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Users')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Sections')).not.toBeInTheDocument();
   },
 };

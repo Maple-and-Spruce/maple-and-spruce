@@ -10,11 +10,12 @@
 import {
   createAdminFunction,
   getAdminUids,
+  getAllUserRoles,
   throwInvalidArgument,
 } from '@maple/firebase/functions';
 import { getAuth } from 'firebase-admin/auth';
 import admin from 'firebase-admin';
-import type { AppUser } from '@maple/ts/domain';
+import type { AppUser, ScopedUserRole } from '@maple/ts/domain';
 import type {
   GetUsersRequest,
   GetUsersResponse,
@@ -39,8 +40,9 @@ export const listUsers = createAdminFunction<
 
   ensureAdmin();
 
-  const [adminUids, page] = await Promise.all([
+  const [adminUids, rolesByUid, page] = await Promise.all([
     getAdminUids(),
+    getAllUserRoles(),
     getAuth().listUsers(limit),
   ]);
 
@@ -58,6 +60,9 @@ export const listUsers = createAdminFunction<
       ? new Date(u.metadata.lastSignInTime)
       : undefined,
     isAdmin: adminSet.has(u.uid),
+    // Role enum wire values are the ScopedUserRole strings; 'admin' never
+    // appears here (grantRole rejects it — admins/{uid} is authoritative)
+    roles: (rolesByUid.get(u.uid) ?? []) as ScopedUserRole[],
   }));
 
   // Sort: most recent sign-in first; users who never signed in (e.g. just

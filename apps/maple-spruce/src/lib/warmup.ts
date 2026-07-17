@@ -7,13 +7,13 @@ import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
  * with the Firebase auth handshake hides that cold start from the user.
  *
  * Keep this in sync with the functions the shell + dashboard call on mount:
- * - AdminGuard           -> checkAdminStatus
+ * - RolesProvider        -> getMyRoles
  * - AppShell             -> getSyncConflictSummary
  * - DashboardPage        -> getClasses / getRegistrations / getProducts
  * - room schedule widget -> getRoomSchedule
  */
 export const DASHBOARD_WARMUP_FUNCTIONS = [
-  'checkAdminStatus',
+  'getMyRoles',
   'getSyncConflictSummary',
   'getClasses',
   'getRegistrations',

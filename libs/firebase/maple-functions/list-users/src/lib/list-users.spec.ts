@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getAdminUids: vi.fn(),
+  getAllUserRoles: vi.fn(),
   authListUsers: vi.fn(),
   adminApps: [] as unknown[],
   adminInitializeApp: vi.fn(),
@@ -12,6 +13,7 @@ vi.mock('@maple/firebase/functions', () => ({
     handler: (data: TReq, ctx: unknown) => Promise<TRes>
   ) => handler,
   getAdminUids: mocks.getAdminUids,
+  getAllUserRoles: mocks.getAllUserRoles,
   throwInvalidArgument: (msg: string) => {
     throw new Error(msg);
   },
@@ -78,6 +80,7 @@ describe('listUsers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.adminApps.length = 0;
+    mocks.getAllUserRoles.mockResolvedValue(new Map());
   });
 
   it('marks users with admin records as isAdmin', async () => {
@@ -156,5 +159,25 @@ describe('listUsers', () => {
       hasMore: boolean;
     };
     expect(result.hasMore).toBe(true);
+  });
+
+  it('joins scoped roles from userRoles/{uid}; users without a doc get []', async () => {
+    mocks.getAdminUids.mockResolvedValue(['katie-uid']);
+    mocks.getAllUserRoles.mockResolvedValue(
+      new Map([['nathan-uid', ['clerk', 'lesson-teacher']]])
+    );
+    mocks.authListUsers.mockResolvedValue({
+      users: [authUserNathan, authUserKatie],
+    });
+
+    const result = (await handler({}, { uid: 'katie-uid' })) as {
+      users: Array<{ uid: string; isAdmin: boolean; roles: string[] }>;
+    };
+
+    const byUid = new Map(result.users.map((u) => [u.uid, u]));
+    expect(byUid.get('nathan-uid')?.roles).toEqual(['clerk', 'lesson-teacher']);
+    expect(byUid.get('nathan-uid')?.isAdmin).toBe(false);
+    expect(byUid.get('katie-uid')?.roles).toEqual([]);
+    expect(byUid.get('katie-uid')?.isAdmin).toBe(true);
   });
 });
