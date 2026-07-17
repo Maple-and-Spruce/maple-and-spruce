@@ -16,6 +16,7 @@ import type {
   InvoiceLineItem,
   InvoicePaymentRecord,
   InvoiceStatus,
+  ManualInvoicePaymentSource,
   UpdateInvoiceInput,
 } from '@maple/ts/domain';
 import { computeInvoiceTotalCents } from '@maple/ts/domain';
@@ -34,6 +35,8 @@ function docToInvoice(
     | {
         source: InvoicePaymentRecord['source'];
         squarePaymentId?: string;
+        note?: string;
+        recordedByUid?: string;
         recordedAt: unknown;
       }
     | undefined;
@@ -50,6 +53,8 @@ function docToInvoice(
       ? {
           source: rawPaymentRecord.source,
           squarePaymentId: rawPaymentRecord.squarePaymentId,
+          note: rawPaymentRecord.note,
+          recordedByUid: rawPaymentRecord.recordedByUid,
           recordedAt: toDate(rawPaymentRecord.recordedAt),
         }
       : undefined,
@@ -272,6 +277,57 @@ export const InvoiceRepository = {
     const invoice = docToInvoice(updated);
     if (!invoice) {
       throw new Error(`Invoice ${args.id} not found after webhook update`);
+    }
+    return invoice;
+  },
+
+  /**
+   * Record an off-Square payment (cash/check = `admin-manual`, or
+   * `venmo-manual`) against a sent invoice, flipping it to paid. Idempotent
+   * — if already paid, leaves the earlier paymentRecord intact. Mirrors
+   * `markPaidBySquareWebhook` but for human-attested payments. See epic #626.
+   *
+   * `note`/`recordedByUid` are optional; undefined fields are dropped by
+   * Firestore (`ignoreUndefinedProperties`), so they never persist as null.
+   */
+  async recordManualPayment(args: {
+    id: string;
+    source: ManualInvoicePaymentSource;
+    note?: string;
+    recordedByUid?: string;
+  }): Promise<Invoice> {
+    const docRef = db.collection(COLLECTION).doc(args.id);
+    const existingSnap = await docRef.get();
+    const existing = docToInvoice(existingSnap);
+    if (!existing) {
+      throw new Error(`Invoice ${args.id} not found`);
+    }
+
+    // Idempotent: already paid → no-op return current state.
+    if (existing.status === 'paid') {
+      return existing;
+    }
+
+    const now = new Date();
+    const payload: Record<string, unknown> = {
+      status: 'paid' as InvoiceStatus,
+      paidAt: existing.paidAt ?? now,
+      issuedAt: existing.issuedAt ?? now,
+      paymentRecord: {
+        source: args.source,
+        note: args.note,
+        recordedByUid: args.recordedByUid,
+        recordedAt: now,
+      },
+      updatedAt: now,
+    };
+
+    await docRef.update(payload);
+
+    const updated = await docRef.get();
+    const invoice = docToInvoice(updated);
+    if (!invoice) {
+      throw new Error(`Invoice ${args.id} not found after payment`);
     }
     return invoice;
   },

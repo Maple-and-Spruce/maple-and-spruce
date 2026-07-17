@@ -44,15 +44,47 @@ export interface InvoiceLineItem {
 
 /**
  * How the invoice became `paid`. Stamped by the server on the transition
- * into paid so the admin UI can attribute the payment to a specific event
- * (customer paid via Square vs. Katie flipped the switch manually).
+ * into paid so the admin UI can attribute the payment to a specific event:
+ *  - `square-webhook`  — the Square `invoice.payment_made` webhook fired.
+ *  - `admin-manual`    — a human marked it paid (cash / check / other).
+ *  - `venmo-manual`    — a human recorded a Venmo payment they witnessed
+ *                        (student scanned the business Venmo QR at a lesson).
+ *  - `venmo-import`    — the Venmo statement reconciliation tool matched a
+ *                        statement row to this invoice (see #630).
+ *
+ * Venmo Business Profiles have no API/webhook, so Venmo payments are attested
+ * by a human (`venmo-manual`) and later confirmed by CSV import
+ * (`venmo-import`). See epic #626.
  */
-export type InvoicePaymentSource = 'admin-manual' | 'square-webhook';
+export type InvoicePaymentSource =
+  | 'admin-manual'
+  | 'square-webhook'
+  | 'venmo-manual'
+  | 'venmo-import';
+
+/**
+ * Payment sources a human can record by hand from the UI. Excludes the
+ * server-only `square-webhook` and the reconciliation-tool-only
+ * `venmo-import`, so a client can never spoof those attributions.
+ */
+export type ManualInvoicePaymentSource = 'admin-manual' | 'venmo-manual';
+
+export const MANUAL_INVOICE_PAYMENT_SOURCES: ManualInvoicePaymentSource[] = [
+  'admin-manual',
+  'venmo-manual',
+];
 
 export interface InvoicePaymentRecord {
   source: InvoicePaymentSource;
   /** Square payment id when the payment came in via the Square webhook. */
   squarePaymentId?: string;
+  /** Free-text detail for off-Square payments — e.g. the payer's Venmo
+   *  handle or a confirmation memo. Unset for the Square webhook path. */
+  note?: string;
+  /** Firebase Auth uid of whoever recorded a manual/Venmo payment
+   *  (server-stamped). Unset for the Square webhook path. Powers the future
+   *  teacher-attestation audit trail (#631). */
+  recordedByUid?: string;
   /** When the payment was recorded (distinct from paidAt which is the
    *  invoice status transition timestamp — typically the same but the
    *  two can differ if the webhook is delayed). */

@@ -98,6 +98,7 @@
     "../../libs/firebase/maple-functions/delete-invoice/**/*.ts",
     "../../libs/firebase/maple-functions/get-invoices/**/*.ts",
     "../../libs/firebase/maple-functions/update-invoice/**/*.ts",
+    "../../libs/firebase/maple-functions/record-invoice-payment/**/*.ts",
     "../../libs/firebase/maple-functions/get-teacher-payouts/**/*.ts",
     "../../libs/firebase/maple-functions/get-agreement-templates/**/*.ts",
     "../../libs/firebase/maple-functions/get-agreement-template/**/*.ts",

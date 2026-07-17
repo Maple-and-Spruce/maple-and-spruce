@@ -10,6 +10,7 @@ import type {
   CreateInvoiceInput,
   UpdateInvoiceInput,
   InvoiceStatus,
+  ManualInvoicePaymentSource,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -42,6 +43,27 @@ export interface CreateInvoiceResponse {
 export interface UpdateInvoiceRequest extends UpdateInvoiceInput {}
 
 export interface UpdateInvoiceResponse {
+  invoice: Invoice;
+}
+
+// ============================================================================
+// Record Invoice Payment (manual / Venmo)
+// ============================================================================
+
+/**
+ * Record an off-Square payment against a sent invoice, attributing it to a
+ * human-recordable source (cash/check = `admin-manual`, or `venmo-manual`).
+ * The Square webhook path (`markPaidBySquareWebhook`) is separate; clients
+ * cannot set `square-webhook` or `venmo-import` here.
+ */
+export interface RecordInvoicePaymentRequest {
+  id: string;
+  source: ManualInvoicePaymentSource;
+  /** Optional memo — e.g. the payer's Venmo handle or a confirmation note. */
+  note?: string;
+}
+
+export interface RecordInvoicePaymentResponse {
   invoice: Invoice;
 }
 

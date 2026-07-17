@@ -84,6 +84,7 @@ export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
 export { getInvoices } from '@maple/firebase/maple-functions/get-invoices';
 export { createInvoice } from '@maple/firebase/maple-functions/create-invoice';
 export { updateInvoice } from '@maple/firebase/maple-functions/update-invoice';
+export { recordInvoicePayment } from '@maple/firebase/maple-functions/record-invoice-payment';
 export { deleteInvoice } from '@maple/firebase/maple-functions/delete-invoice';
 
 // Teacher payout aggregation (Phase 4, #283)

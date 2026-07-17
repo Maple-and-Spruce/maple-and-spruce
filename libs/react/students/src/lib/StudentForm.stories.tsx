@@ -153,6 +153,51 @@ export const SuccessfulSubmission: Story = {
   },
 };
 
+export const VenmoUsernameStrippedOfAtOnSubmit: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(
+      canvas.getByLabelText(/student name/i),
+      'Juniper Nguyen'
+    );
+    await userEvent.type(
+      canvas.getByLabelText(/primary contact name/i),
+      'Casey Nguyen'
+    );
+    await userEvent.type(
+      canvas.getByLabelText(/primary contact email/i),
+      'casey@example.com'
+    );
+    // Enter the Venmo handle WITH a leading @ — it should be stored stripped.
+    await userEvent.type(
+      canvas.getByLabelText(/venmo username/i),
+      '@casey-nguyen'
+    );
+
+    const teacherSelect = canvas.getByLabelText(/primary teacher/i);
+    await userEvent.click(teacherSelect);
+    const teacherOption = await waitFor(() =>
+      canvas.getByRole('option', { name: mockInstructor.name })
+    );
+    await userEvent.click(teacherOption);
+
+    await userEvent.click(canvas.getByRole('button', { name: /^add$/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ venmoUsername: 'casey-nguyen' })
+      );
+    });
+  },
+};
+
 export const CancelButtonClosesDialog: Story = {
   args: { open: true, isSubmitting: false },
   play: async ({ args }) => {
