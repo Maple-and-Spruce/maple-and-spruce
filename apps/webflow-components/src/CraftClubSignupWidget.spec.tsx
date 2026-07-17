@@ -47,11 +47,16 @@ vi.mock('@maple/react/registrations', () => ({
     afterCardContent,
   }: {
     onReady?: () => void;
-    onTokenizeRef: (fn: () => Promise<string>) => void;
+    onTokenizeRef: (
+      fn: () => Promise<{ nonce: string; verificationToken?: string }>
+    ) => void;
     afterCardContent?: React.ReactNode;
   }) => {
     useEffect(() => {
-      onTokenizeRef(async () => 'cnon:test-nonce');
+      onTokenizeRef(async () => ({
+        nonce: 'cnon:test-nonce',
+        verificationToken: 'verf:test-token',
+      }));
       onReady?.();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -123,6 +128,9 @@ describe('CraftClubSignupWidget', () => {
       email: 'approved@example.com',
       name: 'Ada Lovelace',
       paymentNonce: 'cnon:test-nonce',
+      // Card is vaulted on file for the subscription — the STORE-intent
+      // verifyBuyer token must be forwarded so real Square accepts the vault.
+      cardVerificationToken: 'verf:test-token',
     });
   });
 

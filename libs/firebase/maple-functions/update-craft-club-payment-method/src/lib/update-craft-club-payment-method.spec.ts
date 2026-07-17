@@ -90,10 +90,17 @@ describe('updateCraftClubPaymentMethod', () => {
     const result = (await run({
       sessionToken: 'sess',
       paymentNonce: 'cnon:new',
+      cardVerificationToken: 'verf:store-token',
     })) as { cardLast4?: string };
 
+    // The STORE-intent verification token must reach the card vault — real
+    // Square rejects cards.create without it (#622).
     expect(mocks.createCardOnFile).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceId: 'cnon:new', customerId: 'cust-1' })
+      expect.objectContaining({
+        sourceId: 'cnon:new',
+        customerId: 'cust-1',
+        verificationToken: 'verf:store-token',
+      })
     );
     expect(mocks.updateCard).toHaveBeenCalledWith('sub-1', 'card-new');
     expect(mocks.update).toHaveBeenCalledWith({
@@ -109,10 +116,22 @@ describe('updateCraftClubPaymentMethod', () => {
     );
   });
 
+  it('rejects a missing card verification token before any Square call', async () => {
+    await expect(
+      run({ sessionToken: 'sess', paymentNonce: 'cnon:new' })
+    ).rejects.toThrow(/card verification is required/i);
+    expect(mocks.resolveSession).not.toHaveBeenCalled();
+    expect(mocks.createCardOnFile).not.toHaveBeenCalled();
+  });
+
   it('rejects an expired session before any Square call', async () => {
     mocks.resolveSession.mockResolvedValue(undefined);
     await expect(
-      run({ sessionToken: 'bad', paymentNonce: 'cnon:new' })
+      run({
+        sessionToken: 'bad',
+        paymentNonce: 'cnon:new',
+        cardVerificationToken: 'verf:store-token',
+      })
     ).rejects.toThrow(/session has expired/);
     expect(mocks.createCardOnFile).not.toHaveBeenCalled();
   });

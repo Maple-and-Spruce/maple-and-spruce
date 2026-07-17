@@ -76,6 +76,7 @@ const validPayload = {
   email: 'member@example.com',
   name: 'Member Person',
   paymentNonce: 'cnon:card-nonce-abcdef',
+  cardVerificationToken: 'verf:store-token',
 };
 
 describe('createCraftClubSubscription', () => {
@@ -102,8 +103,14 @@ describe('createCraftClubSubscription', () => {
     };
 
     expect(mocks.upsertByEmail).toHaveBeenCalled();
+    // The STORE-intent verification token must reach the card vault — real
+    // Square rejects cards.create without it (#622).
     expect(mocks.createCardOnFile).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceId: 'cnon:card-nonce-abcdef', customerId: 'cust-1' })
+      expect.objectContaining({
+        sourceId: 'cnon:card-nonce-abcdef',
+        customerId: 'cust-1',
+        verificationToken: 'verf:store-token',
+      })
     );
     expect(mocks.subscriptionCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,6 +167,20 @@ describe('createCraftClubSubscription', () => {
       run({ email: 'bad', name: 'X', paymentNonce: 'n' })
     ).rejects.toThrow(/validation/);
     expect(mocks.findByEmail).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing card verification token before the approval gate or any Square call', async () => {
+    await expect(
+      run({
+        email: 'member@example.com',
+        name: 'Member Person',
+        paymentNonce: 'cnon:card-nonce-abcdef',
+        // cardVerificationToken omitted — real Square can't vault a card on file
+        // for the subscription without it.
+      })
+    ).rejects.toThrow(/card verification is required/i);
+    expect(mocks.findByEmail).not.toHaveBeenCalled();
+    expect(mocks.createCardOnFile).not.toHaveBeenCalled();
   });
 
   it('fails clearly when the plan is not configured', async () => {

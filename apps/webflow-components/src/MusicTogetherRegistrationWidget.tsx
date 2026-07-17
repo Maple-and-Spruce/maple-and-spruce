@@ -38,6 +38,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
+import type { CardTokenizeResult } from '@maple/react/registrations';
 import {
   MT_MAX_CHILDREN,
   computeMusicTogetherFamilyPrice,
@@ -273,7 +274,7 @@ export function MusicTogetherRegistrationWidget({
   const [busy, setBusy] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
-  const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
+  const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
   // Load the section on mount
   useEffect(() => {
@@ -399,7 +400,7 @@ export function MusicTogetherRegistrationWidget({
     setPayError(null);
     setBusy(true);
     try {
-      const nonce = await tokenizeRef.current();
+      const { nonce, verificationToken } = await tokenizeRef.current();
       const call = httpsCallable<
         CreateMusicTogetherRegistrationRequest,
         CreateMusicTogetherRegistrationResponse
@@ -424,6 +425,10 @@ export function MusicTogetherRegistrationWidget({
         privacyConsent,
         cardOnFileAuth: paymentPlan === 'installments' ? cardOnFileAuth : undefined,
         paymentNonce: nonce,
+        // STORE-intent verification token — only produced (and only required)
+        // for the installment plan, which vaults the card on file.
+        cardVerificationToken:
+          paymentPlan === 'installments' ? verificationToken : undefined,
         notes: notes.trim() || undefined,
       });
       setState({
@@ -786,6 +791,15 @@ export function MusicTogetherRegistrationWidget({
                     // Square app for testing.
                     totalCents={amountNowCents}
                     maxWidth={WIDGET_MAX_WIDTH}
+                    // Installments vault a card on file — real Square needs a
+                    // STORE-intent verifyBuyer token to do that. Pay-in-full is
+                    // a one-time charge and skips it.
+                    verifyBuyerForStore={paymentPlan === 'installments'}
+                    billingContact={{
+                      givenName: adultFirstName.trim(),
+                      familyName: adultLastName.trim(),
+                      email: email.trim(),
+                    }}
                     onReady={() => setCardReady(true)}
                     onTokenizeRef={(fn) => {
                       tokenizeRef.current = fn;

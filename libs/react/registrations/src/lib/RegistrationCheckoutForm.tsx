@@ -24,6 +24,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { fonts } from '@maple/react/theme';
 import { SquareCardForm } from './SquareCardForm';
+import type { CardTokenizeResult } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
 import { SigningForm } from '@maple/react/agreements';
 import type {
@@ -261,7 +262,7 @@ export function RegistrationCheckoutForm({
   };
 
   // Tokenize ref from SquareCardForm — a function handle, not state.
-  const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
+  const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
   const calculateCost = useCallback(
     async (qty: number, code: string) => {
@@ -465,7 +466,7 @@ export function RegistrationCheckoutForm({
         return;
       }
 
-      const nonce = await tokenizeRef.current();
+      const { nonce } = await tokenizeRef.current();
       await performSubmit(nonce);
     } catch (error) {
       submitError.value = extractErrorMessage(error);
