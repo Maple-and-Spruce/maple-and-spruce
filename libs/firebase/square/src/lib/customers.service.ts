@@ -7,7 +7,7 @@
  *
  * @see https://developer.squareup.com/docs/customers-api/what-it-does
  */
-import { SquareClient, Square } from 'square';
+import { SquareClient, Square, SquareError } from 'square';
 
 export interface UpsertCustomerInput {
   email: string;
@@ -47,13 +47,7 @@ export class CustomersService {
 
   /** Find a Square customer by exact email, or create one. Returns the ID. */
   async upsertByEmail(input: UpsertCustomerInput): Promise<string> {
-    const searchResponse = await this.client.customers.search({
-      query: {
-        filter: { emailAddress: { exact: input.email } },
-      },
-    });
-
-    const existingId = searchResponse.customers?.[0]?.id;
+    const existingId = await this.findIdByEmail(input.email);
     if (existingId) {
       return existingId;
     }
@@ -76,6 +70,40 @@ export class CustomersService {
       throw new Error('Square customer create returned no id');
     }
     return newId;
+  }
+
+  /**
+   * Look up a customer id by exact email, tolerating a search failure.
+   *
+   * The dedup search is an optimization to avoid duplicate profiles — it must
+   * never block the caller (a card vault / payment). Square's Customers
+   * *Search* endpoint validates the `emailAddress.exact` filter more strictly
+   * than CreateCustomer, and rejects some addresses with INVALID_VALUE. On any
+   * search failure we log and return null so the caller falls through to
+   * create (a possible duplicate profile is acceptable — Square customers
+   * aren't strictly deduped anyway; see the file header).
+   */
+  private async findIdByEmail(email: string): Promise<string | undefined> {
+    try {
+      const searchResponse = await this.client.customers.search({
+        query: { filter: { emailAddress: { exact: email } } },
+      });
+      return searchResponse.customers?.[0]?.id;
+    } catch (error) {
+      const detail =
+        error instanceof SquareError
+          ? (error.errors?.[0]?.detail ??
+            error.errors?.[0]?.code ??
+            error.message)
+          : error instanceof Error
+            ? error.message
+            : 'Unknown error';
+      console.warn(
+        'Square customer search failed; creating without dedup',
+        { detail }
+      );
+      return undefined;
+    }
   }
 }
 

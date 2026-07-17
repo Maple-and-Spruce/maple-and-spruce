@@ -274,6 +274,20 @@ export const createMusicTogetherRegistration = Functions.endpoint
     } catch (paymentError) {
       const detail =
         paymentError instanceof Error ? paymentError.message : 'Unknown error';
+      const squareErrorCode =
+        paymentError instanceof PaymentError
+          ? paymentError.squareErrorCode
+          : undefined;
+      // Log the real cause with context — the vault/charge sequence has three
+      // Square calls (customer upsert, card vault, stored-card charge) and the
+      // generic customer message alone can't tell them apart in prod logs.
+      console.error('MT registration payment failed', {
+        registrationId: regRef.id,
+        sectionId: data.sectionId,
+        paymentPlan: data.paymentPlan,
+        squareErrorCode,
+        detail,
+      });
       await regRef.update({
         status: 'cancelled',
         notes: `Payment failed: ${detail}`,
