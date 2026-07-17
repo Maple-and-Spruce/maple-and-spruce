@@ -299,6 +299,8 @@ export type {
   CreateInvoiceResponse,
   UpdateInvoiceRequest,
   UpdateInvoiceResponse,
+  RecordInvoicePaymentRequest,
+  RecordInvoicePaymentResponse,
   DeleteInvoiceRequest,
   DeleteInvoiceResponse,
 } from './invoice.types';

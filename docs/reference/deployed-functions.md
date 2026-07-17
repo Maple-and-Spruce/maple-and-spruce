@@ -27,6 +27,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Music Lesson Invoices (private-pay)
 - `getInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`
+- `recordInvoicePayment` _(records an off-Square payment against a sent invoice — `admin-manual` (cash/check) or `venmo-manual` (Venmo QR witnessed at a lesson); idempotent, admin-gated; see epic #626)_
 - `syncInvoiceToSquare` _(Firestore trigger on `invoices/{id}` — sends via Square Invoices API on draft → sent, cancels on sent → void)_
 - `squareWebhook` now additionally handles `invoice.payment_made` → flips matching invoice to `paid` with `paymentRecord.source = 'square-webhook'`
 

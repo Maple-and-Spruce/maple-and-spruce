@@ -124,6 +124,49 @@ describe('studentValidation', () => {
     });
   });
 
+  describe('venmoUsername field', () => {
+    it('passes when undefined (optional)', () => {
+      const result = studentValidation({
+        ...validStudent,
+        venmoUsername: undefined,
+      });
+      expect(result.hasErrors('venmoUsername')).toBe(false);
+    });
+
+    it('accepts a valid handle', () => {
+      const result = studentValidation({
+        ...validStudent,
+        venmoUsername: 'casey-nguyen',
+      });
+      expect(result.hasErrors('venmoUsername')).toBe(false);
+    });
+
+    it('tolerates a leading @', () => {
+      const result = studentValidation({
+        ...validStudent,
+        venmoUsername: '@casey_nguyen',
+      });
+      expect(result.hasErrors('venmoUsername')).toBe(false);
+    });
+
+    it('fails when too short', () => {
+      const result = studentValidation({
+        ...validStudent,
+        venmoUsername: 'abc',
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('venmoUsername').length).toBeGreaterThan(0);
+    });
+
+    it('fails on illegal characters', () => {
+      const result = studentValidation({
+        ...validStudent,
+        venmoUsername: 'has spaces!',
+      });
+      expect(result.isValid()).toBe(false);
+    });
+  });
+
   describe('registeredLessonLength field', () => {
     it('passes when undefined', () => {
       const result = studentValidation({

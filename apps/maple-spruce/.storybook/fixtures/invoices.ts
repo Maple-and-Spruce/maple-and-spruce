@@ -66,6 +66,24 @@ export const mockInvoicePaidManually: Invoice = {
   updatedAt: new Date('2026-02-24T09:00:00Z'),
 };
 
+export const mockInvoicePaidViaVenmo: Invoice = {
+  id: 'inv-003-venmo',
+  studentId: 'student-001',
+  status: 'paid',
+  lineItems: [aprilTuition],
+  totalCents: 13000,
+  issuedAt: new Date('2026-02-20T09:00:00Z'),
+  paidAt: new Date('2026-02-24T09:00:00Z'),
+  paymentRecord: {
+    source: 'venmo-manual',
+    note: '@casey-nguyen',
+    recordedByUid: 'uid-katie',
+    recordedAt: new Date('2026-02-24T09:00:00Z'),
+  },
+  createdAt: new Date('2026-02-20T09:00:00Z'),
+  updatedAt: new Date('2026-02-24T09:00:00Z'),
+};
+
 export const mockInvoiceSyncError: Invoice = {
   id: 'inv-sync-error',
   studentId: 'student-001',
@@ -126,6 +144,7 @@ export const mockInvoices: Invoice[] = [
   mockInvoiceSent,
   mockInvoicePaid,
   mockInvoicePaidManually,
+  mockInvoicePaidViaVenmo,
   mockInvoiceVoid,
   mockInvoiceMultiLine,
   mockInvoiceSyncError,

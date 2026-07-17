@@ -20,6 +20,7 @@ import type {
   CreateLessonSeriesInput,
   Invoice,
   Lesson,
+  ManualInvoicePaymentSource,
   UpdateInvoiceInput,
   UpdateLessonInput,
 } from '@maple/ts/domain';
@@ -61,6 +62,7 @@ export default function StudentDetailPage() {
     invoicesState,
     createInvoice,
     updateInvoice,
+    recordPayment,
     deleteInvoice,
   } = useInvoices({ studentId });
 
@@ -167,10 +169,13 @@ export default function StudentDetailPage() {
     }
   };
 
-  const handleInvoiceMarkPaid = async (invoice: Invoice) => {
+  const handleInvoiceRecordPayment = async (
+    invoice: Invoice,
+    source: ManualInvoicePaymentSource
+  ) => {
     setIsSubmitting(true);
     try {
-      await updateInvoice({ id: invoice.id, status: 'paid' });
+      await recordPayment({ id: invoice.id, source });
     } finally {
       setIsSubmitting(false);
     }
@@ -362,7 +367,7 @@ export default function StudentDetailPage() {
           invoicesState={invoicesState}
           onEdit={handleInvoiceEdit}
           onSend={handleInvoiceSend}
-          onMarkPaid={handleInvoiceMarkPaid}
+          onRecordPayment={handleInvoiceRecordPayment}
           onVoid={(invoice) => setInvoiceToVoid(invoice)}
           onDelete={(invoice) => setInvoiceToDelete(invoice)}
         />

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
+import { fn, expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { InvoiceList } from './InvoiceList';
 import {
   mockInvoices,
@@ -7,6 +7,7 @@ import {
   mockInvoiceSent,
   mockInvoicePaid,
   mockInvoicePaidManually,
+  mockInvoicePaidViaVenmo,
   mockInvoiceVoid,
   mockInvoiceMultiLine,
   mockInvoiceSyncError,
@@ -20,7 +21,7 @@ const meta = {
   args: {
     onEdit: fn(),
     onSend: fn(),
-    onMarkPaid: fn(),
+    onRecordPayment: fn(),
     onVoid: fn(),
     onDelete: fn(),
   },
@@ -246,7 +247,35 @@ export const SendButtonCallsOnSend: Story = {
   },
 };
 
-export const MarkPaidCallsOnMarkPaid: Story = {
+export const MarkPaidMenuRecordsVenmo: Story = {
+  args: {
+    invoicesState: {
+      status: 'success',
+      data: [mockInvoiceSent],
+    } as RequestState<Invoice[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The mark-paid button opens a method menu (Venmo vs. cash/check).
+    await userEvent.click(
+      canvas.getByRole('button', { name: /mark invoice paid/i })
+    );
+    // MUI Menu portals to document.body — query via screen, not the canvas.
+    const venmoItem = await screen.findByRole('menuitem', {
+      name: /paid via venmo/i,
+    });
+    await userEvent.click(venmoItem);
+    await waitFor(() => {
+      expect(args.onRecordPayment).toHaveBeenCalledTimes(1);
+      expect(args.onRecordPayment).toHaveBeenCalledWith(
+        mockInvoiceSent,
+        'venmo-manual'
+      );
+    });
+  },
+};
+
+export const MarkPaidMenuRecordsCashOrCheck: Story = {
   args: {
     invoicesState: {
       status: 'success',
@@ -258,9 +287,16 @@ export const MarkPaidCallsOnMarkPaid: Story = {
     await userEvent.click(
       canvas.getByRole('button', { name: /mark invoice paid/i })
     );
+    const cashItem = await screen.findByRole('menuitem', {
+      name: /cash, check, or other/i,
+    });
+    await userEvent.click(cashItem);
     await waitFor(() => {
-      expect(args.onMarkPaid).toHaveBeenCalledTimes(1);
-      expect(args.onMarkPaid).toHaveBeenCalledWith(mockInvoiceSent);
+      expect(args.onRecordPayment).toHaveBeenCalledTimes(1);
+      expect(args.onRecordPayment).toHaveBeenCalledWith(
+        mockInvoiceSent,
+        'admin-manual'
+      );
     });
   },
 };
@@ -315,6 +351,24 @@ export const PaidManuallyBadge: Story = {
       expect(canvas.getByText(/marked paid manually/i)).toBeInTheDocument();
     });
     expect(canvas.queryByText(/paid via square/i)).toBeNull();
+  },
+};
+
+export const PaidViaVenmoBadge: Story = {
+  args: {
+    invoicesState: {
+      status: 'success',
+      data: [mockInvoicePaidViaVenmo],
+    } as RequestState<Invoice[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => {
+      expect(canvas.getByText(/paid via venmo/i)).toBeInTheDocument();
+    });
+    // Neither the Square nor the plain-manual badge should appear.
+    expect(canvas.queryByText(/paid via square/i)).toBeNull();
+    expect(canvas.queryByText(/marked paid manually/i)).toBeNull();
   },
 };
 
