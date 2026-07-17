@@ -234,79 +234,15 @@ function SoldOutPanel({
   return (
     <Box>
       <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>{className}</strong> is currently full.
+        <strong>{className}</strong> is currently full — but you can join the
+        waitlist below.
       </Alert>
 
-      {related && related.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            fontWeight={600}
-            gutterBottom
-            sx={{ color: 'text.primary' }}
-          >
-            Other upcoming dates
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            We're offering this class on other dates that still have spots.
-          </Typography>
-          <Stack spacing={1.5}>
-            {related.map((rc) => {
-              const firstSession = rc.sessions[0]?.dateTime;
-              return (
-                <Box
-                  key={rc.id}
-                  sx={{
-                    p: 2,
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    alignItems: { xs: 'flex-start', sm: 'center' },
-                    justifyContent: 'space-between',
-                    gap: 1.5,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      {rc.name}
-                    </Typography>
-                    {firstSession && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        {formatRelatedClassDate(firstSession)} ·{' '}
-                        {rc.spotsRemaining} spot
-                        {rc.spotsRemaining === 1 ? '' : 's'} left
-                      </Typography>
-                    )}
-                  </Box>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="small"
-                    href={`/classes/${rc.slug}`}
-                  >
-                    View class
-                  </Button>
-                </Box>
-              );
-            })}
-          </Stack>
-        </Box>
-      )}
-
-      <Divider sx={{ my: 3 }} />
-
+      {/* Waitlist signup — the primary action for a full class, so it leads. */}
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
-          Notify me if a spot opens
-        </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Add your email and we'll let you know if a registration is cancelled.
-          Spots are first-come, first-served — we email everyone on the list.
+          Add your email and we'll let you know if a spot opens. Spots are
+          first-come, first-served — we email everyone on the list.
         </Typography>
 
         {waitlistState.status === 'success' ? (
@@ -340,8 +276,8 @@ function SoldOutPanel({
                 sx={{ whiteSpace: 'nowrap' }}
               >
                 {waitlistState.status === 'submitting'
-                  ? 'Adding…'
-                  : 'Notify me'}
+                  ? 'Joining…'
+                  : 'Join waitlist'}
               </Button>
             </Stack>
             {waitlistState.status === 'error' && (
@@ -352,6 +288,71 @@ function SoldOutPanel({
           </Box>
         )}
       </Box>
+
+      {/* Alternative: other dates for the same class that still have spots. */}
+      {related && related.length > 0 && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <Box>
+            <Typography
+              variant="h6"
+              fontWeight={600}
+              gutterBottom
+              sx={{ color: 'text.primary' }}
+            >
+              Other upcoming dates
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              We're offering this class on other dates that still have spots.
+            </Typography>
+            <Stack spacing={1.5}>
+              {related.map((rc) => {
+                const firstSession = rc.sessions[0]?.dateTime;
+                return (
+                  <Box
+                    key={rc.id}
+                    sx={{
+                      p: 2,
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {rc.name}
+                      </Typography>
+                      {firstSession && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          {formatRelatedClassDate(firstSession)} ·{' '}
+                          {rc.spotsRemaining} spot
+                          {rc.spotsRemaining === 1 ? '' : 's'} left
+                        </Typography>
+                      )}
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      href={`/classes/${rc.slug}`}
+                    >
+                      View class
+                    </Button>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </Box>
+        </>
+      )}
     </Box>
   );
 }
