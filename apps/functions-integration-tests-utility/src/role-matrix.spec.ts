@@ -54,6 +54,8 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'getClasses', expect: 403 },
   { as: 'stephanie', functionName: 'getRegistrations', expect: 403 },
   { as: 'stephanie', functionName: 'getStudents', expect: 403 },
+  // getStudent (singular) was auth-only until #620; now admin + lesson-teacher.
+  { as: 'stephanie', functionName: 'getStudent', expect: 403 },
   { as: 'stephanie', functionName: 'getLessons', expect: 403 },
   { as: 'stephanie', functionName: 'listUsers', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },
@@ -76,6 +78,8 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'updateClass', expect: 403 },
   { as: 'nathan', functionName: 'getTeacherPayouts', expect: 403 },
   { as: 'nathan', functionName: 'getArtists', expect: 403 },
+  // getArtist (singular) was auth-only until #620; now admin-only like getArtists.
+  { as: 'nathan', functionName: 'getArtist', expect: 403 },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   { as: 'nathan', functionName: 'getDiscounts', expect: 403 },
