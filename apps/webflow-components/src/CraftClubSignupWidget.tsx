@@ -28,6 +28,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
+import type { CardTokenizeResult } from '@maple/react/registrations';
 import { CRAFT_CLUB_MONTHLY_PRICE_CENTS } from '@maple/ts/domain';
 import type {
   CheckCraftClubEligibilityRequest,
@@ -77,7 +78,7 @@ export function CraftClubSignupWidget({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
-  const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
+  const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
   const emailValid = EMAIL_RE.test(email.trim());
   const payDisabled = busy || !cardReady || !name.trim();
@@ -114,7 +115,7 @@ export function CraftClubSignupWidget({
     setError(null);
     setBusy(true);
     try {
-      const nonce = await tokenizeRef.current();
+      const { nonce, verificationToken } = await tokenizeRef.current();
       const call = httpsCallable<
         CreateCraftClubSubscriptionRequest,
         CreateCraftClubSubscriptionResponse
@@ -124,6 +125,7 @@ export function CraftClubSignupWidget({
         name: name.trim(),
         phone: phone.trim() || undefined,
         paymentNonce: nonce,
+        cardVerificationToken: verificationToken,
       });
       setStep('success');
     } catch (err) {
@@ -231,6 +233,10 @@ export function CraftClubSignupWidget({
               env={env}
               totalCents={CRAFT_CLUB_MONTHLY_PRICE_CENTS}
               maxWidth={480}
+              // The subscription vaults this card on file — real Square needs a
+              // STORE-intent verifyBuyer token to do so.
+              verifyBuyerForStore
+              billingContact={{ givenName: name.trim(), email: email.trim() }}
               onReady={() => setCardReady(true)}
               onTokenizeRef={(fn) => {
                 tokenizeRef.current = fn;

@@ -11,6 +11,21 @@ interface SquarePaymentRequest {
   update: (options: { total: { amount: string; label: string } }) => void;
 }
 
+interface SquareVerifyBuyerDetails {
+  /** 'STORE' when vaulting a card on file; 'CHARGE' for a one-time payment. */
+  intent: 'STORE' | 'CHARGE';
+  /** Recommended by Square for SCA risk scoring / mandate on STORE. */
+  billingContact?: SquareBillingContact;
+  /** Required for CHARGE intent only. */
+  amount?: string;
+  /** Required for CHARGE intent only. */
+  currencyCode?: string;
+}
+
+interface SquareVerifyBuyerResult {
+  token: string;
+}
+
 interface SquarePayments {
   card: () => Promise<SquareCard>;
   paymentRequest: (options: {
@@ -20,6 +35,15 @@ interface SquarePayments {
   }) => unknown;
   applePay: (paymentRequest: unknown) => Promise<SquareDigitalWallet>;
   googlePay: (paymentRequest: unknown) => Promise<SquareDigitalWallet>;
+  /**
+   * Strong Customer Authentication step. For `intent: 'STORE'` this produces
+   * the verification token real Square requires to vault a card on file via the
+   * Cards API — without it, `cards.create` is rejected.
+   */
+  verifyBuyer: (
+    source: string,
+    details: SquareVerifyBuyerDetails
+  ) => Promise<SquareVerifyBuyerResult>;
 }
 
 interface SquareCard {
@@ -51,6 +75,24 @@ interface SquareTokenizeResult {
   errors?: Array<{ message: string }>;
 }
 
+/** Billing contact passed to `verifyBuyer` for STORE-intent SCA. */
+export interface SquareBillingContact {
+  givenName?: string;
+  familyName?: string;
+  email?: string;
+}
+
+/**
+ * Result of the card entry step. `nonce` is the single-use payment token from
+ * `card.tokenize()`. `verificationToken` is present only when the form was told
+ * to verify the buyer for STORE intent (`verifyBuyerForStore`) — it is the token
+ * real Square requires to vault the nonce as a card on file.
+ */
+export interface CardTokenizeResult {
+  nonce: string;
+  verificationToken?: string;
+}
+
 declare global {
   interface Window {
     Square?: {
@@ -74,7 +116,17 @@ interface SquareCardFormProps {
   /** Called when the form is ready to tokenize */
   onReady?: () => void;
   /** Ref function to expose tokenize to parent */
-  onTokenizeRef: (tokenize: () => Promise<string>) => void;
+  onTokenizeRef: (tokenize: () => Promise<CardTokenizeResult>) => void;
+  /**
+   * When true, the card entry step also runs `verifyBuyer({ intent: 'STORE' })`
+   * and returns its `verificationToken` alongside the nonce. Set this for any
+   * card-on-file / vaulting flow (installments, subscriptions, saved-card
+   * updates) — real Square rejects `cards.create` without it. Leave unset for
+   * one-time charges.
+   */
+  verifyBuyerForStore?: boolean;
+  /** Billing contact used for STORE-intent SCA verification (recommended). */
+  billingContact?: SquareBillingContact;
   /** Called when a digital wallet (Apple Pay / Google Pay) completes tokenization directly */
   onDigitalWalletToken?: (token: string) => void;
   /**
@@ -141,6 +193,8 @@ export function SquareCardForm({
   showDigitalWallets = false,
   onReady,
   onTokenizeRef,
+  verifyBuyerForStore = false,
+  billingContact,
   onDigitalWalletToken,
   afterCardContent,
   maxWidth,
@@ -158,6 +212,13 @@ export function SquareCardForm({
   const paymentRequestRef = useRef<SquarePaymentRequest | null>(null);
   const onDigitalWalletTokenRef = useRef(onDigitalWalletToken);
   onDigitalWalletTokenRef.current = onDigitalWalletToken;
+  // Kept in refs so changing them doesn't re-init the SDK, and so the tokenize
+  // closure always reads the latest values (billing contact fills in as the
+  // family types).
+  const verifyBuyerForStoreRef = useRef(verifyBuyerForStore);
+  verifyBuyerForStoreRef.current = verifyBuyerForStore;
+  const billingContactRef = useRef(billingContact);
+  billingContactRef.current = billingContact;
   const placeholderRef = useRef<HTMLDivElement>(null);
   const applePayContainerRef = useRef<HTMLDivElement>(null);
   const googlePayContainerRef = useRef<HTMLDivElement>(null);
@@ -391,7 +452,26 @@ export function SquareCardForm({
           throw new Error(errorMessage);
         }
 
-        return result.token;
+        const nonce = result.token;
+
+        // Card-on-file flows must additionally verify the buyer for STORE
+        // intent — real Square requires the resulting token to vault the card
+        // via the Cards API (SCA / mandate). One-time charges skip this.
+        let verificationToken: string | undefined;
+        if (verifyBuyerForStoreRef.current) {
+          const verification = await payments.verifyBuyer(nonce, {
+            intent: 'STORE',
+            billingContact: billingContactRef.current ?? {},
+          });
+          verificationToken = verification?.token;
+          if (!verificationToken) {
+            throw new Error(
+              'Card verification failed. Please try a different card.'
+            );
+          }
+        }
+
+        return { nonce, verificationToken };
       });
 
       onReady?.();

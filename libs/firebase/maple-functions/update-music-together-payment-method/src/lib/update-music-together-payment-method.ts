@@ -48,6 +48,10 @@ export const updateMusicTogetherPaymentMethod = Functions.endpoint
     if (!data.paymentNonce) {
       throwInvalidArgument('Payment information is required');
     }
+    // Vaulting a new card on file requires the STORE-intent verification token.
+    if (!data.cardVerificationToken) {
+      throwInvalidArgument('Card verification is required.');
+    }
 
     const registrationId = await MusicTogetherTokenRepository.resolveSession(
       data.sessionToken
@@ -86,6 +90,7 @@ export const updateMusicTogetherPaymentMethod = Functions.endpoint
       sourceId: data.paymentNonce,
       customerId: registration.squareCustomerId,
       cardholderName: registration.parentNames[0],
+      verificationToken: data.cardVerificationToken,
       idempotencyKey: `mtcard-update-${registration.id}-${data.paymentNonce.slice(-8)}`,
     });
 

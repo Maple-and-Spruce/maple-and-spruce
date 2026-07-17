@@ -136,6 +136,14 @@ export const createMusicTogetherRegistration = Functions.endpoint
         'This section does not offer an installment plan.'
       );
     }
+    // The installment plan vaults a card on file, which real Square only allows
+    // with a STORE-intent verification token from the client's verifyBuyer call.
+    // Fail before reserving the seat / touching Square if it's missing.
+    if (data.paymentPlan === 'installments' && !data.cardVerificationToken) {
+      throwInvalidArgument(
+        'Card verification is required for the installment plan.'
+      );
+    }
     const numChildren = data.children?.length ?? 0;
     if (numChildren < 1 || numChildren > MT_MAX_CHILDREN) {
       throwInvalidArgument(
@@ -231,6 +239,7 @@ export const createMusicTogetherRegistration = Functions.endpoint
           sourceId: data.paymentNonce,
           customerId: squareCustomerId,
           cardholderName: parentNames[0],
+          verificationToken: data.cardVerificationToken,
           idempotencyKey: `mtcard-${regRef.id}`,
         });
         squareCardId = card.cardId;

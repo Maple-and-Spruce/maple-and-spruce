@@ -16,6 +16,13 @@ export interface CreateCardOnFileInput {
   customerId: string;
   /** Cardholder name for display (optional). */
   cardholderName?: string;
+  /**
+   * SCA verification token from the Web Payments SDK
+   * `verifyBuyer({ intent: 'STORE' })`. Real Square REQUIRES this to vault a
+   * card on file — omitting it makes `cards.create` fail (the sandbox mock is
+   * lenient, real Square is not). Always thread it through from the client.
+   */
+  verificationToken?: string;
   /** Idempotency key — repeated calls with the same key are de-duped. */
   idempotencyKey: string;
 }
@@ -39,6 +46,7 @@ export class CardsService {
     const response = await this.client.cards.create({
       idempotencyKey: input.idempotencyKey,
       sourceId: input.sourceId,
+      verificationToken: input.verificationToken,
       card: {
         customerId: input.customerId,
         cardholderName: input.cardholderName,

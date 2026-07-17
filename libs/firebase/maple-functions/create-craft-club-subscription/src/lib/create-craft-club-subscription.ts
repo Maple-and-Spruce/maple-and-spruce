@@ -49,6 +49,11 @@ export const createCraftClubSubscription = Functions.endpoint
     if (!data.paymentNonce) {
       throwInvalidArgument('Payment information is required');
     }
+    // The card is vaulted on file for the subscription; real Square requires the
+    // STORE-intent verification token from the client's verifyBuyer call.
+    if (!data.cardVerificationToken) {
+      throwInvalidArgument('Card verification is required.');
+    }
 
     // 2. Server-side approval gate — never trust the client's eligibility check.
     const member = await CraftClubMemberRepository.findByEmail(data.email);
@@ -90,6 +95,7 @@ export const createCraftClubSubscription = Functions.endpoint
       sourceId: data.paymentNonce,
       customerId,
       cardholderName: data.name,
+      verificationToken: data.cardVerificationToken,
       // Nonce is unique per tokenization, so this is unique per attempt.
       idempotencyKey: `cccard-${member.id}-${data.paymentNonce.slice(-8)}`,
     });

@@ -209,11 +209,18 @@ describe('createMusicTogetherRegistration', () => {
       ...baseFamily,
       paymentPlan: 'installments',
       cardOnFileAuth: true,
+      cardVerificationToken: 'verf:store-token',
     })) as { amountChargedCents: number; scheduledChargeCount: number; cardLast4?: string };
 
     expect(mocks.upsertByEmail).toHaveBeenCalled();
+    // The STORE-intent verification token must be threaded into the card vault —
+    // real Square rejects cards.create without it (#622).
     expect(mocks.createCardOnFile).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceId: 'cnon:card-nonce-abc', customerId: 'cust-1' })
+      expect.objectContaining({
+        sourceId: 'cnon:card-nonce-abc',
+        customerId: 'cust-1',
+        verificationToken: 'verf:store-token',
+      })
     );
     // installment 1 charges the STORED card (with customerId), not the nonce
     expect(mocks.createPayment).toHaveBeenCalledWith(
@@ -291,6 +298,7 @@ describe('createMusicTogetherRegistration', () => {
       ],
       paymentPlan: 'installments',
       cardOnFileAuth: true,
+      cardVerificationToken: 'verf:store-token',
     })) as { amountChargedCents: number; scheduledChargeCount: number };
 
     // Installment 1 charged now at the discounted $264.
@@ -374,6 +382,23 @@ describe('createMusicTogetherRegistration', () => {
     await expect(
       run({ ...baseFamily, paymentPlan: 'installments', cardOnFileAuth: false })
     ).rejects.toThrow(/validation/);
+  });
+
+  it('rejects installments without a card verification token — before reserving a seat or touching Square', async () => {
+    mocks.sectionFindById.mockResolvedValue(openWithInstallments);
+    await expect(
+      run({
+        ...baseFamily,
+        paymentPlan: 'installments',
+        cardOnFileAuth: true,
+        // cardVerificationToken deliberately omitted — real Square can't vault
+        // a card on file without it.
+      })
+    ).rejects.toThrow(/card verification is required/i);
+    expect(mocks.txSet).not.toHaveBeenCalled();
+    expect(mocks.upsertByEmail).not.toHaveBeenCalled();
+    expect(mocks.createCardOnFile).not.toHaveBeenCalled();
+    expect(mocks.createPayment).not.toHaveBeenCalled();
   });
 
   it('cancels the reservation when payment fails', async () => {

@@ -106,6 +106,12 @@ export interface CreateCraftClubSubscriptionRequest {
   phone?: string;
   /** Nonce from the Square Web Payments SDK card tokenization. */
   paymentNonce: string;
+  /**
+   * STORE-intent verification token from `verifyBuyer` — required to vault the
+   * card on file for the subscription (real Square rejects the vault without
+   * it).
+   */
+  cardVerificationToken?: string;
 }
 
 export interface CreateCraftClubSubscriptionResponse {
@@ -177,6 +183,11 @@ export interface UpdateCraftClubPaymentMethodRequest {
   sessionToken: string;
   /** New nonce from the Square Web Payments SDK card tokenization. */
   paymentNonce: string;
+  /**
+   * STORE-intent verification token from `verifyBuyer` — required to vault the
+   * new card on file (real Square rejects the vault without it).
+   */
+  cardVerificationToken?: string;
 }
 
 export interface UpdateCraftClubPaymentMethodResponse {

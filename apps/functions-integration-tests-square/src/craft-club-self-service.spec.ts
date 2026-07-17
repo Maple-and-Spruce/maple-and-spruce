@@ -99,7 +99,11 @@ describe('Craft Club self-service', () => {
     // 5. Change the payment method (Square card-on-file + subscription update).
     const update = await callFunction({
       functionName: 'updateCraftClubPaymentMethod',
-      data: { sessionToken, paymentNonce: 'cnon:new-card' },
+      data: {
+        sessionToken,
+        paymentNonce: 'cnon:new-card',
+        cardVerificationToken: 'verf:store-token',
+      },
     });
     expect(update.status).toBe(200);
 

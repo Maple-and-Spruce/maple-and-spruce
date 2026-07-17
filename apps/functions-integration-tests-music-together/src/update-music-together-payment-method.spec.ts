@@ -178,7 +178,11 @@ describe('updateMusicTogetherPaymentMethod — end-to-end card replacement', () 
       UpdateMusicTogetherPaymentMethodResponse
     >({
       functionName: 'updateMusicTogetherPaymentMethod',
-      data: { sessionToken, paymentNonce: 'cnon:new-card' },
+      data: {
+        sessionToken,
+        paymentNonce: 'cnon:new-card',
+        cardVerificationToken: 'verf:store-token',
+      },
     });
 
     expect(result.status).toBe(200);
@@ -193,7 +197,13 @@ describe('updateMusicTogetherPaymentMethod — end-to-end card replacement', () 
     // MT Square mock saw a card create AND a disable of the old card. The card
     // id contains a colon; the SDK may URL-encode it, so match tolerantly.
     const cardReqs = await getSquareRequests('/v2/cards');
-    expect(cardReqs.some((r) => r.path === '/v2/cards')).toBe(true);
+    const createReq = cardReqs.find((r) => r.path === '/v2/cards');
+    expect(createReq).toBeDefined();
+    // The card vault request must carry the STORE-intent verification token —
+    // the mock now enforces this, mirroring real Square (#622).
+    expect(
+      (createReq?.body as Record<string, unknown>)['verification_token']
+    ).toBe('verf:store-token');
     const oldCardEncoded = encodeURIComponent(OLD_CARD_ID);
     expect(
       cardReqs.some(
@@ -210,7 +220,11 @@ describe('updateMusicTogetherPaymentMethod — end-to-end card replacement', () 
       UpdateMusicTogetherPaymentMethodResponse
     >({
       functionName: 'updateMusicTogetherPaymentMethod',
-      data: { sessionToken: 'not-a-real-session', paymentNonce: 'cnon:x' },
+      data: {
+        sessionToken: 'not-a-real-session',
+        paymentNonce: 'cnon:x',
+        cardVerificationToken: 'verf:store-token',
+      },
     });
     expect(result.status).not.toBe(200);
   });

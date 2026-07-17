@@ -48,11 +48,16 @@ vi.mock('@maple/react/registrations', () => ({
     afterCardContent,
   }: {
     onReady?: () => void;
-    onTokenizeRef: (fn: () => Promise<string>) => void;
+    onTokenizeRef: (
+      fn: () => Promise<{ nonce: string; verificationToken?: string }>
+    ) => void;
     afterCardContent?: React.ReactNode;
   }) => {
     useEffect(() => {
-      onTokenizeRef(async () => 'cnon:new-card');
+      onTokenizeRef(async () => ({
+        nonce: 'cnon:new-card',
+        verificationToken: 'verf:test-token',
+      }));
       onReady?.();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -135,6 +140,7 @@ describe('CraftClubManageWidget', () => {
       expect(calls['updateCraftClubPaymentMethod']).toMatchObject({
         sessionToken: 'sess-1',
         paymentNonce: 'cnon:new-card',
+        cardVerificationToken: 'verf:test-token',
       })
     );
   });

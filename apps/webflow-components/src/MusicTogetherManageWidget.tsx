@@ -29,6 +29,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
+import type { CardTokenizeResult } from '@maple/react/registrations';
 import type {
   RequestMusicTogetherManageLinkRequest,
   RequestMusicTogetherManageLinkResponse,
@@ -80,7 +81,7 @@ export function MusicTogetherManageWidget({
 
   // Save-card sub-flow
   const [cardReady, setCardReady] = useState(false);
-  const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
+  const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
   // Exchange the magic-link token for a session on mount.
   useEffect(() => {
@@ -138,7 +139,7 @@ export function MusicTogetherManageWidget({
     setError(null);
     setBusy(true);
     try {
-      const nonce = await tokenizeRef.current();
+      const { nonce, verificationToken } = await tokenizeRef.current();
       const call = httpsCallable<
         UpdateMusicTogetherPaymentMethodRequest,
         UpdateMusicTogetherPaymentMethodResponse
@@ -146,6 +147,7 @@ export function MusicTogetherManageWidget({
       const res = await call({
         sessionToken: sessionTokenRef.current,
         paymentNonce: nonce,
+        cardVerificationToken: verificationToken,
       });
       setRegistration(res.data.registration);
       setNewCardLast4(res.data.cardLast4 ?? null);
@@ -227,6 +229,10 @@ export function MusicTogetherManageWidget({
               applicationId={squareAppId}
               locationId={squareLocationId}
               totalCents={registration.nextInstallment?.amountCents ?? 0}
+              // Vaulting the replacement card needs a STORE-intent verifyBuyer
+              // token (real Square requirement for cards on file).
+              verifyBuyerForStore
+              billingContact={{ givenName: registration.parentName }}
               onReady={() => setCardReady(true)}
               onTokenizeRef={(fn) => {
                 tokenizeRef.current = fn;

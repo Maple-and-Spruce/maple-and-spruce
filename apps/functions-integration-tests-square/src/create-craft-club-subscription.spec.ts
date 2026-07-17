@@ -64,6 +64,7 @@ describe('createCraftClubSubscription', () => {
         email: APPROVED_EMAIL,
         name: 'Approved Member',
         paymentNonce: 'cnon:card-nonce-ok',
+        cardVerificationToken: 'verf:store-token',
       },
     });
 
@@ -117,6 +118,23 @@ describe('createCraftClubSubscription', () => {
         email: 'not-an-email',
         name: 'X',
         paymentNonce: 'cnon:card-nonce-ok',
+      },
+    });
+
+    expect(result.status).not.toBe(200);
+  });
+
+  it('rejects a subscription without a card verification token (real Square needs it to vault a card)', async () => {
+    const result = await callFunction<
+      CreateCraftClubSubscriptionRequest,
+      CreateCraftClubSubscriptionResponse
+    >({
+      functionName: 'createCraftClubSubscription',
+      data: {
+        email: APPROVED_EMAIL,
+        name: 'Approved Member',
+        paymentNonce: 'cnon:card-nonce-ok',
+        // cardVerificationToken deliberately omitted.
       },
     });
 

@@ -178,6 +178,12 @@ export interface CreateMusicTogetherRegistrationRequest {
   cardOnFileAuth?: boolean;
   /** Nonce from the Square Web Payments SDK card tokenization. */
   paymentNonce: string;
+  /**
+   * STORE-intent verification token from `verifyBuyer` — REQUIRED for the
+   * installment plan (the card is vaulted on file; real Square rejects the
+   * vault without it). Unused for pay-in-full.
+   */
+  cardVerificationToken?: string;
   notes?: string;
 }
 
@@ -338,6 +344,11 @@ export interface UpdateMusicTogetherPaymentMethodRequest {
   sessionToken: string;
   /** New nonce from the Square Web Payments SDK card tokenization. */
   paymentNonce: string;
+  /**
+   * STORE-intent verification token from `verifyBuyer` — required to vault the
+   * new card on file (real Square rejects the vault without it).
+   */
+  cardVerificationToken?: string;
 }
 
 export interface UpdateMusicTogetherPaymentMethodResponse {
