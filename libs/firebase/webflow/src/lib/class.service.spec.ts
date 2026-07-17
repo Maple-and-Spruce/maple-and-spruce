@@ -143,7 +143,7 @@ describe('mapClassToFieldData', () => {
 
     expect(
       mapClassToFieldData(mockClass, { isDev: false, registrationCount: 10 })['spots-display']
-    ).toBe('Class Full');
+    ).toBe('Waitlist Available');
   });
 
   it('sets isDev flag correctly', () => {

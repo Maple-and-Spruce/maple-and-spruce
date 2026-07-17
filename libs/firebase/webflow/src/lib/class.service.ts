@@ -142,7 +142,7 @@ export function mapClassToFieldData(
     : baseDuration;
 
   const spotsDisplay = spotsRemaining <= 0
-    ? 'Class Full'
+    ? 'Waitlist Available'
     : `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`;
 
   // Format date and time display values from sessions
