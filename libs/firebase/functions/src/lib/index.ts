@@ -22,6 +22,7 @@ export {
   createPublicFunction,
   createAuthenticatedFunction,
   createAdminFunction,
+  createRoleFunction,
   assertValid,
   runChecks,
   type FunctionContext,

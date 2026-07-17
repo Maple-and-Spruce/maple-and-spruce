@@ -5,14 +5,17 @@
  * Admin-only endpoint for viewing registration rosters.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
 import type {
   GetRegistrationsRequest,
   GetRegistrationsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getRegistrations = createAdminFunction<
+export const getRegistrations = createRoleFunction<
   GetRegistrationsRequest,
   GetRegistrationsResponse
 >(async (data) => {
@@ -24,4 +27,4 @@ export const getRegistrations = createAdminFunction<
   });
 
   return { registrations };
-});
+}, [Role.Admin, Role.Clerk]);

@@ -6,10 +6,11 @@
  * Deployed to us-east4 via CI/CD pipeline.
  */
 import {
-  createAdminFunction,
+  createRoleFunction,
   throwInvalidArgument,
   throwNotFound,
   throwValidationError,
+  Role,
 } from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
 import { registrationValidation } from '@maple/ts/validation';
@@ -18,7 +19,7 @@ import type {
   UpdateRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateRegistration = createAdminFunction<
+export const updateRegistration = createRoleFunction<
   UpdateRegistrationRequest,
   UpdateRegistrationResponse
 >(async (data) => {
@@ -45,4 +46,4 @@ export const updateRegistration = createAdminFunction<
   const registration = await RegistrationRepository.update(data);
 
   return { registration };
-});
+}, [Role.Admin, Role.Clerk]);

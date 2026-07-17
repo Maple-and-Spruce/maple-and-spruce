@@ -14,7 +14,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const createMusicTogetherSemester = Functions.endpoint
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.MtTeacher])
   .validating(musicTogetherSemesterValidation)
   .handle<
     CreateMusicTogetherSemesterRequest,

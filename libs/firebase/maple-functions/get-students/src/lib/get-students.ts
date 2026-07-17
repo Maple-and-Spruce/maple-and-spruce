@@ -4,14 +4,17 @@
  * Retrieves music lesson students, optionally filtered by status, primary
  * teacher, or Hope Scholarship flag.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { StudentRepository } from '@maple/firebase/database';
 import type {
   GetStudentsRequest,
   GetStudentsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getStudents = createAuthenticatedFunction<
+export const getStudents = createRoleFunction<
   GetStudentsRequest,
   GetStudentsResponse
 >(async (data) => {
@@ -22,4 +25,4 @@ export const getStudents = createAuthenticatedFunction<
   });
 
   return { students };
-});
+}, [Role.Admin, Role.LessonTeacher]);

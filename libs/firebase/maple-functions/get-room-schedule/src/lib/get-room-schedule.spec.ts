@@ -22,7 +22,13 @@ vi.mock('@maple/firebase/database', () => ({
 
 // Unwrap createAdminFunction so we can invoke the handler directly
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: (handler: (data: unknown) => unknown) => handler,
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  createRoleFunction: (handler: (data: unknown) => unknown) => handler,
   throwInvalidArgument: (message: string): never => {
     throw new Error(message);
   },

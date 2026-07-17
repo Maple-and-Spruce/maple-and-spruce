@@ -5,7 +5,13 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: <Req, Res>(handler: (data: Req) => Promise<Res>) =>
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  createRoleFunction: <Req, Res>(handler: (data: Req) => Promise<Res>) =>
     handler,
 }));
 

@@ -9,9 +9,10 @@
  * 4. Decrements variant quantity on the product
  */
 import {
-  createAdminFunction,
+  createRoleFunction,
   throwInvalidArgument,
   throwNotFound,
+  Role,
 } from '@maple/firebase/functions';
 import {
   ProductRepository,
@@ -30,7 +31,7 @@ import type {
   RecordProductSaleResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const recordSale = createAdminFunction<
+export const recordSale = createRoleFunction<
   RecordProductSaleRequest,
   RecordProductSaleResponse
 >(async (data) => {
@@ -130,4 +131,4 @@ export const recordSale = createAdminFunction<
   );
 
   return { sale };
-});
+}, [Role.Admin, Role.Clerk]);

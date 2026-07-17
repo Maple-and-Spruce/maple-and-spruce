@@ -4,7 +4,11 @@
  * Updates an existing section. Validates the merged record so partial edits
  * are checked against the full shape. Deployed to us-east4 via CI/CD (maple-core).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { MusicTogetherSectionRepository } from '@maple/firebase/database';
 import { musicTogetherSectionValidation } from '@maple/ts/validation';
 import type {
@@ -12,7 +16,7 @@ import type {
   UpdateMusicTogetherSectionResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateMusicTogetherSection = createAdminFunction<
+export const updateMusicTogetherSection = createRoleFunction<
   UpdateMusicTogetherSectionRequest,
   UpdateMusicTogetherSectionResponse
 >(async (data) => {
@@ -34,4 +38,4 @@ export const updateMusicTogetherSection = createAdminFunction<
 
   const section = await MusicTogetherSectionRepository.update(data);
   return { section };
-});
+}, [Role.Admin, Role.MtTeacher]);

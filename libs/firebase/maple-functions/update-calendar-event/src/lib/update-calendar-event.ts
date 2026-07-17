@@ -4,7 +4,10 @@
  * Updates an existing calendar event.
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import { calendarEventValidation } from '@maple/ts/validation';
 import type {
@@ -12,7 +15,7 @@ import type {
   UpdateCalendarEventResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateCalendarEvent = createAdminFunction<
+export const updateCalendarEvent = createRoleFunction<
   UpdateCalendarEventRequest,
   UpdateCalendarEventResponse
 >(async (data) => {
@@ -36,4 +39,4 @@ export const updateCalendarEvent = createAdminFunction<
   const calendarEvent = await CalendarEventRepository.update(data);
 
   return { calendarEvent };
-});
+}, [Role.Admin, Role.MtTeacher, Role.Clerk, Role.LessonTeacher]);

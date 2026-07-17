@@ -5,7 +5,11 @@
  * are checked against the full shape. Deployed to us-east4 via CI/CD
  * (maple-core).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { MusicTogetherSemesterRepository } from '@maple/firebase/database';
 import { musicTogetherSemesterValidation } from '@maple/ts/validation';
 import type {
@@ -13,7 +17,7 @@ import type {
   UpdateMusicTogetherSemesterResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateMusicTogetherSemester = createAdminFunction<
+export const updateMusicTogetherSemester = createRoleFunction<
   UpdateMusicTogetherSemesterRequest,
   UpdateMusicTogetherSemesterResponse
 >(async (data) => {
@@ -35,4 +39,4 @@ export const updateMusicTogetherSemester = createAdminFunction<
 
   const semester = await MusicTogetherSemesterRepository.update(data);
   return { semester };
-});
+}, [Role.Admin, Role.MtTeacher]);

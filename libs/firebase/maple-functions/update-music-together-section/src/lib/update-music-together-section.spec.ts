@@ -7,7 +7,13 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: (h: unknown) => h,
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  createRoleFunction: (h: unknown) => h,
   throwNotFound: (entity: string, id: string) => {
     throw new Error(`${entity} not found: ${id}`);
   },

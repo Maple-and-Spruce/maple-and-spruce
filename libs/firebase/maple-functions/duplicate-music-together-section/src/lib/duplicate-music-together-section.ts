@@ -23,9 +23,10 @@
  * so pre-filling the schedule is the point.
  */
 import {
-  createAdminFunction,
+  createRoleFunction,
   throwInvalidArgument,
   throwNotFound,
+  Role,
 } from '@maple/firebase/functions';
 import { MusicTogetherSectionRepository } from '@maple/firebase/database';
 import type { CreateMusicTogetherSectionInput } from '@maple/ts/domain';
@@ -34,7 +35,7 @@ import type {
   DuplicateMusicTogetherSectionResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const duplicateMusicTogetherSection = createAdminFunction<
+export const duplicateMusicTogetherSection = createRoleFunction<
   DuplicateMusicTogetherSectionRequest,
   DuplicateMusicTogetherSectionResponse
 >(async (data) => {
@@ -69,4 +70,4 @@ export const duplicateMusicTogetherSection = createAdminFunction<
   const created = await MusicTogetherSectionRepository.create(input);
 
   return { section: created };
-});
+}, [Role.Admin, Role.MtTeacher]);

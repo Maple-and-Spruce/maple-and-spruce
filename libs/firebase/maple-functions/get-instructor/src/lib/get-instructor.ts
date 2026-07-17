@@ -3,14 +3,18 @@
  *
  * Retrieves a single instructor by ID.
  */
-import { createAuthenticatedFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { InstructorRepository } from '@maple/firebase/database';
 import type {
   GetInstructorRequest,
   GetInstructorResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getInstructor = createAuthenticatedFunction<
+export const getInstructor = createRoleFunction<
   GetInstructorRequest,
   GetInstructorResponse
 >(async (data) => {
@@ -21,4 +25,4 @@ export const getInstructor = createAuthenticatedFunction<
   }
 
   return { instructor };
-});
+}, [Role.Admin, Role.LessonTeacher]);

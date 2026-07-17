@@ -69,6 +69,7 @@ import {
   createPublicFunction,
   createAuthenticatedFunction,
   createAdminFunction,
+  createRoleFunction,
   isOriginAllowed,
 } from './functions.utility';
 import {
@@ -475,6 +476,24 @@ describe('Functions.endpoint (chain + handle)', () => {
     expect(mocks.hasAnyRole).toHaveBeenCalledWith('stephanie-uid', [
       Role.Admin,
       Role.MtTeacher,
+    ]);
+  });
+
+  it('createRoleFunction: passes the role set to the any-of check', async () => {
+    mocks.verifyIdToken.mockResolvedValue({ uid: 'nathan-uid' });
+    mocks.hasAnyRole.mockResolvedValue(true);
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = createRoleFunction(handler, [Role.Admin, Role.Clerk]);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(mocks.hasAnyRole).toHaveBeenCalledWith('nathan-uid', [
+      Role.Admin,
+      Role.Clerk,
     ]);
   });
 

@@ -6,7 +6,13 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAuthenticatedFunction: (h: unknown) => h,
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  createRoleFunction: (h: unknown) => h,
 }));
 vi.mock('@maple/firebase/database', () => ({
   MusicTogetherInterestRepository: { findAll: mocks.interestFindAll },

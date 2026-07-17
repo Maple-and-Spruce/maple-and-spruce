@@ -46,7 +46,7 @@ const SQUARE_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 export const uploadProductImage = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.Clerk])
   .handle<UploadProductImageRequest, UploadProductImageResponse>(
     async (data, _context, secrets, strings) => {
       const { productId, imageBase64, contentType, caption } = data;

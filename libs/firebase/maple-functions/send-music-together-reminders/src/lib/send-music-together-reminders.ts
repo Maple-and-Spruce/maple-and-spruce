@@ -274,7 +274,7 @@ export const sendMusicTogetherReminders = onSchedule(
 
 /** Admin-callable manual trigger — same logic on demand (and drives tests). */
 export const triggerMusicTogetherReminders = Functions.endpoint
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.MtTeacher])
   .handle<Record<string, never>, SendMusicTogetherRemindersResult>(async () => {
     return runSendMusicTogetherReminders(new Date());
   });

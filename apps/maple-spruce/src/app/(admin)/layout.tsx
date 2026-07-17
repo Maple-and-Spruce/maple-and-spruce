@@ -1,8 +1,8 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { RoleGuard, RolesProvider } from '@maple/react/auth';
-import { AppShell } from '../../components/layout';
+import { RolesProvider } from '@maple/react/auth';
+import { AppShell, PathRoleGuard } from '../../components/layout';
 
 /**
  * Layout for the admin app's authenticated routes.
@@ -13,9 +13,9 @@ import { AppShell } from '../../components/layout';
  * flashing the loading nav before the response resolved.
  *
  * RolesProvider fetches getMyRoles ONCE; both the nav (role filtering in
- * AppShellWrapper) and the gate (RoleGuard) read from it. Any user with
- * at least one role passes the gate; what they can see/do is scoped by
- * nav filtering here and `requiringRole` server-side.
+ * AppShellWrapper) and the gate (PathRoleGuard) read from it. The guard
+ * resolves the current route to its allowed roles via the same map that
+ * filters the nav; real enforcement is `requiringRole` server-side.
  */
 export default function AdminGroupLayout({
   children,
@@ -25,7 +25,7 @@ export default function AdminGroupLayout({
   return (
     <RolesProvider>
       <AppShell>
-        <RoleGuard>{children}</RoleGuard>
+        <PathRoleGuard>{children}</PathRoleGuard>
       </AppShell>
     </RolesProvider>
   );

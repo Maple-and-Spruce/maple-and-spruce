@@ -26,7 +26,7 @@ import type {
 export const cancelRegistration = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.Clerk])
   .handle<CancelRegistrationRequest, CancelRegistrationResponse>(
     async (data, _context, secrets, strings) => {
       // The `registrationValidation` Vest suite covers registration form

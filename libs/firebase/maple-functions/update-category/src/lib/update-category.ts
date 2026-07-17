@@ -3,7 +3,11 @@
  *
  * Updates an existing category (admin only).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { CategoryRepository } from '@maple/firebase/database';
 import { categoryValidation } from '@maple/ts/validation';
 import type {
@@ -11,7 +15,7 @@ import type {
   UpdateCategoryResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateCategory = createAdminFunction<
+export const updateCategory = createRoleFunction<
   UpdateCategoryRequest,
   UpdateCategoryResponse
 >(async (data) => {
@@ -43,4 +47,4 @@ export const updateCategory = createAdminFunction<
   const category = await CategoryRepository.update(data);
 
   return { category };
-});
+}, [Role.Admin, Role.Clerk]);

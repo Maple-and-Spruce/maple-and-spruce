@@ -10,7 +10,11 @@
  *
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import {
   MusicTogetherSectionRepository,
   MusicTogetherRegistrationRepository,
@@ -23,7 +27,7 @@ import type {
   MusicTogetherRosterEntry,
 } from '@maple/ts/firebase/api-types';
 
-export const getMusicTogetherRoster = createAdminFunction<
+export const getMusicTogetherRoster = createRoleFunction<
   GetMusicTogetherRosterRequest,
   GetMusicTogetherRosterResponse
 >(async (data) => {
@@ -66,4 +70,4 @@ export const getMusicTogetherRoster = createAdminFunction<
   );
 
   return { section, entries };
-});
+}, [Role.Admin, Role.MtTeacher]);

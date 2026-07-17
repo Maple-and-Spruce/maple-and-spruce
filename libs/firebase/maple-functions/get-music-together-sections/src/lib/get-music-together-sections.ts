@@ -7,7 +7,10 @@
  * section's overall status is DERIVED client-side from its explicit controls.
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import {
   MusicTogetherSectionRepository,
   MusicTogetherRegistrationRepository,
@@ -19,7 +22,7 @@ import type {
   MusicTogetherSectionCounts,
 } from '@maple/ts/firebase/api-types';
 
-export const getMusicTogetherSections = createAuthenticatedFunction<
+export const getMusicTogetherSections = createRoleFunction<
   GetMusicTogetherSectionsRequest,
   GetMusicTogetherSectionsResponse
 >(async (data) => {
@@ -44,4 +47,4 @@ export const getMusicTogetherSections = createAuthenticatedFunction<
   }
 
   return { sections, counts };
-});
+}, [Role.Admin, Role.MtTeacher]);

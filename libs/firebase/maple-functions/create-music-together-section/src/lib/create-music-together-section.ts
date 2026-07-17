@@ -13,7 +13,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const createMusicTogetherSection = Functions.endpoint
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.MtTeacher])
   .validating(musicTogetherSectionValidation)
   .handle<
     CreateMusicTogetherSectionRequest,

@@ -26,7 +26,7 @@ import type {
 export const createProduct = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.Clerk])
   .handle<CreateProductRequest, CreateProductResponse>(
     async (data, _context, secrets, strings) => {
       console.log('createProduct called with:', {

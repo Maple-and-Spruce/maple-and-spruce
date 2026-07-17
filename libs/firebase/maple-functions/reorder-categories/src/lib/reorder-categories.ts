@@ -4,14 +4,17 @@
  * Reorders all categories by updating their order values based on position in the provided array.
  * This is an admin-only operation that uses batch writes for atomicity.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { CategoryRepository } from '@maple/firebase/database';
 import type {
   ReorderCategoriesRequest,
   ReorderCategoriesResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const reorderCategories = createAdminFunction<
+export const reorderCategories = createRoleFunction<
   ReorderCategoriesRequest,
   ReorderCategoriesResponse
 >(async (data) => {
@@ -41,4 +44,4 @@ export const reorderCategories = createAdminFunction<
   const categories = await CategoryRepository.reorderAll(categoryIds);
 
   return { categories };
-});
+}, [Role.Admin, Role.Clerk]);

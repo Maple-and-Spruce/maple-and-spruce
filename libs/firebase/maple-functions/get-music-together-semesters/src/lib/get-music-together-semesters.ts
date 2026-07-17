@@ -6,17 +6,20 @@
  * is DERIVED client-side from each term's dates. Deployed to us-east4 via CI/CD
  * (maple-core codebase).
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { MusicTogetherSemesterRepository } from '@maple/firebase/database';
 import type {
   GetMusicTogetherSemestersRequest,
   GetMusicTogetherSemestersResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getMusicTogetherSemesters = createAuthenticatedFunction<
+export const getMusicTogetherSemesters = createRoleFunction<
   GetMusicTogetherSemestersRequest,
   GetMusicTogetherSemestersResponse
 >(async () => {
   const semesters = await MusicTogetherSemesterRepository.findAll();
   return { semesters };
-});
+}, [Role.Admin, Role.MtTeacher]);

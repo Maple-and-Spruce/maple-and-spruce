@@ -29,7 +29,7 @@ interface SyncInventoryToSquareResponse {
 export const syncInventoryToSquare = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.Clerk])
   .handle<SyncInventoryToSquareRequest, SyncInventoryToSquareResponse>(
     async (data, _context, secrets, strings) => {
       const { productId } = data;

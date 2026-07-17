@@ -4,14 +4,18 @@
  * Deletes a category (admin only).
  * Will fail if products are using this category.
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  throwNotFound,
+  Role,
+} from '@maple/firebase/functions';
 import { CategoryRepository } from '@maple/firebase/database';
 import type {
   DeleteCategoryRequest,
   DeleteCategoryResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const deleteCategory = createAdminFunction<
+export const deleteCategory = createRoleFunction<
   DeleteCategoryRequest,
   DeleteCategoryResponse
 >(async (data) => {
@@ -35,4 +39,4 @@ export const deleteCategory = createAdminFunction<
   await CategoryRepository.delete(data.id);
 
   return { success: true };
-});
+}, [Role.Admin, Role.Clerk]);
