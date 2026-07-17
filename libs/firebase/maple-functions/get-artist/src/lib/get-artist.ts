@@ -3,14 +3,16 @@
  *
  * Retrieves a single artist by ID.
  */
-import { createAuthenticatedFunction, throwNotFound } from '@maple/firebase/functions';
+import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
 import { ArtistRepository } from '@maple/firebase/database';
 import type {
   GetArtistRequest,
   GetArtistResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getArtist = createAuthenticatedFunction<
+// Admin-only, matching getArtists — Artists is an Admin-group area
+// (scoped-roles matrix, epic #617). Was auth-only before the analyzer (#620).
+export const getArtist = createAdminFunction<
   GetArtistRequest,
   GetArtistResponse
 >(async (data) => {

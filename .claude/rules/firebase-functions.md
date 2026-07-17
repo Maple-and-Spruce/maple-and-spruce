@@ -83,6 +83,17 @@ warmup(functions, 'calculateRegistrationCost', 'createRegistration');
 
 **Don't**: schedule a recurring Cloud Scheduler ping to keep functions warm 24/7. That bills idle time when no users are visiting. Warmup should be driven by user presence on the page.
 
+## Role Gating (callable-roles analyzer)
+
+Every function exported from a codebase entry point **MUST** either declare a role (`.requiringRole([...])`, `createAdminFunction`, or `createRoleFunction`), be a Firestore/scheduled trigger, or be explicitly allowlisted as public/auth-only in `tools/check-callable-roles.ts`. This prevents a new callable shipping reachable without a role check (how the singular `getArtist`/`getStudent` were left auth-only until #620). Scoped-roles matrix: epic #617; authoritative access table: `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
+
+```bash
+npx tsx tools/check-callable-roles.ts            # exits non-zero on any un-gated, un-allowlisted callable
+npx tsx tools/check-callable-roles.ts --report   # prints every function + its gate classification
+```
+
+CI runs this on every PR (`build-check.yml` → `callable-roles` job). To add an intentionally public or auth-only endpoint, add it to the matching allowlist in the analyzer **with a comment saying why** — that diff is the reviewable record.
+
 ## Input Validation
 
 Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with `staticSuite` (never `create`) so they're pure functions — no retained state across invocations, safe to call from warm cloud function containers without `.reset()`.
