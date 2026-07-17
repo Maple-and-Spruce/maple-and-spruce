@@ -15,6 +15,10 @@ import { useAuth } from './useAuth';
  *
  * Calls the checkAdminStatus Cloud Function after authentication.
  * Re-checks when the user changes.
+ *
+ * @deprecated Use useRoles() (from RolesProvider) / useMyRoles() —
+ * roles include admin plus the scoped roles (mt-teacher, clerk,
+ * lesson-teacher).
  */
 export function useAdminStatus() {
   const { user, isLoading: authLoading } = useAuth();

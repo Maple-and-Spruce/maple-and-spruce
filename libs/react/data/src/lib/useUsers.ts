@@ -3,7 +3,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
-import type { AppUser, RequestState } from '@maple/ts/domain';
+import type {
+  AppUser,
+  RequestState,
+  ScopedUserRole,
+} from '@maple/ts/domain';
 import type {
   GetUsersRequest,
   GetUsersResponse,
@@ -11,6 +15,10 @@ import type {
   GrantAdminRoleResponse,
   RevokeAdminRoleRequest,
   RevokeAdminRoleResponse,
+  GrantRoleRequest,
+  GrantRoleResponse,
+  RevokeRoleRequest,
+  RevokeRoleResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -107,6 +115,52 @@ export function useUsers() {
     );
   }, []);
 
+  const grantRole = useCallback(
+    async (uid: string, role: ScopedUserRole): Promise<void> => {
+      const fn = httpsCallable<GrantRoleRequest, GrantRoleResponse>(
+        getMapleFunctions(),
+        'grantRole'
+      );
+      await fn({ uid, role });
+      setUsersState((prev) =>
+        prev.status === 'success'
+          ? {
+              ...prev,
+              data: prev.data.map((u) =>
+                u.uid === uid && !u.roles.includes(role)
+                  ? { ...u, roles: [...u.roles, role] }
+                  : u
+              ),
+            }
+          : prev
+      );
+    },
+    []
+  );
+
+  const revokeRole = useCallback(
+    async (uid: string, role: ScopedUserRole): Promise<void> => {
+      const fn = httpsCallable<RevokeRoleRequest, RevokeRoleResponse>(
+        getMapleFunctions(),
+        'revokeRole'
+      );
+      await fn({ uid, role });
+      setUsersState((prev) =>
+        prev.status === 'success'
+          ? {
+              ...prev,
+              data: prev.data.map((u) =>
+                u.uid === uid
+                  ? { ...u, roles: u.roles.filter((r) => r !== role) }
+                  : u
+              ),
+            }
+          : prev
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
@@ -117,5 +171,7 @@ export function useUsers() {
     fetchUsers,
     grantAdmin,
     revokeAdmin,
+    grantRole,
+    revokeRole,
   };
 }

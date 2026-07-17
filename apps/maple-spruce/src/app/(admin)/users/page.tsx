@@ -2,13 +2,14 @@
 
 import { useCallback, useState } from 'react';
 import { Alert, Box, CircularProgress, Stack, Typography } from '@mui/material';
-import type { AppUser } from '@maple/ts/domain';
+import type { AppUser, ScopedUserRole } from '@maple/ts/domain';
 import { UserList, UserRolesDialog } from '@maple/react/users';
 import { useAuth, useUsers } from '../../../hooks';
 
 export default function UsersPage() {
   const { user } = useAuth();
-  const { usersState, grantAdmin, revokeAdmin } = useUsers();
+  const { usersState, grantAdmin, revokeAdmin, grantRole, revokeRole } =
+    useUsers();
 
   const [selected, setSelected] = useState<AppUser | null>(null);
 
@@ -34,6 +35,30 @@ export default function UsersPage() {
     [revokeAdmin]
   );
 
+  const handleGrantRole = useCallback(
+    async (uid: string, role: ScopedUserRole) => {
+      await grantRole(uid, role);
+      setSelected((prev) =>
+        prev?.uid === uid && !prev.roles.includes(role)
+          ? { ...prev, roles: [...prev.roles, role] }
+          : prev
+      );
+    },
+    [grantRole]
+  );
+
+  const handleRevokeRole = useCallback(
+    async (uid: string, role: ScopedUserRole) => {
+      await revokeRole(uid, role);
+      setSelected((prev) =>
+        prev?.uid === uid
+          ? { ...prev, roles: prev.roles.filter((r) => r !== role) }
+          : prev
+      );
+    },
+    [revokeRole]
+  );
+
   return (
     <>
       <Box sx={{ mb: 3 }}>
@@ -41,8 +66,9 @@ export default function UsersPage() {
           Users
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Everyone who&apos;s signed up to the admin app. Grant admin
-          access to those who need it.
+          Everyone who&apos;s signed up to the admin app. Grant admin or a
+          scoped role (MT teacher, clerk, lesson teacher) to those who need
+          it.
         </Typography>
       </Box>
 
@@ -73,6 +99,8 @@ export default function UsersPage() {
         onClose={() => setSelected(null)}
         onGrantAdmin={handleGrantAdmin}
         onRevokeAdmin={handleRevokeAdmin}
+        onGrantRole={handleGrantRole}
+        onRevokeRole={handleRevokeRole}
       />
     </>
   );

@@ -1125,6 +1125,37 @@ Create a dedicated Nx app (`apps/functions-integration-tests/`) that tests Cloud
 
 ---
 
+## ADR-028: Plain RBAC with Firestore Role Docs (not custom claims, ABAC, or ReBAC)
+
+**Status:** Accepted
+**Date:** 2026-07-16
+
+### Context
+The portal needs scoped access for more kinds of staff: Stephanie manages only Music Together, Nathan is a clerk (store/POS/registrations) *and* a lesson teacher, and future lesson teachers should read all lessons but mutate only their own. Access was binary admin (`admins/{uid}` doc existence). Researched RBAC vs ABAC vs ReBAC/Zanzibar (OpenFGA, SpiceDB) vs policy libraries (Cedar, Casbin) vs SaaS authz, and Firestore role docs vs Firebase custom claims, grounded in this codebase (epic #617).
+
+### Decision
+Plain RBAC: a `Role` enum (`admin`, `mt-teacher`, `clerk`, `lesson-teacher`), a `userRoles/{uid}` Firestore doc holding a roles array (multi-role, any-of checks via `requiringRole([...])`), with `admins/{uid}` remaining authoritative for admin. The one record-level rule — lesson teachers mutate only their own lessons — is an ownership predicate (`assertOwnerOrAdmin`-style helper) layered on the role gate, not a new authorization model. Client role state comes from a single `getMyRoles` callable via `RolesProvider`; nav filtering is UX only, enforcement is server-side per function.
+
+### Rationale
+- ~4 stable roles mapping 1:1 to job functions, <10 users, single tenant: the textbook RBAC profile
+- One enforcement point (the callable FunctionBuilder) — the roles check lands in one file and is trivially testable
+- **Custom claims' main benefit is moot here**: the client has zero direct Firestore reads (all data flows through callables; `firestore.rules` is deny-all), so there is no rules integration to gain. The doc gives instant revocation (claims lag up to ~1h on token TTL), console visibility, and is cost-neutral (the per-invocation `admins/{uid}` read already existed)
+- An ownership check is one foreign-key comparison; a relationship store (ReBAC) or policy DSL (ABAC/Cedar) to express one `if` is pure overhead
+
+### Alternatives Considered
+- **Firebase custom claims**: zero-read checks, but stale up to a token refresh, invisible in the console, and needs sync plumbing; its rules-integration advantage doesn't apply to this architecture
+- **ReBAC / Zanzibar (OpenFGA, SpiceDB)**: built for per-object sharing graphs; requires a sidecar service and tuple sync — operational cost far exceeds benefit at this scale
+- **ABAC / policy libraries (Cedar, Casbin, Oso)**: no context/time/tenant conditions exist to express; adds a second language to review
+- **SaaS authz (Permit.io, AWS Verified Permissions)**: external dependency + latency in the hot path of cold-start-sensitive callables
+
+### Consequences
+- Scoping a function to roles is a one-line `requiringRole([...])` change (#615)
+- Phase-2 lesson ownership needs a teacher↔uid link on the instructor record (#616)
+- A CI analyzer should assert every exported callable declares a role or sits on an explicit public allowlist (#620)
+- Revisit if: >8–10 roles / one-off permission combos (→ policy library), per-resource grants or customer-scoped logins (→ ReBAC), multi-tenancy, or the client regains direct Firestore reads (→ reopen custom claims)
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1148,4 +1179,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-03-30 (ADR-027 added for integration testing with Firebase emulators)*
+*Last updated: 2026-07-16 (ADR-028 added for plain RBAC with Firestore role docs)*
