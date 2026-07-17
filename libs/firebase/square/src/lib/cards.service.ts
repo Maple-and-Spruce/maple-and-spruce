@@ -7,7 +7,8 @@
  *
  * @see https://developer.squareup.com/docs/cards-api/overview
  */
-import { SquareClient, Square } from 'square';
+import { SquareClient, Square, SquareError } from 'square';
+import { PaymentError, getPaymentErrorMessage } from './payments.service';
 
 export interface CreateCardOnFileInput {
   /** Single-use nonce from the Web Payments SDK `card.tokenize()`. */
@@ -43,15 +44,25 @@ export class CardsService {
   async createCardOnFile(
     input: CreateCardOnFileInput
   ): Promise<CreateCardOnFileResult> {
-    const response = await this.client.cards.create({
-      idempotencyKey: input.idempotencyKey,
-      sourceId: input.sourceId,
-      verificationToken: input.verificationToken,
-      card: {
-        customerId: input.customerId,
-        cardholderName: input.cardholderName,
-      },
-    });
+    let response;
+    try {
+      response = await this.client.cards.create({
+        idempotencyKey: input.idempotencyKey,
+        sourceId: input.sourceId,
+        verificationToken: input.verificationToken,
+        card: {
+          customerId: input.customerId,
+          cardholderName: input.cardholderName,
+        },
+      });
+    } catch (error) {
+      // The SDK throws SquareError on HTTP-level failures (4xx/5xx) — the
+      // real-Square vault-rejection path. Preserve the Square error code +
+      // detail as a PaymentError so callers surface it (a raw throw here
+      // was previously swallowed into a generic "Unable to process payment"
+      // with no squareErrorCode, hiding why real Square rejected the vault).
+      throw toCardPaymentError(error);
+    }
 
     throwIfErrors(response.errors, 'create card');
 
@@ -85,8 +96,38 @@ function throwIfErrors(
   operation: string
 ): void {
   if (!errors || errors.length === 0) return;
-  const msg = errors
+  // 200-with-errors path (rare). Preserve the Square code so callers can
+  // discriminate; the message carries Square's detail for logs + customers.
+  const detail = errors
     .map((e) => e.detail || e.code || 'Unknown error')
     .join('; ');
-  throw new Error(`Square ${operation} error: ${msg}`);
+  throw new PaymentError(
+    `Square ${operation} error: ${detail}`,
+    errors[0]?.code
+  );
+}
+
+/**
+ * Map a thrown Cards-API error into a PaymentError that keeps Square's error
+ * code and a customer-facing message. SquareError (HTTP failures) carries the
+ * `errors[]` array; anything else falls back to a generic vault message.
+ */
+function toCardPaymentError(error: unknown): PaymentError {
+  if (error instanceof SquareError) {
+    const squareErrors = error.errors ?? [];
+    const message =
+      squareErrors.length > 0
+        ? getPaymentErrorMessage(squareErrors)
+        : error.message ||
+          'Unable to store your card. Please try a different card.';
+    return new PaymentError(message, squareErrors[0]?.code);
+  }
+  if (error instanceof PaymentError) {
+    return error;
+  }
+  const message =
+    error instanceof Error
+      ? error.message
+      : 'Unable to store your card. Please try a different card.';
+  return new PaymentError(message);
 }
