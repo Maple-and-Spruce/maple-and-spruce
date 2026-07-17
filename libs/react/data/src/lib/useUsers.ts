@@ -46,6 +46,32 @@ function hydrateUser(raw: AppUser): AppUser {
 }
 
 /**
+ * Optimistic-update helpers for the users list. Top-level (not inline in
+ * the setState callbacks) so the state updaters stay shallow.
+ */
+function withRoleAdded(
+  users: AppUser[],
+  uid: string,
+  role: ScopedUserRole
+): AppUser[] {
+  return users.map((u) =>
+    u.uid === uid && !u.roles.includes(role)
+      ? { ...u, roles: [...u.roles, role] }
+      : u
+  );
+}
+
+function withRoleRemoved(
+  users: AppUser[],
+  uid: string,
+  role: ScopedUserRole
+): AppUser[] {
+  return users.map((u) =>
+    u.uid === uid ? { ...u, roles: u.roles.filter((r) => r !== role) } : u
+  );
+}
+
+/**
  * Hook for the admin /users page.
  *
  * Returns the list of all Firebase Auth users with their admin status,
@@ -124,14 +150,7 @@ export function useUsers() {
       await fn({ uid, role });
       setUsersState((prev) =>
         prev.status === 'success'
-          ? {
-              ...prev,
-              data: prev.data.map((u) =>
-                u.uid === uid && !u.roles.includes(role)
-                  ? { ...u, roles: [...u.roles, role] }
-                  : u
-              ),
-            }
+          ? { ...prev, data: withRoleAdded(prev.data, uid, role) }
           : prev
       );
     },
@@ -147,14 +166,7 @@ export function useUsers() {
       await fn({ uid, role });
       setUsersState((prev) =>
         prev.status === 'success'
-          ? {
-              ...prev,
-              data: prev.data.map((u) =>
-                u.uid === uid
-                  ? { ...u, roles: u.roles.filter((r) => r !== role) }
-                  : u
-              ),
-            }
+          ? { ...prev, data: withRoleRemoved(prev.data, uid, role) }
           : prev
       );
     },
