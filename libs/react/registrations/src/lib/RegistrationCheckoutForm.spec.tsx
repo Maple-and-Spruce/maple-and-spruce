@@ -53,8 +53,10 @@ let capturedDigitalWalletTokenCallback: ((token: string) => void) | undefined;
 // Allow individual tests to override how the mocked tokenize function
 // behaves (e.g. to keep the promise pending and simulate Square's SDK
 // taking a moment to produce a nonce). Default is an instant resolve.
-let mockTokenizeImpl: () => Promise<string> = () =>
-  Promise.resolve('test-nonce');
+let mockTokenizeImpl: () => Promise<{
+  nonce: string;
+  verificationToken?: string;
+}> = () => Promise.resolve({ nonce: 'test-nonce' });
 
 // Mock SquareCardForm — the real one loads Square's Web Payments SDK
 // from a CDN, which isn't available in jsdom. We emulate the minimum
@@ -68,7 +70,9 @@ vi.mock('./SquareCardForm', () => ({
     afterCardContent,
   }: {
     onReady?: () => void;
-    onTokenizeRef: (fn: () => Promise<string>) => void;
+    onTokenizeRef: (
+      fn: () => Promise<{ nonce: string; verificationToken?: string }>
+    ) => void;
     onDigitalWalletToken?: (token: string) => void;
     afterCardContent?: React.ReactNode;
   }) => {
@@ -234,9 +238,9 @@ describe('RegistrationCheckoutForm submit flow', () => {
     // Square's tokenize call is the first await in the click handler. Hold
     // its promise pending so we can observe the button state *before* the
     // backend onSubmit is ever reached.
-    let resolveTokenize!: (nonce: string) => void;
+    let resolveTokenize!: (result: { nonce: string }) => void;
     mockTokenizeImpl = () =>
-      new Promise<string>((resolve) => {
+      new Promise<{ nonce: string }>((resolve) => {
         resolveTokenize = resolve;
       });
 
@@ -279,7 +283,7 @@ describe('RegistrationCheckoutForm submit flow', () => {
 
     // Resolve tokenize → onSubmit runs → onSuccess fires.
     await act(async () => {
-      resolveTokenize('square-nonce');
+      resolveTokenize({ nonce: 'square-nonce' });
     });
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));

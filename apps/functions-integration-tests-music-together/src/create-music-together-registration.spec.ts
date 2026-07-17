@@ -132,6 +132,7 @@ describe('createMusicTogetherRegistration', () => {
         email: 'installments@test.com',
         paymentPlan: 'installments',
         cardOnFileAuth: true,
+        cardVerificationToken: 'verf:store-token',
       }),
     });
 
@@ -194,6 +195,7 @@ describe('createMusicTogetherRegistration', () => {
         email: 'threekids@test.com',
         paymentPlan: 'installments',
         cardOnFileAuth: true,
+        cardVerificationToken: 'verf:store-token',
         children: [
           { name: 'Sky', dob: '2023-04-01' },
           { name: 'River', dob: '2024-05-02' },
@@ -239,6 +241,19 @@ describe('createMusicTogetherRegistration', () => {
         email: 'noauth@test.com',
         paymentPlan: 'installments',
         cardOnFileAuth: false,
+      }),
+    });
+    expect(result.status).not.toBe(200);
+  });
+
+  it('rejects installments without a card verification token (real Square needs it to vault a card)', async () => {
+    const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'noverify@test.com',
+        paymentPlan: 'installments',
+        cardOnFileAuth: true,
+        // cardVerificationToken deliberately omitted.
       }),
     });
     expect(result.status).not.toBe(200);

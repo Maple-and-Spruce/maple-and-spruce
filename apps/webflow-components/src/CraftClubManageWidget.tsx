@@ -23,6 +23,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { theme } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
+import type { CardTokenizeResult } from '@maple/react/registrations';
 import {
   CRAFT_CLUB_MONTHLY_PRICE_CENTS,
   type CraftClubMemberPublicView,
@@ -82,7 +83,7 @@ export function CraftClubManageWidget({
   // Change-card sub-flow
   const [changingCard, setChangingCard] = useState(false);
   const [cardReady, setCardReady] = useState(false);
-  const tokenizeRef = useRef<(() => Promise<string>) | null>(null);
+  const tokenizeRef = useRef<(() => Promise<CardTokenizeResult>) | null>(null);
 
   // Exchange the magic-link token for a session on mount.
   useEffect(() => {
@@ -160,7 +161,7 @@ export function CraftClubManageWidget({
     setError(null);
     setBusy(true);
     try {
-      const nonce = await tokenizeRef.current();
+      const { nonce, verificationToken } = await tokenizeRef.current();
       const call = httpsCallable<
         UpdateCraftClubPaymentMethodRequest,
         UpdateCraftClubPaymentMethodResponse
@@ -168,6 +169,7 @@ export function CraftClubManageWidget({
       const res = await call({
         sessionToken: sessionTokenRef.current,
         paymentNonce: nonce,
+        cardVerificationToken: verificationToken,
       });
       setMember(res.data.member);
       setChangingCard(false);
@@ -271,6 +273,11 @@ export function CraftClubManageWidget({
                   locationId={squareLocationId}
                   env={env}
                   totalCents={CRAFT_CLUB_MONTHLY_PRICE_CENTS}
+                  // Vaulting the replacement card needs a STORE-intent
+                  // verifyBuyer token (real Square requirement for cards on
+                  // file).
+                  verifyBuyerForStore
+                  billingContact={{ givenName: member.name, email: member.email }}
                   onReady={() => setCardReady(true)}
                   onTokenizeRef={(fn) => {
                     tokenizeRef.current = fn;

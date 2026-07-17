@@ -5,3 +5,7 @@ export { RegistrationCheckoutForm } from './lib/RegistrationCheckoutForm';
 export type { RequiredAgreementTemplate } from './lib/RegistrationCheckoutForm';
 export { CostSummary } from './lib/CostSummary';
 export { SquareCardForm } from './lib/SquareCardForm';
+export type {
+  CardTokenizeResult,
+  SquareBillingContact,
+} from './lib/SquareCardForm';

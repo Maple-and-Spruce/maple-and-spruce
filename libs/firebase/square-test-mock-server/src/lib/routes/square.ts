@@ -446,9 +446,32 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
     return { status: 200, body: { customer } };
   });
 
-  // Create card on file (from a Web Payments SDK nonce)
+  // Create card on file (from a Web Payments SDK nonce).
+  //
+  // Real Square REQUIRES a `verification_token` (from the client's
+  // verifyBuyer({ intent: 'STORE' }) SCA step) to vault a card on file, and
+  // rejects the request without it. The mock enforces the same contract so that
+  // integration tests catch a missing token — a gap that previously only the
+  // real-Square e2e (#622) could surface.
   server.post('/v2/cards', (req) => {
     const body = req.body as Record<string, unknown>;
+    const verificationToken = body['verification_token'];
+    if (typeof verificationToken !== 'string' || verificationToken.length === 0) {
+      return {
+        status: 400,
+        body: {
+          errors: [
+            {
+              category: 'INVALID_REQUEST_ERROR',
+              code: 'MISSING_REQUIRED_PARAMETER',
+              detail:
+                'Missing required parameter: verification_token. A STORE-intent verifyBuyer token is required to store a card on file.',
+              field: 'verification_token',
+            },
+          ],
+        },
+      };
+    }
     cardCounter++;
     const id = `ccof:mock-card-${cardCounter}`;
     const cardInput = (body['card'] as Record<string, unknown>) ?? {};

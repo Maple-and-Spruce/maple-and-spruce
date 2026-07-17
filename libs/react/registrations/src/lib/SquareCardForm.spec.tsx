@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
-import { SquareCardForm } from './SquareCardForm';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, waitFor } from '@testing-library/react';
+import { SquareCardForm, type CardTokenizeResult } from './SquareCardForm';
 
 /**
  * Guards the Square SDK environment-selection contract that the Webflow
@@ -78,5 +78,86 @@ describe('SquareCardForm SDK environment selection', () => {
       />
     );
     expect(injectedSquareScriptSrcs()).toContain(PROD_CDN);
+  });
+});
+
+/**
+ * Locks the card-on-file contract that a real-Square e2e (#622) had to catch:
+ * vaulting a card requires a STORE-intent `verifyBuyer` token in addition to
+ * the tokenize nonce. `verifyBuyerForStore` must produce it; a one-time charge
+ * (default) must NOT call verifyBuyer.
+ */
+describe('SquareCardForm buyer verification (card on file)', () => {
+  function installFakeSquare() {
+    const tokenize = vi.fn().mockResolvedValue({
+      status: 'OK',
+      token: 'cnon:card-nonce',
+    });
+    const verifyBuyer = vi.fn().mockResolvedValue({ token: 'verf:store-token' });
+    const card = {
+      attach: vi.fn().mockResolvedValue(undefined),
+      tokenize,
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+    const payments = {
+      card: vi.fn().mockResolvedValue(card),
+      verifyBuyer,
+    };
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockResolvedValue(payments),
+    };
+    return { verifyBuyer };
+  }
+
+  it('runs verifyBuyer({ intent: STORE }) and returns its token alongside the nonce when verifyBuyerForStore is set', async () => {
+    const { verifyBuyer } = installFakeSquare();
+    let tokenize: (() => Promise<CardTokenizeResult>) | undefined;
+
+    render(
+      <SquareCardForm
+        applicationId="sandbox-sq0idb-abc123"
+        locationId="LOC1"
+        totalCents={13200}
+        verifyBuyerForStore
+        billingContact={{ givenName: 'Jamie', email: 'jamie@test.com' }}
+        onTokenizeRef={(fn) => {
+          tokenize = fn;
+        }}
+      />
+    );
+
+    await waitFor(() => expect(tokenize).toBeDefined());
+
+    const result = await tokenize!();
+    expect(result).toEqual({
+      nonce: 'cnon:card-nonce',
+      verificationToken: 'verf:store-token',
+    });
+    expect(verifyBuyer).toHaveBeenCalledWith(
+      'cnon:card-nonce',
+      expect.objectContaining({ intent: 'STORE' })
+    );
+  });
+
+  it('does NOT call verifyBuyer for a one-time charge (verifyBuyerForStore unset)', async () => {
+    const { verifyBuyer } = installFakeSquare();
+    let tokenize: (() => Promise<CardTokenizeResult>) | undefined;
+
+    render(
+      <SquareCardForm
+        applicationId="sandbox-sq0idb-abc123"
+        locationId="LOC1"
+        totalCents={25200}
+        onTokenizeRef={(fn) => {
+          tokenize = fn;
+        }}
+      />
+    );
+
+    await waitFor(() => expect(tokenize).toBeDefined());
+
+    const result = await tokenize!();
+    expect(result).toEqual({ nonce: 'cnon:card-nonce', verificationToken: undefined });
+    expect(verifyBuyer).not.toHaveBeenCalled();
   });
 });

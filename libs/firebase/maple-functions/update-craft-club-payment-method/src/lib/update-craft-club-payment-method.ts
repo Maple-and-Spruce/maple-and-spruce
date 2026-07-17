@@ -33,6 +33,10 @@ export const updateCraftClubPaymentMethod = Functions.endpoint
     if (!data.paymentNonce) {
       throwInvalidArgument('Payment information is required');
     }
+    // Vaulting a new card on file requires the STORE-intent verification token.
+    if (!data.cardVerificationToken) {
+      throwInvalidArgument('Card verification is required.');
+    }
 
     const memberId = await CraftClubTokenRepository.resolveSession(
       data.sessionToken
@@ -56,6 +60,7 @@ export const updateCraftClubPaymentMethod = Functions.endpoint
       sourceId: data.paymentNonce,
       customerId: member.squareCustomerId,
       cardholderName: member.name,
+      verificationToken: data.cardVerificationToken,
       idempotencyKey: `cccard-update-${member.id}-${data.paymentNonce.slice(-8)}`,
     });
 

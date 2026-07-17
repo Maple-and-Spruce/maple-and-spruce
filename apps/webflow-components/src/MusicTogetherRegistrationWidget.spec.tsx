@@ -77,11 +77,16 @@ vi.mock('@maple/react/registrations', () => ({
     afterCardContent,
   }: {
     onReady?: () => void;
-    onTokenizeRef: (fn: () => Promise<string>) => void;
+    onTokenizeRef: (
+      fn: () => Promise<{ nonce: string; verificationToken?: string }>
+    ) => void;
     afterCardContent?: React.ReactNode;
   }) => {
     useEffect(() => {
-      onTokenizeRef(async () => 'cnon:test-nonce');
+      onTokenizeRef(async () => ({
+        nonce: 'cnon:test-nonce',
+        verificationToken: 'verf:test-token',
+      }));
       onReady?.();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -232,6 +237,9 @@ describe('MusicTogetherRegistrationWidget', () => {
     expect(calls['createMusicTogetherRegistration']).toMatchObject({
       paymentPlan: 'installments',
       cardOnFileAuth: true,
+      // The installment plan vaults a card on file — the widget must forward
+      // the STORE-intent verifyBuyer token so real Square accepts the vault.
+      cardVerificationToken: 'verf:test-token',
     });
   });
 
