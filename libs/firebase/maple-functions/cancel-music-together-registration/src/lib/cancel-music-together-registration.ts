@@ -56,7 +56,7 @@ import type {
 export const cancelMusicTogetherRegistration = Functions.endpoint
   .usingSecrets(...MT_SQUARE_SECRET_NAMES)
   .usingStrings(...MT_SQUARE_STRING_NAMES)
-  .requiringRole(Role.Admin)
+  .requiringRole([Role.Admin, Role.MtTeacher])
   .handle<
     CancelMusicTogetherRegistrationRequest,
     CancelMusicTogetherRegistrationResponse

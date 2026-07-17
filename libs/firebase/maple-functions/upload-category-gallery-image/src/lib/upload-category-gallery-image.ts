@@ -8,9 +8,10 @@
  * Stored at `categories/{categoryId}/gallery/photo_{timestamp}.{ext}`.
  */
 import {
-  createAdminFunction,
+  createRoleFunction,
   FirebaseProject,
   throwValidationError,
+  Role,
 } from '@maple/firebase/functions';
 import { imageUploadValidation } from '@maple/ts/validation';
 import admin from 'firebase-admin';
@@ -19,7 +20,7 @@ import type {
   UploadCategoryGalleryImageResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const uploadCategoryGalleryImage = createAdminFunction<
+export const uploadCategoryGalleryImage = createRoleFunction<
   UploadCategoryGalleryImageRequest,
   UploadCategoryGalleryImageResponse
 >(async (data) => {
@@ -51,4 +52,4 @@ export const uploadCategoryGalleryImage = createAdminFunction<
     success: true,
     url: publicUrl,
   };
-});
+}, [Role.Admin, Role.Clerk]);

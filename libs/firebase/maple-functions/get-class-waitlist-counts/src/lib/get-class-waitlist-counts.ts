@@ -7,17 +7,20 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { ClassWaitlistRepository } from '@maple/firebase/database';
 import type {
   GetClassWaitlistCountsRequest,
   GetClassWaitlistCountsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getClassWaitlistCounts = createAdminFunction<
+export const getClassWaitlistCounts = createRoleFunction<
   GetClassWaitlistCountsRequest,
   GetClassWaitlistCountsResponse
 >(async () => {
   const counts = await ClassWaitlistRepository.countsByClass();
   return { counts };
-});
+}, [Role.Admin, Role.Clerk]);

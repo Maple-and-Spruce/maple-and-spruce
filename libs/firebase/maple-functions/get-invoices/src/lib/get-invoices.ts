@@ -4,14 +4,17 @@
  * Lists private-pay invoices, filterable by studentId or status. Ordered
  * newest-created first.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { InvoiceRepository } from '@maple/firebase/database';
 import type {
   GetInvoicesRequest,
   GetInvoicesResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getInvoices = createAuthenticatedFunction<
+export const getInvoices = createRoleFunction<
   GetInvoicesRequest,
   GetInvoicesResponse
 >(async (data) => {
@@ -21,4 +24,4 @@ export const getInvoices = createAuthenticatedFunction<
   });
 
   return { invoices };
-});
+}, [Role.Admin, Role.LessonTeacher]);

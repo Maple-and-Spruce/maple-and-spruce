@@ -6,7 +6,10 @@
  * admin can see which section times to add, and a section-id → name map for
  * rendering. Deployed to us-east4 via CI/CD (maple-core codebase).
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import {
   MusicTogetherInterestRepository,
   MusicTogetherSectionRepository,
@@ -17,7 +20,7 @@ import type {
   GetMusicTogetherInterestResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getMusicTogetherInterest = createAuthenticatedFunction<
+export const getMusicTogetherInterest = createRoleFunction<
   GetMusicTogetherInterestRequest,
   GetMusicTogetherInterestResponse
 >(async () => {
@@ -36,4 +39,4 @@ export const getMusicTogetherInterest = createAuthenticatedFunction<
     demand: mtInterestDemandBySection(entries),
     sectionNames,
   };
-});
+}, [Role.Admin, Role.MtTeacher]);

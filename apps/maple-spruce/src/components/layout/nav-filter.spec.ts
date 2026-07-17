@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterNavGroupsByRoles } from './nav-filter';
+import { allowedRolesForPath, filterNavGroupsByRoles } from './nav-filter';
 
 // Icon-free fixture mirroring the real nav's role semantics: an
 // admin-only item, a clerk item, an all-roles item, and a group that
@@ -80,5 +80,82 @@ describe('filterNavGroupsByRoles', () => {
       badge: 7,
       badgeColor: 'warning',
     });
+  });
+});
+
+describe('allowedRolesForPath', () => {
+  const GROUPS_WITH_HREFS = [
+    {
+      label: 'Store',
+      items: [
+        {
+          label: 'Home',
+          href: '/',
+          roles: ['mt-teacher', 'clerk', 'lesson-teacher'] as const,
+        },
+        { label: 'Inventory', href: '/inventory', roles: ['clerk'] as const },
+        { label: 'Artists', href: '/artists' }, // admin only
+        {
+          label: 'Artist Payouts',
+          href: '/payouts/artist-payouts',
+        }, // admin only, nested under /payouts
+      ],
+    },
+    {
+      label: 'Music Lessons',
+      items: [
+        {
+          label: 'Teacher Payouts',
+          href: '/payouts',
+          roles: ['lesson-teacher'] as const,
+        },
+      ],
+    },
+  ];
+
+  it('resolves an exact match to its roles', () => {
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/inventory')).toEqual([
+      'clerk',
+    ]);
+  });
+
+  it('detail routes inherit their section via prefix match', () => {
+    expect(
+      allowedRolesForPath(GROUPS_WITH_HREFS, '/inventory/product-123')
+    ).toEqual(['clerk']);
+  });
+
+  it('longest prefix wins (/payouts/artist-payouts over /payouts)', () => {
+    expect(
+      allowedRolesForPath(GROUPS_WITH_HREFS, '/payouts/artist-payouts')
+    ).toEqual([]); // admin only
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/payouts')).toEqual([
+      'lesson-teacher',
+    ]);
+  });
+
+  it('"/" matches only exactly — it never swallows other routes', () => {
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/')).toEqual([
+      'mt-teacher',
+      'clerk',
+      'lesson-teacher',
+    ]);
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/settings')).toEqual([]);
+  });
+
+  it('unknown routes are admin-only (empty roles)', () => {
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/brand-new-page')).toEqual(
+      []
+    );
+  });
+
+  it('un-annotated items resolve to admin-only', () => {
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/artists')).toEqual([]);
+  });
+
+  it('does not treat sibling prefixes as matches (/inventory-x vs /inventory)', () => {
+    expect(allowedRolesForPath(GROUPS_WITH_HREFS, '/inventory-archive')).toEqual(
+      []
+    );
   });
 });

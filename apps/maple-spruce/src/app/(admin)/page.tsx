@@ -32,6 +32,7 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { formatClassPrice } from '@maple/ts/domain';
+import { useRoles } from '@maple/react/auth';
 import { useSyncConflictSummary } from '@maple/react/data';
 import { RoomStatusCard } from '@maple/react/events';
 import { useClasses, useRegistrations, useProducts } from '../../hooks';
@@ -69,11 +70,17 @@ function formatTime(date: Date): string {
   });
 }
 
-export default function DashboardPage() {
+/**
+ * Business widgets (classes / registrations / low stock / sync) — mounted
+ * only for roles whose server-side access matches what they fetch
+ * (admin + clerk; the sync card is admin-only). Hooks live inside so the
+ * calls never fire for roles that would just get 403s.
+ */
+function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
   const { classesState } = useClasses();
   const { registrationsState } = useRegistrations();
   const { productsState } = useProducts();
-  const { summaryState } = useSyncConflictSummary();
+  const { summaryState } = useSyncConflictSummary(showSync);
 
   // Upcoming published classes in the next 7 days
   const upcomingClasses = useMemo(() => {
@@ -159,21 +166,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
-
-      <Grid container spacing={3}>
-        {/* Spruce Room status */}
-        <Grid size={12}>
-          <RoomStatusCard
-            room="spruce"
-            bookHref="/book-room"
-            scheduleHref="/room-schedule"
-          />
-        </Grid>
-
-        {/* Upcoming Classes */}
+      {/* Upcoming Classes */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="h6" gutterBottom>
             <EventIcon
@@ -422,7 +415,36 @@ export default function DashboardPage() {
           </Grid>
         )}
 
-        {/* Quick Links */}
+    </>
+  );
+}
+
+export default function DashboardPage() {
+  const { isAdmin, roles } = useRoles();
+  const isClerk = roles.includes('clerk');
+
+  return (
+    <>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Dashboard
+      </Typography>
+
+      <Grid container spacing={3}>
+        {/* Spruce Room status — visible to every role */}
+        <Grid size={12}>
+          <RoomStatusCard
+            room="spruce"
+            bookHref="/book-room"
+            scheduleHref="/room-schedule"
+          />
+        </Grid>
+
+        {/* Business widgets — admin + clerk only; their hooks call
+            role-gated functions, so don't mount them for other roles */}
+        {(isAdmin || isClerk) && <StoreOverviewWidgets showSync={isAdmin} />}
+
+        {/* Quick Links — external business accounts, admin only */}
+        {isAdmin && (
         <Grid size={12}>
           <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
             <StorefrontIcon
@@ -460,6 +482,7 @@ export default function DashboardPage() {
             })}
           </Grid>
         </Grid>
+        )}
       </Grid>
     </>
   );

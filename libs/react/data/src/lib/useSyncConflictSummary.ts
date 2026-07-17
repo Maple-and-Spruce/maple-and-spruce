@@ -15,8 +15,12 @@ import type {
  * fetching the full list of conflicts.
  *
  * @see ADR-012 for sync conflict detection and resolution strategy
+ *
+ * @param enabled - Pass false to skip fetching (e.g. for non-admin roles
+ * — getSyncConflictSummary is admin-only, so fetching would just 403).
+ * The state stays 'idle' while disabled and fetches when it flips true.
  */
-export function useSyncConflictSummary() {
+export function useSyncConflictSummary(enabled = true) {
   const [summaryState, setSummaryState] = useState<
     RequestState<SyncConflictSummary>
   >({
@@ -50,10 +54,11 @@ export function useSyncConflictSummary() {
     }
   }, []);
 
-  // Fetch summary on mount
+  // Fetch summary on mount (or when enabled flips true)
   useEffect(() => {
+    if (!enabled) return;
     fetchSummary();
-  }, [fetchSummary]);
+  }, [enabled, fetchSummary]);
 
   return {
     summaryState,

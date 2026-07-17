@@ -3,14 +3,17 @@
  *
  * Retrieves all products, optionally filtered by artistId or status.
  */
-import { createAuthenticatedFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+} from '@maple/firebase/functions';
 import { ProductRepository } from '@maple/firebase/database';
 import type {
   GetProductsRequest,
   GetProductsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getProducts = createAuthenticatedFunction<
+export const getProducts = createRoleFunction<
   GetProductsRequest,
   GetProductsResponse
 >(async (data) => {
@@ -20,4 +23,4 @@ export const getProducts = createAuthenticatedFunction<
   });
 
   return { products };
-});
+}, [Role.Admin, Role.Clerk]);

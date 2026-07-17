@@ -10,8 +10,9 @@
  * not be publicly callable.
  */
 import {
-  createAdminFunction,
+  createRoleFunction,
   throwInvalidArgument,
+  Role,
 } from '@maple/firebase/functions';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import { ROOMS } from '@maple/ts/domain';
@@ -20,7 +21,7 @@ import type {
   GetRoomScheduleResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getRoomSchedule = createAdminFunction<
+export const getRoomSchedule = createRoleFunction<
   GetRoomScheduleRequest,
   GetRoomScheduleResponse
 >(async (data) => {
@@ -53,4 +54,4 @@ export const getRoomSchedule = createAdminFunction<
       end: e.endDateTime.toISOString(),
     })),
   };
-});
+}, [Role.Admin, Role.MtTeacher, Role.Clerk, Role.LessonTeacher]);

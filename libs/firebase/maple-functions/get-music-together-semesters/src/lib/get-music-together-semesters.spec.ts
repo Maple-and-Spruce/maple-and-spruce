@@ -3,7 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => ({ findAll: vi.fn() }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAuthenticatedFunction: (h: unknown) => h,
+  Role: {
+    Admin: 'admin',
+    MtTeacher: 'mt-teacher',
+    Clerk: 'clerk',
+    LessonTeacher: 'lesson-teacher',
+  },
+  createRoleFunction: (h: unknown) => h,
 }));
 vi.mock('@maple/firebase/database', () => ({
   MusicTogetherSemesterRepository: { findAll: mocks.findAll },
