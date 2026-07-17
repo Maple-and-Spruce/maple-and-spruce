@@ -1,5 +1,18 @@
 export { useAuth } from './lib/useAuth';
 export { useAdminStatus } from './lib/useAdminStatus';
+export { useMyRoles } from './lib/useMyRoles';
+export {
+  RolesProvider,
+  StaticRolesProvider,
+  useRoles,
+  type RolesContextValue,
+} from './lib/RolesProvider';
+export {
+  RoleGuard,
+  RoleGuardView,
+  type RoleGuardProps,
+  type RoleGuardViewProps,
+} from './lib/RoleGuard';
 export {
   AuthGuard,
   useAuthStatus,

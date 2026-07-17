@@ -38,6 +38,7 @@ export {
   hasRole,
   hasAnyRole,
   getUserRoles,
+  getAllUserRoles,
   grantRole,
   revokeRole,
   grantAdminRole,

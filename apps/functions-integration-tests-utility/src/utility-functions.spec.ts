@@ -297,6 +297,26 @@ describe('Utility Functions', () => {
       expect(roles.data?.roles).not.toContain('mt-teacher');
     });
 
+    it('listUsers joins scoped roles onto each user (powers /users UI)', async () => {
+      // scopedUser holds clerk + lesson-teacher at this point in the suite
+      const result = await callFunction<
+        Record<string, never>,
+        { users: Array<{ uid: string; isAdmin: boolean; roles: string[] }> }
+      >({
+        functionName: 'listUsers',
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      const byUid = new Map(result.data?.users.map((u) => [u.uid, u]));
+      expect(byUid.get(scopedUser.uid)?.roles).toEqual(
+        expect.arrayContaining(['clerk', 'lesson-teacher'])
+      );
+      expect(byUid.get(scopedUser.uid)?.isAdmin).toBe(false);
+      expect(byUid.get(adminUser.uid)?.isAdmin).toBe(true);
+      expect(byUid.get(adminUser.uid)?.roles).toEqual([]);
+    });
+
     it('revokeRole is admin-only (403 for non-admin caller)', async () => {
       const result = await callFunction<
         RevokeRoleRequest,

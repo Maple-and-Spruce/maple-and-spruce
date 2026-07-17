@@ -135,6 +135,29 @@ export async function getUserRoles(uid: string): Promise<Role[]> {
 }
 
 /**
+ * Read every user's scoped roles in one collection scan — powers the
+ * admin /users page join (mirrors getAdminUids, avoids N+1 reads).
+ *
+ * @returns Map of uid -> scoped roles (users without a doc are absent)
+ */
+export async function getAllUserRoles(): Promise<Map<string, Role[]>> {
+  const db = getDb();
+  const snapshot = await db.collection(USER_ROLES_COLLECTION).get();
+  const byUid = new Map<string, Role[]>();
+  for (const doc of snapshot.docs) {
+    const roles = (doc.data() as UserRolesDoc).roles;
+    if (!Array.isArray(roles)) continue;
+    byUid.set(
+      doc.id,
+      roles.filter(
+        (role): role is Role => typeof role === 'string' && KNOWN_ROLES.has(role)
+      )
+    );
+  }
+  return byUid;
+}
+
+/**
  * Grant a non-admin role to a user by adding it to the `roles` array
  * on `userRoles/{uid}`.
  *

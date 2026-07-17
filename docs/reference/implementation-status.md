@@ -23,6 +23,7 @@
 | Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
 | Admin authorization (UI) | Complete | `AdminGuard` + `useAdminStatus` + `checkAdminStatus` Cloud Function |
 | Scoped roles framework (PR 1 of epic #617) | Complete | `Role` enum (admin, mt-teacher, clerk, lesson-teacher) + `userRoles/{uid}` + any-of `requiringRole([...])` + `getMyRoles`/`grantRole`/`revokeRole`; behavior-neutral — client plumbing #614, re-scoping #615 |
+| Scoped roles client plumbing (PR 2 of epic #617) | Complete | `RolesProvider`/`useRoles`/`RoleGuard` (ADR-028), role-filtered nav (`nav-groups.tsx`), `/users` scoped-role toggles, `listUsers` roles join — enforcement re-scoping is #615 |
 | Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |

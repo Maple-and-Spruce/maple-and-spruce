@@ -13,10 +13,12 @@ export interface CheckAdminStatusResponse {
 }
 
 /**
- * Roles a portal user can hold. Mirrors the server-side `Role` enum in
- * `@maple/firebase/functions` (which client code cannot import).
+ * Roles a portal user can hold. Canonical definition lives in
+ * `@maple/ts/domain` (app-user.ts); re-exported here so API consumers can
+ * import request/response types and the role union from one place.
  */
-export type UserRole = 'admin' | 'mt-teacher' | 'clerk' | 'lesson-teacher';
+export type { UserRole } from '@maple/ts/domain';
+import type { UserRole } from '@maple/ts/domain';
 
 /** Request for getMyRoles - no data needed, uses auth context */
 export type GetMyRolesRequest = Record<string, never>;

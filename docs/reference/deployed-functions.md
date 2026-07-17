@@ -96,7 +96,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getMyRoles` _(auth only — returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating)_
 
 ### User & role administration
-- `listUsers` _(admin only — Firebase Auth users joined with admin records; powers `/users` page; capped at 1000 per call)_
+- `listUsers` _(admin only — Firebase Auth users joined with admin records + scoped roles from `userRoles/{uid}`; powers `/users` page; capped at 1000 per call)_
 - `grantAdminRole` _(admin only — promotes another user to admin)_
 - `revokeAdminRole` _(admin only — demotes another admin; self-protection: cannot revoke your own admin)_
 - `grantRole` _(admin only — grants a scoped role: `mt-teacher`, `clerk`, `lesson-teacher`; writes `userRoles/{uid}.roles`; rejects `admin`)_
