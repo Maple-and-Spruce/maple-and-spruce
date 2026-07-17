@@ -1,11 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
-import { SquareClient } from 'square';
+import { SquareClient, SquareError } from 'square';
 import { CustomersService } from './customers.service';
 
 function makeClient(search: unknown, create: unknown): SquareClient {
   return {
     customers: {
       search: vi.fn().mockResolvedValue(search),
+      create: vi.fn().mockResolvedValue(create),
+    },
+  } as unknown as SquareClient;
+}
+
+/** Client whose customer search rejects (real-Square email-validation path). */
+function makeSearchRejectsClient(
+  searchError: unknown,
+  create: unknown
+): SquareClient {
+  return {
+    customers: {
+      search: vi.fn().mockRejectedValue(searchError),
       create: vi.fn().mockResolvedValue(create),
     },
   } as unknown as SquareClient;
@@ -94,5 +107,38 @@ describe('CustomersService.upsertByEmail', () => {
     await expect(
       new CustomersService(client).upsertByEmail({ email: 'a@b.com' })
     ).rejects.toThrow(/create customer/);
+  });
+
+  it('falls through to create when the customer search REJECTS the email', async () => {
+    // Real Square rejects the Customers Search email filter with INVALID_VALUE
+    // for some addresses (e.g. the e2e's reserved-TLD / plus-addressed emails,
+    // and potentially a real family's plus-addressed Gmail). A search failure
+    // must not block the vault — we create instead of throwing.
+    const searchError = new SquareError({ message: 'HTTP 400' });
+    Object.defineProperty(searchError, 'errors', {
+      value: [
+        {
+          code: 'INVALID_VALUE',
+          detail: 'The provided email address is invalid.',
+          field: 'email',
+        },
+      ],
+      writable: true,
+    });
+    const client = makeSearchRejectsClient(searchError, {
+      customer: { id: 'created-after-search-failed' },
+    });
+
+    const id = await new CustomersService(client).upsertByEmail({
+      email: 'mt-e2e-installments+123@maplespruce.test',
+      name: 'Casey Nguyen',
+    });
+
+    expect(id).toBe('created-after-search-failed');
+    expect(client.customers.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailAddress: 'mt-e2e-installments+123@maplespruce.test',
+      })
+    );
   });
 });
