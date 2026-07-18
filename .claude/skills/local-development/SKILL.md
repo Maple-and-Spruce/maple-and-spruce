@@ -31,7 +31,15 @@ This command:
 pnpm exec nx run maple-spruce:dev
 ```
 
-Runs on http://localhost:3000
+Runs on http://localhost:3000. On localhost the app auto-connects to the **Functions** emulator (port from `NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT`, default 5001). Auth stays on real dev by default; to run **fully** against emulators (auth included — e.g. sign in as a seeded emulator user), set `NEXT_PUBLIC_AUTH_EMULATOR_PORT` (opt-in). Next only inlines `NEXT_PUBLIC_*` from `.env` files reliably, so put these in `apps/maple-spruce/.env.local` (gitignored) rather than the shell. The portal e2e (`tools/run-portal-e2e.sh`) does exactly this.
+
+## Portal E2E (role scoping)
+
+```bash
+./tools/run-portal-e2e.sh          # emulators + next dev + Playwright
+```
+
+Drives the real app in a browser: seeds an admin + an mt-teacher into the emulators, signs in through the login form, asserts the role-filtered shell. First browser-level proof of the scoped-roles wiring (epic #617).
 
 ## Running Storybook
 

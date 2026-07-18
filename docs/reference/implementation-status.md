@@ -27,6 +27,7 @@
 | Scoped roles enforcement (PR 3 of epic #617) | Complete | 46 fns re-scoped to role sets (MT→mt-teacher, store/registrations→clerk, lesson reads→lesson-teacher, calendar→all staff); auth-only reads tightened; `PathRoleGuard` route gating; role-gated dashboard; matrix integration spec (`role-matrix.spec.ts`). Phase 2 ownership = #616, analyzer = #620 |
 | Callable-role analyzer (#620) | Complete | `tools/check-callable-roles.ts` + `callable-roles` CI job; every exported callable must be role-gated / trigger / allowlisted. Caught + fixed leftover auth-only `getArtist`/`getStudent` |
 | Lesson-teacher manage-own (phase 2 of epic #617, #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
+| Portal role-scoping E2E (#625) | Complete | First browser-level e2e (`apps/maple-spruce-e2e`): seeds admin + mt-teacher, signs in via login UI, asserts role-filtered nav + `/users` gate. `connectAuthEmulator` opt-in wiring; `tools/run-portal-e2e.sh` + `portal-e2e` CI job |
 | Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |

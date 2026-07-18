@@ -6,8 +6,11 @@ let _mapleFunctions: ReturnType<typeof getFunctions> | undefined;
 // Functions are deployed to us-east4 (Northern Virginia - close to WV business)
 const FUNCTIONS_REGION = 'us-east4';
 
+// Dot access (not bracket) so Next inlines the value into the browser bundle;
+// `process.env['NEXT_PUBLIC_…']` is not statically replaced and reads undefined
+// client-side (which silently pinned this to the 5001 default at any offset).
 const EMULATOR_PORT = parseInt(
-  process.env['NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT'] ?? '5001',
+  process.env.NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT ?? '5001',
   10,
 );
 
