@@ -49,6 +49,11 @@ export {
   type CatalogSyncRequest,
 } from './lib/catalog-sync-request.repository';
 export { PosSaleRequestRepository } from './lib/pos-sale-request.repository';
+export {
+  PosLessonAttributionRepository,
+  posLessonAttributionId,
+} from './lib/pos-lesson-attribution.repository';
+export { PosLessonConfigRepository } from './lib/pos-lesson-config.repository';
 
 // Phase 5: Sales & Inventory
 export {

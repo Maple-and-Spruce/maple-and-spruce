@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('./utilities/database.config', () => ({
   db: {
@@ -545,6 +545,71 @@ describe('InvoiceRepository', () => {
           error: 'Square 500',
         })
       ).rejects.toThrow('NOT_FOUND');
+    });
+  });
+
+  describe('settleOrCreatePosLessonInvoice', () => {
+    const posArgs = {
+      studentId: 'student-1',
+      subtotalCents: 3000,
+      description: 'In-person lesson — Guitar Lesson',
+      squarePaymentId: 'PAY-1',
+      squareOrderId: 'ORDER-1',
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('settles the single open invoice whose total matches the sale', async () => {
+      vi.spyOn(InvoiceRepository, 'findAll').mockResolvedValue([
+        { id: 'inv-open', totalCents: 3000 },
+      ] as never);
+      const mark = vi
+        .spyOn(InvoiceRepository, 'markPaidByPosSale')
+        .mockResolvedValue({ id: 'inv-open', status: 'paid' } as never);
+      const create = vi.spyOn(InvoiceRepository, 'createPosPaidInvoice');
+
+      const res = await InvoiceRepository.settleOrCreatePosLessonInvoice(posArgs);
+
+      expect(mark).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'inv-open', squarePaymentId: 'PAY-1' })
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(res.settledExisting).toBe(true);
+    });
+
+    it('creates a paid invoice when no open invoice matches the amount', async () => {
+      vi.spyOn(InvoiceRepository, 'findAll').mockResolvedValue([
+        { id: 'inv-open', totalCents: 9999 },
+      ] as never);
+      const mark = vi.spyOn(InvoiceRepository, 'markPaidByPosSale');
+      const create = vi
+        .spyOn(InvoiceRepository, 'createPosPaidInvoice')
+        .mockResolvedValue({ id: 'inv-new', status: 'paid' } as never);
+
+      const res = await InvoiceRepository.settleOrCreatePosLessonInvoice(posArgs);
+
+      expect(mark).not.toHaveBeenCalled();
+      expect(create).toHaveBeenCalledWith(expect.objectContaining(posArgs));
+      expect(res.settledExisting).toBe(false);
+    });
+
+    it('creates (does not settle) when multiple open invoices match — ambiguous', async () => {
+      vi.spyOn(InvoiceRepository, 'findAll').mockResolvedValue([
+        { id: 'inv-a', totalCents: 3000 },
+        { id: 'inv-b', totalCents: 3000 },
+      ] as never);
+      const mark = vi.spyOn(InvoiceRepository, 'markPaidByPosSale');
+      const create = vi
+        .spyOn(InvoiceRepository, 'createPosPaidInvoice')
+        .mockResolvedValue({ id: 'inv-new' } as never);
+
+      const res = await InvoiceRepository.settleOrCreatePosLessonInvoice(posArgs);
+
+      expect(mark).not.toHaveBeenCalled();
+      expect(create).toHaveBeenCalled();
+      expect(res.settledExisting).toBe(false);
     });
   });
 });

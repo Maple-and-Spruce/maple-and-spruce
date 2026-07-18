@@ -333,6 +333,128 @@ export const InvoiceRepository = {
   },
 
   /**
+   * Flip an invoice to paid from an in-person Square POS lesson sale (#628),
+   * attributing it to `square-pos`. Idempotent — already-paid invoices keep
+   * their earlier paymentRecord.
+   */
+  async markPaidByPosSale(args: {
+    id: string;
+    squarePaymentId: string;
+    squareOrderId: string;
+    recordedByUid?: string;
+  }): Promise<Invoice> {
+    const docRef = db.collection(COLLECTION).doc(args.id);
+    const existing = docToInvoice(await docRef.get());
+    if (!existing) {
+      throw new Error(`Invoice ${args.id} not found`);
+    }
+    if (existing.status === 'paid') {
+      return existing;
+    }
+    const now = new Date();
+    await docRef.update({
+      status: 'paid' as InvoiceStatus,
+      paidAt: existing.paidAt ?? now,
+      issuedAt: existing.issuedAt ?? now,
+      squareOrderId: existing.squareOrderId ?? args.squareOrderId,
+      paymentRecord: {
+        source: 'square-pos' as const,
+        squarePaymentId: args.squarePaymentId,
+        recordedByUid: args.recordedByUid,
+        recordedAt: now,
+      },
+      updatedAt: now,
+    });
+    const invoice = docToInvoice(await docRef.get());
+    if (!invoice) {
+      throw new Error(`Invoice ${args.id} not found after POS payment`);
+    }
+    return invoice;
+  },
+
+  /**
+   * Create a fully-paid invoice for an in-person POS lesson sale that had no
+   * matching open invoice — so the payment still lands in records and teacher
+   * payouts. One line item, attributed to `square-pos`.
+   */
+  async createPosPaidInvoice(args: {
+    studentId: string;
+    subtotalCents: number;
+    description: string;
+    squarePaymentId: string;
+    squareOrderId: string;
+    recordedByUid?: string;
+  }): Promise<Invoice> {
+    const docRef = db.collection(COLLECTION).doc();
+    const now = new Date();
+    const lineItems = withComputedSubtotals([
+      {
+        id: 'pos-lesson',
+        description: args.description,
+        quantity: 1,
+        unitAmountCents: args.subtotalCents,
+        subtotalCents: args.subtotalCents,
+      },
+    ]);
+    const totalCents = computeInvoiceTotalCents(lineItems);
+    const data = {
+      studentId: args.studentId,
+      status: 'paid' as InvoiceStatus,
+      lineItems,
+      totalCents,
+      issuedAt: now,
+      paidAt: now,
+      squareOrderId: args.squareOrderId,
+      paymentRecord: {
+        source: 'square-pos' as const,
+        squarePaymentId: args.squarePaymentId,
+        recordedByUid: args.recordedByUid,
+        recordedAt: now,
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+    await docRef.set(data);
+    const invoice = docToInvoice(await docRef.get());
+    if (!invoice) {
+      throw new Error('POS invoice not found after create');
+    }
+    return invoice;
+  },
+
+  /**
+   * Attribute a POS lesson sale to a student: settle their single open `sent`
+   * invoice whose pre-tax total matches the sale, or create a paid invoice
+   * when there's no unambiguous match. Shared by the auto-attribution path in
+   * `processPosSale` and the manual review-queue resolver (#628).
+   */
+  async settleOrCreatePosLessonInvoice(args: {
+    studentId: string;
+    subtotalCents: number;
+    description: string;
+    squarePaymentId: string;
+    squareOrderId: string;
+    recordedByUid?: string;
+  }): Promise<{ invoice: Invoice; settledExisting: boolean }> {
+    const openMatches = (
+      await this.findAll({ studentId: args.studentId, status: 'sent' })
+    ).filter((i) => i.totalCents === args.subtotalCents);
+
+    if (openMatches.length === 1) {
+      const invoice = await this.markPaidByPosSale({
+        id: openMatches[0].id,
+        squarePaymentId: args.squarePaymentId,
+        squareOrderId: args.squareOrderId,
+        recordedByUid: args.recordedByUid,
+      });
+      return { invoice, settledExisting: true };
+    }
+
+    const invoice = await this.createPosPaidInvoice(args);
+    return { invoice, settledExisting: false };
+  },
+
+  /**
    * Persist the Square ids stamped during a successful send, and clear
    * any prior sync error.
    */

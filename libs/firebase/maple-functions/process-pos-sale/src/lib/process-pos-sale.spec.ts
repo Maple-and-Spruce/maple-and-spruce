@@ -20,6 +20,15 @@ const mocks = vi.hoisted(() => ({
   createRegistration: vi.fn(),
   // ClassRepository
   findBySquareVariationId: vi.fn(),
+  // PosLessonConfigRepository
+  getLessonCatalogObjectIds: vi.fn(),
+  // PosLessonAttributionRepository
+  attrFindById: vi.fn(),
+  attrCapture: vi.fn(),
+  // StudentRepository
+  findByPrimaryContactEmail: vi.fn(),
+  // InvoiceRepository
+  settleOrCreatePosLessonInvoice: vi.fn(),
   // Square services
   getPayment: vi.fn(),
   getOrder: vi.fn(),
@@ -56,6 +65,21 @@ vi.mock('@maple/firebase/database', () => ({
   ClassRepository: {
     findBySquareVariationId: mocks.findBySquareVariationId,
   },
+  PosLessonConfigRepository: {
+    getLessonCatalogObjectIds: mocks.getLessonCatalogObjectIds,
+  },
+  PosLessonAttributionRepository: {
+    findById: mocks.attrFindById,
+    capture: mocks.attrCapture,
+  },
+  StudentRepository: {
+    findByPrimaryContactEmail: mocks.findByPrimaryContactEmail,
+  },
+  InvoiceRepository: {
+    settleOrCreatePosLessonInvoice: mocks.settleOrCreatePosLessonInvoice,
+  },
+  posLessonAttributionId: (paymentId: string, catalogObjectId: string) =>
+    `${paymentId}__${catalogObjectId}`,
 }));
 
 vi.mock('@maple/firebase/square', () => ({
@@ -118,6 +142,16 @@ beforeEach(() => {
     priceCents: 4500,
   });
   mocks.createRegistration.mockResolvedValue({ id: 'reg-new' });
+  // Lesson defaults: no configured lesson items → lesson path never fires for
+  // the class/registration tests above.
+  mocks.getLessonCatalogObjectIds.mockResolvedValue([]);
+  mocks.attrFindById.mockResolvedValue(undefined);
+  mocks.attrCapture.mockResolvedValue({ id: 'attr-1' });
+  mocks.findByPrimaryContactEmail.mockResolvedValue([]);
+  mocks.settleOrCreatePosLessonInvoice.mockResolvedValue({
+    invoice: { id: 'inv-pos-1' },
+    settledExisting: false,
+  });
 });
 
 describe('processPosSale — early exits', () => {
@@ -335,6 +369,149 @@ describe('processPosSale — registration creation', () => {
 
     expect(mocks.findBySquareVariationId).not.toHaveBeenCalled();
     expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+});
+
+describe('processPosSale — lesson attribution', () => {
+  const lessonLine = {
+    catalogObjectId: 'VAR_LESSON',
+    name: 'Guitar Lesson',
+    quantity: 1,
+    basePriceCents: 3000,
+    grossSalesCents: 3000,
+    totalTaxCents: 0,
+    totalCents: 3000,
+  };
+
+  beforeEach(() => {
+    // Configure VAR_LESSON as a lesson item; it is NOT a class.
+    mocks.getLessonCatalogObjectIds.mockResolvedValue(['VAR_LESSON']);
+    mocks.findBySquareVariationId.mockResolvedValue(undefined);
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: 'cust-1',
+      receiptUrl: 'https://squareup.com/receipt/pos',
+      createdAt: '2026-07-17T15:00:00Z',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [lessonLine],
+    });
+    mocks.getCustomer.mockResolvedValue({
+      emailAddress: 'parent@example.com',
+      givenName: 'Casey',
+      familyName: 'Nguyen',
+    });
+  });
+
+  it('auto-attributes when the customer email maps to exactly one student', async () => {
+    mocks.findByPrimaryContactEmail.mockResolvedValue([{ id: 'student-1' }]);
+    mocks.settleOrCreatePosLessonInvoice.mockResolvedValue({
+      invoice: { id: 'inv-9' },
+      settledExisting: true,
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.settleOrCreatePosLessonInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studentId: 'student-1',
+        subtotalCents: 3000,
+        squarePaymentId: 'PAY-1',
+        squareOrderId: 'ORDER-1',
+      })
+    );
+    expect(mocks.attrCapture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        catalogObjectId: 'VAR_LESSON',
+        itemName: 'Guitar Lesson',
+        subtotalCents: 3000,
+        amountPaidCents: 3000,
+        customerEmail: 'parent@example.com',
+      }),
+      expect.objectContaining({
+        status: 'attributed',
+        studentId: 'student-1',
+        invoiceId: 'inv-9',
+        attributedBy: 'auto',
+      })
+    );
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('queues (pending) + emails when the email matches no student', async () => {
+    mocks.findByPrimaryContactEmail.mockResolvedValue([]);
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.settleOrCreatePosLessonInvoice).not.toHaveBeenCalled();
+    expect(mocks.attrCapture).toHaveBeenCalledTimes(1);
+    // Second arg (attribution) omitted → captured as pending.
+    expect(mocks.attrCapture.mock.calls[0][1]).toBeUndefined();
+    expect(mocks.mailAdd).toHaveBeenCalledTimes(1);
+    expect(mocks.mailAdd.mock.calls[0][0].message.subject).toMatch(
+      /needs attribution/i
+    );
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('queues (does not auto-attribute) when siblings share the parent email', async () => {
+    mocks.findByPrimaryContactEmail.mockResolvedValue([
+      { id: 'student-a' },
+      { id: 'student-b' },
+    ]);
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.settleOrCreatePosLessonInvoice).not.toHaveBeenCalled();
+    expect(mocks.attrCapture.mock.calls[0][1]).toBeUndefined();
+    expect(mocks.mailAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues when the sale carried no customer email', async () => {
+    mocks.getPayment.mockResolvedValue({
+      paymentId: 'PAY-1',
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      customerId: undefined,
+      createdAt: '2026-07-17T15:00:00Z',
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.findByPrimaryContactEmail).not.toHaveBeenCalled();
+    expect(mocks.settleOrCreatePosLessonInvoice).not.toHaveBeenCalled();
+    expect(mocks.attrCapture.mock.calls[0][1]).toBeUndefined();
+    expect(mocks.mailAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('is idempotent — skips a line item already captured', async () => {
+    mocks.attrFindById.mockResolvedValue({ id: 'PAY-1__VAR_LESSON' });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.attrCapture).not.toHaveBeenCalled();
+    expect(mocks.settleOrCreatePosLessonInvoice).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('ignores a line item that is neither a class nor a configured lesson', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      lineItems: [{ catalogObjectId: 'VAR_RETAIL', name: 'A mug', quantity: 1 }],
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.attrCapture).not.toHaveBeenCalled();
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
   });
 });

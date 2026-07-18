@@ -51,6 +51,9 @@ export interface InvoiceLineItem {
  *                        (student scanned the business Venmo QR at a lesson).
  *  - `venmo-import`    — the Venmo statement reconciliation tool matched a
  *                        statement row to this invoice (see #630).
+ *  - `square-pos`      — an in-person Square POS lesson sale was attributed to
+ *                        this invoice (auto by customer email, or by a human
+ *                        from the review queue). See #628.
  *
  * Venmo Business Profiles have no API/webhook, so Venmo payments are attested
  * by a human (`venmo-manual`) and later confirmed by CSV import
@@ -60,7 +63,8 @@ export type InvoicePaymentSource =
   | 'admin-manual'
   | 'square-webhook'
   | 'venmo-manual'
-  | 'venmo-import';
+  | 'venmo-import'
+  | 'square-pos';
 
 /**
  * Payment sources a human can record by hand from the UI. Excludes the

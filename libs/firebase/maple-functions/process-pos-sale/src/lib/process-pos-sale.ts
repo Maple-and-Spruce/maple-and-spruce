@@ -18,7 +18,10 @@
  *     and orders already turned into a registration (squareOrderId).
  *  5. For each order line item that maps to a class variation, create a
  *     `source:'pos'` registration. When the sale carried no customer email,
- *     queue an admin alert so staff can collect it.
+ *     queue an admin alert so staff can collect it. A line item that matches a
+ *     configured lesson catalog item is instead attributed to a student —
+ *     automatically when the customer email maps to exactly one student, else
+ *     captured in the POS-lesson review queue for a human (#628).
  *
  * Creating the registration fires PR B's `syncClassInventoryToSquare`, which
  * reconciles remaining POS stock — nothing extra to do here for inventory.
@@ -28,8 +31,13 @@ import { defineSecret, defineString } from 'firebase-functions/params';
 import {
   getDb,
   ClassRepository,
+  InvoiceRepository,
+  PosLessonAttributionRepository,
+  PosLessonConfigRepository,
   PosSaleRequestRepository,
   RegistrationRepository,
+  StudentRepository,
+  posLessonAttributionId,
 } from '@maple/firebase/database';
 import {
   Square,
@@ -144,16 +152,125 @@ export const processPosSale = onDocumentWritten(
 
       const taxRatePercent = square.taxRatePercent;
 
-      // 5. Create one registration per line item that maps to a class. Line
-      // items that don't map (retail products, misc POS items) are ignored.
+      // Configured lesson catalog items (e.g. a "Guitar Lesson" POS button).
+      // Lessons aren't sold as a per-student catalog item, so a lesson line
+      // needs human/auto attribution rather than a class registration (#628).
+      const lessonCatalogIds = new Set(
+        await PosLessonConfigRepository.getLessonCatalogObjectIds()
+      );
+
+      // 5. Walk the line items. A class variation → a `source:'pos'`
+      // registration. A configured lesson item → attribute to a student
+      // (auto by customer email, else a review-queue entry). Everything else
+      // (retail products, misc POS items) is ignored.
       let created = 0;
+      let lessonsAttributed = 0;
+      let lessonsPending = 0;
       for (const lineItem of order.lineItems) {
         if (!lineItem.catalogObjectId) continue;
 
         const classEntity = await ClassRepository.findBySquareVariationId(
           lineItem.catalogObjectId
         );
-        if (!classEntity) continue;
+        if (!classEntity) {
+          // Not a class. If it's a configured lesson item, capture/attribute
+          // it; otherwise it's retail/misc and we ignore it.
+          if (!lessonCatalogIds.has(lineItem.catalogObjectId)) continue;
+
+          const attrId = posLessonAttributionId(
+            paymentId,
+            lineItem.catalogObjectId
+          );
+          if (await PosLessonAttributionRepository.findById(attrId)) {
+            // Already captured on a prior run — idempotent.
+            continue;
+          }
+
+          const lessonQty =
+            Number.isFinite(lineItem.quantity) && lineItem.quantity > 0
+              ? Math.round(lineItem.quantity)
+              : 1;
+          const lessonSubtotalCents =
+            lineItem.grossSalesCents ??
+            (lineItem.basePriceCents ?? 0) * lessonQty;
+          const lessonAmountPaidCents =
+            lineItem.totalCents ??
+            lessonSubtotalCents + (lineItem.totalTaxCents ?? 0);
+          const itemName = lineItem.name ?? 'Music lesson';
+          const occurredAt = payment.createdAt
+            ? new Date(payment.createdAt)
+            : new Date();
+
+          const captureInput = {
+            squarePaymentId: paymentId,
+            squareOrderId: orderId,
+            catalogObjectId: lineItem.catalogObjectId,
+            itemName,
+            quantity: lessonQty,
+            subtotalCents: lessonSubtotalCents,
+            amountPaidCents: lessonAmountPaidCents,
+            occurredAt,
+            squareReceiptUrl: payment.receiptUrl,
+            squareCustomerId: customerId,
+            customerEmail,
+            customerName,
+          };
+
+          // Auto-attribute only when the customer email maps to EXACTLY one
+          // student — siblings share a parent email, so 0 or >1 matches are
+          // ambiguous and go to human review.
+          let didAttribute = false;
+          if (customerEmail) {
+            const matches =
+              await StudentRepository.findByPrimaryContactEmail(customerEmail);
+            if (matches.length === 1) {
+              const { invoice } =
+                await InvoiceRepository.settleOrCreatePosLessonInvoice({
+                  studentId: matches[0].id,
+                  subtotalCents: lessonSubtotalCents,
+                  description: `In-person lesson — ${itemName}`,
+                  squarePaymentId: paymentId,
+                  squareOrderId: orderId,
+                  // Auto path — no human uid.
+                });
+              await PosLessonAttributionRepository.capture(captureInput, {
+                status: 'attributed',
+                studentId: matches[0].id,
+                invoiceId: invoice.id,
+                attributedBy: 'auto',
+              });
+              didAttribute = true;
+              lessonsAttributed++;
+            }
+          }
+
+          if (!didAttribute) {
+            await PosLessonAttributionRepository.capture(captureInput);
+            lessonsPending++;
+            // Alert staff that an in-person lesson sale needs a student.
+            await db.collection('mail').add({
+              to: adminAlertEmail.value(),
+              message: {
+                subject: `POS lesson sale needs attribution — ${itemName}`,
+                text: [
+                  'An in-person POS lesson sale could not be matched to a student automatically.',
+                  '',
+                  `Item: ${itemName}`,
+                  `Amount paid: ${formatCurrency(lessonAmountPaidCents)}`,
+                  customerEmail ? `Customer email: ${customerEmail}` : 'No customer email on the sale',
+                  `Square order: ${orderId}`,
+                  `Square payment: ${paymentId}`,
+                  payment.receiptUrl ? `Receipt: ${payment.receiptUrl}` : '',
+                  '',
+                  'Open the POS lesson review queue in the admin app to pick the student.',
+                ]
+                  .filter((line) => line !== '')
+                  .join('\n'),
+              },
+            });
+          }
+          continue;
+        }
 
         const quantity =
           Number.isFinite(lineItem.quantity) && lineItem.quantity > 0
@@ -238,7 +355,9 @@ export const processPosSale = onDocumentWritten(
       }
 
       console.log(
-        `[process-pos-sale] payment=${paymentId} order=${orderId} created=${created} registration(s)`
+        `[process-pos-sale] payment=${paymentId} order=${orderId} ` +
+          `created=${created} registration(s) ` +
+          `lessons(attributed=${lessonsAttributed}, pending=${lessonsPending})`
       );
 
       await PosSaleRequestRepository.markProcessed(paymentId);
