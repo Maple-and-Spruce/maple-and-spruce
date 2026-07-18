@@ -149,6 +149,11 @@ overrides:
   # (patched in 11.1.3). Transitive dep of @swc/cli > @xhmikosr/bin-wrapper >
   # @xhmikosr/downloader > @xhmikosr/decompress. Added 2026-07-06.
   '@xhmikosr/decompress@>=11.0.0 <11.1.3': '>=11.1.3'
+  # GHSA-xcpc-8h2w-3j85: adm-zip crafted ZIP triggers 4GB memory allocation
+  # DoS (patched in 0.6.0, current latest). Dev-only transitive dep of
+  # @nx/next > @nx/react > @nx/module-federation > @module-federation/*
+  # > @module-federation/dts-plugin and @webflow/webflow-cli. Added 2026-07-17.
+  adm-zip: '>=0.6.0'
   # GHSA-xv26-6w52-cph6 (critical): websocket-driver message corruption via
   # abuse of protocol length headers, plus resource-limit bypass via message
   # compression. Both patched in 0.7.5. Transitive dep of firebase &
