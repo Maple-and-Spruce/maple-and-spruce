@@ -1,68 +1,55 @@
 import { defineConfig, devices } from '@playwright/test';
-import { nxE2EPreset } from '@nx/playwright/preset';
 import { workspaceRoot } from '@nx/devkit';
 
-// For CI, you may want to set BASE_URL to the deployed application.
-const baseURL = process.env['BASE_URL'] || 'http://localhost:3000';
-
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
+ * Admin-portal role-scoping E2E — drives the real Next.js app
+ * (`apps/maple-spruce`) against the local Firebase emulators (auth + firestore
+ * + functions with the PR's own code). The first browser-level proof that the
+ * scoped-roles wiring holds in the assembled app (epic #617).
+ *
+ * Run via `tools/run-portal-e2e.sh`, which starts the emulators and then
+ * `nx run maple-spruce-e2e:e2e`. Playwright's own `webServer` boots the Next
+ * dev server on localhost, pointed at the offset emulator ports so the app's
+ * callables + sign-in hit the emulators.
  */
-// require('dotenv').config();
+// Next dev is pinned to 3000 (nx's dev target doesn't reliably forward a port).
+// The app reaches the (possibly offset) emulators via the ports written to
+// apps/maple-spruce/.env.local by the run script / CI.
+const baseURL = 'http://localhost:3000';
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
 export default defineConfig({
-  ...nxE2EPreset(__filename, { testDir: './src' }),
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  testDir: './src',
+  testMatch: '**/*.spec.ts',
+  retries: process.env['CI'] ? 1 : 0,
+  // One worker: the specs share seeded users on a single emulator backend.
+  workers: 1,
+  reporter: process.env['CI']
+    ? [['html', { open: 'never' }], ['list']]
+    : 'list',
+  globalSetup: require.resolve('./src/global-setup.ts'),
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   use: {
     baseURL,
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    video: 'retain-on-failure',
   },
-  /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npx nx run maple-spruce:start',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
+    // `next dev` (no separate build step). The app connects to the emulators
+    // by hostname (localhost) + the NEXT_PUBLIC_*_EMULATOR_PORT vars, which the
+    // run script / CI write into apps/maple-spruce/.env.local (the reliable
+    // channel — process.env NEXT_PUBLIC vars don't reach the client bundle
+    // through nx → next dev). Not reused in CI so a fresh env is always picked.
+    command: 'npx nx run maple-spruce:dev',
+    url: baseURL,
+    reuseExistingServer: !process.env['CI'],
     cwd: workspaceRoot,
+    timeout: 180_000,
   },
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // Uncomment for mobile browsers support
-    /* {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    }, */
-
-    // Uncomment for branded browsers
-    /* {
-      name: 'Microsoft Edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    },
-    {
-      name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    } */
   ],
 });
