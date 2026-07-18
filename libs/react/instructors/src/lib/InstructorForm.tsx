@@ -35,6 +35,7 @@ import type {
   CreateInstructorInput,
   PayeeStatus,
   InstructorPayRateType,
+  AppUser,
 } from '@maple/ts/domain';
 import type {
   UploadInstructorImageRequest,
@@ -52,9 +53,17 @@ import {
 interface InstructorFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateInstructorInput) => Promise<void>;
+  onSubmit: (
+    data: Omit<CreateInstructorInput, 'uid'> & { uid?: string | null }
+  ) => Promise<void>;
   instructor?: Instructor;
   isSubmitting?: boolean;
+  /**
+   * Portal users, for the optional "Portal login" picker. Provide only on the
+   * admin page (it fetches users) — the link is what lets a lesson teacher
+   * manage their own lessons (#617 phase 2). Omit to hide the picker.
+   */
+  users?: readonly AppUser[];
 }
 
 // Common specialties for autocomplete suggestions
@@ -98,6 +107,7 @@ export function InstructorForm({
   onSubmit,
   instructor,
   isSubmitting = false,
+  users,
 }: InstructorFormProps) {
   // Enable signals tracking in this component
   useSignals();
@@ -114,6 +124,9 @@ export function InstructorForm({
   const specialties = useSignal<string[]>([]);
   const payRate = useSignal<number | undefined>(undefined);
   const payRateType = useSignal<InstructorPayRateType | undefined>(undefined);
+  // Portal login link ('' = not a portal user). Only surfaced when `users`
+  // is provided.
+  const linkedUid = useSignal('');
 
   // ============================================================
   // UI STATE SIGNALS
@@ -174,6 +187,7 @@ export function InstructorForm({
         specialties.value = instructor.specialties ?? [];
         payRate.value = instructor.payRate;
         payRateType.value = instructor.payRateType;
+        linkedUid.value = instructor.uid ?? '';
         photoUrl.value = instructor.photoUrl ?? '';
 
         if (instructor.photoUrl) {
@@ -200,6 +214,7 @@ export function InstructorForm({
         specialties.value = [];
         payRate.value = undefined;
         payRateType.value = undefined;
+        linkedUid.value = '';
         photoUrl.value = '';
         imageUploadState.value = { status: 'idle' };
         pendingImageFile.value = null;
@@ -295,7 +310,7 @@ export function InstructorForm({
         }
       }
 
-      const input: CreateInstructorInput = {
+      const input: Omit<CreateInstructorInput, 'uid'> & { uid?: string | null } = {
         name: name.value,
         email: email.value,
         phone: phone.value || undefined,
@@ -306,6 +321,9 @@ export function InstructorForm({
         payRate: payRate.value,
         payRateType: payRateType.value,
         photoUrl: currentPhotoUrl || undefined,
+        // Only emit uid when the picker is in play. '' => null (unlink /
+        // not a portal user); a uid => link. undefined leaves it unchanged.
+        ...(users ? { uid: linkedUid.value || null } : {}),
       };
 
       await onSubmit(input);
@@ -506,6 +524,34 @@ export function InstructorForm({
               <FormHelperText>{getFieldError('status')}</FormHelperText>
             )}
           </FormControl>
+
+          {/* Portal login — links a user account to this instructor so a
+              lesson teacher can manage their own lessons (#617 phase 2). */}
+          {users && (
+            <FormControl fullWidth>
+              <InputLabel>Portal login (for lesson teachers)</InputLabel>
+              <Select
+                value={linkedUid.value}
+                label="Portal login (for lesson teachers)"
+                onChange={(e) => (linkedUid.value = e.target.value)}
+              >
+                <MenuItem value="">
+                  <em>Not a portal user</em>
+                </MenuItem>
+                {users.map((u) => (
+                  <MenuItem key={u.uid} value={u.uid}>
+                    {u.displayName ? `${u.displayName} · ` : ''}
+                    {u.email ?? u.uid}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                Lets this person sign in and manage the lessons they teach.
+                Leave as &ldquo;Not a portal user&rdquo; for class-only
+                instructors.
+              </FormHelperText>
+            </FormControl>
+          )}
 
           {/* Notes */}
           <TextField

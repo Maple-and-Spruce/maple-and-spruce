@@ -3,7 +3,11 @@
  *
  * Updates an existing instructor (admin only).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createAdminFunction,
+  throwNotFound,
+  throwFailedPrecondition,
+} from '@maple/firebase/functions';
 import { InstructorRepository } from '@maple/firebase/database';
 import { instructorValidation } from '@maple/ts/validation';
 import type {
@@ -21,8 +25,11 @@ export const updateInstructor = createAdminFunction<
     throwNotFound('Instructor', data.id);
   }
 
-  // Validate update data (merge with existing for full validation)
-  const merged = { ...existing, ...data };
+  // Validate update data (merge with existing for full validation). uid is a
+  // portal-login link, not a validated field, and may be null (unlink) — keep
+  // it out of the validation merge so its type doesn't leak in.
+  const { uid: _uid, ...dataForValidation } = data;
+  const merged = { ...existing, ...dataForValidation };
   const validationResult = instructorValidation(merged);
   if (!validationResult.isValid()) {
     const errors = validationResult.getErrors();
@@ -37,6 +44,19 @@ export const updateInstructor = createAdminFunction<
     const existingWithEmail = await InstructorRepository.findByEmail(data.email);
     if (existingWithEmail) {
       throw new Error(`An instructor with email ${data.email} already exists`);
+    }
+  }
+
+  // A portal login (uid) links one user to one instructor — required for the
+  // lesson-teacher "manage only your own lessons" check (#617 phase 2). Guard
+  // uniqueness: a uid already linked to a different instructor must be
+  // unlinked there first, or ownership would be ambiguous. `null` unlinks.
+  if (data.uid) {
+    const linkedElsewhere = await InstructorRepository.findByUid(data.uid);
+    if (linkedElsewhere && linkedElsewhere.id !== data.id) {
+      throwFailedPrecondition(
+        `That portal user is already linked to instructor "${linkedElsewhere.name}". Unlink them there first.`
+      );
     }
   }
 
