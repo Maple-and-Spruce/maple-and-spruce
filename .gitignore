@@ -88,3 +88,7 @@ apps/registration-test-harness/dist/
 .nx/polygraph
 .nx/self-healing
 .nx/migrate-runs
+
+# Local ops-tool reports (contain student/payment PII) — reconcile-venmo,
+# reconcile-mailerlite-attendees, etc.
+evidence/
