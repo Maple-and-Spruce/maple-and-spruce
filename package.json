@@ -2,7 +2,7 @@
   "name": "@maple/source",
   "version": "0.0.0",
   "license": "MIT",
-  "packageManager": "pnpm@11.0.0-rc.1+sha512.0d7d837668eb35b81d28f560ef8ec5e103ff5d162e249fd0d30c546c39a551d290ac9cf15709353b94d2df6eb445bfa465c7a05148d328eda32950c02e40d060",
+  "packageManager": "pnpm@11.14.0+sha512.66c1ac4c7d4762d6d7dde44c7f3e5a73591ed0a0806e751d4ed32d4f004f25b2285a906b1fd8a9e3e621df3b4e2858bf88e50e0cf626bedbe977fe434a5caf85",
   "scripts": {
     "dev": "nx dev maple-spruce",
     "dev:functions": "nx run functions:serve",
@@ -52,7 +52,7 @@
     "@webflow/webflow-cli": "^1.15.0",
     "chromatic": "^13.3.5",
     "concurrently": "^9.2.1",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.1",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.1.1",
