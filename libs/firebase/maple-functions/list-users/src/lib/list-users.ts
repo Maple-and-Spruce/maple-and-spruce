@@ -14,7 +14,7 @@ import {
   throwInvalidArgument,
 } from '@maple/firebase/functions';
 import { getAuth } from 'firebase-admin/auth';
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 import type { AppUser, ScopedUserRole } from '@maple/ts/domain';
 import type {
   GetUsersRequest,
@@ -25,7 +25,7 @@ const DEFAULT_LIMIT = 200;
 const MAX_LIMIT = 1000;
 
 function ensureAdmin(): void {
-  if (admin.apps.length === 0) admin.initializeApp();
+  if (getApps().length === 0) initializeApp();
 }
 
 export const listUsers = createAdminFunction<

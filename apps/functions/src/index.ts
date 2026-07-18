@@ -10,14 +10,14 @@
  * - apps/functions-square/  — Square integration (square SDK)
  * - apps/functions-sync/    — Webflow sync (webflow-api)
  */
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 import { createPublicFunction } from '@maple/firebase/functions';
 
 // Initialize Firebase Admin at the entry point, before any function handlers run.
 // This ensures the admin SDK is ready for Firestore triggers (onDocumentWritten)
 // which can execute before lazy initialization in individual modules takes effect.
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
 
 // Health check for testing

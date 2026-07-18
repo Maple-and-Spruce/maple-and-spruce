@@ -10,7 +10,7 @@
  * Doc-id = paymentId gives idempotency across Square's webhook retries: the
  * same payment always upserts the same doc rather than piling up duplicates.
  */
-import admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { db, toDate } from './utilities/database.config';
 import type { PosSaleRequest } from '@maple/ts/domain';
 
@@ -49,7 +49,7 @@ export const PosSaleRequestRepository = {
         {
           paymentId,
           orderId: data.orderId ?? null,
-          requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+          requestedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
@@ -62,8 +62,8 @@ export const PosSaleRequestRepository = {
       .doc(paymentId)
       .set(
         {
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastError: admin.firestore.FieldValue.delete(),
+          processedAt: FieldValue.serverTimestamp(),
+          lastError: FieldValue.delete(),
         },
         { merge: true }
       );

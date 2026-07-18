@@ -19,7 +19,7 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { Functions, isE2ETestEmail } from '@maple/firebase/functions';
 import {
   ClassRepository,
@@ -400,7 +400,7 @@ export const createRegistration = Functions.endpoint
         // cancelled — single-use means single-use.
         if (discountRef) {
           transaction.update(discountRef, {
-            usageCount: admin.firestore.FieldValue.increment(1),
+            usageCount: FieldValue.increment(1),
             updatedAt: now,
           });
         }

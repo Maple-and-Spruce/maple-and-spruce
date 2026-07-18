@@ -17,7 +17,7 @@
  * The lease has a TTL so a crashed processor doesn't permanently block
  * later syncs.
  */
-import admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { db, toDate } from './utilities/database.config';
 
 const COLLECTION = 'catalogSyncRequests';
@@ -65,7 +65,7 @@ export const CatalogSyncRequestRepository = {
    */
   async requestRefresh(): Promise<void> {
     await docRef().set(
-      { requestedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { requestedAt: FieldValue.serverTimestamp() },
       { merge: true }
     );
   },
@@ -108,8 +108,8 @@ export const CatalogSyncRequestRepository = {
         snap.ref,
         {
           running: true,
-          lastStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastError: admin.firestore.FieldValue.delete(),
+          lastStartedAt: FieldValue.serverTimestamp(),
+          lastError: FieldValue.delete(),
         },
         { merge: true }
       );
@@ -122,7 +122,7 @@ export const CatalogSyncRequestRepository = {
     await docRef().set(
       {
         running: false,
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedAt: FieldValue.serverTimestamp(),
         lastResult: summary,
       },
       { merge: true }

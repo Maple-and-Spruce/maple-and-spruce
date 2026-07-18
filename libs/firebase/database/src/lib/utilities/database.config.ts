@@ -8,7 +8,8 @@
  * Migration note: Changed from eager `export const db = ...` to lazy `getDb()`.
  * All repositories should use getDb() instead of importing db directly.
  */
-import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getApps, initializeApp } from 'firebase-admin/app';
 
 let dbInstance: FirebaseFirestore.Firestore | undefined;
 let settingsApplied = false;
@@ -18,8 +19,8 @@ let settingsApplied = false;
  * Called only when needed, not at module load time
  */
 function ensureAdminInitialized(): void {
-  if (admin.apps.length === 0) {
-    admin.initializeApp();
+  if (getApps().length === 0) {
+    initializeApp();
   }
 }
 
@@ -38,7 +39,7 @@ function ensureAdminInitialized(): void {
 export function getDb(): FirebaseFirestore.Firestore {
   if (!dbInstance) {
     ensureAdminInitialized();
-    dbInstance = admin.firestore();
+    dbInstance = getFirestore();
 
     // Apply settings only once, and only if no operations have been performed yet.
     // Wrap in try-catch because settings() throws if called after any Firestore operation.

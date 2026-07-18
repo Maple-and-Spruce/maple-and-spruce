@@ -23,13 +23,9 @@ vi.mock('firebase-admin/auth', () => ({
   getAuth: () => ({ listUsers: mocks.authListUsers }),
 }));
 
-vi.mock('firebase-admin', () => ({
-  default: {
-    get apps() {
-      return mocks.adminApps;
-    },
-    initializeApp: mocks.adminInitializeApp,
-  },
+vi.mock('firebase-admin/app', () => ({
+  getApps: () => mocks.adminApps,
+  initializeApp: mocks.adminInitializeApp,
 }));
 
 import { listUsers } from './list-users';
