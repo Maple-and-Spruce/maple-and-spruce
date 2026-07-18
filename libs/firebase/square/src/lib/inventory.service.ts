@@ -149,7 +149,12 @@ export class InventoryService {
           type: 'ADJUSTMENT',
           adjustment: {
             catalogObjectId: input.squareVariationId,
-            locationId: input.locationId,
+            // Square 45 split the former single `locationId` into
+            // from/toLocationId. This is a same-location state change
+            // (NONE→IN_STOCK to receive, IN_STOCK→SOLD to remove), so both
+            // sides reference the same location.
+            fromLocationId: input.locationId,
+            toLocationId: input.locationId,
             quantity: String(Math.abs(input.quantityChange)),
             fromState: input.quantityChange > 0 ? 'NONE' : 'IN_STOCK',
             toState: input.quantityChange > 0 ? 'IN_STOCK' : 'SOLD',
