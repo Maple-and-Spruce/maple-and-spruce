@@ -36,7 +36,7 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineString } from 'firebase-functions/params';
 import { Functions, Role, isE2ETestEmail } from '@maple/firebase/functions';
@@ -225,8 +225,8 @@ function hasReminderForSession(
 export async function runSendClassReminders(
   now: Date = new Date()
 ): Promise<SendClassRemindersResult> {
-  if (admin.apps.length === 0) {
-    admin.initializeApp();
+  if (getApps().length === 0) {
+    initializeApp();
   }
 
   const { start, end } = getTodayWindow(now);

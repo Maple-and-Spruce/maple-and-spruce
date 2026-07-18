@@ -6,10 +6,10 @@
  * Separated to isolate the heavy Square SDK dependency from other functions,
  * reducing cold start times.
  */
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
 
 // Product write operations (Square catalog sync)

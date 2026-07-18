@@ -8,7 +8,7 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore } from 'firebase-admin/firestore';
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 
 export const expireAgreementRequests = onSchedule(
   {
@@ -17,8 +17,8 @@ export const expireAgreementRequests = onSchedule(
     region: 'us-east4',
   },
   async () => {
-    if (admin.apps.length === 0) {
-      admin.initializeApp();
+    if (getApps().length === 0) {
+      initializeApp();
     }
 
     const db = getFirestore();

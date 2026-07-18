@@ -15,7 +15,7 @@ import {
   throwValidationError,
 } from '@maple/firebase/functions';
 import { imageUploadValidation } from '@maple/ts/validation';
-import admin from 'firebase-admin';
+import { getStorage } from 'firebase-admin/storage';
 import type {
   UploadClassGalleryImageRequest,
   UploadClassGalleryImageResponse,
@@ -32,7 +32,7 @@ export const uploadClassGalleryImage = createAdminFunction<
     throwValidationError(validation.getErrors());
   }
 
-  const bucket = admin.storage().bucket(FirebaseProject.storageBucket);
+  const bucket = getStorage().bucket(FirebaseProject.storageBucket);
 
   const timestamp = Date.now();
   const extension = contentType.split('/')[1] || 'jpg';

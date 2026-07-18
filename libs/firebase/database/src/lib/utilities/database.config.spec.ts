@@ -17,8 +17,14 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock firebase-admin module
-vi.mock('firebase-admin', () => {
+// Mock the modular firebase-admin entry points (firebase-admin 14 dropped the
+// namespaced `admin.firestore()` / `admin.apps` default export).
+vi.mock('firebase-admin/app', () => ({
+  getApps: () => mocks.apps,
+  initializeApp: mocks.initializeApp,
+}));
+
+vi.mock('firebase-admin/firestore', () => {
   const mockFirestoreInstance = {
     collection: vi.fn(),
     settings: mocks.firestoreSettings,
@@ -27,13 +33,7 @@ vi.mock('firebase-admin', () => {
   mocks.firestore.mockReturnValue(mockFirestoreInstance);
 
   return {
-    default: {
-      get apps() {
-        return mocks.apps;
-      },
-      initializeApp: mocks.initializeApp,
-      firestore: mocks.firestore,
-    },
+    getFirestore: mocks.firestore,
   };
 });
 
