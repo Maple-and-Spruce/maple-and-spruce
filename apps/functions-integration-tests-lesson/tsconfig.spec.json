@@ -4,7 +4,8 @@
     "outDir": "../../dist/out-tsc",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node"],
+    "rootDir": "../.."
   },
   "include": ["src/**/*.ts"]
 }

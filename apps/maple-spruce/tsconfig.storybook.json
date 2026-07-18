@@ -3,7 +3,8 @@
   "compilerOptions": {
     "emitDecoratorMetadata": true,
     "module": "esnext",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "rootDir": "../.."
   },
   "exclude": ["components/**/*.spec.ts", "components/**/*.test.ts"],
   "include": [

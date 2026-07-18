@@ -2,7 +2,8 @@
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
-    "noPropertyAccessFromIndexSignature": true
+    "noPropertyAccessFromIndexSignature": true,
+    "ignoreDeprecations": "6.0"
   },
   "files": [],
   "include": [],

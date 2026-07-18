@@ -53,7 +53,6 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['json'],
       reportsDirectory: path.join(dirname, 'coverage/storybook'),
-      all: false,
     },
   },
 });

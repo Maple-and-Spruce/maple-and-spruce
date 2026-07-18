@@ -2,15 +2,20 @@ import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 /**
- * Root vitest config for workspace-level coverage reporting.
+ * Root vitest config — the single source of truth for the unit-test run.
  *
- * This config is used by CI to generate merged coverage reports
- * across all workspace projects. Individual project configs in
- * libs/ handle their own test execution.
+ * Uses Vitest's default repo-wide spec discovery (a flat glob, NOT
+ * `test.projects`): one run over every `*.spec.{ts,tsx}` in the workspace,
+ * with per-file `// @vitest-environment jsdom` docblocks selecting jsdom for
+ * React component specs. The `tsconfigPaths` plugin resolves `@maple/*` for
+ * every spec.
+ *
+ * Do NOT reintroduce `test.projects` here. The Nx 23 migration converted the
+ * (dead) `vitest.workspace.ts` into a 21-entry `projects` list, which silently
+ * dropped ~90 spec files from the run and cratered merged coverage. The libs'
+ * own `vitest.config.ts` files are unused by this run.
  *
  * Run with: npx vitest run --coverage
- *
- * @see vitest.workspace.ts for the list of project configs
  */
 export default defineConfig({
   plugins: [
@@ -35,8 +40,8 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['text', 'json-summary', 'json'],
       reportsDirectory: './coverage/unit',
-      // Merge coverage from all workspace projects
-      all: false,
+      // Vitest 4 removed `coverage.all`; its default (report only files loaded
+      // during the run) already matches the previous `all: false` behavior.
       // Exclude test infrastructure + integration-test harness code from
       // coverage — it's not production code and is only exercised by the
       // (emulator-backed) integration tests, which don't run in the unit

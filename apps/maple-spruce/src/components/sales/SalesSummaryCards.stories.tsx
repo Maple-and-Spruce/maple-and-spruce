@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { SalesSummaryCards } from './SalesSummaryCards';
-import { mockSales } from '../../../.storybook/fixtures';
+import { mockSales } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: SalesSummaryCards,

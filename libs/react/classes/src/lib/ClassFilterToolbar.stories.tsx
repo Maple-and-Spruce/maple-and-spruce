@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
 import { ClassFilterToolbar } from './ClassFilterToolbar';
-import { mockClassCategories } from '../../../../../apps/maple-spruce/.storybook/fixtures';
-import { mockActiveInstructors } from '../../../../../apps/maple-spruce/.storybook/fixtures';
+import { mockClassCategories } from '@maple/react/storybook-fixtures';
+import { mockActiveInstructors } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: ClassFilterToolbar,

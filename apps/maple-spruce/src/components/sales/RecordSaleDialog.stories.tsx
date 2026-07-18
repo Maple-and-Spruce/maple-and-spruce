@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
 import { RecordSaleDialog } from './RecordSaleDialog';
-import { mockProducts } from '../../../.storybook/fixtures';
+import { mockProducts } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: RecordSaleDialog,

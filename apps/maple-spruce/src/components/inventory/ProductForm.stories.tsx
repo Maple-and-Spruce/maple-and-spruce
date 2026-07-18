@@ -10,7 +10,7 @@ import {
   mockProductMultiVariant,
   mockArtists,
   mockCategories,
-} from '../../../.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 // ============================================================
 // WRAPPER COMPONENT FOR STATEFUL TESTS
