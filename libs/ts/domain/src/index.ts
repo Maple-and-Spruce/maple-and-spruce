@@ -22,6 +22,8 @@ export * from './lib/schedule-format';
 export * from './lib/class-category';
 export * from './lib/registration';
 export * from './lib/pos-sale-request';
+export * from './lib/pos-lesson-attribution';
+export * from './lib/pos-lesson-config';
 export * from './lib/discount';
 export * from './lib/tax';
 export * from './lib/class-waitlist';
