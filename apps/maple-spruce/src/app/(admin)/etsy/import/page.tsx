@@ -128,7 +128,7 @@ export default function EtsyImportPage() {
             <Switch
               checked={hideImported}
               onChange={(e) => setHideImported(e.target.checked)}
-              inputProps={{ 'aria-label': 'Hide already imported' }}
+              slotProps={{ input: { 'aria-label': 'Hide already imported' } }}
             />
           }
           label="Hide already-imported"

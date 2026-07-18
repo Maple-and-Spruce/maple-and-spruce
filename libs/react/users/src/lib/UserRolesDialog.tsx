@@ -166,8 +166,10 @@ export function UserRolesDialog({
                         <Switch
                           checked={hasRole}
                           disabled={busy}
-                          inputProps={{
-                            'aria-label': USER_ROLE_LABELS[role],
+                          slotProps={{
+                            input: {
+                              'aria-label': USER_ROLE_LABELS[role],
+                            },
                           }}
                           onChange={() =>
                             wrapAction(async () =>

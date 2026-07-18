@@ -13,7 +13,7 @@ import {
   Chip,
   Stack,
 } from '@mui/material';
-import Grid from '@mui/material/Grid2';
+import Grid from '@mui/material/Grid';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BusinessIcon from '@mui/icons-material/Business';

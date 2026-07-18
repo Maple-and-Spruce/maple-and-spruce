@@ -370,7 +370,7 @@ export function CalendarEventForm({
           {/* Room */}
           <FormControl fullWidth>
             <InputLabel id="event-room-label">Room</InputLabel>
-            <Select
+            <Select<Room | ''>
               labelId="event-room-label"
               value={room.value ?? ''}
               label="Room"
