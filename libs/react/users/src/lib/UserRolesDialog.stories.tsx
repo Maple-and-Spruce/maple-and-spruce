@@ -44,13 +44,13 @@ export const NoAccess: Story = {
       await dialog.findByRole('button', { name: /grant admin/i })
     ).toBeInTheDocument();
     await expect(
-      dialog.getByRole('checkbox', { name: 'MT Teacher' })
+      dialog.getByRole('switch', { name: 'MT Teacher' })
     ).not.toBeChecked();
     await expect(
-      dialog.getByRole('checkbox', { name: 'Clerk' })
+      dialog.getByRole('switch', { name: 'Clerk' })
     ).not.toBeChecked();
     await expect(
-      dialog.getByRole('checkbox', { name: 'Lesson Teacher' })
+      dialog.getByRole('switch', { name: 'Lesson Teacher' })
     ).not.toBeChecked();
   },
 };
@@ -63,7 +63,7 @@ export const GrantScopedRole: Story = {
   play: async ({ args }) => {
     const dialog = within(document.body);
     await userEvent.click(
-      await dialog.findByRole('checkbox', { name: 'MT Teacher' })
+      await dialog.findByRole('switch', { name: 'MT Teacher' })
     );
     await waitFor(() =>
       expect(args.onGrantRole).toHaveBeenCalledWith('nathan-uid', 'mt-teacher')
@@ -81,7 +81,7 @@ export const RevokeScopedRole: Story = {
   },
   play: async ({ args }) => {
     const dialog = within(document.body);
-    const clerkSwitch = await dialog.findByRole('checkbox', { name: 'Clerk' });
+    const clerkSwitch = await dialog.findByRole('switch', { name: 'Clerk' });
     await expect(clerkSwitch).toBeChecked();
     await userEvent.click(clerkSwitch);
     await waitFor(() =>
@@ -105,7 +105,7 @@ export const AdminUser: Story = {
       await dialog.findByRole('button', { name: /revoke admin/i })
     ).toBeInTheDocument();
     await expect(
-      dialog.queryByRole('checkbox', { name: 'MT Teacher' })
+      dialog.queryByRole('switch', { name: 'MT Teacher' })
     ).not.toBeInTheDocument();
     await userEvent.click(
       dialog.getByRole('button', { name: /revoke admin/i })

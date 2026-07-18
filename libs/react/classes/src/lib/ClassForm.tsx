@@ -1124,7 +1124,7 @@ export function ClassForm({
             {/* Room */}
             <FormControl fullWidth>
               <InputLabel id="class-room-label">Room</InputLabel>
-              <Select
+              <Select<Room | ''>
                 labelId="class-room-label"
                 value={room.value ?? ''}
                 label="Room"
