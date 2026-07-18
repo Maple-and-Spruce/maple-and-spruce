@@ -158,6 +158,37 @@ describe('createMusicTogetherRegistration', () => {
     expect(String(charges[0].idempotencyKey)).toMatch(/^mt-charge-/);
   });
 
+  it('installments: an email Square Customers Search rejects still succeeds via the create fallback', async () => {
+    // Real Square's Customers Search rejects reserved-TLD emails (the mock now
+    // mirrors this). upsertByEmail must treat that search failure as "not
+    // found" and create the customer anyway (#634) — otherwise the whole
+    // installment registration fails. This is the class of bug the real-Square
+    // e2e caught but the mock previously hid.
+    const result = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'search-rejected@maplespruce.test',
+        paymentPlan: 'installments',
+        cardOnFileAuth: true,
+        cardVerificationToken: 'verf:store-token',
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.status).toBe('confirmed');
+
+    const reg = await getFirestoreDoc(
+      'musicTogetherRegistrations',
+      result.data!.registrationId
+    );
+    // The customer was created despite the search rejection.
+    expect(String(reg?.squareCustomerId)).toMatch(/^mock-customer-/);
+    expect(String(reg?.squareCardId)).toMatch(/^ccof:mock-card-/);
+  });
+
   it('full pay: charges the sibling-discounted total for a 2-child family', async () => {
     const result = await callFunction<
       CreateMusicTogetherRegistrationRequest,
