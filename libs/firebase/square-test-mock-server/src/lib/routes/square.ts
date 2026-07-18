@@ -423,10 +423,58 @@ function registerMockControlRoutes(server: SquareMockServer): void {
  * Craft Club routes: Square customers, cards on file, and subscriptions.
  * Split out to keep `registerSquareRoutes` readable.
  */
+/**
+ * Reserved / non-deliverable TLDs (RFC 2606 + RFC 6761) that real Square's
+ * Customers Search rejects as invalid email. CreateCustomer is more lenient.
+ */
+const SEARCH_REJECTED_TLDS = new Set(['test', 'example', 'invalid', 'localhost']);
+
+/** True if real Square's Customers Search would reject this email filter. */
+function isSearchRejectedEmail(email: string): boolean {
+  const domain = email.split('@')[1];
+  if (!domain) return false;
+  const tld = domain.split('.').pop()?.toLowerCase();
+  return !!tld && SEARCH_REJECTED_TLDS.has(tld);
+}
+
+/** Pull the email out of a Customers Search body's exact/fuzzy filter. */
+function extractSearchEmail(body: unknown): string | undefined {
+  const filter = (
+    body as {
+      query?: { filter?: { email_address?: { exact?: string; fuzzy?: string } } };
+    }
+  )?.query?.filter?.email_address;
+  return filter?.exact ?? filter?.fuzzy;
+}
+
 function registerCraftClubRoutes(server: SquareMockServer): void {
   // Search customers by email (upsert lookup). Default: none found → caller
   // proceeds to create. Returns an empty list so each test starts clean.
-  server.post('/v2/customers/search', () => {
+  //
+  // Real Square's Customers Search validates the email filter MORE strictly
+  // than CreateCustomer and rejects some addresses with INVALID_VALUE — e.g.
+  // reserved/undeliverable TLDs (.test/.example/.invalid/.localhost). The mock
+  // mirrors that so integration tests catch the class of bug where a customer
+  // upsert doesn't tolerate a search failure (fixed in #634: fall through to
+  // create). Real customer emails (deliverable domains) still return empty.
+  server.post('/v2/customers/search', (req) => {
+    const email = extractSearchEmail(req.body);
+    if (email && isSearchRejectedEmail(email)) {
+      return {
+        status: 400,
+        body: {
+          errors: [
+            {
+              category: 'INVALID_REQUEST_ERROR',
+              code: 'INVALID_VALUE',
+              detail:
+                'The provided email address is invalid. For more information, please refer to the Search endpoint technical reference.',
+              field: 'email',
+            },
+          ],
+        },
+      };
+    }
     return { status: 200, body: { customers: [] } };
   });
 
