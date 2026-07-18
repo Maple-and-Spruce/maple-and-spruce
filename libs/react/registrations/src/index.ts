@@ -8,4 +8,5 @@ export { SquareCardForm } from './lib/SquareCardForm';
 export type {
   CardTokenizeResult,
   SquareBillingContact,
+  SquareInitErrorInfo,
 } from './lib/SquareCardForm';

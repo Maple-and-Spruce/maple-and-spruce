@@ -75,6 +75,19 @@ interface SquareTokenizeResult {
   errors?: Array<{ message: string }>;
 }
 
+/**
+ * Shape of an error thrown by the Square Web Payments SDK (`PaymentsError`).
+ * `type` is the machine-readable discriminator — notably
+ * `'InitializationTimeoutError'` ("Web Payments SDK was unable to be
+ * initialized in time"), which is the failure Safari's cross-site tracking
+ * prevention (ITP) provokes when it blocks Square's bootstrap iframe.
+ */
+interface SquarePaymentsError {
+  name?: string;
+  message?: string;
+  type?: string;
+}
+
 /** Billing contact passed to `verifyBuyer` for STORE-intent SCA. */
 export interface SquareBillingContact {
   givenName?: string;
@@ -101,6 +114,53 @@ declare global {
         locationId: string
       ) => Promise<SquarePayments>;
     };
+    /** GA4, present on the Webflow public pages. Used to beacon init failures. */
+    gtag?: (...args: unknown[]) => void;
+    /** WebKit-only; its presence signals Safari/iOS — the ITP-affected browsers. */
+    ApplePaySession?: unknown;
+  }
+}
+
+/**
+ * Structured detail about a payment-form initialization failure. Emitted to the
+ * console, beaconed to GA, and passed to any `onInitError` consumer so we can
+ * measure real-world incidence (previously the error was swallowed into an
+ * Alert with no telemetry).
+ */
+export interface SquareInitErrorInfo {
+  /** Square error `type` when present (e.g. `'InitializationTimeoutError'`). */
+  errorType?: string;
+  errorName?: string;
+  message: string;
+  /** True when the failure is Square's init/bootstrap timeout (the Safari/ITP class). */
+  isInitTimeout: boolean;
+  applicationId: string;
+  locationId: string;
+  env?: string;
+  /** Present ⇒ WebKit/Safari, the browser family affected by ITP cross-site blocking. */
+  hasApplePaySession: boolean;
+  userAgent: string;
+}
+
+/**
+ * Report a payment-form init failure to the console and (when available) GA.
+ * Telemetry must never throw back into the payment flow, so the beacon is
+ * fully guarded.
+ */
+function reportPaymentInitFailure(info: SquareInitErrorInfo): void {
+  // Surface for anyone watching the console — this used to be swallowed.
+  console.error('[SquareCardForm] payment form failed to initialize', info);
+  try {
+    window.gtag?.('event', 'payment_init_failed', {
+      error_type: info.errorType ?? info.errorName ?? 'unknown',
+      is_init_timeout: info.isInitTimeout,
+      square_env:
+        info.env ??
+        (info.applicationId.startsWith('sandbox-') ? 'sandbox' : 'prod'),
+      is_safari: info.hasApplePaySession,
+    });
+  } catch {
+    // Never let a telemetry failure break the form.
   }
 }
 
@@ -115,6 +175,13 @@ interface SquareCardFormProps {
   showDigitalWallets?: boolean;
   /** Called when the form is ready to tokenize */
   onReady?: () => void;
+  /**
+   * Called when the Square SDK fails to initialize the card form (e.g. Safari
+   * ITP blocking the bootstrap iframe → `InitializationTimeoutError`). Receives
+   * structured detail for telemetry / custom fallback UI. The component already
+   * console.errors + GA-beacons on its own; this is an extra hook for consumers.
+   */
+  onInitError?: (info: SquareInitErrorInfo) => void;
   /** Ref function to expose tokenize to parent */
   onTokenizeRef: (tokenize: () => Promise<CardTokenizeResult>) => void;
   /**
@@ -192,6 +259,7 @@ export function SquareCardForm({
   totalCents,
   showDigitalWallets = false,
   onReady,
+  onInitError,
   onTokenizeRef,
   verifyBuyerForStore = false,
   billingContact,
@@ -212,6 +280,8 @@ export function SquareCardForm({
   const paymentRequestRef = useRef<SquarePaymentRequest | null>(null);
   const onDigitalWalletTokenRef = useRef(onDigitalWalletToken);
   onDigitalWalletTokenRef.current = onDigitalWalletToken;
+  const onInitErrorRef = useRef(onInitError);
+  onInitErrorRef.current = onInitError;
   // Kept in refs so changing them doesn't re-init the SDK, and so the tokenize
   // closure always reads the latest values (billing contact fills in as the
   // family types).
@@ -476,14 +546,42 @@ export function SquareCardForm({
 
       onReady?.();
     } catch (err) {
+      const sqErr = err as SquarePaymentsError;
       const message =
         err instanceof Error
           ? err.message
-          : 'Failed to initialize payment form';
-      setError(message);
+          : sqErr?.message ?? 'Failed to initialize payment form';
+      // Square's bootstrap-timeout — the Safari/ITP class — reports itself with
+      // `type: 'InitializationTimeoutError'`; fall back to a message match for
+      // safety if the type is ever absent.
+      const isInitTimeout =
+        sqErr?.type === 'InitializationTimeoutError' ||
+        /unable to be initialized/i.test(message);
+
+      const info: SquareInitErrorInfo = {
+        errorType: sqErr?.type,
+        errorName: err instanceof Error ? err.name : sqErr?.name,
+        message,
+        isInitTimeout,
+        applicationId,
+        locationId,
+        env,
+        hasApplePaySession:
+          typeof window !== 'undefined' &&
+          typeof window.ApplePaySession !== 'undefined',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      };
+      reportPaymentInitFailure(info);
+      onInitErrorRef.current?.(info);
+
+      setError(
+        isInitTimeout
+          ? "We couldn't load the secure payment form. Please refresh the page and try again — if it keeps happening, open this page in a private browsing window or a different browser."
+          : message
+      );
       setIsLoading(false);
     }
-  }, [applicationId, locationId, totalCents, showDigitalWallets, onReady, onTokenizeRef, maxWidth]);
+  }, [applicationId, locationId, env, totalCents, showDigitalWallets, onReady, onTokenizeRef, maxWidth]);
 
   // Initialize payments once SDK is ready AND we have a valid amount
   useEffect(() => {
