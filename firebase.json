@@ -9,22 +9,22 @@
   "functions": [
     {
       "source": "dist/apps/functions",
-      "runtime": "nodejs20",
+      "runtime": "nodejs22",
       "codebase": "maple-core"
     },
     {
       "source": "dist/apps/functions-calendar",
-      "runtime": "nodejs20",
+      "runtime": "nodejs22",
       "codebase": "maple-calendar"
     },
     {
       "source": "dist/apps/functions-square",
-      "runtime": "nodejs20",
+      "runtime": "nodejs22",
       "codebase": "maple-square"
     },
     {
       "source": "dist/apps/functions-sync",
-      "runtime": "nodejs20",
+      "runtime": "nodejs22",
       "codebase": "maple-sync"
     }
   ],
