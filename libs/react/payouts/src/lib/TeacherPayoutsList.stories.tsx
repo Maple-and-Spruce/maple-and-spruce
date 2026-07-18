@@ -6,7 +6,7 @@ import {
   mockPayoutPrimary,
   mockPayoutSubstitute,
   mockPayoutMissingRate,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { RequestState, TeacherPayout } from '@maple/ts/domain';
 
 const meta = {

@@ -6,7 +6,7 @@ import {
   mockActiveInstructors,
   mockInstructor,
   mockInstructorInactive,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { RequestState } from '@maple/ts/domain';
 import type { Instructor } from '@maple/ts/domain';
 

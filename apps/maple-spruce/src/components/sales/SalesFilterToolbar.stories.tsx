@@ -5,7 +5,7 @@ import {
   defaultSalesFilters,
   type SalesFilters,
 } from './SalesFilterToolbar';
-import { mockArtists } from '../../../.storybook/fixtures';
+import { mockArtists } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: SalesFilterToolbar,

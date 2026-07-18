@@ -6,7 +6,7 @@ import {
   mockPriceMismatchConflict,
   mockMissingExternalConflict,
   mockMissingLocalConflict,
-} from '../../../.storybook/fixtures/sync-conflicts';
+} from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: SyncConflictResolver,

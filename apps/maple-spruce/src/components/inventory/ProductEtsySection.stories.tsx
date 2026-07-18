@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box } from '@mui/material';
 import { ProductEtsySection } from './ProductEtsySection';
-import { mockProduct } from '../../../.storybook/fixtures';
+import { mockProduct } from '@maple/react/storybook-fixtures';
 
 const listedProduct = { ...mockProduct, etsyListingId: '1234567890' };
 

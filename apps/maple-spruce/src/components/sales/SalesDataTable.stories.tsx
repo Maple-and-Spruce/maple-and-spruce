@@ -5,7 +5,7 @@ import {
   mockSales,
   mockArtists,
   mockProducts,
-} from '../../../.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 const artistMap = new Map<string, Artist>(mockArtists.map((a) => [a.id, a]));
 const productMap = new Map<string, Product>(

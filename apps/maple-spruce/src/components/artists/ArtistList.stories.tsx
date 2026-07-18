@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
 import { ArtistList } from './ArtistList';
-import { mockArtists } from '../../../.storybook/fixtures';
+import { mockArtists } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: ArtistList,

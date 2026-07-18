@@ -9,7 +9,7 @@ import {
   mockClassCompleted,
   mockClassCategories,
   mockActiveInstructors,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { Class, RequestState } from '@maple/ts/domain';
 
 const meta = {

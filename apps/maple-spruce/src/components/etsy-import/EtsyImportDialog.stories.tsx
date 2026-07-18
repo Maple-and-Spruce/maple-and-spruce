@@ -6,7 +6,7 @@ import {
   mockArtist2,
   mockCategoryPottery,
   mockCategoryTextiles,
-} from '../../../.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: EtsyImportDialog,

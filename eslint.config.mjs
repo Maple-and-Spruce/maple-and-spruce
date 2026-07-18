@@ -30,7 +30,14 @@ export default [
       '@nx/enforce-module-boundaries': [
         'error',
         {
-          enforceBuildableLibDependency: true,
+          // Nx 23's @nx/js/typescript plugin infers a `build` target on every
+          // lib with a tsconfig.lib.json, which flips them all to "buildable"
+          // and trips this constraint. This repo never consumes libs via a
+          // built dist — libs have no package.json and are bundled from source
+          // by esbuild (functions) / Next (app) — so the buildable-dependency
+          // rule is meaningless here. Nx 22 didn't infer these targets, so the
+          // rule never fired before. Disabled on the Nx 23 migration.
+          enforceBuildableLibDependency: false,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
             {

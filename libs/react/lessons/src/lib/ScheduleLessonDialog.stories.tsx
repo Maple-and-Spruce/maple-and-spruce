@@ -5,7 +5,7 @@ import {
   mockInstructor,
   mockInstructor2,
   mockInstructorPercentage,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 const instructors = [mockInstructor, mockInstructor2, mockInstructorPercentage];
 
