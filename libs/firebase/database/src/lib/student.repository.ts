@@ -75,6 +75,23 @@ export const StudentRepository = {
     return docToStudent(doc);
   },
 
+  /**
+   * Find students whose primary contact email matches (case-insensitive on the
+   * caller's part — pass an already-normalized email). Returns an array
+   * because siblings share a parent/guardian email; callers auto-attribute
+   * only when exactly one student matches and route ambiguous (0 or >1) cases
+   * to human review. See #628.
+   */
+  async findByPrimaryContactEmail(email: string): Promise<Student[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('primaryContactEmail', '==', email)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToStudent(doc))
+      .filter((s): s is Student => s !== undefined);
+  },
+
   async create(input: CreateStudentInput): Promise<Student> {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
