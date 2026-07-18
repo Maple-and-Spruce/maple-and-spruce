@@ -238,7 +238,7 @@ export const AdultStudentTogglesContactSectionHeader: Story = {
 
     // Toggle adult switch
     await userEvent.click(
-      canvas.getByRole('checkbox', { name: /adult student/i })
+      canvas.getByRole('switch', { name: /adult student/i })
     );
 
     // Section header flips to "Contact"
@@ -298,7 +298,7 @@ export const HopeScholarshipToggles: Story = {
   play: async () => {
     const canvas = await waitForDialog();
 
-    const hopeToggle = canvas.getByRole('checkbox', {
+    const hopeToggle = canvas.getByRole('switch', {
       name: /hope scholarship/i,
     });
     expect(hopeToggle).not.toBeChecked();

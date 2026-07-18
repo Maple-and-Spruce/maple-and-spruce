@@ -277,7 +277,7 @@ export function SectionFormDialog({
               <Switch
                 checked={visible}
                 onChange={(e) => setVisible(e.target.checked)}
-                inputProps={{ 'aria-label': 'Show on calendar and site' }}
+                slotProps={{ input: { 'aria-label': 'Show on calendar and site' } }}
               />
             }
             label="Show on calendar &amp; site (registration can still be closed)"
@@ -287,7 +287,7 @@ export function SectionFormDialog({
               <Switch
                 checked={enrollmentActive}
                 onChange={(e) => setEnrollmentActive(e.target.checked)}
-                inputProps={{ 'aria-label': 'Enrollment active' }}
+                slotProps={{ input: { 'aria-label': 'Enrollment active' } }}
               />
             }
             label="Enrollment active (accept registrations now)"

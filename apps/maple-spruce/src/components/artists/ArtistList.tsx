@@ -8,7 +8,7 @@ import {
   Typography,
   Chip,
   IconButton,
-  Grid2 as Grid,
+  Grid,
   Skeleton,
   Alert,
   Avatar,

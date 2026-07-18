@@ -167,7 +167,7 @@ export const UpcomingToggleChange: Story = {
     const canvas = within(canvasElement);
 
     // Find and click the switch
-    const upcomingSwitch = canvas.getByRole('checkbox', { name: /upcoming only/i });
+    const upcomingSwitch = canvas.getByRole('switch', { name: /upcoming only/i });
     await userEvent.click(upcomingSwitch);
 
     // onFiltersChange should have been called with upcoming: true
