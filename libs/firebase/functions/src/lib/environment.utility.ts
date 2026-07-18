@@ -46,7 +46,7 @@ export type FirebaseProjectId = (typeof FIREBASE_PROJECTS)[keyof typeof FIREBASE
  * @example
  * ```typescript
  * // In a Cloud Function:
- * const bucket = admin.storage().bucket(FirebaseProject.storageBucket);
+ * const bucket = getStorage().bucket(FirebaseProject.storageBucket);
  * ```
  */
 export class FirebaseProject {

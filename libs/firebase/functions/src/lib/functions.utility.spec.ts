@@ -45,11 +45,9 @@ vi.mock('firebase-admin/auth', () => ({
   getAuth: () => ({ verifyIdToken: mocks.verifyIdToken }),
 }));
 
-vi.mock('firebase-admin', () => ({
-  default: {
-    apps: mocks.apps,
-    initializeApp: mocks.initializeApp,
-  },
+vi.mock('firebase-admin/app', () => ({
+  getApps: () => mocks.apps,
+  initializeApp: mocks.initializeApp,
 }));
 
 vi.mock('./auth.utility', () => ({

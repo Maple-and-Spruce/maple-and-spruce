@@ -11,7 +11,7 @@ import {
   throwValidationError,
 } from '@maple/firebase/functions';
 import { imageUploadValidation } from '@maple/ts/validation';
-import admin from 'firebase-admin';
+import { getStorage } from 'firebase-admin/storage';
 import type {
   UploadInstructorImageRequest,
   UploadInstructorImageResponse,
@@ -29,7 +29,7 @@ export const uploadInstructorImage = createAdminFunction<
   }
 
   // Get Firebase Storage bucket for current project
-  const bucket = admin.storage().bucket(FirebaseProject.storageBucket);
+  const bucket = getStorage().bucket(FirebaseProject.storageBucket);
 
   // Generate unique file name
   const timestamp = Date.now();

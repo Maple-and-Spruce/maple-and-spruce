@@ -5,10 +5,10 @@
  * Separated to isolate the Webflow API dependency from other functions,
  * reducing cold start times.
  */
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
 
 // Webflow CMS sync (Firestore triggers)

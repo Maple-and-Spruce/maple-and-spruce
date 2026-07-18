@@ -7,14 +7,14 @@ const mocks = vi.hoisted(() => ({
   mailAdd: vi.fn(),
 }));
 
-vi.mock('firebase-admin', () => {
-  const admin = {
-    apps: [{}], // non-empty → initializeApp not called
-    initializeApp: vi.fn(),
-    firestore: () => ({ collection: () => ({ add: mocks.mailAdd }) }),
-  };
-  return { default: admin, ...admin };
-});
+vi.mock('firebase-admin/app', () => ({
+  getApps: () => [{}], // non-empty → initializeApp not called
+  initializeApp: vi.fn(),
+}));
+
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: () => ({ collection: () => ({ add: mocks.mailAdd }) }),
+}));
 
 vi.mock('firebase-functions/v2/scheduler', () => ({
   onSchedule: vi.fn((_config, handler) => handler),

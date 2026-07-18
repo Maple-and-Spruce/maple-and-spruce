@@ -29,7 +29,8 @@
  *
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
-import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getApps, initializeApp } from 'firebase-admin/app';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import {
   Functions,
@@ -197,8 +198,8 @@ async function sendReminderForRegistration(
 export async function runSendMusicTogetherReminders(
   now: Date = new Date()
 ): Promise<SendMusicTogetherRemindersResult> {
-  if (admin.apps.length === 0) {
-    admin.initializeApp();
+  if (getApps().length === 0) {
+    initializeApp();
   }
 
   const { start, end } = getTodayWindow(now);
@@ -233,7 +234,7 @@ export async function runSendMusicTogetherReminders(
     return result;
   }
 
-  const db = admin.firestore();
+  const db = getFirestore();
 
   for (const { section, session } of todaySections) {
     const registrations =

@@ -24,7 +24,7 @@ import type { Response } from 'express';
 import { Role, hasAnyRole } from './auth.utility';
 import { throwAlreadyExists, throwValidationError } from './errors.utility';
 import { getAuth } from 'firebase-admin/auth';
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 
 /**
  * Context provided to function handlers
@@ -164,8 +164,8 @@ export async function runChecks(
  * Called only when needed, not at module load time
  */
 function ensureAdminInitialized(): void {
-  if (admin.apps.length === 0) {
-    admin.initializeApp();
+  if (getApps().length === 0) {
+    initializeApp();
   }
 }
 

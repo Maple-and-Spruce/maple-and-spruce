@@ -5,10 +5,10 @@
  * Separated to isolate ical-generator and timezone dependencies
  * from other functions, reducing cold start times.
  */
-import admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
 
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
 
 // Calendar ICS feeds (HTTP endpoints)
