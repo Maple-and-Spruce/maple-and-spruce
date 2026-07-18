@@ -909,6 +909,96 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  portal-e2e:
+    # Admin-portal role-scoping E2E — the first browser-level proof that the
+    # scoped-roles wiring (RolesProvider → getMyRoles → RoleGuard + nav
+    # filtering, epic #617) holds in the assembled Next.js app. Drives the real
+    # app against local emulators (auth + firestore + functions with the PR's
+    # own code): sign in through the login form, assert the role-filtered shell.
+    # No external services — always runs (no secret gate).
+    name: Portal E2E
+    needs: [install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build function codebases
+        run: |
+          pnpm exec nx run functions:build
+          pnpm exec nx run functions-square:build
+          pnpm exec nx run functions-sync:build
+          pnpm exec nx run functions-calendar:build
+
+      - name: Create emulator .env
+        run: |
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
+          done
+
+          # Mock secrets so the emulator doesn't stall on missing defineSecret params.
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\n" > dist/apps/functions/.secret.local
+          printf "SQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+          printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
+
+          # External integrations → closed port (portal login/nav flow needs none).
+          echo "SQUARE_BASE_URL=http://127.0.0.1:1" >> dist/apps/functions-square/.env
+          echo "WEBFLOW_BASE_URL=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+          echo "ETSY_API_BASE=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
+
+          # CORS: the app's callables come from the Next dev origin (localhost:3000).
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+            EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
+            echo "ALLOWED_ORIGINS=$EXISTING,http://localhost:3000,http://127.0.0.1:3000" >> "$dir/.env"
+          done
+
+          # The Next app reads emulator ports from .env.local (the reliable
+          # channel to the browser bundle). CI runs at offset 0 → default ports.
+          printf "NEXT_PUBLIC_FUNCTIONS_EMULATOR_PORT=5001\nNEXT_PUBLIC_AUTH_EMULATOR_PORT=9099\n" > apps/maple-spruce/.env.local
+
+      - name: Run Playwright against emulator
+        run: |
+          npx firebase emulators:exec \
+            --project=dev \
+            --only auth,firestore,functions \
+            "pnpm exec nx run maple-spruce-e2e:e2e"
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-portal-e2e
+          path: |
+            **/playwright-report/**
+            **/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
+
   storybook:
     name: Storybook Build & Tests
     needs: [install]
