@@ -1,11 +1,18 @@
 /**
  * Update Lesson Cloud Function
  *
- * Updates an existing lesson (admin only). Used for reschedule
- * (scheduledAt), duration change, substitute teacher, status transitions
- * (scheduled ↔ cancelled; rendered is set by #282), and notes.
+ * Admin + lesson-teacher (scoped-roles epic #617). A lesson teacher may only
+ * update lessons they teach (ownership check on the lesson's teacherId);
+ * admins may update any. Used for reschedule (scheduledAt), duration change,
+ * substitute teacher, status transitions (scheduled ↔ cancelled; rendered is
+ * set by #282), and notes.
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+  assertCanManageLesson,
+  throwNotFound,
+} from '@maple/firebase/functions';
 import { LessonRepository } from '@maple/firebase/database';
 import { lessonValidation } from '@maple/ts/validation';
 import type {
@@ -13,14 +20,17 @@ import type {
   UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateLesson = createAdminFunction<
+export const updateLesson = createRoleFunction<
   UpdateLessonRequest,
   UpdateLessonResponse
->(async (data) => {
+>(async (data, context) => {
   const existing = await LessonRepository.findById(data.id);
   if (!existing) {
     throwNotFound('Lesson', data.id);
   }
+
+  // Ownership: a lesson teacher may only touch a lesson they currently teach.
+  await assertCanManageLesson(context, existing.teacherId);
 
   // Coerce scheduledAt if caller sent a string, but only include it in
   // the update payload when it was actually provided — spreading
@@ -48,4 +58,4 @@ export const updateLesson = createAdminFunction<
   const lesson = await LessonRepository.update(coercedUpdates);
 
   return { lesson };
-});
+}, [Role.Admin, Role.LessonTeacher]);

@@ -83,3 +83,17 @@ export function throwValidationError(errors: Record<string, string[]>): never {
 export function throwFailedPrecondition(message: string): never {
   throw new HttpsError('failed-precondition', message);
 }
+
+/**
+ * Throw a permission-denied error — the caller is authenticated and has a
+ * role, but isn't allowed to act on this specific resource (e.g. a lesson
+ * teacher trying to manage a lesson they don't teach).
+ *
+ * @example
+ * if (!isOwner && !isAdmin) {
+ *   throwPermissionDenied('You can only manage lessons you teach.');
+ * }
+ */
+export function throwPermissionDenied(message: string): never {
+  throw new HttpsError('permission-denied', message);
+}

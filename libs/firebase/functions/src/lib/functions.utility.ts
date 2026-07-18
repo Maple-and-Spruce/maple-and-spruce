@@ -12,7 +12,7 @@
  * Pattern adapted from Mountain Sol Platform:
  * @see https://github.com/MountainSOLSchool/platform/blob/main/libs/firebase/functions/src/lib/utilities/functions.utility.ts
  */
-import { onRequest } from 'firebase-functions/v2/https';
+import { onRequest, HttpsError } from 'firebase-functions/v2/https';
 import {
   defineString,
   defineSecret,
@@ -575,6 +575,20 @@ class FunctionBuilder<
               error instanceof Error
                 ? error.message
                 : 'An unexpected error occurred';
+
+            // Resource-ownership failures (throwPermissionDenied) map to 403 so
+            // clients can tell "not allowed" from "bad input" — this mirrors the
+            // role-gate's 403. Everything else keeps the existing 400
+            // INVALID_ARGUMENT contract.
+            if (
+              error instanceof HttpsError &&
+              error.code === 'permission-denied'
+            ) {
+              res.status(403).json({
+                error: { message, status: 'PERMISSION_DENIED' },
+              });
+              return;
+            }
 
             // Return error in the callable protocol format so httpsCallable
             // on the client can extract the message. Without this structure,

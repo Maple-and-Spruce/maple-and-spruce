@@ -5,7 +5,11 @@
  * final list of scheduled dates (having already applied any holiday skips
  * in the preview step), so the server writes them as-is.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+  assertCanManageLesson,
+} from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonSeriesValidation } from '@maple/ts/validation';
 import type {
@@ -13,10 +17,13 @@ import type {
   CreateLessonSeriesResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const createLessonSeries = createAdminFunction<
+export const createLessonSeries = createRoleFunction<
   CreateLessonSeriesRequest,
   CreateLessonSeriesResponse
->(async (data) => {
+>(async (data, context) => {
+  // A lesson teacher may only create a series they teach.
+  await assertCanManageLesson(context, data.teacherId);
+
   // Dates arrive as ISO strings over the wire; coerce each one before validation.
   const coerced = {
     ...data,
@@ -48,4 +55,4 @@ export const createLessonSeries = createAdminFunction<
   });
 
   return { lessons, seriesId };
-});
+}, [Role.Admin, Role.LessonTeacher]);

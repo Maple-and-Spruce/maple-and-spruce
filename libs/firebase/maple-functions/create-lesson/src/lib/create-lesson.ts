@@ -1,10 +1,16 @@
 /**
  * Create Lesson Cloud Function
  *
- * Creates a single music lesson (admin only). Used for first-lesson
+ * Admin + lesson-teacher (scoped-roles epic #617). A lesson teacher may only
+ * create lessons they teach (the new lesson's teacherId must be their own
+ * instructor id); admins may create for anyone. Used for first-lesson
  * bookings; recurring series use createLessonSeries.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+  assertCanManageLesson,
+} from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonValidation } from '@maple/ts/validation';
 import type {
@@ -12,10 +18,13 @@ import type {
   CreateLessonResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const createLesson = createAdminFunction<
+export const createLesson = createRoleFunction<
   CreateLessonRequest,
   CreateLessonResponse
->(async (data) => {
+>(async (data, context) => {
+  // A lesson teacher may only create a lesson assigned to themselves.
+  await assertCanManageLesson(context, data.teacherId);
+
   // Dates arrive as ISO strings over the wire; coerce before validation.
   const coerced = {
     ...data,
@@ -49,4 +58,4 @@ export const createLesson = createAdminFunction<
   });
 
   return { lesson };
-});
+}, [Role.Admin, Role.LessonTeacher]);

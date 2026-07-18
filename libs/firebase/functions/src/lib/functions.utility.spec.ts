@@ -515,6 +515,33 @@ describe('Functions.endpoint (chain + handle)', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it('maps a thrown permission-denied HttpsError to 403', async () => {
+    const handler = vi.fn(async () => {
+      throw new HttpsError('permission-denied', 'You can only manage lessons you teach.');
+    });
+    const endpoint = Functions.endpoint.handle(handler);
+
+    const res = await invoke(endpoint, makeReq({ body: { data: {} } }));
+
+    expect(res.statusCode).toBe(403);
+    expect((res.body as { error: { status: string; message: string } }).error)
+      .toMatchObject({ status: 'PERMISSION_DENIED' });
+  });
+
+  it('keeps the 400 INVALID_ARGUMENT contract for other thrown errors', async () => {
+    const handler = vi.fn(async () => {
+      throw new HttpsError('not-found', 'Lesson missing');
+    });
+    const endpoint = Functions.endpoint.handle(handler);
+
+    const res = await invoke(endpoint, makeReq({ body: { data: {} } }));
+
+    expect(res.statusCode).toBe(400);
+    expect((res.body as { error: { status: string } }).error.status).toBe(
+      'INVALID_ARGUMENT'
+    );
+  });
+
   it('validating: rejects invalid input before invoking handler', async () => {
     const handler = vi.fn();
     const validator = vi.fn(() => ({

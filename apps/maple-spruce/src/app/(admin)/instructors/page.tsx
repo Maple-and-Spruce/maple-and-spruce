@@ -6,7 +6,7 @@ import AddIcon from '@mui/icons-material/Add';
 import type { Instructor, CreateInstructorInput } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { InstructorList, InstructorForm } from '@maple/react/instructors';
-import { useInstructors } from '../../../hooks';
+import { useInstructors, useUsers } from '../../../hooks';
 
 export default function InstructorsPage() {
   // Instructor state from hook (fetches on mount)
@@ -16,6 +16,11 @@ export default function InstructorsPage() {
     updateInstructor,
     deleteInstructor: deleteInstructorApi,
   } = useInstructors();
+
+  // Users power the "Portal login" picker on the form (links a login to an
+  // instructor so a lesson teacher can manage their own lessons, #617).
+  const { usersState } = useUsers();
+  const users = usersState.status === 'success' ? usersState.data : undefined;
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -40,14 +45,16 @@ export default function InstructorsPage() {
   }, []);
 
   const handleSubmitForm = useCallback(
-    async (data: CreateInstructorInput) => {
+    async (data: Omit<CreateInstructorInput, 'uid'> & { uid?: string | null }) => {
       setIsSubmitting(true);
 
       try {
         if (editingInstructor) {
+          // uid may be a login to link, null to unlink, or omitted (unchanged).
           await updateInstructor({ id: editingInstructor.id, ...data });
         } else {
-          await createInstructor(data);
+          // Create can't carry a null uid — coerce to "no link".
+          await createInstructor({ ...data, uid: data.uid ?? undefined });
         }
         handleCloseForm();
       } catch (error) {
@@ -117,6 +124,7 @@ export default function InstructorsPage() {
         onSubmit={handleSubmitForm}
         instructor={editingInstructor}
         isSubmitting={isSubmitting}
+        users={users}
       />
 
       <DeleteConfirmDialog
