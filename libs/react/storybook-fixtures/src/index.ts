@@ -17,3 +17,4 @@ export * from './invoices';
 export * from './etsy-listings';
 export * from './teacher-payouts';
 export * from './sales';
+export * from './sync-conflicts';

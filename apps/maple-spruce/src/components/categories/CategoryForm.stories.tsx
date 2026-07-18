@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
 import { CategoryForm } from './CategoryForm';
-import { mockCategoryPottery } from '../../../.storybook/fixtures';
+import { mockCategoryPottery } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: CategoryForm,

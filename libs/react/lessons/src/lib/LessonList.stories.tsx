@@ -11,7 +11,7 @@ import {
   mockLessonCancelled,
   mockInstructor,
   mockInstructor2,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { Lesson, RequestState } from '@maple/ts/domain';
 
 const instructors = [mockInstructor, mockInstructor2];

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
 import { ProductList } from './ProductList';
-import { mockProducts, mockArtists } from '../../../.storybook/fixtures';
+import { mockProducts, mockArtists } from '@maple/react/storybook-fixtures';
 import type { Artist } from '@maple/ts/domain';
 
 // Create map from array

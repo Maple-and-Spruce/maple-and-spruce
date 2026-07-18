@@ -5,7 +5,8 @@
     "declaration": true,
     "types": ["node"],
     "composite": false,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": false,
+    "rootDir": "../.."
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]

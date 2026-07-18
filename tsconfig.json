@@ -27,5 +27,8 @@
     {
       "path": "./libs/ts/domain"
     }
-  ]
+  ],
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0"
+  }
 }

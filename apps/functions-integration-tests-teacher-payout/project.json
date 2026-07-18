@@ -16,7 +16,7 @@
   ],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
+      "executor": "@nx/vitest:test",
       "options": {
         "config": "apps/functions-integration-tests-teacher-payout/vitest.config.ts"
       }

@@ -1,0 +1,9 @@
+{
+  "name": "storybook-fixtures",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/react/storybook-fixtures/src",
+  "projectType": "library",
+  "tags": ["scope:react", "type:util"],
+  "// targets": "to see all targets run: nx show project storybook-fixtures --web",
+  "targets": {}
+}

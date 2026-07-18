@@ -84,3 +84,7 @@ vitest.config.*.timestamp*
 .env
 firestore-debug.log
 apps/registration-test-harness/dist/
+
+.nx/polygraph
+.nx/self-healing
+.nx/migrate-runs

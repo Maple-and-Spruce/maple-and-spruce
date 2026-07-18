@@ -5,7 +5,7 @@ import {
   mockInstructor,
   mockInstructorPercentage,
   mockInstructorMinimal,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: InstructorForm,

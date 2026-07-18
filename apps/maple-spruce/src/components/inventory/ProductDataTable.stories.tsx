@@ -6,7 +6,7 @@ import {
   mockActiveProducts,
   mockArtists,
   mockCategories,
-} from '../../../.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { Artist } from '@maple/ts/domain';
 import type { Category } from '@maple/ts/domain';
 

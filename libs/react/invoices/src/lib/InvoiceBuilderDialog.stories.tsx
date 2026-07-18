@@ -7,7 +7,7 @@ import {
   mockLessonPastRendered,
   mockLessonPastScheduled,
   mockLessonUpcomingSingle,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 const lessons = [
   mockLessonPastRendered,

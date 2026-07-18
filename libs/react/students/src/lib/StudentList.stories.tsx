@@ -10,7 +10,7 @@ import {
   mockInstructor2,
   mockInstructorPercentage,
   mockLessons,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { RequestState, Student } from '@maple/ts/domain';
 
 const instructors = [mockInstructor, mockInstructor2, mockInstructorPercentage];

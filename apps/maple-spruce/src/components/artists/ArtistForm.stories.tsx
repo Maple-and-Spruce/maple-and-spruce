@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
 import { ArtistForm } from './ArtistForm';
-import { mockArtist } from '../../../.storybook/fixtures';
+import { mockArtist } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: ArtistForm,

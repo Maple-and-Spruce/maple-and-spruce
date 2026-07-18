@@ -6,7 +6,7 @@ import {
   mockEtsyListingAvailable,
   mockEtsyListingImported,
   mockEtsyListingMultiVariant,
-} from '../../../.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: EtsyImportTable,

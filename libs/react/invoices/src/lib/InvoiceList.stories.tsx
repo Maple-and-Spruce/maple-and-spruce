@@ -11,7 +11,7 @@ import {
   mockInvoiceVoid,
   mockInvoiceMultiLine,
   mockInvoiceSyncError,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import type { Invoice, RequestState } from '@maple/ts/domain';
 
 const meta = {

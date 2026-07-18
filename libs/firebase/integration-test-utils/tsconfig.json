@@ -3,7 +3,8 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node"],
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts"]
 }

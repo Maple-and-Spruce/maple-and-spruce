@@ -9,11 +9,11 @@ import {
   mockClassWithGallery,
   mockClassWithReferral,
   mockClassCategoriesWithPool,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 import {
   mockActiveInstructors,
   mockInstructor,
-} from '../../../../../apps/maple-spruce/.storybook/fixtures';
+} from '@maple/react/storybook-fixtures';
 
 /** Static default date for deterministic Chromatic snapshots */
 const STATIC_DEFAULT_DATE = new Date('2030-04-01T10:00:00Z');

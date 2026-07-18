@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
 import { ProductFilterToolbar, defaultFilters } from './ProductFilterToolbar';
-import { mockArtists, mockCategories } from '../../../.storybook/fixtures';
+import { mockArtists, mockCategories } from '@maple/react/storybook-fixtures';
 
 const meta = {
   component: ProductFilterToolbar,
