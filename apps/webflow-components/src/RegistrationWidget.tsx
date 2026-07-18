@@ -168,11 +168,9 @@ function formatRelatedClassDate(isoString: string): string {
  */
 function SoldOutPanel({
   classId,
-  className,
   functions,
 }: {
   classId: string;
-  className: string;
   functions: ReturnType<typeof getWidgetFunctions>;
 }) {
   const [related, setRelated] = useState<PublicClass[] | null>(null);
@@ -233,16 +231,16 @@ function SoldOutPanel({
 
   return (
     <Box>
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>{className}</strong> is currently full — but you can join the
-        waitlist below.
-      </Alert>
-
-      {/* Waitlist signup — the primary action for a full class, so it leads. */}
+      {/*
+        Waitlist signup — the primary action for a full class, so it leads.
+        On the class page the Webflow template renders its own "Join Waitlist"
+        heading + "this class is full…" subtext (CMS conditional visibility)
+        directly above this widget, so the panel deliberately omits a full-state
+        banner and repeats none of that copy — just the first-come fine print.
+      */}
       <Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Add your email and we'll let you know if a spot opens. Spots are
-          first-come, first-served — we email everyone on the list.
+          Spots are first-come, first-served — we email everyone on the list.
         </Typography>
 
         {waitlistState.status === 'success' ? (
@@ -594,7 +592,6 @@ export function RegistrationWidget({
             {state.publicClass.spotsRemaining <= 0 ? (
               <SoldOutPanel
                 classId={state.publicClass.id}
-                className={state.publicClass.name}
                 functions={functions}
               />
             ) : !squareAppId ? (
