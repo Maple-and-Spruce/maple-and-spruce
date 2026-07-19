@@ -82,6 +82,8 @@ export function StudentForm({
   const secondaryContactEmail = useSignal('');
   const secondaryContactPhone = useSignal('');
   const venmoUsername = useSignal('');
+  const autoInvoice = useSignal(false);
+  const lessonRateCents = useSignal('');
   const notes = useSignal('');
   const status = useSignal<StudentStatus>('active');
 
@@ -104,6 +106,10 @@ export function StudentForm({
       primaryTeacherId: primaryTeacherId.value,
       registeredLessonLength: registeredLessonLength.value || undefined,
       isHopeScholarship: isHopeScholarship.value,
+      autoInvoice: autoInvoice.value,
+      lessonRateCents: lessonRateCents.value
+        ? Math.round(parseFloat(lessonRateCents.value) * 100)
+        : undefined,
       primaryContactName: primaryContactName.value,
       primaryContactEmail: primaryContactEmail.value,
       primaryContactPhone: primaryContactPhone.value || undefined,
@@ -147,6 +153,11 @@ export function StudentForm({
         secondaryContactEmail.value = student.secondaryContactEmail ?? '';
         secondaryContactPhone.value = student.secondaryContactPhone ?? '';
         venmoUsername.value = student.venmoUsername ?? '';
+        autoInvoice.value = student.autoInvoice ?? false;
+        lessonRateCents.value =
+          student.lessonRateCents != null
+            ? (student.lessonRateCents / 100).toString()
+            : '';
         notes.value = student.notes ?? '';
         status.value = student.status;
         showValidationErrors.value = false;
@@ -166,6 +177,8 @@ export function StudentForm({
         secondaryContactEmail.value = '';
         secondaryContactPhone.value = '';
         venmoUsername.value = '';
+        autoInvoice.value = false;
+        lessonRateCents.value = '';
         notes.value = '';
         status.value = 'active';
         showValidationErrors.value = false;
@@ -198,6 +211,10 @@ export function StudentForm({
         primaryTeacherId: primaryTeacherId.value,
         registeredLessonLength: registeredLessonLength.value || undefined,
         isHopeScholarship: isHopeScholarship.value,
+        autoInvoice: autoInvoice.value,
+        lessonRateCents: lessonRateCents.value
+          ? Math.round(parseFloat(lessonRateCents.value) * 100)
+          : undefined,
         primaryContactName: primaryContactName.value,
         primaryContactEmail: primaryContactEmail.value,
         primaryContactPhone: primaryContactPhone.value || undefined,
@@ -356,7 +373,31 @@ export function StudentForm({
               }
               label="Hope Scholarship (WV)"
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={autoInvoice.value}
+                  disabled={isHopeScholarship.value}
+                  onChange={(e) => (autoInvoice.value = e.target.checked)}
+                />
+              }
+              label="Auto-invoice when a lesson is rendered"
+            />
           </Box>
+
+          {/* Lesson rate — the per-student override for auto-invoicing */}
+          <TextField
+            label="Lesson rate override ($)"
+            value={lessonRateCents.value}
+            onChange={(e) => (lessonRateCents.value = e.target.value)}
+            error={!!getFieldError('lessonRateCents')}
+            helperText={
+              getFieldError('lessonRateCents') ||
+              'Dollars per lesson. Leave blank to use the standard rate for their lesson length.'
+            }
+            type="number"
+            fullWidth
+          />
 
           <Divider />
 

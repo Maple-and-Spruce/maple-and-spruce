@@ -33,6 +33,7 @@ export * from './lib/student';
 export * from './lib/lesson';
 export * from './lib/invoice';
 export * from './lib/hope-rates';
+export * from './lib/lesson-rates-config';
 export * from './lib/teacher-payout';
 
 // Phase 4.5: Calendar

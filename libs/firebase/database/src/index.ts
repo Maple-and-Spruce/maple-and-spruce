@@ -28,6 +28,7 @@ export {
 
 // Phase 4: Music Lessons
 export { StudentRepository } from './lib/student.repository';
+export { LessonRatesConfigRepository } from './lib/lesson-rates-config.repository';
 export {
   LessonRepository,
   type LessonFilters,

@@ -1,0 +1,1 @@
+export { LessonRatesConfigCard } from './LessonRatesConfigCard';
