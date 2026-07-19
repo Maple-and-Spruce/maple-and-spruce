@@ -40,20 +40,67 @@ export async function instructorIdForUser(
  * loading the target lesson (use `lesson.teacherId`), or, on create, with the
  * `teacherId` the new lesson would be assigned.
  */
-export async function assertCanManageLesson(
+export async function assertOwnsAsInstructor(
   context: FunctionContext,
-  lessonTeacherId: string | undefined
+  ownerInstructorId: string | undefined,
+  message: string
 ): Promise<void> {
   const uid = context.uid;
   if (uid && (await hasRole(uid, Role.Admin))) return;
 
   const myInstructorId = await instructorIdForUser(uid);
-  // A non-admin passes only when linked to the exact instructor who teaches
-  // this lesson. An unlinked caller (myInstructorId undefined) or an undefined
+  // A non-admin passes only when linked to the exact instructor who owns the
+  // resource. An unlinked caller (myInstructorId undefined) or an undefined
   // owner never matches -> denied.
-  if (myInstructorId && myInstructorId === lessonTeacherId) return;
+  if (myInstructorId && myInstructorId === ownerInstructorId) return;
 
-  throwPermissionDenied('You can only manage lessons you teach.');
+  throwPermissionDenied(message);
+}
+
+/**
+ * Read-scope for the caller: whether they're an admin (sees everything) and,
+ * if not, the instructor id their login is linked to (scopes list reads to
+ * their own records). A non-admin who isn't linked has `instructorId:
+ * undefined` — callers should return an empty result for them.
+ */
+export async function instructorScopeForUser(
+  context: FunctionContext
+): Promise<{ isAdmin: boolean; instructorId: string | undefined }> {
+  const uid = context.uid;
+  const isAdmin = !!uid && (await hasRole(uid, Role.Admin));
+  const instructorId = isAdmin ? undefined : await instructorIdForUser(uid);
+  return { isAdmin, instructorId };
+}
+
+/**
+ * Enforce "lesson teachers manage only their own lessons" — see
+ * {@link assertOwnsAsInstructor}. `lessonTeacherId` is the lesson's teacherId.
+ */
+export async function assertCanManageLesson(
+  context: FunctionContext,
+  lessonTeacherId: string | undefined
+): Promise<void> {
+  return assertOwnsAsInstructor(
+    context,
+    lessonTeacherId,
+    'You can only manage lessons you teach.'
+  );
+}
+
+/**
+ * Enforce "lesson teachers manage only their own students". A student's owner
+ * is its `primaryTeacherId` (an Instructor id). Admins pass; a lesson-teacher
+ * passes only when it's their student.
+ */
+export async function assertCanManageStudent(
+  context: FunctionContext,
+  primaryTeacherId: string | undefined
+): Promise<void> {
+  return assertOwnsAsInstructor(
+    context,
+    primaryTeacherId,
+    'You can only manage your own students.'
+  );
 }
 
 /**

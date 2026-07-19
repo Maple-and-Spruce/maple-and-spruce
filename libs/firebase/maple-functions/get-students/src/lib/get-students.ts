@@ -7,6 +7,7 @@
 import {
   createRoleFunction,
   Role,
+  instructorScopeForUser,
 } from '@maple/firebase/functions';
 import { StudentRepository } from '@maple/firebase/database';
 import type {
@@ -17,10 +18,19 @@ import type {
 export const getStudents = createRoleFunction<
   GetStudentsRequest,
   GetStudentsResponse
->(async (data) => {
+>(async (data, context) => {
+  // Lesson teachers see only their own students (read-own). Admins see all.
+  const scope = await instructorScopeForUser(context);
+  let primaryTeacherId = data.primaryTeacherId;
+  if (!scope.isAdmin) {
+    // An unlinked lesson-teacher owns no students → return an empty list.
+    if (!scope.instructorId) return { students: [] };
+    primaryTeacherId = scope.instructorId;
+  }
+
   const students = await StudentRepository.findAll({
     status: data.status,
-    primaryTeacherId: data.primaryTeacherId,
+    primaryTeacherId,
     isHopeScholarship: data.isHopeScholarship,
   });
 

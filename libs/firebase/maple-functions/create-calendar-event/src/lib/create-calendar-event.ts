@@ -7,6 +7,8 @@
 import {
   createRoleFunction,
   Role,
+  hasAnyRole,
+  throwPermissionDenied,
 } from '@maple/firebase/functions';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import { calendarEventValidation } from '@maple/ts/validation';
@@ -18,7 +20,19 @@ import type {
 export const createCalendarEvent = createRoleFunction<
   CreateCalendarEventRequest,
   CreateCalendarEventResponse
->(async (data) => {
+>(async (data, context) => {
+  // Lesson teachers do NOT manage calendar events — their lessons are derived,
+  // not hand-authored — but they CAN book a room. So a caller who is ONLY a
+  // lesson teacher (not admin / MT / clerk) may only create a room booking
+  // (an event that claims a room). Everyone else may create any event.
+  const uid = context.uid;
+  const canCreateAnyEvent =
+    !!uid &&
+    (await hasAnyRole(uid, [Role.Admin, Role.MtTeacher, Role.Clerk]));
+  if (!canCreateAnyEvent && !data.room) {
+    throwPermissionDenied('Lesson teachers can only book a room.');
+  }
+
   // Validate input
   const result = calendarEventValidation(data);
   if (!result.isValid()) {
