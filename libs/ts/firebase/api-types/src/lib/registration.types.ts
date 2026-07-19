@@ -138,3 +138,43 @@ export interface CreateRegistrationResponse {
   /** True if all agreements were signed at checkout */
   agreementsSigned?: boolean;
 }
+
+// ============================================================================
+// Create Registration Checkout Link (Public - Square-hosted checkout fallback)
+// ============================================================================
+
+/**
+ * Request for a Square-hosted checkout Payment Link. Same fields as
+ * CreateRegistrationRequest MINUS the card `paymentNonce` — the buyer pays on
+ * Square's own hosted page instead of tokenizing a card inline. This is the
+ * fallback used when the embedded Web Payments SDK can't initialize (e.g.
+ * Safari ITP blocking its cross-origin iframe).
+ */
+export interface CreateRegistrationCheckoutLinkRequest {
+  classId: string;
+  customerEmail: string;
+  customerName: string;
+  customerPhone?: string;
+  quantity: number;
+  additionalAttendees?: Attendee[];
+  discountCode?: string;
+  notes?: string;
+  agreements?: InlineAgreementSigningData[];
+  /**
+   * URL to send the buyer back to after paying on Square's hosted page —
+   * normally the class page. The server appends `?reg=<registrationId>` and
+   * only honors it when its origin is in the CORS allowlist (open-redirect
+   * guard). The returned registration is the source of truth; the param is a
+   * pointer the widget verifies by lookup, never proof of payment.
+   */
+  returnUrl?: string;
+}
+
+export interface CreateRegistrationCheckoutLinkResponse {
+  /** Square-hosted checkout URL to redirect the buyer to. */
+  checkoutUrl: string;
+  /** The reserved (pending) registration id — also the Square order referenceId. */
+  registrationId: string;
+  /** Confirmation number stamped on the reserved registration. */
+  confirmationNumber: string;
+}

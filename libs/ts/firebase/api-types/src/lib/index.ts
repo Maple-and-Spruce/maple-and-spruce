@@ -276,6 +276,8 @@ export type {
   CalculateRegistrationCostResponse,
   CreateRegistrationRequest,
   CreateRegistrationResponse,
+  CreateRegistrationCheckoutLinkRequest,
+  CreateRegistrationCheckoutLinkResponse,
 } from './registration.types';
 
 // Phase 4: Music Lessons - Student types

@@ -362,6 +362,9 @@
       "@maple/firebase/maple-functions/create-registration": [
         "libs/firebase/maple-functions/create-registration/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/create-registration-checkout-link": [
+        "libs/firebase/maple-functions/create-registration-checkout-link/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/cancel-registration": [
         "libs/firebase/maple-functions/cancel-registration/src/index.ts"
       ],
