@@ -22,6 +22,11 @@ const mocks = vi.hoisted(() => ({
   // Transactional re-read state for the hosted-checkout reconciliation.
   freshReg: undefined as Record<string, unknown> | undefined,
   countDocs: [] as Array<{ data: () => Record<string, unknown> }>,
+  // Helpers extracted so the mock's arrow nesting stays shallow (sonarjs).
+  snap: (value: Record<string, unknown> | undefined) => ({
+    data: () => value,
+  }),
+  whereStub: () => ({ where: () => ({ __query: true }) }),
   // ClassRepository
   findBySquareVariationId: vi.fn(),
   classFindById: vi.fn(),
@@ -63,7 +68,7 @@ vi.mock('@maple/firebase/database', () => ({
     collection: vi.fn(() => ({
       add: mocks.mailAdd,
       // Capacity re-count query used inside the reconciliation transaction.
-      where: () => ({ where: () => ({ __query: true }) }),
+      where: mocks.whereStub,
     })),
     runTransaction: async (
       cb: (txn: {
@@ -78,7 +83,7 @@ vi.mock('@maple/firebase/database', () => ({
         get: async (arg: unknown) =>
           arg && (arg as { __query?: boolean }).__query
             ? { docs: mocks.countDocs }
-            : { data: () => mocks.freshReg },
+            : mocks.snap(mocks.freshReg),
         update: mocks.txnUpdate,
       };
       return cb(txn);

@@ -12,6 +12,11 @@ const mocks = vi.hoisted(() => ({
   txnUpdate: vi.fn(),
   // Per-ref state returned by the transactional re-read (txn.get).
   freshData: new Map<string, Record<string, unknown> | undefined>(),
+  // Wrap a value as a Firestore-snapshot-like { data() }. Defined here (not
+  // inline in the mock) to keep the mock's arrow nesting shallow.
+  snap: (value: Record<string, unknown> | undefined) => ({
+    data: () => value,
+  }),
 }));
 
 vi.mock('firebase-functions/v2/scheduler', () => ({
@@ -39,9 +44,8 @@ vi.mock('@maple/firebase/database', () => ({
         }) => Promise<unknown>
       ) => {
         const txn = {
-          get: async (ref: { id: string }) => ({
-            data: () => mocks.freshData.get(ref.id),
-          }),
+          get: async (ref: { id: string }) =>
+            mocks.snap(mocks.freshData.get(ref.id)),
           update: mocks.txnUpdate,
         };
         return cb(txn);
