@@ -15,7 +15,7 @@ import {
   Chip,
   Typography,
   Box,
-  CircularProgress,
+  Skeleton,
   Alert,
   TextField,
 } from '@mui/material';
@@ -64,6 +64,42 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 const fmtCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+/** Table-shaped placeholder shown while the roster loads. */
+function RosterLoadingSkeleton({ showActions }: { showActions: boolean }) {
+  const headers = [
+    'Parent(s)',
+    'Children (DOB)',
+    'Accommodations / notes',
+    'Plan',
+    'Status',
+    ...(showActions ? ['Actions'] : []),
+  ];
+  return (
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          {headers.map((h, i) => (
+            <TableCell key={h} align={i === headers.length - 1 && showActions ? 'right' : 'left'}>
+              {h}
+            </TableCell>
+          ))}
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {Array.from({ length: 3 }).map((_, r) => (
+          <TableRow key={r}>
+            {headers.map((h, c) => (
+              <TableCell key={h}>
+                <Skeleton variant="text" width={c === 0 ? '80%' : '55%'} />
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
 /** Chip color for a roster row's status (past-due takes precedence). */
 function statusChipColor(
@@ -208,10 +244,9 @@ export function RosterDialog({
             {actionMessage}
           </Alert>
         )}
-        {rosterState.status === 'loading' && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
+        {(rosterState.status === 'idle' ||
+          rosterState.status === 'loading') && (
+          <RosterLoadingSkeleton showActions={!!onCancelRegistration} />
         )}
         {rosterState.status === 'error' && (
           <Alert severity="error">{rosterState.error}</Alert>
