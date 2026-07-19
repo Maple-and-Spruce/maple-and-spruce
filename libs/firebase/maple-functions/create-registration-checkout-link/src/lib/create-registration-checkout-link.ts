@@ -18,6 +18,7 @@
 import {
   Functions,
   reserveClassRegistration,
+  processInlineAgreements,
 } from '@maple/firebase/functions';
 import { RegistrationRepository } from '@maple/firebase/database';
 import {
@@ -97,12 +98,37 @@ export const createRegistrationCheckoutLink = Functions.endpoint
     const {
       registrationId,
       classEntity,
+      requiredTemplates,
       confirmationNumber,
       subtotalCents,
       taxRatePercent,
       discountCode,
       discountAmountCents,
     } = await reserveClassRegistration(data, square.taxRatePercent);
+
+    // Persist signed agreements now — the signatures were captured in the
+    // widget before this call, and the buyer is about to leave for Square's
+    // hosted page (processPosSale, which confirms the payment later, has no
+    // access to them). Shared with the card flow so records are identical.
+    // Best-effort: a failure here must not block a buyer who already signed.
+    try {
+      await processInlineAgreements({
+        registrationId,
+        classId: data.classId,
+        requiredTemplates,
+        agreements: data.agreements,
+        signer: {
+          email: data.customerEmail,
+          name: data.customerName,
+          phone: data.customerPhone,
+        },
+      });
+    } catch (agreementError) {
+      console.error(
+        `Failed to process agreements for hosted checkout ${registrationId}:`,
+        agreementError
+      );
+    }
 
     // A free class has nothing to charge — it should never reach the hosted
     // checkout fallback (there's no card form to fail). Guard defensively and
