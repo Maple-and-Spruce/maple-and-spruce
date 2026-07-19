@@ -365,6 +365,9 @@
       "@maple/firebase/maple-functions/create-registration-checkout-link": [
         "libs/firebase/maple-functions/create-registration-checkout-link/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/release-stale-registration-holds": [
+        "libs/firebase/maple-functions/release-stale-registration-holds/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/cancel-registration": [
         "libs/firebase/maple-functions/cancel-registration/src/index.ts"
       ],
