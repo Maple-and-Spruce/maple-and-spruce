@@ -61,7 +61,10 @@ export {
 // Resource-ownership checks (scoped-roles phase 2)
 export {
   instructorIdForUser,
+  instructorScopeForUser,
+  assertOwnsAsInstructor,
   assertCanManageLesson,
+  assertCanManageStudent,
   assertCanRecordInvoicePayment,
 } from './ownership.utility';
 

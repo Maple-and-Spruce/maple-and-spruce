@@ -56,6 +56,9 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'getStudents', expect: 403 },
   // getStudent (singular) was auth-only until #620; now admin + lesson-teacher.
   { as: 'stephanie', functionName: 'getStudent', expect: 403 },
+  // Student mutations are now [Admin, LessonTeacher] (#617) — mt-teacher denied.
+  { as: 'stephanie', functionName: 'createStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'updateStudent', expect: 403 },
   { as: 'stephanie', functionName: 'getLessons', expect: 403 },
   { as: 'stephanie', functionName: 'listUsers', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },

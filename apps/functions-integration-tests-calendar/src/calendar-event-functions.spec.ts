@@ -72,6 +72,70 @@ describe('Calendar Event Functions', () => {
     await clearFirestoreEmulator();
   });
 
+  describe('Lesson-teacher calendar scoping (#617): book rooms only', () => {
+    // A pure lesson teacher may book a room but not manage arbitrary calendar
+    // events (their lessons are derived). Additive on the suite's admin seed.
+    let teacher: TestUser;
+    let eventId: string;
+
+    beforeAll(async () => {
+      teacher = await createTestUser('cal-teacher@test.maple', 'test-password-123!');
+      await setFirestoreDoc('userRoles', teacher.uid, { roles: ['lesson-teacher'] });
+      const seed = await callFunction<
+        CreateCalendarEventRequest,
+        CreateCalendarEventResponse
+      >({
+        functionName: 'createCalendarEvent',
+        data: SAMPLE_EVENT,
+        idToken: adminUser.idToken,
+      });
+      eventId = seed.data!.calendarEvent.id;
+    });
+
+    it('denies creating an arbitrary (non-room) event', async () => {
+      const result = await callFunction<CreateCalendarEventRequest>({
+        functionName: 'createCalendarEvent',
+        data: SAMPLE_EVENT, // type 'jam', no room
+        idToken: teacher.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+
+    it('allows booking a room (event with a room set)', async () => {
+      const result = await callFunction<
+        CreateCalendarEventRequest,
+        CreateCalendarEventResponse
+      >({
+        functionName: 'createCalendarEvent',
+        data: {
+          ...SAMPLE_EVENT,
+          title: 'Spruce Room booking',
+          type: 'event',
+          room: 'spruce',
+        },
+        idToken: teacher.idToken,
+      });
+      expect(result.status).toBe(200);
+      expect(result.data?.calendarEvent.room).toBe('spruce');
+    });
+
+    it('denies updating and deleting any event', async () => {
+      const upd = await callFunction<UpdateCalendarEventRequest>({
+        functionName: 'updateCalendarEvent',
+        data: { id: eventId, title: 'hijacked' },
+        idToken: teacher.idToken,
+      });
+      expect(upd.status).toBe(403);
+
+      const del = await callFunction<DeleteCalendarEventRequest>({
+        functionName: 'deleteCalendarEvent',
+        data: { id: eventId },
+        idToken: teacher.idToken,
+      });
+      expect(del.status).toBe(403);
+    });
+  });
+
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction<CreateCalendarEventRequest>({
