@@ -11,7 +11,7 @@
  * is resolved via `InstructorRepository.findByUid` — an instructor record
  * whose `uid` is the caller's Firebase Auth UID.
  */
-import { InstructorRepository } from '@maple/firebase/database';
+import { InstructorRepository, LessonRepository } from '@maple/firebase/database';
 import { hasRole, Role } from './auth.utility';
 import { throwPermissionDenied } from './errors.utility';
 import type { FunctionContext } from './functions.utility';
@@ -54,4 +54,37 @@ export async function assertCanManageLesson(
   if (myInstructorId && myInstructorId === lessonTeacherId) return;
 
   throwPermissionDenied('You can only manage lessons you teach.');
+}
+
+/**
+ * Enforce "lesson teachers record payments only on their own students'
+ * lessons" (#631 — the teacher My Day page).
+ *
+ * Passes unconditionally for admins. For a lesson-teacher it passes only when
+ * the invoice has at least one line item referencing a lesson taught by their
+ * linked instructor. An invoice with no lesson-linked line (a free-form
+ * invoice) is admin-only. Call AFTER the role gate and after loading the
+ * invoice.
+ */
+export async function assertCanRecordInvoicePayment(
+  context: FunctionContext,
+  invoice: { lineItems: ReadonlyArray<{ lessonId?: string }> }
+): Promise<void> {
+  const uid = context.uid;
+  if (uid && (await hasRole(uid, Role.Admin))) return;
+
+  const myInstructorId = await instructorIdForUser(uid);
+  if (myInstructorId) {
+    const lessonIds = invoice.lineItems
+      .map((line) => line.lessonId)
+      .filter((id): id is string => !!id);
+    for (const lessonId of lessonIds) {
+      const lesson = await LessonRepository.findById(lessonId);
+      if (lesson && lesson.teacherId === myInstructorId) return;
+    }
+  }
+
+  throwPermissionDenied(
+    "You can only record payments on your own students' lessons."
+  );
 }

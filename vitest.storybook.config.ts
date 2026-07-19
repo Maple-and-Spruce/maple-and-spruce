@@ -33,6 +33,9 @@ export default defineConfig({
       '@mui/material/Stack',
       '@mui/material/Tooltip',
       '@mui/material/Typography',
+      '@mui/icons-material/CheckCircle',
+      '@mui/icons-material/AccountBalanceWallet',
+      'qrcode.react',
     ],
   },
   plugins: [

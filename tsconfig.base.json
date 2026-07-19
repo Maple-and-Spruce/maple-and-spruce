@@ -485,6 +485,15 @@
       "@maple/firebase/maple-functions/get-lesson-rates-config": [
         "libs/firebase/maple-functions/get-lesson-rates-config/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-my-day-lessons": [
+        "libs/firebase/maple-functions/get-my-day-lessons/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-business-payment-config": [
+        "libs/firebase/maple-functions/get-business-payment-config/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-business-payment-config": [
+        "libs/firebase/maple-functions/update-business-payment-config/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/update-lesson-rates-config": [
         "libs/firebase/maple-functions/update-lesson-rates-config/src/index.ts"
       ],

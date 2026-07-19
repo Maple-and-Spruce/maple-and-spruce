@@ -62,6 +62,7 @@ export {
 export {
   instructorIdForUser,
   assertCanManageLesson,
+  assertCanRecordInvoicePayment,
 } from './ownership.utility';
 
 // Environment utilities

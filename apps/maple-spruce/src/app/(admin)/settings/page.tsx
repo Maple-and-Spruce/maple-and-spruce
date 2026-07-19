@@ -15,6 +15,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEtsyConnection } from '@maple/react/data';
 import { LessonRatesConfigCard } from '../../../components/lessons';
 import { PosLessonConfigCard } from '../../../components/pos';
+import { BusinessVenmoConfigCard } from '../../../components/my-day';
 
 export default function SettingsPage(): React.ReactNode {
   const {
@@ -170,6 +171,10 @@ export default function SettingsPage(): React.ReactNode {
 
       <Box sx={{ mt: 3 }}>
         <LessonRatesConfigCard />
+      </Box>
+
+      <Box sx={{ mt: 3 }}>
+        <BusinessVenmoConfigCard />
       </Box>
     </>
   );
