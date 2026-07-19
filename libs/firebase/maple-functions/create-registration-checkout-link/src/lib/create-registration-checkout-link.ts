@@ -32,6 +32,14 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
+ * How recently a pending hold for the same buyer + class counts as a duplicate
+ * submit (lost-response retry / back-then-resubmit) rather than a new checkout.
+ * Short so a genuine later retry isn't blocked; the reaper clears real
+ * abandonments on its own (longer) TTL.
+ */
+const DEDUP_WINDOW_MS = 2 * 60 * 1000;
+
+/**
  * Build the buyer's post-payment return URL. Honors the client's `returnUrl`
  * only when its origin is in the CORS allowlist (open-redirect guard), and
  * appends `?reg=<registrationId>` so the class page can look the registration
@@ -93,6 +101,30 @@ export const createRegistrationCheckoutLink = Functions.endpoint
         Record<(typeof SQUARE_STRING_NAMES)[number], string>
     );
 
+    // Dedup: if this buyer already has a very recent pending hold for this
+    // class, don't reserve a second spot — that would self-block capacity (the
+    // buyer's own hold reads as "full") and double-consume a single-use
+    // discount. A rapid duplicate is a lost-response retry or a back-then-
+    // resubmit; reject it clearly rather than stacking holds. The reaper clears
+    // genuinely abandoned holds within the TTL.
+    const recentHolds = (
+      await RegistrationRepository.findAll({
+        customerEmail: data.customerEmail,
+        status: 'pending',
+      })
+    ).filter(
+      (r) =>
+        r.classId === data.classId &&
+        r.createdAt &&
+        new Date(r.createdAt).getTime() >= Date.now() - DEDUP_WINDOW_MS
+    );
+    if (recentHolds.length > 0) {
+      throw new Error(
+        'A checkout for this class is already in progress. Please check your ' +
+          'email, or try again in a couple of minutes.'
+      );
+    }
+
     // Validate, price, and atomically reserve a `pending` spot (shared with the
     // inline card flow so both paths reserve identically).
     const {
@@ -106,11 +138,27 @@ export const createRegistrationCheckoutLink = Functions.endpoint
       discountAmountCents,
     } = await reserveClassRegistration(data, square.taxRatePercent);
 
+    // A free class has nothing to charge — it should never reach the hosted
+    // checkout fallback (there's no card form to fail). Guard BEFORE any
+    // agreement/storage work so a released hold leaves no orphaned records.
+    if (subtotalCents <= 0) {
+      await releaseHold(
+        registrationId,
+        'Hosted checkout requested for a $0 registration'
+      );
+      throw new Error(
+        'This registration has no balance due and does not require checkout.'
+      );
+    }
+
     // Persist signed agreements now — the signatures were captured in the
     // widget before this call, and the buyer is about to leave for Square's
     // hosted page (processPosSale, which confirms the payment later, has no
     // access to them). Shared with the card flow so records are identical.
-    // Best-effort: a failure here must not block a buyer who already signed.
+    // For a class that REQUIRES agreements this MUST succeed: otherwise a paid
+    // registration would end up with no legal signed-agreement record, so we
+    // release the hold and fail the checkout. For a class with no required
+    // agreements this is a no-op.
     try {
       await processInlineAgreements({
         registrationId,
@@ -128,19 +176,10 @@ export const createRegistrationCheckoutLink = Functions.endpoint
         `Failed to process agreements for hosted checkout ${registrationId}:`,
         agreementError
       );
-    }
-
-    // A free class has nothing to charge — it should never reach the hosted
-    // checkout fallback (there's no card form to fail). Guard defensively and
-    // release the hold rather than create a $0 payment link.
-    if (subtotalCents <= 0) {
-      await releaseHold(
-        registrationId,
-        'Hosted checkout requested for a $0 registration'
-      );
-      throw new Error(
-        'This registration has no balance due and does not require checkout.'
-      );
+      if (requiredTemplates.length > 0) {
+        await releaseHold(registrationId, 'Agreement processing failed');
+        throw agreementError;
+      }
     }
 
     const redirectUrl = buildRedirectUrl(
