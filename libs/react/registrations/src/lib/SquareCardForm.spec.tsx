@@ -255,3 +255,90 @@ describe('SquareCardForm init failure telemetry', () => {
     consoleSpy.mockRestore();
   });
 });
+
+/**
+ * Locks the self-healing recovery for the corrupt-cache case a HAR confirmed:
+ * `square.js` served empty from cache (304 revalidation of a poisoned entry) →
+ * the <script> `onload` fires but `window.Square` is never defined. The loader
+ * must retry once under a cache-busting URL (a fresh cache key forced to the
+ * network) so it recovers without anyone clearing their cache.
+ */
+describe('SquareCardForm corrupt-cache SDK recovery', () => {
+  function squareScripts(): HTMLScriptElement[] {
+    return Array.from(document.head.querySelectorAll('script')).filter((s) =>
+      s.src.includes('squarecdn.com')
+    );
+  }
+
+  /** Install a working fake Square global (so init succeeds after recovery). */
+  function installWorkingSquare() {
+    const card = {
+      attach: vi.fn().mockResolvedValue(undefined),
+      tokenize: vi.fn().mockResolvedValue({ status: 'OK', token: 'cnon:x' }),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockResolvedValue({ card: vi.fn().mockResolvedValue(card) }),
+    };
+  }
+
+  it('retries with a cache-busted URL when the first square.js load defines no window.Square', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    render(
+      <SquareCardForm
+        applicationId="sq0idp-xyz789"
+        locationId="LOC1"
+        totalCents={6000}
+        onTokenizeRef={noop}
+      />
+    );
+
+    // Plain URL injected first; window.Square still undefined (corrupt cache).
+    const first = squareScripts().at(-1)!;
+    expect(first.src).toBe(PROD_CDN);
+    expect((window as { Square?: unknown }).Square).toBeUndefined();
+
+    // Simulate the empty cached script "loading" without defining the global.
+    first.dispatchEvent(new Event('load'));
+
+    // Loader must inject a cache-busted retry under the prod CDN.
+    await waitFor(() => {
+      expect(
+        squareScripts().some((s) => s.src.startsWith(`${PROD_CDN}?_cb=`))
+      ).toBe(true);
+    });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('recovers and initializes once the cache-busted retry defines window.Square', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const onReady = vi.fn();
+    render(
+      <SquareCardForm
+        applicationId="sq0idp-xyz789"
+        locationId="LOC1"
+        totalCents={6000}
+        onReady={onReady}
+        onTokenizeRef={noop}
+      />
+    );
+
+    // First (empty) load fires without a global.
+    squareScripts().at(-1)!.dispatchEvent(new Event('load'));
+
+    // Wait for the cache-busted retry script, then have it define window.Square.
+    await waitFor(() =>
+      expect(
+        squareScripts().some((s) => s.src.startsWith(`${PROD_CDN}?_cb=`))
+      ).toBe(true)
+    );
+    installWorkingSquare();
+    squareScripts().at(-1)!.dispatchEvent(new Event('load'));
+
+    // SDK now ready → init runs → onReady fires. No error surfaced.
+    await waitFor(() => expect(onReady).toHaveBeenCalled());
+    expect(screen.queryByText(/Failed to load payment form/i)).not.toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+});
