@@ -25,6 +25,8 @@ import type {
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  GetInvoicesRequest,
+  GetInvoicesResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -673,6 +675,137 @@ describe('Lesson Functions', () => {
       expect(
         windows.find((w) => w.sourceRef === `lessons/${roomLessonId}`)
       ).toBeUndefined();
+    });
+  });
+
+  describe('Auto-invoice on rendered (#629)', () => {
+    async function getInvoicesFor(sid: string) {
+      const res = await callFunction<GetInvoicesRequest, GetInvoicesResponse>({
+        functionName: 'getInvoices',
+        data: { studentId: sid },
+        idToken: adminUser.idToken,
+      });
+      return res.data!.invoices;
+    }
+
+    // Poll rather than a fixed wait — the trigger chain (onLessonRenderedInvoice
+    // → create invoice) is async and its latency varies in the emulator.
+    async function pollForLessonInvoice(
+      sid: string,
+      lessonId: string,
+      timeoutMs = 15000
+    ) {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const invoices = await getInvoicesFor(sid);
+        const found = invoices.find((i) =>
+          i.lineItems.some((l) => l.lessonId === lessonId)
+        );
+        if (found) return found;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      return undefined;
+    }
+
+    async function createRenderedLesson(sid: string): Promise<string> {
+      const res = await callFunction<CreateLessonRequest, CreateLessonResponse>({
+        functionName: 'createLesson',
+        data: {
+          studentId: sid,
+          teacherId: TEACHER_ID,
+          scheduledAt: new Date('2026-08-01T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = res.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+      return lessonId;
+    }
+
+    async function createAutoStudent(
+      overrides: Partial<CreateStudentRequest>
+    ): Promise<string> {
+      const res = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, autoInvoice: true, ...overrides },
+        idToken: adminUser.idToken,
+      });
+      return res.data!.student.id;
+    }
+
+    it('auto-creates a sent invoice at the per-student override rate', async () => {
+      const sid = await createAutoStudent({
+        name: 'Override Kid',
+        primaryContactEmail: 'override@test.com',
+        lessonRateCents: 4125,
+      });
+      const lessonId = await createRenderedLesson(sid);
+
+      const invoice = await pollForLessonInvoice(sid, lessonId);
+      expect(invoice).toBeTruthy();
+      expect(invoice?.status).toBe('sent');
+      expect(invoice?.lineItems[0].unitAmountCents).toBe(4125);
+    });
+
+    it('prices from the admin-configured rate table when there is no override', async () => {
+      // Seed the default rates config; student has no per-student rate.
+      await setFirestoreDoc('appConfig', 'lessonRates', {
+        rateByLength: { '30-min-full': 3900 },
+      });
+      const sid = await createAutoStudent({
+        name: 'Config Rate Kid',
+        primaryContactEmail: 'configrate@test.com',
+        registeredLessonLength: '30-min-full',
+      });
+      const lessonId = await createRenderedLesson(sid);
+
+      const invoice = await pollForLessonInvoice(sid, lessonId);
+      expect(invoice).toBeTruthy();
+      expect(invoice?.lineItems[0].unitAmountCents).toBe(3900);
+    });
+
+    it('does NOT auto-invoice a student without the autoInvoice flag', async () => {
+      // SAMPLE_STUDENT (studentId) has autoInvoice unset.
+      const lessonId = await createRenderedLesson(studentId);
+      await waitForTrigger(6000);
+
+      const invoices = await getInvoicesFor(studentId);
+      expect(
+        invoices.some((i) => i.lineItems.some((l) => l.lessonId === lessonId))
+      ).toBe(false);
+    });
+
+    it('is idempotent — re-rendering does not create a second invoice', async () => {
+      const sid = await createAutoStudent({
+        name: 'Idempotent Kid',
+        primaryContactEmail: 'idem@test.com',
+        lessonRateCents: 5000,
+      });
+      const lessonId = await createRenderedLesson(sid);
+      await pollForLessonInvoice(sid, lessonId);
+
+      // A no-op re-write of the already-rendered lesson must not re-invoice.
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, notes: 'touch' },
+        idToken: adminUser.idToken,
+      });
+      await waitForTrigger(6000);
+
+      const invoices = await getInvoicesFor(sid);
+      const forLesson = invoices.filter((i) =>
+        i.lineItems.some((l) => l.lessonId === lessonId)
+      );
+      expect(forLesson).toHaveLength(1);
     });
   });
 });

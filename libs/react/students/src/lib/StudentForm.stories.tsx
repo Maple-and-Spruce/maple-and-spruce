@@ -198,6 +198,70 @@ export const VenmoUsernameStrippedOfAtOnSubmit: Story = {
   },
 };
 
+export const AutoInvoiceAndLessonRateSubmit: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(
+      canvas.getByLabelText(/student name/i),
+      'Ravi Patel'
+    );
+    await userEvent.type(
+      canvas.getByLabelText(/primary contact name/i),
+      'Anita Patel'
+    );
+    await userEvent.type(
+      canvas.getByLabelText(/primary contact email/i),
+      'anita@example.com'
+    );
+
+    // Flip auto-invoice on and set a $41.25 rate → 4125 cents.
+    await userEvent.click(
+      canvas.getByRole('switch', { name: /auto-invoice when a lesson/i })
+    );
+    await userEvent.type(
+      canvas.getByLabelText(/lesson rate override/i),
+      '41.25'
+    );
+
+    const teacherSelect = canvas.getByLabelText(/primary teacher/i);
+    await userEvent.click(teacherSelect);
+    const teacherOption = await waitFor(() =>
+      canvas.getByRole('option', { name: mockInstructor.name })
+    );
+    await userEvent.click(teacherOption);
+
+    await userEvent.click(canvas.getByRole('button', { name: /^add$/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ autoInvoice: true, lessonRateCents: 4125 })
+      );
+    });
+  },
+};
+
+export const HopeScholarshipDisablesAutoInvoice: Story = {
+  args: { open: true, isSubmitting: false },
+  play: async () => {
+    const canvas = await waitForDialog();
+    // Auto-invoice must not be available for Hope students (they bill via EMA).
+    await userEvent.click(
+      canvas.getByRole('switch', { name: /hope scholarship/i })
+    );
+    await waitFor(() => {
+      expect(
+        canvas.getByRole('switch', { name: /auto-invoice when a lesson/i })
+      ).toBeDisabled();
+    });
+  },
+};
+
 export const CancelButtonClosesDialog: Story = {
   args: { open: true, isSubmitting: false },
   play: async ({ args }) => {

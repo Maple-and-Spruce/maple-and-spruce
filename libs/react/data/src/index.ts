@@ -3,6 +3,7 @@ export { useProducts } from './lib/useProducts';
 export { useArtists } from './lib/useArtists';
 export { useCategories } from './lib/useCategories';
 export { useSyncConflicts } from './lib/useSyncConflicts';
+export { useLessonRatesConfig } from './lib/useLessonRatesConfig';
 export { useSyncConflictSummary } from './lib/useSyncConflictSummary';
 export { usePosLessonAttributions } from './lib/usePosLessonAttributions';
 export { usePosLessonAttributionSummary } from './lib/usePosLessonAttributionSummary';
