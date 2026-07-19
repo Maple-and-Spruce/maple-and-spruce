@@ -6,6 +6,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import SchoolIcon from '@mui/icons-material/School';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import TodayIcon from '@mui/icons-material/Today';
 import ChildCareIcon from '@mui/icons-material/ChildCare';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -124,6 +125,12 @@ function roleNavGroups(
     {
       label: 'Music Lessons',
       items: [
+        {
+          label: 'My Day',
+          href: '/my-day',
+          icon: <TodayIcon />,
+          roles: ['lesson-teacher'],
+        },
         {
           label: 'Students',
           href: '/students',

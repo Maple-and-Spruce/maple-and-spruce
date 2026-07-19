@@ -27,6 +27,10 @@ import type {
   DeleteLessonResponse,
   GetInvoicesRequest,
   GetInvoicesResponse,
+  CreateInvoiceRequest,
+  CreateInvoiceResponse,
+  RecordInvoicePaymentRequest,
+  RecordInvoicePaymentResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -185,6 +189,69 @@ describe('Lesson Functions', () => {
         idToken: adminUser.idToken,
       });
       othersLessonId = others.data!.lesson.id;
+    });
+
+    it('recordInvoicePayment (#631): teacher records on their own lesson, denied on others', async () => {
+      // A lesson the linked teacher teaches + an invoice referencing it.
+      const ownLesson = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: OWN_INSTRUCTOR_ID,
+          scheduledAt: new Date('2026-08-05T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = ownLesson.data!.lesson.id;
+
+      const created = await callFunction<
+        CreateInvoiceRequest,
+        CreateInvoiceResponse
+      >({
+        functionName: 'createInvoice',
+        data: {
+          studentId,
+          status: 'sent',
+          lineItems: [
+            {
+              id: 'l1',
+              description: 'Lesson',
+              lessonId,
+              quantity: 1,
+              unitAmountCents: 4000,
+              subtotalCents: 4000,
+            },
+          ],
+        },
+        idToken: adminUser.idToken,
+      });
+      const invoiceId = created.data!.invoice.id;
+
+      // The unlinked lesson-teacher (no instructor) is denied.
+      const deniedUnlinked = await callFunction<RecordInvoicePaymentRequest>({
+        functionName: 'recordInvoicePayment',
+        data: { id: invoiceId, source: 'venmo-manual' },
+        idToken: unlinkedTeacher.idToken,
+      });
+      expect([403, 500]).toContain(deniedUnlinked.status);
+
+      // The teacher who teaches the lesson may record the payment.
+      const allowed = await callFunction<
+        RecordInvoicePaymentRequest,
+        RecordInvoicePaymentResponse
+      >({
+        functionName: 'recordInvoicePayment',
+        data: { id: invoiceId, source: 'venmo-manual' },
+        idToken: teacherUser.idToken,
+      });
+      expect(allowed.status).toBe(200);
+      expect(allowed.data!.invoice.status).toBe('paid');
+      expect(allowed.data!.invoice.paymentRecord?.source).toBe('venmo-manual');
     });
 
     it('lets a linked lesson teacher create a lesson they teach', async () => {

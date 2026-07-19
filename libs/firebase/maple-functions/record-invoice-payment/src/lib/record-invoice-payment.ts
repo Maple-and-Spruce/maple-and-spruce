@@ -13,12 +13,15 @@
  * cannot spoof `square-webhook` or `venmo-import` — only the two manual
  * sources are accepted here.
  *
- * Admin-gated today. The same callable will serve the teacher "My Day" page
- * (#631) once lesson-teacher ownership (#616) lands — at which point the role
- * gate widens and an ownership check is added.
+ * Admin OR the lesson teacher who taught a lesson on the invoice (#631 — the
+ * teacher My Day page). The role gate admits both; `assertCanRecordInvoicePayment`
+ * then enforces that a non-admin caller only touches an invoice referencing one
+ * of their own lessons.
  */
 import {
-  createAdminFunction,
+  Role,
+  assertCanRecordInvoicePayment,
+  createRoleFunction,
   throwFailedPrecondition,
   throwInvalidArgument,
   throwNotFound,
@@ -32,7 +35,7 @@ import type {
 
 const MAX_NOTE_LENGTH = 500;
 
-export const recordInvoicePayment = createAdminFunction<
+export const recordInvoicePayment = createRoleFunction<
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse
 >(async (data, context) => {
@@ -52,6 +55,9 @@ export const recordInvoicePayment = createAdminFunction<
   if (!existing) {
     throwNotFound('Invoice', data.id);
   }
+
+  // A lesson teacher may only record on an invoice for a lesson they teach.
+  await assertCanRecordInvoicePayment(context, existing);
 
   // Idempotent: already paid → return as-is (mirrors the Square webhook path,
   // so a double-tap or retry never clobbers the original attribution).
@@ -74,4 +80,4 @@ export const recordInvoicePayment = createAdminFunction<
   });
 
   return { invoice };
-});
+}, [Role.Admin, Role.LessonTeacher]);
