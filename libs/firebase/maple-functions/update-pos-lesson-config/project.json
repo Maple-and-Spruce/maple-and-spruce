@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-update-pos-lesson-config",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/update-pos-lesson-config/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

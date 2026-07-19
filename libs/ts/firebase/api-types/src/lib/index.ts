@@ -121,6 +121,21 @@ export type {
   DetectSyncConflictsResponse,
 } from './sync-conflict.types';
 
+// POS Lesson Attribution types (#628)
+export type {
+  GetPosLessonAttributionsRequest,
+  GetPosLessonAttributionsResponse,
+  GetPosLessonAttributionSummaryRequest,
+  GetPosLessonAttributionSummaryResponse,
+  PosLessonResolution,
+  ResolvePosLessonAttributionRequest,
+  ResolvePosLessonAttributionResponse,
+  GetPosLessonConfigRequest,
+  GetPosLessonConfigResponse,
+  UpdatePosLessonConfigRequest,
+  UpdatePosLessonConfigResponse,
+} from './pos-lesson-attribution.types';
+
 // Phase 3: Classes & Workshops
 
 // Instructor types

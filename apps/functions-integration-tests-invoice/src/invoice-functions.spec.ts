@@ -21,6 +21,8 @@ import type {
   UpdateInvoiceResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
+  ResolvePosLessonAttributionRequest,
+  ResolvePosLessonAttributionResponse,
   DeleteInvoiceRequest,
   DeleteInvoiceResponse,
 } from '@maple/ts/firebase/api-types';
@@ -521,6 +523,164 @@ describe('Invoice Functions', () => {
       const nonAdmin = await callFunction<RecordInvoicePaymentRequest>({
         functionName: 'recordInvoicePayment',
         data: { id, source: 'venmo-manual' },
+        idToken: nonAdminUser.idToken,
+      });
+      expect([403, 500]).toContain(nonAdmin.status);
+    });
+  });
+
+  describe('resolvePosLessonAttribution (POS lesson review)', () => {
+    async function seedPending(
+      id: string,
+      subtotalCents: number
+    ): Promise<void> {
+      await setFirestoreDoc('posLessonAttributions', id, {
+        squarePaymentId: id.split('__')[0],
+        squareOrderId: `ORDER-${id}`,
+        catalogObjectId: 'VAR_LESSON',
+        itemName: 'Guitar Lesson',
+        quantity: 1,
+        subtotalCents,
+        amountPaidCents: subtotalCents,
+        occurredAt: new Date(),
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    async function getStudentInvoices(studentId: string) {
+      const res = await callFunction<
+        GetInvoicesRequest,
+        GetInvoicesResponse
+      >({
+        functionName: 'getInvoices',
+        data: { studentId },
+        idToken: adminUser.idToken,
+      });
+      return res.data!.invoices;
+    }
+
+    it('attribute settles a matching open invoice as square-pos', async () => {
+      // Unique amount so exactly one open invoice matches — the shared student
+      // carries leftover $130 sent invoices from earlier tests, which would
+      // (correctly) read as ambiguous and create a new invoice instead.
+      const UNIQUE_CENTS = 7351;
+      const created = await callFunction<
+        CreateInvoiceRequest,
+        CreateInvoiceResponse
+      >({
+        functionName: 'createInvoice',
+        data: {
+          studentId: privateStudentId,
+          lineItems: [
+            {
+              id: 'l1',
+              description: 'One-off lesson',
+              quantity: 1,
+              unitAmountCents: UNIQUE_CENTS,
+              subtotalCents: UNIQUE_CENTS,
+            },
+          ],
+        },
+        idToken: adminUser.idToken,
+      });
+      const invId = created.data!.invoice.id;
+      await callFunction<UpdateInvoiceRequest>({
+        functionName: 'updateInvoice',
+        data: { id: invId, status: 'sent' },
+        idToken: adminUser.idToken,
+      });
+      await seedPending('PAYA__VAR_LESSON', UNIQUE_CENTS);
+
+      const res = await callFunction<
+        ResolvePosLessonAttributionRequest,
+        ResolvePosLessonAttributionResponse
+      >({
+        functionName: 'resolvePosLessonAttribution',
+        data: {
+          attributionId: 'PAYA__VAR_LESSON',
+          action: 'attribute',
+          studentId: privateStudentId,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.data!.attribution.status).toBe('attributed');
+      expect(res.data!.attribution.invoiceId).toBe(invId);
+
+      const settled = (await getStudentInvoices(privateStudentId)).find(
+        (i) => i.id === invId
+      );
+      expect(settled?.status).toBe('paid');
+      expect(settled?.paymentRecord?.source).toBe('square-pos');
+    });
+
+    it('attribute creates a paid invoice when none matches the amount', async () => {
+      await seedPending('PAYB__VAR_LESSON', 5500);
+
+      const res = await callFunction<
+        ResolvePosLessonAttributionRequest,
+        ResolvePosLessonAttributionResponse
+      >({
+        functionName: 'resolvePosLessonAttribution',
+        data: {
+          attributionId: 'PAYB__VAR_LESSON',
+          action: 'attribute',
+          studentId: privateStudentId,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(res.status).toBe(200);
+      const newInvId = res.data!.attribution.invoiceId!;
+      const created = (await getStudentInvoices(privateStudentId)).find(
+        (i) => i.id === newInvId
+      );
+      expect(created?.status).toBe('paid');
+      expect(created?.totalCents).toBe(5500);
+      expect(created?.paymentRecord?.source).toBe('square-pos');
+    });
+
+    it('dismiss marks the attribution dismissed', async () => {
+      await seedPending('PAYC__VAR_LESSON', 4000);
+      const res = await callFunction<
+        ResolvePosLessonAttributionRequest,
+        ResolvePosLessonAttributionResponse
+      >({
+        functionName: 'resolvePosLessonAttribution',
+        data: {
+          attributionId: 'PAYC__VAR_LESSON',
+          action: 'dismiss',
+          notes: 'refunded',
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(res.status).toBe(200);
+      expect(res.data!.attribution.status).toBe('dismissed');
+    });
+
+    it('rejects re-resolving an already-resolved attribution', async () => {
+      const res = await callFunction<ResolvePosLessonAttributionRequest>({
+        functionName: 'resolvePosLessonAttribution',
+        data: { attributionId: 'PAYC__VAR_LESSON', action: 'dismiss' },
+        idToken: adminUser.idToken,
+      });
+      expect(res.status).not.toBe(200);
+    });
+
+    it('rejects unauthenticated + non-admin callers', async () => {
+      await seedPending('PAYD__VAR_LESSON', 4000);
+      const unauth = await callFunction<ResolvePosLessonAttributionRequest>({
+        functionName: 'resolvePosLessonAttribution',
+        data: { attributionId: 'PAYD__VAR_LESSON', action: 'dismiss' },
+      });
+      expect(unauth.status).toBe(401);
+
+      const nonAdmin = await callFunction<ResolvePosLessonAttributionRequest>({
+        functionName: 'resolvePosLessonAttribution',
+        data: { attributionId: 'PAYD__VAR_LESSON', action: 'dismiss' },
         idToken: nonAdminUser.idToken,
       });
       expect([403, 500]).toContain(nonAdmin.status);

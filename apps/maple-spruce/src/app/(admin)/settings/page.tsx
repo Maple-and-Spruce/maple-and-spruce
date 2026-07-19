@@ -9,9 +9,11 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEtsyConnection } from '@maple/react/data';
+import { PosLessonConfigCard } from '../../../components/pos';
 
 export default function SettingsPage(): React.ReactNode {
   const {
@@ -160,6 +162,10 @@ export default function SettingsPage(): React.ReactNode {
           </Stack>
         </CardContent>
       </Card>
+
+      <Box sx={{ mt: 3 }}>
+        <PosLessonConfigCard />
+      </Box>
     </>
   );
 }
