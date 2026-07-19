@@ -8,6 +8,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import ChildCareIcon from '@mui/icons-material/ChildCare';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
@@ -39,7 +40,10 @@ type RoleNavGroup = { label: string; items: RoleNavItem[] };
 /** Every non-admin role — for items any portal user should see. */
 const ALL_ROLES = ['mt-teacher', 'clerk', 'lesson-teacher'] as const;
 
-function roleNavGroups(pendingConflicts: number): RoleNavGroup[] {
+function roleNavGroups(
+  pendingConflicts: number,
+  pendingPosLessons: number
+): RoleNavGroup[] {
   return [
     {
       label: 'Store',
@@ -131,6 +135,13 @@ function roleNavGroups(pendingConflicts: number): RoleNavGroup[] {
           href: '/payouts',
           icon: <PaymentsIcon />,
         },
+        {
+          label: 'POS Lessons',
+          href: '/pos-lessons',
+          icon: <ReceiptLongIcon />,
+          badge: pendingPosLessons,
+          badgeColor: 'warning',
+        },
       ],
     },
     {
@@ -204,9 +215,13 @@ function roleNavGroups(pendingConflicts: number): RoleNavGroup[] {
  */
 export function buildNavGroups(
   roles: readonly UserRole[],
-  pendingConflicts: number
+  pendingConflicts: number,
+  pendingPosLessons = 0
 ): NavGroup[] {
-  return filterNavGroupsByRoles(roleNavGroups(pendingConflicts), roles);
+  return filterNavGroupsByRoles(
+    roleNavGroups(pendingConflicts, pendingPosLessons),
+    roles
+  );
 }
 
 /**
@@ -216,5 +231,5 @@ export function buildNavGroups(
  * (admin) layout. UX only — server enforcement is per-function.
  */
 export function pageRolesForPath(pathname: string): readonly UserRole[] {
-  return allowedRolesForPath(roleNavGroups(0), pathname);
+  return allowedRolesForPath(roleNavGroups(0, 0), pathname);
 }

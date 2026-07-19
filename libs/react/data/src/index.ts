@@ -5,6 +5,9 @@ export { useCategories } from './lib/useCategories';
 export { useSyncConflicts } from './lib/useSyncConflicts';
 export { useLessonRatesConfig } from './lib/useLessonRatesConfig';
 export { useSyncConflictSummary } from './lib/useSyncConflictSummary';
+export { usePosLessonAttributions } from './lib/usePosLessonAttributions';
+export { usePosLessonAttributionSummary } from './lib/usePosLessonAttributionSummary';
+export { usePosLessonConfig } from './lib/usePosLessonConfig';
 
 // Phase 3: Classes & Workshops
 export { useInstructors } from './lib/useInstructors';

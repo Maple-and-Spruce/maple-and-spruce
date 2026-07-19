@@ -14,6 +14,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEtsyConnection } from '@maple/react/data';
 import { LessonRatesConfigCard } from '../../../components/lessons';
+import { PosLessonConfigCard } from '../../../components/pos';
 
 export default function SettingsPage(): React.ReactNode {
   const {
@@ -162,6 +163,10 @@ export default function SettingsPage(): React.ReactNode {
           </Stack>
         </CardContent>
       </Card>
+
+      <Box sx={{ mt: 3 }}>
+        <PosLessonConfigCard />
+      </Box>
 
       <Box sx={{ mt: 3 }}>
         <LessonRatesConfigCard />
