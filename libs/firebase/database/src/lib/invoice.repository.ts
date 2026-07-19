@@ -173,6 +173,67 @@ export const InvoiceRepository = {
     };
   },
 
+  /**
+   * Idempotently create the auto-invoice for a rendered lesson. Uses a
+   * deterministic doc id derived from `lessonId` plus Firestore's `create()`
+   * (which fails if the doc already exists), so an at-least-once double-fire of
+   * the `onLessonRenderedInvoice` trigger can't produce two invoices — and thus
+   * two Square hosted payment pages — for the same lesson. Returns the created
+   * invoice, or `null` when one already existed.
+   */
+  async createAutoLessonInvoice(
+    lessonId: string,
+    input: CreateInvoiceInput
+  ): Promise<Invoice | null> {
+    const docRef = db.collection(COLLECTION).doc(`auto-lesson-${lessonId}`);
+    const now = new Date();
+    const status = input.status ?? 'draft';
+    const lineItems = withComputedSubtotals(input.lineItems);
+    const totalCents = computeInvoiceTotalCents(lineItems);
+
+    const data = {
+      studentId: input.studentId,
+      status,
+      lineItems,
+      totalCents,
+      notes: input.notes,
+      issuedAt: status === 'sent' || status === 'paid' ? now : undefined,
+      paidAt: status === 'paid' ? now : undefined,
+      paymentRecord:
+        status === 'paid'
+          ? { source: 'admin-manual' as const, recordedAt: now }
+          : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      await docRef.create(data);
+    } catch (err) {
+      // ALREADY_EXISTS (gRPC status 6) — a concurrent trigger delivery already
+      // created this lesson's invoice. Idempotent no-op.
+      const code = (err as { code?: number | string }).code;
+      if (code === 6 || code === 'already-exists') {
+        return null;
+      }
+      throw err;
+    }
+
+    return {
+      id: docRef.id,
+      studentId: data.studentId,
+      status,
+      lineItems,
+      totalCents,
+      issuedAt: data.issuedAt,
+      paidAt: data.paidAt,
+      paymentRecord: data.paymentRecord,
+      notes: data.notes,
+      createdAt: now,
+      updatedAt: now,
+    };
+  },
+
   async update(
     input: UpdateInvoiceInput,
     existing: Invoice

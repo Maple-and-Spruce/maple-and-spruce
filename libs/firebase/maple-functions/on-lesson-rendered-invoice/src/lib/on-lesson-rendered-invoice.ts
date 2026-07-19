@@ -148,13 +148,25 @@ export const onLessonRenderedInvoice = onDocumentWritten(
         subtotalCents: rateCents,
       };
 
-      const invoice = await InvoiceRepository.create({
+      // Idempotent create: a deterministic per-lesson invoice id + Firestore
+      // create() means a concurrent double-fire of this trigger can't produce
+      // two invoices (and two Square payment pages) for one lesson. The
+      // findAll scan above is the cheap early-out; this closes the race window
+      // where two invocations both pass that scan before either has written.
+      const invoice = await InvoiceRepository.createAutoLessonInvoice(lessonId, {
         studentId: after.studentId,
         // Create as sent so syncInvoiceToSquare delivers it automatically.
         status: 'sent',
         lineItems: [lineItem],
         notes: 'Auto-invoiced when the lesson was marked rendered.',
       });
+
+      if (!invoice) {
+        console.log(
+          `[auto-invoice] lesson ${lessonId}: invoice already exists (concurrent delivery) — skipping`
+        );
+        return;
+      }
 
       console.log(
         `[auto-invoice] lesson ${lessonId}: created + sent invoice ${invoice.id} ` +
