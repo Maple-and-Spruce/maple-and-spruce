@@ -124,6 +124,41 @@ describe('studentValidation', () => {
     });
   });
 
+  describe('lessonRateCents field', () => {
+    it('passes when undefined (optional)', () => {
+      const result = studentValidation({
+        ...validStudent,
+        lessonRateCents: undefined,
+      });
+      expect(result.hasErrors('lessonRateCents')).toBe(false);
+    });
+
+    it('accepts a positive whole number of cents', () => {
+      const result = studentValidation({
+        ...validStudent,
+        lessonRateCents: 4125,
+      });
+      expect(result.hasErrors('lessonRateCents')).toBe(false);
+    });
+
+    it('rejects zero and negative amounts', () => {
+      expect(
+        studentValidation({ ...validStudent, lessonRateCents: 0 }).isValid()
+      ).toBe(false);
+      expect(
+        studentValidation({ ...validStudent, lessonRateCents: -100 }).isValid()
+      ).toBe(false);
+    });
+
+    it('rejects a fractional cent amount', () => {
+      const result = studentValidation({
+        ...validStudent,
+        lessonRateCents: 41.25,
+      });
+      expect(result.isValid()).toBe(false);
+    });
+  });
+
   describe('venmoUsername field', () => {
     it('passes when undefined (optional)', () => {
       const result = studentValidation({

@@ -102,6 +102,21 @@ export const studentValidation = staticSuite(
       }
     );
 
+    test(
+      'lessonRateCents',
+      'Lesson rate must be a positive whole number of cents',
+      () => {
+        if (
+          data.lessonRateCents !== undefined &&
+          data.lessonRateCents !== null
+        ) {
+          enforce(data.lessonRateCents).isNumber();
+          enforce(data.lessonRateCents).greaterThan(0);
+          enforce(Number.isInteger(data.lessonRateCents)).isTruthy();
+        }
+      }
+    );
+
     test('status', 'Status is required', () => {
       enforce(data.status).isNotBlank();
     });

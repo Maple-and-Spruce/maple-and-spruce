@@ -104,6 +104,18 @@ export interface Student {
    * by Square. See epic #626.
    */
   venmoUsername?: string;
+  /**
+   * Auto-create + send a private-pay invoice when one of this student's
+   * lessons is marked `rendered` (#629). Hope Scholarship students are never
+   * auto-invoiced — they bill externally via EMA. Defaults to off.
+   */
+  autoInvoice?: boolean;
+  /**
+   * Per-student private-pay lesson rate override, in cents. When set it wins
+   * over the standard rate-by-length table (#629). Leave unset to use the
+   * default for their registered lesson length.
+   */
+  lessonRateCents?: number;
   notes?: string;
   status: StudentStatus;
   createdAt: Date;

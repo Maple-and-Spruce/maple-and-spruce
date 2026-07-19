@@ -305,6 +305,14 @@ export type {
   DeleteInvoiceResponse,
 } from './invoice.types';
 
+// Phase 4: Music Lessons - Lesson rates config (#629)
+export type {
+  GetLessonRatesConfigRequest,
+  GetLessonRatesConfigResponse,
+  UpdateLessonRatesConfigRequest,
+  UpdateLessonRatesConfigResponse,
+} from './lesson-rates-config.types';
+
 // Phase 4: Music Lessons - Teacher payout aggregation
 export type {
   GetTeacherPayoutsRequest,
