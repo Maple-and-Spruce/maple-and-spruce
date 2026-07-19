@@ -19,10 +19,12 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { FieldValue } from 'firebase-admin/firestore';
-import { Functions, isE2ETestEmail } from '@maple/firebase/functions';
 import {
-  ClassRepository,
+  Functions,
+  isE2ETestEmail,
+  reserveClassRegistration,
+} from '@maple/firebase/functions';
+import {
   DiscountRepository,
   RegistrationRepository,
   AgreementTemplateRepository,
@@ -36,40 +38,14 @@ import {
   SQUARE_STRING_NAMES,
   PaymentError,
 } from '@maple/firebase/square';
-import {
-  isClassRegistrationOpen,
-  applyDiscount,
-  isDiscountValid,
-  calculateTax,
-  formatSessions,
-} from '@maple/ts/domain';
-import { registrationValidation } from '@maple/ts/validation';
+import { formatSessions } from '@maple/ts/domain';
 import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
-  InlineAgreementSigningData,
 } from '@maple/ts/firebase/api-types';
-import type {
-  AgreementTemplate,
-  MediaReleaseChoice,
-  PercentDiscountData,
-} from '@maple/ts/domain';
+import type { MediaReleaseChoice, PercentDiscountData } from '@maple/ts/domain';
 import { getStorage } from 'firebase-admin/storage';
 import { randomBytes } from 'crypto';
-
-/**
- * Generate a short, human-readable confirmation number.
- * Format: MS-XXXXXX (6 uppercase alphanumeric chars)
- */
-function generateConfirmationNumber(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 to avoid confusion
-  const bytes = randomBytes(6);
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars[bytes[i] % chars.length];
-  }
-  return `MS-${code}`;
-}
 
 /**
  * Generate a referral discount code shared via the confirmation email.
@@ -143,268 +119,38 @@ ${sectionHtml}
 </html>`;
 }
 
-/**
- * Validate that all required agreement templates have matching signature data.
- */
-function validateRequiredAgreements(
-  requiredTemplates: AgreementTemplate[],
-  agreements: InlineAgreementSigningData[] | undefined
-): void {
-  if (requiredTemplates.length === 0) return;
-
-  if (!agreements || agreements.length === 0) {
-    throw new Error(
-      'Required agreements must be signed before checkout can complete'
-    );
-  }
-
-  const submittedIds = new Set(agreements.map((a) => a.templateId));
-  const missingTemplates = requiredTemplates.filter(
-    (t) => !submittedIds.has(t.id)
-  );
-
-  if (missingTemplates.length > 0) {
-    const names = missingTemplates.map((t) => t.name).join(', ');
-    throw new Error(
-      `The following agreements must be signed before checkout: ${names}`
-    );
-  }
-
-  // Validate each submitted agreement has required fields
-  for (const agreement of agreements) {
-    if (!agreement.signatureData) {
-      throw new Error('Signature is required for all agreements');
-    }
-    if (!agreement.printedName?.trim()) {
-      throw new Error('Printed name is required for all agreements');
-    }
-    if (agreement.isMinor) {
-      if (!agreement.minorName?.trim()) {
-        throw new Error("Minor's name is required");
-      }
-      if (!agreement.guardianName?.trim()) {
-        throw new Error('Parent/guardian name is required');
-      }
-      if (!agreement.guardianSignatureData) {
-        throw new Error('Parent/guardian signature is required');
-      }
-    }
-  }
-}
-
 export const createRegistration = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
   .handle<CreateRegistrationRequest, CreateRegistrationResponse>(
     async (data, _context, secrets, strings) => {
-      // 1. Validate input
-      const validationResult = registrationValidation(data);
-      if (!validationResult.isValid()) {
-        const errors = validationResult.getErrors();
-        const errorMessages = Object.entries(errors)
-          .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
-          .join('; ');
-        throw new Error(`Validation failed: ${errorMessages}`);
-      }
-
-      // When the client sent the new attendees array, cross-check that
-      // `quantity === 1 + additionalAttendees.length` so a stale UI can't
-      // book a different number of spots than the attendees it described.
-      // Callers that omit the field (legacy POS / API clients) are still
-      // trusted to send a correct `quantity` directly.
       const additionalAttendees = data.additionalAttendees ?? [];
-      if (
-        data.additionalAttendees !== undefined &&
-        data.quantity !== 1 + additionalAttendees.length
-      ) {
-        throw new Error(
-          `Quantity (${data.quantity}) must equal 1 + additionalAttendees.length (${1 + additionalAttendees.length}).`
-        );
-      }
 
-      // 2. Verify class exists and is open for registration
-      const classEntity = await ClassRepository.findById(data.classId);
-      if (!classEntity) {
-        throw new Error(`Class not found: ${data.classId}`);
-      }
-
-      if (!isClassRegistrationOpen(classEntity)) {
-        throw new Error('This class is not currently open for registration');
-      }
-
-      // 2b. Check for required agreements and validate signatures before payment
-      const requiredTemplates = classEntity.categoryId
-        ? await AgreementTemplateRepository.findRequiredForCategory(
-            classEntity.categoryId
-          )
-        : [];
-
-      if (requiredTemplates.length > 0) {
-        validateRequiredAgreements(requiredTemplates, data.agreements);
-      }
-
-      // 3. Calculate cost (with optional discount)
-      const originalCostCents = classEntity.priceCents * data.quantity;
-      let discountAmountCents = 0;
-      let discountCode: string | undefined;
-      // The discount doc id (if any) is used inside the capacity transaction
-      // to atomically check + increment usageCount. Looked up here so the
-      // transaction body has it without a second findByCode roundtrip.
-      let discountIdToRedeem: string | undefined;
-
-      if (data.discountCode) {
-        const discount = await DiscountRepository.findByCode(data.discountCode);
-        // The frontend has already shown the customer a price that depends
-        // on this code. If the code isn't valid at submit time, we MUST NOT
-        // silently fall back to full price — the customer hasn't consented
-        // to that charge. Fail the registration with a clear error so the
-        // customer can refresh and retry.
-        if (!discount || !isDiscountValid(discount)) {
-          throw new Error(
-            `Discount code "${data.discountCode}" is no longer valid. Please refresh and try again.`
-          );
-        }
-        const result = applyDiscount(discount, {
-          unitPriceCents: classEntity.priceCents,
-          quantity: data.quantity,
-        });
-        // For quantity-tier codes that don't trigger at this quantity (e.g.,
-        // "second slot 50% off" with qty=1), applyDiscount returns 0. The
-        // code is structurally valid, the preview correctly showed no
-        // discount, and the customer's expected price matches the no-discount
-        // total — so this is fine. We just don't reserve a usage.
-        if (result.discountAmountCents > 0) {
-          discountAmountCents = result.discountAmountCents;
-          discountCode = data.discountCode.toUpperCase();
-          discountIdToRedeem = discount.id;
-        }
-      }
-
-      const subtotalCents = Math.max(0, originalCostCents - discountAmountCents);
-
-      // 4. Calculate sales tax
+      // Square is needed both for the tax rate (below) and to charge the card.
       const square = new Square(
         secrets as typeof secrets &
           Record<(typeof SQUARE_SECRET_NAMES)[number], string>,
         strings as typeof strings &
           Record<(typeof SQUARE_STRING_NAMES)[number], string>
       );
-      const taxRatePercent = square.taxRatePercent;
-      const { taxAmountCents, totalCents: pricePaidCents } = calculateTax(
+
+      // 1-5. Validate, price, and atomically reserve a `pending` spot. Shared
+      // with the hosted-checkout fallback so both paths reserve identically.
+      const {
+        registrationId,
+        classEntity,
+        requiredTemplates,
+        confirmationNumber,
         subtotalCents,
-        taxRatePercent
-      );
+        taxAmountCents,
+        pricePaidCents,
+        taxRatePercent,
+        discountCode,
+        discountAmountCents,
+      } = await reserveClassRegistration(data, square.taxRatePercent);
 
-      // 5. Check capacity atomically via Firestore transaction
-      //    This prevents overbooking race conditions.
       const db = getDb();
-      const registrationDocRef = RegistrationRepository.getDocRef();
-      const confirmationNumber = generateConfirmationNumber();
-
-      await db.runTransaction(async (transaction) => {
-        // === All reads must come before any writes ===
-
-        // Count existing registrations for this class (pending + confirmed)
-        const existingSnapshot = await transaction.get(
-          db
-            .collection('registrations')
-            .where('classId', '==', data.classId)
-            .where('status', 'in', ['pending', 'confirmed'])
-        );
-
-        // Re-read the discount inside the transaction so the usage check
-        // is atomic with the increment below. Single-use codes redeemed by
-        // a parallel registration will be caught here.
-        const discountRef = discountIdToRedeem
-          ? DiscountRepository.getDocRef(discountIdToRedeem)
-          : undefined;
-        const discountSnap = discountRef
-          ? await transaction.get(discountRef)
-          : undefined;
-
-        // === Validation ===
-
-        // Sum up quantities (each registration can have quantity > 1)
-        const currentSpotsTaken = existingSnapshot.docs.reduce((sum, doc) => {
-          return sum + (doc.data().quantity || 1);
-        }, 0);
-
-        const spotsNeeded = data.quantity;
-        if (currentSpotsTaken + spotsNeeded > classEntity.capacity) {
-          const spotsRemaining = classEntity.capacity - currentSpotsTaken;
-          throw new Error(
-            spotsRemaining <= 0
-              ? 'This class is full'
-              : `Only ${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining`
-          );
-        }
-
-        if (discountRef && discountSnap) {
-          const fresh = discountSnap.data();
-          if (!fresh || fresh.status !== 'active') {
-            throw new Error('Discount code is no longer available');
-          }
-          const expiresAt = fresh.expiresAt?.toDate?.() ?? fresh.expiresAt;
-          if (expiresAt && new Date() > new Date(expiresAt)) {
-            throw new Error('Discount code has expired');
-          }
-          const usageLimit =
-            typeof fresh.usageLimit === 'number' ? fresh.usageLimit : null;
-          const usageCount =
-            typeof fresh.usageCount === 'number' ? fresh.usageCount : 0;
-          if (usageLimit !== null && usageCount >= usageLimit) {
-            throw new Error(
-              'Discount code has reached its usage limit'
-            );
-          }
-        }
-
-        // === Writes ===
-
-        // Reserve the spot by creating the registration with 'pending' status
-        // inside the transaction so it's atomic with the capacity check
-        const now = new Date();
-        // Filter out empty attendee rows for storage — only keep ones the
-        // user actually filled, so admin views aren't littered with blanks.
-        const persistedAttendees = additionalAttendees
-          .map((a) => ({
-            name: a.name?.trim() || undefined,
-            email: a.email?.trim() || undefined,
-          }))
-          .filter((a) => a.name || a.email);
-
-        transaction.set(registrationDocRef, {
-          classId: data.classId,
-          customerEmail: data.customerEmail,
-          customerName: data.customerName,
-          customerPhone: data.customerPhone || null,
-          quantity: data.quantity,
-          additionalAttendees:
-            persistedAttendees.length > 0 ? persistedAttendees : null,
-          pricePaidCents,
-          subtotalCents,
-          taxAmountCents,
-          taxRatePercent,
-          discountCode: discountCode || null,
-          discountAmountCents: discountAmountCents || null,
-          status: 'pending',
-          source: 'web',
-          notes: data.notes || null,
-          confirmationNumber,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        // Atomically consume one usage of the discount. Per ADR product
-        // decision, usage is NOT restored if the registration is later
-        // cancelled — single-use means single-use.
-        if (discountRef) {
-          transaction.update(discountRef, {
-            usageCount: FieldValue.increment(1),
-            updatedAt: now,
-          });
-        }
-      });
+      const registrationDocRef = RegistrationRepository.getDocRef(registrationId);
 
       // 6. Create Square Order and process payment
       let squarePaymentId: string | undefined;

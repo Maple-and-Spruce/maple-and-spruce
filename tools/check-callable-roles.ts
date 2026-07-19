@@ -69,6 +69,9 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   // NOTE: cancelRegistration / cancelMusicTogetherRegistration are role-gated
   // (admin/clerk), NOT public — so they are intentionally absent here.
   'createRegistration',
+  // Safari/ITP hosted-checkout fallback — same public self-service surface as
+  // createRegistration (reserves a spot + returns a Square-hosted checkout URL).
+  'createRegistrationCheckoutLink',
   'createMusicTogetherRegistration',
   'addMusicTogetherInterest',
   'addToClassWaitlist',

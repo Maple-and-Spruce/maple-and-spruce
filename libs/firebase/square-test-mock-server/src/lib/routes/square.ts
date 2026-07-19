@@ -23,9 +23,16 @@ let inventoryChangeCounter = 0;
 let customerCounter = 0;
 let cardCounter = 0;
 let subscriptionCounter = 0;
+let paymentLinkCounter = 0;
 
 /** In-memory store of created payments for get/refund lookups */
 const payments = new Map<string, Record<string, unknown>>();
+/**
+ * Orders created by the hosted-checkout Payment Link route, keyed by order id.
+ * Stored in Square WIRE shape (snake_case) so `GET /v2/orders/:id` can serve
+ * back the `reference_id` the webhook reconciliation reads.
+ */
+const createdOrders = new Map<string, Record<string, unknown>>();
 /** Craft Club: subscriptions are stored so cancel can look them up. */
 const subscriptions = new Map<string, Record<string, unknown>>();
 
@@ -126,7 +133,9 @@ export function registerSquareRoutes(server: SquareMockServer): void {
   // the order to read line items (catalog_object_id → class variation, money),
   // reference_id (web-order dedup), and customer_id (buyer).
   server.get('/v2/orders/:orderId', (req) => {
-    const order = posFixtureOrders.get(req.params['orderId']);
+    const order =
+      posFixtureOrders.get(req.params['orderId']) ??
+      createdOrders.get(req.params['orderId']);
     if (!order) {
       return {
         status: 404,
@@ -142,6 +151,61 @@ export function registerSquareRoutes(server: SquareMockServer): void {
       };
     }
     return { status: 200, body: { order } };
+  });
+
+  // Create hosted-checkout Payment Link (Safari/ITP fallback). Echoes the
+  // order back with its `reference_id` (the Firestore registration id) and
+  // stores it so `GET /v2/orders/:id` — used by the webhook reconciliation —
+  // can resolve it. Total is computed from the request line items + taxes so
+  // the amount lines up with what the card flow would have charged.
+  server.post('/v2/online-checkout/payment-links', (req) => {
+    const body = req.body as Record<string, unknown>;
+    const order = (body['order'] as Record<string, unknown>) ?? {};
+    paymentLinkCounter++;
+    const orderId = `mock-order-link-${paymentLinkCounter}`;
+    const paymentLinkId = `mock-plink-${paymentLinkCounter}`;
+
+    const lineItems = (order['line_items'] as Record<string, unknown>[]) ?? [];
+    const subtotal = lineItems.reduce((sum, li) => {
+      const qty = Number(li['quantity'] ?? 1);
+      const base =
+        (li['base_price_money'] as Record<string, unknown>)?.['amount'] ?? 0;
+      return sum + Number(base) * qty;
+    }, 0);
+    const taxes = (order['taxes'] as Record<string, unknown>[]) ?? [];
+    const taxTotal = taxes.reduce((sum, t) => {
+      const pct = Number(t['percentage'] ?? 0);
+      return sum + Math.round((subtotal * pct) / 100);
+    }, 0);
+    const total = subtotal + taxTotal;
+
+    const storedOrder = {
+      id: orderId,
+      location_id: order['location_id'] ?? 'mock-location',
+      reference_id: order['reference_id'],
+      state: 'OPEN',
+      line_items: lineItems,
+      total_money: { amount: total, currency: 'USD' },
+      total_tax_money: { amount: taxTotal, currency: 'USD' },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    createdOrders.set(orderId, storedOrder);
+
+    return {
+      status: 200,
+      body: {
+        payment_link: {
+          id: paymentLinkId,
+          version: 1,
+          order_id: orderId,
+          url: `https://square.link/u/${paymentLinkId}`,
+          long_url: `https://checkout.square.site/merchant/mock/checkout/${paymentLinkId}`,
+          created_at: new Date().toISOString(),
+        },
+        related_resources: { orders: [storedOrder] },
+      },
+    };
   });
 
   // Get customer. Served from POS fixtures. Returns 200 with an empty body
@@ -623,7 +687,9 @@ export function resetSquareState(): void {
   customerCounter = 0;
   cardCounter = 0;
   subscriptionCounter = 0;
+  paymentLinkCounter = 0;
   payments.clear();
+  createdOrders.clear();
   subscriptions.clear();
   posFixturePayments.clear();
   posFixtureOrders.clear();

@@ -204,6 +204,7 @@ export { getRequiredAgreementsForClass } from '@maple/firebase/maple-functions/g
 
 // Agreement scheduled functions
 export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-agreement-requests';
+export { releaseStaleRegistrationHolds } from '@maple/firebase/maple-functions/release-stale-registration-holds';
 
 // Registration scheduled functions
 export {
