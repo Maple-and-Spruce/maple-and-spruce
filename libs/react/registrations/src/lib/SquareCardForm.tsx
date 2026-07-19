@@ -164,6 +164,37 @@ function reportPaymentInitFailure(info: SquareInitErrorInfo): void {
   }
 }
 
+/** Inject a `<script>`; resolve on load, reject on error. */
+function loadSquareScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('script load error'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Beacon that `square.js` loaded but didn't define `window.Square` — the
+ * corrupt/empty-cached-script case (observed on Safari: an interrupted fetch
+ * cached under the valid ETag, then re-served via 304). Emitted when we fall
+ * back to a cache-busted reload, so we can measure how often customers hit it.
+ */
+function reportSdkCacheBustRetry(isSandbox: boolean): void {
+  console.warn(
+    '[SquareCardForm] square.js loaded without defining window.Square — retrying with a cache-busted URL'
+  );
+  try {
+    window.gtag?.('event', 'payment_sdk_cache_bust_retry', {
+      square_env: isSandbox ? 'sandbox' : 'prod',
+    });
+  } catch {
+    // Never let a telemetry failure break the form.
+  }
+}
+
 interface SquareCardFormProps {
   applicationId: string;
   locationId: string;
@@ -329,7 +360,17 @@ export function SquareCardForm({
     };
   }, []);
 
-  // Load the Square SDK script
+  // Load the Square SDK script.
+  //
+  // A corrupt/empty `square.js` can get stuck in the browser cache (observed on
+  // Safari: an interrupted fetch stored under the valid ETag, then re-served
+  // indefinitely via 304 revalidation). The `<script>` fires `onload` but
+  // defines no `window.Square`, so init later throws "Square SDK not loaded".
+  // To self-heal — for us and for any customer stuck in that cache state — if
+  // the first load doesn't yield `window.Square`, we retry once with a
+  // cache-busting query param. That's a fresh cache key, so the browser is
+  // forced to the network for a clean copy, routing around the poisoned entry
+  // without anyone having to manually clear their cache.
   useEffect(() => {
     if (sdkLoadedRef.current) return;
     sdkLoadedRef.current = true;
@@ -346,15 +387,36 @@ export function SquareCardForm({
       ? 'https://sandbox.web.squarecdn.com/v1/square.js'
       : 'https://web.squarecdn.com/v1/square.js';
 
-    const script = document.createElement('script');
-    script.src = scriptUrl;
-    script.async = true;
-    script.onload = () => setSdkReady(true);
-    script.onerror = () => {
+    (async () => {
+      // First attempt: the plain URL, so normal CDN/browser caching applies
+      // (unaffected browsers pay zero overhead — this is the only load).
+      try {
+        await loadSquareScript(scriptUrl);
+      } catch {
+        // network / onerror — fall through to the cache-busted retry
+      }
+      if (window.Square) {
+        setSdkReady(true);
+        return;
+      }
+
+      // The script "loaded" but defined nothing (empty/corrupt cached body) or
+      // errored. Retry under a cache-busting key — forced to the network — which
+      // recovers the poisoned-cache case.
+      reportSdkCacheBustRetry(isSandbox);
+      try {
+        await loadSquareScript(`${scriptUrl}?_cb=${Date.now()}`);
+      } catch {
+        // handled by the window.Square check below
+      }
+      if (window.Square) {
+        setSdkReady(true);
+        return;
+      }
+
       setError('Failed to load payment form. Please refresh and try again.');
       setIsLoading(false);
-    };
-    document.head.appendChild(script);
+    })();
   }, [applicationId, locationId, env]);
 
   const initializePayments = useCallback(async () => {
