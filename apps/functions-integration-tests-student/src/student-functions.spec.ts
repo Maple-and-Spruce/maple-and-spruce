@@ -74,6 +74,130 @@ describe('Student Functions', () => {
     await clearFirestoreEmulator();
   });
 
+  describe('Lesson-teacher scoping (#617): read-own, manage-own', () => {
+    // A lesson teacher = a portal user linked to an instructor (instructor.uid)
+    // with the lesson-teacher role. They see + manage only their own students.
+    const OWN = 'instructor-owned-by-teacher';
+    const OTHER = 'instructor-someone-else';
+    let teacher: TestUser;
+    let unlinked: TestUser;
+    let ownStudentId: string;
+    let othersStudentId: string;
+
+    beforeAll(async () => {
+      // Additive on top of the suite's admin seed (no clear — sibling blocks
+      // share this emulator state). Assertions use contains / not-contains and
+      // the unlinked→0 invariant, so extra students elsewhere don't matter.
+      teacher = await createTestUser('student-owner@test.maple', 'test-password-123!');
+      unlinked = await createTestUser('student-unlinked@test.maple', 'test-password-123!');
+      await setFirestoreDoc('userRoles', teacher.uid, { roles: ['lesson-teacher'] });
+      await setFirestoreDoc('userRoles', unlinked.uid, { roles: ['lesson-teacher'] });
+      await setFirestoreDoc('instructors', OWN, {
+        uid: teacher.uid,
+        name: 'Owning Teacher',
+        email: 'owning-teacher@test.maple',
+        status: 'active',
+      });
+
+      // One student taught by the teacher, one by someone else (admin-created).
+      const own = await callFunction<CreateStudentRequest, CreateStudentResponse>({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, name: 'My Student', primaryTeacherId: OWN },
+        idToken: adminUser.idToken,
+      });
+      ownStudentId = own.data!.student.id;
+      const other = await callFunction<CreateStudentRequest, CreateStudentResponse>({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, name: 'Their Student', primaryTeacherId: OTHER },
+        idToken: adminUser.idToken,
+      });
+      othersStudentId = other.data!.student.id;
+    });
+
+    it('getStudents returns only the teacher’s own students', async () => {
+      const result = await callFunction<GetStudentsRequest, GetStudentsResponse>({
+        functionName: 'getStudents',
+        idToken: teacher.idToken,
+      });
+      expect(result.status).toBe(200);
+      const ids = result.data!.students.map((s) => s.id);
+      expect(ids).toContain(ownStudentId);
+      expect(ids).not.toContain(othersStudentId);
+    });
+
+    it('getStudents returns nothing for an unlinked lesson teacher', async () => {
+      const result = await callFunction<GetStudentsRequest, GetStudentsResponse>({
+        functionName: 'getStudents',
+        idToken: unlinked.idToken,
+      });
+      expect(result.status).toBe(200);
+      expect(result.data!.students).toHaveLength(0);
+    });
+
+    it('admin still sees all students', async () => {
+      const result = await callFunction<GetStudentsRequest, GetStudentsResponse>({
+        functionName: 'getStudents',
+        idToken: adminUser.idToken,
+      });
+      const ids = result.data!.students.map((s) => s.id);
+      expect(ids).toEqual(expect.arrayContaining([ownStudentId, othersStudentId]));
+    });
+
+    it('getStudent: own allowed, other denied', async () => {
+      const own = await callFunction({
+        functionName: 'getStudent',
+        data: { id: ownStudentId },
+        idToken: teacher.idToken,
+      });
+      expect(own.status).toBe(200);
+      const other = await callFunction({
+        functionName: 'getStudent',
+        data: { id: othersStudentId },
+        idToken: teacher.idToken,
+      });
+      expect(other.status).toBe(403);
+    });
+
+    it('createStudent: only for themselves', async () => {
+      const mine = await callFunction<CreateStudentRequest>({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, name: 'New Mine', primaryTeacherId: OWN },
+        idToken: teacher.idToken,
+      });
+      expect(mine.status).toBe(200);
+      const theirs = await callFunction<CreateStudentRequest>({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, name: 'New Theirs', primaryTeacherId: OTHER },
+        idToken: teacher.idToken,
+      });
+      expect(theirs.status).toBe(403);
+    });
+
+    it('updateStudent: own allowed, other denied', async () => {
+      const own = await callFunction<UpdateStudentRequest>({
+        functionName: 'updateStudent',
+        data: { id: ownStudentId, notes: 'progressing' },
+        idToken: teacher.idToken,
+      });
+      expect(own.status).toBe(200);
+      const other = await callFunction<UpdateStudentRequest>({
+        functionName: 'updateStudent',
+        data: { id: othersStudentId, notes: 'nope' },
+        idToken: teacher.idToken,
+      });
+      expect(other.status).toBe(403);
+    });
+
+    it('deleteStudent: another teacher’s student is denied', async () => {
+      const result = await callFunction({
+        functionName: 'deleteStudent',
+        data: { id: othersStudentId },
+        idToken: teacher.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+  });
+
   describe('Auth guard', () => {
     it('rejects unauthenticated requests', async () => {
       const result = await callFunction<CreateStudentRequest>({

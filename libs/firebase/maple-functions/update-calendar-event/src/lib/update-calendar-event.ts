@@ -39,4 +39,4 @@ export const updateCalendarEvent = createRoleFunction<
   const calendarEvent = await CalendarEventRepository.update(data);
 
   return { calendarEvent };
-}, [Role.Admin, Role.MtTeacher, Role.Clerk, Role.LessonTeacher]);
+}, [Role.Admin, Role.MtTeacher, Role.Clerk]);

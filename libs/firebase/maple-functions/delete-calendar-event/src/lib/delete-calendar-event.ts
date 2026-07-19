@@ -27,4 +27,4 @@ export const deleteCalendarEvent = createRoleFunction<
   await CalendarEventRepository.delete(data.id);
 
   return { success: true };
-}, [Role.Admin, Role.MtTeacher, Role.Clerk, Role.LessonTeacher]);
+}, [Role.Admin, Role.MtTeacher, Role.Clerk]);

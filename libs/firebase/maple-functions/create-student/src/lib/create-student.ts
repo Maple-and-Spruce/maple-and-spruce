@@ -3,7 +3,11 @@
  *
  * Creates a new music lesson student (admin only).
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+  assertCanManageStudent,
+} from '@maple/firebase/functions';
 import { StudentRepository } from '@maple/firebase/database';
 import { studentValidation } from '@maple/ts/validation';
 import type {
@@ -11,10 +15,13 @@ import type {
   CreateStudentResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const createStudent = createAdminFunction<
+export const createStudent = createRoleFunction<
   CreateStudentRequest,
   CreateStudentResponse
->(async (data) => {
+>(async (data, context) => {
+  // A lesson teacher may only create students assigned to themselves.
+  await assertCanManageStudent(context, data.primaryTeacherId);
+
   const validationResult = studentValidation(data);
   if (!validationResult.isValid()) {
     const errors = validationResult.getErrors();
@@ -27,4 +34,4 @@ export const createStudent = createAdminFunction<
   const student = await StudentRepository.create(data);
 
   return { student };
-});
+}, [Role.Admin, Role.LessonTeacher]);

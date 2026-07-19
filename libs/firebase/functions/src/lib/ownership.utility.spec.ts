@@ -23,8 +23,10 @@ vi.mock('./auth.utility', () => ({
 
 import {
   assertCanManageLesson,
+  assertCanManageStudent,
   assertCanRecordInvoicePayment,
   instructorIdForUser,
+  instructorScopeForUser,
 } from './ownership.utility';
 
 describe('instructorIdForUser', () => {
@@ -148,5 +150,58 @@ describe('assertCanRecordInvoicePayment', () => {
     await expect(
       assertCanRecordInvoicePayment({ uid: 'nobody' }, invoiceForLesson('les-1'))
     ).rejects.toThrow(/only record payments on your own students/i);
+  });
+});
+
+describe('assertCanManageStudent', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('admins pass unconditionally', async () => {
+    mocks.hasRole.mockResolvedValue(true);
+    await expect(
+      assertCanManageStudent({ uid: 'admin-uid' }, 'instr-someone')
+    ).resolves.toBeUndefined();
+    expect(mocks.findByUid).not.toHaveBeenCalled();
+  });
+
+  it('a lesson teacher passes for their own student', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+    mocks.findByUid.mockResolvedValue({ id: 'instr-nathan' });
+    await expect(
+      assertCanManageStudent({ uid: 'nathan-uid' }, 'instr-nathan')
+    ).resolves.toBeUndefined();
+  });
+
+  it("denies another teacher's student", async () => {
+    mocks.hasRole.mockResolvedValue(false);
+    mocks.findByUid.mockResolvedValue({ id: 'instr-nathan' });
+    await expect(
+      assertCanManageStudent({ uid: 'nathan-uid' }, 'instr-other')
+    ).rejects.toThrow(/only manage your own students/i);
+  });
+});
+
+describe('instructorScopeForUser', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('admin: isAdmin true, no instructor lookup', async () => {
+    mocks.hasRole.mockResolvedValue(true);
+    const scope = await instructorScopeForUser({ uid: 'admin-uid' });
+    expect(scope).toEqual({ isAdmin: true, instructorId: undefined });
+    expect(mocks.findByUid).not.toHaveBeenCalled();
+  });
+
+  it('linked lesson teacher: their instructor id', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+    mocks.findByUid.mockResolvedValue({ id: 'instr-nathan' });
+    const scope = await instructorScopeForUser({ uid: 'nathan-uid' });
+    expect(scope).toEqual({ isAdmin: false, instructorId: 'instr-nathan' });
+  });
+
+  it('unlinked non-admin: undefined instructor id', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+    mocks.findByUid.mockResolvedValue(undefined);
+    const scope = await instructorScopeForUser({ uid: 'unlinked' });
+    expect(scope).toEqual({ isAdmin: false, instructorId: undefined });
   });
 });

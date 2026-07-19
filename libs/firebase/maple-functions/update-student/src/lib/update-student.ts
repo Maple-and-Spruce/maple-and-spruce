@@ -1,9 +1,14 @@
 /**
  * Update Student Cloud Function
  *
- * Updates an existing music lesson student (admin only).
+ * Admin + lesson-teacher (own students only; scoped-roles epic #617).
  */
-import { createAdminFunction, throwNotFound } from '@maple/firebase/functions';
+import {
+  createRoleFunction,
+  Role,
+  throwNotFound,
+  assertCanManageStudent,
+} from '@maple/firebase/functions';
 import { StudentRepository } from '@maple/firebase/database';
 import { studentValidation } from '@maple/ts/validation';
 import type {
@@ -11,14 +16,17 @@ import type {
   UpdateStudentResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const updateStudent = createAdminFunction<
+export const updateStudent = createRoleFunction<
   UpdateStudentRequest,
   UpdateStudentResponse
->(async (data) => {
+>(async (data, context) => {
   const existing = await StudentRepository.findById(data.id);
   if (!existing) {
     throwNotFound('Student', data.id);
   }
+
+  // A lesson teacher may only touch a student they teach.
+  await assertCanManageStudent(context, existing.primaryTeacherId);
 
   // Merge with existing so partial updates still pass full validation
   const merged = { ...existing, ...data };
@@ -34,4 +42,4 @@ export const updateStudent = createAdminFunction<
   const student = await StudentRepository.update(data);
 
   return { student };
-});
+}, [Role.Admin, Role.LessonTeacher]);

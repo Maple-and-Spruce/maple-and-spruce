@@ -169,7 +169,9 @@ function roleNavGroups(
           label: 'Events',
           href: '/events',
           icon: <CalendarMonthIcon />,
-          roles: ALL_ROLES,
+          // Not lesson-teacher: their lessons are derived, and they don't
+          // manage calendar events (they can still book a room, below).
+          roles: ['mt-teacher', 'clerk'],
         },
         {
           label: 'Spruce Room Schedule',
