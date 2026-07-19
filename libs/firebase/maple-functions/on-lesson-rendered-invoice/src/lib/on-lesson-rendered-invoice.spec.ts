@@ -23,7 +23,11 @@ vi.mock('firebase-functions/v2/firestore', () => ({
 
 vi.mock('@maple/firebase/database', () => ({
   StudentRepository: { findById: mocks.findById },
-  InvoiceRepository: { findAll: mocks.findAll, create: mocks.create },
+  InvoiceRepository: {
+    findAll: mocks.findAll,
+    create: mocks.create,
+    createAutoLessonInvoice: mocks.create,
+  },
   LessonRatesConfigRepository: { get: mocks.getRatesConfig },
 }));
 
@@ -84,7 +88,9 @@ describe('onLessonRenderedInvoice', () => {
     await handler(makeEvent('scheduled', renderedLesson));
 
     expect(mocks.create).toHaveBeenCalledTimes(1);
-    const arg = mocks.create.mock.calls[0][0];
+    // createAutoLessonInvoice(lessonId, input) — lessonId first, input second.
+    expect(mocks.create.mock.calls[0][0]).toBe('lesson-1');
+    const arg = mocks.create.mock.calls[0][1];
     expect(arg.studentId).toBe('student-1');
     expect(arg.status).toBe('sent');
     expect(arg.lineItems).toHaveLength(1);
@@ -94,6 +100,18 @@ describe('onLessonRenderedInvoice', () => {
       unitAmountCents: 4125,
       subtotalCents: 4125,
     });
+  });
+
+  it('is idempotent: skips silently when the invoice already exists (concurrent delivery)', async () => {
+    // createAutoLessonInvoice returns null when the deterministic-id create()
+    // loses the race — the trigger must not throw or double-process.
+    mocks.create.mockResolvedValue(null);
+
+    await expect(
+      handler(makeEvent('scheduled', renderedLesson))
+    ).resolves.toBeUndefined();
+
+    expect(mocks.create).toHaveBeenCalledTimes(1);
   });
 
   it('does nothing when the status was already rendered (no transition)', async () => {
