@@ -57,6 +57,12 @@ export { deleteProduct } from '@maple/firebase/maple-functions/delete-product';
 // Sync conflict functions (read-only — resolution is in maple-square codebase)
 export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
 export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
+// POS lesson attribution review queue + config (#628)
+export { getPosLessonAttributions } from '@maple/firebase/maple-functions/get-pos-lesson-attributions';
+export { getPosLessonAttributionSummary } from '@maple/firebase/maple-functions/get-pos-lesson-attribution-summary';
+export { resolvePosLessonAttribution } from '@maple/firebase/maple-functions/resolve-pos-lesson-attribution';
+export { getPosLessonConfig } from '@maple/firebase/maple-functions/get-pos-lesson-config';
+export { updatePosLessonConfig } from '@maple/firebase/maple-functions/update-pos-lesson-config';
 
 // Instructor functions
 export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';

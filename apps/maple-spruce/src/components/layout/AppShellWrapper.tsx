@@ -2,7 +2,10 @@
 
 import { ReactNode, useMemo } from 'react';
 import { AppShell, type NavGroup } from '@maple/react/layout';
-import { useSyncConflictSummary } from '@maple/react/data';
+import {
+  usePosLessonAttributionSummary,
+  useSyncConflictSummary,
+} from '@maple/react/data';
 import { useRoles } from '@maple/react/auth';
 import { buildNavGroups } from './nav-groups';
 
@@ -23,17 +26,25 @@ export function AppShellWrapper({
   maxWidth = 'lg',
 }: AppShellWrapperProps): ReactNode {
   const { roles, isAdmin } = useRoles();
-  // Sync badge is admin-only; skip the (admin-gated) call for other roles
+  // Sync + POS-lesson badges are admin-only; skip the (admin-gated) calls for
+  // other roles so they don't 403.
   const { summaryState } = useSyncConflictSummary(isAdmin);
+  const { summaryState: posSummaryState } =
+    usePosLessonAttributionSummary(isAdmin);
 
   const pendingConflicts = useMemo(() => {
     if (summaryState.status !== 'success') return 0;
     return summaryState.data.pending;
   }, [summaryState]);
 
+  const pendingPosLessons = useMemo(() => {
+    if (posSummaryState.status !== 'success') return 0;
+    return posSummaryState.data.pending;
+  }, [posSummaryState]);
+
   const navGroups: NavGroup[] = useMemo(
-    () => buildNavGroups(roles, pendingConflicts),
-    [roles, pendingConflicts]
+    () => buildNavGroups(roles, pendingConflicts, pendingPosLessons),
+    [roles, pendingConflicts, pendingPosLessons]
   );
 
   return (
