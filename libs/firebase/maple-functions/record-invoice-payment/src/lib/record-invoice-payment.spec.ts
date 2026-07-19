@@ -12,12 +12,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   recordManualPayment: vi.fn(),
+  assertCanRecordInvoicePayment: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: <TReq, TRes>(
+  Role: { Admin: 'admin', LessonTeacher: 'lesson-teacher' },
+  createRoleFunction: <TReq, TRes>(
     handler: (data: TReq, ctx: unknown) => Promise<TRes>
   ) => handler,
+  assertCanRecordInvoicePayment: mocks.assertCanRecordInvoicePayment,
   throwNotFound: (entity: string, id: string) => {
     throw new Error(`${entity} not found: ${id}`);
   },
@@ -63,6 +66,24 @@ const sentInvoice = {
 describe('recordInvoicePayment', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Ownership passes by default (admin / owning teacher).
+    mocks.assertCanRecordInvoicePayment.mockResolvedValue(undefined);
+  });
+
+  it('enforces ownership: propagates a permission-denied from the guard', async () => {
+    mocks.findById.mockResolvedValue(sentInvoice);
+    mocks.assertCanRecordInvoicePayment.mockRejectedValue(
+      new Error('permission-denied: not your lesson')
+    );
+    await expect(
+      handler({ id: 'inv-1', source: 'venmo-manual' }, { uid: 'uid-teacher' })
+    ).rejects.toThrow(/permission-denied/);
+    // Guard ran against the loaded invoice; no payment recorded.
+    expect(mocks.assertCanRecordInvoicePayment).toHaveBeenCalledWith(
+      { uid: 'uid-teacher' },
+      sentInvoice
+    );
+    expect(mocks.recordManualPayment).not.toHaveBeenCalled();
   });
 
   it('records a Venmo payment and stamps the caller uid', async () => {

@@ -328,6 +328,20 @@ export type {
   UpdateLessonRatesConfigResponse,
 } from './lesson-rates-config.types';
 
+// Phase 4: Music Lessons - Teacher My Day + business payment config (#631)
+export type {
+  MyDayLessonInvoice,
+  MyDayLesson,
+  GetMyDayLessonsRequest,
+  GetMyDayLessonsResponse,
+} from './my-day.types';
+export type {
+  GetBusinessPaymentConfigRequest,
+  GetBusinessPaymentConfigResponse,
+  UpdateBusinessPaymentConfigRequest,
+  UpdateBusinessPaymentConfigResponse,
+} from './business-payment-config.types';
+
 // Phase 4: Music Lessons - Teacher payout aggregation
 export type {
   GetTeacherPayoutsRequest,

@@ -162,6 +162,10 @@ export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
 export { onLessonRenderedInvoice } from '@maple/firebase/maple-functions/on-lesson-rendered-invoice';
 export { getLessonRatesConfig } from '@maple/firebase/maple-functions/get-lesson-rates-config';
+// Teacher My Day + business payment config (#631)
+export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';
+export { getBusinessPaymentConfig } from '@maple/firebase/maple-functions/get-business-payment-config';
+export { updateBusinessPaymentConfig } from '@maple/firebase/maple-functions/update-business-payment-config';
 export { updateLessonRatesConfig } from '@maple/firebase/maple-functions/update-lesson-rates-config';
 export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-music-together-section-write';
 
