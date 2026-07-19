@@ -28,6 +28,7 @@
  */
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
+import { FieldValue } from 'firebase-admin/firestore';
 import {
   getDb,
   ClassRepository,
@@ -61,6 +62,68 @@ const adminAlertEmail = defineString('ADMIN_ALERT_EMAIL', {
 
 function formatCurrency(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+type ConfirmOutcome = 'gone' | 'already' | 'confirmed' | 'overbooked';
+
+/** Sum the `quantity` (default 1) across registration docs. */
+function sumRegistrationQuantities(
+  docs: FirebaseFirestore.QueryDocumentSnapshot[]
+): number {
+  return docs.reduce((sum, d) => sum + (Number(d.data().quantity) || 1), 0);
+}
+
+/**
+ * Confirm a hosted-checkout registration inside a transaction. Re-reads the reg
+ * (idempotent for duplicate webhook delivery) and, for a reaper-`cancelled`
+ * hold whose spot may have been resold, re-checks capacity and reports whether
+ * confirming overbooks. Extracted so the transaction body isn't deeply nested.
+ */
+async function confirmHostedRegistration(
+  txn: FirebaseFirestore.Transaction,
+  db: FirebaseFirestore.Firestore,
+  args: {
+    regRef: FirebaseFirestore.DocumentReference;
+    classId: string;
+    wasCancelled: boolean;
+    capacity: number;
+    regQty: number;
+    squarePaymentId: string;
+    squareOrderId: string;
+    squareReceiptUrl: string | null;
+  }
+): Promise<ConfirmOutcome> {
+  const fresh = await txn.get(args.regRef);
+  const data = fresh.data();
+  if (!data) return 'gone';
+  // Idempotent: a prior worker run already resolved it.
+  if (data.status === 'confirmed' || data.status === 'refunded') {
+    return 'already';
+  }
+
+  let overbooked = false;
+  if (args.wasCancelled) {
+    const countSnap = await txn.get(
+      db
+        .collection('registrations')
+        .where('classId', '==', args.classId)
+        .where('status', 'in', ['pending', 'confirmed'])
+    );
+    overbooked =
+      sumRegistrationQuantities(countSnap.docs) + args.regQty > args.capacity;
+  }
+
+  txn.update(args.regRef, {
+    status: 'confirmed',
+    squarePaymentId: args.squarePaymentId,
+    squareOrderId: args.squareOrderId,
+    squareReceiptUrl: args.squareReceiptUrl,
+    // Drop the reaper's release reason now that it's paid; the buyer's own
+    // `notes` were never touched, so they survive.
+    holdReleaseReason: FieldValue.delete(),
+    updatedAt: new Date(),
+  });
+  return overbooked ? 'overbooked' : 'confirmed';
 }
 
 export const processPosSale = onDocumentWritten(
@@ -127,21 +190,63 @@ export const processPosSale = onDocumentWritten(
         const webReg = await RegistrationRepository.findById(order.referenceId);
         if (webReg) {
           if (webReg.status === 'pending' || webReg.status === 'cancelled') {
-            await RegistrationRepository.getDocRef(webReg.id).update({
-              status: 'confirmed',
-              squarePaymentId: paymentId,
-              squareOrderId: orderId,
-              squareReceiptUrl: payment.receiptUrl ?? null,
-              updatedAt: new Date(),
-            });
+            // A `cancelled` hold means the reaper released the spot (or an admin
+            // cancelled) yet the buyer paid — honor the payment, but the freed
+            // spot may have been resold, so re-check capacity and alert staff if
+            // confirming overbooks. A `pending` hold already counts toward
+            // capacity, so no re-check is needed there. The class capacity is
+            // effectively static, so it's read outside the transaction.
+            const wasCancelled = webReg.status === 'cancelled';
+            const capacity = wasCancelled
+              ? (await ClassRepository.findById(webReg.classId))?.capacity ?? 0
+              : 0;
+            const regQty = webReg.quantity || 1;
+
+            const regRef = RegistrationRepository.getDocRef(webReg.id);
+            const outcome = await db.runTransaction((txn) =>
+              confirmHostedRegistration(txn, db, {
+                regRef,
+                classId: webReg.classId,
+                wasCancelled,
+                capacity,
+                regQty,
+                squarePaymentId: paymentId,
+                squareOrderId: orderId,
+                squareReceiptUrl: payment.receiptUrl ?? null,
+              })
+            );
+
             console.log(
               `[process-pos-sale] hosted-checkout payment=${paymentId} ` +
-                `confirmed registration ${webReg.id} (was ${webReg.status})`
+                `registration ${webReg.id} (was ${webReg.status}) → ${outcome}`
             );
-            // TODO(hosted-checkout PR2): queue the rich confirmation email +
-            // process inline agreements here for full parity with the inline
-            // card flow. Square already emails the buyer its own payment
-            // receipt from the hosted page in the meantime.
+
+            // A late payment on a resold spot: honor it, but flag for staff.
+            if (outcome === 'overbooked') {
+              await db.collection('mail').add({
+                to: adminAlertEmail.value(),
+                message: {
+                  subject: `Class overbooked — late hosted-checkout payment`,
+                  text: [
+                    'A buyer completed a hosted-checkout payment after their hold',
+                    'was released and the spot was resold. The registration was',
+                    'confirmed to honor the payment, but the class is now over',
+                    'capacity — please resolve (add capacity or refund one).',
+                    '',
+                    `Registration: ${webReg.id}`,
+                    `Class: ${webReg.classId}`,
+                    `Square payment: ${paymentId}`,
+                    `Square order: ${orderId}`,
+                    payment.receiptUrl ? `Receipt: ${payment.receiptUrl}` : '',
+                  ]
+                    .filter((line) => line !== '')
+                    .join('\n'),
+                },
+              });
+            }
+            // TODO(follow-up): rich confirmation email + inline-agreement
+            // processing for full parity with the inline card flow. Square
+            // already emails the buyer its own payment receipt meanwhile.
           }
           await PosSaleRequestRepository.markProcessed(paymentId);
           return;

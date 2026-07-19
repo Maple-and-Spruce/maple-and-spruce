@@ -71,6 +71,22 @@ describe('createRegistrationCheckoutLink', () => {
     expect(reg?.pricePaidCents).toBe(4770);
   });
 
+  it('dedups a rapid duplicate: the second call for the same buyer+class is rejected', async () => {
+    const first = await callFunction<
+      CreateRegistrationCheckoutLinkRequest,
+      CreateRegistrationCheckoutLinkResponse
+    >({ functionName: 'createRegistrationCheckoutLink', data: validRequest() });
+    expect(first.status).toBe(200);
+
+    // Same buyer + class again while the first hold is still pending — must not
+    // stack a second hold (which would self-block capacity / burn a discount).
+    const second = await callFunction<CreateRegistrationCheckoutLinkRequest>({
+      functionName: 'createRegistrationCheckoutLink',
+      data: validRequest(),
+    });
+    expect(second.status).not.toBe(200);
+  });
+
   it('rejects when the class is already full (shared capacity guard)', async () => {
     // Capacity 1, already taken by a confirmed registration.
     await setFirestoreDoc('classes', CLASS_ID, {
