@@ -18,9 +18,13 @@ const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   findBySquareOrderId: vi.fn(),
   createRegistration: vi.fn(),
-  regUpdate: vi.fn(),
+  txnUpdate: vi.fn(),
+  // Transactional re-read state for the hosted-checkout reconciliation.
+  freshReg: undefined as Record<string, unknown> | undefined,
+  countDocs: [] as Array<{ data: () => Record<string, unknown> }>,
   // ClassRepository
   findBySquareVariationId: vi.fn(),
+  classFindById: vi.fn(),
   // PosLessonConfigRepository
   getLessonCatalogObjectIds: vi.fn(),
   // PosLessonAttributionRepository
@@ -45,6 +49,10 @@ vi.mock('firebase-functions/v2/firestore', () => ({
   }),
 }));
 
+vi.mock('firebase-admin/firestore', () => ({
+  FieldValue: { delete: () => '__DELETE__' },
+}));
+
 vi.mock('firebase-functions/params', () => ({
   defineSecret: vi.fn((name: string) => ({ name, value: () => `mock-${name}` })),
   defineString: vi.fn((name: string) => ({ name, value: () => `mock-${name}` })),
@@ -52,7 +60,29 @@ vi.mock('firebase-functions/params', () => ({
 
 vi.mock('@maple/firebase/database', () => ({
   getDb: () => ({
-    collection: vi.fn(() => ({ add: mocks.mailAdd })),
+    collection: vi.fn(() => ({
+      add: mocks.mailAdd,
+      // Capacity re-count query used inside the reconciliation transaction.
+      where: () => ({ where: () => ({ __query: true }) }),
+    })),
+    runTransaction: async (
+      cb: (txn: {
+        get: (arg: unknown) => Promise<{
+          data?: () => Record<string, unknown> | undefined;
+          docs?: Array<{ data: () => Record<string, unknown> }>;
+        }>;
+        update: (ref: unknown, data: unknown) => void;
+      }) => Promise<unknown>
+    ) => {
+      const txn = {
+        get: async (arg: unknown) =>
+          arg && (arg as { __query?: boolean }).__query
+            ? { docs: mocks.countDocs }
+            : { data: () => mocks.freshReg },
+        update: mocks.txnUpdate,
+      };
+      return cb(txn);
+    },
   }),
   PosSaleRequestRepository: {
     markProcessed: mocks.markProcessed,
@@ -62,10 +92,11 @@ vi.mock('@maple/firebase/database', () => ({
     findById: mocks.findById,
     findBySquareOrderId: mocks.findBySquareOrderId,
     create: mocks.createRegistration,
-    getDocRef: (id: string) => ({ id, update: mocks.regUpdate }),
+    getDocRef: (id: string) => ({ id }),
   },
   ClassRepository: {
     findBySquareVariationId: mocks.findBySquareVariationId,
+    findById: mocks.classFindById,
   },
   PosLessonConfigRepository: {
     getLessonCatalogObjectIds: mocks.getLessonCatalogObjectIds,
@@ -154,6 +185,9 @@ beforeEach(() => {
     invoice: { id: 'inv-pos-1' },
     settledExisting: false,
   });
+  mocks.classFindById.mockResolvedValue({ id: 'class-1', capacity: 10 });
+  mocks.freshReg = undefined;
+  mocks.countDocs = [];
 });
 
 describe('processPosSale — early exits', () => {
@@ -209,7 +243,7 @@ describe('processPosSale — dedup', () => {
 
     expect(mocks.findById).toHaveBeenCalledWith('reg-web-abc');
     expect(mocks.createRegistration).not.toHaveBeenCalled();
-    expect(mocks.regUpdate).not.toHaveBeenCalled();
+    expect(mocks.txnUpdate).not.toHaveBeenCalled();
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
   });
 
@@ -228,18 +262,89 @@ describe('processPosSale — dedup', () => {
       id: 'reg-hosted-1',
       source: 'web',
       status: 'pending',
+      classId: 'class-1',
+      quantity: 1,
     });
+    // Transactional re-read still sees it pending.
+    mocks.freshReg = { status: 'pending' };
 
     await handler(makeEvent({ orderId: 'ORDER-1' }));
 
     // Flipped pending → confirmed with the Square payment ids — NOT a new POS reg.
     expect(mocks.createRegistration).not.toHaveBeenCalled();
-    expect(mocks.regUpdate).toHaveBeenCalledWith(
+    expect(mocks.txnUpdate).toHaveBeenCalledWith(
+      { id: 'reg-hosted-1' },
       expect.objectContaining({
         status: 'confirmed',
         squarePaymentId: 'PAY-1',
         squareOrderId: 'ORDER-1',
         squareReceiptUrl: 'https://squareup.com/receipt/xyz',
+      })
+    );
+    // No capacity re-check / overbook alert for a pending hold.
+    expect(mocks.classFindById).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('is idempotent: does not re-confirm when the transactional re-read is already confirmed', async () => {
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-hosted-2',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
+    });
+    // Query-time snapshot saw pending, but a prior worker run already confirmed.
+    mocks.findById.mockResolvedValue({
+      id: 'reg-hosted-2',
+      source: 'web',
+      status: 'pending',
+      classId: 'class-1',
+      quantity: 1,
+    });
+    mocks.freshReg = { status: 'confirmed', squarePaymentId: 'PAY-0' };
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    expect(mocks.txnUpdate).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('honors a late payment on a reaper-cancelled hold but alerts staff when it overbooks', async () => {
+    mocks.getPayment.mockResolvedValue({
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      receiptUrl: 'https://squareup.com/receipt/late',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-hosted-3',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
+    });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-hosted-3',
+      source: 'web',
+      status: 'cancelled', // reaper released the hold
+      classId: 'class-1',
+      quantity: 1,
+    });
+    mocks.freshReg = { status: 'cancelled' };
+    // Capacity 1, and the freed spot was already resold (1 taken).
+    mocks.classFindById.mockResolvedValue({ id: 'class-1', capacity: 1 });
+    mocks.countDocs = [{ data: () => ({ quantity: 1 }) }];
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    // Still confirmed (honor the payment)...
+    expect(mocks.txnUpdate).toHaveBeenCalledWith(
+      { id: 'reg-hosted-3' },
+      expect.objectContaining({ status: 'confirmed' })
+    );
+    // ...but staff are alerted to the overbooking.
+    expect(mocks.mailAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.objectContaining({
+          subject: expect.stringMatching(/overbooked/i),
+        }),
       })
     );
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');

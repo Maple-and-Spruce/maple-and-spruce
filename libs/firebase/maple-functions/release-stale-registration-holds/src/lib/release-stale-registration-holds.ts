@@ -11,8 +11,15 @@
  * than the hold TTL that carry no Square payment — releasing the spot. The
  * inline card flow resolves `pending` within a single request, and POS sales
  * are written `confirmed`, so a lingering `pending` is always an abandoned
- * hosted-checkout hold. The `!squarePaymentId` guard avoids racing a payment
- * that is confirming right now.
+ * hosted-checkout hold.
+ *
+ * Concurrency: each hold is cancelled inside a transaction that RE-READS the
+ * doc, so a payment that confirms the registration between the query and the
+ * write is never clobbered (the query snapshot is stale by the time we commit).
+ * The cancellation reason goes in a dedicated `holdReleaseReason` field, NOT
+ * `notes`, so the buyer's own note survives if a late payment later resurrects
+ * the hold (see process-pos-sale reconciliation). The query is bounded so a
+ * large backlog can't exceed Firestore's per-commit write limit.
  *
  * Deployed to us-east4 (maple-core codebase) via CI/CD.
  */
@@ -25,6 +32,37 @@ import { getDb } from '@maple/firebase/database';
  * short enough not to block a near-full class for long.
  */
 const HOLD_TTL_MINUTES = 15;
+
+/**
+ * Max holds processed per run. Bounds work (and Firestore round-trips) so a
+ * backlog can't blow up a single run; the next 5-minute run drains the rest.
+ */
+const MAX_PER_RUN = 300;
+
+/**
+ * Cancel one hold transactionally, re-reading inside the transaction so a
+ * payment that confirmed the registration after the query snapshot is never
+ * clobbered. Returns whether it actually released the hold.
+ */
+async function releaseHoldIfStale(
+  txn: FirebaseFirestore.Transaction,
+  ref: FirebaseFirestore.DocumentReference,
+  now: Date
+): Promise<boolean> {
+  const fresh = await txn.get(ref);
+  const data = fresh.data();
+  if (!data || data.status !== 'pending' || data.squarePaymentId) {
+    return false;
+  }
+  txn.update(ref, {
+    status: 'cancelled',
+    // Reason lives in its own field so the buyer's `notes` are preserved if a
+    // late payment resurrects this hold.
+    holdReleaseReason: `Abandoned checkout — hold released after ${HOLD_TTL_MINUTES} minutes`,
+    updatedAt: now,
+  });
+  return true;
+}
 
 export const releaseStaleRegistrationHolds = onSchedule(
   {
@@ -41,6 +79,7 @@ export const releaseStaleRegistrationHolds = onSchedule(
       .collection('registrations')
       .where('status', '==', 'pending')
       .where('createdAt', '<', cutoff)
+      .limit(MAX_PER_RUN)
       .get();
 
     if (snapshot.empty) {
@@ -48,23 +87,16 @@ export const releaseStaleRegistrationHolds = onSchedule(
       return;
     }
 
-    const batch = db.batch();
     let released = 0;
     for (const doc of snapshot.docs) {
-      // Never cancel a hold that already has a payment recorded — that's a race
-      // with the confirming webhook, not an abandoned checkout.
-      if (doc.data().squarePaymentId) continue;
-      batch.update(doc.ref, {
-        status: 'cancelled',
-        notes: `Abandoned checkout — hold released after ${HOLD_TTL_MINUTES} minutes`,
-        updatedAt: now,
-      });
-      released++;
+      // Cancel transactionally so we never overwrite a registration a
+      // concurrent webhook confirmed (and paid) after the query snapshot.
+      const didRelease = await db.runTransaction((txn) =>
+        releaseHoldIfStale(txn, doc.ref, now)
+      );
+      if (didRelease) released++;
     }
 
-    if (released > 0) {
-      await batch.commit();
-    }
     console.log(
       `[release-stale-holds] released ${released} of ${snapshot.size} stale pending hold(s)`
     );
