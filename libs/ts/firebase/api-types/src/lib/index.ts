@@ -278,6 +278,8 @@ export type {
   CreateRegistrationResponse,
   CreateRegistrationCheckoutLinkRequest,
   CreateRegistrationCheckoutLinkResponse,
+  GetRegistrationStatusRequest,
+  GetRegistrationStatusResponse,
 } from './registration.types';
 
 // Phase 4: Music Lessons - Student types

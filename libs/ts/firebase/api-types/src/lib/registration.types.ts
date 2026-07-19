@@ -178,3 +178,33 @@ export interface CreateRegistrationCheckoutLinkResponse {
   /** Confirmation number stamped on the reserved registration. */
   confirmationNumber: string;
 }
+
+// ============================================================================
+// Get Registration Status (Public - hosted-checkout return lookup)
+// ============================================================================
+
+/**
+ * Public lookup by registration id, used when Square redirects the buyer back
+ * to the class page (`?reg=<id>`) after a hosted checkout. Lets the widget
+ * VERIFY the payment landed (the webhook is the source of truth) rather than
+ * trust the query param, so a returning buyer sees a real confirmation instead
+ * of a blank form (and doesn't pay twice). Confirmation details are returned
+ * ONLY for a confirmed registration.
+ */
+export interface GetRegistrationStatusRequest {
+  registrationId: string;
+}
+
+export interface GetRegistrationStatusResponse {
+  /** 'not-found' when no such registration; otherwise the registration status. */
+  status: 'not-found' | 'pending' | 'confirmed' | 'cancelled' | 'refunded' | 'no-show';
+  /** Present only when status is 'confirmed'. */
+  confirmation?: {
+    confirmationNumber?: string;
+    className: string;
+    customerName: string;
+    customerEmail: string;
+    quantity: number;
+    pricePaidCents: number;
+  };
+}

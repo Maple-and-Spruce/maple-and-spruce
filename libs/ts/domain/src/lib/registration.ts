@@ -80,6 +80,8 @@ export interface Registration {
   discountAmountCents?: number;
   /** Registration status */
   status: RegistrationStatus;
+  /** Human-readable confirmation number (e.g. MS-XXXXXX) shown to the buyer. */
+  confirmationNumber?: string;
   /**
    * Channel the registration came from. Defaults to `'web'` for any record
    * predating the field — see `docToRegistration` for the back-compat read.

@@ -48,6 +48,7 @@
     "../../libs/firebase/maple-functions/upload-class-gallery-image/**/*.ts",
     "../../libs/firebase/maple-functions/upload-category-gallery-image/**/*.ts",
     "../../libs/firebase/maple-functions/get-public-class/**/*.ts",
+    "../../libs/firebase/maple-functions/get-registration-status/**/*.ts",
     "../../libs/firebase/maple-functions/get-related-public-classes/**/*.ts",
     "../../libs/firebase/maple-functions/add-to-class-waitlist/**/*.ts",
     "../../libs/firebase/maple-functions/notify-waitlist-on-spot-open/**/*.ts",

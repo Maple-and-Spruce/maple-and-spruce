@@ -374,6 +374,9 @@
       "@maple/firebase/maple-functions/get-public-class": [
         "libs/firebase/maple-functions/get-public-class/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-registration-status": [
+        "libs/firebase/maple-functions/get-registration-status/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-public-music-together-section": [
         "libs/firebase/maple-functions/get-public-music-together-section/src/index.ts"
       ],

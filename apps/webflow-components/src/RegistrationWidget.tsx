@@ -34,6 +34,8 @@ import type {
   CreateRegistrationResponse,
   CreateRegistrationCheckoutLinkRequest,
   CreateRegistrationCheckoutLinkResponse,
+  GetRegistrationStatusRequest,
+  GetRegistrationStatusResponse,
   GetRequiredAgreementsForClassRequest,
   GetRequiredAgreementsForClassResponse,
   InlineAgreementSigningData,
@@ -366,25 +368,65 @@ interface RegistrationWidgetProps {
   showDigitalWallets?: string;
 }
 
+interface ConfirmedState {
+  status: 'confirmed';
+  confirmationNumber: string;
+  customerName: string;
+  customerEmail: string;
+  className: string;
+  pricePaidCents: number;
+  quantity: number;
+  classDate: string;
+  classEndDate: string;
+  classDurationMinutes: number;
+  skillLevel: string;
+  location?: string;
+  agreementsSigned?: boolean;
+}
+
 type WidgetState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'ready'; publicClass: PublicClass; requiredAgreements: RequiredAgreementTemplate[] }
-  | {
-      status: 'confirmed';
-      confirmationNumber: string;
-      customerName: string;
-      customerEmail: string;
-      className: string;
-      pricePaidCents: number;
-      quantity: number;
-      classDate: string;
-      classEndDate: string;
-      classDurationMinutes: number;
-      skillLevel: string;
-      location?: string;
-      agreementsSigned?: boolean;
-    };
+  // Buyer returned from Square's hosted checkout (?reg=<id>); we're polling for
+  // the webhook to confirm. `timedOut` = still pending after the poll window.
+  | { status: 'confirming'; customerEmail?: string; timedOut: boolean }
+  | ConfirmedState;
+
+/**
+ * Build the `confirmed` widget state from a class + payment details. Shared by
+ * the inline-payment success path and the hosted-checkout return path.
+ */
+function buildConfirmedState(
+  pc: PublicClass,
+  details: {
+    confirmationNumber: string;
+    customerName: string;
+    customerEmail: string;
+    pricePaidCents: number;
+    quantity: number;
+    agreementsSigned?: boolean;
+  }
+): ConfirmedState {
+  const firstSessionIso = pc.sessions?.[0]?.dateTime ?? '';
+  const startDate = new Date(firstSessionIso);
+  const endDate = new Date(startDate.getTime() + pc.durationMinutes * 60 * 1000);
+  return {
+    status: 'confirmed',
+    confirmationNumber: details.confirmationNumber,
+    customerName: details.customerName,
+    customerEmail: details.customerEmail,
+    className: pc.name,
+    pricePaidCents: details.pricePaidCents,
+    quantity: details.quantity,
+    classDate: firstSessionIso,
+    classEndDate: endDate.toISOString(),
+    classDurationMinutes: pc.durationMinutes,
+    skillLevel: pc.skillLevel,
+    location: pc.location,
+    agreementsSigned: details.agreementsSigned,
+  };
+}
 
 export function RegistrationWidget({
   classId,
@@ -417,6 +459,60 @@ export function RegistrationWidget({
       'createRegistrationCheckoutLink'
     );
 
+    // Poll getRegistrationStatus for a returning hosted-checkout buyer. Returns
+    // true if it took over the UI (confirmed or a "confirming payment" state),
+    // false if there's nothing to show (lookup failed / not confirmed) and the
+    // normal registration form should render.
+    const showHostedCheckoutReturn = async (
+      registrationId: string,
+      publicClass: PublicClass
+    ): Promise<boolean> => {
+      const getRegistrationStatus = httpsCallable<
+        GetRegistrationStatusRequest,
+        GetRegistrationStatusResponse
+      >(functions, 'getRegistrationStatus');
+
+      const MAX_POLLS = 6;
+      const POLL_MS = 3000;
+      for (let attempt = 0; attempt <= MAX_POLLS; attempt++) {
+        let res: GetRegistrationStatusResponse;
+        try {
+          res = (await getRegistrationStatus({ registrationId })).data;
+        } catch {
+          return false; // lookup failed — fall back to the form
+        }
+
+        if (res.status === 'confirmed' && res.confirmation) {
+          setState(
+            buildConfirmedState(publicClass, {
+              confirmationNumber: res.confirmation.confirmationNumber ?? '',
+              customerName: res.confirmation.customerName,
+              customerEmail: res.confirmation.customerEmail,
+              pricePaidCents: res.confirmation.pricePaidCents,
+              quantity: res.confirmation.quantity,
+            })
+          );
+          return true;
+        }
+        if (res.status !== 'pending') {
+          // not-found / cancelled / refunded — nothing to confirm.
+          return false;
+        }
+
+        // Still pending — the webhook hasn't landed yet. Show a confirming
+        // state and poll again.
+        setState({ status: 'confirming', timedOut: false });
+        if (attempt < MAX_POLLS) {
+          await new Promise((r) => setTimeout(r, POLL_MS));
+        }
+      }
+
+      // Payment almost certainly succeeded (Square only redirects here after
+      // payment) but the webhook is lagging — reassure rather than dead-end.
+      setState({ status: 'confirming', timedOut: true });
+      return true;
+    };
+
     const fetchClass = async () => {
       setState({ status: 'loading' });
       try {
@@ -439,6 +535,20 @@ export function RegistrationWidget({
         ]);
 
         const publicClass = classResult.data.class;
+
+        // Hosted-checkout return: Square sends the buyer back with ?reg=<id>
+        // after paying. Verify the payment landed (the webhook is the source of
+        // truth — never trust the param) and show a real confirmation instead
+        // of a blank form, so a buyer who paid doesn't pay again.
+        const regId =
+          typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('reg')
+            : null;
+        if (regId) {
+          const shown = await showHostedCheckoutReturn(regId, publicClass);
+          if (shown) return; // confirmed or confirming — don't render the form
+        }
+
         setState({
           status: 'ready',
           publicClass,
@@ -565,41 +675,19 @@ export function RegistrationWidget({
       if (state.status !== 'ready') return;
 
       const pc = state.publicClass;
-      const className = pc.name;
-
-      // Calculate class end time (use first session)
-      const firstSessionIso = pc.sessions?.[0]?.dateTime ?? '';
-      const startDate = new Date(firstSessionIso);
-      const endDate = new Date(
-        startDate.getTime() + pc.durationMinutes * 60 * 1000
-      );
 
       trackPurchaseClass(
         typeof window !== 'undefined' ? window : null,
         {
           classId: pc.id,
-          className,
+          className: pc.name,
           pricePaidCents: details.pricePaidCents,
           quantity: details.quantity,
           confirmationNumber: details.confirmationNumber,
         }
       );
 
-      setState({
-        status: 'confirmed',
-        confirmationNumber: details.confirmationNumber,
-        customerName: details.customerName,
-        customerEmail: details.customerEmail,
-        className,
-        pricePaidCents: details.pricePaidCents,
-        quantity: details.quantity,
-        classDate: firstSessionIso,
-        classEndDate: endDate.toISOString(),
-        classDurationMinutes: pc.durationMinutes,
-        skillLevel: pc.skillLevel,
-        location: pc.location,
-        agreementsSigned: details.agreementsSigned,
-      });
+      setState(buildConfirmedState(pc, details));
     },
     [state]
   );
@@ -624,6 +712,22 @@ export function RegistrationWidget({
           <Alert severity="error" sx={{ mb: 2 }}>
             {state.message}
           </Alert>
+        )}
+
+        {state.status === 'confirming' && (
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            {!state.timedOut && <CircularProgress sx={{ mb: 2 }} />}
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              {state.timedOut
+                ? 'Payment received — you’re all set!'
+                : 'Confirming your payment…'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {state.timedOut
+                ? 'We’re finalizing your registration. A confirmation email is on its way — no need to pay again.'
+                : 'Just a moment while we confirm your registration.'}
+            </Typography>
+          </Box>
         )}
 
         {state.status === 'ready' && (
