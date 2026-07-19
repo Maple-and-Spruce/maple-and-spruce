@@ -134,6 +134,23 @@ interface RegistrationCheckoutFormProps {
     paymentNonce: string;
     agreements?: InlineAgreementSigningData[];
   }) => Promise<CreateRegistrationResponse>;
+  /**
+   * Fallback when the embedded Square card form can't initialize (e.g. Safari
+   * ITP). Given the same registration data minus the card nonce, it reserves a
+   * spot and returns a Square-hosted checkout URL the form redirects to. When
+   * omitted, no fallback is offered.
+   */
+  onHostedCheckout?: (data: {
+    classId: string;
+    customerEmail: string;
+    customerName: string;
+    customerPhone?: string;
+    quantity: number;
+    additionalAttendees?: Attendee[];
+    discountCode?: string;
+    notes?: string;
+    agreements?: InlineAgreementSigningData[];
+  }) => Promise<{ checkoutUrl: string }>;
   onSuccess: (details: {
     confirmationNumber: string;
     customerName: string;
@@ -153,6 +170,7 @@ export function RegistrationCheckoutForm({
   requiredAgreements = [],
   onCalculateCost,
   onSubmit,
+  onHostedCheckout,
   onSuccess,
 }: RegistrationCheckoutFormProps) {
   useSignals();
@@ -183,6 +201,9 @@ export function RegistrationCheckoutForm({
   const isSubmitting = useSignal(false);
   const submitError = useSignal<string | null>(null);
   const isCardReady = useSignal(false);
+  // Set when the embedded Square card form fails to initialize (e.g. Safari
+  // ITP). Reveals the hosted-checkout fallback so the buyer isn't dead-ended.
+  const cardInitFailed = useSignal(false);
   const quantityWarning = useSignal<string | null>(null);
   // Gate field errors until the user has attempted a submit once — mirrors
   // the ClassForm/ArtistForm pattern so users aren't yelled at mid-typing.
@@ -480,6 +501,68 @@ export function RegistrationCheckoutForm({
     isValid,
     allAgreementsSigned,
     performSubmit,
+  ]);
+
+  /**
+   * Hosted-checkout fallback: same validation + data as handleSubmit, but
+   * instead of tokenizing a card it reserves the spot server-side and redirects
+   * the buyer to Square's hosted checkout page. Used when the embedded card
+   * form can't initialize. On success the browser navigates away, so
+   * `isSubmitting` is intentionally left set.
+   */
+  const handleHostedCheckout = useCallback(async () => {
+    if (!onHostedCheckout || isSubmitting.value) return;
+
+    showValidationErrors.value = true;
+    if (!isValid.value) return;
+    if (!allAgreementsSigned.value) return;
+
+    isSubmitting.value = true;
+    submitError.value = null;
+
+    try {
+      const agreementsData = hasRequiredAgreements
+        ? Array.from(signedAgreements.value.values())
+        : undefined;
+
+      const { checkoutUrl } = await onHostedCheckout({
+        classId: publicClass.id,
+        customerEmail: customerEmail.value.trim(),
+        customerName: customerName.value.trim(),
+        customerPhone: customerPhone.value.trim() || undefined,
+        quantity: quantity.value,
+        additionalAttendees:
+          additionalAttendeesPayload.value.length > 0
+            ? additionalAttendeesPayload.value
+            : undefined,
+        discountCode: discountCode.value.trim() || undefined,
+        notes: notes.value.trim() || undefined,
+        agreements: agreementsData,
+      });
+
+      // Hand the buyer off to Square's hosted page.
+      window.location.assign(checkoutUrl);
+    } catch (error) {
+      submitError.value = extractErrorMessage(error);
+      isSubmitting.value = false;
+    }
+  }, [
+    onHostedCheckout,
+    isSubmitting,
+    submitError,
+    showValidationErrors,
+    isValid,
+    allAgreementsSigned,
+    hasRequiredAgreements,
+    signedAgreements,
+    publicClass.id,
+    customerName,
+    customerEmail,
+    customerPhone,
+    quantity,
+    additionalAttendeesPayload,
+    discountCode,
+    notes,
   ]);
 
   // ============================================================
@@ -907,35 +990,73 @@ export function RegistrationCheckoutForm({
           totalCents={costBreakdown.value?.totalCents}
           showDigitalWallets={showDigitalWallets}
           onReady={() => (isCardReady.value = true)}
+          onInitError={() => (cardInitFailed.value = true)}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
           }}
           onDigitalWalletToken={handleDigitalWalletToken}
           afterCardContent={
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isButtonDisabled.value}
-              style={{
-                width: '100%',
-                padding: '14px 24px',
-                fontSize: '16px',
-                fontWeight: 600,
-                fontFamily: fonts.button,
-                color: '#D5D6C8',
-                backgroundColor: isButtonDisabled.value ? '#8a7b6e' : '#4A3728',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
-                opacity: isButtonDisabled.value ? 0.7 : 1,
-                transition: 'background-color 0.2s, opacity 0.2s',
-                letterSpacing: '0.02em',
-              }}
-            >
-              {isSubmitting.value
-                ? 'Processing...'
-                : `Register & Pay ${costBreakdown.value ? `$${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''}`}
-            </button>
+            cardInitFailed.value && onHostedCheckout ? (
+              // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
+              // hosted checkout instead of a dead-ended, disabled pay button.
+              <Box>
+                <Typography
+                  variant="body2"
+                  sx={{ mb: 1.5, color: 'text.secondary' }}
+                >
+                  Continue to our secure checkout page to finish your payment.
+                </Typography>
+                <button
+                  type="button"
+                  onClick={handleHostedCheckout}
+                  disabled={isSubmitting.value}
+                  style={{
+                    width: '100%',
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    fontFamily: fonts.button,
+                    color: '#D5D6C8',
+                    backgroundColor: isSubmitting.value ? '#8a7b6e' : '#4A3728',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: isSubmitting.value ? 'not-allowed' : 'pointer',
+                    opacity: isSubmitting.value ? 0.7 : 1,
+                    transition: 'background-color 0.2s, opacity 0.2s',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  {isSubmitting.value
+                    ? 'Redirecting…'
+                    : `Continue to secure checkout${costBreakdown.value ? ` — $${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''} →`}
+                </button>
+              </Box>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isButtonDisabled.value}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  fontFamily: fonts.button,
+                  color: '#D5D6C8',
+                  backgroundColor: isButtonDisabled.value ? '#8a7b6e' : '#4A3728',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isButtonDisabled.value ? 'not-allowed' : 'pointer',
+                  opacity: isButtonDisabled.value ? 0.7 : 1,
+                  transition: 'background-color 0.2s, opacity 0.2s',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {isSubmitting.value
+                  ? 'Processing...'
+                  : `Register & Pay ${costBreakdown.value ? `$${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''}`}
+              </button>
+            )
           }
         />
       </Box>

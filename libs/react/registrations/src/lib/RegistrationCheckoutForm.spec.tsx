@@ -49,6 +49,7 @@ vi.mock('@maple/react/agreements', () => ({
 // Capture the onDigitalWalletToken callback so tests can simulate
 // Google Pay / Apple Pay token events from outside the component.
 let capturedDigitalWalletTokenCallback: ((token: string) => void) | undefined;
+let capturedInitErrorCallback: (() => void) | undefined;
 
 // Allow individual tests to override how the mocked tokenize function
 // behaves (e.g. to keep the promise pending and simulate Square's SDK
@@ -65,11 +66,13 @@ let mockTokenizeImpl: () => Promise<{
 vi.mock('./SquareCardForm', () => ({
   SquareCardForm: ({
     onReady,
+    onInitError,
     onTokenizeRef,
     onDigitalWalletToken,
     afterCardContent,
   }: {
     onReady?: () => void;
+    onInitError?: () => void;
     onTokenizeRef: (
       fn: () => Promise<{ nonce: string; verificationToken?: string }>
     ) => void;
@@ -82,7 +85,8 @@ vi.mock('./SquareCardForm', () => ({
     }, [onReady, onTokenizeRef]);
     useEffect(() => {
       capturedDigitalWalletTokenCallback = onDigitalWalletToken;
-    }, [onDigitalWalletToken]);
+      capturedInitErrorCallback = onInitError;
+    }, [onDigitalWalletToken, onInitError]);
     return <div data-testid="mock-square-form">{afterCardContent}</div>;
   },
 }));
@@ -701,5 +705,86 @@ describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
     // button label — use getAllByText since we only need to confirm
     // the value is present, not that it's unique.
     expect(screen.getAllByText(/\$86\.38/).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('RegistrationCheckoutForm — hosted-checkout fallback', () => {
+  it('offers "Continue to secure checkout" when the card form fails to init, then calls onHostedCheckout and redirects', async () => {
+    const onHostedCheckout = vi
+      .fn()
+      .mockResolvedValue({ checkoutUrl: 'https://square.link/u/abc' });
+
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        applePayCheckoutUrl="https://business.example.com/apple-pay-checkout"
+        onCalculateCost={vi.fn().mockResolvedValue(makeCostResponse(1))}
+        onSubmit={vi.fn()}
+        onHostedCheckout={onHostedCheckout}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(capturedInitErrorCallback).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText(/Full Name/), {
+      target: { value: 'Jane Doe' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/), {
+      target: { value: 'jane@example.com' },
+    });
+
+    // Before failure: the normal pay button is shown, not the fallback.
+    expect(screen.getByText(/Register & Pay/)).toBeInTheDocument();
+    expect(screen.queryByText(/Continue to secure checkout/)).toBeNull();
+
+    // Card form fails to initialize (e.g. Safari ITP).
+    await act(async () => {
+      capturedInitErrorCallback!();
+    });
+
+    const fallbackBtn = await screen.findByText(/Continue to secure checkout/);
+
+    await act(async () => {
+      fireEvent.click(fallbackBtn);
+    });
+
+    await waitFor(() => expect(onHostedCheckout).toHaveBeenCalledTimes(1));
+    const arg = onHostedCheckout.mock.calls[0][0];
+    expect(arg).toEqual(
+      expect.objectContaining({
+        classId: 'class-1',
+        customerEmail: 'jane@example.com',
+        customerName: 'Jane Doe',
+        quantity: 1,
+      })
+    );
+    // No card nonce on the hosted path.
+    expect(arg).not.toHaveProperty('paymentNonce');
+  });
+
+  it('does not offer the fallback when onHostedCheckout is not provided', async () => {
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        applePayCheckoutUrl="https://business.example.com/apple-pay-checkout"
+        onCalculateCost={vi.fn().mockResolvedValue(makeCostResponse(1))}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(capturedInitErrorCallback).toBeDefined());
+    await act(async () => {
+      capturedInitErrorCallback!();
+    });
+
+    // Still just the (disabled) pay button — no fallback offered.
+    expect(screen.getByText(/Register & Pay/)).toBeInTheDocument();
+    expect(screen.queryByText(/Continue to secure checkout/)).toBeNull();
   });
 });
