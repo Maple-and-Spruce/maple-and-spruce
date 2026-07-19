@@ -68,6 +68,13 @@ export {
   type InvoiceLineItemInput,
 } from './lib/invoices.service';
 
+// Checkout service (hosted Payment Links — Safari/ITP fallback)
+export {
+  CheckoutService,
+  type CreatePaymentLinkInput,
+  type CreatePaymentLinkResult,
+} from './lib/checkout.service';
+
 // Cards service (cards on file for subscription billing)
 export {
   CardsService,

@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   findBySquareOrderId: vi.fn(),
   createRegistration: vi.fn(),
+  regUpdate: vi.fn(),
   // ClassRepository
   findBySquareVariationId: vi.fn(),
   // PosLessonConfigRepository
@@ -61,6 +62,7 @@ vi.mock('@maple/firebase/database', () => ({
     findById: mocks.findById,
     findBySquareOrderId: mocks.findBySquareOrderId,
     create: mocks.createRegistration,
+    getDocRef: (id: string) => ({ id, update: mocks.regUpdate }),
   },
   ClassRepository: {
     findBySquareVariationId: mocks.findBySquareVariationId,
@@ -191,18 +193,55 @@ describe('processPosSale — early exits', () => {
 });
 
 describe('processPosSale — dedup', () => {
-  it('skips a web-originated order (referenceId maps to an existing registration)', async () => {
+  it('skips an already-confirmed web order (inline card flow) — no create, no re-update', async () => {
     mocks.getOrder.mockResolvedValue({
       orderId: 'ORDER-1',
       referenceId: 'reg-web-abc',
       lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
     });
-    mocks.findById.mockResolvedValue({ id: 'reg-web-abc', source: 'web' });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-web-abc',
+      source: 'web',
+      status: 'confirmed',
+    });
 
     await handler(makeEvent({ orderId: 'ORDER-1' }));
 
     expect(mocks.findById).toHaveBeenCalledWith('reg-web-abc');
     expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.regUpdate).not.toHaveBeenCalled();
+    expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
+  });
+
+  it('confirms a pending hosted-checkout registration (referenceId → pending web reg)', async () => {
+    mocks.getPayment.mockResolvedValue({
+      status: 'COMPLETED',
+      orderId: 'ORDER-1',
+      receiptUrl: 'https://squareup.com/receipt/xyz',
+    });
+    mocks.getOrder.mockResolvedValue({
+      orderId: 'ORDER-1',
+      referenceId: 'reg-hosted-1',
+      lineItems: [{ catalogObjectId: 'VAR_A', quantity: 1 }],
+    });
+    mocks.findById.mockResolvedValue({
+      id: 'reg-hosted-1',
+      source: 'web',
+      status: 'pending',
+    });
+
+    await handler(makeEvent({ orderId: 'ORDER-1' }));
+
+    // Flipped pending → confirmed with the Square payment ids — NOT a new POS reg.
+    expect(mocks.createRegistration).not.toHaveBeenCalled();
+    expect(mocks.regUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'confirmed',
+        squarePaymentId: 'PAY-1',
+        squareOrderId: 'ORDER-1',
+        squareReceiptUrl: 'https://squareup.com/receipt/xyz',
+      })
+    );
     expect(mocks.markProcessed).toHaveBeenCalledWith('PAY-1');
   });
 

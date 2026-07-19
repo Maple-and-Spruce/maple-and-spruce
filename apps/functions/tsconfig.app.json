@@ -123,6 +123,7 @@
     "../../libs/firebase/maple-functions/submit-signed-agreement/**/*.ts",
     "../../libs/firebase/maple-functions/get-required-agreements-for-class/**/*.ts",
     "../../libs/firebase/maple-functions/expire-agreement-requests/**/*.ts",
+    "../../libs/firebase/maple-functions/release-stale-registration-holds/**/*.ts",
     "../../libs/firebase/maple-functions/send-class-reminders/**/*.ts",
     "../../libs/firebase/maple-functions/send-music-together-reminders/**/*.ts",
     "../../libs/firebase/maple-functions/list-users/**/*.ts",

@@ -34,6 +34,7 @@ export { processPosSale } from '@maple/firebase/maple-functions/process-pos-sale
 
 // Registration operations (Square payments)
 export { createRegistration } from '@maple/firebase/maple-functions/create-registration';
+export { createRegistrationCheckoutLink } from '@maple/firebase/maple-functions/create-registration-checkout-link';
 export { cancelRegistration } from '@maple/firebase/maple-functions/cancel-registration';
 
 // Sync conflict resolution (Square catalog comparison)

@@ -113,13 +113,36 @@ export const processPosSale = onDocumentWritten(
       // 2. Fetch the order (line items, referenceId, customer).
       const order = await square.ordersService.getOrder(orderId);
 
-      // 3a. Web-order dedup. Web checkouts set the order's referenceId to the
-      // Firestore registration id (see create-registration). If that
-      // registration exists, this order was born on the web — the registration
-      // already exists, so do NOT create a duplicate here.
+      // 3a. Web-order reconciliation. Web checkouts set the order's referenceId
+      // to the Firestore registration id (see create-registration /
+      // createRegistrationCheckoutLink). Two web sub-cases:
+      //   - Inline card flow: the registration is already `confirmed` (payment
+      //     happened synchronously in create-registration) → nothing to do.
+      //   - Hosted-checkout fallback: the registration is still `pending` and
+      //     THIS payment is what confirms it → flip it to `confirmed` with the
+      //     Square payment ids. (A `cancelled` hold that the buyer paid anyway —
+      //     e.g. the reaper released it just before a late completion — is also
+      //     honored rather than dropping a paid registration.)
       if (order.referenceId) {
         const webReg = await RegistrationRepository.findById(order.referenceId);
         if (webReg) {
+          if (webReg.status === 'pending' || webReg.status === 'cancelled') {
+            await RegistrationRepository.getDocRef(webReg.id).update({
+              status: 'confirmed',
+              squarePaymentId: paymentId,
+              squareOrderId: orderId,
+              squareReceiptUrl: payment.receiptUrl ?? null,
+              updatedAt: new Date(),
+            });
+            console.log(
+              `[process-pos-sale] hosted-checkout payment=${paymentId} ` +
+                `confirmed registration ${webReg.id} (was ${webReg.status})`
+            );
+            // TODO(hosted-checkout PR2): queue the rich confirmation email +
+            // process inline agreements here for full parity with the inline
+            // card flow. Square already emails the buyer its own payment
+            // receipt from the hosted page in the meantime.
+          }
           await PosSaleRequestRepository.markProcessed(paymentId);
           return;
         }
