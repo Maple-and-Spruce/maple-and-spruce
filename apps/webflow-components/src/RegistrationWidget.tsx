@@ -32,6 +32,8 @@ import type {
   CalculateRegistrationCostResponse,
   CreateRegistrationRequest,
   CreateRegistrationResponse,
+  CreateRegistrationCheckoutLinkRequest,
+  CreateRegistrationCheckoutLinkResponse,
   GetRequiredAgreementsForClassRequest,
   GetRequiredAgreementsForClassResponse,
   InlineAgreementSigningData,
@@ -408,7 +410,12 @@ export function RegistrationWidget({
     // recalc + Pay submit). The page-mount fetches above can't benefit
     // from warmup — they fire too early — but these typically run 5–60s
     // later, by which point the warmup ping has spun their container up.
-    warmup(functions, 'calculateRegistrationCost', 'createRegistration');
+    warmup(
+      functions,
+      'calculateRegistrationCost',
+      'createRegistration',
+      'createRegistrationCheckoutLink'
+    );
 
     const fetchClass = async () => {
       setState({ status: 'loading' });
@@ -513,6 +520,39 @@ export function RegistrationWidget({
     [functions, state]
   );
 
+  /**
+   * Hosted-checkout fallback: when the embedded card form can't initialize
+   * (e.g. Safari ITP), reserve the spot and get a Square-hosted checkout URL to
+   * redirect to. `returnUrl` is this page so Square sends the buyer back here
+   * after paying (the server appends ?reg=<id>).
+   */
+  const handleHostedCheckout = useCallback(
+    async (data: {
+      classId: string;
+      customerEmail: string;
+      customerName: string;
+      customerPhone?: string;
+      quantity: number;
+      additionalAttendees?: CreateRegistrationRequest['additionalAttendees'];
+      discountCode?: string;
+      notes?: string;
+      agreements?: InlineAgreementSigningData[];
+    }): Promise<{ checkoutUrl: string }> => {
+      const createLink = httpsCallable<
+        CreateRegistrationCheckoutLinkRequest,
+        CreateRegistrationCheckoutLinkResponse
+      >(functions, 'createRegistrationCheckoutLink');
+
+      const result = await createLink({
+        ...data,
+        returnUrl:
+          typeof window !== 'undefined' ? window.location.href : undefined,
+      });
+      return { checkoutUrl: result.data.checkoutUrl };
+    },
+    [functions]
+  );
+
   const handleSuccess = useCallback(
     (details: {
       confirmationNumber: string;
@@ -610,6 +650,7 @@ export function RegistrationWidget({
                   requiredAgreements={state.requiredAgreements}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
+                  onHostedCheckout={handleHostedCheckout}
                   onSuccess={handleSuccess}
                 />
               </Box>
