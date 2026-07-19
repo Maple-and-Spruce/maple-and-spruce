@@ -20,6 +20,7 @@ import { InventoryService } from './inventory.service';
 import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
 import { InvoicesService } from './invoices.service';
+import { CheckoutService } from './checkout.service';
 import { CardsService } from './cards.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { CustomersService } from './customers.service';
@@ -74,6 +75,7 @@ export class Square {
   private readonly _ordersService: OrdersService;
   private readonly _paymentsService: PaymentsService;
   private readonly _invoicesService: InvoicesService;
+  private readonly _checkoutService: CheckoutService;
   private readonly _cardsService: CardsService;
   private readonly _subscriptionsService: SubscriptionsService;
   private readonly _customersService: CustomersService;
@@ -116,6 +118,7 @@ export class Square {
     this._ordersService = new OrdersService(this.client);
     this._paymentsService = new PaymentsService(this.client);
     this._invoicesService = new InvoicesService(this.client);
+    this._checkoutService = new CheckoutService(this.client);
     this._cardsService = new CardsService(this.client);
     this._subscriptionsService = new SubscriptionsService(this.client);
     this._customersService = new CustomersService(this.client);
@@ -168,6 +171,13 @@ export class Square {
    */
   get invoicesService(): InvoicesService {
     return this._invoicesService;
+  }
+
+  /**
+   * Get the checkout service for hosted Payment Links (Safari/ITP fallback)
+   */
+  get checkoutService(): CheckoutService {
+    return this._checkoutService;
   }
 
   /**
