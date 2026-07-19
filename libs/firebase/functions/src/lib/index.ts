@@ -83,7 +83,14 @@ export {
   validateRequiredAgreements,
   generateConfirmationNumber,
   type ReserveRegistrationResult,
+  type RegistrationReservationInput,
 } from './registration-reservation.utility';
+
+// Shared inline-agreement processing (card + hosted-checkout paths)
+export {
+  processInlineAgreements,
+  type InlineAgreementSigner,
+} from './inline-agreements.utility';
 
 // Per-family calendar subscription utilities
 export {

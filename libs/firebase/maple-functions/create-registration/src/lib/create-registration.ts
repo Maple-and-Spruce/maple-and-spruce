@@ -23,13 +23,13 @@ import {
   Functions,
   isE2ETestEmail,
   reserveClassRegistration,
+  processInlineAgreements,
 } from '@maple/firebase/functions';
 import {
   DiscountRepository,
   RegistrationRepository,
   AgreementTemplateRepository,
   AgreementRequestRepository,
-  SignedAgreementRepository,
   getDb,
 } from '@maple/firebase/database';
 import {
@@ -43,8 +43,7 @@ import type {
   CreateRegistrationRequest,
   CreateRegistrationResponse,
 } from '@maple/ts/firebase/api-types';
-import type { MediaReleaseChoice, PercentDiscountData } from '@maple/ts/domain';
-import { getStorage } from 'firebase-admin/storage';
+import type { PercentDiscountData } from '@maple/ts/domain';
 import { randomBytes } from 'crypto';
 
 /**
@@ -69,54 +68,6 @@ function getAppUrl(allowedOrigins: string): string {
   const origins = allowedOrigins.split(',').map((o) => o.trim());
   const httpsOrigin = origins.find((o) => o.startsWith('https://'));
   return httpsOrigin ?? origins[0] ?? 'http://localhost:3000';
-}
-
-/**
- * Upload a base64 PNG to Firebase Storage and return the file path.
- */
-async function uploadSignature(
-  signedAgreementId: string,
-  filename: string,
-  base64Data: string
-): Promise<string> {
-  const bucket = getStorage().bucket();
-  const filePath = `agreements/${signedAgreementId}/${filename}`;
-  const file = bucket.file(filePath);
-
-  const raw = base64Data.includes(',')
-    ? base64Data.split(',')[1]
-    : base64Data;
-  const buffer = Buffer.from(raw, 'base64');
-
-  await file.save(buffer, {
-    metadata: { contentType: 'image/png' },
-  });
-
-  return filePath;
-}
-
-/**
- * Render agreement sections into an HTML snapshot for the legal record.
- */
-function renderAgreementHtml(
-  templateName: string,
-  sections: Array<{ title: string; content: string }>
-): string {
-  const sectionHtml = sections
-    .map(
-      (s) =>
-        `<section><h2>${s.title}</h2><div>${s.content}</div></section>`
-    )
-    .join('\n');
-
-  return `<!DOCTYPE html>
-<html>
-<head><title>${templateName}</title></head>
-<body>
-<h1>${templateName}</h1>
-${sectionHtml}
-</body>
-</html>`;
 }
 
 export const createRegistration = Functions.endpoint
@@ -237,99 +188,21 @@ export const createRegistration = Functions.endpoint
         );
       }
 
-      // 8. Process required agreements (signed at checkout)
+      // 8. Process required agreements (signed at checkout). Shared with the
+      // hosted-checkout fallback so both paths persist signatures identically.
       let agreementsSigned = false;
       try {
-        if (requiredTemplates.length > 0 && data.agreements) {
-          const templateMap = new Map(
-            requiredTemplates.map((t) => [t.id, t])
-          );
-
-          for (const agreementData of data.agreements) {
-            const template = templateMap.get(agreementData.templateId);
-            if (!template) continue;
-
-            const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-            // Upload signature images
-            const signatureImagePath = await uploadSignature(
-              tempId,
-              'signature.png',
-              agreementData.signatureData
-            );
-
-            let guardianSignatureImagePath: string | undefined;
-            if (agreementData.isMinor && agreementData.guardianSignatureData) {
-              guardianSignatureImagePath = await uploadSignature(
-                tempId,
-                'guardian-signature.png',
-                agreementData.guardianSignatureData
-              );
-            }
-
-            // Create agreement request (already signed)
-            const signingToken = randomBytes(32).toString('hex');
-            const request = await AgreementRequestRepository.create({
-              templateId: template.id,
-              templateVersion: template.version,
-              signerEmail: data.customerEmail,
-              signerName: data.customerName,
-              signerPhone: data.customerPhone,
-              deliveryMethod: 'registration',
-              registrationId: registrationDocRef.id,
-              classId: data.classId,
-              signingToken,
-              expiresAt: new Date(), // Already signed, expiry irrelevant
-              status: 'pending', // Will be marked signed immediately
-            });
-
-            // Create signed agreement record
-            const agreementHtmlSnapshot = renderAgreementHtml(
-              template.name,
-              template.sections
-            );
-
-            const signedAgreement = await SignedAgreementRepository.create({
-              requestId: request.id,
-              templateId: template.id,
-              templateVersion: template.version,
-              agreementHtmlSnapshot,
-              signerEmail: data.customerEmail,
-              printedName: agreementData.printedName.trim(),
-              signatureImagePath,
-              mediaReleaseChoice: agreementData.mediaReleaseChoice as
-                | MediaReleaseChoice
-                | undefined,
-              isMinor: agreementData.isMinor ?? false,
-              minorName: agreementData.minorName,
-              guardianName: agreementData.guardianName,
-              guardianSignatureImagePath,
-              signedAt: new Date(),
-              ipAddress: 'inline-checkout',
-              userAgent: 'inline-checkout',
-            });
-
-            // Rename storage files to use the actual signed agreement ID
-            const bucket = getStorage().bucket();
-            const newSignaturePath = `agreements/${signedAgreement.id}/signature.png`;
-            await bucket.file(signatureImagePath).move(newSignaturePath);
-
-            if (guardianSignatureImagePath) {
-              const newGuardianPath = `agreements/${signedAgreement.id}/guardian-signature.png`;
-              await bucket
-                .file(guardianSignatureImagePath)
-                .move(newGuardianPath);
-            }
-
-            // Mark request as signed
-            await AgreementRequestRepository.markSigned(
-              request.id,
-              signedAgreement.id
-            );
-          }
-
-          agreementsSigned = true;
-        }
+        agreementsSigned = await processInlineAgreements({
+          registrationId: registrationDocRef.id,
+          classId: data.classId,
+          requiredTemplates,
+          agreements: data.agreements,
+          signer: {
+            email: data.customerEmail,
+            name: data.customerName,
+            phone: data.customerPhone,
+          },
+        });
       } catch (requiredAgreementError) {
         // Log but don't fail — payment already processed
         console.error(
