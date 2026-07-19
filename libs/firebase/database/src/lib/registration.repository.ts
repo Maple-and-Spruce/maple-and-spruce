@@ -46,6 +46,7 @@ function docToRegistration(
     discountCode: data.discountCode,
     discountAmountCents: data.discountAmountCents,
     status: data.status as RegistrationStatus,
+    confirmationNumber: data.confirmationNumber,
     // Default to 'web' so registrations created before the source field
     // existed (all of which were web checkouts) read back with a usable value.
     source: (data.source as RegistrationSource | undefined) ?? 'web',
