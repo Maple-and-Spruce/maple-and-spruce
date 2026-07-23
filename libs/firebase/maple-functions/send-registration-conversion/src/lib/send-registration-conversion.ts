@@ -24,7 +24,11 @@ import {
   type DocumentSnapshot,
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { sendMetaCapiEvents, type MetaCapiEvent } from '@maple/firebase/functions';
+import {
+  sendMetaCapiEvents,
+  type MetaCapiConfig,
+  type MetaCapiEvent,
+} from './meta-capi';
 
 // Reuses the same secret + string params as `tallyLeadWebhook` (also
 // maple-core), so no new Secret Manager value or .env entry is required.
@@ -128,6 +132,34 @@ export function buildPurchaseEvent(
   };
 }
 
+/**
+ * Core emit logic, decoupled from the Firestore-trigger wrapper so it is
+ * unit-testable without the functions test harness. Sends a `Purchase` via
+ * `send` when the write is a fresh confirmation. Best-effort: never throws —
+ * a dropped conversion must not retry-loop or affect the registration.
+ * Returns whether an event was sent.
+ */
+export async function emitPurchaseIfConfirmed(
+  before: RegistrationConversionData | undefined,
+  after: RegistrationConversionData | undefined,
+  send: (event: MetaCapiEvent) => Promise<void>,
+  logger: Pick<Console, 'log' | 'error'> = console
+): Promise<boolean> {
+  if (!shouldEmitPurchase(before, after)) return false;
+  const data = after as RegistrationConversionData;
+  try {
+    await send(buildPurchaseEvent(data));
+    logger.log('Sent Meta CAPI Purchase for confirmed registration', {
+      confirmationNumber: data.confirmationNumber,
+      valueCents: data.pricePaidCents,
+    });
+    return true;
+  } catch (err) {
+    logger.error('Meta CAPI Purchase send failed', err);
+    return false;
+  }
+}
+
 export const sendRegistrationConversion = onDocumentWritten(
   {
     document: 'registrations/{registrationId}',
@@ -145,27 +177,15 @@ export const sendRegistrationConversion = onDocumentWritten(
       ? (change.after.data() as RegistrationConversionData)
       : undefined;
 
-    if (!shouldEmitPurchase(before, after)) return;
+    const config: MetaCapiConfig = {
+      baseUrl: metaCapiBaseUrl.value(),
+      apiVersion: metaCapiApiVersion.value(),
+      pixelId: metaPixelId.value(),
+      accessToken: metaCapiToken.value(),
+    };
 
-    try {
-      await sendMetaCapiEvents(
-        {
-          baseUrl: metaCapiBaseUrl.value(),
-          apiVersion: metaCapiApiVersion.value(),
-          pixelId: metaPixelId.value(),
-          accessToken: metaCapiToken.value(),
-        },
-        [buildPurchaseEvent(after as RegistrationConversionData)]
-      );
-      console.log('Sent Meta CAPI Purchase for confirmed registration', {
-        registrationId: event.params.registrationId,
-        confirmationNumber: after?.confirmationNumber,
-        valueCents: after?.pricePaidCents,
-      });
-    } catch (err) {
-      // Best-effort: never throw. A dropped conversion must not retry-loop or
-      // affect the registration.
-      console.error('Meta CAPI Purchase send failed', err);
-    }
+    await emitPurchaseIfConfirmed(before, after, (evt) =>
+      sendMetaCapiEvents(config, [evt])
+    );
   }
 );

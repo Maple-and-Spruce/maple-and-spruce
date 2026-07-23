@@ -80,18 +80,6 @@ export {
 // Email utilities
 export { isE2ETestEmail } from './email.utility';
 
-// Meta Conversions API (server-side event delivery)
-export {
-  hashNormalized,
-  hashPhone,
-  buildUserData,
-  buildCapiEvent,
-  sendMetaCapiEvents,
-  type MetaCapiConfig,
-  type MetaCapiUserIdentifiers,
-  type MetaCapiEvent,
-} from './meta-capi.utility';
-
 // Shared class-registration reservation (card + hosted-checkout paths)
 export {
   reserveClassRegistration,

@@ -7,7 +7,7 @@ import {
   hashPhone,
   sendMetaCapiEvents,
   type MetaCapiConfig,
-} from './meta-capi.utility';
+} from './meta-capi';
 
 const sha256 = (v: string) =>
   createHash('sha256').update(v).digest('hex');

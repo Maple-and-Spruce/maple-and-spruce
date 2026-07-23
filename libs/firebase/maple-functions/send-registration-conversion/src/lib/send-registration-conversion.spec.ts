@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildPurchaseEvent,
+  emitPurchaseIfConfirmed,
   shouldEmitPurchase,
   splitName,
   type RegistrationConversionData,
 } from './send-registration-conversion';
+
+const silentLogger = { log: () => undefined, error: () => undefined };
 
 const confirmed: RegistrationConversionData = {
   classId: 'cls_1',
@@ -139,5 +142,44 @@ describe('buildPurchaseEvent', () => {
   it('defaults num_items to 1 when quantity is absent', () => {
     const event = buildPurchaseEvent({ ...confirmed, quantity: undefined });
     expect(event.customData?.num_items).toBe(1);
+  });
+});
+
+describe('emitPurchaseIfConfirmed', () => {
+  it('sends the Purchase and reports success on a fresh confirmation', async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+
+    const sent = await emitPurchaseIfConfirmed(
+      { ...confirmed, status: 'pending' },
+      confirmed,
+      send,
+      silentLogger
+    );
+
+    expect(sent).toBe(true);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ eventName: 'Purchase', eventId: 'MS-ABC123' })
+    );
+  });
+
+  it('does not send when the write is not a fresh confirmation', async () => {
+    const send = vi.fn();
+    const sent = await emitPurchaseIfConfirmed(confirmed, confirmed, send);
+    expect(sent).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('swallows send failures (best-effort) and reports not-sent', async () => {
+    const send = vi.fn().mockRejectedValue(new Error('CAPI 400'));
+    const error = vi.fn();
+
+    const sent = await emitPurchaseIfConfirmed(undefined, confirmed, send, {
+      log: () => undefined,
+      error,
+    });
+
+    expect(sent).toBe(false);
+    expect(error).toHaveBeenCalledOnce();
   });
 });
