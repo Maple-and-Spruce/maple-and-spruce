@@ -134,6 +134,7 @@
     "../../libs/firebase/maple-functions/grant-admin-role/**/*.ts",
     "../../libs/firebase/maple-functions/revoke-admin-role/**/*.ts",
     "../../libs/firebase/maple-functions/tally-lead-webhook/**/*.ts",
+    "../../libs/firebase/maple-functions/send-registration-conversion/**/*.ts",
     "../../libs/firebase/maple-functions/get-craft-club-members/**/*.ts",
     "../../libs/firebase/maple-functions/approve-craft-club-member/**/*.ts",
     "../../libs/firebase/maple-functions/update-craft-club-member/**/*.ts",

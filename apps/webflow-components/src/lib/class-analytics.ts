@@ -39,6 +39,12 @@ export interface PurchaseClassInput {
 export interface MetaPixelEvent {
   name: 'ViewContent' | 'AddToCart' | 'Purchase';
   params: Record<string, unknown>;
+  /**
+   * Meta dedup key. When set, passed as `fbq('track', …, { eventID })` so a
+   * server-side Conversions API event carrying the same id (see
+   * `sendRegistrationConversion`) is counted once, not twice.
+   */
+  eventID?: string;
 }
 
 export interface DataLayerEvent {
@@ -86,6 +92,9 @@ export function buildPurchasePixelEvent(
 ): MetaPixelEvent {
   return {
     name: 'Purchase',
+    // Dedup against the server-side CAPI Purchase, which uses the same
+    // confirmation number as its `event_id`.
+    eventID: input.confirmationNumber || undefined,
     params: {
       content_ids: [input.classId],
       content_type: 'product',
@@ -190,7 +199,11 @@ function dispatch(
   const w = asAnalyticsWindow(win);
   if (!w) return;
   if (typeof w.fbq === 'function') {
-    w.fbq('track', pixel.name, pixel.params);
+    if (pixel.eventID) {
+      w.fbq('track', pixel.name, pixel.params, { eventID: pixel.eventID });
+    } else {
+      w.fbq('track', pixel.name, pixel.params);
+    }
   }
   const layer = w.dataLayer ?? [];
   layer.push(dataLayer as unknown as Record<string, unknown>);
