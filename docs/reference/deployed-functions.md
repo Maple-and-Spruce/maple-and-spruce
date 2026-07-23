@@ -112,6 +112,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Lead attribution (Tally → GA4 + Meta CAPI)
 - `tallyLeadWebhook` — HTTP endpoint (Tally newsletter-signup webhook). Verifies `tally-signature` HMAC, extracts hidden fields, fans out to GA4 Measurement Protocol (`generate_lead`) and Meta Conversions API (`Lead`). _(concurrency: 80, memory: 256MiB.)_ Manual setup: `docs/guides/tally-lead-webhook-setup.md`.
 
+### Purchase attribution (class registration → Meta CAPI)
+- `sendRegistrationConversion` — Firestore trigger on `registrations/{id}`. On the `pending → confirmed` transition (paid `source:'web'` only), sends a server-side Meta Conversions API `Purchase` with `event_id = confirmationNumber` for dedup against the inline browser Pixel. Recovers conversions the client Pixel drops (iOS/Safari ITP, ad blockers) and the ones it never fires at all (the Square-hosted checkout fallback, which redirects off-site). Best-effort: CAPI failures are logged and swallowed. Reuses the `META_CAPI_TOKEN` secret + `META_PIXEL_ID`/`META_CAPI_*` params from `tallyLeadWebhook` — no new secret. Shared helper: `libs/firebase/functions/src/lib/meta-capi.utility.ts`.
+
 ### Craft Club (recurring studio-access membership)
 - `getCraftClubMembers` _(admin)_ — lists members, optional status filter
 - `approveCraftClubMember` _(admin)_ — pre-approves an email (upsert by email; promotes a `requested` record to `approved`)

@@ -68,6 +68,19 @@ describe('Meta Pixel event builders', () => {
       num_items: 2,
     });
   });
+
+  it('Purchase carries the confirmation number as the dedup eventID', () => {
+    const event = buildPurchasePixelEvent({
+      classId: CLASS_ID,
+      className: CLASS_NAME,
+      pricePaidCents: 4500,
+      quantity: 1,
+      confirmationNumber: 'MS-AB12CD',
+    });
+
+    // Must equal the server CAPI event's `event_id` so Meta dedups the two.
+    expect(event.eventID).toBe('MS-AB12CD');
+  });
 });
 
 describe('GA4 dataLayer event builders', () => {
@@ -149,6 +162,28 @@ describe('trackers fire pixel + dataLayer side effects', () => {
     });
     expect(win.dataLayer).toHaveLength(1);
     expect(win.dataLayer?.[0]).toMatchObject({ event: 'view_item' });
+  });
+
+  it('trackPurchaseClass passes the dedup eventID as the fbq options arg', () => {
+    const fbq = vi.fn();
+    const win: { fbq: typeof fbq; dataLayer?: Record<string, unknown>[] } = {
+      fbq,
+    };
+
+    trackPurchaseClass(win, {
+      classId: CLASS_ID,
+      className: CLASS_NAME,
+      pricePaidCents: 8000,
+      quantity: 2,
+      confirmationNumber: 'MS-ZZ99YY',
+    });
+
+    expect(fbq).toHaveBeenCalledWith(
+      'track',
+      'Purchase',
+      expect.objectContaining({ content_ids: [CLASS_ID], value: 80 }),
+      { eventID: 'MS-ZZ99YY' }
+    );
   });
 
   it('trackAddClassToCart appends to an existing dataLayer queue', () => {
