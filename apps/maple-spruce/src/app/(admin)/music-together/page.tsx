@@ -11,7 +11,7 @@ import {
   TableCell,
   TableBody,
   Chip,
-  CircularProgress,
+  Skeleton,
   Alert,
   IconButton,
   Tooltip,
@@ -51,6 +51,69 @@ const fmtDate = (d?: Date) =>
 const fmtDay = (d?: Date) =>
   d ? new Date(d).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
 const fmtPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
+
+/**
+ * A table-shaped loading placeholder that mirrors the real table's columns so
+ * the layout doesn't shift when data arrives. Keeps the header visible and
+ * fills the body with shimmering skeleton rows.
+ */
+function TableLoadingSkeleton({
+  headers,
+  rows = 3,
+  size = 'medium',
+  mb,
+}: {
+  headers: readonly string[];
+  rows?: number;
+  size?: 'small' | 'medium';
+  mb?: number;
+}) {
+  return (
+    <Table size={size} sx={mb ? { mb } : undefined}>
+      <TableHead>
+        <TableRow>
+          {headers.map((h, i) => (
+            <TableCell key={h} align={i === headers.length - 1 ? 'right' : 'left'}>
+              {h}
+            </TableCell>
+          ))}
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {Array.from({ length: rows }).map((_, r) => (
+          <TableRow key={r}>
+            {headers.map((h, c) => (
+              <TableCell key={h}>
+                <Skeleton variant="text" width={c === 0 ? '70%' : '55%'} />
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+const SEMESTER_HEADERS = [
+  'Name',
+  'Term',
+  'Status',
+  'Dates',
+  'Weeks',
+  'Actions',
+] as const;
+
+const SECTION_HEADERS = [
+  'Name',
+  'Semester',
+  'Status',
+  'First session',
+  'Capacity',
+  'Registered',
+  'Full price',
+  'Installments',
+  'Actions',
+] as const;
 
 export default function MusicTogetherPage() {
   const {
@@ -195,10 +258,14 @@ export default function MusicTogetherPage() {
           New Semester
         </Button>
       </Box>
-      {semestersState.status === 'loading' && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
-        </Box>
+      {(semestersState.status === 'idle' ||
+        semestersState.status === 'loading') && (
+        <TableLoadingSkeleton
+          headers={SEMESTER_HEADERS}
+          size="small"
+          rows={2}
+          mb={4}
+        />
       )}
       {semestersState.status === 'error' && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -297,10 +364,9 @@ export default function MusicTogetherPage() {
         </Alert>
       )}
 
-      {sectionsState.status === 'loading' && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
+      {(sectionsState.status === 'idle' ||
+        sectionsState.status === 'loading') && (
+        <TableLoadingSkeleton headers={SECTION_HEADERS} rows={3} />
       )}
       {sectionsState.status === 'error' && (
         <Alert severity="error">{sectionsState.error}</Alert>

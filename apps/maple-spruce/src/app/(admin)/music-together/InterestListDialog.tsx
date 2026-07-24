@@ -16,7 +16,7 @@ import {
   Box,
   Stack,
   LinearProgress,
-  CircularProgress,
+  Skeleton,
   Alert,
 } from '@mui/material';
 import type { RequestState } from '@maple/ts/domain';
@@ -30,6 +30,42 @@ interface Props {
 
 const fmtDay = (d: Date) =>
   new Date(d).toLocaleDateString(undefined, { dateStyle: 'medium' });
+
+/** Table-shaped placeholder shown while the interest list loads. */
+function InterestLoadingSkeleton() {
+  const headers = [
+    'Family',
+    'Interested in',
+    'Most interested',
+    'Other days/times',
+    'Notes',
+    'Joined',
+  ];
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            {headers.map((h) => (
+              <TableCell key={h}>{h}</TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {Array.from({ length: 4 }).map((_, r) => (
+            <TableRow key={r}>
+              {headers.map((h, c) => (
+                <TableCell key={h}>
+                  <Skeleton variant="text" width={c === 0 ? '80%' : '55%'} />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+}
 
 /** Long free-text cell, or a muted em-dash when empty. */
 function NoteCell({ text }: { text?: string }) {
@@ -67,11 +103,8 @@ export function InterestListDialog({ open, onClose, interestState }: Props) {
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Interest list — cross-section demand</DialogTitle>
       <DialogContent>
-        {interestState.status === 'loading' && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
-        )}
+        {(interestState.status === 'idle' ||
+          interestState.status === 'loading') && <InterestLoadingSkeleton />}
         {interestState.status === 'error' && (
           <Alert severity="error">{interestState.error}</Alert>
         )}

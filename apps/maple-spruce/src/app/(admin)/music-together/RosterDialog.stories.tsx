@@ -114,8 +114,30 @@ export const Empty: Story = {
   },
 };
 
+/**
+ * While loading, a table-shaped skeleton stands in for the roster so the dialog
+ * doesn't collapse to a bare spinner — the column headers stay put and the body
+ * fills with shimmer rows. Asserts the skeleton renders and the empty/success
+ * copy is absent.
+ */
 export const Loading: Story = {
   args: { rosterState: { status: 'loading' } },
+  play: async () => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+    // Header structure is preserved during load…
+    await expect(canvas.getByText('Parent(s)')).toBeInTheDocument();
+    // …and the skeleton placeholder is rendered (MUI Skeleton = .MuiSkeleton-root).
+    await expect(
+      document.querySelectorAll('.MuiSkeleton-root').length
+    ).toBeGreaterThan(0);
+    // Not the empty-state nor a real family row.
+    await expect(
+      canvas.queryByText(/No families enrolled yet/i)
+    ).not.toBeInTheDocument();
+  },
 };
 
 export const ErrorState: Story = {
