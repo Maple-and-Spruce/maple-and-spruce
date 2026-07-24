@@ -991,6 +991,10 @@ export function RegistrationCheckoutForm({
           showDigitalWallets={showDigitalWallets}
           onReady={() => (isCardReady.value = true)}
           onInitError={() => (cardInitFailed.value = true)}
+          // When we can offer the hosted-checkout fallback, hide SquareCardForm's
+          // own error alert + empty card box so the buyer sees just the
+          // "Continue to secure checkout" button, not a scary error beside it.
+          suppressInitError={!!onHostedCheckout}
           onTokenizeRef={(fn) => {
             tokenizeRef.current = fn;
           }}

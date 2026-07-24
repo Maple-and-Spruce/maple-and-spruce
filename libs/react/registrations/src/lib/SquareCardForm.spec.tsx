@@ -254,6 +254,36 @@ describe('SquareCardForm init failure telemetry', () => {
 
     consoleSpy.mockRestore();
   });
+
+  it('suppresses its own error alert when suppressInitError is set (fallback UI owns it)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockRejectedValue({
+        type: 'InitializationTimeoutError',
+        message: 'Web Payments SDK was unable to be initialized in time',
+      }),
+    };
+    const onInitError = vi.fn();
+
+    render(
+      <SquareCardForm
+        applicationId="sq0idp-xyz789"
+        locationId="LOC1"
+        totalCents={25200}
+        onInitError={onInitError}
+        suppressInitError
+        onTokenizeRef={noop}
+      />
+    );
+
+    // Still reports the failure to the consumer...
+    await waitFor(() => expect(onInitError).toHaveBeenCalled());
+    // ...but renders no scary alert of its own (the fallback UI stands alone).
+    expect(screen.queryByText(/secure payment form/i)).toBeNull();
+    expect(screen.queryByText(/private browsing/i)).toBeNull();
+
+    vi.restoreAllMocks();
+  });
 });
 
 /**

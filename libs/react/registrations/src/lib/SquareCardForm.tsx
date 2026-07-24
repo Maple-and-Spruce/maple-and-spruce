@@ -213,6 +213,14 @@ interface SquareCardFormProps {
    * console.errors + GA-beacons on its own; this is an extra hook for consumers.
    */
   onInitError?: (info: SquareInitErrorInfo) => void;
+  /**
+   * When true, an init failure does NOT render this component's own error alert
+   * or leave an empty card box behind — the consumer is expected to present its
+   * own fallback UI (via `onInitError`). Use when a hosted-checkout fallback
+   * button will replace the card form, so the buyer sees one clear path instead
+   * of a scary error next to a working button.
+   */
+  suppressInitError?: boolean;
   /** Ref function to expose tokenize to parent */
   onTokenizeRef: (tokenize: () => Promise<CardTokenizeResult>) => void;
   /**
@@ -291,6 +299,7 @@ export function SquareCardForm({
   showDigitalWallets = false,
   onReady,
   onInitError,
+  suppressInitError = false,
   onTokenizeRef,
   verifyBuyerForStore = false,
   billingContact,
@@ -300,6 +309,9 @@ export function SquareCardForm({
 }: SquareCardFormProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Init failed while `suppressInitError` is set — hide our own card UI so the
+  // consumer's fallback (e.g. a hosted-checkout button) stands alone.
+  const [initSuppressed, setInitSuppressed] = useState(false);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null
   );
@@ -636,14 +648,24 @@ export function SquareCardForm({
       reportPaymentInitFailure(info);
       onInitErrorRef.current?.(info);
 
-      setError(
-        isInitTimeout
-          ? "We couldn't load the secure payment form. Please refresh the page and try again — if it keeps happening, open this page in a private browsing window or a different browser."
-          : message
-      );
+      if (suppressInitError) {
+        // The consumer will show its own fallback UI. Don't render our alert,
+        // and remove the empty card box we may have created (Shadow-DOM mode)
+        // so the buyer sees one clear path, not an error beside a live button.
+        if (cardContainerRef.current) {
+          cardContainerRef.current.style.display = 'none';
+        }
+        setInitSuppressed(true);
+      } else {
+        setError(
+          isInitTimeout
+            ? "We couldn't load the secure payment form. Please refresh the page and try again — if it keeps happening, open this page in a private browsing window or a different browser."
+            : message
+        );
+      }
       setIsLoading(false);
     }
-  }, [applicationId, locationId, env, totalCents, showDigitalWallets, onReady, onTokenizeRef, maxWidth]);
+  }, [applicationId, locationId, env, totalCents, showDigitalWallets, suppressInitError, onReady, onTokenizeRef, maxWidth]);
 
   // Initialize payments once SDK is ready AND we have a valid amount
   useEffect(() => {
@@ -716,6 +738,7 @@ export function SquareCardForm({
         ref={placeholderRef}
         id="square-card-container"
         sx={{
+          display: initSuppressed ? 'none' : 'block',
           minHeight: portalContainer ? 0 : 56,
           border: isLoading || portalContainer ? 'none' : 1,
           borderColor: 'divider',
