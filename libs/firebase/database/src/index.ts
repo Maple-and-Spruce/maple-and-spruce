@@ -30,10 +30,8 @@ export {
 export { StudentRepository } from './lib/student.repository';
 export { LessonRatesConfigRepository } from './lib/lesson-rates-config.repository';
 export { BusinessPaymentConfigRepository } from './lib/business-payment-config.repository';
-export {
-  LessonRepository,
-  type LessonFilters,
-} from './lib/lesson.repository';
+export { LessonRepository, type LessonFilters } from './lib/lesson.repository';
+export { LessonBlockRepository } from './lib/lesson-block.repository';
 export {
   InvoiceRepository,
   type InvoiceFilters,
@@ -58,10 +56,7 @@ export {
 export { PosLessonConfigRepository } from './lib/pos-lesson-config.repository';
 
 // Phase 5: Sales & Inventory
-export {
-  SaleRepository,
-  type SaleFilters,
-} from './lib/sale.repository';
+export { SaleRepository, type SaleFilters } from './lib/sale.repository';
 export {
   InventoryMovementRepository,
   type InventoryMovementFilters,
@@ -140,4 +135,3 @@ export {
   EtsyImportRepository,
   type CreateEtsyImportInput,
 } from './lib/etsy-import.repository';
-

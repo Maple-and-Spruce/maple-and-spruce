@@ -28,8 +28,14 @@ export { classValidation } from './class.validation';
 export { classCategoryValidation } from './class-category.validation';
 
 // Phase 3c: Registration & Discounts
-export { discountValidation, type DiscountValidationInput } from './discount.validation';
-export { registrationValidation, type RegistrationValidationInput } from './registration.validation';
+export {
+  discountValidation,
+  type DiscountValidationInput,
+} from './discount.validation';
+export {
+  registrationValidation,
+  type RegistrationValidationInput,
+} from './registration.validation';
 export {
   classWaitlistValidation,
   type ClassWaitlistValidationInput,
@@ -37,10 +43,8 @@ export {
 
 // Phase 4: Music Lessons
 export { studentValidation } from './student.validation';
-export {
-  lessonValidation,
-  lessonSeriesValidation,
-} from './lesson.validation';
+export { lessonValidation, lessonSeriesValidation } from './lesson.validation';
+export { lessonBlockValidation } from './lesson-block.validation';
 export { invoiceValidation } from './invoice.validation';
 
 // Phase 4.5: Calendar

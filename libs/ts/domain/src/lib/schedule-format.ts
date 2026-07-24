@@ -50,7 +50,7 @@ function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
-function weekdayIndexInZone(date: Date, timeZone: string): number {
+export function weekdayIndexInZone(date: Date, timeZone: string): number {
   const name = new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
     timeZone,
@@ -58,7 +58,7 @@ function weekdayIndexInZone(date: Date, timeZone: string): number {
   return WEEKDAY_SHORT.indexOf(name);
 }
 
-function minutesOfDayInZone(date: Date, timeZone: string): number {
+export function minutesOfDayInZone(date: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -71,16 +71,18 @@ function minutesOfDayInZone(date: Date, timeZone: string): number {
 }
 
 function timeLabel(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone,
-  })
-    .format(date)
-    // Intl emits a narrow no-break space (U+202F) before AM/PM in modern ICU;
-    // normalize to a plain space so output is stable across runtimes.
-    .replace(/[\u202f\u00a0]/g, ' ');
+  return (
+    new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone,
+    })
+      .format(date)
+      // Intl emits a narrow no-break space (U+202F) before AM/PM in modern ICU;
+      // normalize to a plain space so output is stable across runtimes.
+      .replace(/[\u202f\u00a0]/g, ' ')
+  );
 }
 
 function dateLabel(date: Date, timeZone: string): string {
@@ -132,7 +134,7 @@ const EMPTY: WeekdayTimeBlock = {
 export function formatWeekdayTimeBlock(
   starts: Array<Date | string>,
   durationMinutes: number,
-  timeZone: string = DEFAULT_TIME_ZONE
+  timeZone: string = DEFAULT_TIME_ZONE,
 ): WeekdayTimeBlock {
   const sorted = starts
     .map(toDate)
@@ -146,7 +148,7 @@ export function formatWeekdayTimeBlock(
 
   // Distinct occupied weekdays, ordered by weekday index.
   const weekdayIndexes = Array.from(
-    new Set(sorted.map((d) => weekdayIndexInZone(d, timeZone)))
+    new Set(sorted.map((d) => weekdayIndexInZone(d, timeZone))),
   ).sort((a, b) => a - b);
 
   let dayDisplay: string;

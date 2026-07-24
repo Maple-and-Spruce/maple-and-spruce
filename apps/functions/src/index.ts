@@ -85,6 +85,10 @@ export { createLesson } from '@maple/firebase/maple-functions/create-lesson';
 export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesson-series';
 export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
 export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
+export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
+export { createLessonBlock } from '@maple/firebase/maple-functions/create-lesson-block';
+export { updateLessonBlock } from '@maple/firebase/maple-functions/update-lesson-block';
+export { deleteLessonBlock } from '@maple/firebase/maple-functions/delete-lesson-block';
 
 // Music lesson invoice functions (Phase 4)
 export { getInvoices } from '@maple/firebase/maple-functions/get-invoices';
