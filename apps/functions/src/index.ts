@@ -165,6 +165,7 @@ export { onLessonRenderedInvoice } from '@maple/firebase/maple-functions/on-less
 export { getLessonRatesConfig } from '@maple/firebase/maple-functions/get-lesson-rates-config';
 // Teacher My Day + business payment config (#631)
 export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';
+export { getMyWeek } from '@maple/firebase/maple-functions/get-my-week';
 export { getBusinessPaymentConfig } from '@maple/firebase/maple-functions/get-business-payment-config';
 export { updateBusinessPaymentConfig } from '@maple/firebase/maple-functions/update-business-payment-config';
 export { updateLessonRatesConfig } from '@maple/firebase/maple-functions/update-lesson-rates-config';
