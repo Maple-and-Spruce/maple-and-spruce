@@ -142,8 +142,13 @@ export const NotAdminShowsOnboardingMessage: Story = {
       canvas.getByText(/a manager at Maple & Spruce will onboard you/i)
     ).toBeInTheDocument();
 
-    // Verify the lock icon is present
-    expect(canvasElement.querySelector('[data-testid="LockOutlinedIcon"]')).toBeInTheDocument();
+    // Verify the lock icon is present. We assert on our OWN explicit
+    // data-testid (set on the icon in AdminGuard.tsx), not MUI's implicit
+    // `LockOutlinedIcon` one — MUI only emits that in non-production builds,
+    // so it vanishes in Chromatic's production Storybook build.
+    expect(
+      canvasElement.querySelector('[data-testid="admin-lock-icon"]')
+    ).toBeInTheDocument();
 
     // Verify children are NOT rendered
     expect(canvas.queryByText(/Admin Dashboard/i)).not.toBeInTheDocument();
