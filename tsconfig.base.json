@@ -494,6 +494,9 @@
       "@maple/firebase/maple-functions/get-my-day-lessons": [
         "libs/firebase/maple-functions/get-my-day-lessons/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-my-week": [
+        "libs/firebase/maple-functions/get-my-week/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-business-payment-config": [
         "libs/firebase/maple-functions/get-business-payment-config/src/index.ts"
       ],

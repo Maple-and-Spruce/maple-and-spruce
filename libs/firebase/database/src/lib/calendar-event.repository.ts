@@ -19,7 +19,7 @@ const COLLECTION = 'calendarEvents';
  * Convert Firestore document to CalendarEvent
  */
 function docToCalendarEvent(
-  doc: FirebaseFirestore.DocumentSnapshot
+  doc: FirebaseFirestore.DocumentSnapshot,
 ): CalendarEvent | undefined {
   if (!doc.exists) {
     return undefined;
@@ -38,6 +38,7 @@ function docToCalendarEvent(
     public: data.public,
     room: data.room ?? null,
     sourceRef: data.sourceRef ?? null,
+    ownerInstructorId: data.ownerInstructorId ?? null,
     createdBy: data.createdBy,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -130,7 +131,7 @@ export const CalendarEventRepository = {
   async findByRoomInRange(
     room: Room,
     rangeStart: Date,
-    rangeEnd: Date
+    rangeEnd: Date,
   ): Promise<CalendarEvent[]> {
     const lookback = new Date(rangeStart.getTime() - 24 * 60 * 60 * 1000);
 
@@ -146,6 +147,27 @@ export const CalendarEventRepository = {
       .map((doc) => docToCalendarEvent(doc))
       .filter((e): e is CalendarEvent => e !== undefined)
       .filter((e) => e.endDateTime.getTime() > rangeStart.getTime());
+  },
+
+  /**
+   * All events whose start falls in [from, to), across every room and type.
+   * Powers the teacher My Week schedule (#683). A range + orderBy on a single
+   * field (startDateTime) is served by Firestore's automatic index — no
+   * composite index is required (and a single-field entry in indexes.json is
+   * rejected at deploy), hence the analyzer opt-out.
+   */
+  async findByStartInRange(from: Date, to: Date): Promise<CalendarEvent[]> {
+    // firestore-index-analyzer-ignore: single-field range + orderBy on startDateTime; covered by the automatic index.
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('startDateTime', '>=', from)
+      .where('startDateTime', '<', to)
+      .orderBy('startDateTime', 'asc')
+      .get();
+
+    return snapshot.docs
+      .map((doc) => docToCalendarEvent(doc))
+      .filter((e): e is CalendarEvent => e !== undefined);
   },
 
   /**
@@ -190,7 +212,7 @@ export const CalendarEventRepository = {
    */
   async upsertWithId(
     id: string,
-    input: CreateCalendarEventInput
+    input: CreateCalendarEventInput,
   ): Promise<CalendarEvent> {
     const docRef = db.collection(COLLECTION).doc(id);
     const existing = await docRef.get();
@@ -241,8 +263,12 @@ export const CalendarEventRepository = {
 
     const dataWithTimestamp = {
       ...updates,
-      ...(updates.startDateTime ? { startDateTime: new Date(updates.startDateTime) } : {}),
-      ...(updates.endDateTime ? { endDateTime: new Date(updates.endDateTime) } : {}),
+      ...(updates.startDateTime
+        ? { startDateTime: new Date(updates.startDateTime) }
+        : {}),
+      ...(updates.endDateTime
+        ? { endDateTime: new Date(updates.endDateTime) }
+        : {}),
       updatedAt: new Date(),
     };
 
