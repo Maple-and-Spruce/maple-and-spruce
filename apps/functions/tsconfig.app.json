@@ -72,6 +72,7 @@
     "../../libs/firebase/maple-functions/on-lesson-rendered-invoice/**/*.ts",
     "../../libs/firebase/maple-functions/get-lesson-rates-config/**/*.ts",
     "../../libs/firebase/maple-functions/get-my-day-lessons/**/*.ts",
+    "../../libs/firebase/maple-functions/get-my-week/**/*.ts",
     "../../libs/firebase/maple-functions/get-business-payment-config/**/*.ts",
     "../../libs/firebase/maple-functions/update-business-payment-config/**/*.ts",
     "../../libs/firebase/maple-functions/update-lesson-rates-config/**/*.ts",

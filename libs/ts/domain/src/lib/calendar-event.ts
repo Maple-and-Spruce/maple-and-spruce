@@ -64,6 +64,14 @@ export interface CalendarEvent {
   room?: Room | null;
   /** Optional reference to originating doc, e.g. "classes/abc123". Null for ad-hoc events. */
   sourceRef: string | null;
+  /**
+   * Instructor id that "owns" this event — denormalized from the source so a
+   * teacher's own schedule is a single query (My Week / #683). Set on
+   * lesson-derived events (the lesson's `teacherId`) and class-derived events
+   * (the class's `instructorId`). Null for shared/ad-hoc events with no single
+   * owning teacher (jams, store hours, Music Together, manual bookings).
+   */
+  ownerInstructorId?: string | null;
   /** Firebase Auth UID of creator */
   createdBy: string;
   createdAt: Date;

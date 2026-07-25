@@ -339,6 +339,15 @@ export type {
   GetMyDayLessonsRequest,
   GetMyDayLessonsResponse,
 } from './my-day.types';
+
+// Phase 4: Music Lessons - Teacher My Week schedule (#683/#684)
+export type {
+  MyWeekOwnership,
+  MyWeekCadence,
+  MyWeekCommitment,
+  GetMyWeekRequest,
+  GetMyWeekResponse,
+} from './my-week.types';
 export type {
   GetBusinessPaymentConfigRequest,
   GetBusinessPaymentConfigResponse,
