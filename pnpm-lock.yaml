@@ -49,7 +49,6 @@ overrides:
   http-proxy-middleware@>=0.16.0 <2.0.10: '>=2.0.10 <3'
   '@vitest/browser@>=4.0.0 <4.1.10': '>=4.1.10 <5'
   immutable@>=5.0.0-beta.1 <5.1.8: '>=5.1.8 <6'
-  next@>=16.0.0 <16.2.11: '>=16.2.11 <17'
   sharp@<0.35.0: '>=0.35.0'
   svgo@>=3.0.0 <3.3.4: '>=3.3.4 <4'
   svgo@>=4.0.0 <4.0.2: '>=4.0.2 <5'
@@ -110,7 +109,7 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0(@touch4it/ical-timezones@1.9.0)(@types/node@22.20.1)(luxon@3.7.2)
       next:
-        specifier: '>=16.2.11 <17'
+        specifier: 16.2.11
         version: 16.2.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.99.0)
       pdf-lib:
         specifier: ^1.17.1
@@ -327,7 +326,7 @@ importers:
   apps/maple-spruce:
     dependencies:
       next:
-        specifier: '>=16.2.11 <17'
+        specifier: 16.2.11
         version: 16.2.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(@types/node@22.20.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.99.0)
       react:
         specifier: 19.0.0

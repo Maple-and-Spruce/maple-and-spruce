@@ -244,13 +244,6 @@ overrides:
   # both patched in immutable 5.1.8. Transitive dep of next > sass and
   # @nx/vitest > vite > sass. Scoped to the vulnerable 5.x line. Added 2026-07-24.
   immutable@>=5.0.0-beta.1 <5.1.8: '>=5.1.8 <6'
-  # GHSA-6gpp-xcg3-4w24 (middleware/proxy bypass with Turbopack + single
-  # locale), GHSA-m99w-x7hq-7vfj (DoS in App Router Server Actions),
-  # GHSA-89xv-2m56-2m9x (SSRF in Server Actions on custom servers), and
-  # GHSA-p9j2-gv94-2wf4 (SSRF in rewrites via attacker-controlled destination
-  # hostname). All patched in next 16.2.11. Direct dep (16.2.6) plus @nx/next
-  # and @storybook/nextjs-vite. Added 2026-07-24.
-  next@>=16.0.0 <16.2.11: '>=16.2.11 <17'
   # GHSA-f88m-g3jw-g9cj: sharp inherits libvips vulnerabilities CVE-2026-33327,
   # CVE-2026-33328, CVE-2026-35590, CVE-2026-35591 (patched in 0.35.0).
   # Transitive dep of next. Scoped to the pre-0.35 line. Added 2026-07-24.
