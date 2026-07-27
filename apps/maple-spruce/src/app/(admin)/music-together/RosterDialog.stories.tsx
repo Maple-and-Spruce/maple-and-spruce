@@ -329,9 +329,14 @@ export const WaitlistAndCopyEmails: Story = {
     await expect(canvas.getByText('Dana Brooks')).toBeInTheDocument();
     await expect(canvas.getByText('notify@example.com')).toBeInTheDocument();
 
-    // Copy emails writes both addresses to the clipboard.
+    // Copy emails writes both addresses to the clipboard. `navigator.clipboard`
+    // is a getter-only property in the test browser, so define it (Object.assign
+    // throws "Cannot set property clipboard").
     const writeText = fn(async () => undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
     await userEvent.click(
       canvas.getByRole('button', { name: /copy emails/i })
     );
