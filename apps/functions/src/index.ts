@@ -10,6 +10,9 @@
  * - apps/functions-square/  — Square integration (square SDK)
  * - apps/functions-sync/    — Webflow sync (webflow-api)
  */
+// MUST be first: sets global maxInstances before any function is defined.
+// See global-runtime-options.ts for the ordering contract.
+import '@maple/firebase/functions/global-runtime-options';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { createPublicFunction } from '@maple/firebase/functions';
 

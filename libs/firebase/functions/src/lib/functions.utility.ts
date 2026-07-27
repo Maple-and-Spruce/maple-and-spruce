@@ -46,6 +46,13 @@ export interface RuntimeOptions {
   concurrency?: number;
   /** Minimum warm instances to avoid cold starts (default: 0) */
   minInstances?: number;
+  /**
+   * Maximum instances this function may scale to. Overrides the global
+   * default set in `global-runtime-options.ts` (GLOBAL_MAX_INSTANCES).
+   * Only set this for a function that genuinely needs more fan-out than
+   * the portal-wide default.
+   */
+  maxInstances?: number;
   /** Timeout in seconds (default: 60, max: 540) */
   timeoutSeconds?: number;
 }
@@ -483,6 +490,7 @@ class FunctionBuilder<
         ...(this.options.runtime?.memory && { memory: this.options.runtime.memory }),
         ...(this.options.runtime?.concurrency && { concurrency: this.options.runtime.concurrency }),
         ...(this.options.runtime?.minInstances !== undefined && { minInstances: this.options.runtime.minInstances }),
+        ...(this.options.runtime?.maxInstances !== undefined && { maxInstances: this.options.runtime.maxInstances }),
         ...(this.options.runtime?.timeoutSeconds && { timeoutSeconds: this.options.runtime.timeoutSeconds }),
       },
       async (req: Request, res: Response) => {
