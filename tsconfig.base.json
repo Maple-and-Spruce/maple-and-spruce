@@ -257,6 +257,18 @@
       "@maple/firebase/maple-functions/create-lesson": [
         "libs/firebase/maple-functions/create-lesson/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-lesson-blocks": [
+        "libs/firebase/maple-functions/get-lesson-blocks/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-lesson-block": [
+        "libs/firebase/maple-functions/create-lesson-block/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-lesson-block": [
+        "libs/firebase/maple-functions/update-lesson-block/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-lesson-block": [
+        "libs/firebase/maple-functions/delete-lesson-block/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/create-lesson-series": [
         "libs/firebase/maple-functions/create-lesson-series/src/index.ts"
       ],

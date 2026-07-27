@@ -42,11 +42,39 @@ import type {
 const NOW = new Date();
 const FROM = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
 const TO = new Date(
-  Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() + 1, 0, 23, 59, 59, 999)
+  Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() + 1, 0, 23, 59, 59, 999),
 );
 
 function dayInCurrentMonth(day: number): Date {
   return new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), day, 15));
+}
+
+// #686: lessons must be attributed to a block. These helpers seed all-day
+// catch-all blocks per teacher/weekday and resolve a lesson's block id, so the
+// dynamic-date fixtures below satisfy enforcement without reshaping.
+function etWeekday(d: Date): number {
+  const short = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: 'America/New_York',
+  }).format(d);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(short);
+}
+
+function blockFor(teacherId: string, d: Date): string {
+  return `blk-${teacherId}-${etWeekday(d)}`;
+}
+
+async function seedAllDayBlocks(teacherId: string): Promise<void> {
+  for (let dow = 0; dow < 7; dow++) {
+    await setFirestoreDoc('lessonBlocks', `blk-${teacherId}-${dow}`, {
+      teacherId,
+      dayOfWeek: dow,
+      startMinutes: 0,
+      endMinutes: 1440,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
 }
 
 describe('getTeacherPayouts integration', () => {
@@ -64,7 +92,7 @@ describe('getTeacherPayouts integration', () => {
     adminUser = await createTestUser(ADMIN_USER.email, ADMIN_USER.password);
     nonAdminUser = await createTestUser(
       NON_ADMIN_USER.email,
-      NON_ADMIN_USER.password
+      NON_ADMIN_USER.password,
     );
     await setFirestoreDoc('admins', adminUser.uid, {
       userId: adminUser.uid,
@@ -103,6 +131,10 @@ describe('getTeacherPayouts integration', () => {
       idToken: adminUser.idToken,
     });
     substituteTeacherId = substitute.data!.instructor.id;
+
+    // Blocks so lessons created below satisfy #686 attribution.
+    await seedAllDayBlocks(primaryTeacherId);
+    await seedAllDayBlocks(substituteTeacherId);
 
     // Private-pay student
     const priv = await callFunction<
@@ -180,7 +212,7 @@ describe('getTeacherPayouts integration', () => {
       expect(result.status).not.toBe(200);
     });
 
-    it("rejects when from is after to", async () => {
+    it('rejects when from is after to', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
         functionName: 'getTeacherPayouts',
         data: { from: TO.toISOString(), to: FROM.toISOString() },
@@ -212,6 +244,7 @@ describe('getTeacherPayouts integration', () => {
             scheduledAt,
             durationMinutes: 30,
             status: 'scheduled',
+            blockId: blockFor(primaryTeacherId, scheduledAt),
           },
           idToken: adminUser.idToken,
         });
@@ -273,6 +306,7 @@ describe('getTeacherPayouts integration', () => {
           scheduledAt: dayInCurrentMonth(10),
           durationMinutes: 45,
           status: 'scheduled',
+          blockId: blockFor(primaryTeacherId, dayInCurrentMonth(10)),
         },
         idToken: adminUser.idToken,
       });
@@ -293,6 +327,7 @@ describe('getTeacherPayouts integration', () => {
           scheduledAt: dayInCurrentMonth(17),
           durationMinutes: 45,
           status: 'scheduled',
+          blockId: blockFor(primaryTeacherId, dayInCurrentMonth(17)),
         },
         idToken: adminUser.idToken,
       });
@@ -323,7 +358,7 @@ describe('getTeacherPayouts integration', () => {
       expect(primary!.lines).toHaveLength(3);
       // Hope-rendered should NOT be flagged asSubstitute (same teacher as primary).
       expect(
-        primary!.lines.filter((l) => l.source === 'hope-rendered')
+        primary!.lines.filter((l) => l.source === 'hope-rendered'),
       ).toHaveLength(1);
 
       // Substitute: 1 private-paid line @ 60% × $40 = $24 = 2400c

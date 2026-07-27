@@ -31,6 +31,14 @@ import type {
   CreateInvoiceResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
+  CreateLessonBlockRequest,
+  CreateLessonBlockResponse,
+  GetLessonBlocksRequest,
+  GetLessonBlocksResponse,
+  UpdateLessonBlockRequest,
+  UpdateLessonBlockResponse,
+  DeleteLessonBlockRequest,
+  DeleteLessonBlockResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -44,6 +52,38 @@ function waitForTrigger(ms = 4000): Promise<void> {
 
 const TEACHER_ID = 'instructor-test-teacher';
 const SUBSTITUTE_ID = 'instructor-test-sub';
+
+/** Weekday (0=Sun..6=Sat) of an instant in the shop timezone — matches the
+ *  server's lessonFitsBlock evaluation. */
+function etWeekday(d: Date): number {
+  const short = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: 'America/New_York',
+  }).format(d);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(short);
+}
+
+/** Deterministic id of the seeded all-day catch-all block for a teacher on the
+ *  weekday of `d` (see seedAllDayBlocks). Lets existing lesson fixtures satisfy
+ *  the #686 block-attribution requirement without reshaping every case. */
+function blockFor(teacherId: string, d: Date): string {
+  return `blk-${teacherId}-${etWeekday(d)}`;
+}
+
+/** Seed one all-day (00:00–24:00) block per weekday for a teacher, so any
+ *  lesson time on any weekday can be attributed to a block. */
+async function seedAllDayBlocks(teacherId: string): Promise<void> {
+  for (let dow = 0; dow < 7; dow++) {
+    await setFirestoreDoc('lessonBlocks', `blk-${teacherId}-${dow}`, {
+      teacherId,
+      dayOfWeek: dow,
+      startMinutes: 0,
+      endMinutes: 1440,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+}
 
 const SAMPLE_STUDENT: CreateStudentRequest = {
   name: 'Test Student',
@@ -68,13 +108,18 @@ describe('Lesson Functions', () => {
     adminUser = await createTestUser(ADMIN_USER.email, ADMIN_USER.password);
     nonAdminUser = await createTestUser(
       NON_ADMIN_USER.email,
-      NON_ADMIN_USER.password
+      NON_ADMIN_USER.password,
     );
 
     await setFirestoreDoc('admins', adminUser.uid, {
       userId: adminUser.uid,
       email: adminUser.email,
     });
+
+    // #686: lessons must be attributed to a block. Seed all-day catch-all
+    // blocks so the existing lesson fixtures below stay valid.
+    await seedAllDayBlocks(TEACHER_ID);
+    await seedAllDayBlocks(SUBSTITUTE_ID);
 
     // Seed one student so lessons have a real FK target
     const studentResult = await callFunction<
@@ -152,11 +197,11 @@ describe('Lesson Functions', () => {
     beforeAll(async () => {
       teacherUser = await createTestUser(
         'lesson-owner@test.maple',
-        'test-password-123!'
+        'test-password-123!',
       );
       unlinkedTeacher = await createTestUser(
         'lesson-unlinked@test.maple',
-        'test-password-123!'
+        'test-password-123!',
       );
       // Both hold the lesson-teacher role...
       await setFirestoreDoc('userRoles', teacherUser.uid, {
@@ -172,8 +217,10 @@ describe('Lesson Functions', () => {
         email: 'owning-teacher@test.maple',
         status: 'active',
       });
+      await seedAllDayBlocks(OWN_INSTRUCTOR_ID);
 
       // A lesson taught by TEACHER_ID (NOT the linked teacher) — created by admin.
+      const othersAt = new Date('2026-06-01T15:00:00Z');
       const others = await callFunction<
         CreateLessonRequest,
         CreateLessonResponse
@@ -182,9 +229,10 @@ describe('Lesson Functions', () => {
         data: {
           studentId,
           teacherId: TEACHER_ID,
-          scheduledAt: new Date('2026-06-01T15:00:00Z'),
+          scheduledAt: othersAt,
           durationMinutes: 30,
           status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, othersAt),
         },
         idToken: adminUser.idToken,
       });
@@ -204,6 +252,10 @@ describe('Lesson Functions', () => {
           scheduledAt: new Date('2026-08-05T15:00:00Z'),
           durationMinutes: 30,
           status: 'scheduled',
+          blockId: blockFor(
+            OWN_INSTRUCTOR_ID,
+            new Date('2026-08-05T15:00:00Z'),
+          ),
         },
         idToken: adminUser.idToken,
       });
@@ -266,6 +318,10 @@ describe('Lesson Functions', () => {
           scheduledAt: new Date('2026-06-02T15:00:00Z'),
           durationMinutes: 30,
           status: 'scheduled',
+          blockId: blockFor(
+            OWN_INSTRUCTOR_ID,
+            new Date('2026-06-02T15:00:00Z'),
+          ),
         },
         idToken: teacherUser.idToken,
       });
@@ -363,6 +419,7 @@ describe('Lesson Functions', () => {
           durationMinutes: 30,
           status: 'scheduled',
           notes: 'First lesson',
+          blockId: blockFor(TEACHER_ID, new Date('2026-05-01T15:00:00Z')),
         },
         idToken: adminUser.idToken,
       });
@@ -388,6 +445,7 @@ describe('Lesson Functions', () => {
           scheduledAt: new Date('2026-05-01T15:00:00Z'),
           durationMinutes: 30,
           status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, new Date('2026-05-01T15:00:00Z')),
         },
         idToken: adminUser.idToken,
       });
@@ -403,13 +461,16 @@ describe('Lesson Functions', () => {
         data: {
           id: lessonId,
           scheduledAt: new Date('2026-05-02T16:00:00Z'),
+          // Moves to a different weekday (Sat) — must re-attribute to that
+          // day's block (#686 enforces fit on reschedule).
+          blockId: blockFor(TEACHER_ID, new Date('2026-05-02T16:00:00Z')),
         },
         idToken: adminUser.idToken,
       });
 
       expect(result.status).toBe(200);
       expect(new Date(result.data!.lesson.scheduledAt).toISOString()).toBe(
-        '2026-05-02T16:00:00.000Z'
+        '2026-05-02T16:00:00.000Z',
       );
     });
 
@@ -442,14 +503,13 @@ describe('Lesson Functions', () => {
     });
 
     it('hard-deletes a lesson', async () => {
-      const del = await callFunction<
-        DeleteLessonRequest,
-        DeleteLessonResponse
-      >({
-        functionName: 'deleteLesson',
-        data: { id: lessonId },
-        idToken: adminUser.idToken,
-      });
+      const del = await callFunction<DeleteLessonRequest, DeleteLessonResponse>(
+        {
+          functionName: 'deleteLesson',
+          data: { id: lessonId },
+          idToken: adminUser.idToken,
+        },
+      );
       expect(del.status).toBe(200);
       expect(del.data?.success).toBe(true);
     });
@@ -493,6 +553,8 @@ describe('Lesson Functions', () => {
           durationMinutes: 45,
           scheduledAts,
           notes: 'Summer series',
+          // A weekly series shares one weekday, so one block covers all dates.
+          blockId: blockFor(TEACHER_ID, scheduledAts[0]),
         },
         idToken: adminUser.idToken,
       });
@@ -504,16 +566,13 @@ describe('Lesson Functions', () => {
       seriesLessonIds = result.data!.lessons.map((l) => l.id);
 
       // All share the same seriesId
-      expect(
-        result.data!.lessons.every((l) => l.seriesId === seriesId)
-      ).toBe(true);
+      expect(result.data!.lessons.every((l) => l.seriesId === seriesId)).toBe(
+        true,
+      );
     });
 
     it('filters getLessons by seriesId', async () => {
-      const result = await callFunction<
-        GetLessonsRequest,
-        GetLessonsResponse
-      >({
+      const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
         functionName: 'getLessons',
         data: { seriesId },
         idToken: adminUser.idToken,
@@ -521,9 +580,9 @@ describe('Lesson Functions', () => {
 
       expect(result.status).toBe(200);
       expect(result.data?.lessons.length).toBe(4);
-      expect(
-        result.data!.lessons.every((l) => l.seriesId === seriesId)
-      ).toBe(true);
+      expect(result.data!.lessons.every((l) => l.seriesId === seriesId)).toBe(
+        true,
+      );
     });
 
     it('allows cancelling one lesson in a series without affecting others', async () => {
@@ -543,20 +602,18 @@ describe('Lesson Functions', () => {
         idToken: adminUser.idToken,
       });
 
-      const cancelledCount = list
-        .data!.lessons.filter((l) => l.status === 'cancelled')
-        .length;
-      const scheduledCount = list
-        .data!.lessons.filter((l) => l.status === 'scheduled')
-        .length;
+      const cancelledCount = list.data!.lessons.filter(
+        (l) => l.status === 'cancelled',
+      ).length;
+      const scheduledCount = list.data!.lessons.filter(
+        (l) => l.status === 'scheduled',
+      ).length;
       expect(cancelledCount).toBe(1);
       expect(scheduledCount).toBe(3);
     });
 
     it('rejects a series with an empty scheduledAts list', async () => {
-      const result = await callFunction<
-        Partial<CreateLessonSeriesRequest>
-      >({
+      const result = await callFunction<Partial<CreateLessonSeriesRequest>>({
         functionName: 'createLessonSeries',
         data: {
           studentId,
@@ -572,42 +629,33 @@ describe('Lesson Functions', () => {
 
   describe('Filters', () => {
     it('filters by studentId', async () => {
-      const result = await callFunction<
-        GetLessonsRequest,
-        GetLessonsResponse
-      >({
+      const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
         functionName: 'getLessons',
         data: { studentId },
         idToken: adminUser.idToken,
       });
 
       expect(result.status).toBe(200);
-      expect(
-        result.data!.lessons.every((l) => l.studentId === studentId)
-      ).toBe(true);
+      expect(result.data!.lessons.every((l) => l.studentId === studentId)).toBe(
+        true,
+      );
     });
 
     it('filters by status', async () => {
-      const result = await callFunction<
-        GetLessonsRequest,
-        GetLessonsResponse
-      >({
+      const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
         functionName: 'getLessons',
         data: { status: 'cancelled' },
         idToken: adminUser.idToken,
       });
 
       expect(result.status).toBe(200);
-      expect(
-        result.data!.lessons.every((l) => l.status === 'cancelled')
-      ).toBe(true);
+      expect(result.data!.lessons.every((l) => l.status === 'cancelled')).toBe(
+        true,
+      );
     });
 
     it('filters by date range', async () => {
-      const result = await callFunction<
-        GetLessonsRequest,
-        GetLessonsResponse
-      >({
+      const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
         functionName: 'getLessons',
         data: {
           from: new Date('2026-06-05T00:00:00Z').toISOString(),
@@ -620,10 +668,10 @@ describe('Lesson Functions', () => {
       for (const lesson of result.data!.lessons) {
         const t = new Date(lesson.scheduledAt).getTime();
         expect(t).toBeGreaterThanOrEqual(
-          new Date('2026-06-05T00:00:00Z').getTime()
+          new Date('2026-06-05T00:00:00Z').getTime(),
         );
         expect(t).toBeLessThanOrEqual(
-          new Date('2026-06-20T23:59:59Z').getTime()
+          new Date('2026-06-20T23:59:59Z').getTime(),
         );
       }
     });
@@ -660,6 +708,7 @@ describe('Lesson Functions', () => {
           scheduledAt: SCHEDULED_AT,
           durationMinutes: 30,
           status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, SCHEDULED_AT),
         },
         idToken: adminUser.idToken,
       });
@@ -670,15 +719,15 @@ describe('Lesson Functions', () => {
 
       const windows = await getSpruceWindows();
       const window = windows.find(
-        (w) => w.sourceRef === `lessons/${roomLessonId}`
+        (w) => w.sourceRef === `lessons/${roomLessonId}`,
       );
       expect(window).toBeDefined();
       expect(window!.type).toBe('lesson');
       expect(new Date(window!.start).toISOString()).toBe(
-        SCHEDULED_AT.toISOString()
+        SCHEDULED_AT.toISOString(),
       );
       expect(new Date(window!.end).toISOString()).toBe(
-        new Date(SCHEDULED_AT.getTime() + 30 * 60 * 1000).toISOString()
+        new Date(SCHEDULED_AT.getTime() + 30 * 60 * 1000).toISOString(),
       );
       // Sanitized: the room schedule must not expose the student
       expect(window!.title).toBe('Music Lesson');
@@ -716,12 +765,12 @@ describe('Lesson Functions', () => {
 
       const windows = await getSpruceWindows();
       const matching = windows.filter(
-        (w) => w.sourceRef === `lessons/${roomLessonId}`
+        (w) => w.sourceRef === `lessons/${roomLessonId}`,
       );
       // Still exactly one window (stable deterministic ID), at the new time
       expect(matching.length).toBe(1);
       expect(new Date(matching[0].start).toISOString()).toBe(
-        newTime.toISOString()
+        newTime.toISOString(),
       );
     });
 
@@ -740,7 +789,7 @@ describe('Lesson Functions', () => {
 
       const windows = await getSpruceWindows();
       expect(
-        windows.find((w) => w.sourceRef === `lessons/${roomLessonId}`)
+        windows.find((w) => w.sourceRef === `lessons/${roomLessonId}`),
       ).toBeUndefined();
     });
   });
@@ -760,13 +809,13 @@ describe('Lesson Functions', () => {
     async function pollForLessonInvoice(
       sid: string,
       lessonId: string,
-      timeoutMs = 15000
+      timeoutMs = 15000,
     ) {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {
         const invoices = await getInvoicesFor(sid);
         const found = invoices.find((i) =>
-          i.lineItems.some((l) => l.lessonId === lessonId)
+          i.lineItems.some((l) => l.lessonId === lessonId),
         );
         if (found) return found;
         await new Promise((r) => setTimeout(r, 1000));
@@ -775,17 +824,20 @@ describe('Lesson Functions', () => {
     }
 
     async function createRenderedLesson(sid: string): Promise<string> {
-      const res = await callFunction<CreateLessonRequest, CreateLessonResponse>({
-        functionName: 'createLesson',
-        data: {
-          studentId: sid,
-          teacherId: TEACHER_ID,
-          scheduledAt: new Date('2026-08-01T15:00:00Z'),
-          durationMinutes: 30,
-          status: 'scheduled',
+      const res = await callFunction<CreateLessonRequest, CreateLessonResponse>(
+        {
+          functionName: 'createLesson',
+          data: {
+            studentId: sid,
+            teacherId: TEACHER_ID,
+            scheduledAt: new Date('2026-08-01T15:00:00Z'),
+            durationMinutes: 30,
+            status: 'scheduled',
+            blockId: blockFor(TEACHER_ID, new Date('2026-08-01T15:00:00Z')),
+          },
+          idToken: adminUser.idToken,
         },
-        idToken: adminUser.idToken,
-      });
+      );
       const lessonId = res.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
         functionName: 'updateLesson',
@@ -796,7 +848,7 @@ describe('Lesson Functions', () => {
     }
 
     async function createAutoStudent(
-      overrides: Partial<CreateStudentRequest>
+      overrides: Partial<CreateStudentRequest>,
     ): Promise<string> {
       const res = await callFunction<
         CreateStudentRequest,
@@ -847,7 +899,7 @@ describe('Lesson Functions', () => {
 
       const invoices = await getInvoicesFor(studentId);
       expect(
-        invoices.some((i) => i.lineItems.some((l) => l.lessonId === lessonId))
+        invoices.some((i) => i.lineItems.some((l) => l.lessonId === lessonId)),
       ).toBe(false);
     });
 
@@ -870,9 +922,171 @@ describe('Lesson Functions', () => {
 
       const invoices = await getInvoicesFor(sid);
       const forLesson = invoices.filter((i) =>
-        i.lineItems.some((l) => l.lessonId === lessonId)
+        i.lineItems.some((l) => l.lessonId === lessonId),
       );
       expect(forLesson).toHaveLength(1);
+    });
+  });
+
+  describe('Lesson blocks (#686)', () => {
+    const BLOCK_TEACHER_ID = 'instructor-block-test';
+    // 2026-09-01 is a Tuesday; block covers 10:00–12:00 ET.
+    const TUE = new Date('2026-09-01T15:00:00Z'); // 11:00 ET, inside
+    const TUE_BEFORE = new Date('2026-09-01T13:00:00Z'); // 09:00 ET, outside
+    let blockId: string;
+
+    it('lets an admin create a block, denies a lesson-teacher', async () => {
+      const denied = await callFunction<CreateLessonBlockRequest>({
+        functionName: 'createLessonBlock',
+        data: {
+          teacherId: BLOCK_TEACHER_ID,
+          dayOfWeek: 2,
+          startMinutes: 600,
+          endMinutes: 720,
+        },
+        idToken: nonAdminUser.idToken,
+      });
+      expect([403, 500]).toContain(denied.status);
+
+      const created = await callFunction<
+        CreateLessonBlockRequest,
+        CreateLessonBlockResponse
+      >({
+        functionName: 'createLessonBlock',
+        data: {
+          teacherId: BLOCK_TEACHER_ID,
+          dayOfWeek: 2,
+          startMinutes: 600,
+          endMinutes: 720,
+          label: 'Tue mornings',
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(created.status).toBe(200);
+      expect(created.data!.block.id).toBeTruthy();
+      expect(created.data!.block.teacherId).toBe(BLOCK_TEACHER_ID);
+      blockId = created.data!.block.id;
+    });
+
+    it('rejects an invalid block (end before start)', async () => {
+      const result = await callFunction<CreateLessonBlockRequest>({
+        functionName: 'createLessonBlock',
+        data: {
+          teacherId: BLOCK_TEACHER_ID,
+          dayOfWeek: 2,
+          startMinutes: 720,
+          endMinutes: 600,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('lists blocks for a teacher', async () => {
+      const result = await callFunction<
+        GetLessonBlocksRequest,
+        GetLessonBlocksResponse
+      >({
+        functionName: 'getLessonBlocks',
+        data: { teacherId: BLOCK_TEACHER_ID },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).toBe(200);
+      expect(result.data!.blocks.some((b) => b.id === blockId)).toBe(true);
+      expect(
+        result.data!.blocks.every((b) => b.teacherId === BLOCK_TEACHER_ID),
+      ).toBe(true);
+    });
+
+    it('rejects a lesson with no block', async () => {
+      const result = await callFunction<CreateLessonRequest>({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: BLOCK_TEACHER_ID,
+          scheduledAt: TUE,
+          durationMinutes: 30,
+          status: 'scheduled',
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('rejects a lesson outside the block window', async () => {
+      const result = await callFunction<CreateLessonRequest>({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: BLOCK_TEACHER_ID,
+          scheduledAt: TUE_BEFORE,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('rejects a lesson attributed to another teacher’s block', async () => {
+      const result = await callFunction<CreateLessonRequest>({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: TEACHER_ID, // block belongs to BLOCK_TEACHER_ID
+          scheduledAt: TUE,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('accepts a lesson inside the block window', async () => {
+      const result = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId,
+          teacherId: BLOCK_TEACHER_ID,
+          scheduledAt: TUE,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).toBe(200);
+      expect(result.data!.lesson.blockId).toBe(blockId);
+    });
+
+    it('updates and deletes a block (admin only)', async () => {
+      const updated = await callFunction<
+        UpdateLessonBlockRequest,
+        UpdateLessonBlockResponse
+      >({
+        functionName: 'updateLessonBlock',
+        data: { id: blockId, label: 'Tue mornings (updated)' },
+        idToken: adminUser.idToken,
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.data!.block.label).toBe('Tue mornings (updated)');
+
+      const deleted = await callFunction<
+        DeleteLessonBlockRequest,
+        DeleteLessonBlockResponse
+      >({
+        functionName: 'deleteLessonBlock',
+        data: { id: blockId },
+        idToken: adminUser.idToken,
+      });
+      expect(deleted.status).toBe(200);
+      expect(deleted.data!.success).toBe(true);
     });
   });
 });

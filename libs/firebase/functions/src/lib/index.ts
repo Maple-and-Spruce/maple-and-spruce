@@ -68,6 +68,9 @@ export {
   assertCanRecordInvoicePayment,
 } from './ownership.utility';
 
+// Lesson ↔ block enforcement (#686)
+export { assertLessonsFitBlock } from './lesson-block.utility';
+
 // Environment utilities
 export {
   FirebaseProject,
