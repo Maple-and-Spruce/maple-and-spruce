@@ -114,6 +114,10 @@ export {
   mtWaitlistEmailKey,
 } from './lib/music-together-waitlist.repository';
 export {
+  MusicTogetherDemoRsvpRepository,
+  mtDemoRsvpEmailKey,
+} from './lib/music-together-demo-rsvp.repository';
+export {
   MusicTogetherTokenRepository,
   MUSIC_TOGETHER_ACCESS_TOKEN_TTL_MS,
   MUSIC_TOGETHER_SESSION_TTL_MS,

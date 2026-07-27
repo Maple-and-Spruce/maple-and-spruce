@@ -21,6 +21,7 @@ export {
 export { useMusicTogetherSemesters } from './lib/useMusicTogetherSemesters';
 export { useMusicTogetherRoster } from './lib/useMusicTogetherRoster';
 export { useMusicTogetherInterest } from './lib/useMusicTogetherInterest';
+export { useMusicTogetherDemoRsvps } from './lib/useMusicTogetherDemoRsvps';
 export { useClassCategories } from './lib/useClassCategories';
 
 // Phase 4: Music Lessons
