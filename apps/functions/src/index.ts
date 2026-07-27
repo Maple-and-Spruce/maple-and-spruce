@@ -10,6 +10,9 @@
  * - apps/functions-square/  — Square integration (square SDK)
  * - apps/functions-sync/    — Webflow sync (webflow-api)
  */
+// MUST be first: sets global maxInstances before any function is defined.
+// See global-runtime-options.ts for the ordering contract.
+import '@maple/firebase/functions/global-runtime-options';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { createPublicFunction } from '@maple/firebase/functions';
 
@@ -85,6 +88,10 @@ export { createLesson } from '@maple/firebase/maple-functions/create-lesson';
 export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesson-series';
 export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
 export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
+export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
+export { createLessonBlock } from '@maple/firebase/maple-functions/create-lesson-block';
+export { updateLessonBlock } from '@maple/firebase/maple-functions/update-lesson-block';
+export { deleteLessonBlock } from '@maple/firebase/maple-functions/delete-lesson-block';
 
 // Music lesson invoice functions (Phase 4)
 export { getInvoices } from '@maple/firebase/maple-functions/get-invoices';

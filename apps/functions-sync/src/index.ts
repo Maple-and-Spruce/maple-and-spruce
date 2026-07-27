@@ -5,6 +5,9 @@
  * Separated to isolate the Webflow API dependency from other functions,
  * reducing cold start times.
  */
+// MUST be first: sets global maxInstances before any function is defined.
+// See global-runtime-options.ts for the ordering contract.
+import '@maple/firebase/functions/global-runtime-options';
 import { getApps, initializeApp } from 'firebase-admin/app';
 
 if (getApps().length === 0) {

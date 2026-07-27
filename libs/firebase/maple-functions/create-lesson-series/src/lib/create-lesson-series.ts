@@ -9,6 +9,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
+  assertLessonsFitBlock,
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonSeriesValidation } from '@maple/ts/validation';
@@ -20,39 +21,51 @@ import type {
 export const createLessonSeries = createRoleFunction<
   CreateLessonSeriesRequest,
   CreateLessonSeriesResponse
->(async (data, context) => {
-  // A lesson teacher may only create a series they teach.
-  await assertCanManageLesson(context, data.teacherId);
+>(
+  async (data, context) => {
+    // A lesson teacher may only create a series they teach.
+    await assertCanManageLesson(context, data.teacherId);
 
-  // Dates arrive as ISO strings over the wire; coerce each one before validation.
-  const coerced = {
-    ...data,
-    scheduledAts: (data.scheduledAts ?? []).map((d) =>
-      d instanceof Date ? d : new Date(d as unknown as string)
-    ),
-  };
+    // Dates arrive as ISO strings over the wire; coerce each one before validation.
+    const coerced = {
+      ...data,
+      scheduledAts: (data.scheduledAts ?? []).map((d) =>
+        d instanceof Date ? d : new Date(d as unknown as string),
+      ),
+    };
 
-  const validationResult = lessonSeriesValidation(coerced);
-  if (!validationResult.isValid()) {
-    const errors = validationResult.getErrors();
-    const errorMessages = Object.entries(errors)
-      .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
-      .join('; ');
-    throw new Error(`Validation failed: ${errorMessages}`);
-  }
+    const validationResult = lessonSeriesValidation(coerced);
+    if (!validationResult.isValid()) {
+      const errors = validationResult.getErrors();
+      const errorMessages = Object.entries(errors)
+        .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+        .join('; ');
+      throw new Error(`Validation failed: ${errorMessages}`);
+    }
 
-  const student = await StudentRepository.findById(coerced.studentId);
-  if (!student) {
-    throw new Error(`Student not found: ${coerced.studentId}`);
-  }
+    // Enforce block attribution (#686): every lesson in the series must fit the
+    // same block, owned by this teacher.
+    await assertLessonsFitBlock({
+      blockId: coerced.blockId,
+      teacherId: coerced.teacherId,
+      scheduledAts: coerced.scheduledAts,
+      durationMinutes: coerced.durationMinutes,
+    });
 
-  // Snapshot primary teacher on every lesson in the series so later
-  // reassignment can't retroactively flip substitute attribution (#283).
-  const { lessons, seriesId } = await LessonRepository.createSeries({
-    ...coerced,
-    primaryTeacherAtCreateId:
-      coerced.primaryTeacherAtCreateId ?? student.primaryTeacherId,
-  });
+    const student = await StudentRepository.findById(coerced.studentId);
+    if (!student) {
+      throw new Error(`Student not found: ${coerced.studentId}`);
+    }
 
-  return { lessons, seriesId };
-}, [Role.Admin, Role.LessonTeacher]);
+    // Snapshot primary teacher on every lesson in the series so later
+    // reassignment can't retroactively flip substitute attribution (#283).
+    const { lessons, seriesId } = await LessonRepository.createSeries({
+      ...coerced,
+      primaryTeacherAtCreateId:
+        coerced.primaryTeacherAtCreateId ?? student.primaryTeacherId,
+    });
+
+    return { lessons, seriesId };
+  },
+  [Role.Admin, Role.LessonTeacher],
+);

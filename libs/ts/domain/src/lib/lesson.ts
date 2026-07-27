@@ -46,6 +46,13 @@ export interface Lesson {
   /** Groups lessons generated together as a recurring series */
   seriesId?: string;
   /**
+   * The weekly LessonBlock this lesson is attributed to (#686). Required for
+   * lessons created after blocks shipped — a lesson must fall on the block's
+   * weekday and inside its window. Optional/null for grandfathered lessons
+   * created before blocks; those surface as "unattributed" for an admin to fix.
+   */
+  blockId?: string | null;
+  /**
    * Bookable room the lesson occupies. Drives the room's calendar event
    * (`onLessonWrite`) and thus the /room-schedule. Optional for backwards-
    * compat with lessons created before this field existed; those fall back
@@ -94,10 +101,18 @@ export interface CreateLessonSeriesInput {
   room?: Room;
   /** Snapshot stamp applied to every lesson in the series; set server-side. */
   primaryTeacherAtCreateId?: string;
+  /** Weekly block every lesson in the series is attributed to (#686). */
+  blockId?: string | null;
 }
 
-export function isLessonUpcoming(lesson: Lesson, now: Date = new Date()): boolean {
-  return lesson.status === 'scheduled' && lesson.scheduledAt.getTime() > now.getTime();
+export function isLessonUpcoming(
+  lesson: Lesson,
+  now: Date = new Date(),
+): boolean {
+  return (
+    lesson.status === 'scheduled' &&
+    lesson.scheduledAt.getTime() > now.getTime()
+  );
 }
 
 export function isLessonPast(lesson: Lesson, now: Date = new Date()): boolean {
@@ -116,7 +131,7 @@ export function isLessonPast(lesson: Lesson, now: Date = new Date()): boolean {
  */
 export function wasTaughtBySubstitute(
   lesson: Pick<Lesson, 'teacherId' | 'primaryTeacherAtCreateId'>,
-  currentPrimaryTeacherId?: string
+  currentPrimaryTeacherId?: string,
 ): boolean {
   const baseline = lesson.primaryTeacherAtCreateId ?? currentPrimaryTeacherId;
   if (!baseline) {
