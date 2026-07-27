@@ -15,7 +15,7 @@ import type {
 const COLLECTION = 'lessons';
 
 function docToLesson(
-  doc: FirebaseFirestore.DocumentSnapshot
+  doc: FirebaseFirestore.DocumentSnapshot,
 ): Lesson | undefined {
   if (!doc.exists) {
     return undefined;
@@ -30,6 +30,7 @@ function docToLesson(
     teacherId: data.teacherId,
     primaryTeacherAtCreateId: data.primaryTeacherAtCreateId,
     seriesId: data.seriesId,
+    blockId: data.blockId ?? null,
     room: data.room,
     status: data.status,
     notes: data.notes,
@@ -109,7 +110,7 @@ export const LessonRepository = {
    * skips made in the preview step are honored exactly.
    */
   async createSeries(
-    input: CreateLessonSeriesInput
+    input: CreateLessonSeriesInput,
   ): Promise<{ lessons: Lesson[]; seriesId: string }> {
     const seriesRef = db.collection(COLLECTION).doc();
     const seriesId = seriesRef.id;
@@ -129,6 +130,7 @@ export const LessonRepository = {
         durationMinutes: input.durationMinutes,
         scheduledAt,
         seriesId,
+        blockId: input.blockId ?? null,
         room: input.room,
         status: 'scheduled' as LessonStatus,
         notes: input.notes,
@@ -147,6 +149,7 @@ export const LessonRepository = {
       teacherId: input.teacherId,
       primaryTeacherAtCreateId: input.primaryTeacherAtCreateId,
       seriesId,
+      blockId: input.blockId ?? null,
       room: input.room,
       status: 'scheduled',
       notes: input.notes,

@@ -310,6 +310,18 @@ export type {
   DeleteLessonResponse,
 } from './lesson.types';
 
+// Phase 4: Music Lessons - Lesson blocks (#686)
+export type {
+  GetLessonBlocksRequest,
+  GetLessonBlocksResponse,
+  CreateLessonBlockRequest,
+  CreateLessonBlockResponse,
+  UpdateLessonBlockRequest,
+  UpdateLessonBlockResponse,
+  DeleteLessonBlockRequest,
+  DeleteLessonBlockResponse,
+} from './lesson-block.types';
+
 // Phase 4: Music Lessons - Invoice types (private-pay)
 export type {
   GetInvoicesRequest,
