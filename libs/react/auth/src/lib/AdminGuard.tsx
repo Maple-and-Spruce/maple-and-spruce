@@ -104,6 +104,7 @@ export function AdminGuardView({
           }}
         >
           <LockOutlinedIcon
+            data-testid="admin-lock-icon"
             sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }}
           />
           <Typography variant="h5" gutterBottom>
