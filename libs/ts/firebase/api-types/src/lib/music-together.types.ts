@@ -17,6 +17,7 @@ import type {
   MusicTogetherSectionStatus,
   MusicTogetherInterest,
   MusicTogetherInterestDemand,
+  MusicTogetherWaitlistEntry,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -108,6 +109,12 @@ export interface MusicTogetherRosterEntry {
 export interface GetMusicTogetherRosterResponse {
   section: MusicTogetherSection;
   entries: MusicTogetherRosterEntry[];
+  /**
+   * Waitlist / interested families for this section (ordered by signup time).
+   * Includes email-only "coming soon" captures as well as full waitlist
+   * signups, so the admin can notify everyone when registration opens.
+   */
+  waitlist: MusicTogetherWaitlistEntry[];
 }
 
 // ============================================================================
@@ -271,7 +278,11 @@ export interface CancelMusicTogetherRegistrationResponse {
 
 export interface AddToMusicTogetherWaitlistRequest {
   sectionId: string;
-  name: string;
+  /**
+   * Family name. Optional — the email-only "coming soon" capture omits it,
+   * while the full-section waitlist form collects it.
+   */
+  name?: string;
   email: string;
   /** "What days/times work for you?" */
   availability?: string;

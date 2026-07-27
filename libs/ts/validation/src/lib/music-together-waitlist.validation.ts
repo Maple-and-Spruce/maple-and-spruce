@@ -23,9 +23,8 @@ export const musicTogetherWaitlistValidation = staticSuite(
       enforce(data.sectionId).isNotBlank();
     });
 
-    test('name', 'Name is required', () => {
-      enforce(data.name).isNotBlank();
-    });
+    // Name is optional (the email-only "coming soon" capture omits it), but
+    // cap its length when present.
     test('name', 'Name must be less than 100 characters', () => {
       if (data.name) enforce(data.name).shorterThan(100);
     });

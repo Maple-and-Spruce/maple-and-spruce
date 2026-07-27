@@ -58,6 +58,11 @@ export function useMusicTogetherRoster(sectionId: string | undefined) {
         data: {
           section: result.data.section,
           entries: result.data.entries.map(hydrateEntry),
+          // Hydrate the waitlist entries' ISO createdAt back into Dates.
+          waitlist: (result.data.waitlist ?? []).map((w) => ({
+            ...w,
+            createdAt: new Date(w.createdAt),
+          })),
         },
       });
     } catch (error) {

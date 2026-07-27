@@ -391,6 +391,52 @@ describe('MusicTogetherRegistrationWidget', () => {
     });
   });
 
+  it('renders the email-only "coming soon" capture and never shows the checkout', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <MusicTogetherRegistrationWidget
+        sectionId="sec-thu"
+        squareAppId="sandbox-app"
+        squareLocationId="LOC1"
+        env="dev"
+        policiesUrl="https://example.com/music-together/policies"
+        comingSoon
+      />
+    );
+
+    // The coming-soon heading + email field render; the section header stays.
+    expect(await screen.findByText(/Coming soon!/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Thursday Morning — Mixed Age/i)
+    ).toBeInTheDocument();
+
+    // The full checkout / waitlist family-name fields are NOT rendered.
+    expect(
+      screen.queryByLabelText(/^First name/i)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Your name/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Register — \$/i })
+    ).not.toBeInTheDocument();
+
+    // Submitting captures the email into the waitlist with NO name.
+    setField(/^Email/i, 'notify@example.com');
+    await user.click(screen.getByRole('button', { name: /Notify me/i }));
+
+    expect(
+      await screen.findByText(/we'll email you at notify@example.com/i)
+    ).toBeInTheDocument();
+    expect(calls['addToMusicTogetherWaitlist']).toEqual({
+      sectionId: 'sec-thu',
+      email: 'notify@example.com',
+    });
+    expect(
+      (calls['addToMusicTogetherWaitlist'] as { name?: string }).name
+    ).toBeUndefined();
+    // Square checkout was never invoked.
+    expect(calls['createMusicTogetherRegistration']).toBeUndefined();
+  });
+
   it('shows an "opens soon" notice instead of the form when enrollment is closed', async () => {
     nextSection = makeSection({
       enrollmentOpen: false,

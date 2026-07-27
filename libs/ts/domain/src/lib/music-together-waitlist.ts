@@ -15,7 +15,8 @@ export interface MusicTogetherWaitlistEntry {
   /** Document id — the lowercased email, making signups idempotent. */
   id: string;
   sectionId: string;
-  name: string;
+  /** Family name. Absent for the email-only "coming soon" capture. */
+  name?: string;
   email: string;
   /** Free-text answer to "what days/times work for you?" */
   availability?: string;
@@ -24,7 +25,8 @@ export interface MusicTogetherWaitlistEntry {
 
 export type CreateMusicTogetherWaitlistEntryInput = {
   sectionId: string;
-  name: string;
+  /** Family name. Absent for the email-only "coming soon" capture. */
+  name?: string;
   email: string;
   availability?: string;
 };

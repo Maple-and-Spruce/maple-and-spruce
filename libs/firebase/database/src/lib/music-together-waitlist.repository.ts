@@ -37,7 +37,7 @@ function docToEntry(
   return {
     id: doc.id,
     sectionId,
-    name: data.name,
+    name: data.name ?? undefined,
     email: data.email,
     availability: data.availability,
     createdAt: toDate(data.createdAt),
@@ -51,7 +51,7 @@ export const MusicTogetherWaitlistRepository = {
    */
   async add(input: {
     sectionId: string;
-    name: string;
+    name?: string;
     email: string;
     availability?: string;
   }): Promise<{ entry: MusicTogetherWaitlistEntry; created: boolean }> {
@@ -62,8 +62,11 @@ export const MusicTogetherWaitlistRepository = {
       return { entry: docToEntry(input.sectionId, existing)!, created: false };
     }
     const createdAt = new Date();
+    // Name is optional (email-only "coming soon" capture) — store null when
+    // absent (Firestore rejects undefined), mirroring `availability`.
+    const trimmedName = input.name?.trim() || null;
     const entry = {
-      name: input.name.trim(),
+      name: trimmedName,
       email: input.email.trim(),
       availability: input.availability?.trim() || null,
       createdAt,
@@ -73,7 +76,7 @@ export const MusicTogetherWaitlistRepository = {
       entry: {
         id,
         sectionId: input.sectionId,
-        name: entry.name,
+        name: trimmedName ?? undefined,
         email: entry.email,
         availability: entry.availability ?? undefined,
         createdAt,
