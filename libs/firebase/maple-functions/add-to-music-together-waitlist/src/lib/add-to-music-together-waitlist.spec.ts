@@ -66,6 +66,23 @@ describe('addToMusicTogetherWaitlist', () => {
     expect(result.added).toBe(true);
   });
 
+  it('accepts an email-only capture (no name — "coming soon" mode)', async () => {
+    const result = (await run({
+      sectionId: 'sec-1',
+      email: 'coming-soon@example.com',
+    })) as { added: boolean };
+    expect(mocks.waitlistAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sectionId: 'sec-1',
+        email: 'coming-soon@example.com',
+      })
+    );
+    // No name is forwarded to the repository.
+    const arg = mocks.waitlistAdd.mock.calls[0][0] as { name?: string };
+    expect(arg.name).toBeUndefined();
+    expect(result.added).toBe(true);
+  });
+
   it('is idempotent — a repeat email reports added=false', async () => {
     mocks.waitlistAdd.mockResolvedValue({ created: false });
     const result = (await run(validEntry)) as { added: boolean };

@@ -50,6 +50,23 @@ function charge(
 
 const withFamilies: GetMusicTogetherRosterResponse = {
   section: { id: 'sec-1', name: 'Spring 2026' } as never,
+  waitlist: [
+    {
+      id: 'dana@example.com',
+      sectionId: 'sec-1',
+      name: 'Dana Brooks',
+      email: 'dana@example.com',
+      availability: 'Weekday mornings',
+      createdAt: new Date('2030-01-02T00:00:00Z'),
+    },
+    {
+      // Email-only "coming soon" capture — no name.
+      id: 'notify@example.com',
+      sectionId: 'sec-1',
+      email: 'notify@example.com',
+      createdAt: new Date('2030-01-03T00:00:00Z'),
+    },
+  ],
   entries: [
     {
       registration: reg({
@@ -109,7 +126,7 @@ export const Empty: Story = {
   args: {
     rosterState: {
       status: 'success',
-      data: { section: withFamilies.section, entries: [] },
+      data: { section: withFamilies.section, entries: [], waitlist: [] },
     },
   },
 };
@@ -293,12 +310,45 @@ export const RejectsOverRefund: Story = {
   },
 };
 
+/**
+ * The waitlist section lists interested families (a named signup + an
+ * email-only "coming soon" capture) and copies their emails to the clipboard.
+ */
+export const WaitlistAndCopyEmails: Story = {
+  args: { rosterState: { status: 'success', data: withFamilies } },
+  play: async () => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    // Both waitlist entries render (named + email-only), with the count.
+    await expect(
+      canvas.getByText(/Waitlist \/ Interested families \(2\)/i)
+    ).toBeInTheDocument();
+    await expect(canvas.getByText('Dana Brooks')).toBeInTheDocument();
+    await expect(canvas.getByText('notify@example.com')).toBeInTheDocument();
+
+    // Copy emails writes both addresses to the clipboard.
+    const writeText = fn(async () => undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    await userEvent.click(
+      canvas.getByRole('button', { name: /copy emails/i })
+    );
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        'dana@example.com, notify@example.com'
+      )
+    );
+  },
+};
+
 /** Empty roster disables the CSV export. */
 export const EmptyDisablesExport: Story = {
   args: {
     rosterState: {
       status: 'success',
-      data: { section: withFamilies.section, entries: [] },
+      data: { section: withFamilies.section, entries: [], waitlist: [] },
     },
   },
   play: async () => {

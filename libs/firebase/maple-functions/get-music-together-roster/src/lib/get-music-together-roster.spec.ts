@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   sectionFindById: vi.fn(),
   regFindBySectionId: vi.fn(),
   chargesFindAll: vi.fn(),
+  waitlistFindBySectionId: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -24,6 +25,9 @@ vi.mock('@maple/firebase/database', () => ({
     findBySectionId: mocks.regFindBySectionId,
   },
   MusicTogetherScheduledChargeRepository: { findAll: mocks.chargesFindAll },
+  MusicTogetherWaitlistRepository: {
+    findBySectionId: mocks.waitlistFindBySectionId,
+  },
 }));
 
 import { getMusicTogetherRoster } from './get-music-together-roster';
@@ -31,12 +35,17 @@ import { getMusicTogetherRoster } from './get-music-together-roster';
 const handler = getMusicTogetherRoster as unknown as (
   d: unknown,
   c?: unknown
-) => Promise<{ section: unknown; entries: { registration: { id: string }; charges: unknown[]; pastDue: boolean }[] }>;
+) => Promise<{
+  section: unknown;
+  entries: { registration: { id: string }; charges: unknown[]; pastDue: boolean }[];
+  waitlist: { email: string }[];
+}>;
 
 describe('getMusicTogetherRoster', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', name: 'Spring' });
+    mocks.waitlistFindBySectionId.mockResolvedValue([]);
   });
 
   it('groups charges under each registration and flags past-due', async () => {
@@ -58,6 +67,24 @@ describe('getMusicTogetherRoster', () => {
     expect(reg1.charges).toHaveLength(2);
     expect(reg1.pastDue).toBe(true); // has a failed charge
     expect(reg2.pastDue).toBe(false);
+  });
+
+  it('includes the section waitlist in the response', async () => {
+    mocks.regFindBySectionId.mockResolvedValue([]);
+    mocks.chargesFindAll.mockResolvedValue([]);
+    mocks.waitlistFindBySectionId.mockResolvedValue([
+      { id: 'a@example.com', sectionId: 'sec-1', email: 'a@example.com' },
+      { id: 'b@example.com', sectionId: 'sec-1', email: 'b@example.com' },
+    ]);
+
+    const result = await handler({ sectionId: 'sec-1' }, {});
+
+    expect(mocks.waitlistFindBySectionId).toHaveBeenCalledWith('sec-1');
+    expect(result.waitlist).toHaveLength(2);
+    expect(result.waitlist.map((w) => w.email)).toEqual([
+      'a@example.com',
+      'b@example.com',
+    ]);
   });
 
   it('handles a registration with no charges (full pay)', async () => {

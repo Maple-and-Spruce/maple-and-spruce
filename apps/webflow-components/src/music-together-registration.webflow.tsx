@@ -21,6 +21,10 @@ export default declareComponent(MusicTogetherRegistrationWidget, {
       name: 'Section ID',
       defaultValue: '',
     }),
+    comingSoon: props.Boolean({
+      name: 'Coming Soon',
+      defaultValue: false,
+    }),
     squareAppId: props.Text({
       name: 'Square App ID',
       defaultValue: '',

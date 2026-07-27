@@ -20,6 +20,7 @@ import {
   TextField,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
   buildMusicTogetherLicenseeCsv,
   buildMusicTogetherInternalRosterCsv,
@@ -139,6 +140,23 @@ export function RosterDialog({
     () => entries.filter((e) => e.registration.status === 'confirmed'),
     [entries]
   );
+
+  // Waitlist / interested families (email-only "coming soon" captures + full
+  // waitlist signups) so the admin can notify everyone when registration opens.
+  const waitlist =
+    rosterState.status === 'success' ? (rosterState.data.waitlist ?? []) : [];
+  const [waitlistCopied, setWaitlistCopied] = useState(false);
+
+  const handleCopyWaitlistEmails = () => {
+    const emails = waitlist
+      .map((w) => w.email)
+      .filter((email, i, arr) => arr.indexOf(email) === i) // dedupe
+      .join(', ');
+    navigator.clipboard.writeText(emails).then(() => {
+      setWaitlistCopied(true);
+      setTimeout(() => setWaitlistCopied(false), 2000);
+    });
+  };
 
   const safeName = sectionName.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
 
@@ -330,6 +348,79 @@ export function RosterDialog({
               })}
             </TableBody>
           </Table>
+        )}
+
+        {/* Waitlist / interested families (incl. "coming soon" email captures) */}
+        {rosterState.status === 'success' && (
+          <Box sx={{ mt: 4 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+                gap: 2,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Typography variant="h6">
+                Waitlist / Interested families ({waitlist.length})
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={handleCopyWaitlistEmails}
+                disabled={waitlist.length === 0}
+              >
+                {waitlistCopied ? 'Copied!' : 'Copy emails'}
+              </Button>
+            </Box>
+            {waitlist.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
+                No signups yet.
+              </Typography>
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name / email</TableCell>
+                    <TableCell>Availability</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {waitlist.map((w) => (
+                    <TableRow key={w.id}>
+                      <TableCell>
+                        {w.name ? (
+                          <>
+                            <Typography variant="body2">{w.name}</Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {w.email}
+                            </Typography>
+                          </>
+                        ) : (
+                          <Typography variant="body2">{w.email}</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        sx={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}
+                      >
+                        {w.availability || (
+                          <Typography variant="body2" color="text.disabled">
+                            —
+                          </Typography>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Box>
         )}
       </DialogContent>
       <DialogActions>
