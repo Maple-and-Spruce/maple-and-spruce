@@ -131,6 +131,13 @@ export interface MusicTogetherRegistrationWidgetProps {
   env: string;
   /** URL of the public Policies & FAQs page (linked from the consent checkbox). */
   policiesUrl: string;
+  /**
+   * When true, the widget shows an email-capture "coming soon" panel instead of
+   * the checkout — captures the family's email into the section waitlist and
+   * never touches Square. Use while real checkout is temporarily unavailable
+   * (e.g. a Square app-ID cutover). Defaults to false.
+   */
+  comingSoon?: boolean;
 }
 
 /**
@@ -245,12 +252,114 @@ function WaitlistPanel({
   );
 }
 
+/**
+ * Coming-soon panel: an email-only capture shown while real checkout is
+ * temporarily unavailable. Writes the email into the same section waitlist as
+ * WaitlistPanel (via addToMusicTogetherWaitlist, no name/availability) and
+ * never initializes Square.
+ */
+function ComingSoonPanel({
+  section,
+  functions,
+}: {
+  section: PublicMusicTogetherSection;
+  functions: ReturnType<typeof getWidgetFunctions>;
+}) {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<
+    | { status: 'idle' }
+    | { status: 'submitting' }
+    | { status: 'success'; alreadyOnList: boolean; email: string }
+    | { status: 'error'; message: string }
+  >({ status: 'idle' });
+
+  const emailValid = EMAIL_RE.test(email.trim());
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailValid) {
+      setState({
+        status: 'error',
+        message: 'Please enter a valid email.',
+      });
+      return;
+    }
+    setState({ status: 'submitting' });
+    try {
+      const call = httpsCallable<
+        AddToMusicTogetherWaitlistRequest,
+        AddToMusicTogetherWaitlistResponse
+      >(functions, 'addToMusicTogetherWaitlist');
+      const result = await call({
+        sectionId: section.id,
+        email: email.trim(),
+      });
+      setState({
+        status: 'success',
+        alreadyOnList: !result.data.added,
+        email: email.trim(),
+      });
+    } catch (err) {
+      setState({
+        status: 'error',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Something went wrong. Please try again.',
+      });
+    }
+  };
+
+  if (state.status === 'success') {
+    return (
+      <Alert severity="success">
+        {state.alreadyOnList
+          ? "You're already on our list — we'll be in touch when registration opens."
+          : `Thanks! We'll email you at ${state.email} when registration opens.`}
+      </Alert>
+    );
+  }
+
+  return (
+    <Box component="form" onSubmit={handleSubmit}>
+      <Typography variant="h6" component="p" gutterBottom>
+        Coming soon!
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        Give us your email and we&apos;ll notify you the moment registration
+        opens.
+      </Typography>
+      <Stack spacing={2}>
+        <TextField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          fullWidth
+        />
+        {state.status === 'error' && (
+          <Alert severity="error">{state.message}</Alert>
+        )}
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={state.status === 'submitting'}
+        >
+          {state.status === 'submitting' ? 'Submitting…' : 'Notify me'}
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
+
 export function MusicTogetherRegistrationWidget({
   sectionId,
   squareAppId,
   squareLocationId,
   env,
   policiesUrl,
+  comingSoon = false,
 }: MusicTogetherRegistrationWidgetProps) {
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
@@ -479,11 +588,35 @@ export function MusicTogetherRegistrationWidget({
           <Alert severity="error">{state.message}</Alert>
         )}
 
-        {section && section.spotsRemaining <= 0 && (
+        {/*
+          Coming-soon mode: an email-only capture that replaces the entire
+          checkout path (waitlist / opens-soon / registration form). Takes
+          precedence over every section branch below and never initializes
+          Square. The section header stays visible so families see the class.
+        */}
+        {section && comingSoon && (
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="h5" component="h2" gutterBottom>
+                {section.name}
+              </Typography>
+              {section.sessions[0] && (
+                <Typography variant="body2" color="text.secondary">
+                  First class:{' '}
+                  {formatSessionDateTime(section.sessions[0].dateTime)}
+                </Typography>
+              )}
+            </Box>
+            <ComingSoonPanel section={section} functions={functions} />
+          </Stack>
+        )}
+
+        {section && !comingSoon && section.spotsRemaining <= 0 && (
           <WaitlistPanel section={section} functions={functions} />
         )}
 
         {section &&
+          !comingSoon &&
           section.spotsRemaining > 0 &&
           !section.enrollmentOpen && (
             <Alert severity="info">
@@ -498,7 +631,10 @@ export function MusicTogetherRegistrationWidget({
             </Alert>
           )}
 
-        {section && section.spotsRemaining > 0 && section.enrollmentOpen && (
+        {section &&
+          !comingSoon &&
+          section.spotsRemaining > 0 &&
+          section.enrollmentOpen && (
           <Stack spacing={3}>
             {/* Section summary */}
             <Box>

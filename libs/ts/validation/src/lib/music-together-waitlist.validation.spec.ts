@@ -22,15 +22,31 @@ describe('musicTogetherWaitlistValidation', () => {
     expect(musicTogetherWaitlistValidation(noAvail).hasErrors()).toBe(false);
   });
 
-  it('requires section, name, and a valid email', () => {
+  it('requires section and a valid email', () => {
     expect(
       musicTogetherWaitlistValidation({ ...valid, sectionId: '' }).hasErrors('sectionId')
     ).toBe(true);
     expect(
-      musicTogetherWaitlistValidation({ ...valid, name: '' }).hasErrors('name')
-    ).toBe(true);
-    expect(
       musicTogetherWaitlistValidation({ ...valid, email: 'nope' }).hasErrors('email')
+    ).toBe(true);
+  });
+
+  it('allows omitting name (email-only "coming soon" capture)', () => {
+    const noName = { ...valid };
+    delete noName.name;
+    expect(musicTogetherWaitlistValidation(noName).hasErrors()).toBe(false);
+    // An explicit empty-string name is also fine now (optional field).
+    expect(
+      musicTogetherWaitlistValidation({ ...valid, name: '' }).hasErrors('name')
+    ).toBe(false);
+  });
+
+  it('caps name length when present', () => {
+    expect(
+      musicTogetherWaitlistValidation({
+        ...valid,
+        name: 'x'.repeat(100),
+      }).hasErrors('name')
     ).toBe(true);
   });
 

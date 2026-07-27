@@ -19,6 +19,7 @@ import {
   MusicTogetherSectionRepository,
   MusicTogetherRegistrationRepository,
   MusicTogetherScheduledChargeRepository,
+  MusicTogetherWaitlistRepository,
 } from '@maple/firebase/database';
 import { mtHasFailedCharge } from '@maple/ts/domain';
 import type {
@@ -40,11 +41,12 @@ export const getMusicTogetherRoster = createRoleFunction<
     throwNotFound('Music Together section', data.sectionId);
   }
 
-  const [registrations, charges] = await Promise.all([
+  const [registrations, charges, waitlist] = await Promise.all([
     MusicTogetherRegistrationRepository.findBySectionId(data.sectionId),
     MusicTogetherScheduledChargeRepository.findAll({
       sectionId: data.sectionId,
     }),
+    MusicTogetherWaitlistRepository.findBySectionId(data.sectionId),
   ]);
 
   // Group charges by registration for the per-family view.
@@ -69,5 +71,5 @@ export const getMusicTogetherRoster = createRoleFunction<
     }
   );
 
-  return { section, entries };
+  return { section, entries, waitlist };
 }, [Role.Admin, Role.MtTeacher]);
