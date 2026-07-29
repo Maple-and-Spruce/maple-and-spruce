@@ -75,6 +75,7 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   'createRegistrationCheckoutLink',
   'createMusicTogetherRegistration',
   'addMusicTogetherInterest',
+  'addMusicTogetherDemoRsvp',
   'addToClassWaitlist',
   'addToMusicTogetherWaitlist',
   'createCraftClubSubscription',
