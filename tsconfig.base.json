@@ -425,6 +425,12 @@
       "@maple/firebase/maple-functions/add-to-music-together-waitlist": [
         "libs/firebase/maple-functions/add-to-music-together-waitlist/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/add-music-together-demo-rsvp": [
+        "libs/firebase/maple-functions/add-music-together-demo-rsvp/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-music-together-demo-rsvps": [
+        "libs/firebase/maple-functions/get-music-together-demo-rsvps/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-public-music-together-sections": [
         "libs/firebase/maple-functions/get-public-music-together-sections/src/index.ts"
       ],

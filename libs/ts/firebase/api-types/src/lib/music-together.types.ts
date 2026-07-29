@@ -18,6 +18,7 @@ import type {
   MusicTogetherInterest,
   MusicTogetherInterestDemand,
   MusicTogetherWaitlistEntry,
+  MusicTogetherDemoRsvp,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -291,6 +292,30 @@ export interface AddToMusicTogetherWaitlistRequest {
 export interface AddToMusicTogetherWaitlistResponse {
   /** False when the email was already on the list (idempotent no-op). */
   added: boolean;
+}
+
+// ============================================================================
+// Demo classes (public RSVP — free try-a-class; admin read)
+// ============================================================================
+
+export interface AddMusicTogetherDemoRsvpRequest {
+  /** Human-readable demo slot label the family chose (e.g. "Sat Aug 3 · 10:00 AM"). */
+  demoSlot: string;
+  name: string;
+  email: string;
+}
+
+export interface AddMusicTogetherDemoRsvpResponse {
+  /** False when the email had already RSVP'd (the slot/name were updated). */
+  added: boolean;
+}
+
+// No parameters — returns every demo RSVP for the admin viewer.
+export type GetMusicTogetherDemoRsvpsRequest = Record<string, never>;
+
+export interface GetMusicTogetherDemoRsvpsResponse {
+  /** All demo RSVPs, ordered by signup time. */
+  rsvps: MusicTogetherDemoRsvp[];
 }
 
 // ============================================================================

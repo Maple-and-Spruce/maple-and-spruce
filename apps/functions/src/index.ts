@@ -119,6 +119,8 @@ export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class
 export { getRegistrationStatus } from '@maple/firebase/maple-functions/get-registration-status';
 export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/get-public-music-together-section';
 export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
+export { addMusicTogetherDemoRsvp } from '@maple/firebase/maple-functions/add-music-together-demo-rsvp';
+export { getMusicTogetherDemoRsvps } from '@maple/firebase/maple-functions/get-music-together-demo-rsvps';
 export { getPublicMusicTogetherSections } from '@maple/firebase/maple-functions/get-public-music-together-sections';
 export { addMusicTogetherInterest } from '@maple/firebase/maple-functions/add-music-together-interest';
 export { getMusicTogetherInterest } from '@maple/firebase/maple-functions/get-music-together-interest';

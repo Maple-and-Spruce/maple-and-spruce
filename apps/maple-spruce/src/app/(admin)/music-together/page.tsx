@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import {
   Box,
+  Stack,
   Typography,
   Button,
   Table,
@@ -21,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import GroupIcon from '@mui/icons-material/Group';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import {
   getMusicTogetherSeasonLabel,
   mtSectionDerivedStatus,
@@ -35,11 +37,13 @@ import {
   useMusicTogetherSemesters,
   useMusicTogetherRoster,
   useMusicTogetherInterest,
+  useMusicTogetherDemoRsvps,
 } from '../../../hooks';
 import { SectionFormDialog } from './SectionFormDialog';
 import { SemesterFormDialog } from './SemesterFormDialog';
 import { RosterDialog } from './RosterDialog';
 import { InterestListDialog } from './InterestListDialog';
+import { DemoRsvpsDialog } from './DemoRsvpsDialog';
 
 const fmtDate = (d?: Date) =>
   d
@@ -167,6 +171,9 @@ export default function MusicTogetherPage() {
   const [isInterestOpen, setIsInterestOpen] = useState(false);
   const { interestState } = useMusicTogetherInterest();
 
+  const [isDemoRsvpsOpen, setIsDemoRsvpsOpen] = useState(false);
+  const { demoRsvpsState } = useMusicTogetherDemoRsvps();
+
   const semesters = useMemo(
     () => (semestersState.status === 'success' ? semestersState.data : []),
     [semestersState]
@@ -226,13 +233,22 @@ export default function MusicTogetherPage() {
         <Typography variant="h4" component="h1">
           Music Together
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<FavoriteBorderIcon />}
-          onClick={() => setIsInterestOpen(true)}
-        >
-          Interest list
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<EventAvailableIcon />}
+            onClick={() => setIsDemoRsvpsOpen(true)}
+          >
+            Demo RSVPs
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<FavoriteBorderIcon />}
+            onClick={() => setIsInterestOpen(true)}
+          >
+            Interest list
+          </Button>
+        </Stack>
       </Box>
 
       {/* ── Semesters ─────────────────────────────────────────────── */}
@@ -515,6 +531,12 @@ export default function MusicTogetherPage() {
         open={isInterestOpen}
         onClose={() => setIsInterestOpen(false)}
         interestState={interestState}
+      />
+
+      <DemoRsvpsDialog
+        open={isDemoRsvpsOpen}
+        onClose={() => setIsDemoRsvpsOpen(false)}
+        demoRsvpsState={demoRsvpsState}
       />
     </>
   );

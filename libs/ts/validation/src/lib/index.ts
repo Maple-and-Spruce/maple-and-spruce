@@ -97,6 +97,10 @@ export {
   type MusicTogetherWaitlistValidationInput,
 } from './music-together-waitlist.validation';
 export {
+  musicTogetherDemoRsvpValidation,
+  type MusicTogetherDemoRsvpValidationInput,
+} from './music-together-demo-rsvp.validation';
+export {
   musicTogetherInterestValidation,
   type MusicTogetherInterestValidationInput,
 } from './music-together-interest.validation';
