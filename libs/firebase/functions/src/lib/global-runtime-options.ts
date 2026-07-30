@@ -17,7 +17,23 @@
  * This is an internal admin portal for a small business: a handful of
  * staff plus at most a few simultaneous public checkouts. Nothing here
  * ever needs to fan out to 100 instances. Capping `maxInstances` globally
- * collapses the reservation ~33x and gives deploys comfortable headroom.
+ * collapses the reservation and gives deploys comfortable headroom.
+ *
+ * WHY 1 (not 3)
+ * -------------
+ * The quota is hit *transiently during deploys*, not at idle. Updating a
+ * function makes a NEW revision whose reservation stacks on top of the OLD
+ * revision until Cloud Run garbage-collects it minutes later, and firebase
+ * updates every function in a codebase concurrently. A broad merge that
+ * redeploys all ~14 functions in a codebase at once therefore briefly
+ * reserves `2 x maxInstances x cpu` for the whole codebase — which at
+ * maxInstances=3 kept punching through the region's Total-CPU ceiling
+ * (repeated "Quota exceeded" failures on the maple-sync deploy, which has
+ * the most functions and deploys last). Dropping the cap to 1 shrinks both
+ * the idle baseline AND that deploy-overlap spike ~3x, so a full-codebase
+ * redeploy fits under the ceiling without raising the (already large) quota.
+ * `concurrency: 80` means a single instance still serves 80 simultaneous
+ * requests, so 1 is ample for this portal's real load.
  *
  * ORDERING CONTRACT (IMPORTANT)
  * -----------------------------
@@ -43,9 +59,10 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 
 /**
  * Max concurrent instances any single function may scale to. With HTTP
- * functions running `concurrency: 80`, three instances already absorb 240
- * simultaneous requests — far beyond this portal's real load.
+ * functions running `concurrency: 80`, a single instance already absorbs 80
+ * simultaneous requests — far beyond this portal's real load. Kept at 1 so
+ * the deploy-time reservation overlap (see "WHY 1" above) stays small.
  */
-export const GLOBAL_MAX_INSTANCES = 3;
+export const GLOBAL_MAX_INSTANCES = 1;
 
 setGlobalOptions({ maxInstances: GLOBAL_MAX_INSTANCES });

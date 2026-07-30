@@ -67,19 +67,24 @@ Functions.endpoint
 ### Global `maxInstances` cap (every function, every codebase)
 
 `libs/firebase/functions/src/lib/global-runtime-options.ts` calls
-`setGlobalOptions({ maxInstances: GLOBAL_MAX_INSTANCES })` (currently **3**). Each of the
+`setGlobalOptions({ maxInstances: GLOBAL_MAX_INSTANCES })` (currently **1**). Each of the
 4 entry points imports it on its **first line**, before any `export { … } from` re-export.
 
 **Why:** unset `maxInstances` inherits the gen-2 backend default of **100**, and Cloud Run's
 "Total CPU allocation, per project per region" quota reserves `maxInstances × cpu` per revision.
-Rolling deploys count the new revision on top of the old, so the default-100 reservation tipped
-the region over quota and failed deploys with *"Quota exceeded for total allowable CPU per project
-per region."* This is a small-business admin portal — nothing needs to fan out to 100.
+A deploy stacks the new revision's reservation on top of the old (until GC minutes later), and
+firebase updates a whole codebase's functions concurrently — so a broad merge briefly reserves
+`2 × maxInstances × cpu` for every function in the codebase at once. At the default 100 this failed
+outright; even at 3 it intermittently tipped the region over on full-codebase redeploys (the
+maple-sync deploy, most functions + deploys last). **1** keeps both the idle baseline and that
+deploy-overlap spike minimal. `concurrency: 80` means one instance still serves 80 simultaneous
+requests, so 1 is ample for this portal. Raising the (already large) region quota was the
+alternative; capping lower is the more principled fix for a tiny app.
 
 **Ordering contract:** `onRequest`/`onDocumentWritten`/`onSchedule` bake global options into
 `__endpoint` at definition time, and re-exports evaluate before the entry-point body — so the
 side-effect import must stay first. Don't move it below the re-exports or convert it to a
-body-level call, or the cap silently reverts to 100. Per-function options (`withOptions({ maxInstances })`
+body-level call, or the cap silently reverts to the default 100. Per-function options (`withOptions({ maxInstances })`
 or a trigger's own option object) still override the global upward when a function truly needs it.
 
 ## Warmup
