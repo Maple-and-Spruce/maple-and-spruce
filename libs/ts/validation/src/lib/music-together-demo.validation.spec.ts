@@ -16,6 +16,27 @@ describe('musicTogetherDemoValidation', () => {
     expect(result.hasErrors()).toBe(false);
   });
 
+  it('treats an absent duration as valid (undefined, null, or omitted)', () => {
+    // A blank duration field persists as null; a strict `!== undefined` guard
+    // used to let null reach enforce() and wrongly rejected the demo.
+    expect(
+      musicTogetherDemoValidation({ ...valid, durationMinutes: undefined }).hasErrors()
+    ).toBe(false);
+    expect(
+      musicTogetherDemoValidation({ ...valid, durationMinutes: null }).hasErrors()
+    ).toBe(false);
+    const { durationMinutes: _omit, ...noDuration } = valid;
+    expect(musicTogetherDemoValidation(noDuration).hasErrors()).toBe(false);
+  });
+
+  it('rejects a non-positive duration when one is given', () => {
+    expect(
+      musicTogetherDemoValidation({ ...valid, durationMinutes: 0 }).hasErrors(
+        'durationMinutes'
+      )
+    ).toBe(true);
+  });
+
   it('requires a dateTime', () => {
     const result = musicTogetherDemoValidation({ ...valid, dateTime: undefined });
     expect(result.hasErrors('dateTime')).toBe(true);

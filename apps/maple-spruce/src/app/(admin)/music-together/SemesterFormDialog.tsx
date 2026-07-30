@@ -145,8 +145,12 @@ export function SemesterFormDialog({
           ? fromDateInput(enrollmentOpensAt)
           : undefined,
         notes: notes.trim() || undefined,
-        breaks: cleanBreaks.length > 0 ? cleanBreaks : undefined,
-        weatherMakeupDates: cleanWeather.length > 0 ? cleanWeather : undefined,
+        // Always send the arrays (even empty) — this is a full-form edit, so an
+        // emptied array must CLEAR the field. Sending `undefined` omits it from
+        // the partial update, leaving the old value (e.g. a deleted break)
+        // stranded in Firestore — which read as "the edit didn't save".
+        breaks: cleanBreaks,
+        weatherMakeupDates: cleanWeather,
       };
       await onSubmit(input);
     } catch (e) {
