@@ -15,6 +15,9 @@ import {
 } from '@mui/material';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import TodayIcon from '@mui/icons-material/Today';
 import {
   getRoomLabel,
   groupRoomScheduleByDay,
@@ -25,9 +28,27 @@ import {
 } from '@maple/ts/domain';
 import { useRoomScheduleRange } from './useRoomScheduleRange';
 
-const HORIZON_OPTIONS = [2, 4, 8] as const;
+// 2–12 weeks: a single 12-week view spans ~3 months, and Prev/Next page by the
+// selected horizon so repeatedly clicking Next walks the whole year.
+const HORIZON_OPTIONS = [2, 4, 8, 12] as const;
 const DEFAULT_HORIZON_WEEKS = 4;
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+/** "Jul 30 – Aug 27, 2026" — the span of the currently visible window. */
+export function formatWindowRange(start: Date, end: Date): string {
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const startStr = start.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+  const endStr = end.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `${startStr} – ${endStr}`;
+}
 
 /** Chip label + MUI color for each calendar event type. */
 const TYPE_CHIP: Record<
@@ -185,14 +206,22 @@ export interface RoomScheduleAgendaProps {
  */
 export function RoomScheduleAgenda({ room, bookHref }: RoomScheduleAgendaProps) {
   const [horizonWeeks, setHorizonWeeks] = useState<number>(DEFAULT_HORIZON_WEEKS);
+  // Weeks the visible window is shifted from today (0 = now-anchored). Prev/Next
+  // step this by the current horizon; Today resets it to 0.
+  const [offsetWeeks, setOffsetWeeks] = useState(0);
 
-  // Pin "now" to the mounted horizon so the query window is stable across
-  // renders; the hook itself buckets refetches on the calendar day.
+  // Pin "today" once so the window is stable across renders (and Today always
+  // returns to the same now-anchored span). The hook buckets refetches on the
+  // calendar day of start/end, so the window only refetches when it moves.
+  const [todayAnchor] = useState(() => new Date());
+
   const { start, end } = useMemo(() => {
-    const startDate = new Date();
+    const startDate = new Date(
+      todayAnchor.getTime() + offsetWeeks * MS_PER_WEEK
+    );
     const endDate = new Date(startDate.getTime() + horizonWeeks * MS_PER_WEEK);
     return { start: startDate, end: endDate };
-  }, [horizonWeeks]);
+  }, [todayAnchor, offsetWeeks, horizonWeeks]);
 
   const { roomScheduleState } = useRoomScheduleRange(room, start, end);
 
@@ -200,6 +229,11 @@ export function RoomScheduleAgenda({ room, bookHref }: RoomScheduleAgendaProps) 
     if (roomScheduleState.status !== 'success') return [];
     return groupRoomScheduleByDay(roomScheduleState.data, start, end);
   }, [roomScheduleState, start, end]);
+
+  const rangeLabel = formatWindowRange(start, end);
+  const goPrev = () => setOffsetWeeks((o) => o - horizonWeeks);
+  const goNext = () => setOffsetWeeks((o) => o + horizonWeeks);
+  const goToday = () => setOffsetWeeks(0);
 
   return (
     <Box>
@@ -210,7 +244,7 @@ export function RoomScheduleAgenda({ room, bookHref }: RoomScheduleAgendaProps) 
           gap: 1.5,
           alignItems: 'center',
           justifyContent: 'space-between',
-          mb: 2,
+          mb: 1.5,
         }}
       >
         <ToggleButtonGroup
@@ -239,6 +273,56 @@ export function RoomScheduleAgenda({ room, bookHref }: RoomScheduleAgendaProps) 
         )}
       </Box>
 
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1,
+          alignItems: 'center',
+          mb: 2,
+        }}
+      >
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ChevronLeftIcon />}
+          onClick={goPrev}
+          aria-label="previous weeks"
+        >
+          Prev
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          endIcon={<ChevronRightIcon />}
+          onClick={goNext}
+          aria-label="next weeks"
+        >
+          Next
+        </Button>
+        <Button
+          size="small"
+          startIcon={<TodayIcon />}
+          onClick={goToday}
+          disabled={offsetWeeks === 0}
+          aria-label="jump back to today"
+        >
+          Today
+        </Button>
+        <Typography
+          variant="subtitle2"
+          data-testid="room-schedule-range"
+          aria-live="polite"
+          sx={{
+            ml: 'auto',
+            color: 'text.secondary',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {rangeLabel}
+        </Typography>
+      </Box>
+
       {roomScheduleState.status === 'loading' ||
       roomScheduleState.status === 'idle' ? (
         <Stack spacing={1}>
@@ -263,12 +347,12 @@ export function RoomScheduleAgenda({ room, bookHref }: RoomScheduleAgendaProps) 
         >
           <EventBusyIcon fontSize="small" />
           <Typography variant="body2">
-            No {getRoomLabel(room)} bookings in the next {horizonWeeks} weeks —
-            it&apos;s open the whole time.
+            No {getRoomLabel(room)} bookings for {rangeLabel} — it&apos;s open the
+            whole time.
           </Typography>
         </Box>
       ) : (
-        <RoomScheduleAgendaList days={days} now={start} />
+        <RoomScheduleAgendaList days={days} now={todayAnchor} />
       )}
     </Box>
   );
