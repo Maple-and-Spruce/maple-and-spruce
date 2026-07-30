@@ -9,7 +9,17 @@
  * parses them) — unlike Date fields, ISO survives JSON serialization
  * unambiguously.
  */
-import type { CalendarEventType, Room } from '@maple/ts/domain';
+import type { CalendarEventType, LessonBlock, Room } from '@maple/ts/domain';
+
+/**
+ * A lesson block serialized for the wire — the fit-relevant fields only.
+ * LessonBlock's Date fields (createdAt/updatedAt) don't survive JSON cleanly
+ * and aren't needed to render or slot the week.
+ */
+export type MyWeekBlock = Pick<
+  LessonBlock,
+  'id' | 'teacherId' | 'dayOfWeek' | 'startMinutes' | 'endMinutes' | 'label'
+>;
 
 /** Whether a commitment belongs to the caller or is a shared store-wide event. */
 export type MyWeekOwnership = 'mine' | 'shared';
@@ -37,6 +47,12 @@ export interface MyWeekCommitment {
   room: Room | null;
   ownership: MyWeekOwnership;
   cadence: MyWeekCadence;
+  /**
+   * True only for `mine` lesson commitments that aren't attributed to a
+   * fitting block (#689) — the "needs a block" flag. Always false for
+   * classes, shared events, and block-attributed lessons.
+   */
+  unattributed: boolean;
 }
 
 export interface GetMyWeekRequest {
@@ -50,6 +66,8 @@ export interface GetMyWeekRequest {
 
 export interface GetMyWeekResponse {
   commitments: MyWeekCommitment[];
+  /** The caller's own weekly blocks — the containers the week is laid out in. */
+  blocks: MyWeekBlock[];
   /** True when the caller isn't linked to any instructor record (no "mine"). */
   unlinked: boolean;
 }

@@ -23,11 +23,17 @@ import {
   createRoleFunction,
   instructorIdForUser,
 } from '@maple/firebase/functions';
-import { CalendarEventRepository } from '@maple/firebase/database';
-import type { CalendarEvent } from '@maple/ts/domain';
+import {
+  CalendarEventRepository,
+  LessonBlockRepository,
+  LessonRepository,
+} from '@maple/firebase/database';
+import { isLessonUnattributed } from '@maple/ts/domain';
+import type { CalendarEvent, LessonBlock } from '@maple/ts/domain';
 import type {
   GetMyWeekRequest,
   GetMyWeekResponse,
+  MyWeekBlock,
   MyWeekCommitment,
 } from '@maple/ts/firebase/api-types';
 
@@ -70,6 +76,8 @@ export function buildCommitments(
   to: Date,
   lookbackStart: Date,
   myInstructorId: string,
+  /** sourceRefs ("lessons/{id}") of the caller's lessons that need a block. */
+  unattributedRefs: Set<string> = new Set(),
 ): MyWeekCommitment[] {
   // key -> set of distinct week indices it occurred in
   const weeksByKey = new Map<string, Set<number>>();
@@ -101,8 +109,24 @@ export function buildCommitments(
         room: e.room ?? null,
         ownership: e.ownerInstructorId === myInstructorId ? 'mine' : 'shared',
         cadence: (weeks?.size ?? 0) >= 2 ? 'recurring' : 'one-off',
+        unattributed:
+          e.type === 'lesson' &&
+          !!e.sourceRef &&
+          unattributedRefs.has(e.sourceRef),
       };
     });
+}
+
+/** Serialize a block for the wire (drop Date fields). */
+function toMyWeekBlock(block: LessonBlock): MyWeekBlock {
+  return {
+    id: block.id,
+    teacherId: block.teacherId,
+    dayOfWeek: block.dayOfWeek,
+    startMinutes: block.startMinutes,
+    endMinutes: block.endMinutes,
+    label: block.label,
+  };
 }
 
 export const getMyWeek = createRoleFunction<
@@ -113,7 +137,7 @@ export const getMyWeek = createRoleFunction<
     const myInstructorId = await instructorIdForUser(context.uid);
     if (!myInstructorId) {
       // Not linked to any instructor (e.g. a pure admin) — no "mine" to anchor.
-      return { commitments: [], unlinked: true };
+      return { commitments: [], blocks: [], unlinked: true };
     }
 
     const now = new Date();
@@ -125,11 +149,19 @@ export const getMyWeek = createRoleFunction<
       from.getTime() - LOOKBACK_WEEKS * 7 * DAY_MS,
     );
 
-    // One range query over [lookbackStart, to): the target week to display plus
-    // the lookback needed to classify recurrence. Partition + classify in memory.
-    const events = await CalendarEventRepository.findByStartInRange(
-      lookbackStart,
-      to,
+    // One range query over [lookbackStart, to) for recurrence classification,
+    // plus the teacher's blocks and this week's lessons to flag unattributed
+    // ones (#689).
+    const [events, blocks, lessons] = await Promise.all([
+      CalendarEventRepository.findByStartInRange(lookbackStart, to),
+      LessonBlockRepository.findAll({ teacherId: myInstructorId }),
+      LessonRepository.findAll({ teacherId: myInstructorId, from, to }),
+    ]);
+
+    const unattributedRefs = new Set(
+      lessons
+        .filter((lesson) => isLessonUnattributed(lesson, blocks))
+        .map((lesson) => `lessons/${lesson.id}`),
     );
 
     const commitments = buildCommitments(
@@ -138,9 +170,14 @@ export const getMyWeek = createRoleFunction<
       to,
       lookbackStart,
       myInstructorId,
+      unattributedRefs,
     );
 
-    return { commitments, unlinked: false };
+    return {
+      commitments,
+      blocks: blocks.map(toMyWeekBlock),
+      unlinked: false,
+    };
   },
   [Role.Admin, Role.LessonTeacher],
 );
