@@ -26,6 +26,10 @@ export { useClassCategories } from './lib/useClassCategories';
 // Phase 4: Music Lessons
 export { useStudents } from './lib/useStudents';
 export { useLessons, type UseLessonsOptions } from './lib/useLessons';
+export {
+  useLessonBlocks,
+  type UseLessonBlocksOptions,
+} from './lib/useLessonBlocks';
 export { useInvoices, type UseInvoicesOptions } from './lib/useInvoices';
 export {
   useTeacherPayouts,
@@ -82,10 +86,7 @@ export {
 export { useFeatureFlags } from './lib/useFeatureFlags';
 
 // Phase 3c: Registration & Discounts
-export {
-  useDiscounts,
-  type UseDiscountsFilters,
-} from './lib/useDiscounts';
+export { useDiscounts, type UseDiscountsFilters } from './lib/useDiscounts';
 export {
   useRegistrations,
   type UseRegistrationsFilters,
