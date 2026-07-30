@@ -1,30 +1,76 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
-import type { GetMusicTogetherDemoRsvpsResponse } from '@maple/ts/firebase/api-types';
+import type {
+  GetMusicTogetherDemoRsvpsResponse,
+  MusicTogetherDemo,
+} from '@maple/ts/firebase/api-types';
 import { DemoRsvpsDialog } from './DemoRsvpsDialog';
 
+const libraryDemo: MusicTogetherDemo = {
+  id: 'demo-1',
+  dateTime: new Date('2030-08-03T14:00:00Z'),
+  location: 'Morgantown Public Library',
+  capacityFamilies: 2,
+  durationMinutes: 45,
+  visible: true,
+  createdAt: new Date('2030-07-01T00:00:00Z'),
+};
+
+const studioDemo: MusicTogetherDemo = {
+  id: 'demo-2',
+  dateTime: new Date('2030-08-04T13:00:00Z'),
+  location: 'Maple & Spruce Studio',
+  capacityFamilies: 8,
+  visible: true,
+  createdAt: new Date('2030-07-01T00:00:00Z'),
+};
+
 const withRsvps: GetMusicTogetherDemoRsvpsResponse = {
-  rsvps: [
+  demos: [
     {
-      id: 'jamie@example.com',
-      demoSlot: 'Sat Aug 3 · 10:00 AM',
-      name: 'Jamie Rivera',
-      email: 'jamie@example.com',
-      createdAt: new Date('2030-07-01T00:00:00Z'),
+      demo: libraryDemo,
+      confirmed: [
+        {
+          id: 'jamie@example.com',
+          demoId: 'demo-1',
+          name: 'Jamie Rivera',
+          email: 'jamie@example.com',
+          status: 'confirmed',
+          createdAt: new Date('2030-07-01T00:00:00Z'),
+        },
+        {
+          id: 'dana@example.com',
+          demoId: 'demo-1',
+          name: 'Dana Brooks',
+          email: 'dana@example.com',
+          status: 'confirmed',
+          createdAt: new Date('2030-07-02T00:00:00Z'),
+        },
+      ],
+      waitlisted: [
+        {
+          id: 'sky@example.com',
+          demoId: 'demo-1',
+          name: 'Sky Nguyen',
+          email: 'sky@example.com',
+          status: 'waitlisted',
+          createdAt: new Date('2030-07-03T00:00:00Z'),
+        },
+      ],
     },
     {
-      id: 'dana@example.com',
-      demoSlot: 'Sat Aug 3 · 10:00 AM',
-      name: 'Dana Brooks',
-      email: 'dana@example.com',
-      createdAt: new Date('2030-07-02T00:00:00Z'),
-    },
-    {
-      id: 'pat@example.com',
-      demoSlot: 'Sun Aug 4 · 9:00 AM',
-      name: 'Pat Lee',
-      email: 'pat@example.com',
-      createdAt: new Date('2030-07-03T00:00:00Z'),
+      demo: studioDemo,
+      confirmed: [
+        {
+          id: 'pat@example.com',
+          demoId: 'demo-2',
+          name: 'Pat Lee',
+          email: 'pat@example.com',
+          status: 'confirmed',
+          createdAt: new Date('2030-07-03T00:00:00Z'),
+        },
+      ],
+      waitlisted: [],
     },
   ],
 };
@@ -47,7 +93,7 @@ export const WithRsvps: Story = {
 
 export const Empty: Story = {
   args: {
-    demoRsvpsState: { status: 'success', data: { rsvps: [] } },
+    demoRsvpsState: { status: 'success', data: { demos: [] } },
   },
 };
 
@@ -62,7 +108,7 @@ export const ErrorState: Story = {
 };
 
 /**
- * Renders RSVPs grouped by demo slot (with per-group counts) and copies a
+ * Renders demos grouped with confirmed + waitlisted counts and copies a
  * group's emails to the clipboard.
  */
 export const GroupsAndCopiesEmails: Story = {
@@ -73,19 +119,23 @@ export const GroupsAndCopiesEmails: Story = {
       expect(canvas.getByRole('dialog')).toBeInTheDocument()
     );
 
-    // Two slot groups, each with its count.
+    // Two demo groups labelled by date + location.
     await expect(
-      canvas.getByText(/Sat Aug 3 · 10:00 AM \(2\)/)
+      canvas.getByText(/Morgantown Public Library/)
     ).toBeInTheDocument();
     await expect(
-      canvas.getByText(/Sun Aug 4 · 9:00 AM \(1\)/)
+      canvas.getByText(/Maple & Spruce Studio/)
     ).toBeInTheDocument();
+    // Confirmed / waitlist counts.
+    await expect(canvas.getByText(/2 \/ 2 confirmed/)).toBeInTheDocument();
+    await expect(canvas.getByText(/1 waitlisted/)).toBeInTheDocument();
     await expect(canvas.getByText('Jamie Rivera')).toBeInTheDocument();
+    await expect(canvas.getByText('Sky Nguyen')).toBeInTheDocument();
     await expect(canvas.getByText('Pat Lee')).toBeInTheDocument();
 
-    // Copy emails writes the first group's addresses. `navigator.clipboard` is
-    // a getter-only property in the test browser, so define it (Object.assign
-    // throws "Cannot set property clipboard").
+    // Copy emails writes the first demo's addresses (confirmed + waitlisted).
+    // `navigator.clipboard` is a getter-only property in the test browser, so
+    // define it (Object.assign throws "Cannot set property clipboard").
     const writeText = fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
@@ -96,14 +146,14 @@ export const GroupsAndCopiesEmails: Story = {
     await userEvent.click(copyButtons[0]);
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
-        'jamie@example.com, dana@example.com'
+        'jamie@example.com, dana@example.com, sky@example.com'
       )
     );
   },
 };
 
 export const EmptyState: Story = {
-  args: { demoRsvpsState: { status: 'success', data: { rsvps: [] } } },
+  args: { demoRsvpsState: { status: 'success', data: { demos: [] } } },
   play: async () => {
     const canvas = body();
     await waitFor(() =>

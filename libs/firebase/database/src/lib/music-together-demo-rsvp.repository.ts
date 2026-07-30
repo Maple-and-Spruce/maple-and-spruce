@@ -1,92 +1,115 @@
 /**
  * Music Together Demo RSVP Repository
  *
- * Stored in the flat collection `musicTogetherDemoRsvps`, keyed by the
- * lowercased/trimmed email so a family's RSVP is idempotent. Unlike the
- * waitlist, demo RSVPs are NOT section-scoped — they're free try-a-class
- * signups keyed to a human-readable slot label.
+ * Stored as a subcollection of the demo
+ * (`musicTogetherDemos/{demoId}/rsvps/{emailKey}`) so RSVPs scope per demo and
+ * are cleaned up if the demo is deleted (mirrors the section waitlist).
  *
- * A repeat RSVP with the same email UPDATES the chosen slot/name (so a family
- * can change their mind about which demo to attend) and reports `created:
- * false`. Entries are read back ORDERED by signup time.
+ * The doc id is the lowercased email, making RSVPs idempotent per demo. `add`
+ * runs in a TRANSACTION that counts existing `confirmed` RSVPs and assigns
+ * `confirmed` while under `capacityFamilies`, else `waitlisted` — overbooking-
+ * safe. A repeat RSVP (same demo + email) preserves the family's existing
+ * place and status. Entries are read back ORDERED by signup time.
  */
 import { getDb, toDate } from './utilities/database.config';
 import type {
   MusicTogetherDemoRsvp,
-  CreateMusicTogetherDemoRsvpInput,
+  MusicTogetherDemoRsvpStatus,
 } from '@maple/ts/domain';
 
-const COLLECTION = 'musicTogetherDemoRsvps';
+const PARENT_COLLECTION = 'musicTogetherDemos';
+const SUBCOLLECTION = 'rsvps';
 
 /** Lowercase + trim an email into an idempotent Firestore-safe document id. */
 export function mtDemoRsvpEmailKey(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function collectionRef(): FirebaseFirestore.CollectionReference {
-  return getDb().collection(COLLECTION);
+function rsvpsRef(demoId: string): FirebaseFirestore.CollectionReference {
+  return getDb()
+    .collection(PARENT_COLLECTION)
+    .doc(demoId)
+    .collection(SUBCOLLECTION);
 }
 
 function docToEntry(
+  demoId: string,
   doc: FirebaseFirestore.DocumentSnapshot
 ): MusicTogetherDemoRsvp | undefined {
   if (!doc.exists) return undefined;
   const data = doc.data()!;
   return {
     id: doc.id,
-    demoSlot: data.demoSlot,
+    demoId,
     name: data.name,
     email: data.email,
+    status: (data.status as MusicTogetherDemoRsvpStatus) ?? 'confirmed',
     createdAt: toDate(data.createdAt),
   };
 }
 
 export const MusicTogetherDemoRsvpRepository = {
   /**
-   * Idempotent RSVP. If the email already exists, UPDATE its demoSlot/name
-   * (keeping the original createdAt) and return `created: false`; otherwise
-   * create a new entry stamped with `createdAt` and return `created: true`.
+   * Idempotent, capacity-gated RSVP inside a transaction.
+   *
+   * - Re-RSVP (same demo + email) → returns the existing entry unchanged
+   *   (`created: false`), keeping its place and status.
+   * - New RSVP → `confirmed` when the confirmed count is under
+   *   `capacityFamilies`, otherwise `waitlisted`.
    */
-  async add(
-    input: CreateMusicTogetherDemoRsvpInput
-  ): Promise<{ entry: MusicTogetherDemoRsvp; created: boolean }> {
+  async add(input: {
+    demoId: string;
+    name: string;
+    email: string;
+    capacityFamilies: number;
+  }): Promise<{ entry: MusicTogetherDemoRsvp; created: boolean }> {
+    const db = getDb();
     const id = mtDemoRsvpEmailKey(input.email);
-    const ref = collectionRef().doc(id);
-    const existing = await ref.get();
+    const ref = rsvpsRef(input.demoId).doc(id);
 
-    const demoSlot = input.demoSlot.trim();
-    const name = input.name.trim();
-    const email = input.email.trim();
+    return db.runTransaction(async (tx) => {
+      const existing = await tx.get(ref);
+      if (existing.exists) {
+        return { entry: docToEntry(input.demoId, existing)!, created: false };
+      }
 
-    if (existing.exists) {
-      // Update the family's chosen slot + name; keep their original signup time.
-      await ref.set({ demoSlot, name }, { merge: true });
-      const prev = existing.data()!;
+      // Count confirmed RSVPs for this demo to decide the new status. Read
+      // inside the transaction so concurrent RSVPs can't both take the last seat.
+      const confirmedSnap = await tx.get(
+        rsvpsRef(input.demoId).where('status', '==', 'confirmed')
+      );
+      const status: MusicTogetherDemoRsvpStatus =
+        confirmedSnap.size < input.capacityFamilies ? 'confirmed' : 'waitlisted';
+
+      const name = input.name.trim();
+      const email = input.email.trim();
+      const createdAt = new Date();
+      tx.set(ref, { name, email, status, createdAt });
+
       return {
-        entry: {
-          id,
-          demoSlot,
-          name,
-          email: prev.email ?? email,
-          createdAt: toDate(prev.createdAt),
-        },
-        created: false,
+        entry: { id, demoId: input.demoId, name, email, status, createdAt },
+        created: true,
       };
-    }
-
-    const createdAt = new Date();
-    await ref.set({ demoSlot, name, email, createdAt });
-    return {
-      entry: { id, demoSlot, name, email, createdAt },
-      created: true,
-    };
+    });
   },
 
-  /** All demo RSVPs, ordered by signup time (ascending). */
-  async findAll(): Promise<MusicTogetherDemoRsvp[]> {
-    const snapshot = await collectionRef().orderBy('createdAt', 'asc').get();
+  /** All RSVPs for a demo, ordered by signup time (ascending). */
+  async findByDemoId(demoId: string): Promise<MusicTogetherDemoRsvp[]> {
+    const snapshot = await rsvpsRef(demoId).orderBy('createdAt', 'asc').get();
     return snapshot.docs
-      .map((doc) => docToEntry(doc))
+      .map((doc) => docToEntry(demoId, doc))
       .filter((e): e is MusicTogetherDemoRsvp => e !== undefined);
+  },
+
+  /** Count RSVPs for a demo in a given status (confirmed / waitlisted). */
+  async countByDemoIdAndStatus(
+    demoId: string,
+    status: MusicTogetherDemoRsvpStatus
+  ): Promise<number> {
+    const snapshot = await rsvpsRef(demoId)
+      .where('status', '==', status)
+      .count()
+      .get();
+    return snapshot.data().count;
   },
 };

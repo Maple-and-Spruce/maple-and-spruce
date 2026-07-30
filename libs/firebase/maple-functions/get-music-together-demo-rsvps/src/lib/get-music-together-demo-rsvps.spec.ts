@@ -1,61 +1,52 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  demoRsvpFindAll: vi.fn(),
-  capturedRoles: null as unknown[] | null,
+  capturedHandler: null as ((d: unknown) => Promise<unknown>) | null,
+  findAll: vi.fn(),
+  findByDemoId: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  Role: {
-    Admin: 'admin',
-    MtTeacher: 'mt-teacher',
-    Clerk: 'clerk',
-    LessonTeacher: 'lesson-teacher',
+  createRoleFunction: (
+    handler: typeof mocks.capturedHandler,
+    _roles: unknown
+  ) => {
+    mocks.capturedHandler = handler;
+    return 'mock-fn';
   },
-  createRoleFunction: (h: unknown, roles: unknown[]) => {
-    mocks.capturedRoles = roles;
-    return h;
-  },
+  Role: { Admin: 'admin', MtTeacher: 'mt-teacher' },
 }));
+
 vi.mock('@maple/firebase/database', () => ({
-  MusicTogetherDemoRsvpRepository: { findAll: mocks.demoRsvpFindAll },
+  MusicTogetherDemoRepository: { findAll: mocks.findAll },
+  MusicTogetherDemoRsvpRepository: { findByDemoId: mocks.findByDemoId },
 }));
 
-import { getMusicTogetherDemoRsvps } from './get-music-together-demo-rsvps';
-
-const handler = getMusicTogetherDemoRsvps as unknown as (
-  d: unknown,
-  c?: unknown
-) => Promise<{ rsvps: { email: string; demoSlot: string }[] }>;
+import './get-music-together-demo-rsvps';
 
 describe('getMusicTogetherDemoRsvps', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it('returns all demo RSVPs from the repository', async () => {
-    mocks.demoRsvpFindAll.mockResolvedValue([
-      { id: 'a@example.com', email: 'a@example.com', demoSlot: 'Sat 10am' },
-      { id: 'b@example.com', email: 'b@example.com', demoSlot: 'Sun 9am' },
+  it('groups each demo with its confirmed + waitlisted RSVPs', async () => {
+    mocks.findAll.mockResolvedValue([{ id: 'demo-1', location: 'Library' }]);
+    mocks.findByDemoId.mockResolvedValue([
+      { id: 'a@x.com', demoId: 'demo-1', status: 'confirmed', name: 'A' },
+      { id: 'b@x.com', demoId: 'demo-1', status: 'waitlisted', name: 'B' },
+      { id: 'c@x.com', demoId: 'demo-1', status: 'confirmed', name: 'C' },
     ]);
 
-    const result = await handler({}, {});
+    const result = (await mocks.capturedHandler!({})) as {
+      demos: {
+        demo: { id: string };
+        confirmed: { id: string }[];
+        waitlisted: { id: string }[];
+      }[];
+    };
 
-    expect(mocks.demoRsvpFindAll).toHaveBeenCalled();
-    expect(result.rsvps).toHaveLength(2);
-    expect(result.rsvps.map((r) => r.email)).toEqual([
-      'a@example.com',
-      'b@example.com',
-    ]);
-  });
-
-  it('returns an empty list when there are no RSVPs', async () => {
-    mocks.demoRsvpFindAll.mockResolvedValue([]);
-    const result = await handler({}, {});
-    expect(result.rsvps).toEqual([]);
-  });
-
-  it('is gated to Admin + MtTeacher', () => {
-    expect(mocks.capturedRoles).toEqual(['admin', 'mt-teacher']);
+    expect(result.demos).toHaveLength(1);
+    const group = result.demos[0];
+    expect(group.demo.id).toBe('demo-1');
+    expect(group.confirmed.map((r) => r.id)).toEqual(['a@x.com', 'c@x.com']);
+    expect(group.waitlisted.map((r) => r.id)).toEqual(['b@x.com']);
   });
 });
