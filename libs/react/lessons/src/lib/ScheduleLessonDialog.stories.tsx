@@ -6,11 +6,13 @@ import {
   mockInstructor2,
   mockInstructorPercentage,
   mockLessonBlock,
+  mockLessonBlockOtherTeacher,
 } from '@maple/react/storybook-fixtures';
 
 const instructors = [mockInstructor, mockInstructor2, mockInstructorPercentage];
-// One block for the default teacher (instructor-001) so it auto-selects.
-const blocks = [mockLessonBlock];
+// Exactly one block per selectable teacher (instructor-001 + -002) so the
+// dialog auto-selects on open and on a substitute switch.
+const blocks = [mockLessonBlock, mockLessonBlockOtherTeacher];
 
 const meta = {
   component: ScheduleLessonDialog,

@@ -44,7 +44,7 @@ export const PicksTeacherAndSubmits: Story = {
     const dialog = within(canvas.getByRole('dialog'));
 
     // Choose a teacher (weekday + 3:00–6:00 PM window default).
-    await userEvent.click(dialog.getByRole('combobox', { name: /teacher/i }));
+    await userEvent.click(dialog.getByLabelText(/^teacher$/i));
     await userEvent.click(
       await canvas.findByRole('option', { name: mockInstructor.name }),
     );

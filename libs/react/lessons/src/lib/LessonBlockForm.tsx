@@ -151,8 +151,9 @@ export function LessonBlockForm({
           )}
 
           <FormControl fullWidth error={!!getFieldError('teacherId')}>
-            <InputLabel>Teacher</InputLabel>
+            <InputLabel id="lbf-teacher-label">Teacher</InputLabel>
             <Select
+              labelId="lbf-teacher-label"
               value={teacherId.value}
               label="Teacher"
               disabled={isEdit}
@@ -173,8 +174,9 @@ export function LessonBlockForm({
           </FormControl>
 
           <FormControl fullWidth error={!!getFieldError('dayOfWeek')}>
-            <InputLabel>Day of week</InputLabel>
+            <InputLabel id="lbf-dow-label">Day of week</InputLabel>
             <Select
+              labelId="lbf-dow-label"
               value={dayOfWeek.value}
               label="Day of week"
               onChange={(e) => (dayOfWeek.value = Number(e.target.value))}
