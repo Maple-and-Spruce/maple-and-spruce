@@ -165,6 +165,30 @@ export const EditsBreaksAndWeatherDates: Story = {
   },
 };
 
+/**
+ * Regression: removing a semester's only break must submit `breaks: []`, not
+ * `undefined` — otherwise the partial update omits the field and the deleted
+ * break stays stranded in Firestore ("the edit didn't save").
+ */
+export const ClearingABreakSubmitsEmptyArray: Story = {
+  args: { semester: mockSemester },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(
+      canvas.getByRole('button', { name: /remove break 1/i })
+    );
+    await expect(canvas.queryByLabelText(/break 1 label/i)).toBeNull();
+    const save = canvas.getByRole('button', { name: /save/i });
+    await waitFor(() => expect(save).toBeEnabled());
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ breaks: [] })
+      )
+    );
+  },
+};
+
 /** Touch every field, then submit — exercises each field's change handler. */
 export const FillsAllFields: Story = {
   play: async ({ args }) => {
