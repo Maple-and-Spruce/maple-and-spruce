@@ -16,8 +16,8 @@
 
 const DEFAULT_TIME_ZONE = 'America/New_York';
 
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const WEEKDAY_LONG = [
+export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export const WEEKDAY_LONG = [
   'Sunday',
   'Monday',
   'Tuesday',

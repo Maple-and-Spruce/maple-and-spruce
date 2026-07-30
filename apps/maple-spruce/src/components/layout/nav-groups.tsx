@@ -43,7 +43,7 @@ const ALL_ROLES = ['mt-teacher', 'clerk', 'lesson-teacher'] as const;
 
 function roleNavGroups(
   pendingConflicts: number,
-  pendingPosLessons: number
+  pendingPosLessons: number,
 ): RoleNavGroup[] {
   return [
     {
@@ -138,6 +138,11 @@ function roleNavGroups(
           roles: ['lesson-teacher'],
         },
         {
+          label: 'Lesson Blocks',
+          href: '/lesson-blocks',
+          icon: <EventNoteIcon />,
+        },
+        {
           label: 'Teacher Payouts',
           href: '/payouts',
           icon: <PaymentsIcon />,
@@ -225,11 +230,11 @@ function roleNavGroups(
 export function buildNavGroups(
   roles: readonly UserRole[],
   pendingConflicts: number,
-  pendingPosLessons = 0
+  pendingPosLessons = 0,
 ): NavGroup[] {
   return filterNavGroupsByRoles(
     roleNavGroups(pendingConflicts, pendingPosLessons),
-    roles
+    roles,
   );
 }
 

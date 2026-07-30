@@ -13,6 +13,7 @@ export * from './discounts';
 export * from './registrations';
 export * from './students';
 export * from './lessons';
+export * from './lesson-blocks';
 export * from './invoices';
 export * from './etsy-listings';
 export * from './teacher-payouts';

@@ -5,9 +5,14 @@ import {
   mockInstructor,
   mockInstructor2,
   mockInstructorPercentage,
+  mockLessonBlock,
+  mockLessonBlockOtherTeacher,
 } from '@maple/react/storybook-fixtures';
 
 const instructors = [mockInstructor, mockInstructor2, mockInstructorPercentage];
+// Exactly one block per selectable teacher (instructor-001 + -002) so the
+// dialog auto-selects on open and on a substitute switch.
+const blocks = [mockLessonBlock, mockLessonBlockOtherTeacher];
 
 const meta = {
   component: ScheduleLessonDialog,
@@ -20,6 +25,7 @@ const meta = {
     studentId: 'student-001',
     defaultTeacherId: mockInstructor.id,
     instructors,
+    blocks,
     defaultDurationMinutes: 30,
   },
 } satisfies Meta<typeof ScheduleLessonDialog>;
@@ -32,10 +38,10 @@ const waitForDialog = async () => {
     () => {
       expect(canvas.getByRole('dialog')).toBeInTheDocument();
       expect(
-        canvas.getByRole('button', { name: /single lesson/i })
+        canvas.getByRole('button', { name: /single lesson/i }),
       ).toBeInTheDocument();
     },
-    { timeout: 3000 }
+    { timeout: 3000 },
   );
   return canvas;
 };
@@ -60,7 +66,7 @@ export const SeriesMode: Story = {
   play: async () => {
     const canvas = await waitForDialog();
     await userEvent.click(
-      canvas.getByRole('button', { name: /recurring series/i })
+      canvas.getByRole('button', { name: /recurring series/i }),
     );
     const dialog = within(canvas.getByRole('dialog'));
     await waitFor(() => {
@@ -84,7 +90,7 @@ export const SingleLessonSuccessfulSubmit: Story = {
 
     // Single mode is the default. Submit with defaults.
     await userEvent.click(
-      canvas.getByRole('button', { name: /schedule lesson/i })
+      canvas.getByRole('button', { name: /schedule lesson/i }),
     );
 
     await waitFor(() => {
@@ -97,7 +103,7 @@ export const SingleLessonSuccessfulSubmit: Story = {
           status: 'scheduled',
           // Room selector defaults to Spruce and flows into the payload.
           room: 'spruce',
-        })
+        }),
       );
     });
   },
@@ -120,7 +126,7 @@ export const SwitchToSeriesShowsPreview: Story = {
     const canvas = await waitForDialog();
 
     await userEvent.click(
-      canvas.getByRole('button', { name: /recurring series/i })
+      canvas.getByRole('button', { name: /recurring series/i }),
     );
 
     const dialog = within(canvas.getByRole('dialog'));
@@ -139,7 +145,7 @@ export const SkippingPreviewDatesReducesSubmittedCount: Story = {
 
     // Switch to series mode
     await userEvent.click(
-      canvas.getByRole('button', { name: /recurring series/i })
+      canvas.getByRole('button', { name: /recurring series/i }),
     );
 
     const dialog = within(canvas.getByRole('dialog'));
@@ -161,12 +167,13 @@ export const SkippingPreviewDatesReducesSubmittedCount: Story = {
 
     // Submit — should call createSeries with 6 dates
     await userEvent.click(
-      canvas.getByRole('button', { name: /schedule 6 lessons/i })
+      canvas.getByRole('button', { name: /schedule 6 lessons/i }),
     );
 
     await waitFor(() => {
       expect(args.onCreateSeries).toHaveBeenCalledTimes(1);
-      const arg = (args.onCreateSeries as ReturnType<typeof fn>).mock.calls[0][0];
+      const arg = (args.onCreateSeries as ReturnType<typeof fn>).mock
+        .calls[0][0];
       expect(arg.scheduledAts.length).toBe(6);
       expect(arg.studentId).toBe('student-001');
       expect(arg.teacherId).toBe(mockInstructor.id);
@@ -186,19 +193,19 @@ export const SubstituteTeacherSelection: Story = {
 
     // Pick the second instructor (non-primary)
     const option = await waitFor(() =>
-      canvas.getByRole('option', { name: new RegExp(mockInstructor2.name) })
+      canvas.getByRole('option', { name: new RegExp(mockInstructor2.name) }),
     );
     await userEvent.click(option);
 
     await userEvent.click(
-      canvas.getByRole('button', { name: /schedule lesson/i })
+      canvas.getByRole('button', { name: /schedule lesson/i }),
     );
 
     await waitFor(() => {
       expect(args.onCreateSingle).toHaveBeenCalledWith(
         expect.objectContaining({
           teacherId: mockInstructor2.id,
-        })
+        }),
       );
     });
   },

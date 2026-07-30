@@ -6,6 +6,7 @@ export {
   useInstructors,
   useStudents,
   useLessons,
+  useLessonBlocks,
   useInvoices,
   useTeacherPayouts,
   useClasses,

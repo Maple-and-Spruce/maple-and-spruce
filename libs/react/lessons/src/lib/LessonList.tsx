@@ -14,7 +14,13 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import type { Instructor, Lesson, RequestState } from '@maple/ts/domain';
+import type {
+  Instructor,
+  Lesson,
+  LessonBlock,
+  RequestState,
+} from '@maple/ts/domain';
+import { isLessonUnattributed } from '@maple/ts/domain';
 
 interface LessonListProps {
   lessonsState: RequestState<Lesson[]>;
@@ -22,6 +28,9 @@ interface LessonListProps {
   /** For attribution — a lesson's teacher that differs from the student's
    *  primary teacher is shown as "Substitute". */
   primaryTeacherId?: string;
+  /** Teacher blocks; when provided, lessons not sitting in one of their
+   *  teacher's blocks get a "needs a block" flag (#689). */
+  blocks?: LessonBlock[];
   onEdit: (lesson: Lesson) => void;
   onCancel: (lesson: Lesson) => void;
   /**
@@ -58,6 +67,7 @@ function LessonRow({
   lesson,
   teacherName,
   isSubstitute,
+  isUnattributed,
   isPast,
   onEdit,
   onCancel,
@@ -66,6 +76,7 @@ function LessonRow({
   lesson: Lesson;
   teacherName: string;
   isSubstitute: boolean;
+  isUnattributed: boolean;
   isPast: boolean;
   onEdit: () => void;
   onCancel: () => void;
@@ -123,7 +134,12 @@ function LessonRow({
       <ListItemText
         primary={
           <Box
-            sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}
+            sx={{
+              display: 'flex',
+              gap: 1,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
           >
             <Typography variant="body1" component="span">
               {formatDateTime(lesson.scheduledAt)}
@@ -148,6 +164,9 @@ function LessonRow({
                 color="info"
                 variant="outlined"
               />
+            )}
+            {isUnattributed && (
+              <Chip label="Needs a block" size="small" color="warning" />
             )}
           </Box>
         }
@@ -176,6 +195,7 @@ export function LessonList({
   lessonsState,
   instructors,
   primaryTeacherId,
+  blocks = [],
   onEdit,
   onCancel,
   onMarkRendered,
@@ -211,13 +231,15 @@ export function LessonList({
 
   const upcoming = lessons
     .filter(
-      (l) => l.status === 'scheduled' && l.scheduledAt.getTime() > now.getTime()
+      (l) =>
+        l.status === 'scheduled' && l.scheduledAt.getTime() > now.getTime(),
     )
     .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 
   const past = lessons
     .filter(
-      (l) => l.scheduledAt.getTime() <= now.getTime() || l.status !== 'scheduled'
+      (l) =>
+        l.scheduledAt.getTime() <= now.getTime() || l.status !== 'scheduled',
     )
     .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
 
@@ -225,19 +247,19 @@ export function LessonList({
     <LessonRow
       key={lesson.id}
       lesson={lesson}
-      teacherName={
-        teacherNameById.get(lesson.teacherId) ?? 'Unassigned'
-      }
+      teacherName={teacherNameById.get(lesson.teacherId) ?? 'Unassigned'}
       isSubstitute={
-        primaryTeacherId !== undefined &&
-        lesson.teacherId !== primaryTeacherId
+        primaryTeacherId !== undefined && lesson.teacherId !== primaryTeacherId
+      }
+      isUnattributed={
+        lesson.status !== 'cancelled' &&
+        blocks.length > 0 &&
+        isLessonUnattributed(lesson, blocks)
       }
       isPast={lesson.scheduledAt.getTime() <= now.getTime()}
       onEdit={() => onEdit(lesson)}
       onCancel={() => onCancel(lesson)}
-      onMarkRendered={
-        onMarkRendered ? () => onMarkRendered(lesson) : undefined
-      }
+      onMarkRendered={onMarkRendered ? () => onMarkRendered(lesson) : undefined}
     />
   );
 
