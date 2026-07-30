@@ -693,7 +693,7 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>Music Together with Maple &amp; Spruce</h1>
+    <h1>Music Together Maple &amp; Spruce</h1>
   </div>
   <div class="content">
     <h2>You're registered!</h2>
@@ -749,7 +749,7 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
       or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
   </div>
   <div class="footer">
-    <strong style="color: #4A3728;">Music Together with Maple &amp; Spruce</strong><br>
+    <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
     <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
     <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
@@ -779,7 +779,7 @@ const musicTogetherInstallmentFailedHtml = `<!DOCTYPE html>
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>Music Together with Maple &amp; Spruce</h1>
+    <h1>Music Together Maple &amp; Spruce</h1>
   </div>
   <div class="content">
     <h2>We couldn't process your payment</h2>
@@ -801,7 +801,7 @@ const musicTogetherInstallmentFailedHtml = `<!DOCTYPE html>
       or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
   </div>
   <div class="footer">
-    <strong style="color: #4A3728;">Music Together with Maple &amp; Spruce</strong><br>
+    <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
     <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
     <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
@@ -834,7 +834,7 @@ const musicTogetherReminderHtml = `<!DOCTYPE html>
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>Music Together with Maple &amp; Spruce</h1>
+    <h1>Music Together Maple &amp; Spruce</h1>
   </div>
   <div class="content">
     <h2>See you today!</h2>
@@ -868,7 +868,7 @@ const musicTogetherReminderHtml = `<!DOCTYPE html>
       or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
   </div>
   <div class="footer">
-    <strong style="color: #4A3728;">Music Together with Maple &amp; Spruce</strong><br>
+    <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
     <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
     <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>

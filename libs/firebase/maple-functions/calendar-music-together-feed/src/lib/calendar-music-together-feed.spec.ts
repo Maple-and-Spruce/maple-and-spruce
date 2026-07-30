@@ -62,7 +62,7 @@ describe('calendarMusicTogetherFeed', () => {
     expect(mocks.findPublicByType).toHaveBeenCalledWith('musictogether');
     expect(mocks.generateIcsFeed).toHaveBeenCalledWith(
       [{ id: 'e1' }],
-      'Music Together with Maple & Spruce'
+      'Music Together Maple & Spruce'
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toBe('BEGIN:VCALENDAR');
