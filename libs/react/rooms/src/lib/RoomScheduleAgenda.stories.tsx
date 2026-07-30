@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import { Box } from '@mui/material';
 import type { CalendarEventType, RoomBusyWindow, RoomScheduleDay } from '@maple/ts/domain';
-import { RoomScheduleAgendaList } from './RoomScheduleAgenda';
+import { RoomScheduleAgenda, RoomScheduleAgendaList } from './RoomScheduleAgenda';
 
 // Fixed reference day so the Today/Tomorrow prefixes and dates render
 // deterministically: Thursday, June 26 2026.
@@ -69,6 +70,41 @@ export const Default: Story = {
       <RoomScheduleAgendaList {...args} />
     </Box>
   ),
+};
+
+/**
+ * The full agenda with its windowed-paging controls. The range label is driven
+ * purely by the offset state (independent of loaded data), so this play test
+ * exercises Prev/Next/Today without a live backend: clicking Next advances the
+ * visible window and Today snaps it back to the now-anchored span.
+ */
+export const Paging: Story = {
+  render: () => (
+    <Box sx={{ width: 480, maxWidth: '100%' }}>
+      <RoomScheduleAgenda room="spruce" bookHref="/book-room" />
+    </Box>
+  ),
+  play: async ({ canvas }) => {
+    const rangeLabel = () => canvas.getByTestId('room-schedule-range');
+
+    const initial = await waitFor(() => {
+      const text = rangeLabel().textContent;
+      expect(text).toBeTruthy();
+      return text as string;
+    });
+
+    // Next advances the window — the label must change.
+    await userEvent.click(canvas.getByRole('button', { name: /next weeks/i }));
+    await waitFor(() =>
+      expect(rangeLabel().textContent).not.toBe(initial)
+    );
+
+    // Today snaps back to the now-anchored window.
+    await userEvent.click(
+      canvas.getByRole('button', { name: /jump back to today/i })
+    );
+    await waitFor(() => expect(rangeLabel().textContent).toBe(initial));
+  },
 };
 
 /** A single busy day. */
