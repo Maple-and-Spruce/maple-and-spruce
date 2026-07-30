@@ -1,8 +1,26 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { RoomBusyWindow, RoomScheduleDay } from '@maple/ts/domain';
-import { RoomScheduleAgendaList } from './RoomScheduleAgenda';
+
+// Stub the data hook so the full RoomScheduleAgenda renders without Firebase.
+vi.mock('./useRoomScheduleRange', () => ({
+  useRoomScheduleRange: vi.fn(() => ({
+    roomScheduleState: { status: 'success', data: [] },
+    refetch: vi.fn(),
+  })),
+}));
+
+import {
+  RoomScheduleAgenda,
+  RoomScheduleAgendaList,
+  formatWindowRange,
+} from './RoomScheduleAgenda';
+import { useRoomScheduleRange } from './useRoomScheduleRange';
+
+const mockedHook = vi.mocked(useRoomScheduleRange);
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 afterEach(cleanup);
 
@@ -92,5 +110,67 @@ describe('RoomScheduleAgendaList', () => {
     const region = screen.getByText('Music Lesson').closest('div');
     expect(within(region as HTMLElement).getByText('Lesson')).toBeTruthy();
     expect(screen.getByText('Class')).toBeTruthy();
+  });
+});
+
+describe('formatWindowRange', () => {
+  it('renders a same-year span with a single year suffix', () => {
+    expect(
+      formatWindowRange(new Date(2026, 6, 30), new Date(2026, 7, 27))
+    ).toBe('Jul 30 – Aug 27, 2026');
+  });
+
+  it('shows the year on both ends when the span crosses a year boundary', () => {
+    expect(
+      formatWindowRange(new Date(2026, 11, 20), new Date(2027, 0, 17))
+    ).toBe('Dec 20, 2026 – Jan 17, 2027');
+  });
+});
+
+describe('RoomScheduleAgenda paging', () => {
+  it('offers a 12-week horizon option', () => {
+    render(<RoomScheduleAgenda room="spruce" />);
+    expect(screen.getByRole('button', { name: /12 weeks/i })).toBeTruthy();
+  });
+
+  it('shifts the queried range forward by one horizon when Next is clicked', async () => {
+    mockedHook.mockClear();
+    render(<RoomScheduleAgenda room="spruce" />);
+
+    const firstStart = (mockedHook.mock.calls[0][1] as Date).getTime();
+    const labelBefore = screen.getByTestId('room-schedule-range').textContent;
+
+    await userEvent.click(screen.getByRole('button', { name: /next weeks/i }));
+
+    const calls = mockedHook.mock.calls;
+    const nextStart = (calls[calls.length - 1][1] as Date).getTime();
+    // Default horizon is 4 weeks, so Next advances the window by exactly that.
+    expect(nextStart - firstStart).toBe(4 * MS_PER_WEEK);
+    expect(screen.getByTestId('room-schedule-range').textContent).not.toBe(
+      labelBefore
+    );
+  });
+
+  it('returns to the now-anchored window when Today is clicked', async () => {
+    mockedHook.mockClear();
+    render(<RoomScheduleAgenda room="spruce" />);
+
+    const labelBefore = screen.getByTestId('room-schedule-range').textContent;
+    // Today is disabled at the now-anchored window.
+    expect(
+      screen.getByRole('button', { name: /jump back to today/i })
+    ).toHaveProperty('disabled', true);
+
+    await userEvent.click(screen.getByRole('button', { name: /next weeks/i }));
+    expect(screen.getByTestId('room-schedule-range').textContent).not.toBe(
+      labelBefore
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /jump back to today/i })
+    );
+    expect(screen.getByTestId('room-schedule-range').textContent).toBe(
+      labelBefore
+    );
   });
 });
