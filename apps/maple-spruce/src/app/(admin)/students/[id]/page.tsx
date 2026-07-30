@@ -31,18 +31,13 @@ import {
   LessonList,
   ScheduleLessonDialog,
 } from '@maple/react/lessons';
-import {
-  InvoiceBuilderDialog,
-  InvoiceList,
-} from '@maple/react/invoices';
-import {
-  INSTRUMENT_LABELS,
-  LESSON_LENGTH_LABELS,
-} from '@maple/react/students';
+import { InvoiceBuilderDialog, InvoiceList } from '@maple/react/invoices';
+import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from '@maple/react/students';
 import {
   useInstructors,
   useInvoices,
   useLessons,
+  useLessonBlocks,
   useStudents,
 } from '../../../../hooks';
 
@@ -52,12 +47,8 @@ export default function StudentDetailPage() {
 
   const { studentsState } = useStudents();
   const { instructorsState } = useInstructors();
-  const {
-    lessonsState,
-    createLesson,
-    createLessonSeries,
-    updateLesson,
-  } = useLessons({ studentId });
+  const { lessonsState, createLesson, createLessonSeries, updateLesson } =
+    useLessons({ studentId });
   const {
     invoicesState,
     createInvoice,
@@ -65,6 +56,7 @@ export default function StudentDetailPage() {
     recordPayment,
     deleteInvoice,
   } = useInvoices({ studentId });
+  const { lessonBlocksState } = useLessonBlocks();
 
   const student = useMemo(() => {
     if (studentsState.status !== 'success') return undefined;
@@ -73,6 +65,9 @@ export default function StudentDetailPage() {
 
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
+
+  const blocks =
+    lessonBlocksState.status === 'success' ? lessonBlocksState.data : [];
 
   const primaryTeacherName = useMemo(() => {
     if (!student) return '—';
@@ -88,15 +83,12 @@ export default function StudentDetailPage() {
   // Invoice state
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | undefined>();
-  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(
-    null
-  );
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [invoiceToVoid, setInvoiceToVoid] = useState<Invoice | null>(null);
 
   const lessons = useMemo(
-    () =>
-      lessonsState.status === 'success' ? lessonsState.data : [],
-    [lessonsState]
+    () => (lessonsState.status === 'success' ? lessonsState.data : []),
+    [lessonsState],
   );
 
   const handleCreateSingle = async (input: CreateLessonInput) => {
@@ -171,7 +163,7 @@ export default function StudentDetailPage() {
 
   const handleInvoiceRecordPayment = async (
     invoice: Invoice,
-    source: ManualInvoicePaymentSource
+    source: ManualInvoicePaymentSource,
   ) => {
     setIsSubmitting(true);
     try {
@@ -269,11 +261,7 @@ export default function StudentDetailPage() {
               ` · ${LESSON_LENGTH_LABELS[student.registeredLessonLength]}`}
             {` · Teacher: ${primaryTeacherName}`}
           </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 0.5 }}
-          >
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {student.isAdultStudent ? 'Contact' : 'Parent/guardian'}:{' '}
             {student.primaryContactName} · {student.primaryContactEmail}
           </Typography>
@@ -320,6 +308,7 @@ export default function StudentDetailPage() {
         lessonsState={lessonsState}
         instructors={instructors}
         primaryTeacherId={student.primaryTeacherId}
+        blocks={blocks}
         onEdit={(lesson) => setEditLesson(lesson)}
         onCancel={(lesson) => setCancelLesson(lesson)}
         onMarkRendered={handleMarkRendered}
@@ -393,6 +382,7 @@ export default function StudentDetailPage() {
         studentId={student.id}
         defaultTeacherId={student.primaryTeacherId}
         instructors={instructors}
+        blocks={blocks}
         defaultDurationMinutes={
           student.registeredLessonLength === '45-min'
             ? 45
@@ -411,6 +401,7 @@ export default function StudentDetailPage() {
         lesson={editLesson}
         primaryTeacherId={student.primaryTeacherId}
         instructors={instructors}
+        blocks={blocks}
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
       />
@@ -455,9 +446,9 @@ export default function StudentDetailPage() {
         }
         warningContent={
           <Alert severity="warning">
-            Voiding preserves the invoice for history but marks it as
-            cancelled. Use this for refunds or mistakes once an invoice has
-            been sent — drafts can be deleted outright.
+            Voiding preserves the invoice for history but marks it as cancelled.
+            Use this for refunds or mistakes once an invoice has been sent —
+            drafts can be deleted outright.
           </Alert>
         }
       />
@@ -477,8 +468,8 @@ export default function StudentDetailPage() {
         }
         warningContent={
           <Alert severity="warning">
-            Drafts can be hard-deleted. Sent or paid invoices must be
-            voided instead to preserve history.
+            Drafts can be hard-deleted. Sent or paid invoices must be voided
+            instead to preserve history.
           </Alert>
         }
       />

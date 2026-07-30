@@ -41,13 +41,11 @@ import type {
   CreateLessonInput,
   CreateLessonSeriesInput,
   Instructor,
+  LessonBlock,
   Room,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel } from '@maple/ts/domain';
-import {
-  lessonSeriesValidation,
-  lessonValidation,
-} from '@maple/ts/validation';
+import { ROOMS, getRoomLabel, lessonFitsBlock } from '@maple/ts/domain';
+import { lessonSeriesValidation, lessonValidation } from '@maple/ts/validation';
 import {
   batch,
   useComputed,
@@ -55,10 +53,8 @@ import {
   useSignals,
 } from '@maple/react/signals';
 import { RoomAvailability } from '@maple/react/rooms';
-import {
-  generateWeeklyDates,
-  type SeriesCadence,
-} from './series-dates';
+import { generateWeeklyDates, type SeriesCadence } from './series-dates';
+import { formatBlockOption } from './block-format';
 
 type Mode = 'single' | 'series';
 type EndType = 'count' | 'date';
@@ -71,6 +67,9 @@ interface ScheduleLessonDialogProps {
   defaultTeacherId: string;
   /** For the teacher dropdown. */
   instructors: Instructor[];
+  /** All lesson blocks; the dialog filters to the chosen teacher (#689). A
+   *  lesson must be attributed to one of its teacher's blocks. */
+  blocks: LessonBlock[];
   /** Default lesson length in minutes (30, 45, 60). */
   defaultDurationMinutes?: 30 | 45 | 60;
   onCreateSingle: (input: CreateLessonInput) => Promise<unknown>;
@@ -104,6 +103,7 @@ export function ScheduleLessonDialog({
   studentId,
   defaultTeacherId,
   instructors,
+  blocks,
   defaultDurationMinutes = 30,
   onCreateSingle,
   onCreateSeries,
@@ -111,11 +111,20 @@ export function ScheduleLessonDialog({
 }: ScheduleLessonDialogProps) {
   useSignals();
 
+  /** Blocks belonging to a teacher; auto-select when there's exactly one. */
+  const blocksForTeacher = (tid: string) =>
+    blocks.filter((b) => b.teacherId === tid);
+  const defaultBlockFor = (tid: string): string => {
+    const tb = blocksForTeacher(tid);
+    return tb.length === 1 ? tb[0].id : '';
+  };
+
   // ============================================================
   // SHARED FIELDS
   // ============================================================
   const mode = useSignal<Mode>('single');
   const teacherId = useSignal(defaultTeacherId);
+  const blockId = useSignal(defaultBlockFor(defaultTeacherId));
   const durationMinutes = useSignal<30 | 45 | 60>(defaultDurationMinutes);
   const room = useSignal<Room>('spruce');
   const notes = useSignal('');
@@ -133,7 +142,7 @@ export function ScheduleLessonDialog({
       const d = new Date();
       d.setDate(d.getDate() + 60);
       return d;
-    })()
+    })(),
   );
   /** Per-previewed-date skip flag, keyed by ISO timestamp. */
   const skipped = useSignal<Record<string, boolean>>({});
@@ -150,6 +159,7 @@ export function ScheduleLessonDialog({
     batch(() => {
       mode.value = 'single';
       teacherId.value = defaultTeacherId;
+      blockId.value = defaultBlockFor(defaultTeacherId);
       durationMinutes.value = defaultDurationMinutes;
       room.value = 'spruce';
       notes.value = '';
@@ -182,9 +192,7 @@ export function ScheduleLessonDialog({
   });
 
   const keptDates = useComputed(() =>
-    previewDates.value.filter(
-      (d) => !skipped.value[d.toISOString()]
-    )
+    previewDates.value.filter((d) => !skipped.value[d.toISOString()]),
   );
 
   // ============================================================
@@ -198,7 +206,7 @@ export function ScheduleLessonDialog({
       durationMinutes: durationMinutes.value,
       status: 'scheduled',
       notes: notes.value || undefined,
-    })
+    }),
   );
 
   const seriesVal = useComputed(() =>
@@ -208,13 +216,41 @@ export function ScheduleLessonDialog({
       durationMinutes: durationMinutes.value,
       scheduledAts: keptDates.value,
       notes: notes.value || undefined,
-    })
+    }),
   );
 
-  const isValid = useComputed(() =>
-    mode.value === 'single'
-      ? singleValidation.value.isValid()
-      : seriesVal.value.isValid()
+  // Block attribution (#689). Selecting a block is required (hard); whether the
+  // chosen time fits it is a non-blocking warning — the server enforces fit, so
+  // we guide rather than trap (mirrors the RoomAvailability warn pattern).
+  const selectedBlock = useComputed(() =>
+    blocks.find((b) => b.id === blockId.value),
+  );
+  const blockSelectionError = useComputed<string | null>(() => {
+    const b = selectedBlock.value;
+    return !b || b.teacherId !== teacherId.value
+      ? 'Select a block for this teacher.'
+      : null;
+  });
+  const blockFitWarning = useComputed<string | null>(() => {
+    const b = selectedBlock.value;
+    if (!b) return null;
+    const dates =
+      mode.value === 'single' ? [scheduledAt.value] : keptDates.value;
+    const outside = dates.filter(
+      (d) => !lessonFitsBlock(d, durationMinutes.value, b),
+    );
+    return outside.length > 0
+      ? `${outside.length} lesson time${
+          outside.length === 1 ? '' : 's'
+        } fall outside this block (${formatBlockOption(b)}) and will be rejected on save.`
+      : null;
+  });
+
+  const isValid = useComputed(
+    () =>
+      (mode.value === 'single'
+        ? singleValidation.value.isValid()
+        : seriesVal.value.isValid()) && !blockSelectionError.value,
   );
 
   const errorFor = (field: string): string | null => {
@@ -242,6 +278,7 @@ export function ScheduleLessonDialog({
         const input: CreateLessonInput = {
           studentId,
           teacherId: teacherId.value,
+          blockId: blockId.value,
           scheduledAt: scheduledAt.value,
           durationMinutes: durationMinutes.value,
           room: room.value,
@@ -253,6 +290,7 @@ export function ScheduleLessonDialog({
         const input: CreateLessonSeriesInput = {
           studentId,
           teacherId: teacherId.value,
+          blockId: blockId.value,
           durationMinutes: durationMinutes.value,
           scheduledAts: keptDates.value,
           room: room.value,
@@ -325,7 +363,7 @@ export function ScheduleLessonDialog({
                   end={
                     new Date(
                       scheduledAt.value.getTime() +
-                        durationMinutes.value * 60_000
+                        durationMinutes.value * 60_000,
                     )
                   }
                 />
@@ -408,7 +446,10 @@ export function ScheduleLessonDialog({
               labelId="teacher-label"
               label="Teacher"
               value={teacherId.value}
-              onChange={(e) => (teacherId.value = e.target.value)}
+              onChange={(e) => {
+                teacherId.value = e.target.value;
+                blockId.value = defaultBlockFor(e.target.value);
+              }}
             >
               {instructors.map((i) => (
                 <MenuItem key={i.id} value={i.id}>
@@ -422,6 +463,46 @@ export function ScheduleLessonDialog({
                 'Override for a substitute on a one-off lesson.'}
             </FormHelperText>
           </FormControl>
+
+          {/* Block attribution (#689) — a lesson must sit inside one of the
+              teacher's weekly blocks. */}
+          {blocksForTeacher(teacherId.value).length === 0 ? (
+            <Alert severity="warning">
+              This teacher has no lesson blocks yet. Create one under Lesson
+              Blocks before scheduling.
+            </Alert>
+          ) : (
+            <>
+              <FormControl
+                fullWidth
+                error={
+                  showValidationErrors.value && !!blockSelectionError.value
+                }
+              >
+                <InputLabel id="block-label">Block</InputLabel>
+                <Select
+                  labelId="block-label"
+                  label="Block"
+                  value={blockId.value}
+                  onChange={(e) => (blockId.value = e.target.value)}
+                >
+                  {blocksForTeacher(teacherId.value).map((b) => (
+                    <MenuItem key={b.id} value={b.id}>
+                      {formatBlockOption(b)}
+                      {b.label ? ` — ${b.label}` : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {(showValidationErrors.value && blockSelectionError.value) ||
+                    'The lesson must fall on this block’s day and inside its window.'}
+                </FormHelperText>
+              </FormControl>
+              {blockFitWarning.value && (
+                <Alert severity="warning">{blockFitWarning.value}</Alert>
+              )}
+            </>
+          )}
 
           <FormControl fullWidth error={!!errorFor('durationMinutes')}>
             <InputLabel id="duration-label">Duration</InputLabel>
@@ -546,10 +627,9 @@ export function ScheduleLessonDialog({
                   })}
                 </Box>
               )}
-              {showValidationErrors.value &&
-                errorFor('scheduledAts') && (
-                  <Alert severity="error">{errorFor('scheduledAts')}</Alert>
-                )}
+              {showValidationErrors.value && errorFor('scheduledAts') && (
+                <Alert severity="error">{errorFor('scheduledAts')}</Alert>
+              )}
             </>
           )}
         </Box>

@@ -30,10 +30,11 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import type {
   Instructor,
   Lesson,
+  LessonBlock,
   Room,
   UpdateLessonInput,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel, lessonFitsBlock } from '@maple/ts/domain';
 import { lessonValidation } from '@maple/ts/validation';
 import {
   batch,
@@ -41,6 +42,7 @@ import {
   useSignal,
   useSignals,
 } from '@maple/react/signals';
+import { formatBlockOption } from './block-format';
 
 interface EditLessonDialogProps {
   open: boolean;
@@ -48,6 +50,8 @@ interface EditLessonDialogProps {
   lesson?: Lesson;
   primaryTeacherId: string;
   instructors: Instructor[];
+  /** All blocks; filtered to the lesson's teacher for the block picker (#689). */
+  blocks: LessonBlock[];
   onSubmit: (input: UpdateLessonInput) => Promise<unknown>;
   isSubmitting?: boolean;
 }
@@ -60,6 +64,7 @@ export function EditLessonDialog({
   lesson,
   primaryTeacherId,
   instructors,
+  blocks,
   onSubmit,
   isSubmitting = false,
 }: EditLessonDialogProps) {
@@ -68,8 +73,12 @@ export function EditLessonDialog({
   const scheduledAt = useSignal<Date>(new Date());
   const durationMinutes = useSignal<30 | 45 | 60>(30);
   const teacherId = useSignal('');
+  const blockId = useSignal('');
   const room = useSignal<Room>('spruce');
   const notes = useSignal('');
+
+  const blocksForTeacher = (tid: string) =>
+    blocks.filter((b) => b.teacherId === tid);
   const showValidationErrors = useSignal(false);
   const submitError = useSignal<string | null>(null);
 
@@ -79,6 +88,7 @@ export function EditLessonDialog({
       scheduledAt.value = new Date(lesson.scheduledAt);
       durationMinutes.value = lesson.durationMinutes as 30 | 45 | 60;
       teacherId.value = lesson.teacherId;
+      blockId.value = lesson.blockId ?? '';
       room.value = lesson.room ?? 'spruce';
       notes.value = lesson.notes ?? '';
       showValidationErrors.value = false;
@@ -99,8 +109,20 @@ export function EditLessonDialog({
     });
   });
 
+  // Block attribution (#689). Unattributed ('') is allowed — a grandfathered
+  // lesson stays editable. If a block is picked, a non-fitting time is a
+  // non-blocking warning (the server enforces fit on reschedule).
+  const blockFitWarning = useComputed<string | null>(() => {
+    if (!blockId.value) return null;
+    const b = blocks.find((bl) => bl.id === blockId.value);
+    if (!b || b.teacherId !== teacherId.value) return null;
+    return lessonFitsBlock(scheduledAt.value, durationMinutes.value, b)
+      ? null
+      : `This time falls outside the block (${formatBlockOption(b)}) and will be rejected on save.`;
+  });
+
   const isValid = useComputed(() =>
-    validation.value ? validation.value.isValid() : false
+    validation.value ? validation.value.isValid() : false,
   );
 
   const errorFor = (field: string): string | null => {
@@ -121,6 +143,7 @@ export function EditLessonDialog({
         scheduledAt: scheduledAt.value,
         durationMinutes: durationMinutes.value,
         teacherId: teacherId.value,
+        blockId: blockId.value || null,
         room: room.value,
         notes: notes.value || undefined,
       };
@@ -179,7 +202,15 @@ export function EditLessonDialog({
               labelId="edit-teacher-label"
               label="Teacher"
               value={teacherId.value}
-              onChange={(e) => (teacherId.value = e.target.value)}
+              onChange={(e) => {
+                teacherId.value = e.target.value;
+                // Keep the block only if it still belongs to the new teacher.
+                const stillValid = blocks.some(
+                  (b) =>
+                    b.id === blockId.value && b.teacherId === e.target.value,
+                );
+                if (!stillValid) blockId.value = '';
+              }}
             >
               {instructors.map((i) => (
                 <MenuItem key={i.id} value={i.id}>
@@ -189,10 +220,37 @@ export function EditLessonDialog({
               ))}
             </Select>
             <FormHelperText>
-              {errorFor('teacherId') ??
-                'Change this to record a substitute.'}
+              {errorFor('teacherId') ?? 'Change this to record a substitute.'}
             </FormHelperText>
           </FormControl>
+
+          {/* Block attribution (#689). Includes an explicit "unattributed"
+              option so grandfathered lessons can stay as-is or be migrated. */}
+          <FormControl fullWidth>
+            <InputLabel id="edit-block-label">Block</InputLabel>
+            <Select
+              labelId="edit-block-label"
+              label="Block"
+              value={blockId.value}
+              onChange={(e) => (blockId.value = e.target.value)}
+            >
+              <MenuItem value="">
+                <em>Unattributed (needs a block)</em>
+              </MenuItem>
+              {blocksForTeacher(teacherId.value).map((b) => (
+                <MenuItem key={b.id} value={b.id}>
+                  {formatBlockOption(b)}
+                  {b.label ? ` — ${b.label}` : ''}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              Attribute this lesson to one of the teacher’s weekly blocks.
+            </FormHelperText>
+          </FormControl>
+          {blockFitWarning.value && (
+            <Alert severity="warning">{blockFitWarning.value}</Alert>
+          )}
 
           <FormControl fullWidth error={!!errorFor('durationMinutes')}>
             <InputLabel id="edit-duration-label">Duration</InputLabel>
