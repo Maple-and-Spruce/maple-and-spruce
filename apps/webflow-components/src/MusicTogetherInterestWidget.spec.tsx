@@ -40,6 +40,10 @@ vi.mock('./firebase-init', () => ({
   getWidgetFunctions: () => ({ __mock: true }),
 }));
 
+// Warmup is a fire-and-forget no-op in tests; otherwise its mount ping
+// registers as an addMusicTogetherInterest call.
+vi.mock('./lib/warmup', () => ({ warmup: vi.fn() }));
+
 vi.mock('firebase/functions', () => ({
   httpsCallable: (_fns: unknown, name: string) => (payload: unknown) => {
     calls[name] = payload;

@@ -18,8 +18,14 @@ import type {
   PublicMusicTogetherSectionOption,
 } from '@maple/ts/firebase/api-types';
 
+// Keep warm in prod only — the public interest widget fetches this on mount,
+// so a cold start would slow that form's first paint (warmup is too late).
+// Mirrors getPublicMusicTogetherSection. dev/emulator/CI run cold.
+const minInstances =
+  process.env['GCLOUD_PROJECT'] === 'maple-and-spruce' ? 1 : 0;
+
 export const getPublicMusicTogetherSections = Functions.endpoint
-  .withOptions({ concurrency: 80 })
+  .withOptions({ minInstances, concurrency: 80 })
   .handle<
     GetPublicMusicTogetherSectionsRequest,
     GetPublicMusicTogetherSectionsResponse

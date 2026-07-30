@@ -12,7 +12,7 @@
  * No Next.js dependencies — Firebase is initialized explicitly from the `env`
  * prop (see firebase-init.ts).
  */
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -70,6 +70,11 @@ export function CraftClubSignupWidget({
   manageUrl,
 }: CraftClubSignupWidgetProps) {
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
+
+  // Warm the eligibility check the family triggers seconds after landing.
+  useEffect(() => {
+    warmup(functions, 'checkCraftClubEligibility');
+  }, [functions]);
 
   const [step, setStep] = useState<Step>('enterEmail');
   const [email, setEmail] = useState('');
