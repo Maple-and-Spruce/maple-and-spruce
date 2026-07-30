@@ -356,6 +356,7 @@ export type {
 export type {
   MyWeekOwnership,
   MyWeekCadence,
+  MyWeekBlock,
   MyWeekCommitment,
   GetMyWeekRequest,
   GetMyWeekResponse,

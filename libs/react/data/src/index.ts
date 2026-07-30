@@ -31,6 +31,7 @@ export {
   useLessonBlocks,
   type UseLessonBlocksOptions,
 } from './lib/useLessonBlocks';
+export { useMyWeek } from './lib/useMyWeek';
 export { useInvoices, type UseInvoicesOptions } from './lib/useInvoices';
 export {
   useTeacherPayouts,
