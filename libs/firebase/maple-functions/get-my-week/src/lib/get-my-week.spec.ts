@@ -4,6 +4,8 @@ import type { CalendarEvent } from '@maple/ts/domain';
 const mocks = vi.hoisted(() => ({
   instructorIdForUser: vi.fn(),
   findByStartInRange: vi.fn(),
+  findBlocks: vi.fn(),
+  findLessons: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -16,6 +18,8 @@ vi.mock('@maple/firebase/functions', () => ({
 
 vi.mock('@maple/firebase/database', () => ({
   CalendarEventRepository: { findByStartInRange: mocks.findByStartInRange },
+  LessonBlockRepository: { findAll: mocks.findBlocks },
+  LessonRepository: { findAll: mocks.findLessons },
 }));
 
 import { getMyWeek, buildCommitments, startOfWeek } from './get-my-week';
@@ -29,7 +33,9 @@ type Handler = (
     ownership: string;
     cadence: string;
     category: string;
+    unattributed: boolean;
   }>;
+  blocks: Array<Record<string, unknown>>;
   unlinked: boolean;
 }>;
 const handler = getMyWeek as unknown as Handler;
@@ -170,14 +176,69 @@ describe('getMyWeek handler', () => {
     vi.clearAllMocks();
     mocks.instructorIdForUser.mockResolvedValue('instr-katie');
     mocks.findByStartInRange.mockResolvedValue([]);
+    mocks.findBlocks.mockResolvedValue([]);
+    mocks.findLessons.mockResolvedValue([]);
   });
 
-  it('returns unlinked with no commitments when the caller has no instructor', async () => {
+  it('returns unlinked with no commitments or blocks when the caller has no instructor', async () => {
     mocks.instructorIdForUser.mockResolvedValue(undefined);
     const res = await handler({}, { uid: 'admin-uid' });
     expect(res.unlinked).toBe(true);
     expect(res.commitments).toEqual([]);
+    expect(res.blocks).toEqual([]);
     expect(mocks.findByStartInRange).not.toHaveBeenCalled();
+  });
+
+  it('returns the teacher’s serialized blocks and flags unattributed lessons', async () => {
+    const block = {
+      id: 'blk-1',
+      teacherId: 'instr-katie',
+      dayOfWeek: 2,
+      startMinutes: 900,
+      endMinutes: 1080,
+      label: 'Tue',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mocks.findBlocks.mockResolvedValue([block]);
+    // A lesson with no blockId -> unattributed.
+    mocks.findLessons.mockResolvedValue([
+      {
+        id: 'les-x',
+        teacherId: 'instr-katie',
+        scheduledAt: new Date('2026-07-21T20:00:00Z'),
+        durationMinutes: 30,
+        blockId: null,
+      },
+    ]);
+    mocks.findByStartInRange.mockResolvedValue([
+      {
+        id: 'lesson-les-x',
+        title: 'Music Lesson',
+        type: 'lesson',
+        startDateTime: new Date('2026-07-21T20:00:00Z'),
+        endDateTime: new Date('2026-07-21T20:30:00Z'),
+        room: 'spruce',
+        sourceRef: 'lessons/les-x',
+        ownerInstructorId: 'instr-katie',
+      },
+    ]);
+
+    const res = await handler(
+      { from: '2026-07-19T00:00:00', to: '2026-07-26T00:00:00' },
+      { uid: 'katie-uid' },
+    );
+    expect(res.blocks).toEqual([
+      {
+        id: 'blk-1',
+        teacherId: 'instr-katie',
+        dayOfWeek: 2,
+        startMinutes: 900,
+        endMinutes: 1080,
+        label: 'Tue',
+      },
+    ]);
+    expect(res.commitments[0].unattributed).toBe(true);
   });
 
   it('queries a lookback window ending at the week end', async () => {
