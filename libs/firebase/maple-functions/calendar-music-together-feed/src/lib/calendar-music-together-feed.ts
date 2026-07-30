@@ -25,7 +25,7 @@ export const calendarMusicTogetherFeed = onRequest(
     try {
       const events =
         await CalendarEventRepository.findPublicByType('musictogether');
-      const ics = generateIcsFeed(events, 'Music Together with Maple & Spruce');
+      const ics = generateIcsFeed(events, 'Music Together Maple & Spruce');
 
       Object.entries(ICS_FEED_HEADERS).forEach(([key, value]) => {
         response.setHeader(key, value);
