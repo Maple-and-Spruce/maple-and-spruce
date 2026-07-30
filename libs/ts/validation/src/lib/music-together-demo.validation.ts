@@ -14,7 +14,9 @@ export interface MusicTogetherDemoValidationInput {
   dateTime?: Date | string;
   location?: string;
   capacityFamilies?: number;
-  durationMinutes?: number;
+  // number | null: a blank form field persists as null, and the suite is a
+  // runtime boundary that must accept the null it actually receives.
+  durationMinutes?: number | null;
   notes?: string;
   visible?: boolean;
 }
