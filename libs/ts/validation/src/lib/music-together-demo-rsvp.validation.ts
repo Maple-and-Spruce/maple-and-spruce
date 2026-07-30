@@ -2,15 +2,16 @@
  * Music Together demo-class RSVP validation suite
  *
  * Used on the public demo RSVP form (the Webflow widget) and on the
- * addMusicTogetherDemoRsvp cloud function. Demos are free — the only inputs are
- * the chosen slot label, the family's name, and their email.
+ * addMusicTogetherDemoRsvp cloud function. A family picks a specific demo
+ * (`demoId`) and gives us their name + email — demos are free, so there's no
+ * payment.
  *
  * @see https://vestjs.dev/
  */
 import { staticSuite, test, enforce, only } from 'vest';
 
 export interface MusicTogetherDemoRsvpValidationInput {
-  demoSlot?: string;
+  demoId?: string;
   name?: string;
   email?: string;
 }
@@ -19,11 +20,8 @@ export const musicTogetherDemoRsvpValidation = staticSuite(
   (data: MusicTogetherDemoRsvpValidationInput, field?: string | string[]) => {
     only(field);
 
-    test('demoSlot', 'Please choose a demo class time', () => {
-      enforce(data.demoSlot).isNotBlank();
-    });
-    test('demoSlot', 'Demo slot must be less than 200 characters', () => {
-      if (data.demoSlot) enforce(data.demoSlot).shorterThan(200);
+    test('demoId', 'Please choose a demo class', () => {
+      enforce(data.demoId).isNotBlank();
     });
 
     test('name', 'Name is required', () => {

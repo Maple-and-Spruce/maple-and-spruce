@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   capturedHandler: null as ((d: unknown) => Promise<unknown>) | null,
+  findById: vi.fn(),
   demoRsvpAdd: vi.fn(),
 }));
 
@@ -26,10 +27,17 @@ vi.mock('@maple/firebase/functions', () => {
         `validation: ${Object.keys(errs).join(',')}`
       );
     },
+    throwNotFound: (entity: string, id: string) => {
+      throw new HttpsError('not-found', `${entity} ${id} not found`);
+    },
+    throwFailedPrecondition: (msg: string) => {
+      throw new HttpsError('failed-precondition', msg);
+    },
   };
 });
 
 vi.mock('@maple/firebase/database', () => ({
+  MusicTogetherDemoRepository: { findById: mocks.findById },
   MusicTogetherDemoRsvpRepository: { add: mocks.demoRsvpAdd },
 }));
 
@@ -40,7 +48,7 @@ function run(data: unknown) {
 }
 
 const validRsvp = {
-  demoSlot: 'Sat Aug 3 · 10:00 AM',
+  demoId: 'demo-1',
   name: 'Jamie Rivera',
   email: 'jamie@example.com',
 };
@@ -48,47 +56,76 @@ const validRsvp = {
 describe('addMusicTogetherDemoRsvp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.demoRsvpAdd.mockResolvedValue({ created: true });
+    mocks.findById.mockResolvedValue({
+      id: 'demo-1',
+      visible: true,
+      capacityFamilies: 8,
+    });
+    mocks.demoRsvpAdd.mockResolvedValue({
+      created: true,
+      entry: { status: 'confirmed' },
+    });
   });
 
-  it('records a demo RSVP and reports added=true', async () => {
-    const result = (await run(validRsvp)) as { added: boolean };
+  it('confirms an RSVP under capacity (added=true, status=confirmed)', async () => {
+    const result = (await run(validRsvp)) as {
+      added: boolean;
+      status: string;
+    };
     expect(mocks.demoRsvpAdd).toHaveBeenCalledWith({
-      demoSlot: 'Sat Aug 3 · 10:00 AM',
+      demoId: 'demo-1',
       name: 'Jamie Rivera',
       email: 'jamie@example.com',
+      capacityFamilies: 8,
     });
-    expect(result.added).toBe(true);
+    expect(result).toEqual({ added: true, status: 'confirmed' });
   });
 
-  it('is idempotent — a repeat email (new slot) reports added=false', async () => {
-    mocks.demoRsvpAdd.mockResolvedValue({ created: false });
-    const result = (await run({
-      ...validRsvp,
-      demoSlot: 'Sun Aug 4 · 9:00 AM',
-    })) as { added: boolean };
-    expect(mocks.demoRsvpAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ demoSlot: 'Sun Aug 4 · 9:00 AM' })
-    );
-    expect(result.added).toBe(false);
+  it('waitlists an RSVP past capacity', async () => {
+    mocks.demoRsvpAdd.mockResolvedValue({
+      created: true,
+      entry: { status: 'waitlisted' },
+    });
+    const result = (await run(validRsvp)) as { status: string };
+    expect(result.status).toBe('waitlisted');
   });
 
-  it('rejects a missing slot before touching the repository', async () => {
-    await expect(run({ ...validRsvp, demoSlot: '' })).rejects.toThrow(
-      /validation/
-    );
-    expect(mocks.demoRsvpAdd).not.toHaveBeenCalled();
+  it('is idempotent — a repeat RSVP reports added=false with prior status', async () => {
+    mocks.demoRsvpAdd.mockResolvedValue({
+      created: false,
+      entry: { status: 'waitlisted' },
+    });
+    const result = (await run(validRsvp)) as {
+      added: boolean;
+      status: string;
+    };
+    expect(result).toEqual({ added: false, status: 'waitlisted' });
   });
 
-  it('rejects a missing name', async () => {
-    await expect(run({ ...validRsvp, name: '' })).rejects.toThrow(/validation/);
+  it('rejects a missing demoId before touching the repository', async () => {
+    await expect(run({ ...validRsvp, demoId: '' })).rejects.toThrow(/validation/);
+    expect(mocks.findById).not.toHaveBeenCalled();
     expect(mocks.demoRsvpAdd).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid email', async () => {
-    await expect(run({ ...validRsvp, email: 'nope' })).rejects.toThrow(
-      /validation/
-    );
+    await expect(run({ ...validRsvp, email: 'nope' })).rejects.toThrow(/validation/);
+    expect(mocks.demoRsvpAdd).not.toHaveBeenCalled();
+  });
+
+  it('404s when the demo does not exist', async () => {
+    mocks.findById.mockResolvedValue(undefined);
+    await expect(run(validRsvp)).rejects.toThrow(/not found/);
+    expect(mocks.demoRsvpAdd).not.toHaveBeenCalled();
+  });
+
+  it('rejects an RSVP to a hidden demo', async () => {
+    mocks.findById.mockResolvedValue({
+      id: 'demo-1',
+      visible: false,
+      capacityFamilies: 8,
+    });
+    await expect(run(validRsvp)).rejects.toThrow(/not open/);
     expect(mocks.demoRsvpAdd).not.toHaveBeenCalled();
   });
 });

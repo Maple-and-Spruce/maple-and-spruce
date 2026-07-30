@@ -121,6 +121,7 @@ export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/g
 export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
 export { addMusicTogetherDemoRsvp } from '@maple/firebase/maple-functions/add-music-together-demo-rsvp';
 export { getMusicTogetherDemoRsvps } from '@maple/firebase/maple-functions/get-music-together-demo-rsvps';
+export { getPublicMusicTogetherDemos } from '@maple/firebase/maple-functions/get-public-music-together-demos';
 export { getPublicMusicTogetherSections } from '@maple/firebase/maple-functions/get-public-music-together-sections';
 export { addMusicTogetherInterest } from '@maple/firebase/maple-functions/add-music-together-interest';
 export { getMusicTogetherInterest } from '@maple/firebase/maple-functions/get-music-together-interest';
@@ -134,6 +135,12 @@ export { createMusicTogetherSection } from '@maple/firebase/maple-functions/crea
 export { updateMusicTogetherSection } from '@maple/firebase/maple-functions/update-music-together-section';
 export { duplicateMusicTogetherSection } from '@maple/firebase/maple-functions/duplicate-music-together-section';
 export { getMusicTogetherRoster } from '@maple/firebase/maple-functions/get-music-together-roster';
+
+// Music Together admin demo-class management
+export { getMusicTogetherDemos } from '@maple/firebase/maple-functions/get-music-together-demos';
+export { createMusicTogetherDemo } from '@maple/firebase/maple-functions/create-music-together-demo';
+export { updateMusicTogetherDemo } from '@maple/firebase/maple-functions/update-music-together-demo';
+export { deleteMusicTogetherDemo } from '@maple/firebase/maple-functions/delete-music-together-demo';
 export { getRelatedPublicClasses } from '@maple/firebase/maple-functions/get-related-public-classes';
 export { addToClassWaitlist } from '@maple/firebase/maple-functions/add-to-class-waitlist';
 export { getClassWaitlist } from '@maple/firebase/maple-functions/get-class-waitlist';
@@ -179,6 +186,7 @@ export { getBusinessPaymentConfig } from '@maple/firebase/maple-functions/get-bu
 export { updateBusinessPaymentConfig } from '@maple/firebase/maple-functions/update-business-payment-config';
 export { updateLessonRatesConfig } from '@maple/firebase/maple-functions/update-lesson-rates-config';
 export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-music-together-section-write';
+export { onMusicTogetherDemoWrite } from '@maple/firebase/maple-functions/on-music-together-demo-write';
 
 // Room availability
 export { getRoomSchedule } from '@maple/firebase/maple-functions/get-room-schedule';

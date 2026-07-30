@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,34 +15,25 @@ import {
   Typography,
   Box,
   Stack,
+  Chip,
   Skeleton,
   Alert,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import type { RequestState, MusicTogetherDemoRsvp } from '@maple/ts/domain';
-import type { GetMusicTogetherDemoRsvpsResponse } from '@maple/ts/firebase/api-types';
+import {
+  mtDemoDisplayLabel,
+  type RequestState,
+  type MusicTogetherDemoRsvp,
+} from '@maple/ts/domain';
+import type {
+  GetMusicTogetherDemoRsvpsResponse,
+  MusicTogetherDemoRsvpGroup,
+} from '@maple/ts/firebase/api-types';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   demoRsvpsState: RequestState<GetMusicTogetherDemoRsvpsResponse>;
-}
-
-/** One demo slot with the families who RSVP'd to it (in signup order). */
-interface DemoSlotGroup {
-  slot: string;
-  rsvps: MusicTogetherDemoRsvp[];
-}
-
-/** Group RSVPs by their chosen slot, preserving first-seen slot order. */
-function groupBySlot(rsvps: MusicTogetherDemoRsvp[]): DemoSlotGroup[] {
-  const groups = new Map<string, MusicTogetherDemoRsvp[]>();
-  for (const rsvp of rsvps) {
-    const list = groups.get(rsvp.demoSlot) ?? [];
-    list.push(rsvp);
-    groups.set(rsvp.demoSlot, list);
-  }
-  return Array.from(groups, ([slot, slotRsvps]) => ({ slot, rsvps: slotRsvps }));
 }
 
 /** Table-shaped placeholder shown while the RSVPs load. */
@@ -74,12 +65,11 @@ function DemoLoadingSkeleton() {
   );
 }
 
-/** A single demo-slot group: a header with count + copy-emails, then the rows. */
-function DemoSlotSection({ group }: { group: DemoSlotGroup }) {
+/** A copy-emails button that flips to "Copied!" briefly. */
+function CopyEmailsButton({ rsvps }: { rsvps: MusicTogetherDemoRsvp[] }) {
   const [copied, setCopied] = useState(false);
-
-  const handleCopyEmails = () => {
-    const emails = group.rsvps
+  const handleCopy = () => {
+    const emails = rsvps
       .map((r) => r.email)
       .filter((email, i, arr) => arr.indexOf(email) === i) // dedupe
       .join(', ');
@@ -88,7 +78,51 @@ function DemoSlotSection({ group }: { group: DemoSlotGroup }) {
       setTimeout(() => setCopied(false), 2000);
     });
   };
+  return (
+    <Button
+      size="small"
+      variant="outlined"
+      startIcon={<ContentCopyIcon />}
+      onClick={handleCopy}
+      disabled={rsvps.length === 0}
+    >
+      {copied ? 'Copied!' : 'Copy emails'}
+    </Button>
+  );
+}
 
+/** A table of RSVPs (name + email), or a muted "none" line. */
+function RsvpTable({ rsvps }: { rsvps: MusicTogetherDemoRsvp[] }) {
+  if (rsvps.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+        None yet.
+      </Typography>
+    );
+  }
+  return (
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell>Name</TableCell>
+          <TableCell>Email</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rsvps.map((rsvp) => (
+          <TableRow key={rsvp.id}>
+            <TableCell>{rsvp.name}</TableCell>
+            <TableCell>{rsvp.email}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/** One demo with its confirmed + waitlisted RSVPs, each with a copy-emails button. */
+function DemoGroupSection({ group }: { group: MusicTogetherDemoRsvpGroup }) {
+  const allRsvps = [...group.confirmed, ...group.waitlisted];
   return (
     <Box>
       <Box
@@ -102,46 +136,52 @@ function DemoSlotSection({ group }: { group: DemoSlotGroup }) {
         }}
       >
         <Typography variant="h6">
-          {group.slot} ({group.rsvps.length})
+          {mtDemoDisplayLabel(group.demo)}
         </Typography>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<ContentCopyIcon />}
-          onClick={handleCopyEmails}
-        >
-          {copied ? 'Copied!' : 'Copy emails'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Chip
+            size="small"
+            color="success"
+            label={`${group.confirmed.length} / ${group.demo.capacityFamilies} confirmed`}
+          />
+          {group.waitlisted.length > 0 && (
+            <Chip
+              size="small"
+              label={`${group.waitlisted.length} waitlisted`}
+            />
+          )}
+          <CopyEmailsButton rsvps={allRsvps} />
+        </Box>
       </Box>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Email</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {group.rsvps.map((rsvp) => (
-            <TableRow key={rsvp.id}>
-              <TableCell>{rsvp.name}</TableCell>
-              <TableCell>{rsvp.email}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Typography variant="subtitle2" sx={{ mt: 1 }}>
+        Confirmed
+      </Typography>
+      <RsvpTable rsvps={group.confirmed} />
+      {group.waitlisted.length > 0 && (
+        <>
+          <Typography variant="subtitle2" sx={{ mt: 1.5 }}>
+            Waitlist
+          </Typography>
+          <RsvpTable rsvps={group.waitlisted} />
+        </>
+      )}
     </Box>
   );
 }
 
 /**
- * Admin viewer for the free Music Together demo-class RSVPs. Lists families
- * grouped by the demo slot they chose, each group with a count and a
- * copy-emails button, so Stephanie can follow up.
+ * Admin viewer for the free Music Together demo-class RSVPs. Lists each demo
+ * (soonest first) with its families split into confirmed (seated) and
+ * waitlisted, each with counts and a copy-emails button so Stephanie can
+ * follow up.
  */
 export function DemoRsvpsDialog({ open, onClose, demoRsvpsState }: Props) {
-  const rsvps =
-    demoRsvpsState.status === 'success' ? demoRsvpsState.data.rsvps : [];
-  const groups = useMemo(() => groupBySlot(rsvps), [rsvps]);
+  const groups =
+    demoRsvpsState.status === 'success' ? demoRsvpsState.data.demos : [];
+  // Only show demos that actually have at least one RSVP.
+  const withRsvps = groups.filter(
+    (g) => g.confirmed.length + g.waitlisted.length > 0
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -152,15 +192,15 @@ export function DemoRsvpsDialog({ open, onClose, demoRsvpsState }: Props) {
         {demoRsvpsState.status === 'error' && (
           <Alert severity="error">{demoRsvpsState.error}</Alert>
         )}
-        {demoRsvpsState.status === 'success' && groups.length === 0 && (
+        {demoRsvpsState.status === 'success' && withRsvps.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">
             No RSVPs yet.
           </Typography>
         )}
-        {demoRsvpsState.status === 'success' && groups.length > 0 && (
+        {demoRsvpsState.status === 'success' && withRsvps.length > 0 && (
           <Stack spacing={4} sx={{ mt: 1 }}>
-            {groups.map((group) => (
-              <DemoSlotSection key={group.slot} group={group} />
+            {withRsvps.map((group) => (
+              <DemoGroupSection key={group.demo.id} group={group} />
             ))}
           </Stack>
         )}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { musicTogetherDemoRsvpValidation } from './music-together-demo-rsvp.validation';
 
 const valid = {
-  demoSlot: 'Sat Aug 3 · 10:00 AM',
+  demoId: 'demo-1',
   name: 'Jamie Rivera',
   email: 'jamie@example.com',
 };
@@ -13,17 +13,9 @@ describe('musicTogetherDemoRsvpValidation', () => {
     expect(result.hasErrors()).toBe(false);
   });
 
-  it('requires a demo slot', () => {
-    const result = musicTogetherDemoRsvpValidation({ ...valid, demoSlot: '' });
-    expect(result.hasErrors('demoSlot')).toBe(true);
-  });
-
-  it('caps the demo slot length', () => {
-    const result = musicTogetherDemoRsvpValidation({
-      ...valid,
-      demoSlot: 'x'.repeat(200),
-    });
-    expect(result.hasErrors('demoSlot')).toBe(true);
+  it('requires a demoId', () => {
+    const result = musicTogetherDemoRsvpValidation({ ...valid, demoId: '' });
+    expect(result.hasErrors('demoId')).toBe(true);
   });
 
   it('requires a name', () => {

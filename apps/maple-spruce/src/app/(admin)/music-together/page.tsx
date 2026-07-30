@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import GroupIcon from '@mui/icons-material/Group';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -27,22 +28,27 @@ import {
   getMusicTogetherSeasonLabel,
   mtSectionDerivedStatus,
   mtSemesterDerivedStatus,
+  mtDemoDurationMinutes,
   type MusicTogetherSection,
   type MusicTogetherSemester,
+  type MusicTogetherDemo,
   type CreateMusicTogetherSectionInput,
   type CreateMusicTogetherSemesterInput,
+  type CreateMusicTogetherDemoInput,
 } from '@maple/ts/domain';
 import {
   useMusicTogetherSections,
   useMusicTogetherSemesters,
   useMusicTogetherRoster,
   useMusicTogetherInterest,
+  useMusicTogetherDemos,
   useMusicTogetherDemoRsvps,
 } from '../../../hooks';
 import { SectionFormDialog } from './SectionFormDialog';
 import { SemesterFormDialog } from './SemesterFormDialog';
 import { RosterDialog } from './RosterDialog';
 import { InterestListDialog } from './InterestListDialog';
+import { DemoFormDialog } from './DemoFormDialog';
 import { DemoRsvpsDialog } from './DemoRsvpsDialog';
 
 const fmtDate = (d?: Date) =>
@@ -119,6 +125,16 @@ const SECTION_HEADERS = [
   'Actions',
 ] as const;
 
+const DEMO_HEADERS = [
+  'Date & time',
+  'Location',
+  'Duration',
+  'Capacity',
+  'RSVPs',
+  'Visible',
+  'Actions',
+] as const;
+
 export default function MusicTogetherPage() {
   const {
     sectionsState,
@@ -173,6 +189,53 @@ export default function MusicTogetherPage() {
 
   const [isDemoRsvpsOpen, setIsDemoRsvpsOpen] = useState(false);
   const { demoRsvpsState } = useMusicTogetherDemoRsvps();
+
+  const { demosState, countsByDemo, createDemo, updateDemo, deleteDemo } =
+    useMusicTogetherDemos();
+  const [isDemoFormOpen, setIsDemoFormOpen] = useState(false);
+  const [editingDemo, setEditingDemo] = useState<MusicTogetherDemo | undefined>();
+  const [isDemoSubmitting, setIsDemoSubmitting] = useState(false);
+
+  const handleDemoSubmit = useCallback(
+    async (data: CreateMusicTogetherDemoInput) => {
+      setIsDemoSubmitting(true);
+      try {
+        if (editingDemo) {
+          await updateDemo({ id: editingDemo.id, ...data });
+        } else {
+          await createDemo(data);
+        }
+        setIsDemoFormOpen(false);
+        setEditingDemo(undefined);
+      } finally {
+        setIsDemoSubmitting(false);
+      }
+    },
+    [editingDemo, createDemo, updateDemo]
+  );
+
+  const handleDeleteDemo = useCallback(
+    async (demo: MusicTogetherDemo) => {
+      if (
+        !window.confirm(
+          `Delete the demo on ${new Date(demo.dateTime).toLocaleString()} at ${
+            demo.location
+          }? This also removes it from the calendar.`
+        )
+      ) {
+        return;
+      }
+      setActionError(null);
+      try {
+        await deleteDemo(demo.id);
+      } catch (e) {
+        setActionError(
+          e instanceof Error ? e.message : 'Failed to delete demo'
+        );
+      }
+    },
+    [deleteDemo]
+  );
 
   const semesters = useMemo(
     () => (semestersState.status === 'success' ? semestersState.data : []),
@@ -496,6 +559,113 @@ export default function MusicTogetherPage() {
         </Table>
       )}
 
+      {/* ── Demo classes ──────────────────────────────────────────── */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mt: 5,
+          mb: 1.5,
+        }}
+      >
+        <Typography variant="h6" component="h2">
+          Demo Classes
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setEditingDemo(undefined);
+            setIsDemoFormOpen(true);
+          }}
+        >
+          Add demo
+        </Button>
+      </Box>
+
+      {(demosState.status === 'idle' || demosState.status === 'loading') && (
+        <TableLoadingSkeleton headers={DEMO_HEADERS} size="small" rows={2} />
+      )}
+      {demosState.status === 'error' && (
+        <Alert severity="error">{demosState.error}</Alert>
+      )}
+      {demosState.status === 'success' && demosState.data.length === 0 && (
+        <Typography color="text.secondary">
+          No demo classes yet. Add a free try-a-class (often offsite) — it shows
+          on the demo RSVP widget and the public calendar.
+        </Typography>
+      )}
+      {demosState.status === 'success' && demosState.data.length > 0 && (
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              {DEMO_HEADERS.map((h, i) => (
+                <TableCell
+                  key={h}
+                  align={i === DEMO_HEADERS.length - 1 ? 'right' : 'left'}
+                >
+                  {h}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {demosState.data.map((demo) => {
+              const counts = countsByDemo[demo.id];
+              const confirmed = counts?.confirmed ?? 0;
+              const waitlisted = counts?.waitlisted ?? 0;
+              return (
+                <TableRow key={demo.id}>
+                  <TableCell>{fmtDate(demo.dateTime)}</TableCell>
+                  <TableCell>{demo.location}</TableCell>
+                  <TableCell>{mtDemoDurationMinutes(demo)} min</TableCell>
+                  <TableCell>{demo.capacityFamilies} families</TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {confirmed} / {demo.capacityFamilies} confirmed
+                    </Typography>
+                    {waitlisted > 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        {waitlisted} waitlisted
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={demo.visible ? 'visible' : 'hidden'}
+                      color={demo.visible ? 'success' : 'default'}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Edit">
+                      <IconButton
+                        aria-label={`Edit demo ${demo.location}`}
+                        onClick={() => {
+                          setEditingDemo(demo);
+                          setIsDemoFormOpen(true);
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton
+                        aria-label={`Delete demo ${demo.location}`}
+                        onClick={() => handleDeleteDemo(demo)}
+                      >
+                        <DeleteOutlineIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+
       <SemesterFormDialog
         open={isSemesterFormOpen}
         onClose={() => {
@@ -531,6 +701,17 @@ export default function MusicTogetherPage() {
         open={isInterestOpen}
         onClose={() => setIsInterestOpen(false)}
         interestState={interestState}
+      />
+
+      <DemoFormDialog
+        open={isDemoFormOpen}
+        onClose={() => {
+          setIsDemoFormOpen(false);
+          setEditingDemo(undefined);
+        }}
+        onSubmit={handleDemoSubmit}
+        demo={editingDemo}
+        isSubmitting={isDemoSubmitting}
       />
 
       <DemoRsvpsDialog

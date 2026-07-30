@@ -113,6 +113,7 @@ export {
   MusicTogetherWaitlistRepository,
   mtWaitlistEmailKey,
 } from './lib/music-together-waitlist.repository';
+export { MusicTogetherDemoRepository } from './lib/music-together-demo.repository';
 export {
   MusicTogetherDemoRsvpRepository,
   mtDemoRsvpEmailKey,

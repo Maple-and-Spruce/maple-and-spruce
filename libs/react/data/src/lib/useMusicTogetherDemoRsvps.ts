@@ -2,20 +2,38 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { callDeduped } from './call-deduped';
-import type { MusicTogetherDemoRsvp, RequestState } from '@maple/ts/domain';
+import type { RequestState } from '@maple/ts/domain';
 import type {
   GetMusicTogetherDemoRsvpsRequest,
   GetMusicTogetherDemoRsvpsResponse,
+  MusicTogetherDemoRsvpGroup,
 } from '@maple/ts/firebase/api-types';
 
-/** Hydrate the ISO createdAt (callable serialization) back into a Date. */
-function hydrateRsvp(rsvp: MusicTogetherDemoRsvp): MusicTogetherDemoRsvp {
-  return { ...rsvp, createdAt: new Date(rsvp.createdAt) };
+/** Hydrate ISO date strings (callable serialization) back into Dates. */
+function hydrateGroup(
+  group: MusicTogetherDemoRsvpGroup
+): MusicTogetherDemoRsvpGroup {
+  return {
+    demo: {
+      ...group.demo,
+      dateTime: new Date(group.demo.dateTime),
+      createdAt: new Date(group.demo.createdAt),
+    },
+    confirmed: group.confirmed.map((r) => ({
+      ...r,
+      createdAt: new Date(r.createdAt),
+    })),
+    waitlisted: group.waitlisted.map((r) => ({
+      ...r,
+      createdAt: new Date(r.createdAt),
+    })),
+  };
 }
 
 /**
- * Loads the free Music Together demo-class RSVPs for the admin viewer so the
- * Owner / MT teacher can see who's coming to each demo and follow up.
+ * Loads the free Music Together demo-class RSVPs (grouped per demo, split into
+ * confirmed + waitlisted) for the admin viewer so the Owner / MT teacher can
+ * see who's coming to each demo and follow up.
  */
 export function useMusicTogetherDemoRsvps() {
   const [demoRsvpsState, setDemoRsvpsState] = useState<
@@ -31,7 +49,7 @@ export function useMusicTogetherDemoRsvps() {
       >('getMusicTogetherDemoRsvps', {});
       setDemoRsvpsState({
         status: 'success',
-        data: { rsvps: result.data.rsvps.map(hydrateRsvp) },
+        data: { demos: result.data.demos.map(hydrateGroup) },
       });
     } catch (error) {
       console.error('Failed to fetch Music Together demo RSVPs:', error);

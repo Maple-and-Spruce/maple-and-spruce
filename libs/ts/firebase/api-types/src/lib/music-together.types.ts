@@ -18,7 +18,20 @@ import type {
   MusicTogetherInterest,
   MusicTogetherInterestDemand,
   MusicTogetherWaitlistEntry,
+  MusicTogetherDemo,
+  CreateMusicTogetherDemoInput,
+  UpdateMusicTogetherDemoInput,
   MusicTogetherDemoRsvp,
+} from '@maple/ts/domain';
+
+// Re-export the demo entity so widget/admin consumers can import it from the
+// api-types barrel alongside the request/response types.
+export type {
+  MusicTogetherDemo,
+  CreateMusicTogetherDemoInput,
+  UpdateMusicTogetherDemoInput,
+  MusicTogetherDemoRsvp,
+  MusicTogetherDemoRsvpStatus,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -295,27 +308,99 @@ export interface AddToMusicTogetherWaitlistResponse {
 }
 
 // ============================================================================
-// Demo classes (public RSVP — free try-a-class; admin read)
+// Demo classes admin CRUD (authenticated read; Admin + MtTeacher writes)
+// ============================================================================
+
+// No filters — demos are returned in full for the admin manager.
+export type GetMusicTogetherDemosRequest = Record<string, never>;
+
+/** Per-demo RSVP counts (confirmed = seated, waitlisted = overflow). */
+export interface MusicTogetherDemoCounts {
+  confirmed: number;
+  waitlisted: number;
+}
+
+export interface GetMusicTogetherDemosResponse {
+  demos: MusicTogetherDemo[];
+  /** RSVP counts keyed by demo id; demos with none are omitted. */
+  counts: Record<string, MusicTogetherDemoCounts>;
+}
+
+export type CreateMusicTogetherDemoRequest = CreateMusicTogetherDemoInput;
+
+export interface CreateMusicTogetherDemoResponse {
+  demo: MusicTogetherDemo;
+}
+
+export type UpdateMusicTogetherDemoRequest = UpdateMusicTogetherDemoInput;
+
+export interface UpdateMusicTogetherDemoResponse {
+  demo: MusicTogetherDemo;
+}
+
+export interface DeleteMusicTogetherDemoRequest {
+  id: string;
+}
+
+export interface DeleteMusicTogetherDemoResponse {
+  deleted: boolean;
+}
+
+// ============================================================================
+// Public demos (public — drives the demo RSVP widget + calendar)
+// ============================================================================
+
+/** Customer-safe view of an upcoming visible demo with live availability. */
+export interface PublicMusicTogetherDemo {
+  id: string;
+  /** ISO instant the demo class happens. */
+  dateTime: string;
+  location: string;
+  /** Effective class length in minutes (demo override or the MT default). */
+  durationMinutes: number;
+  /** Families still able to confirm a seat (max(0, capacity − confirmed)). */
+  spotsRemaining: number;
+  /** True when the demo is at capacity (next RSVP is waitlisted). */
+  isFull: boolean;
+}
+
+export type GetPublicMusicTogetherDemosRequest = Record<string, never>;
+
+export interface GetPublicMusicTogetherDemosResponse {
+  demos: PublicMusicTogetherDemo[];
+}
+
+// ============================================================================
+// Demo RSVP (public — free capacity-gated try-a-class; admin read)
 // ============================================================================
 
 export interface AddMusicTogetherDemoRsvpRequest {
-  /** Human-readable demo slot label the family chose (e.g. "Sat Aug 3 · 10:00 AM"). */
-  demoSlot: string;
+  /** The demo (`MusicTogetherDemo`) the family is reserving. */
+  demoId: string;
   name: string;
   email: string;
 }
 
 export interface AddMusicTogetherDemoRsvpResponse {
-  /** False when the email had already RSVP'd (the slot/name were updated). */
+  /** False when the email had already RSVP'd to this demo (idempotent no-op). */
   added: boolean;
+  /** Whether the family took a seat or landed on the waitlist. */
+  status: 'confirmed' | 'waitlisted';
 }
 
-// No parameters — returns every demo RSVP for the admin viewer.
+// No parameters — returns every demo grouped with its RSVPs for the admin viewer.
 export type GetMusicTogetherDemoRsvpsRequest = Record<string, never>;
 
+/** One demo with its RSVPs split into confirmed (seated) and waitlisted. */
+export interface MusicTogetherDemoRsvpGroup {
+  demo: MusicTogetherDemo;
+  confirmed: MusicTogetherDemoRsvp[];
+  waitlisted: MusicTogetherDemoRsvp[];
+}
+
 export interface GetMusicTogetherDemoRsvpsResponse {
-  /** All demo RSVPs, ordered by signup time. */
-  rsvps: MusicTogetherDemoRsvp[];
+  /** Every demo (soonest first) with its confirmed + waitlisted RSVPs. */
+  demos: MusicTogetherDemoRsvpGroup[];
 }
 
 // ============================================================================
