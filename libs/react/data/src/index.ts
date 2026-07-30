@@ -21,6 +21,7 @@ export {
 export { useMusicTogetherSemesters } from './lib/useMusicTogetherSemesters';
 export { useMusicTogetherRoster } from './lib/useMusicTogetherRoster';
 export { useMusicTogetherInterest } from './lib/useMusicTogetherInterest';
+export { useMusicTogetherDemos } from './lib/useMusicTogetherDemos';
 export { useMusicTogetherDemoRsvps } from './lib/useMusicTogetherDemoRsvps';
 export { useClassCategories } from './lib/useClassCategories';
 

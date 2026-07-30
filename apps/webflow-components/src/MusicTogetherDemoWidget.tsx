@@ -3,14 +3,17 @@
  * component for embedding in Webflow via Code Components.
  *
  * Music Together runs FREE demo classes so families can try a class before
- * registering. This widget lists the configured demo time slots, lets a family
- * pick one and enter their name + email, and reserves a spot. Demos are free:
- * there is NO Square, NO payment, and NO section/capacity gate.
+ * registering. Demos are admin-managed entities (`MusicTogetherDemo`) Stephanie
+ * creates in the portal — each with a date, a (often OFFSITE) location, and a
+ * family capacity + waitlist. This widget fetches the upcoming visible demos,
+ * lets a family pick one and enter their name + email, and reserves a spot
+ * (confirmed while under capacity, else waitlisted). Demos are free: there is
+ * NO Square, NO payment.
  *
  * No Next.js dependencies — Firebase is initialized explicitly from the `env`
  * prop (see firebase-init.ts). Never imports or mounts Square.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,6 +26,7 @@ import {
   RadioGroup,
   Radio,
   FormControlLabel,
+  CircularProgress,
   ThemeProvider,
 } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
@@ -30,8 +34,12 @@ import { theme } from '@maple/react/theme';
 import type {
   AddMusicTogetherDemoRsvpRequest,
   AddMusicTogetherDemoRsvpResponse,
+  GetPublicMusicTogetherDemosRequest,
+  GetPublicMusicTogetherDemosResponse,
+  PublicMusicTogetherDemo,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
+import { warmup } from './lib/warmup';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 480;
@@ -40,59 +48,100 @@ const DEFAULT_HEADING = 'Free Demo Class';
 const DEFAULT_INTRO =
   'Come make music with us — reserve a spot at a free demo class.';
 
+/** Full date + time, e.g. "Saturday, August 3, 2026 at 10:00 AM". */
+function formatDemoDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/** The seats line shown under each demo option. */
+function spotsLabel(demo: PublicMusicTogetherDemo): string {
+  if (demo.isFull) return 'Full — join the waitlist';
+  return `${demo.spotsRemaining} ${
+    demo.spotsRemaining === 1 ? 'spot' : 'spots'
+  } left`;
+}
+
 export interface MusicTogetherDemoWidgetProps {
   /**
-   * 'dev' | 'prod' | 'emulator' — selects the Firebase project the RSVP is
-   * written to.
+   * 'dev' | 'prod' | 'emulator' — selects the Firebase project the demos are
+   * read from and the RSVP is written to.
    */
   env: string;
   /** Heading shown above the form. */
   heading?: string;
   /** Intro line shown under the heading. */
   intro?: string;
-  /** Demo time-slot labels (e.g. "Sat Aug 3 · 10:00 AM"). Empty slots are hidden. */
-  demoSlot1?: string;
-  demoSlot2?: string;
-  demoSlot3?: string;
-  demoSlot4?: string;
 }
 
 export function MusicTogetherDemoWidget({
   env,
   heading = DEFAULT_HEADING,
   intro = DEFAULT_INTRO,
-  demoSlot1,
-  demoSlot2,
-  demoSlot3,
-  demoSlot4,
 }: MusicTogetherDemoWidgetProps) {
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
 
-  // Configured, non-empty demo slots in order.
-  const slots = useMemo(
-    () =>
-      [demoSlot1, demoSlot2, demoSlot3, demoSlot4]
-        .map((s) => s?.trim())
-        .filter((s): s is string => !!s),
-    [demoSlot1, demoSlot2, demoSlot3, demoSlot4]
-  );
+  const [demosState, setDemosState] = useState<
+    | { status: 'loading' }
+    | { status: 'ready'; demos: PublicMusicTogetherDemo[] }
+    | { status: 'error' }
+  >({ status: 'loading' });
 
-  // Preselect the only slot when exactly one is configured.
-  const [demoSlot, setDemoSlot] = useState(slots.length === 1 ? slots[0] : '');
+  const [demoId, setDemoId] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [state, setState] = useState<
     | { status: 'idle' }
     | { status: 'submitting' }
-    | { status: 'success'; alreadyRsvpd: boolean; demoSlot: string }
+    | {
+        status: 'success';
+        added: boolean;
+        rsvpStatus: 'confirmed' | 'waitlisted';
+        demo: PublicMusicTogetherDemo;
+      }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
+
+  // Load the upcoming visible demos on mount. Also warm the downstream RSVP
+  // callable now, so it's hot by the time the family submits (seconds later).
+  useEffect(() => {
+    warmup(functions, 'addMusicTogetherDemoRsvp');
+    let cancelled = false;
+    const load = async () => {
+      setDemosState({ status: 'loading' });
+      try {
+        const call = httpsCallable<
+          GetPublicMusicTogetherDemosRequest,
+          GetPublicMusicTogetherDemosResponse
+        >(functions, 'getPublicMusicTogetherDemos');
+        const result = await call({});
+        if (cancelled) return;
+        const demos = result.data.demos;
+        setDemosState({ status: 'ready', demos });
+        // Preselect the only demo when exactly one is available.
+        if (demos.length === 1) setDemoId(demos[0].id);
+      } catch (err) {
+        console.error('Failed to load demos:', err);
+        if (!cancelled) setDemosState({ status: 'error' });
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [functions]);
 
   const emailValid = EMAIL_RE.test(email.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!demoSlot) {
+    if (!demoId) {
       setState({ status: 'error', message: 'Please choose a demo class time.' });
       return;
     }
@@ -103,6 +152,14 @@ export function MusicTogetherDemoWidget({
       });
       return;
     }
+    const demo =
+      demosState.status === 'ready'
+        ? demosState.demos.find((d) => d.id === demoId)
+        : undefined;
+    if (!demo) {
+      setState({ status: 'error', message: 'Please choose a demo class time.' });
+      return;
+    }
     setState({ status: 'submitting' });
     try {
       const call = httpsCallable<
@@ -110,14 +167,15 @@ export function MusicTogetherDemoWidget({
         AddMusicTogetherDemoRsvpResponse
       >(functions, 'addMusicTogetherDemoRsvp');
       const result = await call({
-        demoSlot,
+        demoId,
         name: name.trim(),
         email: email.trim(),
       });
       setState({
         status: 'success',
-        alreadyRsvpd: !result.data.added,
-        demoSlot,
+        added: result.data.added,
+        rsvpStatus: result.data.status,
+        demo,
       });
     } catch (err) {
       setState({
@@ -130,6 +188,19 @@ export function MusicTogetherDemoWidget({
     }
   };
 
+  const demos = demosState.status === 'ready' ? demosState.demos : [];
+
+  const successMessage = (
+    s: Extract<typeof state, { status: 'success' }>
+  ): string => {
+    if (s.rsvpStatus === 'waitlisted') {
+      return "That demo is full — you're on the waitlist and we'll email you if a spot opens.";
+    }
+    return `You're in! We'll see you ${formatDemoDateTime(
+      s.demo.dateTime
+    )} at ${s.demo.location}. Watch your email for details.`;
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ maxWidth: WIDGET_MAX_WIDTH, mx: 'auto', width: '100%' }}>
@@ -140,15 +211,19 @@ export function MusicTogetherDemoWidget({
           {intro}
         </Typography>
 
-        {slots.length === 0 ? (
-          <Alert severity="info">
-            Demo dates coming soon — check back!
+        {demosState.status === 'loading' ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : demosState.status === 'error' ? (
+          <Alert severity="error">
+            Unable to load demo classes right now. Please refresh and try again.
           </Alert>
+        ) : demos.length === 0 ? (
+          <Alert severity="info">Demo dates coming soon — check back!</Alert>
         ) : state.status === 'success' ? (
-          <Alert severity="success">
-            {state.alreadyRsvpd
-              ? `You're already signed up — we updated your demo to ${state.demoSlot}. See you there!`
-              : `You're in! We'll see you at ${state.demoSlot}. Watch your email for details.`}
+          <Alert severity={state.rsvpStatus === 'waitlisted' ? 'info' : 'success'}>
+            {successMessage(state)}
           </Alert>
         ) : (
           <Box component="form" onSubmit={handleSubmit}>
@@ -156,15 +231,30 @@ export function MusicTogetherDemoWidget({
               <FormControl>
                 <FormLabel sx={{ mb: 1 }}>Choose a demo class</FormLabel>
                 <RadioGroup
-                  value={demoSlot}
-                  onChange={(e) => setDemoSlot(e.target.value)}
+                  value={demoId}
+                  onChange={(e) => setDemoId(e.target.value)}
                 >
-                  {slots.map((slot) => (
+                  {demos.map((demo) => (
                     <FormControlLabel
-                      key={slot}
-                      value={slot}
+                      key={demo.id}
+                      value={demo.id}
                       control={<Radio />}
-                      label={slot}
+                      label={
+                        <Box sx={{ py: 0.5 }}>
+                          <Typography variant="body1">
+                            {formatDemoDateTime(demo.dateTime)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {demo.location}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color={demo.isFull ? 'warning.main' : 'text.secondary'}
+                          >
+                            {spotsLabel(demo)}
+                          </Typography>
+                        </Box>
+                      }
                     />
                   ))}
                 </RadioGroup>

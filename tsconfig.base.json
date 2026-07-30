@@ -431,6 +431,24 @@
       "@maple/firebase/maple-functions/get-music-together-demo-rsvps": [
         "libs/firebase/maple-functions/get-music-together-demo-rsvps/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-music-together-demos": [
+        "libs/firebase/maple-functions/get-music-together-demos/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-music-together-demo": [
+        "libs/firebase/maple-functions/create-music-together-demo/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-music-together-demo": [
+        "libs/firebase/maple-functions/update-music-together-demo/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/delete-music-together-demo": [
+        "libs/firebase/maple-functions/delete-music-together-demo/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-public-music-together-demos": [
+        "libs/firebase/maple-functions/get-public-music-together-demos/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/on-music-together-demo-write": [
+        "libs/firebase/maple-functions/on-music-together-demo-write/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-public-music-together-sections": [
         "libs/firebase/maple-functions/get-public-music-together-sections/src/index.ts"
       ],

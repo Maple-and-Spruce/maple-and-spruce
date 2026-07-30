@@ -3,8 +3,9 @@
  *
  * Wraps the MusicTogetherDemoWidget for use in the Webflow Designer. A
  * direct-linkable, on-brand RSVP for FREE Music Together demo classes — the
- * family picks one of up to four configured demo time slots and gives us their
- * name + email. No payment; never touches Square.
+ * widget loads the upcoming demos Stephanie created in the admin portal (each
+ * with a date, location, and capacity) and the family picks one and gives us
+ * their name + email. No payment; never touches Square.
  */
 import { declareComponent } from '@webflow/react';
 import { props } from '@webflow/data-types';
@@ -14,7 +15,7 @@ import { MusicTogetherDemoWidget } from './MusicTogetherDemoWidget';
 export default declareComponent(MusicTogetherDemoWidget, {
   name: 'Music Together Demo Classes',
   description:
-    'RSVP for a FREE Music Together demo class. Families pick one of the configured demo time slots and enter their name + email — no payment. RSVPs are visible to admins for follow-up.',
+    'RSVP for a FREE Music Together demo class. The widget loads the upcoming demos created in the admin portal (date, location, capacity); families pick one and enter their name + email — no payment. RSVPs (confirmed + waitlist) are visible to admins for follow-up.',
   decorators: [emotionShadowDomDecorator],
   props: {
     env: props.Variant({
@@ -30,22 +31,6 @@ export default declareComponent(MusicTogetherDemoWidget, {
       name: 'Intro',
       defaultValue:
         'Come make music with us — reserve a spot at a free demo class.',
-    }),
-    demoSlot1: props.Text({
-      name: 'Demo slot 1',
-      defaultValue: '',
-    }),
-    demoSlot2: props.Text({
-      name: 'Demo slot 2',
-      defaultValue: '',
-    }),
-    demoSlot3: props.Text({
-      name: 'Demo slot 3',
-      defaultValue: '',
-    }),
-    demoSlot4: props.Text({
-      name: 'Demo slot 4',
-      defaultValue: '',
     }),
   },
 });

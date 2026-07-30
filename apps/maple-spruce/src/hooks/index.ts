@@ -28,6 +28,7 @@ export {
   useMusicTogetherSemesters,
   useMusicTogetherRoster,
   useMusicTogetherInterest,
+  useMusicTogetherDemos,
   useMusicTogetherDemoRsvps,
 } from '@maple/react/data';
 export { useAuth } from '@maple/react/auth';
