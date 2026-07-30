@@ -393,7 +393,9 @@ export function MusicTogetherRegistrationWidget({
     }
     // Warm the create function — the family will submit shortly after filling
     // out the form, by which point the container is up.
-    warmup(functions, 'createMusicTogetherRegistration');
+    // Warm both downstream mutations: the checkout create, and the waitlist
+    // capture (fired both when a section is full and in coming-soon mode).
+    warmup(functions, 'createMusicTogetherRegistration', 'addToMusicTogetherWaitlist');
 
     const load = async () => {
       setState({ status: 'loading' });
