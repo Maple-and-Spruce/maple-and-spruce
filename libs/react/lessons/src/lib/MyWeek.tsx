@@ -220,7 +220,12 @@ export function MyWeek({
     );
   }
 
-  const { commitments, blocks } = weekState.data;
+  // Default missing fields to [] so a transient frontend/functions version
+  // skew (they deploy as separate jobs) degrades to an empty week instead of
+  // white-screening the whole page. `blocks` was added to the response in
+  // #685; an older deployed getMyWeek omits it.
+  const commitments = weekState.data.commitments ?? [];
+  const blocks = weekState.data.blocks ?? [];
   const visible = commitments.filter((c) => !hidden.has(c.category));
 
   return (

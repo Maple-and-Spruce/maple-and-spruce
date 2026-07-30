@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
+import type { GetMyWeekResponse } from '@maple/ts/firebase/api-types';
 import { MyWeek } from './MyWeek';
 import {
   mockMyWeekResponse,
@@ -46,6 +47,41 @@ export const Unlinked: Story = {
       status: 'success',
       data: { commitments: [], blocks: [], unlinked: true },
     },
+  },
+};
+
+// Regression: an older deployed getMyWeek (pre-#685) omits `blocks` (and
+// `unattributed`). The tab must degrade to an empty week, not white-screen.
+export const LegacyResponseMissingBlocks: Story = {
+  args: {
+    weekState: {
+      status: 'success',
+      // Intentionally the old shape: no `blocks`, commitments lack
+      // `unattributed`. Cast because the current type requires them.
+      data: {
+        commitments: mockMyWeekResponse.commitments.map((c) => ({
+          id: c.id,
+          title: c.title,
+          category: c.category,
+          startDateTime: c.startDateTime,
+          endDateTime: c.endDateTime,
+          room: c.room,
+          ownership: c.ownership,
+          cadence: c.cadence,
+        })),
+        unlinked: false,
+      } as unknown as GetMyWeekResponse,
+    },
+  },
+  play: async ({ canvas }) => {
+    // Renders the week (nav present) instead of throwing.
+    await expect(
+      canvas.getByRole('button', { name: /next week/i }),
+    ).toBeInTheDocument();
+    // Commitments outside a block still render (blocks defaulted to []).
+    await waitFor(() =>
+      expect(within(document.body).getByText(/Friday Jam/)).toBeInTheDocument(),
+    );
   },
 };
 
