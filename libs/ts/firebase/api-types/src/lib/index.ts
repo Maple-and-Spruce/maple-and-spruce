@@ -358,6 +358,7 @@ export type {
   MyWeekCadence,
   MyWeekBlock,
   MyWeekCommitment,
+  MyWeekStandingSlot,
   GetMyWeekRequest,
   GetMyWeekResponse,
 } from './my-week.types';

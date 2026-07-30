@@ -28,17 +28,26 @@ import {
   LessonBlockRepository,
   LessonRepository,
 } from '@maple/firebase/database';
-import { isLessonUnattributed } from '@maple/ts/domain';
+import {
+  DEFAULT_LESSON_TIME_ZONE,
+  isLessonUnattributed,
+  minutesOfDayInZone,
+  weekdayIndexInZone,
+} from '@maple/ts/domain';
 import type { CalendarEvent, LessonBlock } from '@maple/ts/domain';
 import type {
   GetMyWeekRequest,
   GetMyWeekResponse,
   MyWeekBlock,
   MyWeekCommitment,
+  MyWeekStandingSlot,
 } from '@maple/ts/firebase/api-types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LOOKBACK_WEEKS = 4;
+const TZ = DEFAULT_LESSON_TIME_ZONE;
+/** A slot is "standing" once it recurs in at least this many distinct weeks. */
+const STANDING_MIN_WEEKS = 2;
 
 /** Server-local start-of-week (Sunday 00:00) for a given instant. */
 export function startOfWeek(d: Date): Date {
@@ -117,6 +126,79 @@ export function buildCommitments(
     });
 }
 
+/**
+ * Synthesize the standing (typical) week from the lookback: recurring slots
+ * projected onto a generic Sun–Sat, independent of any concrete week's
+ * instances. A slot is standing when the same owner + category + weekday +
+ * clock-time appears in ≥2 distinct weeks across [lookbackStart, to). Weekday /
+ * clock are evaluated in the shop timezone so they align with lesson blocks
+ * (unlike the concrete `cadence` heuristic, which keys off server-local time).
+ * Pure — the handler supplies the same events it fetched for recurrence.
+ */
+export function buildStandingSlots(
+  events: CalendarEvent[],
+  lookbackStart: Date,
+  myInstructorId: string,
+): MyWeekStandingSlot[] {
+  interface Agg {
+    weeks: Set<number>;
+    representative: CalendarEvent;
+    weekday: number;
+    startMinutes: number;
+  }
+  const byKey = new Map<string, Agg>();
+
+  for (const e of events) {
+    const weekday = weekdayIndexInZone(e.startDateTime, TZ);
+    const startMinutes = minutesOfDayInZone(e.startDateTime, TZ);
+    const owner = e.ownerInstructorId ?? 'shared';
+    const key = `${owner}|${e.type}|${weekday}|${startMinutes}`;
+    const weekIndex = Math.floor(
+      (e.startDateTime.getTime() - lookbackStart.getTime()) / (7 * DAY_MS),
+    );
+    const agg = byKey.get(key);
+    if (!agg) {
+      byKey.set(key, {
+        weeks: new Set([weekIndex]),
+        representative: e,
+        weekday,
+        startMinutes,
+      });
+    } else {
+      agg.weeks.add(weekIndex);
+      // Keep the most recent occurrence for the title/duration.
+      if (
+        e.startDateTime.getTime() > agg.representative.startDateTime.getTime()
+      ) {
+        agg.representative = e;
+      }
+    }
+  }
+
+  const slots: MyWeekStandingSlot[] = [];
+  for (const [key, agg] of byKey) {
+    if (agg.weeks.size < STANDING_MIN_WEEKS) continue;
+    const e = agg.representative;
+    const durationMinutes = Math.max(
+      Math.round((e.endDateTime.getTime() - e.startDateTime.getTime()) / 60000),
+      1,
+    );
+    slots.push({
+      id: key,
+      weekday: agg.weekday,
+      startMinutes: agg.startMinutes,
+      durationMinutes,
+      category: e.type,
+      ownership: e.ownerInstructorId === myInstructorId ? 'mine' : 'shared',
+      title: e.title,
+    });
+  }
+  slots.sort(
+    (a, b) => a.weekday - b.weekday || a.startMinutes - b.startMinutes,
+  );
+  return slots;
+}
+
 /** Serialize a block for the wire (drop Date fields). */
 function toMyWeekBlock(block: LessonBlock): MyWeekBlock {
   return {
@@ -137,7 +219,7 @@ export const getMyWeek = createRoleFunction<
     const myInstructorId = await instructorIdForUser(context.uid);
     if (!myInstructorId) {
       // Not linked to any instructor (e.g. a pure admin) — no "mine" to anchor.
-      return { commitments: [], blocks: [], unlinked: true };
+      return { commitments: [], standing: [], blocks: [], unlinked: true };
     }
 
     const now = new Date();
@@ -175,6 +257,7 @@ export const getMyWeek = createRoleFunction<
 
     return {
       commitments,
+      standing: buildStandingSlots(events, lookbackStart, myInstructorId),
       blocks: blocks.map(toMyWeekBlock),
       unlinked: false,
     };
