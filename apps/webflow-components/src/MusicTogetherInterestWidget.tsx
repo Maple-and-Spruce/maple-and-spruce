@@ -37,6 +37,7 @@ import type {
   AddMusicTogetherInterestResponse,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
+import { warmup } from './lib/warmup';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 560;
@@ -96,6 +97,8 @@ export function MusicTogetherInterestWidget({
   });
 
   useEffect(() => {
+    // Warm the downstream submit callable now; the family triggers it seconds later.
+    warmup(functions, 'addMusicTogetherInterest');
     let cancelled = false;
     (async () => {
       try {
