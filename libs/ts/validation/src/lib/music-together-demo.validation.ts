@@ -14,7 +14,9 @@ export interface MusicTogetherDemoValidationInput {
   dateTime?: Date | string;
   location?: string;
   capacityFamilies?: number;
-  durationMinutes?: number;
+  // number | null: a blank form field persists as null, and the suite is a
+  // runtime boundary that must accept the null it actually receives.
+  durationMinutes?: number | null;
   notes?: string;
   visible?: boolean;
 }
@@ -51,7 +53,10 @@ export const musicTogetherDemoValidation = staticSuite(
     });
 
     test('durationMinutes', 'Duration must be greater than 0', () => {
-      if (data.durationMinutes !== undefined) {
+      // Loose `!= null` so a stored blank (persisted as null) is treated as
+      // absent — a strict `!== undefined` let null through to enforce() and
+      // rejected demos created without a duration.
+      if (data.durationMinutes != null) {
         enforce(data.durationMinutes).greaterThan(0);
       }
     });

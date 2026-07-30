@@ -71,7 +71,7 @@ export function DemoFormDialog({
       setDateTime('');
       setLocation('');
       setCapacity(String(DEFAULT_CAPACITY_FAMILIES));
-      setDuration('');
+      setDuration(String(MT_CLASS_DURATION_MINUTES));
       setNotes('');
       setVisible(false);
     }
@@ -84,7 +84,9 @@ export function DemoFormDialog({
         dateTime: fromLocalInput(dateTime),
         location: location.trim(),
         capacityFamilies: parseInt(capacity, 10),
-        durationMinutes: duration ? parseInt(duration, 10) : undefined,
+        durationMinutes: duration
+          ? parseInt(duration, 10)
+          : MT_CLASS_DURATION_MINUTES,
         notes: notes.trim() || undefined,
         visible,
       };
