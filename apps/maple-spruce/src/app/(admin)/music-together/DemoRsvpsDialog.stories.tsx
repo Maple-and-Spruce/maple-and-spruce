@@ -162,3 +162,80 @@ export const EmptyState: Story = {
     await expect(canvas.getByText(/No RSVPs yet\./i)).toBeInTheDocument();
   },
 };
+
+/**
+ * Opening the viewer focused on a specific demo (its Name link was clicked on
+ * the admin page) scrolls that demo's group into view and briefly highlights
+ * it. Here the studio demo (`demo-2`) is focused.
+ */
+export const FocusedDemo: Story = {
+  args: {
+    demoRsvpsState: { status: 'success', data: withRsvps },
+    focusedDemoId: 'demo-2',
+  },
+  play: async () => {
+    const canvas = body();
+
+    // `scrollIntoView` is unimplemented in the test browser's jsdom-like DOM
+    // for some elements; define it so we can both avoid a throw and assert the
+    // focused group was scrolled to. (Object.assign throws on prototype props.)
+    const scrollIntoView = fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+      writable: true,
+    });
+
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    // The focused demo's group is rendered…
+    await expect(
+      canvas.getByText(/Maple & Spruce Studio/)
+    ).toBeInTheDocument();
+    await expect(canvas.getByText('Pat Lee')).toBeInTheDocument();
+
+    // …and it was scrolled into view on open.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  },
+};
+
+/**
+ * Focusing a demo that has NO RSVPs yet (the common case at launch) still
+ * renders that demo — clicking its Name link on the admin page must always land
+ * on the demo you clicked, even though the unfocused view hides empty demos.
+ */
+export const FocusedDemoWithNoRsvps: Story = {
+  args: {
+    demoRsvpsState: {
+      status: 'success',
+      data: {
+        demos: [
+          {
+            demo: { ...studioDemo, id: 'demo-3', location: 'Cheat Lake Library' },
+            confirmed: [],
+            waitlisted: [],
+          },
+          ...withRsvps.demos,
+        ],
+      },
+    },
+    focusedDemoId: 'demo-3',
+  },
+  play: async () => {
+    const canvas = body();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: fn(),
+      configurable: true,
+      writable: true,
+    });
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+    // The empty, focused demo renders (it would be filtered out unfocused)…
+    await expect(canvas.getByText(/Cheat Lake Library/)).toBeInTheDocument();
+    // …with a clear "no RSVPs" state rather than being missing.
+    await expect(canvas.getByText('None yet.')).toBeInTheDocument();
+  },
+};
