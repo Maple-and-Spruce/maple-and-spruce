@@ -44,7 +44,7 @@ export const Unlinked: Story = {
   args: {
     weekState: {
       status: 'success',
-      data: { commitments: [], blocks: [], unlinked: true },
+      data: { commitments: [], standing: [], blocks: [], unlinked: true },
     },
   },
 };

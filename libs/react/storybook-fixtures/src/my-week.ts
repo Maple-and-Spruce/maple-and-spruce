@@ -6,6 +6,37 @@ import type { GetMyWeekResponse } from '@maple/ts/firebase/api-types';
  */
 export const mockMyWeekResponse: GetMyWeekResponse = {
   unlinked: false,
+  // The standing/typical-week pattern (recurring slots, no concrete date) —
+  // mirrors the recurring commitments below (the one-off lessons drop out).
+  standing: [
+    {
+      id: 'std-lesson-tue',
+      weekday: 2, // Tuesday
+      startMinutes: 15 * 60,
+      durationMinutes: 30,
+      category: 'lesson',
+      ownership: 'mine',
+      title: 'Music Lesson',
+    },
+    {
+      id: 'std-class-thu',
+      weekday: 4, // Thursday
+      startMinutes: 10 * 60,
+      durationMinutes: 90,
+      category: 'class',
+      ownership: 'mine',
+      title: 'Watercolor Basics',
+    },
+    {
+      id: 'std-jam-fri',
+      weekday: 5, // Friday
+      startMinutes: 18 * 60,
+      durationMinutes: 120,
+      category: 'jam',
+      ownership: 'shared',
+      title: 'Friday Jam',
+    },
+  ],
   blocks: [
     {
       id: 'blk-tue',

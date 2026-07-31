@@ -55,6 +55,29 @@ export interface MyWeekCommitment {
   unattributed: boolean;
 }
 
+/**
+ * A synthesized standing (typical-week) slot — a commitment that recurs on the
+ * same weekday + clock-time across the lookback, projected onto a generic
+ * Sun–Sat week with no concrete date. Powers the "Typical week" planning view
+ * (#685): a standing lesson shows in its slot even on a concrete week where its
+ * instance is cancelled or missing, and one-offs drop out entirely. Weekday /
+ * time are evaluated in the shop timezone (America/New_York) so they line up
+ * with lesson blocks.
+ */
+export interface MyWeekStandingSlot {
+  /** Stable id (the recurrence key: owner|category|weekday|startMinutes). */
+  id: string;
+  /** Weekday 0 (Sun) – 6 (Sat). */
+  weekday: number;
+  /** Start — minutes from midnight, shop timezone. */
+  startMinutes: number;
+  /** Duration in minutes, from a representative occurrence. */
+  durationMinutes: number;
+  category: CalendarEventType;
+  ownership: MyWeekOwnership;
+  title: string;
+}
+
 export interface GetMyWeekRequest {
   /** ISO instant for the start of the week (inclusive). Defaults to the
    *  current week's start (server-local Sunday 00:00) when omitted. */
@@ -65,7 +88,13 @@ export interface GetMyWeekRequest {
 }
 
 export interface GetMyWeekResponse {
+  /** Concrete commitments for the requested week (the "This week" view). */
   commitments: MyWeekCommitment[];
+  /**
+   * The standing/typical-week pattern — recurring slots on a generic Sun–Sat,
+   * independent of the concrete week's instances (the "Typical week" view).
+   */
+  standing: MyWeekStandingSlot[];
   /** The caller's own weekly blocks — the containers the week is laid out in. */
   blocks: MyWeekBlock[];
   /** True when the caller isn't linked to any instructor record (no "mine"). */

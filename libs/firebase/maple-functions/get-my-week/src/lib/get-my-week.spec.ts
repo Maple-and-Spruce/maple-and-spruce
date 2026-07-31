@@ -22,7 +22,12 @@ vi.mock('@maple/firebase/database', () => ({
   LessonRepository: { findAll: mocks.findLessons },
 }));
 
-import { getMyWeek, buildCommitments, startOfWeek } from './get-my-week';
+import {
+  getMyWeek,
+  buildCommitments,
+  buildStandingSlots,
+  startOfWeek,
+} from './get-my-week';
 
 type Handler = (
   data: unknown,
@@ -35,6 +40,7 @@ type Handler = (
     category: string;
     unattributed: boolean;
   }>;
+  standing: Array<Record<string, unknown>>;
   blocks: Array<Record<string, unknown>>;
   unlinked: boolean;
 }>;
@@ -171,6 +177,75 @@ describe('buildCommitments', () => {
   });
 });
 
+describe('buildStandingSlots', () => {
+  // ISO-UTC instants that map to known ET wall-clock (EDT = UTC-4). Weekday /
+  // time are evaluated in America/New_York by the function.
+  const lookbackStart = new Date('2026-06-28T04:00:00Z');
+  const me = 'instr-katie';
+
+  it('emits one standing slot for a lesson recurring on the same ET weekday+time', () => {
+    // Three consecutive Tuesdays at 3:00 PM ET.
+    const events = [
+      event({
+        id: 'w1',
+        startDateTime: new Date('2026-07-07T19:00:00Z'),
+        ownerInstructorId: me,
+      }),
+      event({
+        id: 'w2',
+        startDateTime: new Date('2026-07-14T19:00:00Z'),
+        ownerInstructorId: me,
+      }),
+      event({
+        id: 'w3',
+        startDateTime: new Date('2026-07-21T19:00:00Z'),
+        ownerInstructorId: me,
+      }),
+    ];
+    const slots = buildStandingSlots(events, lookbackStart, me);
+    expect(slots).toHaveLength(1);
+    expect(slots[0]).toMatchObject({
+      weekday: 2, // Tuesday
+      startMinutes: 15 * 60,
+      durationMinutes: 30,
+      category: 'lesson',
+      ownership: 'mine',
+    });
+  });
+
+  it('excludes a one-off (seen in only one week)', () => {
+    const events = [
+      event({
+        id: 'once',
+        startDateTime: new Date('2026-07-21T19:00:00Z'),
+        ownerInstructorId: me,
+      }),
+    ];
+    expect(buildStandingSlots(events, lookbackStart, me)).toHaveLength(0);
+  });
+
+  it('marks a recurring shared event (weekly jam) as shared', () => {
+    const events = [
+      event({
+        id: 'j1',
+        startDateTime: new Date('2026-07-10T22:00:00Z'),
+        type: 'jam',
+        ownerInstructorId: null,
+      }),
+      event({
+        id: 'j2',
+        startDateTime: new Date('2026-07-17T22:00:00Z'),
+        type: 'jam',
+        ownerInstructorId: null,
+      }),
+    ];
+    const slots = buildStandingSlots(events, lookbackStart, me);
+    expect(slots).toHaveLength(1);
+    expect(slots[0].ownership).toBe('shared');
+    expect(slots[0].category).toBe('jam');
+  });
+});
+
 describe('getMyWeek handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -185,6 +260,7 @@ describe('getMyWeek handler', () => {
     const res = await handler({}, { uid: 'admin-uid' });
     expect(res.unlinked).toBe(true);
     expect(res.commitments).toEqual([]);
+    expect(res.standing).toEqual([]);
     expect(res.blocks).toEqual([]);
     expect(mocks.findByStartInRange).not.toHaveBeenCalled();
   });
