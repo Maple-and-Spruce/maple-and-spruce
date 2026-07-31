@@ -55,6 +55,32 @@
  * these globals, so a function that genuinely needs more headroom can raise
  * its own `maxInstances`.
  */
+/**
+ * PEER-DEP SHIM: force `@firebase/app` into every codebase's runtime bundle.
+ * ------------------------------------------------------------------------
+ * `firebase-functions/v2` eagerly `require()`s its Realtime-Database provider
+ * on import, which pulls in `firebase-admin/lib/database` →
+ * `@firebase/database-compat/dist/index.standalone.js`, and that file does a
+ * top-level `require('@firebase/app')`. `@firebase/app` is only a *peer*
+ * dependency of `@firebase/database-compat` — neither `firebase-admin` nor
+ * `firebase-functions` depends on it directly. Under pnpm's nested store the
+ * peer resolves, but Firebase Cloud Build installs each function's generated
+ * `package.json` with a FLAT resolver that does NOT auto-install a transitive
+ * package's unmet peer. The result: the deployed container throws
+ * `Cannot find module '@firebase/app'` at module load and never binds
+ * PORT 8080 — every function in the codebase fails its Cloud Run healthcheck.
+ * This was latent (nx-affected only redeploys changed functions) until a
+ * forced full redeploy of maple-square surfaced it after the firebase-admin
+ * 13→14 bump introduced the `database-compat` v2 peer.
+ *
+ * This side-effect import (kept because `@firebase/app` declares no
+ * `sideEffects: false`) makes esbuild emit a `require('@firebase/app')` into
+ * the bundle, so Nx's `generatePackageJson` lists it as a direct dependency
+ * of every codebase and Cloud Build installs it. `@firebase/app` is also a
+ * direct dependency in the root `package.json`. We never use Realtime
+ * Database — this only needs to resolve at load; it is never called.
+ */
+import '@firebase/app';
 import { setGlobalOptions } from 'firebase-functions/v2';
 
 /**
