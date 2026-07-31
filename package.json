@@ -86,6 +86,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
+    "@firebase/app": "^0.14.11",
     "@mui/icons-material": "^7.3.11",
     "@mui/material": "^7.3.11",
     "@mui/x-data-grid": "^7.0.0",
