@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -34,6 +34,13 @@ interface Props {
   open: boolean;
   onClose: () => void;
   demoRsvpsState: RequestState<GetMusicTogetherDemoRsvpsResponse>;
+  /**
+   * When set (a demo's Name link was clicked on the admin page), the dialog
+   * scrolls that demo's group into view on open and briefly highlights it so
+   * the user lands on the right one. Left undefined by the global "Demo RSVPs"
+   * button — behavior is then unchanged (all groups, none focused).
+   */
+  focusedDemoId?: string;
 }
 
 /** Table-shaped placeholder shown while the RSVPs load. */
@@ -175,13 +182,56 @@ function DemoGroupSection({ group }: { group: MusicTogetherDemoRsvpGroup }) {
  * waitlisted, each with counts and a copy-emails button so Stephanie can
  * follow up.
  */
-export function DemoRsvpsDialog({ open, onClose, demoRsvpsState }: Props) {
+export function DemoRsvpsDialog({
+  open,
+  onClose,
+  demoRsvpsState,
+  focusedDemoId,
+}: Props) {
   const groups =
     demoRsvpsState.status === 'success' ? demoRsvpsState.data.demos : [];
-  // Only show demos that actually have at least one RSVP.
+  // Only show demos that actually have at least one RSVP...
   const withRsvps = groups.filter(
     (g) => g.confirmed.length + g.waitlisted.length > 0
   );
+  // ...but always include the focused demo (from a name-link click) even if it
+  // has no RSVPs yet, so clicking a demo's name always lands on that demo.
+  const focusedGroup = focusedDemoId
+    ? groups.find((g) => g.demo.id === focusedDemoId)
+    : undefined;
+  const rendered =
+    focusedGroup && !withRsvps.some((g) => g.demo.id === focusedGroup.demo.id)
+      ? [focusedGroup, ...withRsvps]
+      : withRsvps;
+
+  // Scroll the focused demo's group into view and briefly highlight it when the
+  // dialog opens. The highlight is a theme `action.selected` wash that fades
+  // back to transparent via a background-color transition.
+  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [highlightedId, setHighlightedId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!open || !focusedDemoId) {
+      setHighlightedId(undefined);
+      return;
+    }
+    // Defer to let the dialog + groups mount before scrolling/highlighting.
+    const scrollTimer = setTimeout(() => {
+      groupRefs.current[focusedDemoId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      setHighlightedId(focusedDemoId);
+    }, 60);
+    return () => clearTimeout(scrollTimer);
+  }, [open, focusedDemoId]);
+
+  // Fade the highlight out shortly after it lands.
+  useEffect(() => {
+    if (!highlightedId) return;
+    const fadeTimer = setTimeout(() => setHighlightedId(undefined), 1600);
+    return () => clearTimeout(fadeTimer);
+  }, [highlightedId]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -192,15 +242,31 @@ export function DemoRsvpsDialog({ open, onClose, demoRsvpsState }: Props) {
         {demoRsvpsState.status === 'error' && (
           <Alert severity="error">{demoRsvpsState.error}</Alert>
         )}
-        {demoRsvpsState.status === 'success' && withRsvps.length === 0 && (
+        {demoRsvpsState.status === 'success' && rendered.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">
             No RSVPs yet.
           </Typography>
         )}
-        {demoRsvpsState.status === 'success' && withRsvps.length > 0 && (
+        {demoRsvpsState.status === 'success' && rendered.length > 0 && (
           <Stack spacing={4} sx={{ mt: 1 }}>
-            {withRsvps.map((group) => (
-              <DemoGroupSection key={group.demo.id} group={group} />
+            {rendered.map((group) => (
+              <Box
+                key={group.demo.id}
+                ref={(el: HTMLDivElement | null) => {
+                  groupRefs.current[group.demo.id] = el;
+                }}
+                sx={{
+                  p: 1,
+                  borderRadius: 1,
+                  transition: 'background-color 0.6s ease',
+                  backgroundColor:
+                    highlightedId === group.demo.id
+                      ? 'action.selected'
+                      : 'transparent',
+                }}
+              >
+                <DemoGroupSection group={group} />
+              </Box>
             ))}
           </Stack>
         )}
