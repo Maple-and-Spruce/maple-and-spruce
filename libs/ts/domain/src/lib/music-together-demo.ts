@@ -46,6 +46,12 @@ export interface MusicTogetherDemo {
    */
   visible: boolean;
   createdAt: Date;
+  /**
+   * Webflow CMS item ID, stored after a successful Firebase → Webflow sync so
+   * later syncs can update/remove the item directly (and to guard the
+   * trigger-loop). Set by the sync trigger, never by admin input.
+   */
+  webflowItemId?: string;
 }
 
 /**
@@ -91,6 +97,27 @@ export function mtDemoIsFull(
   confirmedCount: number
 ): boolean {
   return confirmedCount >= demo.capacityFamilies;
+}
+
+/**
+ * Public status of a demo, derived from its date and confirmed-RSVP count.
+ * Only visible, future-dated demos are synced to Webflow, so in practice the
+ * live site sees `open` or `full`; `past` is a defensive fallback.
+ */
+export type MusicTogetherDemoStatus = 'open' | 'full' | 'past';
+
+/**
+ * Derive the public status of a demo. Mirrors `mtSectionDerivedStatus`:
+ * past-dated → `past`, at/over capacity → `full`, otherwise `open`.
+ */
+export function mtDemoDerivedStatus(
+  demo: Pick<MusicTogetherDemo, 'dateTime' | 'capacityFamilies'>,
+  now: Date,
+  confirmedCount: number
+): MusicTogetherDemoStatus {
+  if (new Date(demo.dateTime).getTime() < now.getTime()) return 'past';
+  if (mtDemoIsFull(demo, confirmedCount)) return 'full';
+  return 'open';
 }
 
 /**

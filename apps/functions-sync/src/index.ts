@@ -21,6 +21,7 @@ export { syncRegistrationCount } from '@maple/firebase/maple-functions/sync-regi
 export { syncInstructorToWebflow } from '@maple/firebase/maple-functions/sync-instructor-to-webflow';
 export { syncMusicTogetherSectionToWebflow } from '@maple/firebase/maple-functions/sync-music-together-section-to-webflow';
 export { syncMusicTogetherSemesterToWebflow } from '@maple/firebase/maple-functions/sync-music-together-semester-to-webflow';
+export { syncMusicTogetherDemoToWebflow } from '@maple/firebase/maple-functions/sync-music-together-demo-to-webflow';
 
 // Etsy OAuth bootstrap
 export { etsyAuthUrl } from '@maple/firebase/maple-functions/etsy-auth-url';

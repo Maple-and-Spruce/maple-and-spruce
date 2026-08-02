@@ -32,6 +32,7 @@
     "firebase-maple-functions-sync-class-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-music-together-section-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-music-together-semester-to-webflow": "maple-sync",
+    "firebase-maple-functions-sync-music-together-demo-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-registration-count": "maple-sync",
     "firebase-maple-functions-etsy-auth-url": "maple-sync",
     "firebase-maple-functions-etsy-auth-callback": "maple-sync",

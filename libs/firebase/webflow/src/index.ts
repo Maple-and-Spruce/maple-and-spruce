@@ -54,3 +54,12 @@ export {
   type MtSemesterWebflowFieldData,
   mapSemesterToFieldData,
 } from './lib/mt-semester.service';
+
+// Music Together demo service
+export {
+  MtDemoWebflowService,
+  type SyncDemoInput,
+  type SyncDemoResult,
+  type MtDemoWebflowFieldData,
+  mapDemoToFieldData,
+} from './lib/mt-demo.service';

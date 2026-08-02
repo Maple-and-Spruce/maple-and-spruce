@@ -15,6 +15,7 @@ import { ClassService } from './class.service';
 import { InstructorService } from './instructor.service';
 import { MtSectionService } from './mt-section.service';
 import { MtSemesterService } from './mt-semester.service';
+import { MtDemoWebflowService } from './mt-demo.service';
 
 /**
  * Secret names for Firebase Functions secrets
@@ -38,6 +39,7 @@ export const WEBFLOW_STRING_NAMES = [
   'WEBFLOW_INSTRUCTORS_COLLECTION_ID',
   'WEBFLOW_MT_SECTIONS_COLLECTION_ID',
   'WEBFLOW_MT_SEMESTERS_COLLECTION_ID',
+  'WEBFLOW_MT_DEMOS_COLLECTION_ID',
 ] as const;
 
 export type WebflowSecrets = Record<
@@ -75,12 +77,14 @@ export class Webflow {
   private readonly _instructorService: InstructorService | null;
   private readonly _sectionService: MtSectionService | null;
   private readonly _semesterService: MtSemesterService | null;
+  private readonly _demoService: MtDemoWebflowService | null;
   public readonly siteId: string;
   public readonly artistsCollectionId: string;
   public readonly classesCollectionId: string;
   public readonly instructorsCollectionId: string;
   public readonly mtSectionsCollectionId: string;
   public readonly mtSemestersCollectionId: string;
+  public readonly mtDemosCollectionId: string;
 
   constructor(
     private readonly secrets: WebflowSecrets,
@@ -100,6 +104,7 @@ export class Webflow {
     this.instructorsCollectionId = this.strings.WEBFLOW_INSTRUCTORS_COLLECTION_ID;
     this.mtSectionsCollectionId = this.strings.WEBFLOW_MT_SECTIONS_COLLECTION_ID;
     this.mtSemestersCollectionId = this.strings.WEBFLOW_MT_SEMESTERS_COLLECTION_ID;
+    this.mtDemosCollectionId = this.strings.WEBFLOW_MT_DEMOS_COLLECTION_ID;
 
     if (!this.siteId) {
       throw new Error('Webflow site ID not configured. Set WEBFLOW_SITE_ID.');
@@ -137,6 +142,10 @@ export class Webflow {
 
     this._semesterService = this.mtSemestersCollectionId
       ? new MtSemesterService(this.client, this.mtSemestersCollectionId)
+      : null;
+
+    this._demoService = this.mtDemosCollectionId
+      ? new MtDemoWebflowService(this.client, this.mtDemosCollectionId)
       : null;
   }
 
@@ -200,6 +209,18 @@ export class Webflow {
       );
     }
     return this._semesterService;
+  }
+
+  /**
+   * Get the Music Together demo service for syncing demos to Webflow CMS
+   */
+  get demoService(): MtDemoWebflowService {
+    if (!this._demoService) {
+      throw new Error(
+        'Webflow MT demos collection ID not configured. Set WEBFLOW_MT_DEMOS_COLLECTION_ID.'
+      );
+    }
+    return this._demoService;
   }
 
   /**
