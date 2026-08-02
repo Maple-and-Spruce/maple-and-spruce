@@ -288,11 +288,11 @@ export class ClassService {
     });
 
     if (existingItemId) {
-      webflowSlug = await this.updateItem(existingItemId, fieldData);
+      webflowSlug = await this.updateItem(existingItemId, fieldData, isDev);
       webflowItemId = existingItemId;
       isNew = false;
     } else {
-      const newItem = await this.createItem(fieldData);
+      const newItem = await this.createItem(fieldData, isDev);
       webflowItemId = newItem.id;
       webflowSlug = extractSlug(newItem);
       isNew = true;
@@ -431,11 +431,14 @@ export class ClassService {
   }
 
   private async createItem(
-    fieldData: ClassWebflowFieldData
+    fieldData: ClassWebflowFieldData,
+    isDev: boolean
   ): Promise<WebflowItemWithId> {
+    // Dev-synced items are kept as drafts so a full-site publish can never make
+    // them live (mirrors the MT section/demo sync). Prod items are non-draft.
     const response = await this.client.collections.items.createItem(
       this.collectionId,
-      { isArchived: false, isDraft: false, fieldData }
+      { isArchived: false, isDraft: isDev, fieldData }
     );
 
     if (!response.id) {
@@ -452,7 +455,8 @@ export class ClassService {
    */
   private async updateItem(
     itemId: string,
-    fieldData: ClassWebflowFieldData
+    fieldData: ClassWebflowFieldData,
+    isDev: boolean
   ): Promise<string> {
     // Omit `slug` on update — Webflow auto-suffixes slug collisions on
     // create (e.g. `name-94fde` when `name` is taken), but on update it
@@ -464,7 +468,7 @@ export class ClassService {
       itemId,
       {
         isArchived: false,
-        isDraft: false,
+        isDraft: isDev,
         fieldData: fieldDataWithoutSlug,
       }
     );

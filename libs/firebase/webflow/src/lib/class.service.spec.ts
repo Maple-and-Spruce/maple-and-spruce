@@ -373,6 +373,26 @@ describe('ClassService', () => {
       );
     });
 
+    it('creates a DEV item as a draft so a full-site publish never makes it live', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-dev-item',
+        fieldData: { slug: 'pottery-101-dev' },
+      });
+
+      await service.syncClass({
+        classEntity: mockClass,
+        publish: false,
+        isDev: true,
+      });
+
+      expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        expect.objectContaining({ isDraft: true })
+      );
+      expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
+    });
+
     it('updates an existing Webflow item when class already exists', async () => {
       mockClient.collections.items.listItems.mockResolvedValue({
         items: [
