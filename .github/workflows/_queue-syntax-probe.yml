@@ -1,0 +1,17 @@
+name: Queue Syntax Probe (temporary)
+
+# Throwaway workflow: proves GitHub accepts `concurrency.queue: max` before
+# that key lands on the real deploy workflow. Deleted before this PR merges.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: queue-syntax-probe
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "concurrency.queue is accepted by the workflow parser"
