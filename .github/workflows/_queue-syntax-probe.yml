@@ -3,7 +3,9 @@ name: Queue Syntax Probe (temporary)
 # Throwaway workflow: proves GitHub accepts `concurrency.queue: max` before
 # that key lands on the real deploy workflow. Deleted before this PR merges.
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - chore/724-adr-and-function-ratchet
 
 concurrency:
   group: queue-syntax-probe
