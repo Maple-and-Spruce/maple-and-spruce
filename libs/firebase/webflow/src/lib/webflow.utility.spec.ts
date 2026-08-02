@@ -36,8 +36,12 @@ describe('WEBFLOW_STRING_NAMES', () => {
     expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_MT_SEMESTERS_COLLECTION_ID');
   });
 
-  it('has exactly six strings', () => {
-    expect(WEBFLOW_STRING_NAMES).toHaveLength(6);
+  it('includes WEBFLOW_MT_DEMOS_COLLECTION_ID', () => {
+    expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_MT_DEMOS_COLLECTION_ID');
+  });
+
+  it('has exactly seven strings', () => {
+    expect(WEBFLOW_STRING_NAMES).toHaveLength(7);
   });
 });
 
@@ -53,6 +57,7 @@ describe('Webflow', () => {
     WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-collection-id',
     WEBFLOW_MT_SECTIONS_COLLECTION_ID: 'test-mt-sections-collection-id',
     WEBFLOW_MT_SEMESTERS_COLLECTION_ID: 'test-mt-semesters-collection-id',
+    WEBFLOW_MT_DEMOS_COLLECTION_ID: 'test-mt-demos-collection-id',
   };
 
   describe('constructor validation', () => {
@@ -74,6 +79,7 @@ describe('Webflow', () => {
         WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-id',
         WEBFLOW_MT_SECTIONS_COLLECTION_ID: 'test-mt-sections-id',
         WEBFLOW_MT_SEMESTERS_COLLECTION_ID: 'test-mt-semesters-id',
+        WEBFLOW_MT_DEMOS_COLLECTION_ID: 'test-mt-demos-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
@@ -89,6 +95,7 @@ describe('Webflow', () => {
         WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-id',
         WEBFLOW_MT_SECTIONS_COLLECTION_ID: 'test-mt-sections-id',
         WEBFLOW_MT_SEMESTERS_COLLECTION_ID: 'test-mt-semesters-id',
+        WEBFLOW_MT_DEMOS_COLLECTION_ID: 'test-mt-demos-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
@@ -173,6 +180,25 @@ describe('Webflow', () => {
       const webflow = new Webflow(validSecrets, stringsWithoutSemesters);
       expect(() => webflow.semesterService).toThrow(
         'Webflow MT semesters collection ID not configured. Set WEBFLOW_MT_SEMESTERS_COLLECTION_ID.'
+      );
+    });
+  });
+
+  describe('demoService', () => {
+    it('returns MtDemoWebflowService instance when collection ID is configured', () => {
+      const webflow = new Webflow(validSecrets, validStrings);
+      const demoService = webflow.demoService;
+      expect(demoService).toBeDefined();
+    });
+
+    it('throws error when collection ID is not configured', () => {
+      const stringsWithoutDemos = {
+        ...validStrings,
+        WEBFLOW_MT_DEMOS_COLLECTION_ID: '',
+      };
+      const webflow = new Webflow(validSecrets, stringsWithoutDemos);
+      expect(() => webflow.demoService).toThrow(
+        'Webflow MT demos collection ID not configured. Set WEBFLOW_MT_DEMOS_COLLECTION_ID.'
       );
     });
   });

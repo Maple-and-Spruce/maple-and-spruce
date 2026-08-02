@@ -179,6 +179,9 @@
       "@maple/firebase/maple-functions/sync-class-to-webflow": [
         "libs/firebase/maple-functions/sync-class-to-webflow/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-music-together-demo-to-webflow": [
+        "libs/firebase/maple-functions/sync-music-together-demo-to-webflow/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-music-together-section-to-webflow": [
         "libs/firebase/maple-functions/sync-music-together-section-to-webflow/src/index.ts"
       ],
