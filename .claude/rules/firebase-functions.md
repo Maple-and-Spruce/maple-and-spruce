@@ -20,6 +20,29 @@ Cloud Function libraries **MUST** follow this naming pattern:
 
 For the full creation procedure, use the `create-cloud-function` skill.
 
+## Prefer a route on a domain router over a new function (ADR-029)
+
+**Default to adding a route on an existing domain router, not a new function library.**
+
+Every function library is a separate Cloud Run service. The gen-2 deploy write quota is
+**60 per 60 seconds and cannot be increased**, so the function count sets a hard floor on how
+long a full deploy takes — at 215 functions that floor is already ~4 minutes, and wide deploys
+have been failing outright. See ADR-029 and epic #724.
+
+CI enforces this as a ratchet (`build-check.yml` → `function-count` job):
+
+```bash
+npx tsx tools/check-function-count.ts        # fails if the count moved either way
+npx tsx tools/check-function-count.ts --fix  # commit the new baseline
+```
+
+Going **down** fails too — that's deliberate. Consolidation only sticks if the win is committed
+to `function-count-baseline.json`, otherwise a later PR silently reclaims the headroom.
+
+A genuinely new function is still fine when it needs materially different runtime options
+(`memory`, `timeoutSeconds`, `minInstances`, `secrets`) from everything in its domain — those are
+properties of the function, not the route. Raise the baseline deliberately in that PR and say why.
+
 ## Codebases
 
 Functions are split into 4 Firebase codebases to reduce cold start times:
