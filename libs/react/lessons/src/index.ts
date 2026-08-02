@@ -10,6 +10,7 @@ export {
   type LessonBlockListProps,
 } from './lib/LessonBlockList';
 export { MyWeek, type MyWeekProps } from './lib/MyWeek';
+export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export { HopeRatesTable } from './lib/HopeRatesTable';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';
