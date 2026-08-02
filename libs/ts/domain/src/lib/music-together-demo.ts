@@ -133,6 +133,10 @@ export function mtDemoDisplayLabel(
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    // Pin to ET — otherwise the label uses the runtime TZ (UTC on Cloud
+    // Functions), so the synced Webflow item name/slug showed the wrong time.
+    // Matches the date-display/time-display fields.
+    timeZone: 'America/New_York',
   });
   return demo.location ? `${when} · ${demo.location}` : when;
 }
