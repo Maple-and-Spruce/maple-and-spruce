@@ -262,6 +262,9 @@ export type {
   RoomScheduleWindow,
 } from './calendar-event.types';
 
+// Meta ad-attribution payload (shared by class + Music Together checkout)
+export type { MetaAttributionPayload } from './meta-attribution.types';
+
 // Phase 3c: Registration types
 export type {
   GetRegistrationsRequest,

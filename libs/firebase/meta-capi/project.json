@@ -1,0 +1,23 @@
+{
+  "name": "firebase-meta-capi",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/meta-capi/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:util"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "defaultConfiguration": "default",
+      "configurations": {
+        "default": {}
+      },
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "{projectRoot}/../../../coverage/libs/firebase/meta-capi"
+      }
+    }
+  }
+}

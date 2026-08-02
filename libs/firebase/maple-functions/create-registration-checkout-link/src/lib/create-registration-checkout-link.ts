@@ -93,7 +93,7 @@ export const createRegistrationCheckoutLink = Functions.endpoint
   .handle<
     CreateRegistrationCheckoutLinkRequest,
     CreateRegistrationCheckoutLinkResponse
-  >(async (data, _context, secrets, strings) => {
+  >(async (data, context, secrets, strings) => {
     const square = new Square(
       secrets as typeof secrets &
         Record<(typeof SQUARE_SECRET_NAMES)[number], string>,
@@ -136,7 +136,12 @@ export const createRegistrationCheckoutLink = Functions.endpoint
       taxRatePercent,
       discountCode,
       discountAmountCents,
-    } = await reserveClassRegistration(data, square.taxRatePercent);
+    } = await reserveClassRegistration(data, square.taxRatePercent, {
+      // Ad-attribution signal only (Meta CAPI client_ip_address /
+      // client_user_agent) — never authorized on.
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
 
     // A free class has nothing to charge — it should never reach the hosted
     // checkout fallback (there's no card form to fail). Guard BEFORE any

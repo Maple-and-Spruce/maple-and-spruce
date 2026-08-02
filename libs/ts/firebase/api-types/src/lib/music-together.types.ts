@@ -23,6 +23,7 @@ import type {
   UpdateMusicTogetherDemoInput,
   MusicTogetherDemoRsvp,
 } from '@maple/ts/domain';
+import type { MetaAttributionPayload } from './meta-attribution.types';
 
 // Re-export the demo entity so widget/admin consumers can import it from the
 // api-types barrel alongside the request/response types.
@@ -206,6 +207,12 @@ export interface CreateMusicTogetherRegistrationRequest {
    */
   cardVerificationToken?: string;
   notes?: string;
+  /**
+   * Browser-captured Meta ad attribution (`_fbp` / `_fbc` / page URL).
+   * Advisory only — persisted on the registration and forwarded to the Meta
+   * CAPI `Purchase` event by `sendMusicTogetherConversion`.
+   */
+  metaAttribution?: MetaAttributionPayload;
 }
 
 export interface CreateMusicTogetherRegistrationResponse {

@@ -74,7 +74,7 @@ export const createRegistration = Functions.endpoint
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
   .handle<CreateRegistrationRequest, CreateRegistrationResponse>(
-    async (data, _context, secrets, strings) => {
+    async (data, context, secrets, strings) => {
       const additionalAttendees = data.additionalAttendees ?? [];
 
       // Square is needed both for the tax rate (below) and to charge the card.
@@ -98,7 +98,12 @@ export const createRegistration = Functions.endpoint
         taxRatePercent,
         discountCode,
         discountAmountCents,
-      } = await reserveClassRegistration(data, square.taxRatePercent);
+      } = await reserveClassRegistration(data, square.taxRatePercent, {
+        // Ad-attribution signal only (Meta CAPI client_ip_address /
+        // client_user_agent) — never authorized on.
+        ip: context.ip,
+        userAgent: context.userAgent,
+      });
 
       const db = getDb();
       const registrationDocRef = RegistrationRepository.getDocRef(registrationId);
