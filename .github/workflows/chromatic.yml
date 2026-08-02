@@ -11,6 +11,13 @@ on:
 env:
   NX_DAEMON: 'false'
 
+# Same rationale as build-check.yml: one in-flight run per ref, superseded
+# pushes cancelled. Chromatic snapshots are metered, so a cancelled duplicate
+# run is also saved quota — this repo has hit the free-tier snapshot cap.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   chromatic:
     name: Visual Regression Testing

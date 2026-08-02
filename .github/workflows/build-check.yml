@@ -5,6 +5,23 @@ on:
     branches:
       - '**'
 
+# One in-flight run per PR. This workflow fans out to 19 jobs (builds, unit +
+# Storybook coverage, four E2E suites, integration-test matrix), so every push
+# to a PR used to start a second full copy while the first kept burning
+# runners — and both raced for the same shared dev resources.
+#
+# `cancel-in-progress: true` is correct HERE and wrong on the deploy workflow:
+# a superseded PR result is worthless (the branch already moved on), whereas a
+# half-cancelled deploy leaves functions stranded. Note this is the opposite
+# setting from `deploy-on-merge` in firebase-functions-merge.yml, deliberately.
+#
+# `github.ref` is the PR's merge ref, so each PR gets its own group and PRs
+# never cancel each other. Matters most with several agents iterating on
+# separate PRs at once.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   NX_DAEMON: 'false'
 
