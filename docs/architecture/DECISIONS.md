@@ -1156,6 +1156,120 @@ Plain RBAC: a `Role` enum (`admin`, `mt-teacher`, `clerk`, `lesson-teacher`), a 
 
 ---
 
+## ADR-029: Domain Routers — One HTTP Function per (Domain × Codebase), not per Endpoint
+
+**Status:** Accepted
+**Date:** 2026-08-02
+
+### Context
+We deploy **215 single-purpose functions** (`libs/firebase/maple-functions/*`), nearly all CRUD
+endpoints: `getClasses`, `createClass`, `updateClass`, `deleteClass`, `getDiscounts`, … Each is a
+separate Cloud Run service with its own revision, health check, deploy write op, and CPU burst.
+
+`deploy_functions_dev` has been failing repeatedly (`Container Healthcheck failed. Quota exceeded
+for total allowable CPU per project per region`, under a storm of 429s). Two quota facts, from
+[Cloud Run functions quotas](https://docs.cloud.google.com/functions/quotas):
+
+- The gen-2 API **WRITE quota is 60 per 60 seconds and cannot be increased**. At 215 functions a
+  full deploy needs ≥4 minutes of pure API writes, permanently.
+- "Total CPU allocation" is a **per-minute rate** ("total sum of user-requested CPU across function
+  instances over a 1 minute period"), not a standing reservation — which is why the console reads
+  ~0.5% at idle while a wide deploy still fails.
+
+Google's own first remedy is *"reduce deployment velocity"*, and it names CI systems deploying many
+functions at once as the cause. PR #725 batches the deploy, but that is a mitigation whose cost
+grows linearly with function count. Community datapoints put the pain threshold at
+[~60 functions, with 150+ taking ~45 minutes to deploy](https://groups.google.com/g/firebase-talk/c/Ym14sCZXHMA);
+the [Upcover writeup](https://blog.haroldadmin.com/posts/selective-redeployments-cloud-functions)
+hit CLI rate limits at ~60 and had to build batching plus per-function hashing to cope.
+
+Two repo-specific findings materially change the cost/benefit here:
+
+1. **We are already plain HTTP, not `onCall`.** `Functions.endpoint.handle()`
+   (`libs/firebase/functions/src/lib/functions.utility.ts`) builds an `onRequest` function and
+   hand-rolls CORS, Bearer-token verification, the role gate, Vest validation, uniqueness checks,
+   the warmup sentinel, and the `{ data: … }` request/response envelope that makes the client's
+   `httpsCallable` work. Consolidation is therefore a **routing** change, not a protocol change —
+   the middleware chain already exists and is ours.
+2. **The cold-start objection is already paid.** `apps/functions/src/index.ts` top-level re-exports
+   all ~165 core functions, so every maple-core container already evaluates every core function
+   module at cold start. This is the known Firebase failure mode — [when all functions share a
+   single index, every cold start loads every function's dependencies](https://github.com/hursey013/better-firebase-functions).
+   Grouping endpoints into a router does not add bundle weight we aren't already carrying.
+
+### Decision
+Group endpoints into **domain routers**: one `onRequest` function per (domain × codebase), with an
+Express `Router` dispatching to the existing handlers. Firebase explicitly supports this — the
+HTTPS function interface accepts `(req, res) => void`, which `express.Router`/`Application`
+satisfy, and [Firebase Hosting's docs](https://firebase.google.com/docs/hosting/functions) note
+that with Express routing "the function name is added as a prefix to the URL paths in the app you
+define."
+
+The existing `FunctionBuilder` chain (auth → role → validation → uniqueness → warmup → envelope)
+becomes **per-route router middleware**, unchanged in semantics. Clients migrate from
+`httpsCallable(functions, 'name')` to `httpsCallableFromURL(functions, '<routerUrl>/<route>')`,
+which preserves the callable envelope and ergonomics.
+
+Target: **215 → ~25 functions.**
+
+**Routers are per (domain × codebase), not per domain.** A codebase is a separate deployable, and
+our domains cut across them — Music Together spans all four (core 25, square 4, calendar 2, sync 2),
+Craft Club straddles core and square. A "one router per domain" plan cannot work as stated without
+first revisiting the codebase split (ADR-026).
+
+### Rationale
+- Attacks the actual cause. Batching (#725) makes a 215-function deploy survivable; it cannot make
+  it fast, because the 60/60s write quota is a hard floor that scales with function count.
+- Cheap in this codebase specifically: the middleware exists, the wire format is already
+  `{ data: … }`, and the container already loads the whole codebase.
+- **gen-2 concurrency makes fewer, hotter functions better for cold starts, not worse.** With
+  `concurrency: 80`, one instance serves many requests; consolidating raises per-function traffic
+  and lowers the cold-start hit rate. The v1 intuition ("one instance per request, so keep
+  functions small") does not apply.
+- Restores an optimization we currently forfeit: firebase-tools' skip-unchanged deploy is gated on
+  `!want[id].targetedByOnly` (`release/planner.js`), and *any* `--only` filter — including a bare
+  codebase filter — marks every endpoint targeted. Fewer functions means fewer targets regardless.
+- Domain-sized routers are the middle of the
+  [lambdalith-vs-single-focus](https://urielbitton.substack.com/p/lambdaliths-vs-lambda-single-focus)
+  spectrum: they capture the deploy/ops win without the "one crash takes down everything" and
+  "everything scales together" failure modes of a single app-wide function.
+
+### Alternatives Considered
+- **Raise the quotas.** The write quota is explicitly not increasable, and the CPU quota is a rate
+  we breach only during deploys. Worth taking the free CPU bump as a stopgap; it is not a fix.
+- **Batching alone (#725).** Shipped, and necessary regardless — but its cost grows linearly and it
+  leaves a ≥4-minute write-quota floor in place.
+- **A single `{ action, payload }` dispatcher per codebase (4 functions).** Maximal deploy win, but
+  every endpoint shares one URL, one log stream, one IAM identity, and one blast radius; every
+  change redeploys everything. Too coarse — loses the observability and isolation that make
+  incidents debuggable.
+- **Lazy exports (`better-firebase-functions` style).** Fixes cold-start module loading, not
+  function count or deploy time. Complementary; worth doing separately, not a substitute.
+- **Move to Cloud Run services directly.** Larger migration, and we would rebuild the
+  auth/validation/secrets ergonomics `FunctionBuilder` already gives us.
+- **Do nothing.** Function count only grows with the roadmap; every new endpoint makes the deploy
+  slower and the quota breach more likely.
+
+### Consequences
+- Deploy write ops drop ~215 → ~25, taking a full deploy under the 60/60s quota in a single batch.
+- **Blast radius widens to the domain.** An unhandled crash takes down the instance serving that
+  domain's routes, where today it takes down one endpoint. Domain-sized boundaries bound this;
+  route handlers must not throw past the middleware's error envelope.
+- **Runtime options become per-router.** `memory`, `timeoutSeconds`, `minInstances`, and `secrets`
+  are properties of the function, so co-located routes share them. A route needing materially
+  different limits stays its own function — that is the documented escape hatch, not a failure.
+- Per-route observability must be added deliberately (a route label in logs), since the function
+  name no longer identifies the endpoint.
+- Client call sites (`libs/react/data/`, the Webflow registration widget) migrate to
+  `httpsCallableFromURL`. Old functions stay live until their call sites move.
+- Retired functions must be deleted manually (`firebase functions:delete`) — CI does not prune.
+- A CI ratchet (`tools/check-function-count.ts`) prevents the count from growing while this is
+  in progress.
+- Revisit if: a domain's routes diverge sharply in memory/timeout/secret needs, or a router's
+  route count makes its cold start measurably worse than the per-endpoint baseline.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1179,4 +1293,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-07-16 (ADR-028 added for plain RBAC with Firestore role docs)*
+*Last updated: 2026-08-02 (ADR-029 added for domain routers over per-endpoint functions)*

@@ -108,6 +108,32 @@ jobs:
         # integration-tests step). Other CI jobs use it via `npx tsx`.
         run: npx tsx tools/check-firestore-indexes.ts
 
+  function-count:
+    name: Function Count
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # One Cloud Run service per function library. The gen-2 deploy write
+      # quota is 60/60s and CANNOT be raised, so the function count sets a
+      # hard floor on how long a full deploy takes. ADR-029 consolidates
+      # endpoints into domain routers (#724); this ratchet stops the count
+      # drifting back up while that work is in flight. Resolve either
+      # direction with: npx tsx tools/check-function-count.ts --fix
+      - name: Check Cloud Function count ratchet
+        run: npx tsx tools/check-function-count.ts
+
   callable-roles:
     name: Callable Roles
     needs: [install]
