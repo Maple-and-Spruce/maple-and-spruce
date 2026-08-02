@@ -57,8 +57,31 @@ env:
 # producing flaky failures whose root cause is invisible from the job
 # logs. `cancel-in-progress: false` lets the in-flight run finish — we
 # never want to cancel a deploy halfway.
+#
+# `queue: max` is load-bearing, NOT cosmetic. GitHub's default is
+# `queue: single`, which keeps only ONE run pending: when a third run
+# queues, the second is CANCELLED outright.
+#
+#   "By default, any existing `pending` job or workflow in the same
+#    concurrency group will be canceled and the new queued job or
+#    workflow will take its place."
+#   https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+#
+# `cancel-in-progress: false` only protects the RUNNING run — it does
+# nothing for pending ones. A full deploy takes 15–30 min, so any two
+# merges landing inside that window silently stranded the middle one:
+# cancelled with zero jobs ever started, nothing deployed, and
+# nx-affected won't recover it because the next run diffs HEAD~1.
+# That is how #703 (MT Square production cutover) and the #725 merge
+# both reached main without ever deploying.
+#
+# `queue: max` makes up to 100 runs wait in FIFO order instead. It is
+# mutually exclusive with `cancel-in-progress: true`; we use false, so
+# it composes. Syntax verified against the live Actions parser before
+# landing here (throwaway probe workflow, run 30766414665).
 concurrency:
   group: deploy-on-merge
+  queue: max
   cancel-in-progress: false
 
 jobs:
