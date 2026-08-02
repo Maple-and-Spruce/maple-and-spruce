@@ -19,6 +19,9 @@ import { join, resolve } from 'node:path';
 
 const SCRIPT = resolve(__dirname, 'deploy-functions-batched.sh');
 
+/** Stub plan line for a clean `firebase deploy`. */
+const OK = '0 Deploy complete!';
+
 let dir: string;
 
 beforeEach(() => {
@@ -69,12 +72,12 @@ function run(
   env: Record<string, string> = {},
 ): { status: number | null; output: string; calls: string[] } {
   const stub = writeStub(plan);
-  const result = spawnSync('bash', [SCRIPT, targets, 'maple-and-spruce-dev'], {
+  const result = spawnSync('/bin/bash', [SCRIPT, targets, 'maple-and-spruce-dev'], {
     encoding: 'utf8',
     env: {
       ...process.env,
       FIREBASE_DEPLOY_TOKEN: 'stub-token',
-      FN_DEPLOY_FIREBASE_CMD: `bash ${stub}`,
+      FN_DEPLOY_FIREBASE_CMD: `/bin/bash ${stub}`,
       // Keep the suite fast — the backoff *choice* is asserted via the warning
       // text rather than by wall-clock.
       FN_DEPLOY_BATCH_PAUSE: '0',
@@ -100,14 +103,14 @@ function targets(n: number): string {
 
 describe('deploy-functions-batched.sh', () => {
   it('deploys a small list in a single batch and exits 0', () => {
-    const { status, calls } = run(targets(3), ['0 Deploy complete!']);
+    const { status, calls } = run(targets(3), [OK]);
 
     expect(status).toBe(0);
     expect(calls).toEqual(['functions:maple-core:fn1,functions:maple-core:fn2,functions:maple-core:fn3']);
   });
 
   it('splits a large list into batches of at most FN_DEPLOY_BATCH_SIZE', () => {
-    const { status, calls } = run(targets(65), ['0 Deploy complete!'], {
+    const { status, calls } = run(targets(65), [OK], {
       FN_DEPLOY_BATCH_SIZE: '10',
     });
 
@@ -125,7 +128,7 @@ describe('deploy-functions-batched.sh', () => {
     // aborted the step here and attempt 2 never happened.
     const { status, output, calls } = run(targets(2), [
       '2 Error: There was an error deploying functions',
-      '0 Deploy complete!',
+      OK,
     ]);
 
     expect(status).toBe(0);
@@ -137,7 +140,7 @@ describe('deploy-functions-batched.sh', () => {
   it('retries when firebase exits 0 but silently dropped functions to a 409', () => {
     const { status, calls } = run(targets(2), [
       '0 Error: unable to queue the operation',
-      '0 Deploy complete!',
+      OK,
     ]);
 
     expect(status).toBe(0);
@@ -147,7 +150,7 @@ describe('deploy-functions-batched.sh', () => {
   it('uses the longer quota backoff when the log shows a quota breach', () => {
     const { status, output } = run(targets(2), [
       '2 Quota exceeded for total allowable CPU per project per region',
-      '0 Deploy complete!',
+      OK,
     ]);
 
     expect(status).toBe(0);
@@ -158,7 +161,7 @@ describe('deploy-functions-batched.sh', () => {
   it('uses the generic backoff for a non-quota failure', () => {
     const { status, output } = run(targets(2), [
       '1 Error: 503 from storage.googleapis.com',
-      '0 Deploy complete!',
+      OK,
     ]);
 
     expect(status).toBe(0);
@@ -180,20 +183,20 @@ describe('deploy-functions-batched.sh', () => {
   });
 
   it('is a no-op (exit 0) when handed an empty target list', () => {
-    const { status, calls } = run('', ['0 Deploy complete!']);
+    const { status, calls } = run('', [OK]);
 
     expect(status).toBe(0);
     expect(calls).toHaveLength(0);
   });
 
   it('fails fast when the deploy token is missing', () => {
-    const stub = writeStub(['0 Deploy complete!']);
-    const result = spawnSync('bash', [SCRIPT, targets(1), 'maple-and-spruce-dev'], {
+    const stub = writeStub([OK]);
+    const result = spawnSync('/bin/bash', [SCRIPT, targets(1), 'maple-and-spruce-dev'], {
       encoding: 'utf8',
       env: {
         ...process.env,
         FIREBASE_DEPLOY_TOKEN: '',
-        FN_DEPLOY_FIREBASE_CMD: `bash ${stub}`,
+        FN_DEPLOY_FIREBASE_CMD: `/bin/bash ${stub}`,
       },
     });
 
@@ -204,18 +207,18 @@ describe('deploy-functions-batched.sh', () => {
   it('survives the caller having set -e (the bug that broke the old retry loop)', () => {
     const stub = writeStub([
       '2 Error: There was an error deploying functions',
-      '0 Deploy complete!',
+      OK,
     ]);
     // Reproduce GitHub Actions' `bash -e {0}` + the step's `set -o pipefail`.
     const result = spawnSync(
-      'bash',
-      ['-e', '-c', `set -o pipefail; bash ${SCRIPT} "${targets(2)}" maple-and-spruce-dev`],
+      '/bin/bash',
+      ['-e', '-c', `set -o pipefail; /bin/bash ${SCRIPT} "${targets(2)}" maple-and-spruce-dev`],
       {
         encoding: 'utf8',
         env: {
           ...process.env,
           FIREBASE_DEPLOY_TOKEN: 'stub-token',
-          FN_DEPLOY_FIREBASE_CMD: `bash ${stub}`,
+          FN_DEPLOY_FIREBASE_CMD: `/bin/bash ${stub}`,
           FN_DEPLOY_BATCH_PAUSE: '0',
           FN_DEPLOY_RETRY_BACKOFF: '0',
           FN_DEPLOY_QUOTA_BACKOFF: '0',
