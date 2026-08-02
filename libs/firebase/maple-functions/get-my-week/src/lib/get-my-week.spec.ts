@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   findByStartInRange: vi.fn(),
   findBlocks: vi.fn(),
   findLessons: vi.fn(),
+  findInstructors: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -20,11 +21,13 @@ vi.mock('@maple/firebase/database', () => ({
   CalendarEventRepository: { findByStartInRange: mocks.findByStartInRange },
   LessonBlockRepository: { findAll: mocks.findBlocks },
   LessonRepository: { findAll: mocks.findLessons },
+  InstructorRepository: { findAll: mocks.findInstructors },
 }));
 
 import {
   getMyWeek,
   buildCommitments,
+  buildOtherBlocks,
   buildStandingSlots,
   startOfWeek,
 } from './get-my-week';
@@ -42,6 +45,7 @@ type Handler = (
   }>;
   standing: Array<Record<string, unknown>>;
   blocks: Array<Record<string, unknown>>;
+  otherBlocks: Array<Record<string, unknown>>;
   unlinked: boolean;
 }>;
 const handler = getMyWeek as unknown as Handler;
@@ -246,6 +250,39 @@ describe('buildStandingSlots', () => {
   });
 });
 
+describe('buildOtherBlocks', () => {
+  const block = (id: string, teacherId: string, dayOfWeek: number) => ({
+    id,
+    teacherId,
+    dayOfWeek,
+    startMinutes: 900,
+    endMinutes: 1080,
+    label: 'Tue',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  it('excludes the caller’s own blocks', () => {
+    const blocks = [block('a', 'me', 2), block('b', 'other', 3)];
+    const result = buildOtherBlocks(blocks, 'me', new Map([['other', 'Sam']]));
+    expect(result.map((b) => b.id)).toEqual(['b']);
+    expect(result[0].teacherName).toBe('Sam');
+  });
+
+  it('falls back to a generic name when the teacher is unknown', () => {
+    const result = buildOtherBlocks([block('b', 'ghost', 2)], 'me', new Map());
+    expect(result[0].teacherName).toBe('Another teacher');
+  });
+
+  it('sorts by weekday then start', () => {
+    const b1 = { ...block('late', 'x', 4), startMinutes: 1000 };
+    const b2 = { ...block('early', 'x', 4), startMinutes: 800 };
+    const b3 = block('sun', 'x', 0);
+    const result = buildOtherBlocks([b1, b2, b3], 'me', new Map());
+    expect(result.map((b) => b.id)).toEqual(['sun', 'early', 'late']);
+  });
+});
+
 describe('getMyWeek handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -253,6 +290,7 @@ describe('getMyWeek handler', () => {
     mocks.findByStartInRange.mockResolvedValue([]);
     mocks.findBlocks.mockResolvedValue([]);
     mocks.findLessons.mockResolvedValue([]);
+    mocks.findInstructors.mockResolvedValue([]);
   });
 
   it('returns unlinked with no commitments or blocks when the caller has no instructor', async () => {
@@ -262,7 +300,63 @@ describe('getMyWeek handler', () => {
     expect(res.commitments).toEqual([]);
     expect(res.standing).toEqual([]);
     expect(res.blocks).toEqual([]);
+    expect(res.otherBlocks).toEqual([]);
     expect(mocks.findByStartInRange).not.toHaveBeenCalled();
+  });
+
+  it('splits blocks into own vs other teachers’ (with names)', async () => {
+    const mine = {
+      id: 'blk-mine',
+      teacherId: 'instr-katie',
+      dayOfWeek: 2,
+      startMinutes: 900,
+      endMinutes: 1080,
+      label: 'Tue',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const theirs = {
+      id: 'blk-sam',
+      teacherId: 'instr-sam',
+      dayOfWeek: 2,
+      startMinutes: 960,
+      endMinutes: 1020,
+      label: 'Tue',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mocks.findBlocks.mockResolvedValue([mine, theirs]);
+    mocks.findInstructors.mockResolvedValue([
+      { id: 'instr-katie', name: 'Katie' },
+      { id: 'instr-sam', name: 'Sam' },
+    ]);
+
+    const res = await handler(
+      { from: '2026-07-19T00:00:00', to: '2026-07-26T00:00:00' },
+      { uid: 'katie-uid' },
+    );
+
+    expect(res.blocks).toEqual([
+      {
+        id: 'blk-mine',
+        teacherId: 'instr-katie',
+        dayOfWeek: 2,
+        startMinutes: 900,
+        endMinutes: 1080,
+        label: 'Tue',
+      },
+    ]);
+    expect(res.otherBlocks).toEqual([
+      {
+        id: 'blk-sam',
+        teacherId: 'instr-sam',
+        dayOfWeek: 2,
+        startMinutes: 960,
+        endMinutes: 1020,
+        label: 'Tue',
+        teacherName: 'Sam',
+      },
+    ]);
   });
 
   it('returns the teacher’s serialized blocks and flags unattributed lessons', async () => {

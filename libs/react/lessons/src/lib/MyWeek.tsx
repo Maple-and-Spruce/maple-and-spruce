@@ -47,6 +47,7 @@ import type {
   GetMyWeekResponse,
   MyWeekBlock,
   MyWeekCommitment,
+  MyWeekOtherBlock,
   MyWeekOwnership,
   MyWeekStandingSlot,
 } from '@maple/ts/firebase/api-types';
@@ -271,6 +272,7 @@ export function MyWeek({
 
   const data = weekState.status === 'success' ? weekState.data : undefined;
   const blocks = data?.blocks ?? [];
+  const otherBlocks = data?.otherBlocks ?? [];
 
   // The items for the active mode, normalized + category-filtered.
   const visible = useMemo(() => {
@@ -287,7 +289,7 @@ export function MyWeek({
   const [gridStart, gridEnd] = useMemo(() => {
     let lo = Infinity;
     let hi = -Infinity;
-    for (const b of blocks) {
+    for (const b of [...blocks, ...otherBlocks]) {
       lo = Math.min(lo, b.startMinutes);
       hi = Math.max(hi, b.endMinutes);
     }
@@ -514,6 +516,7 @@ export function MyWeek({
             <DayColumn
               key={short}
               blocks={blocks.filter((b) => b.dayOfWeek === dayIndex)}
+              otherBlocks={otherBlocks.filter((b) => b.dayOfWeek === dayIndex)}
               items={visible.filter((i) => i.weekday === dayIndex)}
               gridStart={gridStart}
               gridEnd={gridEnd}
@@ -529,6 +532,7 @@ export function MyWeek({
 
 function DayColumn({
   blocks,
+  otherBlocks,
   items,
   gridStart,
   gridEnd,
@@ -536,6 +540,7 @@ function DayColumn({
   hours,
 }: {
   blocks: MyWeekBlock[];
+  otherBlocks: MyWeekOtherBlock[];
   items: WeekItem[];
   gridStart: number;
   gridEnd: number;
@@ -596,6 +601,57 @@ function DayColumn({
               borderRadius: 0.5,
             }}
           />
+        );
+      })}
+
+      {/* Other teachers' blocks — the shared room is taken then, so the caller
+          can't schedule here. Hatched + labeled, rendered over own bands. */}
+      {otherBlocks.map((b) => {
+        const top =
+          (Math.max(b.startMinutes, gridStart) - gridStart) * PX_PER_MIN;
+        const height =
+          (Math.min(b.endMinutes, gridEnd) -
+            Math.max(b.startMinutes, gridStart)) *
+          PX_PER_MIN;
+        if (height <= 0) return null;
+        return (
+          <Box
+            key={b.id}
+            title={`${b.teacherName} · ${formatMinutes(
+              b.startMinutes,
+            )}–${formatMinutes(b.endMinutes)} · room taken`}
+            sx={(theme) => ({
+              position: 'absolute',
+              left: 1,
+              right: 1,
+              top,
+              height,
+              overflow: 'hidden',
+              borderRadius: 0.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'action.disabledBackground',
+              backgroundImage: `repeating-linear-gradient(45deg, ${theme.palette.action.disabled} 0, ${theme.palette.action.disabled} 1px, transparent 1px, transparent 7px)`,
+            })}
+          >
+            <Box
+              component="span"
+              sx={{
+                display: 'block',
+                px: 0.5,
+                pt: 0.1,
+                fontSize: 10,
+                lineHeight: 1.2,
+                fontWeight: 600,
+                color: 'text.secondary',
+                whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis',
+                overflow: 'hidden',
+              }}
+            >
+              {b.teacherName} · room taken
+            </Box>
+          </Box>
         );
       })}
 
