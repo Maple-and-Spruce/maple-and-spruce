@@ -239,10 +239,11 @@ export function ScheduleLessonDialog({
     const outside = dates.filter(
       (d) => !lessonFitsBlock(d, durationMinutes.value, b),
     );
+    const one = outside.length === 1;
     return outside.length > 0
-      ? `${outside.length} lesson time${
-          outside.length === 1 ? '' : 's'
-        } fall outside this block (${formatBlockOption(b)}) and will be rejected on save.`
+      ? `${outside.length} lesson time${one ? '' : 's'} fall${
+          one ? 's' : ''
+        } outside this block (${formatBlockOption(b)}) and will be rejected on save.`
       : null;
   });
 
