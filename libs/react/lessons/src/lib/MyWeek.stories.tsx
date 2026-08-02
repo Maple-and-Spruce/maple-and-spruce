@@ -10,10 +10,11 @@ const meta = {
   component: MyWeek,
   title: 'Lessons/MyWeek',
   parameters: { layout: 'fullscreen' },
-  // The category toggle persists to localStorage; clear it so stories don't
-  // bleed hidden-category state into each other.
+  // The category + mode toggles persist to localStorage; clear them so stories
+  // don't bleed hidden-category / typical-vs-this state into each other.
   beforeEach: () => {
     localStorage.removeItem('myWeek.hiddenCategories');
+    localStorage.removeItem('myWeek.mode');
   },
   args: {
     weekStart: mockMyWeekStart,
@@ -58,6 +59,33 @@ export const StepsWeeks: Story = {
       canvas.getByRole('button', { name: /previous week/i }),
     );
     await expect(args.onPrevWeek).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const SwitchesToTypicalWeek: Story = {
+  args: { weekState: { status: 'success', data: mockMyWeekResponse } },
+  play: async ({ canvas }) => {
+    const body = within(document.body);
+    // In "This week" the concrete week nav is present.
+    await expect(
+      canvas.getByRole('button', { name: /previous week/i }),
+    ).toBeInTheDocument();
+
+    // Flip to "Typical week".
+    await userEvent.click(
+      canvas.getByRole('button', { name: /typical week/i }),
+    );
+
+    // Week navigation is gone (a generic week has no prev/next).
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('button', { name: /previous week/i }),
+      ).not.toBeInTheDocument(),
+    );
+    // The typical-week caption explains one-offs are hidden…
+    await expect(body.getByText(/one-offs are hidden/i)).toBeInTheDocument();
+    // …and a standing slot (the Friday jam) still shows.
+    await expect(body.getByText(/Friday Jam/)).toBeInTheDocument();
   },
 };
 
