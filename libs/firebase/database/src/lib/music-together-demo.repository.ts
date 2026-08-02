@@ -36,6 +36,7 @@ function docToDemo(
     // Default false so any doc lacking the field reads as hidden.
     visible: data.visible ?? false,
     createdAt: toDate(data.createdAt),
+    webflowItemId: data.webflowItemId ?? undefined,
   };
 }
 
@@ -112,5 +113,14 @@ export const MusicTogetherDemoRepository = {
 
   async delete(id: string): Promise<void> {
     await getDb().collection(COLLECTION).doc(id).delete();
+  },
+
+  /**
+   * Store the Webflow CMS item ID after a successful sync. Uses a bare
+   * `.update()` with NO other fields so it does not re-trigger the
+   * Firestore → Webflow sync (which would otherwise loop).
+   */
+  async updateWebflowItemId(id: string, webflowItemId: string): Promise<void> {
+    await getDb().collection(COLLECTION).doc(id).update({ webflowItemId });
   },
 };
