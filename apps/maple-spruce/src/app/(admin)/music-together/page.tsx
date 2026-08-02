@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import {
   Box,
   Stack,
@@ -16,6 +16,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Link,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -61,6 +62,46 @@ const fmtDate = (d?: Date) =>
 const fmtDay = (d?: Date) =>
   d ? new Date(d).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
 const fmtPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
+
+/**
+ * The single, shared style for every Name-cell link across the three MT admin
+ * tables (Semesters, Sections, Demo Classes) so they read as one control. It's
+ * a real `<button>` (MUI `Link` with `component="button"`) so it's
+ * keyboard-focusable and announces the entity name as its accessible label;
+ * clicking opens that row's review modal. Left-aligned and inline so it doesn't
+ * grow the row height.
+ */
+function NameLink({
+  children,
+  onClick,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      component="button"
+      type="button"
+      variant="body2"
+      underline="hover"
+      color="primary"
+      onClick={onClick}
+      sx={{
+        textAlign: 'left',
+        verticalAlign: 'baseline',
+        cursor: 'pointer',
+        '&:focus-visible': {
+          outline: '2px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: 2,
+          borderRadius: 0.5,
+        },
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
 
 /**
  * A table-shaped loading placeholder that mirrors the real table's columns so
@@ -188,6 +229,10 @@ export default function MusicTogetherPage() {
   const { interestState } = useMusicTogetherInterest();
 
   const [isDemoRsvpsOpen, setIsDemoRsvpsOpen] = useState(false);
+  // When a demo Name link is clicked we open the (shared) Demo RSVPs viewer
+  // scrolled to that demo; the global toolbar button leaves this undefined so
+  // the viewer shows every demo group with none focused.
+  const [focusedDemoId, setFocusedDemoId] = useState<string | undefined>();
   const { demoRsvpsState } = useMusicTogetherDemoRsvps();
 
   const { demosState, countsByDemo, createDemo, updateDemo, deleteDemo } =
@@ -300,7 +345,10 @@ export default function MusicTogetherPage() {
           <Button
             variant="outlined"
             startIcon={<EventAvailableIcon />}
-            onClick={() => setIsDemoRsvpsOpen(true)}
+            onClick={() => {
+              setFocusedDemoId(undefined);
+              setIsDemoRsvpsOpen(true);
+            }}
           >
             Demo RSVPs
           </Button>
@@ -372,7 +420,16 @@ export default function MusicTogetherPage() {
           <TableBody>
             {semesters.map((sem) => (
               <TableRow key={sem.id}>
-                <TableCell>{sem.name}</TableCell>
+                <TableCell>
+                  <NameLink
+                    onClick={() => {
+                      setEditingSemester(sem);
+                      setIsSemesterFormOpen(true);
+                    }}
+                  >
+                    {sem.name}
+                  </NameLink>
+                </TableCell>
                 <TableCell>
                   {getMusicTogetherSeasonLabel(sem.season)} {sem.year}
                 </TableCell>
@@ -473,7 +530,11 @@ export default function MusicTogetherPage() {
           <TableBody>
             {sectionsState.data.map((section) => (
               <TableRow key={section.id}>
-                <TableCell>{section.name}</TableCell>
+                <TableCell>
+                  <NameLink onClick={() => setRosterSection(section)}>
+                    {section.name}
+                  </NameLink>
+                </TableCell>
                 <TableCell>
                   {section.semesterId
                     ? (semesterName.get(section.semesterId) ?? '—')
@@ -617,7 +678,16 @@ export default function MusicTogetherPage() {
               const waitlisted = counts?.waitlisted ?? 0;
               return (
                 <TableRow key={demo.id}>
-                  <TableCell>{fmtDate(demo.dateTime)}</TableCell>
+                  <TableCell>
+                    <NameLink
+                      onClick={() => {
+                        setFocusedDemoId(demo.id);
+                        setIsDemoRsvpsOpen(true);
+                      }}
+                    >
+                      {fmtDate(demo.dateTime)}
+                    </NameLink>
+                  </TableCell>
                   <TableCell>{demo.location}</TableCell>
                   <TableCell>{mtDemoDurationMinutes(demo)} min</TableCell>
                   <TableCell>{demo.capacityFamilies} families</TableCell>
@@ -716,8 +786,12 @@ export default function MusicTogetherPage() {
 
       <DemoRsvpsDialog
         open={isDemoRsvpsOpen}
-        onClose={() => setIsDemoRsvpsOpen(false)}
+        onClose={() => {
+          setIsDemoRsvpsOpen(false);
+          setFocusedDemoId(undefined);
+        }}
         demoRsvpsState={demoRsvpsState}
+        focusedDemoId={focusedDemoId}
       />
     </>
   );
