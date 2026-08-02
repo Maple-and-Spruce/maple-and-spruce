@@ -320,9 +320,10 @@ jobs:
       # submit Cloud Functions operations to the same project at once,
       # saturating the per-project operation queue and triggering 409
       # "unable to queue the operation" races that SILENTLY drop functions
-      # (firebase deploy still exits 0). Serializing — plus the 409-aware
-      # retry in the deploy step below — makes a full deploy reliable. Normal
-      # merges touch only 1–2 codebases, so the cost lands on rare full deploys.
+      # (firebase deploy still exits 0). Serializing — plus the batching and
+      # retry in tools/deploy-functions-batched.sh — makes a full deploy
+      # reliable. Normal merges touch only 1–2 codebases, so the cost lands on
+      # rare full deploys.
       max-parallel: 1
       # One codebase failing shouldn't cancel the others mid-deploy.
       fail-fast: false
@@ -383,44 +384,26 @@ jobs:
 
       - name: Deploy functions group to Dev
         if: matrix.functions != ''
-        # Retry up to 3 times. The upload step regularly hits transient
-        # GCS 5xx (storage.googleapis.com → /gcf-v2-uploads/…). A single
-        # 503 used to fail-fast the whole matrix and force a manual
-        # re-run-failed-jobs — three attempts with a 30s gap absorbs
-        # the noise we've seen in practice.
-        run: |
-          set -o pipefail
-          # Two failure modes to absorb:
-          #   1. Transient GCS 5xx during upload → non-zero exit.
-          #   2. 409 "unable to queue the operation" races: firebase deploy
-          #      exits 0 but SILENTLY drops the contended functions. So we also
-          #      scan for that exact marker and retry until a clean run — on
-          #      retry the contended operations have cleared and the dropped
-          #      functions deploy. We deliberately do NOT match "already exists"
-          #      / "failed to create": those are benign (the function IS
-          #      deployed; firebase just mis-tracked create vs update) and would
-          #      make the retry loop never converge. Genuine create/build
-          #      failures exit non-zero and are caught above.
-          for attempt in 1 2 3 4; do
-            # Keyless WIF access token (minted by the auth step) — the Admin SDK
-            # can't consume the external_account credential file, but it accepts
-            # a plain bearer token via --token.
-            pnpm exec firebase deploy \
-              --only ${{ matrix.functions }} \
-              --project maple-and-spruce-dev \
-              --force \
-              --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee /tmp/fb-deploy.log
-            status=${PIPESTATUS[0]}
-            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation' /tmp/fb-deploy.log; then
-              exit 0
-            fi
-            if [ $attempt -lt 4 ]; then
-              echo "::warning::firebase deploy attempt $attempt incomplete (exit=$status or 409 contention); retrying in 30s"
-              sleep 30
-            fi
-          done
-          echo "::error::firebase deploy failed or left functions undeployed after 4 attempts"
-          exit 1
+        # Batched + retried by tools/deploy-functions-batched.sh — see that
+        # script for the full rationale (#723). Two things it fixes:
+        #
+        #   1. The retry loop that used to live inline here NEVER RAN. Actions
+        #      executes `run:` as `bash -e {0}`; with the step's own
+        #      `set -o pipefail`, a failing `firebase deploy | tee` aborted the
+        #      script before `${PIPESTATUS[0]}` was read. A child script gets a
+        #      fresh shell, so the caller's `-e` can't reach into it.
+        #   2. One `firebase deploy` over ~165 maple-core functions blows the
+        #      uncappable 60-writes/60s gen-2 quota and spikes regional CPU.
+        #      The script batches instead — Google's own first remedy.
+        #
+        # Keyless WIF access token (minted by the auth step) — the Admin SDK
+        # can't consume the external_account credential file, but firebase
+        # accepts a plain bearer token via --token. Passed by env (not argv)
+        # so it never lands in a process listing.
+        env:
+          FIREBASE_DEPLOY_TOKEN: ${{ steps.auth.outputs.access_token }}
+          FN_TARGETS: ${{ matrix.functions }}
+        run: ./tools/deploy-functions-batched.sh "$FN_TARGETS" maple-and-spruce-dev
 
       - name: Skip empty function group
         if: matrix.functions == ''
@@ -835,9 +818,10 @@ jobs:
       # submit Cloud Functions operations to the same project at once,
       # saturating the per-project operation queue and triggering 409
       # "unable to queue the operation" races that SILENTLY drop functions
-      # (firebase deploy still exits 0). Serializing — plus the 409-aware
-      # retry in the deploy step below — makes a full deploy reliable. Normal
-      # merges touch only 1–2 codebases, so the cost lands on rare full deploys.
+      # (firebase deploy still exits 0). Serializing — plus the batching and
+      # retry in tools/deploy-functions-batched.sh — makes a full deploy
+      # reliable. Normal merges touch only 1–2 codebases, so the cost lands on
+      # rare full deploys.
       max-parallel: 1
       # One codebase failing shouldn't cancel the others mid-deploy.
       fail-fast: false
@@ -898,28 +882,12 @@ jobs:
 
       - name: Deploy functions group
         if: matrix.functions != ''
-        # Same retry shape as deploy_functions_dev — see there for rationale.
-        run: |
-          set -o pipefail
-          # 409-aware retry — see deploy_functions_dev for the rationale.
-          for attempt in 1 2 3 4; do
-            # Keyless WIF access token via --token — see deploy_functions_dev.
-            pnpm exec firebase deploy \
-              --only ${{ matrix.functions }} \
-              --project maple-and-spruce \
-              --force \
-              --token "${{ steps.auth.outputs.access_token }}" 2>&1 | tee /tmp/fb-deploy.log
-            status=${PIPESTATUS[0]}
-            if [ "$status" -eq 0 ] && ! grep -qiE 'unable to queue the operation' /tmp/fb-deploy.log; then
-              exit 0
-            fi
-            if [ $attempt -lt 4 ]; then
-              echo "::warning::firebase deploy attempt $attempt incomplete (exit=$status or 409 contention); retrying in 30s"
-              sleep 30
-            fi
-          done
-          echo "::error::firebase deploy failed or left functions undeployed after 4 attempts"
-          exit 1
+        # Same batched deploy as deploy_functions_dev — see there, and
+        # tools/deploy-functions-batched.sh, for the rationale (#723).
+        env:
+          FIREBASE_DEPLOY_TOKEN: ${{ steps.auth.outputs.access_token }}
+          FN_TARGETS: ${{ matrix.functions }}
+        run: ./tools/deploy-functions-batched.sh "$FN_TARGETS" maple-and-spruce
 
       - name: Skip empty function group
         if: matrix.functions == ''
