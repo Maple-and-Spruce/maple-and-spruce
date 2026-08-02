@@ -243,6 +243,23 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Rendered lessons feed teacher payouts | **Data ready** | `Lesson.status='rendered'` records exist; aggregation in #283 |
 | Storybook interaction tests | **Complete** | 18 new (rates table, banner, mark-rendered on LessonList) |
 
+### Teacher Weekly Availability — Epic #683 (Complete)
+
+The "My Day → Week / Openings" tabs that let a teacher (Katie) see her week and
+find open standing slots for a new student. Blocks are the availability model:
+a weekly window a teacher's lessons must fall inside.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| LessonBlock domain type + `lessonFitsBlock` / `isLessonUnattributed` (#686) | **Complete** | `libs/ts/domain/src/lib/lesson-block.ts` |
+| LessonBlock repository + block-attribution enforcement on lessons (#686) | **Complete** | `libs/firebase/database/src/lib/lesson-block.repository.ts`, `libs/firebase/functions/src/lib/lesson-block.utility.ts` |
+| Block admin UI + lesson-dialog block selection + unattributed flag (#689) | **Complete** | `libs/react/lessons/src/lib/LessonBlock*.tsx`, `apps/maple-spruce/src/app/(admin)/lesson-blocks/page.tsx` |
+| `getMyWeek` callable — weekly commitments + standing pattern + blocks (#684/#716) | **Complete** | `libs/firebase/maple-functions/get-my-week/` |
+| Week tab — calendar grid + This week / Typical week toggle (#685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
+| **Openings tab — open chunks within blocks, read-only (#687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
+| Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
+| My Day page (Today / Week / Openings tabs) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx` |
+
 ### Lesson Scheduling (#279, Complete)
 
 | Feature | Status | Location |
