@@ -15,7 +15,7 @@ import {
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import type { ManualInvoicePaymentSource } from '@maple/ts/domain';
 import { useMyDay, useMyWeek } from '@maple/react/data';
-import { MyWeek } from '@maple/react/lessons';
+import { MyWeek, MyOpenings } from '@maple/react/lessons';
 import { MyDayLessonCard, VenmoQr } from '../../../components/my-day';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -27,7 +27,7 @@ function startOfWeek(d: Date): Date {
   return s;
 }
 
-type MyDayTab = 'today' | 'week';
+type MyDayTab = 'today' | 'week' | 'openings';
 
 export default function MyDayPage() {
   const { dayState, markRendered, recordPayment } = useMyDay();
@@ -100,6 +100,7 @@ export default function MyDayPage() {
         >
           <Tab value="today" label="Today" />
           <Tab value="week" label="Week" />
+          <Tab value="openings" label="Openings" />
         </Tabs>
       </Box>
 
@@ -111,6 +112,8 @@ export default function MyDayPage() {
           onNextWeek={() => setWeekOffset((o) => o + 1)}
           onThisWeek={() => setWeekOffset(0)}
         />
+      ) : tab === 'openings' ? (
+        <MyOpenings weekState={weekState} />
       ) : (
         <>
           <Typography color="text.secondary" sx={{ mb: 3 }}>

@@ -16,6 +16,7 @@
 - [ ] Photo gallery of past workshops
 
 ### Operations
+- [ ] Book directly from an Openings slot (#687 shipped read-only): add a student-picker + prefill the schedule dialog with the block/weekday/time so "Book this slot" needs no separate student-page trip
 - [ ] Staff scheduling
 - [ ] Inventory alerts (low stock)
 - [ ] Sales analytics dashboard
