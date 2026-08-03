@@ -16,14 +16,19 @@ type Story = StoryObj<typeof MyOpenings>;
 export const Populated: Story = {
   args: { weekState: { status: 'success', data: mockMyWeekResponse } },
   play: async ({ canvas }) => {
-    // The Tuesday block (3–6 PM) minus the recurring 3:00–3:30 lesson leaves
-    // 3:30–6:00 PM open, fitting all three lesson lengths…
+    // The Tuesday block (3–6 PM) minus the recurring 3:00–3:30 lesson AND
+    // another teacher's 4–5 PM room booking leaves two openings: 3:30–4:00 and
+    // 5:00–6:00.
     await waitFor(() =>
       expect(canvas.getByText('Tuesday')).toBeInTheDocument(),
     );
-    await expect(canvas.getByText(/3:30 PM – 6:00 PM/)).toBeInTheDocument();
-    await expect(canvas.getByText(/fits 30 · 45 · 60 min/)).toBeInTheDocument();
-    // …and the one-off 3:30 make-up shows as a this-week heads-up, not a
+    await expect(canvas.getByText(/3:30 PM – 4:00 PM/)).toBeInTheDocument();
+    await expect(canvas.getByText(/5:00 PM – 6:00 PM/)).toBeInTheDocument();
+    // The other teacher's 4–5 PM window is excluded, not offered.
+    await expect(
+      canvas.queryByText(/4:00 PM – 5:00 PM/),
+    ).not.toBeInTheDocument();
+    // The one-off 3:30 make-up shows as a this-week heads-up, not a
     // disqualifier.
     await expect(canvas.getByText(/⚠ Music Lesson.*this week/)).toBeInTheDocument();
   },
@@ -42,6 +47,7 @@ const noBlocks: GetMyWeekResponse = {
   commitments: [],
   standing: [],
   blocks: [],
+  otherBlocks: [],
 };
 
 export const NoBlocks: Story = {
@@ -80,6 +86,7 @@ const fullyBooked: GetMyWeekResponse = {
     },
   ],
   commitments: [],
+  otherBlocks: [],
 };
 
 export const FullyBooked: Story = {
@@ -94,7 +101,13 @@ export const Unlinked: Story = {
   args: {
     weekState: {
       status: 'success',
-      data: { commitments: [], standing: [], blocks: [], unlinked: true },
+      data: {
+        commitments: [],
+        standing: [],
+        blocks: [],
+        otherBlocks: [],
+        unlinked: true,
+      },
     },
   },
 };

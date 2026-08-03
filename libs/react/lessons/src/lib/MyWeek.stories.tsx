@@ -33,6 +33,17 @@ export const Populated: Story = {
   },
 };
 
+export const ShowsOtherTeacherBlock: Story = {
+  args: { weekState: { status: 'success', data: mockMyWeekResponse } },
+  play: async ({ canvas }) => {
+    // Another teacher's window renders as a "room taken" band (the shared
+    // Spruce Room is unavailable then).
+    await waitFor(() =>
+      expect(canvas.getByText(/Sam · room taken/)).toBeInTheDocument(),
+    );
+  },
+};
+
 export const Loading: Story = {
   args: { weekState: { status: 'loading' } },
 };
@@ -45,7 +56,13 @@ export const Unlinked: Story = {
   args: {
     weekState: {
       status: 'success',
-      data: { commitments: [], standing: [], blocks: [], unlinked: true },
+      data: {
+        commitments: [],
+        standing: [],
+        blocks: [],
+        otherBlocks: [],
+        unlinked: true,
+      },
     },
   },
 };

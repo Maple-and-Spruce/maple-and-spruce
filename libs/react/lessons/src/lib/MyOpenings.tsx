@@ -49,7 +49,12 @@ function endMinutesOf(iso: string): number {
   return m === 0 ? 24 * 60 : m;
 }
 
-/** The teacher's recurring lesson occupancy, projected onto a generic week. */
+/**
+ * What removes time from the teacher's blocks: their own recurring lessons
+ * (this week's recurring commitments ∪ the standing pattern) AND other
+ * teachers' blocks — the shared Spruce Room is taken then, so those windows
+ * aren't offerable either. All projected onto a generic week.
+ */
 function occupiedIntervals(data: GetMyWeekResponse): OccupiedInterval[] {
   const fromCommitments = data.commitments
     .filter(
@@ -70,7 +75,12 @@ function occupiedIntervals(data: GetMyWeekResponse): OccupiedInterval[] {
       startMinutes: s.startMinutes,
       endMinutes: s.startMinutes + s.durationMinutes,
     }));
-  return [...fromCommitments, ...fromStanding];
+  const fromOtherBlocks = data.otherBlocks.map((b) => ({
+    weekday: b.dayOfWeek,
+    startMinutes: b.startMinutes,
+    endMinutes: b.endMinutes,
+  }));
+  return [...fromCommitments, ...fromStanding, ...fromOtherBlocks];
 }
 
 interface OneOff {
