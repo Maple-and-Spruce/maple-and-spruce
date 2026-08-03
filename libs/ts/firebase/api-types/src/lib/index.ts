@@ -357,6 +357,7 @@ export type {
   MyWeekOwnership,
   MyWeekCadence,
   MyWeekBlock,
+  MyWeekOtherBlock,
   MyWeekCommitment,
   MyWeekStandingSlot,
   GetMyWeekRequest,

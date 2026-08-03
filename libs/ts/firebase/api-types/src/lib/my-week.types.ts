@@ -21,6 +21,17 @@ export type MyWeekBlock = Pick<
   'id' | 'teacherId' | 'dayOfWeek' | 'startMinutes' | 'endMinutes' | 'label'
 >;
 
+/**
+ * Another teacher's block, surfaced to the caller as context. There is one
+ * contested lesson room (Spruce), so another teacher's weekly window is time
+ * the caller can't schedule a lesson into — shown in the week as an
+ * "unavailable" band and subtracted from the caller's openings.
+ */
+export interface MyWeekOtherBlock extends MyWeekBlock {
+  /** Display name of the teacher whose window this is. */
+  teacherName: string;
+}
+
 /** Whether a commitment belongs to the caller or is a shared store-wide event. */
 export type MyWeekOwnership = 'mine' | 'shared';
 
@@ -97,6 +108,12 @@ export interface GetMyWeekResponse {
   standing: MyWeekStandingSlot[];
   /** The caller's own weekly blocks — the containers the week is laid out in. */
   blocks: MyWeekBlock[];
+  /**
+   * Other teachers' blocks — time the shared Spruce Room is spoken for, so the
+   * caller can't schedule then. Shown as context in the week and subtracted
+   * from openings.
+   */
+  otherBlocks: MyWeekOtherBlock[];
   /** True when the caller isn't linked to any instructor record (no "mine"). */
   unlinked: boolean;
 }

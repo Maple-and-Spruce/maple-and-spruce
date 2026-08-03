@@ -47,6 +47,19 @@ export const mockMyWeekResponse: GetMyWeekResponse = {
       label: 'Tue afternoons',
     },
   ],
+  // Another teacher owns the shared room Tue 4–5 PM — inside our Tuesday block,
+  // so that hour isn't offerable (shown hatched; carved out of openings).
+  otherBlocks: [
+    {
+      id: 'blk-sam-tue',
+      teacherId: 'instructor-002',
+      dayOfWeek: 2, // Tuesday
+      startMinutes: 16 * 60, // 4:00 PM
+      endMinutes: 17 * 60, // 5:00 PM
+      label: 'Tue afternoons',
+      teacherName: 'Sam',
+    },
+  ],
   commitments: [
     // Two lessons inside the Tuesday block.
     {

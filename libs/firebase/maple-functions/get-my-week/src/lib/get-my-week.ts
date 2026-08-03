@@ -25,6 +25,7 @@ import {
 } from '@maple/firebase/functions';
 import {
   CalendarEventRepository,
+  InstructorRepository,
   LessonBlockRepository,
   LessonRepository,
 } from '@maple/firebase/database';
@@ -40,6 +41,7 @@ import type {
   GetMyWeekResponse,
   MyWeekBlock,
   MyWeekCommitment,
+  MyWeekOtherBlock,
   MyWeekStandingSlot,
 } from '@maple/ts/firebase/api-types';
 
@@ -199,6 +201,26 @@ export function buildStandingSlots(
   return slots;
 }
 
+/**
+ * Blocks owned by other teachers, serialized with the owner's display name.
+ * There's one contested lesson room, so these windows are time the caller can't
+ * schedule into. Pure — the handler supplies the fetched blocks + name lookup.
+ * Sorted by weekday then start for a stable render.
+ */
+export function buildOtherBlocks(
+  allBlocks: LessonBlock[],
+  myInstructorId: string,
+  teacherNameById: Map<string, string>,
+): MyWeekOtherBlock[] {
+  return allBlocks
+    .filter((b) => b.teacherId !== myInstructorId)
+    .map((b) => ({
+      ...toMyWeekBlock(b),
+      teacherName: teacherNameById.get(b.teacherId) ?? 'Another teacher',
+    }))
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startMinutes - b.startMinutes);
+}
+
 /** Serialize a block for the wire (drop Date fields). */
 function toMyWeekBlock(block: LessonBlock): MyWeekBlock {
   return {
@@ -219,7 +241,13 @@ export const getMyWeek = createRoleFunction<
     const myInstructorId = await instructorIdForUser(context.uid);
     if (!myInstructorId) {
       // Not linked to any instructor (e.g. a pure admin) — no "mine" to anchor.
-      return { commitments: [], standing: [], blocks: [], unlinked: true };
+      return {
+        commitments: [],
+        standing: [],
+        blocks: [],
+        otherBlocks: [],
+        unlinked: true,
+      };
     }
 
     const now = new Date();
@@ -232,17 +260,29 @@ export const getMyWeek = createRoleFunction<
     );
 
     // One range query over [lookbackStart, to) for recurrence classification,
-    // plus the teacher's blocks and this week's lessons to flag unattributed
-    // ones (#689).
-    const [events, blocks, lessons] = await Promise.all([
+    // ALL teachers' blocks (mine anchor the layout; others mark room-taken
+    // time), this week's lessons to flag unattributed ones (#689), and
+    // instructors for the other-block owner names.
+    const [events, allBlocks, lessons, instructors] = await Promise.all([
       CalendarEventRepository.findByStartInRange(lookbackStart, to),
-      LessonBlockRepository.findAll({ teacherId: myInstructorId }),
+      LessonBlockRepository.findAll(),
       LessonRepository.findAll({ teacherId: myInstructorId, from, to }),
+      InstructorRepository.findAll(),
     ]);
+
+    const myBlocks = allBlocks.filter((b) => b.teacherId === myInstructorId);
+    const teacherNameById = new Map(
+      instructors.map((i) => [i.id, i.name]),
+    );
+    const otherBlocks = buildOtherBlocks(
+      allBlocks,
+      myInstructorId,
+      teacherNameById,
+    );
 
     const unattributedRefs = new Set(
       lessons
-        .filter((lesson) => isLessonUnattributed(lesson, blocks))
+        .filter((lesson) => isLessonUnattributed(lesson, myBlocks))
         .map((lesson) => `lessons/${lesson.id}`),
     );
 
@@ -258,7 +298,8 @@ export const getMyWeek = createRoleFunction<
     return {
       commitments,
       standing: buildStandingSlots(events, lookbackStart, myInstructorId),
-      blocks: blocks.map(toMyWeekBlock),
+      blocks: myBlocks.map(toMyWeekBlock),
+      otherBlocks,
       unlinked: false,
     };
   },
