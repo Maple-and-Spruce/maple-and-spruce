@@ -4,6 +4,16 @@
   "outputDirectory": "apps/maple-spruce/.next",
   "installCommand": "corepack enable && pnpm install",
   "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/((?!\\.well-known).*)",
+      "has": [
+        { "type": "host", "value": "mt.mapleandsprucefolkarts.com" }
+      ],
+      "destination": "https://mapleandsprucefolkarts.com/music-together",
+      "statusCode": 301
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": false
