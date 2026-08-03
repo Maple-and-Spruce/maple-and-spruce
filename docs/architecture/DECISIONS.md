@@ -1270,6 +1270,76 @@ first revisiting the codebase split (ADR-026).
 
 ---
 
+## ADR-030: Vanity Subdomain Redirects via `vercel.json`, not DNS or Webflow
+
+**Status:** Accepted
+**Date:** 2026-08-02
+
+### Context
+Marketing wants short, speakable subdomains that land on deep pages of the Webflow site — the
+first being `mt.mapleandsprucefolkarts.com` → `/music-together`. These go in Instagram bios, on
+printed cards, in QR codes, and as Meta ad destinations, so they must work over **HTTPS** and must
+**preserve `?utm_*` query strings** for lead attribution (see `tallyLeadWebhook`, PR #429).
+
+DNS is on Namecheap BasicDNS. The apex and `www` point at Webflow; `business.` already CNAMEs to
+Vercel; mail is Google Workspace.
+
+### Decision
+Add a host-scoped 301 to the root `vercel.json` on the existing `maple-and-spruce-maple-spruce`
+Vercel project, and CNAME the subdomain at Namecheap to that project.
+
+```json
+{
+  "source": "/((?!\\.well-known).*)",
+  "has": [{ "type": "host", "value": "mt.mapleandsprucefolkarts.com" }],
+  "destination": "https://mapleandsprucefolkarts.com/music-together",
+  "statusCode": 301
+}
+```
+
+`vercel.json` redirects resolve in Vercel's edge routing phase, **before** the filesystem, the
+Next.js app, and any middleware — so the vanity host never touches admin-app code.
+
+### Rationale
+- DNS stays at Namecheap; only one CNAME is added per vanity host.
+- Free auto-renewing TLS, and Vercel forwards the source query string onto the destination.
+- Reuses the Namecheap→Vercel CNAME pattern already proven by `business.`.
+- `statusCode: 301` rather than `permanent: true` — Vercel maps `permanent` to a **308**. Google
+  treats them alike, but link scrapers and SEO tools handle 301 more predictably, and these are
+  marketing links.
+- `(?!\.well-known)` keeps ACME challenge paths out of the catch-all so cert issuance and renewal
+  are unaffected.
+- Scoping with `has: host` means the rule is inert on every other domain on the project, so more
+  vanity hosts can be added as sibling entries without colliding.
+
+### Alternatives Considered
+- **Namecheap URL Redirect Record.** Two minutes of work, but the service serves no TLS on the
+  source host — `https://mt.…` fails with a certificate error, breaking every link written as
+  `https://`. It also drops query strings, which silently breaks ad attribution.
+- **An extra custom domain on Webflow.** Does not work: subdomains are *exempt* from Webflow's
+  default-domain 301 ("Subdomains are not affected by default domains"), so `mt.…` would serve a
+  full duplicate copy of the site rather than redirecting. Webflow's own 301 rules are path-only
+  and cannot be scoped to a hostname, so the only rule that would reach `/music-together` is
+  `/` → `/music-together`, which would break the real homepage.
+- **Cloudflare Redirect Rules.** Works well and is the usual recommendation, but requires moving
+  nameservers off Namecheap and recreating every record — including Google Workspace MX and the
+  SPF/DKIM/DMARC TXTs. Too much blast radius for one vanity link.
+- **A separate single-purpose Vercel project.** Isolates the link from admin-app deploys, but needs
+  a second project plus its own deploy path. The isolation argument is weaker than it looks: a
+  later failed deploy does not take the redirect down, because the last good production deployment
+  keeps serving it. Not worth the extra moving part.
+
+### Consequences
+- Adding a vanity host is now: one `redirects` entry, one `vercel domains add`, one Namecheap CNAME.
+- The rule ships on the admin app's deploy cadence, so a *change* to a vanity redirect waits for a
+  successful `deploy_vercel_prod`. Existing redirects keep serving from the last good deployment.
+- **Order matters when adding a host:** deploy the redirect rule *before* pointing DNS at Vercel.
+  A hostname that resolves to the project without a matching rule serves the admin app instead.
+- Webflow remains unaware of these hostnames — they must never be added as Webflow custom domains,
+  or the duplicate-content problem above reappears.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1293,4 +1363,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-08-02 (ADR-029 added for domain routers over per-endpoint functions)*
+*Last updated: 2026-08-02 (ADR-030 added for vanity subdomain redirects via vercel.json)*
