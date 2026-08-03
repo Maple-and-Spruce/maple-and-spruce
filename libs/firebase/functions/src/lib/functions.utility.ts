@@ -34,6 +34,16 @@ export interface FunctionContext {
   uid?: string;
   /** The authenticated user's email, if any */
   email?: string;
+  /**
+   * The caller's IP address, when Express could determine one.
+   *
+   * Only used for ad-attribution signal (Meta CAPI wants
+   * `client_ip_address` + `client_user_agent` for probabilistic matching).
+   * Never authorize on this — it's trivially spoofable behind a proxy.
+   */
+  ip?: string;
+  /** The caller's `User-Agent` header, if sent. */
+  userAgent?: string;
 }
 
 /**
@@ -272,6 +282,21 @@ function createCorsMiddleware(allowedOriginsParam: StringParam) {
       });
     }
   };
+}
+
+/**
+ * Best-effort client IP for ad-attribution signal only.
+ *
+ * Cloud Run sits behind Google's front end, so `req.ip` is the proxy unless
+ * Express trusts the forwarding chain. `x-forwarded-for` is a comma-separated
+ * list where the left-most entry is the original client.
+ */
+function extractClientIp(req: Request): string | undefined {
+  const forwarded = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const first = raw?.split(',')[0]?.trim();
+  if (first) return first;
+  return typeof req.ip === 'string' && req.ip ? req.ip : undefined;
 }
 
 /**
@@ -515,6 +540,11 @@ class FunctionBuilder<
             const context: FunctionContext = {
               uid: auth?.uid,
               email: auth?.email,
+              ip: extractClientIp(req),
+              userAgent:
+                typeof req.headers['user-agent'] === 'string'
+                  ? req.headers['user-agent']
+                  : undefined,
             };
 
             // Check authentication if required

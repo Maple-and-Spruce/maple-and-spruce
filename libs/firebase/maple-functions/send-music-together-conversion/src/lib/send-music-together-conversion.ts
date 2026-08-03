@@ -1,0 +1,206 @@
+/**
+ * Send Music Together Conversion Cloud Function
+ *
+ * Firestore trigger that fires a Meta Conversions API `Purchase` when a Music
+ * Together registration becomes `confirmed`.
+ *
+ * Mirrors `sendRegistrationConversion` (craft classes) on the MT collection.
+ * MT is the second revenue line and, until now, the only one with no
+ * `Purchase` signal at all — the MT widget fires no browser Pixel event
+ * either, so before this every MT enrollment was invisible to Meta's
+ * optimizer and got mis-attributed as organic.
+ *
+ * Same pixel, same secret: MT payments settle in a SEPARATE Square account,
+ * but the ads that drive them run on the Maple & Spruce ad account, so the
+ * events belong in the Maple & Spruce pixel. No new params are required.
+ *
+ * `value` semantics — deliberate: we report the amount ACTUALLY CHARGED at
+ * registration (`pricePaidCents`, which for an installment plan is
+ * installment 1, not the full tuition). Reporting full tuition would tell Meta
+ * we collected money we haven't; the later installments are charged by
+ * `chargeMusicTogetherInstallments`, which is where any follow-on revenue
+ * event would belong. See the PR for the full rationale.
+ *
+ * Best-effort by design: a CAPI failure is logged and swallowed — a dropped
+ * conversion must never retry-loop or affect the registration itself.
+ */
+import {
+  onDocumentWritten,
+  type Change,
+  type DocumentSnapshot,
+} from 'firebase-functions/v2/firestore';
+import { defineSecret, defineString } from 'firebase-functions/params';
+import {
+  trySendMetaCapiEvents,
+  type MetaCapiConfig,
+  type MetaCapiEvent,
+} from '@maple/firebase/meta-capi';
+
+// Reuses the same secret + string params as `tallyLeadWebhook` and
+// `sendRegistrationConversion` (all maple-core), so no new Secret Manager
+// value or .env entry is required.
+const metaCapiToken = defineSecret('META_CAPI_TOKEN');
+const metaPixelId = defineString('META_PIXEL_ID', {
+  default: '1625932185289127',
+});
+const metaCapiBaseUrl = defineString('META_CAPI_BASE_URL', {
+  default: 'https://graph.facebook.com',
+});
+const metaCapiApiVersion = defineString('META_CAPI_API_VERSION', {
+  default: 'v20.0',
+});
+
+/** The subset of Music Together registration fields this trigger reads. */
+export interface MusicTogetherConversionData {
+  sectionId?: string;
+  email?: string;
+  phone?: string | null;
+  adultFirstName?: string;
+  adultLastName?: string;
+  /** Amount charged AT REGISTRATION — installment 1 for an installment plan. */
+  pricePaidCents?: number;
+  paymentPlan?: string;
+  /** How many future installments were scheduled (0 for pay-in-full). */
+  scheduledChargeCount?: number;
+  children?: unknown[];
+  status?: string;
+  /** Attribution cookies, persisted at reservation time when available. */
+  fbp?: string | null;
+  fbc?: string | null;
+  /** MT section page URL the registration was made from, when captured. */
+  eventSourceUrl?: string | null;
+  /** Browser context captured by the callable, for probabilistic matching. */
+  clientIp?: string | null;
+  clientUserAgent?: string | null;
+}
+
+/**
+ * Decide whether an MT registration write should emit a `Purchase`.
+ *
+ * Fires exactly once, on the (created-or-pending) -> `confirmed` transition,
+ * and only when money actually changed hands and we have an email to match on.
+ */
+export function shouldEmitMusicTogetherPurchase(
+  before: MusicTogetherConversionData | undefined,
+  after: MusicTogetherConversionData | undefined
+): boolean {
+  if (!after) return false;
+  // Only when it just became confirmed — an already-confirmed doc being edited
+  // (installment scheduling, cancellation fee, calendar token) must not re-fire.
+  if (after.status !== 'confirmed') return false;
+  if (before?.status === 'confirmed') return false;
+  if (!after.pricePaidCents || after.pricePaidCents <= 0) return false;
+  // Match + catalog fields we can't send a useful event without.
+  if (!after.sectionId || !after.email) return false;
+  return true;
+}
+
+/** Build the Meta CAPI `Purchase` event for a confirmed MT registration. */
+export function buildMusicTogetherPurchaseEvent(
+  registrationId: string,
+  data: MusicTogetherConversionData
+): MetaCapiEvent {
+  const isInstallments = data.paymentPlan === 'installments';
+  return {
+    eventName: 'Purchase',
+    // The MT widget fires no browser Pixel `Purchase`, so there is nothing to
+    // collapse against today. Still send a stable, idempotent id (the
+    // registration doc id) so a duplicate trigger delivery counts once and a
+    // future browser-side MT Pixel event can dedup against it.
+    eventId: `mt-${registrationId}`,
+    actionSource: 'website',
+    eventSourceUrl: data.eventSourceUrl || undefined,
+    user: {
+      email: data.email,
+      phone: data.phone || undefined,
+      firstName: data.adultFirstName || undefined,
+      lastName: data.adultLastName || undefined,
+      fbp: data.fbp || undefined,
+      fbc: data.fbc || undefined,
+      ip: data.clientIp || undefined,
+      userAgent: data.clientUserAgent || undefined,
+    },
+    customData: {
+      currency: 'USD',
+      // Dollars, not cents — Meta's `value` is currency-major. This is the
+      // amount charged now (installment 1 when on a plan).
+      value: Math.round(data.pricePaidCents ?? 0) / 100,
+      // Section doc id keeps MT consistent with how class purchases key to the
+      // class doc id.
+      content_ids: [data.sectionId],
+      content_type: 'product',
+      content_category: 'music_together',
+      // One MT registration is one family enrollment, regardless of how many
+      // children are on it — children don't multiply the ad conversion.
+      num_items: 1,
+      payment_plan: isInstallments ? 'installments' : 'full',
+      scheduled_charge_count: data.scheduledChargeCount ?? 0,
+    },
+  };
+}
+
+/**
+ * Core emit logic, decoupled from the Firestore-trigger wrapper so it is
+ * unit-testable without the functions test harness. Best-effort: never throws.
+ * Returns whether an event was sent.
+ */
+export async function emitMusicTogetherPurchaseIfConfirmed(
+  registrationId: string,
+  before: MusicTogetherConversionData | undefined,
+  after: MusicTogetherConversionData | undefined,
+  send: (event: MetaCapiEvent) => Promise<void>,
+  logger: Pick<Console, 'log' | 'error'> = console
+): Promise<boolean> {
+  if (!shouldEmitMusicTogetherPurchase(before, after)) return false;
+  const data = after as MusicTogetherConversionData;
+  try {
+    await send(buildMusicTogetherPurchaseEvent(registrationId, data));
+    logger.log(
+      'Sent Meta CAPI Purchase for confirmed Music Together registration',
+      {
+        registrationId,
+        valueCents: data.pricePaidCents,
+        paymentPlan: data.paymentPlan,
+      }
+    );
+    return true;
+  } catch (err) {
+    logger.error('Meta CAPI Music Together Purchase send failed', err);
+    return false;
+  }
+}
+
+export const sendMusicTogetherConversion = onDocumentWritten(
+  {
+    document: 'musicTogetherRegistrations/{registrationId}',
+    region: 'us-east4',
+    secrets: [metaCapiToken],
+  },
+  async (event) => {
+    const change = event.data as Change<DocumentSnapshot> | undefined;
+    if (!change) return;
+
+    const before = change.before?.exists
+      ? (change.before.data() as MusicTogetherConversionData)
+      : undefined;
+    const after = change.after?.exists
+      ? (change.after.data() as MusicTogetherConversionData)
+      : undefined;
+
+    const config: MetaCapiConfig = {
+      baseUrl: metaCapiBaseUrl.value(),
+      apiVersion: metaCapiApiVersion.value(),
+      pixelId: metaPixelId.value(),
+      accessToken: metaCapiToken.value(),
+    };
+
+    await emitMusicTogetherPurchaseIfConfirmed(
+      event.params.registrationId,
+      before,
+      after,
+      async (evt) => {
+        await trySendMetaCapiEvents(config, [evt]);
+      }
+    );
+  }
+);

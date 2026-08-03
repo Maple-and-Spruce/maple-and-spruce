@@ -54,6 +54,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
+import { readMetaAttribution } from './lib/meta-attribution';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 560;
@@ -541,6 +542,12 @@ export function MusicTogetherRegistrationWidget({
         cardVerificationToken:
           paymentPlan === 'installments' ? verificationToken : undefined,
         notes: notes.trim() || undefined,
+        // Snapshot _fbp/_fbc so `sendMusicTogetherConversion` can link this
+        // enrollment to the ad click it came from. MT fires no browser Pixel
+        // event, so the server event is the only signal Meta gets.
+        metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
       });
       setState({
         status: 'confirmed',

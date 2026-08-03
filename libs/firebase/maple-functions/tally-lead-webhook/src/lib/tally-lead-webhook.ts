@@ -22,7 +22,8 @@
  */
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { createHmac, createHash, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
+import { sendMetaCapiEvents } from '@maple/firebase/meta-capi';
 import {
   tallyLeadValidation,
   type TallyLeadValidationInput,
@@ -183,11 +184,14 @@ async function sendGa4Event(
   }
 }
 
-function hashEmail(email: string): string {
-  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
-}
-
-async function sendMetaCapiEvent(
+/**
+ * Map the Tally lead into the shared Meta CAPI `Lead` shape.
+ *
+ * Hashing, payload assembly, and error semantics live in
+ * `@maple/firebase/meta-capi` — shared with the registration `Purchase`
+ * events so both channels normalize PII identically.
+ */
+function sendLeadToMeta(
   lead: TallyLeadValidationInput,
   ctx: { ip?: string; userAgent?: string },
   config: {
@@ -197,48 +201,32 @@ async function sendMetaCapiEvent(
     accessToken: string;
   }
 ): Promise<void> {
+  const utm: Record<string, string> = {};
+  if (lead.utmSource) utm['utm_source'] = lead.utmSource;
+  if (lead.utmMedium) utm['utm_medium'] = lead.utmMedium;
+  if (lead.utmCampaign) utm['utm_campaign'] = lead.utmCampaign;
+  if (lead.utmContent) utm['utm_content'] = lead.utmContent;
+  if (lead.utmTerm) utm['utm_term'] = lead.utmTerm;
+
   if (!lead.email) {
     throw new Error('Cannot send Meta CAPI Lead without an email');
   }
 
-  const url = `${config.baseUrl}/${config.apiVersion}/${encodeURIComponent(
-    config.pixelId
-  )}/events?access_token=${encodeURIComponent(config.accessToken)}`;
-
-  const userData: Record<string, unknown> = {
-    em: [hashEmail(lead.email)],
-  };
-  if (lead.fbp) userData['fbp'] = lead.fbp;
-  if (lead.fbc) userData['fbc'] = lead.fbc;
-  if (ctx.ip) userData['client_ip_address'] = ctx.ip;
-  if (ctx.userAgent) userData['client_user_agent'] = ctx.userAgent;
-
-  const customData: Record<string, unknown> = {};
-  if (lead.utmSource) customData['utm_source'] = lead.utmSource;
-  if (lead.utmMedium) customData['utm_medium'] = lead.utmMedium;
-  if (lead.utmCampaign) customData['utm_campaign'] = lead.utmCampaign;
-  if (lead.utmContent) customData['utm_content'] = lead.utmContent;
-  if (lead.utmTerm) customData['utm_term'] = lead.utmTerm;
-
-  const event: Record<string, unknown> = {
-    event_name: 'Lead',
-    event_time: Math.floor(Date.now() / 1000),
-    action_source: 'website',
-    user_data: userData,
-    custom_data: customData,
-  };
-  if (lead.landingPage) event['event_source_url'] = lead.landingPage;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: [event] }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`Meta CAPI ${response.status}: ${text}`);
-  }
+  return sendMetaCapiEvents(config, [
+    {
+      eventName: 'Lead',
+      actionSource: 'website',
+      eventSourceUrl: lead.landingPage,
+      user: {
+        email: lead.email,
+        fbp: lead.fbp,
+        fbc: lead.fbc,
+        ip: ctx.ip,
+        userAgent: ctx.userAgent,
+      },
+      customData: utm,
+    },
+  ]);
 }
 
 export const tallyLeadWebhook = onRequest(
@@ -306,7 +294,7 @@ export const tallyLeadWebhook = onRequest(
         measurementId: ga4MeasurementId.value(),
         apiSecret: ga4ApiSecret.value(),
       }),
-      sendMetaCapiEvent(lead, ctx, {
+      sendLeadToMeta(lead, ctx, {
         baseUrl: metaCapiBaseUrl.value(),
         apiVersion: metaCapiApiVersion.value(),
         pixelId: metaPixelId.value(),

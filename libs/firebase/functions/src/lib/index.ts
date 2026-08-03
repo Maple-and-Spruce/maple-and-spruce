@@ -90,6 +90,7 @@ export {
   generateConfirmationNumber,
   type ReserveRegistrationResult,
   type RegistrationReservationInput,
+  type RegistrationClientContext,
 } from './registration-reservation.utility';
 
 // Shared inline-agreement processing (card + hosted-checkout paths)

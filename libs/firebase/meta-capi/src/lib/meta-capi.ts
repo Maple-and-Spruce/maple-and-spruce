@@ -1,8 +1,13 @@
 /**
  * Meta Conversions API (server-side) helper.
  *
- * Shared by any Cloud Function that sends server-side events to Meta — the
- * Tally webhook's `Lead` and confirmed class registrations' `Purchase`.
+ * Shared by every Cloud Function that sends server-side events to Meta:
+ * `tallyLeadWebhook`'s `Lead`, confirmed class registrations' `Purchase`
+ * (`sendRegistrationConversion`), and confirmed Music Together registrations'
+ * `Purchase` (`sendMusicTogetherConversion`).
+ *
+ * Music Together payments settle in a SEPARATE Square account but report into
+ * the same Maple & Spruce pixel, so one config covers both revenue lines.
  *
  * Why server-side at all: the browser Pixel is silently dropped by iOS/Safari
  * ITP and ad blockers, and never fires on flows that redirect off-site (e.g.
@@ -60,10 +65,34 @@ export function hashNormalized(value: string): string {
   return createHash('sha256').update(value.trim().toLowerCase()).digest('hex');
 }
 
-/** Phone is hashed as digits only (drop spaces, punctuation, leading `+`). */
+/**
+ * Phone is hashed as digits only (drop spaces, punctuation, leading `+`).
+ *
+ * Meta requires the COUNTRY CODE to be included — a bare 10-digit NANP number
+ * hashes to something their index has never seen, so it silently matches
+ * nobody. Customers type `(304) 555-0199` far more often than `+1 …`, so
+ * assume US/Canada for a 10-digit input.
+ */
 export function hashPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
-  return createHash('sha256').update(digits).digest('hex');
+  const withCountryCode = digits.length === 10 ? `1${digits}` : digits;
+  return createHash('sha256').update(withCountryCode).digest('hex');
+}
+
+/**
+ * Split a full name into first / last for Meta's `fn` / `ln` match fields.
+ * Best-effort: first token is the first name, the remainder is the last name
+ * so hyphenated and multi-part surnames survive intact.
+ */
+export function splitName(full?: string): {
+  firstName?: string;
+  lastName?: string;
+} {
+  const trimmed = full?.trim();
+  if (!trimmed) return {};
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0] };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
 }
 
 /** Build Meta's `user_data` object, hashing every PII field. */
@@ -128,5 +157,36 @@ export async function sendMetaCapiEvents(
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new Error(`Meta CAPI ${response.status}: ${text}`);
+  }
+}
+
+/**
+ * Fire-and-forget wrapper around {@link sendMetaCapiEvents}.
+ *
+ * A marketing beacon must NEVER be able to fail a checkout or retry-loop a
+ * Firestore trigger: by the time we call this, the buyer's card is charged and
+ * their seat is reserved. Every failure mode (bad config, network, Meta 5xx)
+ * is swallowed and logged.
+ *
+ * @returns `true` when Meta accepted the batch, `false` when it was skipped or failed.
+ */
+export async function trySendMetaCapiEvents(
+  config: MetaCapiConfig | undefined,
+  events: MetaCapiEvent[],
+  logger: Pick<Console, 'warn' | 'error'> = console
+): Promise<boolean> {
+  try {
+    if (!config?.pixelId || !config?.accessToken) {
+      logger.warn(
+        'Meta CAPI not configured (missing pixel id or access token) — skipping events',
+        { eventNames: events.map((e) => e.eventName) }
+      );
+      return false;
+    }
+    await sendMetaCapiEvents(config, events);
+    return true;
+  } catch (err) {
+    logger.error('Meta CAPI send failed (caller unaffected)', err);
+    return false;
   }
 }

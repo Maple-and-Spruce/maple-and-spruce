@@ -25,10 +25,11 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import {
-  sendMetaCapiEvents,
+  splitName,
+  trySendMetaCapiEvents,
   type MetaCapiConfig,
   type MetaCapiEvent,
-} from './meta-capi';
+} from '@maple/firebase/meta-capi';
 
 // Reuses the same secret + string params as `tallyLeadWebhook` (also
 // maple-core), so no new Secret Manager value or .env entry is required.
@@ -59,22 +60,18 @@ export interface RegistrationConversionData {
   fbc?: string | null;
   /** Class page URL the registration was made from, when captured. */
   eventSourceUrl?: string | null;
+  /**
+   * Browser context captured by the callable from the HTTP request. Meta uses
+   * IP + user agent for probabilistic matching, which materially lifts match
+   * quality when `_fbc` is absent.
+   */
+  clientIp?: string | null;
+  clientUserAgent?: string | null;
 }
 
-/**
- * Split a full name into first / last for Meta's `fn` / `ln` match fields.
- * Best-effort: first token is the first name, the remainder is the last name.
- */
-export function splitName(full?: string): {
-  firstName?: string;
-  lastName?: string;
-} {
-  const trimmed = full?.trim();
-  if (!trimmed) return {};
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) return { firstName: parts[0] };
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
-}
+// `splitName` now lives in @maple/firebase/meta-capi; re-exported so existing
+// importers of this module keep working.
+export { splitName };
 
 /**
  * Decide whether a registration write should emit a `Purchase`.
@@ -119,6 +116,8 @@ export function buildPurchaseEvent(
       lastName,
       fbp: data.fbp || undefined,
       fbc: data.fbc || undefined,
+      ip: data.clientIp || undefined,
+      userAgent: data.clientUserAgent || undefined,
     },
     customData: {
       currency: 'USD',
@@ -184,8 +183,8 @@ export const sendRegistrationConversion = onDocumentWritten(
       accessToken: metaCapiToken.value(),
     };
 
-    await emitPurchaseIfConfirmed(before, after, (evt) =>
-      sendMetaCapiEvents(config, [evt])
-    );
+    await emitPurchaseIfConfirmed(before, after, async (evt) => {
+      await trySendMetaCapiEvents(config, [evt]);
+    });
   }
 );

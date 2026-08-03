@@ -4,6 +4,12 @@ interface CallFunctionOptions<T> {
   functionName: string;
   data?: T;
   idToken?: string;
+  /**
+   * Extra request headers. Lets a suite exercise behavior that depends on the
+   * raw HTTP request rather than the body — e.g. `x-forwarded-for` /
+   * `user-agent`, which `FunctionContext` surfaces as ad-attribution signal.
+   */
+  headers?: Record<string, string>;
 }
 
 export interface FunctionResponse<R> {
@@ -29,6 +35,8 @@ export async function callFunction<
   if (options.idToken) {
     headers['Authorization'] = `Bearer ${options.idToken}`;
   }
+
+  Object.assign(headers, options.headers ?? {});
 
   const response = await fetch(url, {
     method: 'POST',

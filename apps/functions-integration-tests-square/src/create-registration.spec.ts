@@ -12,6 +12,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   listFirestoreDocs,
+  getFirestoreDoc,
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -42,6 +43,13 @@ const TEST_CLASS = {
   updatedAt: new Date().toISOString(),
 };
 
+/**
+ * Dedicated class for the Meta-attribution tests so they don't consume spots
+ * on TEST_CLASS_ID — the discount/capacity tests below assert against its
+ * remaining capacity.
+ */
+const ATTRIBUTION_CLASS_ID = 'test-reg-attribution-class';
+
 const FREE_CLASS_ID = 'test-reg-free-class';
 const FREE_CLASS = {
   ...TEST_CLASS,
@@ -66,6 +74,11 @@ describe('createRegistration', () => {
     // Seed test classes directly into Firestore
     await setFirestoreDoc('classes', TEST_CLASS_ID, TEST_CLASS);
     await setFirestoreDoc('classes', FREE_CLASS_ID, FREE_CLASS);
+    await setFirestoreDoc('classes', ATTRIBUTION_CLASS_ID, {
+      ...TEST_CLASS,
+      name: 'Attribution Test Pottery',
+      capacity: 10,
+    });
   });
 
   afterAll(async () => {
@@ -100,6 +113,78 @@ describe('createRegistration', () => {
       expect(result.data?.registration.pricePaidCents).toBe(4770);
       expect(result.data?.confirmationNumber).toBeDefined();
       expect(result.data?.confirmationNumber).toMatch(/^MS-[A-Z0-9]{6}$/);
+    });
+
+    /**
+     * `_fbp` / `_fbc` only exist in the browser, so the widget snapshots them
+     * into `metaAttribution` and the server must PERSIST them on the
+     * registration — that's the only way `sendRegistrationConversion` (a
+     * Firestore trigger with no HTTP context) can put them on the Meta CAPI
+     * `Purchase` event. Before this they were read but never written.
+     */
+    it('persists browser Meta attribution and request context for CAPI', async () => {
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: ATTRIBUTION_CLASS_ID,
+          customerEmail: 'attributed@test.com',
+          customerName: 'Attributed Student',
+          quantity: 1,
+          paymentNonce: 'cnon:card-nonce-ok',
+          metaAttribution: {
+            fbp: 'fb.1.1700000000000.9999',
+            fbc: 'fb.1.1700000000000.IwARtestclick',
+            eventSourceUrl: 'https://example.com/classes/pottery',
+          },
+        },
+        headers: {
+          'x-forwarded-for': '203.0.113.42, 198.51.100.4',
+          'user-agent': 'IntegrationTestAgent/1.0',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      const registrationId = result.data?.registration.id as string;
+      const persisted = await getFirestoreDoc('registrations', registrationId);
+
+      expect(persisted).toMatchObject({
+        fbp: 'fb.1.1700000000000.9999',
+        fbc: 'fb.1.1700000000000.IwARtestclick',
+        eventSourceUrl: 'https://example.com/classes/pottery',
+        // Left-most x-forwarded-for entry is the real client.
+        clientIp: '203.0.113.42',
+        clientUserAgent: 'IntegrationTestAgent/1.0',
+      });
+    });
+
+    it('stores explicit nulls when no attribution was captured', async () => {
+      const result = await callFunction<
+        CreateRegistrationRequest,
+        CreateRegistrationResponse
+      >({
+        functionName: 'createRegistration',
+        data: {
+          classId: ATTRIBUTION_CLASS_ID,
+          customerEmail: 'noattribution@test.com',
+          customerName: 'No Attribution',
+          quantity: 1,
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      const persisted = await getFirestoreDoc(
+        'registrations',
+        result.data?.registration.id as string
+      );
+      expect(persisted).toMatchObject({
+        fbp: null,
+        fbc: null,
+        eventSourceUrl: null,
+      });
     });
 
     it('should create a registration for a free class without payment', async () => {

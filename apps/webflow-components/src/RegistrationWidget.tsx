@@ -50,6 +50,7 @@ import {
   trackPurchaseClass,
   trackViewClass,
 } from './lib/class-analytics';
+import { readMetaAttribution } from './lib/meta-attribution';
 import { warmup } from './lib/warmup';
 
 
@@ -624,7 +625,14 @@ export function RegistrationWidget({
         );
       }
 
-      const result = await createRegistration(data);
+      // Snapshot _fbp/_fbc at submit time so the server-side CAPI `Purchase`
+      // can link this sale to the ad click it came from.
+      const result = await createRegistration({
+        ...data,
+        metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
+      });
       return result.data;
     },
     [functions, state]
@@ -657,6 +665,12 @@ export function RegistrationWidget({
         ...data,
         returnUrl:
           typeof window !== 'undefined' ? window.location.href : undefined,
+        // Square's hosted page redirects off-site, so no browser Pixel
+        // `Purchase` ever fires on this path — the server event carrying these
+        // cookies is the ONLY conversion signal Meta gets.
+        metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
       });
       return { checkoutUrl: result.data.checkoutUrl };
     },

@@ -63,7 +63,7 @@ export const createMusicTogetherRegistration = Functions.endpoint
   .handle<
     CreateMusicTogetherRegistrationRequest,
     CreateMusicTogetherRegistrationResponse
-  >(async (data, _context, secrets, strings) => {
+  >(async (data, context, secrets, strings) => {
     // Structured adult name (shared with Music Together Worldwide) plus a
     // parentNames array kept for the roster/licensee views. When a caller
     // omits parentNames, fall back to the adult's first + last name.
@@ -214,6 +214,13 @@ export const createMusicTogetherRegistration = Functions.endpoint
         status: 'pending',
         notes: data.notes || null,
         calendarToken,
+        // Meta ad-attribution, read by `sendMusicTogetherConversion` when this
+        // doc flips to `confirmed`. Advisory signal only — never authorized on.
+        fbp: data.metaAttribution?.fbp || null,
+        fbc: data.metaAttribution?.fbc || null,
+        eventSourceUrl: data.metaAttribution?.eventSourceUrl || null,
+        clientIp: context.ip || null,
+        clientUserAgent: context.userAgent || null,
         createdAt: now,
         updatedAt: now,
       });

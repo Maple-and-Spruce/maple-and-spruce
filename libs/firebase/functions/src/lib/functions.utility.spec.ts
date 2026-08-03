@@ -113,11 +113,13 @@ function makeReq(overrides: Partial<{
   method: string;
   body: unknown;
   headers: Record<string, string>;
+  ip: string;
 }> = {}) {
   return {
     method: overrides.method ?? 'POST',
     body: overrides.body ?? {},
     headers: { origin: 'https://example.test', ...(overrides.headers ?? {}) },
+    ...(overrides.ip !== undefined ? { ip: overrides.ip } : {}),
   };
 }
 
@@ -856,5 +858,59 @@ describe('isOriginAllowed', () => {
     expect(
       isOriginAllowed('http://localhost.evil.com', allow, true)
     ).toBe(false);
+  });
+});
+
+/**
+ * `context.ip` / `context.userAgent` exist purely as Meta CAPI matching signal
+ * (`client_ip_address` / `client_user_agent`). They must be best-effort and
+ * never authorized on — but they DO need to reach the handler, otherwise the
+ * `Purchase` events sent by `sendRegistrationConversion` /
+ * `sendMusicTogetherConversion` lose their probabilistic-match inputs.
+ */
+describe('FunctionContext request metadata (ad-attribution signal)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.onRequest.mockClear();
+    mocks.apps.length = 0;
+  });
+
+  async function contextFor(req: ReturnType<typeof makeReq>) {
+    let captured: unknown;
+    const endpoint = Functions.endpoint.handle(async (_data, context) => {
+      captured = context;
+      return { ok: true };
+    });
+    await invoke(endpoint, req);
+    return captured as { ip?: string; userAgent?: string };
+  }
+
+  it('takes the left-most x-forwarded-for entry (the real client)', async () => {
+    const context = await contextFor(
+      makeReq({
+        // RFC 5737 documentation addresses: client, then two proxy hops.
+        ip: '192.0.2.9',
+        headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.4, 192.0.2.9' },
+      })
+    );
+    expect(context.ip).toBe('203.0.113.7');
+  });
+
+  it('falls back to req.ip when there is no forwarding header', async () => {
+    const context = await contextFor(makeReq({ ip: '203.0.113.9' }));
+    expect(context.ip).toBe('203.0.113.9');
+  });
+
+  it('captures the user agent', async () => {
+    const context = await contextFor(
+      makeReq({ headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } })
+    );
+    expect(context.userAgent).toBe('Mozilla/5.0 (iPhone)');
+  });
+
+  it('leaves both undefined when neither is available', async () => {
+    const context = await contextFor(makeReq());
+    expect(context.ip).toBeUndefined();
+    expect(context.userAgent).toBeUndefined();
   });
 });
