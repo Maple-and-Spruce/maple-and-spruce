@@ -350,6 +350,9 @@
       "@maple/firebase/maple-functions/reorder-class-categories": [
         "libs/firebase/maple-functions/reorder-class-categories/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/discounts-api": [
+        "libs/firebase/maple-functions/discounts-api/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-discounts": [
         "libs/firebase/maple-functions/get-discounts/src/index.ts"
       ],
