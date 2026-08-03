@@ -1,12 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Alert,
   Box,
   Chip,
+  Divider,
   IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Tooltip,
@@ -15,6 +20,9 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StarsIcon from '@mui/icons-material/Stars';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import EventIcon from '@mui/icons-material/Event';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import {
   DataGrid,
   type GridColDef,
@@ -36,6 +44,10 @@ interface StudentListProps {
   instructors: Instructor[];
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
+  /** Open the schedule-lesson flow for a student. Omit to hide the action. */
+  onScheduleLesson?: (student: Student) => void;
+  /** Open the create-invoice flow for a student. Omit to hide the action. */
+  onCreateInvoice?: (student: Student) => void;
   /**
    * If provided, the student name links to this path plus the student's id
    * (e.g. `/students`). Leave undefined to render a plain name.
@@ -105,11 +117,91 @@ function buildScheduleByStudent(
   return result;
 }
 
+/** Per-row "⋯" menu consolidating a student's actions. Owns its own anchor. */
+function RowActionsMenu({
+  student,
+  isHopeScholarship,
+  onEdit,
+  onDelete,
+  onScheduleLesson,
+  onCreateInvoice,
+}: {
+  student: Student;
+  isHopeScholarship: boolean;
+  onEdit: (student: Student) => void;
+  onDelete: (student: Student) => void;
+  onScheduleLesson?: (student: Student) => void;
+  onCreateInvoice?: (student: Student) => void;
+}) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const close = () => setAnchorEl(null);
+  const run = (fn: () => void) => () => {
+    close();
+    fn();
+  };
+
+  return (
+    <>
+      <Tooltip title="Actions">
+        <IconButton
+          size="small"
+          aria-label={`Actions for ${student.name}`}
+          aria-haspopup="menu"
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+        >
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+        {onScheduleLesson && (
+          <MenuItem onClick={run(() => onScheduleLesson(student))}>
+            <ListItemIcon>
+              <EventIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Schedule lesson</ListItemText>
+          </MenuItem>
+        )}
+        {onCreateInvoice && (
+          <MenuItem
+            onClick={run(() => onCreateInvoice(student))}
+            disabled={isHopeScholarship}
+          >
+            <ListItemIcon>
+              <ReceiptLongIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>
+              {isHopeScholarship ? 'Create invoice (Hope)' : 'Create invoice'}
+            </ListItemText>
+          </MenuItem>
+        )}
+        {(onScheduleLesson || onCreateInvoice) && <Divider />}
+        <MenuItem onClick={run(() => onEdit(student))}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Edit</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={run(() => onDelete(student))}
+          sx={{ color: 'error.main' }}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
+}
+
 export function StudentList({
   studentsState,
   instructors,
   onEdit,
   onDelete,
+  onScheduleLesson,
+  onCreateInvoice,
   detailHrefBase,
   lessons,
 }: StudentListProps) {
@@ -158,20 +250,31 @@ export function StudentList({
         minWidth: 160,
         renderCell: (params: GridRenderCellParams<StudentRow>) => {
           const { student } = params.row;
-          const name = (
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {student.name}
-            </Typography>
-          );
-          return detailHrefBase ? (
+          if (!detailHrefBase) {
+            return (
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {student.name}
+              </Typography>
+            );
+          }
+          // Decorated as a link so the detail page (schedule/invoice/history)
+          // is discoverable.
+          return (
             <Link
               href={`${detailHrefBase}/${student.id}`}
-              style={{ textDecoration: 'none', color: 'inherit' }}
+              style={{ textDecoration: 'none' }}
             >
-              {name}
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                {student.name}
+              </Typography>
             </Link>
-          ) : (
-            name
           );
         },
       },
@@ -316,31 +419,24 @@ export function StudentList({
         align: 'right',
         headerAlign: 'right',
         renderCell: (params: GridRenderCellParams<StudentRow>) => (
-          <Stack direction="row" spacing={0.5}>
-            <Tooltip title="Edit">
-              <IconButton
-                onClick={() => onEdit(params.row.student)}
-                size="small"
-                aria-label="Edit"
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                onClick={() => onDelete(params.row.student)}
-                size="small"
-                aria-label="Delete"
-                color="error"
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+          <RowActionsMenu
+            student={params.row.student}
+            isHopeScholarship={params.row.isHopeScholarship}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onScheduleLesson={onScheduleLesson}
+            onCreateInvoice={onCreateInvoice}
+          />
         ),
       },
     ],
-    [detailHrefBase, onEdit, onDelete]
+    [
+      detailHrefBase,
+      onEdit,
+      onDelete,
+      onScheduleLesson,
+      onCreateInvoice,
+    ]
   );
 
   if (studentsState.status === 'error') {
