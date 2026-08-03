@@ -271,6 +271,7 @@ export { tallyLeadWebhook } from '@maple/firebase/maple-functions/tally-lead-web
 // Meta Conversions API Purchase on confirmed class registrations — recovers
 // iOS/ITP-dropped and hosted-checkout conversions the browser Pixel misses.
 export { sendRegistrationConversion } from '@maple/firebase/maple-functions/send-registration-conversion';
+export { sendMusicTogetherConversion } from '@maple/firebase/maple-functions/send-music-together-conversion';
 
 // Craft Club — admin approval & management (no Square dep; subscribe/lifecycle
 // functions live in the maple-square codebase)

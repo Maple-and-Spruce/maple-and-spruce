@@ -12,6 +12,7 @@ import type {
   Attendee,
 } from '@maple/ts/domain';
 import type { InlineAgreementSigningData } from './agreement.types';
+import type { MetaAttributionPayload } from './meta-attribution.types';
 
 // ============================================================================
 // Get Registrations (Admin)
@@ -128,6 +129,12 @@ export interface CreateRegistrationRequest {
   paymentNonce: string;
   /** Signed agreement data for required-at-checkout agreements */
   agreements?: InlineAgreementSigningData[];
+  /**
+   * Browser-captured Meta ad attribution (`_fbp` / `_fbc` / page URL).
+   * Advisory only — persisted on the registration and forwarded to the Meta
+   * CAPI `Purchase` event by `sendRegistrationConversion`.
+   */
+  metaAttribution?: MetaAttributionPayload;
 }
 
 export interface CreateRegistrationResponse {
@@ -168,6 +175,12 @@ export interface CreateRegistrationCheckoutLinkRequest {
    * pointer the widget verifies by lookup, never proof of payment.
    */
   returnUrl?: string;
+  /**
+   * Browser-captured Meta ad attribution. Matters MORE on this path than the
+   * inline one: Square's hosted page redirects off-site, so no browser Pixel
+   * `Purchase` ever fires and the server event is the only signal.
+   */
+  metaAttribution?: MetaAttributionPayload;
 }
 
 export interface CreateRegistrationCheckoutLinkResponse {

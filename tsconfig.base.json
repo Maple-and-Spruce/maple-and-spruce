@@ -83,6 +83,9 @@
       "@maple/firebase/maple-functions/get-artists": [
         "libs/firebase/maple-functions/get-artists/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/send-music-together-conversion": [
+        "libs/firebase/maple-functions/send-music-together-conversion/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/send-registration-conversion": [
         "libs/firebase/maple-functions/send-registration-conversion/src/index.ts"
       ],
@@ -715,6 +718,7 @@
       "@maple/firebase/ga4-test-mock-server": [
         "libs/firebase/ga4-test-mock-server/src/index.ts"
       ],
+      "@maple/firebase/meta-capi": ["libs/firebase/meta-capi/src/index.ts"],
       "@maple/firebase/meta-capi-test-mock-server": [
         "libs/firebase/meta-capi-test-mock-server/src/index.ts"
       ],

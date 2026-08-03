@@ -56,6 +56,18 @@ export type RegistrationReservationInput = Omit<
 >;
 
 /**
+ * Browser context the callable captured from the HTTP request, forwarded so
+ * the Meta CAPI `Purchase` trigger can send `client_ip_address` /
+ * `client_user_agent` for probabilistic matching.
+ *
+ * Ad-attribution signal ONLY — never authorize or price anything off these.
+ */
+export interface RegistrationClientContext {
+  ip?: string;
+  userAgent?: string;
+}
+
+/**
  * Generate a short, human-readable confirmation number.
  * Format: MS-XXXXXX (6 uppercase alphanumeric chars, no I/O/0/1).
  */
@@ -157,7 +169,8 @@ export interface ReserveRegistrationResult {
  */
 export async function reserveClassRegistration(
   data: RegistrationReservationInput,
-  taxRatePercent: number
+  taxRatePercent: number,
+  clientContext: RegistrationClientContext = {}
 ): Promise<ReserveRegistrationResult> {
   // 1. Validate input
   const validationResult = registrationValidation(data);
@@ -313,6 +326,15 @@ export async function reserveClassRegistration(
       source: 'web',
       notes: data.notes || null,
       confirmationNumber,
+      // Meta ad-attribution, captured by the widget / HTTP request. Read by
+      // `sendRegistrationConversion` when the doc flips to `confirmed`. Stored
+      // as explicit nulls (not omitted) so the field set is stable across the
+      // inline and hosted-checkout paths.
+      fbp: data.metaAttribution?.fbp || null,
+      fbc: data.metaAttribution?.fbc || null,
+      eventSourceUrl: data.metaAttribution?.eventSourceUrl || null,
+      clientIp: clientContext.ip || null,
+      clientUserAgent: clientContext.userAgent || null,
       createdAt: now,
       updatedAt: now,
     });
