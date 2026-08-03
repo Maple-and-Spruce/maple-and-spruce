@@ -67,6 +67,10 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   'getRequiredAgreementsForClass',
   'calculateRegistrationCost',
   'lookupDiscount',
+  // Same endpoint, now a route on the discounts domain router (ADR-029,
+  // #731). Both are listed while the standalone function stays deployed
+  // for call sites that haven't moved; the bare name goes when it does.
+  'discountsApi.lookupDiscount',
   // Public customer-facing writes (checkout / interest / waitlist).
   // NOTE: cancelRegistration / cancelMusicTogetherRegistration are role-gated
   // (admin/clerk), NOT public — so they are intentionally absent here.
@@ -127,13 +131,7 @@ const AUTH_ONLY_ALLOWLIST = new Set<string>([
 // Classification
 // ---------------------------------------------------------------------------
 
-type Gate =
-  | 'role'
-  | 'auth'
-  | 'public'
-  | 'trigger'
-  | 'raw-http'
-  | 'unknown';
+type Gate = 'role' | 'auth' | 'public' | 'trigger' | 'raw-http' | 'unknown';
 
 const ROLE_FACTORIES = new Set(['createAdminFunction', 'createRoleFunction']);
 const AUTH_FACTORIES = new Set(['createAuthenticatedFunction']);
@@ -152,7 +150,7 @@ const TRIGGER_FACTORIES = new Set([
  * the handler-body argument (so a handler that merely mentions a token can't
  * skew the result).
  */
-function classifyInitializer(expr: ts.Expression): Gate {
+export function classifyInitializer(expr: ts.Expression): Gate {
   const methods = new Set<string>();
   let base: string | undefined;
 
@@ -203,10 +201,13 @@ function classifyInitializer(expr: ts.Expression): Gate {
   if (base && TRIGGER_FACTORIES.has(base)) return 'trigger';
   if (base === 'onRequest') return 'raw-http';
 
-  // Functions.endpoint fluent chain
+  // Functions.endpoint fluent chain. `asRoute` is the router-flavoured
+  // terminal for `handle` (ADR-029) and classifies identically — the gate
+  // comes from the chain, not from which terminal ends it.
   if (methods.has('requiringRole')) return 'role';
   if (methods.has('requiringAuth')) return 'auth';
-  if (base === 'Functions' || methods.has('handle')) return 'public';
+  if (base === 'Functions' || methods.has('handle') || methods.has('asRoute'))
+    return 'public';
 
   return 'unknown';
 }
@@ -215,7 +216,7 @@ function classifyInitializer(expr: ts.Expression): Gate {
 // Source scanning
 // ---------------------------------------------------------------------------
 
-function parse(file: string): ts.SourceFile {
+export function parse(file: string): ts.SourceFile {
   const text = fs.readFileSync(file, 'utf8');
   return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
 }
@@ -223,7 +224,7 @@ function parse(file: string): ts.SourceFile {
 /** Find `export const <name> = <init>` in a source file, return the initializer. */
 function findExportedConstInitializer(
   sf: ts.SourceFile,
-  name: string
+  name: string,
 ): ts.Expression | undefined {
   let found: ts.Expression | undefined;
   const visit = (node: ts.Node): void => {
@@ -249,16 +250,28 @@ function findExportedConstInitializer(
   return found;
 }
 
-/** Resolve a maple-functions slug to the gate of its exported `name`. */
-function classifyReexport(slug: string, name: string): Gate {
+/**
+ * Resolve a maple-functions slug to the exported `name`'s classification.
+ * Returns a list because a ROUTER expands to one entry per route.
+ */
+function classifyReexport(
+  slug: string,
+  name: string,
+  entryRel: string,
+): FunctionInfo[] {
   const libDir = path.join(ROOT, 'libs/firebase/maple-functions', slug, 'src');
-  if (!fs.existsSync(libDir)) return 'unknown';
+  if (!fs.existsSync(libDir))
+    return [{ name, gate: 'unknown', entry: entryRel }];
   const files = walkTs(libDir).filter((f) => !/\.spec\.ts$/.test(f));
   for (const file of files) {
     const init = findExportedConstInitializer(parse(file), name);
-    if (init) return classifyInitializer(init);
+    if (init) {
+      const router = isRouterCall(init);
+      if (router) return expandRouter(router, name, entryRel);
+      return [{ name, gate: classifyInitializer(init), entry: entryRel }];
+    }
   }
-  return 'unknown';
+  return [{ name, gate: 'unknown', entry: entryRel }];
 }
 
 function walkTs(dir: string): string[] {
@@ -267,6 +280,100 @@ function walkTs(dir: string): string[] {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...walkTs(full));
     else if (entry.name.endsWith('.ts')) out.push(full);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Domain routers (ADR-029)
+// ---------------------------------------------------------------------------
+
+/**
+ * `Functions.router({...})` / `createRouter({...})` is ONE Cloud Function
+ * serving many routes, each with its OWN gate. Classifying the router as a
+ * single callable is worse than useless: it reports the whole thing as
+ * "public" (the chain has no requiringRole), and allowlisting it to silence
+ * that would mark every admin route inside as public — blinding this analyzer
+ * to exactly the regression it exists to catch (ADR-028, #620).
+ *
+ * So a router is EXPANDED: each route is reported as `<router>.<route>` with
+ * its own gate, and the router itself is never reported.
+ */
+const ROUTER_BASES = new Set(['createRouter']);
+
+/** True when the initializer is a router construction call. */
+export function isRouterCall(
+  expr: ts.Expression,
+): ts.CallExpression | undefined {
+  let node: ts.Node = expr;
+  while (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node)
+  ) {
+    node = node.expression;
+  }
+  if (!ts.isCallExpression(node)) return undefined;
+  const callee = node.expression;
+  if (ts.isIdentifier(callee) && ROUTER_BASES.has(callee.text)) return node;
+  // `Functions.router({...})`
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    callee.name.text === 'router' &&
+    ts.isIdentifier(callee.expression) &&
+    callee.expression.text === 'Functions'
+  ) {
+    return node;
+  }
+  return undefined;
+}
+
+/** Expand a router call into one FunctionInfo per route. */
+export function expandRouter(
+  call: ts.CallExpression,
+  routerName: string,
+  entryRel: string,
+): FunctionInfo[] {
+  const arg = call.arguments[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    // A router whose routes we cannot read statically is a hole in the
+    // analyzer, not a pass. Report it so it can't slip through silently.
+    return [
+      {
+        name: `${routerName} (unreadable routes)`,
+        gate: 'unknown',
+        entry: entryRel,
+      },
+    ];
+  }
+  const out: FunctionInfo[] = [];
+  for (const prop of arg.properties) {
+    if (!ts.isPropertyAssignment(prop)) {
+      out.push({
+        name: `${routerName} (non-literal route)`,
+        gate: 'unknown',
+        entry: entryRel,
+      });
+      continue;
+    }
+    const routeName = ts.isIdentifier(prop.name)
+      ? prop.name.text
+      : ts.isStringLiteral(prop.name)
+        ? prop.name.text
+        : undefined;
+    if (!routeName) {
+      out.push({
+        name: `${routerName} (computed route name)`,
+        gate: 'unknown',
+        entry: entryRel,
+      });
+      continue;
+    }
+    out.push({
+      name: `${routerName}.${routeName}`,
+      gate: classifyInitializer(prop.initializer),
+      entry: entryRel,
+    });
   }
   return out;
 }
@@ -294,11 +401,10 @@ function collectFromEntry(entryRel: string): FunctionInfo[] {
       ts.isNamedExports(node.exportClause)
     ) {
       const slug = node.moduleSpecifier.text.slice(
-        MAPLE_FUNCTIONS_PREFIX.length
+        MAPLE_FUNCTIONS_PREFIX.length,
       );
       for (const el of node.exportClause.elements) {
-        const name = el.name.text;
-        out.push({ name, gate: classifyReexport(slug, name), entry: entryRel });
+        out.push(...classifyReexport(slug, el.name.text, entryRel));
       }
     }
     // Inline: `export const name = <builder>(...)`
@@ -308,11 +414,16 @@ function collectFromEntry(entryRel: string): FunctionInfo[] {
     ) {
       for (const decl of node.declarationList.declarations) {
         if (ts.isIdentifier(decl.name) && decl.initializer) {
-          out.push({
-            name: decl.name.text,
-            gate: classifyInitializer(decl.initializer),
-            entry: entryRel,
-          });
+          const router = isRouterCall(decl.initializer);
+          if (router) {
+            out.push(...expandRouter(router, decl.name.text, entryRel));
+          } else {
+            out.push({
+              name: decl.name.text,
+              gate: classifyInitializer(decl.initializer),
+              entry: entryRel,
+            });
+          }
         }
       }
     }
@@ -335,14 +446,16 @@ function main(): void {
   const byName = new Map<string, FunctionInfo>();
   for (const fn of all) if (!byName.has(fn.name)) byName.set(fn.name, fn);
   const functions = [...byName.values()].sort((a, b) =>
-    a.name.localeCompare(b.name)
+    a.name.localeCompare(b.name),
   );
 
   if (REPORT) {
     for (const fn of functions) {
       console.log(`${fn.gate.padEnd(9)} ${fn.name}`);
     }
-    console.log(`\n${functions.length} functions across ${ENTRY_POINTS.length} codebases`);
+    console.log(
+      `\n${functions.length} functions across ${ENTRY_POINTS.length} codebases`,
+    );
   }
 
   const violations: string[] = [];
@@ -359,7 +472,7 @@ function main(): void {
       case 'auth':
         if (!AUTH_ONLY_ALLOWLIST.has(fn.name)) {
           violations.push(
-            `  ${fn.name} — auth-only (requiringAuth / createAuthenticatedFunction) but not in AUTH_ONLY_ALLOWLIST`
+            `  ${fn.name} — auth-only (requiringAuth / createAuthenticatedFunction) but not in AUTH_ONLY_ALLOWLIST`,
           );
         } else seenAuth.add(fn.name);
         break;
@@ -367,13 +480,13 @@ function main(): void {
       case 'raw-http':
         if (!PUBLIC_ALLOWLIST.has(fn.name)) {
           violations.push(
-            `  ${fn.name} — ${fn.gate} (no role check) but not in PUBLIC_ALLOWLIST`
+            `  ${fn.name} — ${fn.gate} (no role check) but not in PUBLIC_ALLOWLIST`,
           );
         } else seenPublic.add(fn.name);
         break;
       case 'unknown':
         violations.push(
-          `  ${fn.name} — could not classify its gate; declare a role or add to an allowlist`
+          `  ${fn.name} — could not classify its gate; declare a role or add to an allowlist`,
         );
         break;
     }
@@ -382,21 +495,23 @@ function main(): void {
   // Flag allowlist entries that no longer correspond to a public/auth function
   // (renamed/removed) so the lists don't rot.
   for (const name of PUBLIC_ALLOWLIST) {
-    if (!seenPublic.has(name)) staleAllowlist.push(`  PUBLIC_ALLOWLIST: ${name}`);
+    if (!seenPublic.has(name))
+      staleAllowlist.push(`  PUBLIC_ALLOWLIST: ${name}`);
   }
   for (const name of AUTH_ONLY_ALLOWLIST) {
-    if (!seenAuth.has(name)) staleAllowlist.push(`  AUTH_ONLY_ALLOWLIST: ${name}`);
+    if (!seenAuth.has(name))
+      staleAllowlist.push(`  AUTH_ONLY_ALLOWLIST: ${name}`);
   }
 
   if (violations.length > 0) {
     console.error(
-      `\n✖ ${violations.length} callable(s) reachable without a declared role and not allowlisted:\n`
+      `\n✖ ${violations.length} callable(s) reachable without a declared role and not allowlisted:\n`,
     );
     console.error(violations.join('\n'));
     console.error(
       `\nFix: gate the function with .requiringRole([...]) (or createAdminFunction/createRoleFunction),\n` +
         `or — if it is intentionally public / auth-only — add it to the matching allowlist in\n` +
-        `tools/check-callable-roles.ts with a comment saying why.`
+        `tools/check-callable-roles.ts with a comment saying why.`,
     );
     if (staleAllowlist.length > 0) {
       console.error(`\nAlso, stale allowlist entries (no matching function):`);
@@ -409,14 +524,16 @@ function main(): void {
     // Stale entries are a warning, not a hard fail — a removed function
     // shouldn't block an unrelated PR, but surface it so the list stays clean.
     console.warn(
-      `⚠ ${staleAllowlist.length} allowlist entr(y/ies) no longer match a function (rename/remove?):`
+      `⚠ ${staleAllowlist.length} allowlist entr(y/ies) no longer match a function (rename/remove?):`,
     );
     console.warn(staleAllowlist.join('\n'));
   }
 
   console.log(
-    `✓ All ${functions.length} exported functions are role-gated, triggers, or explicitly allowlisted.`
+    `✓ All ${functions.length} exported functions are role-gated, triggers, or explicitly allowlisted.`,
   );
 }
 
-main();
+if (require.main === module) {
+  main();
+}
