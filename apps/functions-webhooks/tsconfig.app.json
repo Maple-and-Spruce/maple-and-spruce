@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "types": ["node"],
+    "rootDir": "../.."
+  },
+  "include": [
+    "src/**/*.ts",
+    "../../libs/firebase/maple-functions/tally-lead-webhook/**/*.ts",
+    "../../libs/firebase/meta-capi/src/**/*.ts",
+    "../../libs/firebase/functions/src/**/*.ts",
+    "../../libs/ts/validation/src/**/*.ts",
+    "../../libs/ts/domain/src/**/*.ts",
+    "../../libs/ts/firebase/api-types/src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

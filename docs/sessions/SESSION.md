@@ -6,6 +6,30 @@
 
 ## Current Status
 
+### Tally webhook timeouts — `maple-webhooks` codebase (2026-08-07)
+
+Tally reported five `timeout of 10000ms exceeded` failures (2026-07-30 → 2026-08-06), one per day
+the newsletter form got a signup. Cause was **cold start, not the handler**: prod probes returning
+401 (before any handler logic) took **14.4s** in `maple-core` vs 1.0s warm, against Tally's 10s
+cutoff. A codebase is one bundle, so `tallyLeadWebhook` was paying the boot cost of all 165
+maple-core functions — and at ~1 signup/day the service was cold for essentially every delivery.
+Tally does not retry, so each one was a lost lead.
+
+Fix: new `maple-webhooks` codebase (`apps/functions-webhooks/`, 90kb vs 488kb) holding just
+`tallyLeadWebhook`, plus `AbortSignal.timeout` on the GA4/Meta beacons. See ADR-031.
+
+**Follow-ups**:
+- **Resend the 5 failed submissions** from Tally's events log once deployed (they are not
+  recovered automatically), and confirm the leads reached MailerLite — only the GA4/Meta
+  attribution events were lost if Tally's MailerLite integration delivered independently.
+- Verify post-deploy that the function re-registered under the new codebase and that a cold call
+  now answers well under 10s.
+- `squareWebhook` has the same 10s budget and still lives in `maple-core` at ~14s cold; it
+  survives on Square's retries. Worth its own codebase (it carries Firestore + Square deps, so it
+  can't share `maple-webhooks`).
+
+---
+
 **Date**: 2026-06-26
 **Status**: Phase 4 complete; Phase 5 in progress. Spruce Room availability epic (#467) — PRs 1 & 2 shipped; adding the upcoming-schedule agenda (#504).
 

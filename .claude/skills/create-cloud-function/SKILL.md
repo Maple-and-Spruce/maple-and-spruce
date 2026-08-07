@@ -57,6 +57,7 @@ Determine which codebase your function belongs to based on its dependencies:
 - **Square SDK** → `apps/functions-square/src/index.ts` (codebase: `maple-square`)
 - **ical-generator** → `apps/functions-calendar/src/index.ts` (codebase: `maple-calendar`)
 - **webflow-api** → `apps/functions-sync/src/index.ts` (codebase: `maple-sync`)
+- **Third-party webhook with a short delivery timeout** (Tally, Square) and no heavy deps → `apps/functions-webhooks/src/index.ts` (codebase: `maple-webhooks`). Keep this bundle tiny — `maple-core` cold-starts in ~14s, which exceeds Tally's 10s budget. See ADR-031.
 - **Everything else** → `apps/functions/src/index.ts` (codebase: `maple-core`, default)
 
 Add the export to the correct entry point:

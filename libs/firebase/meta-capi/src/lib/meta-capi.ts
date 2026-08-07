@@ -29,7 +29,17 @@ export interface MetaCapiConfig {
   apiVersion: string;
   pixelId: string;
   accessToken: string;
+  /**
+   * Abort the POST after this many ms. `fetch` has no default timeout, so a
+   * hung Graph API connection otherwise stalls the caller until the function
+   * itself times out — on a webhook with a short delivery budget that turns a
+   * slow beacon into a dropped event. Defaults to 5s.
+   */
+  timeoutMs?: number;
 }
+
+/** @see MetaCapiConfig.timeoutMs */
+export const DEFAULT_META_CAPI_TIMEOUT_MS = 5_000;
 
 export interface MetaCapiUserIdentifiers {
   email?: string;
@@ -152,6 +162,9 @@ export async function sendMetaCapiEvents(
     body: JSON.stringify({
       data: events.map((e) => buildCapiEvent(e, nowSeconds)),
     }),
+    signal: AbortSignal.timeout(
+      config.timeoutMs ?? DEFAULT_META_CAPI_TIMEOUT_MS
+    ),
   });
 
   if (!response.ok) {
