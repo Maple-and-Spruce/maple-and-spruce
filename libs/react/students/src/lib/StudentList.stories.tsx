@@ -22,6 +22,8 @@ const meta = {
   args: {
     onEdit: fn(),
     onDelete: fn(),
+    onScheduleLesson: fn(),
+    onCreateInvoice: fn(),
     instructors,
     lessons: mockLessons,
   },
@@ -95,7 +97,20 @@ export const InactiveStudent: Story = {
 // INTERACTION TESTS
 // ============================================================
 
-export const EditButtonCallsOnEdit: Story = {
+/** Open a student's "⋯" action menu and return the portal query scope. */
+async function openRowMenu(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(
+    canvas.getByRole('button', { name: /actions for/i }),
+  );
+  const menu = within(document.body);
+  await waitFor(() =>
+    expect(menu.getByRole('menu')).toBeInTheDocument(),
+  );
+  return menu;
+}
+
+export const EditFromMenuCallsOnEdit: Story = {
   args: {
     studentsState: {
       status: 'success',
@@ -103,11 +118,8 @@ export const EditButtonCallsOnEdit: Story = {
     } as RequestState<Student[]>,
   },
   play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const editButton = canvas.getByRole('button', { name: /edit/i });
-    await userEvent.click(editButton);
-
+    const menu = await openRowMenu(canvasElement);
+    await userEvent.click(menu.getByRole('menuitem', { name: /^edit$/i }));
     await waitFor(() => {
       expect(args.onEdit).toHaveBeenCalledTimes(1);
       expect(args.onEdit).toHaveBeenCalledWith(mockStudent);
@@ -115,7 +127,7 @@ export const EditButtonCallsOnEdit: Story = {
   },
 };
 
-export const DeleteButtonCallsOnDelete: Story = {
+export const DeleteFromMenuCallsOnDelete: Story = {
   args: {
     studentsState: {
       status: 'success',
@@ -123,15 +135,53 @@ export const DeleteButtonCallsOnDelete: Story = {
     } as RequestState<Student[]>,
   },
   play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const deleteButton = canvas.getByRole('button', { name: /delete/i });
-    await userEvent.click(deleteButton);
-
+    const menu = await openRowMenu(canvasElement);
+    await userEvent.click(menu.getByRole('menuitem', { name: /^delete$/i }));
     await waitFor(() => {
       expect(args.onDelete).toHaveBeenCalledTimes(1);
       expect(args.onDelete).toHaveBeenCalledWith(mockStudent);
     });
+  },
+};
+
+export const ScheduleFromMenu: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudent],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const menu = await openRowMenu(canvasElement);
+    await expect(
+      menu.getByRole('menuitem', { name: /schedule lesson/i }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      menu.getByRole('menuitem', { name: /schedule lesson/i }),
+    );
+    await waitFor(() => {
+      expect(args.onScheduleLesson).toHaveBeenCalledWith(mockStudent);
+    });
+  },
+};
+
+export const InvoiceDisabledForHope: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudentHope],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const menu = await openRowMenu(canvasElement);
+    const invoiceItem = menu.getByRole('menuitem', {
+      name: /create invoice/i,
+    });
+    // Hope students can't be invoiced — the item is disabled (and thus
+    // unclickable: MUI sets pointer-events: none), so onCreateInvoice can't
+    // fire.
+    await expect(invoiceItem).toHaveAttribute('aria-disabled', 'true');
+    await expect(args.onCreateInvoice).not.toHaveBeenCalled();
   },
 };
 
