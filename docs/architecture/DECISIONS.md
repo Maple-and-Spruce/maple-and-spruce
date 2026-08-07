@@ -1414,6 +1414,10 @@ landing in `maple-core` and quietly inheriting a 14s boot.
   ADR said it was in `maple-core` — it was actually in `maple-square` (419kb), which measured
   7.5-12.0s cold. Same class of problem, different bundle; it was given its own
   `maple-square-webhook` codebase in the follow-up (see ADR-032).
+- **Verified in prod 2026-08-07 after deploy: 14.4s → 3.2s cold** (0.77s warm), matching
+  `maple-calendar`'s 3.2s. Confirmed as a genuine cold start by probing an idle `maple-core`
+  function in the same window as a control. The codebase move deployed cleanly — firebase-tools
+  relabelled the function in place, with no `functions:delete` and no gap in availability.
 - The five already-failed submissions are not recovered by this change; they must be resent from
   Tally's events log after deploy. Verified 2026-08-07: all five leads (`drock865@gmail.com`,
   `christinepill@yahoo.com`, `a.umbel@protonmail.com`, `danielle.bradke@gmail.com`,

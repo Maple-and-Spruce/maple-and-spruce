@@ -73,8 +73,14 @@ so no handler logic ran):
 | `maple-square` | 419kb | 7.5s, 12.0s | 1.2s |
 | `maple-sync` | 301kb | 6.3s | 1.3s |
 | `maple-square-webhook` | 141kb | — | — |
-| `maple-webhooks` | 90kb | — | — |
+| `maple-webhooks` | 90kb | 3.2s | 0.8s |
 | `maple-calendar` | 30kb | 3.2s | 1.1s |
+
+`maple-webhooks` is the post-fix measurement, taken 2026-08-07 after
+`tallyLeadWebhook` shipped: **14.4s → 3.2s cold**, ~7s of margin under Tally's
+10s cutoff. Verified with a same-project control (an idle `maple-core` function
+probed in the same window still cold-started), so the low number is a real cold
+start and not a warm instance.
 
 **Cold start is a distribution, not a number.** Two functions in the *same*
 `maple-square` bundle measured 7.5s and 12.0s — placement and image-cache state
