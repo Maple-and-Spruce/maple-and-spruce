@@ -94,7 +94,7 @@ The harness deploys to a dedicated Hosting site `maple-spruce-registration-test`
 
 ### Codebases
 
-Functions are split into 4 Firebase codebases to reduce cold start times (see ADR-026):
+Functions are split into 5 Firebase codebases to reduce cold start times (see ADR-026, ADR-031):
 
 | Codebase | App Project | Entry Point |
 |----------|-------------|-------------|
@@ -102,6 +102,14 @@ Functions are split into 4 Firebase codebases to reduce cold start times (see AD
 | `maple-calendar` | `apps/functions-calendar/` | `apps/functions-calendar/src/index.ts` |
 | `maple-square` | `apps/functions-square/` | `apps/functions-square/src/index.ts` |
 | `maple-sync` | `apps/functions-sync/` | `apps/functions-sync/src/index.ts` |
+| `maple-webhooks` | `apps/functions-webhooks/` | `apps/functions-webhooks/src/index.ts` |
+
+Adding a codebase means touching, at minimum: `firebase.json`, `function-codebases.json`
+(`codebaseProjects` + a `functionToCodebase` entry keyed by **Nx project name**), the
+artifact upload paths and the `^functions(-…)?$` affected-regex in
+`firebase-functions-merge.yml`, and the build + emulator-env blocks in
+`build-check.yml` and `tools/run-integration-tests.sh`. `tools/validate-function-tsconfigs.sh`
+and `tools/check-callable-roles.ts` also carry hardcoded codebase lists.
 
 ### How CI determines what to deploy
 

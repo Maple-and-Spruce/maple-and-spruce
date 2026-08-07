@@ -26,6 +26,11 @@
       "source": "dist/apps/functions-sync",
       "runtime": "nodejs22",
       "codebase": "maple-sync"
+    },
+    {
+      "source": "dist/apps/functions-webhooks",
+      "runtime": "nodejs22",
+      "codebase": "maple-webhooks"
     }
   ],
   "hosting": [

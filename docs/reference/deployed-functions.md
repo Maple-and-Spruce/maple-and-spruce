@@ -1,7 +1,7 @@
 # Deployed Functions
 
 > All Cloud Functions deploy to `us-east4` (Northern Virginia).
-> Functions are split into 4 codebases to reduce cold start times.
+> Functions are split into 5 codebases to reduce cold start times.
 
 ## Codebase: `maple-core` (`apps/functions/`)
 
@@ -109,9 +109,6 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `healthCheck`
 - `getSyncConflicts`, `getSyncConflictSummary`
 
-### Lead attribution (Tally → GA4 + Meta CAPI)
-- `tallyLeadWebhook` — HTTP endpoint (Tally newsletter-signup webhook). Verifies `tally-signature` HMAC, extracts hidden fields, fans out to GA4 Measurement Protocol (`generate_lead`) and Meta Conversions API (`Lead`). _(concurrency: 80, memory: 256MiB.)_ Manual setup: `docs/guides/tally-lead-webhook-setup.md`.
-
 ### Purchase attribution (class registration → Meta CAPI)
 - `sendRegistrationConversion` — Firestore trigger on `registrations/{id}`. On the `pending → confirmed` transition (paid `source:'web'` only), sends a server-side Meta Conversions API `Purchase` with `event_id = confirmationNumber` for dedup against the inline browser Pixel. Recovers conversions the client Pixel drops (iOS/Safari ITP, ad blockers) and the ones it never fires at all (the Square-hosted checkout fallback, which redirects off-site). Best-effort: CAPI failures are logged and swallowed. Reuses the `META_CAPI_TOKEN` secret + `META_PIXEL_ID`/`META_CAPI_*` params from `tallyLeadWebhook` — no new secret. Shared client: `@maple/firebase/meta-capi` (`libs/firebase/meta-capi/`).
 - `sendMusicTogetherConversion` — Firestore trigger on `musicTogetherRegistrations/{id}`. MT counterpart of `sendRegistrationConversion`: on the `pending → confirmed` transition of a paid MT registration, sends a Meta CAPI `Purchase` with `event_id = mt-<registrationId>`. **`value` is the family's FULL committed tuition** (sibling discount included), not the amount collected at registration — for an installment plan that is the sum of the whole plan, which carries a premium over paying in full. Installment 2 is charged around Week 5, far outside Meta's 7-day click window, so a follow-on event for it could never be attributed; reporting only installment 1 would just make installment families look half as valuable as pay-in-full families who commit the same total. **There is therefore no `Purchase` for installments 2..N — it would double-count.** `custom_data.amount_paid_today` carries the cash actually collected. Value source: `totalCommittedCents` on the registration. MT payments settle in a separate Square account but report into the SAME Maple & Spruce pixel, so it reuses the same `META_CAPI_TOKEN` secret + `META_*` params — no new secret. Best-effort: CAPI failures are logged and swallowed. Shared client: `@maple/firebase/meta-capi`.
@@ -176,6 +173,18 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `createCraftClubSubscription` also emails a welcome on success.
 
 `squareWebhook` additionally handles `subscription.created` / `subscription.updated` — reconciles the member's status (ACTIVE/PAUSED/CANCELED/DEACTIVATED) and paid-through date from Square; idempotent on no-change.
+
+---
+
+## Codebase: `maple-webhooks` (`apps/functions-webhooks/`)
+
+Endpoints called by external SaaS platforms that enforce a short delivery
+timeout. Deliberately the smallest bundle in the repo (~90kb) because a
+codebase's cold start is set by its heaviest member — see ADR-031 before
+adding anything here.
+
+### Lead attribution (Tally → GA4 + Meta CAPI)
+- `tallyLeadWebhook` — HTTP endpoint (Tally newsletter-signup webhook). Verifies `tally-signature` HMAC, extracts hidden fields, fans out to GA4 Measurement Protocol (`generate_lead`) and Meta Conversions API (`Lead`), each bounded at 4s. _(concurrency: 80, memory: 256MiB.)_ Manual setup: `docs/guides/tally-lead-webhook-setup.md`. Moved out of `maple-core` in 2026-08 — that bundle cold-starts in ~14.4s against Tally's 10s cutoff, and Tally does not retry.
 
 ---
 

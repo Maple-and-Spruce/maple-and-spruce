@@ -3,7 +3,8 @@
     "maple-core": "functions",
     "maple-calendar": "functions-calendar",
     "maple-square": "functions-square",
-    "maple-sync": "functions-sync"
+    "maple-sync": "functions-sync",
+    "maple-webhooks": "functions-webhooks"
   },
   "functionToCodebase": {
     "firebase-maple-functions-calendar-classes-feed": "maple-calendar",
@@ -56,7 +57,8 @@
     "firebase-maple-functions-update-craft-club-payment-method": "maple-square",
     "firebase-maple-functions-admin-pause-craft-club-subscription": "maple-square",
     "firebase-maple-functions-admin-resume-craft-club-subscription": "maple-square",
-    "firebase-maple-functions-admin-cancel-craft-club-subscription": "maple-square"
+    "firebase-maple-functions-admin-cancel-craft-club-subscription": "maple-square",
+    "firebase-maple-functions-tally-lead-webhook": "maple-webhooks"
   },
   "defaultCodebase": "maple-core"
 }

@@ -41,6 +41,7 @@ const ENTRY_POINTS = [
   'apps/functions-calendar/src/index.ts',
   'apps/functions-square/src/index.ts',
   'apps/functions-sync/src/index.ts',
+  'apps/functions-webhooks/src/index.ts',
 ];
 
 const MAPLE_FUNCTIONS_PREFIX = '@maple/firebase/maple-functions/';

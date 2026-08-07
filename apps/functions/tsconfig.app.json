@@ -138,7 +138,6 @@
     "../../libs/firebase/maple-functions/list-users/**/*.ts",
     "../../libs/firebase/maple-functions/grant-admin-role/**/*.ts",
     "../../libs/firebase/maple-functions/revoke-admin-role/**/*.ts",
-    "../../libs/firebase/maple-functions/tally-lead-webhook/**/*.ts",
     "../../libs/firebase/maple-functions/send-registration-conversion/**/*.ts",
     "../../libs/firebase/maple-functions/send-music-together-conversion/**/*.ts",
     "../../libs/firebase/meta-capi/**/*.ts",

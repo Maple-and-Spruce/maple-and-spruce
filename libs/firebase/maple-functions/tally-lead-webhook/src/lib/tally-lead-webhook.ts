@@ -12,9 +12,25 @@
  *   so GA4 attributes zero lead key-events to any source/medium.
  * - Meta only sees browser-side Pixel events, which iOS attribution drops.
  *
- * Tally retries 5xx, so we always answer 200 once we've validated the
- * payload. Downstream failures are logged but never block the ack — one
- * channel succeeding still beats zero.
+ * We always answer 200 once we've validated the payload. Downstream failures
+ * are logged but never block the ack — one channel succeeding still beats
+ * zero.
+ *
+ * THE 10-SECOND BUDGET
+ * --------------------
+ * Tally hangs up at 10s and records the submission as failed. It does NOT
+ * retry — a missed delivery is a permanently lost lead that has to be resent
+ * by hand from Tally's events log. Everything on this path is sized against
+ * that ceiling:
+ *
+ * - This function lives in the deliberately tiny `maple-webhooks` codebase
+ *   (apps/functions-webhooks), NOT maple-core. Boot time is set by the whole
+ *   codebase bundle, and maple-core measured 14.4s cold vs ~1s warm — the form
+ *   draws about one signup a day, so it was cold for nearly every real
+ *   delivery and Tally dropped five leads between 2026-07-30 and 2026-08-06.
+ * - Both beacons are bounded (see GA4_TIMEOUT_MS / META_TIMEOUT_MS); `fetch`
+ *   has no default timeout, so an unbounded hang would blow the budget even
+ *   from a warm instance.
  *
  * @see https://tally.so/help/webhooks
  * @see https://developers.google.com/analytics/devguides/collection/protocol/ga4
@@ -143,6 +159,13 @@ export function extractLead(
   };
 }
 
+/**
+ * Per-beacon ceiling. GA4 and Meta fire in parallel, so the pair costs at most
+ * this much of Tally's 10s delivery budget — leaving room for cold start.
+ */
+const GA4_TIMEOUT_MS = 4_000;
+const META_TIMEOUT_MS = 4_000;
+
 async function sendGa4Event(
   lead: TallyLeadValidationInput,
   config: { baseUrl: string; measurementId: string; apiSecret: string }
@@ -176,6 +199,10 @@ async function sendGa4Event(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    // `fetch` has no default timeout. Both beacons are awaited before we ack,
+    // so a hung connection here would eat the 10s Tally allows us and lose the
+    // submission outright. Bail early instead and let the ack through.
+    signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -212,7 +239,7 @@ function sendLeadToMeta(
     throw new Error('Cannot send Meta CAPI Lead without an email');
   }
 
-  return sendMetaCapiEvents(config, [
+  return sendMetaCapiEvents({ ...config, timeoutMs: META_TIMEOUT_MS }, [
     {
       eventName: 'Lead',
       actionSource: 'website',

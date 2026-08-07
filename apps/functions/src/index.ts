@@ -266,8 +266,9 @@ export { getMyRoles } from '@maple/firebase/maple-functions/get-my-roles';
 export { grantRole } from '@maple/firebase/maple-functions/grant-role';
 export { revokeRole } from '@maple/firebase/maple-functions/revoke-role';
 
-// Lead attribution (Tally newsletter signups → GA4 Measurement Protocol + Meta CAPI)
-export { tallyLeadWebhook } from '@maple/firebase/maple-functions/tally-lead-webhook';
+// Lead attribution: tallyLeadWebhook now lives in the maple-webhooks codebase
+// (apps/functions-webhooks). Tally hangs up at 10s and this bundle takes ~14s
+// to cold start, so nearly every real signup was dropped. Do not move it back.
 // Meta Conversions API Purchase on confirmed class registrations — recovers
 // iOS/ITP-dropped and hosted-checkout conversions the browser Pixel misses.
 export { sendRegistrationConversion } from '@maple/firebase/maple-functions/send-registration-conversion';

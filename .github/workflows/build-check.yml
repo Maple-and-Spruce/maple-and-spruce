@@ -421,12 +421,13 @@ jobs:
           pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
           pnpm exec nx run functions-calendar:build
+          pnpm exec nx run functions-webhooks:build
 
       - name: Create emulator .env
         run: |
           # Copy .env.dev to every codebase (has all shared project-level params)
           # Strip comments and blank lines — Firebase .env parser needs clean key=value pairs
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
@@ -438,7 +439,17 @@ jobs:
           echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions/.env
           echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions/.env
           echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+
+          # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "TALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions-webhooks/.secret.local
+          # tallyLeadWebhook → GA4 + Meta CAPI mock servers
+          echo "GA4_BASE_URL=http://localhost:9995" >> dist/apps/functions-webhooks/.env
+          echo "META_CAPI_BASE_URL=http://localhost:9994" >> dist/apps/functions-webhooks/.env
+          echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions-webhooks/.env
+          echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions-webhooks/.env
+          echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions-webhooks/.env
 
           # maple-square: Square mock server URL + fake secrets
           echo "SQUARE_BASE_URL=http://localhost:9997" >> dist/apps/functions-square/.env
@@ -568,6 +579,7 @@ jobs:
           pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
           pnpm exec nx run functions-calendar:build
+          pnpm exec nx run functions-webhooks:build
 
       - name: Create emulator .env
         # Mirrors the integration-tests job, with one critical difference:
@@ -583,16 +595,19 @@ jobs:
         env:
           SQUARE_SANDBOX_ACCESS_TOKEN: ${{ secrets.SQUARE_SANDBOX_ACCESS_TOKEN }}
         run: |
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
           # maple-core: Etsy mock server URL + fake secrets
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
-          # tallyLeadWebhook (maple-core) declares these defineSecret params;
+          # maple-core: conversion functions declare these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
+          # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "TALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions-webhooks/.secret.local
           # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
           # uses its built-in sandbox endpoint). Etsy still mocked.
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
@@ -604,7 +619,7 @@ jobs:
           echo "ETSY_TOKEN_URL=http://localhost:9998/v3/public/oauth/token" >> dist/apps/functions-sync/.env
           printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
             echo "ALLOWED_ORIGINS=$EXISTING,http://127.0.0.1:4173,http://localhost:4173" >> "$dir/.env"
           done
@@ -725,6 +740,7 @@ jobs:
           pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
           pnpm exec nx run functions-calendar:build
+          pnpm exec nx run functions-webhooks:build
 
       - name: Create emulator .env
         # Copied VERBATIM from the registration-e2e job: we DON'T set
@@ -736,16 +752,19 @@ jobs:
         env:
           SQUARE_SANDBOX_ACCESS_TOKEN: ${{ secrets.SQUARE_SANDBOX_ACCESS_TOKEN }}
         run: |
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
           # maple-core: Etsy mock server URL + fake secrets
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
-          # tallyLeadWebhook (maple-core) declares these defineSecret params;
+          # maple-core: conversion functions declare these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
+          # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "TALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions-webhooks/.secret.local
           # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
           # uses its built-in sandbox endpoint). Etsy still mocked.
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
@@ -872,6 +891,7 @@ jobs:
           pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
           pnpm exec nx run functions-calendar:build
+          pnpm exec nx run functions-webhooks:build
 
       - name: Create emulator .env
         # Mirrors the Registration E2E job. No SQUARE_BASE_URL, so the Square
@@ -880,13 +900,16 @@ jobs:
         # placeholder; MT_SQUARE_ACCESS_TOKEN gets the REAL MT sandbox token.
         if: steps.gate.outputs.enabled == 'true'
         run: |
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
+          # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "TALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions-webhooks/.secret.local
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
           printf "SQUARE_ACCESS_TOKEN=unused-mock-token\nMT_SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$MT_SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
 
@@ -895,7 +918,7 @@ jobs:
           echo "ETSY_TOKEN_URL=http://localhost:9998/v3/public/oauth/token" >> dist/apps/functions-sync/.env
           printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
             echo "ALLOWED_ORIGINS=$EXISTING,http://127.0.0.1:4173,http://localhost:4173" >> "$dir/.env"
           done
@@ -997,15 +1020,20 @@ jobs:
           pnpm exec nx run functions-square:build
           pnpm exec nx run functions-sync:build
           pnpm exec nx run functions-calendar:build
+          pnpm exec nx run functions-webhooks:build
 
       - name: Create emulator .env
         run: |
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
           done
 
           # Mock secrets so the emulator doesn't stall on missing defineSecret params.
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\n" > dist/apps/functions/.secret.local
+
+          # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
+          # without them the emulator silently waits on stdin for each one.
+          printf "TALLY_WEBHOOK_SECRET=test\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\n" > dist/apps/functions-webhooks/.secret.local
           printf "SQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
           printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
@@ -1015,7 +1043,7 @@ jobs:
           echo "ETSY_API_BASE=http://127.0.0.1:1" >> dist/apps/functions-sync/.env
 
           # CORS: the app's callables come from the Next dev origin (localhost:3000).
-          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar; do
+          for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
             EXISTING=$(grep '^ALLOWED_ORIGINS=' "$dir/.env" | head -1 | cut -d= -f2-)
             echo "ALLOWED_ORIGINS=$EXISTING,http://localhost:3000,http://127.0.0.1:3000" >> "$dir/.env"
           done

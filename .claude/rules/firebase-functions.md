@@ -45,7 +45,7 @@ properties of the function, not the route. Raise the baseline deliberately in th
 
 ## Codebases
 
-Functions are split into 4 Firebase codebases to reduce cold start times:
+Functions are split into 5 Firebase codebases to reduce cold start times:
 
 | Codebase | App Project | Heavy Deps | Entry Point |
 |----------|-------------|------------|-------------|
@@ -53,8 +53,44 @@ Functions are split into 4 Firebase codebases to reduce cold start times:
 | `maple-calendar` | `apps/functions-calendar/` | ical-generator | `apps/functions-calendar/src/index.ts` |
 | `maple-square` | `apps/functions-square/` | square SDK | `apps/functions-square/src/index.ts` |
 | `maple-sync` | `apps/functions-sync/` | webflow-api | `apps/functions-sync/src/index.ts` |
+| `maple-webhooks` | `apps/functions-webhooks/` | **none — keep it that way** | `apps/functions-webhooks/src/index.ts` |
 
 When adding a new function, export it from the correct codebase's entry point and add a mapping in `function-codebases.json` if it's not in `maple-core`.
+
+### Cold start is a per-codebase property (ADR-031)
+
+A codebase is one bundle. Every function in it loads the whole entry point on
+cold start, so **boot time is set by the heaviest sibling, not by the function
+being called**. Measured against prod on 2026-08-07 (invalid-signature probes,
+so no handler logic ran):
+
+| Codebase | Bundle | Cold | Warm |
+|----------|--------|------|------|
+| `maple-core` | 488kb | 14.4s | 1.0s |
+| `maple-sync` | 301kb | 6.3s | 1.3s |
+| `maple-webhooks` | 90kb | — | — |
+| `maple-calendar` | 30kb | 3.2s | 1.1s |
+
+This matters for any endpoint an external platform calls with a fixed timeout:
+
+- **Tally** hangs up at 10s and does **not** retry — a slow cold start is a
+  permanently lost lead. This is what put `tallyLeadWebhook` in `maple-webhooks`.
+- **Square** hangs up at 10s and *does* retry with backoff (see the 2026-05
+  504 storm). `squareWebhook` is still in `maple-core` and still boots in
+  ~14s — it survives on retries alone. Worth moving out.
+
+`maple-webhooks` only pays off while it stays small. Adding a function there
+that pulls firebase-admin repositories, the Square SDK, or webflow-api
+re-inflates the bundle and silently reintroduces the outage for every other
+webhook in it. If the new function's deps are heavier than
+firebase-functions + crypto + vest, give it its own codebase.
+
+### Bounding outbound calls on a webhook path
+
+`fetch` has no default timeout. On a handler with a delivery budget, always
+pass `AbortSignal.timeout(...)` — a hung upstream otherwise eats the whole
+budget from a *warm* instance. See `GA4_TIMEOUT_MS` / `META_TIMEOUT_MS` in
+`tally-lead-webhook.ts` and `MetaCapiConfig.timeoutMs`.
 
 ## No package.json in Libraries
 

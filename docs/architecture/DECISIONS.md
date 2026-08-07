@@ -1340,6 +1340,84 @@ Next.js app, and any middleware — so the vanity host never touches admin-app c
 
 ---
 
+## ADR-031: A Dedicated `maple-webhooks` Codebase for Timeout-Bound Third-Party Callers
+
+**Status:** Accepted
+**Date:** 2026-08-07
+
+### Context
+Tally emailed five "Webhooks integration needs attention" reports between 2026-07-30 and
+2026-08-06, one per day the newsletter form got a signup, all reading
+`timeout of 10000ms exceeded`.
+
+`tallyLeadWebhook` was healthy. Probing prod directly with invalid-signature requests — which
+return 401 before a single line of handler logic runs — isolated the cause as cold start, and
+showed it is a property of the **codebase**, not the function:
+
+| Codebase | Bundle | Cold | Warm |
+|----------|--------|------|------|
+| `maple-core` | 488kb | 14.4s | 1.0s |
+| `maple-sync` | 301kb | 6.3s | 1.3s |
+| `maple-calendar` | 30kb | 3.2s | 1.1s |
+
+A Firebase codebase is one bundle, and every function in it loads the whole entry point on boot,
+so a trivial function inherits the boot cost of its 165 heaviest siblings (`checkAdminStatus`
+measured 14.8s cold, matching `tallyLeadWebhook`).
+
+Two properties made this silent and total rather than intermittent:
+
+1. The form draws roughly **one signup a day**, so the Cloud Run service was cold for essentially
+   every real delivery. This was not a tail-latency problem; it was the common case.
+2. **Tally does not retry.** Square's 10s timeout produces a retry storm that eventually succeeds
+   (the 2026-05 504 incident); Tally's produces a permanently lost lead that must be resent by
+   hand from the events log.
+
+### Decision
+Add a fifth Firebase codebase, `maple-webhooks` (`apps/functions-webhooks/`), for endpoints called
+by external platforms on a fixed delivery budget, and move `tallyLeadWebhook` into it. Keep its
+dependency surface to firebase-functions + crypto + vest — the resulting bundle is 90kb.
+
+Separately, bound every outbound call on such a path with `AbortSignal.timeout(...)`; `fetch` has
+no default timeout, so a hung upstream can blow a 10s budget even from a warm instance.
+
+### Rationale
+Cold start is the only lever that actually moves here, and bundle size is the only lever on cold
+start. Isolation buys ~14.4s → low single digits, with margin against Tally's cutoff and no
+recurring cost. It also gives future timeout-bound integrations a correct default home instead of
+landing in `maple-core` and quietly inheriting a 14s boot.
+
+### Alternatives Considered
+- **`minInstances: 1` on the function** — keeps it warm (~1s) but pays for an idle instance 24/7 to
+  serve about one request a day, and every reserved instance counts against the regional
+  Total-CPU quota that already constrains deploys (see `global-runtime-options.ts`).
+  Rejected as expensive and quota-hostile for a once-daily endpoint.
+- **Move it to `maple-calendar` (3.2s) or `maple-sync` (6.3s)** — a three-line change and both fit
+  under 10s. Rejected: `maple-sync`'s margin is thin and shrinks as that codebase grows, and
+  neither is a defensible home for a lead webhook. The naming lie would outlive the fix.
+- **Ack fast and defer the beacons to a Firestore-triggered worker** (the `squareWebhook` →
+  `processCatalogSyncRequest` pattern). Rejected: it addresses handler duration, and the timeout
+  here happens *before the handler runs*. It would not have saved a single one of the five leads.
+- **Shrink `maple-core` itself** — the right long-term fix for the admin portal's latency too, but
+  it's an open-ended project and this was actively dropping leads.
+
+### Consequences
+- Five codebases now. Adding one touches `firebase.json`, `function-codebases.json`, the artifact
+  paths and affected-regex in `firebase-functions-merge.yml`, the build/env blocks in
+  `build-check.yml` and `tools/run-integration-tests.sh`, plus the hardcoded lists in
+  `validate-function-tsconfigs.sh` and `check-callable-roles.ts`. Deploys serialize per codebase,
+  so this adds one more sequential unit to a full redeploy.
+- **`maple-webhooks` only works while it stays small.** A function that pulls firebase-admin
+  repositories, the Square SDK, or webflow-api re-inflates the bundle and reintroduces the outage
+  for everything else in it. That constraint is documented at the entry point and in
+  `.claude/rules/firebase-functions.md`; if a new webhook is heavier, it gets its own codebase.
+- `squareWebhook` is still in `maple-core` at ~14s cold and survives only because Square retries.
+  It is the obvious next tenant, but it carries Firestore + Square deps, so it needs its own
+  codebase rather than a seat in this one.
+- The five already-failed submissions are not recovered by this change; they must be resent from
+  Tally's events log after deploy.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
