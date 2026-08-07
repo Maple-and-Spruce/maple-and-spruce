@@ -120,6 +120,31 @@ Switch a config to prod with `gcloud config set project maple-and-spruce --confi
 
 **Claude Code auto-selects the config**: `.claude/settings.local.json` (personal, gitignored) sets `env.CLOUDSDK_ACTIVE_CONFIG_NAME = "maple"`, so every Bash call Claude makes in this repo uses the Maple & Spruce gcloud account/project automatically. Keep that file out of git (it's machine-specific) — if it ever shows as tracked, run `git rm --cached .claude/settings.local.json`.
 
+## Storage Bucket CORS
+
+Storage bucket CORS is **manual, per-project console/CLI state** — it is not covered by `firebase deploy`, not in `storage.rules`, and not recreated by CI. If a project's bucket is ever recreated, this has to be re-applied by hand or the admin portal silently stops rendering stored files.
+
+**Why it's needed**: `getSignedAgreement` returns V4 signed URLs on `storage.googleapis.com` (`get-signed-agreement.ts`). The admin portal fetches those cross-origin to render the signature image and agreement PDF, so the bucket must allow `GET` from the browser. Without it the detail view loads but the file silently fails to render.
+
+The config lives in `cors.json` at the repo root — read-only (`GET`), which is all a signed-URL fetch needs. The URL itself carries the authorization and expires, so the wildcard origin grants nothing without a valid signature.
+
+| Project | Bucket | CORS applied |
+|---------|--------|--------------|
+| Prod | `maple-and-spruce.firebasestorage.app` | Yes (manually, 2026-04-22) |
+| Dev | `maple-and-spruce-dev.firebasestorage.app` | **No** — see below |
+
+```bash
+# read current config
+gcloud storage buckets describe gs://<bucket> --format='value(cors_config)'
+
+# apply / re-apply
+gcloud storage buckets update gs://<bucket> --cors-file=cors.json
+```
+
+**Dev is intentionally flagged, not fixed**: dev's bucket has no CORS config, so signed-URL rendering that works in prod can fail locally and in the dev app. Applying the same file to dev is a one-liner (above) but it's a live infra change, so it's left as a deliberate decision rather than something a doc PR does silently.
+
+**Use `gcloud storage`, not `gsutil`**: the equivalents are `gsutil cors get/set`, but Google unbundles `gsutil` from the gcloud CLI in **March 2027** (it will need a separate PyPI install with its own auth). Nothing in this repo uses `gsutil`; keep it that way.
+
 ## Never Commit
 
 - Firebase service account keys
