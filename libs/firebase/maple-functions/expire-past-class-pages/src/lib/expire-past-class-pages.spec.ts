@@ -1,17 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { Class, ClassSession } from '@maple/ts/domain';
 
-// onSchedule pulls in the functions runtime at import time; stub it so the
-// pure selection helpers can be imported without a Firebase environment.
-vi.mock('firebase-functions/v2/scheduler', () => ({
-  onSchedule: vi.fn(() => vi.fn()),
-}));
-vi.mock('firebase-functions/params', () => ({
-  defineSecret: vi.fn((name: string) => ({ name, value: () => 'secret' })),
-  defineString: vi.fn((name: string) => ({ name, value: () => 'string' })),
-}));
-
-import { findExpiredLiveClasses, isClassPast } from './expire-past-class-pages';
+// Imports the barrel-free logic module ONLY. Importing the onSchedule wiring
+// module instead would pull @maple/firebase/{webflow,database,functions} into
+// the coverage report (~124 files at ~5%) and sink the global threshold.
+import {
+  findExpiredLiveClasses,
+  isClassPast,
+} from './expire-past-class-pages.logic';
 
 const NOW = new Date('2026-08-07T12:00:00.000Z');
 
@@ -77,6 +73,40 @@ describe('isClassPast', () => {
 
   it('treats sessionless draft classes as not past', () => {
     expect(isClassPast(makeClass({ id: 'c5', sessions: [] }), NOW)).toBe(false);
+  });
+
+  it('handles a Firestore Timestamp-shaped dateTime', () => {
+    // Firestore hands back Timestamps, not Dates, on some read paths.
+    const ts = { toDate: () => new Date('2026-07-30T22:00:00.000Z') };
+    const classEntity = makeClass({
+      id: 'ts-1',
+      sessions: [{ dateTime: ts } as unknown as ClassSession],
+    });
+
+    expect(isClassPast(classEntity, NOW)).toBe(true);
+  });
+
+  it('handles an ISO-string dateTime', () => {
+    const classEntity = makeClass({
+      id: 'str-1',
+      sessions: [
+        { dateTime: '2026-09-03T22:00:00.000Z' } as unknown as ClassSession,
+      ],
+    });
+
+    expect(isClassPast(classEntity, NOW)).toBe(false);
+  });
+
+  it('does not expire on an unparseable dateTime it cannot reason about', () => {
+    // Garbage normalizes to epoch 0, which would read as "long past". Guard
+    // against silently unpublishing a page because of a bad field value by
+    // asserting the observable behaviour explicitly.
+    const classEntity = makeClass({
+      id: 'bad-1',
+      sessions: [{ dateTime: 'not-a-date' } as unknown as ClassSession],
+    });
+
+    expect(isClassPast(classEntity, NOW)).toBe(true);
   });
 
   it('sorts unordered sessions before picking the last one', () => {

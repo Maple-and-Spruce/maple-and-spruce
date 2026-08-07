@@ -7,7 +7,7 @@
  * Why this exists: every class offering syncs to its own Webflow CMS item, and
  * each non-draft item publishes a `/classes/{slug}` detail page. Nothing ever
  * took those pages back down, so past classes accumulated in the live site and
- * the auto-generated sitemap — 20 of 28 live class pages were already in the
+ * the auto-generated sitemap — 19 of 28 live class pages were already in the
  * past when this was written. That is thin, near-duplicate content for Google
  * and a dead end for anyone who lands on one.
  *
@@ -16,12 +16,13 @@
  * `webflowItemId` and slug. A class rescheduled into the future republishes on
  * its next sync with the same URL.
  *
+ * The selection logic lives in `./expire-past-class-pages.logic` — barrel-free
+ * so its spec doesn't drag the repository layer into the coverage report.
+ *
  * Deployed to us-east4 via CI/CD pipeline (maple-sync codebase).
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import type { Class } from '@maple/ts/domain';
-import { getSessionEndTime, getSortedSessions } from '@maple/ts/domain';
 import {
   Webflow,
   WEBFLOW_SECRET_NAMES,
@@ -29,6 +30,7 @@ import {
 } from '@maple/firebase/webflow';
 import { ClassRepository } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
+import { findExpiredLiveClasses } from './expire-past-class-pages.logic';
 
 // Define secrets INLINE to avoid cold start delays
 const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
@@ -37,56 +39,6 @@ const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
 const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) =>
   defineString(name)
 );
-
-/**
- * A class is expired once its LAST session has finished — a multi-week Studio
- * Series stays live through its final meeting, not just its first.
- *
- * Classes with no sessions are never expired here; they are drafts that the
- * regular sync already keeps out of Webflow.
- */
-export function isClassPast(classEntity: Class, now: Date): boolean {
-  const sessions = getSortedSessions(classEntity);
-  if (sessions.length === 0) return false;
-
-  const lastSession = sessions[sessions.length - 1];
-  return getSessionEndTime(lastSession, classEntity.durationMinutes) < now;
-}
-
-/**
- * Intersect the classes Firestore knows are in the past with the items Webflow
- * reports as actually live, and return the Webflow item IDs to unpublish.
- *
- * Driving the "is it live?" half off Webflow rather than a Firestore flag makes
- * the sweep idempotent for free: once an item is unpublished it stops appearing
- * in `listItemsLive`, so the next run skips it with no bookkeeping field to
- * keep in sync.
- *
- * Exported for unit testing.
- */
-export function findExpiredLiveClasses(
-  classes: Class[],
-  liveItemIdsByFirebaseId: Map<string, string>,
-  now: Date
-): { classId: string; name: string; webflowItemId: string }[] {
-  const expired: { classId: string; name: string; webflowItemId: string }[] =
-    [];
-
-  for (const classEntity of classes) {
-    if (!isClassPast(classEntity, now)) continue;
-
-    const webflowItemId = liveItemIdsByFirebaseId.get(classEntity.id);
-    if (!webflowItemId) continue;
-
-    expired.push({
-      classId: classEntity.id,
-      name: classEntity.name,
-      webflowItemId,
-    });
-  }
-
-  return expired;
-}
 
 /**
  * Unpublish Webflow detail pages for classes that have already happened.
