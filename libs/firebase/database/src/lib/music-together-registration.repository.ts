@@ -56,6 +56,7 @@ function docToRegistration(
       ? toDate(data.cardOnFileAuthAt)
       : undefined,
     pricePaidCents: data.pricePaidCents,
+    totalCommittedCents: data.totalCommittedCents,
     squareCustomerId: data.squareCustomerId,
     squareCardId: data.squareCardId,
     squarePaymentId: data.squarePaymentId,

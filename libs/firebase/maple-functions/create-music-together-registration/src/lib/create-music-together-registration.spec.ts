@@ -195,6 +195,9 @@ describe('createMusicTogetherRegistration', () => {
         parentNames: ['Jamie Rivera'],
         accommodations: null,
         privacyConsentAcceptedAt: expect.any(Date),
+        // Pay-in-full: the committed total is the single charge.
+        pricePaidCents: 25200,
+        totalCommittedCents: 25200,
       })
     );
     expect(mocks.regUpdate).toHaveBeenCalledWith(
@@ -315,6 +318,62 @@ describe('createMusicTogetherRegistration', () => {
     );
     expect(result.amountChargedCents).toBe(26400);
     expect(result.scheduledChargeCount).toBe(1);
+    // The committed total is the SUM OF THE PLAN ($264 x 2), which is what the
+    // Meta CAPI `Purchase` reports. Note it is NOT the discounted pay-in-full
+    // price ($504) — the installment plan carries a premium.
+    expect(mocks.txSet).toHaveBeenCalledWith(
+      regRef,
+      expect.objectContaining({ totalCommittedCents: 52800 })
+    );
+  });
+
+  /**
+   * `totalCommittedCents` is what `sendMusicTogetherConversion` reports to Meta,
+   * so the sibling discount and the installment premium both have to land in it
+   * correctly at reservation time — the trigger cannot recompute it (the
+   * scheduled charges don't exist yet when it fires).
+   */
+  it('persists the committed plan total for a 1-child installment family', async () => {
+    mocks.sectionFindById.mockResolvedValue(openWithInstallments);
+
+    await run({
+      ...baseFamily,
+      paymentPlan: 'installments',
+      cardOnFileAuth: true,
+      cardVerificationToken: 'verf:store-token',
+    });
+
+    expect(mocks.txSet).toHaveBeenCalledWith(
+      regRef,
+      expect.objectContaining({
+        // charged now
+        pricePaidCents: 13200,
+        // committed overall: 2 x $132 = $264, MORE than the $252 full price
+        totalCommittedCents: 26400,
+      })
+    );
+  });
+
+  it('persists the sibling-discounted committed total for 2 children paid in full', async () => {
+    mocks.sectionFindById.mockResolvedValue(openFullOnly);
+
+    await run({
+      ...baseFamily,
+      children: [
+        { name: 'Sky', dob: '2023-04-01' },
+        { name: 'River', dob: '2024-05-02' },
+      ],
+      paymentPlan: 'full',
+    });
+
+    // $252 * 1.5 = $378 — not 2x $252.
+    expect(mocks.txSet).toHaveBeenCalledWith(
+      regRef,
+      expect.objectContaining({
+        pricePaidCents: 37800,
+        totalCommittedCents: 37800,
+      })
+    );
   });
 
   it('rejects when the section is full — no payment taken', async () => {

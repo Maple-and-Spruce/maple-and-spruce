@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildMusicTogetherPurchaseEvent,
+  reportedValueCents,
   emitMusicTogetherPurchaseIfConfirmed,
   shouldEmitMusicTogetherPurchase,
   type MusicTogetherConversionData,
@@ -17,7 +18,8 @@ function confirmed(
     phone: '304-555-0199',
     adultFirstName: 'Jane',
     adultLastName: 'Doe',
-    pricePaidCents: 12500,
+    pricePaidCents: 25200,
+    totalCommittedCents: 25200,
     paymentPlan: 'full',
     scheduledChargeCount: 0,
     status: 'confirmed',
@@ -85,37 +87,141 @@ describe('shouldEmitMusicTogetherPurchase', () => {
   });
 });
 
-describe('buildMusicTogetherPurchaseEvent', () => {
-  it('reports the amount charged in DOLLARS with USD currency', () => {
-    const event = buildMusicTogetherPurchaseEvent(
-      REG_ID,
-      confirmed({ pricePaidCents: 12500 })
-    );
-    expect(event.customData).toMatchObject({ value: 125, currency: 'USD' });
+/**
+ * `reportedValueCents` is the whole value decision in one function, so it gets
+ * its own block. See the value-semantics note at the top of the trigger: Meta's
+ * `value` is the family's COMMITTED tuition, not the cash collected today,
+ * because installment 2 lands outside the 7-day click window and could never be
+ * attributed on its own.
+ */
+describe('reportedValueCents', () => {
+  it('uses the committed total, not the registration-time charge', () => {
+    expect(
+      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: 26400 })
+    ).toBe(26400);
   });
 
-  // The deliberate decision: an installment registration reports installment 1
-  // (what the card was actually charged), NOT the full tuition.
-  it('reports installment 1 for an installment plan, not full tuition', () => {
+  it('is identical to the charge for a pay-in-full family', () => {
+    expect(
+      reportedValueCents({ pricePaidCents: 25200, totalCommittedCents: 25200 })
+    ).toBe(25200);
+  });
+
+  // Registrations reserved before `totalCommittedCents` shipped still have a
+  // conversion worth reporting; under-reporting one beats dropping it.
+  it('falls back to the charge when the committed total is missing', () => {
+    expect(reportedValueCents({ pricePaidCents: 13200 })).toBe(13200);
+  });
+
+  it('ignores a zero or negative committed total and falls back', () => {
+    expect(
+      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: 0 })
+    ).toBe(13200);
+    expect(
+      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: -5 })
+    ).toBe(13200);
+  });
+
+  it('is 0 when nothing is known (the gate rejects this before we send)', () => {
+    expect(reportedValueCents({})).toBe(0);
+  });
+});
+
+describe('buildMusicTogetherPurchaseEvent', () => {
+  it('reports the committed tuition in DOLLARS with USD currency', () => {
+    const event = buildMusicTogetherPurchaseEvent(REG_ID, confirmed());
+    expect(event.customData).toMatchObject({ value: 252, currency: 'USD' });
+  });
+
+  /**
+   * The reversed decision (was: installment 1). A 1-child installment family
+   * commits 2 x $132 = $264 — MORE than the $252 pay-in-full price, because the
+   * plan carries a premium. Reporting $132 would halve this cohort's apparent
+   * value to Meta's bidder for no business reason.
+   */
+  it('reports the FULL committed plan total for an installment family', () => {
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
       confirmed({
         paymentPlan: 'installments',
-        pricePaidCents: 7500,
+        pricePaidCents: 13200,
+        totalCommittedCents: 26400,
         scheduledChargeCount: 1,
       })
     );
     expect(event.customData).toMatchObject({
-      value: 75,
+      value: 264,
       payment_plan: 'installments',
       scheduled_charge_count: 1,
+      // Cash timing stays visible even though `value` is the committed total.
+      amount_paid_today: 132,
     });
+  });
+
+  // Sibling pricing must survive into the reported value: 2 kids on a plan is
+  // 2 x $198 = $396, which is neither 2x the 1-child total nor a flat price.
+  it('reports the sibling-discounted total for a multi-child installment family', () => {
+    const twoChildren = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({
+        paymentPlan: 'installments',
+        pricePaidCents: 19800,
+        totalCommittedCents: 39600,
+        scheduledChargeCount: 1,
+      })
+    );
+    expect(twoChildren.customData).toMatchObject({
+      value: 396,
+      amount_paid_today: 198,
+    });
+    // Not 2x the one-child committed total ($528) — the 2nd child is 50% off.
+    expect(twoChildren.customData?.['value']).not.toBe(528);
+
+    const threeChildren = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({
+        paymentPlan: 'installments',
+        pricePaidCents: 26400,
+        totalCommittedCents: 52800,
+        scheduledChargeCount: 1,
+      })
+    );
+    expect(threeChildren.customData).toMatchObject({
+      value: 528,
+      amount_paid_today: 264,
+    });
+  });
+
+  it('reports the sibling-discounted total for a multi-child pay-in-full family', () => {
+    const event = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({ pricePaidCents: 37800, totalCommittedCents: 37800 })
+    );
+    // 2 children paid in full: $252 * 1.5 = $378, and value === amount paid.
+    expect(event.customData).toMatchObject({
+      value: 378,
+      amount_paid_today: 378,
+      payment_plan: 'full',
+    });
+  });
+
+  it('falls back to the charged amount for a pre-field registration', () => {
+    const event = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({
+        paymentPlan: 'installments',
+        pricePaidCents: 13200,
+        totalCommittedCents: undefined,
+        scheduledChargeCount: 1,
+      })
+    );
+    expect(event.customData).toMatchObject({ value: 132 });
   });
 
   it('rounds odd cents to a 2-decimal dollar value', () => {
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ pricePaidCents: 12533 })
+      confirmed({ pricePaidCents: 12533, totalCommittedCents: 12533 })
     );
     expect(event.customData?.['value']).toBe(125.33);
   });

@@ -164,6 +164,25 @@ export const createMusicTogetherRegistration = Functions.endpoint
         ? familyPrice.installments.slice(1)
         : [];
 
+    // The family's TOTAL committed tuition, sibling discount included.
+    //
+    // For installments this is the SUM OF THE PLAN, not `familyPrice.fullCents`
+    // — the installment plan carries a premium (2 x $132 = $264 vs $252 paid in
+    // full), so `fullCents` would understate what the family actually owes and
+    // report a number nobody is ever charged.
+    //
+    // Persisted (rather than recomputed by a consumer) for two reasons: the
+    // scheduled charges are materialized AFTER the confirming write, so anything
+    // summing that collection races them; and it keeps pricing math in this one
+    // place instead of coupling downstream readers to the section.
+    const totalCommittedCents =
+      data.paymentPlan === 'installments'
+        ? familyPrice.installments.reduce(
+            (sum, item) => sum + item.amountCents,
+            0
+          )
+        : familyPrice.fullCents;
+
     const square = new Square(secrets, strings, MT_SQUARE_KEYS);
 
     // Per-family calendar subscription token: reuse the family's existing token
@@ -210,6 +229,7 @@ export const createMusicTogetherRegistration = Functions.endpoint
         cardOnFileAuthAt:
           data.paymentPlan === 'installments' ? now : null,
         pricePaidCents: firstChargeCents,
+        totalCommittedCents,
         scheduledChargeCount: scheduledItems.length,
         status: 'pending',
         notes: data.notes || null,

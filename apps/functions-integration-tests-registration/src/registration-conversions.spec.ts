@@ -159,7 +159,9 @@ function mtRegistration(overrides: Record<string, unknown> = {}) {
     children: [{ name: 'Kid', dob: now }],
     address: '1 Main St',
     paymentPlan: 'full',
-    pricePaidCents: 26500,
+    // Real MT pricing: $252 pay-in-full for one child.
+    pricePaidCents: 25200,
+    totalCommittedCents: 25200,
     scheduledChargeCount: 0,
     status: 'pending',
     fbp: 'fb.1.1700000000000.2222',
@@ -359,13 +361,15 @@ describe('Meta CAPI Purchase triggers', () => {
       const event = events[0];
 
       expect(event.custom_data).toMatchObject({
-        value: 265,
+        value: 252,
         currency: 'USD',
         content_ids: [sectionId],
         content_category: 'music_together',
         // One registration is one family enrollment regardless of child count.
         num_items: 1,
         payment_plan: 'full',
+        // Pay-in-full: committed total and cash collected are the same.
+        amount_paid_today: 252,
       });
       expect(event.event_id).toBe(`mt-${id}`);
       expect(event.user_data['em']).toEqual([sha256('family@example.com')]);
@@ -374,16 +378,21 @@ describe('Meta CAPI Purchase triggers', () => {
       expect(event.user_data['client_ip_address']).toBe('203.0.113.8');
     });
 
-    // The deliberate `value` decision: report what the card was actually
-    // charged now. Reporting full tuition would claim revenue we haven't
-    // collected and would over-state ROAS.
-    it('reports installment 1 for an installment plan, not full tuition', async () => {
+    /**
+     * The `value` decision: report the family's FULL COMMITTED tuition, not the
+     * cash collected today. Installment 2 is charged around Week 5, outside
+     * Meta's 7-day click window, so it could never be attributed on its own —
+     * reporting installment 1 only would permanently halve this cohort's
+     * apparent value versus pay-in-full families committing the same total.
+     */
+    it('reports the FULL committed plan total for a 1-child installment family', async () => {
       const id = `conv-mt-inst-${Date.now()}`;
       const sectionId = `conv-mt-section-inst-${Date.now()}`;
       const doc = mtRegistration({
         sectionId,
         paymentPlan: 'installments',
-        pricePaidCents: 13250,
+        pricePaidCents: 13200,
+        totalCommittedCents: 26400,
         scheduledChargeCount: 1,
       });
       await setFirestoreDoc('musicTogetherRegistrations', id, doc);
@@ -394,10 +403,68 @@ describe('Meta CAPI Purchase triggers', () => {
 
       const [event] = await waitForPurchases(sectionId);
       expect(event.custom_data).toMatchObject({
-        value: 132.5,
+        // 2 x $132 committed — note this EXCEEDS the $252 pay-in-full price,
+        // because the installment plan carries a premium.
+        value: 264,
         payment_plan: 'installments',
         scheduled_charge_count: 1,
+        // Cash timing still legible in Events Manager.
+        amount_paid_today: 132,
       });
+    });
+
+    // Sibling pricing has to survive into the reported value: 2 children on a
+    // plan is 2 x $198 = $396 — neither a flat price nor 2x the 1-child total.
+    it('reports the sibling-discounted total for a multi-child installment family', async () => {
+      const id = `conv-mt-multi-${Date.now()}`;
+      const sectionId = `conv-mt-section-multi-${Date.now()}`;
+      const doc = mtRegistration({
+        sectionId,
+        children: [
+          { name: 'Sky', dob: now },
+          { name: 'River', dob: now },
+        ],
+        paymentPlan: 'installments',
+        pricePaidCents: 19800,
+        totalCommittedCents: 39600,
+        scheduledChargeCount: 1,
+      });
+      await setFirestoreDoc('musicTogetherRegistrations', id, doc);
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      const [event] = await waitForPurchases(sectionId);
+      expect(event.custom_data).toMatchObject({
+        value: 396,
+        amount_paid_today: 198,
+        // Still ONE family enrollment, not one per child.
+        num_items: 1,
+      });
+      // Not 2x the 1-child committed total ($528) — the 2nd child is 50% off.
+      expect(event.custom_data?.['value']).not.toBe(528);
+    });
+
+    // Registrations reserved before `totalCommittedCents` shipped still convert.
+    it('falls back to the charged amount when the committed total is absent', async () => {
+      const id = `conv-mt-legacy-${Date.now()}`;
+      const sectionId = `conv-mt-section-legacy-${Date.now()}`;
+      const doc = mtRegistration({
+        sectionId,
+        paymentPlan: 'installments',
+        pricePaidCents: 13200,
+        scheduledChargeCount: 1,
+      });
+      delete (doc as Record<string, unknown>)['totalCommittedCents'];
+      await setFirestoreDoc('musicTogetherRegistrations', id, doc);
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      const [event] = await waitForPurchases(sectionId);
+      expect(event.custom_data).toMatchObject({ value: 132 });
     });
 
     it('does not fire for pending, cancelled, or $0 MT registrations', async () => {
