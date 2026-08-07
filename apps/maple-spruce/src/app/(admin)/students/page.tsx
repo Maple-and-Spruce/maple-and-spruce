@@ -10,10 +10,134 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type { CreateStudentInput, RequestState, Student } from '@maple/ts/domain';
+import type {
+  CreateInvoiceInput,
+  CreateLessonInput,
+  CreateLessonSeriesInput,
+  CreateStudentInput,
+  Instructor,
+  LessonBlock,
+  RequestState,
+  Student,
+  UpdateInvoiceInput,
+} from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { StudentForm, StudentList } from '@maple/react/students';
-import { useInstructors, useLessons, useStudents } from '../../../hooks';
+import { ScheduleLessonDialog } from '@maple/react/lessons';
+import { InvoiceBuilderDialog } from '@maple/react/invoices';
+import {
+  useInstructors,
+  useInvoices,
+  useLessonBlocks,
+  useLessons,
+  useStudents,
+} from '../../../hooks';
+
+/** Duration default from a student's registered lesson length. */
+function defaultDurationFor(student: Student): 30 | 45 | 60 {
+  if (student.registeredLessonLength === '45-min') return 45;
+  if (student.registeredLessonLength === '60-min') return 60;
+  return 30;
+}
+
+/**
+ * Opens the schedule-lesson dialog for one student, owning that student's
+ * lesson hook. Mounted only while scheduling, so the per-student fetch is lazy.
+ */
+function ScheduleLessonLauncher({
+  student,
+  instructors,
+  blocks,
+  onClose,
+}: {
+  student: Student;
+  instructors: Instructor[];
+  blocks: LessonBlock[];
+  onClose: () => void;
+}) {
+  const { createLesson, createLessonSeries } = useLessons({
+    studentId: student.id,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateSingle = async (input: CreateLessonInput) => {
+    setIsSubmitting(true);
+    try {
+      await createLesson(input);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const handleCreateSeries = async (input: CreateLessonSeriesInput) => {
+    setIsSubmitting(true);
+    try {
+      await createLessonSeries(input);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ScheduleLessonDialog
+      open
+      onClose={onClose}
+      studentId={student.id}
+      defaultTeacherId={student.primaryTeacherId}
+      instructors={instructors}
+      blocks={blocks}
+      defaultDurationMinutes={defaultDurationFor(student)}
+      onCreateSingle={handleCreateSingle}
+      onCreateSeries={handleCreateSeries}
+      isSubmitting={isSubmitting}
+    />
+  );
+}
+
+/** Opens the create-invoice dialog for one student, owning its invoice hook. */
+function InvoiceLauncher({
+  student,
+  onClose,
+}: {
+  student: Student;
+  onClose: () => void;
+}) {
+  const { createInvoice, updateInvoice } = useInvoices({
+    studentId: student.id,
+  });
+  const { lessonsState } = useLessons({ studentId: student.id });
+  const lessons =
+    lessonsState.status === 'success' ? lessonsState.data : [];
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreate = async (input: CreateInvoiceInput) => {
+    setIsSubmitting(true);
+    try {
+      await createInvoice(input);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const handleUpdate = async (input: UpdateInvoiceInput) => {
+    setIsSubmitting(true);
+    try {
+      await updateInvoice(input);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <InvoiceBuilderDialog
+      open
+      onClose={onClose}
+      studentId={student.id}
+      lessons={lessons}
+      onCreate={handleCreate}
+      onUpdate={handleUpdate}
+      isSubmitting={isSubmitting}
+    />
+  );
+}
 
 type HopeFilter = 'all' | 'hope' | 'private';
 
@@ -29,11 +153,14 @@ export default function StudentsPage() {
   // from their scheduled lessons. The roster is small, so one unscoped fetch
   // is fine.
   const { lessonsState } = useLessons({});
+  const { lessonBlocksState } = useLessonBlocks();
 
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
   const lessons =
     lessonsState.status === 'success' ? lessonsState.data : undefined;
+  const blocks =
+    lessonBlocksState.status === 'success' ? lessonBlocksState.data : [];
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -43,6 +170,10 @@ export default function StudentsPage() {
   // Delete dialog state
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Row-action launchers (schedule / invoice) — one student at a time.
+  const [scheduleFor, setScheduleFor] = useState<Student | null>(null);
+  const [invoiceFor, setInvoiceFor] = useState<Student | null>(null);
 
   // Hope Scholarship filter — client-side since roster is small.
   const [hopeFilter, setHopeFilter] = useState<HopeFilter>('all');
@@ -164,8 +295,26 @@ export default function StudentsPage() {
         lessons={lessons}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
+        onScheduleLesson={setScheduleFor}
+        onCreateInvoice={setInvoiceFor}
         detailHrefBase="/students"
       />
+
+      {scheduleFor && (
+        <ScheduleLessonLauncher
+          student={scheduleFor}
+          instructors={instructors}
+          blocks={blocks}
+          onClose={() => setScheduleFor(null)}
+        />
+      )}
+
+      {invoiceFor && (
+        <InvoiceLauncher
+          student={invoiceFor}
+          onClose={() => setInvoiceFor(null)}
+        />
+      )}
 
       <StudentForm
         open={isFormOpen}
