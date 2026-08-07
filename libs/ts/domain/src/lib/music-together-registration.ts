@@ -76,6 +76,19 @@ export interface MusicTogetherRegistration {
   cardOnFileAuthAt?: Date;
   /** Amount charged at registration (full price, or installment 1). In cents. */
   pricePaidCents: number;
+  /**
+   * The family's TOTAL committed tuition in cents, sibling discount included.
+   *
+   * Pay-in-full: equals `pricePaidCents`. Installments: the sum of the whole
+   * plan (which carries a premium over paying in full), so it is strictly
+   * greater than `pricePaidCents`.
+   *
+   * Denormalized at reservation time — the scheduled charges are materialized
+   * after the confirming write, so summing that collection would race them.
+   * Consumed by `sendMusicTogetherConversion` as the Meta CAPI `Purchase`
+   * value. Absent on registrations created before this field existed.
+   */
+  totalCommittedCents?: number;
   /** Square customer ID (created/reused at registration). */
   squareCustomerId?: string;
   /** Square card-on-file ID used by the second installment. */

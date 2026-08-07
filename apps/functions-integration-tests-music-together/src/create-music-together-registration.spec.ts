@@ -115,6 +115,8 @@ describe('createMusicTogetherRegistration', () => {
     );
     expect(reg?.status).toBe('confirmed');
     expect(String(reg?.squarePaymentId)).toMatch(/^mock-payment-/);
+    // Pay-in-full needs no special handling: the committed total IS the charge.
+    expect(reg?.totalCommittedCents).toBe(25200);
 
     const mail = await listFirestoreDocs('mail');
     expect(
@@ -148,6 +150,11 @@ describe('createMusicTogetherRegistration', () => {
     );
     expect(String(reg?.squareCardId)).toMatch(/^ccof:mock-card-/);
     expect(String(reg?.squareCustomerId)).toMatch(/^mock-customer-/);
+    // The committed total (what the Meta CAPI `Purchase` reports) is the SUM of
+    // the plan: 2 x $132 = $264. Note this EXCEEDS the $252 pay-in-full price —
+    // the installment plan carries a premium — so it is not `fullCents`.
+    expect(reg?.totalCommittedCents).toBe(26400);
+    expect(reg?.pricePaidCents).toBe(13200);
 
     const charges = (await listFirestoreDocs('musicTogetherScheduledCharges'))
       .map((c) => c.data as Record<string, unknown>)
@@ -247,6 +254,13 @@ describe('createMusicTogetherRegistration', () => {
     // The scheduled Week-5 charge is discounted too.
     expect(charges[0].amountCents).toBe(26400);
     expect(charges[0].status).toBe('scheduled');
+
+    // Sibling discount carried into the committed total: 2 x $264 = $528.
+    const reg = await getFirestoreDoc(
+      'musicTogetherRegistrations',
+      result.data!.registrationId
+    );
+    expect(reg?.totalCommittedCents).toBe(52800);
   });
 
   it('rejects a section that is not open', async () => {

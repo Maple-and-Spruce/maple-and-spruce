@@ -14,12 +14,26 @@
  * but the ads that drive them run on the Maple & Spruce ad account, so the
  * events belong in the Maple & Spruce pixel. No new params are required.
  *
- * `value` semantics — deliberate: we report the amount ACTUALLY CHARGED at
- * registration (`pricePaidCents`, which for an installment plan is
- * installment 1, not the full tuition). Reporting full tuition would tell Meta
- * we collected money we haven't; the later installments are charged by
- * `chargeMusicTogetherInstallments`, which is where any follow-on revenue
- * event would belong. See the PR for the full rationale.
+ * `value` semantics — deliberate, and please do not "fix" this back:
+ * we report the family's FULL COMMITTED TUITION (`totalCommittedCents`,
+ * sibling discount included), NOT the amount collected at registration.
+ *
+ * This looks wrong at first glance — an installment family has only paid
+ * installment 1 — but it is not a cash-timing question. Installment 2 is
+ * charged around Week 5, which is FAR outside Meta's 7-day click attribution
+ * window, so a follow-on `Purchase` for it could never be attributed to the ad
+ * that drove the signup. The real choice is therefore "report the full value
+ * now" vs "never report half of it at all". Reporting installment 1 only would
+ * make installment families look half as valuable to Meta's bidder as
+ * pay-in-full families who commit the SAME total, training the algorithm to bid
+ * against a cohort for no business reason. And because we deliberately send no
+ * `Refund` events, the lower number buys no accuracy on cancellations either —
+ * it just systematically undercounts one cohort.
+ *
+ * Consequently there is NO `Purchase` event for installments 2..N — with
+ * `value` already carrying the full committed total, one would double-count.
+ * `custom_data.amount_paid_today` preserves the cash-timing story for anyone
+ * reading Events Manager.
  *
  * Best-effort by design: a CAPI failure is logged and swallowed — a dropped
  * conversion must never retry-loop or affect the registration itself.
@@ -59,6 +73,12 @@ export interface MusicTogetherConversionData {
   adultLastName?: string;
   /** Amount charged AT REGISTRATION — installment 1 for an installment plan. */
   pricePaidCents?: number;
+  /**
+   * The family's total committed tuition (sibling discount included). This is
+   * the Meta `value`. Absent on registrations reserved before the field
+   * existed, in which case we fall back to `pricePaidCents`.
+   */
+  totalCommittedCents?: number;
   paymentPlan?: string;
   /** How many future installments were scheduled (0 for pay-in-full). */
   scheduledChargeCount?: number;
@@ -95,6 +115,23 @@ export function shouldEmitMusicTogetherPurchase(
   return true;
 }
 
+/**
+ * The cents figure we report to Meta as `value`: the family's full committed
+ * tuition.
+ *
+ * Falls back to the registration-time charge for documents reserved before
+ * `totalCommittedCents` existed — under-reporting an old record beats skipping
+ * its conversion entirely. Pay-in-full registrations are unaffected either way,
+ * since for them the two fields are equal by construction.
+ */
+export function reportedValueCents(
+  data: MusicTogetherConversionData
+): number {
+  const committed = data.totalCommittedCents;
+  if (typeof committed === 'number' && committed > 0) return committed;
+  return data.pricePaidCents ?? 0;
+}
+
 /** Build the Meta CAPI `Purchase` event for a confirmed MT registration. */
 export function buildMusicTogetherPurchaseEvent(
   registrationId: string,
@@ -122,9 +159,10 @@ export function buildMusicTogetherPurchaseEvent(
     },
     customData: {
       currency: 'USD',
-      // Dollars, not cents — Meta's `value` is currency-major. This is the
-      // amount charged now (installment 1 when on a plan).
-      value: Math.round(data.pricePaidCents ?? 0) / 100,
+      // Dollars, not cents — Meta's `value` is currency-major. The family's
+      // FULL committed tuition (see the value-semantics note at the top of this
+      // file before changing this).
+      value: Math.round(reportedValueCents(data)) / 100,
       // Section doc id keeps MT consistent with how class purchases key to the
       // class doc id.
       content_ids: [data.sectionId],
@@ -135,6 +173,11 @@ export function buildMusicTogetherPurchaseEvent(
       num_items: 1,
       payment_plan: isInstallments ? 'installments' : 'full',
       scheduled_charge_count: data.scheduledChargeCount ?? 0,
+      // Cash actually collected at registration. `value` is the committed
+      // total, so this is what keeps the timing story legible in Events
+      // Manager: for an installment family it is installment 1, and for a
+      // pay-in-full family it equals `value`.
+      amount_paid_today: Math.round(data.pricePaidCents ?? 0) / 100,
     },
   };
 }
@@ -159,7 +202,8 @@ export async function emitMusicTogetherPurchaseIfConfirmed(
       'Sent Meta CAPI Purchase for confirmed Music Together registration',
       {
         registrationId,
-        valueCents: data.pricePaidCents,
+        committedCents: reportedValueCents(data),
+        paidTodayCents: data.pricePaidCents,
         paymentPlan: data.paymentPlan,
       }
     );
