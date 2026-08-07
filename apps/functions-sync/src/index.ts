@@ -23,6 +23,9 @@ export { syncMusicTogetherSectionToWebflow } from '@maple/firebase/maple-functio
 export { syncMusicTogetherSemesterToWebflow } from '@maple/firebase/maple-functions/sync-music-together-semester-to-webflow';
 export { syncMusicTogetherDemoToWebflow } from '@maple/firebase/maple-functions/sync-music-together-demo-to-webflow';
 
+// Webflow CMS housekeeping (scheduled)
+export { expirePastClassPages } from '@maple/firebase/maple-functions/expire-past-class-pages';
+
 // Etsy OAuth bootstrap
 export { etsyAuthUrl } from '@maple/firebase/maple-functions/etsy-auth-url';
 export { etsyAuthCallback } from '@maple/firebase/maple-functions/etsy-auth-callback';
