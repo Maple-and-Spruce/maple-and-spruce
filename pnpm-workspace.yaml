@@ -24,13 +24,36 @@ strictPeerDependencies: false
 # accepted go under a top-level `auditConfig.ignoreGhsas:` list, which
 # `pnpm audit --audit-level=high` (build-check.yml → Security Audit) honors.
 # Keep each entry justified; prefer an override every time one exists that
-# doesn't break the build. The list is currently empty — GHSA-mh99-v99m-4gvg
-# (brace-expansion OOM DoS) was accepted on 2026-07-24 because its only patch
-# was 5.0.8, whose CJS entry is API-incompatible with the 1.x/2.x consumers.
-# Upstream has since backported it to 1.1.17/2.1.3, so it is now fixed by the
-# brace-expansion overrides below and the ignore was removed on 2026-08-07.
+# doesn't break the build. (GHSA-mh99-v99m-4gvg, brace-expansion OOM DoS, was
+# accepted on 2026-07-24 and removed on 2026-08-07 once upstream backported
+# the fix to 1.1.17/2.1.3 — see the brace-expansion overrides below.)
+
+auditConfig:
+  ignoreGhsas:
+    # GHSA-w3rx-r6r6-pgpr (ICNS parser infinite loop) and GHSA-5p2g-fcmc-qvqq
+    # (JXL/HEIF parser infinite loops) in image-size. Both advisories declare
+    # a patch in ">=2.0.3", but **image-size 2.0.3 does not exist** — the npm
+    # registry's latest is 2.0.2 (dist-tags: latest 2.0.2, legacy 1.2.1), so
+    # an override to >=2.0.3 cannot resolve. Nothing to upgrade to yet.
+    #
+    # Accepted because the reachable paths are build tooling only:
+    # web > @nx/vite > @nx/vitest > vite > less > image-size (101 paths, all
+    # via less inside vite). `less` compiles stylesheets at build time in CI
+    # and dev; it never runs in a deployed Cloud Function or in the browser
+    # bundle, and it never parses attacker-supplied ICNS/JXL/HEIF images. The
+    # impact is a local DoS on our own build if we fed it a malicious image.
+    #
+    # Revisit once image-size publishes 2.0.3 and swap this for an override.
+    # Accepted 2026-08-07.
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq
 
 overrides:
+  # GHSA-2v37-7h3g-55p8: nanoid custom generators can loop indefinitely when
+  # size is zero (patched in 3.3.17). Transitive dep of @nx/vite > @nx/vitest >
+  # vite > postcss > nanoid. Bounded to <4 because postcss depends on the 3.x
+  # line; nanoid 4+ is ESM-only and would break its CJS require. Added 2026-08-07.
+  nanoid@>=3.0.0 <4: '>=3.3.17 <4'
   # GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.
   lodash: '>=4.18.0'
   # GHSA-3p68-rc4w-qgx5 (SSRF via NO_PROXY bypass), GHSA-jr5f-v2jv-69x6
