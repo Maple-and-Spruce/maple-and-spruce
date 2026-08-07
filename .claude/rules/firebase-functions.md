@@ -5,6 +5,8 @@ globs:
   - "apps/functions-calendar/**"
   - "apps/functions-square/**"
   - "apps/functions-sync/**"
+  - "apps/functions-webhooks/**"
+  - "apps/functions-square-webhook/**"
   - "libs/firebase/database/**"
 ---
 
@@ -45,7 +47,7 @@ properties of the function, not the route. Raise the baseline deliberately in th
 
 ## Codebases
 
-Functions are split into 5 Firebase codebases to reduce cold start times:
+Functions are split into 6 Firebase codebases to reduce cold start times:
 
 | Codebase | App Project | Heavy Deps | Entry Point |
 |----------|-------------|------------|-------------|
@@ -54,6 +56,7 @@ Functions are split into 5 Firebase codebases to reduce cold start times:
 | `maple-square` | `apps/functions-square/` | square SDK | `apps/functions-square/src/index.ts` |
 | `maple-sync` | `apps/functions-sync/` | webflow-api | `apps/functions-sync/src/index.ts` |
 | `maple-webhooks` | `apps/functions-webhooks/` | **none — keep it that way** | `apps/functions-webhooks/src/index.ts` |
+| `maple-square-webhook` | `apps/functions-square-webhook/` | firebase-admin (repositories only) | `apps/functions-square-webhook/src/index.ts` |
 
 When adding a new function, export it from the correct codebase's entry point and add a mapping in `function-codebases.json` if it's not in `maple-core`.
 
@@ -66,18 +69,30 @@ so no handler logic ran):
 
 | Codebase | Bundle | Cold | Warm |
 |----------|--------|------|------|
-| `maple-core` | 488kb | 14.4s | 1.0s |
+| `maple-core` | 488kb | 14.4s, 14.8s | 1.0s |
+| `maple-square` | 419kb | 7.5s, 12.0s | 1.2s |
 | `maple-sync` | 301kb | 6.3s | 1.3s |
+| `maple-square-webhook` | 141kb | — | — |
 | `maple-webhooks` | 90kb | — | — |
 | `maple-calendar` | 30kb | 3.2s | 1.1s |
+
+**Cold start is a distribution, not a number.** Two functions in the *same*
+`maple-square` bundle measured 7.5s and 12.0s — placement and image-cache state
+swing it by several seconds. Shrinking the bundle shifts the distribution down;
+it does not buy a guarantee. Budget for the bad tail, not the median.
 
 This matters for any endpoint an external platform calls with a fixed timeout:
 
 - **Tally** hangs up at 10s and does **not** retry — a slow cold start is a
   permanently lost lead. This is what put `tallyLeadWebhook` in `maple-webhooks`.
 - **Square** hangs up at 10s and *does* retry with backoff (see the 2026-05
-  504 storm). `squareWebhook` is still in `maple-core` and still boots in
-  ~14s — it survives on retries alone. Worth moving out.
+  504 storm). `squareWebhook` sat in `maple-square` (419kb), which booted in
+  7.5-12s — sometimes leaving under a second for the handler. It now has its
+  own `maple-square-webhook` codebase.
+
+Both webhooks are in *separate* codebases on purpose. `squareWebhook` needs
+`@maple/firebase/database`; sharing a bundle would push that weight onto
+`tallyLeadWebhook`, which has no retry to fall back on.
 
 `maple-webhooks` only pays off while it stays small. Adding a function there
 that pulls firebase-admin repositories, the Square SDK, or webflow-api
@@ -113,6 +128,8 @@ Each codebase has its own entry point:
 - Calendar ICS feeds: `apps/functions-calendar/src/index.ts`
 - Square integration: `apps/functions-square/src/index.ts`
 - Webflow sync: `apps/functions-sync/src/index.ts`
+- Third-party webhooks (Tally): `apps/functions-webhooks/src/index.ts`
+- Square webhook receiver: `apps/functions-square-webhook/src/index.ts`
 
 ## Runtime Options
 
@@ -127,7 +144,7 @@ Functions.endpoint
 
 `libs/firebase/functions/src/lib/global-runtime-options.ts` calls
 `setGlobalOptions({ maxInstances: GLOBAL_MAX_INSTANCES })` (currently **1**). Each of the
-4 entry points imports it on its **first line**, before any `export { … } from` re-export.
+6 entry points imports it on its **first line**, before any `export { … } from` re-export.
 
 **Why:** unset `maxInstances` inherits the gen-2 backend default of **100**, and Cloud Run's
 "Total CPU allocation, per project per region" quota reserves `maxInstances × cpu` per revision.

@@ -20,8 +20,11 @@ export { createProduct } from '@maple/firebase/maple-functions/create-product';
 export { updateProduct } from '@maple/firebase/maple-functions/update-product';
 export { uploadProductImage } from '@maple/firebase/maple-functions/upload-product-image';
 
-// Square webhook (HTTP endpoint, not callable)
-export { squareWebhook } from '@maple/firebase/maple-functions/square-webhook';
+// Square webhook: moved to the maple-square-webhook codebase
+// (apps/functions-square-webhook). Square's delivery deadline is 10s and this
+// bundle cold-starts in 7.5-12s, leaving little or no room for the handler.
+// The workers below stay here — they're Firestore-triggered, not on the ack
+// path, so their cold start costs nothing Square is waiting on. See ADR-031.
 
 // Async catalog sync worker (Firestore-triggered, debounced via lease).
 // Decoupled from squareWebhook so the webhook can ack within Square's
