@@ -21,24 +21,14 @@ shamefullyHoist: true
 strictPeerDependencies: false
 
 # Advisories that cannot be resolved via `overrides` and are consciously
-# accepted. `pnpm audit --audit-level=high` (build-check.yml → Security Audit)
-# honors this list. Keep each entry justified; prefer an override every time one
-# exists that doesn't break the build.
-auditConfig:
-  ignoreGhsas:
-    # GHSA-mh99-v99m-4gvg: brace-expansion unbounded-expansion OOM DoS. The ONLY
-    # patched version is 5.0.8, but brace-expansion 5.x's CommonJS entry exports
-    # an object ({ expand, ... }) instead of the `expand` function that 1.x/2.x
-    # export, so the transitive 1.x/2.x consumers that call it as a bare function
-    # (@nx/* bundled minimatch, eslint > @eslint/config-array > minimatch@3,
-    # firebase-admin > google-gax > rimraf > glob > minimatch) crash with
-    # "expand is not a function" when forced onto 5.x — verified via `nx report`.
-    # The 5.x line IS carried to 5.0.8 by the override below; only the old
-    # dev/build-tool minimatch paths remain on 1.1.16/2.1.2. Residual exposure is
-    # a build-time/CLI OOM in tooling, not a runtime-reachable surface. Revisit if
-    # a backported 1.x/2.x fix (or a minimatch bump that adopts brace-expansion 5)
-    # ships. Accepted 2026-07-24.
-    - GHSA-mh99-v99m-4gvg
+# accepted go under a top-level `auditConfig.ignoreGhsas:` list, which
+# `pnpm audit --audit-level=high` (build-check.yml → Security Audit) honors.
+# Keep each entry justified; prefer an override every time one exists that
+# doesn't break the build. The list is currently empty — GHSA-mh99-v99m-4gvg
+# (brace-expansion OOM DoS) was accepted on 2026-07-24 because its only patch
+# was 5.0.8, whose CJS entry is API-incompatible with the 1.x/2.x consumers.
+# Upstream has since backported it to 1.1.17/2.1.3, so it is now fixed by the
+# brace-expansion overrides below and the ignore was removed on 2026-08-07.
 
 overrides:
   # GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.
@@ -61,7 +51,11 @@ overrides:
   # GHSA-5wm8-gmm8-39j9: fast-xml-builder allows attribute values with unwanted quotes to bypass malicious or unwanted attributes (patched in 1.1.7). Transitive dep of firebase-admin > @google-cloud/storage > fast-xml-parser. Added 2026-05-08.
   fast-xml-builder: '>=1.1.7'
   # GHSA-q3j6-qgpj-74h6: fast-uri vulnerable to path traversal via percent-encoded dot segments (patched in 3.1.1). Plus GHSA-4c8g-83qw-93j6 (host confusion via failed IDN canonicalization, patched in 3.1.3) and GHSA-v2hh-gcrm-f6hx (host confusion via literal backslash authority delimiter, patched in 3.1.4). Transitive dep of @nx/next > @nx/react > @nx/module-federation > ajv. Bumped from >=3.1.1 to >=3.1.4 on 2026-07-24.
-  fast-uri: '>=3.1.4'
+  # Plus GHSA-7p8r-x3mc-p8w7 (host confusion via backslash authority introducer),
+  # patched per-line in 2.4.4/3.1.5/4.1.2. The unbounded >=3.1.4 selector above
+  # had already resolved the whole tree onto the 4.x line (4.1.1), so this is
+  # bumped to the 4.x patch and bounded to <5. Bumped on 2026-08-07.
+  fast-uri: '>=4.1.2 <5'
   # GHSA-fv7c-fp4j-7gwp: @babel/plugin-transform-modules-systemjs generates arbitrary code when compiling malicious input (patched in 7.29.4). Transitive dep of @nx/* > @nx/js > @babel/preset-env. Added 2026-05-08.
   '@babel/plugin-transform-modules-systemjs': '>=7.29.4'
   # GHSA-66ff-xgx4-vchm (code injection via bytes field defaults),
@@ -97,9 +91,13 @@ overrides:
   # @modelcontextprotocol/sdk. Bumped from >=4.12.16 to >=4.12.25 on 2026-06-20.
   hono: '>=4.12.25'
   # GHSA-v2v4-37r5-5v8g: ip-address XSS in Address6 HTML-emitting methods
-  # (patched in 10.1.1). Transitive dep of firebase-tools > proxy-agent and
-  # firebase-tools > @modelcontextprotocol/sdk. Added 2026-05-12.
-  ip-address: '>=10.1.1'
+  # (patched in 10.1.1). Plus GHSA-mwp4-54f8-5fhr (Address4 decodes leading-zero
+  # octets as decimal while resolvers decode them as octal, enabling SSRF /
+  # trust-boundary bypass), patched in 10.3.1. Transitive dep of firebase-tools >
+  # proxy-agent > socks-proxy-agent > socks and firebase-tools >
+  # @modelcontextprotocol/sdk > express-rate-limit. Bumped from >=10.1.1 to
+  # >=10.3.1 on 2026-08-07; bounded to the 10.x line.
+  ip-address: '>=10.3.1 <11'
   # GHSA covering fast-xml-parser XMLBuilder XML comment / CDATA injection
   # via unescaped delimiters (patched in 5.7.0). Transitive dep of
   # firebase-admin > @google-cloud/storage. Added 2026-05-12.
@@ -116,21 +114,24 @@ overrides:
   # tooling targets webpack-dev-server 5; 6.0.0 is an untested major bump).
   webpack-dev-server: '>=5.2.5 <6'
   # GHSA-jxxr-4gwj-5jf2 (large numeric range defeats the `max` DoS protection,
-  # patched 5.0.6) and GHSA-3jxr-9vmj-r5cp (exponential-time expansion of
-  # consecutive non-expanding {} groups, patched per-line in 1.1.16/2.1.2/5.0.7;
-  # the 5.x line is carried to 5.0.8 below). Each brace-expansion major is bumped
+  # patched 5.0.6), GHSA-3jxr-9vmj-r5cp (exponential-time expansion of
+  # consecutive non-expanding {} groups, patched per-line in 1.1.16/2.1.2/5.0.7),
+  # GHSA-mh99-v99m-4gvg (unbounded-expansion OOM DoS, now backported per-line to
+  # 1.1.17/2.1.3/5.0.8) and GHSA-rgw5-rvv9-x895 / CVE-2026-69152 (DoS via
+  # unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation;
+  # patched per-line in 1.1.18/2.1.4/5.0.9). Each brace-expansion major is bumped
   # to its own patched line rather than consolidated, because 5.x cannot replace
   # the 1.x/2.x lines: brace-expansion 5.x's CJS entry exports an OBJECT
   # ({ expand, ... }) whereas 1.x/2.x export the `expand` FUNCTION directly, so
   # the old CJS consumers (@nx/* bundled minimatch, eslint > @eslint/config-array
   # > minimatch@3, firebase-admin > google-gax > rimraf > glob > minimatch) call
   # require('brace-expansion')(...) and crash with "expand is not a function" on
-  # 5.x. GHSA-mh99-v99m-4gvg (OOM, patched ONLY in 5.0.8) therefore cannot be
-  # satisfied on the 1.x/2.x lines without breaking the build — it is ignored in
-  # auditConfig below, scoped to those build-tool paths. Added 2026-07-24.
-  brace-expansion@>=1.0.0 <1.1.16: '>=1.1.16 <2'
-  brace-expansion@>=2.0.0 <2.1.2: '>=2.1.2 <3'
-  brace-expansion@>=3.0.0 <5.0.8: '>=5.0.8 <6'
+  # 5.x. Upstream has since backported every open advisory to the 1.x and 2.x
+  # lines, so the GHSA-mh99-v99m-4gvg auditConfig ignore is no longer needed and
+  # was removed. Bumped from 1.1.16/2.1.2/5.0.8 on 2026-08-07.
+  brace-expansion@>=1.0.0 <1.1.18: '>=1.1.18 <2'
+  brace-expansion@>=2.0.0 <2.1.4: '>=2.1.4 <3'
+  brace-expansion@>=3.0.0 <5.0.9: '>=5.0.9 <6'
   # GHSA-58qx-3vcg-4xpx: ws uninitialized memory disclosure (patched in
   # 8.20.1). Plus GHSA-96hv-2xvq-fx4p (memory-exhaustion DoS from tiny
   # fragments and data chunks), patched in 8.21.0. Transitive dep present via
@@ -161,8 +162,13 @@ overrides:
   # DoS via fragment count bypass), and GHSA-hm92-r4w5-c3mj (cross-origin
   # request routing via SOCKS5 proxy pool reuse). All patched in 7.28.0.
   # Transitive dep of @nx/next > @nx/react > @nx/module-federation >
-  # @module-federation/* > undici. Added 2026-06-20.
-  undici@>=7.0.0 <7.28.0: '>=7.28.0'
+  # @module-federation/* > undici. Added 2026-06-20. Plus GHSA-4cwx-7wf7-3272
+  # (cross-user information disclosure and parse-time crash via degenerate
+  # private cache directives), patched in 7.29.0 / 8.9.0. The unbounded >=7.28.0
+  # selector had already carried the tree onto the 8.x line (8.5.0), so both
+  # vulnerable lines are folded into one selector targeting 8.9.0, bounded to
+  # <9. Bumped on 2026-08-07.
+  undici@>=7.0.0 <8.9.0: '>=8.9.0 <9'
   # GHSA-fx2h-pf6j-xcff: vite `server.fs.deny` bypass on Windows alternate
   # paths (patched in 8.0.16). The 8.x line is pulled in via @nx/vitest >
   # vitest; the separate vite@7 override above covers the 7.x line.
@@ -221,9 +227,12 @@ overrides:
   # handling via repeated aliases. Patched in 3.15.0 (3.x line) and 4.1.2
   # (4.x line). Plus GHSA-52cp-r559-cp3m (merge-key chains force quadratic CPU
   # consumption), patched in 4.3.0 (4.x line). Transitive dep of many dev/build
-  # tools. 4.x bumped from >=4.1.2 to >=4.3.0 on 2026-07-24.
-  js-yaml@>=3.0.0 <3.15.0: '>=3.15.0 <4'
-  js-yaml@>=4.0.0 <4.3.0: '>=4.3.0 <5'
+  # tools. 4.x bumped from >=4.1.2 to >=4.3.0 on 2026-07-24. Plus
+  # GHSA-5p4m-2wfm-xmqj (quadratic CPU consumption in !!omap resolution — the
+  # CVE-2026-59870 fix was not backported), patched in 3.15.1 / 4.3.1. Bumped
+  # from 3.15.0/4.3.0 on 2026-08-07.
+  js-yaml@>=3.0.0 <3.15.1: '>=3.15.1 <4'
+  js-yaml@>=4.0.0 <4.3.1: '>=4.3.1 <5'
   # GHSA-v6wh-96g9-6wx3: launch-editor NTLMv2 hash disclosure via UNC path
   # handling on Windows (patched in 2.14.1). Dev-only transitive dep of
   # webpack-dev-server. Added 2026-07-15.
