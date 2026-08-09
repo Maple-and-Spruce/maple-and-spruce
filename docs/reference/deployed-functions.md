@@ -1,7 +1,7 @@
 # Deployed Functions
 
 > All Cloud Functions deploy to `us-east4` (Northern Virginia).
-> Functions are split into 5 codebases to reduce cold start times.
+> Functions are split into 6 codebases to reduce cold start times.
 
 ## Codebase: `maple-core` (`apps/functions/`)
 

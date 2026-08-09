@@ -18,15 +18,26 @@ Tally does not retry, so each one was a lost lead.
 Fix: new `maple-webhooks` codebase (`apps/functions-webhooks/`, 90kb vs 488kb) holding just
 `tallyLeadWebhook`, plus `AbortSignal.timeout` on the GA4/Meta beacons. See ADR-031.
 
-**Follow-ups**:
-- **Resend the 5 failed submissions** from Tally's events log once deployed (they are not
-  recovered automatically), and confirm the leads reached MailerLite — only the GA4/Meta
-  attribution events were lost if Tally's MailerLite integration delivered independently.
+**Findings / follow-ups**:
+- **No subscribers were lost.** All five affected leads are active in MailerLite (Tally's
+  MailerLite integration delivers independently of the webhook). Only the GA4 `generate_lead` and
+  Meta `Lead` attribution events were dropped. The five map exactly to Tally's reports — every
+  failure followed a 7.7-23h idle gap, and every delivery within ~6h of a previous one succeeded.
+- **Resending the 5 from Tally's events log is optional and low-value.** The handler stamps
+  `event_time` at send, so a resend today books the leads as today's conversions — it does not
+  restore the original dates. Only worth it for the Meta signal (the original `_fbc` click IDs
+  still identify the campaign). Must wait until the fix is actually deployed or it will just
+  time out again.
 - Verify post-deploy that the function re-registered under the new codebase and that a cold call
   now answers well under 10s.
-- `squareWebhook` has the same 10s budget and still lives in `maple-core` at ~14s cold; it
-  survives on Square's retries. Worth its own codebase (it carries Firestore + Square deps, so it
-  can't share `maple-webhooks`).
+
+### squareWebhook — `maple-square-webhook` codebase (2026-08-07)
+
+Follow-up to the above. `squareWebhook` was **not** in `maple-core` (an error in ADR-031's first
+draft) — it was in `maple-square` (419kb), measured **7.5s** cold, with a sibling in the same
+bundle at **12.0s**. Same 10s ceiling; it survives on Square's retries. Moved to its own 141kb
+`maple-square-webhook` codebase; the Firestore-triggered workers stay in `maple-square`. Webhook
+URL is unchanged, so no Square dashboard change is needed. See ADR-032.
 
 ### Public-site SEO cleanup (2026-08-07)
 

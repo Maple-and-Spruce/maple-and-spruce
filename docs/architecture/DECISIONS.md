@@ -1410,11 +1410,78 @@ landing in `maple-core` and quietly inheriting a 14s boot.
   repositories, the Square SDK, or webflow-api re-inflates the bundle and reintroduces the outage
   for everything else in it. That constraint is documented at the entry point and in
   `.claude/rules/firebase-functions.md`; if a new webhook is heavier, it gets its own codebase.
-- `squareWebhook` is still in `maple-core` at ~14s cold and survives only because Square retries.
-  It is the obvious next tenant, but it carries Firestore + Square deps, so it needs its own
-  codebase rather than a seat in this one.
+- `squareWebhook` has the same 10s budget. **Correction (2026-08-07):** the first draft of this
+  ADR said it was in `maple-core` — it was actually in `maple-square` (419kb), which measured
+  7.5-12.0s cold. Same class of problem, different bundle; it was given its own
+  `maple-square-webhook` codebase in the follow-up (see ADR-032).
+- **Verified in prod 2026-08-07 after deploy: 14.4s → 3.2s cold** (0.77s warm), matching
+  `maple-calendar`'s 3.2s. Confirmed as a genuine cold start by probing an idle `maple-core`
+  function in the same window as a control. The codebase move deployed cleanly — firebase-tools
+  relabelled the function in place, with no `functions:delete` and no gap in availability.
 - The five already-failed submissions are not recovered by this change; they must be resent from
-  Tally's events log after deploy.
+  Tally's events log after deploy. Verified 2026-08-07: all five leads (`drock865@gmail.com`,
+  `christinepill@yahoo.com`, `a.umbel@protonmail.com`, `danielle.bradke@gmail.com`,
+  `paperruth@gmail.com`) **are** active subscribers in MailerLite, so no signups were lost —
+  Tally's MailerLite integration delivers independently of the webhook. Only the GA4
+  `generate_lead` and Meta `Lead` attribution events were dropped.
+
+---
+
+## ADR-032: `squareWebhook` Gets Its Own Codebase, Separate From `maple-webhooks`
+
+**Status:** Accepted
+**Date:** 2026-08-07
+
+### Context
+ADR-031 isolated `tallyLeadWebhook` after Tally dropped five leads to 10s delivery timeouts.
+`squareWebhook` runs against the same 10s ceiling (Square records `http_timeout`, shown as 504 in
+the dashboard, then retries with backoff for up to 24h — the 2026-05 storm).
+
+It was **not** in `maple-core`, as ADR-031's first draft claimed; it was in `maple-square` (419kb).
+Measured cold on 2026-08-07 with invalid-signature probes:
+
+| Function | Codebase | Bundle | Cold |
+|----------|----------|--------|------|
+| `squareWebhook` | `maple-square` | 419kb | 7.5s |
+| `syncInventoryToSquare` | `maple-square` | 419kb | 12.0s |
+
+Two functions, one bundle, a 4.5s spread — **cold start is a distribution, not a number**;
+placement and image-cache state dominate. 7.5s of boot leaves ~2.5s for a handler whose inventory
+path does a full `ProductRepository.findAll()` plus per-product writes. The 12.0s sample is over
+budget before the handler starts at all.
+
+### Decision
+Give `squareWebhook` its own codebase, `maple-square-webhook` (`apps/functions-square-webhook/`),
+at 141kb. Leave `processCatalogSyncRequest` and `processPosSale` in `maple-square` — they are
+Firestore-triggered workers, so their cold start is not on any deadline Square is waiting on.
+
+### Rationale
+Same lever as ADR-031, and the only one that moves: bundle size is what shifts the cold-start
+distribution. 419kb → 141kb buys real margin against a ceiling we do not control.
+
+### Alternatives Considered
+- **Put it in `maple-webhooks` alongside `tallyLeadWebhook`** — one fewer codebase, and the merged
+  bundle (~145kb) would still be under 10s for both. Rejected: `squareWebhook` needs
+  `@maple/firebase/database`, so this spends `tallyLeadWebhook`'s margin on a function that has
+  Square's retries as a safety net, while Tally has none. Asymmetric risk, so keep them apart —
+  exactly the rule ADR-031 wrote down.
+- **Ack fast, defer everything to Firestore workers** — the pattern already used for catalog sync
+  and POS sales. Still the right end state for the inline inventory/invoice/subscription paths,
+  but it doesn't help the failure mode that actually bites (timeout *before the handler runs*),
+  and it changes retry semantics on payment-adjacent code. Not worth bundling into this move.
+- **`minInstances: 1`** — rejected for the same quota and cost reasons as ADR-031.
+
+### Consequences
+- Six codebases. The per-codebase wiring cost from ADR-031 applies again, and a full redeploy gains
+  one more sequential unit.
+- The webhook URL is unchanged — `FirebaseProject.functionUrl()` is
+  `{base}/{functionName}`, independent of codebase — so Square's registered notification URL and
+  the HMAC signature (computed over that URL) keep working. **No Square dashboard change needed.**
+- `maple-square` keeps the Square SDK and the workers; only the receiver moved.
+- Moving a function between codebases relabels it in place. Watch the first deploy: if
+  firebase-tools declines to adopt the function under the new codebase, the fallback is
+  `firebase functions:delete squareWebhook` followed by a redeploy — which would drop webhook
+  deliveries in the gap, so it must be done deliberately, not as a reflex.
 
 ---
 

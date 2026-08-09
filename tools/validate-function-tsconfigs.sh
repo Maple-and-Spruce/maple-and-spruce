@@ -21,7 +21,7 @@ NC='\033[0m'
 
 ERRORS=0
 
-APP_DIRS=("apps/functions" "apps/functions-calendar" "apps/functions-square" "apps/functions-sync" "apps/functions-webhooks")
+APP_DIRS=("apps/functions" "apps/functions-calendar" "apps/functions-square" "apps/functions-sync" "apps/functions-webhooks" "apps/functions-square-webhook")
 
 check_codebase() {
   local APP_DIR="$1"
@@ -101,7 +101,7 @@ if [[ ! -f "$MAPPING_FILE" ]]; then
 fi
 
 # Check that every non-core function export has a mapping
-NON_CORE_DIRS=("apps/functions-calendar" "apps/functions-square" "apps/functions-sync" "apps/functions-webhooks")
+NON_CORE_DIRS=("apps/functions-calendar" "apps/functions-square" "apps/functions-sync" "apps/functions-webhooks" "apps/functions-square-webhook")
 for APP_DIR in "${NON_CORE_DIRS[@]}"; do
   ENTRY="${APP_DIR}/src/index.ts"
   [[ ! -f "$ENTRY" ]] && continue

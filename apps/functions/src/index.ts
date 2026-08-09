@@ -268,7 +268,8 @@ export { revokeRole } from '@maple/firebase/maple-functions/revoke-role';
 
 // Lead attribution: tallyLeadWebhook now lives in the maple-webhooks codebase
 // (apps/functions-webhooks). Tally hangs up at 10s and this bundle takes ~14s
-// to cold start, so nearly every real signup was dropped. Do not move it back.
+// to cold start, so every signup landing on a cold instance was dropped.
+// Do not move it back.
 // Meta Conversions API Purchase on confirmed class registrations — recovers
 // iOS/ITP-dropped and hosted-checkout conversions the browser Pixel misses.
 export { sendRegistrationConversion } from '@maple/firebase/maple-functions/send-registration-conversion';

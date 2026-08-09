@@ -94,7 +94,7 @@ The harness deploys to a dedicated Hosting site `maple-spruce-registration-test`
 
 ### Codebases
 
-Functions are split into 5 Firebase codebases to reduce cold start times (see ADR-026, ADR-031):
+Functions are split into 6 Firebase codebases to reduce cold start times (see ADR-026, ADR-031):
 
 | Codebase | App Project | Entry Point |
 |----------|-------------|-------------|
@@ -103,6 +103,7 @@ Functions are split into 5 Firebase codebases to reduce cold start times (see AD
 | `maple-square` | `apps/functions-square/` | `apps/functions-square/src/index.ts` |
 | `maple-sync` | `apps/functions-sync/` | `apps/functions-sync/src/index.ts` |
 | `maple-webhooks` | `apps/functions-webhooks/` | `apps/functions-webhooks/src/index.ts` |
+| `maple-square-webhook` | `apps/functions-square-webhook/` | `apps/functions-square-webhook/src/index.ts` |
 
 Adding a codebase means touching, at minimum: `firebase.json`, `function-codebases.json`
 (`codebaseProjects` + a `functionToCodebase` entry keyed by **Nx project name**), the
