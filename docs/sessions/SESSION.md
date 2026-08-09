@@ -28,6 +28,19 @@ Fix: new `maple-webhooks` codebase (`apps/functions-webhooks/`, 90kb vs 488kb) h
   survives on Square's retries. Worth its own codebase (it carries Firestore + Square deps, so it
   can't share `maple-webhooks`).
 
+### Public-site SEO cleanup (2026-08-07)
+
+Search Console reported 1 "Unparsable structured data — Parsing error: Missing ',' or '}'". Swept all 62 sitemap URLs and JSON-parsed every `ld+json` block to find it: the **Shop** page's JSON-LD had four string literals truncated mid-value, each clipped ~40 characters into its line by a bad paste. Rewrote it through the Webflow API as a structured object (no paste path) and published. All sitemap URLs now parse.
+
+Two adjacent problems found and fixed while in there:
+
+1. **Every CMS detail page shared one static `<title>`** — classes, instructors, artists, and MT sections all rendered the template's literal SEO title (all 28 class pages said "Class Registration | Maple & Spruce Folk Arts Collective"). Fixed by binding each template's SEO title/description to CMS fields via `bulk_update_pages` (Webflow `{{wf {"path":...}}}` tokens work through the Data API), verified on the staging subdomain, then published.
+2. **Past classes never came down** — 19 of 28 live class pages were for classes that had already happened, accumulating in the live site and the auto-generated sitemap. Unpublished them (sitemap 62 → 43 URLs) and added the `expirePastClassPages` scheduled function so it does not drift back.
+
+Note: the dev-CMS-leak guard from #728 is working — all 21 dev-synced class items are correctly drafts. The stale pages were real prod classes, not dev leakage.
+
+**Next steps**: recurring offerings still share a `<title>` (e.g. two "Stained Glass - TryIt Class"); binding a short date into the template title would make every page unique. Also consider the same auto-expiry for MT sections/semesters, and `/about` has no JSON-LD at all.
+
 ---
 
 **Date**: 2026-06-26

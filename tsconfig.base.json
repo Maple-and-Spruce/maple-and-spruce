@@ -646,6 +646,9 @@
       "@maple/firebase/maple-functions/expire-agreement-requests": [
         "libs/firebase/maple-functions/expire-agreement-requests/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/expire-past-class-pages": [
+        "libs/firebase/maple-functions/expire-past-class-pages/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/send-class-reminders": [
         "libs/firebase/maple-functions/send-class-reminders/src/index.ts"
       ],
