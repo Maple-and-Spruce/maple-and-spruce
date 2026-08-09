@@ -31,6 +31,11 @@
       "source": "dist/apps/functions-webhooks",
       "runtime": "nodejs22",
       "codebase": "maple-webhooks"
+    },
+    {
+      "source": "dist/apps/functions-square-webhook",
+      "runtime": "nodejs22",
+      "codebase": "maple-square-webhook"
     }
   ],
   "hosting": [

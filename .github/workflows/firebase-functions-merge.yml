@@ -183,7 +183,7 @@ jobs:
             AFFECTED_LIBS=$(pnpm exec nx show projects | grep 'firebase-maple-functions-' || true)
           else
             # Check if any functions app is affected (e.g., env file changes)
-            FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep -E '^functions(-calendar|-square|-sync|-webhooks)?$' || true)
+            FUNCTIONS_APP_AFFECTED=$(echo "$ALL_AFFECTED" | grep -E '^functions(-calendar|-square|-sync|-webhooks|-square-webhook)?$' || true)
 
             # Get affected function libraries
             AFFECTED_LIBS=$(echo "$ALL_AFFECTED" | grep 'firebase-maple-functions-' || true)
@@ -325,6 +325,7 @@ jobs:
             dist/apps/functions-square/
             dist/apps/functions-sync/
             dist/apps/functions-webhooks/
+            dist/apps/functions-square-webhook/
           include-hidden-files: true
           retention-days: 1
 

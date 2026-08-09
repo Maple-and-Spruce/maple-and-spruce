@@ -54,6 +54,7 @@ pnpm exec nx run functions-square:build
 pnpm exec nx run functions-sync:build
 pnpm exec nx run functions-calendar:build
 pnpm exec nx run functions-webhooks:build
+pnpm exec nx run functions-square-webhook:build
 
 # ---------------------------------------------------------------------------
 # 3. Set up .env and .secret.local for every codebase
@@ -67,7 +68,7 @@ pnpm exec nx run functions-webhooks:build
 #    overrides.
 # ---------------------------------------------------------------------------
 echo "Setting up emulator environment..."
-for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks; do
+for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks dist/apps/functions-square-webhook; do
   # Strip comments and blank lines — Firebase .env parser needs clean key=value pairs
   grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
 done
@@ -85,12 +86,16 @@ printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secr
 # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
 # without them the emulator silently waits on stdin for each one.
 printf "TALLY_WEBHOOK_SECRET=test-tally-secret\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions-webhooks/.secret.local
+
 # tallyLeadWebhook → GA4 + Meta CAPI mock servers
 echo "GA4_BASE_URL=http://localhost:$GA4_MOCK_SERVER_PORT" >> dist/apps/functions-webhooks/.env
 echo "META_CAPI_BASE_URL=http://localhost:$META_CAPI_MOCK_SERVER_PORT" >> dist/apps/functions-webhooks/.env
 echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions-webhooks/.env
 echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions-webhooks/.env
 echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions-webhooks/.env
+
+# maple-square-webhook: squareWebhook declares this defineSecret param.
+printf "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\\n" > dist/apps/functions-square-webhook/.secret.local
 
 # maple-square: Square mock server URL + fake secrets
 echo "SQUARE_BASE_URL=http://localhost:$SQUARE_MOCK_SERVER_PORT" >> dist/apps/functions-square/.env

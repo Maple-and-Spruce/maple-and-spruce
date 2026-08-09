@@ -4,7 +4,8 @@
     "maple-calendar": "functions-calendar",
     "maple-square": "functions-square",
     "maple-sync": "functions-sync",
-    "maple-webhooks": "functions-webhooks"
+    "maple-webhooks": "functions-webhooks",
+    "maple-square-webhook": "functions-square-webhook"
   },
   "functionToCodebase": {
     "firebase-maple-functions-calendar-classes-feed": "maple-calendar",
@@ -19,7 +20,7 @@
     "firebase-maple-functions-create-product": "maple-square",
     "firebase-maple-functions-update-product": "maple-square",
     "firebase-maple-functions-upload-product-image": "maple-square",
-    "firebase-maple-functions-square-webhook": "maple-square",
+    "firebase-maple-functions-square-webhook": "maple-square-webhook",
     "firebase-maple-functions-process-catalog-sync-request": "maple-square",
     "firebase-maple-functions-process-pos-sale": "maple-square",
     "firebase-maple-functions-create-registration": "maple-square",
