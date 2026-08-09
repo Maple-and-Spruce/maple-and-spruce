@@ -34,10 +34,16 @@ Fix: new `maple-webhooks` codebase (`apps/functions-webhooks/`, 90kb vs 488kb) h
 ### squareWebhook — `maple-square-webhook` codebase (2026-08-07)
 
 Follow-up to the above. `squareWebhook` was **not** in `maple-core` (an error in ADR-031's first
-draft) — it was in `maple-square` (419kb), measured **7.5s** cold, with a sibling in the same
-bundle at **12.0s**. Same 10s ceiling; it survives on Square's retries. Moved to its own 141kb
-`maple-square-webhook` codebase; the Firestore-triggered workers stay in `maple-square`. Webhook
-URL is unchanged, so no Square dashboard change is needed. See ADR-032.
+draft) — it was in `maple-square`. Same 10s ceiling; it survives on Square's retries. Moved to its
+own 141kb `maple-square-webhook` codebase; the Firestore-triggered workers stay in `maple-square`.
+Webhook URL is unchanged, so no Square dashboard change was needed. Shipped in #761.
+
+**Measured after deploy (2026-08-09), paired sampling:** `squareWebhook` ~3.4s cold vs ~5.7s for
+the `maple-square` bundle it left; `tallyLeadWebhook` ~2.6s vs ~6.1s for `maple-core`. Both moves
+delivered. Two corrections came out of this: the original "14.4s" for `maple-core` was measured
+minutes after a deploy and included an image pull (steady state ~6s), and a single probe is
+worthless — the same unchanged function read 7.7s twice then 3.4s twice as the regional image
+cache warmed. Always pair against a control and repeat. See ADR-032.
 
 ### Public-site SEO cleanup (2026-08-07)
 

@@ -64,37 +64,51 @@ When adding a new function, export it from the correct codebase's entry point an
 
 A codebase is one bundle. Every function in it loads the whole entry point on
 cold start, so **boot time is set by the heaviest sibling, not by the function
-being called**. Measured against prod on 2026-08-07 (invalid-signature probes,
-so no handler logic ran):
+being called**. Measured against prod with invalid-signature / unauthenticated
+probes, so no handler logic ran:
 
-| Codebase | Bundle | Cold | Warm |
-|----------|--------|------|------|
-| `maple-core` | 488kb | 14.4s, 14.8s | 1.0s |
-| `maple-square` | 419kb | 7.5s, 12.0s | 1.2s |
-| `maple-sync` | 301kb | 6.3s | 1.3s |
-| `maple-square-webhook` | 141kb | — | — |
-| `maple-webhooks` | 90kb | 3.2s | 0.8s |
-| `maple-calendar` | 30kb | 3.2s | 1.1s |
+| Codebase | Bundle | Cold (steady state) | Warm |
+|----------|--------|---------------------|------|
+| `maple-core` | 489kb | ~6.1s | 1.0s |
+| `maple-square` | 412kb | ~5.7s | 1.2s |
+| `maple-sync` | 301kb | 6.3s (single sample) | 1.3s |
+| `maple-square-webhook` | 141kb | ~3.4s | 1.0s |
+| `maple-webhooks` | 90kb | ~2.6s | 0.8s |
+| `maple-calendar` | 30kb | 3.2s (single sample) | 1.1s |
 
-`maple-webhooks` is the post-fix measurement, taken 2026-08-07 after
-`tallyLeadWebhook` shipped: **14.4s → 3.2s cold**, ~7s of margin under Tally's
-10s cutoff. Verified with a same-project control (an idle `maple-core` function
-probed in the same window still cold-started), so the low number is a real cold
-start and not a warm instance.
+Steady-state figures are from paired sampling on 2026-08-09 — every function probed in the
+same 30-minute window, three rounds, so regional load is held constant across bundles. The
+two rows marked *single sample* are unpaired one-offs from 2026-08-07 and are less
+trustworthy (see the traps below — `maple-calendar`'s 3.2s in particular sits below
+`maple-square-webhook` despite a far smaller bundle, which paired sampling would likely
+correct).
 
-**Cold start is a distribution, not a number.** Two functions in the *same*
-`maple-square` bundle measured 7.5s and 12.0s — placement and image-cache state
-swing it by several seconds. Shrinking the bundle shifts the distribution down;
-it does not buy a guarantee. Budget for the bad tail, not the median.
+**Cold start is a distribution, not a number.** The same function, unchanged, measured
+7.7s twice and then 3.4s twice; two functions in one bundle measured 7.5s and 12.0s.
+Shrinking the bundle shifts the distribution down — it does not buy a guarantee.
+Budget for the bad tail, not the median.
+
+**Two traps that will hand you a wrong number.** Both produced wrong conclusions on
+first measurement here, in opposite directions:
+
+1. **Probing soon after a deploy includes a container image pull.** That is where the
+   original "maple-core cold-starts in 14.4s" came from; steady state is ~6s. Wait for
+   the revision to settle before believing a number.
+2. **Repeated probing warms the regional image cache** even though instances still scale
+   to zero, so numbers drift *downward* across a session. For a webhook genuinely called
+   once a day, the pessimistic first-hit figure is the honest one to design against.
+
+So: **never conclude from a single probe.** Pair the function under test against a
+control in a different bundle, hit both in the same window, and repeat.
 
 This matters for any endpoint an external platform calls with a fixed timeout:
 
 - **Tally** hangs up at 10s and does **not** retry — a slow cold start is a
   permanently lost lead. This is what put `tallyLeadWebhook` in `maple-webhooks`.
 - **Square** hangs up at 10s and *does* retry with backoff (see the 2026-05
-  504 storm). `squareWebhook` sat in `maple-square` (419kb), which booted in
-  7.5-12s — sometimes leaving under a second for the handler. It now has its
-  own `maple-square-webhook` codebase.
+  504 storm). `squareWebhook` sat in `maple-square`, and now has its own
+  `maple-square-webhook` codebase: ~3.4s cold versus ~5.7s for the bundle it left,
+  measured in the same window.
 
 Both webhooks are in *separate* codebases on purpose. `squareWebhook` needs
 `@maple/firebase/database`; sharing a bundle would push that weight onto
