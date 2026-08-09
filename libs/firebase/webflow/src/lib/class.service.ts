@@ -315,6 +315,64 @@ export class ClassService {
   }
 
   /**
+   * List the Webflow item IDs currently LIVE (published) in the classes
+   * collection, keyed by each item's `firebase-id`.
+   *
+   * `listItemsLive` returns only published items, so drafts are excluded by
+   * construction — including every dev-synced class (see `createItem`). That
+   * makes this safe to use as the "what is actually public right now" source
+   * of truth without a separate dev filter.
+   */
+  async listLiveItemIdsByFirebaseId(): Promise<Map<string, string>> {
+    const PAGE_SIZE = 100;
+    const byFirebaseId = new Map<string, string>();
+    let offset = 0;
+
+    // Bound the loop so a misbehaving API can't spin forever, matching
+    // `findByFirebaseId`.
+    while (offset < 5000) {
+      const response = await this.client.collections.items.listItemsLive(
+        this.collectionId,
+        { limit: PAGE_SIZE, offset }
+      );
+
+      const items = response.items ?? [];
+      for (const item of items) {
+        const fieldData = item.fieldData as Record<string, unknown>;
+        const firebaseId = fieldData?.['firebase-id'];
+        if (item.id && typeof firebaseId === 'string') {
+          byFirebaseId.set(firebaseId, item.id);
+        }
+      }
+
+      if (items.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
+
+    return byFirebaseId;
+  }
+
+  /**
+   * Unpublish items from the live site.
+   *
+   * Webflow's live-delete endpoint *unpublishes* and sets `isDraft = true` —
+   * it does NOT delete the CMS item. The class keeps its `webflowItemId` and
+   * slug, so a later sync can republish it untouched (e.g. if a class is
+   * rescheduled into the future).
+   */
+  async unpublishItems(itemIds: string[]): Promise<void> {
+    if (itemIds.length === 0) return;
+
+    // Webflow caps bulk live-deletes at 100 items per request.
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
+      await this.client.collections.items.deleteItemsLive(this.collectionId, {
+        items: itemIds.slice(i, i + BATCH_SIZE).map((id) => ({ id })),
+      });
+    }
+  }
+
+  /**
    * Remove a class from Webflow CMS.
    * When publish=true, uses deleteItemLive so the deletion is reflected on
    * the live site without a manual republish.

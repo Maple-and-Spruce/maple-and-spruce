@@ -298,11 +298,13 @@ describe('ClassService', () => {
     collections: {
       items: {
         listItems: vi.fn(),
+        listItemsLive: vi.fn(),
         getItem: vi.fn(),
         createItem: vi.fn(),
         updateItem: vi.fn(),
         deleteItem: vi.fn(),
         deleteItemLive: vi.fn(),
+        deleteItemsLive: vi.fn(),
         publishItem: vi.fn(),
       },
     },
@@ -754,6 +756,110 @@ describe('ClassService', () => {
 
       const result = await service.syncClass({ classEntity: mockClass });
       expect(result.isNew).toBe(true);
+    });
+  });
+
+  describe('listLiveItemIdsByFirebaseId', () => {
+    it('maps firebase-id to Webflow item id for live items', async () => {
+      mockClient.collections.items.listItemsLive.mockResolvedValue({
+        items: [
+          { id: 'wf-1', fieldData: { 'firebase-id': 'class-1' } },
+          { id: 'wf-2', fieldData: { 'firebase-id': 'class-2' } },
+        ],
+      });
+
+      const result = await service.listLiveItemIdsByFirebaseId();
+
+      expect(result.get('class-1')).toBe('wf-1');
+      expect(result.get('class-2')).toBe('wf-2');
+      expect(result.size).toBe(2);
+      expect(mockClient.collections.items.listItemsLive).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { limit: 100, offset: 0 }
+      );
+    });
+
+    it('skips items missing an id or firebase-id', async () => {
+      mockClient.collections.items.listItemsLive.mockResolvedValue({
+        items: [
+          { id: 'wf-1', fieldData: { 'firebase-id': 'class-1' } },
+          { fieldData: { 'firebase-id': 'class-orphan' } }, // no id
+          { id: 'wf-3', fieldData: {} }, // no firebase-id
+        ],
+      });
+
+      const result = await service.listLiveItemIdsByFirebaseId();
+
+      expect(result.size).toBe(1);
+      expect(result.get('class-1')).toBe('wf-1');
+    });
+
+    it('paginates until a short page is returned', async () => {
+      const fullPage = Array.from({ length: 100 }, (_, i) => ({
+        id: `wf-${i}`,
+        fieldData: { 'firebase-id': `class-${i}` },
+      }));
+      mockClient.collections.items.listItemsLive
+        .mockResolvedValueOnce({ items: fullPage })
+        .mockResolvedValueOnce({
+          items: [{ id: 'wf-last', fieldData: { 'firebase-id': 'class-last' } }],
+        });
+
+      const result = await service.listLiveItemIdsByFirebaseId();
+
+      expect(result.size).toBe(101);
+      expect(result.get('class-last')).toBe('wf-last');
+      expect(mockClient.collections.items.listItemsLive).toHaveBeenCalledTimes(
+        2
+      );
+      expect(
+        mockClient.collections.items.listItemsLive
+      ).toHaveBeenLastCalledWith(COLLECTION_ID, { limit: 100, offset: 100 });
+    });
+
+    it('returns an empty map when nothing is live', async () => {
+      mockClient.collections.items.listItemsLive.mockResolvedValue({});
+
+      const result = await service.listLiveItemIdsByFirebaseId();
+
+      expect(result.size).toBe(0);
+    });
+  });
+
+  describe('unpublishItems', () => {
+    it('unpublishes the given item ids', async () => {
+      mockClient.collections.items.deleteItemsLive.mockResolvedValue(undefined);
+
+      await service.unpublishItems(['wf-1', 'wf-2']);
+
+      expect(mockClient.collections.items.deleteItemsLive).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        { items: [{ id: 'wf-1' }, { id: 'wf-2' }] }
+      );
+    });
+
+    it('does not call the API for an empty list', async () => {
+      await service.unpublishItems([]);
+
+      expect(
+        mockClient.collections.items.deleteItemsLive
+      ).not.toHaveBeenCalled();
+    });
+
+    it('batches requests at the Webflow 100-item cap', async () => {
+      mockClient.collections.items.deleteItemsLive.mockResolvedValue(undefined);
+      const ids = Array.from({ length: 150 }, (_, i) => `wf-${i}`);
+
+      await service.unpublishItems(ids);
+
+      expect(mockClient.collections.items.deleteItemsLive).toHaveBeenCalledTimes(
+        2
+      );
+      const [firstCall, secondCall] =
+        mockClient.collections.items.deleteItemsLive.mock.calls;
+      expect(firstCall[1].items).toHaveLength(100);
+      expect(secondCall[1].items).toHaveLength(50);
+      expect(secondCall[1].items[49]).toEqual({ id: 'wf-149' });
     });
   });
 });
