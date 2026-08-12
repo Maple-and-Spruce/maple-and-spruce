@@ -55,6 +55,12 @@ import type {
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
 import { readMetaAttribution } from './lib/meta-attribution';
+import {
+  ensureMusicTogetherPixel,
+  trackMusicTogetherInitiateCheckout,
+  trackMusicTogetherPurchase,
+  trackViewMusicTogetherSection,
+} from './lib/music-together-analytics';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 560;
@@ -398,6 +404,11 @@ export function MusicTogetherRegistrationWidget({
     // capture (fired both when a section is full and in coming-soon mode).
     warmup(functions, 'createMusicTogetherRegistration', 'addToMusicTogetherWaitlist');
 
+    // Init the MT pixel + its PageView. The site-wide GTM tag only loads the
+    // Maple & Spruce pixel, so this is what gives the MT ad account a landing
+    // signal and a retargetable audience for this page.
+    ensureMusicTogetherPixel(typeof window !== 'undefined' ? window : null);
+
     const load = async () => {
       setState({ status: 'loading' });
       try {
@@ -407,6 +418,16 @@ export function MusicTogetherRegistrationWidget({
         >(functions, 'getPublicMusicTogetherSection');
         const result = await call({ sectionId });
         setState({ status: 'ready', section: result.data.section });
+        // ViewContent keyed to the section doc id — upper-funnel signal and the
+        // basis for MT section-viewer retargeting audiences.
+        trackViewMusicTogetherSection(
+          typeof window !== 'undefined' ? window : null,
+          {
+            sectionId: result.data.section.id,
+            sectionName: result.data.section.name,
+            priceFullCents: result.data.section.priceFullCents,
+          }
+        );
       } catch (err) {
         console.error('Failed to load section:', err);
         setState({
@@ -511,6 +532,17 @@ export function MusicTogetherRegistrationWidget({
     if (!tokenizeRef.current || section == null) return;
     setPayError(null);
     setBusy(true);
+    // Fired on the pay attempt, not on card-form render — that makes the
+    // InitiateCheckout → Purchase gap read as real payment drop-off (declines,
+    // tokenization failures) rather than duplicating ViewContent.
+    trackMusicTogetherInitiateCheckout(
+      typeof window !== 'undefined' ? window : null,
+      {
+        sectionId: section.id,
+        sectionName: section.name,
+        priceFullCents: familyPrice?.fullCents ?? section.priceFullCents,
+      }
+    );
     try {
       const { nonce, verificationToken } = await tokenizeRef.current();
       const call = httpsCallable<
@@ -557,6 +589,19 @@ export function MusicTogetherRegistrationWidget({
         cardLast4: result.data.cardLast4,
         email: email.trim(),
       });
+      // Browser `Purchase` on the MT pixel. `sendMusicTogetherConversion` sends
+      // the server-side twin keyed `mt-${registrationId}`; the tracker reuses
+      // that exact id as `eventID` so Meta counts the pair once. `value` is the
+      // full committed tuition on BOTH sides — a mismatch on a deduplicated
+      // pair resolves unpredictably.
+      trackMusicTogetherPurchase(typeof window !== 'undefined' ? window : null, {
+        registrationId: result.data.registrationId,
+        sectionId: section.id,
+        sectionName: section.name,
+        totalCommittedCents: familyPrice?.fullCents ?? result.data.amountChargedCents,
+        amountChargedCents: result.data.amountChargedCents,
+        paymentPlan,
+      });
     } catch (err) {
       setPayError(
         err instanceof Error
@@ -582,6 +627,9 @@ export function MusicTogetherRegistrationWidget({
     policiesAccepted,
     privacyConsent,
     cardOnFileAuth,
+    // Read for the Meta `value` on InitiateCheckout / Purchase — a stale
+    // reference here would report the pre-sibling-discount total.
+    familyPrice,
   ]);
 
   return (

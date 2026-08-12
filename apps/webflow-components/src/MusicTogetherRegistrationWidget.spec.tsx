@@ -134,12 +134,146 @@ async function acceptConsents(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByLabelText(/shared with Music Together Worldwide/i));
 }
 
+/**
+ * Stand in for fbevents.js. The MT pixel init is memoized on `window`, so the
+ * flag has to be cleared between tests or only the first one sees the init.
+ */
+function installFbq(): ReturnType<typeof vi.fn> {
+  const fbq = vi.fn();
+  const w = window as unknown as {
+    fbq?: unknown;
+    __mtPixelInitialized?: boolean;
+  };
+  w.fbq = fbq;
+  w.__mtPixelInitialized = false;
+  return fbq;
+}
+
 describe('MusicTogetherRegistrationWidget', () => {
   beforeEach(() => {
     nextSection = makeSection();
     for (const k of Object.keys(calls)) delete calls[k];
   });
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    const w = window as unknown as {
+      fbq?: unknown;
+      __mtPixelInitialized?: boolean;
+    };
+    delete w.fbq;
+    delete w.__mtPixelInitialized;
+  });
+
+  /**
+   * The full MT funnel on the MT pixel. The `Purchase` eventID must be
+   * `mt-<registrationId>` — `sendMusicTogetherConversion` sends the server-side
+   * twin under that exact id, and if the two drift Meta stops collapsing them
+   * and every enrollment is counted twice.
+   */
+  it('fires ViewContent → InitiateCheckout → Purchase on the Music Together pixel', async () => {
+    const fbq = installFbq();
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+
+    expect(
+      await screen.findByText(/Register — Thursday Morning/i)
+    ).toBeInTheDocument();
+
+    // ViewContent lands as soon as the section loads.
+    const viewed = fbq.mock.calls.filter((c) => c[2] === 'ViewContent');
+    expect(viewed).toHaveLength(1);
+    expect(viewed[0][0]).toBe('trackSingle');
+    expect(viewed[0][1]).toBe('1562555242035326');
+    expect(viewed[0][3]).toMatchObject({
+      content_ids: ['sec-thu'],
+      content_category: 'music_together',
+      value: 252,
+    });
+
+    fillFamily();
+    await acceptConsents(user);
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$252\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+    expect(await screen.findByText(/You're registered!/i)).toBeInTheDocument();
+
+    const checkout = fbq.mock.calls.filter((c) => c[2] === 'InitiateCheckout');
+    expect(checkout).toHaveLength(1);
+    expect(checkout[0][1]).toBe('1562555242035326');
+
+    const purchases = fbq.mock.calls.filter((c) => c[2] === 'Purchase');
+    expect(purchases).toHaveLength(1);
+    expect(purchases[0][0]).toBe('trackSingle');
+    expect(purchases[0][1]).toBe('1562555242035326');
+    expect(purchases[0][3]).toMatchObject({
+      content_ids: ['sec-thu'],
+      value: 252,
+      num_items: 1,
+      payment_plan: 'full',
+      amount_paid_today: 252,
+    });
+    // Dedup key shared with sendMusicTogetherConversion.
+    expect(purchases[0][4]).toEqual({ eventID: 'mt-reg-1' });
+
+    // Nothing un-scoped: none of this may reach the Maple & Spruce pixel.
+    expect(fbq.mock.calls.some((c) => c[0] === 'track')).toBe(false);
+  });
+
+  /**
+   * Meta resolves a deduplicated pair with mismatched `value` unpredictably.
+   * The server reports the FULL committed tuition, so the browser must too —
+   * NOT the installment actually charged today.
+   */
+  it('reports the full committed tuition on an installment Purchase', async () => {
+    const fbq = installFbq();
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    expect(
+      await screen.findByText(/Register — Thursday Morning/i)
+    ).toBeInTheDocument();
+
+    fillFamily();
+    await acceptConsents(user);
+    await user.click(screen.getByRole('radio', { name: /Two installments/i }));
+    await user.click(screen.getByLabelText(/I authorize Music Together/i));
+
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$132\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+    expect(await screen.findByText(/You're registered!/i)).toBeInTheDocument();
+
+    const purchase = fbq.mock.calls.find((c) => c[2] === 'Purchase');
+    expect(purchase?.[3]).toMatchObject({
+      // Full committed total, matching the server event.
+      value: 252,
+      // Cash collected today — the timing story, not the optimization target.
+      amount_paid_today: 132,
+      payment_plan: 'installments',
+    });
+  });
+
+  it('completes registration when fbevents never loads (ad blocker)', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    expect(
+      await screen.findByText(/Register — Thursday Morning/i)
+    ).toBeInTheDocument();
+
+    fillFamily();
+    await acceptConsents(user);
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$252\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+
+    // Analytics is never allowed to break a paid registration.
+    expect(await screen.findByText(/You're registered!/i)).toBeInTheDocument();
+  });
 
   it('registers a family paying in full', async () => {
     const user = userEvent.setup({ delay: null });

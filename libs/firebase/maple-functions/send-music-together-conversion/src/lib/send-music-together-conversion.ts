@@ -10,9 +10,16 @@
  * either, so before this every MT enrollment was invisible to Meta's
  * optimizer and got mis-attributed as organic.
  *
- * Same pixel, same secret: MT payments settle in a SEPARATE Square account,
- * but the ads that drive them run on the Maple & Spruce ad account, so the
- * events belong in the Maple & Spruce pixel. No new params are required.
+ * SEPARATE pixel, same secret: Music Together now advertises from its own Meta
+ * ad account (`act_1309930134551145`) with its own pixel (`1562555242035326`,
+ * "Music Together data"), so these events go to `META_PIXEL_ID_MUSIC_TOGETHER`,
+ * NOT the Maple & Spruce `META_PIXEL_ID`. Mixing them would train the craft-class
+ * campaigns on MT enrollments and vice versa. The `META_CAPI_TOKEN` system user
+ * covers both pixels, so no new secret is required — but the MT pixel must be
+ * assigned to that system user in Business Settings or every send 403s.
+ *
+ * The browser twin lives in `apps/webflow-components/src/lib/music-together-
+ * analytics.ts` and must stay pointed at the same pixel id.
  *
  * `value` semantics — deliberate, and please do not "fix" this back:
  * we report the family's FULL COMMITTED TUITION (`totalCommittedCents`,
@@ -50,12 +57,16 @@ import {
   type MetaCapiEvent,
 } from '@maple/firebase/meta-capi';
 
-// Reuses the same secret + string params as `tallyLeadWebhook` and
-// `sendRegistrationConversion` (all maple-core), so no new Secret Manager
-// value or .env entry is required.
+// Reuses the same secret as `tallyLeadWebhook` and `sendRegistrationConversion`
+// (all maple-core) — one system-user token covers both pixels, so no new Secret
+// Manager value is required.
 const metaCapiToken = defineSecret('META_CAPI_TOKEN');
-const metaPixelId = defineString('META_PIXEL_ID', {
-  default: '1625932185289127',
+// The Music Together pixel, NOT `META_PIXEL_ID`. Keep the default in sync with
+// `MUSIC_TOGETHER_PIXEL_ID` in the webflow-components analytics lib, or the
+// browser and server `Purchase` events land in different datasets and stop
+// deduplicating (every enrollment then counts twice).
+const metaPixelId = defineString('META_PIXEL_ID_MUSIC_TOGETHER', {
+  default: '1562555242035326',
 });
 const metaCapiBaseUrl = defineString('META_CAPI_BASE_URL', {
   default: 'https://graph.facebook.com',
