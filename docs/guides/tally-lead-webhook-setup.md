@@ -84,9 +84,23 @@ secrets does not require a redeploy of the entire codebase.
 
 ## 4. Configure the Tally form
 
-The newsletter form lives in workspace `mJJjAd`. Open the form in
-Tally's editor (the one wired into the `/newsletter` page on Webflow —
-not the contact form).
+**Two forms feed this webhook**, both in workspace `mJJjAd`. Everything in
+this section applies to each of them:
+
+| Form | Id | Banner | Meta dataset |
+|---|---|---|---|
+| Maple & Spruce Folk Arts | `0QPRq9` | `.pre-opening-banner` in the `maple-nav` component | M&S `1625932185289127` |
+| Music Together Maple & Spruce Updates | `q4Qj8d` | `.mt-banner` in both MT headers | MT `1562555242035326` |
+
+The function routes the Meta half by form id (`resolveFormAttribution` in
+`tally-lead-webhook.ts`) and labels the GA4 half with `form_name` / `form_id`,
+so both forms share one endpoint and one signing secret. A form id it doesn't
+recognize is reported as a Maple & Spruce lead rather than dropped.
+
+**Order matters when connecting a new form**: deploy the function first. If
+you connect a form the deployed function doesn't know about, its leads land in
+the Maple & Spruce dataset until the next deploy, and Meta has no way to move
+them afterward.
 
 ### Hidden fields
 
@@ -124,6 +138,24 @@ supplied — that is fine, the function treats empty as "no value".
 The function verifies `tally-signature` against
 `HMAC-SHA256(rawBody, secret)` (base64). A signature mismatch returns
 401 and no downstream call is made.
+
+Use the **same** signing secret for both forms — `TALLY_WEBHOOK_SECRET` is a
+single value and the function has no per-form secret lookup.
+
+### Browser / server deduplication
+
+Both halves of every lead fire: the footer snippet on `Tally.FormSubmitted`,
+this function on the webhook. They deduplicate on `tally-<submissionId>` —
+Tally puts the same submission id in `payload.id` on the browser message and
+`data.submissionId` on the webhook body (verified against a live submission:
+both read `LDa8Kpv`).
+
+Break the format on one side only and Meta counts every signup twice, which is
+worse than it sounds for Music Together — the MT ad account would optimize
+against lead volume that doesn't exist. The pairing is asserted by
+`Browser/server deduplication` in the integration suite and by
+`leadEventId` in the unit spec; the browser side lives in
+`tools/webflow-tally-form-events.html`.
 
 ## 5. Webflow page snippet
 

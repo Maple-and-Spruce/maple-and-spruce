@@ -28,11 +28,26 @@ The site-wide footer snippet now routes leads **by Tally form id to the owning M
 `fbq('track', 'Lead')` under a single hard-coded `form_name`, which on an MT page would have filed
 the lead into every initialized pixel.
 
+`tallyLeadWebhook` now routes the server half the same way: `resolveFormAttribution` maps the
+Tally form id to `META_PIXEL_ID` or `META_PIXEL_ID_MUSIC_TOGETHER`, and the GA4 event carries
+`form_name` / `form_id` so the single GA4 property stays separable. Both halves stamp
+`event_id` = `tally-<submissionId>` — Tally reports the same id as `payload.id` on the browser
+message and `data.submissionId` on the webhook, so Meta counts each signup once instead of twice
+(this double-count existed for the M&S form before this change).
+
+**Remaining manual step**: connect `q4Qj8d`'s Tally webhook to
+`https://us-east4-maple-and-spruce.cloudfunctions.net/tallyLeadWebhook` with the existing
+`TALLY_WEBHOOK_SECRET`. **Do this after the function deploys** — a form the deployed function
+doesn't know about reports into the Maple & Spruce dataset, and Meta can't move those events
+later.
+
 **Follow-ups**:
 - Subscribers live in Tally only. No MailerLite group / integration yet — deliberate, to be wired
   in Tally's Integrations tab when the list is worth sending to.
-- `tallyLeadWebhook` is not connected to `q4Qj8d` (single `META_PIXEL_ID`, no per-form routing),
-  so MT signups have browser-side attribution only.
+- Worth confirming in GA4 that `generate_lead` isn't double-counted for the M&S form: the browser
+  snippet pushes it through GTM and the webhook posts it through Measurement Protocol. Whether
+  that lands as one event or two depends on the GTM container, which isn't visible from the repo.
+- Four test submissions (`verify-mt-*@mapleandsprucefolkarts.com`) to delete from the Tally form.
 
 ### Tally webhook timeouts — `maple-webhooks` codebase (2026-08-07)
 

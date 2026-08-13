@@ -69,11 +69,17 @@
       if (event.data.indexOf('Tally.FormSubmitted') === -1) return;
 
       var formId = null;
+      var submissionId = null;
       try {
         var parsed = JSON.parse(event.data);
-        formId = (parsed && parsed.payload && parsed.payload.formId) || null;
+        var p = (parsed && parsed.payload) || {};
+        formId = p.formId || null;
+        // Tally sends the submission id as `id` here and as `data.submissionId`
+        // on the webhook — the same value, which is what makes the browser and
+        // server Lead events deduplicate against each other.
+        submissionId = p.id || null;
       } catch (_e) {
-        // not JSON — keep formId null and continue
+        // not JSON — keep both null and continue
       }
 
       var form = (formId && FORMS[formId]) || DEFAULT_FORM;
@@ -88,13 +94,18 @@
       });
 
       // Meta Pixel — Lead standard event so Meta can optimize ads for email
-      // signups and report on them in Ads Manager
+      // signups and report on them in Ads Manager. `eventID` is shared with
+      // the server-side CAPI Lead from tallyLeadWebhook so Meta counts the
+      // signup once instead of twice.
       if (typeof window.fbq !== 'function') return;
       if (form.pixelId === MT_PIXEL_ID && !ensureMusicTogetherPixel()) return;
-      window.fbq('trackSingle', form.pixelId, 'Lead', {
-        content_name: form.name,
-        content_category: 'newsletter',
-      });
+      window.fbq(
+        'trackSingle',
+        form.pixelId,
+        'Lead',
+        { content_name: form.name, content_category: 'newsletter' },
+        submissionId ? { eventID: 'tally-' + submissionId } : undefined
+      );
     });
   })();
 </script>

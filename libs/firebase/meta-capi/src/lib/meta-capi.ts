@@ -6,8 +6,10 @@
  * (`sendRegistrationConversion`), and confirmed Music Together registrations'
  * `Purchase` (`sendMusicTogetherConversion`).
  *
- * Music Together payments settle in a SEPARATE Square account but report into
- * the same Maple & Spruce pixel, so one config covers both revenue lines.
+ * Music Together reports into its OWN pixel from its own ad account, so the
+ * pixel is a per-call `MetaCapiConfig` field rather than a module constant —
+ * callers pick the dataset (see `resolveFormAttribution` in
+ * `tally-lead-webhook.ts` and `META_PIXEL_ID_MUSIC_TOGETHER`).
  *
  * Why server-side at all: the browser Pixel is silently dropped by iOS/Safari
  * ITP and ad blockers, and never fires on flows that redirect off-site (e.g.
