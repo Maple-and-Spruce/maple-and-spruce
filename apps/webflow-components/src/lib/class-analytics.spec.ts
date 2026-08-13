@@ -10,6 +10,10 @@ import {
   trackPurchaseClass,
   trackViewClass,
 } from './class-analytics';
+import {
+  MAPLE_SPRUCE_PIXEL_ID,
+  MUSIC_TOGETHER_PIXEL_ID,
+} from './meta-pixels';
 
 const CLASS_ID = 'cls_abc123';
 const CLASS_NAME = 'Beginner Pottery';
@@ -140,6 +144,76 @@ describe('GA4 dataLayer event builders', () => {
   });
 });
 
+/**
+ * The site runs two Meta pixels: Maple & Spruce (site-wide via GTM) and Music
+ * Together (on `/music-together*`, a separate ad account). A bare
+ * `fbq('track', …)` broadcasts to EVERY initialized pixel, so one un-scoped
+ * call here would file craft-class purchases into the Music Together dataset
+ * and train that ad account on the wrong conversions.
+ */
+describe('pixel isolation', () => {
+  const cases: Array<[string, (win: unknown) => void]> = [
+    [
+      'ViewContent',
+      (win) =>
+        trackViewClass(win, {
+          classId: CLASS_ID,
+          className: CLASS_NAME,
+          priceCents: 4500,
+        }),
+    ],
+    [
+      'AddToCart',
+      (win) =>
+        trackAddClassToCart(win, {
+          classId: CLASS_ID,
+          className: CLASS_NAME,
+          priceCents: 4500,
+          quantity: 2,
+        }),
+    ],
+    [
+      'Purchase',
+      (win) =>
+        trackPurchaseClass(win, {
+          classId: CLASS_ID,
+          className: CLASS_NAME,
+          pricePaidCents: 9000,
+          quantity: 2,
+          confirmationNumber: 'MS-ISO001',
+        }),
+    ],
+  ];
+
+  it.each(cases)('%s is scoped to the Maple & Spruce pixel', (name, track) => {
+    const fbq = vi.fn();
+    track({ fbq, dataLayer: [] });
+
+    const calls = fbq.mock.calls.filter(
+      (c) => c[0] === 'trackSingle' && c[2] === name
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toBe(MAPLE_SPRUCE_PIXEL_ID);
+
+    // No un-scoped track() anywhere — that would also hit the MT pixel.
+    expect(fbq.mock.calls.some((c) => c[0] === 'track')).toBe(false);
+    // And the Music Together pixel is never addressed from this module.
+    expect(
+      fbq.mock.calls.some((c) => c[1] === MUSIC_TOGETHER_PIXEL_ID)
+    ).toBe(false);
+  });
+
+  it('never initializes a pixel — GTM owns the Maple & Spruce base code', () => {
+    const fbq = vi.fn();
+    trackViewClass(
+      { fbq, dataLayer: [] },
+      { classId: CLASS_ID, className: CLASS_NAME, priceCents: 4500 }
+    );
+    // Re-initializing would clobber the advanced-matching config GTM applies.
+    expect(fbq.mock.calls.some((c) => c[0] === 'init')).toBe(false);
+  });
+});
+
 describe('trackers fire pixel + dataLayer side effects', () => {
   it('trackViewClass calls fbq and pushes to dataLayer', () => {
     const fbq = vi.fn();
@@ -153,13 +227,18 @@ describe('trackers fire pixel + dataLayer side effects', () => {
       priceCents: 4500,
     });
 
-    expect(fbq).toHaveBeenCalledWith('track', 'ViewContent', {
-      content_ids: [CLASS_ID],
-      content_type: 'product',
-      content_name: CLASS_NAME,
-      value: 45,
-      currency: 'USD',
-    });
+    expect(fbq).toHaveBeenCalledWith(
+      'trackSingle',
+      MAPLE_SPRUCE_PIXEL_ID,
+      'ViewContent',
+      {
+        content_ids: [CLASS_ID],
+        content_type: 'product',
+        content_name: CLASS_NAME,
+        value: 45,
+        currency: 'USD',
+      }
+    );
     expect(win.dataLayer).toHaveLength(1);
     expect(win.dataLayer?.[0]).toMatchObject({ event: 'view_item' });
   });
@@ -179,7 +258,8 @@ describe('trackers fire pixel + dataLayer side effects', () => {
     });
 
     expect(fbq).toHaveBeenCalledWith(
-      'track',
+      'trackSingle',
+      MAPLE_SPRUCE_PIXEL_ID,
       'Purchase',
       expect.objectContaining({ content_ids: [CLASS_ID], value: 80 }),
       { eventID: 'MS-ZZ99YY' }
