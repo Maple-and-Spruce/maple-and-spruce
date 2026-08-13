@@ -65,13 +65,126 @@ function setField(matcher: RegExp, value: string) {
   fireEvent.change(screen.getByLabelText(matcher), { target: { value } });
 }
 
+/**
+ * Stand in for fbevents.js. The MT pixel init is memoized on `window`, so the
+ * flag has to be cleared between tests or only the first one sees the init.
+ */
+function installFbq(): ReturnType<typeof vi.fn> {
+  const fbq = vi.fn();
+  const w = window as unknown as {
+    fbq?: unknown;
+    __mtPixelInitialized?: boolean;
+  };
+  w.fbq = fbq;
+  w.__mtPixelInitialized = false;
+  return fbq;
+}
+
 describe('MusicTogetherDemoWidget', () => {
   beforeEach(() => {
     nextRsvp = { added: true, status: 'confirmed' };
     demos = [libraryDemo, studioDemo];
     for (const k of Object.keys(calls)) delete calls[k];
   });
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    const w = window as unknown as {
+      fbq?: unknown;
+      __mtPixelInitialized?: boolean;
+    };
+    delete w.fbq;
+    delete w.__mtPixelInitialized;
+  });
+
+  /**
+   * `Schedule`, not `Lead` — booking a specific demo time is a stronger signal
+   * than joining the interest list, and keeping them distinct lets the two MT
+   * campaigns bid toward different outcomes. Scoped to the MT pixel so it never
+   * lands in the site-wide Maple & Spruce dataset.
+   */
+  it('fires a Schedule scoped to the Music Together pixel on RSVP', async () => {
+    const fbq = installFbq();
+    const user = userEvent.setup({ delay: null });
+    render(<MusicTogetherDemoWidget env="dev" />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('radio', { name: /Morgantown Public Library/i })
+      ).toBeInTheDocument()
+    );
+    await user.click(
+      screen.getByRole('radio', { name: /Morgantown Public Library/i })
+    );
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('button', { name: /reserve my spot/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/You're in!/i)).toBeInTheDocument()
+    );
+
+    const scheduled = fbq.mock.calls.filter((c) => c[2] === 'Schedule');
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0][0]).toBe('trackSingle');
+    expect(scheduled[0][1]).toBe('1562555242035326');
+    expect(scheduled[0][3]).toMatchObject({
+      content_category: 'music_together_demo',
+      content_ids: ['demo-1'],
+      demo_date_time: '2030-08-03T14:00:00.000Z',
+      rsvp_status: 'confirmed',
+    });
+
+    expect(fbq.mock.calls.some((c) => c[2] === 'Lead')).toBe(false);
+    expect(fbq.mock.calls.some((c) => c[0] === 'track')).toBe(false);
+  });
+
+  it('tags a full-demo waitlist join as waitlisted, not a booked seat', async () => {
+    nextRsvp = { added: true, status: 'waitlisted' };
+    const fbq = installFbq();
+    const user = userEvent.setup({ delay: null });
+    render(<MusicTogetherDemoWidget env="dev" />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('radio', { name: /Maple & Spruce Studio/i })
+      ).toBeInTheDocument()
+    );
+    await user.click(
+      screen.getByRole('radio', { name: /Maple & Spruce Studio/i })
+    );
+    setField(/Your name/i, 'Full Family');
+    setField(/^Email/i, 'full@example.com');
+    await user.click(screen.getByRole('button', { name: /reserve my spot/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/on the waitlist and we'll email you if a spot opens/i)
+      ).toBeInTheDocument()
+    );
+
+    const scheduled = fbq.mock.calls.find((c) => c[2] === 'Schedule');
+    expect(scheduled?.[3]).toMatchObject({ rsvp_status: 'waitlisted' });
+  });
+
+  it('completes the RSVP when fbevents never loads (ad blocker)', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<MusicTogetherDemoWidget env="dev" />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('radio', { name: /Morgantown Public Library/i })
+      ).toBeInTheDocument()
+    );
+    await user.click(
+      screen.getByRole('radio', { name: /Morgantown Public Library/i })
+    );
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('button', { name: /reserve my spot/i }));
+
+    // Analytics is never allowed to break the actual RSVP.
+    await waitFor(() =>
+      expect(screen.getByText(/You're in!/i)).toBeInTheDocument()
+    );
+  });
 
   it('fetches and renders demos with location + spots (no Square)', async () => {
     render(<MusicTogetherDemoWidget env="dev" />);

@@ -80,6 +80,9 @@ echo "GA4_BASE_URL=http://localhost:$GA4_MOCK_SERVER_PORT" >> dist/apps/function
 echo "META_CAPI_BASE_URL=http://localhost:$META_CAPI_MOCK_SERVER_PORT" >> dist/apps/functions/.env
 echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions/.env
 echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions/.env
+# Distinct from META_PIXEL_ID on purpose: registration-conversions.spec asserts
+# MT purchases post to the Music Together pixel, not the Maple & Spruce one.
+echo "META_PIXEL_ID_MUSIC_TOGETHER=test-mt-pixel-id" >> dist/apps/functions/.env
 echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
 printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
 
@@ -92,6 +95,7 @@ echo "GA4_BASE_URL=http://localhost:$GA4_MOCK_SERVER_PORT" >> dist/apps/function
 echo "META_CAPI_BASE_URL=http://localhost:$META_CAPI_MOCK_SERVER_PORT" >> dist/apps/functions-webhooks/.env
 echo "GA4_MEASUREMENT_ID=G-TEST-MOCK" >> dist/apps/functions-webhooks/.env
 echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions-webhooks/.env
+echo "META_PIXEL_ID_MUSIC_TOGETHER=test-mt-pixel-id" >> dist/apps/functions-webhooks/.env
 echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions-webhooks/.env
 
 # maple-square-webhook: squareWebhook declares this defineSecret param.

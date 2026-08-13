@@ -38,6 +38,10 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
+import {
+  ensureMusicTogetherPixel,
+  trackMusicTogetherInterest,
+} from './lib/music-together-analytics';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 560;
@@ -99,6 +103,10 @@ export function MusicTogetherInterestWidget({
   useEffect(() => {
     // Warm the downstream submit callable now; the family triggers it seconds later.
     warmup(functions, 'addMusicTogetherInterest');
+    // Init the MT pixel + its PageView. The site-wide GTM tag only loads the
+    // Maple & Spruce pixel, so this is what gives the MT ad account a landing
+    // signal and a retargetable audience for this page.
+    ensureMusicTogetherPixel(typeof window !== 'undefined' ? window : null);
     let cancelled = false;
     (async () => {
       try {
@@ -171,9 +179,13 @@ export function MusicTogetherInterestWidget({
         alternateTimesNote: alternateTimesNote.trim() || undefined,
         notes: notes.trim() || undefined,
       });
-      setSubmitState({
-        status: 'success',
-        alreadyOnList: !result.data.added,
+      const alreadyOnList = !result.data.added;
+      setSubmitState({ status: 'success', alreadyOnList });
+      // Meta `Lead` on the Music Together pixel — the conversion the MT
+      // interest-list campaign optimizes toward.
+      trackMusicTogetherInterest(typeof window !== 'undefined' ? window : null, {
+        interestedSectionIds: [...checkedSections],
+        alreadyOnList,
       });
     } catch (err) {
       setSubmitState({
