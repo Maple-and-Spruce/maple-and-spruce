@@ -40,6 +40,10 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
+import {
+  ensureMusicTogetherPixel,
+  trackMusicTogetherDemoRsvp,
+} from './lib/music-together-analytics';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WIDGET_MAX_WIDTH = 480;
@@ -112,6 +116,10 @@ export function MusicTogetherDemoWidget({
   // callable now, so it's hot by the time the family submits (seconds later).
   useEffect(() => {
     warmup(functions, 'addMusicTogetherDemoRsvp');
+    // Init the MT pixel + its PageView. The site-wide GTM tag only loads the
+    // Maple & Spruce pixel, so this is what gives the MT ad account a landing
+    // signal and a retargetable audience for this page.
+    ensureMusicTogetherPixel(typeof window !== 'undefined' ? window : null);
     let cancelled = false;
     const load = async () => {
       setDemosState({ status: 'loading' });
@@ -176,6 +184,14 @@ export function MusicTogetherDemoWidget({
         added: result.data.added,
         rsvpStatus: result.data.status,
         demo,
+      });
+      // Meta `Schedule` on the Music Together pixel. Deliberately a different
+      // event from the interest list's `Lead`: booking a specific demo time is
+      // a stronger signal, and the two campaigns bid toward it separately.
+      trackMusicTogetherDemoRsvp(typeof window !== 'undefined' ? window : null, {
+        demoId,
+        demoDateTime: demo.dateTime,
+        rsvpStatus: result.data.status,
       });
     } catch (err) {
       setState({

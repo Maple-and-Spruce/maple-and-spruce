@@ -30,6 +30,10 @@ import {
 const META_MOCK_URL = EMULATOR_CONFIG.metaCapiMockServerUrl;
 // Must match what tools/run-integration-tests.sh writes to dist/apps/functions/.env
 const META_PIXEL_ID = 'test-pixel-id';
+// Music Together advertises from its own Meta ad account, so its conversions
+// must land in its own pixel — never the Maple & Spruce one. Deliberately a
+// different value from META_PIXEL_ID so the routing assertion has teeth.
+const META_PIXEL_ID_MUSIC_TOGETHER = 'test-mt-pixel-id';
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 
@@ -376,6 +380,32 @@ describe('Meta CAPI Purchase triggers', () => {
       expect(event.user_data['ph']).toEqual([sha256('13045550288')]);
       expect(event.user_data['fbc']).toBe('fb.1.1700000000000.IwARmtclick');
       expect(event.user_data['client_ip_address']).toBe('203.0.113.8');
+    });
+
+    /**
+     * Music Together runs on its own Meta ad account (`act_1309930134551145`)
+     * with its own pixel. Routing MT purchases into the Maple & Spruce pixel
+     * would train the craft-class campaigns on MT enrollments and make the
+     * separate ad account pointless — so the destination is asserted, not just
+     * the payload.
+     */
+    it('posts MT purchases to the Music Together pixel, not the Maple & Spruce one', async () => {
+      const id = `conv-mt-pixel-${Date.now()}`;
+      const sectionId = `conv-mt-section-pixel-${Date.now()}`;
+      const doc = mtRegistration({ sectionId });
+      await setFirestoreDoc('musicTogetherRegistrations', id, doc);
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'confirmed',
+        squarePaymentId: 'mtpay-pixel',
+      });
+      await waitForPurchases(sectionId);
+
+      const [request] = await purchaseRequestsFor(sectionId);
+      expect(request.pixelId).toBe(META_PIXEL_ID_MUSIC_TOGETHER);
+      expect(request.pixelId).not.toBe(META_PIXEL_ID);
+      // One system-user token covers both pixels.
+      expect(request.query['access_token']).toBe('test-meta-token');
     });
 
     /**

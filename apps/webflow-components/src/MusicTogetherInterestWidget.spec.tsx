@@ -67,13 +67,119 @@ function setField(matcher: RegExp, value: string) {
   fireEvent.change(screen.getByLabelText(matcher), { target: { value } });
 }
 
+/**
+ * Stand in for fbevents.js. The MT pixel init is memoized on `window`, so the
+ * flag has to be cleared between tests or only the first one sees the init.
+ */
+function installFbq(): ReturnType<typeof vi.fn> {
+  const fbq = vi.fn();
+  const w = window as unknown as {
+    fbq?: unknown;
+    __mtPixelInitialized?: boolean;
+  };
+  w.fbq = fbq;
+  w.__mtPixelInitialized = false;
+  return fbq;
+}
+
 describe('MusicTogetherInterestWidget', () => {
   beforeEach(() => {
     nextSections = makeSections();
     nextAdded = true;
     for (const k of Object.keys(calls)) delete calls[k];
   });
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    const w = window as unknown as {
+      fbq?: unknown;
+      __mtPixelInitialized?: boolean;
+    };
+    delete w.fbq;
+    delete w.__mtPixelInitialized;
+  });
+
+  /**
+   * Music Together advertises from its own Meta ad account. The Maple & Spruce
+   * pixel is loaded site-wide via GTM on the same Webflow site, so a bare
+   * `fbq('track', …)` here would file this Lead in the craft-class dataset too.
+   */
+  it('fires a Lead scoped to the Music Together pixel on submit', async () => {
+    const fbq = installFbq();
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await waitFor(() =>
+      expect(screen.getByText(/Thursdays 10am/)).toBeInTheDocument()
+    );
+
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('checkbox', { name: /Thursdays 10am/i }));
+    await user.click(
+      screen.getByRole('button', { name: /join the interest list/i })
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/on the interest list/i)).toBeInTheDocument()
+    );
+
+    const leads = fbq.mock.calls.filter((c) => c[2] === 'Lead');
+    expect(leads).toHaveLength(1);
+    expect(leads[0][0]).toBe('trackSingle');
+    expect(leads[0][1]).toBe('1562555242035326');
+    expect(leads[0][3]).toMatchObject({
+      content_category: 'music_together_interest',
+      content_ids: ['sec-thu'],
+      already_on_list: false,
+    });
+
+    // The page also gets an MT-scoped PageView so the ad account has a
+    // retargetable audience — and nothing is ever sent un-scoped.
+    expect(fbq).toHaveBeenCalledWith('init', '1562555242035326');
+    expect(fbq.mock.calls.some((c) => c[0] === 'track')).toBe(false);
+  });
+
+  it('marks a repeat submit as already_on_list', async () => {
+    nextAdded = false;
+    const fbq = installFbq();
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await waitFor(() =>
+      expect(screen.getByText(/Thursdays 10am/)).toBeInTheDocument()
+    );
+
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('checkbox', { name: /Thursdays 10am/i }));
+    await user.click(
+      screen.getByRole('button', { name: /join the interest list/i })
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/already on our interest list/i)).toBeInTheDocument()
+    );
+
+    const lead = fbq.mock.calls.find((c) => c[2] === 'Lead');
+    expect(lead?.[3]).toMatchObject({ already_on_list: true });
+  });
+
+  it('submits normally when fbevents never loads (ad blocker)', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await waitFor(() =>
+      expect(screen.getByText(/Thursdays 10am/)).toBeInTheDocument()
+    );
+
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('checkbox', { name: /Thursdays 10am/i }));
+    await user.click(
+      screen.getByRole('button', { name: /join the interest list/i })
+    );
+
+    // Analytics is never allowed to break the actual signup.
+    await waitFor(() =>
+      expect(screen.getByText(/on the interest list/i)).toBeInTheDocument()
+    );
+    expect(calls['addMusicTogetherInterest']).toBeTruthy();
+  });
 
   it('submits a cross-section interest entry with checked sections + all three notes', async () => {
     const user = userEvent.setup({ delay: null });
