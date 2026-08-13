@@ -1415,7 +1415,11 @@ landing in `maple-core` and quietly inheriting a 14s boot.
   7.5-12.0s cold. Same class of problem, different bundle; it was given its own
   `maple-square-webhook` codebase in the follow-up (see ADR-032).
 - **Verified in prod 2026-08-07 after deploy: 14.4s → 3.2s cold** (0.77s warm), matching
-  `maple-calendar`'s 3.2s. Confirmed as a genuine cold start by probing an idle `maple-core`
+  `maple-calendar`'s 3.2s. **Amended 2026-08-09:** both of those figures were measured soon after a
+  deploy and so include a container image pull. Steady-state paired sampling puts `maple-core` at
+  ~6s and `maple-webhooks` at ~2.6s (see ADR-032). The direction and the fix are unchanged — the
+  magnitude was overstated, and ~6s plus two awaited beacons against a 10s ceiling is exactly the
+  marginal position that failed intermittently rather than always. Confirmed as a genuine cold start by probing an idle `maple-core`
   function in the same window as a control. The codebase move deployed cleanly — firebase-tools
   relabelled the function in place, with no `functions:delete` and no gap in availability.
 - The five already-failed submissions are not recovered by this change; they must be resent from
@@ -1478,10 +1482,42 @@ distribution. 419kb → 141kb buys real margin against a ceiling we do not contr
   `{base}/{functionName}`, independent of codebase — so Square's registered notification URL and
   the HMAC signature (computed over that URL) keep working. **No Square dashboard change needed.**
 - `maple-square` keeps the Square SDK and the workers; only the receiver moved.
-- Moving a function between codebases relabels it in place. Watch the first deploy: if
-  firebase-tools declines to adopt the function under the new codebase, the fallback is
-  `firebase functions:delete squareWebhook` followed by a redeploy — which would drop webhook
-  deliveries in the gap, so it must be done deliberately, not as a reflex.
+- Moving a function between codebases relabels it in place. **Confirmed on deploy 2026-08-09:**
+  firebase-tools adopted `squareWebhook` under `maple-square-webhook` with no
+  `firebase functions:delete` and no gap in availability (same as `tallyLeadWebhook` in #758).
+  The delete-and-recreate fallback was not needed and should stay a last resort — it drops
+  deliveries in the gap.
+
+### Measured outcome (2026-08-09, post-deploy)
+
+Paired cold-start probes — all four functions hit in the same 30-minute window, three rounds, so
+regional load is held roughly constant across bundles:
+
+| Bundle | Codebase | Probe function | Cold |
+|--------|----------|----------------|------|
+| 90kb | `maple-webhooks` | `tallyLeadWebhook` | 2.70s / 2.49s / 2.71s |
+| 141kb | `maple-square-webhook` | `squareWebhook` | 3.36s / 3.45s |
+| 412kb | `maple-square` | `syncInventoryToSquare` | 5.77s / 5.73s |
+| 489kb | `maple-core` | `checkAdminStatus` | 6.42s / 5.79s |
+
+Cold start rises monotonically with bundle size, so the lever is real. The like-for-like result
+for this ADR: **`squareWebhook` at ~3.4s versus ~5.7s for the bundle it left**, measured in the
+same window — roughly 2.3s of extra margin under Square's 10s ceiling.
+
+**Two measurement traps this exposed, both of which produced wrong conclusions first time:**
+
+1. **A probe taken shortly after a deploy includes a container image pull.** The 14.4s figure in
+   ADR-031 was measured minutes after a deploy and is NOT steady state; `maple-core`'s steady-state
+   cold start is ~6s. The inflated number over-explained the incident — at a true 14.4s every cold
+   Tally delivery would have failed, whereas only 5 of the 9 long-gap deliveries actually did.
+2. **Repeated probing warms the regional image cache even though instances scale to zero.**
+   `squareWebhook` measured 7.7s twice and then 3.4s twice, unchanged code. For a webhook invoked
+   about once a day the 7.7s-class number is arguably the realistic first-hit cost, and the 3.4s
+   figure is the optimistic one.
+
+Practical consequence: **never conclude from a single probe.** Pair the function under test against
+a control in another bundle, sample repeatedly, and treat cold start as a distribution whose tail
+is what blows a delivery budget.
 
 ---
 
