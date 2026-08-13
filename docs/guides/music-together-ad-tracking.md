@@ -34,12 +34,26 @@ page. Unit tests assert no un-scoped `track` call is ever made; don't
 
 | Surface | Meta event | GA4 event | Fired when |
 |---|---|---|---|
+| MT updates banner (Tally `q4Qj8d`) | `Lead` | `generate_lead` | email signup from the MT header banner |
 | `MusicTogetherInterestWidget` | `Lead` | `generate_lead` | interest form submitted |
 | `MusicTogetherDemoWidget` | `Schedule` | `schedule` | free demo RSVP (or demo waitlist join) |
 | `MusicTogetherRegistrationWidget` | `ViewContent` | `view_item` | section page loads |
 | `MusicTogetherRegistrationWidget` | `InitiateCheckout` | `begin_checkout` | Register clicked (pay attempt) |
 | `MusicTogetherRegistrationWidget` | `Purchase` | `purchase` | registration confirmed |
 | `sendMusicTogetherConversion` (server) | `Purchase` | — | `musicTogetherRegistrations` → `confirmed` |
+
+The MT updates banner is the one non-widget surface in that table. It is a Tally
+popup (form `q4Qj8d`) sitting in the MT header, so its events come from the
+site-wide footer snippet (`tools/webflow-tally-form-events.html`) rather than
+from `music-together-analytics.ts`. That snippet keeps the same two rules: route
+by Tally form id to the owning pixel, and address it with `trackSingle` after
+re-using the `window.__mtPixelInitialized` flag so the MT pixel is init'd once
+per page no matter which code path gets there first.
+
+The Tally webhook (`tallyLeadWebhook`) is **not** wired to `q4Qj8d`. It has a
+single `META_PIXEL_ID` (Maple & Spruce) and does not route by form, so
+connecting the MT form to it today would file MT leads into the M&S dataset.
+Server-side MT leads need per-form pixel routing in that function first.
 
 Interest and demo are deliberately **different** events. Booking a specific demo
 time is stronger intent than joining the interest list, so the two campaigns can
