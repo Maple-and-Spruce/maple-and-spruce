@@ -43,15 +43,16 @@
  * @see https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events
  */
 
+import { MUSIC_TOGETHER_PIXEL_ID } from './meta-pixels';
+
 const CURRENCY = 'USD';
 
 /**
- * The Music Together pixel — the dataset behind ad account
- * `act_1309930134551145`. Mirrors `META_PIXEL_ID_MUSIC_TOGETHER` on the server
- * (`.env.dev` / `.env.prod`, read by `sendMusicTogetherConversion`). Both sides
- * must name the same pixel or browser and server events stop deduplicating.
+ * Re-exported so callers and tests can keep importing the id from the module
+ * that uses it. The canonical declaration — and the reason both pixel ids live
+ * side by side — is in `meta-pixels.ts`.
  */
-export const MUSIC_TOGETHER_PIXEL_ID = '1562555242035326';
+export { MUSIC_TOGETHER_PIXEL_ID };
 
 /** Meta standard events this module emits, all scoped to the MT pixel. */
 export type MusicTogetherPixelEventName =
