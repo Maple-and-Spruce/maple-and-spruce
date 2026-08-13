@@ -35,6 +35,7 @@ page. Unit tests assert no un-scoped `track` call is ever made; don't
 | Surface | Meta event | GA4 event | Fired when |
 |---|---|---|---|
 | MT updates banner (Tally `q4Qj8d`) | `Lead` | `generate_lead` | email signup from the MT header banner |
+| `tallyLeadWebhook` (server) | `Lead` | `generate_lead` | Tally webhook for `q4Qj8d`, deduped with the row above |
 | `MusicTogetherInterestWidget` | `Lead` | `generate_lead` | interest form submitted |
 | `MusicTogetherDemoWidget` | `Schedule` | `schedule` | free demo RSVP (or demo waitlist join) |
 | `MusicTogetherRegistrationWidget` | `ViewContent` | `view_item` | section page loads |
@@ -50,10 +51,11 @@ by Tally form id to the owning pixel, and address it with `trackSingle` after
 re-using the `window.__mtPixelInitialized` flag so the MT pixel is init'd once
 per page no matter which code path gets there first.
 
-The Tally webhook (`tallyLeadWebhook`) is **not** wired to `q4Qj8d`. It has a
-single `META_PIXEL_ID` (Maple & Spruce) and does not route by form, so
-connecting the MT form to it today would file MT leads into the M&S dataset.
-Server-side MT leads need per-form pixel routing in that function first.
+It is the one surface with a **server-side twin**: `tallyLeadWebhook` routes the
+same lead by form id (`resolveFormAttribution`) and posts CAPI to whichever
+pixel owns it. Both halves stamp `event_id` = `tally-<submissionId>`, so the
+pair deduplicates the same way the registration `Purchase` pair does. See
+`docs/guides/tally-lead-webhook-setup.md`.
 
 Interest and demo are deliberately **different** events. Booking a specific demo
 time is stronger intent than joining the interest list, so the two campaigns can
