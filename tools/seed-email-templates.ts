@@ -752,7 +752,7 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
     <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
     <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
-    <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+    <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
   </div>
 </div>
 </body>
@@ -804,7 +804,7 @@ const musicTogetherInstallmentFailedHtml = `<!DOCTYPE html>
     <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
     <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
-    <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+    <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
   </div>
 </div>
 </body>
@@ -871,7 +871,7 @@ const musicTogetherReminderHtml = `<!DOCTYPE html>
     <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
     <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
-    <span style="font-size: 12px; color: #999;">Music Together with Maple &amp; Spruce LLC is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+    <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
   </div>
 </div>
 </body>
