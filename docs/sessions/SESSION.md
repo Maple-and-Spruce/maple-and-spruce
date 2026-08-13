@@ -6,6 +6,34 @@
 
 ## Current Status
 
+### Music Together updates banner (2026-08-12)
+
+The MT pages now carry their own signup banner, mirroring the `pre-opening-banner` that sits in
+the `maple-nav` component on every Maple & Spruce page. It opens a **new, separate** Tally form
+(`q4Qj8d`, "Music Together Maple & Spruce Updates") so MT news goes to its own subscriber list
+instead of the shared M&S list (`0QPRq9`).
+
+Built in Webflow, in two places because the MT header exists twice:
+
+- **MT Header component** (`a17e39d5-…`, an HtmlEmbed) — covers `/music-together-calendar`,
+  `-policies`, `-demo`, `-interest`.
+- **`/music-together`** — that page has its own native copy of the header (it carries the
+  current-page `mt-nav-here` highlight), so the banner was rebuilt there as native elements,
+  which is also what defines the shared `.mt-banner` / `.mt-banner-text` / `.mt-banner-btn`
+  classes the embed markup reuses.
+
+The site-wide footer snippet now routes leads **by Tally form id to the owning Meta pixel** with
+`trackSingle` (M&S `1625932185289127`, MT `1562555242035326`), re-using the
+`window.__mtPixelInitialized` flag from `music-together-analytics.ts`. Before this it fired a bare
+`fbq('track', 'Lead')` under a single hard-coded `form_name`, which on an MT page would have filed
+the lead into every initialized pixel.
+
+**Follow-ups**:
+- Subscribers live in Tally only. No MailerLite group / integration yet — deliberate, to be wired
+  in Tally's Integrations tab when the list is worth sending to.
+- `tallyLeadWebhook` is not connected to `q4Qj8d` (single `META_PIXEL_ID`, no per-form routing),
+  so MT signups have browser-side attribution only.
+
 ### Tally webhook timeouts — `maple-webhooks` codebase (2026-08-07)
 
 Tally reported five `timeout of 10000ms exceeded` failures (2026-07-30 → 2026-08-06), one per day

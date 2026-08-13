@@ -2,7 +2,16 @@
   Maple & Spruce — Tally email-signup analytics tracking
 
   Pushes a `generate_lead` event to the GA4 dataLayer AND a `Lead` event to
-  Meta Pixel whenever the Tally email-signup popup form is submitted.
+  Meta Pixel whenever a Tally email-signup popup form is submitted.
+
+  Two signup lists, two Meta pixels:
+    - Maple & Spruce updates (form 0QPRq9) → M&S pixel 1625932185289127
+    - Music Together updates (form q4Qj8d) → MT pixel 1562555242035326
+
+  The Meta half always uses `trackSingle`, never a bare `track` — MT pages
+  initialize both pixels, and a bare `track` broadcasts to every initialized
+  pixel, which would file each MT lead into the Maple & Spruce dataset too.
+  See docs/guides/music-together-ad-tracking.md.
 
   Paste destination:
     Webflow Designer → Site Settings (gear icon) → Custom Code →
@@ -15,7 +24,9 @@
        the live site, submit a real or test entry, watch for a
        `generate_lead` event row.
     4. Verify in Meta Events Manager → Test Events: confirm a `Lead` event
-       fires for pixel 1625932185289127.
+       fires for pixel 1625932185289127 (Maple & Spruce signup) and for
+       pixel 1562555242035326 (Music Together signup) — each on its own
+       pixel only, never both.
     5. In GA4 → Admin → Events: mark `generate_lead` as a conversion event.
        (Without this step the event fires but is not counted as a conversion.)
 
@@ -29,7 +40,29 @@
 
 <script>
   (function () {
-    var FORM_NAME = 'email-signup';
+    var MS_PIXEL_ID = '1625932185289127';
+    var MT_PIXEL_ID = '1562555242035326';
+
+    // Tally form id -> lead list name + the Meta pixel that owns it. Anything
+    // not listed (contact form, class interest, …) falls back to the default so
+    // a new one-off form still reports a lead against Maple & Spruce.
+    var FORMS = {
+      '0QPRq9': { name: 'email-signup', pixelId: MS_PIXEL_ID },
+      'q4Qj8d': { name: 'music-together-updates', pixelId: MT_PIXEL_ID },
+    };
+    var DEFAULT_FORM = { name: 'email-signup', pixelId: MS_PIXEL_ID };
+
+    // Mirrors ensureMusicTogetherPixel() in music-together-analytics.ts — same
+    // window flag, so the MT pixel is init'd at most once per page whether this
+    // snippet or an MT widget gets there first.
+    function ensureMusicTogetherPixel() {
+      if (typeof window.fbq !== 'function') return false;
+      if (window.__mtPixelInitialized) return true;
+      window.fbq('init', MT_PIXEL_ID);
+      window.fbq('trackSingle', MT_PIXEL_ID, 'PageView');
+      window.__mtPixelInitialized = true;
+      return true;
+    }
 
     window.addEventListener('message', function (event) {
       if (typeof event.data !== 'string') return;
@@ -43,22 +76,25 @@
         // not JSON — keep formId null and continue
       }
 
-      // GA4 via dataLayer (GTM container GTM-P5NDCZSX forwards to G-TY0E9X31V6)
+      var form = (formId && FORMS[formId]) || DEFAULT_FORM;
+
+      // GA4 via dataLayer (GTM container GTM-P5NDCZSX forwards to G-TY0E9X31V6).
+      // One property covers the whole business; `form_name` separates the lists.
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         event: 'generate_lead',
         form_id: formId,
-        form_name: FORM_NAME,
+        form_name: form.name,
       });
 
       // Meta Pixel — Lead standard event so Meta can optimize ads for email
       // signups and report on them in Ads Manager
-      if (typeof window.fbq === 'function') {
-        window.fbq('track', 'Lead', {
-          content_name: FORM_NAME,
-          content_category: 'newsletter',
-        });
-      }
+      if (typeof window.fbq !== 'function') return;
+      if (form.pixelId === MT_PIXEL_ID && !ensureMusicTogetherPixel()) return;
+      window.fbq('trackSingle', form.pixelId, 'Lead', {
+        content_name: form.name,
+        content_category: 'newsletter',
+      });
     });
   })();
 </script>
