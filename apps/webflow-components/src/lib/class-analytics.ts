@@ -11,7 +11,24 @@
  * as the `id` field in `mapClassToFeedItem` (libs/firebase/maple-functions/
  * class-catalog-feed). If those drift apart, catalog match rate drops to 0%
  * and Advantage+ catalog ads stop targeting these items.
+ *
+ * ## Pixel scoping
+ *
+ * Every event here is addressed to the Maple & Spruce pixel with
+ * `fbq('trackSingle', MAPLE_SPRUCE_PIXEL_ID, …)`. The site also loads the Music
+ * Together pixel on `/music-together*`, and a bare `fbq('track', …)` broadcasts
+ * to EVERY initialized pixel — which would file craft-class purchases into the
+ * Music Together dataset and train that ad account on the wrong conversions.
+ *
+ * Class pages and MT pages don't currently overlap, so nothing is broken today.
+ * This is scoped explicitly so that stays true if the MT pixel is ever loaded
+ * more widely. See `meta-pixels.ts`.
+ *
+ * Unlike the MT module, this does NOT init its pixel: GTM already initializes
+ * the Maple & Spruce pixel site-wide, and re-initializing could clobber the
+ * advanced-matching config GTM applies.
  */
+import { MAPLE_SPRUCE_PIXEL_ID } from './meta-pixels';
 
 const CURRENCY = 'USD';
 
@@ -40,7 +57,7 @@ export interface MetaPixelEvent {
   name: 'ViewContent' | 'AddToCart' | 'Purchase';
   params: Record<string, unknown>;
   /**
-   * Meta dedup key. When set, passed as `fbq('track', …, { eventID })` so a
+   * Meta dedup key. When set, passed as `fbq('trackSingle', …, { eventID })` so a
    * server-side Conversions API event carrying the same id (see
    * `sendRegistrationConversion`) is counted once, not twice.
    */
@@ -199,10 +216,18 @@ function dispatch(
   const w = asAnalyticsWindow(win);
   if (!w) return;
   if (typeof w.fbq === 'function') {
+    // trackSingle, never track — see the pixel-scoping note at the top of this
+    // file. A bare track() would also fire into the Music Together pixel.
     if (pixel.eventID) {
-      w.fbq('track', pixel.name, pixel.params, { eventID: pixel.eventID });
+      w.fbq(
+        'trackSingle',
+        MAPLE_SPRUCE_PIXEL_ID,
+        pixel.name,
+        pixel.params,
+        { eventID: pixel.eventID }
+      );
     } else {
-      w.fbq('track', pixel.name, pixel.params);
+      w.fbq('trackSingle', MAPLE_SPRUCE_PIXEL_ID, pixel.name, pixel.params);
     }
   }
   const layer = w.dataLayer ?? [];
