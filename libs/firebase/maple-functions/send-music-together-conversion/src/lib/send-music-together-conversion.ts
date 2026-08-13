@@ -14,9 +14,9 @@
  * ad account (`act_1309930134551145`) with its own pixel (`1562555242035326`,
  * "Music Together data"), so these events go to `META_PIXEL_ID_MUSIC_TOGETHER`,
  * NOT the Maple & Spruce `META_PIXEL_ID`. Mixing them would train the craft-class
- * campaigns on MT enrollments and vice versa. The `META_CAPI_TOKEN` system user
- * covers both pixels, so no new secret is required — but the MT pixel must be
- * assigned to that system user in Business Settings or every send 403s.
+ * campaigns on MT enrollments and vice versa. Both ad accounts sit in the same
+ * business portfolio and the `META_CAPI_TOKEN` system user already holds
+ * "Use events dataset" on the MT dataset, so no new secret and no extra setup.
  *
  * The browser twin lives in `apps/webflow-components/src/lib/music-together-
  * analytics.ts` and must stay pointed at the same pixel id.

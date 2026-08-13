@@ -66,29 +66,37 @@ Two ways to break this, both of which silently double-count every enrollment:
 pixel (against the emulator + CAPI mock server), and the widget specs assert
 the browser side's `eventID` and `value`.
 
-## Manual Meta setup (one-time, not in code)
+## System user access — already configured
 
-1. **Assign the pixel to the CAPI system user.** Business Settings → Users →
-   System Users → the `META_CAPI_TOKEN` user → Add Assets → Data Sources →
-   "Music Together data" → Manage. Without this, every server-side MT
-   conversion 403s while the browser events keep working — so the symptom is
-   quietly halved attribution, not an outage.
+**Conversions API System User** (`61573278578829`), in the Maple & Spruce Folk
+Arts portfolio, already holds the MT pixel as an assigned asset:
 
-   Both ad accounts live in the **Maple & Spruce Folk Arts** portfolio, so one
-   system user covers both pixels and no second token is needed. But portfolio
-   membership only makes the system user *eligible* — Meta assigns data sources
-   per asset, and a newly created pixel is not auto-attached to existing system
-   users.
+| Asset type | Asset | Permission |
+|---|---|---|
+| Pixels | Music Together data | View Pixels |
+| Pixels | Maple & Spruce | View Pixels |
+| Datasets | Music Together data | **Use events dataset** |
+| Datasets | Maple & Spruce | **Use events dataset** |
 
-   **Check the pixel's owning portfolio first.** There is a second, near-empty
-   portfolio named "Music Together Maple & Spruce" (0 ad accounts). If the pixel
-   was created under that one rather than Folk Arts, it is a cross-portfolio
-   asset and a plain assign won't reach it — you'd need asset sharing between
-   the two portfolios. Verify at Events Manager → Data Sources →
-   "Music Together data" → Settings → owning business.
-2. **Mark the conversions.** Events Manager → the MT dataset → confirm `Lead`,
+The **Datasets → "Use events dataset"** row is the one that authorizes CAPI
+sends; "View Pixels" alone is read-only. Music Together's permission pair is
+identical to Maple & Spruce's, and M&S CAPI works in production today — so no
+setup is needed and no new secret or second system user is involved.
+
+This also settles pixel ownership: the MT pixel belongs to the Folk Arts
+portfolio, not the separate near-empty "Music Together Maple & Spruce"
+portfolio, so there is no cross-portfolio asset sharing to arrange.
+
+If MT conversions ever start 403ing, this table is the first place to look —
+specifically whether the *Datasets* assignment survived, not just the Pixels
+one. The failure is silent (`sendMusicTogetherConversion` logs and swallows),
+so the symptom is quietly halved attribution rather than an outage.
+
+## Remaining setup
+
+1. **Mark the conversions.** Events Manager → the MT dataset → confirm `Lead`,
    `Schedule`, and `Purchase` appear once traffic starts.
-3. **GA4.** `schedule` is a custom event — mark it as a key event in
+2. **GA4.** `schedule` is a custom event — mark it as a key event in
    GA4 → Admin → Events if you want it counted as a conversion. `generate_lead`
    and `purchase` are already marked from the craft-class setup.
 
