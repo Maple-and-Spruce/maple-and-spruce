@@ -19,6 +19,11 @@ import { EMULATOR_CONFIG } from '@maple/firebase/integration-test-utils';
 // Must match what tools/run-integration-tests.sh writes to .secret.local
 const TALLY_SECRET = 'test-tally-secret';
 const META_PIXEL_ID = 'test-pixel-id';
+const META_PIXEL_ID_MUSIC_TOGETHER = 'test-mt-pixel-id';
+
+// Live Tally form ids the function routes on.
+const MAPLE_SPRUCE_FORM_ID = '0QPRq9';
+const MUSIC_TOGETHER_FORM_ID = 'q4Qj8d';
 
 const WEBHOOK_URL = `${EMULATOR_CONFIG.functionsHost}/${EMULATOR_CONFIG.projectId}/${EMULATOR_CONFIG.region}/tallyLeadWebhook`;
 const GA4_MOCK_URL = EMULATOR_CONFIG.ga4MockServerUrl;
@@ -32,6 +37,8 @@ interface TallyHiddenField {
 
 function tallyPayload(overrides: {
   email?: string | null;
+  formId?: string;
+  submissionId?: string;
   hidden?: Partial<{
     gaClientId: string;
     fbp: string;
@@ -82,8 +89,8 @@ function tallyPayload(overrides: {
     eventType: 'FORM_RESPONSE',
     createdAt: new Date().toISOString(),
     data: {
-      submissionId: `sub-${Date.now()}`,
-      formId: 'test-form',
+      submissionId: overrides.submissionId ?? `sub-${Date.now()}`,
+      formId: overrides.formId ?? 'test-form',
       fields,
     },
   };
@@ -319,6 +326,116 @@ describe('tallyLeadWebhook', () => {
       expect(result.status).toBe(200);
       expect(await getGa4Requests()).toHaveLength(1);
       expect(await getMetaRequests()).toHaveLength(1);
+    });
+  });
+
+  describe('Per-form pixel routing', () => {
+    // Music Together advertises from its own ad account against its own pixel.
+    // A misrouted lead is worse than a missing one: it pollutes the Maple &
+    // Spruce dataset AND starves the MT campaign that paid for the click.
+    it('sends a Music Together signup to the Music Together pixel only', async () => {
+      const result = await postWebhook({
+        body: tallyPayload({
+          email: 'mt-parent@example.com',
+          formId: MUSIC_TOGETHER_FORM_ID,
+        }),
+        signWith: TALLY_SECRET,
+      });
+
+      expect(result.status).toBe(200);
+      const metaRequests = await getMetaRequests();
+      expect(metaRequests).toHaveLength(1);
+      expect(metaRequests[0].pixelId).toBe(META_PIXEL_ID_MUSIC_TOGETHER);
+      expect(metaRequests[0].pixelId).not.toBe(META_PIXEL_ID);
+    });
+
+    it('sends a Maple & Spruce signup to the Maple & Spruce pixel', async () => {
+      const result = await postWebhook({
+        body: tallyPayload({
+          email: 'ms-lead@example.com',
+          formId: MAPLE_SPRUCE_FORM_ID,
+        }),
+        signWith: TALLY_SECRET,
+      });
+
+      expect(result.status).toBe(200);
+      const metaRequests = await getMetaRequests();
+      expect(metaRequests).toHaveLength(1);
+      expect(metaRequests[0].pixelId).toBe(META_PIXEL_ID);
+    });
+
+    it('falls back to the Maple & Spruce pixel for an unrecognized form', async () => {
+      const result = await postWebhook({
+        body: tallyPayload({ formId: 'some-new-form' }),
+        signWith: TALLY_SECRET,
+      });
+
+      expect(result.status).toBe(200);
+      const metaRequests = await getMetaRequests();
+      expect(metaRequests).toHaveLength(1);
+      expect(metaRequests[0].pixelId).toBe(META_PIXEL_ID);
+    });
+
+    it('labels each list on both beacons so one GA4 property stays separable', async () => {
+      const result = await postWebhook({
+        body: tallyPayload({
+          email: 'mt-parent@example.com',
+          formId: MUSIC_TOGETHER_FORM_ID,
+        }),
+        signWith: TALLY_SECRET,
+      });
+      expect(result.status).toBe(200);
+
+      const ga4Body = (await getGa4Requests())[0].body as {
+        events: Array<{ params: Record<string, string> }>;
+      };
+      expect(ga4Body.events[0].params).toMatchObject({
+        form_name: 'music-together-updates',
+        form_id: MUSIC_TOGETHER_FORM_ID,
+      });
+
+      const metaBody = (await getMetaRequests())[0].body as {
+        data: Array<{ custom_data: Record<string, unknown> }>;
+      };
+      expect(metaBody.data[0].custom_data).toMatchObject({
+        content_name: 'music-together-updates',
+        content_category: 'newsletter',
+      });
+    });
+  });
+
+  describe('Browser/server deduplication', () => {
+    // The footer snippet fires the same Lead from the browser. Without a
+    // shared event id Meta counts every signup twice and the ad account
+    // optimizes against inflated lead volume.
+    it('stamps the Tally submission id as the Meta event id', async () => {
+      const result = await postWebhook({
+        body: tallyPayload({ submissionId: 'Nqbzlrl' }),
+        signWith: TALLY_SECRET,
+      });
+
+      expect(result.status).toBe(200);
+      const metaBody = (await getMetaRequests())[0].body as {
+        data: Array<{ event_id?: string }>;
+      };
+      expect(metaBody.data[0].event_id).toBe('tally-Nqbzlrl');
+    });
+
+    it('still sends the Lead when Tally omits the submission id', async () => {
+      const body = tallyPayload({ email: 'no-id@example.com' }) as {
+        data: Record<string, unknown>;
+      };
+      delete body.data['submissionId'];
+
+      const result = await postWebhook({ body, signWith: TALLY_SECRET });
+
+      expect(result.status).toBe(200);
+      const metaRequests = await getMetaRequests();
+      expect(metaRequests).toHaveLength(1);
+      const metaBody = metaRequests[0].body as {
+        data: Array<{ event_id?: string }>;
+      };
+      expect(metaBody.data[0].event_id).toBeUndefined();
     });
   });
 

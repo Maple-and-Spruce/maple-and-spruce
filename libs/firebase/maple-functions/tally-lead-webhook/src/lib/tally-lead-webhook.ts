@@ -16,6 +16,17 @@
  * are logged but never block the ack — one channel succeeding still beats
  * zero.
  *
+ * TWO LISTS, TWO PIXELS
+ * ---------------------
+ * The site runs two signup forms: Maple & Spruce updates and Music Together
+ * updates. They report to different Meta datasets, so the Meta half is routed
+ * by Tally form id (see `resolveFormAttribution`) and the GA4 half carries
+ * `form_name` / `form_id` to keep the single GA4 property separable.
+ *
+ * The browser fires the same pair from tools/webflow-tally-form-events.html,
+ * so both halves stamp `eventId` = `tally-<submissionId>` and Meta counts each
+ * signup once (see `leadEventId`).
+ *
  * THE 10-SECOND BUDGET
  * --------------------
  * Tally hangs up at 10s and records the submission as failed. It does NOT
@@ -62,6 +73,9 @@ const ga4MeasurementId = defineString('GA4_MEASUREMENT_ID', {
 const metaPixelId = defineString('META_PIXEL_ID', {
   default: '1625932185289127',
 });
+const metaPixelIdMusicTogether = defineString('META_PIXEL_ID_MUSIC_TOGETHER', {
+  default: '1562555242035326',
+});
 const ga4BaseUrl = defineString('GA4_BASE_URL', {
   default: 'https://www.google-analytics.com',
 });
@@ -71,6 +85,71 @@ const metaCapiBaseUrl = defineString('META_CAPI_BASE_URL', {
 const metaCapiApiVersion = defineString('META_CAPI_API_VERSION', {
   default: 'v20.0',
 });
+
+/**
+ * Which subscriber list a Tally form feeds, and which Meta dataset owns it.
+ *
+ * Music Together advertises from its own ad account against its own pixel, so
+ * an MT lead sent to the Maple & Spruce pixel is worse than no lead at all —
+ * it pollutes one dataset and starves the other. See
+ * docs/guides/music-together-ad-tracking.md.
+ *
+ * Keep in sync with `FORMS` in tools/webflow-tally-form-events.html. That
+ * snippet is the browser half of this exact event; the two are deduplicated
+ * against each other by `eventId` (see `leadEventId`), which only works if
+ * they agree on which pixel the event belongs to.
+ */
+export type TallyLeadAudience = 'maple-spruce' | 'music-together';
+
+export interface TallyFormAttribution {
+  /** Lead list name, reported as GA4 `form_name` / Meta `content_name`. */
+  formName: string;
+  audience: TallyLeadAudience;
+}
+
+// A Map, not an object literal: the key comes straight off the request body,
+// and a plain-object lookup for "constructor" / "toString" would return an
+// Object.prototype member instead of falling through to the default.
+const TALLY_FORM_ATTRIBUTION = new Map<string, TallyFormAttribution>([
+  ['0QPRq9', { formName: 'email-signup', audience: 'maple-spruce' }],
+  [
+    'q4Qj8d',
+    { formName: 'music-together-updates', audience: 'music-together' },
+  ],
+]);
+
+/**
+ * Unrecognized forms report as a Maple & Spruce lead rather than being
+ * dropped. A new one-off form wired to this webhook should still show up
+ * somewhere; the cost of the wrong label is far lower than a silent zero.
+ */
+export const DEFAULT_FORM_ATTRIBUTION: TallyFormAttribution = {
+  formName: 'email-signup',
+  audience: 'maple-spruce',
+};
+
+export function resolveFormAttribution(formId?: string): TallyFormAttribution {
+  if (!formId) return DEFAULT_FORM_ATTRIBUTION;
+  return TALLY_FORM_ATTRIBUTION.get(formId) ?? DEFAULT_FORM_ATTRIBUTION;
+}
+
+/**
+ * Deduplication key shared with the browser Pixel.
+ *
+ * Both halves fire for every submission — the footer snippet on
+ * `Tally.FormSubmitted`, this function on the webhook — so without a shared id
+ * Meta counts each signup twice and the MT ad account optimizes against
+ * inflated lead volume.
+ *
+ * Tally puts the same submission id in both places: `payload.id` on the
+ * browser postMessage and `data.submissionId` on the webhook body (verified
+ * against a live submission — both read `Nqbzlrl`). Returns undefined when
+ * Tally omits it, in which case Meta falls back to counting the event on its
+ * own; better a possible double-count than a dropped conversion.
+ */
+export function leadEventId(submissionId?: string): string | undefined {
+  return submissionId ? `tally-${submissionId}` : undefined;
+}
 
 interface TallyField {
   key?: string;
@@ -170,7 +249,13 @@ const META_TIMEOUT_MS = 4_000;
 
 async function sendGa4Event(
   lead: TallyLeadValidationInput,
-  config: { baseUrl: string; measurementId: string; apiSecret: string }
+  config: {
+    baseUrl: string;
+    measurementId: string;
+    apiSecret: string;
+    formId?: string;
+    formName: string;
+  }
 ): Promise<void> {
   const url = `${config.baseUrl}/mp/collect?measurement_id=${encodeURIComponent(
     config.measurementId
@@ -183,7 +268,10 @@ async function sendGa4Event(
     lead.gaClientId ||
     `server.${Date.now()}.${Math.floor(Math.random() * 1e10)}`;
 
-  const params: Record<string, string> = {};
+  // GA4 is one property for the whole business, so the list has to travel on
+  // the event itself — same names the browser snippet pushes to the dataLayer.
+  const params: Record<string, string> = { form_name: config.formName };
+  if (config.formId) params['form_id'] = config.formId;
   if (lead.utmSource) params['source'] = lead.utmSource;
   if (lead.utmMedium) params['medium'] = lead.utmMedium;
   if (lead.utmCampaign) params['campaign'] = lead.utmCampaign;
@@ -228,22 +316,30 @@ function sendLeadToMeta(
     apiVersion: string;
     pixelId: string;
     accessToken: string;
+    formName: string;
+    eventId?: string;
   }
 ): Promise<void> {
-  const utm: Record<string, string> = {};
-  if (lead.utmSource) utm['utm_source'] = lead.utmSource;
-  if (lead.utmMedium) utm['utm_medium'] = lead.utmMedium;
-  if (lead.utmCampaign) utm['utm_campaign'] = lead.utmCampaign;
-  if (lead.utmContent) utm['utm_content'] = lead.utmContent;
-  if (lead.utmTerm) utm['utm_term'] = lead.utmTerm;
+  const { formName, eventId, ...capiConfig } = config;
+
+  const customData: Record<string, string> = {
+    content_name: formName,
+    content_category: 'newsletter',
+  };
+  if (lead.utmSource) customData['utm_source'] = lead.utmSource;
+  if (lead.utmMedium) customData['utm_medium'] = lead.utmMedium;
+  if (lead.utmCampaign) customData['utm_campaign'] = lead.utmCampaign;
+  if (lead.utmContent) customData['utm_content'] = lead.utmContent;
+  if (lead.utmTerm) customData['utm_term'] = lead.utmTerm;
 
   if (!lead.email) {
     throw new Error('Cannot send Meta CAPI Lead without an email');
   }
 
-  return sendMetaCapiEvents({ ...config, timeoutMs: META_TIMEOUT_MS }, [
+  return sendMetaCapiEvents({ ...capiConfig, timeoutMs: META_TIMEOUT_MS }, [
     {
       eventName: 'Lead',
+      eventId,
       actionSource: 'website',
       eventSourceUrl: lead.landingPage,
       user: {
@@ -253,7 +349,7 @@ function sendLeadToMeta(
         ip: ctx.ip,
         userAgent: ctx.userAgent,
       },
-      customData: utm,
+      customData,
     },
   ]);
 }
@@ -317,17 +413,28 @@ export const tallyLeadWebhook = onRequest(
       userAgent: request.headers['user-agent'] as string | undefined,
     };
 
+    const formId = payload.data?.formId;
+    const attribution = resolveFormAttribution(formId);
+    const pixelId =
+      attribution.audience === 'music-together'
+        ? metaPixelIdMusicTogether.value()
+        : metaPixelId.value();
+
     const [ga4Result, metaResult] = await Promise.allSettled([
       sendGa4Event(lead, {
         baseUrl: ga4BaseUrl.value(),
         measurementId: ga4MeasurementId.value(),
         apiSecret: ga4ApiSecret.value(),
+        formId,
+        formName: attribution.formName,
       }),
       sendLeadToMeta(lead, ctx, {
         baseUrl: metaCapiBaseUrl.value(),
         apiVersion: metaCapiApiVersion.value(),
-        pixelId: metaPixelId.value(),
+        pixelId,
         accessToken: metaCapiToken.value(),
+        formName: attribution.formName,
+        eventId: leadEventId(payload.data?.submissionId),
       }),
     ]);
 
