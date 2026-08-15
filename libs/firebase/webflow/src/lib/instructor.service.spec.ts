@@ -219,6 +219,34 @@ describe('InstructorService', () => {
       }));
     });
 
+    it('creates a DEV item as a draft so a full-site publish never makes it live', async () => {
+      items().listItems.mockResolvedValue({ items: [] });
+      items().createItem.mockResolvedValue({ id: 'wf-dev-1' });
+
+      await service.syncInstructor({ instructor: testInstructor, isDev: true });
+
+      expect(items().createItem).toHaveBeenCalledWith(
+        collectionId,
+        expect.objectContaining({ isDraft: true })
+      );
+      expect(items().publishItem).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing DEV item as a draft on update', async () => {
+      items().listItems.mockResolvedValue({
+        items: [{ id: 'wf-existing', fieldData: { 'firebase-id': 'inst-001' } }],
+      });
+      items().updateItem.mockResolvedValue({});
+
+      await service.syncInstructor({ instructor: testInstructor, isDev: true });
+
+      expect(items().updateItem).toHaveBeenCalledWith(
+        collectionId,
+        'wf-existing',
+        expect.objectContaining({ isDraft: true })
+      );
+    });
+
     it('updates an existing item when instructor exists in Webflow', async () => {
       items().listItems.mockResolvedValue({
         items: [{ id: 'wf-existing', fieldData: { 'firebase-id': 'inst-001' } }],
