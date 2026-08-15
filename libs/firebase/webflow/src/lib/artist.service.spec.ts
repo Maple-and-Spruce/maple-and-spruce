@@ -227,6 +227,44 @@ describe('ArtistService', () => {
       );
     });
 
+    it('creates a DEV item as a draft so a full-site publish never makes it live', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-dev-item',
+      });
+
+      await service.syncArtist({
+        artist: mockArtist,
+        publish: false,
+        isDev: true,
+      });
+
+      expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        expect.objectContaining({ isDraft: true })
+      );
+      expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing DEV item as a draft on update', async () => {
+      mockClient.collections.items.listItems.mockResolvedValue({
+        items: [{ id: 'wf-existing', fieldData: { 'firebase-id': 'artist-abc' } }],
+      });
+      mockClient.collections.items.updateItem.mockResolvedValue({});
+
+      await service.syncArtist({
+        artist: mockArtist,
+        publish: false,
+        isDev: true,
+      });
+
+      expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
+        COLLECTION_ID,
+        'wf-existing',
+        expect.objectContaining({ isDraft: true })
+      );
+    });
+
     it('updates an existing Webflow item when artist already exists', async () => {
       mockClient.collections.items.listItems.mockResolvedValue({
         items: [
