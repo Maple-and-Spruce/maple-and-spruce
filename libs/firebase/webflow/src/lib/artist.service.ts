@@ -325,11 +325,13 @@ export class ArtistService {
   ): Promise<WebflowItemWithId> {
     const fieldData = mapArtistToFieldData(artist, { isDev });
 
+    // Dev-synced items are kept as drafts so a full-site publish can never make
+    // them live (mirrors the class/MT section sync). Prod items are non-draft.
     const response = await this.client.collections.items.createItem(
       this.collectionId,
       {
         isArchived: false,
-        isDraft: false, // Publish immediately
+        isDraft: isDev,
         fieldData,
       }
     );
@@ -357,7 +359,7 @@ export class ArtistService {
     const { slug: _slug, ...fieldDataWithoutSlug } = fieldData;
     await this.client.collections.items.updateItem(this.collectionId, itemId, {
       isArchived: false,
-      isDraft: false,
+      isDraft: isDev,
       fieldData: fieldDataWithoutSlug,
     });
   }
