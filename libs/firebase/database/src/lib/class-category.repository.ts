@@ -31,6 +31,7 @@ function docToClassCategory(
     order: data.order,
     icon: data.icon,
     galleryImages: data.galleryImages,
+    webflowItemId: data.webflowItemId,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -166,6 +167,17 @@ export const ClassCategoryRepository = {
     await batch.commit();
 
     return this.findAll();
+  },
+
+  /**
+   * Store the Webflow CMS item ID after a sync.
+   *
+   * Written directly rather than through `update()` so it does not bump
+   * `updatedAt` — the sync trigger fires on every write, and touching the
+   * timestamp here would re-trigger it in a loop.
+   */
+  async updateWebflowItemId(id: string, webflowItemId: string): Promise<void> {
+    await db.collection(COLLECTION).doc(id).update({ webflowItemId });
   },
 
   /**

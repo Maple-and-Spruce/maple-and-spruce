@@ -45,6 +45,13 @@ export interface SyncClassInput {
   instructorImage?: string;
   /** Enriched category name (denormalized) */
   categoryName?: string;
+  /**
+   * Webflow item ID of this class's category in the Class Categories
+   * collection. Populates the `category` Reference field, which is what lets
+   * the class template page filter a Collection List to "other classes in this
+   * class's category" without a Cloud Function call (#776).
+   */
+  categoryWebflowItemId?: string;
   /** Current registration count for spots remaining calculation */
   registrationCount?: number;
   /**
@@ -108,6 +115,7 @@ export interface MapClassOptions {
   instructorBio?: string;
   instructorImage?: string;
   categoryName?: string;
+  categoryWebflowItemId?: string;
   registrationCount?: number;
 }
 
@@ -240,6 +248,13 @@ export function mapClassToFieldData(
     fieldData['category-name'] = options.categoryName;
   }
 
+  // The `category` Reference field drives the native related-classes list on
+  // the class template page. Only set when known — writing an empty string
+  // would clear a previously-linked reference on every partial sync.
+  if (options.categoryWebflowItemId) {
+    fieldData['category'] = options.categoryWebflowItemId;
+  }
+
   return fieldData;
 }
 
@@ -265,6 +280,7 @@ export class ClassService {
       instructorBio,
       instructorImage,
       categoryName,
+      categoryWebflowItemId,
       registrationCount,
       existingWebflowItemId,
     } = input;
@@ -284,6 +300,7 @@ export class ClassService {
       instructorBio,
       instructorImage,
       categoryName,
+      categoryWebflowItemId,
       registrationCount,
     });
 

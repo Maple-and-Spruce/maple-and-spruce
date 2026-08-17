@@ -28,6 +28,15 @@ export {
   mapClassToFieldData,
 } from './lib/class.service';
 
+// Class category service
+export {
+  ClassCategoryService,
+  type SyncClassCategoryInput,
+  type SyncClassCategoryResult,
+  type ClassCategoryWebflowFieldData,
+  mapClassCategoryToFieldData,
+} from './lib/class-category.service';
+
 // Instructor service
 export {
   InstructorService,
