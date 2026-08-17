@@ -205,6 +205,27 @@ describe('mapClassToFieldData', () => {
     });
   });
 
+  it('sets is-full only when no spots remain', () => {
+    // Webflow conditional visibility isn't API-authorable, so the sold-out
+    // related-classes block binds its visibility to this switch instead.
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 3 })[
+        'is-full'
+      ]
+    ).toBe(false);
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 10 })[
+        'is-full'
+      ]
+    ).toBe(true);
+    // Overbooked classes are still full, not "un-full".
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 12 })[
+        'is-full'
+      ]
+    ).toBe(true);
+  });
+
   it('maps categoryWebflowItemId to the category Reference field', () => {
     // This reference is what lets the class template page filter a Collection
     // List to "other classes in this class's category" — a plain-text

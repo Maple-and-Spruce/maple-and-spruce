@@ -17,8 +17,10 @@
  *   1. Every `classCategories` doc without a `webflowItemId` is created in the
  *      Class Categories collection (or matched to an existing item by
  *      `firebase-id`), published, and the ID written back to Firestore.
- *   2. Every synced class whose live Webflow item has no `category` reference
- *      is PATCHed with its category's item ID and republished.
+ *   2. Every synced class is PATCHed with its category's item ID (when not
+ *      already linked) and with `is-full`, then republished. `is-full` is what
+ *      the related-classes block binds its visibility to, and it only lands on
+ *      an item when that class next syncs.
  *
  * Credentials:
  *   - Firebase: Application Default Credentials
@@ -224,7 +226,12 @@ async function backfillCategories(): Promise<Map<string, string>> {
 }
 
 /**
- * Pass 2 — point every synced class item at its category.
+ * Pass 2 — point every synced class item at its category and set `is-full`.
+ *
+ * `is-full` is what the related-classes block on the class template page binds
+ * its visibility to, and it only lands on an item when that class next syncs.
+ * A class that filled up before this shipped would otherwise never show the
+ * section, so it is backfilled here from the live spots count.
  */
 async function backfillClassReferences(
   categoryItemIds: Map<string, string>
@@ -232,41 +239,61 @@ async function backfillClassReferences(
   const snap = await db.collection('classes').get();
   const liveItems = await itemsByFirebaseId(classesCollectionId!);
 
-  const toUpdate: { name: string; itemId: string; categoryItemId: string }[] =
-    [];
+  const toUpdate: {
+    name: string;
+    itemId: string;
+    fieldData: Record<string, unknown>;
+  }[] = [];
   let missingCategory = 0;
 
   for (const doc of snap.docs) {
     const data = doc.data();
     const name = (data['name'] as string) ?? '(unnamed)';
-    const categoryId = data['categoryId'];
-    if (typeof categoryId !== 'string' || !categoryId) continue;
 
     const live = liveItems.get(doc.id);
     if (!live) continue; // never synced, or unpublished past class
 
-    // Already linked — Webflow returns a reference as the target item ID.
-    if (typeof live.fieldData['category'] === 'string' && live.fieldData['category']) {
-      continue;
+    const fieldData: Record<string, unknown> = {};
+
+    // Derive is-full from what Webflow already believes about spots, so this
+    // stays consistent with the spots-display the visitor sees on the card.
+    const spotsRemaining = live.fieldData['spots-remaining'];
+    if (typeof spotsRemaining === 'number') {
+      const isFull = spotsRemaining <= 0;
+      if (live.fieldData['is-full'] !== isFull) {
+        fieldData['is-full'] = isFull;
+      }
     }
 
-    const categoryItemId = categoryItemIds.get(categoryId);
-    if (!categoryItemId) {
-      missingCategory++;
-      console.warn(
-        `  ! ${name}: category ${categoryId} has no Webflow item; skipping`
-      );
-      continue;
+    const categoryId = data['categoryId'];
+    const alreadyLinked =
+      typeof live.fieldData['category'] === 'string' &&
+      !!live.fieldData['category'];
+
+    if (typeof categoryId === 'string' && categoryId && !alreadyLinked) {
+      const categoryItemId = categoryItemIds.get(categoryId);
+      if (categoryItemId) {
+        fieldData['category'] = categoryItemId;
+      } else {
+        missingCategory++;
+        console.warn(
+          `  ! ${name}: category ${categoryId} has no Webflow item; skipping the link`
+        );
+      }
     }
 
-    toUpdate.push({ name, itemId: live.id, categoryItemId });
+    if (Object.keys(fieldData).length > 0) {
+      toUpdate.push({ name, itemId: live.id, fieldData });
+    }
   }
 
   console.log(
-    `\nClasses: ${liveItems.size} live in Webflow, ${toUpdate.length} need a ` +
-      `category reference, ${missingCategory} blocked on a missing category.`
+    `\nClasses: ${liveItems.size} live in Webflow, ${toUpdate.length} need an ` +
+      `update, ${missingCategory} blocked on a missing category.`
   );
-  for (const c of toUpdate) console.log(`  link: ${c.name}`);
+  for (const c of toUpdate) {
+    console.log(`  update: ${c.name} -> ${JSON.stringify(c.fieldData)}`);
+  }
 
   if (!isExecute) return;
 
@@ -279,7 +306,7 @@ async function backfillClassReferences(
         {
           isArchived: false,
           isDraft: isDev,
-          fieldData: { category: c.categoryItemId },
+          fieldData: c.fieldData,
         }
       );
       if (!isDev) {
@@ -296,7 +323,7 @@ async function backfillClassReferences(
       );
     }
   }
-  console.log(`\nLinked ${written} class item(s) to their category.`);
+  console.log(`\nUpdated ${written} class item(s).`);
 }
 
 async function main(): Promise<void> {

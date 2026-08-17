@@ -177,6 +177,11 @@ export function mapClassToFieldData(
     'price-cents': classEntity.priceCents,
     capacity: classEntity.capacity,
     'spots-remaining': spotsRemaining,
+    // Webflow conditional visibility can't be authored through the API, but an
+    // element's visibility CAN bind to a Switch field. This is what shows the
+    // sold-out "Other upcoming dates" list on the class template page, so the
+    // rule lives here in code rather than as a Designer-only setting (#776).
+    'is-full': spotsRemaining <= 0,
     'price-display': priceDisplay,
     'duration-display': durationDisplay,
     'spots-display': spotsDisplay,
