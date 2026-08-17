@@ -205,6 +205,30 @@ describe('mapClassToFieldData', () => {
     });
   });
 
+  it('maps categoryWebflowItemId to the category Reference field', () => {
+    // This reference is what lets the class template page filter a Collection
+    // List to "other classes in this class's category" — a plain-text
+    // category-name cannot express that filter.
+    const result = mapClassToFieldData(mockClass, {
+      isDev: false,
+      categoryName: 'Ceramics',
+      categoryWebflowItemId: 'wf-cat-1',
+    });
+
+    expect(result['category']).toBe('wf-cat-1');
+  });
+
+  it('leaves the category reference untouched when the item ID is unknown', () => {
+    // Writing an empty value here would clear a previously-linked reference and
+    // silently empty that class's related list on the live site.
+    const result = mapClassToFieldData(mockClass, {
+      isDev: false,
+      categoryName: 'Ceramics',
+    });
+
+    expect(result).not.toHaveProperty('category');
+  });
+
   it('uses fallback alt text for instructor image when no name provided', () => {
     const result = mapClassToFieldData(mockClass, {
       isDev: false,
