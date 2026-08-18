@@ -1,67 +1,97 @@
 /**
  * Send Music Together Reminders
  *
- * Day-of reminder emails for enrolled Music Together families, mirroring
- * `sendClassReminders` (which only covers the regular class program — MT
- * sections are a separate entity and were previously getting no reminder).
- *
- * Two exports share the same logic:
+ * The daily Music Together reminder run. Two exports share one implementation:
  *   - `sendMusicTogetherReminders` — scheduled, daily 08:00 America/New_York.
  *   - `triggerMusicTogetherReminders` — admin-only HTTPS callable running the
  *     same logic on demand. Useful for manual catch-up, and (importantly) gives
  *     integration tests a way to drive it — the emulator doesn't expose
  *     `onSchedule` triggers over HTTP.
  *
- * Per run:
- *   1. Compute today's window in America/New_York.
- *   2. Find every publicly-visible section with a session inside the window.
- *   3. For each, email every confirmed family once per session — keyed by the
- *      session's ISO `dateTime` in `reminderSentForSessions` so a second run on
- *      the same day is a no-op (run-twice idempotent).
+ * FIVE PASSES, all idempotent, per run (#778):
  *
- * Each reminder carries the family's auto-updating calendar subscribe link
+ *   Enrolled families (sections)
+ *     A. Day-of reminder for every section meeting TODAY. Weekly nudge for a
+ *        class the family already attends. Keyed per session ISO in
+ *        `reminderSentForSessions`.
+ *     B. One week before the section's FIRST session.
+ *     C. Two days before the section's FIRST session.
+ *
+ *   Demo families (free try-a-class RSVPs)
+ *     D. One week before the demo.
+ *     E. Two days before the demo — this one also carries the founding-family
+ *        enrollment nudge (take-home instrument kit), per Stephanie's sequence.
+ *
+ * Passes B–E are the "getting ready for your first visit" sequence: arrive ten
+ * minutes early, dress for the floor, come as you are. They fire ONCE per
+ * family per class, unlike pass A which recurs weekly.
+ *
+ * WHY DEMOS AND SECTIONS DIFFER: pass A is same-day because an enrolled family
+ * attends the same section every week and needs a nudge, not a plan. Demos are
+ * one-off, often booked weeks ahead, and frequently OFFSITE (a public library,
+ * not Maple & Spruce) — so they get lead time instead, and their location is
+ * always read from the demo record rather than assumed to be Beulah Road.
+ *
+ * Idempotency: section passes stamp `reminderSentForSessions` (pass A under the
+ * raw session ISO, passes B/C under `pre7:`/`pre48:` prefixed keys so they can't
+ * collide with the day-of stamp for the same session). Demo passes stamp
+ * `reminder7dSentAt` / `reminder48hSentAt` on the RSVP. A second run on the same
+ * day is a no-op throughout.
+ *
+ * Section reminders carry the family's auto-updating calendar subscribe link
  * (webcal://) so recipients can subscribe once and stop asking "when is my
  * class again?".
  *
- * Emails are queued via the firestore-send-email extension (`mail` collection),
- * rendered from the `music-together-reminder` Handlebars template (seeded by
- * `tools/seed-email-templates.ts`).
+ * Emails are queued through `queueMail` (which brands them as Music Together
+ * and is the swap point for #775), rendered from Handlebars templates seeded by
+ * `tools/seed-email-templates.ts`.
  *
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
-import { getFirestore } from 'firebase-admin/firestore';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import {
   Functions,
   Role,
-  isE2ETestEmail,
+  queueMail,
   familyCalendarSubscribeUrl,
 } from '@maple/firebase/functions';
 import {
   MusicTogetherSectionRepository,
   MusicTogetherRegistrationRepository,
+  MusicTogetherDemoRepository,
+  MusicTogetherDemoRsvpRepository,
 } from '@maple/firebase/database';
-import type {
-  MusicTogetherSection,
-  MusicTogetherSession,
-  MusicTogetherRegistration,
+import {
+  MT_DEMO_TITLE,
+  MT_DEFAULT_LOCATION,
+  formatNameList,
+  type MusicTogetherSection,
+  type MusicTogetherSession,
+  type MusicTogetherRegistration,
+  type MusicTogetherDemo,
+  type MusicTogetherDemoRsvp,
 } from '@maple/ts/domain';
 
 const TIMEZONE = 'America/New_York';
 
-/** Default MT class location; sections may override via `location`. */
-const DEFAULT_MT_LOCATION = '688 Beulah Rd, Morgantown, WV 26508';
+/** Lead times for the pre-first-class sequence, in whole ET days. */
+const LEAD_DAYS = { '7d': 7, '48h': 2 } as const;
+type Lead = keyof typeof LEAD_DAYS;
 
 export interface SendMusicTogetherRemindersResult {
-  /** Reminder emails queued in the `mail` collection. */
+  /** Reminder emails queued in the `mail` collection (all five passes). */
   mailQueued: number;
-  /** Skipped: family already reminded for this session. */
+  /** Skipped: family already reminded for this session/lead time. */
   skippedAlreadySent: number;
   /** Skipped: registration not in `confirmed` status. */
   skippedNotConfirmed: number;
   /** Live sections that had a session inside today's window. */
   sectionsWithSessionToday: number;
+  /** Sections whose first session falls on a lead-time day. */
+  sectionsWithUpcomingFirstClass: number;
+  /** Visible demos falling on a lead-time day. */
+  demosUpcoming: number;
 }
 
 function getTimezoneOffsetMinutes(at: Date, timeZone: string): number {
@@ -92,17 +122,39 @@ function getTimezoneOffsetMinutes(at: Date, timeZone: string): number {
   return Math.round((tzMs - at.getTime()) / 60_000);
 }
 
-function getTodayWindow(now: Date): { start: Date; end: Date } {
+/**
+ * The America/New_York calendar day `offsetDays` from `now`, as a UTC instant
+ * range. Offset 0 is today, 7 is a week out.
+ *
+ * The offset is applied to the ET CALENDAR DATE (via `Date.UTC` arithmetic on
+ * the y/m/d parts), not by adding 24h × n milliseconds — so a DST transition
+ * inside the range can't slide the window onto the wrong day.
+ */
+function getDayWindow(now: Date, offsetDays = 0): { start: Date; end: Date } {
   const ymd = new Intl.DateTimeFormat('en-CA', {
     timeZone: TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }).format(now);
-  const tzOffsetMinutes = getTimezoneOffsetMinutes(now, TIMEZONE);
   const [yStr, mStr, dStr] = ymd.split('-');
+
+  // Shift the calendar date first, then resolve that date's ET offset — the
+  // target day may sit on the other side of a DST boundary from `now`.
+  const targetUtcMidnight = new Date(
+    Date.UTC(Number(yStr), Number(mStr) - 1, Number(dStr) + offsetDays, 12, 0, 0)
+  );
+  const targetYmd = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(targetUtcMidnight);
+  const [tyStr, tmStr, tdStr] = targetYmd.split('-');
+  const tzOffsetMinutes = getTimezoneOffsetMinutes(targetUtcMidnight, TIMEZONE);
+
   const startUtcMs =
-    Date.UTC(Number(yStr), Number(mStr) - 1, Number(dStr), 0, 0, 0, 0) -
+    Date.UTC(Number(tyStr), Number(tmStr) - 1, Number(tdStr), 0, 0, 0, 0) -
     tzOffsetMinutes * 60_000;
   return {
     start: new Date(startUtcMs),
@@ -119,6 +171,10 @@ function formatSessionDate(d: Date): string {
   });
 }
 
+function formatSessionDay(d: Date): string {
+  return d.toLocaleDateString('en-US', { timeZone: TIMEZONE, weekday: 'long' });
+}
+
 function formatSessionTime(d: Date): string {
   return d.toLocaleTimeString('en-US', {
     timeZone: TIMEZONE,
@@ -127,8 +183,8 @@ function formatSessionTime(d: Date): string {
   });
 }
 
-/** The earliest session of a section that falls inside today's window. */
-function findSessionToday(
+/** The earliest session of a section that falls inside a window. */
+function findSessionInWindow(
   section: MusicTogetherSection,
   start: Date,
   end: Date
@@ -138,57 +194,224 @@ function findSessionToday(
     .find((s) => s.dateTime >= start && s.dateTime <= end);
 }
 
-function hasReminderForSession(
+/** A section's first meeting of the term. */
+function firstSession(
+  section: MusicTogetherSection
+): MusicTogetherSession | undefined {
+  return [...section.sessions].sort(
+    (a, b) => a.dateTime.getTime() - b.dateTime.getTime()
+  )[0];
+}
+
+function hasReminderForKey(
   reg: MusicTogetherRegistration,
-  sessionIso: string
+  key: string
 ): boolean {
-  return Boolean(reg.reminderSentForSessions?.[sessionIso]);
+  return Boolean(reg.reminderSentForSessions?.[key]);
 }
 
 type ReminderOutcome = 'queued' | 'alreadySent' | 'notConfirmed' | 'skippedTest';
 
-/**
- * Decide + send the reminder for one family/session. Extracted so the run loop
- * stays flat (and testable) — returns what happened so the caller can tally.
- */
-async function sendReminderForRegistration(
-  db: FirebaseFirestore.Firestore,
+/** Shared template fields for anything addressed to an enrolled family. */
+function sectionTemplateData(
   section: MusicTogetherSection,
   session: MusicTogetherSession,
-  reg: MusicTogetherRegistration,
-  now: Date
-): Promise<ReminderOutcome> {
-  const sessionIso = session.dateTime.toISOString();
-  if (reg.status !== 'confirmed') return 'notConfirmed';
-  if (hasReminderForSession(reg, sessionIso)) return 'alreadySent';
-  if (isE2ETestEmail(reg.email)) {
-    console.log(
-      `[sendMusicTogetherReminders] Skipping E2E test registration ${reg.id} (${reg.email})`
-    );
-    return 'skippedTest';
-  }
-
+  reg: MusicTogetherRegistration
+): Record<string, string> {
   const data: Record<string, string> = {
-    parentName: reg.parentNames[0] ?? '',
+    caregiverName: formatNameList(reg.parentNames),
+    childNames: formatNameList(reg.children.map((c) => c.name)),
     sectionName: section.name,
     classDate: formatSessionDate(session.dateTime),
+    classDay: formatSessionDay(session.dateTime),
     classStartTime: formatSessionTime(session.dateTime),
-    classLocation: section.location || DEFAULT_MT_LOCATION,
+    classLocation: section.location || MT_DEFAULT_LOCATION,
   };
   if (reg.calendarToken) {
     data['calendarSubscribeUrl'] = familyCalendarSubscribeUrl(reg.calendarToken);
   }
+  return data;
+}
 
-  await db.collection('mail').add({
+/**
+ * Decide + send one reminder for one family. Extracted so the run loop stays
+ * flat (and testable) — returns what happened so the caller can tally.
+ *
+ * `stampKey` is what makes the send idempotent: pass A uses the raw session
+ * ISO, passes B/C use a `pre7:`/`pre48:` prefix so a first-class email and the
+ * day-of email for that same session are tracked independently.
+ */
+async function sendReminderForRegistration(
+  section: MusicTogetherSection,
+  reg: MusicTogetherRegistration,
+  session: MusicTogetherSession,
+  templateName: string,
+  stampKey: string,
+  now: Date
+): Promise<ReminderOutcome> {
+  if (reg.status !== 'confirmed') return 'notConfirmed';
+  if (hasReminderForKey(reg, stampKey)) return 'alreadySent';
+
+  const queued = await queueMail({
     to: reg.email,
-    template: { name: 'music-together-reminder', data },
+    templateName,
+    data: sectionTemplateData(section, session, reg),
+    sender: 'music-together',
   });
+  if (!queued) return 'skippedTest';
+
   await MusicTogetherRegistrationRepository.markReminderSentForSession(
     reg.id,
-    sessionIso,
+    stampKey,
     now
   );
   return 'queued';
+}
+
+/** Shared template fields for a demo RSVP. */
+function demoTemplateData(
+  demo: MusicTogetherDemo,
+  rsvp: MusicTogetherDemoRsvp
+): Record<string, string> {
+  return {
+    caregiverName: rsvp.name,
+    demoTitle: MT_DEMO_TITLE,
+    demoDate: formatSessionDate(demo.dateTime),
+    demoDay: formatSessionDay(demo.dateTime),
+    demoTime: formatSessionTime(demo.dateTime),
+    // Always the demo's own location — demos are regularly held offsite, so
+    // this must never fall back to the Beulah Road studio address.
+    demoLocation: demo.location,
+  };
+}
+
+async function sendDemoReminder(
+  demo: MusicTogetherDemo,
+  rsvp: MusicTogetherDemoRsvp,
+  lead: Lead,
+  now: Date
+): Promise<ReminderOutcome> {
+  // Waitlisted families have no seat yet — reminding them to show up would be
+  // worse than saying nothing.
+  if (rsvp.status !== 'confirmed') return 'notConfirmed';
+  const alreadySent =
+    lead === '7d' ? rsvp.reminder7dSentAt : rsvp.reminder48hSentAt;
+  if (alreadySent) return 'alreadySent';
+
+  const queued = await queueMail({
+    to: rsvp.email,
+    templateName:
+      lead === '7d'
+        ? 'music-together-demo-reminder-7d'
+        : 'music-together-demo-reminder-48h',
+    data: demoTemplateData(demo, rsvp),
+    sender: 'music-together',
+  });
+  if (!queued) return 'skippedTest';
+
+  await MusicTogetherDemoRsvpRepository.markReminderSent(
+    demo.id,
+    rsvp.email,
+    lead,
+    now
+  );
+  return 'queued';
+}
+
+/** Records what each send did, so the passes stay free of counter plumbing. */
+type Tally = (outcome: ReminderOutcome) => void;
+
+/** Pass A — every publicly-visible section meeting today, weekly nudge. */
+async function runSectionDayOfPass(
+  sections: MusicTogetherSection[],
+  now: Date,
+  tally: Tally
+): Promise<number> {
+  const { start, end } = getDayWindow(now, 0);
+  let covered = 0;
+
+  for (const section of sections) {
+    const session = findSessionInWindow(section, start, end);
+    if (!session) continue;
+    covered += 1;
+
+    const registrations =
+      await MusicTogetherRegistrationRepository.findBySectionId(section.id);
+    for (const reg of registrations) {
+      tally(
+        await sendReminderForRegistration(
+          section,
+          reg,
+          session,
+          'music-together-reminder',
+          session.dateTime.toISOString(),
+          now
+        )
+      );
+    }
+  }
+  return covered;
+}
+
+/**
+ * Passes B & C — a section whose FIRST session lands on the lead-time day.
+ * Keyed off the first session only: a mid-term week that happens to fall seven
+ * days out is not a first class and must not trigger the welcome sequence.
+ */
+async function runFirstClassPass(
+  sections: MusicTogetherSection[],
+  lead: Lead,
+  now: Date,
+  tally: Tally
+): Promise<number> {
+  const { start, end } = getDayWindow(now, LEAD_DAYS[lead]);
+  let covered = 0;
+
+  for (const section of sections) {
+    const first = firstSession(section);
+    if (!first || first.dateTime < start || first.dateTime > end) continue;
+    covered += 1;
+
+    const registrations =
+      await MusicTogetherRegistrationRepository.findBySectionId(section.id);
+    for (const reg of registrations) {
+      tally(
+        await sendReminderForRegistration(
+          section,
+          reg,
+          first,
+          lead === '7d'
+            ? 'music-together-first-class-7d'
+            : 'music-together-first-class-48h',
+          `pre${lead === '7d' ? '7' : '48'}:${first.dateTime.toISOString()}`,
+          now
+        )
+      );
+    }
+  }
+  return covered;
+}
+
+/** Passes D & E — visible demos landing on the lead-time day. */
+async function runDemoPass(
+  lead: Lead,
+  now: Date,
+  tally: Tally
+): Promise<number> {
+  const { start, end } = getDayWindow(now, LEAD_DAYS[lead]);
+  // `findUpcomingVisible` is an indexed visible+dateTime query; narrow the tail
+  // in memory so this doesn't need another composite index.
+  const demos = (
+    await MusicTogetherDemoRepository.findUpcomingVisible(start)
+  ).filter((d) => d.dateTime <= end);
+
+  for (const demo of demos) {
+    const rsvps = await MusicTogetherDemoRsvpRepository.findByDemoId(demo.id);
+    for (const rsvp of rsvps) {
+      tally(await sendDemoReminder(demo, rsvp, lead, now));
+    }
+  }
+  return demos.length;
 }
 
 /**
@@ -202,60 +425,50 @@ export async function runSendMusicTogetherReminders(
     initializeApp();
   }
 
-  const { start, end } = getTodayWindow(now);
-
-  // Small data set (a handful of live sections) — pull all and filter in
-  // memory, since `sessions` is an array we can't range-query directly. Only
-  // publicly-visible sections get reminders; hidden drafts are skipped. A
-  // session inside today's window already means the term is running, so we
-  // don't gate on the (derived) enrollment status.
-  const sections = await MusicTogetherSectionRepository.findAll();
-  const todaySections = sections
-    .filter((s) => s.visible)
-    .map((section) => ({ section, session: findSessionToday(section, start, end) }))
-    .filter(
-      (
-        entry
-      ): entry is { section: MusicTogetherSection; session: MusicTogetherSession } =>
-        entry.session !== undefined
-    );
-
   const result: SendMusicTogetherRemindersResult = {
     mailQueued: 0,
     skippedAlreadySent: 0,
     skippedNotConfirmed: 0,
-    sectionsWithSessionToday: todaySections.length,
+    sectionsWithSessionToday: 0,
+    sectionsWithUpcomingFirstClass: 0,
+    demosUpcoming: 0,
   };
 
-  if (todaySections.length === 0) {
-    console.log(
-      `[sendMusicTogetherReminders] No live sections with a session on ${start.toISOString()} (ET window). Nothing to do.`
+  const tally: Tally = (outcome) => {
+    if (outcome === 'queued') result.mailQueued += 1;
+    else if (outcome === 'alreadySent') result.skippedAlreadySent += 1;
+    else if (outcome === 'notConfirmed') result.skippedNotConfirmed += 1;
+  };
+
+  // Small data set (a handful of live sections) — pull all and filter in
+  // memory, since `sessions` is an array we can't range-query directly. Only
+  // publicly-visible sections get reminders; hidden drafts are skipped.
+  const sections = (await MusicTogetherSectionRepository.findAll()).filter(
+    (s) => s.visible
+  );
+
+  result.sectionsWithSessionToday = await runSectionDayOfPass(
+    sections,
+    now,
+    tally
+  );
+
+  for (const lead of Object.keys(LEAD_DAYS) as Lead[]) {
+    result.sectionsWithUpcomingFirstClass += await runFirstClassPass(
+      sections,
+      lead,
+      now,
+      tally
     );
-    return result;
-  }
-
-  const db = getFirestore();
-
-  for (const { section, session } of todaySections) {
-    const registrations =
-      await MusicTogetherRegistrationRepository.findBySectionId(section.id);
-
-    for (const reg of registrations) {
-      const outcome = await sendReminderForRegistration(
-        db,
-        section,
-        session,
-        reg,
-        now
-      );
-      if (outcome === 'queued') result.mailQueued += 1;
-      else if (outcome === 'alreadySent') result.skippedAlreadySent += 1;
-      else if (outcome === 'notConfirmed') result.skippedNotConfirmed += 1;
-    }
+    result.demosUpcoming += await runDemoPass(lead, now, tally);
   }
 
   console.log(
-    `[sendMusicTogetherReminders] Queued ${result.mailQueued} reminder(s); skipped ${result.skippedAlreadySent} already-sent, ${result.skippedNotConfirmed} not-confirmed; covered ${todaySections.length} section(s).`
+    `[sendMusicTogetherReminders] Queued ${result.mailQueued} email(s); ` +
+      `skipped ${result.skippedAlreadySent} already-sent, ${result.skippedNotConfirmed} not-confirmed. ` +
+      `Covered ${result.sectionsWithSessionToday} section(s) meeting today, ` +
+      `${result.sectionsWithUpcomingFirstClass} first-class window(s), ` +
+      `${result.demosUpcoming} upcoming demo(s).`
   );
 
   return result;

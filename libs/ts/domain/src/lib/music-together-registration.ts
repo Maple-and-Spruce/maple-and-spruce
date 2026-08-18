@@ -29,6 +29,19 @@ export type MusicTogetherRegistrationStatus =
 export const MT_MAX_CHILDREN = 3;
 
 /** An enrolled child. Internal use only — never shared outside Maple & Spruce. */
+/**
+ * "Ada", "Ada and Jo", "Ada, Jo, and Sam" — so a greeting reads the way a
+ * person would write it rather than as a join on an array. Used for both
+ * caregiver and child name lists in family-facing email.
+ */
+export function formatNameList(names: string[]): string {
+  const clean = names.map((n) => n.trim()).filter(Boolean);
+  if (clean.length === 0) return '';
+  if (clean.length === 1) return clean[0];
+  if (clean.length === 2) return `${clean[0]} and ${clean[1]}`;
+  return `${clean.slice(0, -1).join(', ')}, and ${clean[clean.length - 1]}`;
+}
+
 export interface MusicTogetherChild {
   /** Child's first name. */
   name: string;

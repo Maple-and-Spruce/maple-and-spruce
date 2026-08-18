@@ -82,6 +82,7 @@ export {
 
 // Email utilities
 export { isE2ETestEmail } from './email.utility';
+export { queueMail, type MailSender, type QueueMailInput } from './mail.utility';
 
 // Shared class-registration reservation (card + hosted-checkout paths)
 export {

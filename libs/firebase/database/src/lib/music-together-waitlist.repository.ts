@@ -41,6 +41,9 @@ function docToEntry(
     email: data.email,
     availability: data.availability,
     createdAt: toDate(data.createdAt),
+    signupEmailSentAt: data.signupEmailSentAt
+      ? toDate(data.signupEmailSentAt)
+      : undefined,
   };
 }
 
@@ -83,6 +86,21 @@ export const MusicTogetherWaitlistRepository = {
       },
       created: true,
     };
+  },
+
+  /**
+   * Record that the signup confirmation email was queued for this family.
+   * Stamped only after the mail doc is written, so a failed queue leaves the
+   * entry eligible for the backfill rather than silently marked as handled.
+   */
+  async markSignupEmailSent(
+    sectionId: string,
+    email: string,
+    at: Date
+  ): Promise<void> {
+    await waitlistRef(sectionId)
+      .doc(mtWaitlistEmailKey(email))
+      .update({ signupEmailSentAt: at });
   },
 
   /** All entries for a section, ordered by signup time (offer order). */
