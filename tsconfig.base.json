@@ -182,6 +182,9 @@
       "@maple/firebase/maple-functions/sync-class-to-webflow": [
         "libs/firebase/maple-functions/sync-class-to-webflow/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-class-category-to-webflow": [
+        "libs/firebase/maple-functions/sync-class-category-to-webflow/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-music-together-demo-to-webflow": [
         "libs/firebase/maple-functions/sync-music-together-demo-to-webflow/src/index.ts"
       ],
@@ -199,9 +202,6 @@
       ],
       "@maple/firebase/maple-functions/add-to-class-waitlist": [
         "libs/firebase/maple-functions/add-to-class-waitlist/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-related-public-classes": [
-        "libs/firebase/maple-functions/get-related-public-classes/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-sync-conflicts": [
         "libs/firebase/maple-functions/get-sync-conflicts/src/index.ts"

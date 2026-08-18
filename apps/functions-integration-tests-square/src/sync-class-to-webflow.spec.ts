@@ -16,6 +16,8 @@ import {
   clearAuthEmulator,
   clearFirestoreEmulator,
   setFirestoreDoc,
+  getFirestoreDoc,
+  deleteFirestoreDoc,
   callFunction,
   EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
@@ -257,6 +259,129 @@ describe('syncClassToWebflow Trigger', () => {
         url: 'https://storage.example.com/hero.jpg',
         alt: 'Webflow Gallery Sync Test class image',
       });
+    });
+  });
+
+  // ===========================================================================
+  // The fields the CMS-native related-classes list depends on (#776)
+  // ===========================================================================
+
+  describe('Related-classes fields on the synced item', () => {
+    let classId: string;
+    const categoryId = 'test-cat-related-classes';
+
+    afterAll(async () => {
+      if (classId) {
+        await callFunction<DeleteClassRequest>({
+          functionName: 'deleteClass',
+          data: { id: classId },
+          idToken: adminUser.idToken,
+        });
+        await waitForTrigger();
+      }
+      await deleteFirestoreDoc('classCategories', categoryId);
+      await waitForTrigger();
+    });
+
+    it('sets is-full false and links the category, creating the category item on demand', async () => {
+      // Seed a category that has never synced — no webflowItemId. The class
+      // sync has to create its Webflow item on demand, otherwise the class
+      // ships with an empty `category` reference and the related list on its
+      // page has nothing to match against.
+      await setFirestoreDoc('classCategories', categoryId, {
+        name: 'Related Classes Test Category',
+        description: 'Seeded without a webflowItemId on purpose.',
+        order: 50,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const createResult = await callFunction<
+        CreateClassRequest,
+        CreateClassResponse
+      >({
+        functionName: 'createClass',
+        data: {
+          name: 'Related Classes Field Test',
+          description: 'Verifies the fields the CMS related list binds to.',
+          sessions: [{ dateTime: futureDate() }],
+          durationMinutes: 90,
+          capacity: 4,
+          priceCents: 4000,
+          skillLevel: 'all-levels',
+          status: 'published',
+          instructorId,
+          categoryId,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(createResult.status).toBe(200);
+      classId = createResult.data!.class.id;
+      await waitForTrigger();
+
+      const item = await findMockItemByFirebaseId(classId);
+      expect(item).toBeDefined();
+
+      // A class with capacity and no registrations is bookable, so the sold-out
+      // block on the class page must stay hidden.
+      expect(item!.fieldData['is-full']).toBe(false);
+      expect(item!.fieldData['spots-remaining']).toBe(4);
+
+      // The denormalized name is what the Collection List filter matches on.
+      expect(item!.fieldData['category-name']).toBe(
+        'Related Classes Test Category'
+      );
+
+      // The reference should point at a real Webflow item id created on demand.
+      const categoryItemId = item!.fieldData['category'];
+      expect(typeof categoryItemId).toBe('string');
+      expect(categoryItemId).toMatch(/^mock-webflow-item-/);
+
+      // ...and that id should belong to an actual Class Categories item, with
+      // the id recorded back on the Firestore doc so siblings skip this path.
+      const categoryDoc = await getFirestoreDoc('classCategories', categoryId);
+      expect(categoryDoc).not.toBeNull();
+      expect(categoryDoc!['webflowItemId']).toBe(categoryItemId);
+    });
+
+    it('flips is-full to true once registrations fill the class', async () => {
+      // capacity is 4, so four confirmed seats leaves zero spots. This is the
+      // state that makes the sold-out block render and the class drop out of
+      // every other class's "spots remaining > 0" related list.
+      await Promise.all(
+        [1, 2, 3, 4].map((n) =>
+          setFirestoreDoc('registrations', `test-reg-related-${n}`, {
+            classId,
+            status: 'confirmed',
+            quantity: 1,
+            email: `related-${n}@test.com`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+        )
+      );
+
+      // Touch the class so syncClassToWebflow recomputes the count.
+      const updateResult = await callFunction<
+        UpdateClassRequest,
+        UpdateClassResponse
+      >({
+        functionName: 'updateClass',
+        data: { id: classId, shortDescription: 'Now full.' },
+        idToken: adminUser.idToken,
+      });
+      expect(updateResult.status).toBe(200);
+      await waitForTrigger();
+
+      const item = await findMockItemByFirebaseId(classId);
+      expect(item).toBeDefined();
+      expect(item!.fieldData['spots-remaining']).toBe(0);
+      expect(item!.fieldData['is-full']).toBe(true);
+
+      // The badge and the visibility switch are read side by side on the page;
+      // they must not disagree.
+      expect(item!.fieldData['spots-display']).toBe('Waitlist Available');
     });
   });
 

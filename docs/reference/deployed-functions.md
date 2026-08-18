@@ -37,7 +37,6 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `uploadClassGalleryImage`
 - `getPublicClass` _(minInstances: 1 in prod / 0 in dev, concurrency: 80)_
-- `getRelatedPublicClasses` _(public; same-category siblings with future sessions + spots remaining; powers the sold-out widget's "other dates" list)_
 - `addToClassWaitlist` _(public; idempotent email signup stored under `classes/{id}/waitlist/{emailKey}`)_
 - `getClassWaitlist` _(admin; returns a class's waitlist entries ordered earliest-signup-first plus a count; powers the portal roster's Waitlist section)_
 - `getClassWaitlistCounts` _(admin; `classId -> count` map for every class via a `waitlist` collection-group scan, filtered to `classes` parents; powers the classes-list Waitlist column)_
@@ -193,7 +192,8 @@ adding anything here.
 Webflow CMS synchronization. Isolates `webflow-api`.
 
 - `syncArtistToWebflow` — Firestore trigger: syncs artist data to Webflow CMS
-- `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS
+- `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS. Also links each class item to its category via the `category` Reference field, syncing the category on demand if it has no Webflow item yet.
+- `syncClassCategoryToWebflow` — Firestore trigger: syncs `classCategories` to the Webflow Class Categories collection. That collection exists so classes can carry a `category` **Reference** field — Webflow can only filter a Collection List against the current item's field when that field is a reference, which is what renders related classes natively on the class template page instead of a callable (#776).
 - `syncMusicTogetherSectionToWebflow` — Firestore trigger: syncs Music Together section data to Webflow CMS (`visible` sections; enriches spots-remaining from live family count; sends the derived section status)
 - `syncMusicTogetherSemesterToWebflow` — Firestore trigger: syncs Music Together semester (term) data to Webflow CMS (all statuses incl. `planned`; only removed on delete)
 - `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)

@@ -205,6 +205,51 @@ describe('mapClassToFieldData', () => {
     });
   });
 
+  it('sets is-full only when no spots remain', () => {
+    // Webflow conditional visibility isn't API-authorable, so the sold-out
+    // related-classes block binds its visibility to this switch instead.
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 3 })[
+        'is-full'
+      ]
+    ).toBe(false);
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 10 })[
+        'is-full'
+      ]
+    ).toBe(true);
+    // Overbooked classes are still full, not "un-full".
+    expect(
+      mapClassToFieldData(mockClass, { isDev: false, registrationCount: 12 })[
+        'is-full'
+      ]
+    ).toBe(true);
+  });
+
+  it('maps categoryWebflowItemId to the category Reference field', () => {
+    // This reference is what lets the class template page filter a Collection
+    // List to "other classes in this class's category" — a plain-text
+    // category-name cannot express that filter.
+    const result = mapClassToFieldData(mockClass, {
+      isDev: false,
+      categoryName: 'Ceramics',
+      categoryWebflowItemId: 'wf-cat-1',
+    });
+
+    expect(result['category']).toBe('wf-cat-1');
+  });
+
+  it('leaves the category reference untouched when the item ID is unknown', () => {
+    // Writing an empty value here would clear a previously-linked reference and
+    // silently empty that class's related list on the live site.
+    const result = mapClassToFieldData(mockClass, {
+      isDev: false,
+      categoryName: 'Ceramics',
+    });
+
+    expect(result).not.toHaveProperty('category');
+  });
+
   it('uses fallback alt text for instructor image when no name provided', () => {
     const result = mapClassToFieldData(mockClass, {
       isDev: false,

@@ -1,18 +1,23 @@
 /**
- * Integration tests for syncClassToWebflow Firestore trigger.
+ * Integration tests for the syncClassToWebflow Firestore trigger — Firestore
+ * side only.
  *
- * These tests verify that the Firestore trigger fires correctly when class
- * documents are created, updated, or deleted. Since the Webflow API is external
- * and unavailable in the emulator, the tests verify:
+ * These cover trigger *routing*: which document writes reach the sync path and
+ * which are skipped, asserted against the Firestore doc afterwards.
  *
  * 1. The trigger fires without crashing (error handling works)
  * 2. Draft/cancelled classes skip the sync path
  * 3. Enrichment data (instructor, category) is read from Firestore
  * 4. The function handles missing enrichment data gracefully
  *
- * The Webflow API calls will fail in the emulator (no secrets), but the
- * function's catch block prevents crashes. We verify behavior by checking
- * that the class document still exists and was not corrupted.
+ * They deliberately assert nothing about the CMS item that was produced. For
+ * that, see `apps/functions-integration-tests-square/src/sync-class-to-webflow.spec.ts`,
+ * which points the Webflow SDK at the mock server via `WEBFLOW_BASE_URL` and
+ * asserts on the actual `fieldData` — including the fields the CMS-native
+ * related-classes list binds to (#776).
+ *
+ * (An earlier version of this comment claimed Webflow calls simply fail in the
+ * emulator. They do not: the mock server handles them.)
  */
 import {
   clearFirestoreEmulator,

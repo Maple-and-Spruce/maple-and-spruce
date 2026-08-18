@@ -12,6 +12,7 @@
 import { WebflowClient } from 'webflow-api';
 import { ArtistService } from './artist.service';
 import { ClassService } from './class.service';
+import { ClassCategoryService } from './class-category.service';
 import { InstructorService } from './instructor.service';
 import { MtSectionService } from './mt-section.service';
 import { MtSemesterService } from './mt-semester.service';
@@ -36,6 +37,7 @@ export const WEBFLOW_STRING_NAMES = [
   'WEBFLOW_SITE_ID',
   'WEBFLOW_ARTISTS_COLLECTION_ID',
   'WEBFLOW_CLASSES_COLLECTION_ID',
+  'WEBFLOW_CLASS_CATEGORIES_COLLECTION_ID',
   'WEBFLOW_INSTRUCTORS_COLLECTION_ID',
   'WEBFLOW_MT_SECTIONS_COLLECTION_ID',
   'WEBFLOW_MT_SEMESTERS_COLLECTION_ID',
@@ -74,6 +76,7 @@ export class Webflow {
   private readonly client: WebflowClient;
   private readonly _artistService: ArtistService;
   private readonly _classService: ClassService | null;
+  private readonly _classCategoryService: ClassCategoryService | null;
   private readonly _instructorService: InstructorService | null;
   private readonly _sectionService: MtSectionService | null;
   private readonly _semesterService: MtSemesterService | null;
@@ -81,6 +84,7 @@ export class Webflow {
   public readonly siteId: string;
   public readonly artistsCollectionId: string;
   public readonly classesCollectionId: string;
+  public readonly classCategoriesCollectionId: string;
   public readonly instructorsCollectionId: string;
   public readonly mtSectionsCollectionId: string;
   public readonly mtSemestersCollectionId: string;
@@ -101,6 +105,7 @@ export class Webflow {
     this.siteId = this.strings.WEBFLOW_SITE_ID;
     this.artistsCollectionId = this.strings.WEBFLOW_ARTISTS_COLLECTION_ID;
     this.classesCollectionId = this.strings.WEBFLOW_CLASSES_COLLECTION_ID;
+    this.classCategoriesCollectionId = this.strings.WEBFLOW_CLASS_CATEGORIES_COLLECTION_ID;
     this.instructorsCollectionId = this.strings.WEBFLOW_INSTRUCTORS_COLLECTION_ID;
     this.mtSectionsCollectionId = this.strings.WEBFLOW_MT_SECTIONS_COLLECTION_ID;
     this.mtSemestersCollectionId = this.strings.WEBFLOW_MT_SEMESTERS_COLLECTION_ID;
@@ -130,6 +135,10 @@ export class Webflow {
 
     this._classService = this.classesCollectionId
       ? new ClassService(this.client, this.classesCollectionId)
+      : null;
+
+    this._classCategoryService = this.classCategoriesCollectionId
+      ? new ClassCategoryService(this.client, this.classCategoriesCollectionId)
       : null;
 
     this._instructorService = this.instructorsCollectionId
@@ -173,6 +182,18 @@ export class Webflow {
       );
     }
     return this._classService;
+  }
+
+  /**
+   * Get the class category service for syncing class categories to Webflow CMS
+   */
+  get classCategoryService(): ClassCategoryService {
+    if (!this._classCategoryService) {
+      throw new Error(
+        'Webflow class categories collection ID not configured. Set WEBFLOW_CLASS_CATEGORIES_COLLECTION_ID.'
+      );
+    }
+    return this._classCategoryService;
   }
 
   /**

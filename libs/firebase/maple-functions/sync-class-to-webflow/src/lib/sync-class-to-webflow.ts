@@ -17,7 +17,7 @@ import {
   type DocumentSnapshot,
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import type { Class } from '@maple/ts/domain';
+import type { Class, ClassCategory } from '@maple/ts/domain';
 import { asPublishable } from '@maple/ts/domain';
 import {
   Webflow,
@@ -39,6 +39,56 @@ const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
 const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) =>
   defineString(name)
 );
+
+/**
+ * Resolve the Webflow item ID for a class's category, creating the Webflow
+ * item on demand if it doesn't have one yet.
+ *
+ * The `category` Reference field on a class item is what lets the class
+ * template page render related classes with a native Collection List filter,
+ * so a missing link is a visibly broken section rather than a cosmetic gap.
+ * Two cases produce one: a category created before this sync existed, and a
+ * class that syncs before its category's own trigger has landed.
+ *
+ * Returns `undefined` when the class has no category or the on-demand sync
+ * fails — the mapper then leaves any existing reference untouched, and the
+ * next class write retries.
+ */
+async function resolveCategoryWebflowItemId(
+  webflow: Webflow,
+  category: ClassCategory | null | undefined,
+  options: { isDev: boolean; shouldPublish: boolean }
+): Promise<string | undefined> {
+  if (!category) return undefined;
+  if (category.webflowItemId) return category.webflowItemId;
+
+  try {
+    console.log('Category has no Webflow item yet, syncing on demand:', {
+      categoryId: category.id,
+      name: category.name,
+    });
+
+    const result = await webflow.classCategoryService.syncClassCategory({
+      category,
+      publish: options.shouldPublish,
+      isDev: options.isDev,
+    });
+
+    if (!result.success || !result.webflowItemId) return undefined;
+
+    // Persist so sibling classes skip this path. This write re-fires the
+    // category trigger once; that run finds the ID already matching and stops.
+    await ClassCategoryRepository.updateWebflowItemId(
+      category.id,
+      result.webflowItemId
+    );
+
+    return result.webflowItemId;
+  } catch (error) {
+    console.error('On-demand category sync failed:', error);
+    return undefined;
+  }
+}
 
 /**
  * Convert a raw Firestore value to a Date.
@@ -212,12 +262,25 @@ export const syncClassToWebflow = onDocumentWritten(
         RegistrationRepository.countByClassId(publishable.id),
       ]);
 
+      // The `category` Reference field is what makes the related-classes list
+      // on the class template page native (#776), so make sure the category
+      // exists in Webflow before linking to it. A category that predates the
+      // sync — or one whose class syncs before its own trigger lands — has no
+      // webflowItemId yet, so create it on demand rather than shipping a class
+      // page with an empty related list.
+      const categoryWebflowItemId = await resolveCategoryWebflowItemId(
+        webflow,
+        category,
+        { isDev, shouldPublish }
+      );
+
       console.log('Syncing published class to Webflow:', {
         name: publishable.name,
         isDev,
         autoPublish: shouldPublish,
         instructorName: instructor?.name,
         categoryName: category?.name,
+        categoryWebflowItemId,
         registrationCount,
       });
 
@@ -229,6 +292,7 @@ export const syncClassToWebflow = onDocumentWritten(
         instructorBio: instructor?.bio,
         instructorImage: instructor?.photoUrl,
         categoryName: category?.name,
+        categoryWebflowItemId,
         registrationCount,
         existingWebflowItemId: publishable.webflowItemId,
       });

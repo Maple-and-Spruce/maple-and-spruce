@@ -10,6 +10,7 @@
     "../../libs/firebase/maple-functions/expire-past-class-pages/**/*.ts",
     "../../libs/firebase/maple-functions/sync-artist-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/sync-class-to-webflow/**/*.ts",
+    "../../libs/firebase/maple-functions/sync-class-category-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/sync-music-together-demo-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/sync-music-together-section-to-webflow/**/*.ts",
     "../../libs/firebase/maple-functions/sync-music-together-semester-to-webflow/**/*.ts",

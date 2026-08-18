@@ -200,6 +200,10 @@ export const syncRegistrationCount = onDocumentWritten(
         isDev,
         instructorName: instructor?.name,
         categoryName: category?.name,
+        // May be undefined if the category hasn't synced yet; the mapper then
+        // leaves the existing reference alone rather than clearing it. The
+        // class sync (#776) is what establishes the link on demand.
+        categoryWebflowItemId: category?.webflowItemId,
         registrationCount,
         existingWebflowItemId: publishable.webflowItemId,
       });

@@ -141,7 +141,6 @@ export { getMusicTogetherDemos } from '@maple/firebase/maple-functions/get-music
 export { createMusicTogetherDemo } from '@maple/firebase/maple-functions/create-music-together-demo';
 export { updateMusicTogetherDemo } from '@maple/firebase/maple-functions/update-music-together-demo';
 export { deleteMusicTogetherDemo } from '@maple/firebase/maple-functions/delete-music-together-demo';
-export { getRelatedPublicClasses } from '@maple/firebase/maple-functions/get-related-public-classes';
 export { addToClassWaitlist } from '@maple/firebase/maple-functions/add-to-class-waitlist';
 export { getClassWaitlist } from '@maple/firebase/maple-functions/get-class-waitlist';
 export { getClassWaitlistCounts } from '@maple/firebase/maple-functions/get-class-waitlist-counts';

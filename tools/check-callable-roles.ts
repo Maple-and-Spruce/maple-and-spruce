@@ -64,7 +64,6 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   'getPublicMusicTogetherSection',
   'getPublicMusicTogetherSections',
   'getPublicMusicTogetherDemos',
-  'getRelatedPublicClasses',
   'getRegistrationStatus',
   'getRequiredAgreementsForClass',
   'calculateRegistrationCost',

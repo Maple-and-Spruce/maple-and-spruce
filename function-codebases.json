@@ -32,6 +32,7 @@
     "firebase-maple-functions-sync-artist-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-instructor-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-class-to-webflow": "maple-sync",
+    "firebase-maple-functions-sync-class-category-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-music-together-section-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-music-together-semester-to-webflow": "maple-sync",
     "firebase-maple-functions-sync-music-together-demo-to-webflow": "maple-sync",

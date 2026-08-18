@@ -6,6 +6,47 @@
 
 ## Current Status
 
+### Related classes moved from a Cloud Function to the Webflow CMS (2026-08-17, #776)
+
+The sold-out panel on a class page used to fetch sibling classes through
+`getRelatedPublicClasses`, a callable in the `maple-core` bundle (~6.1s cold, ADR-031). It only ran
+on a full class, so it was effectively always a cold start and the section took seconds to appear.
+The class template page now renders those cards natively from the CMS, in the HTML at first paint.
+
+**What made it possible.** Everything a card needs was already on the Classes collection. Two things
+were missing, and both are worth remembering because they shape what the Webflow API can and cannot
+author:
+
+- **Conditional visibility is not API-authorable**, but an element's *visibility can bind to a Switch
+  field*. So the block binds to a new `is-full` switch, written by the sync as `spotsRemaining <= 0`.
+  The rule lives in `class.service.ts` rather than as a Designer-only setting.
+- **A Collection List filter can compare a field against a *bound* value** — that is how
+  "same category as this class" and "not this class" are expressed:
+  `category-name equals <current item's category-name>` and
+  `firebase-id doesNotEqual <current item's firebase-id>`. The native exclusion means no JS is
+  needed to drop the current class from its own list.
+
+**Three API limits found the hard way** (all confirmed, not guessed):
+
+1. An `itemRef` filter rejects bound values outright ("does not support bound filter values in the
+   Designer"), so the `category` **Reference** field cannot drive the filter from the API. Plain-text
+   fields *do* accept bound values, which is why the filter runs on `category-name`.
+2. A Link's `link` setting has **no bindable sources**, and `{"mode":"collectionPage"}` — byte
+   identical to the working link on `/upcoming-classes` — resolves to `href="#"` on a *template*
+   page. This is the one control that still needs a Designer click.
+3. A DOM element's `attributes` cannot be bound either, so the href workaround did not survive.
+
+**Still needed before a production publish:** in the Designer, set the related-card link to the
+collection item ("Class"). Everything else is verified on staging.
+
+**Also shipped:** a `Class Categories` CMS collection + `syncClassCategoryToWebflow` trigger and a
+`category` Reference field on classes. The rendered filter does not use them yet (see limit 1) —
+they exist so the filter can be switched to the reference, which is immune to the rename drift that
+`category-name` matching has. Function count is net zero: `getRelatedPublicClasses` was deleted.
+
+---
+
+
 ### Music Together updates banner (2026-08-12)
 
 The MT pages now carry their own signup banner, mirroring the `pre-opening-banner` that sits in

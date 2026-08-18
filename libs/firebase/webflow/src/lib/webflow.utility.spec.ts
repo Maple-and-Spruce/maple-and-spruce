@@ -24,6 +24,12 @@ describe('WEBFLOW_STRING_NAMES', () => {
     expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_CLASSES_COLLECTION_ID');
   });
 
+  it('includes WEBFLOW_CLASS_CATEGORIES_COLLECTION_ID', () => {
+    expect(WEBFLOW_STRING_NAMES).toContain(
+      'WEBFLOW_CLASS_CATEGORIES_COLLECTION_ID'
+    );
+  });
+
   it('includes WEBFLOW_INSTRUCTORS_COLLECTION_ID', () => {
     expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_INSTRUCTORS_COLLECTION_ID');
   });
@@ -40,8 +46,8 @@ describe('WEBFLOW_STRING_NAMES', () => {
     expect(WEBFLOW_STRING_NAMES).toContain('WEBFLOW_MT_DEMOS_COLLECTION_ID');
   });
 
-  it('has exactly seven strings', () => {
-    expect(WEBFLOW_STRING_NAMES).toHaveLength(7);
+  it('has exactly eight strings', () => {
+    expect(WEBFLOW_STRING_NAMES).toHaveLength(8);
   });
 });
 
@@ -54,6 +60,8 @@ describe('Webflow', () => {
     WEBFLOW_SITE_ID: 'test-site-id',
     WEBFLOW_ARTISTS_COLLECTION_ID: 'test-collection-id',
     WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-collection-id',
+    WEBFLOW_CLASS_CATEGORIES_COLLECTION_ID:
+      'test-class-categories-collection-id',
     WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-collection-id',
     WEBFLOW_MT_SECTIONS_COLLECTION_ID: 'test-mt-sections-collection-id',
     WEBFLOW_MT_SEMESTERS_COLLECTION_ID: 'test-mt-semesters-collection-id',
@@ -72,15 +80,9 @@ describe('Webflow', () => {
     });
 
     it('throws error when WEBFLOW_SITE_ID is missing', () => {
-      const invalidStrings = {
-        WEBFLOW_SITE_ID: '',
-        WEBFLOW_ARTISTS_COLLECTION_ID: 'test-collection-id',
-        WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-id',
-        WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-id',
-        WEBFLOW_MT_SECTIONS_COLLECTION_ID: 'test-mt-sections-id',
-        WEBFLOW_MT_SEMESTERS_COLLECTION_ID: 'test-mt-semesters-id',
-        WEBFLOW_MT_DEMOS_COLLECTION_ID: 'test-mt-demos-id',
-      };
+      // Spread the valid map rather than restating it, so adding a new
+      // collection param doesn't break this case.
+      const invalidStrings = { ...validStrings, WEBFLOW_SITE_ID: '' };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
         'Webflow site ID not configured. Set WEBFLOW_SITE_ID.'
@@ -89,13 +91,8 @@ describe('Webflow', () => {
 
     it('throws error when WEBFLOW_ARTISTS_COLLECTION_ID is missing', () => {
       const invalidStrings = {
-        WEBFLOW_SITE_ID: 'test-site-id',
+        ...validStrings,
         WEBFLOW_ARTISTS_COLLECTION_ID: '',
-        WEBFLOW_CLASSES_COLLECTION_ID: 'test-classes-id',
-        WEBFLOW_INSTRUCTORS_COLLECTION_ID: 'test-instructors-id',
-        WEBFLOW_MT_SECTIONS_COLLECTION_ID: 'test-mt-sections-id',
-        WEBFLOW_MT_SEMESTERS_COLLECTION_ID: 'test-mt-semesters-id',
-        WEBFLOW_MT_DEMOS_COLLECTION_ID: 'test-mt-demos-id',
       };
 
       expect(() => new Webflow(validSecrets, invalidStrings)).toThrow(
