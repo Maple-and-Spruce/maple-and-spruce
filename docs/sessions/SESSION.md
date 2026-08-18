@@ -6,6 +6,41 @@
 
 ## Current Status
 
+### Music Together registration email sequences (2026-08-17, #778)
+
+Demo RSVPs and section waitlist signups sent **nothing** until now: both functions wrote Firestore
+and returned. Families had signed up and heard back only if someone reached them by hand. This adds
+the six-email sequence Stephanie specced (signup / one week out / two days out, for both the free
+demo and a full session), plus the two states her doc doesn't reach: a demo RSVP past capacity, and
+a section waitlist signup.
+
+**Three things worth remembering.**
+
+- **Sending is gated on `created`, not on the request.** Both endpoints are public and
+  unauthenticated, so emailing on every call would let anyone mailbomb an address by replaying a
+  signup. The per-(demo, email) / per-(section, email) idempotency is what makes sending safe, and a
+  mail failure never fails the signup — the seat is already committed by then.
+- **Demo location is a merge field, never the studio address.** Demos are regularly held offsite (a
+  public library, a partner space) and `MusicTogetherDemo.location` is required free text for that
+  reason. `MT_DEFAULT_LOCATION` exists for *sections* only; using it for a demo would send a family
+  to the wrong building.
+- **Demo emails can't name the child.** The RSVP widget collects a family name and email only, so
+  that copy says "your little one". Section emails, which register children individually, merge
+  `{{childNames}}`. Closing that gap needs a Webflow form field, not a code change.
+
+`queueMail({ to, templateName, data, sender })` in `@maple/firebase/functions` is now the single
+send path for Music Together. It sets `replyTo: musictogether@…` today and leaves `from` at the
+extension default, because Gmail SMTP rejects a `from` the account isn't authorized to send as. That
+map is the seam for **#775** (dedicated sending provider, arbitrary validated senders) and **#756**
+(Trigger Email decommission 2027-03-31) — when either lands, only `SENDER_FROM` changes.
+
+Reminders run in one daily 08:00 ET function with five idempotent passes: sections meeting today
+(weekly nudge), first class at 7d and 48h, demos at 7d and 48h.
+
+**Not yet done:** `tools/backfill-mt-signup-emails.ts` is written and dry-run-safe but has **not**
+been run against prod. Families who signed up before this shipped are still unacknowledged until it
+runs with `--send`.
+
 ### Related classes moved from a Cloud Function to the Webflow CMS (2026-08-17, #776)
 
 The sold-out panel on a class page used to fetch sibling classes through

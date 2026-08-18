@@ -26,6 +26,23 @@ export interface MusicTogetherDemoRsvp {
   /** Assigned when the RSVP is created: confirmed until cap, then waitlisted. */
   status: MusicTogetherDemoRsvpStatus;
   createdAt: Date;
+  /**
+   * When the signup confirmation email was queued. Absent means the family has
+   * never been confirmed by email — which is what the backfill
+   * (`tools/backfill-mt-signup-emails.ts`) looks for, and what keeps a re-run
+   * of it from emailing anyone twice.
+   */
+  signupEmailSentAt?: Date;
+  /**
+   * When the one-week-out reminder was queued for this RSVP.
+   *
+   * Demos are a single dated class, so unlike section registrations (whose
+   * stamps are keyed per session) a plain timestamp per lead time is enough to
+   * make the daily reminder run idempotent.
+   */
+  reminder7dSentAt?: Date;
+  /** When the two-days-out reminder was queued for this RSVP. */
+  reminder48hSentAt?: Date;
 }
 
 export interface CreateMusicTogetherDemoRsvpInput {

@@ -28,6 +28,7 @@ import {
   throwValidationError,
   generateFamilyCalendarToken,
   familyCalendarSubscribeUrl,
+  queueMail,
 } from '@maple/firebase/functions';
 import {
   Square,
@@ -44,7 +45,9 @@ import {
 } from '@maple/firebase/database';
 import {
   MT_CAPACITY_STATUSES,
+  MT_DEFAULT_LOCATION,
   MT_MAX_CHILDREN,
+  formatNameList,
   mtSectionOffersInstallments,
   mtSectionEnrollmentOpen,
   computeMusicTogetherFamilyPrice,
@@ -384,15 +387,39 @@ export const createMusicTogetherRegistration = Functions.endpoint
         timeZone: 'America/New_York',
       });
     const secondInstallment = scheduledItems[0];
-    await getDb()
-      .collection('mail')
-      .add({
-        to: data.email,
-        template: {
-          name: 'music-together-confirmation',
-          data: {
-            parentName: parentNames[0] ?? '',
+    // First meeting of the term — the "Starts: <day>, <date> at <time>" line.
+    // A section with no sessions yet still confirms; the template hides the row.
+    const firstSession = [...(section.sessions ?? [])].sort(
+      (a, b) => a.dateTime.getTime() - b.dateTime.getTime()
+    )[0];
+    const fmtPart = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+      d.toLocaleDateString('en-US', { timeZone: 'America/New_York', ...opts });
+    await queueMail({
+      sender: 'music-together',
+      to: data.email,
+      templateName: 'music-together-confirmation',
+      data: {
+            caregiverName: formatNameList(parentNames),
+            childNames: formatNameList(children.map((c) => c.name)),
             sectionName: section.name,
+            classLocation: section.location || MT_DEFAULT_LOCATION,
+            firstClassDay: firstSession
+              ? fmtPart(firstSession.dateTime, { weekday: 'long' })
+              : '',
+            firstClassDate: firstSession
+              ? fmtPart(firstSession.dateTime, {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })
+              : '',
+            firstClassTime: firstSession
+              ? firstSession.dateTime.toLocaleTimeString('en-US', {
+                  timeZone: 'America/New_York',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })
+              : '',
             paymentPlan: data.paymentPlan,
             amountChargedCents: firstChargeCents,
             scheduledChargeCount: createdCharges,
@@ -410,9 +437,8 @@ export const createMusicTogetherRegistration = Functions.endpoint
             // Auto-updating per-family calendar subscription (webcal://). Stays
             // current as the family registers/cancels or class times change.
             calendarSubscribeUrl: familyCalendarSubscribeUrl(calendarToken),
-          },
-        },
-      });
+      },
+    });
 
     return {
       registrationId: regRef.id,
