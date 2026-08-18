@@ -680,7 +680,7 @@ const craftClubCancelledHtml = `<!DOCTYPE html>
 // ---------------------------------------------------------------------------
 
 const musicTogetherConfirmationSubject =
-  "You're registered for {{sectionName}}!";
+  "You're registered! Music Together Maple & Spruce";
 
 const musicTogetherConfirmationHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -697,14 +697,25 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
   </div>
   <div class="content">
     <h2>You're registered!</h2>
-    <p>{{#if parentName}}Hi {{parentName}},{{else}}Hello,{{/if}}</p>
-    <p>Your family is enrolled in <strong>{{sectionName}}</strong>. We can't wait
-      to make music with you!</p>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    <p>Welcome to Music Together&reg; Maple &amp; Spruce! We're so glad
+      {{#if childNames}}{{childNames}} will{{else}}you'll{{/if}} be joining us.
+      Your spot is confirmed:</p>
 
     <table class="detail-table">
       <tr>
         <td class="label">Class</td>
         <td>{{sectionName}}</td>
+      </tr>
+      {{#if firstClassDate}}
+      <tr>
+        <td class="label">Starts</td>
+        <td>{{firstClassDate}} at {{firstClassTime}}</td>
+      </tr>
+      {{/if}}
+      <tr>
+        <td class="label">Where</td>
+        <td>{{classLocation}}</td>
       </tr>
       <tr>
         <td class="label">Paid today</td>
@@ -717,7 +728,7 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
       <strong style="color: #4A3728;">Your second installment</strong><br>
       <p>We'll automatically charge <strong>{{secondInstallmentLabel}}</strong>
         on <strong>{{secondInstallmentDate}}</strong>{{#if cardLast4}} to the card
-        ending in {{cardLast4}}{{/if}}. No action is needed — you're all set.</p>
+        ending in {{cardLast4}}{{/if}}. No action is needed, so you're all set.</p>
     </div>
     {{/if}}
 
@@ -727,7 +738,7 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
 
     <div class="highlight-box">
       <strong style="color: #4A3728;">What's next</strong><br>
-      <p>Watch your inbox for class details before your first session. Your
+      <p>We'll send a friendly reminder as your first class gets closer. Your
         Music Together songbook and materials will be mailed to the address you
         provided.</p>
     </div>
@@ -736,22 +747,22 @@ const musicTogetherConfirmationHtml = `<!DOCTYPE html>
     <div class="highlight-box">
       <strong style="color: #4A3728;">Add your classes to your calendar</strong><br>
       <p>Subscribe once and your calendar stays up to date with your family's
-        class schedule — no need to add each session by hand, and any changes
+        class schedule, with no need to add each session by hand, and any changes
         sync automatically.</p>
       <p><a href="{{calendarSubscribeUrl}}" style="color: #6B7B5E; font-weight: bold;">Subscribe to your class calendar</a></p>
       <p style="font-size: 12px; color: #999;">Works with Apple Calendar, Google
-        Calendar, and Outlook. Keep this link private — it's unique to your family.</p>
+        Calendar, and Outlook. Keep this link private; it's unique to your family.</p>
     </div>
     {{/if}}
 
     <p>Questions? Reach out at
       <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>
-      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+      or call <a href="tel:+13046024030" style="color: #6B7B5E;">(304) 602-4030</a>.</p>
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
-    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13046024030">(304) 602-4030</a><br>
     <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
   </div>
 </div>
@@ -794,16 +805,16 @@ const musicTogetherInstallmentFailedHtml = `<!DOCTYPE html>
     </div>
     {{/if}}
     <p>Please get in touch so we can update your payment details and keep your
-      spot. Your enrollment isn't affected yet — we just need to sort out this
+      spot. Your enrollment isn't affected yet; we just need to sort out this
       charge.</p>
     <p>Reach out at
       <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>
-      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+      or call <a href="tel:+13046024030" style="color: #6B7B5E;">(304) 602-4030</a>.</p>
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
-    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13046024030">(304) 602-4030</a><br>
     <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
   </div>
 </div>
@@ -838,9 +849,10 @@ const musicTogetherReminderHtml = `<!DOCTYPE html>
   </div>
   <div class="content">
     <h2>See you today!</h2>
-    <p>{{#if parentName}}Hi {{parentName}},{{else}}Hello,{{/if}}</p>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
     <p>Just a friendly reminder that your <strong>{{sectionName}}</strong> Music
-      Together class is today. We can't wait to make music with you!</p>
+      Together&reg; class is today. We can't wait to see
+      {{#if childNames}}{{childNames}}{{else}}you{{/if}}!</p>
 
     <table class="detail-table">
       <tr>
@@ -859,18 +871,18 @@ const musicTogetherReminderHtml = `<!DOCTYPE html>
       <p>Subscribe once and your family's Music Together schedule stays up to
         date automatically.</p>
       <p><a href="{{calendarSubscribeUrl}}" style="color: #6B7B5E; font-weight: bold;">Subscribe to your class calendar</a></p>
-      <p style="font-size: 12px; color: #999;">Keep this link private — it's unique to your family.</p>
+      <p style="font-size: 12px; color: #999;">Keep this link private; it's unique to your family.</p>
     </div>
     {{/if}}
 
     <p>Questions? Reply to this email, reach out at
       <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>,
-      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+      or call <a href="tel:+13046024030" style="color: #6B7B5E;">(304) 602-4030</a>.</p>
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
     Morgantown, WV<br>
-    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13046024030">(304) 602-4030</a><br>
     <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
   </div>
 </div>
@@ -904,7 +916,7 @@ const musicTogetherManageLinkHtml = `<!DOCTYPE html>
   <div class="content">
     <h2>Update your payment method</h2>
     <p>You asked to update the card on file for your Music Together
-      installment plan. Use the secure link below to enter a new card — it will
+      installment plan. Use the secure link below to enter a new card. It will
       be charged for your remaining installment.</p>
 
     <div class="highlight-box">
@@ -922,13 +934,13 @@ const musicTogetherManageLinkHtml = `<!DOCTYPE html>
     </p>
 
     <p>Questions? Reach out at
-      <a href="mailto:katie@mapleandsprucefolkarts.com" style="color: #6B7B5E;">katie@mapleandsprucefolkarts.com</a>
-      or call <a href="tel:+13043144506" style="color: #6B7B5E;">304-314-4506</a>.</p>
+      <a href="mailto:musictogether@mapleandsprucefolkarts.com" style="color: #6B7B5E;">musictogether@mapleandsprucefolkarts.com</a>
+      or call <a href="tel:+13046024030" style="color: #6B7B5E;">(304) 602-4030</a>.</p>
   </div>
   <div class="footer">
     <strong style="color: #4A3728;">Maple &amp; Spruce Folk Arts</strong><br>
     Morgantown, WV<br>
-    <a href="mailto:katie@mapleandsprucefolkarts.com">katie@mapleandsprucefolkarts.com</a> | <a href="tel:+13043144506">304-314-4506</a><br>
+    <a href="mailto:musictogether@mapleandsprucefolkarts.com">musictogether@mapleandsprucefolkarts.com</a> | <a href="tel:+13046024030">(304) 602-4030</a><br>
     <a href="https://mapleandsprucefolkarts.com">mapleandsprucefolkarts.com</a>
   </div>
 </div>
@@ -937,6 +949,354 @@ const musicTogetherManageLinkHtml = `<!DOCTYPE html>
 
 // ---------------------------------------------------------------------------
 // Seed to Firestore
+// ---------------------------------------------------------------------------
+// Music Together registration sequences (#778)
+//
+// Copy from Stephanie's "Registration Email Sequences" doc: three emails for a
+// regular session registration and three for a free demo RSVP, at signup, one
+// week out, and two days out. Two deliberate departures from that doc:
+//
+//   1. DEMO LOCATION IS A MERGE FIELD, not the Beulah Road address. Demos are
+//      regularly held offsite (a public library, a partner space), and the demo
+//      record carries a required free-text `location` for exactly that reason.
+//      Hardcoding the studio address would send families to the wrong building.
+//   2. DEMO EMAILS DON'T NAME THE CHILD. The demo RSVP widget collects a family
+//      name and email only — there is no child-name field to merge from — so
+//      the demo copy says "your little one". Section emails, which register
+//      children individually, do use {{childNames}}.
+//
+// Two templates have no counterpart in the doc because they cover states it
+// doesn't reach: a demo RSVP that lands past capacity, and a section waitlist
+// signup.
+//
+// `isCatchUp` is set only by tools/backfill-mt-signup-emails.ts, for families
+// who signed up before any of this existed. It swaps the opening line so a
+// weeks-old signup doesn't get something that reads as an instant auto-reply.
+// ---------------------------------------------------------------------------
+
+/** Music Together contact block — Stephanie's line, not the shop's. */
+const MT_PHONE_DISPLAY = '(304) 602-4030';
+const MT_PHONE_HREF = '+13046024030';
+const MT_EMAIL = 'musictogether@mapleandsprucefolkarts.com';
+
+/**
+ * Shared chrome for every Music Together email: brand header, Stephanie's
+ * sign-off, contact block, and the Music Together Worldwide licensee credit.
+ *
+ * `title` is the <title> tag; `body` is the message HTML.
+ */
+const mtLayout = (title: string, body: string) => `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<style>${styles}</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Music Together Maple &amp; Spruce</h1>
+  </div>
+  <div class="content">
+${body}
+    <p style="margin-top: 28px;">Warmly,<br>
+      <strong style="color: #4A3728;">Stephanie</strong><br>
+      Music Together Maple &amp; Spruce</p>
+  </div>
+  <div class="footer">
+    <strong style="color: #4A3728;">Music Together Maple &amp; Spruce</strong><br>
+    Morgantown, WV<br>
+    <a href="mailto:${MT_EMAIL}">${MT_EMAIL}</a> | <a href="tel:${MT_PHONE_HREF}">${MT_PHONE_DISPLAY}</a><br>
+    <span style="font-size: 12px; color: #999;">Music Together Maple &amp; Spruce is licensed by Music Together Worldwide. Music Together is a registered trademark.</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+/** "Reply here or call or text" — repeated at the end of every message. */
+const mtContactLine = `<p>Questions? Just reply to this email, or call or text
+      <a href="tel:${MT_PHONE_HREF}" style="color: #6B7B5E;">${MT_PHONE_DISPLAY}</a>.</p>`;
+
+/** The "what to expect on your first visit" bullets. */
+const mtWhatToKnow = (firstVisit: boolean) => `<div class="highlight-box">
+      <strong style="color: #4A3728;">A few things to know</strong>
+      <ul style="margin: 12px 0 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Please arrive about 10 minutes early so you can settle in${
+          firstVisit ? ' and we can start right on time' : ''
+        }.</li>
+        <li style="margin-bottom: 8px;">Wear comfortable clothes you can move, sit, and play on the floor in, for both you and your little one.</li>
+        <li>Come as you are. There's no right way to participate; children learn by watching, listening, and joining in when they're ready.</li>
+      </ul>
+    </div>`;
+
+// --- Demo: RSVP confirmation ------------------------------------------------
+
+const mtDemoRsvpConfirmedSubject =
+  "You're registered for a free demo! Music Together Maple & Spruce";
+
+const mtDemoRsvpConfirmedHtml = mtLayout(
+  'Your Music Together demo is confirmed',
+  `    <h2>Your spot is confirmed!</h2>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    {{#if isCatchUp}}
+    <p>Thanks for registering for a free Music Together&reg; demo class, and
+      apologies for the slow confirmation. We're just getting our confirmation
+      emails switched on, and we didn't want another day to pass without saying
+      hello. <strong>Your spot is confirmed</strong>, and we're excited to give
+      you a taste of what a class is really like:</p>
+    {{else}}
+    <p>Thanks for registering for a free Music Together&reg; demo class! We're
+      excited to welcome you and give you a taste of what a class is really
+      like. Your spot is confirmed:</p>
+    {{/if}}
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Demo class</td>
+        <td>{{demoTitle}}</td>
+      </tr>
+      <tr>
+        <td class="label">When</td>
+        <td>{{demoDate}} at {{demoTime}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{demoLocation}}</td>
+      </tr>
+    </table>
+
+    <p>We'll send a friendly reminder before your visit. We can't wait to make
+      music with you!</p>
+    ${mtContactLine}`
+);
+
+// --- Demo: waitlisted -------------------------------------------------------
+//
+// No counterpart in Stephanie's doc — this is the past-capacity branch of the
+// same RSVP form. It must NOT read like a confirmation: the family does not
+// have a seat, and telling them when and where to show up would be worse than
+// saying nothing.
+
+const mtDemoRsvpWaitlistedSubject =
+  "You're on the waitlist for the {{demoDate}} demo";
+
+const mtDemoRsvpWaitlistedHtml = mtLayout(
+  'Music Together demo waitlist',
+  `    <h2>You're on the list</h2>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    {{#if isCatchUp}}
+    <p>Thanks for your interest in our free Music Together&reg; demo class, and
+      apologies for the slow reply. This one filled up before we could get back
+      to you, so you're on the waitlist for:</p>
+    {{else}}
+    <p>Thanks for your interest in our free Music Together&reg; demo class! This
+      one has filled up, so we've added you to the waitlist for:</p>
+    {{/if}}
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Demo class</td>
+        <td>{{demoDate}} at {{demoTime}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{demoLocation}}</td>
+      </tr>
+    </table>
+
+    <p><strong style="color: #4A3728;">You don't have a spot yet</strong>, but
+      families' plans change often, and we'll email you right away if one opens
+      up. We also add demo dates regularly, so if another works better for you,
+      let us know and we'll hold you a place.</p>
+    ${mtContactLine}`
+);
+
+// --- Section waitlist -------------------------------------------------------
+//
+// Also absent from the doc. Note `name` and `availability` are both optional —
+// the section page runs an email-only "coming soon" capture too — so both are
+// wrapped in {{#if}}.
+
+const mtWaitlistConfirmationSubject =
+  "You're on the Music Together waitlist";
+
+const mtWaitlistConfirmationHtml = mtLayout(
+  'Music Together waitlist',
+  `    <h2>You're on the list</h2>
+    <p>{{#if name}}Hi {{name}},{{else}}Hello,{{/if}}</p>
+    {{#if isCatchUp}}
+    <p>Thanks for your interest in Music Together&reg; Maple &amp; Spruce, and
+      apologies for the slow reply. We're just getting our confirmation emails
+      switched on, and we didn't want another day to pass without letting you
+      know you're on the waitlist{{#if sectionName}} for <strong>{{sectionName}}</strong>{{/if}}.</p>
+    {{else}}
+    <p>Thanks for your interest in Music Together&reg; Maple &amp; Spruce! You're
+      on the waitlist{{#if sectionName}} for <strong>{{sectionName}}</strong>{{/if}},
+      and we've noted where you are in line.</p>
+    {{/if}}
+
+    {{#if availability}}
+    <table class="detail-table">
+      <tr>
+        <td class="label">Your availability</td>
+        <td>{{availability}}</td>
+      </tr>
+    </table>
+    {{/if}}
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">What happens next</strong>
+      <p style="margin-bottom: 0;">Classes are small on purpose, eight families at
+        most, so spots open up regularly as schedules shift. We work through
+        the waitlist in order, and we'll email you as soon as one is yours. If
+        we can open another class time, we'll reach out about that too.</p>
+    </div>
+
+    <p>In the meantime, our free demo classes are a lovely way to try Music
+      Together while you wait. We'd love to see you at one.</p>
+    ${mtContactLine}`
+);
+
+// --- Demo: one week out -----------------------------------------------------
+
+const mtDemoReminder7dSubject = 'Your free demo is one week away! 🎶';
+
+const mtDemoReminder7dHtml = mtLayout(
+  'Your Music Together demo is one week away',
+  `    <h2>One week to go!</h2>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    <p>Your free Music Together&reg; demo class is almost here, and we're
+      looking forward to welcoming you this {{demoDay}}!</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Demo class</td>
+        <td>{{demoTitle}}</td>
+      </tr>
+      <tr>
+        <td class="label">When</td>
+        <td>{{demoDate}} at {{demoTime}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{demoLocation}}</td>
+      </tr>
+    </table>
+
+    ${mtWhatToKnow(false)}
+
+    <p>See you soon!</p>
+    ${mtContactLine}`
+);
+
+// --- Demo: two days out (carries the founding-family enrollment nudge) -------
+
+const mtDemoReminder48hSubject = 'See you in two days, plus a welcome gift 🎁';
+
+const mtDemoReminder48hHtml = mtLayout(
+  'Your Music Together demo is in two days',
+  `    <h2>See you in two days!</h2>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    <p>Your free Music Together&reg; demo class is just two days away, and we
+      can't wait to see you!</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">When</td>
+        <td>{{demoDate}} at {{demoTime}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{demoLocation}}</td>
+      </tr>
+    </table>
+
+    <p>Plan to arrive about 10 minutes early and dress comfortably for moving
+      and playing on the floor. Just bring yourselves!</p>
+
+    <div class="highlight-box">
+      <strong style="color: #4A3728;">A welcome gift for founding families</strong>
+      <p style="margin-bottom: 0;">If you love it as much as we think you will,
+        we'd be delighted to have you join us for the full session. As one of our
+        founding families you'll receive a take-home instrument kit to keep the
+        music going at home. We can share all the details when you visit, or you
+        can reach out anytime.</p>
+    </div>
+
+    <p>See you {{demoDay}}!</p>
+    ${mtContactLine}`
+);
+
+// --- Section: first class one week out --------------------------------------
+
+const mtFirstClass7dSubject = 'One week until your first class! 🎶';
+
+const mtFirstClass7dHtml = mtLayout(
+  'One week until your first Music Together class',
+  `    <h2>One week to go!</h2>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    <p>Your first Music Together&reg; class is almost here, and we're looking
+      forward to welcoming {{#if childNames}}{{childNames}}{{else}}your family{{/if}}
+      this {{classDay}}!</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">Class</td>
+        <td>{{sectionName}}</td>
+      </tr>
+      <tr>
+        <td class="label">First class</td>
+        <td>{{classDate}} at {{classStartTime}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{classLocation}}</td>
+      </tr>
+    </table>
+
+    ${mtWhatToKnow(true)}
+
+    {{#if calendarSubscribeUrl}}
+    <p><a href="{{calendarSubscribeUrl}}" style="color: #6B7B5E; font-weight: bold;">Subscribe to your class calendar</a>
+      and your family's whole schedule stays up to date automatically.
+      <span style="font-size: 12px; color: #999;">Keep this link private; it's unique to your family.</span></p>
+    {{/if}}
+
+    <p>See you soon!</p>
+    ${mtContactLine}`
+);
+
+// --- Section: first class two days out --------------------------------------
+
+const mtFirstClass48hSubject = 'See you in two days! 🎵';
+
+const mtFirstClass48hHtml = mtLayout(
+  'Your first Music Together class is in two days',
+  `    <h2>See you in two days!</h2>
+    <p>{{#if caregiverName}}Hi {{caregiverName}},{{else}}Hello,{{/if}}</p>
+    <p>Just a quick reminder that your first Music Together&reg; class is coming
+      up in two days. We can't wait to see
+      {{#if childNames}}{{childNames}}{{else}}you{{/if}}!</p>
+
+    <table class="detail-table">
+      <tr>
+        <td class="label">When</td>
+        <td>{{classDate}} at {{classStartTime}}</td>
+      </tr>
+      <tr>
+        <td class="label">Where</td>
+        <td>{{classLocation}}</td>
+      </tr>
+    </table>
+
+    <p>Plan to arrive about 10 minutes early, and dress comfortably for moving
+      and playing on the floor. That's all you need, so just bring yourselves!</p>
+
+    <p>See you {{classDay}}!</p>
+    ${mtContactLine}`
+);
+
 // ---------------------------------------------------------------------------
 
 interface EmailTemplate {
@@ -996,6 +1356,34 @@ const templates: Record<string, EmailTemplate> = {
   'music-together-manage-link': {
     subject: musicTogetherManageLinkSubject,
     html: musicTogetherManageLinkHtml,
+  },
+  'music-together-demo-rsvp-confirmed': {
+    subject: mtDemoRsvpConfirmedSubject,
+    html: mtDemoRsvpConfirmedHtml,
+  },
+  'music-together-demo-rsvp-waitlisted': {
+    subject: mtDemoRsvpWaitlistedSubject,
+    html: mtDemoRsvpWaitlistedHtml,
+  },
+  'music-together-waitlist-confirmation': {
+    subject: mtWaitlistConfirmationSubject,
+    html: mtWaitlistConfirmationHtml,
+  },
+  'music-together-demo-reminder-7d': {
+    subject: mtDemoReminder7dSubject,
+    html: mtDemoReminder7dHtml,
+  },
+  'music-together-demo-reminder-48h': {
+    subject: mtDemoReminder48hSubject,
+    html: mtDemoReminder48hHtml,
+  },
+  'music-together-first-class-7d': {
+    subject: mtFirstClass7dSubject,
+    html: mtFirstClass7dHtml,
+  },
+  'music-together-first-class-48h': {
+    subject: mtFirstClass48hSubject,
+    html: mtFirstClass48hHtml,
   },
 };
 

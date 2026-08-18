@@ -21,6 +21,12 @@ export interface MusicTogetherWaitlistEntry {
   /** Free-text answer to "what days/times work for you?" */
   availability?: string;
   createdAt: Date;
+  /**
+   * When the signup confirmation email was queued. Absent means the family was
+   * never acknowledged — the backfill (`tools/backfill-mt-signup-emails.ts`)
+   * keys off this, and it makes a re-run safe.
+   */
+  signupEmailSentAt?: Date;
 }
 
 export type CreateMusicTogetherWaitlistEntryInput = {

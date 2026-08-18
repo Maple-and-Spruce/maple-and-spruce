@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   txSet: vi.fn(),
   regUpdate: vi.fn(),
   mailAdd: vi.fn(),
+  queueMail: vi.fn(),
   findCalendarTokenByEmail: vi.fn(),
 }));
 
@@ -48,6 +49,7 @@ vi.mock('@maple/firebase/functions', () => {
       throw new HttpsError('failed-precondition', m);
     },
     generateFamilyCalendarToken: () => 'fam-token-test',
+    queueMail: mocks.queueMail,
     familyCalendarSubscribeUrl: (token: string) =>
       `webcal://maple-and-spruce-dev.web.app/calendar/family/${token}.ics`,
   };
@@ -128,6 +130,12 @@ const openFullOnly = {
   capacityFamilies: 8,
   priceFullCents: 25200,
   installmentPlan: undefined,
+  // Weekly meetings; the first one drives the "Starts:" line in the
+  // confirmation email. Deliberately unsorted to prove we pick the earliest.
+  sessions: [
+    { dateTime: new Date('2026-09-08T14:00:00Z') },
+    { dateTime: new Date('2026-09-01T14:00:00Z') }, // Tue 10am ET
+  ],
 };
 
 const openWithInstallments = {
@@ -468,5 +476,38 @@ describe('createMusicTogetherRegistration', () => {
     expect(mocks.regUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'cancelled' })
     );
+  });
+
+  describe('confirmation email', () => {
+    it('carries the caregiver, children, and first-class details', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+
+      await run({ ...baseFamily, paymentPlan: 'full' });
+
+      expect(mocks.queueMail).toHaveBeenCalledTimes(1);
+      const mail = mocks.queueMail.mock.calls[0][0];
+      expect(mail.templateName).toBe('music-together-confirmation');
+      expect(mail.sender).toBe('music-together');
+      expect(mail.data.caregiverName).toBe('Jamie Rivera');
+      // Earliest session wins even though the fixture lists it second.
+      expect(mail.data.firstClassDay).toBe('Tuesday');
+      expect(mail.data.firstClassDate).toBe('Tuesday, September 1');
+      expect(mail.data.firstClassTime).toBe('10:00 AM');
+      // No section location set → the studio address.
+      expect(mail.data.classLocation).toContain('688 Beulah Rd');
+    });
+
+    it('still confirms a section that has no sessions scheduled yet', async () => {
+      // The template hides the "Starts:" row rather than printing a blank date.
+      mocks.sectionFindById.mockResolvedValue({
+        ...openFullOnly,
+        sessions: undefined,
+      });
+
+      await run({ ...baseFamily, paymentPlan: 'full' });
+
+      const mail = mocks.queueMail.mock.calls[0][0];
+      expect(mail.data.firstClassDate).toBe('');
+    });
   });
 });

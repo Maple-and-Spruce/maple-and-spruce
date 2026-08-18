@@ -34,6 +34,17 @@ export const MT_DEFAULT_INSTALLMENT_COUNT = 2;
  */
 export const MT_CLASS_DURATION_MINUTES = 45;
 
+/**
+ * Studio address used in family-facing copy when a section doesn't set its own
+ * `location`. Sections meet at the studio by default.
+ *
+ * DEMOS DELIBERATELY DO NOT USE THIS — a demo's `location` is required free
+ * text precisely because demos are regularly held offsite (a public library, a
+ * partner space). Never fall back to this for a demo.
+ */
+export const MT_DEFAULT_LOCATION =
+  'Maple & Spruce Folk Arts Collective, 688 Beulah Rd, Morgantown, WV 26508';
+
 /** One scheduled weekly meeting of a section. */
 export interface MusicTogetherSession {
   dateTime: Date;

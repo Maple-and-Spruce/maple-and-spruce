@@ -45,6 +45,15 @@ function docToEntry(
     email: data.email,
     status: (data.status as MusicTogetherDemoRsvpStatus) ?? 'confirmed',
     createdAt: toDate(data.createdAt),
+    signupEmailSentAt: data.signupEmailSentAt
+      ? toDate(data.signupEmailSentAt)
+      : undefined,
+    reminder7dSentAt: data.reminder7dSentAt
+      ? toDate(data.reminder7dSentAt)
+      : undefined,
+    reminder48hSentAt: data.reminder48hSentAt
+      ? toDate(data.reminder48hSentAt)
+      : undefined,
   };
 }
 
@@ -99,6 +108,38 @@ export const MusicTogetherDemoRsvpRepository = {
     return snapshot.docs
       .map((doc) => docToEntry(demoId, doc))
       .filter((e): e is MusicTogetherDemoRsvp => e !== undefined);
+  },
+
+  /**
+   * Record that the signup confirmation email was queued for this family.
+   * Stamped only after the mail doc is written, so a failed queue leaves the
+   * RSVP eligible for the backfill rather than silently marked as handled.
+   */
+  async markSignupEmailSent(
+    demoId: string,
+    email: string,
+    at: Date
+  ): Promise<void> {
+    await rsvpsRef(demoId)
+      .doc(mtDemoRsvpEmailKey(email))
+      .update({ signupEmailSentAt: at });
+  },
+
+  /**
+   * Record that a pre-class reminder was queued for this RSVP. `lead` selects
+   * which of the two stamps to set, so the 7-day and 48-hour passes stay
+   * independently idempotent.
+   */
+  async markReminderSent(
+    demoId: string,
+    email: string,
+    lead: '7d' | '48h',
+    at: Date
+  ): Promise<void> {
+    const field = lead === '7d' ? 'reminder7dSentAt' : 'reminder48hSentAt';
+    await rsvpsRef(demoId)
+      .doc(mtDemoRsvpEmailKey(email))
+      .update({ [field]: at });
   },
 
   /** Count RSVPs for a demo in a given status (confirmed / waitlisted). */

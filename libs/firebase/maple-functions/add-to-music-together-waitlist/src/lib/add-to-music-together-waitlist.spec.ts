@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   capturedHandler: null as ((d: unknown) => Promise<unknown>) | null,
   sectionFindById: vi.fn(),
   waitlistAdd: vi.fn(),
+  markSignupEmailSent: vi.fn(),
+  queueMail: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -21,6 +23,7 @@ vi.mock('@maple/firebase/functions', () => {
   };
   return {
     Functions: { endpoint },
+    queueMail: mocks.queueMail,
     throwInvalidArgument: (m: string) => {
       throw new HttpsError('invalid-argument', m);
     },
@@ -35,7 +38,10 @@ vi.mock('@maple/firebase/functions', () => {
 
 vi.mock('@maple/firebase/database', () => ({
   MusicTogetherSectionRepository: { findById: mocks.sectionFindById },
-  MusicTogetherWaitlistRepository: { add: mocks.waitlistAdd },
+  MusicTogetherWaitlistRepository: {
+    add: mocks.waitlistAdd,
+    markSignupEmailSent: mocks.markSignupEmailSent,
+  },
 }));
 
 import './add-to-music-together-waitlist';
@@ -54,8 +60,23 @@ const validEntry = {
 describe('addToMusicTogetherWaitlist', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', visible: true });
-    mocks.waitlistAdd.mockResolvedValue({ created: true });
+    mocks.sectionFindById.mockResolvedValue({
+      id: 'sec-1',
+      name: 'Tuesdays 10am — Mixed Age',
+      visible: true,
+    });
+    mocks.waitlistAdd.mockResolvedValue({
+      created: true,
+      entry: {
+        id: 'jamie@example.com',
+        sectionId: 'sec-1',
+        name: 'Jamie Rivera',
+        email: 'jamie@example.com',
+        availability: 'Tuesday mornings',
+        createdAt: new Date(),
+      },
+    });
+    mocks.queueMail.mockResolvedValue(true);
   });
 
   it('adds a family to the waitlist and reports added=true', async () => {
@@ -113,5 +134,78 @@ describe('addToMusicTogetherWaitlist', () => {
   it('rejects a hidden section', async () => {
     mocks.sectionFindById.mockResolvedValue({ id: 'sec-1', visible: false });
     await expect(run(validEntry)).rejects.toThrow(/not available/i);
+  });
+
+  describe('confirmation email', () => {
+    it('queues a Music Together confirmation and stamps the entry', async () => {
+      await run(validEntry);
+
+      expect(mocks.queueMail).toHaveBeenCalledTimes(1);
+      const mail = mocks.queueMail.mock.calls[0][0];
+      expect(mail.to).toBe('jamie@example.com');
+      expect(mail.templateName).toBe('music-together-waitlist-confirmation');
+      expect(mail.sender).toBe('music-together');
+      expect(mail.data.name).toBe('Jamie Rivera');
+      expect(mail.data.sectionName).toBe('Tuesdays 10am — Mixed Age');
+      expect(mail.data.availability).toBe('Tuesday mornings');
+      expect(mocks.markSignupEmailSent).toHaveBeenCalledWith(
+        'sec-1',
+        'jamie@example.com',
+        expect.any(Date)
+      );
+    });
+
+    it('sends NOTHING on a repeat signup', async () => {
+      // This endpoint is public and unauthenticated — emailing on every call
+      // would let anyone mailbomb an address by replaying the same signup.
+      mocks.waitlistAdd.mockResolvedValue({
+        created: false,
+        entry: { sectionId: 'sec-1', email: 'jamie@example.com' },
+      });
+
+      const result = (await run(validEntry)) as { added: boolean };
+
+      expect(result.added).toBe(false);
+      expect(mocks.queueMail).not.toHaveBeenCalled();
+      expect(mocks.markSignupEmailSent).not.toHaveBeenCalled();
+    });
+
+    it('handles the email-only capture with empty merge fields', async () => {
+      mocks.waitlistAdd.mockResolvedValue({
+        created: true,
+        entry: {
+          sectionId: 'sec-1',
+          email: 'jamie@example.com',
+          name: undefined,
+          availability: undefined,
+          createdAt: new Date(),
+        },
+      });
+
+      await run({ sectionId: 'sec-1', email: 'jamie@example.com' });
+
+      const mail = mocks.queueMail.mock.calls[0][0];
+      expect(mail.data.name).toBe('');
+      expect(mail.data.availability).toBe('');
+    });
+
+    it('does not stamp when queueMail declines the recipient', async () => {
+      mocks.queueMail.mockResolvedValue(false);
+
+      await run(validEntry);
+
+      expect(mocks.markSignupEmailSent).not.toHaveBeenCalled();
+    });
+
+    it('still reports the signup when queuing mail throws', async () => {
+      // The family's place in line is already committed — a mail failure must
+      // never surface as "your signup didn't take".
+      mocks.queueMail.mockRejectedValue(new Error('firestore unavailable'));
+
+      const result = (await run(validEntry)) as { added: boolean };
+
+      expect(result.added).toBe(true);
+      expect(mocks.markSignupEmailSent).not.toHaveBeenCalled();
+    });
   });
 });
