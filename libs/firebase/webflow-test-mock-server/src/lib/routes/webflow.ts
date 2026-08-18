@@ -3,6 +3,7 @@
  *
  * Implements the Webflow CMS API endpoints used by our sync functions:
  * - GET /collections/:collectionId/items (list items)
+ * - GET /collections/:collectionId/items/:itemId (get one item)
  * - POST /collections/:collectionId/items (create item)
  * - PATCH /collections/:collectionId/items/:itemId (update item)
  * - DELETE /collections/:collectionId/items/:itemId (staged delete)
@@ -48,6 +49,28 @@ export function registerWebflowRoutes(server: WebflowMockServer): void {
         },
       },
     };
+  });
+
+  // Get a single collection item.
+  //
+  // Every sync service calls this first when it already knows an item ID
+  // (`resolveExistingItemId`), and only falls back to a full paginated scan on
+  // a 404. Without this route the mock 404s every time, so that fast path was
+  // never actually exercised — a regression in it would have looked green.
+  // Registered before the list route is unnecessary (different arity), but the
+  // handler must 404 on unknown IDs to keep the fallback behaviour testable.
+  server.get('/collections/:collectionId/items/:itemId', (req) => {
+    const collection = getCollection(req.params['collectionId']);
+    const item = collection.get(req.params['itemId']);
+
+    if (!item) {
+      return {
+        status: 404,
+        body: { code: 404, msg: `Item ${req.params['itemId']} not found` },
+      };
+    }
+
+    return { status: 200, body: item };
   });
 
   // Create collection item

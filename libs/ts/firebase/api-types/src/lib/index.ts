@@ -196,12 +196,10 @@ export type {
   UploadCategoryGalleryImageResponse,
 } from './class-category.types';
 
-// Class Waitlist + Related Classes (public widget endpoints + admin roster read)
+// Class Waitlist (public widget endpoint + admin roster read)
 export type {
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
-  GetRelatedPublicClassesRequest,
-  GetRelatedPublicClassesResponse,
   GetClassWaitlistRequest,
   GetClassWaitlistResponse,
   GetClassWaitlistCountsRequest,

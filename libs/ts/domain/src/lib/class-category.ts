@@ -28,6 +28,13 @@ export interface ClassCategory {
    * `GALLERY_IMAGE_MAX`.
    */
   galleryImages?: GalleryImage[];
+  /**
+   * Webflow CMS item ID from the last sync. Lets the sync update the item
+   * directly instead of scanning the collection by `firebase-id`, and is
+   * what the class sync writes into each class item's `category` reference
+   * field so Webflow can render related classes natively.
+   */
+  webflowItemId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -39,8 +39,6 @@ import type {
   GetRequiredAgreementsForClassRequest,
   GetRequiredAgreementsForClassResponse,
   InlineAgreementSigningData,
-  GetRelatedPublicClassesRequest,
-  GetRelatedPublicClassesResponse,
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
 } from '@maple/ts/firebase/api-types';
@@ -152,24 +150,16 @@ function generateIcsFile(opts: {
 }
 
 /**
- * Format the first session date for the related-class card. Shorter than the
- * confirmation-page formatter because we only need date + time, not weekday.
- */
-function formatRelatedClassDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-/**
- * Sold-out fallback shown when `spotsRemaining <= 0`. Loads sibling
- * classes (same category, future, available) and offers an informal
- * waitlist signup. Both pieces are independent — the waitlist form
- * still renders even if no related classes are found.
+ * Sold-out fallback shown when `spotsRemaining <= 0`: an informal waitlist
+ * signup.
+ *
+ * "Other upcoming dates" used to live here too, loaded from a
+ * `getRelatedPublicClasses` callable. That function sat in the `maple-core`
+ * bundle (~6.1s cold, ADR-031) and only ever ran on a full class, so it was
+ * effectively always a cold start and the section took seconds to appear.
+ * The class template page now renders those cards natively from the Webflow
+ * CMS — a Collection List filtered on the class's `category` Reference field
+ * — so they are in the HTML at first paint. See #776.
  */
 function SoldOutPanel({
   classId,
@@ -178,7 +168,6 @@ function SoldOutPanel({
   classId: string;
   functions: ReturnType<typeof getWidgetFunctions>;
 }) {
-  const [related, setRelated] = useState<PublicClass[] | null>(null);
   const [email, setEmail] = useState('');
   const [waitlistState, setWaitlistState] = useState<
     | { status: 'idle' }
@@ -186,23 +175,6 @@ function SoldOutPanel({
     | { status: 'success'; alreadyOnList: boolean }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
-
-  useEffect(() => {
-    const fetchRelated = async () => {
-      try {
-        const call = httpsCallable<
-          GetRelatedPublicClassesRequest,
-          GetRelatedPublicClassesResponse
-        >(functions, 'getRelatedPublicClasses');
-        const result = await call({ classId });
-        setRelated(result.data.classes);
-      } catch (err) {
-        console.error('Failed to fetch related classes:', err);
-        setRelated([]);
-      }
-    };
-    fetchRelated();
-  }, [classId, functions]);
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,70 +264,6 @@ function SoldOutPanel({
         )}
       </Box>
 
-      {/* Alternative: other dates for the same class that still have spots. */}
-      {related && related.length > 0 && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Box>
-            <Typography
-              variant="h6"
-              fontWeight={600}
-              gutterBottom
-              sx={{ color: 'text.primary' }}
-            >
-              Other upcoming dates
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              We're offering this class on other dates that still have spots.
-            </Typography>
-            <Stack spacing={1.5}>
-              {related.map((rc) => {
-                const firstSession = rc.sessions[0]?.dateTime;
-                return (
-                  <Box
-                    key={rc.id}
-                    sx={{
-                      p: 2,
-                      border: 1,
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      alignItems: { xs: 'flex-start', sm: 'center' },
-                      justifyContent: 'space-between',
-                      gap: 1.5,
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={600}>
-                        {rc.name}
-                      </Typography>
-                      {firstSession && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                        >
-                          {formatRelatedClassDate(firstSession)} ·{' '}
-                          {rc.spotsRemaining} spot
-                          {rc.spotsRemaining === 1 ? '' : 's'} left
-                        </Typography>
-                      )}
-                    </Box>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      href={`/classes/${rc.slug}`}
-                    >
-                      View class
-                    </Button>
-                  </Box>
-                );
-              })}
-            </Stack>
-          </Box>
-        </>
-      )}
     </Box>
   );
 }
