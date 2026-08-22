@@ -310,6 +310,31 @@ a weekly window a teacher's lessons must fall inside.
 | Firebase Hosting rewrites | **Complete** | `/calendar/*.ics` routes to feed functions |
 | Public calendar display | **Complete** | Open Web Calendar (self-hosted on Vercel), embedded in Webflow via iframe. See ADR-025. |
 
+## Ad attribution — Meta Conversions API
+
+Server-side twins for every browser Pixel conversion. The browser half is lost
+to ad blockers and Safari ITP at an unknown rate; the server half is what
+survives, and a shared `event_id` keeps the pair from double-counting.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Shared CAPI client (hashing, `buildUserData`, bounded `fetch`) | Complete | `libs/firebase/meta-capi/` |
+| Mock Graph server for integration tests | Complete | `libs/firebase/meta-capi-test-mock-server/` |
+| Tally newsletter `Lead` (routed by form id to the owning pixel) | Complete | `tally-lead-webhook/` |
+| Craft-class `Purchase` (Firestore trigger) | Complete | `send-registration-conversion/` |
+| Music Together `Purchase` (Firestore trigger) | Complete | `send-music-together-conversion/` |
+| **MT demo RSVP `Schedule` (inline in the callable)** (#781) | **Complete** | `add-music-together-demo-rsvp/` + `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts` |
+| **MT interest signup `Lead` (inline in the callable)** (#781) | **Complete** | `add-music-together-interest/` |
+| **Attribution persisted on demo/interest docs** (#781) | **Complete** | `libs/firebase/database/src/lib/utilities/meta-attribution.fields.ts` |
+| **`ct` / `st` / `zp` / `country` / `external_id` match keys** (#781) | **Complete** | `meta-capi.ts` (`hashLocationToken`, `hashZip`) + `us-address.ts` |
+| Separate dev pixel (dev signups currently hit prod attribution) | **Not Started** | [#782](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/782) |
+
+The demo RSVP is the conversion the MT program optimizes against — paid
+enrollment is weeks later and in single digits, so `Purchase` alone can never
+train a bidder. Full rationale (inline vs trigger, why the top-funnel
+`event_id` is a hash, match-key rules) in
+`docs/guides/music-together-ad-tracking.md`.
+
 ## Spruce Room Availability — Epic #467 (In Progress)
 
 The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Room occupancy is tracked via `CalendarEvent.room`; the portal is the source of truth. See #467 for product decisions and architecture.

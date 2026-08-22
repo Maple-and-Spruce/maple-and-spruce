@@ -6,6 +6,64 @@
 
 ## Current Status
 
+### Server-side Meta signals for MT demo RSVPs + interest signups (2026-08-22, #781)
+
+The first Music Together campaign spent $124.43 over nine days — 8,319 reached, 389 link clicks,
+328 landing page views — and reported **zero** pixel-attributed conversions. Some of that was a
+targeting problem, already fixed on the Meta side. But we could not tell *"nobody converted"* from
+*"the signal never arrived"*, because the demo RSVP was the only step in the MT funnel with no
+server-side backup, and no hashed email for those RSVPs had ever reached Meta — so there was also
+nothing to seed a lookalike audience from.
+
+**The demo RSVP is the conversion this program optimizes against.** Paid enrollment happens weeks
+later and in single digits; `Schedule` is the only MT event with enough volume to train a bidder.
+
+**Four things worth remembering.**
+
+- **These two send INLINE, unlike every other conversion here.** `sendMusicTogetherConversion` is a
+  Firestore trigger because its conversion happens later than any request (Square's webhook flips
+  the doc minutes after checkout). An RSVP is born final — the conversion *is* the request, and the
+  browser needs the `event_id` back in that same response. `tallyLeadWebhook` is the closer
+  precedent. A trigger would also have cost two Cloud Run services against the ADR-029 ratchet for
+  no behavioral gain; **this change adds zero functions** (baseline still 218). The send is capped
+  at 2s (`MT_TOP_FUNNEL_CAPI_TIMEOUT_MS`, vs the library's 5s) because it blocks a form submit, and
+  double-wrapped so it can never fail an RSVP.
+- **The `event_id` is a hash, not the doc id.** Both collections are keyed by the family's
+  **lowercased email** for idempotency, so the obvious `mt-demo-<docId>` would have shipped a
+  plaintext address to Meta in an unhashed field. It is `mt-demo-<sha256(demoId:email)[0:16]>` /
+  `mt-interest-<sha256(email)[0:16]>` — stable across the pair, unique per (demo, family), derivable
+  from the stored document (so promoting to a trigger later is a no-op on the wire), no PII. **The
+  server owns the format**; both widgets pass the response value through verbatim.
+- **The server half fires only on `created`.** Both endpoints are public and unauthenticated —
+  sending on every call would let anyone inflate a campaign's conversion count by replaying a
+  signup. The browser half still fires on a re-submit under the same stable id, which is what keeps
+  Meta from booking it twice. Same reasoning as the email idempotency from #778.
+- **`external_id` is the lowercased email on every surface.** That is the thing that lets Meta
+  resolve one family's demo RSVP, interest signup, and later enrollment to a single person — the
+  basis for a lookalike off the RSVP. `country: 'us'` is now sent unconditionally everywhere; and
+  the MT registration address, the only address we collect, is finally split into `ct`/`st`/`zp` by
+  a deliberately conservative `parseUsAddress` (a wrong city hash matches nobody while *looking*
+  like a supplied key, so anything ambiguous is dropped — including bare two-letter English words
+  that collide with USPS codes: `me`, `in`, `or`, `ok`, `hi`, `la`, `pa`, `id`).
+
+**Verification**: 2917 unit tests; 12 new integration tests against the emulators + the CAPI mock
+(`music-together-top-funnel-conversions.spec.ts`) asserting event name, `event_id`, hashed `em`, and
+fbp/fbc/IP/UA passthrough; and a Storybook `play` story driving the real demo widget in Chromium and
+asserting the `Schedule` carries the server's `eventID` (verified to fail when the id drifts). The
+Storybook stories glob now covers `apps/webflow-components/` — the public widgets carry the ad
+tracking that pays for the classes and had no browser-level coverage.
+
+**Still to do (manual, cannot be done from the repo):**
+
+1. **Confirm dedup in Meta Events Manager** after deploy — Test Events for pixel `1562555242035326`,
+   submit a demo RSVP, and check that `Schedule` appears **once** with both a Browser and a Server
+   source. If it shows twice, the `event_id` broke.
+2. Mark `Schedule` and `Lead` as conversions in the MT dataset once traffic starts.
+3. **#782 — dev and prod still share the production pixel.** This got sharper: it is no longer just
+   rare `Purchase` events, it is every dev demo RSVP and interest signup posting a real hashed email
+   into the production MT dataset. Do not run repeated dev test signups, and prune test emails
+   before building a lookalike off that data.
+
 ### Music Together registration email sequences (2026-08-17, #778)
 
 Demo RSVPs and section waitlist signups sent **nothing** until now: both functions wrote Firestore

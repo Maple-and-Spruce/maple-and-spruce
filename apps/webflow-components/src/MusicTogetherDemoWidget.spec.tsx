@@ -11,12 +11,23 @@ import {
 import userEvent from '@testing-library/user-event';
 import type { PublicMusicTogetherDemo } from '@maple/ts/firebase/api-types';
 
+/** Stands in for the server-derived dedup key returned by the callable. */
+const DEMO_EVENT_ID = 'mt-demo-0123456789abcdef';
+const DEMO_WAITLIST_EVENT_ID = 'mt-demo-fedcba9876543210';
+
 // Records the last payload sent to each callable, by name.
 const calls: Record<string, unknown> = {};
 // Controls the addMusicTogetherDemoRsvp response.
-let nextRsvp: { added: boolean; status: 'confirmed' | 'waitlisted' } = {
+let nextRsvp: {
+  added: boolean;
+  status: 'confirmed' | 'waitlisted';
+  eventId: string;
+} = {
   added: true,
   status: 'confirmed',
+  // The SERVER computes this and already sent the CAPI `Schedule` under it —
+  // the widget must echo it back as the Pixel's `eventID`, never rebuild it.
+  eventId: DEMO_EVENT_ID,
 };
 // Controls the getPublicMusicTogetherDemos response.
 let demos: PublicMusicTogetherDemo[] = [];
@@ -82,7 +93,7 @@ function installFbq(): ReturnType<typeof vi.fn> {
 
 describe('MusicTogetherDemoWidget', () => {
   beforeEach(() => {
-    nextRsvp = { added: true, status: 'confirmed' };
+    nextRsvp = { added: true, status: 'confirmed', eventId: DEMO_EVENT_ID };
     demos = [libraryDemo, studioDemo];
     for (const k of Object.keys(calls)) delete calls[k];
   });
@@ -133,12 +144,56 @@ describe('MusicTogetherDemoWidget', () => {
       rsvp_status: 'confirmed',
     });
 
+    // The 5th fbq arg is the dedup envelope. Without it, this browser event and
+    // the CAPI `Schedule` the callable already sent are two conversions, and
+    // every RSVP double-counts in Ads Manager.
+    expect(scheduled[0][4]).toEqual({ eventID: DEMO_EVENT_ID });
+
     expect(fbq.mock.calls.some((c) => c[2] === 'Lead')).toBe(false);
     expect(fbq.mock.calls.some((c) => c[0] === 'track')).toBe(false);
   });
 
+  it('sends the ad-click cookies with the RSVP so the server can attribute it', async () => {
+    // Without `_fbc` the server event falls back to email-hash matching alone,
+    // which is what keeps Events Manager match quality low.
+    document.cookie = '_fbp=fb.1.1700000000000.111';
+    document.cookie = '_fbc=fb.1.1700000000000.IwAR-click';
+    const user = userEvent.setup({ delay: null });
+    render(<MusicTogetherDemoWidget env="dev" />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('radio', { name: /Morgantown Public Library/i })
+      ).toBeInTheDocument()
+    );
+    await user.click(
+      screen.getByRole('radio', { name: /Morgantown Public Library/i })
+    );
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('button', { name: /reserve my spot/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/You're in!/i)).toBeInTheDocument()
+    );
+
+    expect(
+      (calls['addMusicTogetherDemoRsvp'] as { metaAttribution?: unknown })
+        .metaAttribution
+    ).toMatchObject({
+      fbp: 'fb.1.1700000000000.111',
+      fbc: 'fb.1.1700000000000.IwAR-click',
+    });
+
+    document.cookie = '_fbp=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = '_fbc=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+
   it('tags a full-demo waitlist join as waitlisted, not a booked seat', async () => {
-    nextRsvp = { added: true, status: 'waitlisted' };
+    nextRsvp = {
+      added: true,
+      status: 'waitlisted',
+      eventId: DEMO_WAITLIST_EVENT_ID,
+    };
     const fbq = installFbq();
     const user = userEvent.setup({ delay: null });
     render(<MusicTogetherDemoWidget env="dev" />);
@@ -222,7 +277,7 @@ describe('MusicTogetherDemoWidget', () => {
     await waitFor(() =>
       expect(screen.getByText(/You're in!/i)).toBeInTheDocument()
     );
-    expect(calls['addMusicTogetherDemoRsvp']).toEqual({
+    expect(calls['addMusicTogetherDemoRsvp']).toMatchObject({
       demoId: 'demo-1',
       name: 'Jamie Rivera',
       email: 'jamie@example.com',
@@ -233,7 +288,11 @@ describe('MusicTogetherDemoWidget', () => {
   });
 
   it('shows waitlist copy when the RSVP is waitlisted', async () => {
-    nextRsvp = { added: true, status: 'waitlisted' };
+    nextRsvp = {
+      added: true,
+      status: 'waitlisted',
+      eventId: DEMO_WAITLIST_EVENT_ID,
+    };
     const user = userEvent.setup({ delay: null });
     render(<MusicTogetherDemoWidget env="dev" />);
 

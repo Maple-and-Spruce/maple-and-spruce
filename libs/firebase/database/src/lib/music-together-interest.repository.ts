@@ -12,6 +12,10 @@
  * `createdAt`.
  */
 import { getDb, toDate } from './utilities/database.config';
+import {
+  toMetaAttributionFields,
+  type MetaAttributionInput,
+} from './utilities/meta-attribution.fields';
 import type {
   MusicTogetherInterest,
   CreateMusicTogetherInterestInput,
@@ -54,7 +58,16 @@ export const MusicTogetherInterestRepository = {
    * with the latest selections/notes and `created: false` is returned; the
    * original `createdAt` is preserved.
    */
-  async upsert(input: CreateMusicTogetherInterestInput): Promise<{
+  async upsert(
+    input: CreateMusicTogetherInterestInput,
+    /**
+     * Meta ad attribution from the widget + the callable's request context.
+     * On a re-submit a fresh value wins, but an ABSENT one keeps whatever the
+     * original signup captured — this is a full-document `set`, so blanking it
+     * would discard the click id that links the family to a campaign.
+     */
+    attribution?: MetaAttributionInput
+  ): Promise<{
     entry: MusicTogetherInterest;
     created: boolean;
   }> {
@@ -75,6 +88,10 @@ export const MusicTogetherInterestRepository = {
       notes: input.notes?.trim() || null,
       createdAt,
       updatedAt: now,
+      ...toMetaAttributionFields(
+        attribution,
+        existing.exists ? (existing.data() as MetaAttributionInput) : undefined
+      ),
     };
     await ref.set(payload);
 

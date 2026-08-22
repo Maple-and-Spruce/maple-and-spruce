@@ -38,6 +38,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
+import { readMetaAttribution } from './lib/meta-attribution';
 import {
   ensureMusicTogetherPixel,
   trackMusicTogetherInterest,
@@ -178,14 +179,22 @@ export function MusicTogetherInterestWidget({
         preferenceNote: preferenceNote.trim() || undefined,
         alternateTimesNote: alternateTimesNote.trim() || undefined,
         notes: notes.trim() || undefined,
+        // Snapshot _fbp/_fbc for the server-side `Lead`. See the demo widget.
+        metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
       });
       const alreadyOnList = !result.data.added;
       setSubmitState({ status: 'success', alreadyOnList });
       // Meta `Lead` on the Music Together pixel — the conversion the MT
       // interest-list campaign optimizes toward.
+      // `eventId` is server-owned and deduplicates this against the CAPI
+      // `Lead` the callable already sent. It is stable per family, so a
+      // re-submit reuses it rather than booking a second conversion.
       trackMusicTogetherInterest(typeof window !== 'undefined' ? window : null, {
         interestedSectionIds: [...checkedSections],
         alreadyOnList,
+        eventId: result.data.eventId,
       });
     } catch (err) {
       setSubmitState({

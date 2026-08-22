@@ -54,6 +54,26 @@ export interface MetaCapiUserIdentifiers {
   fbc?: string;
   ip?: string;
   userAgent?: string;
+  /** City, e.g. `Morgantown`. Hashed after stripping spaces + punctuation. */
+  city?: string;
+  /**
+   * State / province. Meta wants the two-letter ANSI abbreviation for US
+   * addresses (`wv`), NOT the spelled-out name — `west virginia` hashes to
+   * something their index has never seen and matches nobody.
+   */
+  state?: string;
+  /** Postal code. US ZIP+4 is truncated to the first 5 digits per Meta. */
+  zip?: string;
+  /** Two-letter ISO 3166-1 country code, e.g. `us`. */
+  country?: string;
+  /**
+   * A stable identifier for this person in OUR system, hashed before send.
+   *
+   * We use the lowercased email as the external id on every surface, which is
+   * what lets Meta stitch one family's demo RSVP, interest signup, and later
+   * enrollment into a single person across three different events.
+   */
+  externalId?: string;
 }
 
 export interface MetaCapiEvent {
@@ -92,6 +112,39 @@ export function hashPhone(phone: string): string {
 }
 
 /**
+ * Hash a location token (city / state / country) per Meta's normalization:
+ * lowercase, then strip everything that is not a letter or digit — spaces,
+ * periods, and hyphens all come out (`St. Louis` -> `stlouis`).
+ *
+ * Returns undefined when nothing survives normalization, so an all-punctuation
+ * input never becomes a garbage hash that matches nobody but still costs us a
+ * field in `user_data`.
+ */
+export function hashLocationToken(value: string): string | undefined {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!normalized) return undefined;
+  return createHash('sha256').update(normalized).digest('hex');
+}
+
+/**
+ * Hash a postal code. A US ZIP+4 (`26505-1234`, or `265051234`) is truncated
+ * to the first five digits — Meta indexes the 5-digit ZIP, so sending the
+ * extended form matches nobody.
+ *
+ * Non-numeric postal codes (Canada, UK) are passed through the generic
+ * location normalization instead of being truncated.
+ */
+export function hashZip(zip: string): string | undefined {
+  const trimmed = zip.trim().toLowerCase();
+  const digits = trimmed.replace(/\D/g, '');
+  const isNumericOnly = /^[0-9-\s]+$/.test(trimmed);
+  if (isNumericOnly && digits.length >= 5) {
+    return createHash('sha256').update(digits.slice(0, 5)).digest('hex');
+  }
+  return hashLocationToken(trimmed);
+}
+
+/**
  * Split a full name into first / last for Meta's `fn` / `ln` match fields.
  * Best-effort: first token is the first name, the remainder is the last name
  * so hyphenated and multi-part surnames survive intact.
@@ -119,6 +172,23 @@ export function buildUserData(
   }
   if (user.firstName) data['fn'] = [hashNormalized(user.firstName)];
   if (user.lastName) data['ln'] = [hashNormalized(user.lastName)];
+  if (user.city) {
+    const ct = hashLocationToken(user.city);
+    if (ct) data['ct'] = [ct];
+  }
+  if (user.state) {
+    const st = hashLocationToken(user.state);
+    if (st) data['st'] = [st];
+  }
+  if (user.zip) {
+    const zp = hashZip(user.zip);
+    if (zp) data['zp'] = [zp];
+  }
+  if (user.country) {
+    const country = hashLocationToken(user.country);
+    if (country) data['country'] = [country];
+  }
+  if (user.externalId) data['external_id'] = [hashNormalized(user.externalId)];
   if (user.fbp) data['fbp'] = user.fbp;
   if (user.fbc) data['fbc'] = user.fbc;
   if (user.ip) data['client_ip_address'] = user.ip;

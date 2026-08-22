@@ -386,6 +386,12 @@ export interface AddMusicTogetherDemoRsvpRequest {
   demoId: string;
   name: string;
   email: string;
+  /**
+   * Browser-captured Meta ad attribution (`_fbp` / `_fbc` / page URL).
+   * Advisory only — persisted on the RSVP and forwarded to the server-side
+   * `Schedule` Conversions API event. Never authorize or gate anything on it.
+   */
+  metaAttribution?: MetaAttributionPayload;
 }
 
 export interface AddMusicTogetherDemoRsvpResponse {
@@ -393,6 +399,13 @@ export interface AddMusicTogetherDemoRsvpResponse {
   added: boolean;
   /** Whether the family took a seat or landed on the waitlist. */
   status: 'confirmed' | 'waitlisted';
+  /**
+   * Dedup key for the Meta Pixel's `eventID`, matching the `event_id` on the
+   * server-side `Schedule` this call already sent. The widget must pass this
+   * through verbatim — the server owns the format precisely so the two halves
+   * cannot drift and double-count the RSVP.
+   */
+  eventId: string;
 }
 
 // No parameters — returns every demo grouped with its RSVPs for the admin viewer.
@@ -524,11 +537,23 @@ export interface AddMusicTogetherInterestRequest {
   alternateTimesNote?: string;
   /** "Additional Notes" */
   notes?: string;
+  /**
+   * Browser-captured Meta ad attribution (`_fbp` / `_fbc` / page URL).
+   * Advisory only — persisted on the entry and forwarded to the server-side
+   * `Lead` Conversions API event.
+   */
+  metaAttribution?: MetaAttributionPayload;
 }
 
 export interface AddMusicTogetherInterestResponse {
   /** False when the email already had an interest entry (it was updated). */
   added: boolean;
+  /**
+   * Dedup key for the Meta Pixel's `eventID`. Stable per family, so a repeat
+   * submission reuses it rather than booking a second `Lead`. See
+   * `AddMusicTogetherDemoRsvpResponse.eventId`.
+   */
+  eventId: string;
 }
 
 export interface GetMusicTogetherInterestRequest {

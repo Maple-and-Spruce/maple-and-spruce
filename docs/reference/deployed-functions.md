@@ -45,7 +45,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Music Together — cross-section interest list (#602)
 - `getPublicMusicTogetherSections` _(public; customer-safe list of visible section options — id, name, first-session, location, derived status — drives the interest form's checkboxes)_
-- `addMusicTogetherInterest` _(public; idempotent-per-email upsert to `musicTogetherInterest/{emailKey}` capturing `interestedSectionIds[]` + preference/alternate-time/notes; validates + verifies referenced sections before writing. Broader than the per-section `addToMusicTogetherWaitlist` — works even when nothing is full)_
+- `addMusicTogetherInterest` _(public; idempotent-per-email upsert to `musicTogetherInterest/{emailKey}` capturing `interestedSectionIds[]` + preference/alternate-time/notes; validates + verifies referenced sections before writing. Broader than the per-section `addToMusicTogetherWaitlist` — works even when nothing is full. Also persists Meta attribution and sends a server-side `Lead` — see "Top-of-funnel attribution" below)_
 - `getMusicTogetherInterest` _(admin; returns all interest entries, a per-section demand tally (highest first), and a section-id→name map; powers the MT admin "Interest list" dialog)_
 
 ### Class Categories
@@ -107,6 +107,32 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Infrastructure
 - `healthCheck`
 - `getSyncConflicts`, `getSyncConflictSummary`
+
+### Top-of-funnel attribution (Music Together → Meta CAPI) (#781)
+
+No new functions — both events are sent **inline by the existing callable**, in
+the same request. See `docs/guides/music-together-ad-tracking.md` for why (the
+conversion *is* the request, the browser needs the `event_id` back in that
+response, and a trigger would cost two Cloud Run services against the ADR-029
+ratchet for no behavioral gain).
+
+- `addMusicTogetherDemoRsvp` — now also sends a Meta CAPI **`Schedule`** to
+  `META_PIXEL_ID_MUSIC_TOGETHER` for a NEW RSVP, with
+  `event_id = mt-demo-<sha256(demoId:email)[0:16]>`. The id is returned in the
+  response and reused verbatim as the browser Pixel's `eventID`, so the pair
+  deduplicates. Hashed, **not** the doc id: RSVPs are keyed by the family's
+  email, so `mt-demo-<docId>` would ship a plaintext address to Meta. This is
+  the conversion the MT campaign optimizes against — paid enrollment is weeks
+  later and in single digits.
+- `addMusicTogetherInterest` — same shape, sending a **`Lead`** with
+  `event_id = mt-interest-<sha256(email)[0:16]>`.
+- Both persist `fbp` / `fbc` / `eventSourceUrl` / `clientIp` / `clientUserAgent`
+  on the document (`clientIp`/`clientUserAgent` off the HTTP request, never the
+  payload). Both send only on a NEW entry — the endpoints are public, so firing
+  on every call would let a replay inflate a campaign's conversion count.
+- Bounded at `MT_TOP_FUNNEL_CAPI_TIMEOUT_MS` (2s, vs the library's 5s default)
+  because these block a form submit, and wrapped so a CAPI failure can never
+  fail the RSVP or signup.
 
 ### Purchase attribution (class registration → Meta CAPI)
 - `sendRegistrationConversion` — Firestore trigger on `registrations/{id}`. On the `pending → confirmed` transition (paid `source:'web'` only), sends a server-side Meta Conversions API `Purchase` with `event_id = confirmationNumber` for dedup against the inline browser Pixel. Recovers conversions the client Pixel drops (iOS/Safari ITP, ad blockers) and the ones it never fires at all (the Square-hosted checkout fallback, which redirects off-site). Best-effort: CAPI failures are logged and swallowed. Reuses the `META_CAPI_TOKEN` secret + `META_PIXEL_ID`/`META_CAPI_*` params from `tallyLeadWebhook` — no new secret. Shared client: `@maple/firebase/meta-capi` (`libs/firebase/meta-capi/`).

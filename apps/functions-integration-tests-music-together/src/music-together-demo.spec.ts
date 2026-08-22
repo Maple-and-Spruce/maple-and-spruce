@@ -429,19 +429,23 @@ describe('addMusicTogetherDemoRsvp capacity → waitlist', () => {
   }
 
   it('confirms up to capacity, then waitlists; re-RSVP is idempotent', async () => {
+    // `toMatchObject`, not `toEqual`: the response also carries the Meta
+    // `eventId` the widget reuses as the Pixel's dedup key. Its contents are
+    // asserted in music-together-top-funnel-conversions.spec.ts; here we only
+    // care about capacity and idempotency.
     const first = await rsvp('one@test.com');
-    expect(first).toEqual({ added: true, status: 'confirmed' });
+    expect(first).toMatchObject({ added: true, status: 'confirmed' });
 
     const second = await rsvp('two@test.com');
-    expect(second).toEqual({ added: true, status: 'confirmed' });
+    expect(second).toMatchObject({ added: true, status: 'confirmed' });
 
     // Third family is over the cap of 2 → waitlisted.
     const third = await rsvp('three@test.com');
-    expect(third).toEqual({ added: true, status: 'waitlisted' });
+    expect(third).toMatchObject({ added: true, status: 'waitlisted' });
 
     // Re-RSVP the first family → idempotent, keeps its confirmed seat.
     const repeat = await rsvp('one@test.com', 'One Again');
-    expect(repeat).toEqual({ added: false, status: 'confirmed' });
+    expect(repeat).toMatchObject({ added: false, status: 'confirmed' });
   });
 
   it('admin read groups 2 confirmed + 1 waitlisted for the demo', async () => {
