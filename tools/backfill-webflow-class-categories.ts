@@ -85,6 +85,16 @@ function generateSlug(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
+interface ExistingItem {
+  id: string;
+  fieldData: Record<string, unknown>;
+  /**
+   * Whether the item is currently unpublished. Captured so an update can put
+   * it back exactly as it found it — see `backfillClassReferences`.
+   */
+  isDraft: boolean;
+}
+
 /**
  * Read every item in a collection, keyed by its `firebase-id`. Webflow has no
  * field filters, so this is a full paginated scan — cheaper done once here
@@ -92,12 +102,9 @@ function generateSlug(name: string): string {
  */
 async function itemsByFirebaseId(
   collectionId: string
-): Promise<Map<string, { id: string; fieldData: Record<string, unknown> }>> {
+): Promise<Map<string, ExistingItem>> {
   const PAGE_SIZE = 100;
-  const byFirebaseId = new Map<
-    string,
-    { id: string; fieldData: Record<string, unknown> }
-  >();
+  const byFirebaseId = new Map<string, ExistingItem>();
   let offset = 0;
 
   for (;;) {
@@ -111,7 +118,11 @@ async function itemsByFirebaseId(
       const fieldData = (item.fieldData ?? {}) as Record<string, unknown>;
       const firebaseId = fieldData['firebase-id'];
       if (item.id && typeof firebaseId === 'string') {
-        byFirebaseId.set(firebaseId, { id: item.id, fieldData });
+        byFirebaseId.set(firebaseId, {
+          id: item.id,
+          fieldData,
+          isDraft: item.isDraft === true,
+        });
       }
     }
 
@@ -166,7 +177,17 @@ async function backfillCategories(): Promise<Map<string, string>> {
   for (const c of toCreate) console.log(`  create: ${c.name}`);
   for (const c of toRecord) console.log(`  re-record: ${c.name} -> ${c.itemId}`);
 
-  if (!isExecute) return resolved;
+  if (!isExecute) {
+    // A dry run has not created anything, so `resolved` holds only the
+    // already-linked categories. Returning it as-is would make pass 2 report
+    // every class as "blocked on a missing category" — alarming, and a false
+    // picture of what --execute would actually do. Stand in a placeholder id
+    // for each category this run *would* create so the preview is honest.
+    for (const c of toCreate) {
+      resolved.set(c.id, `(would-create: ${c.name})`);
+    }
+    return resolved;
+  }
 
   for (const c of toRecord) {
     await db
@@ -232,6 +253,13 @@ async function backfillCategories(): Promise<Map<string, string>> {
  * its visibility to, and it only lands on an item when that class next syncs.
  * A class that filled up before this shipped would otherwise never show the
  * section, so it is backfilled here from the live spots count.
+ *
+ * **Draft state is preserved per item, never derived from `--prod`.** Most
+ * items in the Classes collection are deliberately unpublished: past classes
+ * that `expirePastClassPages` swept, dev-environment items, and old pilot/test
+ * classes. Sending `isDraft: !isProd` here would republish every one of them —
+ * putting expired class pages back on the live site and in the sitemap. Items
+ * that are already drafts are updated in place and left unpublished.
  */
 async function backfillClassReferences(
   categoryItemIds: Map<string, string>
@@ -242,6 +270,7 @@ async function backfillClassReferences(
   const toUpdate: {
     name: string;
     itemId: string;
+    isDraft: boolean;
     fieldData: Record<string, unknown>;
   }[] = [];
   let missingCategory = 0;
@@ -283,16 +312,30 @@ async function backfillClassReferences(
     }
 
     if (Object.keys(fieldData).length > 0) {
-      toUpdate.push({ name, itemId: live.id, fieldData });
+      toUpdate.push({
+        name,
+        itemId: live.id,
+        isDraft: live.isDraft,
+        fieldData,
+      });
     }
   }
 
+  const publishedCount = toUpdate.filter((c) => !c.isDraft).length;
   console.log(
-    `\nClasses: ${liveItems.size} live in Webflow, ${toUpdate.length} need an ` +
+    `\nClasses: ${liveItems.size} items in Webflow, ${toUpdate.length} need an ` +
       `update, ${missingCategory} blocked on a missing category.`
   );
+  console.log(
+    `  ${publishedCount} are published (will be republished); ` +
+      `${toUpdate.length - publishedCount} are drafts (will stay unpublished).`
+  );
   for (const c of toUpdate) {
-    console.log(`  update: ${c.name} -> ${JSON.stringify(c.fieldData)}`);
+    console.log(
+      `  update${c.isDraft ? ' (draft)' : ''}: ${c.name} -> ${JSON.stringify(
+        c.fieldData
+      )}`
+    );
   }
 
   if (!isExecute) return;
@@ -305,11 +348,16 @@ async function backfillClassReferences(
         c.itemId,
         {
           isArchived: false,
-          isDraft: isDev,
+          // Put the item back exactly as we found it. Deriving this from the
+          // environment flag would republish every deliberately-unpublished
+          // class — see the note on this function.
+          isDraft: c.isDraft,
           fieldData: c.fieldData,
         }
       );
-      if (!isDev) {
+      // Only re-publish what was already live. Publishing a draft would undo
+      // the expirePastClassPages sweep.
+      if (!isDev && !c.isDraft) {
         await webflow.collections.items.publishItem(classesCollectionId!, {
           itemIds: [c.itemId],
         });
