@@ -253,7 +253,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
         clientUserAgent: 'Mozilla/5.0',
       })
     );
-    expect(event.user).toEqual({
+    expect(event.user).toMatchObject({
       email: 'family@example.com',
       phone: '304-555-0199',
       firstName: 'Jane',
@@ -268,6 +268,43 @@ describe('buildMusicTogetherPurchaseEvent', () => {
     );
     expect(event.eventName).toBe('Purchase');
     expect(event.actionSource).toBe('website');
+  });
+
+  it('splits the registration address into Meta ct / st / zp match keys', () => {
+    // The MT registration widget is the ONLY surface that collects an address,
+    // and it went unused for matching until now.
+    const event = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({ address: '123 Main St, Morgantown, WV 26505' })
+    );
+    expect(event.user).toMatchObject({
+      city: 'Morgantown',
+      state: 'wv',
+      zip: '26505',
+    });
+  });
+
+  it('sends no ct / st / zp when the address cannot be parsed confidently', () => {
+    // A wrong city hash matches nobody while presenting as a supplied key.
+    const event = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({ address: 'ask us' })
+    );
+    expect(event.user.city).toBeUndefined();
+    expect(event.user.state).toBeUndefined();
+    expect(event.user.zip).toBeUndefined();
+  });
+
+  it('always sends country and a cross-surface external_id', () => {
+    // `country` is knowable without asking. `external_id` is the lowercased
+    // email on EVERY surface, which is what lets Meta resolve one family's demo
+    // RSVP, interest signup, and enrollment to a single person.
+    const event = buildMusicTogetherPurchaseEvent(
+      REG_ID,
+      confirmed({ email: 'Family@Example.com', address: null })
+    );
+    expect(event.user.country).toBe('us');
+    expect(event.user.externalId).toBe('family@example.com');
   });
 
   it('normalizes absent optional fields to undefined rather than null', () => {

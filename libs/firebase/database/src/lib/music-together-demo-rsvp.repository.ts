@@ -12,6 +12,10 @@
  * place and status. Entries are read back ORDERED by signup time.
  */
 import { getDb, toDate } from './utilities/database.config';
+import {
+  toMetaAttributionFields,
+  type MetaAttributionInput,
+} from './utilities/meta-attribution.fields';
 import type {
   MusicTogetherDemoRsvp,
   MusicTogetherDemoRsvpStatus,
@@ -66,12 +70,22 @@ export const MusicTogetherDemoRsvpRepository = {
    * - New RSVP → `confirmed` when the confirmed count is under
    *   `capacityFamilies`, otherwise `waitlisted`.
    */
-  async add(input: {
-    demoId: string;
-    name: string;
-    email: string;
-    capacityFamilies: number;
-  }): Promise<{ entry: MusicTogetherDemoRsvp; created: boolean }> {
+  async add(
+    input: {
+      demoId: string;
+      name: string;
+      email: string;
+      capacityFamilies: number;
+    },
+    /**
+     * Meta ad attribution captured by the widget + the callable's request
+     * context. Persisted on a NEW RSVP only: a repeat RSVP returns the
+     * family's original entry untouched, and rewriting its attribution would
+     * re-stamp a seat they took weeks ago with today's (probably empty)
+     * click id.
+     */
+    attribution?: MetaAttributionInput
+  ): Promise<{ entry: MusicTogetherDemoRsvp; created: boolean }> {
     const db = getDb();
     const id = mtDemoRsvpEmailKey(input.email);
     const ref = rsvpsRef(input.demoId).doc(id);
@@ -93,7 +107,16 @@ export const MusicTogetherDemoRsvpRepository = {
       const name = input.name.trim();
       const email = input.email.trim();
       const createdAt = new Date();
-      tx.set(ref, { name, email, status, createdAt });
+      tx.set(ref, {
+        name,
+        email,
+        status,
+        createdAt,
+        // Read by the `Schedule` Conversions API event this RSVP triggers, and
+        // kept on the document so the ad that produced the RSVP is still
+        // answerable later. Advisory signal only.
+        ...toMetaAttributionFields(attribution),
+      });
 
       return {
         entry: { id, demoId: input.demoId, name, email, status, createdAt },

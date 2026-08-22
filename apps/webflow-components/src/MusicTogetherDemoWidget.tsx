@@ -40,6 +40,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
+import { readMetaAttribution } from './lib/meta-attribution';
 import {
   ensureMusicTogetherPixel,
   trackMusicTogetherDemoRsvp,
@@ -178,6 +179,12 @@ export function MusicTogetherDemoWidget({
         demoId,
         name: name.trim(),
         email: email.trim(),
+        // Snapshot _fbp/_fbc so the server-side `Schedule` can link this RSVP
+        // to the ad click it came from. Without it Meta falls back to matching
+        // on the email hash alone and match quality stays low.
+        metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
       });
       setState({
         status: 'success',
@@ -188,10 +195,16 @@ export function MusicTogetherDemoWidget({
       // Meta `Schedule` on the Music Together pixel. Deliberately a different
       // event from the interest list's `Lead`: booking a specific demo time is
       // a stronger signal, and the two campaigns bid toward it separately.
+      //
+      // `eventId` comes straight from the callable, which already sent the
+      // server-side twin under the same id. Passing it through is what makes
+      // the pair deduplicate; rebuilding it here would risk drift and
+      // double-count every RSVP.
       trackMusicTogetherDemoRsvp(typeof window !== 'undefined' ? window : null, {
         demoId,
         demoDateTime: demo.dateTime,
         rsvpStatus: result.data.status,
+        eventId: result.data.eventId,
       });
     } catch (err) {
       setState({

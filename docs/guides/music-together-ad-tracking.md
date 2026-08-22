@@ -32,16 +32,29 @@ page. Unit tests assert no un-scoped `track` call is ever made; don't
 
 ## Event map
 
-| Surface | Meta event | GA4 event | Fired when |
-|---|---|---|---|
-| MT updates banner (Tally `q4Qj8d`) | `Lead` | `generate_lead` | email signup from the MT header banner |
-| `tallyLeadWebhook` (server) | `Lead` | `generate_lead` | Tally webhook for `q4Qj8d`, deduped with the row above |
-| `MusicTogetherInterestWidget` | `Lead` | `generate_lead` | interest form submitted |
-| `MusicTogetherDemoWidget` | `Schedule` | `schedule` | free demo RSVP (or demo waitlist join) |
-| `MusicTogetherRegistrationWidget` | `ViewContent` | `view_item` | section page loads |
-| `MusicTogetherRegistrationWidget` | `InitiateCheckout` | `begin_checkout` | Register clicked (pay attempt) |
-| `MusicTogetherRegistrationWidget` | `Purchase` | `purchase` | registration confirmed |
-| `sendMusicTogetherConversion` (server) | `Purchase` | — | `musicTogetherRegistrations` → `confirmed` |
+| Surface | Meta event | GA4 event | Fired when | `event_id` |
+|---|---|---|---|---|
+| MT updates banner (Tally `q4Qj8d`) | `Lead` | `generate_lead` | email signup from the MT header banner | `tally-<submissionId>` |
+| `tallyLeadWebhook` (server) | `Lead` | `generate_lead` | Tally webhook for `q4Qj8d`, deduped with the row above | `tally-<submissionId>` |
+| `MusicTogetherInterestWidget` | `Lead` | `generate_lead` | interest form submitted | `mt-interest-<hash>` |
+| `addMusicTogetherInterest` (server) | `Lead` | — | a NEW interest entry, sent inline by the callable | `mt-interest-<hash>` |
+| `MusicTogetherDemoWidget` | `Schedule` | `schedule` | free demo RSVP (or demo waitlist join) | `mt-demo-<hash>` |
+| `addMusicTogetherDemoRsvp` (server) | `Schedule` | — | a NEW demo RSVP, sent inline by the callable | `mt-demo-<hash>` |
+| `MusicTogetherRegistrationWidget` | `ViewContent` | `view_item` | section page loads | — |
+| `MusicTogetherRegistrationWidget` | `InitiateCheckout` | `begin_checkout` | Register clicked (pay attempt) | — |
+| `MusicTogetherRegistrationWidget` | `Purchase` | `purchase` | registration confirmed | `mt-<registrationId>` |
+| `sendMusicTogetherConversion` (server) | `Purchase` | — | `musicTogetherRegistrations` → `confirmed` | `mt-<registrationId>` |
+
+**Every MT conversion now has a server-side twin.** The first MT campaign spent
+$124 over nine days, drove 328 landing page views, and reported **zero**
+pixel-attributed conversions — and with browser-only tracking on the demo RSVP
+there was no way to tell "nobody converted" from "the signal never arrived".
+Ad blockers and Safari ITP eat an unknown share of the Pixel; the server half
+is what survives that.
+
+The **demo RSVP is the conversion this program optimizes against.** Paid
+enrollment happens weeks later and in single digits, so `Purchase` alone can
+never train a bidder. `Schedule` is the only MT event with real volume.
 
 The MT updates banner is the one non-widget surface in that table. It is a Tally
 popup (form `q4Qj8d`) sitting in the MT header, so its events come from the
@@ -56,6 +69,81 @@ same lead by form id (`resolveFormAttribution`) and posts CAPI to whichever
 pixel owns it. Both halves stamp `event_id` = `tally-<submissionId>`, so the
 pair deduplicates the same way the registration `Purchase` pair does. See
 `docs/guides/tally-lead-webhook-setup.md`.
+
+### Why the top-funnel events send inline, not from a Firestore trigger
+
+`sendMusicTogetherConversion` is an `onDocumentWritten` trigger because the
+conversion it reports happens **later than any request**: Square's webhook flips
+the registration to `confirmed` minutes after checkout, and no callable is
+running at that moment.
+
+Demo RSVP and interest signup are the opposite shape. The conversion *is* the
+request — an RSVP is born final, there is no status flip to watch — and the
+browser needs the `event_id` back **in that same response** to stamp on its
+Pixel event. `tallyLeadWebhook`, the other top-of-funnel lead captured in one
+public request, already posts CAPI inline for exactly these reasons.
+
+A trigger would also have cost two more Cloud Run services against the ADR-029
+deploy-write ratchet (60 writes per 60 seconds, uncapped-able) for no behavioral
+gain. This change adds **zero** functions.
+
+The cost is bounded on both sides: `MT_TOP_FUNNEL_CAPI_TIMEOUT_MS` is 2s (versus
+the library's 5s default) because these sends block a form submit, and
+`trySendMetaCapiEvents` never throws. The worst a broken Meta can do is add two
+seconds and drop one attribution event — the seat is already committed.
+
+Everything a trigger would need is still persisted on the document (`fbp`,
+`fbc`, `eventSourceUrl`, `clientIp`, `clientUserAgent`) and the `event_id` is
+derivable from the stored document alone, so promoting this to a trigger later
+is a no-op on the wire.
+
+### Why the top-funnel `event_id` is a hash
+
+`mt-<registrationId>` works for enrollments because a Firestore auto-id is
+meaningless outside our database. It does **not** work for these two, because
+both collections are keyed by the family's **lowercased email** for idempotency
+(`musicTogetherDemos/{demoId}/rsvps/{email}`, `musicTogetherInterest/{email}`).
+`mt-demo-<docId>` would ship a plaintext email address to Meta in an unhashed
+field — the exact thing the CAPI library exists to prevent.
+
+So the id is a truncated SHA-256 over the same inputs
+(`libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts`). It keeps every
+property that matters: stable across the browser/server pair, unique per (demo,
+family) and per family, derivable from the stored document, and carrying no PII.
+
+The **server owns the format**. The callable computes the id, sends its own
+event under it, and returns it in the response; the widget passes it through
+verbatim. Neither widget rebuilds it — that is what makes drift impossible.
+
+### The server half only fires for a NEW entry
+
+Both endpoints are public and unauthenticated. Sending on every call would let
+anyone inflate a campaign's conversion count by replaying a signup. A repeat
+demo RSVP is not a new conversion, and a family refining their interest-list
+picks is engagement, not new demand.
+
+The browser half still fires on a re-submit (unchanged behavior) under the same
+stable id, which is what keeps Meta from booking it twice inside the dedup
+window.
+
+### Match keys
+
+`MetaCapiUserIdentifiers` carries `ct` / `st` / `zp` / `country` / `external_id`
+alongside `em` / `ph` / `fn` / `ln` / `fbp` / `fbc` / IP / UA. Two rules:
+
+- **`country: 'us'` is sent on every event, everywhere.** We know it without
+  asking, and a country hash costs nothing.
+- **`external_id` is the lowercased email on every surface.** That is what lets
+  Meta resolve one family's demo RSVP, interest signup, and later enrollment to
+  a single person — the basis for a lookalike audience built off the RSVP.
+
+`MusicTogetherRegistrationWidget` is the only surface that collects an address,
+and it was previously discarded for matching. `parseUsAddress` now splits it
+into `ct` / `st` / `zp`, **conservatively**: a wrong city hash is worse than no
+city, because it matches nobody while presenting to Events Manager as a supplied
+key. Anything it cannot identify unambiguously is simply not sent. (It also
+refuses to read a bare two-letter English word as a state — `me`, `in`, `or`,
+`ok`, `hi`, `la`, `pa`, and `id` are all USPS codes.)
 
 Interest and demo are deliberately **different** events. Booking a specific demo
 time is stronger intent than joining the interest list, so the two campaigns can
@@ -121,15 +209,36 @@ so the symptom is quietly halved attribution rather than an outage.
 - Meta Events Manager → **Test Events** for pixel `1562555242035326`, then
   submit each of the three forms on the live site. Expect `PageView` + the
   event for that widget, and nothing on the Maple & Spruce pixel.
-- The `Purchase` pair should show as **deduplicated** in Events Manager once a
-  real registration comes through (browser + server, counted once).
-- Locally: `npx vitest run apps/webflow-components/src` covers the browser side;
-  `./tools/run-integration-tests.sh registration` covers the server side.
+- **Each pair should show as one conversion, not two.** In Test Events a
+  deduplicated pair appears once with both a Browser and a Server source. If you
+  see `Schedule` twice for one RSVP, the `event_id` broke — check that the
+  widget is passing `result.data.eventId` through rather than building its own.
+- Locally:
+  - `npx vitest run apps/webflow-components/src` — the browser side
+  - `npx vitest run --config vitest.storybook.config.ts apps/webflow-components/src/MusicTogetherDemoWidget.stories.tsx`
+    — the demo widget driven in a real browser, asserting the `Schedule` carries
+    the server's `eventID`
+  - `./tools/run-integration-tests.sh music-together` — the server side against
+    the emulators + the CAPI mock
+    (`music-together-top-funnel-conversions.spec.ts`)
+  - `./tools/run-integration-tests.sh registration` — the two `Purchase` triggers
 
 ## Dev / prod isolation
 
 Both Firebase projects point at the same MT pixel, same as the craft-class
-setup — dev test registrations land in production attribution. At current test
-volume that's rounding error, but once MT campaigns optimize for `Purchase` it
-is worth a separate dev pixel. See the "Dev / prod isolation" section of
+setup — dev test signups land in production attribution.
+
+**This got sharper with this change.** It is no longer just `Purchase` (rare,
+and obviously a test): every dev demo RSVP and interest signup now posts a real
+`Schedule` / `Lead` with a **hashed email** to the production MT dataset. Those
+hashes are exactly what a lookalike audience is seeded from, so a handful of
+`verify-mt-*@mapleandsprucefolkarts.com` test families would teach Meta to go
+find more people like us.
+
+Tracked in **#782**: a separate dev pixel, or a `META_CAPI_ENABLED=false`
+switch in `.env.dev`. See the "Dev / prod isolation" section of
 `tally-lead-webhook-setup.md` for the pattern.
+
+Until then: **do not run repeated demo/interest test signups against the dev
+project**, and prune any test emails from the MT dataset before building a
+lookalike audience off it.

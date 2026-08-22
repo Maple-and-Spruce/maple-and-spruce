@@ -52,6 +52,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import {
+  parseUsAddress,
   trySendMetaCapiEvents,
   type MetaCapiConfig,
   type MetaCapiEvent,
@@ -82,6 +83,13 @@ export interface MusicTogetherConversionData {
   phone?: string | null;
   adultFirstName?: string;
   adultLastName?: string;
+  /**
+   * Single-line mailing address collected by the registration widget. Split
+   * into Meta's `ct` / `st` / `zp` match keys — this is the only surface in the
+   * business that collects an address, and it went unused for matching until
+   * now.
+   */
+  address?: string | null;
   /** Amount charged AT REGISTRATION — installment 1 for an installment plan. */
   pricePaidCents?: number;
   /**
@@ -149,6 +157,10 @@ export function buildMusicTogetherPurchaseEvent(
   data: MusicTogetherConversionData
 ): MetaCapiEvent {
   const isInstallments = data.paymentPlan === 'installments';
+  // Best-effort, and deliberately conservative: `parseUsAddress` returns only
+  // the parts it can identify unambiguously. A wrong city hash is worse than
+  // no city — it matches nobody while looking like a supplied match key.
+  const { city, state, zip } = parseUsAddress(data.address);
   return {
     eventName: 'Purchase',
     // The MT widget fires no browser Pixel `Purchase`, so there is nothing to
@@ -163,6 +175,15 @@ export function buildMusicTogetherPurchaseEvent(
       phone: data.phone || undefined,
       firstName: data.adultFirstName || undefined,
       lastName: data.adultLastName || undefined,
+      city,
+      state,
+      zip,
+      // Every MT family is local. Known without asking, so always sent.
+      country: 'us',
+      // Lowercased email as our cross-surface person id (hashed before send),
+      // matching what the demo-RSVP and interest events use — that is what
+      // lets Meta stitch one family's whole funnel together.
+      externalId: data.email?.trim().toLowerCase() || undefined,
       fbp: data.fbp || undefined,
       fbc: data.fbc || undefined,
       ip: data.clientIp || undefined,

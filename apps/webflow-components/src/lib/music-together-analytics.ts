@@ -34,10 +34,22 @@
  *
  * ## Dedup with the Conversions API
  *
- * `sendMusicTogetherConversion` already fires a server-side `Purchase` keyed
- * `mt-<registrationId>`. `buildMusicTogetherPurchasePixelEvent` passes the SAME
- * id as the Pixel's `eventID`, so Meta collapses the pair into one conversion.
- * If those two key formats ever drift, every MT enrollment double-counts.
+ * All three conversions now have a server-side twin, and each pair is collapsed
+ * by a shared `eventID`:
+ *
+ * | Event      | Server sender                  | `eventID`                    |
+ * |------------|--------------------------------|------------------------------|
+ * | `Purchase` | `sendMusicTogetherConversion`  | `mt-<registrationId>`        |
+ * | `Schedule` | `addMusicTogetherDemoRsvp`     | `mt-demo-<hash>`             |
+ * | `Lead`     | `addMusicTogetherInterest`     | `mt-interest-<hash>`         |
+ *
+ * `Purchase` is the one this module formats itself, because the registration id
+ * is a meaningless Firestore auto-id. The other two are NOT rebuilt here: their
+ * documents are keyed by the family's email, so the id is a hash the server
+ * computes and returns in the callable response (see
+ * `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts`). Pass the
+ * response value straight through. If any of these key formats drift between
+ * the two halves, that conversion silently double-counts.
  *
  * @see https://developers.facebook.com/docs/meta-pixel/advanced/#multiple-pixels
  * @see https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events
@@ -85,6 +97,13 @@ export interface InterestSignupInput {
   interestedSectionIds: string[];
   /** True when this email was already on the list (a re-submit, not new demand). */
   alreadyOnList: boolean;
+  /**
+   * Dedup key returned by `addMusicTogetherInterest`, matching the `event_id`
+   * on the server-side `Lead` that call already sent. The SERVER owns this
+   * format — pass the response value through, never rebuild it here, or the
+   * pair stops deduplicating and every signup counts twice.
+   */
+  eventId?: string;
 }
 
 export interface DemoRsvpInput {
@@ -93,6 +112,11 @@ export interface DemoRsvpInput {
   demoDateTime: string;
   /** `waitlisted` when the demo was full — still intent, but not a seat. */
   rsvpStatus: 'confirmed' | 'waitlisted';
+  /**
+   * Dedup key returned by `addMusicTogetherDemoRsvp`, matching the `event_id`
+   * on the server-side `Schedule`. Server-owned — see `InterestSignupInput`.
+   */
+  eventId?: string;
 }
 
 export interface InitiateCheckoutInput {
@@ -142,6 +166,7 @@ export function buildInterestPixelEvent(
 ): MusicTogetherPixelEvent {
   return {
     name: 'Lead',
+    eventID: input.eventId,
     params: {
       content_name: 'music-together-interest',
       content_category: 'music_together_interest',
@@ -161,6 +186,7 @@ export function buildDemoRsvpPixelEvent(
 ): MusicTogetherPixelEvent {
   return {
     name: 'Schedule',
+    eventID: input.eventId,
     params: {
       content_name: 'music-together-demo',
       content_category: 'music_together_demo',

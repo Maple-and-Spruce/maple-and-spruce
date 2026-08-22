@@ -1,4 +1,9 @@
 export { db, getDb, toDate } from './lib/utilities/database.config';
+export {
+  toMetaAttributionFields,
+  type MetaAttributionInput,
+  type MetaAttributionFields,
+} from './lib/utilities/meta-attribution.fields';
 export { ArtistRepository } from './lib/artist.repository';
 export { CategoryRepository } from './lib/category.repository';
 export { ProductRepository } from './lib/product.repository';

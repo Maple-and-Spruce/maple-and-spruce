@@ -3,8 +3,10 @@ import { createHash } from 'crypto';
 import {
   buildCapiEvent,
   buildUserData,
+  hashLocationToken,
   hashNormalized,
   hashPhone,
+  hashZip,
   sendMetaCapiEvents,
   splitName,
   trySendMetaCapiEvents,
@@ -241,5 +243,61 @@ describe('trySendMetaCapiEvents (best-effort)', () => {
       )
     ).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('location match keys', () => {
+  it('hashLocationToken strips spaces and punctuation, not just case', () => {
+    // Meta normalizes `St. Louis` to `stlouis`. Hashing the raw string (or
+    // merely lowercasing it, as `hashNormalized` does) produces a value their
+    // index has never seen — a field that matches nobody while looking, in
+    // Events Manager, like we supplied one.
+    expect(hashLocationToken('St. Louis')).toBe(sha256('stlouis'));
+    expect(hashLocationToken('  Morgantown ')).toBe(sha256('morgantown'));
+    expect(hashLocationToken('WV')).toBe(sha256('wv'));
+  });
+
+  it('hashLocationToken returns undefined when nothing survives', () => {
+    // Better to send no `ct` than a hash of the empty string.
+    expect(hashLocationToken('  -- ')).toBeUndefined();
+    expect(hashLocationToken('')).toBeUndefined();
+  });
+
+  it('hashZip truncates ZIP+4 to the indexed 5 digits', () => {
+    expect(hashZip('26505-1234')).toBe(sha256('26505'));
+    expect(hashZip('265051234')).toBe(sha256('26505'));
+    expect(hashZip(' 26505 ')).toBe(sha256('26505'));
+  });
+
+  it('hashZip does not truncate a non-numeric postal code', () => {
+    // Canadian / UK codes are not 5-digit-prefixed; truncating them would
+    // destroy the value entirely.
+    expect(hashZip('K1A 0B1')).toBe(sha256('k1a0b1'));
+  });
+
+  it('buildUserData emits ct / st / zp / country / external_id as hashed arrays', () => {
+    const data = buildUserData({
+      email: 'Jamie@Example.com',
+      city: 'Morgantown',
+      state: 'WV',
+      zip: '26505-1234',
+      country: 'US',
+      externalId: 'jamie@example.com',
+    });
+
+    expect(data['ct']).toEqual([sha256('morgantown')]);
+    expect(data['st']).toEqual([sha256('wv')]);
+    expect(data['zp']).toEqual([sha256('26505')]);
+    expect(data['country']).toEqual([sha256('us')]);
+    expect(data['external_id']).toEqual([sha256('jamie@example.com')]);
+    // Nothing in plaintext ever leaves us.
+    expect(JSON.stringify(data)).not.toContain('Morgantown');
+    expect(JSON.stringify(data)).not.toContain('jamie@example.com');
+  });
+
+  it('omits a location key entirely when it normalizes to nothing', () => {
+    const data = buildUserData({ email: 'a@b.com', city: '   ', state: '--' });
+    expect(data).not.toHaveProperty('ct');
+    expect(data).not.toHaveProperty('st');
   });
 });
