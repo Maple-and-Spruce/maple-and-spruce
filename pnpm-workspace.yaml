@@ -239,9 +239,13 @@ overrides:
   joi@<18.2.1: '>=18.2.1'
   # GHSA-vmf3-w455-68vh: node-tar applies PAX size override to intermediary
   # GNU long-name/long-link headers, causing a parser interpretation
-  # differential / file smuggling (patched in 7.5.16). Transitive dep of nx &
-  # firebase-tools. Added 2026-07-15.
-  tar@<7.5.16: '>=7.5.16'
+  # differential / file smuggling (patched in 7.5.16). Plus GHSA-r292-9mhp-454m
+  # (uncontrolled recursion in mapHas/filesFilter lets a crafted tar with very
+  # long member paths blow the stack — an uncatchable RangeError, so it kills
+  # the process rather than throwing where the caller can handle it), patched
+  # in 7.5.21. Transitive dep of nx, firebase-tools & @webflow/webflow-cli.
+  # Bumped from >=7.5.16 to >=7.5.21 on 2026-08-22.
+  tar@<7.5.21: '>=7.5.21'
   # GHSA-4vj7-5mj6-jm8m: morgan log forging via unneutralized control
   # characters in :remote-user (patched in 1.10.2; first published fix is
   # 1.11.0). Transitive dep present via express tooling. Added 2026-07-15.
