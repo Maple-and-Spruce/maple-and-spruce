@@ -7,6 +7,11 @@ const config: StorybookConfig = {
   stories: [
     '../src/**/*.stories.@(js|jsx|ts|tsx|mdx)',
     '../../../libs/react/*/src/**/*.stories.@(js|jsx|ts|tsx)',
+    // The public Webflow widgets. They ship outside the admin app, but they are
+    // React and they carry the ad-tracking that pays for the classes — a play
+    // story is the only place their Pixel behavior is exercised in a real
+    // browser rather than jsdom.
+    '../../webflow-components/src/**/*.stories.@(js|jsx|ts|tsx)',
   ],
   addons: [
     getAbsolutePath('@storybook/addon-a11y'),

@@ -109,3 +109,71 @@ describe('MusicTogetherDemoRsvpRepository.add', () => {
     expect(mtDemoRsvpEmailKey('  Foo@Bar.COM ')).toBe('foo@bar.com');
   });
 });
+
+describe('MusicTogetherDemoRsvpRepository.add — Meta attribution', () => {
+  beforeEach(() => {
+    state.existingExists = false;
+    state.existingData = undefined;
+    state.confirmedSize = 0;
+    state.setCalls = [];
+  });
+
+  const rsvp = {
+    demoId: 'demo-1',
+    name: 'Jamie Rivera',
+    email: 'jamie@example.com',
+    capacityFamilies: 8,
+  };
+
+  it('stores the ad-click cookies and the request context on a new RSVP', async () => {
+    await MusicTogetherDemoRsvpRepository.add(rsvp, {
+      fbp: 'fb.1.1700000000000.111',
+      fbc: 'fb.1.1700000000000.IwAR-click',
+      eventSourceUrl: 'https://mapleandsprucefolkarts.com/music-together-demo',
+      clientIp: '203.0.113.9',
+      clientUserAgent: 'Mozilla/5.0',
+    });
+
+    expect(state.setCalls[0].data).toMatchObject({
+      fbp: 'fb.1.1700000000000.111',
+      fbc: 'fb.1.1700000000000.IwAR-click',
+      eventSourceUrl: 'https://mapleandsprucefolkarts.com/music-together-demo',
+      clientIp: '203.0.113.9',
+      clientUserAgent: 'Mozilla/5.0',
+    });
+  });
+
+  it('writes explicit nulls when nothing was captured, never omits the fields', async () => {
+    // A stable field set is what lets a later query or backfill tell "we
+    // captured nothing" apart from "this document predates the feature".
+    await MusicTogetherDemoRsvpRepository.add(rsvp);
+
+    expect(state.setCalls[0].data).toMatchObject({
+      fbp: null,
+      fbc: null,
+      eventSourceUrl: null,
+      clientIp: null,
+      clientUserAgent: null,
+    });
+  });
+
+  it('leaves an existing RSVP untouched on a repeat', async () => {
+    // A family re-opening the page weeks later has no click id. Re-stamping the
+    // seat they already took with today's empty attribution would throw away
+    // the campaign link we captured the first time.
+    state.existingExists = true;
+    state.existingData = {
+      name: 'Jamie Rivera',
+      email: 'jamie@example.com',
+      status: 'confirmed',
+      createdAt: new Date('2026-08-01T00:00:00Z'),
+    };
+
+    const { created } = await MusicTogetherDemoRsvpRepository.add(rsvp, {
+      fbp: 'fb.1.9999999999999.new',
+    });
+
+    expect(created).toBe(false);
+    expect(state.setCalls).toHaveLength(0);
+  });
+});

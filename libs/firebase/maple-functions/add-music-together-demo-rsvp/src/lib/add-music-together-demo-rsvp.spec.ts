@@ -1,11 +1,19 @@
+import { createHash } from 'crypto';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+type Handler = (
+  data: unknown,
+  context: { ip?: string; userAgent?: string },
+  secrets: Record<string, string>
+) => Promise<unknown>;
+
 const mocks = vi.hoisted(() => ({
-  capturedHandler: null as ((d: unknown) => Promise<unknown>) | null,
+  capturedHandler: null as ((...args: unknown[]) => Promise<unknown>) | null,
   findById: vi.fn(),
   demoRsvpAdd: vi.fn(),
   markSignupEmailSent: vi.fn(),
   queueMail: vi.fn(),
+  trySendMetaCapiEvents: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -16,6 +24,7 @@ vi.mock('@maple/firebase/functions', () => {
   }
   const endpoint = {
     withOptions: vi.fn(() => endpoint),
+    usingSecrets: vi.fn(() => endpoint),
     handle: vi.fn((h: typeof mocks.capturedHandler) => {
       mocks.capturedHandler = h;
       return 'mock-fn';
@@ -47,10 +56,42 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-import './add-music-together-demo-rsvp';
+// Only the transport is mocked. The event BUILDERS and the id derivation are
+// the real implementations, because the whole point of the server event is that
+// its `event_id` and hashed match keys are byte-identical to what the browser
+// half and Meta expect — a stubbed builder would assert nothing.
+vi.mock('@maple/firebase/meta-capi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@maple/firebase/meta-capi')>()),
+  trySendMetaCapiEvents: mocks.trySendMetaCapiEvents,
+}));
 
-function run(data: unknown) {
-  return mocks.capturedHandler!(data);
+// The callable declares its Meta params at module scope; the emulator/deploy
+// supplies them for real. Under vitest there is no params runtime, so stub
+// `defineString` to a param-shaped object with a readable value.
+vi.mock('firebase-functions/params', () => ({
+  defineString: (name: string, opts?: { default?: string }) => ({
+    value: () => opts?.default ?? `stub-${name}`,
+  }),
+}));
+
+import './add-music-together-demo-rsvp';
+import {
+  buildUserData,
+  musicTogetherDemoRsvpEventId,
+} from '@maple/firebase/meta-capi';
+
+const REQUEST_CONTEXT = { ip: '203.0.113.9', userAgent: 'Mozilla/5.0 (Test)' };
+
+function run(data: unknown, context = REQUEST_CONTEXT) {
+  return (mocks.capturedHandler as unknown as Handler)(data, context, {
+    META_CAPI_TOKEN: 'test-token',
+  });
+}
+
+/** The single event handed to the (mocked) transport, with its config. */
+function sentCapi() {
+  const [config, events] = mocks.trySendMetaCapiEvents.mock.calls[0];
+  return { config, event: events[0] };
 }
 
 const validRsvp = {
@@ -80,6 +121,7 @@ describe('addMusicTogetherDemoRsvp', () => {
       },
     });
     mocks.queueMail.mockResolvedValue(true);
+    mocks.trySendMetaCapiEvents.mockResolvedValue(true);
   });
 
   it('confirms an RSVP under capacity (added=true, status=confirmed)', async () => {
@@ -87,13 +129,20 @@ describe('addMusicTogetherDemoRsvp', () => {
       added: boolean;
       status: string;
     };
-    expect(mocks.demoRsvpAdd).toHaveBeenCalledWith({
-      demoId: 'demo-1',
-      name: 'Jamie Rivera',
-      email: 'jamie@example.com',
-      capacityFamilies: 8,
+    expect(mocks.demoRsvpAdd).toHaveBeenCalledWith(
+      {
+        demoId: 'demo-1',
+        name: 'Jamie Rivera',
+        email: 'jamie@example.com',
+        capacityFamilies: 8,
+      },
+      expect.any(Object)
+    );
+    expect(result).toEqual({
+      added: true,
+      status: 'confirmed',
+      eventId: musicTogetherDemoRsvpEventId('demo-1', 'jamie@example.com'),
     });
-    expect(result).toEqual({ added: true, status: 'confirmed' });
   });
 
   it('waitlists an RSVP past capacity', async () => {
@@ -119,7 +168,7 @@ describe('addMusicTogetherDemoRsvp', () => {
       added: boolean;
       status: string;
     };
-    expect(result).toEqual({ added: false, status: 'waitlisted' });
+    expect(result).toMatchObject({ added: false, status: 'waitlisted' });
   });
 
   it('rejects a missing demoId before touching the repository', async () => {
@@ -227,8 +276,192 @@ describe('addMusicTogetherDemoRsvp', () => {
         status: string;
       };
 
-      expect(result).toEqual({ added: true, status: 'confirmed' });
+      expect(result).toMatchObject({ added: true, status: 'confirmed' });
       expect(mocks.markSignupEmailSent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('attribution capture', () => {
+    it('persists the widget cookies alongside the SERVER-observed ip + ua', async () => {
+      await run({
+        ...validRsvp,
+        metaAttribution: {
+          fbp: 'fb.1.1700000000000.987654321',
+          fbc: 'fb.1.1700000000000.IwAR-click',
+          eventSourceUrl: 'https://mapleandsprucefolkarts.com/music-together-demo',
+        },
+      });
+
+      expect(mocks.demoRsvpAdd.mock.calls[0][1]).toEqual({
+        fbp: 'fb.1.1700000000000.987654321',
+        fbc: 'fb.1.1700000000000.IwAR-click',
+        eventSourceUrl: 'https://mapleandsprucefolkarts.com/music-together-demo',
+        // NOT from the payload — a caller must not be able to write these into
+        // another family's attribution.
+        clientIp: '203.0.113.9',
+        clientUserAgent: 'Mozilla/5.0 (Test)',
+      });
+    });
+
+    it('still records an RSVP that carries no attribution at all', async () => {
+      await run(validRsvp);
+      expect(mocks.demoRsvpAdd.mock.calls[0][1]).toEqual({
+        fbp: undefined,
+        fbc: undefined,
+        eventSourceUrl: undefined,
+        clientIp: '203.0.113.9',
+        clientUserAgent: 'Mozilla/5.0 (Test)',
+      });
+    });
+  });
+
+  describe('Meta Conversions API `Schedule`', () => {
+    it('sends one Schedule to the MUSIC TOGETHER pixel with the shared event_id', async () => {
+      const result = (await run({
+        ...validRsvp,
+        metaAttribution: {
+          fbp: 'fb.1.1.p',
+          fbc: 'fb.1.1.c',
+          eventSourceUrl: 'https://mapleandsprucefolkarts.com/music-together-demo',
+        },
+      })) as { eventId: string };
+
+      expect(mocks.trySendMetaCapiEvents).toHaveBeenCalledTimes(1);
+      const { config, event } = sentCapi();
+
+      // MT advertises from its own ad account. Landing this in the Maple &
+      // Spruce dataset would make the separate account pointless.
+      expect(config.pixelId).toBe('1562555242035326');
+      expect(config.accessToken).toBe('test-token');
+      // Inline on a user-facing submit, so the wait must be capped well under
+      // the library's 5s default.
+      expect(config.timeoutMs).toBe(2000);
+
+      expect(event.eventName).toBe('Schedule');
+      // The response value and the wire value MUST be the same string, or the
+      // browser Pixel event stops deduplicating and every RSVP counts twice.
+      expect(event.eventId).toBe(result.eventId);
+      expect(event.eventId).toBe(
+        musicTogetherDemoRsvpEventId('demo-1', 'jamie@example.com')
+      );
+      expect(event.eventSourceUrl).toBe(
+        'https://mapleandsprucefolkarts.com/music-together-demo'
+      );
+      expect(event.customData).toMatchObject({
+        content_ids: ['demo-1'],
+        rsvp_status: 'confirmed',
+      });
+    });
+
+    it('never puts the family email in the event_id', async () => {
+      // Both of these collections are keyed BY EMAIL, so the obvious
+      // `mt-demo-<docId>` would ship a plaintext address to Meta.
+      const result = (await run(validRsvp)) as { eventId: string };
+      expect(result.eventId).toMatch(/^mt-demo-[0-9a-f]{16}$/);
+      expect(result.eventId).not.toContain('jamie');
+      expect(result.eventId).not.toContain('@');
+    });
+
+    it('scopes the event_id per demo, so a second demo is a second conversion', () => {
+      expect(musicTogetherDemoRsvpEventId('demo-1', 'jamie@example.com')).not.toBe(
+        musicTogetherDemoRsvpEventId('demo-2', 'jamie@example.com')
+      );
+    });
+
+    it('hashes the email and passes fbp / fbc / ip / ua through for matching', async () => {
+      await run({
+        ...validRsvp,
+        metaAttribution: { fbp: 'fb.1.1.p', fbc: 'fb.1.1.c' },
+      });
+
+      const userData = buildUserData(sentCapi().event.user);
+      // SHA-256 of the lowercased email — never the address itself.
+      expect(userData['em']).toEqual([
+        createHash('sha256').update('jamie@example.com').digest('hex'),
+      ]);
+      expect(userData).not.toHaveProperty('email');
+      expect(userData['fn']).toEqual([
+        createHash('sha256').update('jamie').digest('hex'),
+      ]);
+      // fbp/fbc are Meta's own ids and go over RAW, not hashed.
+      expect(userData['fbp']).toBe('fb.1.1.p');
+      expect(userData['fbc']).toBe('fb.1.1.c');
+      expect(userData['client_ip_address']).toBe('203.0.113.9');
+      expect(userData['client_user_agent']).toBe('Mozilla/5.0 (Test)');
+      // Known unconditionally.
+      expect(userData['country']).toEqual([
+        createHash('sha256').update('us').digest('hex'),
+      ]);
+      expect(userData['external_id']).toEqual([
+        createHash('sha256').update('jamie@example.com').digest('hex'),
+      ]);
+    });
+
+    it('reports a waitlist join as Schedule with rsvp_status=waitlisted', async () => {
+      // A full demo is still real intent — worth optimizing toward — but it is
+      // not a seat, so the distinction has to survive to Events Manager.
+      mocks.demoRsvpAdd.mockResolvedValue({
+        created: true,
+        entry: {
+          demoId: 'demo-1',
+          name: 'Jamie Rivera',
+          email: 'jamie@example.com',
+          status: 'waitlisted',
+        },
+      });
+
+      await run(validRsvp);
+
+      expect(sentCapi().event.customData).toMatchObject({
+        rsvp_status: 'waitlisted',
+      });
+    });
+
+    it('sends NOTHING on a repeat RSVP, but still returns the same event_id', async () => {
+      // Public + unauthenticated: firing on every call would let anyone inflate
+      // a campaign's conversion count by replaying an RSVP.
+      mocks.demoRsvpAdd.mockResolvedValue({
+        created: false,
+        entry: {
+          demoId: 'demo-1',
+          name: 'Jamie Rivera',
+          email: 'jamie@example.com',
+          status: 'confirmed',
+        },
+      });
+
+      const result = (await run(validRsvp)) as { eventId: string };
+
+      expect(mocks.trySendMetaCapiEvents).not.toHaveBeenCalled();
+      expect(result.eventId).toBe(
+        musicTogetherDemoRsvpEventId('demo-1', 'jamie@example.com')
+      );
+    });
+
+    it('still confirms the RSVP when the CAPI send fails', async () => {
+      // `trySendMetaCapiEvents` swallows its own errors, but assert the whole
+      // path anyway: a marketing beacon must never be able to tell a family
+      // their RSVP did not take.
+      mocks.trySendMetaCapiEvents.mockResolvedValue(false);
+
+      const result = (await run(validRsvp)) as {
+        added: boolean;
+        status: string;
+      };
+
+      expect(result).toMatchObject({ added: true, status: 'confirmed' });
+      expect(mocks.queueMail).toHaveBeenCalledTimes(1);
+    });
+
+    it('still confirms the RSVP if the CAPI transport throws outright', async () => {
+      mocks.trySendMetaCapiEvents.mockRejectedValue(new Error('network down'));
+
+      const result = (await run(validRsvp)) as {
+        added: boolean;
+        status: string;
+      };
+
+      expect(result).toMatchObject({ added: true, status: 'confirmed' });
     });
   });
 });

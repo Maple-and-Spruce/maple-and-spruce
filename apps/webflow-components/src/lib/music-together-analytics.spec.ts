@@ -167,6 +167,41 @@ describe('event builders', () => {
     });
   });
 
+  it('Lead and Schedule carry the SERVER-supplied eventID for dedup', () => {
+    // Both events now have a server-side twin sent by the callable in the same
+    // request. The callable returns the id it used; these builders must pass it
+    // through untouched, because a drifted id means Meta books the browser and
+    // server halves as two separate conversions.
+    expect(
+      buildInterestPixelEvent({
+        interestedSectionIds: [],
+        alreadyOnList: false,
+        eventId: 'mt-interest-0123456789abcdef',
+      }).eventID
+    ).toBe('mt-interest-0123456789abcdef');
+
+    expect(
+      buildDemoRsvpPixelEvent({
+        demoId: DEMO_ID,
+        demoDateTime: '2026-09-05T13:30:00.000Z',
+        rsvpStatus: 'confirmed',
+        eventId: 'mt-demo-0123456789abcdef',
+      }).eventID
+    ).toBe('mt-demo-0123456789abcdef');
+  });
+
+  it('omits eventID when the server did not return one, rather than inventing one', () => {
+    // A fabricated id would deduplicate against nothing and, worse, could
+    // collide. No id at all is the honest degraded state.
+    expect(
+      buildDemoRsvpPixelEvent({
+        demoId: DEMO_ID,
+        demoDateTime: '2026-09-05T13:30:00.000Z',
+        rsvpStatus: 'confirmed',
+      }).eventID
+    ).toBeUndefined();
+  });
+
   it('Lead records which sections the demand points at', () => {
     const event = buildInterestPixelEvent({
       interestedSectionIds: [SECTION_ID, 'mtsec_def456'],

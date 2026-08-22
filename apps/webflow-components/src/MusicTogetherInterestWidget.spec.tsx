@@ -17,6 +17,13 @@ let nextSections: PublicMusicTogetherSectionOption[] = makeSections();
 const calls: Record<string, unknown> = {};
 // Controls the addMusicTogetherInterest response.
 let nextAdded = true;
+/**
+ * Stands in for the server-derived dedup key the callable returns. It is
+ * SERVER-owned: the callable already sent a CAPI `Lead` under this id, and the
+ * widget echoes it back as the Pixel's `eventID` so Meta collapses the pair.
+ * Stable per family, so a re-submit reuses it rather than booking a second one.
+ */
+const INTEREST_EVENT_ID = 'mt-interest-0123456789abcdef';
 
 function makeSections(): PublicMusicTogetherSectionOption[] {
   return [
@@ -51,7 +58,9 @@ vi.mock('firebase/functions', () => ({
       return Promise.resolve({ data: { sections: nextSections } });
     }
     if (name === 'addMusicTogetherInterest') {
-      return Promise.resolve({ data: { added: nextAdded } });
+      return Promise.resolve({
+        data: { added: nextAdded, eventId: INTEREST_EVENT_ID },
+      });
     }
     return Promise.resolve({ data: {} });
   },
@@ -131,10 +140,45 @@ describe('MusicTogetherInterestWidget', () => {
       already_on_list: false,
     });
 
+    // The 5th arg is the dedup envelope. Without it, this event and the CAPI
+    // `Lead` the callable already sent are two conversions and every signup
+    // double-counts.
+    expect(leads[0][4]).toEqual({ eventID: INTEREST_EVENT_ID });
+
     // The page also gets an MT-scoped PageView so the ad account has a
     // retargetable audience — and nothing is ever sent un-scoped.
     expect(fbq).toHaveBeenCalledWith('init', '1562555242035326');
     expect(fbq.mock.calls.some((c) => c[0] === 'track')).toBe(false);
+  });
+
+  it('sends the ad-click cookies so the server-side Lead can be attributed', async () => {
+    document.cookie = '_fbp=fb.1.1700000000000.222';
+    document.cookie = '_fbc=fb.1.1700000000000.IwAR-interest';
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Your name/i)).toBeInTheDocument()
+    );
+    setField(/Your name/i, 'Jamie Rivera');
+    setField(/^Email/i, 'jamie@example.com');
+    await user.click(screen.getByRole('checkbox', { name: /Thursday/i }));
+    await user.click(
+      screen.getByRole('button', { name: /join the interest list/i })
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/on the interest list/i)).toBeInTheDocument()
+    );
+
+    expect(
+      (calls['addMusicTogetherInterest'] as { metaAttribution?: unknown })
+        .metaAttribution
+    ).toMatchObject({
+      fbp: 'fb.1.1700000000000.222',
+      fbc: 'fb.1.1700000000000.IwAR-interest',
+    });
+
+    document.cookie = '_fbp=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = '_fbc=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
   it('marks a repeat submit as already_on_list', async () => {
@@ -209,7 +253,7 @@ describe('MusicTogetherInterestWidget', () => {
       expect(screen.getByText(/on the interest list/i)).toBeInTheDocument()
     );
 
-    expect(calls['addMusicTogetherInterest']).toEqual({
+    expect(calls['addMusicTogetherInterest']).toMatchObject({
       name: 'Jamie Rivera',
       email: 'jamie@example.com',
       interestedSectionIds: ['sec-thu', 'sec-sat'],

@@ -344,6 +344,15 @@ function sendLeadToMeta(
       eventSourceUrl: lead.landingPage,
       user: {
         email: lead.email,
+        // Known unconditionally — this is a Morgantown, WV local business and
+        // every one of these forms is a US form. Meta indexes `country` as its
+        // own hashed match key, so sending it costs nothing and lifts match
+        // quality on every event.
+        country: 'us',
+        // Lowercased email as our cross-surface person id. Hashed before send.
+        // Using the SAME value on every surface is what lets Meta resolve one
+        // family's demo RSVP, interest signup, and enrollment to one person.
+        externalId: lead.email?.trim().toLowerCase() || undefined,
         fbp: lead.fbp,
         fbc: lead.fbc,
         ip: ctx.ip,
