@@ -42,7 +42,7 @@ overrides:
   websocket-driver@<0.7.5: '>=0.7.5'
   qs@>=6.11.1 <=6.15.1: '>=6.15.2'
   joi@<18.2.1: '>=18.2.1'
-  tar@<7.5.16: '>=7.5.16'
+  tar@<7.5.21: '>=7.5.21'
   morgan@<1.10.2: '>=1.10.2'
   js-yaml@>=3.0.0 <3.15.1: '>=3.15.1 <4'
   js-yaml@>=4.0.0 <4.3.1: '>=4.3.1 <5'
@@ -10322,8 +10322,8 @@ packages:
   tar-stream@3.1.8:
     resolution: {integrity: sha512-U6QpVRyCGHva435KoNWy9PRoi2IFYCgtEhq9nmrPPpbRacPs9IH4aJ3gbrFC8dPcXvdSZ4XXfXT5Fshbp2MtlQ==}
 
-  tar@7.5.20:
-    resolution: {integrity: sha512-9FcyK4PA6+WbzlTM9WhQm6vB5W7cP7dUiPsv1g7YDwEQnQ1CGpK3MGlKk/ITVWMk05kHZuBhmVhiv8LZoy/PFQ==}
+  tar@7.5.22:
+    resolution: {integrity: sha512-MFO/QzvtAOmJbkhOaCTvbGcFN9L9b+JunIsDwaKljSOdcLMea3NJ1k9Usz/rjdfSXTq4dfzfeS7W4p4YOAAHeA==}
     engines: {node: '>=18'}
 
   tcp-port-used@1.0.2:
@@ -16546,7 +16546,7 @@ snapshots:
       semver: 7.7.4
       serve-handler: 6.1.7
       source-map-support: 0.5.21
-      tar: 7.5.20
+      tar: 7.5.22
       ts-checker-rspack-plugin: 1.3.0(@rspack/core@1.7.11(@swc/helpers@0.5.19))(tslib@2.8.1)(typescript@6.0.3)
       tsconfig-paths: 4.2.0
       tsconfig-paths-webpack-plugin: 4.2.0
@@ -18838,7 +18838,7 @@ snapshots:
       stream-chain: 2.2.5
       stream-json: 1.9.1
       superstatic: 10.0.0(encoding@0.1.13)
-      tar: 7.5.20
+      tar: 7.5.22
       tcp-port-used: 1.0.2
       tmp: 0.2.7
       triple-beam: 1.4.1
@@ -20673,7 +20673,7 @@ snapshots:
       nopt: 9.0.0
       proc-log: 6.1.0
       semver: 7.8.5
-      tar: 7.5.20
+      tar: 7.5.22
       tinyglobby: 0.2.17
       which: 6.0.1
     transitivePeerDependencies:
@@ -22889,7 +22889,7 @@ snapshots:
       - bare-buffer
       - react-native-b4a
 
-  tar@7.5.20:
+  tar@7.5.22:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
