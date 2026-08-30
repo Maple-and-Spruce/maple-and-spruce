@@ -158,6 +158,11 @@ export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-
 export { uploadCategoryGalleryImage } from '@maple/firebase/maple-functions/upload-category-gallery-image';
 
 // Discount functions
+// Discounts domain router (ADR-029, #731) — one function serving all five
+// discount endpoints. The standalone functions below stay exported until the
+// client call sites move to httpsCallableFromURL; they are deleted in the
+// follow-up so there is never a window where a deployed client has no backend.
+export { discountsApi } from '@maple/firebase/maple-functions/discounts-api';
 export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';
 export { createDiscount } from '@maple/firebase/maple-functions/create-discount';
 export { updateDiscount } from '@maple/firebase/maple-functions/update-discount';

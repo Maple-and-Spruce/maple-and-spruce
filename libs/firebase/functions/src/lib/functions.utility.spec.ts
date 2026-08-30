@@ -14,9 +14,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('firebase-functions/v2/https', async () => {
-  const actual = await vi.importActual<typeof import('firebase-functions/v2/https')>(
-    'firebase-functions/v2/https'
-  );
+  const actual = await vi.importActual<
+    typeof import('firebase-functions/v2/https')
+  >('firebase-functions/v2/https');
   return {
     ...actual,
     onRequest: (options: unknown, handler: unknown) => {
@@ -36,7 +36,8 @@ vi.mock('firebase-functions/params', () => ({
     return {
       name,
       // ALLOWED_ORIGINS is read by the CORS middleware
-      value: () => (name === 'ALLOWED_ORIGINS' ? 'https://example.test' : `string:${name}`),
+      value: () =>
+        name === 'ALLOWED_ORIGINS' ? 'https://example.test' : `string:${name}`,
     };
   },
 }));
@@ -64,6 +65,7 @@ import {
   assertValid,
   runChecks,
   Functions,
+  createRouter,
   createPublicFunction,
   createAuthenticatedFunction,
   createAdminFunction,
@@ -109,31 +111,41 @@ function makeRes(): MockResponse {
   return res;
 }
 
-function makeReq(overrides: Partial<{
-  method: string;
-  body: unknown;
-  headers: Record<string, string>;
-  ip: string;
-}> = {}) {
+function makeReq(
+  overrides: Partial<{
+    method: string;
+    body: unknown;
+    headers: Record<string, string>;
+    ip: string;
+    path: string;
+  }> = {},
+) {
   return {
     method: overrides.method ?? 'POST',
     body: overrides.body ?? {},
     headers: { origin: 'https://example.test', ...(overrides.headers ?? {}) },
+    // Router dispatch reads req.path; harmless for single endpoints.
+    path: overrides.path ?? '/',
     ...(overrides.ip !== undefined ? { ip: overrides.ip } : {}),
   };
 }
 
 async function invoke(
   endpoint: unknown,
-  req: ReturnType<typeof makeReq>
+  req: ReturnType<typeof makeReq>,
 ): Promise<MockResponse> {
   const res = makeRes();
   // The endpoint returned by handle() is the raw async (req,res) handler
   // because our onRequest mock returns it directly. CORS middleware
   // fires next() without awaiting, so the outer await doesn't see the
   // inner async chain — drain microtasks until the response is set.
-  const promise = (endpoint as (r: unknown, s: unknown) => Promise<void>)(req, res);
-  promise.catch(() => { /* errors handled via res.status() */ });
+  const promise = (endpoint as (r: unknown, s: unknown) => Promise<void>)(
+    req,
+    res,
+  );
+  promise.catch(() => {
+    /* errors handled via res.status() */
+  });
   for (let i = 0; i < 100 && res.statusCode === 0; i++) {
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
@@ -142,7 +154,7 @@ async function invoke(
 
 function suite(
   isValid: boolean,
-  errors: Record<string, string[]> = {}
+  errors: Record<string, string[]> = {},
 ): { isValid: () => boolean; getErrors: () => Record<string, string[]> } {
   return {
     isValid: () => isValid,
@@ -212,7 +224,7 @@ describe('runChecks', () => {
   it('runs the validator and throws on invalid input', async () => {
     const validator = vi.fn(() => suite(false, { name: ['too short'] }));
     await expect(runChecks({ name: 'a' }, { validator })).rejects.toThrow(
-      /name: too short/
+      /name: too short/,
     );
     expect(validator).toHaveBeenCalledWith({ name: 'a' });
   });
@@ -226,8 +238,8 @@ describe('runChecks', () => {
         {
           validator,
           uniquenessChecks: [{ field: 'email', exists }],
-        }
-      )
+        },
+      ),
     ).rejects.toThrow();
     expect(exists).not.toHaveBeenCalled();
   });
@@ -240,7 +252,7 @@ describe('runChecks', () => {
         { email: 'taken@example.com' },
         {
           uniquenessChecks: [{ entity: 'Artist', field: 'email', exists }],
-        }
+        },
       );
     } catch (e) {
       caught = e;
@@ -256,15 +268,15 @@ describe('runChecks', () => {
     await expect(
       runChecks(
         { email: 'free@example.com' },
-        { uniquenessChecks: [{ field: 'email', exists }] }
-      )
+        { uniquenessChecks: [{ field: 'email', exists }] },
+      ),
     ).resolves.toBeUndefined();
   });
 
   it('skips uniqueness check when value is undefined', async () => {
     const exists = vi.fn();
     await expect(
-      runChecks({}, { uniquenessChecks: [{ field: 'email', exists }] })
+      runChecks({}, { uniquenessChecks: [{ field: 'email', exists }] }),
     ).resolves.toBeUndefined();
     expect(exists).not.toHaveBeenCalled();
   });
@@ -274,8 +286,8 @@ describe('runChecks', () => {
     await expect(
       runChecks(
         { email: null },
-        { uniquenessChecks: [{ field: 'email', exists }] }
-      )
+        { uniquenessChecks: [{ field: 'email', exists }] },
+      ),
     ).resolves.toBeUndefined();
     expect(exists).not.toHaveBeenCalled();
   });
@@ -294,8 +306,8 @@ describe('runChecks', () => {
                 data.email !== data.existingEmail,
             },
           ],
-        }
-      )
+        },
+      ),
     ).resolves.toBeUndefined();
     expect(exists).not.toHaveBeenCalled();
   });
@@ -314,8 +326,8 @@ describe('runChecks', () => {
                 data.email !== data.existingEmail,
             },
           ],
-        }
-      )
+        },
+      ),
     ).resolves.toBeUndefined();
     expect(exists).toHaveBeenCalledWith('new@example.com');
   });
@@ -337,7 +349,7 @@ describe('runChecks', () => {
           { field: 'email', exists: existsEmail },
           { field: 'handle', exists: existsHandle },
         ],
-      }
+      },
     );
     expect(order).toEqual(['email', 'handle']);
   });
@@ -361,16 +373,29 @@ describe('Functions.endpoint (chain + handle)', () => {
       { pong: string }
     >(handler);
 
-    const res = await invoke(endpoint, makeReq({ body: { data: { ping: 'hi' } } }));
+    const res = await invoke(
+      endpoint,
+      makeReq({ body: { data: { ping: 'hi' } } }),
+    );
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ data: { pong: 'hi' } });
-    expect(handler).toHaveBeenCalledWith({ ping: 'hi' }, expect.any(Object), {}, {});
+    expect(handler).toHaveBeenCalledWith(
+      { ping: 'hi' },
+      expect.any(Object),
+      {},
+      {},
+    );
   });
 
   it('accepts request body without { data } envelope', async () => {
-    const handler = vi.fn(async (data: { x: number }) => ({ doubled: data.x * 2 }));
-    const endpoint = Functions.endpoint.handle<{ x: number }, { doubled: number }>(handler);
+    const handler = vi.fn(async (data: { x: number }) => ({
+      doubled: data.x * 2,
+    }));
+    const endpoint = Functions.endpoint.handle<
+      { x: number },
+      { doubled: number }
+    >(handler);
 
     const res = await invoke(endpoint, makeReq({ body: { x: 21 } }));
 
@@ -393,7 +418,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://evil.test' } })
+      makeReq({ headers: { origin: 'https://evil.test' } }),
     );
 
     expect(res.statusCode).toBe(403);
@@ -417,7 +442,9 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
 
     expect(res.statusCode).toBe(200);
@@ -425,7 +452,7 @@ describe('Functions.endpoint (chain + handle)', () => {
       {},
       { uid: 'u1', email: 'u1@test' },
       {},
-      {}
+      {},
     );
   });
 
@@ -433,11 +460,15 @@ describe('Functions.endpoint (chain + handle)', () => {
     mocks.verifyIdToken.mockResolvedValue({ uid: 'u1' });
     mocks.hasAnyRole.mockResolvedValue(false);
     const handler = vi.fn();
-    const endpoint = Functions.endpoint.requiringRole(Role.Admin).handle(handler);
+    const endpoint = Functions.endpoint
+      .requiringRole(Role.Admin)
+      .handle(handler);
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
 
     expect(res.statusCode).toBe(403);
@@ -448,11 +479,15 @@ describe('Functions.endpoint (chain + handle)', () => {
     mocks.verifyIdToken.mockResolvedValue({ uid: 'admin-uid' });
     mocks.hasAnyRole.mockResolvedValue(true);
     const handler = vi.fn(async () => ({ ok: true }));
-    const endpoint = Functions.endpoint.requiringRole(Role.Admin).handle(handler);
+    const endpoint = Functions.endpoint
+      .requiringRole(Role.Admin)
+      .handle(handler);
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
 
     expect(res.statusCode).toBe(200);
@@ -469,7 +504,9 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
 
     expect(res.statusCode).toBe(200);
@@ -487,7 +524,9 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
 
     expect(res.statusCode).toBe(200);
@@ -507,7 +546,9 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
 
     expect(res.statusCode).toBe(403);
@@ -517,15 +558,19 @@ describe('Functions.endpoint (chain + handle)', () => {
 
   it('maps a thrown permission-denied HttpsError to 403', async () => {
     const handler = vi.fn(async () => {
-      throw new HttpsError('permission-denied', 'You can only manage lessons you teach.');
+      throw new HttpsError(
+        'permission-denied',
+        'You can only manage lessons you teach.',
+      );
     });
     const endpoint = Functions.endpoint.handle(handler);
 
     const res = await invoke(endpoint, makeReq({ body: { data: {} } }));
 
     expect(res.statusCode).toBe(403);
-    expect((res.body as { error: { status: string; message: string } }).error)
-      .toMatchObject({ status: 'PERMISSION_DENIED' });
+    expect(
+      (res.body as { error: { status: string; message: string } }).error,
+    ).toMatchObject({ status: 'PERMISSION_DENIED' });
   });
 
   it('keeps the 400 INVALID_ARGUMENT contract for other thrown errors', async () => {
@@ -538,7 +583,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     expect(res.statusCode).toBe(400);
     expect((res.body as { error: { status: string } }).error.status).toBe(
-      'INVALID_ARGUMENT'
+      'INVALID_ARGUMENT',
     );
   });
 
@@ -567,7 +612,10 @@ describe('Functions.endpoint (chain + handle)', () => {
     }));
     const endpoint = Functions.endpoint.validating(validator).handle(handler);
 
-    const res = await invoke(endpoint, makeReq({ body: { data: { name: 'ok' } } }));
+    const res = await invoke(
+      endpoint,
+      makeReq({ body: { data: { name: 'ok' } } }),
+    );
 
     expect(res.statusCode).toBe(200);
     expect(handler).toHaveBeenCalled();
@@ -586,7 +634,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ body: { data: { email: 'taken@test' } } })
+      makeReq({ body: { data: { email: 'taken@test' } } }),
     );
 
     expect(res.statusCode).toBe(400);
@@ -656,7 +704,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
       const res = await invoke(
         endpoint,
-        makeReq({ body: { data: { __warmup: true } } })
+        makeReq({ body: { data: { __warmup: true } } }),
       );
 
       expect(res.statusCode).toBe(200);
@@ -668,10 +716,7 @@ describe('Functions.endpoint (chain + handle)', () => {
       const handler = vi.fn();
       const endpoint = Functions.endpoint.handle(handler);
 
-      const res = await invoke(
-        endpoint,
-        makeReq({ body: { __warmup: true } })
-      );
+      const res = await invoke(endpoint, makeReq({ body: { __warmup: true } }));
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({ data: { warm: true } });
@@ -684,7 +729,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
       const res = await invoke(
         endpoint,
-        makeReq({ body: { data: { __warmup: true } } })
+        makeReq({ body: { data: { __warmup: true } } }),
       );
 
       expect(res.statusCode).toBe(200);
@@ -700,7 +745,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
       const res = await invoke(
         endpoint,
-        makeReq({ body: { data: { __warmup: true } } })
+        makeReq({ body: { data: { __warmup: true } } }),
       );
 
       expect(res.statusCode).toBe(200);
@@ -718,7 +763,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
       const res = await invoke(
         endpoint,
-        makeReq({ body: { data: { __warmup: true } } })
+        makeReq({ body: { data: { __warmup: true } } }),
       );
 
       expect(res.statusCode).toBe(200);
@@ -735,7 +780,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
       const res = await invoke(
         endpoint,
-        makeReq({ body: { data: { __warmup: true } } })
+        makeReq({ body: { data: { __warmup: true } } }),
       );
 
       expect(res.statusCode).toBe(200);
@@ -752,7 +797,7 @@ describe('Functions.endpoint (chain + handle)', () => {
         makeReq({
           body: { data: { __warmup: true } },
           headers: { origin: 'https://evil.test' },
-        })
+        }),
       );
 
       expect(res.statusCode).toBe(403);
@@ -766,7 +811,7 @@ describe('Functions.endpoint (chain + handle)', () => {
       const res = await invoke(
         endpoint,
         // truthy but not === true; treated as a real request payload
-        makeReq({ body: { data: { __warmup: 'yes' } } })
+        makeReq({ body: { data: { __warmup: 'yes' } } }),
       );
 
       expect(res.statusCode).toBe(200);
@@ -789,7 +834,7 @@ describe('Functions.endpoint (chain + handle)', () => {
 
     const res = await invoke(
       endpoint,
-      makeReq({ body: { data: { email: 'x' } } })
+      makeReq({ body: { data: { email: 'x' } } }),
     );
 
     expect(res.statusCode).toBe(400);
@@ -826,7 +871,9 @@ describe('legacy wrappers', () => {
     const endpoint = createAdminFunction(handler);
     const res = await invoke(
       endpoint,
-      makeReq({ headers: { origin: 'https://example.test', authorization: 'Bearer t' } })
+      makeReq({
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      }),
     );
     expect(res.statusCode).toBe(403);
   });
@@ -838,7 +885,7 @@ describe('isOriginAllowed', () => {
   it('allows an origin on the configured allowlist (any environment)', () => {
     expect(isOriginAllowed('http://localhost:3000', allow, false)).toBe(true);
     expect(
-      isOriginAllowed('https://mapleandsprucefolkarts.com', allow, false)
+      isOriginAllowed('https://mapleandsprucefolkarts.com', allow, false),
     ).toBe(true);
   });
 
@@ -853,11 +900,13 @@ describe('isOriginAllowed', () => {
   });
 
   it('rejects non-localhost origins even in the emulator', () => {
-    expect(isOriginAllowed('https://evil.example.com', allow, true)).toBe(false);
+    expect(isOriginAllowed('https://evil.example.com', allow, true)).toBe(
+      false,
+    );
     // Guard against a localhost-lookalike hostname.
-    expect(
-      isOriginAllowed('http://localhost.evil.com', allow, true)
-    ).toBe(false);
+    expect(isOriginAllowed('http://localhost.evil.com', allow, true)).toBe(
+      false,
+    );
   });
 });
 
@@ -891,7 +940,7 @@ describe('FunctionContext request metadata (ad-attribution signal)', () => {
         // RFC 5737 documentation addresses: client, then two proxy hops.
         ip: '192.0.2.9',
         headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.4, 192.0.2.9' },
-      })
+      }),
     );
     expect(context.ip).toBe('203.0.113.7');
   });
@@ -903,7 +952,7 @@ describe('FunctionContext request metadata (ad-attribution signal)', () => {
 
   it('captures the user agent', async () => {
     const context = await contextFor(
-      makeReq({ headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } })
+      makeReq({ headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } }),
     );
     expect(context.userAgent).toBe('Mozilla/5.0 (iPhone)');
   });
@@ -912,5 +961,136 @@ describe('FunctionContext request metadata (ad-attribution signal)', () => {
     const context = await contextFor(makeReq());
     expect(context.ip).toBeUndefined();
     expect(context.userAgent).toBeUndefined();
+  });
+});
+
+describe('createRouter (ADR-029 domain routers)', () => {
+  beforeEach(() => {
+    mocks.verifyIdToken.mockReset();
+    mocks.hasAnyRole.mockReset();
+  });
+
+  const build = () =>
+    createRouter({
+      publicRoute: Functions.endpoint.asRoute<{ v?: number }, { got: number }>(
+        async (data) => ({ got: data.v ?? 0 }),
+      ),
+      adminRoute: Functions.endpoint
+        .requiringRole(Role.Admin)
+        .asRoute<unknown, { ok: boolean }>(async () => ({ ok: true })),
+    });
+
+  it('dispatches on the first path segment and 200s with { data }', async () => {
+    const res = await invoke(
+      build(),
+      makeReq({ path: '/publicRoute', body: { data: { v: 7 } } }),
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ data: { got: 7 } });
+  });
+
+  it('404s an unknown route in the callable error envelope', async () => {
+    const res = await invoke(build(), makeReq({ path: '/nope' }));
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({
+      error: { message: 'Unknown route: nope', status: 'NOT_FOUND' },
+    });
+  });
+
+  it('404s when no route segment is given at all', async () => {
+    const res = await invoke(build(), makeReq({ path: '/' }));
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  // THE security property of ADR-029: collapsing endpoints onto one function
+  // must not widen access. Each route keeps its own gate.
+  it('enforces the admin gate on an admin route while the public route stays open', async () => {
+    const denied = await invoke(build(), makeReq({ path: '/adminRoute' }));
+    expect(denied.statusCode).toBe(401);
+
+    const open = await invoke(build(), makeReq({ path: '/publicRoute' }));
+    expect(open.statusCode).toBe(200);
+  });
+
+  it('403s an authenticated NON-admin on the admin route', async () => {
+    mocks.verifyIdToken.mockResolvedValue({ uid: 'u1', email: 'u@x.test' });
+    mocks.hasAnyRole.mockResolvedValue(false);
+
+    const res = await invoke(
+      build(),
+      makeReq({ path: '/adminRoute', headers: { authorization: 'Bearer t' } }),
+    );
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('allows an admin through the admin route', async () => {
+    mocks.verifyIdToken.mockResolvedValue({ uid: 'u1', email: 'u@x.test' });
+    mocks.hasAnyRole.mockResolvedValue(true);
+
+    const res = await invoke(
+      build(),
+      makeReq({ path: '/adminRoute', headers: { authorization: 'Bearer t' } }),
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ data: { ok: true } });
+  });
+
+  it('answers the warmup sentinel without a route and without auth', async () => {
+    const res = await invoke(
+      build(),
+      makeReq({ path: '/', body: { data: { __warmup: true } } }),
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ data: { warm: true } });
+  });
+
+  it('rejects a disallowed origin before routing', async () => {
+    const res = await invoke(
+      build(),
+      makeReq({
+        path: '/publicRoute',
+        headers: { origin: 'https://evil.test' },
+      }),
+    );
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('maps a thrown handler error to the callable error envelope', async () => {
+    const router = createRouter({
+      boom: Functions.endpoint.asRoute<unknown, never>(async () => {
+        throw new Error('kaboom');
+      }),
+    });
+
+    const res = await invoke(router, makeReq({ path: '/boom' }));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      error: { message: 'kaboom', status: 'INVALID_ARGUMENT' },
+    });
+  });
+
+  it('runs a per-route validator, so validation is not shared across routes', async () => {
+    const router = createRouter({
+      strict: Functions.endpoint
+        .validating(() => suite(false, { code: ['is required'] }))
+        .asRoute<unknown, { ok: boolean }>(async () => ({ ok: true })),
+      lax: Functions.endpoint.asRoute<unknown, { ok: boolean }>(async () => ({
+        ok: true,
+      })),
+    });
+
+    const bad = await invoke(router, makeReq({ path: '/strict' }));
+    expect(bad.statusCode).toBe(400);
+
+    const good = await invoke(router, makeReq({ path: '/lax' }));
+    expect(good.statusCode).toBe(200);
   });
 });

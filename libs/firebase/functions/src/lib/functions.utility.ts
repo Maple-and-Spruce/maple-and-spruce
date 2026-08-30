@@ -155,7 +155,7 @@ export function assertValid(result: ValidationResultLike): void {
  */
 export async function runChecks(
   data: unknown,
-  options: Pick<FunctionOptions, 'validator' | 'uniquenessChecks'>
+  options: Pick<FunctionOptions, 'validator' | 'uniquenessChecks'>,
 ): Promise<void> {
   if (options.validator) {
     assertValid(options.validator(data));
@@ -167,11 +167,7 @@ export async function runChecks(
     if (value === undefined || value === null) continue;
     const exists = await check.exists(value as never);
     if (exists) {
-      throwAlreadyExists(
-        check.entity ?? 'Record',
-        check.field,
-        String(value)
-      );
+      throwAlreadyExists(check.entity ?? 'Record', check.field, String(value));
     }
   }
 }
@@ -190,7 +186,7 @@ function ensureAdminInitialized(): void {
  * Verify Firebase Auth token from Authorization header
  */
 async function verifyAuthToken(
-  req: Request
+  req: Request,
 ): Promise<{ uid: string; email?: string } | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -230,7 +226,7 @@ async function verifyAuthToken(
 export function isOriginAllowed(
   origin: string,
   allowedOrigins: string[],
-  isEmulator: boolean
+  isEmulator: boolean,
 ): boolean {
   if (allowedOrigins.includes(origin)) return true;
   if (isEmulator) {
@@ -260,11 +256,11 @@ function createCorsMiddleware(allowedOriginsParam: StringParam) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader(
         'Access-Control-Allow-Methods',
-        'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+        'GET, POST, OPTIONS, PUT, PATCH, DELETE',
       );
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Authorization,Content-Type'
+        'Authorization,Content-Type',
       );
       res.setHeader('Access-Control-Allow-Credentials', 'true');
 
@@ -328,6 +324,22 @@ function extractClientIp(req: Request): string | undefined {
  *     }
  *   );
  */
+/**
+ * A single route on a router function: everything `handle()` would have baked
+ * into its own Cloud Function, minus the `onRequest` wrapper.
+ */
+export interface RouteDescriptor {
+  options: FunctionOptions;
+  secrets: Record<string, SecretParam>;
+  strings: Record<string, StringParam>;
+  handler: (
+    data: never,
+    context: FunctionContext,
+    secrets: Record<string, string>,
+    strings: Record<string, string>,
+  ) => Promise<unknown>;
+}
+
 class FunctionBuilder<
   SecretNames extends string = never,
   StringNames extends string = never,
@@ -341,7 +353,7 @@ class FunctionBuilder<
       StringNames,
       StringParam
     >,
-    private readonly options: FunctionOptions = {}
+    private readonly options: FunctionOptions = {},
   ) {}
 
   /**
@@ -358,7 +370,7 @@ class FunctionBuilder<
         acc[name as NewSecretNames] = defineSecret(name);
         return acc;
       },
-      {} as Record<NewSecretNames, SecretParam>
+      {} as Record<NewSecretNames, SecretParam>,
     );
 
     return new FunctionBuilder(
@@ -367,7 +379,7 @@ class FunctionBuilder<
         SecretParam
       >,
       this.strings,
-      this.options
+      this.options,
     );
   }
 
@@ -385,7 +397,7 @@ class FunctionBuilder<
         acc[name as NewStringNames] = defineString(name);
         return acc;
       },
-      {} as Record<NewStringNames, StringParam>
+      {} as Record<NewStringNames, StringParam>,
     );
 
     return new FunctionBuilder(
@@ -394,7 +406,7 @@ class FunctionBuilder<
         StringNames | NewStringNames,
         StringParam
       >,
-      this.options
+      this.options,
     );
   }
 
@@ -416,7 +428,7 @@ class FunctionBuilder<
    * .requiringRole([Role.Admin, Role.MtTeacher])  // admin OR MT teacher
    */
   requiringRole(
-    role: Role | readonly Role[]
+    role: Role | readonly Role[],
   ): FunctionBuilder<SecretNames, StringNames> {
     return new FunctionBuilder(this.secrets, this.strings, {
       ...this.options,
@@ -427,7 +439,9 @@ class FunctionBuilder<
   /**
    * Set runtime options (memory, concurrency, minInstances, timeoutSeconds)
    */
-  withOptions(runtime: RuntimeOptions): FunctionBuilder<SecretNames, StringNames> {
+  withOptions(
+    runtime: RuntimeOptions,
+  ): FunctionBuilder<SecretNames, StringNames> {
     return new FunctionBuilder(this.secrets, this.strings, {
       ...this.options,
       runtime,
@@ -447,7 +461,7 @@ class FunctionBuilder<
    *   .handle<CreateArtistRequest, CreateArtistResponse>(...)
    */
   validating(
-    validator: ValidatorFn
+    validator: ValidatorFn,
   ): FunctionBuilder<SecretNames, StringNames> {
     return new FunctionBuilder(this.secrets, this.strings, {
       ...this.options,
@@ -475,7 +489,7 @@ class FunctionBuilder<
    *   .handle<CreateArtistRequest, CreateArtistResponse>(...)
    */
   ensuringUnique<T = Record<string, unknown>>(
-    check: UniquenessCheck<T>
+    check: UniquenessCheck<T>,
   ): FunctionBuilder<SecretNames, StringNames> {
     return new FunctionBuilder(this.secrets, this.strings, {
       ...this.options,
@@ -484,6 +498,32 @@ class FunctionBuilder<
         check as UniquenessCheck,
       ],
     });
+  }
+
+  /**
+   * Build this endpoint as a ROUTE on a router function instead of its own
+   * Cloud Function (ADR-029).
+   *
+   * Identical chain semantics to `handle()` — `requiringRole`, `validating`,
+   * `ensuringUnique`, `withSecrets` all apply per-route — it just returns a
+   * descriptor for `Functions.router()` rather than calling `onRequest`.
+   * Per-route options are what lets a router mix auth levels: the discounts
+   * router carries four admin routes plus the public `lookupDiscount`.
+   */
+  asRoute<TRequest, TResponse>(
+    handler: (
+      data: TRequest,
+      context: FunctionContext,
+      secrets: Record<SecretNames, string>,
+      strings: Record<StringNames, string>,
+    ) => Promise<TResponse>,
+  ): RouteDescriptor {
+    return {
+      options: this.options,
+      secrets: this.secrets as Record<string, SecretParam>,
+      strings: this.strings as Record<string, StringParam>,
+      handler: handler as never,
+    };
   }
 
   /**
@@ -496,8 +536,8 @@ class FunctionBuilder<
       data: TRequest,
       context: FunctionContext,
       secrets: Record<SecretNames, string>,
-      strings: Record<StringNames, string>
-    ) => Promise<TResponse>
+      strings: Record<StringNames, string>,
+    ) => Promise<TResponse>,
   ) {
     // Define ALLOWED_ORIGINS lazily here, not at module level
     // This is the key optimization - defineString is called when handle() is invoked
@@ -512,136 +552,268 @@ class FunctionBuilder<
         region: 'us-east4',
         invoker: 'public',
         secrets: secretParams,
-        ...(this.options.runtime?.memory && { memory: this.options.runtime.memory }),
-        ...(this.options.runtime?.concurrency && { concurrency: this.options.runtime.concurrency }),
-        ...(this.options.runtime?.minInstances !== undefined && { minInstances: this.options.runtime.minInstances }),
-        ...(this.options.runtime?.maxInstances !== undefined && { maxInstances: this.options.runtime.maxInstances }),
-        ...(this.options.runtime?.timeoutSeconds && { timeoutSeconds: this.options.runtime.timeoutSeconds }),
+        ...(this.options.runtime?.memory && {
+          memory: this.options.runtime.memory,
+        }),
+        ...(this.options.runtime?.concurrency && {
+          concurrency: this.options.runtime.concurrency,
+        }),
+        ...(this.options.runtime?.minInstances !== undefined && {
+          minInstances: this.options.runtime.minInstances,
+        }),
+        ...(this.options.runtime?.maxInstances !== undefined && {
+          maxInstances: this.options.runtime.maxInstances,
+        }),
+        ...(this.options.runtime?.timeoutSeconds && {
+          timeoutSeconds: this.options.runtime.timeoutSeconds,
+        }),
       },
       async (req: Request, res: Response) => {
-        // Handle CORS
+        // CORS first: preflight must be answered before auth or routing.
         corsMiddleware(req, res, async () => {
-          try {
-            // Warmup short-circuit. A request body of `{ __warmup: true }`
-            // (sent as `{ data: { __warmup: true } }` by httpsCallable)
-            // boots this function instance without running auth, validation,
-            // or the handler. Lets clients pre-warm cold endpoints from the
-            // UI in the background while the user is reading the page.
-            const rawBody = (req.body?.data ?? req.body ?? {}) as {
-              __warmup?: unknown;
-            };
-            if (rawBody && rawBody.__warmup === true) {
-              res.status(200).json({ data: { warm: true } });
-              return;
-            }
-
-            // Verify auth token if present
-            const auth = await verifyAuthToken(req);
-            const context: FunctionContext = {
-              uid: auth?.uid,
-              email: auth?.email,
-              ip: extractClientIp(req),
-              userAgent:
-                typeof req.headers['user-agent'] === 'string'
-                  ? req.headers['user-agent']
-                  : undefined,
-            };
-
-            // Check authentication if required
-            if (this.options.requireAuth || this.options.requiredRole) {
-              if (!auth?.uid) {
-                res.status(401).json({
-                  error:
-                    'Unauthorized: You must be logged in to perform this action',
-                });
-                return;
-              }
-            }
-
-            // Check role if required (any-of when an array is given)
-            if (this.options.requiredRole) {
-              const requiredRoles: readonly Role[] = Array.isArray(
-                this.options.requiredRole
-              )
-                ? this.options.requiredRole
-                : [this.options.requiredRole as Role];
-              const userHasRole = await hasAnyRole(auth!.uid, requiredRoles);
-              if (!userHasRole) {
-                res.status(403).json({
-                  error: `Forbidden: You must be a ${requiredRoles.join(' or ')} to perform this action`,
-                });
-                return;
-              }
-            }
-
-            // Extract secret values (only accessed at runtime, not at cold start)
-            const secretValues = Object.fromEntries(
-              Object.entries(this.secrets).map(([key, secret]) => [
-                key,
-                (secret as SecretParam).value(),
-              ])
-            ) as Record<SecretNames, string>;
-
-            // Extract string values (only accessed at runtime, not at cold start)
-            const stringValues = Object.fromEntries(
-              Object.entries(this.strings).map(([key, str]) => [
-                key,
-                (str as StringParam).value(),
-              ])
-            ) as Record<StringNames, string>;
-
-            // Parse request data from body
-            const data = (req.body?.data ?? req.body ?? {}) as TRequest;
-
-            // Run validator + uniqueness checks (no-op when neither is set)
-            await runChecks(data, this.options);
-
-            // Execute handler
-            const result = await handler(
-              data,
-              context,
-              secretValues,
-              stringValues
-            );
-
-            // Send response in the format expected by httpsCallable
-            res.status(200).json({ data: result });
-          } catch (error) {
-            console.error('Function error:', error);
-
-            const message =
-              error instanceof Error
-                ? error.message
-                : 'An unexpected error occurred';
-
-            // Resource-ownership failures (throwPermissionDenied) map to 403 so
-            // clients can tell "not allowed" from "bad input" — this mirrors the
-            // role-gate's 403. Everything else keeps the existing 400
-            // INVALID_ARGUMENT contract.
-            if (
-              error instanceof HttpsError &&
-              error.code === 'permission-denied'
-            ) {
-              res.status(403).json({
-                error: { message, status: 'PERMISSION_DENIED' },
-              });
-              return;
-            }
-
-            // Return error in the callable protocol format so httpsCallable
-            // on the client can extract the message. Without this structure,
-            // the Firebase SDK shows a generic "internal" error to users.
-            res.status(400).json({
-              error: {
-                message,
-                status: 'INVALID_ARGUMENT',
-              },
-            });
-          }
+          await runEndpointPipeline<TRequest, TResponse>({
+            req,
+            res,
+            options: this.options,
+            secrets: this.secrets as Record<string, SecretParam>,
+            strings: this.strings as Record<string, StringParam>,
+            handler: handler as never,
+          });
         });
-      }
+      },
     );
   }
+}
+
+/**
+ * The per-request pipeline shared by `Functions.endpoint` (one function per
+ * endpoint) and `Functions.router` (many routes on one function).
+ *
+ * Extracted so the two cannot drift: warmup short-circuit, auth, role gate,
+ * secret/string resolution, validation, the `{ data: … }` callable envelope,
+ * and the error->status mapping all live HERE and nowhere else. ADR-029
+ * consolidates endpoints into routers precisely because the deploy write
+ * quota scales with function count; that is only safe if a route behaves
+ * byte-for-byte like the standalone function it replaced.
+ *
+ * CORS runs OUTSIDE this (in the onRequest wrapper) because it must answer
+ * preflight before any routing or auth work happens.
+ */
+export async function runEndpointPipeline<TRequest, TResponse>(args: {
+  req: Request;
+  res: Response;
+  options: FunctionOptions;
+  secrets: Record<string, SecretParam>;
+  strings: Record<string, StringParam>;
+  handler: (
+    data: TRequest,
+    context: FunctionContext,
+    secrets: Record<string, string>,
+    strings: Record<string, string>,
+  ) => Promise<TResponse>;
+  /** Route name for logs; undefined for a single-endpoint function. */
+  routeLabel?: string;
+}): Promise<void> {
+  const { req, res, options, secrets, strings, handler, routeLabel } = args;
+  try {
+    // Warmup short-circuit. A request body of `{ __warmup: true }`
+    // (sent as `{ data: { __warmup: true } }` by httpsCallable)
+    // boots this function instance without running auth, validation,
+    // or the handler. Lets clients pre-warm cold endpoints from the
+    // UI in the background while the user is reading the page.
+    const rawBody = (req.body?.data ?? req.body ?? {}) as {
+      __warmup?: unknown;
+    };
+    if (rawBody && rawBody.__warmup === true) {
+      res.status(200).json({ data: { warm: true } });
+      return;
+    }
+
+    // Verify auth token if present
+    const auth = await verifyAuthToken(req);
+    const context: FunctionContext = {
+      uid: auth?.uid,
+      email: auth?.email,
+      ip: extractClientIp(req),
+      userAgent:
+        typeof req.headers['user-agent'] === 'string'
+          ? req.headers['user-agent']
+          : undefined,
+    };
+
+    // Check authentication if required
+    if (options.requireAuth || options.requiredRole) {
+      if (!auth?.uid) {
+        res.status(401).json({
+          error: 'Unauthorized: You must be logged in to perform this action',
+        });
+        return;
+      }
+    }
+
+    // Check role if required (any-of when an array is given)
+    if (options.requiredRole) {
+      const requiredRoles: readonly Role[] = Array.isArray(options.requiredRole)
+        ? options.requiredRole
+        : [options.requiredRole as Role];
+      const userHasRole = await hasAnyRole(auth!.uid, requiredRoles);
+      if (!userHasRole) {
+        res.status(403).json({
+          error: `Forbidden: You must be a ${requiredRoles.join(' or ')} to perform this action`,
+        });
+        return;
+      }
+    }
+
+    // Extract secret values (only accessed at runtime, not at cold start)
+    const secretValues = Object.fromEntries(
+      Object.entries(secrets).map(([key, secret]) => [
+        key,
+        (secret as SecretParam).value(),
+      ]),
+    ) as Record<string, string>;
+
+    // Extract string values (only accessed at runtime, not at cold start)
+    const stringValues = Object.fromEntries(
+      Object.entries(strings).map(([key, str]) => [
+        key,
+        (str as StringParam).value(),
+      ]),
+    ) as Record<string, string>;
+
+    // Parse request data from body
+    const data = (req.body?.data ?? req.body ?? {}) as TRequest;
+
+    // Run validator + uniqueness checks (no-op when neither is set)
+    await runChecks(data, options);
+
+    // Execute handler
+    const result = await handler(data, context, secretValues, stringValues);
+
+    // Send response in the format expected by httpsCallable
+    res.status(200).json({ data: result });
+  } catch (error) {
+    console.error(
+      routeLabel ? `Function error [${routeLabel}]:` : 'Function error:',
+      error,
+    );
+
+    const message =
+      error instanceof Error ? error.message : 'An unexpected error occurred';
+
+    // Resource-ownership failures (throwPermissionDenied) map to 403 so
+    // clients can tell "not allowed" from "bad input" — this mirrors the
+    // role-gate's 403. Everything else keeps the existing 400
+    // INVALID_ARGUMENT contract.
+    if (error instanceof HttpsError && error.code === 'permission-denied') {
+      res.status(403).json({
+        error: { message, status: 'PERMISSION_DENIED' },
+      });
+      return;
+    }
+
+    // Return error in the callable protocol format so httpsCallable
+    // on the client can extract the message. Without this structure,
+    // the Firebase SDK shows a generic "internal" error to users.
+    res.status(400).json({
+      error: {
+        message,
+        status: 'INVALID_ARGUMENT',
+      },
+    });
+  }
+}
+
+/**
+ * Build ONE Cloud Function that serves many routes (ADR-029).
+ *
+ * Why this exists: every function library is a separate Cloud Run service, and
+ * the gen-2 deploy write quota is 60 per 60 seconds and CANNOT be raised. At
+ * 215 functions a full deploy needs >=4 minutes of pure API writes and has been
+ * breaching the regional CPU rate. Routers collapse a domain's endpoints onto
+ * one service without changing how any single endpoint behaves.
+ *
+ * Routes dispatch on the URL path, so `httpsCallableFromURL(fn, base + '/getDiscounts')`
+ * reaches the `getDiscounts` route. Each route keeps its OWN auth/role/
+ * validation chain via `asRoute()`, and every route runs the exact same
+ * `runEndpointPipeline` a standalone function would have run.
+ *
+ * @example
+ * export const discountsApi = createRouter({
+ *   lookupDiscount: Functions.endpoint.asRoute(lookupDiscountHandler),
+ *   getDiscounts: Functions.endpoint.requiringRole(Role.Admin).asRoute(getDiscountsHandler),
+ * });
+ */
+export function createRouter(
+  routes: Record<string, RouteDescriptor>,
+  runtime?: RuntimeOptions,
+) {
+  const allowedOriginsParam = defineString('ALLOWED_ORIGINS');
+  const corsMiddleware = createCorsMiddleware(allowedOriginsParam);
+
+  // A function declares its secrets up front, so the router needs the union of
+  // every route's secrets. Each route still only receives its own at runtime.
+  const secretParams = Array.from(
+    new Set(Object.values(routes).flatMap((r) => Object.values(r.secrets))),
+  ) as SecretParam[];
+
+  return onRequest(
+    {
+      region: 'us-east4',
+      invoker: 'public',
+      secrets: secretParams,
+      ...(runtime?.memory && { memory: runtime.memory }),
+      ...(runtime?.concurrency && { concurrency: runtime.concurrency }),
+      ...(runtime?.minInstances !== undefined && {
+        minInstances: runtime.minInstances,
+      }),
+      ...(runtime?.maxInstances !== undefined && {
+        maxInstances: runtime.maxInstances,
+      }),
+      ...(runtime?.timeoutSeconds && {
+        timeoutSeconds: runtime.timeoutSeconds,
+      }),
+    },
+    async (req: Request, res: Response) => {
+      // CORS first: preflight must be answered before routing or auth.
+      corsMiddleware(req, res, async () => {
+        const routeName = (req.path ?? '').split('/').filter(Boolean)[0];
+
+        // Warmup must work WITHOUT a route (clients warm the function, not an
+        // endpoint) and must not require auth — same contract as `handle()`.
+        const rawBody = (req.body?.data ?? req.body ?? {}) as {
+          __warmup?: unknown;
+        };
+        if (rawBody && rawBody.__warmup === true) {
+          res.status(200).json({ data: { warm: true } });
+          return;
+        }
+
+        const route = routeName ? routes[routeName] : undefined;
+        if (!route) {
+          // Callable-protocol error envelope so httpsCallable surfaces a real
+          // message instead of a generic "internal".
+          res.status(404).json({
+            error: {
+              message: `Unknown route: ${routeName || '(none)'}`,
+              status: 'NOT_FOUND',
+            },
+          });
+          return;
+        }
+
+        await runEndpointPipeline({
+          req,
+          res,
+          options: route.options,
+          secrets: route.secrets,
+          strings: route.strings,
+          handler: route.handler,
+          routeLabel: routeName,
+        });
+      });
+    },
+  );
 }
 
 /**
@@ -656,6 +828,8 @@ class FunctionBuilder<
  */
 export class Functions {
   static endpoint = new FunctionBuilder();
+  /** Build one function serving many routes — see createRouter (ADR-029). */
+  static router = createRouter;
 }
 
 // ============================================================================
@@ -669,7 +843,7 @@ export class Functions {
  */
 export function createFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
-  options: FunctionOptions = {}
+  options: FunctionOptions = {},
 ) {
   let builder = Functions.endpoint;
 
@@ -691,7 +865,7 @@ export function createFunction<TRequest, TResponse>(
  * @deprecated Use Functions.endpoint.handle() instead
  */
 export function createPublicFunction<TRequest, TResponse>(
-  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
+  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
 ) {
   return createFunction(handler, {});
 }
@@ -701,7 +875,7 @@ export function createPublicFunction<TRequest, TResponse>(
  * @deprecated Use Functions.endpoint.requiringAuth().handle() instead
  */
 export function createAuthenticatedFunction<TRequest, TResponse>(
-  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
+  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
 ) {
   return createFunction(handler, { requireAuth: true });
 }
@@ -711,7 +885,7 @@ export function createAuthenticatedFunction<TRequest, TResponse>(
  * @deprecated Use Functions.endpoint.requiringRole(Role.Admin).handle() instead
  */
 export function createAdminFunction<TRequest, TResponse>(
-  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>
+  handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
 ) {
   return createFunction(handler, { requiredRole: Role.Admin });
 }
@@ -726,7 +900,7 @@ export function createAdminFunction<TRequest, TResponse>(
  */
 export function createRoleFunction<TRequest, TResponse>(
   handler: (data: TRequest, context: FunctionContext) => Promise<TResponse>,
-  roles: readonly Role[]
+  roles: readonly Role[],
 ) {
   return createFunction(handler, { requiredRole: roles });
 }
