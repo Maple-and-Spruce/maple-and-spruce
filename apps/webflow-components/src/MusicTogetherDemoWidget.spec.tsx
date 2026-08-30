@@ -108,6 +108,36 @@ describe('MusicTogetherDemoWidget', () => {
   });
 
   /**
+   * /music-together-demo is a paid-traffic landing page whose hero IS this
+   * widget, so the widget owns the page's only h1. Every other widget in this
+   * library renders `component="h2"` on purpose (they sit under a page that
+   * already has an h1); this one must not follow that convention or the landing
+   * page ships with no h1 at all (#785).
+   */
+  it('renders its heading as the page h1 by default', async () => {
+    render(<MusicTogetherDemoWidget env="dev" heading="Free Demo Class" />);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Free Demo Class' })
+    ).toBeInTheDocument();
+  });
+
+  it('renders an h2 when embedded under a page that owns the h1', async () => {
+    render(
+      <MusicTogetherDemoWidget
+        env="dev"
+        heading="Free Demo Class"
+        headingLevel="h2"
+      />
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Free Demo Class' })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+  });
+
+  /**
    * `Schedule`, not `Lead` — booking a specific demo time is a stronger signal
    * than joining the interest list, and keeping them distinct lets the two MT
    * campaigns bid toward different outcomes. Scoped to the MT pixel so it never

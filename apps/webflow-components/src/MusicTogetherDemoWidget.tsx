@@ -53,6 +53,14 @@ const DEFAULT_HEADING = 'Free Demo Class';
 const DEFAULT_INTRO =
   'Come make music with us — reserve a spot at a free demo class.';
 
+/**
+ * The other widgets in this library hardcode `component="h2"` because they get
+ * dropped onto a page that already has its own h1. This one is the exception:
+ * /music-together-demo is a standalone paid-traffic landing page whose hero IS
+ * this widget, so it defaults to h1 and the page would otherwise have none (#785).
+ */
+const DEFAULT_HEADING_LEVEL = 'h1';
+
 /** Full date + time, e.g. "Saturday, August 3, 2026 at 10:00 AM". */
 function formatDemoDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -83,12 +91,19 @@ export interface MusicTogetherDemoWidgetProps {
   heading?: string;
   /** Intro line shown under the heading. */
   intro?: string;
+  /**
+   * Tag the heading renders as. Defaults to `h1` because this widget is the
+   * hero of a standalone landing page; set `h2` when embedding it under a page
+   * that already has its own h1.
+   */
+  headingLevel?: 'h1' | 'h2';
 }
 
 export function MusicTogetherDemoWidget({
   env,
   heading = DEFAULT_HEADING,
   intro = DEFAULT_INTRO,
+  headingLevel = DEFAULT_HEADING_LEVEL,
 }: MusicTogetherDemoWidgetProps) {
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
 
@@ -233,7 +248,7 @@ export function MusicTogetherDemoWidget({
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ maxWidth: WIDGET_MAX_WIDTH, mx: 'auto', width: '100%' }}>
-        <Typography variant="h5" component="h2" gutterBottom>
+        <Typography variant="h5" component={headingLevel} gutterBottom>
           {heading}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>

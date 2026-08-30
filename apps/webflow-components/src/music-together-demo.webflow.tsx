@@ -32,5 +32,10 @@ export default declareComponent(MusicTogetherDemoWidget, {
       defaultValue:
         'Come make music with us — reserve a spot at a free demo class.',
     }),
+    headingLevel: props.Variant({
+      name: 'Heading level',
+      options: ['h1', 'h2'],
+      defaultValue: 'h1',
+    }),
   },
 });
