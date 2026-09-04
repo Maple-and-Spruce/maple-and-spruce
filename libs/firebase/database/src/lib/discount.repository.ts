@@ -129,17 +129,33 @@ export const DiscountRepository = {
       .filter((d): d is Discount => d !== undefined);
 
     // `program` is filtered HERE, not in the Firestore query, and that is
-    // deliberate. A Firestore equality filter does not match documents that
-    // lack the field, so `where('program','==','classes')` would silently drop
-    // every code written before scoping existed (#791) — emptying the classes
-    // Discounts page of all its real codes. The back-fill in `docToDiscount`
-    // cannot rescue that: it runs on documents the query already returned.
+    // deliberate. Per Firestore's index documentation:
+    //
+    //   "A document is included in the index only if it has an indexed value
+    //    set for every field used in the index. If the index definition refers
+    //    to a field for which the document has no value set, that document
+    //    won't appear in the index... the document will never be returned as a
+    //    result for any query based on the index."
+    //   https://firebase.google.com/docs/firestore/query-data/index-overview
+    //
+    // So `where('program','==','classes')` silently drops every code written
+    // before scoping existed (#791) — emptying the classes Discounts page of
+    // all its real codes. `!=` is no escape either: not-equal and not-in also
+    // exclude documents where the field does not exist. The back-fill in
+    // `docToDiscount` cannot rescue it, since it runs on documents the query
+    // already returned.
     //
     // Filtering after the read applies the same back-fill the rest of the
     // codebase sees, so a legacy document is treated as the classes code it
-    // is. `discounts` is an admin-authored collection of tens of codes, so
-    // reading it whole costs nothing worth optimizing — and this stays correct
-    // no matter how a document got written.
+    // is, and stays correct however a document was written.
+    //
+    // `findAll` has exactly one caller — the admin Discounts pages — so reading
+    // the collection whole is not on any hot path. It is not free forever
+    // though: `create-registration` mints a referral code per registration when
+    // a class configures one. `tools/backfill-discount-program.ts` stamps the
+    // field on every existing document, which is what makes moving this filter
+    // back into the query an option if the collection ever grows enough to
+    // warrant it.
     return filters?.program
       ? discounts.filter((d) => d.program === filters.program)
       : discounts;
