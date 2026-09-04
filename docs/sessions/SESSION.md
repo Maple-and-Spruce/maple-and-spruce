@@ -6,6 +6,50 @@
 
 ## Current Status
 
+### Suzuki intake form + lead attribution (2026-09-03, #794 / epic #793)
+
+An audit of the lesson funnel against the live site found that **`/suzuki` was pointed at the generic
+`dWPQOr` "Music Lesson Inquiry" form**, which reports no conversion event to Meta or GA4 at all:
+`resolveFormAttribution` maps two Tally form ids (the M&S newsletter and the MT newsletter) and
+`dWPQOr` is not one of them. Running a Suzuki ad against that would have optimized on an
+iOS-degraded browser pixel signal with no CAPI and no dedupe id.
+
+New Tally form **`QKQb6k`** ("Suzuki Lessons at Maple & Spruce"), brand-styled, Suzuki-only, and
+asking the three things the old form never did: the student's age, when the family can actually come
+in, and whether they are a **Hope Scholarship** family. That last pair is what lets the first reply
+offer a real slot out of the Openings tab instead of starting an email thread.
+
+**`content_category` is now per-form, not hardcoded `'newsletter'`.** Both halves of the Meta event
+(the footer snippet and `tallyLeadWebhook`) previously stamped every lead as a newsletter signup.
+The Suzuki funnel reports to the *same* M&S pixel as the newsletter, so that field is the only thing
+telling Meta a $130/month lesson lead apart from an email signup, and the ad account optimizes
+against whatever it is told the event is. Both halves send `lesson-inquiry` on the shared `eventID`.
+
+`dWPQOr` is untouched and still serves `/music` and `/music-lessons` (fiddle, harp, old-time). The
+`apps/functions-webhooks` bundle went 93.1 → 93.9 kb with no new dependencies, which is the point:
+Tally hangs up at 10s and does not retry, so that codebase stays tiny (ADR-031).
+
+**Family acknowledgement is not done.** Tally respondent notifications require Tally Pro (the API
+refused it, `upgradeTrigger: RESPONDENT_EMAIL_NOTIFICATIONS`), and `queueMail` cannot go in
+`maple-webhooks` without re-inflating the bundle. It moves to **#795**, where persisting the lead
+forces the codebase decision anyway.
+
+**Manual steps, in this order:**
+1. Merge and let CI deploy `tallyLeadWebhook`.
+2. **Then** connect `QKQb6k`'s Tally webhook to `…cloudfunctions.net/tallyLeadWebhook` with the
+   existing `TALLY_WEBHOOK_SECRET`. Wiring it first files those leads into the wrong Meta dataset and
+   Meta cannot move them later — exactly what bit `q4Qj8d`.
+3. Re-paste `tools/webflow-tally-form-events.html` into Webflow → Site Settings → Custom Code →
+   Footer Code. The repo copy is authoritative but nothing deploys it.
+4. Publish the Webflow site (the `/suzuki` embed is already swapped in the Designer, unpublished).
+
+Also corrected `docs/reference/REQUIREMENTS.md`, which claimed music lessons were built and complete.
+The admin surface is; the funnel and the billing automation are not. Epic **#793** holds the six
+slices, and `docs/reference/suzuki-readiness-plan.md` is the standing execution plan.
+
+Closed **#362** (add Nathan as an instructor) as stale — he has been live at
+`/instructors/nathan-zucker` for a while.
+
 ### Music Together pilot half-off: discount codes at checkout + waivable installments (2026-09-03, #791)
 
 Stephanie wants to thank the families who came to the first demo with **half off** their first
