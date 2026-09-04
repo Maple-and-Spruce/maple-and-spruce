@@ -27,11 +27,12 @@ Do them in order unless a slice says otherwise. Each is one PR.
 |---|---|---|---|---|
 | 1 | #794 | Suzuki intake form + Meta/GA4 attribution + acknowledgement | **in review** | — |
 | 2 | #795 | Persist lesson inquiries + `/leads` queue | ready | — |
-| 3 | #796 | `no-show` lesson status + Needs Attention queue | ready | studio policy Q below |
-| 4 | #799 | Hope services-rendered tracking + submission queue + historical entry | ready | — |
-| 5 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
-| 6 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
-| 7 | #804 | Hope EMA export + payouts at *paid* + editable rates | **blocked** | EMA format + backfill Qs |
+| 3 | #805 | Lesson action UX: primary action + overflow menu, per-action progress | ready | — |
+| 4 | #796 | `no-show` lesson status + Needs Attention queue | ready | do after #805 |
+| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | ready | — |
+| 6 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
+| 7 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
+| 8 | #804 | Hope EMA export + payouts at *paid* + editable rates | **blocked** | EMA format + backfill Qs |
 
 **Value checkpoints.** The ad can run once #794 and #795 are deployed. A real teaching week is safe
 once #796 and #797 land. #798 is the largest customer-facing win and is already being done by hand
@@ -126,6 +127,9 @@ Settled. Do not reopen without a reason.
 - **`rendered` and `no-show` are different facts, not two labels for one billing outcome.** Both
   charge a private-pay family; only `rendered` is ever submittable to Hope. That distinction has to
   survive from #796 into #799's queue structurally, not as a UI filter.
+- **Row actions follow `StudentList`, not `LessonList`.** A single labeled primary action plus a
+  `MoreVert` overflow menu, with per-action pending state. Unlabeled inline icon buttons for
+  state-changing actions are the pattern being removed (#805) — do not add more of them.
 - **Site framing is a directory of independent teachers.** Future lesson teachers are 1099
   contractors and Nathan is the sole W-2 exception; "Maple & Spruce assigns students" is a
   behavioral-control signal. See #669 and the contractor model notes.
@@ -140,14 +144,15 @@ Blocking where marked. Ask, don't guess.
 |---|---|---|
 | What format does the EMA portal actually want for submissions? | **#804** | Do not invent a CSV schema for a state system. Get a real example from Katie. |
 | On moving Hope payouts from *rendered* to *paid*: backfill existing rendered lessons as paid, or start clean? | **#804** | Changes historical payout figures. |
-| Can Hope be billed for services rendered **before** the guitar listing was approved? | nothing — record them either way | A Hope program question, not an engineering one. Determines whether Nathan's lessons to date are billable, private-pay, or unbillable. |
+
 
 ### Answered
 
 | Question | Answer (David, 2026-09-03/04) |
 |---|---|
 | Is the `/suzuki` offer a free trial lesson or a no-cost meeting? | **A no-cost interview.** Not as strong a selling point as a trial lesson, but it is what the studio offers, and the live page and form copy already say it correctly. The page has to carry more of the persuasive weight as a result. |
-| Is a no-show charged? | **Yes for private pay, never for Hope.** Hope pays only for services rendered. See #796. |
+| Is a no-show charged? | **Yes for private pay. For Hope, charged to nobody** — Hope pays only for services rendered and the family does not owe it privately. The studio absorbs it, so it should be visible rather than silent. See #796. |
+| Can Hope be billed for services rendered before the guitar listing was approved? | **Yes, Hope pays backwards.** So historical entry (#799) is revenue recovery, not bookkeeping. A lesson rendered months ago is a normal `pending` submission and the queue must not de-prioritise it by age. |
 | CPA (Danny Fink) on agent-vs-reseller revenue treatment. | #672, not this epic | Already tracked on #669. |
 
 ---
