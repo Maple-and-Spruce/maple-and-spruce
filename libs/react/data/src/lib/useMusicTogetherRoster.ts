@@ -11,6 +11,8 @@ import type {
   MusicTogetherRosterEntry,
   CancelMusicTogetherRegistrationRequest,
   CancelMusicTogetherRegistrationResponse,
+  WaiveMusicTogetherInstallmentRequest,
+  WaiveMusicTogetherInstallmentResponse,
 } from '@maple/ts/firebase/api-types';
 
 /** Hydrate ISO date strings in a roster entry back into Dates. */
@@ -105,5 +107,31 @@ export function useMusicTogetherRoster(sectionId: string | undefined) {
     [fetchRoster]
   );
 
-  return { rosterState, fetchRoster, cancelRegistration };
+  /**
+   * Forgive one scheduled installment without cancelling the registration —
+   * the family keeps its seat and simply never owes this charge. Used for
+   * comped tuition (the pilot-semester half-off, #791). Reloads the roster so
+   * the charge shows as waived.
+   */
+  const waiveInstallment = useCallback(
+    async (
+      chargeId: string,
+      reason?: string
+    ): Promise<WaiveMusicTogetherInstallmentResponse> => {
+      const functions = getMapleFunctions();
+      const waive = httpsCallable<
+        WaiveMusicTogetherInstallmentRequest,
+        WaiveMusicTogetherInstallmentResponse
+      >(functions, 'waiveMusicTogetherInstallment');
+      const result = await waive({
+        chargeId,
+        ...(reason ? { reason } : {}),
+      });
+      await fetchRoster();
+      return result.data;
+    },
+    [fetchRoster]
+  );
+
+  return { rosterState, fetchRoster, cancelRegistration, waiveInstallment };
 }

@@ -38,11 +38,13 @@ import {
   PaymentError,
 } from '@maple/firebase/square';
 import {
+  DiscountRepository,
   MusicTogetherSectionRepository,
   MusicTogetherRegistrationRepository,
   MusicTogetherScheduledChargeRepository,
   getDb,
 } from '@maple/firebase/database';
+import { FieldValue } from 'firebase-admin/firestore';
 import {
   MT_CAPACITY_STATUSES,
   MT_DEFAULT_LOCATION,
@@ -51,7 +53,11 @@ import {
   mtSectionOffersInstallments,
   mtSectionEnrollmentOpen,
   computeMusicTogetherFamilyPrice,
+  mtApplyDiscount,
+  isDiscountValid,
+  isDiscountForProgram,
 } from '@maple/ts/domain';
+import type { MusicTogetherFamilyPrice } from '@maple/ts/domain';
 import { musicTogetherRegistrationValidation } from '@maple/ts/validation';
 import type {
   CreateMusicTogetherRegistrationRequest,
@@ -59,6 +65,139 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 const COLLECTION = 'musicTogetherRegistrations';
+
+/**
+ * Give a consumed discount redemption back after a failed payment.
+ *
+ * The seat is freed on that path and the family was never charged, so burning
+ * a single-use code on a declined card would lock them out of the offer
+ * entirely. This is NOT the customer-cancellation path, where usage stays
+ * consumed by design.
+ *
+ * Never throws: a bookkeeping failure here must not mask the payment error the
+ * caller is about to surface.
+ */
+async function releaseDiscountUsage(
+  discountRef: FirebaseFirestore.DocumentReference | undefined,
+  registrationId: string,
+  discountCode: string | undefined
+): Promise<void> {
+  if (!discountRef) return;
+  try {
+    await discountRef.update({
+      usageCount: FieldValue.increment(-1),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('MT discount release failed', {
+      registrationId,
+      discountCode,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Re-validate a discount from the copy read inside the reservation
+ * transaction. Throws (aborting the transaction, so no seat is taken) when the
+ * code was deactivated, expired, or spent since `resolveDiscount` read it.
+ *
+ * Reads raw Firestore data rather than a hydrated `Discount` because this runs
+ * on the transaction's own snapshot — the point is to trust nothing but the
+ * bytes the transaction itself saw.
+ */
+function assertStillRedeemable(
+  snap: FirebaseFirestore.DocumentSnapshot,
+  now: Date
+): void {
+  const fresh = snap.data();
+  if (!fresh || fresh.status !== 'active') {
+    throw new Error('Discount code is no longer available');
+  }
+  const expiresAt = fresh.expiresAt?.toDate?.() ?? fresh.expiresAt;
+  if (expiresAt && now > new Date(expiresAt)) {
+    throw new Error('Discount code has expired');
+  }
+  const usageLimit =
+    typeof fresh.usageLimit === 'number' ? fresh.usageLimit : null;
+  const usageCount =
+    typeof fresh.usageCount === 'number' ? fresh.usageCount : 0;
+  if (usageLimit !== null && usageCount >= usageLimit) {
+    throw new Error('Discount code has reached its usage limit');
+  }
+}
+
+/**
+ * Resolve an optional discount code into a discounted family price.
+ *
+ * AUTHORITATIVE, like the base pricing: the client sends only the code string
+ * and the discount is re-looked-up here. A code that has gone invalid between
+ * the widget's lookup and this call FAILS the registration — silently charging
+ * full price would bill a family a number they never agreed to.
+ *
+ * Returns the untouched price and no code when none was sent (or when the code
+ * happens to take nothing off).
+ */
+async function resolveDiscount<Item extends { amountCents: number; dueAt: Date }>(
+  basePrice: MusicTogetherFamilyPrice<Item>,
+  requested: string | undefined,
+  paymentPlan: 'full' | 'installments',
+  now: Date
+): Promise<{
+  price: MusicTogetherFamilyPrice<Item>;
+  discountId?: string;
+  discountCode?: string;
+  discountAmountCents: number;
+}> {
+  const code = requested?.trim();
+  if (!code) {
+    return { price: basePrice, discountAmountCents: 0 };
+  }
+
+  const discount = await DiscountRepository.findByCode(code);
+  // Same branch, same wording, for a Maple & Spruce class code (#791): MT
+  // bills to Stephanie's separate Square account, so honoring one here would
+  // move a discount between two businesses' books — and a distinct message
+  // would leak which class promotions are live.
+  if (
+    !discount ||
+    !isDiscountValid(discount, now) ||
+    !isDiscountForProgram(discount, 'music-together')
+  ) {
+    throwFailedPrecondition(
+      `Discount code "${code}" is no longer valid. Please refresh and try again.`
+    );
+  }
+
+  let discounted;
+  try {
+    // Discounts every amount, the scheduled Week-5 charge included.
+    discounted = mtApplyDiscount(basePrice, discount, now);
+  } catch (error) {
+    // Slot-scoped codes have no meaning for MT's family pricing.
+    throwFailedPrecondition(
+      error instanceof RangeError
+        ? error.message
+        : `Discount code "${code}" can't be used for Music Together.`
+    );
+  }
+
+  // Record the reduction on the plan the family actually chose — the two plans
+  // are priced independently, so the other number would be wrong.
+  const discountAmountCents =
+    paymentPlan === 'installments'
+      ? discounted.installmentsDiscountCents
+      : discounted.fullDiscountCents;
+  if (discountAmountCents <= 0) {
+    return { price: basePrice, discountAmountCents: 0 };
+  }
+  return {
+    price: discounted,
+    discountId: discount.id,
+    discountCode: discounted.discountCode,
+    discountAmountCents,
+  };
+}
 
 export const createMusicTogetherRegistration = Functions.endpoint
   .usingSecrets(...MT_SQUARE_SECRET_NAMES)
@@ -156,7 +295,22 @@ export const createMusicTogetherRegistration = Functions.endpoint
     const plan = section.installmentPlan ?? [];
     // First child full price, 50% off the 2nd & 3rd — applied identically to
     // the pay-in-full total and to EACH installment (incl. the scheduled ones).
-    const familyPrice = computeMusicTogetherFamilyPrice(section, numChildren);
+    const basePrice = computeMusicTogetherFamilyPrice(section, numChildren);
+
+    // 3b. Optional discount code — resolved authoritatively from the code
+    //     string alone (see `resolveDiscount`).
+    const {
+      price: familyPrice,
+      discountId: discountIdToRedeem,
+      discountCode,
+      discountAmountCents,
+    } = await resolveDiscount(
+      basePrice,
+      data.discountCode,
+      data.paymentPlan,
+      now
+    );
+
     const firstChargeCents =
       data.paymentPlan === 'installments'
         ? familyPrice.installments[0].amountCents
@@ -186,6 +340,15 @@ export const createMusicTogetherRegistration = Functions.endpoint
           )
         : familyPrice.fullCents;
 
+    // Square rejects a $0 payment, so a code that zeroes the charge would fail
+    // deep inside the card-vault sequence with an opaque error. Refuse it here
+    // instead: a fully comped family is an admin action, not a checkout.
+    if (firstChargeCents <= 0) {
+      throwFailedPrecondition(
+        'That discount code would reduce this registration to $0. Please contact us to enroll at no charge.'
+      );
+    }
+
     const square = new Square(secrets, strings, MT_SQUARE_KEYS);
 
     // Per-family calendar subscription token: reuse the family's existing token
@@ -205,17 +368,32 @@ export const createMusicTogetherRegistration = Functions.endpoint
     }));
     const accommodations = data.accommodations?.trim() || null;
 
+    const discountRef = discountIdToRedeem
+      ? DiscountRepository.getDocRef(discountIdToRedeem)
+      : undefined;
+
     await db.runTransaction(async (tx) => {
+      // === Reads before writes ===
       const existing = await tx.get(
         db
           .collection(COLLECTION)
           .where('sectionId', '==', data.sectionId)
           .where('status', 'in', [...MT_CAPACITY_STATUSES])
       );
+      const discountSnap = discountRef ? await tx.get(discountRef) : undefined;
+
       if (existing.size >= section.capacityFamilies) {
         // Full — the widget switches to the waitlist (Phase 5).
         throw new Error('This section is full.');
       }
+
+      // Re-check the redemption INSIDE the transaction. The read above is a
+      // point-in-time snapshot; only this makes two families racing for the
+      // last use of a single-use code resolve to exactly one winner.
+      if (discountSnap) {
+        assertStillRedeemable(discountSnap, now);
+      }
+
       tx.set(regRef, {
         sectionId: data.sectionId,
         adultFirstName,
@@ -233,6 +411,8 @@ export const createMusicTogetherRegistration = Functions.endpoint
           data.paymentPlan === 'installments' ? now : null,
         pricePaidCents: firstChargeCents,
         totalCommittedCents,
+        discountCode: discountCode || null,
+        discountAmountCents,
         scheduledChargeCount: scheduledItems.length,
         status: 'pending',
         notes: data.notes || null,
@@ -247,6 +427,13 @@ export const createMusicTogetherRegistration = Functions.endpoint
         createdAt: now,
         updatedAt: now,
       });
+
+      if (discountRef) {
+        tx.update(discountRef, {
+          usageCount: FieldValue.increment(1),
+          updatedAt: now,
+        });
+      }
     });
 
     // 5. Charge in MT Square (+ vault a card for the installment plan).
@@ -323,6 +510,7 @@ export const createMusicTogetherRegistration = Functions.endpoint
         notes: `Payment failed: ${detail}`,
         updatedAt: new Date(),
       });
+      await releaseDiscountUsage(discountRef, regRef.id, discountCode);
       if (paymentError instanceof PaymentError) {
         throw paymentError;
       }
@@ -445,6 +633,8 @@ export const createMusicTogetherRegistration = Functions.endpoint
       status: 'confirmed',
       amountChargedCents: firstChargeCents,
       scheduledChargeCount: createdCharges,
+      discountCode,
+      discountAmountCents: discountCode ? discountAmountCents : undefined,
       cardLast4,
       squareReceiptUrl,
     };

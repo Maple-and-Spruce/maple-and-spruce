@@ -5,12 +5,14 @@
  * All database access should go through this repository.
  */
 import { db, toDate } from './utilities/database.config';
+import { LEGACY_DISCOUNT_PROGRAM } from '@maple/ts/domain';
 import type {
   Discount,
   CreateDiscountInput,
   UpdateDiscountInput,
   DiscountStatus,
   DiscountAppliesTo,
+  DiscountProgram,
 } from '@maple/ts/domain';
 
 const COLLECTION = 'discounts';
@@ -44,11 +46,22 @@ function docToDiscount(
       ? data.generatedFromRegistrationId
       : undefined;
 
+  // Program back-fill (#791). Every code written before scoping existed was
+  // created for Maple & Spruce class checkout — Music Together had no discount
+  // support at all — so LEGACY_DISCOUNT_PROGRAM is a statement of fact, not a
+  // guess. Defaulting the other way would silently make old codes redeemable
+  // against Stephanie's separate Square account.
+  const program: DiscountProgram =
+    data.program === 'music-together'
+      ? 'music-together'
+      : LEGACY_DISCOUNT_PROGRAM;
+
   const base = {
     id: doc.id,
     code: data.code,
     description: data.description,
     status: data.status as DiscountStatus,
+    program,
     appliesTo,
     nthSlot: typeof data.nthSlot === 'number' ? data.nthSlot : 1,
     usageLimit,
@@ -90,6 +103,8 @@ function docToDiscount(
  */
 export interface DiscountFilters {
   status?: DiscountStatus;
+  /** Restrict to one program's codes (see `DiscountProgram`). */
+  program?: DiscountProgram;
 }
 
 /**
@@ -104,6 +119,9 @@ export const DiscountRepository = {
 
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
+    }
+    if (filters?.program) {
+      query = query.where('program', '==', filters.program);
     }
 
     query = query.orderBy('code', 'asc');
@@ -163,6 +181,10 @@ export const DiscountRepository = {
           ? null
           : inputRecord.usageLimit,
       usageCount: 0,
+      // Never let a code land unscoped: an absent program would read back as
+      // `classes` via the legacy back-fill, which is the safe direction but
+      // silently wrong for an MT code. Store it explicitly.
+      program: input.program ?? LEGACY_DISCOUNT_PROGRAM,
       ...(inputRecord.expiresAt
         ? { expiresAt: new Date(inputRecord.expiresAt) }
         : {}),

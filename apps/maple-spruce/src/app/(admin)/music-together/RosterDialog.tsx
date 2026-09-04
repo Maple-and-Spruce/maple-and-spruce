@@ -34,6 +34,7 @@ import type {
   GetMusicTogetherRosterResponse,
   MusicTogetherRosterEntry,
   CancelMusicTogetherRegistrationResponse,
+  WaiveMusicTogetherInstallmentResponse,
 } from '@maple/ts/firebase/api-types';
 
 interface Props {
@@ -50,6 +51,14 @@ interface Props {
     registrationId: string,
     refundCents?: number
   ) => Promise<CancelMusicTogetherRegistrationResponse>;
+  /**
+   * Forgive one scheduled installment, leaving the family enrolled. Distinct
+   * from cancelling: the seat stays, and only this charge is never taken.
+   */
+  onWaiveInstallment?: (
+    chargeId: string,
+    reason?: string
+  ) => Promise<WaiveMusicTogetherInstallmentResponse>;
 }
 
 function downloadCsv(filename: string, csv: string) {
@@ -110,6 +119,7 @@ function statusChipColor(
   if (pastDue) return 'error';
   if (status === 'confirmed') return 'success';
   if (status === 'refunded') return 'info';
+  if (status === 'waived') return 'info';
   if (status === 'cancelled') return 'error';
   return 'default';
 }
@@ -130,6 +140,7 @@ export function RosterDialog({
   sectionName,
   rosterState,
   onCancelRegistration,
+  onWaiveInstallment,
 }: Props) {
   const section: MusicTogetherSection | undefined =
     rosterState.status === 'success' ? rosterState.data.section : undefined;
@@ -233,6 +244,56 @@ export function RosterDialog({
     }
   };
 
+  // ── Waive a scheduled installment ────────────────────────────────────
+  //
+  // Forgiving a charge is not cancelling a family: the seat and every other
+  // charge stay put. Used for comped tuition (the pilot-semester half-off).
+  const [waiveTarget, setWaiveTarget] = useState<{
+    entry: MusicTogetherRosterEntry;
+    charge: MusicTogetherRosterEntry['charges'][number];
+  } | null>(null);
+  const [waiveReason, setWaiveReason] = useState('');
+  const [isWaiving, setIsWaiving] = useState(false);
+  const [waiveError, setWaiveError] = useState<string | null>(null);
+
+  const openWaive = (
+    entry: MusicTogetherRosterEntry,
+    charge: MusicTogetherRosterEntry['charges'][number]
+  ) => {
+    setWaiveTarget({ entry, charge });
+    setWaiveReason('');
+    setWaiveError(null);
+  };
+
+  const closeWaive = () => {
+    setWaiveTarget(null);
+    setWaiveReason('');
+    setWaiveError(null);
+    setIsWaiving(false);
+  };
+
+  const handleConfirmWaive = async () => {
+    if (!waiveTarget || !onWaiveInstallment) return;
+    setIsWaiving(true);
+    setWaiveError(null);
+    try {
+      const result = await onWaiveInstallment(
+        waiveTarget.charge.id,
+        waiveReason.trim() || undefined
+      );
+      setActionMessage(
+        `Installment ${waiveTarget.charge.installmentNumber} waived — ${fmtCents(
+          result.amountCents
+        )} will not be charged.`
+      );
+      closeWaive();
+    } catch (error) {
+      setWaiveError(error instanceof Error ? error.message : 'Failed to waive');
+    } finally {
+      setIsWaiving(false);
+    }
+  };
+
   // Licensee report → shared with Music Together Worldwide: adult contact only.
   const handleDownloadLicensee = () => {
     const csv = buildMusicTogetherLicenseeCsv(
@@ -264,7 +325,7 @@ export function RosterDialog({
         )}
         {(rosterState.status === 'idle' ||
           rosterState.status === 'loading') && (
-          <RosterLoadingSkeleton showActions={!!onCancelRegistration} />
+          <RosterLoadingSkeleton showActions={!!onCancelRegistration || !!onWaiveInstallment} />
         )}
         {rosterState.status === 'error' && (
           <Alert severity="error">{rosterState.error}</Alert>
@@ -283,7 +344,7 @@ export function RosterDialog({
                 <TableCell>Accommodations / notes</TableCell>
                 <TableCell>Plan</TableCell>
                 <TableCell>Status</TableCell>
-                {onCancelRegistration && (
+                {(onCancelRegistration || onWaiveInstallment) && (
                   <TableCell align="right">Actions</TableCell>
                 )}
               </TableRow>
@@ -321,7 +382,40 @@ export function RosterDialog({
                         </Typography>
                       )}
                     </TableCell>
-                    <TableCell>{entry.registration.paymentPlan}</TableCell>
+                    <TableCell>
+                      {entry.registration.paymentPlan}
+                      {entry.registration.discountCode && (
+                        <Typography variant="caption" display="block">
+                          {entry.registration.discountCode} (−
+                          {fmtCents(
+                            entry.registration.discountAmountCents ?? 0
+                          )}
+                          )
+                        </Typography>
+                      )}
+                      {(entry.charges ?? []).map((c) => (
+                        <Typography
+                          key={c.id}
+                          variant="caption"
+                          display="block"
+                          color={
+                            c.status === 'waived'
+                              ? 'text.disabled'
+                              : 'text.secondary'
+                          }
+                          sx={
+                            c.status === 'waived'
+                              ? { textDecoration: 'line-through' }
+                              : undefined
+                          }
+                        >
+                          #{c.installmentNumber} {fmtCents(c.amountCents)}{' '}
+                          {c.status === 'scheduled'
+                            ? `due ${new Date(c.dueAt).toLocaleDateString()}`
+                            : c.status}
+                        </Typography>
+                      ))}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         size="small"
@@ -329,9 +423,23 @@ export function RosterDialog({
                         color={statusChipColor(status, entry.pastDue)}
                       />
                     </TableCell>
-                    {onCancelRegistration && (
+                    {(onCancelRegistration || onWaiveInstallment) && (
                       <TableCell align="right">
-                        {canCancel && (
+                        {onWaiveInstallment &&
+                          canCancel &&
+                          (entry.charges ?? [])
+                            .filter((c) => c.status === 'scheduled')
+                            .map((c) => (
+                              <Button
+                                key={c.id}
+                                size="small"
+                                onClick={() => openWaive(entry, c)}
+                                aria-label={`Waive installment ${c.installmentNumber} for ${entry.registration.parentNames.join(', ')}`}
+                              >
+                                Waive {fmtCents(c.amountCents)}
+                              </Button>
+                            ))}
+                        {onCancelRegistration && canCancel && (
                           <Button
                             size="small"
                             color="error"
@@ -495,6 +603,55 @@ export function RosterDialog({
             disabled={isCancelling || refundInvalid}
           >
             {isCancelling ? 'Cancelling…' : 'Confirm cancel'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Waive installment confirmation */}
+      <Dialog open={!!waiveTarget} onClose={closeWaive} maxWidth="xs" fullWidth>
+        <DialogTitle>Waive installment</DialogTitle>
+        <DialogContent>
+          {waiveTarget && (
+            <Box
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+            >
+              {waiveError && (
+                <Alert severity="error" onClose={() => setWaiveError(null)}>
+                  {waiveError}
+                </Alert>
+              )}
+              <Typography variant="body2">
+                Forgive installment {waiveTarget.charge.installmentNumber} (
+                {fmtCents(waiveTarget.charge.amountCents)}, due{' '}
+                {new Date(waiveTarget.charge.dueAt).toLocaleDateString()}) for{' '}
+                <strong>
+                  {waiveTarget.entry.registration.parentNames.join(', ')}
+                </strong>
+                ? They stay enrolled and this charge is never taken. Nothing is
+                refunded — use Cancel / refund for money already captured.
+              </Typography>
+              <TextField
+                label="Reason"
+                value={waiveReason}
+                onChange={(e) => setWaiveReason(e.target.value)}
+                size="small"
+                placeholder="e.g. Pilot semester half-off"
+                helperText="Recorded on the charge so the roster shows why it never ran."
+                fullWidth
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeWaive} disabled={isWaiving}>
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmWaive}
+            disabled={isWaiving}
+          >
+            {isWaiving ? 'Waiving…' : 'Confirm waive'}
           </Button>
         </DialogActions>
       </Dialog>

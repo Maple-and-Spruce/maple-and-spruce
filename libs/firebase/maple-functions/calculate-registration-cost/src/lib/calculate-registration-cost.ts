@@ -13,6 +13,7 @@ import {
   isClassRegistrationOpen,
   applyDiscount,
   isDiscountValid,
+  isDiscountForProgram,
   formatDiscount,
   calculateTax,
 } from '@maple/ts/domain';
@@ -53,7 +54,15 @@ export const calculateRegistrationCost = Functions.endpoint
       if (data.discountCode) {
         const discount = await DiscountRepository.findByCode(data.discountCode);
 
-        if (discount && isDiscountValid(discount)) {
+        // Must agree with `reserveClassRegistration`, which is authoritative:
+        // a Music Together code shows no discount here and is rejected there.
+        // If this preview honored it, the customer would see a discounted
+        // price and then be refused at submit (#791).
+        if (
+          discount &&
+          isDiscountValid(discount) &&
+          isDiscountForProgram(discount, 'classes')
+        ) {
           const result = applyDiscount(discount, {
             unitPriceCents: classEntity.priceCents,
             quantity: data.quantity,

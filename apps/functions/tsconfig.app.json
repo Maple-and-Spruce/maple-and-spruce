@@ -170,6 +170,7 @@
     "../../libs/firebase/maple-functions/get-music-together-semesters/**/*.ts",
     "../../libs/firebase/maple-functions/update-music-together-semester/**/*.ts",
     "../../libs/firebase/maple-functions/get-music-together-roster/**/*.ts",
+    "../../libs/firebase/maple-functions/waive-music-together-installment/**/*.ts",
     "../../libs/firebase/maple-functions/get-class-waitlist/**/*.ts",
     "../../libs/firebase/maple-functions/get-class-waitlist-counts/**/*.ts",
     "../../libs/firebase/maple-functions/duplicate-music-together-section/**/*.ts",

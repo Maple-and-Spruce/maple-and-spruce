@@ -66,6 +66,8 @@ export {
   assertCanManageLesson,
   assertCanManageStudent,
   assertCanRecordInvoicePayment,
+  assertCanManageDiscountProgram,
+  discountProgramScopeForUser,
 } from './ownership.utility';
 
 // Lesson ↔ block enforcement (#686)

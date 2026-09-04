@@ -221,9 +221,8 @@ export default function MusicTogetherPage() {
   const [rosterSection, setRosterSection] = useState<
     MusicTogetherSection | undefined
   >();
-  const { rosterState, cancelRegistration } = useMusicTogetherRoster(
-    rosterSection?.id
-  );
+  const { rosterState, cancelRegistration, waiveInstallment } =
+    useMusicTogetherRoster(rosterSection?.id);
 
   const [isInterestOpen, setIsInterestOpen] = useState(false);
   const { interestState } = useMusicTogetherInterest();
@@ -765,6 +764,7 @@ export default function MusicTogetherPage() {
         sectionName={rosterSection?.name ?? ''}
         rosterState={rosterState}
         onCancelRegistration={cancelRegistration}
+        onWaiveInstallment={waiveInstallment}
       />
 
       <InterestListDialog

@@ -28,6 +28,35 @@ export const DISCOUNT_TYPES: DiscountType[] = [
 ];
 
 /**
+ * Which program's checkout a code may be redeemed at.
+ *
+ * A discount belongs to exactly ONE program. Codes are globally unique, so a
+ * code is looked up the same way everywhere and then checked against the
+ * program doing the asking — a mismatch is rejected rather than silently
+ * ignored.
+ *
+ * This exists because the two checkouts bill to **different businesses**:
+ * Maple & Spruce classes settle to the M&S Square account, Music Together to
+ * Stephanie's separate LLC account. An unscoped code would let a Music
+ * Together promotion take money off a craft class (and vice versa), moving
+ * value between two companies' books.
+ *
+ * It also draws the authorization line: an mt-teacher manages
+ * `music-together` codes and nothing else.
+ */
+export type DiscountProgram = 'classes' | 'music-together';
+
+export const DISCOUNT_PROGRAMS: DiscountProgram[] = ['classes', 'music-together'];
+
+/** Program assumed for any discount stored before scoping existed (#791). */
+export const LEGACY_DISCOUNT_PROGRAM: DiscountProgram = 'classes';
+
+/** Human label for a program, for admin UI and error messages. */
+export function discountProgramLabel(program: DiscountProgram): string {
+  return program === 'music-together' ? 'Music Together' : 'Maple & Spruce classes';
+}
+
+/**
  * Discount status
  */
 export type DiscountStatus = 'active' | 'inactive';
@@ -59,6 +88,12 @@ interface DiscountBase {
   code: string;
   /** Human-readable description (e.g., "Early bird special - $10 off") */
   description: string;
+  /**
+   * The one checkout this code works at. Immutable after creation, like
+   * `type` — repointing a live code at another program would change what a
+   * customer holding it can buy, and on whose books.
+   */
+  program: DiscountProgram;
   /** Whether this discount can currently be used */
   status: DiscountStatus;
   /** How the discount applies to multi-slot registrations */
@@ -143,8 +178,23 @@ export type CreateDiscountInput = Omit<
 >;
 
 /**
+ * Whether a code may be redeemed at the given program's checkout.
+ *
+ * Separate from `isDiscountValid` on purpose: validity is about the code's own
+ * lifecycle (active, unexpired, uses left), while this is about *where* it is
+ * being presented. Callers check both, and report them differently — an
+ * out-of-program code is not "expired", it was never usable here.
+ */
+export function isDiscountForProgram(
+  discount: Pick<Discount, 'program'>,
+  program: DiscountProgram
+): boolean {
+  return discount.program === program;
+}
+
+/**
  * Input for updating a discount
- * All fields optional except id; type cannot be changed
+ * All fields optional except id; type and program cannot be changed
  */
 export type UpdateDiscountInput = {
   id: string;

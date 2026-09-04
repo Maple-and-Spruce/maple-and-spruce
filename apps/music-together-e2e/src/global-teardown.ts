@@ -16,6 +16,7 @@ import { teardownDev } from './seed-dev';
 async function globalTeardown(): Promise<void> {
   const target = process.env['E2E_TARGET'] ?? 'emulator';
   const sectionId = process.env['TEST_MT_SECTION_ID'];
+  const discountCode = process.env['TEST_MT_DISCOUNT_CODE'];
 
   if (target !== 'dev') {
     return;
@@ -28,7 +29,7 @@ async function globalTeardown(): Promise<void> {
 
   console.log(`[mt-e2e] Tearing down dev fixtures for sectionId=${sectionId}…`);
   try {
-    await teardownDev(sectionId);
+    await teardownDev(sectionId, discountCode);
   } catch (err) {
     // Don't fail the whole job on a teardown hiccup — the test result is the
     // signal. Surface the error so it's visible in the log.

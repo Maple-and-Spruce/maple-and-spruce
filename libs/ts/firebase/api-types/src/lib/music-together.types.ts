@@ -193,6 +193,13 @@ export interface CreateMusicTogetherRegistrationRequest {
   accommodations?: string;
   /** 'full' = one charge; 'installments' = first charge now + scheduled rest. */
   paymentPlan: 'full' | 'installments';
+  /**
+   * Optional discount code. The server re-looks it up and applies it itself —
+   * the client never sends an amount. An invalid or exhausted code fails the
+   * registration rather than silently charging full price, so a family never
+   * gets billed a number they didn't see.
+   */
+  discountCode?: string;
   policiesAccepted: boolean;
   /** Privacy notice consent (adult contact details shared with Music Together Worldwide). */
   privacyConsent: boolean;
@@ -222,6 +229,10 @@ export interface CreateMusicTogetherRegistrationResponse {
   amountChargedCents: number;
   /** Number of scheduled future charges created (0 for pay-in-full). */
   scheduledChargeCount: number;
+  /** The discount code redeemed, uppercased, when one was applied. */
+  discountCode?: string;
+  /** Cents taken off by that code, on the plan the family chose. */
+  discountAmountCents?: number;
   /** Last 4 of the card on file, when one was stored (installments). */
   cardLast4?: string;
   squareReceiptUrl?: string;
@@ -291,6 +302,24 @@ export interface CancelMusicTogetherRegistrationResponse {
   refundIds?: string[];
   /** How many scheduled future charges were cancelled. */
   cancelledChargeCount: number;
+}
+
+// ============================================================================
+// Waive a scheduled installment (admin — forgive without cancelling)
+// ============================================================================
+
+export interface WaiveMusicTogetherInstallmentRequest {
+  /** The scheduled charge to forgive. Must currently be `scheduled`. */
+  chargeId: string;
+  /** Why it was forgiven (e.g. "Pilot semester half-off"). Shown on the roster. */
+  reason?: string;
+}
+
+export interface WaiveMusicTogetherInstallmentResponse {
+  chargeId: string;
+  status: 'waived';
+  /** The amount that will now never be charged. */
+  amountCents: number;
 }
 
 // ============================================================================

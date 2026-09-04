@@ -559,4 +559,6 @@ export type {
   AddMusicTogetherInterestResponse,
   GetMusicTogetherInterestRequest,
   GetMusicTogetherInterestResponse,
+  WaiveMusicTogetherInstallmentRequest,
+  WaiveMusicTogetherInstallmentResponse,
 } from './music-together.types';

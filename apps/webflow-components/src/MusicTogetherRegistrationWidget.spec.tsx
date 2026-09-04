@@ -14,6 +14,8 @@ import type { PublicMusicTogetherSection } from '@maple/ts/firebase/api-types';
 
 // Canned section returned by getPublicMusicTogetherSection for the next render.
 let nextSection: PublicMusicTogetherSection = makeSection();
+// Canned discount returned by lookupDiscount (undefined = unknown code).
+let nextDiscount: unknown = undefined;
 // Records the last payload sent to each callable, by name.
 const calls: Record<string, unknown> = {};
 
@@ -63,6 +65,9 @@ vi.mock('firebase/functions', () => ({
       }
       if (name === 'addToMusicTogetherWaitlist') {
         return Promise.resolve({ data: { added: true } });
+      }
+      if (name === 'lookupDiscount') {
+        return Promise.resolve({ data: { discount: nextDiscount } });
       }
       return Promise.resolve({ data: {} });
     },
@@ -152,6 +157,7 @@ function installFbq(): ReturnType<typeof vi.fn> {
 describe('MusicTogetherRegistrationWidget', () => {
   beforeEach(() => {
     nextSection = makeSection();
+    nextDiscount = undefined;
     for (const k of Object.keys(calls)) delete calls[k];
   });
   afterEach(() => {
@@ -585,5 +591,156 @@ describe('MusicTogetherRegistrationWidget', () => {
     expect(
       screen.queryByRole('button', { name: /Register — \$/i })
     ).not.toBeInTheDocument();
+  });
+  // ── Discount codes (#791 pilot half-off) ───────────────────────────────
+
+  const PILOT_HALF_OFF = {
+    id: 'disc-1',
+    code: 'PILOTCLASS',
+    description: 'Pilot semester — half off',
+    type: 'percent',
+    percent: 50,
+    status: 'active',
+    appliesTo: 'order',
+    nthSlot: 1,
+    usageLimit: null,
+    usageCount: 0,
+  };
+
+  async function applyCode(
+    user: ReturnType<typeof userEvent.setup>,
+    code: string
+  ) {
+    setField(/Discount code/i, code);
+    await user.click(screen.getByRole('button', { name: /^Apply$/i }));
+  }
+
+  it('halves every displayed amount when a 50% code is applied', async () => {
+    nextDiscount = PILOT_HALF_OFF;
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    setField(/Child's first name/i, 'Sky');
+    setField(/Date of birth/i, '2023-04-01');
+    // Baseline, before the code.
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$252\.00/i })
+    ).toBeInTheDocument();
+
+    await applyCode(user, 'pilotclass');
+
+    // Pay-in-full halves, and so does EACH installment — including the one
+    // that becomes the scheduled Week-5 charge. That is the whole promise.
+    expect(
+      await screen.findByRole('radio', {
+        name: /Pay in full — \$126\.00 \(was \$252\.00\)/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', {
+        name: /\$66\.00 now, \$66\.00 on .*\(was \$132\.00 each\)/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/including the second installment/i)
+    ).toBeInTheDocument();
+  });
+
+  it('sends the applied code to the server, which reprices authoritatively', async () => {
+    nextDiscount = PILOT_HALF_OFF;
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    fillFamily();
+    await applyCode(user, 'PILOTCLASS');
+    await acceptConsents(user);
+
+    const registerBtn = await screen.findByRole('button', {
+      name: /Register — \$126\.00/i,
+    });
+    await waitFor(() => expect(registerBtn).toBeEnabled());
+    await user.click(registerBtn);
+
+    await waitFor(() =>
+      expect(calls['createMusicTogetherRegistration']).toBeTruthy()
+    );
+    expect(calls['createMusicTogetherRegistration']).toMatchObject({
+      discountCode: 'PILOTCLASS',
+    });
+  });
+
+  it('stacks with the sibling discount', async () => {
+    nextDiscount = PILOT_HALF_OFF;
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    setField(/Child's first name/i, 'Sky');
+    setField(/Date of birth/i, '2023-04-01');
+    await user.click(
+      screen.getByRole('button', { name: /Add another child/i })
+    );
+    const names = screen.getAllByLabelText(/Child's first name/i);
+    const dobs = screen.getAllByLabelText(/Date of birth/i);
+    fireEvent.change(names[1], { target: { value: 'River' } });
+    fireEvent.change(dobs[1], { target: { value: '2024-05-02' } });
+
+    await applyCode(user, 'PILOTCLASS');
+
+    // 2 children = $378, then half off = $189.
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$189\.00/i })
+    ).toBeInTheDocument();
+  });
+
+  it('rejects an unknown code and leaves the price alone', async () => {
+    nextDiscount = undefined;
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    await applyCode(user, 'NOPE');
+
+    expect(await screen.findByText(/isn't a valid code/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /Pay in full — \$252\.00/i })
+    ).toBeInTheDocument();
+  });
+
+  it('refuses a slot-scoped M&S code rather than showing an unchanged total', async () => {
+    nextDiscount = { ...PILOT_HALF_OFF, appliesTo: 'nth-slot-onward', nthSlot: 2 };
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    await applyCode(user, 'SECONDSLOT');
+
+    expect(
+      await screen.findByText(/can't be used for Music Together/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /Pay in full — \$252\.00/i })
+    ).toBeInTheDocument();
+  });
+
+  it('restores full price when the code is removed', async () => {
+    nextDiscount = PILOT_HALF_OFF;
+    const user = userEvent.setup({ delay: null });
+    renderWidget();
+    await screen.findByText(/Register — Thursday Morning/i);
+
+    await applyCode(user, 'PILOTCLASS');
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$126\.00/i })
+    ).toBeInTheDocument();
+
+    // The applied chip's delete affordance clears it.
+    await user.click(screen.getByTestId('CancelIcon'));
+
+    expect(
+      await screen.findByRole('radio', { name: /Pay in full — \$252\.00/i })
+    ).toBeInTheDocument();
   });
 });

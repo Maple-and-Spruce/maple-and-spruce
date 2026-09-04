@@ -290,6 +290,10 @@ export const createRegistration = Functions.endpoint
             type: 'percent',
             percent,
             status: 'active',
+            // Earned by registering for a class, redeemable against classes.
+            // Never 'music-together' — that would let a craft-class referral
+            // draw down Stephanie's separate Square account.
+            program: 'classes',
             appliesTo: 'order',
             nthSlot: 1,
             usageLimit: 1,

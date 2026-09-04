@@ -234,6 +234,107 @@ test.describe('Enrollment pay flow', () => {
       expect(charges[0]['amountCents']).toBe(13200);
     }
   });
+
+  test('discount code halves the charge today AND the scheduled Week-5 charge', async ({
+    page,
+  }) => {
+    // The whole promise of the pilot half-off (#791) is "half off tuition",
+    // not "half off the first payment". This drives the real widget against
+    // MT's Square sandbox and then reads back what was actually stored, so a
+    // regression that discounted only the charge taken at checkout — leaving
+    // the family billed full price four weeks later — fails here.
+    const code = process.env['TEST_MT_DISCOUNT_CODE'];
+    test.skip(!code, 'globalSetup did not seed a discount code');
+
+    await openWidget(page);
+
+    const email = `mt-e2e-discount+${Date.now()}@maplespruce.test`;
+    await fillFamily(page, {
+      adultFirstName: 'Dana',
+      adultLastName: 'Brooks',
+      children: [{ name: 'Ash', dob: '2023-08-20' }],
+      email,
+      phone: '304-555-7878',
+      address: '5 Cedar Ct, Morgantown, WV 26505',
+      plan: 'installments',
+    });
+
+    // Baseline before the code: the un-discounted installment plan.
+    const payButton = page.getByRole('button', { name: /Register/ });
+    await expect(payButton).toHaveText(/\$132\.00/);
+
+    // Apply the code — a real lookupDiscount round trip.
+    await page.getByLabel('Discount code').fill(code as string);
+    await page.getByRole('button', { name: /^Apply$/ }).click();
+    await expect(page.getByText(`${code} applied`)).toBeVisible();
+
+    // Both installments halve, and the widget says the second one does too.
+    await expect(
+      page.getByRole('radio', { name: /\$66\.00 now, \$66\.00 on/ })
+    ).toBeVisible();
+    await expect(
+      page.getByText(/including the second installment/i)
+    ).toBeVisible();
+
+    await fillSquareCard(page, payButton, {
+      number: SANDBOX_CARD_SUCCESS,
+      exp: SANDBOX_EXP,
+      cvv: SANDBOX_CVV,
+      zip: SANDBOX_ZIP,
+    });
+    await expect(payButton).toHaveText(/\$66\.00/);
+    await payButton.click();
+
+    await expect(page.getByText(/You're registered/i)).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByText('$66.00 paid today')).toBeVisible();
+
+    if (IS_EMULATOR) {
+      const reg = await findConfirmedRegistration(email);
+      // Server-authoritative — the client never sends an amount.
+      expect(reg.pricePaidCents).toBe(6600);
+      expect(reg.discountCode).toBe(code);
+      expect(reg.discountAmountCents).toBe(13200);
+      // The Meta CAPI Purchase value is the discounted plan total.
+      expect(reg.totalCommittedCents).toBe(13200);
+      await assertPaymentRoutedToMt(String(reg.squarePaymentId));
+
+      // THE POINT: the materialized Week-5 charge is halved too.
+      const charges = (
+        await listFirestoreDocs('musicTogetherScheduledCharges')
+      )
+        .map((c) => c.data as Record<string, unknown>)
+        .filter((c) => c['registrationId'] === reg.id);
+      expect(charges).toHaveLength(1);
+      expect(charges[0]['amountCents']).toBe(6600);
+      expect(charges[0]['status']).toBe('scheduled');
+    }
+  });
+
+  test('a made-up code is refused and the price is left alone', async ({
+    page,
+  }) => {
+    await openWidget(page);
+
+    await fillFamily(page, {
+      adultFirstName: 'Sam',
+      adultLastName: 'Ortiz',
+      children: [{ name: 'Rio', dob: '2023-09-09' }],
+      email: `mt-e2e-badcode+${Date.now()}@maplespruce.test`,
+      phone: '304-555-9090',
+      address: '12 Walnut St, Morgantown, WV 26505',
+      plan: 'full',
+    });
+
+    await page.getByLabel('Discount code').fill('NOTAREALCODE');
+    await page.getByRole('button', { name: /^Apply$/ }).click();
+
+    await expect(page.getByText(/isn't a valid code/i)).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Register/ })
+    ).toHaveText(/\$252\.00/);
+  });
 });
 
 // ---------------------------------------------------------------------------

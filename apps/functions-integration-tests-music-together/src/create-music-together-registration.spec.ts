@@ -320,3 +320,217 @@ describe('createMusicTogetherRegistration', () => {
     expect(result.status).not.toBe(200);
   });
 });
+
+/**
+ * Discount codes at MT checkout (#791 pilot half-off).
+ *
+ * The money-critical assertion is the LAST one in the first test: the
+ * materialized Week-5 charge is halved too. A code that only discounted the
+ * charge taken at registration would let the family be billed full price four
+ * weeks later, after the widget told them otherwise.
+ */
+describe('createMusicTogetherRegistration — discount codes', () => {
+  function discountDoc(overrides: Record<string, unknown> = {}) {
+    return {
+      code: 'PILOTCLASS',
+      description: 'Pilot semester — half off',
+      type: 'percent',
+      percent: 50,
+      status: 'active',
+      program: 'music-together',
+      appliesTo: 'order',
+      nthSlot: 1,
+      usageLimit: null,
+      usageCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...overrides,
+    };
+  }
+
+  beforeAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+    await setFirestoreDoc('musicTogetherSections', 'sec-open', sectionDoc());
+    await setFirestoreDoc('discounts', 'disc-pilot', discountDoc());
+    await setFirestoreDoc(
+      'discounts',
+      'disc-spent',
+      discountDoc({ code: 'SPENT', usageLimit: 1, usageCount: 1 })
+    );
+    await setFirestoreDoc(
+      'discounts',
+      'disc-off',
+      discountDoc({ code: 'PAUSED', status: 'inactive' })
+    );
+    await setFirestoreDoc(
+      'discounts',
+      'disc-slot',
+      discountDoc({ code: 'SECONDSLOT', appliesTo: 'nth-slot-onward', nthSlot: 2 })
+    );
+    await setFirestoreDoc(
+      'discounts',
+      'disc-free',
+      discountDoc({ code: 'ALLFREE', percent: 100 })
+    );
+    await setFirestoreDoc(
+      'discounts',
+      'disc-once',
+      discountDoc({ code: 'ONLYONE', usageLimit: 1, usageCount: 0 })
+    );
+  });
+
+  afterAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+  });
+
+  it('installments: halves the first charge AND the scheduled Week-5 charge', async () => {
+    const result = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'pilot-installments@test.com',
+        paymentPlan: 'installments',
+        cardOnFileAuth: true,
+        cardVerificationToken: 'verf:store-token',
+        discountCode: 'pilotclass',
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.amountChargedCents).toBe(6600); // $132 → $66
+    expect(result.data?.discountCode).toBe('PILOTCLASS');
+    expect(result.data?.discountAmountCents).toBe(13200); // $264 → $132
+
+    const reg = await getFirestoreDoc(
+      'musicTogetherRegistrations',
+      result.data!.registrationId
+    );
+    expect(reg?.discountCode).toBe('PILOTCLASS');
+    expect(reg?.pricePaidCents).toBe(6600);
+    // The Meta CAPI Purchase value is what they actually owe.
+    expect(reg?.totalCommittedCents).toBe(13200);
+
+    const charges = (await listFirestoreDocs('musicTogetherScheduledCharges'))
+      .map((c) => c.data as Record<string, unknown>)
+      .filter((c) => c.registrationId === result.data!.registrationId);
+    expect(charges).toHaveLength(1);
+    expect(charges[0].amountCents).toBe(6600);
+    expect(charges[0].status).toBe('scheduled');
+  });
+
+  it('pay in full: charges half and records the code', async () => {
+    const result = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'pilot-full@test.com',
+        discountCode: 'PILOTCLASS',
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.amountChargedCents).toBe(12600); // $252 → $126
+    expect(result.data?.discountAmountCents).toBe(12600);
+  });
+
+  it('stacks with the sibling discount', async () => {
+    const result = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'pilot-siblings@test.com',
+        discountCode: 'PILOTCLASS',
+        children: [
+          { name: 'Sky', dob: '2023-04-01' },
+          { name: 'River', dob: '2024-05-02' },
+        ],
+      }),
+    });
+
+    expect(result.status).toBe(200);
+    // $252 x 1.5 = $378, then half off = $189.
+    expect(result.data?.amountChargedCents).toBe(18900);
+  });
+
+  it('consumes exactly one redemption per registration', async () => {
+    const before = await getFirestoreDoc('discounts', 'disc-pilot');
+    const usedBefore = Number(before?.usageCount ?? 0);
+
+    await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({ email: 'pilot-usage@test.com', discountCode: 'PILOTCLASS' }),
+    });
+
+    const after = await getFirestoreDoc('discounts', 'disc-pilot');
+    expect(Number(after?.usageCount ?? 0)).toBe(usedBefore + 1);
+  });
+
+  it('a single-use code works once, then is rejected', async () => {
+    const first = await callFunction<
+      CreateMusicTogetherRegistrationRequest,
+      CreateMusicTogetherRegistrationResponse
+    >({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({ email: 'once-a@test.com', discountCode: 'ONLYONE' }),
+    });
+    expect(first.status).toBe(200);
+    expect(first.data?.amountChargedCents).toBe(12600);
+
+    const second = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({ email: 'once-b@test.com', discountCode: 'ONLYONE' }),
+    });
+    expect(second.status).not.toBe(200);
+  });
+
+  it('rejects a Maple & Spruce class code (#791 program scoping)', async () => {
+    await setFirestoreDoc(
+      'discounts',
+      'disc-classes-only',
+      discountDoc({ code: 'CLASSESONLY', program: 'classes' })
+    );
+
+    const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'wrong-program@test.com',
+        discountCode: 'CLASSESONLY',
+      }),
+    });
+
+    expect(result.status).not.toBe(200);
+    const regs = (await listFirestoreDocs('musicTogetherRegistrations'))
+      .map((r) => r.data as Record<string, unknown>)
+      .filter((r) => r.email === 'wrong-program@test.com');
+    expect(regs).toHaveLength(0);
+  });
+
+  it.each([
+    ['an unknown code', 'NOSUCHCODE'],
+    ['an exhausted code', 'SPENT'],
+    ['an inactive code', 'PAUSED'],
+    ['a slot-scoped M&S code', 'SECONDSLOT'],
+    ['a code that would make it free', 'ALLFREE'],
+  ])('rejects %s rather than charging a surprise amount', async (_label, code) => {
+    const email = `reject-${code.toLowerCase()}@test.com`;
+    const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({ email, discountCode: code }),
+    });
+
+    expect(result.status).not.toBe(200);
+    // No seat taken, no half-written registration left behind.
+    const regs = (await listFirestoreDocs('musicTogetherRegistrations'))
+      .map((r) => r.data as Record<string, unknown>)
+      .filter((r) => r.email === email);
+    expect(regs).toHaveLength(0);
+  });
+});

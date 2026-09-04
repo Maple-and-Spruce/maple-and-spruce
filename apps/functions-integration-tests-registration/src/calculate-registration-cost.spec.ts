@@ -20,6 +20,7 @@ import {
   PAIR_AMOUNT_OVERSIZED,
   EXHAUSTED_DISCOUNT,
   EXPIRED_BY_DATE_DISCOUNT,
+  MUSIC_TOGETHER_DISCOUNT,
   DISCOUNT_IDS,
 } from '@maple/firebase/integration-test-utils';
 import type {
@@ -41,6 +42,11 @@ describe('calculateRegistrationCost', () => {
 
     // Seed discounts
     await Promise.all([
+      setFirestoreDoc(
+        'discounts',
+        DISCOUNT_IDS.musicTogether,
+        MUSIC_TOGETHER_DISCOUNT
+      ),
       setFirestoreDoc('discounts', DISCOUNT_IDS.percent, PERCENT_DISCOUNT),
       setFirestoreDoc('discounts', DISCOUNT_IDS.amount, AMOUNT_DISCOUNT),
       setFirestoreDoc(
@@ -735,6 +741,49 @@ describe('calculateRegistrationCost', () => {
       expect(result.data?.originalCostCents).toBe(
         PUBLISHED_CLASS.priceCents
       );
+    });
+  });
+  // ===========================================================================
+  // Program scoping (#791)
+  // ===========================================================================
+
+  describe('Program scoping', () => {
+    it('ignores a Music Together code — it bills to a different business', async () => {
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 1,
+          discountCode: 'MTONLY50',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBe(0);
+      expect(result.data?.discountDescription).toBeUndefined();
+      expect(result.data?.finalCostCents).toBe(PUBLISHED_CLASS.priceCents);
+    });
+
+    it('still honors a legacy code with no stored program', async () => {
+      // The shared fixtures predate scoping and carry no `program`. They must
+      // keep working: the repository back-fills them to `classes`.
+      const result = await callFunction<
+        CalculateRegistrationCostRequest,
+        CalculateRegistrationCostResponse
+      >({
+        functionName: 'calculateRegistrationCost',
+        data: {
+          classId: CLASS_IDS.published,
+          quantity: 1,
+          discountCode: 'SAVE10',
+        },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discountAmountCents).toBeGreaterThan(0);
     });
   });
 });

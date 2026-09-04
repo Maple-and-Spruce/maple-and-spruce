@@ -148,10 +148,18 @@ export function DiscountList({
                 />
               </TableCell>
               <TableCell align="right">
-                <IconButton size="small" onClick={() => onEdit(discount)}>
+                <IconButton
+                  size="small"
+                  onClick={() => onEdit(discount)}
+                  aria-label={`Edit discount ${discount.code}`}
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => onDelete(discount)}>
+                <IconButton
+                  size="small"
+                  onClick={() => onDelete(discount)}
+                  aria-label={`Delete discount ${discount.code}`}
+                >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </TableCell>

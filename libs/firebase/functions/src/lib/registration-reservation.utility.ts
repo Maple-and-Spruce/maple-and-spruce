@@ -37,6 +37,7 @@ import {
   isClassRegistrationOpen,
   applyDiscount,
   isDiscountValid,
+  isDiscountForProgram,
   calculateTax,
 } from '@maple/ts/domain';
 import { registrationValidation } from '@maple/ts/validation';
@@ -223,7 +224,17 @@ export async function reserveClassRegistration(
     const discount = await DiscountRepository.findByCode(data.discountCode);
     // The customer was shown a price that depends on this code; if it's no
     // longer valid at submit time we must NOT silently charge full price.
-    if (!discount || !isDiscountValid(discount)) {
+    //
+    // A code scoped to another program is rejected on the SAME branch, with
+    // the same wording, as an unknown code (#791). Music Together settles to a
+    // separate business's Square account, so honoring an MT code here would
+    // discount a Maple & Spruce class against Stephanie's promotion — and a
+    // distinct message would leak which codes exist over there.
+    if (
+      !discount ||
+      !isDiscountValid(discount) ||
+      !isDiscountForProgram(discount, 'classes')
+    ) {
       throw new Error(
         `Discount code "${data.discountCode}" is no longer valid. Please refresh and try again.`
       );

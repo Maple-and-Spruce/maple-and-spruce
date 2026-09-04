@@ -18,6 +18,7 @@ const baseFields = {
   code: 'TEST10',
   description: 'Test discount',
   status: 'active' as const,
+  program: 'classes' as const,
   appliesTo: 'order' as const,
   nthSlot: 1,
   usageLimit: null,

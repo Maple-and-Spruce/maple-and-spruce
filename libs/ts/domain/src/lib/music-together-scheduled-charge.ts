@@ -25,11 +25,20 @@ export type MusicTogetherChargeStatus =
   | 'charging' // Lease held by an in-flight attempt (prevents overlap)
   | 'paid' // Successfully charged
   | 'failed' // Declined/errored — needs manual resolution
-  | 'cancelled'; // Registration cancelled; do not charge
+  | 'cancelled' // Registration cancelled; do not charge
+  | 'waived'; // Forgiven by an admin; the family keeps their seat
 
-/** Statuses the charge job must skip (already terminal or in flight). */
+/**
+ * Statuses the charge job must skip (already terminal or in flight).
+ *
+ * `waived` is deliberately distinct from `cancelled`: both mean "never charge
+ * this", but `cancelled` says the family left the program while `waived` says
+ * they are still enrolled and simply do not owe the money. Collapsing them
+ * would make a comped installment indistinguishable from a dropped family on
+ * the roster.
+ */
 export const MT_TERMINAL_CHARGE_STATUSES: readonly MusicTogetherChargeStatus[] =
-  ['paid', 'failed', 'cancelled'];
+  ['paid', 'failed', 'cancelled', 'waived'];
 
 /**
  * A future card-on-file charge for one installment of one registration.
@@ -54,6 +63,13 @@ export interface MusicTogetherScheduledCharge {
   squarePaymentId?: string;
   /** Failure detail surfaced to admins when `status === 'failed'`. */
   lastError?: string;
+  /**
+   * Why an admin forgave this charge, and who did it — the roster's record of
+   * a deliberate comp (e.g. the pilot-semester half-off). Set only when
+   * `status === 'waived'`.
+   */
+  waivedReason?: string;
+  waivedByUid?: string;
   /** When the charge reached a terminal state (paid/failed/cancelled). */
   resolvedAt?: Date;
   createdAt: Date;

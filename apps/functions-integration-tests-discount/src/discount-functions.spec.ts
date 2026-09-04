@@ -39,6 +39,7 @@ const PERCENT_DISCOUNT: CreatePercentDiscount = {
   type: 'percent',
   description: '20% off any class',
   status: 'active',
+  program: 'classes',
   appliesTo: 'order',
   nthSlot: 1,
   percent: 20,
@@ -49,6 +50,7 @@ const AMOUNT_DISCOUNT: CreateAmountDiscount = {
   type: 'amount',
   description: '$10 off any class',
   status: 'active',
+  program: 'classes',
   appliesTo: 'order',
   nthSlot: 1,
   amountCents: 1000,
@@ -59,6 +61,7 @@ const EARLY_BIRD_DISCOUNT: CreateAmountBeforeDateDiscount = {
   type: 'amount-before-date',
   description: '$15 off if registered before cutoff',
   status: 'active',
+  program: 'classes',
   appliesTo: 'order',
   nthSlot: 1,
   amountCents: 1500,
@@ -70,6 +73,7 @@ const PAIR_DISCOUNT: CreatePercentDiscount = {
   type: 'percent',
   description: '50% off second slot',
   status: 'active',
+  program: 'classes',
   appliesTo: 'nth-slot-onward',
   nthSlot: 2,
   percent: 50,
@@ -621,6 +625,267 @@ describe('Discount Functions', () => {
 
       expect(result.status).toBe(200);
       expect(result.data?.discount.code).toBe('UPD-RENAMED');
+    });
+  });
+});
+
+/**
+ * Program scoping (#791).
+ *
+ * Maple & Spruce classes and Music Together settle to **different Square
+ * accounts owned by different businesses**. An unscoped code let a Music
+ * Together promotion take money off a craft class and vice versa. These tests
+ * pin both halves of the fix: the checkout guards, and the authorization line
+ * that lets an mt-teacher run her own promotions without touching class
+ * pricing.
+ */
+describe('Discount program scoping', () => {
+  let admin: TestUser;
+  let mtTeacher: TestUser;
+
+  const MT_CODE: CreatePercentDiscount = {
+    code: 'PILOTCLASS',
+    type: 'percent',
+    description: 'Pilot semester — half off',
+    status: 'active',
+    program: 'music-together',
+    appliesTo: 'order',
+    nthSlot: 1,
+    percent: 50,
+  };
+
+  const CLASS_CODE: CreatePercentDiscount = {
+    code: 'CLASSONLY',
+    type: 'percent',
+    description: '20% off a craft class',
+    status: 'active',
+    program: 'classes',
+    appliesTo: 'order',
+    nthSlot: 1,
+    percent: 20,
+  };
+
+  beforeAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+
+    admin = await createTestUser(ADMIN_USER.email, ADMIN_USER.password);
+    await setFirestoreDoc('admins', admin.uid, {
+      userId: admin.uid,
+      email: admin.email,
+    });
+
+    mtTeacher = await createTestUser('stephanie@test.com', 'test-password');
+    await setFirestoreDoc('userRoles', mtTeacher.uid, {
+      roles: ['mt-teacher'],
+    });
+  });
+
+  afterAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+  });
+
+  describe('authorization', () => {
+    it('lets an mt-teacher create a Music Together code', async () => {
+      const result = await callFunction<
+        CreatePercentDiscount,
+        CreateDiscountResponse
+      >({
+        functionName: 'createDiscount',
+        data: MT_CODE,
+        idToken: mtTeacher.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.discount.program).toBe('music-together');
+    });
+
+    it('THE POINT: an mt-teacher cannot create a class code', async () => {
+      const result = await callFunction<CreatePercentDiscount>({
+        functionName: 'createDiscount',
+        data: { ...CLASS_CODE, code: 'SNEAKY' },
+        idToken: mtTeacher.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+    });
+
+    it('scopes an mt-teacher’s list to Music Together, whatever they ask for', async () => {
+      // Seed a class code the mt-teacher must not see, then ask for it
+      // explicitly — the server ignores the requested program for non-admins.
+      await callFunction<CreatePercentDiscount, CreateDiscountResponse>({
+        functionName: 'createDiscount',
+        data: CLASS_CODE,
+        idToken: admin.idToken,
+      });
+
+      const result = await callFunction<
+        GetDiscountsRequest,
+        GetDiscountsResponse
+      >({
+        functionName: 'getDiscounts',
+        data: { program: 'classes' },
+        idToken: mtTeacher.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      const programs = (result.data?.discounts ?? []).map((d) => d.program);
+      expect(programs.length).toBeGreaterThan(0);
+      expect(new Set(programs)).toEqual(new Set(['music-together']));
+    });
+
+    it('lets an admin filter to either program', async () => {
+      const classes = await callFunction<
+        GetDiscountsRequest,
+        GetDiscountsResponse
+      >({
+        functionName: 'getDiscounts',
+        data: { program: 'classes' },
+        idToken: admin.idToken,
+      });
+
+      expect(classes.status).toBe(200);
+      expect(
+        (classes.data?.discounts ?? []).every((d) => d.program === 'classes')
+      ).toBe(true);
+      expect(
+        (classes.data?.discounts ?? []).some((d) => d.code === 'CLASSONLY')
+      ).toBe(true);
+    });
+
+    it('an mt-teacher cannot delete a class code', async () => {
+      const listed = await callFunction<
+        GetDiscountsRequest,
+        GetDiscountsResponse
+      >({
+        functionName: 'getDiscounts',
+        data: { program: 'classes' },
+        idToken: admin.idToken,
+      });
+      const classCode = (listed.data?.discounts ?? []).find(
+        (d) => d.code === 'CLASSONLY'
+      );
+      expect(classCode).toBeDefined();
+
+      const result = await callFunction<DeleteDiscountRequest>({
+        functionName: 'deleteDiscount',
+        data: { id: classCode!.id },
+        idToken: mtTeacher.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+    });
+
+    it('an mt-teacher cannot edit a class code', async () => {
+      const listed = await callFunction<
+        GetDiscountsRequest,
+        GetDiscountsResponse
+      >({
+        functionName: 'getDiscounts',
+        data: { program: 'classes' },
+        idToken: admin.idToken,
+      });
+      const classCode = (listed.data?.discounts ?? []).find(
+        (d) => d.code === 'CLASSONLY'
+      );
+
+      const result = await callFunction<UpdateDiscountRequest>({
+        functionName: 'updateDiscount',
+        data: { id: classCode!.id, status: 'inactive' },
+        idToken: mtTeacher.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
+    });
+  });
+
+  describe('public lookup is program-aware', () => {
+    it('returns a Music Together code only to the Music Together checkout', async () => {
+      const asMt = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'PILOTCLASS', program: 'music-together' },
+      });
+
+      expect(asMt.status).toBe(200);
+      expect(asMt.data?.discount?.code).toBe('PILOTCLASS');
+    });
+
+    it('hides it from the classes checkout — indistinguishable from unknown', async () => {
+      // Unauthenticated endpoint: a different message would let anyone
+      // enumerate the other business's live promotions.
+      const asClasses = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'PILOTCLASS', program: 'classes' },
+      });
+      const unknown = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'NO-SUCH-CODE', program: 'classes' },
+      });
+
+      expect(asClasses.status).toBe(200);
+      expect(asClasses.data?.discount).toBeUndefined();
+      expect(asClasses.data).toEqual(unknown.data);
+    });
+
+    it('defaults an omitted program to classes (older widget bundles)', async () => {
+      const legacy = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'CLASSONLY' },
+      });
+
+      expect(legacy.data?.discount?.code).toBe('CLASSONLY');
+    });
+  });
+
+  describe('legacy codes', () => {
+    it('reads a pre-scoping document as a classes code', async () => {
+      // Written the way the collection looked before `program` existed. MT had
+      // no discount support then, so every such code was for classes —
+      // defaulting the other way would expose Stephanie's account.
+      await setFirestoreDoc('discounts', 'legacy-doc', {
+        code: 'LEGACY',
+        type: 'percent',
+        percent: 10,
+        description: 'Written before program scoping existed',
+        status: 'active',
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: null,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const asClasses = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'LEGACY', program: 'classes' },
+      });
+      const asMt = await callFunction<
+        LookupDiscountRequest,
+        LookupDiscountResponse
+      >({
+        functionName: 'lookupDiscount',
+        data: { code: 'LEGACY', program: 'music-together' },
+      });
+
+      expect(asClasses.data?.discount?.code).toBe('LEGACY');
+      expect(asMt.data?.discount).toBeUndefined();
     });
   });
 });

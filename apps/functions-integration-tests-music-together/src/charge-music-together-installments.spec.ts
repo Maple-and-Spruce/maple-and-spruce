@@ -203,3 +203,140 @@ describe('triggerMusicTogetherInstallments — failure handling', () => {
     expect(charge?.lastError).toBeDefined();
   });
 });
+
+describe('waiveMusicTogetherInstallment', () => {
+  let admin: TestUser;
+  let nonAdmin: TestUser;
+
+  beforeAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+    admin = await seedAdmin();
+    nonAdmin = await createTestUser(
+      NON_ADMIN_USER.email,
+      NON_ADMIN_USER.password
+    );
+    await setFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-waive',
+      confirmedReg()
+    );
+    await setFirestoreDoc(
+      'musicTogetherScheduledCharges',
+      'chg-waive',
+      dueCharge({
+        registrationId: 'reg-waive',
+        idempotencyKey: 'mt-charge-waive',
+      })
+    );
+    // A registration that was cancelled — its charges are already terminal.
+    await setFirestoreDoc(
+      'musicTogetherRegistrations',
+      'reg-gone',
+      confirmedReg({ status: 'cancelled' })
+    );
+    await setFirestoreDoc(
+      'musicTogetherScheduledCharges',
+      'chg-gone',
+      dueCharge({
+        registrationId: 'reg-gone',
+        idempotencyKey: 'mt-charge-gone',
+      })
+    );
+  });
+
+  afterAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+  });
+
+  it('rejects a non-admin caller', async () => {
+    const result = await callFunction({
+      functionName: 'waiveMusicTogetherInstallment',
+      data: { chargeId: 'chg-waive' },
+      idToken: nonAdmin.idToken,
+    });
+    expect(result.status).not.toBe(200);
+  });
+
+  it('refuses to waive on a cancelled registration', async () => {
+    const result = await callFunction({
+      functionName: 'waiveMusicTogetherInstallment',
+      data: { chargeId: 'chg-gone' },
+      idToken: admin.idToken,
+    });
+    expect(result.status).not.toBe(200);
+
+    const charge = await getFirestoreDoc(
+      'musicTogetherScheduledCharges',
+      'chg-gone'
+    );
+    expect(charge?.status).toBe('scheduled');
+  });
+
+  it('waives a scheduled charge and records why', async () => {
+    const result = await callFunction<
+      { chargeId: string; reason: string },
+      { chargeId: string; status: string; amountCents: number }
+    >({
+      functionName: 'waiveMusicTogetherInstallment',
+      data: { chargeId: 'chg-waive', reason: 'Pilot semester half-off' },
+      idToken: admin.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.status).toBe('waived');
+    expect(result.data?.amountCents).toBe(13200);
+
+    const charge = await getFirestoreDoc(
+      'musicTogetherScheduledCharges',
+      'chg-waive'
+    );
+    expect(charge?.status).toBe('waived');
+    expect(charge?.waivedReason).toBe('Pilot semester half-off');
+    expect(charge?.waivedByUid).toBe(admin.uid);
+  });
+
+  it('THE POINT: the charge job never takes a waived installment', async () => {
+    // `chg-waive` is past due and its registration has a card on file — the
+    // only thing keeping the money in the family's account is the status.
+    const result = await callFunction<
+      ChargeMusicTogetherInstallmentsRequest,
+      MusicTogetherInstallmentChargeResult
+    >({
+      functionName: 'triggerMusicTogetherInstallments',
+      data: {},
+      idToken: admin.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    expect(
+      result.data?.wouldCharge?.some((c) => c.chargeId === 'chg-waive')
+    ).toBeFalsy();
+
+    const charge = await getFirestoreDoc(
+      'musicTogetherScheduledCharges',
+      'chg-waive'
+    );
+    expect(charge?.status).toBe('waived');
+    expect(charge?.squarePaymentId).toBeFalsy();
+  });
+
+  it('cannot be waived twice', async () => {
+    const result = await callFunction({
+      functionName: 'waiveMusicTogetherInstallment',
+      data: { chargeId: 'chg-waive' },
+      idToken: admin.idToken,
+    });
+    expect(result.status).not.toBe(200);
+  });
+
+  it('404s an unknown charge', async () => {
+    const result = await callFunction({
+      functionName: 'waiveMusicTogetherInstallment',
+      data: { chargeId: 'no-such-charge' },
+      idToken: admin.idToken,
+    });
+    expect(result.status).not.toBe(200);
+  });
+});
