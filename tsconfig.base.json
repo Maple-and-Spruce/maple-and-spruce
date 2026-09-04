@@ -272,6 +272,12 @@
       "@maple/firebase/maple-functions/get-lesson-blocks": [
         "libs/firebase/maple-functions/get-lesson-blocks/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-hope-queue": [
+        "libs/firebase/maple-functions/get-hope-queue/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/record-hope-submissions": [
+        "libs/firebase/maple-functions/record-hope-submissions/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-lesson-inquiries": [
         "libs/firebase/maple-functions/sync-lesson-inquiries/src/index.ts"
       ],

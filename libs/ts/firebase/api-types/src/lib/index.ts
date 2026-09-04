@@ -569,3 +569,10 @@ export type {
   UpdateLessonInquiryStatusRequest,
   UpdateLessonInquiryStatusResponse,
 } from './lesson-inquiry.types';
+
+export type {
+  GetHopeQueueRequest,
+  GetHopeQueueResponse,
+  RecordHopeSubmissionsRequest,
+  RecordHopeSubmissionsResponse,
+} from './hope-submission.types';

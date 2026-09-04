@@ -4,6 +4,7 @@ export {
   useCategories,
   useProducts,
   useInstructors,
+  useHopeQueue,
   useLessonInquiries,
   useStudents,
   useLessons,

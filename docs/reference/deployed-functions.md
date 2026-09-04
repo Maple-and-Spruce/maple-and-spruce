@@ -31,6 +31,12 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getLessonInquiries`, `updateLessonInquiryStatus` _(admin; the `/leads` queue)_
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
+### Hope Scholarship billing (#799)
+- `getHopeQueue` _(admin — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
+- `recordHopeSubmissions` _(admin, bulk — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
+- `createLessonSeries` now accepts `status` — set `rendered` with past dates to **backfill lessons already taught**. Block attribution is waived for that case only (see `isBackfillSeries`); a future-dated series without a block is still refused.
+- Claims live in `hopeSubmissions`, keyed by lesson id — one lesson, one claim. `Invoice` remains closed to Hope students.
+
 ### Music Lesson Invoices (private-pay)
 - `getInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`
 - `recordInvoicePayment` _(records an off-Square payment against a sent invoice — `admin-manual` (cash/check) or `venmo-manual` (Venmo QR witnessed at a lesson); idempotent, admin-gated; see epic #626)_
