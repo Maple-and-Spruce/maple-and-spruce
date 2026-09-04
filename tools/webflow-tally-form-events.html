@@ -4,9 +4,16 @@
   Pushes a `generate_lead` event to the GA4 dataLayer AND a `Lead` event to
   Meta Pixel whenever a Tally email-signup popup form is submitted.
 
-  Two signup lists, two Meta pixels:
-    - Maple & Spruce updates (form 0QPRq9) → M&S pixel 1625932185289127
-    - Music Together updates (form q4Qj8d) → MT pixel 1562555242035326
+  Three forms, two Meta pixels:
+    - Maple & Spruce updates (form 0QPRq9)   → M&S pixel 1625932185289127
+    - Music Together updates (form q4Qj8d)   → MT  pixel 1562555242035326
+    - Suzuki interview request (form QKQb6k) → M&S pixel 1625932185289127
+
+  `category` is sent as Meta `content_category` and must match what
+  tallyLeadWebhook sends server-side for the same form — the two events share
+  one eventID, and Meta keeps the first one it sees. A Suzuki interview request
+  is a `lesson-inquiry`, not a `newsletter`: filing it as the latter tells the
+  ad account a $130/month lead is worth the same as an email signup.
 
   The Meta half always uses `trackSingle`, never a bare `track` — MT pages
   initialize both pixels, and a bare `track` broadcasts to every initialized
@@ -47,10 +54,27 @@
     // not listed (contact form, class interest, …) falls back to the default so
     // a new one-off form still reports a lead against Maple & Spruce.
     var FORMS = {
-      '0QPRq9': { name: 'email-signup', pixelId: MS_PIXEL_ID },
-      'q4Qj8d': { name: 'music-together-updates', pixelId: MT_PIXEL_ID },
+      '0QPRq9': {
+        name: 'email-signup',
+        pixelId: MS_PIXEL_ID,
+        category: 'newsletter',
+      },
+      'q4Qj8d': {
+        name: 'music-together-updates',
+        pixelId: MT_PIXEL_ID,
+        category: 'newsletter',
+      },
+      QKQb6k: {
+        name: 'suzuki-interview',
+        pixelId: MS_PIXEL_ID,
+        category: 'lesson-inquiry',
+      },
     };
-    var DEFAULT_FORM = { name: 'email-signup', pixelId: MS_PIXEL_ID };
+    var DEFAULT_FORM = {
+      name: 'email-signup',
+      pixelId: MS_PIXEL_ID,
+      category: 'newsletter',
+    };
 
     // Mirrors ensureMusicTogetherPixel() in music-together-analytics.ts — same
     // window flag, so the MT pixel is init'd at most once per page whether this
@@ -103,7 +127,7 @@
         'trackSingle',
         form.pixelId,
         'Lead',
-        { content_name: form.name, content_category: 'newsletter' },
+        { content_name: form.name, content_category: form.category },
         submissionId ? { eventID: 'tally-' + submissionId } : undefined
       );
     });
