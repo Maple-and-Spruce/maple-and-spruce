@@ -78,7 +78,13 @@ overrides:
   # patched per-line in 2.4.4/3.1.5/4.1.2. The unbounded >=3.1.4 selector above
   # had already resolved the whole tree onto the 4.x line (4.1.1), so this is
   # bumped to the 4.x patch and bounded to <5. Bumped on 2026-08-07.
-  fast-uri: '>=4.1.2 <5'
+  # Plus GHSA-fph4-wmhf-6fwf (SSRF via repeated hostname percent-decoding),
+  # GHSA-f65p-4m7j-42xc (SSRF via malformed IPv6 normalization),
+  # GHSA-jqff-g426-hqxp (host confusion via percent-encoded scheme
+  # normalization) and GHSA-5jgf-p345-68v8 (host confusion via skipped IDN
+  # canonicalization on scheme-relative references). All four patched in
+  # 4.1.3. Bumped from >=4.1.2 on 2026-09-04.
+  fast-uri: '>=4.1.3 <5'
   # GHSA-fv7c-fp4j-7gwp: @babel/plugin-transform-modules-systemjs generates arbitrary code when compiling malicious input (patched in 7.29.4). Transitive dep of @nx/* > @nx/js > @babel/preset-env. Added 2026-05-08.
   '@babel/plugin-transform-modules-systemjs': '>=7.29.4'
   # GHSA-66ff-xgx4-vchm (code injection via bytes field defaults),
@@ -297,3 +303,11 @@ overrides:
   # tooling. Added 2026-07-24.
   svgo@>=3.0.0 <3.3.4: '>=3.3.4 <4'
   svgo@>=4.0.0 <4.0.2: '>=4.0.2 <5'
+  # GHSA-c83g-rgw3-j3cx (unbounded memory growth — the query cache never
+  # evicts, so distinct queries grow it until OOM) and GHSA-73wf-gq98-2v4g
+  # (uncaught crash / prototype write in normalizeStats when fed an untrusted
+  # browserslist-stats.json). Both patched in 4.28.7. Dev-only build tooling:
+  # every path runs through @babel/helper-compilation-targets (next >
+  # styled-jsx > @babel/core, @babel/preset-react, @nx/* > @babel/preset-env).
+  # Bounded to the 4.x line. Added 2026-09-04.
+  browserslist@<4.28.7: '>=4.28.7 <5'

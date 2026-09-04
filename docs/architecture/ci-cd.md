@@ -17,12 +17,14 @@ All CI workflows use `pnpm/action-setup@v4` which reads the version from `packag
 - Layer 2: `node_modules` — cached via `actions/cache`, avoids install/linking entirely on cache hit
 
 **Jobs** (all depend on `install`):
-- Security audit (`pnpm audit --audit-level=high`)
+- Security audit (`./tools/run-security-audit.sh`)
 - TypeScript typecheck — `nx affected -t typecheck`
 - Build — `nx affected -t build`
 - Unit tests with coverage
 - Storybook build (`nx affected -t build-storybook`) and interaction tests
 - Integration tests (always builds the 4 functions codebases — affected conversion deferred until module boundary tags land)
+
+**Security audit is not a bare `pnpm audit`**: `pnpm audit` POSTs the whole dependency tree to npm's `/-/npm/v1/security/advisories/bulk` endpoint, which times out often enough to fail unrelated PRs — and it exits 1 for that exactly as it does for a real CVE. `tools/run-security-audit.sh` passes pnpm's own `--ignore-registry-errors` (which wraps only the *fetch*, so genuine advisories still fail), retries, and downgrades a sustained outage to a warning annotation rather than a red X. Accepted advisories and version pins live in `pnpm-workspace.yaml` (`auditConfig.ignoreGhsas` and `overrides`).
 
 **Affected detection in PRs**: `nrwl/nx-set-shas@v4` derives the base/head SHAs from the PR event so `nx affected` only rebuilds projects whose source (or transitively a dependency) changed since the merge base. Jobs needing affected detection use `fetch-depth: 0` so the full git history is available.
 
