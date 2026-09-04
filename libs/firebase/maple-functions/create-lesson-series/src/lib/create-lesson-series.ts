@@ -13,6 +13,7 @@ import {
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonSeriesValidation } from '@maple/ts/validation';
+import { isBackfillSeries } from '@maple/ts/domain';
 import type {
   CreateLessonSeriesRequest,
   CreateLessonSeriesResponse,
@@ -45,12 +46,23 @@ export const createLessonSeries = createRoleFunction<
 
     // Enforce block attribution (#686): every lesson in the series must fit the
     // same block, owned by this teacher.
-    await assertLessonsFitBlock({
-      blockId: coerced.blockId,
-      teacherId: coerced.teacherId,
-      scheduledAts: coerced.scheduledAts,
-      durationMinutes: coerced.durationMinutes,
-    });
+    //
+    // A backfill of lessons that already happened is exempt (#799). The block
+    // rule stops *new* lessons being dropped at arbitrary times; a lesson that
+    // already happened happened, whether or not a block covers that weekday,
+    // and refusing to record it would mean refusing to claim money the studio
+    // has already earned. Backfilled lessons carry `blockId: null` and surface
+    // as "needs a block", the same grandfather path pre-block lessons use.
+    // An explicitly supplied block is still validated either way.
+    const isBackfill = isBackfillSeries(coerced);
+    if (!isBackfill || coerced.blockId) {
+      await assertLessonsFitBlock({
+        blockId: coerced.blockId,
+        teacherId: coerced.teacherId,
+        scheduledAts: coerced.scheduledAts,
+        durationMinutes: coerced.durationMinutes,
+      });
+    }
 
     const student = await StudentRepository.findById(coerced.studentId);
     if (!student) {

@@ -104,6 +104,8 @@
     "../../libs/firebase/maple-functions/update-student/**/*.ts",
     "../../libs/firebase/maple-functions/create-lesson/**/*.ts",
     "../../libs/firebase/maple-functions/get-lesson-blocks/**/*.ts",
+    "../../libs/firebase/maple-functions/get-hope-queue/**/*.ts",
+    "../../libs/firebase/maple-functions/record-hope-submissions/**/*.ts",
     "../../libs/firebase/maple-functions/sync-lesson-inquiries/**/*.ts",
     "../../libs/firebase/maple-functions/get-lesson-inquiries/**/*.ts",
     "../../libs/firebase/maple-functions/update-lesson-inquiry-status/**/*.ts",

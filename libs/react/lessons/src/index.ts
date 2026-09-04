@@ -19,6 +19,11 @@ export {
 } from './lib/LessonBlockList';
 export { MyWeek, type MyWeekProps } from './lib/MyWeek';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
+export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
+export {
+  BackfillLessonsDialog,
+  type BackfillLessonsDialogProps,
+} from './lib/BackfillLessonsDialog';
 export { HopeRatesTable } from './lib/HopeRatesTable';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';

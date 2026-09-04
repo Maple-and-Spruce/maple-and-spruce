@@ -9,6 +9,7 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import TodayIcon from '@mui/icons-material/Today';
 import ChildCareIcon from '@mui/icons-material/ChildCare';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import StarsIcon from '@mui/icons-material/Stars';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -147,6 +148,11 @@ function roleNavGroups(
           label: 'Lesson Blocks',
           href: '/lesson-blocks',
           icon: <EventNoteIcon />,
+        },
+        {
+          label: 'Hope Billing',
+          href: '/hope',
+          icon: <StarsIcon />,
         },
         {
           label: 'Teacher Payouts',

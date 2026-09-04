@@ -147,6 +147,36 @@ export interface CreateLessonSeriesInput {
   primaryTeacherAtCreateId?: string;
   /** Weekly block every lesson in the series is attributed to (#686). */
   blockId?: string | null;
+  /**
+   * Status to create the lessons in. Defaults to `scheduled`.
+   *
+   * Set to `rendered` (or `no-show`) to **backfill lessons that already
+   * happened** — the path that gets a Hope student's taught-but-unrecorded
+   * lessons into the portal so they can be claimed (#799). Backfilling produces
+   * ordinary Lesson records, deliberately: everything downstream (payouts,
+   * the Hope queue, the room schedule) reads lessons, and a parallel "historical
+   * lesson" shape would have to be taught to all of it.
+   */
+  status?: LessonStatus;
+}
+
+/**
+ * Is this series request a backfill of lessons that already happened?
+ *
+ * Backfills are exempt from block attribution (#686). That rule exists so *new*
+ * lessons cannot be dropped at arbitrary times; a lesson that already happened
+ * happened, whether or not a block covers that weekday, and refusing to record
+ * it would mean refusing to claim money the studio has earned. Such lessons are
+ * created with `blockId: null` and surface as "needs a block" for an admin to
+ * resolve — the same grandfather path pre-block lessons already use.
+ */
+export function isBackfillSeries(input: {
+  status?: LessonStatus;
+  scheduledAts: Date[];
+}, now: Date = new Date()): boolean {
+  if (!input.status || input.status === 'scheduled') return false;
+  if (input.scheduledAts.length === 0) return false;
+  return input.scheduledAts.every((d) => d.getTime() <= now.getTime());
 }
 
 export function isLessonUpcoming(

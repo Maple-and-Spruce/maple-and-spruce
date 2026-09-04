@@ -28,12 +28,12 @@ Do them in order unless a slice says otherwise. Each is one PR.
 | 1 | #794 | Suzuki intake form + Meta/GA4 attribution | **merged** (PR #803) | the 4 manual steps still outstanding |
 | 2 | #795 | Persist lesson inquiries + `/leads` queue | **in review** (PR #808) | needs `TALLY_API_KEY` in Secret Manager |
 | 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | **merged** (PR #809) | `/leads` already follows this pattern |
-| 4 | #796 | `no-show` lesson status + billing behaviour | **in review** | **unblocks #799** |
-| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **next** | the revenue |
-| 6 | #807 | Needs Attention queue | ready | after #799, so it can carry the Hope row |
+| 4 | #796 | `no-show` lesson status + billing behaviour | **merged** (PR #810) | unblocked #799 |
+| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **in review** | the revenue |
+| 6 | #807 | Needs Attention queue | **next** | can now carry the Hope row |
 | 7 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
 | 8 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
-| 9 | #804 | Hope EMA export + payouts at *paid* + editable rates | **blocked** | EMA format + backfill Qs |
+| 9 | #804 | Hope portal-session view + payouts at *paid* + editable rates | partly blocked | backfill Q only |
 
 **Order set 2026-09-04** from two answers: the Suzuki ad goes live in about two weeks, and among
 everything else the unrecorded Hope revenue matters most.
@@ -156,7 +156,6 @@ Blocking where marked. Ask, don't guess.
 
 | Question | Blocks | Why it can't be decided in code |
 |---|---|---|
-| What format does the EMA portal actually want for submissions? | **#804** | Do not invent a CSV schema for a state system. Get a real example from Katie. |
 | On moving Hope payouts from *rendered* to *paid*: backfill existing rendered lessons as paid, or start clean? | **#804** | Changes historical payout figures. |
 
 
@@ -165,6 +164,7 @@ Blocking where marked. Ask, don't guess.
 | Question | Answer (David, 2026-09-03/04) |
 |---|---|
 | Is the `/suzuki` offer a free trial lesson or a no-cost meeting? | **A no-cost interview.** Not as strong a selling point as a trial lesson, but it is what the studio offers, and the live page and form copy already say it correctly. The page has to carry more of the persuasive weight as a result. |
+| What format does the EMA portal want for submissions? | **There is no export.** David works the EMA portal by hand, entering lessons and recording payments. #804 is therefore about making that manual session fast (group by student, stable order, copy affordances, tick off as you go), not about generating a file. Never build a CSV for this. |
 | Is a no-show charged? | **Yes for private pay. For Hope, charged to nobody** — Hope pays only for services rendered and the family does not owe it privately. The studio absorbs it, so it should be visible rather than silent. See #796. |
 | Can Hope be billed for services rendered before the guitar listing was approved? | **Yes, Hope pays backwards.** So historical entry (#799) is revenue recovery, not bookkeeping. A lesson rendered months ago is a normal `pending` submission and the queue must not de-prioritise it by age. |
 | CPA (Danny Fink) on agent-vs-reseller revenue treatment. | #672, not this epic | Already tracked on #669. |
