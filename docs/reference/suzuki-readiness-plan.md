@@ -25,9 +25,9 @@ Do them in order unless a slice says otherwise. Each is one PR.
 
 | # | Issue | Slice | Status | Note |
 |---|---|---|---|---|
-| 1 | #794 | Suzuki intake form + Meta/GA4 attribution | **in review** (PR #803) | merge + the 4 manual steps |
-| 2 | #795 | Persist lesson inquiries + `/leads` queue | **next** | ad goes live in ~2 weeks |
-| 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | ready | do before #796 |
+| 1 | #794 | Suzuki intake form + Meta/GA4 attribution | **merged** (PR #803) | the 4 manual steps still outstanding |
+| 2 | #795 | Persist lesson inquiries + `/leads` queue | **in review** (PR #808) | needs `TALLY_API_KEY` in Secret Manager |
+| 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | **next** | do before #796; `/leads` already follows this pattern |
 | 4 | #796 | `no-show` lesson status + billing behaviour | ready | **blocks #799** |
 | 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | ready | the revenue |
 | 6 | #807 | Needs Attention queue | ready | after #799, so it can carry the Hope row |
@@ -47,6 +47,12 @@ let it run long that way.
 status, a Hope lesson nobody attended has to be recorded as `cancelled` (losing the fact) or
 `rendered` (and would be submitted to EMA as a service never rendered). #805 comes first only because
 #796 adds a fourth action to a row of unlabeled icon buttons.
+
+**Persistence is a scheduled poll, not a webhook** (settled in #795). The webhook path is one-shot
+and unretryable, has to keep `maple-webhooks` tiny, and cannot backfill history. Analytics stays on
+the webhook; anything that only has to be *right* rather than *instant* polls the Tally API instead.
+The API shape is **not** the webhook shape — see the header comment on `map-submission.ts` before
+touching any Tally ingestion.
 
 **Nothing here gates starting.** Backdated lesson entry already works — no future-date constraint in
 `lessonValidation`, no `disablePast` in the dialog — so Nathan's Hope lessons can be entered and

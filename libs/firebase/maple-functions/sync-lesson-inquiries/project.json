@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-sync-lesson-inquiries",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/sync-lesson-inquiries/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

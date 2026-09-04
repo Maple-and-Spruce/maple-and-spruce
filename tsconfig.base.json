@@ -272,6 +272,15 @@
       "@maple/firebase/maple-functions/get-lesson-blocks": [
         "libs/firebase/maple-functions/get-lesson-blocks/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-lesson-inquiries": [
+        "libs/firebase/maple-functions/sync-lesson-inquiries/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-lesson-inquiries": [
+        "libs/firebase/maple-functions/get-lesson-inquiries/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-lesson-inquiry-status": [
+        "libs/firebase/maple-functions/update-lesson-inquiry-status/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/create-lesson-block": [
         "libs/firebase/maple-functions/create-lesson-block/src/index.ts"
       ],

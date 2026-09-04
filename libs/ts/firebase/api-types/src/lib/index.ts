@@ -562,3 +562,10 @@ export type {
   WaiveMusicTogetherInstallmentRequest,
   WaiveMusicTogetherInstallmentResponse,
 } from './music-together.types';
+
+export type {
+  GetLessonInquiriesRequest,
+  GetLessonInquiriesResponse,
+  UpdateLessonInquiryStatusRequest,
+  UpdateLessonInquiryStatusResponse,
+} from './lesson-inquiry.types';

@@ -1,4 +1,8 @@
 export { LessonList } from './lib/LessonList';
+export {
+  LessonInquiryList,
+  type LessonInquiryListProps,
+} from './lib/LessonInquiryList';
 export { ScheduleLessonDialog } from './lib/ScheduleLessonDialog';
 export { EditLessonDialog } from './lib/EditLessonDialog';
 export {

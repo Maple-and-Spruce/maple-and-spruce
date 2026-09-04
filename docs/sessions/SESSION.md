@@ -6,6 +6,50 @@
 
 ## Current Status
 
+### Lesson inquiries land in the portal (2026-09-04, #795 / epic #793)
+
+An inquiry used to live in Tally and in Katie's inbox and nowhere else — `tallyLeadWebhook` fires two
+analytics beacons and writes nothing. There was no way to answer "who asked us about lessons three
+weeks ago and never heard back", which is the one question a paid funnel has to answer. With the
+Suzuki ad going live in about two weeks, that gap was the next thing worth closing.
+
+**The design decision worth remembering: this is a scheduled poll of the Tally API, not a second
+webhook.** Persisting from `tallyLeadWebhook` was the obvious approach and is the wrong one.
+
+- **The webhook is one-shot.** Tally hangs up at 10s and does not auto-retry, so a failed delivery is
+  a permanently lost lead. Analytics has to live with that (a late conversion event is worthless).
+  A lead record does not — it only has to be *right*, and a failed poll is fixed by the next poll.
+- **It would re-inflate `maple-webhooks`**, which is ~90kb / ~2.6s cold precisely so the unretryable
+  path keeps its margin (ADR-031).
+- **A webhook cannot go back.** There were already **14** submissions sitting in the shared `dWPQOr`
+  form, none of them ever in the portal. The first run backfills all of them.
+
+Splitting the two concerns by *mechanism* rather than by bundle dissolved the codebase question that
+#795 was originally framed around: a scheduled function has no cold-start budget to protect, so it
+lives in `maple-core` with no new codebase and no second webhook to wire.
+
+**The API shape is not the webhook shape, and this was verified rather than assumed.** The webhook
+sends self-describing fields (`{key, label, type, value}`); the submissions API returns `questions`
+once per page and `responses` as `{questionId, answer}`, where `answer` is a string, a string array
+of already-resolved option **text**, or — for hidden fields — a single object keyed by field name
+whose question has `label: null`. Mapping this against the webhook's shape would have compiled,
+passed an invented fixture, and captured nothing. The spec fixtures are real captured payloads.
+
+Idempotence is structural: the Firestore doc id **is** the Tally submission id and ingestion uses
+`create()`, so a re-poll cannot reset an `enrolled` lead back to `new`.
+
+`/leads` is built on the action pattern #805 is moving the lesson surfaces onto — one labelled
+primary action, a `MoreVert` overflow, and **per-row** pending state rather than the page-wide `busy`
+boolean `/my-day` still uses. No reason to build a new surface with the defect we just filed.
+
+**Manual step, and the deploy fails without it:** set the **`TALLY_API_KEY`** secret in each
+project's Secret Manager before this merges. A declared-but-unset `defineSecret` breaks the deploy
+(#531 would detect this; it is still open).
+
+**Not done here:** the acknowledgement email to the family. Tally respondent notifications need Tally
+Pro, and `queueMail` still cannot enter `maple-webhooks`. Now that inquiries are Firestore documents,
+the natural home is a trigger on `lessonInquiries` — worth its own slice.
+
 ### Suzuki intake form + lead attribution (2026-09-03, #794 / epic #793)
 
 An audit of the lesson funnel against the live site found that **`/suzuki` was pointed at the generic

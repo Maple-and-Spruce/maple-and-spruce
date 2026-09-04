@@ -25,6 +25,12 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Music Lessons
 - `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`
 
+### Lesson Inquiries (#795)
+- `syncLessonInquiries` _(scheduled, every 15 min — pulls submissions from the Tally API for the Suzuki form `QKQb6k` and the shared music form `dWPQOr` into `lessonInquiries`. Doc id = Tally submission id, written with `create()`, so a re-poll is a skip and never overwrites a status Katie has advanced. Deliberately NOT persisted from `tallyLeadWebhook`: that path is one-shot and unretryable, lives in the tiny `maple-webhooks` bundle, and cannot backfill history.)_
+- `triggerLessonInquirySync` _(admin callable twin — `onSchedule` triggers are not reachable over HTTP in the emulator)_
+- `getLessonInquiries`, `updateLessonInquiryStatus` _(admin; the `/leads` queue)_
+- Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
+
 ### Music Lesson Invoices (private-pay)
 - `getInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`
 - `recordInvoicePayment` _(records an off-Square payment against a sent invoice — `admin-manual` (cash/check) or `venmo-manual` (Venmo QR witnessed at a lesson); idempotent, admin-gated; see epic #626)_

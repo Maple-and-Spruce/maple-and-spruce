@@ -27,6 +27,10 @@ export { useClassCategories } from './lib/useClassCategories';
 
 // Phase 4: Music Lessons
 export { useStudents } from './lib/useStudents';
+export {
+  useLessonInquiries,
+  type UseLessonInquiriesOptions,
+} from './lib/useLessonInquiries';
 export { useLessons, type UseLessonsOptions } from './lib/useLessons';
 export {
   useLessonBlocks,

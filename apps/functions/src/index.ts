@@ -89,6 +89,12 @@ export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesso
 export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
 export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
 export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
+export {
+  syncLessonInquiries,
+  triggerLessonInquirySync,
+} from '@maple/firebase/maple-functions/sync-lesson-inquiries';
+export { getLessonInquiries } from '@maple/firebase/maple-functions/get-lesson-inquiries';
+export { updateLessonInquiryStatus } from '@maple/firebase/maple-functions/update-lesson-inquiry-status';
 export { createLessonBlock } from '@maple/firebase/maple-functions/create-lesson-block';
 export { updateLessonBlock } from '@maple/firebase/maple-functions/update-lesson-block';
 export { deleteLessonBlock } from '@maple/firebase/maple-functions/delete-lesson-block';
