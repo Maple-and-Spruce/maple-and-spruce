@@ -89,8 +89,13 @@ jobs:
           path: node_modules
           key: ${{ needs.install.outputs.cache_key }}
 
+      # Not `pnpm audit` inline: the npm advisories endpoint times out often
+      # enough to red-X unrelated PRs (it killed this job on #801 after 4m42s),
+      # and `pnpm audit` exits 1 for that exactly as it does for a real CVE.
+      # The wrapper retries, keeps failing on genuine advisories, and downgrades
+      # a registry outage to a warning annotation. See the header comment there.
       - name: Run pnpm audit
-        run: pnpm audit --audit-level=high
+        run: ./tools/run-security-audit.sh
 
   firestore-indexes:
     name: Firestore Indexes
