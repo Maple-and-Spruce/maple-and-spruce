@@ -120,6 +120,24 @@ export const DiscountRepository = {
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
     }
+    // Filtering by program in the QUERY (not after the read) requires every
+    // document to carry the field. Firestore is explicit that it must:
+    //
+    //   "A document is included in the index only if it has an indexed value
+    //    set for every field used in the index. If the index definition refers
+    //    to a field for which the document has no value set, that document
+    //    won't appear in the index... the document will never be returned as a
+    //    result for any query based on the index."
+    //   https://firebase.google.com/docs/firestore/query-data/index-overview
+    //
+    // `!=` is no escape either: not-equal and not-in also exclude documents
+    // where the field does not exist. So documents written before program
+    // scoping (#791) MUST be backfilled — `tools/backfill-discount-program.ts`
+    // does that, and is a hard prerequisite for this query, not a tidy-up. An
+    // unbackfilled document is invisible to both admin pages.
+    //
+    // `DiscountRepository.create` stamps `program` on every new document, so
+    // once the backfill has run the collection stays complete.
     if (filters?.program) {
       query = query.where('program', '==', filters.program);
     }
