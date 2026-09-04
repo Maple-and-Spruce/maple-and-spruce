@@ -207,6 +207,12 @@ describe('mapSubmission — hidden fields', () => {
             utm_campaign: '52519195659843',
             utm_content: '52530536887843',
             utm_term: '52519195660043',
+            // Facebook's mobile web referrer really is cleartext http, and this
+            // is a verbatim captured value. It is inert data the mapper copies,
+            // never a URL anything connects to, so the protocol rule does not
+            // apply — and rewriting it to https would make the fixture a
+            // fiction, which is the one thing these fixtures must not be.
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols
             referrer: 'http://m.facebook.com/',
             landing_page: 'https://mapleandsprucefolkarts.com/suzuki',
           },
@@ -223,6 +229,7 @@ describe('mapSubmission — hidden fields', () => {
       utmCampaign: '52519195659843',
       utmContent: '52530536887843',
       utmTerm: '52519195660043',
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- asserting the captured value above passes through verbatim
       referrer: 'http://m.facebook.com/',
       landingPage: 'https://mapleandsprucefolkarts.com/suzuki',
     });
