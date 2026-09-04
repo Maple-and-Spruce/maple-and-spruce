@@ -135,6 +135,7 @@ export { createMusicTogetherSection } from '@maple/firebase/maple-functions/crea
 export { updateMusicTogetherSection } from '@maple/firebase/maple-functions/update-music-together-section';
 export { duplicateMusicTogetherSection } from '@maple/firebase/maple-functions/duplicate-music-together-section';
 export { getMusicTogetherRoster } from '@maple/firebase/maple-functions/get-music-together-roster';
+export { waiveMusicTogetherInstallment } from '@maple/firebase/maple-functions/waive-music-together-installment';
 
 // Music Together admin demo-class management
 export { getMusicTogetherDemos } from '@maple/firebase/maple-functions/get-music-together-demos';

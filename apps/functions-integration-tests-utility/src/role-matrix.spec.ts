@@ -77,6 +77,14 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'getCalendarEvents', expect: 200 },
   { as: 'nathan', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'nathan', functionName: 'getMusicTogetherRoster', expect: 403 },
+  // Waiving an installment forgives money on Stephanie's Square account —
+  // [Admin, MtTeacher] only, never the clerk/lesson-teacher union (#791).
+  {
+    as: 'nathan',
+    functionName: 'waiveMusicTogetherInstallment',
+    data: { chargeId: 'irrelevant' },
+    expect: 403,
+  },
   { as: 'nathan', functionName: 'createClass', expect: 403 },
   { as: 'nathan', functionName: 'updateClass', expect: 403 },
   { as: 'nathan', functionName: 'getTeacherPayouts', expect: 403 },
@@ -99,6 +107,12 @@ const CASES: MatrixCase[] = [
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
   { as: 'noRole', functionName: 'getProducts', expect: 403 },
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
+  {
+    as: 'noRole',
+    functionName: 'waiveMusicTogetherInstallment',
+    data: { chargeId: 'irrelevant' },
+    expect: 403,
+  },
 ];
 
 describe('Role access matrix (scoped-roles enforcement)', () => {

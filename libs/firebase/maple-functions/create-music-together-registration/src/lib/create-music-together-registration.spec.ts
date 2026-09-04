@@ -15,6 +15,11 @@ const mocks = vi.hoisted(() => ({
   mailAdd: vi.fn(),
   queueMail: vi.fn(),
   findCalendarTokenByEmail: vi.fn(),
+  discountFindByCode: vi.fn(),
+  txUpdate: vi.fn(),
+  discountUpdate: vi.fn(),
+  /** Discount doc as the transaction re-reads it (undefined = no doc). */
+  discountDocData: undefined as Record<string, unknown> | undefined,
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -55,6 +60,10 @@ vi.mock('@maple/firebase/functions', () => {
   };
 });
 
+vi.mock('firebase-admin/firestore', () => ({
+  FieldValue: { increment: (n: number) => ({ __increment: n }) },
+}));
+
 vi.mock('@maple/firebase/square', () => {
   class PaymentError extends Error {
     constructor(message: string, public squareCode?: string) {
@@ -80,6 +89,7 @@ vi.mock('@maple/firebase/square', () => {
 });
 
 const regRef = { id: 'reg-1', update: mocks.regUpdate };
+const discountRef = { id: 'disc-1', update: mocks.discountUpdate };
 
 vi.mock('@maple/firebase/database', () => {
   const queryStub: Record<string, unknown> = {};
@@ -88,17 +98,32 @@ vi.mock('@maple/firebase/database', () => {
     collection: () => ({ where: () => queryStub, add: mocks.mailAdd }),
     runTransaction: async (
       fn: (tx: {
-        get: () => Promise<{ size: number }>;
+        get: (ref: unknown) => Promise<unknown>;
         set: (...a: unknown[]) => void;
+        update: (...a: unknown[]) => void;
       }) => Promise<void>
     ) =>
       fn({
-        get: async () => ({ size: mocks.txGetSize }),
+        // Arg-aware: the handler reads the capacity query AND (when a code was
+        // supplied) the discount doc, and the redemption re-check depends on
+        // the *fresh* doc rather than the one findByCode returned.
+        get: async (ref: unknown) =>
+          ref === discountRef
+            ? {
+                exists: mocks.discountDocData !== undefined,
+                data: () => mocks.discountDocData,
+              }
+            : { size: mocks.txGetSize },
         set: mocks.txSet,
+        update: mocks.txUpdate,
       }),
   };
   return {
     getDb: () => db,
+    DiscountRepository: {
+      findByCode: mocks.discountFindByCode,
+      getDocRef: () => discountRef,
+    },
     MusicTogetherSectionRepository: { findById: mocks.sectionFindById },
     MusicTogetherRegistrationRepository: {
       getDocRef: () => regRef,
@@ -164,6 +189,8 @@ describe('createMusicTogetherRegistration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.txGetSize = 0;
+    mocks.discountFindByCode.mockResolvedValue(undefined);
+    mocks.discountDocData = undefined;
     mocks.createPayment.mockResolvedValue({
       paymentId: 'pay-1',
       receiptUrl: 'https://receipt',
@@ -508,6 +535,220 @@ describe('createMusicTogetherRegistration', () => {
 
       const mail = mocks.queueMail.mock.calls[0][0];
       expect(mail.data.firstClassDate).toBe('');
+    });
+  });
+  // ── Discount codes (#791 pilot half-off) ──────────────────────────────
+  //
+  // The promise is "half off tuition", not "half off the first payment", so
+  // the code has to reach the scheduled Week-5 charge too. These lock that in.
+
+  const halfOff = {
+    id: 'disc-1',
+    code: 'PILOTCLASS',
+    description: 'Pilot semester — half off',
+    type: 'percent',
+    percent: 50,
+    status: 'active',
+    appliesTo: 'order',
+    nthSlot: 1,
+    usageLimit: null,
+    usageCount: 0,
+  };
+
+  /** Make the transaction's fresh re-read agree with `findByCode`. */
+  const withFreshDoc = (overrides: Record<string, unknown> = {}) => {
+    mocks.discountFindByCode.mockResolvedValue({ ...halfOff, ...overrides });
+    mocks.discountDocData = { ...halfOff, ...overrides };
+  };
+
+  describe('discount codes', () => {
+    it('halves the pay-in-full charge and records the code', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc();
+
+      const result = (await run({
+        ...baseFamily,
+        paymentPlan: 'full',
+        discountCode: 'pilotclass',
+      })) as {
+        amountChargedCents: number;
+        discountCode?: string;
+        discountAmountCents?: number;
+      };
+
+      expect(mocks.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: 12600 })
+      );
+      expect(result.amountChargedCents).toBe(12600);
+      expect(result.discountCode).toBe('PILOTCLASS');
+      expect(result.discountAmountCents).toBe(12600);
+      expect(mocks.txSet).toHaveBeenCalledWith(
+        regRef,
+        expect.objectContaining({
+          discountCode: 'PILOTCLASS',
+          discountAmountCents: 12600,
+          pricePaidCents: 12600,
+          totalCommittedCents: 12600,
+        })
+      );
+    });
+
+    it('halves the SCHEDULED Week-5 charge, not just the first installment', async () => {
+      mocks.sectionFindById.mockResolvedValue(openWithInstallments);
+      withFreshDoc();
+
+      await run({
+        ...baseFamily,
+        paymentPlan: 'installments',
+        cardOnFileAuth: true,
+        cardVerificationToken: 'verify-tok',
+        discountCode: 'PILOTCLASS',
+      });
+
+      expect(mocks.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: 6600 })
+      );
+      expect(mocks.chargeCreate).toHaveBeenCalledTimes(1);
+      expect(mocks.chargeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          installmentNumber: 2,
+          amountCents: 6600,
+          status: 'scheduled',
+        })
+      );
+      // The Meta CAPI Purchase value must be what they actually owe.
+      expect(mocks.txSet).toHaveBeenCalledWith(
+        regRef,
+        expect.objectContaining({ totalCommittedCents: 13200 })
+      );
+    });
+
+    it('consumes exactly one redemption, in the seat-reservation transaction', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc();
+
+      await run({
+        ...baseFamily,
+        paymentPlan: 'full',
+        discountCode: 'PILOTCLASS',
+      });
+
+      expect(mocks.txUpdate).toHaveBeenCalledWith(
+        discountRef,
+        expect.objectContaining({ usageCount: { __increment: 1 } })
+      );
+    });
+
+    it('fails rather than silently charging full price for an invalid code', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      mocks.discountFindByCode.mockResolvedValue(undefined);
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'NOPE' })
+      ).rejects.toThrow('no longer valid');
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+      expect(mocks.txSet).not.toHaveBeenCalled();
+    });
+
+    it('rejects an exhausted code', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      mocks.discountFindByCode.mockResolvedValue({
+        ...halfOff,
+        usageLimit: 1,
+        usageCount: 1,
+      });
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'PILOTCLASS' })
+      ).rejects.toThrow('no longer valid');
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('loses the race when the last use is taken between lookup and commit', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      // Valid at lookup...
+      mocks.discountFindByCode.mockResolvedValue({
+        ...halfOff,
+        usageLimit: 1,
+        usageCount: 0,
+      });
+      // ...already spent by the time the transaction re-reads it.
+      mocks.discountDocData = { ...halfOff, usageLimit: 1, usageCount: 1 };
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'PILOTCLASS' })
+      ).rejects.toThrow('usage limit');
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('rejects a slot-scoped code instead of over-applying it', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc({ appliesTo: 'nth-slot-onward', nthSlot: 2 });
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'PILOTCLASS' })
+      ).rejects.toThrow("can't be used for Music Together");
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('refuses a code that would make the registration free', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc({ percent: 100 });
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'PILOTCLASS' })
+      ).rejects.toThrow('reduce this registration to $0');
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('gives the redemption back when the card is declined', async () => {
+      // A single-use pilot code must not be burned by a declined card.
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc();
+      mocks.createPayment.mockRejectedValue(new Error('Card declined'));
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'PILOTCLASS' })
+      ).rejects.toThrow();
+
+      expect(mocks.discountUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ usageCount: { __increment: -1 } })
+      );
+    });
+
+    it('stacks with the sibling discount', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc();
+
+      const result = (await run({
+        ...baseFamily,
+        children: [
+          { name: 'Sky', dob: '2023-04-01' },
+          { name: 'River', dob: '2021-02-02' },
+        ],
+        paymentPlan: 'full',
+        discountCode: 'PILOTCLASS',
+      })) as { amountChargedCents: number };
+
+      // $252 x 1.5 = $378, then half off = $189.
+      expect(result.amountChargedCents).toBe(18900);
+    });
+
+    it('is a no-op when no code is sent', async () => {
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+
+      await run({ ...baseFamily, paymentPlan: 'full' });
+
+      expect(mocks.discountFindByCode).not.toHaveBeenCalled();
+      expect(mocks.txUpdate).not.toHaveBeenCalled();
+      expect(mocks.txSet).toHaveBeenCalledWith(
+        regRef,
+        expect.objectContaining({
+          discountCode: null,
+          discountAmountCents: 0,
+          pricePaidCents: 25200,
+        })
+      );
     });
   });
 });

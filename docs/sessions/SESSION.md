@@ -6,6 +6,52 @@
 
 ## Current Status
 
+### Music Together pilot half-off: discount codes at checkout + waivable installments (2026-09-03, #791)
+
+Stephanie wants to thank the families who came to the first demo with **half off** their first
+semester ("pilot discount", code `PilotClass`). One family had **already registered** on the
+installment plan before the offer existed, so the discount had to reach existing registrations too.
+
+**The arithmetic is what makes this tractable.** MT tuition is $252 paid in full, or 2 x $132 = $264
+on the plan (the plan carries a premium). So for a family already on the plan, **waiving installment
+2 is exactly 50% off** — no refund, no partial anything. Stephanie's framing and the code path land
+on the same number.
+
+**Two halves, both needed:**
+
+- **New families — a code at MT checkout.** MT had *no* discount concept: `CreateMusicTogetherRegistrationRequest`,
+  the registration entity, the Vest suite, and the widget all lacked the field, and pricing came
+  straight from the section's `priceFullCents` / `installmentPlan` via the sibling multiplier. The
+  new `mtApplyDiscount` sits next to `computeMusicTogetherFamilyPrice` in `@maple/ts/domain` and is
+  called by **both** the server (authoritative) and the widget (display), so the two can't drift.
+- **Existing families — `waiveMusicTogetherInstallment`.** A new terminal `waived` status on
+  `MusicTogetherScheduledCharge`, plus a per-charge Waive action on the admin roster.
+
+**Four decisions worth remembering.**
+
+- **A discount reaches every amount, the scheduled Week-5 charge included.** Discounting only the
+  charge taken at registration would bill the family full price four weeks later, after the widget
+  told them otherwise. The integration test that matters is
+  `installments: halves the first charge AND the scheduled Week-5 charge`.
+- **Pay-in-full and the installment plan are discounted *independently*, and reported separately**
+  (`fullDiscountCents` / `installmentsDiscountCents`). A single "discount amount" is invisible for a
+  percent code and *wrong* for a fixed-amount one — the two plans are different prices and the family
+  picks exactly one. The first version collapsed them and reported the plan reduction on a
+  pay-in-full registration; the integration suite caught it. A fixed `amount` comes off the plan
+  **total once**, then apportions across installments (largest-remainder, so the parts still sum).
+- **`appliesTo: 'nth-slot-onward'` is rejected for MT**, not silently treated as an order discount.
+  MT prices a family, not slots, and additional children already get the sibling discount (#599).
+- **`waived` is not `cancelled`.** Both stop the charge job, but `cancelled` means the family left.
+  A comped installment has to stay legible on the roster, so the status, the reason, and the waiving
+  admin are all recorded. A payment failure also **returns** a consumed redemption — burning a
+  single-use pilot code on a declined card would lock the family out of the offer entirely. (Customer
+  *cancellation* still consumes it, unchanged.)
+
+**Still to do (owner actions, not code):** create the `PILOTCLASS` discount in the admin Discounts
+page (50% / order / with a usage cap or expiry if the offer should close), then waive installment 2
+for each family who registered before the offer. Anyone who paid **in full** before the offer needs a
+$126 refund through Cancel / refund instead — waiving does nothing for them.
+
 ### Music Together spot counts never reached the public site (2026-09-03, #800)
 
 Stephanie reported the Thursday Morning section still advertising **8 spots left** after a family

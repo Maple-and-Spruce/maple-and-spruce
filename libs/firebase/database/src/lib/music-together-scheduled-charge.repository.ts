@@ -32,6 +32,8 @@ function docToCharge(
     idempotencyKey: data.idempotencyKey,
     squarePaymentId: data.squarePaymentId,
     lastError: data.lastError,
+    waivedReason: data.waivedReason,
+    waivedByUid: data.waivedByUid,
     resolvedAt: data.resolvedAt ? toDate(data.resolvedAt) : undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -155,6 +157,41 @@ export const MusicTogetherScheduledChargeRepository = {
       tx.update(docRef, { status: 'charging', updatedAt: new Date() });
       return true;
     });
+  },
+
+  /**
+   * Atomically forgive a charge that has not been taken: `scheduled → waived`
+   * in a transaction. Returns the waived charge, or `undefined` when the
+   * charge is missing or no longer `scheduled` — a charge already `charging`,
+   * `paid`, `failed`, or `cancelled` must not be silently rewritten, since the
+   * money has either moved or the family has left.
+   *
+   * Mirrors `tryClaimLease`: the status check and the write share one
+   * transaction, so this can never race the charge job into a double outcome.
+   */
+  async tryWaive(
+    id: string,
+    waivedReason: string,
+    waivedByUid: string
+  ): Promise<MusicTogetherScheduledCharge | undefined> {
+    const db = getDb();
+    const docRef = db.collection(COLLECTION).doc(id);
+    const won = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.status !== 'scheduled') {
+        return false;
+      }
+      tx.update(docRef, {
+        status: 'waived',
+        waivedReason,
+        waivedByUid,
+        resolvedAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return true;
+    });
+    if (!won) return undefined;
+    return docToCharge(await docRef.get());
   },
 
   /** Document reference (for transactional lease claims in the charge job). */

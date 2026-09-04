@@ -39,6 +39,7 @@ describe('mtChargeIsPending', () => {
       'paid',
       'failed',
       'cancelled',
+      'waived',
     ] as MusicTogetherChargeStatus[]) {
       expect(mtChargeIsPending({ status })).toBe(false);
     }
@@ -51,6 +52,19 @@ describe('MT_TERMINAL_CHARGE_STATUSES', () => {
       'paid',
       'failed',
       'cancelled',
+      'waived',
     ]);
+  });
+
+  it('keeps waived distinct from cancelled', () => {
+    // Both stop the charge job, but only `cancelled` means the family left —
+    // collapsing them would make a comped installment (#791) unreadable on
+    // the roster.
+    const statuses: MusicTogetherChargeStatus[] = ['cancelled', 'waived'];
+    expect(new Set(statuses).size).toBe(2);
+    for (const status of statuses) {
+      expect(MT_TERMINAL_CHARGE_STATUSES).toContain(status);
+      expect(mtChargeIsPending({ status })).toBe(false);
+    }
   });
 });

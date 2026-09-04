@@ -53,6 +53,14 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Discounts
 - `getDiscounts`, `createDiscount`, `updateDiscount`, `deleteDiscount`, `lookupDiscount`
+- `lookupDiscount` is public and is now called by **both** checkout widgets — the M&S class widget and the Music Together registration widget. Neither one prices anything from it: the server re-looks-up the code and recomputes. A discount with `appliesTo: 'nth-slot-onward'` is **rejected** by the MT path (`mtApplyDiscount` throws) — MT prices a family, not slots, and additional children are already discounted by the sibling multiplier (#599).
+
+### Music Together — comped installments (#791)
+- `waiveMusicTogetherInstallment` _(admin + mt-teacher; flips one `musicTogetherScheduledCharges` doc `scheduled → waived` inside a transaction, recording `waivedReason` + `waivedByUid`. The family stays enrolled and every other charge stands — only this one is never taken._
+
+  `waived` is a **new terminal status, deliberately distinct from `cancelled`**: both stop `chargeMusicTogetherInstallments` (which queries `status == 'scheduled'`), but `cancelled` is written by `cancelMusicTogetherRegistration` and means the family left. Collapsing them would make a comped installment unreadable on the roster.
+
+  Refuses a charge that is already `charging`/`paid`/`failed`/`cancelled`, and refuses any charge on a cancelled or refunded registration — money has moved or the family is gone, and the fix there is a refund, not a status rewrite. Lives in `maple-core`, not `maple-square`: waiving takes no payment and needs no MT Square credentials._
 
 ### Registrations (read/update)
 - `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`
