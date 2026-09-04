@@ -12,6 +12,7 @@
  * whose `uid` is the caller's Firebase Auth UID.
  */
 import { InstructorRepository, LessonRepository } from '@maple/firebase/database';
+import type { DiscountProgram } from '@maple/ts/domain';
 import { hasRole, Role } from './auth.utility';
 import { throwPermissionDenied } from './errors.utility';
 import type { FunctionContext } from './functions.utility';
@@ -134,4 +135,43 @@ export async function assertCanRecordInvoicePayment(
   throwPermissionDenied(
     "You can only record payments on your own students' lessons."
   );
+}
+
+/**
+ * Enforce "an mt-teacher manages Music Together codes and nothing else".
+ *
+ * The discount admin functions are gated `[Role.Admin, Role.MtTeacher]` so
+ * Stephanie can run Music Together promotions from her own portal page. That
+ * gate alone would also let her create, edit, or delete Maple & Spruce class
+ * codes — a different business's pricing. This is the second half of the
+ * check: admins pass for any program, everyone else only for
+ * `music-together`.
+ *
+ * Call it with the program being written (on create) or the program of the
+ * discount already stored (on update/delete) — on update, check the STORED
+ * program, since that is the one whose money is at stake.
+ */
+export async function assertCanManageDiscountProgram(
+  context: FunctionContext,
+  program: DiscountProgram
+): Promise<void> {
+  const uid = context.uid;
+  if (uid && (await hasRole(uid, Role.Admin))) return;
+  if (program === 'music-together') return;
+
+  throwPermissionDenied(
+    'You can only manage Music Together discount codes.'
+  );
+}
+
+/**
+ * The program a non-admin caller's discount reads are scoped to, or
+ * `undefined` for an admin (who sees every program).
+ */
+export async function discountProgramScopeForUser(
+  context: FunctionContext
+): Promise<DiscountProgram | undefined> {
+  const uid = context.uid;
+  if (uid && (await hasRole(uid, Role.Admin))) return undefined;
+  return 'music-together';
 }

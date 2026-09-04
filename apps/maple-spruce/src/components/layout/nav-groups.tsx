@@ -165,6 +165,12 @@ function roleNavGroups(
           icon: <ChildCareIcon />,
           roles: ['mt-teacher'],
         },
+        {
+          label: 'Discounts',
+          href: '/music-together/discounts',
+          icon: <LocalOfferIcon />,
+          roles: ['mt-teacher'],
+        },
       ],
     },
     {

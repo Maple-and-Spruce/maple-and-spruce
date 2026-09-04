@@ -102,6 +102,20 @@ export interface MusicTogetherRegistration {
    * value. Absent on registrations created before this field existed.
    */
   totalCommittedCents?: number;
+  /**
+   * The discount code redeemed at registration, uppercased. Absent when the
+   * family paid the configured price. Recorded for reconciliation: the
+   * `pricePaidCents` / `totalCommittedCents` above are already discounted, so
+   * without this there is no way to tell a comped family from one who enrolled
+   * before a price change.
+   */
+  discountCode?: string;
+  /**
+   * Cents taken off by `discountCode`, on the plan the family actually chose.
+   * The sibling discount is NOT counted here — that is base pricing, not a
+   * redeemed code.
+   */
+  discountAmountCents?: number;
   /** Square customer ID (created/reused at registration). */
   squareCustomerId?: string;
   /** Square card-on-file ID used by the second installment. */

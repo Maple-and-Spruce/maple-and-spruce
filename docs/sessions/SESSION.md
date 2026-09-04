@@ -6,6 +6,98 @@
 
 ## Current Status
 
+### Music Together pilot half-off: discount codes at checkout + waivable installments (2026-09-03, #791)
+
+Stephanie wants to thank the families who came to the first demo with **half off** their first
+semester ("pilot discount", code `PilotClass`). One family had **already registered** on the
+installment plan before the offer existed, so the discount had to reach existing registrations too.
+
+**The arithmetic is what makes this tractable.** MT tuition is $252 paid in full, or 2 x $132 = $264
+on the plan (the plan carries a premium). So for a family already on the plan, **waiving installment
+2 is exactly 50% off** — no refund, no partial anything. Stephanie's framing and the code path land
+on the same number.
+
+**Two halves, both needed:**
+
+- **New families — a code at MT checkout.** MT had *no* discount concept: `CreateMusicTogetherRegistrationRequest`,
+  the registration entity, the Vest suite, and the widget all lacked the field, and pricing came
+  straight from the section's `priceFullCents` / `installmentPlan` via the sibling multiplier. The
+  new `mtApplyDiscount` sits next to `computeMusicTogetherFamilyPrice` in `@maple/ts/domain` and is
+  called by **both** the server (authoritative) and the widget (display), so the two can't drift.
+- **Existing families — `waiveMusicTogetherInstallment`.** A new terminal `waived` status on
+  `MusicTogetherScheduledCharge`, plus a per-charge Waive action on the admin roster.
+
+**Four decisions worth remembering.**
+
+- **A discount reaches every amount, the scheduled Week-5 charge included.** Discounting only the
+  charge taken at registration would bill the family full price four weeks later, after the widget
+  told them otherwise. The integration test that matters is
+  `installments: halves the first charge AND the scheduled Week-5 charge`.
+- **Pay-in-full and the installment plan are discounted *independently*, and reported separately**
+  (`fullDiscountCents` / `installmentsDiscountCents`). A single "discount amount" is invisible for a
+  percent code and *wrong* for a fixed-amount one — the two plans are different prices and the family
+  picks exactly one. The first version collapsed them and reported the plan reduction on a
+  pay-in-full registration; the integration suite caught it. A fixed `amount` comes off the plan
+  **total once**, then apportions across installments (largest-remainder, so the parts still sum).
+- **`appliesTo: 'nth-slot-onward'` is rejected for MT**, not silently treated as an order discount.
+  MT prices a family, not slots, and additional children already get the sibling discount (#599).
+- **`waived` is not `cancelled`.** Both stop the charge job, but `cancelled` means the family left.
+  A comped installment has to stay legible on the roster, so the status, the reason, and the waiving
+  admin are all recorded. A payment failure also **returns** a consumed redemption — burning a
+  single-use pilot code on a declined card would lock the family out of the offer entirely. (Customer
+  *cancellation* still consumes it, unchanged.)
+
+### Program scoping: codes belong to one checkout, and two filtered admin pages
+
+Shipped in the same PR, because the feature is unsafe without it. `Discount` had **no scoping at
+all** — `appliesTo` is only `'order' | 'nth-slot-onward'`, and both checkouts did a bare
+`findByCode`. A `PILOTCLASS` created for Music Together would also have taken 50% off any Maple &
+Spruce craft class. The two programs settle to **different Square accounts owned by different
+businesses**, so that isn't a discount bug, it's money moving between two companies' books.
+
+`Discount.program` (`'classes' | 'music-together'`) is now enforced at four places that must agree:
+the public `lookupDiscount`, the classes price preview (`calculateRegistrationCost`), the
+authoritative classes charge (`reserveClassRegistration`), and `createMusicTogetherRegistration`.
+Wrong-program codes are refused on the **same branch, with the same wording**, as unknown codes —
+`lookupDiscount` is unauthenticated, so a distinct message would let anyone enumerate the other
+business's live promotions.
+
+**Four decisions worth remembering.**
+
+- **Legacy documents back-fill to `classes`,** which is a statement of fact rather than a guess: MT
+  had no discount support before this, so every pre-existing code was authored for class checkout.
+  Defaulting the other way would silently expose Stephanie's account.
+- **Codes stay globally unique across programs.** A customer types a code without knowing which
+  program owns it, so one string must mean one thing everywhere. `createDiscount` names the owning
+  program in the collision message, because "already exists" is baffling to an mt-teacher who can't
+  see the classes code that collided.
+- **`program` is immutable, like `type`.** It isn't on `UpdateDiscountInput` at all — repointing a
+  live code would change what a customer holding it can buy.
+- **The role gate is two halves.** The four admin functions moved from admin-only to
+  `[Admin, MtTeacher]` so Stephanie can run her own promotions; `assertCanManageDiscountProgram` /
+  `discountProgramScopeForUser` then keep her off class codes. Reads **force** a non-admin to
+  `music-together` regardless of the requested program — the client's filter is never an
+  authorization input. Update and delete authorize on the **stored** program, the one whose money is
+  at stake.
+
+**The admin UI is one component, two pages.** `DiscountsManager` holds the entire experience;
+`/discounts` pins `program="classes"` and `/music-together/discounts` pins `music-together`, and
+they differ only in that plus their copy — so the two can't drift. The program is never a form
+field: the page already says which one you mean, and it's immutable afterwards. The per-slot
+"Applies To" control is hidden on the MT page (and rejected by the Vest suite) because MT prices a
+family, so a slot-scoped MT code could never be redeemed.
+
+**A composite index was required and would not have shown up in tests.** `findAll({ program })` runs
+on every load of both pages, and the Firestore emulator does not enforce composite indexes — the
+whole integration suite passed green while both pages would have 500'd in prod.
+`tools/check-firestore-indexes.ts` caught it; two `discounts` indexes are now declared.
+
+**Still to do (owner actions, not code):** create the `PILOTCLASS` discount in the admin Discounts
+page — now under **Music Together → Discounts**, and it is stamped `music-together` automatically
+(50% / order / with a usage cap or expiry if the offer should close) — then waive installment 2
+for each family who registered before the offer. Anyone who paid **in full** before the offer needs a
+$126 refund through Cancel / refund instead — waiving does nothing for them.
+
 ### Music Together spot counts never reached the public site (2026-09-03, #800)
 
 Stephanie reported the Thursday Morning section still advertising **8 spots left** after a family

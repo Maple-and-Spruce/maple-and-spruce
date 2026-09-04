@@ -55,6 +55,8 @@ export {
   SINGLE_USE_DISCOUNT,
   EXHAUSTED_DISCOUNT,
   EXPIRED_BY_DATE_DISCOUNT,
+  MUSIC_TOGETHER_DISCOUNT,
+  mtPilotDiscountDoc,
   DISCOUNT_IDS,
 } from './lib/fixtures/discount.fixtures.js';
 

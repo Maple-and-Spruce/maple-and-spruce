@@ -8,6 +8,7 @@ import type {
   CreateDiscountInput,
   UpdateDiscountInput,
   DiscountStatus,
+  DiscountProgram,
   RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -26,6 +27,12 @@ import type {
  */
 export interface UseDiscountsFilters {
   status?: DiscountStatus;
+  /**
+   * Which program's codes to manage. Each admin page pins this so the two
+   * never mix. It is a filter, not a permission — the server forces a
+   * non-admin caller to `music-together` regardless of what is sent.
+   */
+  program?: DiscountProgram;
 }
 
 /**
@@ -50,6 +57,7 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
 
       const result = await getDiscounts({
         status: filters?.status,
+        program: filters?.program,
       });
       setDiscountsState({
         status: 'success',
@@ -65,7 +73,7 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
             : 'Failed to fetch discounts',
       });
     }
-  }, [filters?.status]);
+  }, [filters?.status, filters?.program]);
 
   const createDiscount = useCallback(
     async (input: CreateDiscountInput): Promise<Discount> => {

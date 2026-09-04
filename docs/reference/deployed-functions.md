@@ -54,6 +54,36 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Discounts
 - `getDiscounts`, `createDiscount`, `updateDiscount`, `deleteDiscount`, `lookupDiscount`
 
+**Program scoping (#791).** Every discount carries `program: 'classes' | 'music-together'` and is redeemable at **only** that checkout. The two programs settle to **different Square accounts owned by different businesses**, so an unscoped code let a Music Together promotion take money off a craft class and vice versa. Enforced in four places, all of which must agree:
+
+| Where | Behavior on a wrong-program code |
+|---|---|
+| `lookupDiscount` (public) | returns `{ discount: undefined }` — byte-identical to an unknown code, so the unauthenticated endpoint can't be used to enumerate the other business's promotions |
+| `calculateRegistrationCost` (preview) | no discount shown |
+| `reserveClassRegistration` (authoritative) | **throws**, same branch/wording as an unknown code |
+| `createMusicTogetherRegistration` | **throws**, likewise |
+
+The preview and the authoritative path must stay in step: if the preview honored a code the charge path refuses, the customer sees a discounted price and is then rejected at submit.
+
+Codes are **globally unique across programs** — a customer types a code without knowing which program owns it, so one string means one thing everywhere. `program` is **immutable** after creation (like `type`): repointing a live code would change what a customer holding it can buy, and on whose books.
+
+**Legacy back-fill:** a document with no stored `program` reads as `classes`. That is a statement of fact, not a guess — MT had no discount support before #791, so every pre-existing code was authored for class checkout. Defaulting the other way would silently expose Stephanie's account.
+
+**Roles.** `getDiscounts` / `createDiscount` / `updateDiscount` / `deleteDiscount` are gated `[Admin, MtTeacher]` (they were admin-only) so Stephanie can run Music Together promotions from `/music-together/discounts`. The role gate alone would also hand her Maple & Spruce class pricing, so each function narrows it:
+
+- reads — `discountProgramScopeForUser` **forces** a non-admin to `music-together` regardless of the requested `program`; the client's filter is never an authorization input
+- create — `assertCanManageDiscountProgram` on the program being written
+- update / delete — the same check on the **stored** program, the one whose money is at stake
+
+`lookupDiscount` is public and called by **both** checkout widgets, each passing its own `program` (an omitted program defaults to `classes`, so a widget bundle deployed before scoping keeps working). A discount with `appliesTo: 'nth-slot-onward'` is additionally **rejected** by the MT path (`mtApplyDiscount` throws) and hidden from the MT admin form — MT prices a family, not slots, and additional children already get the sibling discount (#599).
+
+### Music Together — comped installments (#791)
+- `waiveMusicTogetherInstallment` _(admin + mt-teacher; flips one `musicTogetherScheduledCharges` doc `scheduled → waived` inside a transaction, recording `waivedReason` + `waivedByUid`. The family stays enrolled and every other charge stands — only this one is never taken._
+
+  `waived` is a **new terminal status, deliberately distinct from `cancelled`**: both stop `chargeMusicTogetherInstallments` (which queries `status == 'scheduled'`), but `cancelled` is written by `cancelMusicTogetherRegistration` and means the family left. Collapsing them would make a comped installment unreadable on the roster.
+
+  Refuses a charge that is already `charging`/`paid`/`failed`/`cancelled`, and refuses any charge on a cancelled or refunded registration — money has moved or the family is gone, and the fix there is a refund, not a status rewrite. Lives in `maple-core`, not `maple-square`: waiving takes no payment and needs no MT Square credentials._
+
 ### Registrations (read/update)
 - `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`
 - `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_

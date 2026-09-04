@@ -19,6 +19,7 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Chip,
   Divider,
   TextField,
   Stack,
@@ -42,7 +43,9 @@ import type { CardTokenizeResult } from '@maple/react/registrations';
 import {
   MT_MAX_CHILDREN,
   computeMusicTogetherFamilyPrice,
+  mtApplyDiscount,
 } from '@maple/ts/domain';
+import type { Discount } from '@maple/ts/domain';
 import type {
   GetPublicMusicTogetherSectionRequest,
   GetPublicMusicTogetherSectionResponse,
@@ -51,6 +54,8 @@ import type {
   CreateMusicTogetherRegistrationResponse,
   AddToMusicTogetherWaitlistRequest,
   AddToMusicTogetherWaitlistResponse,
+  LookupDiscountRequest,
+  LookupDiscountResponse,
 } from '@maple/ts/firebase/api-types';
 import { getWidgetFunctions } from './firebase-init';
 import { warmup } from './lib/warmup';
@@ -387,6 +392,14 @@ export function MusicTogetherRegistrationWidget({
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [cardOnFileAuth, setCardOnFileAuth] = useState(false);
 
+  // Discount code. `appliedDiscount` is only ever set from a server lookup —
+  // the widget never invents a discount, and the server recomputes the price
+  // from the code anyway, so this is display only.
+  const [discountInput, setDiscountInput] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<Discount | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [checkingDiscount, setCheckingDiscount] = useState(false);
+
   const [busy, setBusy] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
@@ -402,7 +415,14 @@ export function MusicTogetherRegistrationWidget({
     // out the form, by which point the container is up.
     // Warm both downstream mutations: the checkout create, and the waitlist
     // capture (fired both when a section is full and in coming-soon mode).
-    warmup(functions, 'createMusicTogetherRegistration', 'addToMusicTogetherWaitlist');
+    warmup(
+      functions,
+      'createMusicTogetherRegistration',
+      'addToMusicTogetherWaitlist',
+      // Typing a code is a mid-form action, so a cold lookup would stall the
+      // family right before they commit.
+      'lookupDiscount'
+    );
 
     // Init the MT pixel + its PageView. The site-wide GTM tag only loads the
     // Maple & Spruce pixel, so this is what gives the MT ad account a landing
@@ -464,13 +484,33 @@ export function MusicTogetherRegistrationWidget({
     Math.max(cleanChildren.length, 1),
     MT_MAX_CHILDREN
   );
-  const familyPrice = useMemo(
+  const basePrice = useMemo(
     () =>
       section
         ? computeMusicTogetherFamilyPrice(section, pricedChildCount)
         : null,
     [section, pricedChildCount]
   );
+
+  // A code discounts every amount, the scheduled Week-5 charge included. This
+  // is the SAME helper the server uses, so the labels below can't drift from
+  // what the family is actually charged. If the code turns out to be
+  // unusable for MT (slot-scoped), fall back to the undiscounted price and let
+  // the server reject it — never show a price we can't honor.
+  const familyPrice = useMemo(() => {
+    if (!basePrice || !appliedDiscount) return basePrice;
+    try {
+      return mtApplyDiscount(basePrice, appliedDiscount);
+    } catch {
+      return basePrice;
+    }
+  }, [basePrice, appliedDiscount]);
+
+  const discountApplied =
+    basePrice != null &&
+    familyPrice != null &&
+    familyPrice.fullCents < basePrice.fullCents;
+
   const firstInstallment = familyPrice?.installments[0];
   const secondInstallment = familyPrice?.installments[1];
 
@@ -528,6 +568,50 @@ export function MusicTogetherRegistrationWidget({
   const setChild = (i: number, patch: Partial<FamilyChild>) =>
     setChildren((c) => c.map((ch, idx) => (idx === i ? { ...ch, ...patch } : ch)));
 
+  /**
+   * Validate a typed discount code against the server. Advisory only — the
+   * price the family is charged is recomputed server-side from this same code,
+   * so a tampered client can only mislead itself.
+   */
+  const handleApplyDiscount = useCallback(async () => {
+    const code = discountInput.trim();
+    if (!code) return;
+    setCheckingDiscount(true);
+    setDiscountError(null);
+    try {
+      const call = httpsCallable<LookupDiscountRequest, LookupDiscountResponse>(
+        functions,
+        'lookupDiscount'
+      );
+      const result = await call({ code, program: 'music-together' });
+      const discount = result.data.discount;
+      if (!discount) {
+        setAppliedDiscount(null);
+        setDiscountError(`"${code}" isn't a valid code.`);
+        return;
+      }
+      if (discount.appliesTo === 'nth-slot-onward') {
+        // Slot-scoped codes belong to Maple & Spruce class checkout; MT prices
+        // a family, not slots. Say so rather than showing an unchanged total.
+        setAppliedDiscount(null);
+        setDiscountError(`"${code}" can't be used for Music Together.`);
+        return;
+      }
+      setAppliedDiscount(discount);
+    } catch {
+      setAppliedDiscount(null);
+      setDiscountError("We couldn't check that code. Please try again.");
+    } finally {
+      setCheckingDiscount(false);
+    }
+  }, [discountInput, functions]);
+
+  const handleRemoveDiscount = useCallback(() => {
+    setAppliedDiscount(null);
+    setDiscountInput('');
+    setDiscountError(null);
+  }, []);
+
   const handlePay = useCallback(async () => {
     if (!tokenizeRef.current || section == null) return;
     setPayError(null);
@@ -565,6 +649,7 @@ export function MusicTogetherRegistrationWidget({
         address: address.trim(),
         accommodations: accommodations.trim() || undefined,
         paymentPlan,
+        discountCode: appliedDiscount?.code,
         policiesAccepted,
         privacyConsent,
         cardOnFileAuth: paymentPlan === 'installments' ? cardOnFileAuth : undefined,
@@ -627,6 +712,7 @@ export function MusicTogetherRegistrationWidget({
     policiesAccepted,
     privacyConsent,
     cardOnFileAuth,
+    appliedDiscount,
     // Read for the Meta `value` on InitiateCheckout / Purchase — a stale
     // reference here would report the pre-sibling-discount total.
     familyPrice,
@@ -867,6 +953,58 @@ export function MusicTogetherRegistrationWidget({
                   </Stack>
                 </Box>
 
+                {/* Discount code — checked against the server before it can
+                    change any displayed price. */}
+                <Box>
+                  <FormLabel sx={{ mb: 1, display: 'block' }}>
+                    Discount code
+                  </FormLabel>
+                  {appliedDiscount ? (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      flexWrap="wrap"
+                    >
+                      <Chip
+                        color="primary"
+                        label={`${appliedDiscount.code} applied`}
+                        onDelete={handleRemoveDiscount}
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        {appliedDiscount.description}
+                      </Typography>
+                    </Stack>
+                  ) : (
+                    <Stack direction="row" spacing={1} alignItems="flex-start">
+                      <TextField
+                        label="Code"
+                        value={discountInput}
+                        onChange={(e) => setDiscountInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyDiscount();
+                          }
+                        }}
+                        size="small"
+                        error={!!discountError}
+                        helperText={discountError ?? 'Optional.'}
+                        inputProps={{ 'aria-label': 'Discount code' }}
+                      />
+                      <Button
+                        onClick={handleApplyDiscount}
+                        disabled={
+                          checkingDiscount || discountInput.trim().length === 0
+                        }
+                        sx={{ mt: 0.5, fontFamily: fonts.button }}
+                      >
+                        {checkingDiscount ? 'Checking…' : 'Apply'}
+                      </Button>
+                    </Stack>
+                  )}
+                </Box>
+
                 {/* Payment plan */}
                 <FormControl>
                   <FormLabel sx={{ mb: 1 }}>Tuition</FormLabel>
@@ -880,6 +1018,19 @@ export function MusicTogetherRegistrationWidget({
                       price, 50% off each additional child.
                     </Typography>
                   )}
+                  {discountApplied && basePrice && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
+                      Your discount comes off every payment
+                      {basePrice.installments.length > 1
+                        ? ', including the second installment'
+                        : ''}
+                      .
+                    </Typography>
+                  )}
                   <RadioGroup
                     value={paymentPlan}
                     onChange={(e) => setPaymentPlan(e.target.value as PaymentPlan)}
@@ -889,7 +1040,11 @@ export function MusicTogetherRegistrationWidget({
                       control={<Radio />}
                       label={`Pay in full — ${formatMoney(
                         familyPrice?.fullCents ?? section.priceFullCents
-                      )}`}
+                      )}${
+                        discountApplied && basePrice
+                          ? ` (was ${formatMoney(basePrice.fullCents)})`
+                          : ''
+                      }`}
                     />
                     {offersInstallments && firstInstallment && secondInstallment && (
                       <FormControlLabel
@@ -899,7 +1054,13 @@ export function MusicTogetherRegistrationWidget({
                           firstInstallment.amountCents
                         )} now, ${formatMoney(secondInstallment.amountCents)} on ${formatDueDate(
                           secondInstallment.dueAt
-                        )}`}
+                        )}${
+                          discountApplied && basePrice?.installments[0]
+                            ? ` (was ${formatMoney(
+                                basePrice.installments[0].amountCents
+                              )} each)`
+                            : ''
+                        }`}
                       />
                     )}
                   </RadioGroup>

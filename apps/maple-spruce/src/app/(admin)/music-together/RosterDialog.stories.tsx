@@ -369,3 +369,110 @@ export const EmptyDisablesExport: Story = {
     ).toBeDisabled();
   },
 };
+
+/**
+ * Waiving a scheduled installment (#791 pilot half-off). Drives the full flow:
+ * the per-charge Waive button names its amount, the confirm dialog states that
+ * nothing is refunded, and the typed reason reaches the callback with the right
+ * charge id. Also asserts the button is offered ONLY for a `scheduled` charge —
+ * a failed one has to be resolved, not waived.
+ */
+export const WaivesAScheduledInstallment: Story = {
+  args: {
+    rosterState: { status: 'success', data: withFamilies },
+    onWaiveInstallment: fn(async () => ({
+      chargeId: 'chg-scheduled',
+      status: 'waived' as const,
+      amountCents: 13200,
+    })),
+  },
+  play: async ({ args }) => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    // Only the scheduled charge is waivable: Jamie has one, Pat's is `failed`
+    // and Robin paid in full, so exactly one Waive button exists.
+    const waiveButtons = canvas.getAllByRole('button', { name: /^Waive /i });
+    await expect(waiveButtons).toHaveLength(1);
+    await expect(
+      canvas.getByRole('button', {
+        name: /Waive installment 2 for Jamie Rivera/i,
+      })
+    ).toBeInTheDocument();
+
+    await userEvent.click(waiveButtons[0]);
+
+    // The confirm dialog is explicit that this is not a refund.
+    await waitFor(() =>
+      expect(canvas.getByText(/Forgive installment 2/i)).toBeInTheDocument()
+    );
+    await expect(
+      canvas.getByText(/Nothing is refunded/i)
+    ).toBeInTheDocument();
+
+    await userEvent.type(
+      canvas.getByLabelText(/Reason/i),
+      'Pilot semester half-off'
+    );
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Confirm waive/i })
+    );
+
+    await waitFor(() =>
+      expect(args.onWaiveInstallment).toHaveBeenCalledWith(
+        'chg-scheduled',
+        'Pilot semester half-off'
+      )
+    );
+    // The admin is told the exact amount that will never be taken.
+    await waitFor(() =>
+      expect(
+        canvas.getByText(/\$132\.00 will not be charged/i)
+      ).toBeInTheDocument()
+    );
+  },
+};
+
+/** A waived charge reads as deliberately comped, not as a failure or a drop. */
+export const ShowsAWaivedCharge: Story = {
+  args: {
+    rosterState: {
+      status: 'success',
+      data: {
+        section: withFamilies.section,
+        waitlist: [],
+        entries: [
+          {
+            registration: reg({
+              id: 'reg-waived',
+              discountCode: 'PILOTCLASS',
+              discountAmountCents: 13200,
+            }),
+            charges: [charge('waived')],
+            pastDue: false,
+          },
+        ],
+      },
+    },
+    onWaiveInstallment: fn(),
+  },
+  play: async () => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    await expect(canvas.getByText(/#2 \$132\.00 waived/i)).toBeInTheDocument();
+    // The redeemed code is visible so a comped family isn't mistaken for one
+    // who enrolled before a price change.
+    await expect(
+      canvas.getByText(/PILOTCLASS \(−\$132\.00\)/i)
+    ).toBeInTheDocument();
+    // Nothing left to waive.
+    await expect(
+      canvas.queryByRole('button', { name: /^Waive /i })
+    ).not.toBeInTheDocument();
+  },
+};

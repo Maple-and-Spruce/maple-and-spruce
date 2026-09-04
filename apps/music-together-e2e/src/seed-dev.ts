@@ -12,7 +12,10 @@
  */
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { PUBLISHED_MT_SECTION } from '@maple/firebase/integration-test-utils';
+import {
+  PUBLISHED_MT_SECTION,
+  mtPilotDiscountDoc,
+} from '@maple/firebase/integration-test-utils';
 
 const DEV_PROJECT_ID = 'maple-and-spruce-dev';
 
@@ -53,11 +56,25 @@ async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
   throw lastErr;
 }
 
-export async function seedDev(sectionId: string): Promise<void> {
+export async function seedDev(
+  sectionId: string,
+  discountCode: string
+): Promise<void> {
   const db = getAdminDb();
   await withRetry('seedDev', () =>
     db.collection('musicTogetherSections').doc(sectionId).set(PUBLISHED_MT_SECTION)
   );
+  await withRetry('seedDev:discount', () =>
+    db
+      .collection('discounts')
+      .doc(discountDocId(discountCode))
+      .set(mtPilotDiscountDoc(discountCode))
+  );
+}
+
+/** Deterministic doc id so teardown can delete the code without a query. */
+function discountDocId(discountCode: string): string {
+  return `test-mt-discount-${discountCode}`;
 }
 
 /**
@@ -67,7 +84,10 @@ export async function seedDev(sectionId: string): Promise<void> {
  * The registration + charge cleanup matters: the Pay-flow specs create real MT
  * Square sandbox orders + Firestore docs. Without this they'd pile up in dev.
  */
-export async function teardownDev(sectionId: string): Promise<void> {
+export async function teardownDev(
+  sectionId: string,
+  discountCode?: string
+): Promise<void> {
   const db = getAdminDb();
 
   const regs = await withRetry('teardownDev:queryRegs', () =>
@@ -95,6 +115,14 @@ export async function teardownDev(sectionId: string): Promise<void> {
   await withRetry('teardownDev:deleteSection', () =>
     db.collection('musicTogetherSections').doc(sectionId).delete()
   );
+
+  // Leaving the code behind would let a later run's family redeem it, and
+  // would slowly fill the dev Discounts page with E2E noise.
+  if (discountCode) {
+    await withRetry('teardownDev:deleteDiscount', () =>
+      db.collection('discounts').doc(discountDocId(discountCode)).delete()
+    );
+  }
 
   console.log(
     `[mt-e2e] teardownDev removed section=${sectionId}, registrations=${regIds.length}, charges=${charges.size}`

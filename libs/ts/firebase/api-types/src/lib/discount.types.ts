@@ -9,6 +9,7 @@ import type {
   CreateDiscountInput,
   UpdateDiscountInput,
   DiscountStatus,
+  DiscountProgram,
 } from '@maple/ts/domain';
 
 // ============================================================================
@@ -18,6 +19,12 @@ import type {
 export interface GetDiscountsRequest {
   /** Optional status filter */
   status?: DiscountStatus;
+  /**
+   * Which program's codes to return. Admins may ask for either (or omit for
+   * all); a non-admin caller is forced to `music-together` server-side
+   * regardless of what is sent here.
+   */
+  program?: DiscountProgram;
 }
 
 export interface GetDiscountsResponse {
@@ -63,6 +70,14 @@ export interface DeleteDiscountResponse {
 export interface LookupDiscountRequest {
   /** Discount code entered by customer */
   code: string;
+  /**
+   * The checkout asking. A code belonging to another program resolves to
+   * `undefined` — same shape as an unknown code, so a classes customer can't
+   * probe for the existence of Music Together promotions. Omitted by older
+   * widget bundles, which are then treated as `classes` (the only program
+   * that had codes before scoping).
+   */
+  program?: DiscountProgram;
 }
 
 export interface LookupDiscountResponse {

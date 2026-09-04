@@ -511,6 +511,52 @@ describe('createRegistration', () => {
       });
     });
 
+    it('THE POINT: refuses a Music Together code at class checkout (#791)', async () => {
+      // MT settles to Stephanie's separate Square account. Honoring her
+      // pilot code here would discount a craft class against another
+      // business's promotion — and the customer would be charged an amount
+      // nobody authorized. Rejected on the same branch as an unknown code.
+      await setFirestoreDoc('discounts', 'test-discount-mt-scoped', {
+        code: 'MTSCOPED',
+        description: 'Music Together pilot — half off',
+        type: 'percent',
+        percent: 50,
+        status: 'active',
+        program: 'music-together',
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: null,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const result = await callFunction<CreateRegistrationRequest>({
+        functionName: 'createRegistration',
+        data: {
+          classId: TEST_CLASS_ID,
+          customerEmail: 'mt-code-at-classes@test.com',
+          customerName: 'Wrong Program',
+          quantity: 1,
+          discountCode: 'MTSCOPED',
+          paymentNonce: 'cnon:card-nonce-ok',
+        },
+      });
+
+      // Fails outright rather than silently charging full price — the
+      // customer was shown a discounted total by the widget.
+      expect(result.status).not.toBe(200);
+
+      // No seat taken, and the MT code's usage was not consumed.
+      const registrations = (await listFirestoreDocs('registrations'))
+        .map((r) => r.data as Record<string, unknown>)
+        .filter((r) => r.customerEmail === 'mt-code-at-classes@test.com');
+      expect(registrations).toHaveLength(0);
+
+      const code = await getFirestoreDoc('discounts', 'test-discount-mt-scoped');
+      expect(code?.usageCount).toBe(0);
+    });
+
     it('should apply discount code to registration', async () => {
       const result = await callFunction<
         CreateRegistrationRequest,

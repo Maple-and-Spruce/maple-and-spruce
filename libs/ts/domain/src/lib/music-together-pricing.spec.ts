@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeMusicTogetherFamilyPrice,
+  mtApplyDiscount,
   mtSiblingMultiplier,
 } from './music-together-pricing';
+import type {
+  AmountDiscountData,
+  Discount,
+  PercentDiscountData,
+} from './discount';
 
 /** Default MT prices: $252 full, two $132 installments. */
 const week1 = new Date('2026-09-10T14:00:00.000Z');
@@ -109,5 +115,215 @@ describe('computeMusicTogetherFamilyPrice', () => {
     expect(() => computeMusicTogetherFamilyPrice(section, 0)).toThrow(
       RangeError
     );
+  });
+});
+
+// ── Discount codes ───────────────────────────────────────────────────────
+//
+// The pilot half-off promise (#791): a family who came to the demo pays half.
+// The only reading that makes that true is "every amount is halved" — the
+// Week-5 scheduled charge included.
+
+const discountBase = {
+  id: 'd1',
+  code: 'PILOTCLASS',
+  description: 'Pilot semester — half off',
+  status: 'active' as const,
+  program: 'music-together' as const,
+  appliesTo: 'order' as const,
+  nthSlot: 1,
+  usageLimit: null,
+  usageCount: 0,
+  createdAt: week1,
+  updatedAt: week1,
+};
+
+const halfOff: PercentDiscountData = {
+  ...discountBase,
+  type: 'percent',
+  percent: 50,
+};
+
+describe('mtApplyDiscount', () => {
+  it('halves the pay-in-full total AND every installment', () => {
+    const price = computeMusicTogetherFamilyPrice(section, 1);
+    const discounted = mtApplyDiscount(price, halfOff);
+
+    expect(discounted.fullCents).toBe(12600); // $252 -> $126
+    expect(discounted.installments.map((i) => i.amountCents)).toEqual([
+      6600, 6600, // $132 -> $66 each, Week-5 charge included
+    ]);
+    expect(discounted.fullDiscountCents).toBe(12600); // $252 -> $126
+    expect(discounted.installmentsDiscountCents).toBe(13200); // $264 -> $132
+  });
+
+  it('leaves a paid installment-1 family at exactly half the plan', () => {
+    // Nancy's case: she paid $132 of the $264 plan before the code existed.
+    // Waiving installment 2 must land her on the same total a code would.
+    const price = computeMusicTogetherFamilyPrice(section, 1);
+    const planTotal = price.installments.reduce(
+      (sum, i) => sum + i.amountCents,
+      0
+    );
+    const discountedPlanTotal = mtApplyDiscount(
+      price,
+      halfOff
+    ).installments.reduce((sum, i) => sum + i.amountCents, 0);
+
+    expect(planTotal).toBe(26400);
+    expect(discountedPlanTotal).toBe(13200);
+    // Installment 1 alone == the whole discounted plan.
+    expect(price.installments[0].amountCents).toBe(discountedPlanTotal);
+  });
+
+  it('stacks on top of the sibling discount', () => {
+    // 2 children = 1.5x, then half off: $378 -> $189, $198 -> $99 each.
+    const price = computeMusicTogetherFamilyPrice(section, 2);
+    const discounted = mtApplyDiscount(price, halfOff);
+
+    expect(discounted.fullCents).toBe(18900);
+    expect(discounted.installments.map((i) => i.amountCents)).toEqual([
+      9900, 9900,
+    ]);
+    expect(discounted.numChildren).toBe(2);
+    expect(discounted.multiplier).toBe(1.5);
+  });
+
+  it('preserves dueAt on every installment', () => {
+    const price = computeMusicTogetherFamilyPrice(section, 1);
+    const discounted = mtApplyDiscount(price, halfOff);
+
+    expect(discounted.installments.map((i) => i.dueAt)).toEqual([week1, week5]);
+  });
+
+  it('takes a fixed amount off the plan ONCE, apportioned across installments', () => {
+    // $25 off must not become $25 off each installment ($50 given away).
+    const twentyFiveOff: AmountDiscountData = {
+      ...discountBase,
+      code: 'TWENTYFIVE',
+      type: 'amount',
+      amountCents: 2500,
+    };
+    const price = computeMusicTogetherFamilyPrice(section, 1);
+    const discounted = mtApplyDiscount(price, twentyFiveOff);
+
+    const planTotal = discounted.installments.reduce(
+      (sum, i) => sum + i.amountCents,
+      0
+    );
+    expect(planTotal).toBe(26400 - 2500);
+    expect(discounted.installmentsDiscountCents).toBe(2500);
+    expect(discounted.fullCents).toBe(25200 - 2500);
+  });
+
+  it('distributes an odd remainder so the parts sum exactly', () => {
+    // $25.01 off $264 leaves $238.99 — not divisible by two equal shares.
+    const oddAmount: AmountDiscountData = {
+      ...discountBase,
+      code: 'ODD',
+      type: 'amount',
+      amountCents: 2501,
+    };
+    const price = computeMusicTogetherFamilyPrice(section, 1);
+    const discounted = mtApplyDiscount(price, oddAmount);
+
+    const parts = discounted.installments.map((i) => i.amountCents);
+    expect(parts.reduce((sum, p) => sum + p, 0)).toBe(26400 - 2501);
+    // Leftover cent goes to the earlier installment.
+    expect(parts[0]).toBe(parts[1] + 1);
+  });
+
+  it('apportions by weight when installments are uneven', () => {
+    const uneven = {
+      priceFullCents: 25200,
+      installmentPlan: [
+        { amountCents: 20000, dueAt: week1 },
+        { amountCents: 6400, dueAt: week5 },
+      ],
+    };
+    const discounted = mtApplyDiscount(
+      computeMusicTogetherFamilyPrice(uneven, 1),
+      halfOff
+    );
+
+    expect(discounted.installments.map((i) => i.amountCents)).toEqual([
+      10000, 3200,
+    ]);
+  });
+
+  it('never goes negative when the amount exceeds the price', () => {
+    const huge: AmountDiscountData = {
+      ...discountBase,
+      code: 'HUGE',
+      type: 'amount',
+      amountCents: 100000,
+    };
+    const discounted = mtApplyDiscount(
+      computeMusicTogetherFamilyPrice(section, 1),
+      huge
+    );
+
+    expect(discounted.fullCents).toBe(0);
+    expect(discounted.installments.map((i) => i.amountCents)).toEqual([0, 0]);
+  });
+
+  it('handles a section with no installment plan', () => {
+    const fullOnly = { priceFullCents: 25200 };
+    const discounted = mtApplyDiscount(
+      computeMusicTogetherFamilyPrice(fullOnly, 1),
+      halfOff
+    );
+
+    expect(discounted.fullCents).toBe(12600);
+    expect(discounted.installments).toEqual([]);
+    expect(discounted.fullDiscountCents).toBe(12600);
+    // No plan to discount.
+    expect(discounted.installmentsDiscountCents).toBe(0);
+  });
+
+  it('honors an expired amount-before-date cutoff (no discount)', () => {
+    const earlyBird: Discount = {
+      ...discountBase,
+      code: 'EARLYBIRD',
+      type: 'amount-before-date',
+      amountCents: 5000,
+      cutoffDate: new Date('2026-08-01T00:00:00.000Z'),
+    };
+    const price = computeMusicTogetherFamilyPrice(section, 1);
+    const discounted = mtApplyDiscount(
+      price,
+      earlyBird,
+      new Date('2026-09-03T00:00:00.000Z')
+    );
+
+    expect(discounted.fullCents).toBe(25200);
+    expect(discounted.installments.map((i) => i.amountCents)).toEqual([
+      13200, 13200,
+    ]);
+    expect(discounted.fullDiscountCents).toBe(0);
+    expect(discounted.installmentsDiscountCents).toBe(0);
+  });
+
+  it('uppercases the applied code', () => {
+    const lower: PercentDiscountData = { ...halfOff, code: 'pilotclass' };
+    const discounted = mtApplyDiscount(
+      computeMusicTogetherFamilyPrice(section, 1),
+      lower
+    );
+
+    expect(discounted.discountCode).toBe('PILOTCLASS');
+  });
+
+  it('rejects a slot-scoped discount rather than over-applying it', () => {
+    const perSlot: PercentDiscountData = {
+      ...halfOff,
+      code: 'SECONDSLOT',
+      appliesTo: 'nth-slot-onward',
+      nthSlot: 2,
+    };
+
+    expect(() =>
+      mtApplyDiscount(computeMusicTogetherFamilyPrice(section, 1), perSlot)
+    ).toThrow(RangeError);
   });
 });

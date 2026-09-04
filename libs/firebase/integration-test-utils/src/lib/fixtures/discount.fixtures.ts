@@ -185,7 +185,32 @@ export const EXPIRED_BY_DATE_DISCOUNT = {
 };
 
 /** Well-known doc IDs for test discounts */
+/**
+ * A Music Together code (#791). Present so the classes checkout can be tested
+ * for the thing that matters: it must REFUSE this, because MT settles to a
+ * different business's Square account.
+ *
+ * Note the other fixtures in this file deliberately carry no `program` at all
+ * — they stand in for documents written before scoping existed, and the
+ * repository's back-fill must keep reading them as classes codes.
+ */
+export const MUSIC_TOGETHER_DISCOUNT = {
+  code: 'MTONLY50',
+  description: 'Music Together pilot — half off',
+  type: 'percent',
+  percent: 50,
+  status: 'active',
+  program: 'music-together',
+  appliesTo: 'order',
+  nthSlot: 1,
+  usageLimit: null,
+  usageCount: 0,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export const DISCOUNT_IDS = {
+  musicTogether: 'test-discount-music-together',
   percent: 'test-discount-percent',
   amount: 'test-discount-amount',
   amountBeforeDate: 'test-discount-early-bird',
@@ -199,3 +224,32 @@ export const DISCOUNT_IDS = {
   exhausted: 'test-discount-exhausted',
   expiredByDate: 'test-discount-expired-by-date',
 } as const;
+
+/**
+ * Build a Music Together pilot code for the enrollment E2E (#791).
+ *
+ * The code string is unique per run so concurrent CI runs never collide on the
+ * globally-unique-code rule, exactly like the E2E's per-run section id.
+ *
+ * Shaped as `createDiscount` would store it — uppercase code, `usageCount: 0`,
+ * program stamped. The E2E seeds Firestore directly (as it already does for
+ * the section) because the widget is unauthenticated and has no admin token;
+ * `createDiscount` itself is covered through the real callable, with real auth
+ * and per-program authorization, in the discount integration suite.
+ */
+export function mtPilotDiscountDoc(code: string) {
+  return {
+    code: code.toUpperCase(),
+    description: 'Pilot semester — half off (E2E)',
+    type: 'percent',
+    percent: 50,
+    status: 'active',
+    program: 'music-together',
+    appliesTo: 'order',
+    nthSlot: 1,
+    usageLimit: null,
+    usageCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}

@@ -20,6 +20,7 @@
  *
  * All amounts are integer cents (`Math.round` after multiplying).
  */
+import { applyDiscount, type Discount } from './discount';
 import { MT_MAX_CHILDREN } from './music-together-registration';
 
 /**
@@ -97,4 +98,124 @@ export function computeMusicTogetherFamilyPrice<
     amountCents: Math.round(item.amountCents * multiplier),
   }));
   return { numChildren, multiplier, fullCents, installments };
+}
+
+/**
+ * A family price with a discount code applied.
+ */
+export interface DiscountedMusicTogetherFamilyPrice<
+  Item extends { amountCents: number }
+> extends MusicTogetherFamilyPrice<Item> {
+  /** The code that was applied, uppercased. */
+  discountCode: string;
+  /**
+   * Cents taken off the pay-in-full price.
+   *
+   * Deliberately separate from `installmentsDiscountCents`: the two plans are
+   * priced independently (the installment plan carries a premium), so a single
+   * "discount amount" would be wrong for whichever plan the family didn't
+   * pick. Callers record the one matching their `paymentPlan`.
+   */
+  fullDiscountCents: number;
+  /** Cents taken off the installment plan's total. 0 when there is no plan. */
+  installmentsDiscountCents: number;
+}
+
+/**
+ * Distribute `targetTotalCents` across `weights` so the parts sum to exactly
+ * the target, apportioned by weight. Largest-remainder: floor every share,
+ * then hand the leftover cents to the entries with the biggest fractional
+ * parts (ties break toward the earlier installment, so the family pays the
+ * extra cent sooner rather than later).
+ */
+function distributeByWeight(
+  targetTotalCents: number,
+  weights: number[]
+): number[] {
+  const weightTotal = weights.reduce((sum, w) => sum + w, 0);
+  if (weightTotal <= 0) {
+    // Nothing to apportion against — spread evenly rather than divide by zero.
+    return weights.map(() => 0);
+  }
+  const exact = weights.map((w) => (targetTotalCents * w) / weightTotal);
+  const floors = exact.map(Math.floor);
+  let leftover = targetTotalCents - floors.reduce((sum, f) => sum + f, 0);
+  const order = exact
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+  const result = [...floors];
+  for (const { index } of order) {
+    if (leftover <= 0) break;
+    result[index] += 1;
+    leftover -= 1;
+  }
+  return result;
+}
+
+/**
+ * Apply a discount code to an already-computed family price.
+ *
+ * The discount reaches EVERY amount the family will be charged, not just the
+ * one taken at registration: `fullCents` and each installment (including the
+ * ones that become scheduled card-on-file charges). A "50% off" code therefore
+ * halves the Week-5 charge too — which is the only reading that makes the
+ * headline promise true.
+ *
+ * Pay-in-full and the installment plan are discounted **independently**,
+ * because they are independent prices — the plan carries a premium (2 x $132 =
+ * $264 against $252 paid in full), and the family picks exactly one. For a
+ * `percent` code that distinction is invisible (both scale by the same factor).
+ * It matters for a fixed `amount` code, which comes off the **plan total once**
+ * and is then apportioned across the installments — never subtracted from each
+ * installment separately, which would give away several times the face value.
+ *
+ * `appliesTo: 'nth-slot-onward'` is rejected: MT has no per-slot pricing to
+ * count against, and additional children are already discounted by the sibling
+ * multiplier. Silently treating it as an order discount would over-apply it.
+ *
+ * @throws RangeError when the discount is slot-scoped.
+ */
+export function mtApplyDiscount<Item extends { amountCents: number }>(
+  price: MusicTogetherFamilyPrice<Item>,
+  discount: Discount,
+  now: Date = new Date()
+): DiscountedMusicTogetherFamilyPrice<Item> {
+  if (discount.appliesTo === 'nth-slot-onward') {
+    throw new RangeError(
+      `Discount code ${discount.code} is scoped to individual class slots and can't be used for Music Together.`
+    );
+  }
+
+  const fullCents = applyDiscount(
+    discount,
+    { unitPriceCents: price.fullCents, quantity: 1 },
+    now
+  ).updatedCents;
+
+  const planTotalCents = price.installments.reduce(
+    (sum, item) => sum + item.amountCents,
+    0
+  );
+  const discountedPlanTotalCents = applyDiscount(
+    discount,
+    { unitPriceCents: planTotalCents, quantity: 1 },
+    now
+  ).updatedCents;
+  const shares = distributeByWeight(
+    discountedPlanTotalCents,
+    price.installments.map((item) => item.amountCents)
+  );
+  const installments = price.installments.map((item, i) => ({
+    ...item,
+    amountCents: shares[i],
+  }));
+
+  return {
+    ...price,
+    fullCents,
+    installments,
+    discountCode: discount.code.toUpperCase(),
+    fullDiscountCents: price.fullCents - fullCents,
+    installmentsDiscountCents: planTotalCents - discountedPlanTotalCents,
+  };
 }

@@ -10,6 +10,7 @@ describe('discountValidation', () => {
     code: 'SAVE10',
     description: '10% off your registration',
     status: 'active',
+    program: 'classes',
     appliesTo: 'order',
     nthSlot: 1,
     percent: 10,
@@ -20,6 +21,7 @@ describe('discountValidation', () => {
     code: 'FIVER',
     description: '$5 off your registration',
     status: 'active',
+    program: 'classes',
     appliesTo: 'order',
     nthSlot: 1,
     amountCents: 500,
@@ -30,6 +32,7 @@ describe('discountValidation', () => {
     code: 'EARLYBIRD',
     description: '$10 off before June 15',
     status: 'active',
+    program: 'classes',
     appliesTo: 'order',
     nthSlot: 1,
     amountCents: 1000,
@@ -41,6 +44,7 @@ describe('discountValidation', () => {
     code: 'PAIR50',
     description: '50% off second slot',
     status: 'active',
+    program: 'classes',
     appliesTo: 'nth-slot-onward',
     nthSlot: 2,
     percent: 50,
@@ -558,6 +562,48 @@ describe('discountValidation', () => {
 
       const result = discountValidation(partialUpdate, ['description']);
       expect(result.hasErrors()).toBe(false);
+    });
+  });
+  // ── Program scoping (#791) ───────────────────────────────────────────
+
+  describe('program', () => {
+    it('requires a program — an unscoped code would default to classes', () => {
+      const { program: _omitted, ...noProgram } = validPercent;
+      const result = discountValidation(noProgram);
+      expect(result.hasErrors('program')).toBe(true);
+    });
+
+    it('rejects an unknown program', () => {
+      const result = discountValidation({
+        ...validPercent,
+        program: 'lessons' as never,
+      });
+      expect(result.hasErrors('program')).toBe(true);
+    });
+
+    it('accepts a Music Together code', () => {
+      const result = discountValidation({
+        ...validPercent,
+        code: 'PILOTCLASS',
+        program: 'music-together',
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('rejects a per-slot rule for Music Together (unredeemable by design)', () => {
+      // mtApplyDiscount throws on these at checkout — MT prices a family, not
+      // slots. Catching it here stops a code being created that could never
+      // be used.
+      const result = discountValidation({
+        ...validNthSlot,
+        program: 'music-together',
+      });
+      expect(result.hasErrors('appliesTo')).toBe(true);
+    });
+
+    it('still allows a per-slot rule for classes', () => {
+      const result = discountValidation(validNthSlot);
+      expect(result.isValid()).toBe(true);
     });
   });
 });
