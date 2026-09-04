@@ -28,13 +28,18 @@ Do them in order unless a slice says otherwise. Each is one PR.
 | 1 | #794 | Suzuki intake form + Meta/GA4 attribution + acknowledgement | **in review** | — |
 | 2 | #795 | Persist lesson inquiries + `/leads` queue | ready | — |
 | 3 | #796 | `no-show` lesson status + Needs Attention queue | ready | studio policy Q below |
-| 4 | #797 | Rolling lesson-series top-up (scheduled) | ready | — |
-| 5 | #798 | Card-on-file autopay + reusable billing rules | ready | — |
+| 4 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
+| 5 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
 | 6 | #799 | Hope EMA submission tracking + admin-editable rates | ready | EMA export format Q below |
 
 **Value checkpoints.** The ad can run once #794 and #795 are deployed. A real teaching week is safe
 once #796 and #797 land. #798 is the largest customer-facing win and is already being done by hand
-every month, so it is a legitimate candidate to pull ahead of #797.
+every month, so it is a legitimate candidate to pull ahead of #797 — but note the dependency runs the
+other way for quality: billing rules anchor to "a day before a scheduled lesson", and #797 is what
+makes future anchors computable rather than dependent on how far materialisation has run.
+
+**#796 and #797 are the two Katie and Nathan feel every week.** #796 is the state their week produces
+that the model cannot express; #797 is the clunkiness of managing rows instead of arrangements.
 
 ---
 
@@ -103,6 +108,12 @@ Settled. Do not reopen without a reason.
   a checkbox.
 - **Materialise, then drain.** Recurring things become documents (lesson series, MT scheduled
   charges) and a job processes them. Billing rules generate scheduled charges the same way.
+- **The recurring arrangement is a first-class object; concrete rows are a materialised window**
+  (#797). Katie and Nathan think in standing slots, not lesson rows, and the row-only model is why a
+  series silently runs out and why the Spruce Room is only visible as far as someone has materialised.
+  Concrete `Lesson` records stay — rendered status, invoice line items, payouts, block attribution,
+  POS attribution, `/my-day` and derived room events all read one — they just stop being the thing a
+  human manages. Do **not** replace them with RRULE evaluation.
 - **Site framing is a directory of independent teachers.** Future lesson teachers are 1099
   contractors and Nathan is the sole W-2 exception; "Maple & Spruce assigns students" is a
   behavioral-control signal. See #669 and the contractor model notes.
