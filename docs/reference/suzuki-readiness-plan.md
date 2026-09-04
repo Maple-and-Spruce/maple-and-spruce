@@ -29,9 +29,9 @@ Do them in order unless a slice says otherwise. Each is one PR.
 | 2 | #795 | Persist lesson inquiries + `/leads` queue | **in review** (PR #808) | needs `TALLY_API_KEY` in Secret Manager |
 | 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | **merged** (PR #809) | `/leads` already follows this pattern |
 | 4 | #796 | `no-show` lesson status + billing behaviour | **merged** (PR #810) | unblocked #799 |
-| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **in review** | the revenue |
-| 6 | #807 | Needs Attention queue | **next** | can now carry the Hope row |
-| 7 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
+| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **merged** (PR #813) | the revenue |
+| 6 | #807 | Needs Attention queue | **in review** | carries the Hope row |
+| 7 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | **next** | — |
 | 8 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
 | 9 | #804 | Hope portal-session view + payouts at *paid* + editable rates | partly blocked | backfill Q only |
 

@@ -31,6 +31,8 @@ import type {
   CreateInvoiceResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
+  GetNeedsAttentionRequest,
+  GetNeedsAttentionResponse,
   GetHopeQueueRequest,
   GetHopeQueueResponse,
   RecordHopeSubmissionsRequest,
@@ -1215,6 +1217,173 @@ describe('Lesson Functions', () => {
       });
 
       expect(result.status).not.toBe(200);
+    });
+  });
+
+  describe('Needs Attention (#807)', () => {
+    // The classifiers are unit-tested. What this proves is the composition:
+    // that the rows are actually derived from real Firestore state and land in
+    // the right group. Assertions are on presence of specific rows rather than
+    // exact totals, since earlier describes in this file seed their own data.
+
+    async function attention(): Promise<GetNeedsAttentionResponse> {
+      const res = await callFunction<
+        GetNeedsAttentionRequest,
+        GetNeedsAttentionResponse
+      >({
+        functionName: 'getNeedsAttention',
+        data: {},
+        idToken: adminUser.idToken,
+      });
+      expect(res.status).toBe(200);
+      return res.data!;
+    }
+
+    function rowsOf(
+      data: GetNeedsAttentionResponse,
+      kind: string,
+    ): Array<{ id: string; label: string }> {
+      return data.groups.find((g) => g.kind === kind)?.rows ?? [];
+    }
+
+    it('flags an active private-pay student with automatic invoicing off', async () => {
+      const created = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Attention AutoInvoice Off',
+          primaryContactEmail: 'attention-autoinvoice@test.com',
+          autoInvoice: false,
+        },
+        idToken: adminUser.idToken,
+      });
+      const sid = created.data!.student.id;
+
+      const data = await attention();
+      const row = rowsOf(data, 'student-autoinvoice-off').find(
+        (r) => r.id === sid,
+      );
+      expect(row).toBeTruthy();
+      expect(data.total).toBeGreaterThan(0);
+    });
+
+    it('clears that row once the flag is turned on', async () => {
+      // The panel's whole promise is that acting on a row removes it.
+      const created = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Attention Resolvable',
+          primaryContactEmail: 'attention-resolvable@test.com',
+          autoInvoice: false,
+        },
+        idToken: adminUser.idToken,
+      });
+      const sid = created.data!.student.id;
+
+      expect(
+        rowsOf(await attention(), 'student-autoinvoice-off').some(
+          (r) => r.id === sid,
+        ),
+      ).toBe(true);
+
+      await callFunction({
+        functionName: 'updateStudent',
+        data: { id: sid, autoInvoice: true },
+        idToken: adminUser.idToken,
+      });
+
+      expect(
+        rowsOf(await attention(), 'student-autoinvoice-off').some(
+          (r) => r.id === sid,
+        ),
+      ).toBe(false);
+    });
+
+    it('never flags a Hope student for automatic invoicing', async () => {
+      // createInvoice refuses Hope students outright, so the flag is meaningless
+      // for them and the row would be noise no one can act on.
+      const created = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Attention Hope Student',
+          primaryContactEmail: 'attention-hope@test.com',
+          isHopeScholarship: true,
+          autoInvoice: false,
+        },
+        idToken: adminUser.idToken,
+      });
+      const sid = created.data!.student.id;
+
+      expect(
+        rowsOf(await attention(), 'student-autoinvoice-off').some(
+          (r) => r.id === sid,
+        ),
+      ).toBe(false);
+    });
+
+    it('flags a rendered lesson that never produced an invoice', async () => {
+      const created = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Attention Unbilled',
+          primaryContactEmail: 'attention-unbilled@test.com',
+          autoInvoice: false, // so nothing auto-invoices it
+        },
+        idToken: adminUser.idToken,
+      });
+      const sid = created.data!.student.id;
+
+      const lesson = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId: sid,
+          teacherId: TEACHER_ID,
+          scheduledAt: new Date('2026-08-01T15:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, new Date('2026-08-01T15:00:00Z')),
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = lesson.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+      await waitForTrigger(3000);
+
+      const rows = rowsOf(await attention(), 'lesson-unbilled');
+      expect(rows.some((r) => r.id === lessonId)).toBe(true);
+    });
+
+    it('reports groups worst-first, and only non-empty ones', async () => {
+      const data = await attention();
+      expect(data.groups.every((g) => g.rows.length > 0)).toBe(true);
+      const kinds = data.groups.map((g) => g.kind);
+      const overdueAt = kinds.indexOf('invoice-overdue');
+      const autoOffAt = kinds.indexOf('student-autoinvoice-off');
+      if (overdueAt >= 0 && autoOffAt >= 0) {
+        expect(overdueAt).toBeLessThan(autoOffAt);
+      }
     });
   });
 
