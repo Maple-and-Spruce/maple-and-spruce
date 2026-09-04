@@ -16,7 +16,11 @@ import QrCode2Icon from '@mui/icons-material/QrCode2';
 import type { ManualInvoicePaymentSource } from '@maple/ts/domain';
 import { useMyDay, useMyWeek } from '@maple/react/data';
 import { MyWeek, MyOpenings } from '@maple/react/lessons';
-import { MyDayLessonCard, VenmoQr } from '../../../components/my-day';
+import {
+  MyDayLessonCard,
+  VenmoQr,
+  type MyDayCardAction,
+} from '../../../components/my-day';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -31,7 +35,15 @@ type MyDayTab = 'today' | 'week' | 'openings';
 
 export default function MyDayPage() {
   const { dayState, markRendered, recordPayment } = useMyDay();
-  const [busy, setBusy] = useState(false);
+  /**
+   * Which action is running, on which lesson. Was a single page-wide boolean,
+   * which froze every card in the day while one saved and never said which
+   * action was in flight (#805).
+   */
+  const [pending, setPending] = useState<{
+    lessonId: string;
+    action: MyDayCardAction;
+  } | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [tab, setTab] = useState<MyDayTab>('today');
   const [weekOffset, setWeekOffset] = useState(0);
@@ -43,23 +55,24 @@ export default function MyDayPage() {
   const { weekState } = useMyWeek(weekStart);
 
   const handleMarkRendered = async (lessonId: string) => {
-    setBusy(true);
+    setPending({ lessonId, action: 'mark-rendered' });
     try {
       await markRendered(lessonId);
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   };
 
   const handleRecordPayment = async (
+    lessonId: string,
     invoiceId: string,
     source: ManualInvoicePaymentSource,
   ) => {
-    setBusy(true);
+    setPending({ lessonId, action: source });
     try {
       await recordPayment(invoiceId, source);
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   };
 
@@ -177,8 +190,14 @@ export default function MyDayPage() {
                     key={item.lesson.id}
                     item={item}
                     onMarkRendered={handleMarkRendered}
-                    onRecordPayment={handleRecordPayment}
-                    busy={busy}
+                    onRecordPayment={(invoiceId, source) =>
+                      handleRecordPayment(item.lesson.id, invoiceId, source)
+                    }
+                    pending={
+                      pending?.lessonId === item.lesson.id
+                        ? pending.action
+                        : null
+                    }
                   />
                 ))}
               </Stack>

@@ -1,0 +1,21 @@
+[01:32:55.104] [INFO] storybook v10.5.2
+[01:32:56.055] [DEBUG] Getting package.json info for /Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/package.json...
+[01:32:56.200] [INFO] Storybook collects completely anonymous usage telemetry. We use it to shape Storybook's roadmap and prioritize features. You can learn more, including how to opt out, at https://storybook.js.org/telemetry
+[01:32:56.823] [DEBUG] Serving static files from [36mapps/maple-spruce/public[39m at [36m/[39m
+[01:32:56.921] [DEBUG] Starting preview..
+[01:32:56.933] [DEBUG] Using tsconfig paths for react-docgen
+[01:32:57.158] [DEBUG] Change detection enabled.
+[01:32:57.159] [WARN] Change detection unavailable: builder does not support change detection
+[01:32:57.177] [ERROR] [38;2;241;97;97mError: listen EADDRINUSE: address already in use :::62187[39m
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at _Polka.listen (file:///Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/node_modules/storybook/dist/core-server/index.js:10304:110)
+    at file:///Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/node_modules/storybook/dist/core-server/index.js:11245:39
+    at new Promise (<anonymous>)
+    at storybookDevServer (file:///Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/node_modules/storybook/dist/core-server/index.js:11244:19)
+    at async buildOrThrow (file:///Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/node_modules/storybook/dist/core-server/index.js:8331:12)
+    at async buildDevStandalone (file:///Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/node_modules/storybook/dist/core-server/index.js:11990:41)
+    at async withTelemetry (file:///Users/davidmccoy/GitHub/maple-and-spruce-worktrees/805-lesson-action-ux/node_modules/storybook/dist/_node-chunks/chunk-PPNUHXGF.js:1785:12)
+[01:32:57.178] [WARN] Broken build, fix the error above.
+You may need to refresh the browser.

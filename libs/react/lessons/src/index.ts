@@ -1,4 +1,8 @@
-export { LessonList } from './lib/LessonList';
+export {
+  LessonList,
+  type LessonPendingAction,
+  type LessonRowAction,
+} from './lib/LessonList';
 export {
   LessonInquiryList,
   type LessonInquiryListProps,

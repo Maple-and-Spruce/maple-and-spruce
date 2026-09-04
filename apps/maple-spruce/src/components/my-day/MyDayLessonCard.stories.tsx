@@ -47,7 +47,7 @@ const meta = {
   args: {
     onMarkRendered: fn(),
     onRecordPayment: fn(),
-    busy: false,
+    pending: null,
   },
 } satisfies Meta<typeof MyDayLessonCard>;
 
@@ -99,5 +99,24 @@ export const PaidShowsChipNoActions: Story = {
       expect(canvas.getByText(/paid/i)).toBeInTheDocument();
     });
     expect(canvas.queryByRole('button', { name: /record venmo/i })).toBeNull();
+  },
+};
+
+/**
+ * A card mid-save. The pressed control says what it is doing; its siblings on
+ * the same card disable. Before #805 this was a page-wide boolean, so every
+ * card in the day greyed out and none of them said why.
+ */
+export const RecordingVenmoPayment: Story = {
+  args: { item: renderedUnpaid, pending: 'venmo-manual' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const recording = await canvas.findByRole('button', { name: /recording/i });
+    expect(recording).toBeDisabled();
+
+    // The other payment action on this card is disabled too — one card, one
+    // action at a time — but it is the *pressed* one that shows progress.
+    expect(canvas.getByRole('button', { name: /cash \/ check/i })).toBeDisabled();
   },
 };
