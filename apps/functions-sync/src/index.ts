@@ -23,6 +23,7 @@ export { syncInstructorToWebflow } from '@maple/firebase/maple-functions/sync-in
 export { syncMusicTogetherSectionToWebflow } from '@maple/firebase/maple-functions/sync-music-together-section-to-webflow';
 export { syncMusicTogetherSemesterToWebflow } from '@maple/firebase/maple-functions/sync-music-together-semester-to-webflow';
 export { syncMusicTogetherDemoToWebflow } from '@maple/firebase/maple-functions/sync-music-together-demo-to-webflow';
+export { syncMusicTogetherRegistrationCount } from '@maple/firebase/maple-functions/sync-music-together-registration-count';
 
 // Webflow CMS housekeeping (scheduled)
 export { expirePastClassPages } from '@maple/firebase/maple-functions/expire-past-class-pages';

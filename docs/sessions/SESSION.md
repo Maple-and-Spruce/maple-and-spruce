@@ -6,6 +6,51 @@
 
 ## Current Status
 
+### Music Together spot counts never reached the public site (2026-09-03, #800)
+
+Stephanie reported the Thursday Morning section still advertising **8 spots left** after a family
+registered (admin showed `1 / 8 families`). It was not a device cache — the stale number was in the
+server-rendered HTML.
+
+`spots-remaining` / `spots-display` on an MT section were written by exactly one thing:
+`syncMusicTogetherSectionToWebflow`, a trigger on `musicTogetherSections/{sectionId}`. A registration
+never touches the section document, so the count Webflow captured at the last admin edit was frozen
+there. Classes have had the equivalent trigger since #143 (`syncRegistrationCount`); MT never got one.
+
+`syncMusicTogetherRegistrationCount` is that mirror — a trigger on
+`musicTogetherRegistrations/{registrationId}` that re-syncs the owning section.
+
+**Three things worth remembering.**
+
+- **This costs a function (baseline 218 → 219) and that is deliberate.** ADR-029 pushes new
+  *endpoints* onto domain routers, but a router route cannot express a Firestore trigger on a new
+  document path. The zero-function alternative — folding the sync into `sendMusicTogetherConversion`,
+  the only other trigger on that collection — would have pulled `webflow-api` into `maple-core`,
+  the heaviest bundle, to save one Cloud Run service. The other zero-function option (having
+  create/cancel touch the section doc so the existing trigger fires) works but makes the data flow
+  implicit; the explicit trigger is what a reader will find when this breaks again.
+- **The guard is load-bearing, not an optimization.** The registration document doubles as the
+  per-family bookkeeping channel: `sendMusicTogetherReminders` calls `markReminderSentForSession`
+  once per family per session, so every reminder day rewrites every enrolled family's document.
+  Without `COUNT_RELEVANT_FIELDS` (`sectionId`, `status`) a 12-session term would fire
+  (families × 12) Webflow publishes producing byte-identical field data. `children` is deliberately
+  *absent* from that list — capacity is per family, so adding a sibling consumes no spot.
+  (The Week-5 installment job writes `musicTogetherScheduledCharges`, not the registration doc —
+  it only reads the registration.) That a hand-maintained field allowlist is what stands between a
+  bookkeeping write and an outbound publish is the argument for #802.
+- **Hidden sections are skipped, not synced.** A hidden section has no CMS item (the section trigger
+  removes it); syncing one here would resurrect a card that was deliberately pulled.
+
+**Verification**: 23 unit tests; 5 integration tests against the emulators + the Webflow mock
+(`sync-mt-registration-count.spec.ts`) asserting the `fieldData` actually sent to the CMS —
+registration drops the count, cancel and delete give the spot back, and the last spot flips
+`spots-display` to `Full` and `status` to `full`. Full MT suite: 99 passed.
+
+**Note for the fix-forward**: existing sections still hold whatever count Webflow last captured.
+Re-saving each affected section in admin republishes it with the live number.
+
+---
+
 ### Server-side Meta signals for MT demo RSVPs + interest signups (2026-08-22, #781)
 
 The first Music Together campaign spent $124.43 over nine days — 8,319 reached, 389 link clicks,
