@@ -29,6 +29,10 @@ export { useClassCategories } from './lib/useClassCategories';
 export { useStudents } from './lib/useStudents';
 export { useHopeQueue, type UseHopeQueueOptions } from './lib/useHopeQueue';
 export {
+  useNeedsAttention,
+  type NeedsAttentionData,
+} from './lib/useNeedsAttention';
+export {
   useLessonInquiries,
   type UseLessonInquiriesOptions,
 } from './lib/useLessonInquiries';

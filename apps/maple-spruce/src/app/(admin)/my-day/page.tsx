@@ -14,8 +14,12 @@ import {
 } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import type { ManualInvoicePaymentSource } from '@maple/ts/domain';
-import { useMyDay, useMyWeek } from '@maple/react/data';
-import { MyWeek, MyOpenings } from '@maple/react/lessons';
+import { useMyDay, useMyWeek, useNeedsAttention } from '@maple/react/data';
+import {
+  MyWeek,
+  MyOpenings,
+  NeedsAttentionPanel,
+} from '@maple/react/lessons';
 import {
   MyDayLessonCard,
   VenmoQr,
@@ -35,6 +39,11 @@ type MyDayTab = 'today' | 'week' | 'openings';
 
 export default function MyDayPage() {
   const { dayState, markRendered, markNoShow, recordPayment } = useMyDay();
+  const {
+    attentionState,
+    resolveRow: resolveAttentionRow,
+    resolving: attentionResolving,
+  } = useNeedsAttention();
   /**
    * Which action is running, on which lesson. Was a single page-wide boolean,
    * which froze every card in the day while one saved and never said which
@@ -112,6 +121,17 @@ export default function MyDayPage() {
         <Typography variant="body1" color="text.secondary">
           {today}
         </Typography>
+
+      {/* Self-scoped for a lesson teacher; renders nothing when clear (#807). */}
+      {attentionState.status === 'success' && (
+        <NeedsAttentionPanel
+          groups={attentionState.data.groups}
+          total={attentionState.data.total}
+          scopedToSelf={attentionState.data.scopedToSelf}
+          resolving={attentionResolving}
+          onResolve={resolveAttentionRow}
+        />
+      )}
       </Box>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>

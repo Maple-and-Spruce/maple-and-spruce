@@ -6,6 +6,41 @@
 
 ## Current Status
 
+### Needs Attention: six invisible states, now a to-do list (2026-09-04, #807)
+
+Six things were already true in the data and none of them surfaced anywhere, so finding any one meant
+going looking, per student. Each is money or compliance quietly going wrong — an invoice that never
+reached Square means **the family was never asked to pay at all**.
+
+The panel sits on the dashboard and on `/my-day`, and it obeys two rules that shaped the whole thing:
+
+- **It renders nothing when there is nothing to do.** Not an empty card — nothing. A panel that is
+  usually empty trains people to stop reading it, at which point it is worse than not existing.
+- **Every row can be acted on from where it appears.** Either the panel fixes it inline (only one
+  qualifies today: turning on automatic invoicing, which is a single boolean) or the row links to the
+  *exact record*, never to a list to search. A row that can only be described was not worth adding.
+
+**Groups are ordered by the cost of ignoring them, not by count.** One invoice that never reached
+Square sits above nine students with a flag off. Sorting by count would bury the emergency under the
+nuisance, which is how these panels usually die.
+
+**It needs no new composite index.** It reads students, lessons, blocks and invoices unfiltered and
+composes in memory, the way `getTeacherPayouts` already does. The alternative was six filtered,
+mostly multi-field queries — six indexes to maintain for a dataset of a few hundred documents. The
+code says so, so nobody "optimises" it into six indexes later without knowing why it wasn't.
+
+**Scoping is a real behaviour, not a filter.** An admin sees everything; a lesson teacher sees only
+their own students and lessons (`instructorIdForUser`, #616). The response carries `scopedToSelf` and
+the panel says "showing only your own students" — because an empty panel means *"nothing is wrong"*
+to Katie and *"nothing of yours is wrong"* to Nathan, and those are different claims.
+
+The classifiers live in `@maple/ts/domain` as pure functions, so each "is this wrong?" rule has one
+definition rather than one in a query and a second in a component. Two of them encode judgements
+worth keeping: a **no-show counts as unbilled** for private pay (the slot was charged), and a
+**Hope student is never flagged for `autoInvoice`** because `createInvoice` refuses Hope outright, so
+the row would be noise nobody can act on.
+
+
 ### Hope Scholarship billing has a ledger (2026-09-04, #799)
 
 `Student.isHopeScholarship` did exactly two things: make `createInvoice` throw, and render a banner
