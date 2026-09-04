@@ -120,16 +120,29 @@ export const DiscountRepository = {
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
     }
-    if (filters?.program) {
-      query = query.where('program', '==', filters.program);
-    }
 
     query = query.orderBy('code', 'asc');
 
     const snapshot = await query.get();
-    return snapshot.docs
+    const discounts = snapshot.docs
       .map((doc) => docToDiscount(doc))
       .filter((d): d is Discount => d !== undefined);
+
+    // `program` is filtered HERE, not in the Firestore query, and that is
+    // deliberate. A Firestore equality filter does not match documents that
+    // lack the field, so `where('program','==','classes')` would silently drop
+    // every code written before scoping existed (#791) — emptying the classes
+    // Discounts page of all its real codes. The back-fill in `docToDiscount`
+    // cannot rescue that: it runs on documents the query already returned.
+    //
+    // Filtering after the read applies the same back-fill the rest of the
+    // codebase sees, so a legacy document is treated as the classes code it
+    // is. `discounts` is an admin-authored collection of tens of codes, so
+    // reading it whole costs nothing worth optimizing — and this stays correct
+    // no matter how a document got written.
+    return filters?.program
+      ? discounts.filter((d) => d.program === filters.program)
+      : discounts;
   },
 
   /**

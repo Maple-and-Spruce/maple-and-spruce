@@ -735,6 +735,54 @@ describe('Discount program scoping', () => {
       expect(new Set(programs)).toEqual(new Set(['music-together']));
     });
 
+    it('THE BUG: a legacy code with no stored program still lists on the classes page', async () => {
+      // Firestore equality filters do NOT match documents that lack the field,
+      // so `where('program','==','classes')` silently drops every code written
+      // before scoping existed — emptying the classes Discounts page of all
+      // real codes. The read-time back-fill in `docToDiscount` cannot help: it
+      // runs on documents the query already returned.
+      await setFirestoreDoc('discounts', 'legacy-listed', {
+        code: 'LEGACYLISTED',
+        type: 'percent',
+        percent: 10,
+        description: 'Written before program scoping existed',
+        status: 'active',
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: null,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const result = await callFunction<
+        GetDiscountsRequest,
+        GetDiscountsResponse
+      >({
+        functionName: 'getDiscounts',
+        data: { program: 'classes' },
+        idToken: admin.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      const codes = (result.data?.discounts ?? []).map((d) => d.code);
+      expect(codes).toContain('LEGACYLISTED');
+    });
+
+    it('and a legacy code never leaks onto the Music Together page', async () => {
+      const result = await callFunction<
+        GetDiscountsRequest,
+        GetDiscountsResponse
+      >({
+        functionName: 'getDiscounts',
+        data: { program: 'music-together' },
+        idToken: admin.idToken,
+      });
+
+      const codes = (result.data?.discounts ?? []).map((d) => d.code);
+      expect(codes).not.toContain('LEGACYLISTED');
+    });
+
     it('lets an admin filter to either program', async () => {
       const classes = await callFunction<
         GetDiscountsRequest,
