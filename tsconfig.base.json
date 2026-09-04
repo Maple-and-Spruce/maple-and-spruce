@@ -272,6 +272,9 @@
       "@maple/firebase/maple-functions/get-lesson-blocks": [
         "libs/firebase/maple-functions/get-lesson-blocks/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-needs-attention": [
+        "libs/firebase/maple-functions/get-needs-attention/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-hope-queue": [
         "libs/firebase/maple-functions/get-hope-queue/src/index.ts"
       ],

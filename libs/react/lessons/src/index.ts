@@ -21,6 +21,10 @@ export { MyWeek, type MyWeekProps } from './lib/MyWeek';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
 export {
+  NeedsAttentionPanel,
+  type NeedsAttentionPanelProps,
+} from './lib/NeedsAttentionPanel';
+export {
   BackfillLessonsDialog,
   type BackfillLessonsDialogProps,
 } from './lib/BackfillLessonsDialog';

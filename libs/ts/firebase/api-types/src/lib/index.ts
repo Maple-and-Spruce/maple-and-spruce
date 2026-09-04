@@ -576,3 +576,8 @@ export type {
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
 } from './hope-submission.types';
+
+export type {
+  GetNeedsAttentionRequest,
+  GetNeedsAttentionResponse,
+} from './needs-attention.types';

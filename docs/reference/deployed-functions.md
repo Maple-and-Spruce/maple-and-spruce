@@ -31,6 +31,10 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getLessonInquiries`, `updateLessonInquiryStatus` _(admin; the `/leads` queue)_
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
+### Needs Attention (#807)
+- `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
+- Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
+
 ### Hope Scholarship billing (#799)
 - `getHopeQueue` _(admin — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
 - `recordHopeSubmissions` _(admin, bulk — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
