@@ -97,6 +97,19 @@ export async function runSyncLessonInquiries(
     failedForms: [],
   };
 
+  // No forms configured is a deliberate state, not a misconfiguration: dev
+  // sets TALLY_LESSON_INQUIRY_FORM_IDS empty so it never ingests production
+  // lesson inquiries (there is one Tally workspace, so every real form id is a
+  // production form — see .env.dev). Return before touching Firestore; without
+  // this the schedule would do a full read of the inquiry collection every 15
+  // minutes to answer a question it has no forms to ask.
+  if (config.formIds.length === 0) {
+    console.log(
+      '[syncLessonInquiries] No form ids configured — nothing to ingest.'
+    );
+    return result;
+  }
+
   // One read of the stored ids serves every form: it both short-circuits the
   // page walk and avoids a per-submission existence check.
   const knownIds = await LessonInquiryRepository.findAllIds();
