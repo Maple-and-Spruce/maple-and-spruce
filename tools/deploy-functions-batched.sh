@@ -53,6 +53,29 @@
 #
 # Normal merges touch a handful of functions and stay a single batch; the cost
 # lands only on full-fleet deploys, which today fail outright.
+#
+# ---------------------------------------------------------------------------
+# Why the token is re-minted per attempt
+# ---------------------------------------------------------------------------
+# `google-github-actions/auth` mints an access token that lives ONE HOUR, and
+# the workflow captures it into FIREBASE_DEPLOY_TOKEN once, when the step
+# starts. Batching means a full maple-core deploy is 6 batches plus pauses and
+# retries — measured at 62 minutes — so the last batch authenticated with a
+# token that had already expired:
+#
+#   Error: Request to cloudresourcemanager.googleapis.com/... HTTP Error: 401,
+#   Request had invalid authentication credentials.
+#   batch 6/6 (16 function(s)) failed after 4 attempts
+#
+# Retrying could never fix that: all four attempts reused the same dead token.
+# maple-core is the only codebase big enough to cross the hour, which is why it
+# alone failed on every merge while the other five shards passed.
+#
+# So before each attempt we ask gcloud for a fresh token. gcloud holds the
+# keyless external_account credential the auth step wrote, and mints a new
+# access token on demand — the credential file itself does not expire on this
+# timescale. If gcloud is unavailable or fails we keep the token we were given,
+# which is exactly the previous behaviour.
 
 set -uo pipefail
 
@@ -88,6 +111,34 @@ RETRY_BACKOFF="${FN_DEPLOY_RETRY_BACKOFF:-30}"
 QUOTA_BACKOFF="${FN_DEPLOY_QUOTA_BACKOFF:-90}"
 # Overridable so the spec can substitute a stub binary.
 FIREBASE_CMD="${FN_DEPLOY_FIREBASE_CMD:-pnpm exec firebase}"
+# Mints a fresh OAuth access token from the keyless credential gcloud holds.
+# Overridable for the same reason as FIREBASE_CMD.
+TOKEN_CMD="${FN_DEPLOY_TOKEN_CMD:-gcloud auth print-access-token}"
+
+# Replace FIREBASE_DEPLOY_TOKEN with a freshly minted one.
+#
+# Best-effort by design: a deploy must not fail because the refresh did, so any
+# problem leaves the existing token in place and we carry on. The token is
+# never echoed — only whether the refresh worked.
+refresh_deploy_token() {
+  local fresh
+  # shellcheck disable=SC2086  # TOKEN_CMD is a command line; it must split.
+  if ! fresh="$($TOKEN_CMD 2>/dev/null)"; then
+    echo "--- token refresh unavailable; reusing the existing token"
+    return 0
+  fi
+  # Trim whitespace/newline the CLI appends.
+  fresh="${fresh//[$'\t\r\n ']/}"
+  if [ -z "$fresh" ]; then
+    echo "--- token refresh returned nothing; reusing the existing token"
+    return 0
+  fi
+  if [ "$fresh" != "$FIREBASE_DEPLOY_TOKEN" ]; then
+    echo "--- refreshed the deploy token"
+  fi
+  FIREBASE_DEPLOY_TOKEN="$fresh"
+  return 0
+}
 
 # Split the comma-separated target list into an array.
 IFS=',' read -ra ALL_TARGETS <<<"$TARGETS"
@@ -108,6 +159,10 @@ deploy_batch() {
 
   for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
     echo "--- $label, attempt $attempt/$MAX_ATTEMPTS"
+
+    # Before EVERY attempt, not just every batch: a long batch plus a quota
+    # backoff can straddle the token's expiry on its own.
+    refresh_deploy_token
 
     # Unquoted on purpose: FIREBASE_CMD is a command line ("pnpm exec firebase")
     # that must word-split. The token is passed but never echoed.

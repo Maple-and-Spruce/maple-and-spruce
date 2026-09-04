@@ -19,6 +19,18 @@ import { join, resolve } from 'node:path';
 
 const SCRIPT = resolve(__dirname, 'deploy-functions-batched.sh');
 
+/**
+ * Write a one-line executable stub. Used instead of `/bin/true` / `/bin/false`,
+ * which do not exist on macOS (they are in /usr/bin) — referencing them made a
+ * test pass for the wrong reason: "command not found" rather than the failure
+ * mode under test.
+ */
+function writeShellStub(name: string, body: string): string {
+  const stub = join(dir, name);
+  writeFileSync(stub, `#!/usr/bin/env bash\n${body}\n`, { mode: 0o755 });
+  return `/bin/bash ${stub}`;
+}
+
 /** Stub plan line for a clean `firebase deploy`. */
 const OK = '0 Deploy complete!';
 
@@ -50,6 +62,16 @@ for arg in "$@"; do
   prev="$arg"
 done
 echo "$only" >> "${join(dir, 'calls.txt')}"
+
+# Record the --token this invocation was handed, so the spec can see the
+# refresh happening between attempts.
+tok=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--token" ]; then tok="$arg"; fi
+  prev="$arg"
+done
+echo "$tok" >> "${join(dir, 'tokens.txt')}"
 
 count=$(wc -l < "${join(dir, 'calls.txt')}" | tr -d ' ')
 total=$(wc -l < "${join(dir, 'plan.txt')}" | tr -d ' ')
@@ -83,6 +105,10 @@ function run(
       FN_DEPLOY_BATCH_PAUSE: '0',
       FN_DEPLOY_RETRY_BACKOFF: '0',
       FN_DEPLOY_QUOTA_BACKOFF: '0',
+      // Never invoke a real `gcloud` from the suite — it is slow, can prompt,
+      // and would make these tests depend on the developer being logged in.
+      // Individual specs override this to exercise refresh behaviour.
+      FN_DEPLOY_TOKEN_CMD: 'exit 1',
       ...env,
     },
   });
@@ -90,11 +116,35 @@ function run(
   const calls = existsSync(callsFile)
     ? readFileSync(callsFile, 'utf8').split('\n').filter(Boolean)
     : [];
+  const tokensFile = join(dir, 'tokens.txt');
+  const tokens = existsSync(tokensFile)
+    ? readFileSync(tokensFile, 'utf8').split('\n').filter(Boolean)
+    : [];
   return {
     status: result.status,
     output: `${result.stdout}${result.stderr}`,
     calls,
+    tokens,
   };
+}
+
+/**
+ * Write a stub standing in for `gcloud auth print-access-token`, handing out
+ * `token-1`, `token-2`, … one per call — so a spec can tell which attempt used
+ * which token.
+ */
+function writeTokenStub(): string {
+  const stub = join(dir, 'token-stub.sh');
+  writeFileSync(
+    stub,
+    `#!/usr/bin/env bash
+echo "x" >> "${join(dir, 'token-calls.txt')}"
+n=$(wc -l < "${join(dir, 'token-calls.txt')}" | tr -d ' ')
+echo "token-$n"
+`,
+    { mode: 0o755 },
+  );
+  return stub;
 }
 
 function targets(n: number): string {
@@ -229,5 +279,94 @@ describe('deploy-functions-batched.sh', () => {
     expect(result.status).toBe(0);
     const calls = readFileSync(join(dir, 'calls.txt'), 'utf8').split('\n').filter(Boolean);
     expect(calls).toHaveLength(2);
+  });
+  // ── Access-token expiry mid-deploy ──────────────────────────────────────
+  //
+  // The auth step mints a token that lives one hour and the workflow captures
+  // it ONCE. A full maple-core deploy measured 62 minutes, so its last batch
+  // authenticated with an expired token and 401'd — and retrying could not
+  // help, because all four attempts reused the same dead token.
+
+  const UNAUTHORIZED =
+    '1 Error: Request to https://cloudresourcemanager.googleapis.com/v1/projects/x had HTTP Error: 401, Request had invalid authentication credentials.';
+
+  describe('deploy token refresh', () => {
+    it('mints a fresh token before every attempt', () => {
+      const { status, tokens } = run(targets(3), [OK], {
+        FN_DEPLOY_TOKEN_CMD: `/bin/bash ${writeTokenStub()}`,
+      });
+
+      expect(status).toBe(0);
+      // One deploy, and it used the freshly minted token rather than the
+      // one handed in via the environment.
+      expect(tokens).toEqual(['token-1']);
+    });
+
+    it('gives each batch of a long deploy its own token', () => {
+      const { status, tokens } = run(targets(65), [OK], {
+        FN_DEPLOY_BATCH_SIZE: '10',
+        FN_DEPLOY_TOKEN_CMD: `/bin/bash ${writeTokenStub()}`,
+      });
+
+      expect(status).toBe(0);
+      // 7 batches, 7 distinct tokens — batch 7 is never asked to reuse the
+      // token minted before batch 1 an hour earlier.
+      expect(tokens).toHaveLength(7);
+      expect(new Set(tokens).size).toBe(7);
+      expect(tokens[6]).toBe('token-7');
+    });
+
+    it('THE REGRESSION: a 401 recovers on retry with a new token', () => {
+      const { status, tokens, calls } = run(targets(3), [UNAUTHORIZED, OK], {
+        FN_DEPLOY_TOKEN_CMD: `/bin/bash ${writeTokenStub()}`,
+      });
+
+      expect(status).toBe(0);
+      expect(calls).toHaveLength(2);
+      // The retry did not reuse the token that had just been rejected.
+      expect(tokens).toEqual(['token-1', 'token-2']);
+    });
+
+    it('refreshes even across a quota backoff, which can straddle expiry', () => {
+      const { status, tokens } = run(
+        targets(3),
+        ['1 Error: Quota exceeded for total allowable CPU', OK],
+        { FN_DEPLOY_TOKEN_CMD: `/bin/bash ${writeTokenStub()}` },
+      );
+
+      expect(status).toBe(0);
+      expect(tokens).toEqual(['token-1', 'token-2']);
+    });
+
+    it('falls back to the supplied token when refresh fails', () => {
+      // gcloud missing or erroring must never fail a deploy — that would turn
+      // a working pipeline into a broken one.
+      const { status, tokens, output } = run(targets(3), [OK], {
+        FN_DEPLOY_TOKEN_CMD: writeShellStub('gcloud-fails.sh', 'exit 1'),
+      });
+
+      expect(status).toBe(0);
+      expect(tokens).toEqual(['stub-token']);
+      expect(output).toMatch(/token refresh unavailable/i);
+    });
+
+    it('falls back when refresh returns empty output', () => {
+      const { status, tokens, output } = run(targets(3), [OK], {
+        FN_DEPLOY_TOKEN_CMD: writeShellStub('gcloud-empty.sh', 'exit 0'),
+      });
+
+      expect(status).toBe(0);
+      expect(tokens).toEqual(['stub-token']);
+      expect(output).toMatch(/returned nothing/i);
+    });
+
+    it('never prints the token', () => {
+      const { output } = run(targets(3), [OK], {
+        FN_DEPLOY_TOKEN_CMD: `/bin/bash ${writeTokenStub()}`,
+      });
+
+      expect(output).not.toContain('token-1');
+      expect(output).not.toContain('stub-token');
+    });
   });
 });
