@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Stack,
   Typography,
 } from '@mui/material';
@@ -15,6 +16,9 @@ import type { ManualInvoicePaymentSource } from '@maple/ts/domain';
 import type { MyDayLesson } from '@maple/ts/firebase/api-types';
 import { formatCents } from '@maple/react/lessons';
 
+/** An action a card can have in flight. */
+export type MyDayCardAction = 'mark-rendered' | ManualInvoicePaymentSource;
+
 interface MyDayLessonCardProps {
   item: MyDayLesson;
   onMarkRendered: (lessonId: string) => void;
@@ -22,7 +26,13 @@ interface MyDayLessonCardProps {
     invoiceId: string,
     source: ManualInvoicePaymentSource
   ) => void;
-  busy?: boolean;
+  /**
+   * The action in flight on THIS card, if any.
+   *
+   * Replaces a page-wide `busy` boolean, which disabled every card in the day
+   * while one was saving and never said which action was running (#805).
+   */
+  pending?: MyDayCardAction | null;
 }
 
 function timeLabel(value: Date | string): string {
@@ -36,8 +46,9 @@ export function MyDayLessonCard({
   item,
   onMarkRendered,
   onRecordPayment,
-  busy = false,
+  pending = null,
 }: MyDayLessonCardProps) {
+  const busy = Boolean(pending);
   const { lesson, studentName, invoice } = item;
   const isScheduled = lesson.status === 'scheduled';
   const isPaid = invoice?.status === 'paid';
@@ -90,11 +101,17 @@ export function MyDayLessonCard({
             <Button
               variant="contained"
               size="small"
-              startIcon={<CheckCircleIcon />}
+              startIcon={
+                pending === 'mark-rendered' ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <CheckCircleIcon />
+                )
+              }
               disabled={busy}
               onClick={() => onMarkRendered(lesson.id)}
             >
-              Mark rendered
+              {pending === 'mark-rendered' ? 'Marking…' : 'Mark rendered'}
             </Button>
           )}
 
@@ -118,19 +135,32 @@ export function MyDayLessonCard({
               <Button
                 variant="outlined"
                 size="small"
-                startIcon={<AccountBalanceWalletIcon />}
+                startIcon={
+                  pending === 'venmo-manual' ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <AccountBalanceWalletIcon />
+                  )
+                }
                 disabled={busy}
                 onClick={() => onRecordPayment(invoice.id, 'venmo-manual')}
               >
-                Record Venmo
+                {pending === 'venmo-manual' ? 'Recording…' : 'Record Venmo'}
               </Button>
+              {/* Outlined, not text: this records a payment, and a text button
+                  reads as a link rather than as an action. */}
               <Button
-                variant="text"
+                variant="outlined"
                 size="small"
+                startIcon={
+                  pending === 'admin-manual' ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : null
+                }
                 disabled={busy}
                 onClick={() => onRecordPayment(invoice.id, 'admin-manual')}
               >
-                Cash / check
+                {pending === 'admin-manual' ? 'Recording…' : 'Cash / check'}
               </Button>
             </>
           )}

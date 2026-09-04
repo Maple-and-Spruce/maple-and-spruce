@@ -1,19 +1,27 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Alert,
   Box,
+  Button,
   Chip,
+  CircularProgress,
   IconButton,
   List,
   ListItem,
+  ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Skeleton,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import type {
   Instructor,
   Lesson,
@@ -21,6 +29,21 @@ import type {
   RequestState,
 } from '@maple/ts/domain';
 import { isLessonUnattributed } from '@maple/ts/domain';
+
+/** A row action that can be in flight. */
+export type LessonRowAction = 'mark-rendered' | 'cancel';
+
+/**
+ * Which action is running, on which lesson.
+ *
+ * Per-row and per-action rather than a page-wide boolean: acting on one lesson
+ * must not freeze the rest of the list, and the pressed control has to be the
+ * one that shows progress. See #805.
+ */
+export interface LessonPendingAction {
+  lessonId: string;
+  action: LessonRowAction;
+}
 
 interface LessonListProps {
   lessonsState: RequestState<Lesson[]>;
@@ -40,6 +63,8 @@ interface LessonListProps {
    * private-pay too so #283 payout tracking has accurate counts.
    */
   onMarkRendered?: (lesson: Lesson) => void;
+  /** The action currently in flight, if any. Drives per-row progress. */
+  pendingAction?: LessonPendingAction | null;
   /** For deterministic testing; defaults to current wall clock. */
   now?: Date;
 }
@@ -69,6 +94,7 @@ function LessonRow({
   isSubstitute,
   isUnattributed,
   isPast,
+  pending,
   onEdit,
   onCancel,
   onMarkRendered,
@@ -78,10 +104,18 @@ function LessonRow({
   isSubstitute: boolean;
   isUnattributed: boolean;
   isPast: boolean;
+  /** The action in flight on THIS row, if any. */
+  pending: LessonRowAction | null;
   onEdit: () => void;
   onCancel: () => void;
   onMarkRendered?: () => void;
 }) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const close = () => setAnchorEl(null);
+  const run = (fn: () => void) => () => {
+    close();
+    fn();
+  };
   const canMutate = lesson.status === 'scheduled';
   // Mark-rendered is only meaningful for past scheduled lessons; hide it
   // for future-dated rows so Katie doesn't mark something that hasn't
@@ -93,43 +127,9 @@ function LessonRow({
       sx={{
         borderBottom: '1px solid',
         borderColor: 'divider',
-        gap: 1,
+        gap: 2,
         alignItems: 'center',
       }}
-      secondaryAction={
-        canMutate ? (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            {canMarkRendered && (
-              <IconButton
-                edge="end"
-                onClick={onMarkRendered}
-                size="small"
-                aria-label="Mark lesson as rendered"
-                color="success"
-              >
-                <CheckCircleIcon fontSize="small" />
-              </IconButton>
-            )}
-            <IconButton
-              edge="end"
-              onClick={onEdit}
-              size="small"
-              aria-label="Edit lesson"
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              edge="end"
-              onClick={onCancel}
-              size="small"
-              aria-label="Cancel lesson"
-              color="warning"
-            >
-              <CancelIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        ) : null
-      }
     >
       <ListItemText
         primary={
@@ -177,6 +177,80 @@ function LessonRow({
           </Typography>
         }
       />
+      {/*
+        A real flex sibling, not MUI's `secondaryAction`. That prop positions the
+        action absolutely, so a labelled button — wider than the icon buttons it
+        replaces — sat on top of the row's own chips at narrow widths. Verified
+        in Storybook at 420px before this was changed.
+      */}
+      {canMutate && (
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 0.5,
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {/*
+            The studio's most common action — "this lesson happened" — gets a
+            word on it and one click. It used to be an unlabelled 20px green
+            tick sitting beside an unlabelled orange cross that cancels.
+          */}
+          {canMarkRendered && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="success"
+              disabled={Boolean(pending)}
+              startIcon={
+                pending === 'mark-rendered' ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <CheckCircleIcon fontSize="small" />
+                )
+              }
+              onClick={onMarkRendered}
+            >
+              {pending === 'mark-rendered' ? 'Marking…' : 'Mark rendered'}
+            </Button>
+          )}
+          <Tooltip title="Actions">
+            {/* span so the tooltip still works while the button is disabled */}
+            <span>
+              <IconButton
+                size="small"
+                aria-label={`Actions for the lesson on ${formatDateTime(
+                  lesson.scheduledAt
+                )}`}
+                aria-haspopup="menu"
+                disabled={Boolean(pending)}
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+              >
+                {pending === 'cancel' ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <MoreVertIcon fontSize="small" />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+            <MenuItem onClick={run(onEdit)}>
+              <ListItemIcon>
+                <EditIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Edit lesson</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={run(onCancel)} sx={{ color: 'warning.main' }}>
+              <ListItemIcon>
+                <CancelIcon fontSize="small" color="warning" />
+              </ListItemIcon>
+              <ListItemText>Cancel lesson</ListItemText>
+            </MenuItem>
+          </Menu>
+        </Box>
+      )}
     </ListItem>
   );
 }
@@ -199,6 +273,7 @@ export function LessonList({
   onEdit,
   onCancel,
   onMarkRendered,
+  pendingAction = null,
   now = new Date(),
 }: LessonListProps) {
   if (lessonsState.status === 'loading') {
@@ -257,6 +332,9 @@ export function LessonList({
         isLessonUnattributed(lesson, blocks)
       }
       isPast={lesson.scheduledAt.getTime() <= now.getTime()}
+      pending={
+        pendingAction?.lessonId === lesson.id ? pendingAction.action : null
+      }
       onEdit={() => onEdit(lesson)}
       onCancel={() => onCancel(lesson)}
       onMarkRendered={onMarkRendered ? () => onMarkRendered(lesson) : undefined}
