@@ -6,6 +6,54 @@
 
 ## Current Status
 
+### Hope Scholarship billing has a ledger (2026-09-04, #799)
+
+`Student.isHopeScholarship` did exactly two things: make `createInvoice` throw, and render a banner
+restating the EMA rules. **Nothing recorded what had actually been claimed.** That ledger lived in
+the EMA portal and in Katie's memory, and unlike a Square invoice there was no unpaid state to chase
+— a missed submission was simply money never collected, silently.
+
+`/hope` now answers one question on one screen: **what have we taught a Hope student and not been
+paid for?**
+
+**Three decisions worth remembering.**
+
+- **There is no `pending` status.** A lesson is awaiting submission when it has *no* submission
+  document, or when its document was `rejected`. So nothing has to materialise a row per lesson, and
+  no lesson can be lost by failing to get one. The document id **is** the lesson id, so a
+  rejected-then-resubmitted lesson updates its own record instead of accumulating duplicates that
+  could be claimed twice.
+- **A rejection counts as still owed.** EMA refusing a claim means the studio taught the lesson and
+  has not been paid — financially identical to never having claimed it. It goes back in the queue and
+  is reported separately only because it needs a different action.
+- **The rate is stamped once.** A later rate change must not retroactively restate what EMA was
+  actually told, so `recordHopeSubmissions` keeps the original `rateCents` when a claim moves to paid.
+
+**The no-show guard is on the write, not just the read.** The queue filters on `isSubmittableToHope`
+(#796), *and* `recordHopeSubmissions` re-checks every lesson server-side. Hiding a no-show in the UI
+is not enough: a stale client could otherwise claim public money for a lesson nobody attended. Both
+halves are covered by integration tests.
+
+**Historical entry reuses `createLessonSeries` rather than adding a parallel shape.** It gained an
+optional `status`, so a backfill is "the same series creation, with past dates, already rendered".
+Everything downstream — payouts, the Hope queue, the room schedule — reads ordinary `Lesson` records,
+and a separate "historical lesson" entity would have had to be taught to all of it.
+
+Block attribution (#686) is **waived for a backfill only**. That rule stops *new* lessons being
+dropped at arbitrary times; a lesson that already happened happened whether or not a block covers
+that weekday, and refusing to record it would mean refusing to claim money the studio has earned.
+Backfilled lessons carry `blockId: null` and surface as "needs a block" — the existing grandfather
+path. An integration test asserts a **future**-dated series without a block is still refused, so the
+exemption cannot become a hole.
+
+**The index analyzer earned its keep**: the new Hope query needed a `lessons` composite index on
+`studentId + status + scheduledAt` that the emulator would never have complained about. Declared in
+the same PR, per the rule.
+
+**Still open (#804):** the EMA export format, moving payouts to count Hope at *paid* rather than
+*rendered*, and making Hope rates admin-editable. All three wait on answers.
+
+
 ### `no-show` is its own lesson status, and it bills in two directions (2026-09-04, #796)
 
 `LessonStatus` was `scheduled | rendered | cancelled`. Registrations have carried a `no-show` all

@@ -31,6 +31,10 @@ import type {
   CreateInvoiceResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
+  GetHopeQueueRequest,
+  GetHopeQueueResponse,
+  RecordHopeSubmissionsRequest,
+  RecordHopeSubmissionsResponse,
   CreateLessonBlockRequest,
   CreateLessonBlockResponse,
   GetLessonBlocksRequest,
@@ -999,6 +1003,218 @@ describe('Lesson Functions', () => {
         i.lineItems.some((l) => l.lessonId === lessonId),
       );
       expect(forLesson).toHaveLength(1);
+    });
+  });
+
+  describe('Hope Scholarship submissions (#799)', () => {
+    let hopeStudentId: string;
+
+    async function hopeLesson(status: 'rendered' | 'no-show'): Promise<string> {
+      const created = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId: hopeStudentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: new Date('2026-07-07T19:00:00Z'),
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, new Date('2026-07-07T19:00:00Z')),
+        },
+        idToken: adminUser.idToken,
+      });
+      const id = created.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id, status },
+        idToken: adminUser.idToken,
+      });
+      return id;
+    }
+
+    beforeAll(async () => {
+      const res = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Hope Queue Kid',
+          primaryContactEmail: 'hopequeue@test.com',
+          isHopeScholarship: true,
+          registeredLessonLength: '30-min-full',
+        },
+        idToken: adminUser.idToken,
+      });
+      hopeStudentId = res.data!.student.id;
+    });
+
+    it('lists a rendered Hope lesson as awaiting submission, priced at the tier rate', async () => {
+      const lessonId = await hopeLesson('rendered');
+
+      const queue = await callFunction<
+        GetHopeQueueRequest,
+        GetHopeQueueResponse
+      >({
+        functionName: 'getHopeQueue',
+        data: { studentId: hopeStudentId },
+        idToken: adminUser.idToken,
+      });
+
+      expect(queue.status).toBe(200);
+      const found = queue.data!.entries.find((e) => e.lesson.id === lessonId);
+      expect(found).toBeTruthy();
+      expect(found?.rateCents).toBe(4125);
+      expect(found?.submission).toBeUndefined();
+      expect(queue.data!.totals.awaitingCount).toBeGreaterThan(0);
+    });
+
+    it('never lists a no-show — Hope pays only for services rendered', async () => {
+      const lessonId = await hopeLesson('no-show');
+
+      const queue = await callFunction<
+        GetHopeQueueRequest,
+        GetHopeQueueResponse
+      >({
+        functionName: 'getHopeQueue',
+        data: { studentId: hopeStudentId },
+        idToken: adminUser.idToken,
+      });
+
+      expect(
+        queue.data!.entries.some((e) => e.lesson.id === lessonId),
+      ).toBe(false);
+    });
+
+    it('refuses to claim a no-show even when asked directly', async () => {
+      // The queue hiding it is not enough — the guard has to be on the write,
+      // or a stale client could still claim public money for a lesson nobody
+      // attended.
+      const lessonId = await hopeLesson('no-show');
+
+      const result = await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: { lessonIds: [lessonId], status: 'submitted' },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data!.recordedLessonIds).toEqual([]);
+      expect(result.data!.skipped[0].reason).toMatch(/rendered/i);
+    });
+
+    it('records a claim, then marks it paid keeping the claimed rate', async () => {
+      const lessonId = await hopeLesson('rendered');
+
+      await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: {
+          lessonIds: [lessonId],
+          status: 'submitted',
+          emaReference: 'EMA-123',
+        },
+        idToken: adminUser.idToken,
+      });
+
+      await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: { lessonIds: [lessonId], status: 'paid' },
+        idToken: adminUser.idToken,
+      });
+
+      const queue = await callFunction<
+        GetHopeQueueRequest,
+        GetHopeQueueResponse
+      >({
+        functionName: 'getHopeQueue',
+        data: { studentId: hopeStudentId },
+        idToken: adminUser.idToken,
+      });
+
+      const found = queue.data!.entries.find((e) => e.lesson.id === lessonId);
+      expect(found?.submission?.status).toBe('paid');
+      expect(found?.submission?.rateCents).toBe(4125);
+      expect(found?.submission?.emaReference).toBe('EMA-123');
+    });
+
+    it('backfills lessons that already happened, without a block', async () => {
+      // Hope pays backwards, so teaching that predates the portal is still
+      // claimable — but only if it can be recorded at all. Block attribution
+      // is waived for a backfill; see isBackfillSeries.
+      const past = [
+        new Date('2026-06-02T19:00:00Z'),
+        new Date('2026-06-09T19:00:00Z'),
+      ];
+
+      const result = await callFunction<
+        CreateLessonSeriesRequest,
+        CreateLessonSeriesResponse
+      >({
+        functionName: 'createLessonSeries',
+        data: {
+          studentId: hopeStudentId,
+          teacherId: TEACHER_ID,
+          durationMinutes: 30,
+          scheduledAts: past,
+          status: 'rendered',
+          blockId: null,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data!.lessons).toHaveLength(2);
+      expect(result.data!.lessons.every((l) => l.status === 'rendered')).toBe(
+        true,
+      );
+
+      const queue = await callFunction<
+        GetHopeQueueRequest,
+        GetHopeQueueResponse
+      >({
+        functionName: 'getHopeQueue',
+        data: { studentId: hopeStudentId },
+        idToken: adminUser.idToken,
+      });
+
+      for (const lesson of result.data!.lessons) {
+        expect(
+          queue.data!.entries.some((e) => e.lesson.id === lesson.id),
+        ).toBe(true);
+      }
+    });
+
+    it('still refuses a FUTURE lesson series without a block', async () => {
+      // The backfill exemption must not become a hole that lets new lessons
+      // skip block attribution entirely.
+      const result = await callFunction<
+        CreateLessonSeriesRequest,
+        CreateLessonSeriesResponse
+      >({
+        functionName: 'createLessonSeries',
+        data: {
+          studentId: hopeStudentId,
+          teacherId: TEACHER_ID,
+          durationMinutes: 30,
+          scheduledAts: [new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
+          blockId: null,
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).not.toBe(200);
     });
   });
 

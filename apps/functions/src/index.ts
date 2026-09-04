@@ -89,6 +89,8 @@ export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesso
 export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
 export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
 export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
+export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
+export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
 export {
   syncLessonInquiries,
   triggerLessonInquirySync,
