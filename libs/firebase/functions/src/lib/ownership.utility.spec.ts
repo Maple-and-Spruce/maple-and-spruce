@@ -27,6 +27,8 @@ import {
   assertCanRecordInvoicePayment,
   instructorIdForUser,
   instructorScopeForUser,
+  assertCanManageDiscountProgram,
+  discountProgramScopeForUser,
 } from './ownership.utility';
 
 describe('instructorIdForUser', () => {
@@ -203,5 +205,77 @@ describe('instructorScopeForUser', () => {
     mocks.findByUid.mockResolvedValue(undefined);
     const scope = await instructorScopeForUser({ uid: 'unlinked' });
     expect(scope).toEqual({ isAdmin: false, instructorId: undefined });
+  });
+});
+
+// ── Discount program scoping (#791) ──────────────────────────────────────
+//
+// The role gate on the discount functions is `[Admin, MtTeacher]` so
+// Stephanie can run Music Together promotions. These two helpers are the
+// second half of that gate — without them, the widened role would also hand
+// her Maple & Spruce class pricing, a different business's money.
+
+describe('assertCanManageDiscountProgram', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('lets an admin manage either program', async () => {
+    mocks.hasRole.mockResolvedValue(true);
+
+    await expect(
+      assertCanManageDiscountProgram({ uid: 'admin' }, 'classes')
+    ).resolves.toBeUndefined();
+    await expect(
+      assertCanManageDiscountProgram({ uid: 'admin' }, 'music-together')
+    ).resolves.toBeUndefined();
+  });
+
+  it('lets a non-admin manage Music Together codes', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+
+    await expect(
+      assertCanManageDiscountProgram({ uid: 'stephanie' }, 'music-together')
+    ).resolves.toBeUndefined();
+  });
+
+  it('THE POINT: a non-admin cannot touch class codes', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+
+    await expect(
+      assertCanManageDiscountProgram({ uid: 'stephanie' }, 'classes')
+    ).rejects.toThrow('only manage Music Together');
+  });
+
+  it('denies an unauthenticated caller on the classes program', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+
+    await expect(
+      assertCanManageDiscountProgram({}, 'classes')
+    ).rejects.toThrow('only manage Music Together');
+    // hasRole is never consulted without a uid.
+    expect(mocks.hasRole).not.toHaveBeenCalled();
+  });
+});
+
+describe('discountProgramScopeForUser', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('does not scope an admin (they see every program)', async () => {
+    mocks.hasRole.mockResolvedValue(true);
+
+    expect(await discountProgramScopeForUser({ uid: 'admin' })).toBeUndefined();
+  });
+
+  it('pins a non-admin to Music Together', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+
+    expect(await discountProgramScopeForUser({ uid: 'stephanie' })).toBe(
+      'music-together'
+    );
+  });
+
+  it('pins an unauthenticated caller too (never returns undefined by accident)', async () => {
+    mocks.hasRole.mockResolvedValue(false);
+
+    expect(await discountProgramScopeForUser({})).toBe('music-together');
   });
 });

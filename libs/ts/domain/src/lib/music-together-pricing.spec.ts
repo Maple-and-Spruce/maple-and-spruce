@@ -129,6 +129,7 @@ const discountBase = {
   code: 'PILOTCLASS',
   description: 'Pilot semester — half off',
   status: 'active' as const,
+  program: 'music-together' as const,
   appliesTo: 'order' as const,
   nthSlot: 1,
   usageLimit: null,

@@ -337,6 +337,7 @@ describe('createMusicTogetherRegistration — discount codes', () => {
       type: 'percent',
       percent: 50,
       status: 'active',
+      program: 'music-together',
       appliesTo: 'order',
       nthSlot: 1,
       usageLimit: null,
@@ -488,6 +489,28 @@ describe('createMusicTogetherRegistration — discount codes', () => {
       data: family({ email: 'once-b@test.com', discountCode: 'ONLYONE' }),
     });
     expect(second.status).not.toBe(200);
+  });
+
+  it('rejects a Maple & Spruce class code (#791 program scoping)', async () => {
+    await setFirestoreDoc(
+      'discounts',
+      'disc-classes-only',
+      discountDoc({ code: 'CLASSESONLY', program: 'classes' })
+    );
+
+    const result = await callFunction<CreateMusicTogetherRegistrationRequest>({
+      functionName: 'createMusicTogetherRegistration',
+      data: family({
+        email: 'wrong-program@test.com',
+        discountCode: 'CLASSESONLY',
+      }),
+    });
+
+    expect(result.status).not.toBe(200);
+    const regs = (await listFirestoreDocs('musicTogetherRegistrations'))
+      .map((r) => r.data as Record<string, unknown>)
+      .filter((r) => r.email === 'wrong-program@test.com');
+    expect(regs).toHaveLength(0);
   });
 
   it.each([

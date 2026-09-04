@@ -26,6 +26,7 @@ import type {
   DiscountType,
   DiscountStatus,
   DiscountAppliesTo,
+  DiscountProgram,
   PercentDiscountData,
   AmountDiscountData,
   AmountBeforeDateDiscountData,
@@ -45,6 +46,14 @@ interface DiscountFormProps {
   onSubmit: (data: CreateDiscountInput) => Promise<void>;
   discount?: Discount;
   isSubmitting?: boolean;
+  /**
+   * The program every code authored here belongs to. Pinned by the owning
+   * page rather than offered as a field: each page manages exactly one
+   * program, and `program` is immutable after creation, so a picker could only
+   * ever produce a code on the wrong page. Editing an existing discount keeps
+   * its stored program.
+   */
+  program: DiscountProgram;
 }
 
 export function DiscountForm({
@@ -53,6 +62,7 @@ export function DiscountForm({
   onSubmit,
   discount,
   isSubmitting = false,
+  program,
 }: DiscountFormProps) {
   useSignals();
 
@@ -87,6 +97,7 @@ export function DiscountForm({
       type: type.value,
       description: description.value,
       status: status.value,
+      program: discount?.program ?? program,
       appliesTo: appliesTo.value,
       nthSlot: nthSlot.value,
       usageLimit: usageLimit.value,
@@ -107,7 +118,7 @@ export function DiscountForm({
       const fieldErrors = errors.value[field];
       return fieldErrors?.[0];
     },
-    [errors]
+    [errors],
   );
 
   // Initialize form when opening
@@ -176,6 +187,9 @@ export function DiscountForm({
         code: code.value.toUpperCase(),
         description: description.value,
         status: status.value,
+        // An edit keeps the code's stored program (immutable); a create takes
+        // the page's.
+        program: discount?.program ?? program,
         appliesTo: appliesTo.value,
         // Keep nthSlot=1 for 'order' so the stored doc has a deterministic
         // value (the runtime ignores it for non-nth-slot discounts).
@@ -188,21 +202,30 @@ export function DiscountForm({
       let input: CreateDiscountInput;
 
       if (type.value === 'percent') {
-        const percentInput: Omit<PercentDiscountData, 'id' | 'createdAt' | 'updatedAt'> = {
+        const percentInput: Omit<
+          PercentDiscountData,
+          'id' | 'createdAt' | 'updatedAt'
+        > = {
           ...base,
           type: 'percent',
           percent: percent.value!,
         };
         input = percentInput;
       } else if (type.value === 'amount') {
-        const amountInput: Omit<AmountDiscountData, 'id' | 'createdAt' | 'updatedAt'> = {
+        const amountInput: Omit<
+          AmountDiscountData,
+          'id' | 'createdAt' | 'updatedAt'
+        > = {
           ...base,
           type: 'amount',
           amountCents: amountCents.value!,
         };
         input = amountInput;
       } else {
-        const earlyBirdInput: Omit<AmountBeforeDateDiscountData, 'id' | 'createdAt' | 'updatedAt'> = {
+        const earlyBirdInput: Omit<
+          AmountBeforeDateDiscountData,
+          'id' | 'createdAt' | 'updatedAt'
+        > = {
           ...base,
           type: 'amount-before-date',
           amountCents: amountCents.value!,
@@ -216,7 +239,23 @@ export function DiscountForm({
       submitError.value =
         error instanceof Error ? error.message : 'Failed to save discount';
     }
-  }, [onSubmit, validation, type, code, description, status, appliesTo, nthSlot, usageLimit, expiresAt, percent, amountCents, cutoffDate]);
+  }, [
+    onSubmit,
+    validation,
+    type,
+    code,
+    description,
+    status,
+    program,
+    discount,
+    appliesTo,
+    nthSlot,
+    usageLimit,
+    expiresAt,
+    percent,
+    amountCents,
+    cutoffDate,
+  ]);
 
   const handleAmountChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,268 +269,270 @@ export function DiscountForm({
         }
       }
     },
-    [amountCents]
+    [amountCents],
   );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {discount ? 'Edit Discount' : 'Add Discount Code'}
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {submitError.value && (
-            <Alert
-              severity="error"
-              onClose={() => (submitError.value = null)}
-            >
-              {submitError.value}
-            </Alert>
-          )}
-
-          <TextField
-            label="Discount Code"
-            value={code.value}
-            onChange={(e) =>
-              (code.value = e.target.value.toUpperCase())
-            }
-            error={!!getFieldError('code')}
-            helperText={
-              getFieldError('code') ||
-              'Letters, numbers, and hyphens only (e.g., SAVE10, EARLY-BIRD)'
-            }
-            required
-            fullWidth
-            inputProps={{ style: { fontFamily: 'monospace' } }}
-          />
-
-          <TextField
-            label="Description"
-            value={description.value}
-            onChange={(e) => (description.value = e.target.value)}
-            error={!!getFieldError('description')}
-            helperText={getFieldError('description')}
-            required
-            fullWidth
-            placeholder="e.g., 10% off your registration"
-          />
-
-          <FormControl fullWidth required error={!!getFieldError('type')}>
-            <InputLabel>Discount Type</InputLabel>
-            <Select
-              value={type.value}
-              label="Discount Type"
-              onChange={(e) => {
-                type.value = e.target.value as DiscountType;
-                // Reset type-specific fields
-                if (e.target.value === 'percent') {
-                  amountCents.value = undefined;
-                  cutoffDate.value = undefined;
-                } else if (e.target.value === 'amount') {
-                  percent.value = undefined;
-                  cutoffDate.value = undefined;
-                } else {
-                  percent.value = undefined;
-                }
-              }}
-            >
-              {DISCOUNT_TYPES.map((t) => (
-                <MenuItem key={t} value={t}>
-                  {t === 'percent'
-                    ? 'Percentage Off'
-                    : t === 'amount'
-                      ? 'Fixed Dollar Amount'
-                      : 'Early Bird (Amount Before Date)'}
-                </MenuItem>
-              ))}
-            </Select>
-            {getFieldError('type') && (
-              <FormHelperText>{getFieldError('type')}</FormHelperText>
+        <DialogTitle>
+          {discount ? 'Edit Discount' : 'Add Discount Code'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            {submitError.value && (
+              <Alert
+                severity="error"
+                onClose={() => (submitError.value = null)}
+              >
+                {submitError.value}
+              </Alert>
             )}
-          </FormControl>
 
-          {type.value === 'percent' && (
             <TextField
-              label="Percent Off"
+              label="Discount Code"
+              value={code.value}
+              onChange={(e) => (code.value = e.target.value.toUpperCase())}
+              error={!!getFieldError('code')}
+              helperText={
+                getFieldError('code') ||
+                'Letters, numbers, and hyphens only (e.g., SAVE10, EARLY-BIRD)'
+              }
+              required
+              fullWidth
+              inputProps={{ style: { fontFamily: 'monospace' } }}
+            />
+
+            <TextField
+              label="Description"
+              value={description.value}
+              onChange={(e) => (description.value = e.target.value)}
+              error={!!getFieldError('description')}
+              helperText={getFieldError('description')}
+              required
+              fullWidth
+              placeholder="e.g., 10% off your registration"
+            />
+
+            <FormControl fullWidth required error={!!getFieldError('type')}>
+              <InputLabel>Discount Type</InputLabel>
+              <Select
+                value={type.value}
+                label="Discount Type"
+                onChange={(e) => {
+                  type.value = e.target.value as DiscountType;
+                  // Reset type-specific fields
+                  if (e.target.value === 'percent') {
+                    amountCents.value = undefined;
+                    cutoffDate.value = undefined;
+                  } else if (e.target.value === 'amount') {
+                    percent.value = undefined;
+                    cutoffDate.value = undefined;
+                  } else {
+                    percent.value = undefined;
+                  }
+                }}
+              >
+                {DISCOUNT_TYPES.map((t) => (
+                  <MenuItem key={t} value={t}>
+                    {t === 'percent'
+                      ? 'Percentage Off'
+                      : t === 'amount'
+                        ? 'Fixed Dollar Amount'
+                        : 'Early Bird (Amount Before Date)'}
+                  </MenuItem>
+                ))}
+              </Select>
+              {getFieldError('type') && (
+                <FormHelperText>{getFieldError('type')}</FormHelperText>
+              )}
+            </FormControl>
+
+            {type.value === 'percent' && (
+              <TextField
+                label="Percent Off"
+                type="number"
+                value={percent.value ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  percent.value = val === '' ? undefined : Number(val);
+                }}
+                error={!!getFieldError('percent')}
+                helperText={getFieldError('percent') || '1-100'}
+                required
+                fullWidth
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">%</InputAdornment>
+                  ),
+                }}
+                inputProps={{ min: 1, max: 100 }}
+              />
+            )}
+
+            {(type.value === 'amount' ||
+              type.value === 'amount-before-date') && (
+              <TextField
+                label="Discount Amount"
+                type="number"
+                value={amountDollars.value}
+                onChange={handleAmountChange}
+                error={!!getFieldError('amountCents')}
+                helperText={getFieldError('amountCents')}
+                required
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">$</InputAdornment>
+                  ),
+                }}
+                inputProps={{ min: 0.01, step: 0.01 }}
+              />
+            )}
+
+            {type.value === 'amount-before-date' && (
+              <DatePicker
+                label="Cutoff Date"
+                value={cutoffDate.value ?? null}
+                onChange={(newValue) => {
+                  cutoffDate.value = newValue ?? undefined;
+                }}
+                disablePast
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    error: !!getFieldError('cutoffDate'),
+                    helperText:
+                      getFieldError('cutoffDate') ||
+                      'Discount only valid before this date',
+                  },
+                }}
+              />
+            )}
+
+            {/* Per-slot pricing is a classes-only concept: Music Together
+              prices a family (siblings already get 50% off the 2nd and 3rd),
+              so there is only one meaningful choice there and the control is
+              hidden rather than shown with a single option. The validation
+              suite rejects the combination too, so this is convenience, not
+              enforcement. */}
+            {program !== 'music-together' && (
+              <FormControl
+                fullWidth
+                required
+                error={!!getFieldError('appliesTo')}
+              >
+                <InputLabel>Applies To</InputLabel>
+                <Select
+                  value={appliesTo.value}
+                  label="Applies To"
+                  onChange={(e) => {
+                    appliesTo.value = e.target.value as DiscountAppliesTo;
+                  }}
+                >
+                  <MenuItem value="order">Whole order</MenuItem>
+                  <MenuItem value="nth-slot-onward">
+                    Nth slot onward (pair pricing)
+                  </MenuItem>
+                </Select>
+                <FormHelperText>
+                  {getFieldError('appliesTo') ||
+                    (appliesTo.value === 'nth-slot-onward'
+                      ? 'Discount applies per slot, starting at the slot you choose below.'
+                      : 'Discount applies once to the order subtotal.')}
+                </FormHelperText>
+              </FormControl>
+            )}
+
+            {appliesTo.value === 'nth-slot-onward' && (
+              <TextField
+                label="Discount starts at slot"
+                type="number"
+                value={nthSlot.value}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  nthSlot.value = val === '' ? 0 : Number(val);
+                }}
+                error={!!getFieldError('nthSlot')}
+                helperText={
+                  getFieldError('nthSlot') ||
+                  'e.g., 2 = "second slot onward gets the discount"'
+                }
+                required
+                fullWidth
+                inputProps={{ min: 2, max: 100, step: 1 }}
+              />
+            )}
+
+            <TextField
+              label="Limit total uses (optional)"
               type="number"
-              value={percent.value ?? ''}
+              value={usageLimit.value ?? ''}
               onChange={(e) => {
                 const val = e.target.value;
-                percent.value = val === '' ? undefined : Number(val);
+                usageLimit.value = val === '' ? null : Number(val);
               }}
-              error={!!getFieldError('percent')}
-              helperText={getFieldError('percent') || '1-100'}
-              required
+              error={!!getFieldError('usageLimit')}
+              helperText={
+                getFieldError('usageLimit') ||
+                'Leave blank for unlimited uses. Set to 1 for a single-use code.'
+              }
               fullWidth
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">%</InputAdornment>
-                ),
-              }}
-              inputProps={{ min: 1, max: 100 }}
+              inputProps={{ min: 1, max: 10000, step: 1 }}
             />
-          )}
 
-          {(type.value === 'amount' ||
-            type.value === 'amount-before-date') && (
-            <TextField
-              label="Discount Amount"
-              type="number"
-              value={amountDollars.value}
-              onChange={handleAmountChange}
-              error={!!getFieldError('amountCents')}
-              helperText={getFieldError('amountCents')}
-              required
-              fullWidth
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">$</InputAdornment>
-                ),
-              }}
-              inputProps={{ min: 0.01, step: 0.01 }}
-            />
-          )}
-
-          {type.value === 'amount-before-date' && (
             <DatePicker
-              label="Cutoff Date"
-              value={cutoffDate.value ?? null}
+              label="Expires (optional)"
+              value={expiresAt.value ?? null}
               onChange={(newValue) => {
-                cutoffDate.value = newValue ?? undefined;
+                expiresAt.value = newValue ?? undefined;
               }}
               disablePast
               slotProps={{
                 textField: {
                   fullWidth: true,
-                  required: true,
-                  error: !!getFieldError('cutoffDate'),
+                  error: !!getFieldError('expiresAt'),
                   helperText:
-                    getFieldError('cutoffDate') ||
-                    'Discount only valid before this date',
+                    getFieldError('expiresAt') ||
+                    'Code stops working after this date, regardless of remaining uses.',
                 },
               }}
             />
-          )}
 
-          <FormControl
-            fullWidth
-            required
-            error={!!getFieldError('appliesTo')}
+            <FormControl fullWidth required error={!!getFieldError('status')}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={status.value}
+                label="Status"
+                onChange={(e) =>
+                  (status.value = e.target.value as DiscountStatus)
+                }
+              >
+                {DISCOUNT_STATUSES.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </MenuItem>
+                ))}
+              </Select>
+              {getFieldError('status') && (
+                <FormHelperText>{getFieldError('status')}</FormHelperText>
+              )}
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={isSubmitting}
           >
-            <InputLabel>Applies To</InputLabel>
-            <Select
-              value={appliesTo.value}
-              label="Applies To"
-              onChange={(e) => {
-                appliesTo.value = e.target.value as DiscountAppliesTo;
-              }}
-            >
-              <MenuItem value="order">Whole order</MenuItem>
-              <MenuItem value="nth-slot-onward">
-                Nth slot onward (pair pricing)
-              </MenuItem>
-            </Select>
-            <FormHelperText>
-              {getFieldError('appliesTo') ||
-                (appliesTo.value === 'nth-slot-onward'
-                  ? 'Discount applies per slot, starting at the slot you choose below.'
-                  : 'Discount applies once to the order subtotal.')}
-            </FormHelperText>
-          </FormControl>
-
-          {appliesTo.value === 'nth-slot-onward' && (
-            <TextField
-              label="Discount starts at slot"
-              type="number"
-              value={nthSlot.value}
-              onChange={(e) => {
-                const val = e.target.value;
-                nthSlot.value = val === '' ? 0 : Number(val);
-              }}
-              error={!!getFieldError('nthSlot')}
-              helperText={
-                getFieldError('nthSlot') ||
-                'e.g., 2 = "second slot onward gets the discount"'
-              }
-              required
-              fullWidth
-              inputProps={{ min: 2, max: 100, step: 1 }}
-            />
-          )}
-
-          <TextField
-            label="Limit total uses (optional)"
-            type="number"
-            value={usageLimit.value ?? ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              usageLimit.value = val === '' ? null : Number(val);
-            }}
-            error={!!getFieldError('usageLimit')}
-            helperText={
-              getFieldError('usageLimit') ||
-              'Leave blank for unlimited uses. Set to 1 for a single-use code.'
-            }
-            fullWidth
-            inputProps={{ min: 1, max: 10000, step: 1 }}
-          />
-
-          <DatePicker
-            label="Expires (optional)"
-            value={expiresAt.value ?? null}
-            onChange={(newValue) => {
-              expiresAt.value = newValue ?? undefined;
-            }}
-            disablePast
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                error: !!getFieldError('expiresAt'),
-                helperText:
-                  getFieldError('expiresAt') ||
-                  'Code stops working after this date, regardless of remaining uses.',
-              },
-            }}
-          />
-
-          <FormControl fullWidth required error={!!getFieldError('status')}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={status.value}
-              label="Status"
-              onChange={(e) =>
-                (status.value = e.target.value as DiscountStatus)
-              }
-            >
-              {DISCOUNT_STATUSES.map((s) => (
-                <MenuItem key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </MenuItem>
-              ))}
-            </Select>
-            {getFieldError('status') && (
-              <FormHelperText>{getFieldError('status')}</FormHelperText>
-            )}
-          </FormControl>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={isSubmitting}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={isSubmitting}
-        >
-          {isSubmitting
-            ? 'Saving...'
-            : discount
-              ? 'Update'
-              : 'Create'}
-        </Button>
-      </DialogActions>
+            {isSubmitting ? 'Saving...' : discount ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
       </Dialog>
     </LocalizationProvider>
   );

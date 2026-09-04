@@ -583,7 +583,7 @@ export function MusicTogetherRegistrationWidget({
         functions,
         'lookupDiscount'
       );
-      const result = await call({ code });
+      const result = await call({ code, program: 'music-together' });
       const discount = result.data.discount;
       if (!discount) {
         setAppliedDiscount(null);

@@ -47,8 +47,54 @@ on the same number.
   single-use pilot code on a declined card would lock the family out of the offer entirely. (Customer
   *cancellation* still consumes it, unchanged.)
 
+### Program scoping: codes belong to one checkout, and two filtered admin pages
+
+Shipped in the same PR, because the feature is unsafe without it. `Discount` had **no scoping at
+all** — `appliesTo` is only `'order' | 'nth-slot-onward'`, and both checkouts did a bare
+`findByCode`. A `PILOTCLASS` created for Music Together would also have taken 50% off any Maple &
+Spruce craft class. The two programs settle to **different Square accounts owned by different
+businesses**, so that isn't a discount bug, it's money moving between two companies' books.
+
+`Discount.program` (`'classes' | 'music-together'`) is now enforced at four places that must agree:
+the public `lookupDiscount`, the classes price preview (`calculateRegistrationCost`), the
+authoritative classes charge (`reserveClassRegistration`), and `createMusicTogetherRegistration`.
+Wrong-program codes are refused on the **same branch, with the same wording**, as unknown codes —
+`lookupDiscount` is unauthenticated, so a distinct message would let anyone enumerate the other
+business's live promotions.
+
+**Four decisions worth remembering.**
+
+- **Legacy documents back-fill to `classes`,** which is a statement of fact rather than a guess: MT
+  had no discount support before this, so every pre-existing code was authored for class checkout.
+  Defaulting the other way would silently expose Stephanie's account.
+- **Codes stay globally unique across programs.** A customer types a code without knowing which
+  program owns it, so one string must mean one thing everywhere. `createDiscount` names the owning
+  program in the collision message, because "already exists" is baffling to an mt-teacher who can't
+  see the classes code that collided.
+- **`program` is immutable, like `type`.** It isn't on `UpdateDiscountInput` at all — repointing a
+  live code would change what a customer holding it can buy.
+- **The role gate is two halves.** The four admin functions moved from admin-only to
+  `[Admin, MtTeacher]` so Stephanie can run her own promotions; `assertCanManageDiscountProgram` /
+  `discountProgramScopeForUser` then keep her off class codes. Reads **force** a non-admin to
+  `music-together` regardless of the requested program — the client's filter is never an
+  authorization input. Update and delete authorize on the **stored** program, the one whose money is
+  at stake.
+
+**The admin UI is one component, two pages.** `DiscountsManager` holds the entire experience;
+`/discounts` pins `program="classes"` and `/music-together/discounts` pins `music-together`, and
+they differ only in that plus their copy — so the two can't drift. The program is never a form
+field: the page already says which one you mean, and it's immutable afterwards. The per-slot
+"Applies To" control is hidden on the MT page (and rejected by the Vest suite) because MT prices a
+family, so a slot-scoped MT code could never be redeemed.
+
+**A composite index was required and would not have shown up in tests.** `findAll({ program })` runs
+on every load of both pages, and the Firestore emulator does not enforce composite indexes — the
+whole integration suite passed green while both pages would have 500'd in prod.
+`tools/check-firestore-indexes.ts` caught it; two `discounts` indexes are now declared.
+
 **Still to do (owner actions, not code):** create the `PILOTCLASS` discount in the admin Discounts
-page (50% / order / with a usage cap or expiry if the offer should close), then waive installment 2
+page — now under **Music Together → Discounts**, and it is stamped `music-together` automatically
+(50% / order / with a usage cap or expiry if the offer should close) — then waive installment 2
 for each family who registered before the offer. Anyone who paid **in full** before the offer needs a
 $126 refund through Cancel / refund instead — waiving does nothing for them.
 

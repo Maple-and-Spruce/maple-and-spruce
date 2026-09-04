@@ -549,6 +549,7 @@ describe('createMusicTogetherRegistration', () => {
     type: 'percent',
     percent: 50,
     status: 'active',
+    program: 'music-together',
     appliesTo: 'order',
     nthSlot: 1,
     usageLimit: null,
@@ -732,6 +733,20 @@ describe('createMusicTogetherRegistration', () => {
 
       // $252 x 1.5 = $378, then half off = $189.
       expect(result.amountChargedCents).toBe(18900);
+    });
+
+    it('rejects a Maple & Spruce class code (different business, same wording)', async () => {
+      // MT bills to Stephanie's separate Square account. Honoring a classes
+      // code here would move a discount between two companies' books — and a
+      // distinct message would leak which class promotions are live.
+      mocks.sectionFindById.mockResolvedValue(openFullOnly);
+      withFreshDoc({ program: 'classes' });
+
+      await expect(
+        run({ ...baseFamily, paymentPlan: 'full', discountCode: 'PILOTCLASS' })
+      ).rejects.toThrow('no longer valid');
+      expect(mocks.createPayment).not.toHaveBeenCalled();
+      expect(mocks.txSet).not.toHaveBeenCalled();
     });
 
     it('is a no-op when no code is sent', async () => {

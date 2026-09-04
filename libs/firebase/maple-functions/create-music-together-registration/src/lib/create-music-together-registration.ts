@@ -55,6 +55,7 @@ import {
   computeMusicTogetherFamilyPrice,
   mtApplyDiscount,
   isDiscountValid,
+  isDiscountForProgram,
 } from '@maple/ts/domain';
 import type { MusicTogetherFamilyPrice } from '@maple/ts/domain';
 import { musicTogetherRegistrationValidation } from '@maple/ts/validation';
@@ -154,7 +155,15 @@ async function resolveDiscount<Item extends { amountCents: number; dueAt: Date }
   }
 
   const discount = await DiscountRepository.findByCode(code);
-  if (!discount || !isDiscountValid(discount, now)) {
+  // Same branch, same wording, for a Maple & Spruce class code (#791): MT
+  // bills to Stephanie's separate Square account, so honoring one here would
+  // move a discount between two businesses' books — and a distinct message
+  // would leak which class promotions are live.
+  if (
+    !discount ||
+    !isDiscountValid(discount, now) ||
+    !isDiscountForProgram(discount, 'music-together')
+  ) {
     throwFailedPrecondition(
       `Discount code "${code}" is no longer valid. Please refresh and try again.`
     );

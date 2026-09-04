@@ -11,11 +11,13 @@ import {
   DISCOUNT_TYPES,
   DISCOUNT_STATUSES,
   DISCOUNT_APPLIES_TO,
+  DISCOUNT_PROGRAMS,
 } from '@maple/ts/domain';
 import type {
   DiscountType,
   DiscountStatus,
   DiscountAppliesTo,
+  DiscountProgram,
 } from '@maple/ts/domain';
 
 /**
@@ -27,6 +29,8 @@ export interface DiscountValidationInput {
   code?: string;
   type?: DiscountType;
   status?: DiscountStatus;
+  /** Which checkout the code works at; see `DiscountProgram`. */
+  program?: DiscountProgram;
   appliesTo?: DiscountAppliesTo;
   nthSlot?: number;
   /** Maximum redemptions; null/undefined = unlimited. */
@@ -92,6 +96,32 @@ export const discountValidation = staticSuite(
         enforce(data.status).inside(DISCOUNT_STATUSES);
       }
     });
+
+    // Program scoping (#791). Required: an unscoped code would read back as a
+    // classes code via the legacy back-fill, which is wrong for an MT code and
+    // moves money between two businesses' books.
+    test('program', 'Program is required', () => {
+      enforce(data.program).isNotBlank();
+    });
+
+    test('program', 'Program must be valid', () => {
+      if (data.program) {
+        enforce(data.program).inside(DISCOUNT_PROGRAMS);
+      }
+    });
+
+    // Music Together prices a family, not slots — `nth-slot-onward` has no
+    // meaning there and `mtApplyDiscount` rejects it at checkout. Catch it at
+    // authoring time so nobody creates a code that can never be redeemed.
+    test(
+      'appliesTo',
+      'Per-slot discounts do not apply to Music Together — additional children already get the sibling discount',
+      () => {
+        if (data.program === 'music-together') {
+          enforce(data.appliesTo).notEquals('nth-slot-onward');
+        }
+      }
+    );
 
     // Application-rule validation
     test('appliesTo', 'Application rule is required', () => {
