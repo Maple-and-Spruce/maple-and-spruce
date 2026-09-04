@@ -6,6 +6,40 @@
 
 ## Current Status
 
+### Lesson row actions: labelled primary + overflow, per-row progress (2026-09-04, #805)
+
+David: the lesson action buttons are vague, have no progress state, and are a weird pattern. Looking
+at it, **`LessonList` was the outlier, not the house style** — `StudentList` already uses a
+`MoreVert` overflow of labelled `MenuItem`s. So this removes a deviation rather than inventing a
+convention.
+
+What was actually there: three bare `IconButton`s with no tooltips (only `aria-label`, which helps a
+screen reader and does nothing for a sighted person hovering a mouse), an orange cancel a few pixels
+from the green mark-rendered at `size="small"`, and **no busy state at all** — the student detail
+page tracked `isSubmitting` and simply never passed it to `LessonList`. `MyDayLessonCard` had real
+labelled buttons but one page-wide `busy` boolean, so acting on one lesson froze every card in the
+day and nothing said which action was running.
+
+Now: **"Mark rendered" is a labelled button**, everything else is behind one overflow, and pending
+state is **per row and per action** (`{ lessonId, action }`), so the pressed control shows progress
+and its siblings stay live.
+
+**The bug the tests could never have caught.** MUI's `ListItem secondaryAction` positions its content
+*absolutely*, so the row text reserves no space for it. That was fine for three 20px icons and wrong
+the moment one became a labelled button: at 420px the button sat on top of the row's own chips. Found
+by screenshotting the story in Storybook at narrow width, per `.claude/rules/verification.md` — 19
+green interaction tests said nothing about it. The actions are now a real flex sibling with
+`flexShrink: 0`, and the text wraps around them.
+
+Two corrections to the issue as originally filed: cancelling a lesson **already** has a confirmation
+(`DeleteConfirmDialog` on the student page), and the missing double-click guard was never a
+double-billing risk — `createAutoLessonInvoice` uses a deterministic per-lesson invoice id. The cost
+was a user who could not tell whether their click landed.
+
+`InvoiceList` has the identical pattern (five bare icon buttons plus a nested menu) and is the
+obvious follow-up; left out to keep this reviewable and lesson-focused.
+
+
 ### Lesson inquiries land in the portal (2026-09-04, #795 / epic #793)
 
 An inquiry used to live in Tally and in Katie's inbox and nowhere else — `tallyLeadWebhook` fires two

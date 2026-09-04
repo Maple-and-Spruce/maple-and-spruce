@@ -30,6 +30,7 @@ import {
   HopeScholarshipBanner,
   LessonList,
   ScheduleLessonDialog,
+  type LessonPendingAction,
 } from '@maple/react/lessons';
 import { InvoiceBuilderDialog, InvoiceList } from '@maple/react/invoices';
 import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from '@maple/react/students';
@@ -78,6 +79,13 @@ export default function StudentDetailPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editLesson, setEditLesson] = useState<Lesson | undefined>();
   const [cancelLesson, setCancelLesson] = useState<Lesson | null>(null);
+  /**
+   * Which lesson action is in flight. The page already tracked `isSubmitting`
+   * but never passed it to `LessonList`, so rows showed no progress at all
+   * (#805). Per-lesson so one row saving does not freeze the list.
+   */
+  const [pendingLessonAction, setPendingLessonAction] =
+    useState<LessonPendingAction | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Invoice state
@@ -120,12 +128,14 @@ export default function StudentDetailPage() {
 
   const handleConfirmCancel = async () => {
     if (!cancelLesson) return;
+    setPendingLessonAction({ lessonId: cancelLesson.id, action: 'cancel' });
     setIsSubmitting(true);
     try {
       await updateLesson({ id: cancelLesson.id, status: 'cancelled' });
       setCancelLesson(null);
     } finally {
       setIsSubmitting(false);
+      setPendingLessonAction(null);
     }
   };
 
@@ -196,11 +206,14 @@ export default function StudentDetailPage() {
   };
 
   const handleMarkRendered = async (lesson: Lesson) => {
+    // Per-lesson, so the rest of the list stays live while this one saves.
+    setPendingLessonAction({ lessonId: lesson.id, action: 'mark-rendered' });
     setIsSubmitting(true);
     try {
       await updateLesson({ id: lesson.id, status: 'rendered' });
     } finally {
       setIsSubmitting(false);
+      setPendingLessonAction(null);
     }
   };
 
@@ -312,6 +325,7 @@ export default function StudentDetailPage() {
         onEdit={(lesson) => setEditLesson(lesson)}
         onCancel={(lesson) => setCancelLesson(lesson)}
         onMarkRendered={handleMarkRendered}
+        pendingAction={pendingLessonAction}
       />
 
       <Box

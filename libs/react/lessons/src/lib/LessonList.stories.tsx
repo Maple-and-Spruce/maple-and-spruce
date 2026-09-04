@@ -103,8 +103,14 @@ export const EditButtonCallsOnEdit: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const editButton = canvas.getByRole('button', { name: /edit lesson/i });
-    await userEvent.click(editButton);
+    await userEvent.click(
+      canvas.getByRole('button', { name: /^actions for the lesson/i })
+    );
+    await userEvent.click(
+      await within(document.body).findByRole('menuitem', {
+        name: /edit lesson/i,
+      })
+    );
 
     await waitFor(() => {
       expect(args.onEdit).toHaveBeenCalledTimes(1);
@@ -123,10 +129,14 @@ export const CancelButtonCallsOnCancel: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const cancelButton = canvas.getByRole('button', {
-      name: /cancel lesson/i,
-    });
-    await userEvent.click(cancelButton);
+    await userEvent.click(
+      canvas.getByRole('button', { name: /^actions for the lesson/i })
+    );
+    await userEvent.click(
+      await within(document.body).findByRole('menuitem', {
+        name: /cancel lesson/i,
+      })
+    );
 
     await waitFor(() => {
       expect(args.onCancel).toHaveBeenCalledTimes(1);
@@ -145,10 +155,7 @@ export const CancelledLessonHasNoActionButtons: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      canvas.queryByRole('button', { name: /edit lesson/i })
-    ).toBeNull();
-    expect(
-      canvas.queryByRole('button', { name: /cancel lesson/i })
+      canvas.queryByRole('button', { name: /^actions for the lesson/i })
     ).toBeNull();
   },
 };
@@ -163,10 +170,7 @@ export const RenderedLessonHasNoActionButtons: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      canvas.queryByRole('button', { name: /edit lesson/i })
-    ).toBeNull();
-    expect(
-      canvas.queryByRole('button', { name: /cancel lesson/i })
+      canvas.queryByRole('button', { name: /^actions for the lesson/i })
     ).toBeNull();
   },
 };
@@ -201,7 +205,7 @@ export const MarkRenderedShownOnPastScheduledLesson: Story = {
     const canvas = within(canvasElement);
     await waitFor(() => {
       expect(
-        canvas.getByRole('button', { name: /mark lesson as rendered/i })
+        canvas.getByRole('button', { name: /mark rendered/i })
       ).toBeInTheDocument();
     });
   },
@@ -217,11 +221,11 @@ export const MarkRenderedHiddenOnUpcomingLesson: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      canvas.queryByRole('button', { name: /mark lesson as rendered/i })
+      canvas.queryByRole('button', { name: /mark rendered/i })
     ).toBeNull();
     // Edit + Cancel still present
     expect(
-      canvas.getByRole('button', { name: /edit lesson/i })
+      canvas.getByRole('button', { name: /^actions for the lesson/i })
     ).toBeInTheDocument();
   },
 };
@@ -237,7 +241,7 @@ export const MarkRenderedHiddenWhenHandlerOmitted: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      canvas.queryByRole('button', { name: /mark lesson as rendered/i })
+      canvas.queryByRole('button', { name: /mark rendered/i })
     ).toBeNull();
   },
 };
@@ -252,7 +256,7 @@ export const MarkRenderedCallsHandler: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const button = canvas.getByRole('button', {
-      name: /mark lesson as rendered/i,
+      name: /mark rendered/i,
     });
     await userEvent.click(button);
     await waitFor(() => {
@@ -275,7 +279,87 @@ export const MarkRenderedHiddenOnRenderedRow: Story = {
     const canvas = within(canvasElement);
     // Already-rendered lesson shouldn't offer the action again
     expect(
-      canvas.queryByRole('button', { name: /mark lesson as rendered/i })
+      canvas.queryByRole('button', { name: /mark rendered/i })
     ).toBeNull();
+  },
+};
+
+
+// ============================================================
+// ACTION PATTERN (#805)
+// ============================================================
+
+/**
+ * The most common action in the studio — "this lesson happened" — is one
+ * labelled click. It used to be an unlabelled 20px green tick sitting beside an
+ * unlabelled orange cross that cancels the lesson.
+ */
+export const PrimaryActionIsLabelled: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button', { name: /mark rendered/i });
+    // A real word, not a tooltip and not an aria-label a mouse user never sees.
+    expect(button).toHaveTextContent(/mark rendered/i);
+  },
+};
+
+/** Everything else moves behind one overflow, the way StudentList already does. */
+export const SecondaryActionsLiveInTheOverflow: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonUpcomingSingle],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /^actions for the lesson/i })
+    );
+
+    const menu = within(document.body);
+    expect(
+      await menu.findByRole('menuitem', { name: /edit lesson/i })
+    ).toBeInTheDocument();
+    expect(
+      menu.getByRole('menuitem', { name: /cancel lesson/i })
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A row mid-save says so on the control that was pressed, and the other rows
+ * stay live. Before this there was no busy state at all: the page tracked
+ * `isSubmitting` and never passed it down.
+ */
+export const PendingRowShowsProgressAndDoesNotFreezeOthers: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled, mockLessonUpcomingSingle],
+    } as RequestState<Lesson[]>,
+    pendingAction: {
+      lessonId: mockLessonPastScheduled.id,
+      action: 'mark-rendered',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const marking = await canvas.findByRole('button', { name: /marking/i });
+    expect(marking).toBeDisabled();
+
+    // The other row's overflow is untouched.
+    const triggers = canvas.getAllByRole('button', {
+      name: /^actions for the lesson/i,
+    });
+    expect(triggers.some((t) => !(t as HTMLButtonElement).disabled)).toBe(true);
   },
 };
