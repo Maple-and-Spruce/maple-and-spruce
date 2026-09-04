@@ -12,7 +12,9 @@ admin.
 When a Music Together registration is created, updated, or deleted, this
 function:
 
-1. Skips writes that can't change the family count (see `COUNT_RELEVANT_FIELDS`)
+1. Skips writes that can't change the family count (see `COUNT_RELEVANT_FIELDS`) —
+   the registration document doubles as the per-family bookkeeping channel, so
+   reminder stamps and payment-method swaps land on it too
 2. Extracts the `sectionId` from the registration document
 3. Looks up the section (skips if missing or not visible)
 4. Counts enrolled families (`MT_CAPACITY_STATUSES`)

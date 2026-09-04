@@ -29,10 +29,15 @@ there. Classes have had the equivalent trigger since #143 (`syncRegistrationCoun
   the heaviest bundle, to save one Cloud Run service. The other zero-function option (having
   create/cancel touch the section doc so the existing trigger fires) works but makes the data flow
   implicit; the explicit trigger is what a reader will find when this breaks again.
-- **The guard is not optional here.** MT registrations are rewritten by every installment charge.
-  Without `COUNT_RELEVANT_FIELDS` (`sectionId`, `status`) each Week-5 charge would fire a Webflow
-  publish that produces byte-identical field data. `children` is deliberately *absent* from that
-  list — capacity is per family, so adding a sibling consumes no spot.
+- **The guard is load-bearing, not an optimization.** The registration document doubles as the
+  per-family bookkeeping channel: `sendMusicTogetherReminders` calls `markReminderSentForSession`
+  once per family per session, so every reminder day rewrites every enrolled family's document.
+  Without `COUNT_RELEVANT_FIELDS` (`sectionId`, `status`) a 12-session term would fire
+  (families × 12) Webflow publishes producing byte-identical field data. `children` is deliberately
+  *absent* from that list — capacity is per family, so adding a sibling consumes no spot.
+  (The Week-5 installment job writes `musicTogetherScheduledCharges`, not the registration doc —
+  it only reads the registration.) That a hand-maintained field allowlist is what stands between a
+  bookkeeping write and an outbound publish is the argument for #802.
 - **Hidden sections are skipped, not synced.** A hidden section has no CMS item (the section trigger
   removes it); syncing one here would resurrect a card that was deliberately pulled.
 

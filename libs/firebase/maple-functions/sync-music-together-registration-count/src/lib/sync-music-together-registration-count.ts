@@ -61,9 +61,15 @@ export function extractSectionId(
  * Capacity is counted per family, not per child, so `children` is deliberately
  * absent — adding a sibling doesn't consume another spot. If none of these
  * changed, syncing would produce the same result and we can skip the
- * (expensive) Webflow call — which also prevents a trigger feedback loop when
- * an unrelated field is updated (installment charges rewrite payment fields and
- * `updatedAt` on every cycle).
+ * (expensive) Webflow call.
+ *
+ * This is load-bearing, not just an optimization: the registration document is
+ * also the write channel for per-family bookkeeping. `sendMusicTogetherReminders`
+ * calls `markReminderSentForSession` once per family per session, so every
+ * reminder day rewrites every enrolled family's document. Without this guard a
+ * 12-session term would fire (families x 12) Webflow publishes producing
+ * byte-identical field data. `updateMusicTogetherPaymentMethod` is the other
+ * non-count writer.
  */
 const COUNT_RELEVANT_FIELDS = ['sectionId', 'status'] as const;
 
@@ -115,10 +121,9 @@ export const syncMusicTogetherRegistrationCount = onDocumentWritten(
   async (event) => {
     const change: Change<DocumentSnapshot> = event.data!;
 
-    // Guard: skip if the write didn't change any count-relevant fields, so an
-    // unrelated update (e.g. an installment charge writing squarePaymentId and
-    // updatedAt) doesn't re-fire a Webflow sync that would produce the same
-    // field data.
+    // Guard: skip if the write didn't change any count-relevant fields, so
+    // per-family bookkeeping (a reminder stamp, a payment-method swap) doesn't
+    // re-fire a Webflow sync that would produce the same field data.
     if (!isCountRelevantChange(change.before, change.after)) {
       console.log(
         'MT registration write did not change count-relevant fields, skipping sync'

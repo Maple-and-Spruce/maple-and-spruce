@@ -187,19 +187,20 @@ describe('Sync Music Together Registration Count', () => {
       ).toBe(true);
     });
 
-    it('returns false when an installment charge writes payment fields', () => {
+    it('returns false when a reminder stamp or payment field is written', () => {
       expect(
         isCountRelevantChange(
           makeSnapshot(true, {
             sectionId: 'section-001',
             status: 'confirmed',
-            squarePaymentId: null,
+            squareCardId: 'card-old',
             updatedAt: new Date('2026-01-01'),
           }),
           makeSnapshot(true, {
             sectionId: 'section-001',
             status: 'confirmed',
-            squarePaymentId: 'sq-pay-123',
+            squareCardId: 'card-new',
+            reminderSentForSessions: { '2026-09-10T14:00:00.000Z': new Date() },
             updatedAt: new Date('2026-01-02'),
           })
         )
