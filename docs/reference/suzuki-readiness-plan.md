@@ -23,31 +23,35 @@ Full audit with evidence: https://claude.ai/code/artifact/2ca96438-5a39-4ee2-a6f
 
 Do them in order unless a slice says otherwise. Each is one PR.
 
-| # | Issue | Slice | Status | Blocked by |
+| # | Issue | Slice | Status | Note |
 |---|---|---|---|---|
-| 1 | #794 | Suzuki intake form + Meta/GA4 attribution + acknowledgement | **in review** | — |
-| 2 | #795 | Persist lesson inquiries + `/leads` queue | ready | — |
-| 3 | #805 | Lesson action UX: primary action + overflow menu, per-action progress | ready | — |
-| 4 | #796 | `no-show` lesson status + Needs Attention queue | ready | do after #805 |
-| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | ready | — |
-| 6 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
-| 7 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
-| 8 | #804 | Hope EMA export + payouts at *paid* + editable rates | **blocked** | EMA format + backfill Qs |
+| 1 | #794 | Suzuki intake form + Meta/GA4 attribution | **in review** (PR #803) | merge + the 4 manual steps |
+| 2 | #795 | Persist lesson inquiries + `/leads` queue | **next** | ad goes live in ~2 weeks |
+| 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | ready | do before #796 |
+| 4 | #796 | `no-show` lesson status + billing behaviour | ready | **blocks #799** |
+| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | ready | the revenue |
+| 6 | #807 | Needs Attention queue | ready | after #799, so it can carry the Hope row |
+| 7 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
+| 8 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
+| 9 | #804 | Hope EMA export + payouts at *paid* + editable rates | **blocked** | EMA format + backfill Qs |
 
-**Value checkpoints.** The ad can run once #794 and #795 are deployed. A real teaching week is safe
-once #796 and #797 land. #798 is the largest customer-facing win and is already being done by hand
-every month, so it is a legitimate candidate to pull ahead of #797 — but note the dependency runs the
-other way for quality: billing rules anchor to "a day before a scheduled lesson", and #797 is what
-makes future anchors computable rather than dependent on how far materialisation has run.
+**Order set 2026-09-04** from two answers: the Suzuki ad goes live in about two weeks, and among
+everything else the unrecorded Hope revenue matters most.
 
-**#796 and #797 are the two Katie and Nathan feel every week.** #796 is the state their week produces
-that the model cannot express; #797 is the clunkiness of managing rows instead of arrangements.
+**What the ad actually needs is #794, not #795.** Merging #794 and doing its four manual steps is what
+makes the spend measurable; #795 is what stops leads rotting in an inbox once volume arrives. If the
+ad has to go on before #795 lands, that is survivable — it is how the site works today — but do not
+let it run long that way.
 
-**#799 is the one with money accruing right now.** Nathan is teaching a Hope-covered guitar student
-today, with the guitar listing still pending approval, and the portal has nowhere to record it. That
-is why it moved ahead of #797 and #798. It does **not** block starting: backdated lesson entry
-already works (no future-date constraint in `lessonValidation`, no `disablePast` in the dialog), so
-the record can begin accumulating by hand before any of this ships.
+**The path to Hope revenue is #805 → #796 → #799.** #796 is the load-bearing one: without a `no-show`
+status, a Hope lesson nobody attended has to be recorded as `cancelled` (losing the fact) or
+`rendered` (and would be submitted to EMA as a service never rendered). #805 comes first only because
+#796 adds a fourth action to a row of unlabeled icon buttons.
+
+**Nothing here gates starting.** Backdated lesson entry already works — no future-date constraint in
+`lessonValidation`, no `disablePast` in the dialog — so Nathan's Hope lessons can be entered and
+marked rendered by hand today, as long as a `LessonBlock` covers that weekday and time. Hope pays
+backwards, so every one entered is claimable.
 
 ---
 
