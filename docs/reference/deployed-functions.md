@@ -223,6 +223,7 @@ Webflow CMS synchronization. Isolates `webflow-api`.
 - `syncMusicTogetherSectionToWebflow` — Firestore trigger: syncs Music Together section data to Webflow CMS (`visible` sections; enriches spots-remaining from live family count; sends the derived section status)
 - `syncMusicTogetherSemesterToWebflow` — Firestore trigger: syncs Music Together semester (term) data to Webflow CMS (all statuses incl. `planned`; only removed on delete)
 - `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)
+- `syncMusicTogetherRegistrationCount` — Firestore trigger: re-syncs a Music Together section to Webflow when its registrations change (spots remaining, and the derived `open` → `full` status). The MT mirror of `syncRegistrationCount`: the section trigger above only fires on writes to the *section* document, so without this a family registering left the public card showing the count captured at the last admin edit.
 - `expirePastClassPages` _(scheduled — daily 3:30 AM ET)_ — unpublishes the Webflow CMS item for any class whose last session has ended, so past `/classes/{slug}` detail pages drop out of the live site and the sitemap. Unpublishes rather than deletes (item keeps its ID + slug and republishes if rescheduled). No-ops in dev.
 
 ### Etsy OAuth
