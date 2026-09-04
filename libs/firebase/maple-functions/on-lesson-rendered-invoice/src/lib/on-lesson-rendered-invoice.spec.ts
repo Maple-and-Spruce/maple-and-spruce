@@ -31,7 +31,11 @@ vi.mock('@maple/firebase/database', () => ({
   LessonRatesConfigRepository: { get: mocks.getRatesConfig },
 }));
 
-vi.mock('@maple/ts/domain', () => ({
+// Partial mock: only the rate resolver is stubbed. `didConsumeSlot` is pure
+// domain logic and the thing under test here is precisely which statuses bill,
+// so mocking it would test the mock instead of the rule.
+vi.mock('@maple/ts/domain', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@maple/ts/domain')>()),
   resolvePrivatePayLessonRateCents: mocks.resolveRate,
 }));
 
@@ -65,6 +69,8 @@ const renderedLesson = {
   teacherId: 'teacher-1',
   status: 'rendered',
 };
+
+const noShowLesson = { ...renderedLesson, status: 'no-show' };
 
 const autoStudent = {
   id: 'student-1',
@@ -169,6 +175,64 @@ describe('onLessonRenderedInvoice', () => {
 
   it('does nothing when the lesson was deleted (no after doc)', async () => {
     await handler(makeEvent('scheduled', null));
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  // ── no-show billing (#796) ───────────────────────────────────────────────
+  //
+  // Studio policy: a private-pay no-show is charged (the slot was held, the
+  // teacher was there). A Hope no-show is charged to NOBODY — Hope pays only
+  // for services rendered and the family does not owe it privately. Both of
+  // these are money, in opposite directions, so both are covered explicitly.
+
+  it('invoices a private-pay no-show, because the slot was held', async () => {
+    await handler(makeEvent('scheduled', noShowLesson));
+
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('says the charge is for a missed lesson, not for a lesson', async () => {
+    // A family billed for "30-min lesson on Jul 10" when nobody attended will
+    // dispute it, and they would be right to.
+    await handler(makeEvent('scheduled', noShowLesson));
+
+    const [, payload] = mocks.create.mock.calls[0];
+    expect(payload.lineItems[0].description).toMatch(/missed lesson/i);
+    expect(payload.lineItems[0].description).not.toMatch(/^30-min lesson/i);
+  });
+
+  it('never invoices a Hope Scholarship no-show', async () => {
+    // Hope pays only for services rendered, and the family does not owe it
+    // privately either. The studio absorbs it.
+    mocks.findById.mockResolvedValue({
+      ...autoStudent,
+      isHopeScholarship: true,
+    });
+
+    await handler(makeEvent('scheduled', noShowLesson));
+
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('does not invoice twice when a rendered lesson is corrected to no-show', async () => {
+    // Both statuses bill, so the guard has to compare the EDGE, not just the
+    // new status — otherwise fixing a mis-tap charges the family a second time.
+    await handler(makeEvent('rendered', noShowLesson));
+
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('does not invoice twice when a no-show is corrected to rendered', async () => {
+    await handler(makeEvent('no-show', renderedLesson));
+
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('does not invoice a cancellation', async () => {
+    await handler(
+      makeEvent('scheduled', { ...renderedLesson, status: 'cancelled' })
+    );
+
     expect(mocks.create).not.toHaveBeenCalled();
   });
 });

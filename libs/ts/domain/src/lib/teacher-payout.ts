@@ -21,6 +21,7 @@ import {
 } from './instructor';
 import type { Invoice } from './invoice';
 import type { Lesson, LessonStatus } from './lesson';
+import { isSubmittableToHope } from './lesson';
 import { wasTaughtBySubstitute } from './lesson';
 import type { Student, LessonLength } from './student';
 import { getHopePerLessonRateCents } from './hope-rates';
@@ -118,6 +119,11 @@ export function computeLessonCompensationCents(
  * Lessons with these statuses are excluded from payouts entirely:
  * cancelled never earns the teacher anything; scheduled isn't paid yet
  * (private) or rendered yet (Hope).
+ *
+ * A **no-show** splits the two sources, which is the whole point of it being
+ * its own status (#796): a private-pay no-show is billed, so once that invoice
+ * is paid the teacher is owed their share; a Hope no-show is billed to nobody
+ * and therefore earns nothing.
  */
 export function isLessonPayoutEligible(
   status: LessonStatus,
@@ -128,8 +134,10 @@ export function isLessonPayoutEligible(
     // the lesson status — we accept any lesson status except cancelled.
     return status !== 'cancelled';
   }
-  // Hope rendered — the lesson itself must be rendered.
-  return status === 'rendered';
+  // Hope rendered — the lesson itself must genuinely have been rendered.
+  // Routed through the shared helper so this and the EMA submission queue
+  // (#799) can never disagree about what Hope may be billed for.
+  return isSubmittableToHope(status);
 }
 
 /**
