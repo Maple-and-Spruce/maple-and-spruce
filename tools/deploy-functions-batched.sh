@@ -114,6 +114,13 @@ FIREBASE_CMD="${FN_DEPLOY_FIREBASE_CMD:-pnpm exec firebase}"
 # Mints a fresh OAuth access token from the keyless credential gcloud holds.
 # Overridable for the same reason as FIREBASE_CMD.
 TOKEN_CMD="${FN_DEPLOY_TOKEN_CMD:-gcloud auth print-access-token}"
+# Bound the refresh. A gcloud that HANGS (no credential to prompt against, a
+# wedged metadata server) would otherwise stall a deploy indefinitely — strictly
+# worse than the expiry this refresh exists to fix, since we already hold a
+# token that may well still work. `timeout` is coreutils, present on the CI
+# runners; where it is missing we run unbounded, which is what a stubbed or
+# local invocation wants anyway.
+TOKEN_TIMEOUT="${FN_DEPLOY_TOKEN_TIMEOUT:-30}"
 
 # Replace FIREBASE_DEPLOY_TOKEN with a freshly minted one.
 #
@@ -121,9 +128,12 @@ TOKEN_CMD="${FN_DEPLOY_TOKEN_CMD:-gcloud auth print-access-token}"
 # problem leaves the existing token in place and we carry on. The token is
 # never echoed — only whether the refresh worked.
 refresh_deploy_token() {
-  local fresh
-  # shellcheck disable=SC2086  # TOKEN_CMD is a command line; it must split.
-  if ! fresh="$($TOKEN_CMD 2>/dev/null)"; then
+  local fresh cmd="$TOKEN_CMD"
+  if command -v timeout >/dev/null 2>&1; then
+    cmd="timeout $TOKEN_TIMEOUT $cmd"
+  fi
+  # shellcheck disable=SC2086  # cmd is a command line; it must word-split.
+  if ! fresh="$($cmd 2>/dev/null)"; then
     echo "--- token refresh unavailable; reusing the existing token"
     return 0
   fi

@@ -272,6 +272,10 @@ describe('deploy-functions-batched.sh', () => {
           FN_DEPLOY_BATCH_PAUSE: '0',
           FN_DEPLOY_RETRY_BACKOFF: '0',
           FN_DEPLOY_QUOTA_BACKOFF: '0',
+          // This spec spawns the script directly rather than through run(),
+          // so it must stub the token command itself — otherwise it shells out
+          // to a real gcloud, which hangs on a runner with no credential.
+          FN_DEPLOY_TOKEN_CMD: 'exit 1',
         },
       },
     );
@@ -359,6 +363,33 @@ describe('deploy-functions-batched.sh', () => {
       expect(tokens).toEqual(['stub-token']);
       expect(output).toMatch(/returned nothing/i);
     });
+
+    // `timeout` is coreutils: present on the Linux CI runners, absent from a
+    // stock macOS. The bound only exists where the binary does, so the
+    // assertion runs only there rather than pretending to be portable.
+    const hasTimeout =
+      spawnSync('/bin/bash', ['-c', 'command -v timeout'], { encoding: 'utf8' })
+        .status === 0;
+
+    it.skipIf(!hasTimeout)(
+      'gives up on a hung refresh instead of stalling the deploy',
+      () => {
+        // A gcloud that never returns would be strictly worse than the expiry
+        // this refresh fixes — we already hold a token that may still work.
+        const { status, tokens, output } = run(targets(3), [OK], {
+          // `exec` so the stub BECOMES the sleep rather than parenting it:
+          // a real gcloud is one process, and a grandchild left holding the
+          // pipe would keep the command substitution open after the kill —
+          // testing the stub's shape rather than the script's behaviour.
+          FN_DEPLOY_TOKEN_CMD: writeShellStub('gcloud-hangs.sh', 'exec sleep 30'),
+          FN_DEPLOY_TOKEN_TIMEOUT: '1',
+        });
+
+        expect(status).toBe(0);
+        expect(tokens).toEqual(['stub-token']);
+        expect(output).toMatch(/token refresh unavailable/i);
+      },
+    );
 
     it('never prints the token', () => {
       const { output } = run(targets(3), [OK], {
