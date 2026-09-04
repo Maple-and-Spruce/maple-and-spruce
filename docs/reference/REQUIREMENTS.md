@@ -15,9 +15,9 @@
 | Admin platform | ✅ Built | Artist/product/class/lesson management |
 | Public website | ✅ Live | Webflow with registration widget |
 | Classes | ✅ Built | Online registration + payment via Square |
-| Music lessons | ✅ Built | Admin-driven registration, scheduling, invoicing, payouts |
+| Music lessons | ⚠️ Partial | Admin scheduling, blocks, per-lesson invoicing and payouts built. Lead capture, no-show handling, series top-up and automatic billing are gaps — see epic #793 |
 
-**Key insight**: Website, classes, and music lesson infrastructure are built. Next: sales tracking when store opens.
+**Key insight**: Website and classes are built. The music lesson *admin surface* is built; the funnel in front of it and the billing automation behind it are not. Epic #793 closes that, with the plan in `docs/reference/suzuki-readiness-plan.md`.
 
 ---
 
@@ -70,9 +70,9 @@
 - [ ] Registration flow (link to booking)
 
 **2c. Music Lesson Information**
-- [ ] Music program overview pages
-- [ ] Teacher profiles (when ready)
-- [ ] Inquiry/contact form for lessons
+- [x] Music program overview pages (`/music`, `/music-lessons`, `/suzuki`)
+- [x] Teacher profiles (`/instructors/katie-mccoy`, `/instructors/nathan-zucker`)
+- [x] Inquiry/contact form for lessons (Tally `dWPQOr`; Suzuki has its own, see #794)
 
 ### Phase 3: Classes & Workshops - Epic #9
 *Online registration and payment for crafting classes*
@@ -87,7 +87,12 @@
 - [ ] Admin: view registrations, class rosters
 - [ ] Instructor payout tracking
 
-### Phase 4: Music Lessons - Epic #10 ✅ COMPLETE
+### Phase 4: Music Lessons - Epic #10 ✅ COMPLETE (admin surface only)
+
+> The checklist below is accurate: every item shipped. What it does not cover is the customer
+> funnel, the states a real teaching week produces (no-show, a series running out), or billing that
+> does not require a family to act every week. Those are epic **#793** —
+> `docs/reference/suzuki-readiness-plan.md`.
 *Admin-driven registration, scheduling, invoicing, and payout tracking for Suzuki method instruction*
 
 **Key design decisions:**
@@ -135,7 +140,7 @@
 - [x] PeriodPicker + TeacherPayoutsList with Hope/Private/Substitute chips
 - [x] `/payouts` admin page + Music Lessons nav entry
 
-**Deferred from Phase 4:**
+**Deferred from Phase 4** (all now tracked under epic #793):
 - Lesson packages (buy 4 get 1 free) — not needed at launch
 - Teacher availability/calendar management — using external scheduling for now
 - Public music teacher profiles on Webflow — blocked on instructor-to-Webflow sync (#147, #148)

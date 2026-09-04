@@ -24,6 +24,7 @@ const META_PIXEL_ID_MUSIC_TOGETHER = 'test-mt-pixel-id';
 // Live Tally form ids the function routes on.
 const MAPLE_SPRUCE_FORM_ID = '0QPRq9';
 const MUSIC_TOGETHER_FORM_ID = 'q4Qj8d';
+const SUZUKI_INTERVIEW_FORM_ID = 'QKQb6k';
 
 const WEBHOOK_URL = `${EMULATOR_CONFIG.functionsHost}/${EMULATOR_CONFIG.projectId}/${EMULATOR_CONFIG.region}/tallyLeadWebhook`;
 const GA4_MOCK_URL = EMULATOR_CONFIG.ga4MockServerUrl;
@@ -400,6 +401,42 @@ describe('tallyLeadWebhook', () => {
       expect(metaBody.data[0].custom_data).toMatchObject({
         content_name: 'music-together-updates',
         content_category: 'newsletter',
+      });
+    });
+
+    // The /suzuki landing page is the only paid-traffic destination whose lead
+    // is worth ~$130/month of instruction. It reports to the Maple & Spruce
+    // pixel like the newsletter does, so `content_category` is the only thing
+    // separating a lesson inquiry from an email signup inside that dataset —
+    // and the ad account optimizes against whatever it is told the event is.
+    it('reports a Suzuki interview request as a lesson inquiry, not a newsletter signup', async () => {
+      const result = await postWebhook({
+        body: tallyPayload({
+          email: 'suzuki-parent@example.com',
+          formId: SUZUKI_INTERVIEW_FORM_ID,
+        }),
+        signWith: TALLY_SECRET,
+      });
+      expect(result.status).toBe(200);
+
+      const metaRequests = await getMetaRequests();
+      expect(metaRequests).toHaveLength(1);
+      expect(metaRequests[0].pixelId).toBe(META_PIXEL_ID);
+
+      const metaBody = metaRequests[0].body as {
+        data: Array<{ custom_data: Record<string, unknown> }>;
+      };
+      expect(metaBody.data[0].custom_data).toMatchObject({
+        content_name: 'suzuki-interview',
+        content_category: 'lesson-inquiry',
+      });
+
+      const ga4Body = (await getGa4Requests())[0].body as {
+        events: Array<{ params: Record<string, string> }>;
+      };
+      expect(ga4Body.events[0].params).toMatchObject({
+        form_name: 'suzuki-interview',
+        form_id: SUZUKI_INTERVIEW_FORM_ID,
       });
     });
   });

@@ -105,16 +105,48 @@ export interface TallyFormAttribution {
   /** Lead list name, reported as GA4 `form_name` / Meta `content_name`. */
   formName: string;
   audience: TallyLeadAudience;
+  /**
+   * Meta `content_category`. Not cosmetic: it is how a newsletter signup and a
+   * lesson inquiry stay distinguishable inside one pixel, which matters
+   * because they are worth wildly different amounts and Meta optimizes against
+   * whatever it is told they are. Keep in sync with the browser half, which
+   * sends the same value on the same `eventID`.
+   */
+  contentCategory: string;
 }
 
 // A Map, not an object literal: the key comes straight off the request body,
 // and a plain-object lookup for "constructor" / "toString" would return an
 // Object.prototype member instead of falling through to the default.
 const TALLY_FORM_ATTRIBUTION = new Map<string, TallyFormAttribution>([
-  ['0QPRq9', { formName: 'email-signup', audience: 'maple-spruce' }],
+  [
+    '0QPRq9',
+    {
+      formName: 'email-signup',
+      audience: 'maple-spruce',
+      contentCategory: 'newsletter',
+    },
+  ],
   [
     'q4Qj8d',
-    { formName: 'music-together-updates', audience: 'music-together' },
+    {
+      formName: 'music-together-updates',
+      audience: 'music-together',
+      contentCategory: 'newsletter',
+    },
+  ],
+  // Suzuki lesson interview requests from the /suzuki ad landing page. A
+  // separate form from `dWPQOr` (Music Lesson Inquiry, still serving /music and
+  // /music-lessons) precisely so paid Suzuki traffic is attributable on its own
+  // — and so the ad account optimizes against interview requests rather than
+  // against the newsletter, which is a far cheaper and far less valuable event.
+  [
+    'QKQb6k',
+    {
+      formName: 'suzuki-interview',
+      audience: 'maple-spruce',
+      contentCategory: 'lesson-inquiry',
+    },
   ],
 ]);
 
@@ -126,6 +158,7 @@ const TALLY_FORM_ATTRIBUTION = new Map<string, TallyFormAttribution>([
 export const DEFAULT_FORM_ATTRIBUTION: TallyFormAttribution = {
   formName: 'email-signup',
   audience: 'maple-spruce',
+  contentCategory: 'newsletter',
 };
 
 export function resolveFormAttribution(formId?: string): TallyFormAttribution {
@@ -317,14 +350,15 @@ function sendLeadToMeta(
     pixelId: string;
     accessToken: string;
     formName: string;
+    contentCategory: string;
     eventId?: string;
   }
 ): Promise<void> {
-  const { formName, eventId, ...capiConfig } = config;
+  const { formName, contentCategory, eventId, ...capiConfig } = config;
 
   const customData: Record<string, string> = {
     content_name: formName,
-    content_category: 'newsletter',
+    content_category: contentCategory,
   };
   if (lead.utmSource) customData['utm_source'] = lead.utmSource;
   if (lead.utmMedium) customData['utm_medium'] = lead.utmMedium;
@@ -443,6 +477,7 @@ export const tallyLeadWebhook = onRequest(
         pixelId,
         accessToken: metaCapiToken.value(),
         formName: attribution.formName,
+        contentCategory: attribution.contentCategory,
         eventId: leadEventId(payload.data?.submissionId),
       }),
     ]);

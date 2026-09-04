@@ -22,13 +22,42 @@ describe('resolveFormAttribution', () => {
     expect(resolveFormAttribution('0QPRq9')).toEqual({
       formName: 'email-signup',
       audience: 'maple-spruce',
+      contentCategory: 'newsletter',
     });
+  });
+
+  it('routes the Suzuki interview form to Maple & Spruce as a lesson inquiry', () => {
+    // The whole point of giving /suzuki its own form: paid Suzuki traffic has
+    // to be attributable separately from the newsletter, and it has to reach
+    // Meta as something other than a newsletter signup so the ad account
+    // optimizes for interview requests.
+    expect(resolveFormAttribution('QKQb6k')).toEqual({
+      formName: 'suzuki-interview',
+      audience: 'maple-spruce',
+      contentCategory: 'lesson-inquiry',
+    });
+  });
+
+  it('does not report a Suzuki interview request as a newsletter signup', () => {
+    const suzuki = resolveFormAttribution('QKQb6k');
+    expect(suzuki.formName).not.toBe(DEFAULT_FORM_ATTRIBUTION.formName);
+    expect(suzuki.contentCategory).not.toBe(
+      DEFAULT_FORM_ATTRIBUTION.contentCategory
+    );
+  });
+
+  it('leaves the shared Music Lesson Inquiry form on the default attribution', () => {
+    // dWPQOr still serves /music and /music-lessons (fiddle, harp, old-time).
+    // It is deliberately NOT mapped: only the Suzuki funnel is being split out
+    // here, and an unmapped form must still report rather than drop.
+    expect(resolveFormAttribution('dWPQOr')).toEqual(DEFAULT_FORM_ATTRIBUTION);
   });
 
   it('routes the Music Together signup form to the Music Together dataset', () => {
     expect(resolveFormAttribution('q4Qj8d')).toEqual({
       formName: 'music-together-updates',
       audience: 'music-together',
+      contentCategory: 'newsletter',
     });
   });
 
