@@ -18,6 +18,7 @@ import type {
   LookupDiscountRequest,
   LookupDiscountResponse,
 } from '@maple/ts/firebase/api-types';
+import { BACKFILL_PROGRAM } from '../../../tools/backfill-discount-program-core';
 import type {
   PercentDiscountData,
   AmountDiscountData,
@@ -735,14 +736,19 @@ describe('Discount program scoping', () => {
       expect(new Set(programs)).toEqual(new Set(['music-together']));
     });
 
-    it('THE BUG: a legacy code with no stored program still lists on the classes page', async () => {
-      // Firestore equality filters do NOT match documents that lack the field,
-      // so `where('program','==','classes')` silently drops every code written
-      // before scoping existed — emptying the classes Discounts page of all
-      // real codes. The read-time back-fill in `docToDiscount` cannot help: it
-      // runs on documents the query already returned.
-      await setFirestoreDoc('discounts', 'legacy-listed', {
-        code: 'LEGACYLISTED',
+    it('THE PREREQUISITE: an unbackfilled code is invisible to BOTH pages', async () => {
+      // Firestore: "A document is included in the index only if it has an
+      // indexed value set for every field used in the index... the document
+      // will never be returned as a result for any query based on the index."
+      // https://firebase.google.com/docs/firestore/query-data/index-overview
+      //
+      // `!=` is no escape either. So a discount written before scoping (#791)
+      // cannot be listed by a program-filtered query at all — which is why
+      // tools/backfill-discount-program.ts is a HARD PREREQUISITE for these
+      // pages, not a tidy-up. This test exists so that is a stated contract
+      // rather than a surprise.
+      await setFirestoreDoc('discounts', 'legacy-unbackfilled', {
+        code: 'LEGACYUNBACKFILLED',
         type: 'percent',
         percent: 10,
         description: 'Written before program scoping existed',
@@ -755,7 +761,43 @@ describe('Discount program scoping', () => {
         updatedAt: new Date().toISOString(),
       });
 
-      const result = await callFunction<
+      for (const program of ['classes', 'music-together'] as const) {
+        const result = await callFunction<
+          GetDiscountsRequest,
+          GetDiscountsResponse
+        >({
+          functionName: 'getDiscounts',
+          data: { program },
+          idToken: admin.idToken,
+        });
+
+        expect(result.status).toBe(200);
+        expect(
+          (result.data?.discounts ?? []).map((d) => d.code)
+        ).not.toContain('LEGACYUNBACKFILLED');
+      }
+    });
+
+    it('and lists on the classes page once the backfill has stamped it', async () => {
+      // The other half of the contract: running the backfill makes the same
+      // document visible, on the classes page and only there.
+      await setFirestoreDoc('discounts', 'legacy-backfilled', {
+        code: 'LEGACYBACKFILLED',
+        type: 'percent',
+        percent: 10,
+        description: 'Written before scoping, then backfilled',
+        status: 'active',
+        // Exactly what tools/backfill-discount-program.ts writes.
+        program: BACKFILL_PROGRAM,
+        appliesTo: 'order',
+        nthSlot: 1,
+        usageLimit: null,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const asClasses = await callFunction<
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
@@ -763,14 +805,7 @@ describe('Discount program scoping', () => {
         data: { program: 'classes' },
         idToken: admin.idToken,
       });
-
-      expect(result.status).toBe(200);
-      const codes = (result.data?.discounts ?? []).map((d) => d.code);
-      expect(codes).toContain('LEGACYLISTED');
-    });
-
-    it('and a legacy code never leaks onto the Music Together page', async () => {
-      const result = await callFunction<
+      const asMt = await callFunction<
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
@@ -779,8 +814,12 @@ describe('Discount program scoping', () => {
         idToken: admin.idToken,
       });
 
-      const codes = (result.data?.discounts ?? []).map((d) => d.code);
-      expect(codes).not.toContain('LEGACYLISTED');
+      expect(
+        (asClasses.data?.discounts ?? []).map((d) => d.code)
+      ).toContain('LEGACYBACKFILLED');
+      expect((asMt.data?.discounts ?? []).map((d) => d.code)).not.toContain(
+        'LEGACYBACKFILLED'
+      );
     });
 
     it('lets an admin filter to either program', async () => {
@@ -899,6 +938,13 @@ describe('Discount program scoping', () => {
   });
 
   describe('legacy codes', () => {
+    // NOTE the asymmetry with the list path above: `lookupDiscount` uses
+    // findByCode, an equality query on `code` alone, so the missing `program`
+    // is filled in on READ by the repository's back-fill. Only queries that
+    // FILTER on program need the document to carry it. A customer can
+    // therefore still redeem an unbackfilled code at class checkout even while
+    // it is invisible to the admin page — which is its own argument for
+    // running the backfill.
     it('reads a pre-scoping document as a classes code', async () => {
       // Written the way the collection looked before `program` existed. MT had
       // no discount support then, so every such code was for classes —

@@ -120,16 +120,8 @@ export const DiscountRepository = {
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
     }
-
-    query = query.orderBy('code', 'asc');
-
-    const snapshot = await query.get();
-    const discounts = snapshot.docs
-      .map((doc) => docToDiscount(doc))
-      .filter((d): d is Discount => d !== undefined);
-
-    // `program` is filtered HERE, not in the Firestore query, and that is
-    // deliberate. Per Firestore's index documentation:
+    // Filtering by program in the QUERY (not after the read) requires every
+    // document to carry the field. Firestore is explicit that it must:
     //
     //   "A document is included in the index only if it has an indexed value
     //    set for every field used in the index. If the index definition refers
@@ -138,27 +130,24 @@ export const DiscountRepository = {
     //    result for any query based on the index."
     //   https://firebase.google.com/docs/firestore/query-data/index-overview
     //
-    // So `where('program','==','classes')` silently drops every code written
-    // before scoping existed (#791) — emptying the classes Discounts page of
-    // all its real codes. `!=` is no escape either: not-equal and not-in also
-    // exclude documents where the field does not exist. The back-fill in
-    // `docToDiscount` cannot rescue it, since it runs on documents the query
-    // already returned.
+    // `!=` is no escape either: not-equal and not-in also exclude documents
+    // where the field does not exist. So documents written before program
+    // scoping (#791) MUST be backfilled — `tools/backfill-discount-program.ts`
+    // does that, and is a hard prerequisite for this query, not a tidy-up. An
+    // unbackfilled document is invisible to both admin pages.
     //
-    // Filtering after the read applies the same back-fill the rest of the
-    // codebase sees, so a legacy document is treated as the classes code it
-    // is, and stays correct however a document was written.
-    //
-    // `findAll` has exactly one caller — the admin Discounts pages — so reading
-    // the collection whole is not on any hot path. It is not free forever
-    // though: `create-registration` mints a referral code per registration when
-    // a class configures one. `tools/backfill-discount-program.ts` stamps the
-    // field on every existing document, which is what makes moving this filter
-    // back into the query an option if the collection ever grows enough to
-    // warrant it.
-    return filters?.program
-      ? discounts.filter((d) => d.program === filters.program)
-      : discounts;
+    // `DiscountRepository.create` stamps `program` on every new document, so
+    // once the backfill has run the collection stays complete.
+    if (filters?.program) {
+      query = query.where('program', '==', filters.program);
+    }
+
+    query = query.orderBy('code', 'asc');
+
+    const snapshot = await query.get();
+    return snapshot.docs
+      .map((doc) => docToDiscount(doc))
+      .filter((d): d is Discount => d !== undefined);
   },
 
   /**

@@ -1,36 +1,30 @@
 /**
  * One-time backfill for `Discount.program` (#791).
  *
- * Program scoping added a required `program` field ('classes' | 'music-together')
- * to discounts. Every document written before that has no `program` at all.
+ * **This is a prerequisite for the admin Discounts pages, not a tidy-up.**
  *
- * The repository already reads those as `classes` (the back-fill in
- * `docToDiscount`) and filters by program AFTER the read, so the admin pages are
- * correct with or without this script — see the comment on
- * `DiscountRepository.findAll` for why the filter cannot live in the query:
+ * Program scoping made `program` required and the pages filter on it in the
+ * Firestore query. Firestore can only satisfy that for documents that carry
+ * the field:
  *
- *   "A document is included in the index only if it has an indexed value set for
- *    every field used in the index. If the index definition refers to a field for
- *    which the document has no value set, that document won't appear in the
- *    index... the document will never be returned as a result for any query based
- *    on the index."
- *   — https://firebase.google.com/docs/firestore/query-data/index-overview
+ *   "A document is included in the index only if it has an indexed value set
+ *    for every field used in the index. If the index definition refers to a
+ *    field for which the document has no value set, that document won't appear
+ *    in the index... the document will never be returned as a result for any
+ *    query based on the index."
+ *   https://firebase.google.com/docs/firestore/query-data/index-overview
  *
- * So why run this at all? Two reasons:
- *
- *   1. The stored data should match the model. Right now the field is required
- *      by the type and absent from the data, and every reader depends on a
- *      compatibility shim to paper over that.
- *   2. It is what keeps a Firestore-side filter available later. `discounts`
- *      grows on its own — `create-registration` mints a referral code per
- *      registration when a class configures one — so if the collection ever
- *      gets large enough that reading it whole for an admin page stops being
- *      free, moving the filter back into the query needs every document to
- *      carry the field. This is the prerequisite for that, not a fix for a bug.
+ * `!=` is no escape either — not-equal and not-in also exclude documents where
+ * the field does not exist. So until this runs, every discount written before
+ * scoping is invisible on BOTH admin pages.
  *
  * Assigns `classes` to everything it touches, which is a statement of fact
- * rather than a default: Music Together had no discount support before #791, so
- * no pre-existing code could have belonged to it.
+ * rather than a default: Music Together had no discount support before #791,
+ * so no pre-existing code could have been its. See
+ * `backfill-discount-program-core.ts` for the selection rules and their tests.
+ *
+ * Idempotent — a second run selects nothing, so it is safe to re-run after a
+ * partial failure.
  *
  * Credentials: Application Default Credentials
  *   (gcloud auth application-default login)
@@ -44,13 +38,16 @@
 
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import {
+  selectForBackfill,
+  describeDoc,
+  chunkForBatches,
+  BACKFILL_PROGRAM,
+} from './backfill-discount-program-core';
 
 const isProd = process.argv.includes('--prod');
 const isExecute = process.argv.includes('--execute');
 const projectId = isProd ? 'maple-and-spruce' : 'maple-and-spruce-dev';
-
-/** Firestore caps a batched write at 500 operations. */
-const BATCH_LIMIT = 500;
 
 async function main(): Promise<void> {
   console.log(
@@ -61,26 +58,31 @@ async function main(): Promise<void> {
 
   const db = getFirestore(initializeApp({ projectId }));
 
-  // Read every document rather than querying for a missing `program`: the very
-  // behaviour this backfill exists to work around means no query can select
+  // Read EVERY document rather than querying for a missing `program`: the very
+  // behaviour this backfill exists to fix means no query can select the
   // documents that lack the field.
   const snapshot = await db.collection('discounts').get();
 
-  const missing = snapshot.docs.filter(
-    (doc) => typeof doc.data()['program'] !== 'string'
-  );
+  const docs = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    code: doc.data()['code'],
+    program: doc.data()['program'],
+    ref: doc.ref,
+  }));
+
+  const pending = selectForBackfill(docs);
 
   console.log(
-    `${snapshot.size} discount(s); ${missing.length} without a program.`
+    `${docs.length} discount(s); ${pending.length} need a program.`
   );
 
-  if (missing.length === 0) {
-    console.log('Nothing to do.');
-    return;
+  for (const doc of pending) {
+    console.log(`  ${describeDoc(doc)}`);
   }
 
-  for (const doc of missing) {
-    console.log(`  ${doc.data()['code'] ?? doc.id} -> classes`);
+  if (pending.length === 0) {
+    console.log('Nothing to do.');
+    return;
   }
 
   if (!isExecute) {
@@ -89,20 +91,23 @@ async function main(): Promise<void> {
   }
 
   let written = 0;
-  for (let i = 0; i < missing.length; i += BATCH_LIMIT) {
+  for (const chunk of chunkForBatches(pending)) {
     const batch = db.batch();
-    for (const doc of missing.slice(i, i + BATCH_LIMIT)) {
-      // `update`, not `set(..., {merge:true})`: these documents definitely
-      // exist, and update fails loudly if one was deleted mid-run rather than
-      // silently recreating it as a discount with no type or amount.
-      batch.update(doc.ref, { program: 'classes', updatedAt: new Date() });
+    for (const doc of chunk) {
+      // `update`, not `set(…, {merge:true})`: these documents definitely exist,
+      // and update fails loudly if one was deleted mid-run rather than quietly
+      // recreating it as a discount with no type or amount.
+      batch.update(doc.ref, {
+        program: BACKFILL_PROGRAM,
+        updatedAt: new Date(),
+      });
     }
     await batch.commit();
-    written += Math.min(BATCH_LIMIT, missing.length - i);
-    console.log(`Committed ${written}/${missing.length}.`);
+    written += chunk.length;
+    console.log(`Committed ${written}/${pending.length}.`);
   }
 
-  console.log(`\nBackfilled ${written} discount(s) to program='classes'.`);
+  console.log(`\nBackfilled ${written} discount(s) to '${BACKFILL_PROGRAM}'.`);
 }
 
 main().catch((error) => {
