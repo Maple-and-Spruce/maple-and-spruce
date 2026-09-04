@@ -6,6 +6,48 @@
 
 ## Current Status
 
+### `no-show` is its own lesson status, and it bills in two directions (2026-09-04, #796)
+
+`LessonStatus` was `scheduled | rendered | cancelled`. Registrations have carried a `no-show` all
+along; lessons never got one, so a no-show had to be filed as `rendered` (a lie, and for a Hope
+student a compliance problem) or `cancelled` (which frees the room, loses the fact, and drops the
+teacher's payout credit).
+
+**The billing rule, from David:** a no-show **is charged** for private pay — the slot was held and
+the teacher was there. A Hope no-show is charged to **nobody**: Hope pays only for services rendered,
+and the family does not owe it privately either, so the studio absorbs it.
+
+That is why this is a third status rather than a flag on `cancelled`. Two helpers encode it, and
+everything routes through them so the rule cannot be re-derived differently in two places:
+
+- `didConsumeSlot(status)` — rendered **or** no-show. The private-pay billing trigger and the
+  room-occupancy test. A no-show still occupied the Spruce Room, so `onLessonWrite` keeps its
+  calendar event; only an outright cancellation frees the room.
+- `isSubmittableToHope(status)` — **rendered only**. `isLessonPayoutEligible` now calls it instead of
+  comparing to `'rendered'` itself, so the payout aggregator and #799's EMA submission queue cannot
+  disagree about what Hope may be billed for. A domain test asserts the two sets are strictly nested
+  and that `no-show` is never in the Hope one.
+
+`onLessonRenderedInvoice` now fires on the edge into **either** billable status. Guarding the *edge*
+rather than the new status is what stops a `rendered → no-show` correction from invoicing the family
+a second time, and there are unit and integration tests for that specific mis-tap. The invoice line
+for a no-show says **"Missed lesson"** — billing someone for a "lesson" nobody attended invites a
+dispute they would be right to raise.
+
+**Integration coverage was added where there was none.** `onLessonRenderedInvoice` had unit tests
+that mock every repository, and nothing proving the trigger actually fires in a real Firestore. This
+slice makes one trigger decide money in two directions, so both guarantees are now proven against the
+emulator: a private-pay no-show produces a sent invoice with the right words on it, and a Hope
+no-show produces nothing at all.
+
+UI is built on #805's pattern: on `/my-day` "No-show" sits beside "Mark rendered" (two taps stays two
+taps), and in `LessonList` it is an overflow item — "it happened" is the overwhelmingly common
+answer, and two competing primaries on every past row would slow the common case to help the rare one.
+
+**This unblocks #799.** The Hope submission queue can now exclude no-shows structurally instead of
+hoping a UI filter remembers to.
+
+
 ### Lesson row actions: labelled primary + overflow, per-row progress (2026-09-04, #805)
 
 David: the lesson action buttons are vague, have no progress state, and are a weird pattern. Looking

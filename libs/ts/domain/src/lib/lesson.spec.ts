@@ -4,6 +4,9 @@ import {
   isLessonPast,
   wasTaughtBySubstitute,
   type Lesson,
+  LESSON_STATUSES,
+  didConsumeSlot,
+  isSubmittableToHope,
 } from './lesson';
 
 describe('Lesson domain helpers', () => {
@@ -136,6 +139,50 @@ describe('Lesson domain helpers', () => {
         primaryTeacherAtCreateId: undefined,
       };
       expect(wasTaughtBySubstitute(lesson)).toBe(false);
+    });
+  });
+});
+
+describe('no-show status (#796)', () => {
+  // A no-show is its own fact because the two programs treat it oppositely:
+  // private pay charges for it, Hope must never bill for it.
+
+  it('is a status a lesson can hold', () => {
+    expect(LESSON_STATUSES).toContain('no-show');
+  });
+
+  describe('didConsumeSlot — the private-pay billing and room-occupancy test', () => {
+    it.each([
+      ['rendered', true],
+      ['no-show', true],
+      ['scheduled', false],
+      ['cancelled', false],
+    ] as const)('%s -> %s', (status, expected) => {
+      expect(didConsumeSlot(status)).toBe(expected);
+    });
+  });
+
+  describe('isSubmittableToHope — services rendered only', () => {
+    it('allows a rendered lesson', () => {
+      expect(isSubmittableToHope('rendered')).toBe(true);
+    });
+
+    it.each(['no-show', 'scheduled', 'cancelled'] as const)(
+      'refuses %s',
+      (status) => {
+        expect(isSubmittableToHope(status)).toBe(false);
+      }
+    );
+
+    it('is strictly narrower than didConsumeSlot', () => {
+      // The whole compliance shape in one assertion: every status Hope will
+      // pay for consumed a slot, but not every consumed slot may be billed to
+      // Hope. If these two ever coincide, a no-show is reaching EMA.
+      const submittable = LESSON_STATUSES.filter(isSubmittableToHope);
+      const consumed = LESSON_STATUSES.filter(didConsumeSlot);
+      expect(consumed).toEqual(expect.arrayContaining(submittable));
+      expect(submittable).not.toEqual(consumed);
+      expect(submittable).not.toContain('no-show');
     });
   });
 });

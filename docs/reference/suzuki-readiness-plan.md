@@ -27,9 +27,9 @@ Do them in order unless a slice says otherwise. Each is one PR.
 |---|---|---|---|---|
 | 1 | #794 | Suzuki intake form + Meta/GA4 attribution | **merged** (PR #803) | the 4 manual steps still outstanding |
 | 2 | #795 | Persist lesson inquiries + `/leads` queue | **in review** (PR #808) | needs `TALLY_API_KEY` in Secret Manager |
-| 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | **next** | do before #796; `/leads` already follows this pattern |
-| 4 | #796 | `no-show` lesson status + billing behaviour | ready | **blocks #799** |
-| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | ready | the revenue |
+| 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | **merged** (PR #809) | `/leads` already follows this pattern |
+| 4 | #796 | `no-show` lesson status + billing behaviour | **in review** | **unblocks #799** |
+| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **next** | the revenue |
 | 6 | #807 | Needs Attention queue | ready | after #799, so it can carry the Hope row |
 | 7 | #797 | Standing lesson schedules (recurring arrangement + exceptions) | ready | — |
 | 8 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
@@ -137,6 +137,10 @@ Settled. Do not reopen without a reason.
 - **`rendered` and `no-show` are different facts, not two labels for one billing outcome.** Both
   charge a private-pay family; only `rendered` is ever submittable to Hope. That distinction has to
   survive from #796 into #799's queue structurally, not as a UI filter.
+- **`rendered` and `no-show` are different facts, and `isSubmittableToHope` is the only
+  Hope-billing test** (#796). Private pay charges for both; Hope charges for neither a no-show nor
+  the family. Never re-derive "may Hope be billed for this" — call the helper, so the payout
+  aggregator and the EMA queue cannot drift apart.
 - **Row actions follow `StudentList`, not `LessonList`.** A single labeled primary action plus a
   `MoreVert` overflow menu, with per-action pending state. Unlabeled inline icon buttons for
   state-changing actions are the pattern being removed (#805) — do not add more of them.

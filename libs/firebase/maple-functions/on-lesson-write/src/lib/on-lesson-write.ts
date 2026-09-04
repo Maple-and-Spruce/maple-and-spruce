@@ -4,9 +4,10 @@
  * Keeps the CalendarEvent collection in sync with the lessons collection so
  * scheduled music lessons block the Spruce Room's availability.
  *
- * - Scheduled or rendered lesson: upserts one CalendarEvent at the stable ID
- *   `lesson-{lessonId}` ('rendered' means the lesson was actually taught, so
- *   it stays on the room schedule as history).
+ * - Scheduled, rendered or no-show lesson: upserts one CalendarEvent at the
+ *   stable ID `lesson-{lessonId}`. 'rendered' means the lesson was actually
+ *   taught and 'no-show' means the teacher held the slot anyway — both
+ *   genuinely occupied the room, so both stay on the schedule as history.
  * - Cancelled or deleted lesson: removes the CalendarEvent.
  *
  * Derived events are `public: false` with a generic title — student names
@@ -97,7 +98,8 @@ export const onLessonWrite = onDocumentWritten(
         return;
       }
 
-      // Scheduled or rendered — the slot is (or was) genuinely occupied.
+      // Scheduled, rendered or no-show — the slot is (or was) genuinely
+      // occupied. Only an outright cancellation frees the room.
       await CalendarEventRepository.upsertWithId(eventDocId, {
         title: 'Music Lesson',
         description: '',

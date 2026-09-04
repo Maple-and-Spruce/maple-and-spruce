@@ -108,7 +108,7 @@
 - [x] Student detail page `/students/[id]`
 
 **4b. Lesson Scheduling (#279)** ✅
-- [x] Lesson domain type (status: scheduled/cancelled/rendered)
+- [x] Lesson domain type (status: scheduled/rendered/no-show/cancelled — `no-show` added in #796)
 - [x] Lesson + LessonSeries validation (Vest)
 - [x] First-lesson booking (single date) and recurring series generation
 - [x] Lesson CRUD Cloud Functions (5) including `createLessonSeries`
