@@ -22,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
 import type {
   Instructor,
   Lesson,
@@ -31,7 +32,7 @@ import type {
 import { isLessonUnattributed } from '@maple/ts/domain';
 
 /** A row action that can be in flight. */
-export type LessonRowAction = 'mark-rendered' | 'cancel';
+export type LessonRowAction = 'mark-rendered' | 'mark-no-show' | 'cancel';
 
 /**
  * Which action is running, on which lesson.
@@ -63,6 +64,11 @@ interface LessonListProps {
    * private-pay too so #283 payout tracking has accurate counts.
    */
   onMarkRendered?: (lesson: Lesson) => void;
+  /**
+   * Record that nobody came. Offered on the same rows as mark-rendered, since
+   * it is the other half of the same question (#796).
+   */
+  onMarkNoShow?: (lesson: Lesson) => void;
   /** The action currently in flight, if any. Drives per-row progress. */
   pendingAction?: LessonPendingAction | null;
   /** For deterministic testing; defaults to current wall clock. */
@@ -71,11 +77,22 @@ interface LessonListProps {
 
 const statusChipColor: Record<
   Lesson['status'],
-  'success' | 'warning' | 'default'
+  'success' | 'warning' | 'error' | 'default'
 > = {
   scheduled: 'success',
   rendered: 'default',
+  // Distinct from cancelled on purpose: a cancellation frees the slot and
+  // charges nobody, a no-show consumed the slot and (for private pay) bills.
+  'no-show': 'error',
   cancelled: 'warning',
+};
+
+/** Human label — the raw status string reads badly for the hyphenated one. */
+const statusChipLabel: Record<Lesson['status'], string> = {
+  scheduled: 'scheduled',
+  rendered: 'rendered',
+  'no-show': 'no-show',
+  cancelled: 'cancelled',
 };
 
 function formatDateTime(d: Date): string {
@@ -98,6 +115,7 @@ function LessonRow({
   onEdit,
   onCancel,
   onMarkRendered,
+  onMarkNoShow,
 }: {
   lesson: Lesson;
   teacherName: string;
@@ -109,6 +127,7 @@ function LessonRow({
   onEdit: () => void;
   onCancel: () => void;
   onMarkRendered?: () => void;
+  onMarkNoShow?: () => void;
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const close = () => setAnchorEl(null);
@@ -121,6 +140,8 @@ function LessonRow({
   // for future-dated rows so Katie doesn't mark something that hasn't
   // happened yet.
   const canMarkRendered = canMutate && isPast && !!onMarkRendered;
+  // Same rows as mark-rendered: you only know nobody came once the time passed.
+  const canMarkNoShow = canMutate && isPast && !!onMarkNoShow;
 
   return (
     <ListItem
@@ -150,7 +171,7 @@ function LessonRow({
               variant="outlined"
             />
             <Chip
-              label={lesson.status}
+              label={statusChipLabel[lesson.status]}
               size="small"
               color={statusChipColor[lesson.status]}
             />
@@ -236,6 +257,14 @@ function LessonRow({
             </span>
           </Tooltip>
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+            {canMarkNoShow && onMarkNoShow && (
+              <MenuItem onClick={run(onMarkNoShow)}>
+                <ListItemIcon>
+                  <PersonOffIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Nobody came (no-show)</ListItemText>
+              </MenuItem>
+            )}
             <MenuItem onClick={run(onEdit)}>
               <ListItemIcon>
                 <EditIcon fontSize="small" />
@@ -273,6 +302,7 @@ export function LessonList({
   onEdit,
   onCancel,
   onMarkRendered,
+  onMarkNoShow,
   pendingAction = null,
   now = new Date(),
 }: LessonListProps) {
@@ -338,6 +368,7 @@ export function LessonList({
       onEdit={() => onEdit(lesson)}
       onCancel={() => onCancel(lesson)}
       onMarkRendered={onMarkRendered ? () => onMarkRendered(lesson) : undefined}
+      onMarkNoShow={onMarkNoShow ? () => onMarkNoShow(lesson) : undefined}
     />
   );
 

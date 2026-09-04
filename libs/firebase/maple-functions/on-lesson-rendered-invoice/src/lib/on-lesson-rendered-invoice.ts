@@ -1,12 +1,25 @@
 /**
  * onLessonRenderedInvoice Firestore Trigger (#629)
  *
- * When a lesson transitions to `rendered`, auto-create + send a private-pay
- * invoice for students flagged `autoInvoice` — so the teacher's "mark
- * rendered" tap is the whole billing action.
+ * When a lesson transitions to `rendered` **or `no-show`**, auto-create + send
+ * a private-pay invoice for students flagged `autoInvoice` — so the teacher's
+ * single tap is the whole billing action.
  *
- * Fires only on the scheduled→rendered edge (guards `before.status !==
- * 'rendered' && after.status === 'rendered'`), and is a sibling to
+ * WHY A NO-SHOW BILLS (#796)
+ * --------------------------
+ * Studio policy: the slot was held and the teacher was there, so a private-pay
+ * family is charged exactly as if the lesson had happened. **Hope Scholarship
+ * students are the opposite** — Hope pays only for services rendered and the
+ * family does not owe it privately either, so nobody is charged and the studio
+ * absorbs it. That falls out of the existing Hope guard below rather than
+ * needing its own branch, which is deliberate: one guard, not two that can
+ * drift apart.
+ *
+ * The invoice line for a no-show **says it was a missed lesson**. Billing a
+ * family for "30-min lesson on Sept 9" when nobody attended invites a dispute
+ * they would be right to raise.
+ *
+ * Fires only on the edge INTO a billable status, and is a sibling to
  * `onLessonWrite` rather than an extension of it — that trigger is a
  * single-purpose calendar mirror with no invoice deps, and this one needs
  * invoice + student repos.
@@ -33,8 +46,8 @@ import {
   LessonRatesConfigRepository,
   StudentRepository,
 } from '@maple/firebase/database';
-import { resolvePrivatePayLessonRateCents } from '@maple/ts/domain';
-import type { InvoiceLineItem, Lesson } from '@maple/ts/domain';
+import { didConsumeSlot, resolvePrivatePayLessonRateCents } from '@maple/ts/domain';
+import type { InvoiceLineItem, Lesson, LessonStatus } from '@maple/ts/domain';
 
 function toDateLike(value: unknown): Date | undefined {
   if (!value) return undefined;
@@ -75,7 +88,11 @@ function lessonInvoiceDescription(lesson: Lesson): string {
     day: 'numeric',
     year: 'numeric',
   });
-  return `${lesson.durationMinutes}-min lesson on ${date}`;
+  // Say what the charge is for. A family billed for a "lesson" they know nobody
+  // attended will dispute it, and they would be right to.
+  return lesson.status === 'no-show'
+    ? `Missed lesson (${lesson.durationMinutes}-min) on ${date}`
+    : `${lesson.durationMinutes}-min lesson on ${date}`;
 }
 
 export const onLessonRenderedInvoice = onDocumentWritten(
@@ -90,8 +107,13 @@ export const onLessonRenderedInvoice = onDocumentWritten(
       | undefined;
     const after = extractLesson(event.data?.after);
 
-    // Only act on the transition INTO rendered.
-    if (!after || after.status !== 'rendered' || beforeStatus === 'rendered') {
+    // Only act on the edge INTO a billable status. Guarding on the edge (not
+    // just the current status) keeps this from re-firing on later edits, and
+    // comparing both sides means a rendered → no-show correction does not
+    // produce a second invoice for the same lesson.
+    const billableBefore = didConsumeSlot(beforeStatus as LessonStatus);
+    const billableAfter = after ? didConsumeSlot(after.status) : false;
+    if (!after || !billableAfter || billableBefore) {
       return;
     }
 

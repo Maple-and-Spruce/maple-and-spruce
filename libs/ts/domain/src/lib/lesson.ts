@@ -10,20 +10,64 @@
  * `teacherId` on a Lesson is whoever actually taught it (primary or
  * substitute), which is what downstream payout tracking (#283) reads.
  *
- * `status` includes 'rendered' for forward-compat with #282 Hope
- * Scholarship handling (Hope invoicing is per-rendered-lesson); #279 only
- * uses 'scheduled' and 'cancelled' in the UI.
+ * `status` includes 'rendered' for #282 Hope Scholarship handling (Hope
+ * invoicing is per-rendered-lesson).
+ *
+ * 'no-show' is NOT a flavour of 'cancelled' and NOT a flavour of 'rendered'.
+ * It is its own fact, because the two programs treat it oppositely (#796):
+ *
+ *   - Private pay: the slot was held and the teacher was there, so the family
+ *     is charged exactly as if the lesson had happened.
+ *   - Hope Scholarship: Hope pays only for services *rendered*, and the family
+ *     does not owe it privately either. Nobody is charged; the studio absorbs
+ *     it, and it must never reach an EMA submission.
+ *
+ * Recording a no-show as 'rendered' would bill Hope for a service never
+ * rendered; recording it as 'cancelled' would lose the fact and drop the
+ * teacher's payout credit on the private-pay side. Hence a third status.
  */
 
 import type { Room } from './room';
 
-export type LessonStatus = 'scheduled' | 'rendered' | 'cancelled';
+export type LessonStatus =
+  | 'scheduled'
+  | 'rendered'
+  | 'no-show'
+  | 'cancelled';
 
 export const LESSON_STATUSES: LessonStatus[] = [
   'scheduled',
   'rendered',
+  'no-show',
   'cancelled',
 ];
+
+/**
+ * Statuses meaning "the teacher turned up and the slot was consumed".
+ *
+ * This is the private-pay billing trigger and the room-occupancy test — the
+ * room was genuinely used either way. It is deliberately NOT the Hope
+ * submission test; see `isSubmittableToHope`.
+ */
+export const LESSON_SLOT_CONSUMED_STATUSES: LessonStatus[] = [
+  'rendered',
+  'no-show',
+];
+
+export function didConsumeSlot(status: LessonStatus): boolean {
+  return LESSON_SLOT_CONSUMED_STATUSES.includes(status);
+}
+
+/**
+ * May this lesson be billed to the Hope Scholarship?
+ *
+ * Only a genuinely rendered lesson. Hope funds cannot be retained for services
+ * not rendered, so a no-show is structurally excluded here rather than filtered
+ * out in a UI somewhere — the exclusion has to be impossible to forget.
+ */
+export function isSubmittableToHope(status: LessonStatus): boolean {
+  return status === 'rendered';
+}
 
 export interface Lesson {
   id: string;

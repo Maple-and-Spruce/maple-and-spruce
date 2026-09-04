@@ -823,7 +823,11 @@ describe('Lesson Functions', () => {
       return undefined;
     }
 
-    async function createRenderedLesson(sid: string): Promise<string> {
+    /** Create a scheduled lesson, then move it into a terminal status. */
+    async function createLessonWithStatus(
+      sid: string,
+      status: 'rendered' | 'no-show',
+    ): Promise<string> {
       const res = await callFunction<CreateLessonRequest, CreateLessonResponse>(
         {
           functionName: 'createLesson',
@@ -841,11 +845,17 @@ describe('Lesson Functions', () => {
       const lessonId = res.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
         functionName: 'updateLesson',
-        data: { id: lessonId, status: 'rendered' },
+        data: { id: lessonId, status },
         idToken: adminUser.idToken,
       });
       return lessonId;
     }
+
+    const createRenderedLesson = (sid: string) =>
+      createLessonWithStatus(sid, 'rendered');
+    /** The teacher marks that nobody came. */
+    const createNoShowLesson = (sid: string) =>
+      createLessonWithStatus(sid, 'no-show');
 
     async function createAutoStudent(
       overrides: Partial<CreateStudentRequest>,
@@ -916,6 +926,70 @@ describe('Lesson Functions', () => {
       await callFunction<UpdateLessonRequest>({
         functionName: 'updateLesson',
         data: { id: lessonId, notes: 'touch' },
+        idToken: adminUser.idToken,
+      });
+      await waitForTrigger(6000);
+
+      const invoices = await getInvoicesFor(sid);
+      const forLesson = invoices.filter((i) =>
+        i.lineItems.some((l) => l.lessonId === lessonId),
+      );
+      expect(forLesson).toHaveLength(1);
+    });
+
+    // ── no-show billing (#796) ─────────────────────────────────────────────
+    //
+    // Money in two directions, decided by one trigger, so both are proven
+    // against real emulators rather than only against mocked repositories:
+    // a private-pay no-show that fails to invoice is lost revenue, and a Hope
+    // no-show that produces a charge is a compliance problem.
+
+    it('bills a private-pay no-show — the slot was held and the teacher was there', async () => {
+      const sid = await createAutoStudent({
+        name: 'No Show Kid',
+        primaryContactEmail: 'noshow@test.com',
+        lessonRateCents: 4125,
+      });
+      const lessonId = await createNoShowLesson(sid);
+
+      const invoice = await pollForLessonInvoice(sid, lessonId);
+      expect(invoice).toBeTruthy();
+      expect(invoice?.status).toBe('sent');
+      expect(invoice?.lineItems[0].unitAmountCents).toBe(4125);
+      // And it says what it is for, or the family will dispute it.
+      expect(invoice?.lineItems[0].description).toMatch(/missed lesson/i);
+    });
+
+    it('never bills a Hope Scholarship no-show — Hope pays only for services rendered', async () => {
+      const sid = await createAutoStudent({
+        name: 'Hope No Show Kid',
+        primaryContactEmail: 'hopenoshow@test.com',
+        isHopeScholarship: true,
+        lessonRateCents: 4125,
+      });
+      const lessonId = await createNoShowLesson(sid);
+      await waitForTrigger(6000);
+
+      const invoices = await getInvoicesFor(sid);
+      expect(
+        invoices.some((i) => i.lineItems.some((l) => l.lessonId === lessonId)),
+      ).toBe(false);
+    });
+
+    it('does not bill twice when a rendered lesson is corrected to no-show', async () => {
+      // Both statuses bill, so the trigger guards the EDGE. Without that,
+      // fixing a mis-tap charges the family a second time.
+      const sid = await createAutoStudent({
+        name: 'Corrected Kid',
+        primaryContactEmail: 'corrected@test.com',
+        lessonRateCents: 4125,
+      });
+      const lessonId = await createRenderedLesson(sid);
+      await pollForLessonInvoice(sid, lessonId);
+
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'no-show' },
         idToken: adminUser.idToken,
       });
       await waitForTrigger(6000);

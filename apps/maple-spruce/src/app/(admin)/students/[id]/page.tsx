@@ -205,6 +205,17 @@ export default function StudentDetailPage() {
     }
   };
 
+  const handleMarkNoShow = async (lesson: Lesson) => {
+    setPendingLessonAction({ lessonId: lesson.id, action: 'mark-no-show' });
+    setIsSubmitting(true);
+    try {
+      await updateLesson({ id: lesson.id, status: 'no-show' });
+    } finally {
+      setIsSubmitting(false);
+      setPendingLessonAction(null);
+    }
+  };
+
   const handleMarkRendered = async (lesson: Lesson) => {
     // Per-lesson, so the rest of the list stays live while this one saves.
     setPendingLessonAction({ lessonId: lesson.id, action: 'mark-rendered' });
@@ -325,6 +336,7 @@ export default function StudentDetailPage() {
         onEdit={(lesson) => setEditLesson(lesson)}
         onCancel={(lesson) => setCancelLesson(lesson)}
         onMarkRendered={handleMarkRendered}
+        onMarkNoShow={handleMarkNoShow}
         pendingAction={pendingLessonAction}
       />
 

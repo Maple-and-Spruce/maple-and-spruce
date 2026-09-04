@@ -34,7 +34,7 @@ function startOfWeek(d: Date): Date {
 type MyDayTab = 'today' | 'week' | 'openings';
 
 export default function MyDayPage() {
-  const { dayState, markRendered, recordPayment } = useMyDay();
+  const { dayState, markRendered, markNoShow, recordPayment } = useMyDay();
   /**
    * Which action is running, on which lesson. Was a single page-wide boolean,
    * which froze every card in the day while one saved and never said which
@@ -58,6 +58,15 @@ export default function MyDayPage() {
     setPending({ lessonId, action: 'mark-rendered' });
     try {
       await markRendered(lessonId);
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleMarkNoShow = async (lessonId: string) => {
+    setPending({ lessonId, action: 'mark-no-show' });
+    try {
+      await markNoShow(lessonId);
     } finally {
       setPending(null);
     }
@@ -190,6 +199,7 @@ export default function MyDayPage() {
                     key={item.lesson.id}
                     item={item}
                     onMarkRendered={handleMarkRendered}
+                    onMarkNoShow={handleMarkNoShow}
                     onRecordPayment={(invoiceId, source) =>
                       handleRecordPayment(item.lesson.id, invoiceId, source)
                     }

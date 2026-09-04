@@ -12,16 +12,22 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
 import type { ManualInvoicePaymentSource } from '@maple/ts/domain';
 import type { MyDayLesson } from '@maple/ts/firebase/api-types';
 import { formatCents } from '@maple/react/lessons';
 
 /** An action a card can have in flight. */
-export type MyDayCardAction = 'mark-rendered' | ManualInvoicePaymentSource;
+export type MyDayCardAction =
+  | 'mark-rendered'
+  | 'mark-no-show'
+  | ManualInvoicePaymentSource;
 
 interface MyDayLessonCardProps {
   item: MyDayLesson;
   onMarkRendered: (lessonId: string) => void;
+  /** Nobody came. Charged for private pay, charged to nobody for Hope (#796). */
+  onMarkNoShow: (lessonId: string) => void;
   onRecordPayment: (
     invoiceId: string,
     source: ManualInvoicePaymentSource
@@ -35,6 +41,16 @@ interface MyDayLessonCardProps {
   pending?: MyDayCardAction | null;
 }
 
+/** Distinct colours per status — a no-show is neither a success nor a nothing. */
+function statusChipColor(
+  status: MyDayLesson['lesson']['status']
+): 'success' | 'warning' | 'default' | 'info' {
+  if (status === 'rendered') return 'success';
+  if (status === 'no-show') return 'warning';
+  if (status === 'cancelled') return 'default';
+  return 'info';
+}
+
 function timeLabel(value: Date | string): string {
   const d = new Date(value);
   return Number.isNaN(d.getTime())
@@ -45,6 +61,7 @@ function timeLabel(value: Date | string): string {
 export function MyDayLessonCard({
   item,
   onMarkRendered,
+  onMarkNoShow,
   onRecordPayment,
   pending = null,
 }: MyDayLessonCardProps) {
@@ -80,13 +97,7 @@ export function MyDayLessonCard({
           <Chip
             label={lesson.status}
             size="small"
-            color={
-              lesson.status === 'rendered'
-                ? 'success'
-                : lesson.status === 'cancelled'
-                  ? 'default'
-                  : 'info'
-            }
+            color={statusChipColor(lesson.status)}
             variant={lesson.status === 'rendered' ? 'filled' : 'outlined'}
           />
         </Box>
@@ -112,6 +123,26 @@ export function MyDayLessonCard({
               onClick={() => onMarkRendered(lesson.id)}
             >
               {pending === 'mark-rendered' ? 'Marking…' : 'Mark rendered'}
+            </Button>
+          )}
+
+          {/* The other half of the same question. Two taps stays two taps. */}
+          {isScheduled && (
+            <Button
+              variant="outlined"
+              size="small"
+              color="warning"
+              startIcon={
+                pending === 'mark-no-show' ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <PersonOffIcon />
+                )
+              }
+              disabled={busy}
+              onClick={() => onMarkNoShow(lesson.id)}
+            >
+              {pending === 'mark-no-show' ? 'Saving…' : 'No-show'}
             </Button>
           )}
 

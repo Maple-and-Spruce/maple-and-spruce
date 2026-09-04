@@ -71,6 +71,18 @@ export function useMyDay() {
     [fetchDay]
   );
 
+  const markNoShow = useCallback(
+    async (lessonId: string): Promise<void> => {
+      const fn = httpsCallable<UpdateLessonRequest, UpdateLessonResponse>(
+        getMapleFunctions(),
+        'updateLesson'
+      );
+      await fn({ id: lessonId, status: 'no-show' });
+      await fetchDay();
+    },
+    [fetchDay]
+  );
+
   const recordPayment = useCallback(
     async (
       invoiceId: string,
@@ -90,5 +102,5 @@ export function useMyDay() {
     fetchDay();
   }, [fetchDay]);
 
-  return { dayState, fetchDay, markRendered, recordPayment };
+  return { dayState, fetchDay, markRendered, markNoShow, recordPayment };
 }

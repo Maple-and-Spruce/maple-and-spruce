@@ -25,6 +25,7 @@ const meta = {
     onEdit: fn(),
     onCancel: fn(),
     onMarkRendered: fn(),
+    onMarkNoShow: fn(),
     instructors,
     primaryTeacherId: mockInstructor.id,
     now: fixedNow,
@@ -361,5 +362,57 @@ export const PendingRowShowsProgressAndDoesNotFreezeOthers: Story = {
       name: /^actions for the lesson/i,
     });
     expect(triggers.some((t) => !(t as HTMLButtonElement).disabled)).toBe(true);
+  },
+};
+
+/**
+ * A no-show lives in the overflow rather than as a second primary button:
+ * "it happened" is the overwhelmingly common answer, and two competing
+ * primaries on every past row would slow the common case down to help the rare
+ * one.
+ */
+export const NoShowLivesInTheOverflow: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /^actions for the lesson/i })
+    );
+    await userEvent.click(
+      await within(document.body).findByRole('menuitem', {
+        name: /nobody came/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(args.onMarkNoShow).toHaveBeenCalledWith(mockLessonPastScheduled);
+    });
+  },
+};
+
+/** You cannot know nobody came until the time has passed. */
+export const NoShowHiddenOnUpcomingLesson: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonUpcomingSingle],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /^actions for the lesson/i })
+    );
+
+    const menu = within(document.body);
+    expect(await menu.findByRole('menuitem', { name: /edit lesson/i })).toBeInTheDocument();
+    expect(menu.queryByRole('menuitem', { name: /nobody came/i })).toBeNull();
   },
 };

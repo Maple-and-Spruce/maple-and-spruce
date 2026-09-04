@@ -56,7 +56,7 @@ export const lessonValidation = staticSuite(
       enforce(data.status).isNotBlank();
     });
 
-    test('status', 'Status must be scheduled, rendered, or cancelled', () => {
+    test('status', 'Status must be scheduled, rendered, no-show, or cancelled', () => {
       if (data.status) {
         enforce(data.status).inside(LESSON_STATUSES);
       }

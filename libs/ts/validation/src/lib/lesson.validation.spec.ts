@@ -112,7 +112,7 @@ describe('lessonValidation', () => {
       });
       expect(result.isValid()).toBe(false);
       expect(result.getErrors('status')).toContain(
-        'Status must be scheduled, rendered, or cancelled'
+        'Status must be scheduled, rendered, no-show, or cancelled'
       );
     });
 
@@ -123,6 +123,16 @@ describe('lessonValidation', () => {
         expect(result.hasErrors('status')).toBe(false);
       }
     );
+
+    it('accepts the no-show status (#796)', () => {
+      // Private pay is charged for a no-show, Hope never is — but either way
+      // the teacher has to be able to record what actually happened.
+      const result = lessonValidation(
+        { ...validLesson, status: 'no-show' },
+        'status'
+      );
+      expect(result.hasErrors('status')).toBe(false);
+    });
   });
 
   describe('notes', () => {

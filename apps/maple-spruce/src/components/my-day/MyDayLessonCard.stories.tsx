@@ -46,6 +46,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     onMarkRendered: fn(),
+    onMarkNoShow: fn(),
     onRecordPayment: fn(),
     pending: null,
   },
@@ -118,5 +119,39 @@ export const RecordingVenmoPayment: Story = {
     // The other payment action on this card is disabled too — one card, one
     // action at a time — but it is the *pressed* one that shows progress.
     expect(canvas.getByRole('button', { name: /cash \/ check/i })).toBeDisabled();
+  },
+};
+
+/**
+ * The other half of the same question. A no-show is charged for a private-pay
+ * family (the slot was held) and charged to nobody for a Hope student, so it
+ * has to be recordable — not squeezed into "cancelled", which frees the slot
+ * and drops the payout credit.
+ */
+export const NoShowIsOneTapAway: Story = {
+  args: { item: scheduledNoInvoice },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const noShow = canvas.getByRole('button', { name: /no-show/i });
+    await userEvent.click(noShow);
+
+    await waitFor(() => {
+      expect(args.onMarkNoShow).toHaveBeenCalledWith(
+        scheduledNoInvoice.lesson.id
+      );
+    });
+  },
+};
+
+export const SavingNoShow: Story = {
+  args: { item: scheduledNoInvoice, pending: 'mark-no-show' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByRole('button', { name: /saving/i })).toBeDisabled();
+    // Its sibling on the same card disables too — one card, one action.
+    expect(
+      canvas.getByRole('button', { name: /mark rendered/i })
+    ).toBeDisabled();
   },
 };
