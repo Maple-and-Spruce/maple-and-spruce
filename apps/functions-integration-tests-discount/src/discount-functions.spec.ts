@@ -18,7 +18,6 @@ import type {
   LookupDiscountRequest,
   LookupDiscountResponse,
 } from '@maple/ts/firebase/api-types';
-import { BACKFILL_PROGRAM } from '../../../tools/backfill-discount-program-core';
 import type {
   PercentDiscountData,
   AmountDiscountData,
@@ -787,8 +786,11 @@ describe('Discount program scoping', () => {
         percent: 10,
         description: 'Written before scoping, then backfilled',
         status: 'active',
-        // Exactly what tools/backfill-discount-program.ts writes.
-        program: BACKFILL_PROGRAM,
+        // Exactly what tools/backfill-discount-program.ts writes. The literal
+        // rather than the constant because Nx module boundaries forbid an app
+        // reaching into tools/; `BACKFILL_PROGRAM === 'classes'` is pinned by
+        // backfill-discount-program-core.spec.ts.
+        program: 'classes',
         appliesTo: 'order',
         nthSlot: 1,
         usageLimit: null,
