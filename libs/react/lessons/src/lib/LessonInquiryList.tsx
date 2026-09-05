@@ -46,7 +46,7 @@ export interface LessonInquiryListProps {
   /** Opens the enrol flow, which needs a student and so cannot be one click. */
   onEnroll?: (inquiry: LessonInquiry) => void;
   /**
-   * Opens the create-student flow seeded from this inquiry (#817).
+   * Opens the create-student flow seeded from this inquiry (#819).
    *
    * Distinct from `onEnroll`, which links to a student that already exists.
    * This is the path for the far more common case: the family said yes and

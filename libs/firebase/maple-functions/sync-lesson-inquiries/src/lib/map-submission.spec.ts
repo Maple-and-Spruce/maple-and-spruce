@@ -483,7 +483,7 @@ describe('mapSubmission — question text is not always under `label`', () => {
 });
 
 /**
- * "Who is the student?" (#817)
+ * "Who is the student?" (#819)
  *
  * The form has always asked this and we always threw the answer away. It is the
  * one answer that decides whether the person who filled the form becomes the

@@ -57,7 +57,7 @@ interface StudentFormProps {
   isSubmitting?: boolean;
   /**
    * Seed values for a NEW student, e.g. everything a lesson inquiry already
-   * knows (#817). Ignored when editing, where the record itself is the truth.
+   * knows (#819). Ignored when editing, where the record itself is the truth.
    *
    * Only the keys present are applied; the rest keep their blank defaults. A
    * draft is not a decision, so this fills the form and stops — the person

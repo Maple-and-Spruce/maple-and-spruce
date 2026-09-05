@@ -150,7 +150,7 @@ export const FlagsAnUnansweredLead: Story = {
 };
 
 /**
- * The path that turns this from a tracking tool into a shortcut (#817).
+ * The path that turns this from a tracking tool into a shortcut (#819).
  *
  * "Mark enrolled…" only links to a student that already exists, which is the
  * rarer case — usually the family said yes and there is no record yet. Without

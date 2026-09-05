@@ -49,7 +49,7 @@ describe('instrumentFromInterest', () => {
   });
 
   it('maps harp, which the studio actually gets asked for', () => {
-    // Two of the first fourteen inquiries were harp. Before #817 the enum had
+    // Two of the first fourteen inquiries were harp. Before #819 the enum had
     // no harp at all and both would have landed on "Other".
     expect(instrumentFromInterest('Harp')).toBe('harp');
   });

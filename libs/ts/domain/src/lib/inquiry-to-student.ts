@@ -1,5 +1,5 @@
 /**
- * Turning a lesson inquiry into a student record (#817).
+ * Turning a lesson inquiry into a student record (#819).
  *
  * The `/leads` queue could say who asked and whether anyone answered, but the
  * moment a family said yes, whoever was working the queue retyped a name, an

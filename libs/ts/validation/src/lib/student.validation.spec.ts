@@ -79,7 +79,7 @@ describe('studentValidation', () => {
     it('fails when not a valid enum value', () => {
       // Deliberately an instrument the studio will never teach. This case used
       // to use 'harp', which stopped being a counter-example the moment harp
-      // was added to INSTRUMENTS (#817) — a test whose fixture can graduate
+      // was added to INSTRUMENTS (#819) — a test whose fixture can graduate
       // into validity silently stops testing anything.
       const result = studentValidation({
         ...validStudent,

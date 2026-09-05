@@ -162,7 +162,7 @@ export default function StudentsPage() {
   // is fine.
   const { lessonsState } = useLessons({});
   const { lessonBlocksState } = useLessonBlocks();
-  // Inquiries power the "Start from an inquiry" suggestions (#817). Same seam
+  // Inquiries power the "Start from an inquiry" suggestions (#819). Same seam
   // as /leads → "Create student…", offered from whichever page you are on.
   const { inquiriesState, updateStatus } = useLessonInquiries();
 

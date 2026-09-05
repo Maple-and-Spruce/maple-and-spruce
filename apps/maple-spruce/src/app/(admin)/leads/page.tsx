@@ -27,7 +27,7 @@ import {
 } from '../../../hooks';
 
 /**
- * Lesson inquiries queue (#795, #817).
+ * Lesson inquiries queue (#795, #819).
  *
  * Before this page, an inquiry lived in Tally and in Katie's inbox. The one
  * question a paid funnel has to answer — who asked us about lessons and never
