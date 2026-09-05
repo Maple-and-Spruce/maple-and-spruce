@@ -27,6 +27,7 @@ export type Instrument =
   | 'mandolin'
   | 'banjo'
   | 'fiddle'
+  | 'harp'
   | 'flute'
   | 'other';
 
@@ -42,6 +43,7 @@ export const INSTRUMENTS: Instrument[] = [
   'mandolin',
   'banjo',
   'fiddle',
+  'harp',
   'flute',
   'other',
 ];

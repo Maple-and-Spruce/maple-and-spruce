@@ -55,6 +55,21 @@ interface StudentFormProps {
   student?: Student;
   instructors: Instructor[];
   isSubmitting?: boolean;
+  /**
+   * Seed values for a NEW student, e.g. everything a lesson inquiry already
+   * knows (#819). Ignored when editing, where the record itself is the truth.
+   *
+   * Only the keys present are applied; the rest keep their blank defaults. A
+   * draft is not a decision, so this fills the form and stops — the person
+   * still reviews every field and presses the button.
+   */
+  prefill?: Partial<CreateStudentInput>;
+  /**
+   * Shown above the fields when a prefill came from somewhere the user should
+   * know about ("Prefilled from Lace Haggerty's inquiry"), so a form that
+   * mysteriously has content in it explains itself.
+   */
+  prefillNote?: string;
 }
 
 export function StudentForm({
@@ -64,6 +79,8 @@ export function StudentForm({
   student,
   instructors,
   isSubmitting = false,
+  prefill,
+  prefillNote,
 }: StudentFormProps) {
   useSignals();
 
@@ -181,12 +198,44 @@ export function StudentForm({
         lessonRateCents.value = '';
         notes.value = '';
         status.value = 'active';
+
+        // Seed from the inquiry, if we came in that way. Applied after the
+        // reset rather than instead of it, so reopening the plain "Add student"
+        // button can never inherit the last inquiry's values.
+        if (prefill) {
+          if (prefill.name != null) name.value = prefill.name;
+          if (prefill.instrument != null) instrument.value = prefill.instrument;
+          if (prefill.isAdultStudent != null) {
+            isAdultStudent.value = prefill.isAdultStudent;
+          }
+          if (prefill.primaryTeacherId != null) {
+            primaryTeacherId.value = prefill.primaryTeacherId;
+          }
+          if (prefill.registeredLessonLength != null) {
+            registeredLessonLength.value = prefill.registeredLessonLength;
+          }
+          if (prefill.isHopeScholarship != null) {
+            isHopeScholarship.value = prefill.isHopeScholarship;
+          }
+          if (prefill.primaryContactName != null) {
+            primaryContactName.value = prefill.primaryContactName;
+          }
+          if (prefill.primaryContactEmail != null) {
+            primaryContactEmail.value = prefill.primaryContactEmail;
+          }
+          if (prefill.primaryContactPhone != null) {
+            primaryContactPhone.value = prefill.primaryContactPhone;
+          }
+          if (prefill.notes != null) notes.value = prefill.notes;
+          if (prefill.status != null) status.value = prefill.status;
+        }
+
         showValidationErrors.value = false;
         submitError.value = null;
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, student]);
+  }, [open, student, prefill]);
 
   // ============================================================
   // HANDLERS
@@ -256,6 +305,12 @@ export function StudentForm({
           {submitError.value && (
             <Alert severity="error" onClose={() => (submitError.value = null)}>
               {submitError.value}
+            </Alert>
+          )}
+
+          {!isEdit && prefillNote && (
+            <Alert severity="info" icon={false}>
+              {prefillNote}
             </Alert>
           )}
 

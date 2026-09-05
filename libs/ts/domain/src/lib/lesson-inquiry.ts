@@ -82,6 +82,15 @@ export interface LessonInquiry {
   studentAge?: number;
   /** Free text as the family chose it, e.g. "Suzuki violin, with Katie". */
   interest?: string;
+  /**
+   * Who the lessons are for, when the form asks ("Who is the student?").
+   *
+   * Captured because it is the one answer that decides whether the person who
+   * filled the form becomes the *student* or the *parent contact* on the
+   * student record. Without it, creating a student from an inquiry has to
+   * guess, and gets it wrong for every adult learner or every child.
+   */
+  studentIs?: 'self' | 'child';
   /** Availability buckets the family ticked. Empty when the form does not ask. */
   availability: string[];
   hopeScholarship?: HopeScholarshipInterest;

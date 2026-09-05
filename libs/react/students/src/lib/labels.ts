@@ -12,6 +12,7 @@ export const INSTRUMENT_LABELS: Record<Instrument, string> = {
   mandolin: 'Mandolin',
   banjo: 'Banjo',
   fiddle: 'Fiddle',
+  harp: 'Harp',
   flute: 'Flute',
   other: 'Other',
 };
