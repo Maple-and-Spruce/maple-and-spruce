@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-materialize-lesson-schedules",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/materialize-lesson-schedules/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

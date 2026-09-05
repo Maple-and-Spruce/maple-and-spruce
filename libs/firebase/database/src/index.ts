@@ -37,6 +37,10 @@ export { LessonRatesConfigRepository } from './lib/lesson-rates-config.repositor
 export { BusinessPaymentConfigRepository } from './lib/business-payment-config.repository';
 export { LessonRepository, type LessonFilters } from './lib/lesson.repository';
 export { LessonBlockRepository } from './lib/lesson-block.repository';
+export {
+  StudentLessonScheduleRepository,
+  type StudentLessonScheduleFilters,
+} from './lib/student-lesson-schedule.repository';
 export { LessonInquiryRepository } from './lib/lesson-inquiry.repository';
 export { HopeSubmissionRepository } from './lib/hope-submission.repository';
 export {

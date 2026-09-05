@@ -6,6 +6,47 @@
 
 ## Current Status
 
+### Standing lesson schedules, PR 1: the arrangement becomes an object (2026-09-04, #797)
+
+Katie and Nathan think in standing arrangements — "Nathan teaches Ellie on Tuesdays at 4:00". The
+portal made them manage rows of concrete lessons, which is why moving a student to a new day meant
+editing every remaining row, and why **a series just ran out** on some future Tuesday with billing
+stopping silently behind it. `/suzuki` promises rolling enrollment, so that was the normal case.
+
+`StudentLessonSchedule` is that arrangement. Concrete `Lesson` records still exist and are still what
+everything downstream reads; they are demoted from "the thing a human manages" to "a materialised
+window".
+
+**Three things worth remembering.**
+
+- **Wall-clock, not an instant.** The arrangement stores a weekday and minutes-from-midnight *in the
+  shop timezone*, exactly as `LessonBlock` does. `zonedWallClockToInstant` converts, and there are
+  tests proving a 4:00pm lesson stays 4:00pm across both the March and November transitions. Adding
+  a fixed 7 × 24h — the obvious implementation — silently moves the whole studio by an hour for half
+  the year.
+- **Exceptions are free, because of the id.** A materialised lesson's document id is
+  `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady
+  state, so re-running creates nothing; **skipping a week** is just cancelling that lesson (the
+  document still exists, nothing recreates it); **moving a week** is just editing its time. There is
+  no exceptions table, because there is nothing one would know that the lesson does not.
+- **The migration trap.** Lessons from before schedules do NOT have that id, so a schedule covering
+  the same dates would create a second lesson beside each one — doubling a student's week. Two
+  defences: `tools/backfill-lesson-schedules.ts` starts each inferred arrangement the day *after* its
+  series' last lesson, and the materialiser additionally skips any instant the student already has a
+  lesson at, whatever its id. Both are covered by tests.
+
+A schedule change deliberately does **not** rewrite lessons already on the books. Some are already
+taught, invoiced, or paid; the new pattern applies going forward, and anything already scheduled that
+should move is moved as an ordinary lesson edit.
+
+**PR 2** is the editing experience: the schedule editor, the student view reoriented around standing
+slots rather than rows, and move/skip as first-class actions.
+
+**Recovered mid-flight:** the two new domain files vanished during a branch switch made for an
+unrelated footer-snippet fix, after their tests had passed. Rewritten and committed immediately.
+Checkpoint new files before switching branches in a worktree.
+
+
 ### Needs Attention: six invisible states, now a to-do list (2026-09-04, #807)
 
 Six things were already true in the data and none of them surfaced anywhere, so finding any one meant
