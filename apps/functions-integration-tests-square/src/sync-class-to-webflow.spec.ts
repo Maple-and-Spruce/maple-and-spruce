@@ -97,6 +97,30 @@ async function getClassWebflowItemId(
   return result.data?.class.webflowItemId;
 }
 
+/**
+ * Poll until the trigger has written the id back, up to `timeoutMs`.
+ *
+ * A fixed `waitForTrigger()` sleep raced here: the write, the trigger cold
+ * start and an outbound HTTP call all have to finish inside it, and on a
+ * loaded CI runner sharing a machine with the other suites they did not — this
+ * test failed in CI twice in a row while passing locally every time. Polling
+ * keeps the fast case fast and only spends the extra seconds when the runner
+ * is actually slow.
+ */
+async function waitForClassWebflowItemId(
+  classId: string,
+  adminToken: string,
+  timeoutMs = 20000
+): Promise<string | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const id = await getClassWebflowItemId(classId, adminToken);
+    if (id) return id;
+    if (Date.now() >= deadline) return undefined;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
+
 describe('syncClassToWebflow Trigger', () => {
   let adminUser: TestUser;
   let instructorId: string;
@@ -175,11 +199,8 @@ describe('syncClassToWebflow Trigger', () => {
       expect(createResult.status).toBe(200);
       classId = createResult.data!.class.id;
 
-      // Wait for the syncClassToWebflow trigger to fire and complete
-      await waitForTrigger();
-
-      // The trigger should have stored a webflowItemId back on the class
-      const webflowItemId = await getClassWebflowItemId(
+      // The trigger should have stored a webflowItemId back on the class.
+      const webflowItemId = await waitForClassWebflowItemId(
         classId,
         adminUser.idToken
       );
