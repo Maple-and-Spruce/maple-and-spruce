@@ -175,8 +175,12 @@ need slightly different handling — this snippet covers both:
   DOMContentLoaded with the hidden-field params appended as query
   string args, so Tally picks them up before the form first paints.
 
-Add this snippet to **Webflow Designer → page settings → Inside
-`<head>` tag**, then publish:
+Add this snippet to **Webflow Designer → Site Settings → Custom Code →
+Head Code**, then publish the site. It is installed site-wide, not per page:
+the Tally forms are embedded on `/suzuki`, `/music`, `/music-lessons` and
+`/music-together`, and the popup path can be triggered from anywhere, so a
+per-page install is a lead waiting to be dropped. (It was documented as a page
+setting and installed site-wide; the site-wide install is the correct one.)
 
 ```html
 <script>
@@ -198,14 +202,63 @@ Add this snippet to **Webflow Designer → page settings → Inside
       return parts[2] + '.' + parts[3];
     }
 
+    // The five UTMs the Tally forms declare. These arrive as query string
+    // params on the ad click, NOT as cookies — which is why they were the
+    // five fields sitting permanently empty while the cookie-derived five
+    // worked (#824).
+    var UTM_KEYS = [
+      'utm_source',
+      'utm_medium',
+      'utm_campaign',
+      'utm_content',
+      'utm_term',
+    ];
+    var UTM_STORAGE_KEY = 'ms_utm';
+
+    // A visitor can land on /suzuki?utm_source=... and then click around
+    // before reaching the form, at which point location.search is empty and
+    // the campaign is gone. Stash them for the session so a later page still
+    // knows where the visit came from. Last touch wins: arriving fresh from a
+    // second ad should re-attribute, not keep the first one forever.
+    function utmParams() {
+      var params = new URLSearchParams(window.location.search);
+      var found = {};
+      var any = false;
+      UTM_KEYS.forEach(function (key) {
+        var value = params.get(key);
+        if (value) {
+          found[key] = value;
+          any = true;
+        }
+      });
+      if (any) {
+        try {
+          sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(found));
+        } catch (e) {
+          // Private mode or storage disabled — the current page still works.
+        }
+        return found;
+      }
+      try {
+        return JSON.parse(sessionStorage.getItem(UTM_STORAGE_KEY)) || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
     function getHiddenFields() {
-      return {
+      var fields = {
         _ga_client_id: gaClientId(),
         _fbp: readCookie('_fbp'),
         _fbc: readCookie('_fbc'),
         referrer: document.referrer || '',
         landing_page: window.location.href,
       };
+      var utms = utmParams();
+      Object.keys(utms).forEach(function (key) {
+        fields[key] = utms[key];
+      });
+      return fields;
     }
 
     function dataAttrToOption(attrCamel) {
