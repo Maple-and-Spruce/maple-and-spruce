@@ -19,21 +19,29 @@
  * has a lesson at — but relying on that alone would mean the correctness of a
  * migration depended on a runtime guard.)
  *
- * Usage:
- *   npx tsx tools/backfill-lesson-schedules.ts            # dry run (default)
- *   npx tsx tools/backfill-lesson-schedules.ts --apply    # write
+ * Usage — dev by default, like every other tool here; `--prod` is deliberate:
+ *   npx tsx tools/backfill-lesson-schedules.ts                      # dev, dry run
+ *   npx tsx tools/backfill-lesson-schedules.ts --execute            # dev, writes
+ *   npx tsx tools/backfill-lesson-schedules.ts --prod               # prod, dry run
+ *   npx tsx tools/backfill-lesson-schedules.ts --prod --execute     # prod, writes
+ *
+ * Needs application-default credentials for the target project:
+ *   gcloud auth application-default login --account katie@mapleandsprucefolkarts.com
+ * A `7 PERMISSION_DENIED` here is almost always stale ADC, not a missing role.
  */
-import { initializeApp, applicationDefault, getApps } from 'firebase-admin/app';
+import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const APPLY = process.argv.includes('--apply');
+const isProd = process.argv.includes('--prod');
+const isExecute = process.argv.includes('--execute');
+// Default to dev. A backfill that silently picks its target from whatever
+// ambient credentials happen to say is one bad shell away from rewriting prod.
+const projectId = isProd ? 'maple-and-spruce' : 'maple-and-spruce-dev';
+
 const TIME_ZONE = 'America/New_York';
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-if (getApps().length === 0) {
-  initializeApp({ credential: applicationDefault() });
-}
-const db = getFirestore();
+const db = getFirestore(initializeApp({ projectId }));
 
 interface LessonRow {
   id: string;
@@ -109,8 +117,8 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `${lessons.length} lesson(s); ${groups.size} arrangement(s) to infer` +
-      (APPLY ? '' : '  (dry run — pass --apply to write)')
+    `[${projectId}] ${lessons.length} lesson(s); ${groups.size} arrangement(s) to infer` +
+      (isExecute ? '' : '  (dry run — pass --execute to write)')
   );
 
   let created = 0;
@@ -158,7 +166,7 @@ async function main(): Promise<void> {
         `${rows.length} existing lesson(s) · takes over ${startsOn.toISOString().slice(0, 10)}`
     );
 
-    if (!APPLY) continue;
+    if (!isExecute) continue;
 
     const ref = await db.collection('studentLessonSchedules').add(schedule);
     created++;
@@ -177,7 +185,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    APPLY
+    isExecute
       ? `Created ${created} schedule(s); stamped ${stamped} lesson(s); skipped ${skippedNoBlock} without a block.`
       : `Would create ${groups.size - skippedNoBlock} schedule(s); ${skippedNoBlock} skipped without a block.`
   );
