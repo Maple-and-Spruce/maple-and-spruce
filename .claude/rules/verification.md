@@ -15,6 +15,22 @@ A feature isn't done when it compiles — it's done when you've **seen it work**
 3. **Interaction (Storybook `play`)** — any React UI. A `.stories.tsx` with a `play` fn that fills the form / clicks the control / asserts the outcome. Verifies render + flow headlessly (no auth/emulator). App-local stories under `app/(admin)/…` are picked up by `apps/maple-spruce/.storybook`.
 4. **E2E** — once a feature is assembled, one happy-path run through the real flow.
 
+## Never put real customer data in a fixture
+
+Invent the people. Names, emails and phone numbers in specs, stories and mock
+servers must be made up — `Robin Ashfield`, `robin@example.com`, `+15550000001`
+— never copied from a real inquiry, student or registration, however convenient
+the real row is while you are staring at it.
+
+Fixtures are not private: they live in the repo forever, get read aloud in CI
+logs, and **Storybook stories are published to Chromatic**, so a real family's
+name in a story is a real family's name on a hosted page. A test does not get
+more realistic by using a real person; it only gets realistic by using the real
+*shape* (see the Tally mock, which mirrors the live API's `title` key).
+
+The one thing worth copying verbatim from production is a payload's structure.
+Copy that, then replace every human in it.
+
 ## Look at it (do not skip this)
 
 Tests prove logic; they don't prove it *looks and feels right*. While developing:

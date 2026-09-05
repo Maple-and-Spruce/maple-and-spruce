@@ -1,0 +1,8 @@
+{
+  "name": "firebase-tally-test-mock-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/tally-test-mock-server/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:test-util"],
+  "targets": {}
+}

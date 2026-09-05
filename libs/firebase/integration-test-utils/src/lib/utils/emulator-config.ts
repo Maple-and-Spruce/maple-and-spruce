@@ -9,6 +9,7 @@ const WEBFLOW_MOCK_SERVER_PORT = 9996 + OFFSET;
 const ETSY_MOCK_SERVER_PORT = 9998 + OFFSET;
 const GA4_MOCK_SERVER_PORT = 9995 + OFFSET;
 const META_CAPI_MOCK_SERVER_PORT = 9994 + OFFSET;
+const TALLY_MOCK_SERVER_PORT = 9993 + OFFSET;
 
 export const EMULATOR_CONFIG = {
   projectId: 'maple-and-spruce-dev',
@@ -27,6 +28,8 @@ export const EMULATOR_CONFIG = {
   ga4MockServerUrl: `http://localhost:${GA4_MOCK_SERVER_PORT}`,
   /** Meta Conversions API mock server */
   metaCapiMockServerUrl: `http://localhost:${META_CAPI_MOCK_SERVER_PORT}`,
+  /** Tally submissions API mock server */
+  tallyMockServerUrl: `http://localhost:${TALLY_MOCK_SERVER_PORT}`,
   portOffset: OFFSET,
 } as const;
 

@@ -405,8 +405,8 @@ describe('mapSubmission — question text is not always under `label`', () => {
     isCompleted: true,
     submittedAt: '2026-08-26T03:42:50.000Z',
     responses: [
-      { questionId: '0EKjV0', answer: 'Sasha Marlowe ' },
-      { questionId: 'zKkQE8', answer: 'sasha.marlowe@example.com' },
+      { questionId: '0EKjV0', answer: 'Robin Ashfield ' },
+      { questionId: 'zKkQE8', answer: 'robin@example.com' },
       { questionId: '5dJqXP', answer: '+15550000001' },
       { questionId: 'dYO2by', answer: ['Old-Time Fiddle'] },
     ],
@@ -433,7 +433,7 @@ describe('mapSubmission — question text is not always under `label`', () => {
         NOW
       );
 
-      expect(mapped?.contactName).toBe('Sasha Marlowe');
+      expect(mapped?.contactName).toBe('Robin Ashfield');
       expect(mapped?.interest).toBe('Old-Time Fiddle');
     }
   );
@@ -455,7 +455,7 @@ describe('mapSubmission — question text is not always under `label`', () => {
     );
 
     expect(mapped).not.toBeNull();
-    expect(mapped?.email).toBe('sasha.marlowe@example.com');
+    expect(mapped?.email).toBe('robin@example.com');
     expect(mapped?.phone).toBe('+15550000001');
     expect(mapped?.contactName).toBe('Unknown');
   });
@@ -478,7 +478,7 @@ describe('mapSubmission — question text is not always under `label`', () => {
       NOW
     );
 
-    expect(mapped?.contactName).toBe('Sasha Marlowe');
+    expect(mapped?.contactName).toBe('Robin Ashfield');
   });
 });
 
@@ -503,7 +503,7 @@ describe('mapSubmission — who the lessons are for', () => {
         isCompleted: true,
         submittedAt: '2026-08-26T03:42:50.000Z',
         responses: [
-          { questionId: 'q-email', answer: 'sasha@example.com' },
+          { questionId: 'q-email', answer: 'robin@example.com' },
           { questionId: 'q-who', answer: [answer] },
         ],
       },

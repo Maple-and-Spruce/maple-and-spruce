@@ -31,15 +31,16 @@ WEBFLOW_MOCK_SERVER_PORT=$((9996 + OFFSET))
 ETSY_MOCK_SERVER_PORT=$((9998 + OFFSET))
 GA4_MOCK_SERVER_PORT=$((9995 + OFFSET))
 META_CAPI_MOCK_SERVER_PORT=$((9994 + OFFSET))
+TALLY_MOCK_SERVER_PORT=$((9993 + OFFSET))
 
 if [ "$OFFSET" != "0" ]; then
-  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT"
+  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT, tally-mock:$TALLY_MOCK_SERVER_PORT"
 fi
 
 # ---------------------------------------------------------------------------
 # 1. Kill stale processes on OUR ports only (leave other worktrees alone)
 # ---------------------------------------------------------------------------
-for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
+for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$TALLY_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
   lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 1
@@ -84,7 +85,13 @@ echo "META_PIXEL_ID=test-pixel-id" >> dist/apps/functions/.env
 # MT purchases post to the Music Together pixel, not the Maple & Spruce one.
 echo "META_PIXEL_ID_MUSIC_TOGETHER=test-mt-pixel-id" >> dist/apps/functions/.env
 echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
-printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+# syncLessonInquiries -> Tally mock server. `.env.dev` deliberately leaves
+# TALLY_LESSON_INQUIRY_FORM_IDS empty so dev never ingests production leads
+# (#814); the tests need it non-empty, and pointing at the mock keeps that
+# safe because no real form id is ever contacted.
+echo "TALLY_API_BASE_URL=http://localhost:$TALLY_MOCK_SERVER_PORT" >> dist/apps/functions/.env
+echo "TALLY_LESSON_INQUIRY_FORM_IDS=testform,otherform" >> dist/apps/functions/.env
+printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nTALLY_API_KEY=test-tally-api-key\n" > dist/apps/functions/.secret.local
 
 # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
 # without them the emulator silently waits on stdin for each one.
@@ -130,6 +137,10 @@ WEBFLOW_MOCK_PID=$!
 echo "Starting Etsy mock server on :$ETSY_MOCK_SERVER_PORT..."
 ETSY_MOCK_SERVER_PORT="$ETSY_MOCK_SERVER_PORT" npx tsx libs/firebase/etsy-test-mock-server/start.ts &
 ETSY_MOCK_PID=$!
+
+echo "Starting Tally mock server on :$TALLY_MOCK_SERVER_PORT..."
+TALLY_MOCK_SERVER_PORT="$TALLY_MOCK_SERVER_PORT" npx tsx libs/firebase/tally-test-mock-server/start.ts &
+TALLY_MOCK_PID=$!
 
 echo "Starting GA4 mock server on :$GA4_MOCK_SERVER_PORT..."
 GA4_MOCK_SERVER_PORT="$GA4_MOCK_SERVER_PORT" npx tsx libs/firebase/ga4-test-mock-server/start.ts &
@@ -187,6 +198,7 @@ EMULATOR_PORT_OFFSET="$OFFSET" npx firebase --config "$FIREBASE_CONFIG_FILE" emu
 kill $SQUARE_MOCK_PID 2>/dev/null || true
 kill $WEBFLOW_MOCK_PID 2>/dev/null || true
 kill $ETSY_MOCK_PID 2>/dev/null || true
+kill $TALLY_MOCK_PID 2>/dev/null || true
 kill $GA4_MOCK_PID 2>/dev/null || true
 kill $META_CAPI_MOCK_PID 2>/dev/null || true
 

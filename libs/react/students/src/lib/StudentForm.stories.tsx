@@ -390,33 +390,33 @@ export const PrefilledFromInquiry: Story = {
     open: true,
     isSubmitting: false,
     prefill: {
-      name: 'Devin Marlowe',
+      name: 'Milo Ashfield',
       instrument: 'fiddle',
       isAdultStudent: false,
-      primaryContactName: 'Sasha Marlowe',
-      primaryContactEmail: 'sasha@example.com',
+      primaryContactName: 'Robin Ashfield',
+      primaryContactEmail: 'robin@example.com',
       primaryContactPhone: '+13045550101',
       notes: 'From the Music lesson inquiry form, submitted Aug 25, 2026.',
     },
     prefillNote:
-      "Prefilled from Sasha Marlowe's inquiry. Saving also marks that inquiry enrolled.",
+      "Prefilled from Robin Ashfield's inquiry. Saving also marks that inquiry enrolled.",
   },
   play: async ({ canvasElement }) => {
     await waitForDialog();
     const canvas = getDialogCanvas();
 
-    expect(canvas.getByLabelText(/student name/i)).toHaveValue('Devin Marlowe');
+    expect(canvas.getByLabelText(/student name/i)).toHaveValue('Milo Ashfield');
     expect(canvas.getByLabelText(/primary contact name/i)).toHaveValue(
-      'Sasha Marlowe'
+      'Robin Ashfield'
     );
     expect(canvas.getByLabelText(/primary contact email/i)).toHaveValue(
-      'sasha@example.com'
+      'robin@example.com'
     );
 
     // A form that mysteriously has content in it has to say where it came from,
     // and warn that saving does a second thing.
     expect(
-      canvas.getByText(/prefilled from sasha marlowe/i)
+      canvas.getByText(/prefilled from robin ashfield/i)
     ).toBeInTheDocument();
     expect(
       canvas.getByText(/marks that inquiry enrolled/i)
@@ -436,11 +436,11 @@ export const PrefillLeavesTheRealDecisionsOpen: Story = {
     open: true,
     isSubmitting: false,
     prefill: {
-      name: 'Odette Bramble',
+      name: 'Nora Bell',
       instrument: 'fiddle',
       isAdultStudent: true,
-      primaryContactName: 'Odette Bramble',
-      primaryContactEmail: 'sarah@example.com',
+      primaryContactName: 'Nora Bell',
+      primaryContactEmail: 'nora@example.com',
     },
   },
   play: async ({ canvasElement }) => {

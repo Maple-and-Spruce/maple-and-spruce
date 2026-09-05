@@ -145,8 +145,8 @@ describe('runSyncLessonInquiries — repairing stored inquiries', () => {
     isCompleted: true,
     submittedAt: '2026-08-26T03:42:50.000Z',
     responses: [
-      { questionId: 'q-name', answer: 'Sasha Marlowe' },
-      { questionId: 'q-email', answer: 'sasha@example.com' },
+      { questionId: 'q-name', answer: 'Robin Ashfield' },
+      { questionId: 'q-email', answer: 'robin@example.com' },
       { questionId: 'q-instrument', answer: ['Old-Time Fiddle'] },
     ],
   };
@@ -158,7 +158,7 @@ describe('runSyncLessonInquiries — repairing stored inquiries', () => {
     formName: 'Music lesson inquiry',
     submittedAt: new Date('2026-08-26T03:42:50.000Z'),
     contactName: 'Unknown',
-    email: 'sasha@example.com',
+    email: 'robin@example.com',
     interest: undefined,
     availability: [],
     attribution: {},
@@ -178,7 +178,7 @@ describe('runSyncLessonInquiries — repairing stored inquiries', () => {
     });
     mocks.refreshIngestedFields.mockResolvedValue({
       ...brokenStoredRow(),
-      contactName: 'Sasha Marlowe',
+      contactName: 'Robin Ashfield',
     });
 
     const result = await runSyncLessonInquiries(config);
@@ -186,7 +186,7 @@ describe('runSyncLessonInquiries — repairing stored inquiries', () => {
     expect(mocks.refreshIngestedFields).toHaveBeenCalledTimes(1);
     expect(mocks.refreshIngestedFields.mock.calls[0][0]).toMatchObject({
       id: 'sub-1',
-      contactName: 'Sasha Marlowe',
+      contactName: 'Robin Ashfield',
       interest: 'Old-Time Fiddle',
     });
     expect(result.repaired).toBe(1);
@@ -224,7 +224,7 @@ describe('runSyncLessonInquiries — repairing stored inquiries', () => {
           'sub-1',
           {
             ...brokenStoredRow(),
-            contactName: 'Sasha Marlowe',
+            contactName: 'Robin Ashfield',
             interest: 'Old-Time Fiddle',
           },
         ],
