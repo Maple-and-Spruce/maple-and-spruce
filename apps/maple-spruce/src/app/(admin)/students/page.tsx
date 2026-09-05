@@ -5,6 +5,7 @@ import {
   Alert,
   Box,
   Button,
+  Stack,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -12,6 +13,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import type {
   CreateInvoiceInput,
+  LessonInquiry,
   CreateLessonInput,
   CreateLessonSeriesInput,
   CreateStudentInput,
@@ -21,14 +23,20 @@ import type {
   Student,
   UpdateInvoiceInput,
 } from '@maple/ts/domain';
+import { studentDraftFromInquiry } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
-import { StudentForm, StudentList } from '@maple/react/students';
+import {
+  InquirySuggestions,
+  StudentForm,
+  StudentList,
+} from '@maple/react/students';
 import { ScheduleLessonDialog } from '@maple/react/lessons';
 import { InvoiceBuilderDialog } from '@maple/react/invoices';
 import {
   useInstructors,
   useInvoices,
   useLessonBlocks,
+  useLessonInquiries,
   useLessons,
   useStudents,
 } from '../../../hooks';
@@ -154,6 +162,9 @@ export default function StudentsPage() {
   // is fine.
   const { lessonsState } = useLessons({});
   const { lessonBlocksState } = useLessonBlocks();
+  // Inquiries power the "Start from an inquiry" suggestions (#817). Same seam
+  // as /leads → "Create student…", offered from whichever page you are on.
+  const { inquiriesState, updateStatus } = useLessonInquiries();
 
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
@@ -166,6 +177,9 @@ export default function StudentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** Set when the open form was seeded from an inquiry, so saving links them. */
+  const [creatingFromInquiry, setCreatingFromInquiry] =
+    useState<LessonInquiry | null>(null);
 
   // Delete dialog state
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -197,6 +211,13 @@ export default function StudentsPage() {
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
     setEditingStudent(undefined);
+    setCreatingFromInquiry(null);
+  }, []);
+
+  const handleStartFromInquiry = useCallback((inquiry: LessonInquiry) => {
+    setEditingStudent(undefined);
+    setCreatingFromInquiry(inquiry);
+    setIsFormOpen(true);
   }, []);
 
   const handleSubmitForm = useCallback(
@@ -207,7 +228,20 @@ export default function StudentsPage() {
         if (editingStudent) {
           await updateStudent({ id: editingStudent.id, ...data });
         } else {
-          await createStudent(data);
+          const student = await createStudent(data);
+          // Came in from an inquiry, so close its loop too. A failure here is
+          // deliberately not fatal: the student exists and the inquiry simply
+          // stays open, which is visible and fixable, unlike an inquiry marked
+          // enrolled against a student that was never created.
+          if (creatingFromInquiry) {
+            try {
+              await updateStatus(creatingFromInquiry.id, 'enrolled', {
+                studentId: student.id,
+              });
+            } catch (linkError) {
+              console.error('Student created but inquiry link failed:', linkError);
+            }
+          }
         }
         handleCloseForm();
       } catch (error) {
@@ -217,7 +251,14 @@ export default function StudentsPage() {
         setIsSubmitting(false);
       }
     },
-    [editingStudent, handleCloseForm, createStudent, updateStudent]
+    [
+      editingStudent,
+      handleCloseForm,
+      createStudent,
+      updateStudent,
+      creatingFromInquiry,
+      updateStatus,
+    ]
   );
 
   const handleOpenDelete = useCallback((student: Student) => {
@@ -256,14 +297,26 @@ export default function StudentsPage() {
         <Typography variant="h4" component="h1">
           Students
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenForm()}
-          disabled={instructors.length === 0}
-        >
-          Add Student
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <InquirySuggestions
+            inquiries={
+              inquiriesState.status === 'success' ? inquiriesState.data : []
+            }
+            students={
+              studentsState.status === 'success' ? studentsState.data : []
+            }
+            onPick={handleStartFromInquiry}
+            disabled={instructors.length === 0}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenForm()}
+            disabled={instructors.length === 0}
+          >
+            Add Student
+          </Button>
+        </Stack>
       </Box>
 
       {instructors.length === 0 && instructorsState.status === 'success' && (
@@ -323,6 +376,18 @@ export default function StudentsPage() {
         student={editingStudent}
         instructors={instructors}
         isSubmitting={isSubmitting}
+        prefill={
+          creatingFromInquiry
+            ? studentDraftFromInquiry(creatingFromInquiry)
+            : undefined
+        }
+        prefillNote={
+          creatingFromInquiry
+            ? `Prefilled from ${creatingFromInquiry.contactName}'s inquiry of ` +
+              `${creatingFromInquiry.submittedAt.toLocaleDateString()}. Saving ` +
+              `also marks that inquiry enrolled.`
+            : undefined
+        }
       />
 
       <DeleteConfirmDialog

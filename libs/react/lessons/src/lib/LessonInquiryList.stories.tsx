@@ -80,6 +80,7 @@ const meta = {
     updatingId: null,
     onUpdateStatus: fn(),
     onEnroll: fn(),
+    onCreateStudent: fn(),
   },
 } satisfies Meta<typeof LessonInquiryList>;
 
@@ -145,5 +146,54 @@ export const FlagsAnUnansweredLead: Story = {
     const canvas = within(canvasElement);
     const warnings = await canvas.findAllByText(/no one has answered this yet/i);
     expect(warnings.length).toBeGreaterThan(0);
+  },
+};
+
+/**
+ * The path that turns this from a tracking tool into a shortcut (#817).
+ *
+ * "Mark enrolled…" only links to a student that already exists, which is the
+ * rarer case — usually the family said yes and there is no record yet. Without
+ * this the person working the queue retypes a name, an email and a phone number
+ * that are already on their screen into a different page.
+ */
+export const CreateStudentFromOverflow: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /more actions for dana fields/i })
+    );
+
+    const create = await within(document.body).findByRole('menuitem', {
+      name: /create student/i,
+    });
+    await userEvent.click(create);
+
+    expect(args.onCreateStudent).toHaveBeenCalled();
+    // It must hand over the whole inquiry, not just an id: the caller seeds a
+    // form from it and a second round-trip to re-find it would be silly.
+    const [passed] = (args.onCreateStudent as ReturnType<typeof fn>).mock
+      .calls[0];
+    expect(passed).toMatchObject({ id: 'sub-1', email: 'dana@example.com' });
+  },
+};
+
+/** Both paths stay available and stay distinct. */
+export const OffersBothEnrolAndCreate: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /more actions for dana fields/i })
+    );
+
+    const menu = within(document.body);
+    expect(
+      await menu.findByRole('menuitem', { name: /create student/i })
+    ).toBeInTheDocument();
+    expect(
+      await menu.findByRole('menuitem', { name: /mark enrolled/i })
+    ).toBeInTheDocument();
   },
 };

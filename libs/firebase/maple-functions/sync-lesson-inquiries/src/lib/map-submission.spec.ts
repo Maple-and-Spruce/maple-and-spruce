@@ -481,3 +481,60 @@ describe('mapSubmission — question text is not always under `label`', () => {
     expect(mapped?.contactName).toBe('Lace Haggerty');
   });
 });
+
+/**
+ * "Who is the student?" (#817)
+ *
+ * The form has always asked this and we always threw the answer away. It is the
+ * one answer that decides whether the person who filled the form becomes the
+ * student or the parent contact, so creating a student from an inquiry had to
+ * guess — and guessing wrong files an 11-year-old as an adult learner.
+ */
+describe('mapSubmission — who the lessons are for', () => {
+  const questions: TallyQuestion[] = [
+    { id: 'q-email', type: 'INPUT_EMAIL', label: 'Email' },
+    { id: 'q-who', type: 'MULTIPLE_CHOICE', label: 'Who is the student?' },
+  ];
+
+  const map = (answer: string) =>
+    mapSubmission(
+      {
+        id: 's1',
+        isCompleted: true,
+        submittedAt: '2026-08-26T03:42:50.000Z',
+        responses: [
+          { questionId: 'q-email', answer: 'lace@example.com' },
+          { questionId: 'q-who', answer: [answer] },
+        ],
+      },
+      questions,
+      'dWPQOr',
+      NOW
+    );
+
+  it('THE POINT: captures the form’s own two options', () => {
+    expect(map('Myself (adult)')?.studentIs).toBe('self');
+    expect(map('My child (under 18)')?.studentIs).toBe('child');
+  });
+
+  it('is undefined for an answer it does not recognise', () => {
+    // An editor can add options in the web UI. An unknown one must leave the
+    // field unset so the form asks a human, never quietly pick a side.
+    expect(map('My grandchild')?.studentIs).toBeUndefined();
+  });
+
+  it('is undefined when the form does not ask at all', () => {
+    // The Suzuki form asks the student's age and name instead.
+    const mapped = mapSubmission(
+      {
+        id: 's2',
+        isCompleted: true,
+        responses: [{ questionId: 'q-email', answer: 'a@example.com' }],
+      },
+      [questions[0]],
+      'QKQb6k',
+      NOW
+    );
+    expect(mapped?.studentIs).toBeUndefined();
+  });
+});

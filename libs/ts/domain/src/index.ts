@@ -33,6 +33,7 @@ export * from './lib/student';
 export * from './lib/lesson';
 export * from './lib/lesson-block';
 export * from './lib/lesson-inquiry';
+export * from './lib/inquiry-to-student';
 export * from './lib/hope-submission';
 export * from './lib/needs-attention';
 export * from './lib/student-lesson-schedule';
