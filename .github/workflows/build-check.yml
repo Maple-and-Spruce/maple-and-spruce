@@ -449,7 +449,13 @@ jobs:
           # Maple & Spruce one. Same value in both would make that test vacuous.
           echo "META_PIXEL_ID_MUSIC_TOGETHER=test-mt-pixel-id" >> dist/apps/functions/.env
           echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          # syncLessonInquiries -> Tally mock server. `.env.dev` deliberately
+          # leaves TALLY_LESSON_INQUIRY_FORM_IDS empty so dev never ingests
+          # production leads (#814); the tests need it non-empty, and pointing
+          # at the mock keeps that safe because no real form is ever contacted.
+          echo "TALLY_API_BASE_URL=http://localhost:9993" >> dist/apps/functions/.env
+          echo "TALLY_LESSON_INQUIRY_FORM_IDS=testform,otherform" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nTALLY_API_KEY=test-tally-api-key\n" > dist/apps/functions/.secret.local
 
           # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
@@ -483,7 +489,8 @@ jobs:
           # parallel invocations try to download tsx simultaneously
           npx tsx --version
 
-          # Start per-service mock HTTP servers (Square, Webflow, Etsy, GA4, Meta CAPI)
+          # Start per-service mock HTTP servers (Square, Webflow, Etsy, GA4,
+          # Meta CAPI, Tally)
           SQUARE_MOCK_SERVER_PORT=9997 npx tsx libs/firebase/square-test-mock-server/start.ts &
           SQUARE_MOCK_PID=$!
           WEBFLOW_MOCK_SERVER_PORT=9996 npx tsx libs/firebase/webflow-test-mock-server/start.ts &
@@ -494,6 +501,8 @@ jobs:
           GA4_MOCK_PID=$!
           META_CAPI_MOCK_SERVER_PORT=9994 npx tsx libs/firebase/meta-capi-test-mock-server/start.ts &
           META_CAPI_MOCK_PID=$!
+          TALLY_MOCK_SERVER_PORT=9993 npx tsx libs/firebase/tally-test-mock-server/start.ts &
+          TALLY_MOCK_PID=$!
           sleep 2
 
           # Run the suites assigned to this matrix group
@@ -506,6 +515,7 @@ jobs:
           kill $ETSY_MOCK_PID 2>/dev/null || true
           kill $GA4_MOCK_PID 2>/dev/null || true
           kill $META_CAPI_MOCK_PID 2>/dev/null || true
+          kill $TALLY_MOCK_PID 2>/dev/null || true
           exit $EXIT_CODE
 
   integration-tests-result:

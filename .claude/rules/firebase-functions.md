@@ -358,8 +358,8 @@ Prefer declaring the index over ignoring; the cost of an unused index is small, 
 **Integration tests**: Test functions against real Firebase emulators (auth, firestore, functions) with a mock HTTP server for Square/Webflow APIs. See ADR-027.
 
 - Run locally: `./tools/run-integration-tests.sh` (all suites) or `./tools/run-integration-tests.sh square` (one suite)
-- Test suites: `apps/functions-integration-tests-{artist,class,instructor,category,discount,calendar,registration,utility,square}/`
-- Mock servers: `libs/firebase/{square,webflow,etsy}-test-mock-server/` — per-service mock HTTP servers intercepting SDK calls via `SQUARE_BASE_URL` / `WEBFLOW_BASE_URL` / `ETSY_API_BASE` env vars
+- Test suites: `apps/functions-integration-tests-{artist,class,instructor,category,discount,calendar,registration,utility,square,lesson-inquiries}/`
+- Mock servers: `libs/firebase/{square,webflow,etsy,ga4,meta-capi,tally}-test-mock-server/` — per-service mock HTTP servers intercepting calls via `SQUARE_BASE_URL` / `WEBFLOW_BASE_URL` / `ETSY_API_BASE` / `GA4_BASE_URL` / `META_CAPI_BASE_URL` / `TALLY_API_BASE_URL` env vars
 - Test utilities: `libs/firebase/integration-test-utils/` (auth-helper, firestore-helper, http-client, fixtures)
 - For verbose output on a failing suite: `npx vitest run --config apps/functions-integration-tests-<suite>/vitest.config.ts --reporter=verbose` (while emulators + mock server are running)
 
@@ -389,6 +389,14 @@ Each external service has its own mock server library under `libs/firebase/{serv
 - **Square** (`libs/firebase/square-test-mock-server/`, port 9997): `POST /v2/orders`, `POST /v2/payments`, `GET /v2/payments/:id`, `POST /v2/refunds`, catalog CRUD, `POST /v2/catalog/images`, `POST /v2/inventory/changes/batch-create`
 - **Webflow** (`libs/firebase/webflow-test-mock-server/`, port 9996): CMS item CRUD + publish on `/collections/:id/items`
 - **Etsy** (`libs/firebase/etsy-test-mock-server/`, port 9998): listings, OAuth, mock images
+- **Tally** (`libs/firebase/tally-test-mock-server/`, port 9993): `GET /forms/:formId/submissions` with pagination
+
+**A mock is only worth having if it lies the way the real service does.** The
+Tally mock emits question text under `title` and *never* `label`, because the
+live API has no `label` key — reading it is what stored `contactName: "Unknown"`
+on all 14 leads (#816) while the unit tests stayed green on hand-written
+fixtures. Capture a real response before writing a mock's fixtures; a mock built
+from the docs will agree with whatever the code already assumes.
 
 ## CI/CD Notes
 

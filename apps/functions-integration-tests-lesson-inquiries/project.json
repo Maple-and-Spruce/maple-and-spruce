@@ -1,0 +1,20 @@
+{
+  "name": "functions-integration-tests-lesson-inquiries",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-lesson-inquiries/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-sync-lesson-inquiries",
+    "firebase-tally-test-mock-server",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "apps/functions-integration-tests-lesson-inquiries/vitest.config.ts"
+      }
+    }
+  }
+}

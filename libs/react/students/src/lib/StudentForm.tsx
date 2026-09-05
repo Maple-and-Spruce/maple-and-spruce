@@ -66,7 +66,7 @@ interface StudentFormProps {
   prefill?: Partial<CreateStudentInput>;
   /**
    * Shown above the fields when a prefill came from somewhere the user should
-   * know about ("Prefilled from Lace Haggerty's inquiry"), so a form that
+   * know about ("Prefilled from Robin Ashfield's inquiry"), so a form that
    * mysteriously has content in it explains itself.
    */
   prefillNote?: string;
