@@ -13,6 +13,11 @@
  * that production will work. We caught a 20-day production outage because of
  * this — see PR description / `docs/sessions/`.
  *
+ * The rules themselves (does this chain need an index, what shape, and is a
+ * declared entry one Firestore will actually accept) live in
+ * `tools/firestore-index-rules.ts`, which is unit-tested. This file is the AST
+ * walking and the file I/O.
+ *
  * Usage:
  *   npx tsx tools/check-firestore-indexes.ts            # checks, exits 1 on missing
  *   npx tsx tools/check-firestore-indexes.ts --verbose  # shows queries it found
@@ -32,6 +37,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
+import {
+  deriveIndexFields,
+  findRejectedDeclarations,
+  needsCompositeIndex,
+  type IndexField,
+  type IndexSpec,
+} from './firestore-index-rules';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -56,24 +68,9 @@ const SKIP_PATTERNS = [
   /\.next\//,
 ];
 
-// Equality-style operators don't have ranges; array-contains is its own beast.
-const EQUALITY_OPS = new Set(['==', '!=', 'in', 'not-in']);
-const RANGE_OPS = new Set(['<', '<=', '>', '>=']);
-const ARRAY_OPS = new Set(['array-contains', 'array-contains-any']);
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type IndexField =
-  | { fieldPath: string; order: 'ASCENDING' | 'DESCENDING' }
-  | { fieldPath: string; arrayConfig: 'CONTAINS' };
-
-interface IndexSpec {
-  collectionGroup: string;
-  queryScope: 'COLLECTION' | 'COLLECTION_GROUP';
-  fields: IndexField[];
-}
 
 interface QueryChain {
   collection: string;
@@ -379,67 +376,6 @@ function getIgnoreComment(sf: ts.SourceFile, pos: number): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Decide whether a chain needs a composite index, and what shape
-// ---------------------------------------------------------------------------
-
-/**
- * Firestore composite-index rules in plain terms:
- *  - A single `.where()` with no `.orderBy()` on a different field: no composite needed.
- *  - 2+ `.where()` calls: composite needed.
- *  - `.where()` + `.orderBy()` on a different field: composite needed.
- *  - Any `array-contains` / `array-contains-any` + any other filter/orderBy: composite needed.
- *  - Range/inequality on a different field than `.orderBy()`: usually composite needed (we conservatively flag).
- */
-function needsCompositeIndex(chain: PartialChain): boolean {
-  const filterCount = chain.filters.length;
-  const orderByCount = chain.orderBys.length;
-  const hasArray = chain.filters.some((f) => ARRAY_OPS.has(f.op));
-
-  if (filterCount === 0 && orderByCount <= 1) return false;
-  if (filterCount >= 2) return true;
-  if (hasArray && (filterCount + orderByCount) >= 2) return true;
-  if (filterCount === 1 && orderByCount >= 1) {
-    const filterField = chain.filters[0].field;
-    return chain.orderBys.some((o) => o.field !== filterField);
-  }
-  if (filterCount === 0 && orderByCount >= 2) return true;
-  return false;
-}
-
-/**
- * Build the index shape Firestore wants. Field order:
- *   1. array-contains field (if any)
- *   2. equality / range fields, in source order
- *   3. orderBy fields, in source order
- */
-function deriveIndexFields(chain: PartialChain): IndexField[] {
-  const fields: IndexField[] = [];
-  const seen = new Set<string>();
-
-  for (const f of chain.filters) {
-    if (ARRAY_OPS.has(f.op)) {
-      fields.push({ fieldPath: f.field, arrayConfig: 'CONTAINS' });
-      seen.add(f.field);
-    }
-  }
-  for (const f of chain.filters) {
-    if (!ARRAY_OPS.has(f.op) && !seen.has(f.field)) {
-      fields.push({ fieldPath: f.field, order: 'ASCENDING' });
-      seen.add(f.field);
-    }
-  }
-  for (const o of chain.orderBys) {
-    if (seen.has(o.field)) continue;
-    fields.push({
-      fieldPath: o.field,
-      order: o.dir === 'desc' ? 'DESCENDING' : 'ASCENDING',
-    });
-    seen.add(o.field);
-  }
-  return fields;
-}
-
-// ---------------------------------------------------------------------------
 // Load declared indexes
 // ---------------------------------------------------------------------------
 
@@ -652,6 +588,22 @@ function main(): void {
   }
 
   const declared = loadDeclared();
+
+  const rejected = findRejectedDeclarations(declared);
+  if (rejected.length > 0) {
+    console.error(
+      `✗ ${rejected.length} declared index(es) will be REJECTED by Firestore ` +
+        `("this index is not necessary, configure using single field index controls").\n` +
+        `A single COLLECTION-scoped one-field entry fails the entire index deploy.\n` +
+        `Delete these from the "indexes" array in firestore.indexes.json:\n`
+    );
+    for (const r of rejected) {
+      console.error(JSON.stringify(r, null, 2).split('\n').map((l) => '  ' + l).join('\n'));
+      console.error('');
+    }
+    process.exit(1);
+  }
+
   const required: Array<{ spec: IndexSpec; chain: QueryChain }> = [];
 
   for (const chain of allChains) {
@@ -775,4 +727,7 @@ function main(): void {
   process.exit(1);
 }
 
-main();
+// Only run when invoked directly, so the spec can import the pure helpers.
+if (require.main === module) {
+  main();
+}

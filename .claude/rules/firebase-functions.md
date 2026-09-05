@@ -272,9 +272,15 @@ export const updateClass = createAdminFunction<Req, Res>(async (data) => {
 
 Firestore auto-creates single-field indexes; everything below needs a composite index declared in `firestore.indexes.json`:
 
-- Two or more `.where()` filters on the same query (any combination of `==`, `!=`, `<`, `>`, etc.)
+- Two or more `.where()` filters on **different fields** (any combination of `==`, `!=`, `<`, `>`, etc.)
 - A `.where()` + a `.orderBy()` on a *different* field
 - `array-contains` or `array-contains-any` combined with any other filter or orderBy
+
+Indexes cover *fields*, not clauses. A two-sided range on one field
+(`.where('scheduledAt', '>=', from).where('scheduledAt', '<=', to).orderBy('scheduledAt')`)
+is still a single-field query — and declaring it anyway fails the deploy job outright with
+`400, this index is not necessary, configure using single field index controls`, taking every
+other index in the file down with it. Never hand-add a one-field entry to `firestore.indexes.json`.
 
 ### The Firestore emulator does NOT enforce composite indexes
 
