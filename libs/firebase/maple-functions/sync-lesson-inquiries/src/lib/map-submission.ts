@@ -116,6 +116,7 @@ export interface MappedLessonInquiry {
   studentFirstName?: string;
   studentAge?: number;
   interest?: string;
+  studentIs?: 'self' | 'child';
   availability: string[];
   hopeScholarship?: 'yes' | 'no' | 'unsure';
   message?: string;
@@ -247,6 +248,28 @@ function hiddenValue(
   return trimmed === '' ? undefined : trimmed;
 }
 
+/**
+ * "Who is the student?" -> whether the respondent is the learner.
+ *
+ * The general music form offers "Myself (adult)" and "My child (under 18)".
+ * This is the single answer that decides whether the person who filled the form
+ * becomes the student or the parent contact when the inquiry is turned into a
+ * student record, so it is matched loosely on the leading word rather than on
+ * the exact option text an editor can retitle.
+ */
+function toStudentIs(value: string | undefined): 'self' | 'child' | undefined {
+  if (!value) return undefined;
+  const normalized = normalizeLabel(value);
+  if (normalized.startsWith('myself') || normalized.startsWith('me ')) {
+    return 'self';
+  }
+  if (normalized === 'me') return 'self';
+  if (normalized.startsWith('my child') || normalized.startsWith('my kid')) {
+    return 'child';
+  }
+  return undefined;
+}
+
 function toHopeInterest(
   value: string | undefined
 ): 'yes' | 'no' | 'unsure' | undefined {
@@ -320,6 +343,9 @@ export function mapSubmission(
         'Which instrument are you interested in?',
       ])
     ),
+    studentIs: toStudentIs(
+      first(lookup.byLabel(['Who is the student?', 'Who are lessons for?']))
+    ),
     availability,
     hopeScholarship: toHopeInterest(
       first(
@@ -370,6 +396,7 @@ export function ingestedFieldsMatch(
     studentFirstName?: string;
     studentAge?: number;
     interest?: string;
+    studentIs?: 'self' | 'child';
     availability?: string[];
     hopeScholarship?: 'yes' | 'no' | 'unsure';
     message?: string;
@@ -387,6 +414,7 @@ export function ingestedFieldsMatch(
     stored.studentFirstName === mapped.studentFirstName &&
     stored.studentAge === mapped.studentAge &&
     stored.interest === mapped.interest &&
+    stored.studentIs === mapped.studentIs &&
     stored.hopeScholarship === mapped.hopeScholarship &&
     stored.message === mapped.message;
 

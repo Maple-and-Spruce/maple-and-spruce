@@ -45,6 +45,14 @@ export interface LessonInquiryListProps {
   onUpdateStatus: (id: string, status: LessonInquiryStatus) => void;
   /** Opens the enrol flow, which needs a student and so cannot be one click. */
   onEnroll?: (inquiry: LessonInquiry) => void;
+  /**
+   * Opens the create-student flow seeded from this inquiry (#819).
+   *
+   * Distinct from `onEnroll`, which links to a student that already exists.
+   * This is the path for the far more common case: the family said yes and
+   * there is no record yet. Omit to hide the action.
+   */
+  onCreateStudent?: (inquiry: LessonInquiry) => void;
 }
 
 type FilterTab = 'open' | 'all' | LessonInquiryStatus;
@@ -93,11 +101,13 @@ function InquiryRow({
   updating,
   onUpdateStatus,
   onEnroll,
+  onCreateStudent,
 }: {
   inquiry: LessonInquiry;
   updating: boolean;
   onUpdateStatus: (id: string, status: LessonInquiryStatus) => void;
   onEnroll?: (inquiry: LessonInquiry) => void;
+  onCreateStudent?: (inquiry: LessonInquiry) => void;
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const close = () => setAnchorEl(null);
@@ -223,6 +233,16 @@ function InquiryRow({
             <MoreVertIcon fontSize="small" />
           </IconButton>
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+            {onCreateStudent && (
+              <MenuItem
+                onClick={() => {
+                  close();
+                  onCreateStudent(inquiry);
+                }}
+              >
+                Create student…
+              </MenuItem>
+            )}
             {onEnroll && (
               <MenuItem
                 onClick={() => {
@@ -256,6 +276,7 @@ export function LessonInquiryList({
   updatingId,
   onUpdateStatus,
   onEnroll,
+  onCreateStudent,
 }: LessonInquiryListProps) {
   const [tab, setTab] = useState<FilterTab>('open');
 
@@ -303,6 +324,7 @@ export function LessonInquiryList({
               updating={updatingId === inquiry.id}
               onUpdateStatus={onUpdateStatus}
               onEnroll={onEnroll}
+              onCreateStudent={onCreateStudent}
             />
           ))}
         </Stack>

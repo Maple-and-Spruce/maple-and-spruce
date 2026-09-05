@@ -374,3 +374,84 @@ export const HopeScholarshipToggles: Story = {
     });
   },
 };
+
+// ============================================================
+// PREFILL FROM AN INQUIRY (#819)
+// ============================================================
+
+/**
+ * THE POINT: the form arrives already knowing what the family told us.
+ *
+ * Everything here was on the `/leads` screen a second earlier. Retyping it was
+ * three chances to typo an email address.
+ */
+export const PrefilledFromInquiry: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    prefill: {
+      name: 'Devin Marlowe',
+      instrument: 'fiddle',
+      isAdultStudent: false,
+      primaryContactName: 'Sasha Marlowe',
+      primaryContactEmail: 'sasha@example.com',
+      primaryContactPhone: '+13045550101',
+      notes: 'From the Music lesson inquiry form, submitted Aug 25, 2026.',
+    },
+    prefillNote:
+      "Prefilled from Sasha Marlowe's inquiry. Saving also marks that inquiry enrolled.",
+  },
+  play: async ({ canvasElement }) => {
+    await waitForDialog();
+    const canvas = getDialogCanvas();
+
+    expect(canvas.getByLabelText(/student name/i)).toHaveValue('Devin Marlowe');
+    expect(canvas.getByLabelText(/primary contact name/i)).toHaveValue(
+      'Sasha Marlowe'
+    );
+    expect(canvas.getByLabelText(/primary contact email/i)).toHaveValue(
+      'sasha@example.com'
+    );
+
+    // A form that mysteriously has content in it has to say where it came from,
+    // and warn that saving does a second thing.
+    expect(
+      canvas.getByText(/prefilled from sasha marlowe/i)
+    ).toBeInTheDocument();
+    expect(
+      canvas.getByText(/marks that inquiry enrolled/i)
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A prefill is a draft, not a decision.
+ *
+ * Teacher and lesson length are Katie's calls and cannot be read off any form,
+ * so they stay empty and the form stays invalid until she picks. Defaulting
+ * them would look like a decision somebody made.
+ */
+export const PrefillLeavesTheRealDecisionsOpen: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    prefill: {
+      name: 'Odette Bramble',
+      instrument: 'fiddle',
+      isAdultStudent: true,
+      primaryContactName: 'Odette Bramble',
+      primaryContactEmail: 'sarah@example.com',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await waitForDialog();
+    const canvas = getDialogCanvas();
+
+    // MUI Select renders its value as text, so an unset one simply names no
+    // instructor. The prefill supplied every contact detail and still left this
+    // for Katie.
+    const teacher = canvas.getByLabelText(/primary teacher/i);
+    expect(teacher).not.toHaveTextContent(mockInstructor.name);
+    expect(teacher).not.toHaveTextContent(mockInstructor2.name);
+  },
+};

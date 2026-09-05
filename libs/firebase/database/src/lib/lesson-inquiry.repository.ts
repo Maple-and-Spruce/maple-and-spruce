@@ -49,6 +49,7 @@ function docToLessonInquiry(
     studentFirstName: data.studentFirstName,
     studentAge: data.studentAge,
     interest: data.interest,
+    studentIs: data.studentIs,
     availability: data.availability ?? [],
     hopeScholarship: data.hopeScholarship,
     message: data.message,
