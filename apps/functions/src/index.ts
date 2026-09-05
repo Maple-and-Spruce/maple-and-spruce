@@ -308,3 +308,11 @@ export { getCraftClubSubscription } from '@maple/firebase/maple-functions/get-cr
 // (no Square dep; the card update itself lives in the maple-square codebase).
 export { requestMusicTogetherManageLink } from '@maple/firebase/maple-functions/request-music-together-manage-link';
 export { startMusicTogetherManageSession } from '@maple/firebase/maple-functions/start-music-together-manage-session';
+
+// Lesson billing rules (#798) — the reusable "every 4 lessons, charged the day
+// before" rules Katie and Nathan attach to students, plus a read of what is
+// going to be charged. Plain Firestore; the job that moves money needs the
+// Square SDK and lives in the maple-square codebase.
+export { getLessonBilling } from '@maple/firebase/maple-functions/get-lesson-billing';
+export { saveLessonBillingRule } from '@maple/firebase/maple-functions/save-lesson-billing-rule';
+export { updateLessonScheduledCharge } from '@maple/firebase/maple-functions/update-lesson-scheduled-charge';
