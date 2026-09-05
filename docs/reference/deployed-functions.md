@@ -31,6 +31,13 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getLessonInquiries`, `updateLessonInquiryStatus` _(admin; the `/leads` queue)_
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
+### Standing lesson schedules (#797)
+- `materializeLessonSchedules` _(scheduled, weekly — keeps concrete lessons on the books to a 12-week horizon for every active arrangement. **This is the fix for "a series silently runs out"**: a series was a finite date list nothing extended, so lessons stopped on some future Tuesday and, because billing hangs off a rendered lesson, so did the revenue.)_
+- `triggerMaterializeLessonSchedules` _(admin callable twin — `onSchedule` is not reachable over HTTP in the emulator)_
+- `getStudentLessonSchedules`, `createStudentLessonSchedule`, `updateStudentLessonSchedule` _(admin + lesson-teacher, self-scoped; create materialises immediately so an arrangement is real straight away, and both create and update re-check block fit)_
+- **Idempotence is structural.** A materialised lesson's id is `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady state — which is also what makes *skipping* a week (cancel that lesson) and *moving* one (edit its time) work with no exceptions table.
+- `tools/backfill-lesson-schedules.ts` infers arrangements from existing `seriesId` lessons. Dry-run by default; `--apply` to write. Each inferred schedule starts the day **after** its series' last lesson, because pre-schedule lessons lack the deterministic id and would otherwise be duplicated.
+
 ### Needs Attention (#807)
 - `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
