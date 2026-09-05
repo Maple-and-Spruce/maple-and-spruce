@@ -6,6 +6,25 @@
 
 ## Current Status
 
+### A one-field index froze every Firestore index deploy (2026-09-04, #826)
+
+`deploy_firestore_indexes_dev` has failed on every merge since #818 with
+`400, this index is not necessary, configure using single field index controls`. Firestore
+auto-creates single-field indexes and refuses a declaration for one, and it fails the *whole* file:
+no index in `firestore.indexes.json` reached dev or prod while that entry sat there.
+
+The entry was not hand-written. `tools/check-firestore-indexes.ts` emitted it, because
+`needsCompositeIndex` counted **clauses** where Firestore counts **fields**.
+`LessonRepository.findAll({ from, to })` writes a two-sided range as two `.where()` calls on
+`scheduledAt` and orders by `scheduledAt`; that read as "2+ filters, needs an index", and
+`deriveIndexFields` then deduped it back to the single field, producing a shape Firestore rejects.
+
+The analyzer now reasons over distinct fields, and treats the derived shape as the authority:
+fewer than two fields means no composite index exists to declare. It also checks the other
+direction for the first time. Every *declared* index must be legal, so a pasted or hand-added
+single-field entry fails at PR time instead of at merge-time deploy. The rules moved into
+`tools/firestore-index-rules.ts` and finally have unit tests; the AST walking stayed put.
+
 ### Standing lesson schedules, PR 2: Katie edits the arrangement (2026-09-04, #797)
 
 The student page now leads with **Standing schedule** — "Tuesdays at 4:00 PM · 30 min · Katie

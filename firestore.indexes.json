@@ -1625,16 +1625,6 @@
       ]
     },
     {
-      "collectionGroup": "lessons",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "scheduledAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "lessonScheduledCharges",
       "queryScope": "COLLECTION",
       "fields": [
