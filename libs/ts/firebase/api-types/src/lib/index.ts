@@ -581,3 +581,13 @@ export type {
   GetNeedsAttentionRequest,
   GetNeedsAttentionResponse,
 } from './needs-attention.types';
+
+export type {
+  GetStudentLessonSchedulesRequest,
+  GetStudentLessonSchedulesResponse,
+  CreateStudentLessonScheduleRequest,
+  CreateStudentLessonScheduleResponse,
+  UpdateStudentLessonScheduleRequest,
+  UpdateStudentLessonScheduleResponse,
+  MaterializeLessonSchedulesResult,
+} from './student-lesson-schedule.types';
