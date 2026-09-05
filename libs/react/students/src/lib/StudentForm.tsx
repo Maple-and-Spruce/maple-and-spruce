@@ -436,7 +436,7 @@ export function StudentForm({
                   onChange={(e) => (autoInvoice.value = e.target.checked)}
                 />
               }
-              label="Auto-invoice when a lesson is rendered"
+              label="Automatically invoice after each lesson is taught"
             />
           </Box>
 

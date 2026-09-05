@@ -87,10 +87,15 @@ const statusChipColor: Record<
   cancelled: 'warning',
 };
 
-/** Human label — the raw status string reads badly for the hyphenated one. */
+/**
+ * Human labels. The stored status is `rendered` — "services rendered", which is
+ * what Hope and the accounting side mean — but nobody teaching a lesson says
+ * that, and Katie read it as jargon. Teachers say **taught**. The stored value
+ * is unchanged; only the word on screen differs.
+ */
 const statusChipLabel: Record<Lesson['status'], string> = {
   scheduled: 'scheduled',
-  rendered: 'rendered',
+  rendered: 'taught',
   'no-show': 'no-show',
   cancelled: 'cancelled',
 };
@@ -233,7 +238,7 @@ function LessonRow({
               }
               onClick={onMarkRendered}
             >
-              {pending === 'mark-rendered' ? 'Marking…' : 'Mark rendered'}
+              {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
             </Button>
           )}
           <Tooltip title="Actions">
