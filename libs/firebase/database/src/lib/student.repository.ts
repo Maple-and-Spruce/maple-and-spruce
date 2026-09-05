@@ -38,6 +38,14 @@ function docToStudent(
     venmoUsername: data.venmoUsername,
     autoInvoice: data.autoInvoice ?? false,
     lessonRateCents: data.lessonRateCents,
+    // Card on file. Katie and Nathan save the card in Square in person; the
+    // portal links to it rather than making the family re-enter it (#798).
+    squareCustomerId: data.squareCustomerId,
+    squareCardId: data.squareCardId,
+    cardBrand: data.cardBrand,
+    cardLast4: data.cardLast4,
+    cardLinkedAt: data.cardLinkedAt ? toDate(data.cardLinkedAt) : undefined,
+    billingRuleId: data.billingRuleId,
     notes: data.notes,
     status: data.status,
     createdAt: toDate(data.createdAt),

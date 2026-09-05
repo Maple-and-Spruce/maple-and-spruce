@@ -572,6 +572,18 @@
       "@maple/firebase/maple-functions/get-lesson-rates-config": [
         "libs/firebase/maple-functions/get-lesson-rates-config/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/run-lesson-billing": [
+        "libs/firebase/maple-functions/run-lesson-billing/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-lesson-billing": [
+        "libs/firebase/maple-functions/get-lesson-billing/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/save-lesson-billing-rule": [
+        "libs/firebase/maple-functions/save-lesson-billing-rule/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-lesson-scheduled-charge": [
+        "libs/firebase/maple-functions/update-lesson-scheduled-charge/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-my-day-lessons": [
         "libs/firebase/maple-functions/get-my-day-lessons/src/index.ts"
       ],

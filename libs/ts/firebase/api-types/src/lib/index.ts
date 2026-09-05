@@ -591,3 +591,14 @@ export type {
   UpdateStudentLessonScheduleResponse,
   MaterializeLessonSchedulesResult,
 } from './student-lesson-schedule.types';
+
+export type {
+  GetLessonBillingRequest,
+  GetLessonBillingResponse,
+  SaveLessonBillingRuleRequest,
+  SaveLessonBillingRuleResponse,
+  UpdateLessonScheduledChargeRequest,
+  UpdateLessonScheduledChargeResponse,
+  RunLessonBillingRequest,
+  RunLessonBillingResult,
+} from './lesson-billing.types';

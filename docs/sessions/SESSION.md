@@ -856,3 +856,20 @@ See `history/` folder for detailed session logs:
 ---
 
 *Last updated: 2026-04-05*
+
+## #798 PR 1 — lesson billing rules + the charge job (backend)
+
+Named `LessonBillingRule`s ("every 4 lessons, charged the day before the first"),
+planned `LessonScheduledCharge` documents, and a daily job that takes the ones
+that are due against the family's card on file. Reuses the Music Together
+installment pattern rather than inventing a second charging mechanism.
+
+**Card capture stays in person.** Katie and Nathan save the card in Square at the
+studio; the portal links to that card. The original #798 scope line said web
+capture would *replace* the manual step — that is wrong and is corrected here.
+`Student` now carries `squareCustomerId` / `squareCardId` / `cardBrand` /
+`cardLast4` / `cardLinkedAt`, and `docToStudent` maps them.
+
+Next (PR 2): `listStudentSquareCards` / `linkStudentSquareCard`, the payment-method
+card on `/students/[id]`, the rule editor, and the upcoming-charges view with
+skip/waive.
