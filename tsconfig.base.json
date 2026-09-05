@@ -272,6 +272,18 @@
       "@maple/firebase/maple-functions/get-lesson-blocks": [
         "libs/firebase/maple-functions/get-lesson-blocks/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/materialize-lesson-schedules": [
+        "libs/firebase/maple-functions/materialize-lesson-schedules/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/get-student-lesson-schedules": [
+        "libs/firebase/maple-functions/get-student-lesson-schedules/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/create-student-lesson-schedule": [
+        "libs/firebase/maple-functions/create-student-lesson-schedule/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-student-lesson-schedule": [
+        "libs/firebase/maple-functions/update-student-lesson-schedule/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-needs-attention": [
         "libs/firebase/maple-functions/get-needs-attention/src/index.ts"
       ],

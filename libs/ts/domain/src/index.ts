@@ -35,6 +35,7 @@ export * from './lib/lesson-block';
 export * from './lib/lesson-inquiry';
 export * from './lib/hope-submission';
 export * from './lib/needs-attention';
+export * from './lib/student-lesson-schedule';
 export * from './lib/openings';
 export * from './lib/invoice';
 export * from './lib/hope-rates';

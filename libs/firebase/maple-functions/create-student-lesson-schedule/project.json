@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-create-student-lesson-schedule",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/create-student-lesson-schedule/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

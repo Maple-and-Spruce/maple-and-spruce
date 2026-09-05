@@ -97,6 +97,15 @@ export interface Lesson {
    */
   blockId?: string | null;
   /**
+   * The standing arrangement this lesson was materialised from (#797).
+   *
+   * Absent for one-off lessons and for anything created before schedules
+   * existed. Its presence does NOT make the lesson read-only: moving or
+   * cancelling a single week is exactly how an exception is expressed, and the
+   * materialiser will not recreate what it already made.
+   */
+  scheduleId?: string | null;
+  /**
    * Bookable room the lesson occupies. Drives the room's calendar event
    * (`onLessonWrite`) and thus the /room-schedule. Optional for backwards-
    * compat with lessons created before this field existed; those fall back

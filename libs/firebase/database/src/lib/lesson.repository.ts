@@ -31,6 +31,7 @@ function docToLesson(
     primaryTeacherAtCreateId: data.primaryTeacherAtCreateId,
     seriesId: data.seriesId,
     blockId: data.blockId ?? null,
+    scheduleId: data.scheduleId ?? undefined,
     room: data.room,
     status: data.status,
     notes: data.notes,
@@ -102,6 +103,39 @@ export const LessonRepository = {
       id: docRef.id,
       ...data,
     };
+  },
+
+  /**
+   * Create a lesson at a caller-chosen document id, failing if it already
+   * exists (#797).
+   *
+   * The materialiser derives that id from the schedule and the occurrence date,
+   * which is what makes re-running a no-op — and what makes a skipped or moved
+   * week stay skipped or moved, since the document is still there either way.
+   * Returns null on collision rather than throwing, because collision IS the
+   * expected steady state.
+   */
+  async createWithId(
+    id: string,
+    input: CreateLessonInput
+  ): Promise<Lesson | null> {
+    const now = new Date();
+    const data = { ...input, createdAt: now, updatedAt: now };
+    try {
+      await db.collection(COLLECTION).doc(id).create(data);
+    } catch (err) {
+      // gRPC ALREADY_EXISTS
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: unknown }).code === 6
+      ) {
+        return null;
+      }
+      throw err;
+    }
+    return { id, ...data };
   },
 
   /**

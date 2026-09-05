@@ -89,6 +89,13 @@ export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesso
 export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
 export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
 export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
+export {
+  materializeLessonSchedules,
+  triggerMaterializeLessonSchedules,
+} from '@maple/firebase/maple-functions/materialize-lesson-schedules';
+export { getStudentLessonSchedules } from '@maple/firebase/maple-functions/get-student-lesson-schedules';
+export { createStudentLessonSchedule } from '@maple/firebase/maple-functions/create-student-lesson-schedule';
+export { updateStudentLessonSchedule } from '@maple/firebase/maple-functions/update-student-lesson-schedule';
 export { getNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
 export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
