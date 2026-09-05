@@ -5,6 +5,7 @@ export {
   useProducts,
   useInstructors,
   useHopeQueue,
+  useStudentLessonSchedules,
   useNeedsAttention,
   useLessonInquiries,
   useStudents,

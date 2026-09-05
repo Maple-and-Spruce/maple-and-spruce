@@ -31,7 +31,7 @@ Do them in order unless a slice says otherwise. Each is one PR.
 | 4 | #796 | `no-show` lesson status + billing behaviour | **merged** (PR #810) | unblocked #799 |
 | 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **merged** (PR #813) | the revenue |
 | 6 | #807 | Needs Attention queue | **merged** (PR #815) | carries the Hope row |
-| 7 | #797 | Standing lesson schedules — **PR 1 backend in review**, PR 2 = editing UI | in review | — |
+| 7 | #797 | Standing lesson schedules — PR 1 merged (#818), **PR 2 editing UI in review** | in review | — |
 | 8 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
 | 9 | #804 | Hope portal-session view + payouts at *paid* + editable rates | partly blocked | backfill Q only |
 
