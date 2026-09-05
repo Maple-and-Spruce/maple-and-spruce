@@ -21,6 +21,7 @@ import type {
   Invoice,
   Lesson,
   ManualInvoicePaymentSource,
+  StudentLessonSchedule,
   UpdateInvoiceInput,
   UpdateLessonInput,
 } from '@maple/ts/domain';
@@ -30,6 +31,8 @@ import {
   HopeScholarshipBanner,
   LessonList,
   ScheduleLessonDialog,
+  StandingScheduleCard,
+  StandingScheduleDialog,
   type LessonPendingAction,
 } from '@maple/react/lessons';
 import { InvoiceBuilderDialog, InvoiceList } from '@maple/react/invoices';
@@ -38,6 +41,7 @@ import {
   useInstructors,
   useInvoices,
   useLessons,
+  useStudentLessonSchedules,
   useLessonBlocks,
   useStudents,
 } from '../../../../hooks';
@@ -48,8 +52,13 @@ export default function StudentDetailPage() {
 
   const { studentsState } = useStudents();
   const { instructorsState } = useInstructors();
-  const { lessonsState, createLesson, createLessonSeries, updateLesson } =
-    useLessons({ studentId });
+  const {
+    lessonsState,
+    fetchLessons,
+    createLesson,
+    createLessonSeries,
+    updateLesson,
+  } = useLessons({ studentId });
   const {
     invoicesState,
     createInvoice,
@@ -205,6 +214,53 @@ export default function StudentDetailPage() {
     }
   };
 
+  const {
+    schedulesState,
+    createSchedule,
+    updateSchedule,
+    pendingId: schedulePendingId,
+  } = useStudentLessonSchedules(studentId);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<
+    StudentLessonSchedule | undefined
+  >();
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  const handleScheduleSubmit = async (input: {
+    teacherId: string;
+    blockId: string;
+    dayOfWeek: number;
+    startMinutes: number;
+    durationMinutes: number;
+    startsOn: Date;
+  }) => {
+    setScheduleError(null);
+    try {
+      if (editingSchedule) {
+        await updateSchedule({ id: editingSchedule.id, ...input });
+      } else {
+        await createSchedule({ ...input, studentId });
+      }
+      setScheduleDialogOpen(false);
+      setEditingSchedule(undefined);
+      // A new arrangement materialises lessons immediately, so show them.
+      await fetchLessons();
+    } catch (err) {
+      setScheduleError(
+        err instanceof Error ? err.message : 'Could not save the schedule'
+      );
+    }
+  };
+
+  /** Ending an arrangement stops future lessons; it never deletes past ones. */
+  const handleEndSchedule = async (schedule: StudentLessonSchedule) => {
+    await updateSchedule({
+      id: schedule.id,
+      status: 'ended',
+      endsOn: new Date(),
+    });
+  };
+
   const handleMarkNoShow = async (lesson: Lesson) => {
     setPendingLessonAction({ lessonId: lesson.id, action: 'mark-no-show' });
     setIsSubmitting(true);
@@ -325,6 +381,25 @@ export default function StudentDetailPage() {
         />
       )}
 
+      <StandingScheduleCard
+        schedules={
+          schedulesState.status === 'success' ? schedulesState.data : []
+        }
+        instructors={instructors}
+        pendingId={schedulePendingId}
+        onAdd={() => {
+          setEditingSchedule(undefined);
+          setScheduleError(null);
+          setScheduleDialogOpen(true);
+        }}
+        onEdit={(schedule) => {
+          setEditingSchedule(schedule);
+          setScheduleError(null);
+          setScheduleDialogOpen(true);
+        }}
+        onEnd={handleEndSchedule}
+      />
+
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
         Lessons
       </Typography>
@@ -400,6 +475,21 @@ export default function StudentDetailPage() {
         onCreate={handleInvoiceCreate}
         onUpdate={handleInvoiceUpdate}
         isSubmitting={isSubmitting}
+      />
+
+      <StandingScheduleDialog
+        open={scheduleDialogOpen}
+        schedule={editingSchedule}
+        instructors={instructors}
+        blocks={blocks}
+        defaultTeacherId={student.primaryTeacherId}
+        isSubmitting={schedulePendingId !== null}
+        error={scheduleError}
+        onClose={() => {
+          setScheduleDialogOpen(false);
+          setEditingSchedule(undefined);
+        }}
+        onSubmit={handleScheduleSubmit}
       />
 
       <ScheduleLessonDialog

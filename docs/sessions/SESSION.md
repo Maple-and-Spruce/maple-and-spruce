@@ -6,6 +6,47 @@
 
 ## Current Status
 
+### Standing lesson schedules, PR 2: Katie edits the arrangement (2026-09-04, #797)
+
+The student page now leads with **Standing schedule** — "Tuesdays at 4:00 PM · 30 min · Katie
+McCoy" — above the lesson rows. Moving a student to a new day is one edit instead of twelve. The
+concrete lessons are still listed underneath; they are just no longer the thing being managed.
+
+**Three things the screenshots caught that the tests could not.**
+
+- **The start date was read in the browser's timezone.** `startsOn` is a date-only fact stored as a
+  timestamp, so a schedule beginning Jan 6 displayed as Jan 5 — and because the dialog writes that
+  same value straight back on save, an untouched edit could walk a schedule's start date backwards
+  one edit at a time. Both the card and the dialog now read and write it in **shop time**, reusing
+  `zonedDateKey` / `zonedWallClockToInstant` from PR 1. A story pins the behaviour, because the next
+  person to see "Jan 5" on a Jan 6 fixture will otherwise "fix" the working code.
+- The confirmation said "Tuesdays at **16:00**" while everything else said "4:00 PM". Now uses the
+  existing `formatMinutes`.
+- The fixture that exposed the first one was itself unrealistic (`T00:00:00Z` — genuinely 7pm the
+  previous day in ET). Corrected to midday shop time, which is what the dialog and the backfill both
+  actually produce.
+
+**The weekday is derived from the block, not asked for.** A `LessonBlock` already *is* a weekday and
+a window, so asking twice lets the two disagree and the server would reject the result. The form
+narrows to the chosen teacher's blocks and validates block fit before saving, which is the same rule
+the server enforces — shown before the save rather than after it.
+
+**Changing an arrangement never rewrites lessons already on the calendar**, and the card says so.
+Some of those are taught, invoiced, or paid; the new pattern applies going forward. "I changed the
+day and next week didn't move" needs to be a documented rule, not a surprise.
+
+### Backfill run against production
+
+`tools/backfill-lesson-schedules.ts --prod --execute` created **5 schedules** (4 active, 1 ended) and
+stamped 29 lessons. Its dry run is what caught two bugs in the tool before they reached data: three
+"arrangements" inferred from single lessons, and two students sharing one teacher's Tuesday 17:00
+slot — a permanent weekly double-booking, which turned out to be a slot handed from Candi to Sarah.
+
+Left needing a human, as intended: **Randy Brockman** (Nathan's student, no lesson since May and no
+series to infer from), **Leelah Strickland** (one lesson, correctly refused as not a pattern), and
+**Conor Haggerty** (no lessons at all). There is also a lesson pointing at a deleted student record.
+
+
 ### Standing lesson schedules, PR 1: the arrangement becomes an object (2026-09-04, #797)
 
 Katie and Nathan think in standing arrangements — "Nathan teaches Ellie on Tuesdays at 4:00". The
