@@ -145,6 +145,26 @@ describe('inquiryProvenanceNote', () => {
     );
   });
 
+  it('THE POINT: dates the note in the studio’s day, not the server’s', () => {
+    // 2026-08-26T03:42:50Z is the evening of Aug 25 in Morgantown. A note
+    // saying "Aug 26" would contradict the /leads row it was created from.
+    //
+    // The first version read getMonth()/getDate(), i.e. the runtime's zone:
+    // right on an ET laptop, a day late in CI, and a day late in us-east4.
+    // Asserting both zones is what makes this test able to fail anywhere.
+    const evening = inquiry({
+      submittedAt: new Date('2026-08-26T03:42:50.000Z'),
+    });
+    expect(inquiryProvenanceNote(evening)).toContain('Aug 25, 2026');
+
+    // ...and the same instant must not drift the other way for a morning
+    // submission, where UTC and ET agree on the day.
+    const morning = inquiry({
+      submittedAt: new Date('2026-08-26T15:42:50.000Z'),
+    });
+    expect(inquiryProvenanceNote(morning)).toContain('Aug 26, 2026');
+  });
+
   it('THE POINT: keeps the answers the student record has no field for', () => {
     // Availability, the free-text message and an unmappable instrument are all
     // dropped the moment the inquiry stops being the thing on screen, unless

@@ -82,14 +82,34 @@ export function inferAdultStudent(
   return undefined;
 }
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+/**
+ * The studio's timezone, which is the only one this date can honestly be in.
+ *
+ * `submittedAt` is an instant; the *day* it happened on is a question you can
+ * only answer relative to somewhere. Lace's inquiry is 2026-08-26T03:42:50Z —
+ * that is the evening of Aug 25 in Morgantown, and Aug 25 is what `/leads`
+ * shows, so a note reading "submitted Aug 26" would contradict the row it was
+ * created from.
+ *
+ * Naming the zone also makes the function deterministic. The first version used
+ * `getMonth()`/`getDate()`, which is the *runtime's* zone: correct on a laptop
+ * in ET, off by a day in CI, and off by a day on any server not in Eastern.
+ */
+const STUDIO_TIMEZONE = 'America/New_York';
 
-/** Locale-independent so the seeded note reads the same everywhere, tests included. */
+/**
+ * Fixed locale and fixed timezone, so the seeded note reads identically on a
+ * laptop, in CI, and in us-east4.
+ */
+const NOTE_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: STUDIO_TIMEZONE,
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
 function formatDate(date: Date): string {
-  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  return NOTE_DATE_FORMAT.format(date);
 }
 
 /**
