@@ -62,7 +62,8 @@
     "firebase-maple-functions-admin-pause-craft-club-subscription": "maple-square",
     "firebase-maple-functions-admin-resume-craft-club-subscription": "maple-square",
     "firebase-maple-functions-admin-cancel-craft-club-subscription": "maple-square",
-    "firebase-maple-functions-tally-lead-webhook": "maple-webhooks"
+    "firebase-maple-functions-tally-lead-webhook": "maple-webhooks",
+    "firebase-maple-functions-run-lesson-billing": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

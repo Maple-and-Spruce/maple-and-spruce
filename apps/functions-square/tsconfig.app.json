@@ -32,6 +32,7 @@
     "../../libs/firebase/maple-functions/charge-music-together-installments/**/*.ts",
     "../../libs/firebase/maple-functions/cancel-music-together-registration/**/*.ts",
     "../../libs/firebase/maple-functions/update-music-together-payment-method/**/*.ts",
+    "../../libs/firebase/maple-functions/run-lesson-billing/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",
     "../../libs/firebase/square/src/**/*.ts",

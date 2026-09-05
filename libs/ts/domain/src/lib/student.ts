@@ -113,6 +113,33 @@ export interface Student {
    */
   autoInvoice?: boolean;
   /**
+   * The billing rule this student is on (#798). Unset means the studio default.
+   *
+   * An override lives on the rule attachment, not by cloning the rule, so
+   * changing studio policy still reaches everyone who has not deviated —
+   * the same shape `lessonRateCents` uses against the rate table.
+   */
+  billingRuleId?: string;
+  /**
+   * Square customer holding this family's card on file, and the card to charge.
+   *
+   * Katie and Nathan were already vaulting cards in Square and charging by
+   * hand; these are where that lands so the charge job can do it instead.
+   * Absent means no card — the family is invoiced the existing way, and nothing
+   * is ever charged silently.
+   */
+  squareCustomerId?: string;
+  squareCardId?: string;
+  /**
+   * Enough of the card to name it back to a person — "Visa ••4242". Stored
+   * rather than fetched, so the student page can say which card is on file
+   * without a Square round trip on every render.
+   */
+  cardBrand?: string;
+  cardLast4?: string;
+  /** When the card was linked, so an old link is visibly old. */
+  cardLinkedAt?: Date;
+  /**
    * Per-student private-pay lesson rate override, in cents. When set it wins
    * over the standard rate-by-length table (#629). Leave unset to use the
    * default for their registered lesson length.

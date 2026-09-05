@@ -89,3 +89,12 @@ export { syncClassToSquare } from '@maple/firebase/maple-functions/sync-class-to
 // class's Square variation via idempotent PHYSICAL_COUNT so POS stock stays
 // accurate as web registrations happen.
 export { syncClassInventoryToSquare } from '@maple/firebase/maple-functions/sync-class-inventory-to-square';
+
+// Lesson auto-billing (#798) — plans charges from each student's billing rule,
+// then takes the ones that are due against their card on file. Scheduled daily
+// plus an admin-callable twin for a dry run or a manual catch-up. M&S Square
+// account, not MT's.
+export {
+  runLessonBillingScheduled,
+  triggerLessonBilling,
+} from '@maple/firebase/maple-functions/run-lesson-billing';
