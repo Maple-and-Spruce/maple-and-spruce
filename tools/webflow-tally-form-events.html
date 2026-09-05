@@ -21,8 +21,26 @@
   See docs/guides/music-together-ad-tracking.md.
 
   Paste destination:
-    Webflow Designer → Site Settings (gear icon) → Custom Code →
-    "Footer Code". Append this snippet (do not replace existing footer code).
+    Webflow Designer → Site Settings (gear icon) → Custom Code → "Footer Code".
+
+  REPLACE the previous copy of THIS snippet — do not append a second one.
+    Appending leaves two `message` listeners on `Tally.FormSubmitted`, which
+    double-counts every GA4 `generate_lead`, and — worse — lets the OLDER block
+    win the Meta event: both fire with the same `eventID`, Meta keeps the first
+    it sees, and the stale block's `content_category` silently overrides the
+    correct one. Updating this file then appending it is therefore a no-op that
+    looks like a fix.
+    Leave unrelated footer code (the GTM noscript block) alone.
+
+  Verify after publishing. The second check is the one that catches a double
+  paste, and it must count something that appears EXACTLY ONCE per copy:
+    curl -s https://mapleandsprucefolkarts.com/suzuki | grep -c suzuki-interview
+    curl -s https://mapleandsprucefolkarts.com/suzuki | grep -c 'MS_PIXEL_ID ='
+  Both should print 1; a second copy makes the second command print 2.
+
+  Do NOT grep for `Tally.FormSubmitted` to count copies — it appears twice in
+  one correct copy (the indexOf check, and the note below about matching by
+  string), so a single good paste reads as 2 and looks broken.
 
   After pasting:
     1. Save site settings.
