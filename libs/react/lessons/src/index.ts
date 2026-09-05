@@ -19,6 +19,15 @@ export {
 } from './lib/LessonBlockList';
 export { MyWeek, type MyWeekProps } from './lib/MyWeek';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
+export {
+  StandingScheduleCard,
+  describeSchedule,
+  type StandingScheduleCardProps,
+} from './lib/StandingScheduleCard';
+export {
+  StandingScheduleDialog,
+  type StandingScheduleDialogProps,
+} from './lib/StandingScheduleDialog';
 export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
 export {
   NeedsAttentionPanel,
