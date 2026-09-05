@@ -1,10 +1,20 @@
 /**
- * The fixtures here are the **real** shapes returned by the Tally submissions
- * API (captured from `dWPQOr` and `0QPRq9`, with contact details replaced).
- * That matters: the webhook body and the API response are different shapes, and
- * mapping this against the webhook's `{ key, label, type, value }` fields —
- * which is the obvious guess — produces a mapper that compiles, passes an
- * invented fixture, and captures nothing in production.
+ * These fixtures were written from the *documented* Tally submissions shape,
+ * not captured from a live response — despite what this comment used to claim.
+ * The difference cost us the whole queue: production put the question's human
+ * text under a key other than `label`, every label-matched field mapped to
+ * nothing, and all 14 leads stored as "Unknown" while these tests stayed green
+ * (#816).
+ *
+ * Treat everything below as *a* shape the mapper must handle, not as evidence
+ * of what Tally actually sends. The regression block at the bottom is the part
+ * that pins the real behaviour, by asserting the mapper works whichever key
+ * carries the text.
+ *
+ * The original warning still stands on its own terms: the webhook body and the
+ * API response are different shapes, and mapping this against the webhook's
+ * `{ key, label, type, value }` fields — the obvious guess — produces a mapper
+ * that compiles, passes an invented fixture, and captures nothing.
  */
 import { describe, it, expect } from 'vitest';
 import { formNameFor, mapSubmission } from './map-submission';
@@ -371,5 +381,103 @@ describe('formNameFor', () => {
   it('does not resolve inherited Object properties as form names', () => {
     expect(formNameFor('constructor')).toBe('constructor');
     expect(formNameFor('toString')).toBe('toString');
+  });
+});
+
+/**
+ * REGRESSION: the queue shipped with 14 leads reading "Unknown" (#816).
+ *
+ * The fixtures above put the question's human text under `label`. Production
+ * did not: every `byType` field (email, phone) arrived intact while every
+ * `byLabel` field (name, instrument, message) came back empty, which is only
+ * possible if `label` was absent from the real response. The fixtures had been
+ * written from the documented shape rather than captured from it, so they
+ * asserted the assumption that was wrong.
+ *
+ * These cases pin the behaviour that actually matters: the mapper reads the
+ * question text from whichever key carries it, and — the part worth guarding —
+ * a payload carrying no text at all still yields a usable lead rather than
+ * silently filing a nameless one.
+ */
+describe('mapSubmission — question text is not always under `label`', () => {
+  const submission: TallySubmission = {
+    id: '1W61AML',
+    isCompleted: true,
+    submittedAt: '2026-08-26T03:42:50.000Z',
+    responses: [
+      { questionId: '0EKjV0', answer: 'Lace Haggerty ' },
+      { questionId: 'zKkQE8', answer: 'lacehagg11@example.com' },
+      { questionId: '5dJqXP', answer: '+15550000001' },
+      { questionId: 'dYO2by', answer: ['Old-Time Fiddle'] },
+    ],
+  };
+
+  const withTextUnder = (key: 'label' | 'title' | 'name'): TallyQuestion[] => [
+    { id: '0EKjV0', type: 'INPUT_TEXT', [key]: 'Parent or Student Name' },
+    { id: 'zKkQE8', type: 'INPUT_EMAIL', [key]: 'Email' },
+    { id: '5dJqXP', type: 'INPUT_PHONE_NUMBER', [key]: 'Phone Number' },
+    {
+      id: 'dYO2by',
+      type: 'MULTI_SELECT',
+      [key]: 'Which instrument are you interested in?',
+    },
+  ];
+
+  it.each(['label', 'title', 'name'] as const)(
+    'THE POINT: reads the name and instrument when the text is under `%s`',
+    (key) => {
+      const mapped = mapSubmission(
+        submission,
+        withTextUnder(key),
+        'dWPQOr',
+        NOW
+      );
+
+      expect(mapped?.contactName).toBe('Lace Haggerty');
+      expect(mapped?.interest).toBe('Old-Time Fiddle');
+    }
+  );
+
+  it('still produces a contactable lead when NO question carries text', () => {
+    // The failure mode that shipped. It must degrade to a lead someone can
+    // still answer — never to a dropped submission — but the name is genuinely
+    // unavailable, so "Unknown" is the honest value rather than a bug.
+    const mapped = mapSubmission(
+      submission,
+      [
+        { id: '0EKjV0', type: 'INPUT_TEXT' },
+        { id: 'zKkQE8', type: 'INPUT_EMAIL' },
+        { id: '5dJqXP', type: 'INPUT_PHONE_NUMBER' },
+        { id: 'dYO2by', type: 'MULTI_SELECT' },
+      ],
+      'dWPQOr',
+      NOW
+    );
+
+    expect(mapped).not.toBeNull();
+    expect(mapped?.email).toBe('lacehagg11@example.com');
+    expect(mapped?.phone).toBe('+15550000001');
+    expect(mapped?.contactName).toBe('Unknown');
+  });
+
+  it('prefers a populated key over an empty one on the same question', () => {
+    // Tally sends the text under one key; the others are absent or blank.
+    // A blank `label` must not shadow a real `title`.
+    const mapped = mapSubmission(
+      submission,
+      [
+        {
+          id: '0EKjV0',
+          type: 'INPUT_TEXT',
+          label: '   ',
+          title: 'Parent or Student Name',
+        },
+        { id: 'zKkQE8', type: 'INPUT_EMAIL', label: null, title: 'Email' },
+      ],
+      'dWPQOr',
+      NOW
+    );
+
+    expect(mapped?.contactName).toBe('Lace Haggerty');
   });
 });
