@@ -222,7 +222,7 @@ export const AutoInvoiceAndLessonRateSubmit: Story = {
 
     // Flip auto-invoice on and set a $41.25 rate → 4125 cents.
     await userEvent.click(
-      canvas.getByRole('switch', { name: /auto-invoice when a lesson/i })
+      canvas.getByRole('switch', { name: /automatically invoice after each lesson/i })
     );
     await userEvent.type(
       canvas.getByLabelText(/lesson rate override/i),
@@ -256,7 +256,7 @@ export const HopeScholarshipDisablesAutoInvoice: Story = {
     );
     await waitFor(() => {
       expect(
-        canvas.getByRole('switch', { name: /auto-invoice when a lesson/i })
+        canvas.getByRole('switch', { name: /automatically invoice after each lesson/i })
       ).toBeDisabled();
     });
   },
