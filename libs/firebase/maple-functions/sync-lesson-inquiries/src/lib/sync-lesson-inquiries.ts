@@ -28,18 +28,30 @@
  * bundle is what dissolves the codebase question entirely — this runs on a
  * schedule, so cold start is irrelevant and it lives happily in `maple-core`.
  *
- * IDEMPOTENCE
- * -----------
- * The Firestore document id is the Tally submission id, and ingestion uses
- * `create()`, not `set()`. Re-reading a stored submission is a skip, never an
- * overwrite — which is what stops a run from resetting an `enrolled` lead that
- * Katie has already worked back to `new`.
+ * IDEMPOTENCE, AND WHY IT IS BY OWNERSHIP RATHER THAN BY AGE
+ * ----------------------------------------------------------
+ * The Firestore document id is the Tally submission id, and a new inquiry is
+ * written with `create()`, not `set()`, so two concurrent runs cannot both
+ * create it.
+ *
+ * "Already stored" originally meant "never touch again". That protected the
+ * statuses — a run must never reset an `enrolled` lead Katie has worked back
+ * to `new` — but it also froze bugs. When a mapping defect stored
+ * `contactName: "Unknown"` on all 14 leads, fixing the mapper could not reach
+ * them; the only route left was to delete and re-ingest, discarding the
+ * statuses along with the bug.
+ *
+ * So the document is split by writer instead. Tally owns the answers and a run
+ * will rewrite them when they drift (`refreshIngestedFields`); the portal owns
+ * `status`, `studentId` and `followUpNote` and a run never writes them at all.
+ * The drift check is what keeps this from becoming a busy loop: a row that
+ * already matches is not written, so the steady state is still zero writes.
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { Functions, Role } from '@maple/firebase/functions';
 import { LessonInquiryRepository } from '@maple/firebase/database';
-import { mapSubmission } from './map-submission';
+import { ingestedFieldsMatch, mapSubmission } from './map-submission';
 import { fetchAllSubmissions } from './tally-client';
 
 const tallyApiKey = defineSecret('TALLY_API_KEY');
@@ -64,8 +76,10 @@ export interface SyncLessonInquiriesResult {
   seen: number;
   /** New inquiries written. */
   created: number;
-  /** Already stored — the steady-state case. */
+  /** Already stored and already correct — the steady-state case. */
   skipped: number;
+  /** Already stored, but the ingested answers had drifted and were rewritten. */
+  repaired: number;
   /** Submissions that could not become a lead (no id, no email, partial). */
   unmappable: number;
   /** Forms that errored. One bad form must not stop the others. */
@@ -93,6 +107,7 @@ export async function runSyncLessonInquiries(
     seen: 0,
     created: 0,
     skipped: 0,
+    repaired: 0,
     unmappable: 0,
     failedForms: [],
   };
@@ -110,30 +125,35 @@ export async function runSyncLessonInquiries(
     return result;
   }
 
-  // One read of the stored ids serves every form: it both short-circuits the
-  // page walk and avoids a per-submission existence check.
-  const knownIds = await LessonInquiryRepository.findAllIds();
+  // One read of the stored inquiries serves every form: it short-circuits the
+  // page walk, avoids a per-submission existence check, and gives the repair
+  // pass something to compare against.
+  const stored = await LessonInquiryRepository.findAllBySubmissionId();
 
   for (const formId of config.formIds) {
     try {
       const { questions, submissions } = await fetchAllSubmissions(
         { baseUrl: config.baseUrl, apiKey: config.apiKey },
         formId,
-        // Submissions come back newest-first, so a page in which every id is
-        // already stored means everything older is stored too. The first run
-        // never hits this and walks the whole history, which is the backfill.
+        // Submissions come back newest-first, so a page on which every id is
+        // stored *and already correct* means everything older is too. The
+        // first run never hits this and walks the whole history, which is the
+        // backfill; a run after a mapping fix keeps walking past rows that are
+        // merely present, which is what lets the repair reach page 2 and
+        // beyond rather than stopping at the newest already-known lead.
         (page) =>
           page.submissions.length > 0 &&
-          page.submissions.every((s) => s.id && knownIds.has(s.id))
+          page.submissions.every((s) => {
+            if (!s.id) return false;
+            const existing = stored.get(s.id);
+            if (!existing) return false;
+            const mapped = mapSubmission(s, questions, formId, now);
+            return mapped !== null && ingestedFieldsMatch(existing, mapped);
+          })
       );
 
       for (const submission of submissions) {
         result.seen++;
-
-        if (submission.id && knownIds.has(submission.id)) {
-          result.skipped++;
-          continue;
-        }
 
         const mapped = mapSubmission(submission, questions, formId, now);
         if (!mapped) {
@@ -141,10 +161,26 @@ export async function runSyncLessonInquiries(
           continue;
         }
 
+        const existing = submission.id ? stored.get(submission.id) : undefined;
+        if (existing) {
+          // Present already. Rewrite only if what Tally says has drifted from
+          // what we stored — the guard is what keeps the steady state at zero
+          // writes, and what stops this and the portal fighting over the row.
+          if (ingestedFieldsMatch(existing, mapped)) {
+            result.skipped++;
+            continue;
+          }
+          const refreshed =
+            await LessonInquiryRepository.refreshIngestedFields(mapped);
+          if (refreshed) stored.set(mapped.id, refreshed);
+          result.repaired++;
+          continue;
+        }
+
         const created = await LessonInquiryRepository.createIfAbsent(mapped);
         if (created) {
           result.created++;
-          knownIds.add(mapped.id);
+          stored.set(mapped.id, created);
         } else {
           // Lost a race with a concurrent run. Benign by construction.
           result.skipped++;
@@ -163,7 +199,8 @@ export async function runSyncLessonInquiries(
 
   console.log(
     `[lesson-inquiries] seen ${result.seen}, created ${result.created}, ` +
-      `skipped ${result.skipped}, unmappable ${result.unmappable}` +
+      `skipped ${result.skipped}, repaired ${result.repaired}, ` +
+      `unmappable ${result.unmappable}` +
       (result.failedForms.length > 0
         ? `, failed forms: ${result.failedForms.join(', ')}`
         : '')

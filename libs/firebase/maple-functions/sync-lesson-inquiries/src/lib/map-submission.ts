@@ -11,7 +11,7 @@
  * self-describing: `{ key, label, type, value }`. The submissions API is
  * different and this was verified against real submissions, not assumed:
  *
- *   questions:   [{ id, type, label }]          <- once per page, not per submission
+ *   questions:   [{ id, type, <text> }]         <- once per page, not per submission
  *   submissions: [{ id, isCompleted, submittedAt,
  *                   responses: [{ questionId, answer }] }]
  *
@@ -19,7 +19,9 @@
  * polymorphic: a plain string for text/email/phone, a string array for choice
  * fields (already resolved to option **text**, so no uuid lookup is needed),
  * and a single **object** keyed by field name for the HIDDEN_FIELDS question.
- * A HIDDEN_FIELDS question has `label: null`, so it can only be found by type.
+ * A HIDDEN_FIELDS question carries no human text at all, so it can only be
+ * found by type. The key holding that text for the *other* questions is not
+ * reliably `label` — see `questionText`, which is where this went wrong.
  *
  * TWO FORMS, DIFFERENT QUESTIONS
  * ------------------------------
@@ -42,6 +44,45 @@ export interface TallyQuestion {
   type?: string;
   /** Null for HIDDEN_FIELDS, which is why that one is found by type. */
   label?: string | null;
+  /**
+   * The same human text under two other names Tally has used for it. See
+   * `questionText` — reading only `label` is what silently blanked every
+   * label-matched field on all 14 stored leads.
+   */
+  title?: string | null;
+  name?: string | null;
+}
+
+/**
+ * The question's human text, whichever key this API version puts it under.
+ *
+ * WHY THIS IS NOT JUST `question.label`
+ * -------------------------------------
+ * It was, and it cost us every name and instrument in the queue. All 14 leads
+ * ingested on 2026-09-04 stored `contactName: "Unknown"` with no `interest`,
+ * no `studentFirstName` and no `message` — while `email` and `phone` came
+ * through perfectly. That split is the whole diagnosis: those two are found by
+ * question **type**, everything else by **label**. `type` was present, `label`
+ * was not, so `idsByNormalizedLabel` was built empty and every `byLabel` call
+ * returned nothing. The fallback did its job and wrote "Unknown" 14 times.
+ *
+ * The unit tests did not catch it because their fixtures were written by hand
+ * from the documented shape rather than captured from a real response, so they
+ * asserted the assumption instead of the behaviour.
+ *
+ * Reading all three keys is deliberate over pinning the one that happens to be
+ * right today: the request pins `tally-version: 2025-02-01`, the label is
+ * editable by a human in a web UI, and a rename of this key is exactly the
+ * change that would silently blank the queue again. A wrong guess among these
+ * three is impossible — only one is ever populated.
+ */
+export function questionText(question: TallyQuestion): string | undefined {
+  for (const candidate of [question.label, question.title, question.name]) {
+    if (typeof candidate === 'string' && candidate.trim() !== '') {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 export interface TallyResponse {
@@ -146,8 +187,9 @@ function buildLookup(submission: TallySubmission, questions: TallyQuestion[]) {
   const idsByType = new Map<string, string[]>();
   for (const question of questions) {
     if (!question?.id) continue;
-    if (question.label) {
-      const key = normalizeLabel(question.label);
+    const text = questionText(question);
+    if (text) {
+      const key = normalizeLabel(text);
       // First question wins — a duplicated label is a form-authoring mistake,
       // and silently preferring the later one would be surprising.
       if (!idsByNormalizedLabel.has(key)) {
@@ -303,4 +345,77 @@ export function mapSubmission(
       landingPage: hiddenValue(hidden, 'landing_page'),
     },
   };
+}
+
+/**
+ * Do a stored inquiry's ingested answers already match what Tally now maps to?
+ *
+ * Only the fields ingestion owns are compared. `status`, `studentId`,
+ * `followUpNote` and the timestamps belong to the portal and must never make a
+ * run think there is drift to repair — that would put the two writers into a
+ * loop, each undoing the other every fifteen minutes.
+ *
+ * This is what makes the repair self-limiting: once a row matches it is never
+ * written again, so the steady state stays exactly what it was before repair
+ * existed — one Tally request and zero Firestore writes.
+ */
+export function ingestedFieldsMatch(
+  stored: {
+    formId: string;
+    formName: string;
+    submittedAt: Date;
+    contactName: string;
+    email: string;
+    phone?: string;
+    studentFirstName?: string;
+    studentAge?: number;
+    interest?: string;
+    availability?: string[];
+    hopeScholarship?: 'yes' | 'no' | 'unsure';
+    message?: string;
+    attribution?: Partial<MappedLessonInquiry['attribution']>;
+  },
+  mapped: MappedLessonInquiry
+): boolean {
+  const scalarsMatch =
+    stored.formId === mapped.formId &&
+    stored.formName === mapped.formName &&
+    stored.submittedAt?.getTime() === mapped.submittedAt.getTime() &&
+    stored.contactName === mapped.contactName &&
+    stored.email === mapped.email &&
+    stored.phone === mapped.phone &&
+    stored.studentFirstName === mapped.studentFirstName &&
+    stored.studentAge === mapped.studentAge &&
+    stored.interest === mapped.interest &&
+    stored.hopeScholarship === mapped.hopeScholarship &&
+    stored.message === mapped.message;
+
+  if (!scalarsMatch) return false;
+
+  const storedAvailability = stored.availability ?? [];
+  if (storedAvailability.length !== mapped.availability.length) return false;
+  if (storedAvailability.some((v, i) => v !== mapped.availability[i])) {
+    return false;
+  }
+
+  // `stripUndefined` means an unset attribution key is absent rather than
+  // explicitly undefined, so an absent key and an undefined one must compare
+  // equal. Listing the keys rather than unioning `Object.keys` keeps that
+  // comparison total: a key added to the type but forgotten here is a compile
+  // error, not a field that silently never triggers a repair.
+  const storedAttribution = stored.attribution ?? {};
+  const attributionKeys: (keyof MappedLessonInquiry['attribution'])[] = [
+    'utmSource',
+    'utmMedium',
+    'utmCampaign',
+    'utmContent',
+    'utmTerm',
+    'referrer',
+    'landingPage',
+  ];
+  for (const key of attributionKeys) {
+    if (storedAttribution[key] !== mapped.attribution[key]) return false;
+  }
+
+  return true;
 }
