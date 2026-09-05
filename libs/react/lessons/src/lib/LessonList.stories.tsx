@@ -206,7 +206,7 @@ export const MarkRenderedShownOnPastScheduledLesson: Story = {
     const canvas = within(canvasElement);
     await waitFor(() => {
       expect(
-        canvas.getByRole('button', { name: /mark rendered/i })
+        canvas.getByRole('button', { name: /mark taught/i })
       ).toBeInTheDocument();
     });
   },
@@ -222,7 +222,7 @@ export const MarkRenderedHiddenOnUpcomingLesson: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      canvas.queryByRole('button', { name: /mark rendered/i })
+      canvas.queryByRole('button', { name: /mark taught/i })
     ).toBeNull();
     // Edit + Cancel still present
     expect(
@@ -242,7 +242,7 @@ export const MarkRenderedHiddenWhenHandlerOmitted: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      canvas.queryByRole('button', { name: /mark rendered/i })
+      canvas.queryByRole('button', { name: /mark taught/i })
     ).toBeNull();
   },
 };
@@ -257,7 +257,7 @@ export const MarkRenderedCallsHandler: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const button = canvas.getByRole('button', {
-      name: /mark rendered/i,
+      name: /mark taught/i,
     });
     await userEvent.click(button);
     await waitFor(() => {
@@ -280,7 +280,7 @@ export const MarkRenderedHiddenOnRenderedRow: Story = {
     const canvas = within(canvasElement);
     // Already-rendered lesson shouldn't offer the action again
     expect(
-      canvas.queryByRole('button', { name: /mark rendered/i })
+      canvas.queryByRole('button', { name: /mark taught/i })
     ).toBeNull();
   },
 };
@@ -304,9 +304,9 @@ export const PrimaryActionIsLabelled: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const button = canvas.getByRole('button', { name: /mark rendered/i });
+    const button = canvas.getByRole('button', { name: /mark taught/i });
     // A real word, not a tooltip and not an aria-label a mouse user never sees.
-    expect(button).toHaveTextContent(/mark rendered/i);
+    expect(button).toHaveTextContent(/mark taught/i);
   },
 };
 

@@ -41,6 +41,15 @@ interface MyDayLessonCardProps {
   pending?: MyDayCardAction | null;
 }
 
+/**
+ * The stored status is `rendered` — "services rendered" — but no teacher says
+ * that, and Katie read it as jargon. On screen it is **taught**; the stored
+ * value is unchanged.
+ */
+function statusLabel(status: MyDayLesson['lesson']['status']): string {
+  return status === 'rendered' ? 'taught' : status;
+}
+
 /** Distinct colours per status — a no-show is neither a success nor a nothing. */
 function statusChipColor(
   status: MyDayLesson['lesson']['status']
@@ -95,7 +104,7 @@ export function MyDayLessonCard({
             </Typography>
           </Box>
           <Chip
-            label={lesson.status}
+            label={statusLabel(lesson.status)}
             size="small"
             color={statusChipColor(lesson.status)}
             variant={lesson.status === 'rendered' ? 'filled' : 'outlined'}
@@ -122,7 +131,7 @@ export function MyDayLessonCard({
               disabled={busy}
               onClick={() => onMarkRendered(lesson.id)}
             >
-              {pending === 'mark-rendered' ? 'Marking…' : 'Mark rendered'}
+              {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
             </Button>
           )}
 

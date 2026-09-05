@@ -59,7 +59,7 @@ export const ScheduledMarkRendered: Story = {
   args: { item: scheduledNoInvoice },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /mark rendered/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /mark taught/i }));
     await waitFor(() => {
       expect(args.onMarkRendered).toHaveBeenCalledWith('les-1');
     });
@@ -72,7 +72,7 @@ export const UnpaidRecordVenmo: Story = {
     const canvas = within(canvasElement);
     // No mark-rendered button once rendered.
     expect(
-      canvas.queryByRole('button', { name: /mark rendered/i })
+      canvas.queryByRole('button', { name: /mark taught/i })
     ).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: /record venmo/i }));
     await waitFor(() => {
@@ -151,7 +151,7 @@ export const SavingNoShow: Story = {
     expect(await canvas.findByRole('button', { name: /saving/i })).toBeDisabled();
     // Its sibling on the same card disables too — one card, one action.
     expect(
-      canvas.getByRole('button', { name: /mark rendered/i })
+      canvas.getByRole('button', { name: /mark taught/i })
     ).toBeDisabled();
   },
 };

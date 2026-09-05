@@ -107,7 +107,7 @@ export function BackfillLessonsDialog({
       <DialogTitle>Record lessons already taught</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Creates rendered lessons in the past, so they can be claimed and so
+          Records lessons in the past as taught, so they can be claimed and so
           teacher payouts are right. Use this for teaching that happened before
           it was being recorded.
         </Typography>
@@ -204,8 +204,8 @@ export function BackfillLessonsDialog({
 
           {dates.length > 0 && futureDates.length === 0 && (
             <Alert severity="info">
-              Will record <strong>{dates.length}</strong> rendered lesson
-              {dates.length === 1 ? '' : 's'}, from{' '}
+              Will record <strong>{dates.length}</strong> lesson
+              {dates.length === 1 ? '' : 's'} as taught, from{' '}
               {dates[0].toLocaleDateString()} to{' '}
               {dates[dates.length - 1].toLocaleDateString()}. They will be
               flagged &ldquo;needs a block&rdquo; until someone attributes them.
