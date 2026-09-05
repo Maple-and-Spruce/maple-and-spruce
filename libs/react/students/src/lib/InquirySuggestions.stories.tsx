@@ -12,8 +12,8 @@ function inquiry(overrides: Partial<LessonInquiry> = {}): LessonInquiry {
     formId: 'dWPQOr',
     formName: 'Music lesson inquiry',
     submittedAt: new Date(now - DAY),
-    contactName: 'Lace Haggerty',
-    email: 'lace@example.com',
+    contactName: 'Robin Ashfield',
+    email: 'robin@example.com',
     phone: '+13045550101',
     interest: 'Old-Time Fiddle',
     availability: [],
@@ -28,13 +28,13 @@ function inquiry(overrides: Partial<LessonInquiry> = {}): LessonInquiry {
 function student(overrides: Partial<Student> = {}): Student {
   return {
     id: 'stu-1',
-    name: 'Andrew Marvin',
+    name: 'Theo Marsh',
     instrument: 'fiddle',
     isAdultStudent: true,
     primaryTeacherId: 'ins-1',
     isHopeScholarship: false,
-    primaryContactName: 'Andrew Marvin',
-    primaryContactEmail: 'andrew@example.com',
+    primaryContactName: 'Theo Marsh',
+    primaryContactEmail: 'theo@example.com',
     status: 'active',
     createdAt: new Date(now - 30 * DAY),
     updatedAt: new Date(now - 30 * DAY),
@@ -46,8 +46,8 @@ const inquiries: LessonInquiry[] = [
   inquiry(),
   inquiry({
     id: 'sub-2',
-    contactName: 'Tosha Smith',
-    email: 'tosha@example.com',
+    contactName: 'Priya Raman',
+    email: 'priya@example.com',
     status: 'contacted',
     submittedAt: new Date(now - 3 * DAY),
   }),
@@ -55,23 +55,23 @@ const inquiries: LessonInquiry[] = [
   // for one child.
   inquiry({
     id: 'sub-3',
-    contactName: 'Sarah Flowers',
-    email: 'sarah@example.com',
+    contactName: 'Nora Bell',
+    email: 'nora@example.com',
     status: 'enrolled',
   }),
   // Closed out. Nobody is turning this into a student.
   inquiry({
     id: 'sub-4',
-    contactName: 'Barb Baxter',
-    email: 'barb@example.com',
+    contactName: 'June Alder',
+    email: 'june@example.com',
     status: 'lost',
   }),
   // Open, but this email is already a student's contact: the same family back
   // for a second instrument, which is an edit and not a new record.
   inquiry({
     id: 'sub-5',
-    contactName: 'Andrew Marvin',
-    email: 'andrew@example.com',
+    contactName: 'Theo Marsh',
+    email: 'theo@example.com',
     status: 'contacted',
   }),
 ];
@@ -109,11 +109,11 @@ export const FiltersOutWhatCannotBecomeAStudent: Story = {
     await userEvent.click(button);
 
     const menu = within(document.body);
-    expect(await menu.findByText('Lace Haggerty')).toBeInTheDocument();
-    expect(await menu.findByText('Tosha Smith')).toBeInTheDocument();
-    expect(menu.queryByText('Sarah Flowers')).toBeNull();
-    expect(menu.queryByText('Barb Baxter')).toBeNull();
-    expect(menu.queryByText('Andrew Marvin')).toBeNull();
+    expect(await menu.findByText('Robin Ashfield')).toBeInTheDocument();
+    expect(await menu.findByText('Priya Raman')).toBeInTheDocument();
+    expect(menu.queryByText('Nora Bell')).toBeNull();
+    expect(menu.queryByText('June Alder')).toBeNull();
+    expect(menu.queryByText('Theo Marsh')).toBeNull();
   },
 };
 
@@ -124,11 +124,11 @@ export const HandsBackTheWholeInquiry: Story = {
     await userEvent.click(
       await canvas.findByRole('button', { name: /start from an inquiry/i })
     );
-    await userEvent.click(await within(document.body).findByText('Lace Haggerty'));
+    await userEvent.click(await within(document.body).findByText('Robin Ashfield'));
 
     expect(args.onPick).toHaveBeenCalled();
     const [passed] = (args.onPick as ReturnType<typeof fn>).mock.calls[0];
-    expect(passed).toMatchObject({ id: 'sub-1', email: 'lace@example.com' });
+    expect(passed).toMatchObject({ id: 'sub-1', email: 'robin@example.com' });
   },
 };
 

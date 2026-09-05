@@ -14,8 +14,8 @@ function inquiry(overrides: Partial<LessonInquiry> = {}): LessonInquiry {
     formId: 'dWPQOr',
     formName: 'Music lesson inquiry',
     submittedAt: new Date('2026-08-26T03:42:50.000Z'),
-    contactName: 'Lace Haggerty',
-    email: 'lace@example.com',
+    contactName: 'Robin Ashfield',
+    email: 'robin@example.com',
     phone: '+15550000001',
     interest: 'Old-Time Fiddle',
     availability: [],
@@ -71,7 +71,7 @@ describe('inferAdultStudent', () => {
     expect(inferAdultStudent({ studentAge: 11 })).toBe(false);
     // A form that asks for the student's first name separately is a form that
     // distinguishes the two people, so the respondent is the parent.
-    expect(inferAdultStudent({ studentFirstName: 'Conor' })).toBe(false);
+    expect(inferAdultStudent({ studentFirstName: 'Milo' })).toBe(false);
   });
 
   it('says undefined rather than guessing when nothing settles it', () => {
@@ -84,15 +84,15 @@ describe('inferAdultStudent', () => {
 describe('studentDraftFromInquiry', () => {
   it('THE POINT: carries over everything the form already asked', () => {
     const draft = studentDraftFromInquiry(
-      inquiry({ studentIs: 'self', contactName: 'Sarah Flowers' })
+      inquiry({ studentIs: 'self', contactName: 'Nora Bell' })
     );
 
     expect(draft).toMatchObject({
-      name: 'Sarah Flowers',
+      name: 'Nora Bell',
       instrument: 'fiddle',
       isAdultStudent: true,
-      primaryContactName: 'Sarah Flowers',
-      primaryContactEmail: 'lace@example.com',
+      primaryContactName: 'Nora Bell',
+      primaryContactEmail: 'robin@example.com',
       primaryContactPhone: '+15550000001',
       status: 'active',
     });
@@ -106,15 +106,15 @@ describe('studentDraftFromInquiry', () => {
 
     expect(draft.name).toBe('');
     expect(draft.isAdultStudent).toBe(false);
-    expect(draft.primaryContactName).toBe('Lace Haggerty');
+    expect(draft.primaryContactName).toBe('Robin Ashfield');
   });
 
   it('uses the student first name when the form did ask for one', () => {
     const draft = studentDraftFromInquiry(
-      inquiry({ studentIs: 'child', studentFirstName: 'Conor' })
+      inquiry({ studentIs: 'child', studentFirstName: 'Milo' })
     );
 
-    expect(draft.name).toBe('Conor');
+    expect(draft.name).toBe('Milo');
   });
 
   it('leaves teacher and lesson length unset, because nobody can read those off a form', () => {

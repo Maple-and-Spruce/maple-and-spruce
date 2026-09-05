@@ -16,7 +16,7 @@
  * -------------------
  * It never invents a person's name. A form answered by a parent gives us the
  * *parent's* name and, on the general music form, nothing at all about the
- * child. Guessing "Conor Haggerty" from "Lace Haggerty" would be a plausible
+ * child. Guessing "Milo Ashfield" from "Robin Ashfield" would be a plausible
  * surname and a fabricated human; the draft leaves the student name blank and
  * lets the person who read the email type it. Everything here is a draft for a
  * form a human still reviews, never a record written behind their back.
