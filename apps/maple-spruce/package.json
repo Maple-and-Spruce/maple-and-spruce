@@ -11,6 +11,11 @@
           "command": "tsc --noEmit -p apps/maple-spruce/tsconfig.json",
           "cwd": "{workspaceRoot}"
         }
+      },
+      "build": {
+        "options": {
+          "command": "next build --webpack"
+        }
       }
     }
   },

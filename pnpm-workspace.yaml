@@ -263,9 +263,13 @@ overrides:
   # tools. 4.x bumped from >=4.1.2 to >=4.3.0 on 2026-07-24. Plus
   # GHSA-5p4m-2wfm-xmqj (quadratic CPU consumption in !!omap resolution — the
   # CVE-2026-59870 fix was not backported), patched in 3.15.1 / 4.3.1. Bumped
-  # from 3.15.0/4.3.0 on 2026-08-07.
-  js-yaml@>=3.0.0 <3.15.1: '>=3.15.1 <4'
-  js-yaml@>=4.0.0 <4.3.1: '>=4.3.1 <5'
+  # from 3.15.0/4.3.0 on 2026-08-07. Plus GHSA-2883-xcg3-v3hh: the
+  # `maxTotalMergeKeys` cap counts keys it actually merges, so a document made
+  # of *empty* merge sources burns quadratic CPU without ever incrementing the
+  # counter — the mitigation added for the advisories above does not bound it.
+  # Patched in 3.15.2 / 4.3.2. Bumped from 3.15.1/4.3.1 on 2026-09-08.
+  js-yaml@>=3.0.0 <3.15.2: '>=3.15.2 <4'
+  js-yaml@>=4.0.0 <4.3.2: '>=4.3.2 <5'
   # GHSA-v6wh-96g9-6wx3: launch-editor NTLMv2 hash disclosure via UNC path
   # handling on Windows (patched in 2.14.1). Dev-only transitive dep of
   # webpack-dev-server. Added 2026-07-15.
@@ -291,18 +295,30 @@ overrides:
   # GHSA-89xv-2m56-2m9x (SSRF in Server Actions on custom servers), and
   # GHSA-p9j2-gv94-2wf4 (SSRF in rewrites via attacker-controlled destination
   # hostname). All patched in next 16.2.11. Direct dep (16.2.6) plus @nx/next
-  # and @storybook/nextjs-vite. Added 2026-07-24.
-  next@>=16.0.0 <16.2.11: '>=16.2.11 <17'
+  # and @storybook/nextjs-vite. Added 2026-07-24. Plus two criticals:
+  # GHSA-p293-qw3h-jr36 (unauthenticated RCE on Windows-hosted servers) and
+  # GHSA-2xp9-vwfh-vxw4 (unauthenticated RCE in the Image Optimization API
+  # when AVIF files are used). Both patched in 16.3.3. The Windows one does
+  # not reach us — the admin app builds and runs on Linux — but the Image
+  # Optimization one is platform-independent and sits on a request path we
+  # actually serve. Bumped from >=16.2.11 on 2026-09-08.
+  next@>=16.0.0 <16.3.3: '>=16.3.3 <17'
   # GHSA-f88m-g3jw-g9cj: sharp inherits libvips vulnerabilities CVE-2026-33327,
   # CVE-2026-33328, CVE-2026-35590, CVE-2026-35591 (patched in 0.35.0).
   # Transitive dep of next. Scoped to the pre-0.35 line. Added 2026-07-24.
-  sharp@<0.35.0: '>=0.35.0'
+  # Plus GHSA-rgj7-g3m4-5g8c: sharp inherits two further libheif advisories
+  # (GHSA-g89c-p67h-r497, GHSA-2jg2-4ch7-h545) reachable through HEIF/AVIF
+  # decoding, patched in 0.35.4. Bumped from >=0.35.0 on 2026-09-08.
+  sharp@<0.35.4: '>=0.35.4'
   # GHSA-2p49-hgcm-8545: SVGO removeScripts plugin leaves some executable
   # scripts intact. Patched in 3.3.4 (3.x line, via @svgr/webpack) and 4.0.2
   # (4.x line, via @nx/webpack > cssnano > postcss-svgo). Dev-only build
-  # tooling. Added 2026-07-24.
-  svgo@>=3.0.0 <3.3.4: '>=3.3.4 <4'
-  svgo@>=4.0.0 <4.0.2: '>=4.0.2 <5'
+  # tooling. Added 2026-07-24. Plus GHSA-w27v-7q3p-w38r: that fix was
+  # incomplete — `removeScripts` still lets executable links through via
+  # namespaced attributes and control characters embedded in the scheme.
+  # Patched in 3.3.5 (3.x) and 4.1.0 (4.x). Bumped on 2026-09-08.
+  svgo@>=3.0.0 <3.3.5: '>=3.3.5 <4'
+  svgo@>=4.0.0 <4.1.0: '>=4.1.0 <5'
   # GHSA-c83g-rgw3-j3cx (unbounded memory growth — the query cache never
   # evicts, so distinct queries grow it until OOM) and GHSA-73wf-gq98-2v4g
   # (uncaught crash / prototype write in normalizeStats when fed an untrusted
