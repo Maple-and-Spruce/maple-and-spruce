@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import { callDeduped } from './call-deduped';
+import { hydrateMusicTogetherSection as hydrateSection } from './hydrate-music-together';
 import type {
   MusicTogetherSection,
   CreateMusicTogetherSectionInput,
@@ -27,21 +28,6 @@ export interface UseMusicTogetherSectionsFilters {
   semesterId?: string;
 }
 
-/** Hydrate ISO date strings (callable serialization) back into Dates. */
-function hydrateSection(section: MusicTogetherSection): MusicTogetherSection {
-  return {
-    ...section,
-    sessions: (section.sessions ?? []).map((s) => ({
-      dateTime: new Date(s.dateTime),
-    })),
-    installmentPlan: section.installmentPlan?.map((i) => ({
-      amountCents: i.amountCents,
-      dueAt: new Date(i.dueAt),
-    })),
-    createdAt: new Date(section.createdAt),
-    updatedAt: new Date(section.updatedAt),
-  };
-}
 
 function firstSessionMs(section: MusicTogetherSection): number {
   return section.sessions?.[0]

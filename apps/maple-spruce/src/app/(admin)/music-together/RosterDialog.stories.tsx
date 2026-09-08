@@ -49,7 +49,29 @@ function charge(
 }
 
 const withFamilies: GetMusicTogetherRosterResponse = {
-  section: { id: 'sec-1', name: 'Spring 2026' } as never,
+  // A REAL section, not `{id, name} as never`. The old stub had no sessions,
+  // so `mtSectionFirstSessionAt` returned undefined and the refund-policy path
+  // was never exercised — which is exactly how a crash in Cancel / refund
+  // shipped with these stories green. Dates are Date objects because the hook
+  // hydrates before the dialog ever sees them.
+  section: {
+    id: 'sec-1',
+    name: 'Spring 2026',
+    sessions: [
+      { dateTime: new Date('2030-04-04T14:00:00Z') },
+      { dateTime: new Date('2030-04-11T14:00:00Z') },
+    ],
+    capacityFamilies: 8,
+    priceFullCents: 25200,
+    installmentPlan: [
+      { amountCents: 13200, dueAt: new Date('2030-04-04T14:00:00Z') },
+      { amountCents: 13200, dueAt: new Date('2030-04-30T14:00:00Z') },
+    ],
+    visible: true,
+    enrollmentActive: true,
+    createdAt: new Date('2030-01-01T00:00:00Z'),
+    updatedAt: new Date('2030-01-01T00:00:00Z'),
+  },
   waitlist: [
     {
       id: 'dana@example.com',
@@ -474,5 +496,62 @@ export const ShowsAWaivedCharge: Story = {
     await expect(
       canvas.queryByRole('button', { name: /^Waive /i })
     ).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * Opening Cancel / refund on an installment family. This story exists because
+ * its absence let a crash ship: the dialog runs the section's sessions through
+ * `mtSectionFirstSessionAt` -> `mtRefundCents`, and with the old sessionless
+ * stub that path was never reached.
+ *
+ * It also pins the $25 cancellation fee in the prefill, which is the number an
+ * admin must consciously override when the BUSINESS cancels a class rather
+ * than the family withdrawing.
+ */
+export const OpensCancelAndPrefillsThePolicyRefund: Story = {
+  args: {
+    rosterState: { status: 'success', data: withFamilies },
+    onCancelRegistration: fn(async () => ({
+      registrationId: 'reg-1',
+      status: 'refunded' as const,
+      refundCents: 10700,
+      cancelledChargeCount: 1,
+    })),
+  },
+  play: async ({ args }) => {
+    const canvas = body();
+    await waitFor(() =>
+      expect(canvas.getByRole('dialog')).toBeInTheDocument()
+    );
+
+    await userEvent.click(
+      canvas.getByRole('button', {
+        name: /Cancel registration for Jamie Rivera/i,
+      })
+    );
+
+    await waitFor(() =>
+      expect(canvas.getByText(/Cancel registration/i)).toBeInTheDocument()
+    );
+
+    // Paid $132.00, before the first class: $132 - $25 fee = $107.00.
+    const amount = canvas.getByLabelText(/Refund amount/i) as HTMLInputElement;
+    await expect(amount.value).toBe('107.00');
+    await expect(
+      canvas.getByText(/Captured: \$132\.00/)
+    ).toBeInTheDocument();
+
+    // An admin can override upward to the full captured amount — what a
+    // business-side cancellation calls for.
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '132.00');
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Confirm cancel/i })
+    );
+
+    await waitFor(() =>
+      expect(args.onCancelRegistration).toHaveBeenCalledWith('reg-1', 13200)
+    );
   },
 };

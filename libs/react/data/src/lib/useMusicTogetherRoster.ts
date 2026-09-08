@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import { callDeduped } from './call-deduped';
+import { hydrateMusicTogetherSection } from './hydrate-music-together';
 import type { RequestState } from '@maple/ts/domain';
 import type {
   GetMusicTogetherRosterRequest,
@@ -58,7 +59,12 @@ export function useMusicTogetherRoster(sectionId: string | undefined) {
       setRosterState({
         status: 'success',
         data: {
-          section: result.data.section,
+          // MUST be hydrated, not passed through: RosterDialog feeds this
+          // section to `mtSectionFirstSessionAt` -> `mtRefundCents`, which
+          // calls `.getTime()`. A raw callable response leaves the sessions as
+          // ISO strings and that call throws, taking the page down when an
+          // admin opens Cancel / refund.
+          section: hydrateMusicTogetherSection(result.data.section),
           entries: result.data.entries.map(hydrateEntry),
           // Hydrate the waitlist entries' ISO createdAt back into Dates.
           waitlist: (result.data.waitlist ?? []).map((w) => ({
