@@ -430,6 +430,15 @@ export function StudentList({
       pagination: { pageIndex: 0, pageSize: 25 },
       density: 'comfortable',
     },
+    // MRT paints pinned cells with a `:before` pseudo-element coloured from
+    // `mrtTheme.baseBackgroundColor`, which defaults to the MUI theme's
+    // background — the brand cream. The scrolling cells take the explicit
+    // white below, so the two halves of the table did not match and the
+    // pinned columns read as a rendering fault rather than a design choice.
+    //
+    // This is the supported lever; overriding the pseudo-element by hand
+    // would fight the library on every upgrade.
+    mrtTheme: { baseBackgroundColor: surfaces.paper },
     enableColumnFilters: false,
     enableGlobalFilter: false,
     enableDensityToggle: false,

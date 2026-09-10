@@ -274,11 +274,38 @@ export const PinsIdentityLeftAndActionsRight: Story = {
     // Pinned cells must be fully opaque. MRT ships them at opacity 0.97,
     // which lets the scrolling columns read through as ghost text — the
     // background is already correct, so only a screenshot catches it.
-    const cell = canvasElement.ownerDocument.querySelector(
+    const doc = canvasElement.ownerDocument;
+    const pinnedCell = doc.querySelector(
       '.MuiTableContainer-root tbody td[data-pinned="true"]'
     );
-    expect(cell).toBeTruthy();
-    expect(getComputedStyle(cell as Element).opacity).toBe('1');
+    expect(pinnedCell).toBeTruthy();
+    expect(getComputedStyle(pinnedCell as Element).opacity).toBe('1');
+
+    // And the pinned half must LOOK like the scrolling half. MRT paints
+    // pinned cells with a `:before` coloured from `mrtTheme.baseBackgroundColor`,
+    // which defaults to the MUI theme background — the brand cream — while the
+    // scrolling cells are white. Left alone, the two halves of one table are
+    // different colours and it reads as a rendering fault.
+    const scrollingCell = doc.querySelector(
+      '.MuiTableContainer-root tbody td:not([data-pinned="true"])'
+    );
+    const pinnedPaint = getComputedStyle(pinnedCell as Element, '::before')
+      .backgroundColor;
+    const scrollingPaint = getComputedStyle(scrollingCell as Element)
+      .backgroundColor;
+
+    // Near-equality, not exact: MRT deliberately darkens the pinned overlay by
+    // 1% (255 -> 252), which nobody can see. The bug being guarded against was
+    // the brand cream against white — tens of points per channel.
+    const channels = (c: string) =>
+      (c.match(/\d+/g) ?? []).slice(0, 3).map(Number);
+    const pinnedRgb = channels(pinnedPaint);
+    const scrollingRgb = channels(scrollingPaint);
+
+    expect(pinnedRgb).toHaveLength(3);
+    pinnedRgb.forEach((value, i) => {
+      expect(Math.abs(value - scrollingRgb[i])).toBeLessThanOrEqual(8);
+    });
   },
 };
 
