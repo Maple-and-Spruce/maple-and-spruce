@@ -46,7 +46,7 @@ const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name))
  * whose due date has already passed (a backdated block, say) is taken in the
  * same pass rather than waiting a week.
  */
-export async function runLessonBilling(
+export async function executeLessonBilling(
   now: Date,
   square: Square,
   opts: { dryRun?: boolean } = {}
@@ -150,8 +150,12 @@ function buildSquare(): Square {
  * Daily at 09:00 ET. Daily rather than weekly because a charge anchored "the
  * day before the first lesson" has to land on that day, not on whichever day
  * the job happens to run.
+ *
+ * Named for its library on purpose: CI derives the deploy filter from the
+ * library directory name (`run-lesson-billing` -> `runLessonBilling`), so a
+ * library whose name matches none of its exports fails the deploy outright.
  */
-export const runLessonBillingScheduled = onSchedule(
+export const runLessonBilling = onSchedule(
   {
     schedule: '0 9 * * *',
     timeZone: TIMEZONE,
@@ -159,7 +163,7 @@ export const runLessonBillingScheduled = onSchedule(
     secrets: squareSecretParams,
   },
   async () => {
-    await runLessonBilling(new Date(), buildSquare());
+    await executeLessonBilling(new Date(), buildSquare());
   }
 );
 
@@ -175,7 +179,7 @@ export const triggerLessonBilling = Functions.endpoint
   .handle<RunLessonBillingRequest, RunLessonBillingResult>(
     async (data, _context, secrets, strings) => {
       const square = new Square(secrets, strings);
-      return runLessonBilling(new Date(), square, {
+      return executeLessonBilling(new Date(), square, {
         dryRun: data?.dryRun === true,
       });
     }

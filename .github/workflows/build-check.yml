@@ -186,6 +186,15 @@ jobs:
       - name: Check callable roles
         run: npx tsx tools/check-callable-roles.ts
 
+      # The merge deploy derives its filter from the LIBRARY DIRECTORY NAME
+      # (firebase-maple-functions-get-artists -> functions:maple-core:getArtists),
+      # so a library exporting no function by that name produces a filter for a
+      # function that does not exist and firebase refuses the entire codebase
+      # batch: "No function matches the filter". It fails after merge, at deploy,
+      # and takes every other function in that batch with it (#845).
+      - name: Check function library names
+        run: npx tsx tools/check-function-library-names.ts
+
   repository-mappers:
     name: Repository Mappers
     needs: [install]

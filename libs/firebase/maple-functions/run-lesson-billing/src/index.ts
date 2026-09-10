@@ -1,5 +1,5 @@
 export {
-  runLessonBillingScheduled,
-  triggerLessonBilling,
   runLessonBilling,
+  triggerLessonBilling,
+  executeLessonBilling,
 } from './lib/run-lesson-billing';

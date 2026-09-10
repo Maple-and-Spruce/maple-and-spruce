@@ -95,6 +95,6 @@ export { syncClassInventoryToSquare } from '@maple/firebase/maple-functions/sync
 // plus an admin-callable twin for a dry run or a manual catch-up. M&S Square
 // account, not MT's.
 export {
-  runLessonBillingScheduled,
+  runLessonBilling,
   triggerLessonBilling,
 } from '@maple/firebase/maple-functions/run-lesson-billing';

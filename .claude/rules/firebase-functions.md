@@ -45,6 +45,36 @@ A genuinely new function is still fine when it needs materially different runtim
 (`memory`, `timeoutSeconds`, `minInstances`, `secrets`) from everything in its domain — those are
 properties of the function, not the route. Raise the baseline deliberately in that PR and say why.
 
+### The library name IS the deploy filter
+
+The merge deploy builds its `--only` filter from the **library directory name**, not
+from what the library exports (`firebase-functions-merge.yml`):
+
+```
+firebase-maple-functions-get-artists  ->  functions:maple-core:getArtists
+```
+
+So **every function library must export a function named after itself**. A library whose
+camelCase name matches none of its exports produces a filter for a function that does not
+exist, and firebase refuses the *entire codebase batch*:
+
+```
+Error: No function matches the filter: maple-square:runLessonBilling
+```
+
+This fails **after merge, at deploy**, and takes every other function in that batch with
+it. Nothing else catches it: it builds, it typechecks, the tests pass, and the entry-point
+exports are perfectly valid.
+
+A library may export more than its own name — a scheduled job plus its admin trigger twin
+is the usual shape — it just has to export that one too.
+
+```bash
+npx tsx tools/check-function-library-names.ts
+```
+
+CI runs this on every PR (`build-check.yml` → `callable-roles` job).
+
 ## Codebases
 
 Functions are split into 6 Firebase codebases to reduce cold start times:
