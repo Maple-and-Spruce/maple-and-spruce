@@ -30,6 +30,10 @@ function docToSchedule(
     blockId: data.blockId,
     dayOfWeek: data.dayOfWeek,
     startMinutes: data.startMinutes,
+    // Absent means weekly (#837). Dropping this here is how a biweekly student
+    // silently reverts to weekly — the same mapper gap that hid the student
+    // card fields in #798 and LessonBlock.onDate in #835.
+    intervalWeeks: data.intervalWeeks,
     durationMinutes: data.durationMinutes,
     room: data.room,
     startsOn: toDate(data.startsOn),

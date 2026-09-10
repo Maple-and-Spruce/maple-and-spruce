@@ -232,6 +232,7 @@ export default function StudentDetailPage() {
     dayOfWeek: number;
     startMinutes: number;
     durationMinutes: number;
+    intervalWeeks: number;
     startsOn: Date;
   }) => {
     setScheduleError(null);

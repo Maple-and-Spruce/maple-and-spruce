@@ -125,3 +125,58 @@ export const TeacherWithNoBlocks: Story = {
     ).toBeInTheDocument();
   },
 };
+
+/**
+ * Katie sets a biweekly student (#837). She had been expressing this by
+ * hand-creating a lesson every off-week and cancelling it — roughly 26
+ * cancellations a year, per student.
+ */
+export const SetsAnEveryOtherWeekCadence: Story = {
+  args: { schedule: existing },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByLabelText('How often'));
+    await userEvent.click(await canvas.findByRole('option', { name: 'Every other week' }));
+
+    // The summary has to say which weeks, or Katie cannot tell a biweekly
+    // arrangement from a weekly one at a glance.
+    await waitFor(async () =>
+      expect(await canvas.findByText(/Every other Tuesday/i)).toBeTruthy()
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: /save change/i }));
+
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.intervalWeeks).toBe(2);
+  },
+};
+
+/** An existing arrangement opens showing the cadence it already has. */
+export const ShowsTheExistingCadence: Story = {
+  args: { schedule: { ...existing, intervalWeeks: 2 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await waitFor(async () =>
+      expect(await canvas.findByText(/Every other Tuesday/i)).toBeTruthy()
+    );
+  },
+};
+
+/** Weekly stays the default, and reads as plain "Every Tuesday". */
+export const DefaultsToWeekly: Story = {
+  args: { schedule: existing },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await waitFor(async () =>
+      expect(await canvas.findByText(/Every Tuesday/i)).toBeTruthy()
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: /save change/i }));
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.intervalWeeks).toBe(1);
+  },
+};

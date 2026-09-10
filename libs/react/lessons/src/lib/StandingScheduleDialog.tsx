@@ -37,8 +37,11 @@ import type {
   StudentLessonSchedule,
 } from '@maple/ts/domain';
 import {
+  SCHEDULE_INTERVAL_WEEKS,
   SCHEDULE_TIME_ZONE,
   WEEKDAY_LONG,
+  cadenceLabel,
+  cadencePhrase,
   zonedDateKey,
   zonedWallClockToInstant,
 } from '@maple/ts/domain';
@@ -61,6 +64,7 @@ export interface StandingScheduleDialogProps {
     dayOfWeek: number;
     startMinutes: number;
     durationMinutes: number;
+    intervalWeeks: number;
     room?: Room;
     startsOn: Date;
   }) => void;
@@ -112,6 +116,9 @@ export function StandingScheduleDialog({
   const [blockId, setBlockId] = useState('');
   const [time, setTime] = useState('16:00');
   const [durationMinutes, setDurationMinutes] = useState(30);
+  const [intervalWeeks, setIntervalWeeks] = useState(
+    schedule?.intervalWeeks ?? 1
+  );
   const [startsOn, setStartsOn] = useState(toDateValue(new Date()));
 
   // Re-seed whenever the dialog opens, so editing one arrangement then another
@@ -121,6 +128,7 @@ export function StandingScheduleDialog({
     setTeacherId(schedule?.teacherId ?? defaultTeacherId ?? '');
     setBlockId(schedule?.blockId ?? '');
     setTime(toTimeValue(schedule?.startMinutes ?? 16 * 60));
+    setIntervalWeeks(schedule?.intervalWeeks ?? 1);
     setDurationMinutes(schedule?.durationMinutes ?? 30);
     setStartsOn(toDateValue(schedule?.startsOn ?? new Date()));
   }, [open, schedule, defaultTeacherId]);
@@ -225,6 +233,22 @@ export function StandingScheduleDialog({
             </FormControl>
           </Stack>
 
+          <FormControl fullWidth>
+            <InputLabel id="sched-interval">How often</InputLabel>
+            <Select
+              labelId="sched-interval"
+              label="How often"
+              value={intervalWeeks}
+              onChange={(e) => setIntervalWeeks(Number(e.target.value))}
+            >
+              {SCHEDULE_INTERVAL_WEEKS.map((n) => (
+                <MenuItem key={n} value={n}>
+                  {cadenceLabel(n)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <TextField
             label={schedule ? 'In effect from' : 'Starting'}
             type="date"
@@ -246,9 +270,11 @@ export function StandingScheduleDialog({
 
           {block && fitsBlock && (
             <Alert severity="success">
-              {WEEKDAY_LONG[block.dayOfWeek]}s at{' '}
-              {formatMinutes(startMinutes)}, {durationMinutes} minutes. Lessons
-              will be kept on the books twelve weeks ahead.
+              {cadencePhrase(intervalWeeks, WEEKDAY_LONG[block.dayOfWeek])} at{' '}
+              {formatMinutes(startMinutes)}, {durationMinutes} minutes.
+              {intervalWeeks > 1 &&
+                ' Which weeks are counted from the start date, so the pattern holds even if a lesson moves.'}{' '}
+              Lessons will be kept on the books twelve weeks ahead.
             </Alert>
           )}
 
@@ -263,6 +289,7 @@ export function StandingScheduleDialog({
           onClick={() =>
             onSubmit({
               teacherId,
+              intervalWeeks,
               blockId,
               // The block already is a weekday; asking twice invites them to
               // disagree, and the server would reject the result.

@@ -19,7 +19,12 @@ import {
   throwNotFound,
 } from '@maple/firebase/functions';
 import { StudentLessonScheduleRepository } from '@maple/firebase/database';
-import { scheduleOccurrences, scheduleHorizonEnd } from '@maple/ts/domain';
+import {
+  MAX_SCHEDULE_INTERVAL_WEEKS,
+  isValidScheduleInterval,
+  scheduleHorizonEnd,
+  scheduleOccurrences,
+} from '@maple/ts/domain';
 import type {
   UpdateStudentLessonScheduleRequest,
   UpdateStudentLessonScheduleResponse,
@@ -53,13 +58,26 @@ export const updateStudentLessonSchedule = Functions.endpoint
       throwInvalidArgument('The end date is before the start date');
     }
 
+    if (
+      merged.intervalWeeks !== undefined &&
+      !isValidScheduleInterval(merged.intervalWeeks)
+    ) {
+      throwInvalidArgument(
+        `Weeks between lessons must be a whole number from 1 to ${MAX_SCHEDULE_INTERVAL_WEEKS}`
+      );
+    }
+
     // Re-check block fit whenever the pattern moves, so an arrangement can
     // never be edited into a shape that generates rejectable lessons.
     const movedPattern =
       data.dayOfWeek !== undefined ||
       data.startMinutes !== undefined ||
       data.durationMinutes !== undefined ||
-      data.blockId !== undefined;
+      data.blockId !== undefined ||
+      // Cadence moves WHICH WEEKS are this student's, so the sample of
+      // occurrences to check against the block changes with it.
+      data.intervalWeeks !== undefined ||
+      data.startsOn !== undefined;
 
     if (movedPattern && merged.status === 'active') {
       const sample = scheduleOccurrences(

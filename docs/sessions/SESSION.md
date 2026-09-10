@@ -951,3 +951,19 @@ weekday for every future lesson.
 
 Next (PR 2): `ScheduleLessonDialog` and the standing-arrangement dialog surface
 the choices, with Storybook `play` coverage.
+
+## #837 — biweekly standing arrangements
+
+`StudentLessonSchedule` gains `intervalWeeks`. Katie had been expressing "every
+other Tuesday" by hand-creating a lesson on each off-week and cancelling it, so
+the materialiser would skip that date — roughly 26 cancellations a year per
+student, and it lapses silently the first week she is busy.
+
+The load-bearing part is **parity**: which weeks belong to a student. Counted
+from the first occurrence on or after `startsOn`, in shop-timezone calendar
+days, so it survives a skipped week, a rescheduled lesson, the horizon rolling
+forward, and both DST changes. Marisol and Odette alternate in one Tuesday hour, so
+a pattern that drifted a week would put two families in the room together.
+
+`tools/backfill-schedule-cadence.ts` migrates existing arrangements and refuses
+to write when the proposed parity does not match the student's real lessons.

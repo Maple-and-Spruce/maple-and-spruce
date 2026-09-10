@@ -22,7 +22,12 @@ import {
   StudentRepository,
 } from '@maple/firebase/database';
 import { runMaterializeLessonSchedules } from '@maple/firebase/maple-functions/materialize-lesson-schedules';
-import { scheduleOccurrences, scheduleHorizonEnd } from '@maple/ts/domain';
+import {
+  MAX_SCHEDULE_INTERVAL_WEEKS,
+  isValidScheduleInterval,
+  scheduleHorizonEnd,
+  scheduleOccurrences,
+} from '@maple/ts/domain';
 import type {
   CreateStudentLessonScheduleRequest,
   CreateStudentLessonScheduleResponse,
@@ -51,6 +56,15 @@ export const createStudentLessonSchedule = Functions.endpoint
 
     if (input.endsOn && input.endsOn < input.startsOn) {
       throwInvalidArgument('The end date is before the start date');
+    }
+
+    if (
+      input.intervalWeeks !== undefined &&
+      !isValidScheduleInterval(input.intervalWeeks)
+    ) {
+      throwInvalidArgument(
+        `Weeks between lessons must be a whole number from 1 to ${MAX_SCHEDULE_INTERVAL_WEEKS}`
+      );
     }
 
     // Check the arrangement against its block using its first few occurrences.
