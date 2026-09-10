@@ -33,6 +33,7 @@ import {
   ScheduleLessonDialog,
   PaymentMethodCard,
   StandingScheduleCard,
+  UpcomingChargesCard,
   StandingScheduleDialog,
   type LessonPendingAction,
 } from '@maple/react/lessons';
@@ -43,6 +44,7 @@ import {
   useInvoices,
   useLessons,
   useSquareCardCandidates,
+  useLessonBilling,
   useStudentLessonSchedules,
   useLessonBlocks,
   useStudents,
@@ -60,6 +62,12 @@ export default function StudentDetailPage() {
     linkError,
     setStudentCard,
   } = useSquareCardCandidates();
+  const {
+    billingState,
+    pendingId: chargePendingId,
+    actionError: chargeError,
+    stopCharge,
+  } = useLessonBilling(studentId);
   const {
     lessonsState,
     fetchLessons,
@@ -410,6 +418,21 @@ export default function StudentDetailPage() {
           const updated = await setStudentCard(studentId, null);
           if (updated) await fetchStudents();
         }}
+      />
+
+      <UpcomingChargesCard
+        charges={
+          billingState.status === 'success' ? billingState.data.charges : []
+        }
+        hideStudent
+        isLoading={billingState.status === 'loading'}
+        pendingId={chargePendingId}
+        error={
+          chargeError ??
+          (billingState.status === 'error' ? billingState.error : null)
+        }
+        onCancel={(id) => stopCharge(id, 'cancelled')}
+        onWaive={(id, reason) => stopCharge(id, 'waived', reason)}
       />
 
       <StandingScheduleCard

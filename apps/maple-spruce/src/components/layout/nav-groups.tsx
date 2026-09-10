@@ -15,6 +15,7 @@ import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -155,6 +156,11 @@ function roleNavGroups(
           label: 'Lesson Blocks',
           href: '/lesson-blocks',
           icon: <EventNoteIcon />,
+        },
+        {
+          label: 'Lesson Billing',
+          href: '/lesson-billing',
+          icon: <CreditCardIcon />,
         },
         {
           label: 'Hope Billing',

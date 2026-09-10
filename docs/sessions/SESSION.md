@@ -1022,3 +1022,15 @@ Suggestions come from `rankCardsForStudent`, the same pure function the server
 uses to validate the choice. Nothing links automatically.
 
 Hidden for Hope students, who bill through the EMA portal.
+
+## #798 — visibility and control over automatic charges
+
+New `/lesson-billing` page and a per-student section showing what the daily job
+is about to take, with Cancel and Waive on anything still scheduled.
+
+Deliberately built **before** any UI that creates a billing rule. The job plans
+and takes charges unattended, so the only thing between a wrong rule and a
+wrong charge is that somebody saw it coming.
+
+Prod state at the time of writing: 0 billing rules, 0 charges, 0 linked cards —
+so nothing charges anyone today, and nothing will until a rule exists.

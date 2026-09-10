@@ -23,6 +23,10 @@ export {
   PaymentMethodCard,
   type PaymentMethodCardProps,
 } from './lib/PaymentMethodCard';
+export {
+  UpcomingChargesCard,
+  type UpcomingChargesCardProps,
+} from './lib/UpcomingChargesCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,

@@ -116,3 +116,7 @@ export {
   useSquareCardCandidates,
   type SquareCardCandidates,
 } from './lib/useSquareCardCandidates';
+export {
+  useLessonBilling,
+  type LessonBillingData,
+} from './lib/useLessonBilling';
