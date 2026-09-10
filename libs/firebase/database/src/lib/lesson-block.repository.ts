@@ -27,6 +27,9 @@ function docToLessonBlock(
     dayOfWeek: data.dayOfWeek,
     startMinutes: data.startMinutes,
     endMinutes: data.endMinutes,
+    // Present only on a one-off block (#835). Absent means recurring weekly,
+    // which is the normal case.
+    onDate: data.onDate,
     label: data.label,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),

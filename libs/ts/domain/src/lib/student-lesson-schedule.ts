@@ -35,7 +35,11 @@
  * exceptions table to keep in sync.
  */
 import type { Room } from './room';
-import { WEEKDAY_SHORT } from './schedule-format';
+import { WEEKDAY_SHORT, zonedDateKey } from './schedule-format';
+
+// Re-exported from its original home so existing importers are unaffected;
+// it lives in schedule-format now, beside the other zone readers.
+export { zonedDateKey };
 
 /** Shop timezone. Matches `DEFAULT_LESSON_TIME_ZONE` on lesson blocks. */
 export const SCHEDULE_TIME_ZONE = 'America/New_York';
@@ -156,20 +160,6 @@ export function zonedWallClockToInstant(
   return instant;
 }
 
-/** `YYYY-MM-DD` for an instant, as read in the shop timezone. */
-export function zonedDateKey(
-  instant: Date,
-  timeZone: string = SCHEDULE_TIME_ZONE
-): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(instant);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
-}
 
 /**
  * Deterministic document id for a materialised lesson.

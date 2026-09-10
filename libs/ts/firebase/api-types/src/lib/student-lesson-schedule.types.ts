@@ -2,6 +2,7 @@
  * Standing lesson schedule API contracts (#797).
  */
 import type {
+  BlockStrategy,
   CreateStudentLessonScheduleInput,
   StudentLessonSchedule,
   UpdateStudentLessonScheduleInput,
@@ -18,7 +19,16 @@ export interface GetStudentLessonSchedulesResponse {
 }
 
 export type CreateStudentLessonScheduleRequest =
-  CreateStudentLessonScheduleInput;
+  CreateStudentLessonScheduleInput & {
+    /**
+     * How to attribute the arrangement to a block when none fits yet (#835).
+     *
+     * This is the case the feature was built for: Katie describes a standing
+     * weekly slot and the block is derivable from it, so she should not have to
+     * go build one first. A recurring arrangement yields a recurring block.
+     */
+    blockStrategy?: BlockStrategy;
+  };
 
 export interface CreateStudentLessonScheduleResponse {
   schedule: StudentLessonSchedule;

@@ -11,7 +11,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
-  assertLessonsFitBlock,
+  resolveLessonBlock,
   throwNotFound,
 } from '@maple/firebase/functions';
 import { LessonRepository } from '@maple/firebase/database';
@@ -64,13 +64,19 @@ export const updateLesson = createRoleFunction<
       coercedUpdates.scheduledAt !== undefined ||
       data.durationMinutes !== undefined;
     const reattributes = data.blockId !== undefined;
-    if ((reschedules || reattributes) && merged.blockId) {
-      await assertLessonsFitBlock({
+    // A `blockStrategy` is itself a reattribution — Katie moving a lesson to a
+    // time no block covers and asking for one to be derived or widened (#835).
+    if ((reschedules || reattributes || data.blockStrategy) && (merged.blockId || data.blockStrategy)) {
+      const resolvedBlockId = await resolveLessonBlock({
+        strategy: data.blockStrategy,
         blockId: merged.blockId,
         teacherId: merged.teacherId,
         scheduledAts: [merged.scheduledAt],
         durationMinutes: merged.durationMinutes,
+        recurring: false,
+        context,
       });
+      coercedUpdates.blockId = resolvedBlockId;
     }
 
     const lesson = await LessonRepository.update(coercedUpdates);

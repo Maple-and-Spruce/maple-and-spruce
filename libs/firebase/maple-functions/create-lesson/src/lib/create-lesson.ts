@@ -10,7 +10,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
-  assertLessonsFitBlock,
+  resolveLessonBlock,
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonValidation } from '@maple/ts/validation';
@@ -45,13 +45,19 @@ export const createLesson = createRoleFunction<
       throw new Error(`Validation failed: ${errorMessages}`);
     }
 
-    // Enforce block attribution (#686): new lessons must belong to a block owned
-    // by the same teacher, and the time must fit the block's weekday+window.
-    await assertLessonsFitBlock({
+    // Block attribution (#686), with the #835 escape hatches: the caller may
+    // pass a `blockStrategy` asking for a block to be derived from this lesson
+    // or for a nearby one to be widened, instead of dead-ending when none fits.
+    // `recurring: false` — a single lesson is not standing availability, so any
+    // block derived here covers only its own date.
+    const blockId = await resolveLessonBlock({
+      strategy: data.blockStrategy,
       blockId: coerced.blockId,
       teacherId: coerced.teacherId,
       scheduledAts: [coerced.scheduledAt],
       durationMinutes: coerced.durationMinutes,
+      recurring: false,
+      context,
     });
 
     const student = await StudentRepository.findById(coerced.studentId);
@@ -64,6 +70,7 @@ export const createLesson = createRoleFunction<
     // this lesson. See #283 payout tracking.
     const lesson = await LessonRepository.create({
       ...coerced,
+      blockId,
       primaryTeacherAtCreateId:
         coerced.primaryTeacherAtCreateId ?? student.primaryTeacherId,
     });

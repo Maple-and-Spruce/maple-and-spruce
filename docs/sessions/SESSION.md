@@ -933,3 +933,21 @@ capture would *replace* the manual step — that is wrong and is corrected here.
 Next (PR 2): `listStudentSquareCards` / `linkStudentSquareCard`, the payment-method
 card on `/students/[id]`, the rule editor, and the upcoming-charges view with
 skip/waive.
+
+## #835 PR 1 — derive and extend lesson blocks from scheduling (backend)
+
+Katie no longer has to build a `LessonBlock` by hand before she can schedule
+into it. A caller may pass a `blockStrategy` asking for a block to be derived
+from what is being scheduled, or for a nearby one to be widened.
+
+The rule that keeps this honest: **a derived block claims exactly what its
+source claims.** A standing weekly arrangement yields a recurring block; a
+single lesson yields one scoped to that date (`LessonBlock.onDate`). A block is
+what `get-my-week` reads as standing availability, so a makeup lesson minting a
+weekly block would be a lie about when the teacher works.
+
+Widening a recurring block is Admin-only and never a default — it changes that
+weekday for every future lesson.
+
+Next (PR 2): `ScheduleLessonDialog` and the standing-arrangement dialog surface
+the choices, with Storybook `play` coverage.

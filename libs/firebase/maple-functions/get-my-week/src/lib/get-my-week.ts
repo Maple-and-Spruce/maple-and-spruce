@@ -32,6 +32,7 @@ import {
 import {
   DEFAULT_LESSON_TIME_ZONE,
   isLessonUnattributed,
+  isRecurringBlock,
   minutesOfDayInZone,
   weekdayIndexInZone,
 } from '@maple/ts/domain';
@@ -271,11 +272,18 @@ export const getMyWeek = createRoleFunction<
     ]);
 
     const myBlocks = allBlocks.filter((b) => b.teacherId === myInstructorId);
+    // The week view is a *typical* week, so only recurring blocks frame it —
+    // a one-off block (#835) is an exception to manage, not a standing slot,
+    // and showing it here would claim the teacher works that time every week.
+    //
+    // Attribution below deliberately uses the UNfiltered list: a lesson sitting
+    // correctly inside its one-off block is attributed, not "needs a block".
+    const myStandingBlocks = myBlocks.filter(isRecurringBlock);
     const teacherNameById = new Map(
       instructors.map((i) => [i.id, i.name]),
     );
     const otherBlocks = buildOtherBlocks(
-      allBlocks,
+      allBlocks.filter(isRecurringBlock),
       myInstructorId,
       teacherNameById,
     );
@@ -298,7 +306,7 @@ export const getMyWeek = createRoleFunction<
     return {
       commitments,
       standing: buildStandingSlots(events, lookbackStart, myInstructorId),
-      blocks: myBlocks.map(toMyWeekBlock),
+      blocks: myStandingBlocks.map(toMyWeekBlock),
       otherBlocks,
       unlinked: false,
     };

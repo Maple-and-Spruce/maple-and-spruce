@@ -9,7 +9,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
-  assertLessonsFitBlock,
+  resolveLessonBlock,
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonSeriesValidation } from '@maple/ts/validation';
@@ -54,13 +54,19 @@ export const createLessonSeries = createRoleFunction<
     // has already earned. Backfilled lessons carry `blockId: null` and surface
     // as "needs a block", the same grandfather path pre-block lessons use.
     // An explicitly supplied block is still validated either way.
+    // A series repeats, so a block derived for it may claim the weekday
+    // (#835) — that is what the series asserts anyway.
     const isBackfill = isBackfillSeries(coerced);
-    if (!isBackfill || coerced.blockId) {
-      await assertLessonsFitBlock({
+    let seriesBlockId = coerced.blockId;
+    if (!isBackfill || coerced.blockId || data.blockStrategy) {
+      seriesBlockId = await resolveLessonBlock({
+        strategy: data.blockStrategy,
         blockId: coerced.blockId,
         teacherId: coerced.teacherId,
         scheduledAts: coerced.scheduledAts,
         durationMinutes: coerced.durationMinutes,
+        recurring: true,
+        context,
       });
     }
 
@@ -73,6 +79,7 @@ export const createLessonSeries = createRoleFunction<
     // reassignment can't retroactively flip substitute attribution (#283).
     const { lessons, seriesId } = await LessonRepository.createSeries({
       ...coerced,
+      blockId: seriesBlockId,
       primaryTeacherAtCreateId:
         coerced.primaryTeacherAtCreateId ?? student.primaryTeacherId,
     });

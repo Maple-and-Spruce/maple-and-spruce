@@ -13,7 +13,7 @@ import {
   Functions,
   Role,
   assertCanManageLesson,
-  assertLessonsFitBlock,
+  resolveLessonBlock,
   throwInvalidArgument,
   throwNotFound,
 } from '@maple/firebase/functions';
@@ -67,14 +67,25 @@ export const createStudentLessonSchedule = Functions.endpoint
         'That arrangement never occurs — check the weekday and the start date.'
       );
     }
-    await assertLessonsFitBlock({
+    // The primary #835 case. Katie describes a standing weekly arrangement —
+    // "Rowan, Tuesdays 4pm, indefinitely" — and the block is fully derivable
+    // from it, so making her go create one by hand first is pure friction. A
+    // standing arrangement *is* standing weekly availability, so the derived
+    // block claims nothing the arrangement doesn't already.
+    const blockId = await resolveLessonBlock({
+      strategy: data.blockStrategy,
       blockId: input.blockId,
       teacherId: input.teacherId,
       scheduledAts: sample,
       durationMinutes: input.durationMinutes,
+      recurring: true,
+      context,
     });
 
-    const schedule = await StudentLessonScheduleRepository.create(input);
+    const schedule = await StudentLessonScheduleRepository.create({
+      ...input,
+      blockId,
+    });
 
     // Materialise now so the arrangement is immediately real.
     const materialized = await runMaterializeLessonSchedules(new Date());
