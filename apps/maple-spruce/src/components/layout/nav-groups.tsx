@@ -15,6 +15,7 @@ import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import TuneIcon from '@mui/icons-material/Tune';
 import LinkIcon from '@mui/icons-material/Link';
@@ -143,6 +144,12 @@ function roleNavGroups(
           label: 'Inquiries',
           href: '/leads',
           icon: <ForwardToInboxIcon />,
+        },
+        {
+          label: 'Teaching Days',
+          href: '/teaching-days',
+          icon: <ViewWeekIcon />,
+          roles: ['lesson-teacher'],
         },
         {
           label: 'Lesson Blocks',

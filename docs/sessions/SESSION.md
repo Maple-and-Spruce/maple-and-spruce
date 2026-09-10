@@ -979,3 +979,21 @@ It shipped three times (#798 card fields, #835 onDate, #837 intervalWeeks) and
 found four more the first time it ran — most consequentially
 `Artist.preventAutoPublish`, where the "don't auto-publish" checkbox read back
 unticked and the next save silently re-enabled publishing.
+
+## #838 — the day column
+
+`/teaching-days` shows one day top to bottom in time order, with **open slots
+in the sequence** between the students — the shape of the spreadsheet Katie has
+been keeping by hand.
+
+The part no existing view could express: an opening has a cadence. "Open every
+other week" is the alternate week of a biweekly student's hour and fits exactly
+one more biweekly student, while an hour holding two interleaved biweekly
+students (Marisol and Odette share Tuesday 5pm) is not free at all. A busy/free
+view cannot tell those apart.
+
+Composed client-side from existing reads, so no new Cloud Function.
+
+Also fixes `getStudentLessonSchedules`, which scoped by the caller's linked
+instructor record without checking for admin — so "all teachers" would have
+shown Katie only her own students.

@@ -18,6 +18,7 @@ export {
   type LessonBlockListProps,
 } from './lib/LessonBlockList';
 export { MyWeek, type MyWeekProps } from './lib/MyWeek';
+export { DayColumn, type DayColumnProps } from './lib/DayColumn';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,

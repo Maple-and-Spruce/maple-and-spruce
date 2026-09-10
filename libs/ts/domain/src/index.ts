@@ -40,6 +40,7 @@ export * from './lib/student-lesson-schedule';
 export * from './lib/lesson-billing-rule';
 export * from './lib/lesson-scheduled-charge';
 export * from './lib/openings';
+export * from './lib/day-column';
 export * from './lib/invoice';
 export * from './lib/hope-rates';
 export * from './lib/lesson-rates-config';

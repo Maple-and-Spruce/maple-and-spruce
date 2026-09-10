@@ -114,3 +114,46 @@ export function useStudentLessonSchedules(studentId?: string) {
     pendingId,
   };
 }
+
+/**
+ * Every standing arrangement, optionally scoped to one teacher.
+ *
+ * Separate from `useStudentLessonSchedules`, which is per-student and returns
+ * early without one. The day column (#838) needs the whole day rather than one
+ * student's slice, and read-only — booking happens through the arrangement
+ * hook on a student's page.
+ */
+export function useAllStudentLessonSchedules(teacherId?: string) {
+  const [schedulesState, setSchedulesState] = useState<
+    RequestState<StudentLessonSchedule[]>
+  >({ status: 'idle' });
+
+  const fetchSchedules = useCallback(async () => {
+    setSchedulesState({ status: 'loading' });
+    try {
+      const fn = httpsCallable<
+        GetStudentLessonSchedulesRequest,
+        GetStudentLessonSchedulesResponse
+      >(getMapleFunctions(), 'getStudentLessonSchedules');
+      const result = await fn(teacherId ? { teacherId } : {});
+      setSchedulesState({
+        status: 'success',
+        data: (result.data.schedules ?? []).map(hydrate),
+      });
+    } catch (error) {
+      setSchedulesState({
+        status: 'error',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Could not load standing schedules',
+      });
+    }
+  }, [teacherId]);
+
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
+
+  return { schedulesState, refetch: fetchSchedules };
+}

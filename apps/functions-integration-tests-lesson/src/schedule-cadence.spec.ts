@@ -265,3 +265,93 @@ describe('Standing arrangement cadence (#837)', () => {
     expect(res.status).toBe(400);
   }, 30000);
 });
+
+/**
+ * Reading arrangements across the whole studio (#838).
+ *
+ * The day column shows one day for *all* teachers, so the read behind it has to
+ * actually return all of them. It did not: `getStudentLessonSchedules` scoped
+ * by the caller's linked instructor record without checking for admin, so an
+ * admin who also teaches — which Katie does — silently saw only her own.
+ */
+describe('getStudentLessonSchedules scope (#838)', () => {
+  const TEACHING_ADMIN = 'instructor-teaching-admin';
+  const OTHER_TEACHER = 'instructor-someone-else';
+  let adminUser: TestUser;
+
+  beforeAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+
+    adminUser = await createTestUser(ADMIN_USER.email, ADMIN_USER.password);
+    await setFirestoreDoc('admins', adminUser.uid, {
+      userId: adminUser.uid,
+      email: adminUser.email,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // The admin is ALSO an instructor — the case that was broken.
+    await setFirestoreDoc('instructors', TEACHING_ADMIN, {
+      name: 'Katie',
+      status: 'active',
+      uid: adminUser.uid,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await setFirestoreDoc('instructors', OTHER_TEACHER, {
+      name: 'Nathan',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    for (const [id, teacherId] of [
+      ['sched-mine', TEACHING_ADMIN],
+      ['sched-theirs', OTHER_TEACHER],
+    ] as const) {
+      await setFirestoreDoc('studentLessonSchedules', id, {
+        studentId: `student-for-${teacherId}`,
+        teacherId,
+        blockId: 'blk-any',
+        dayOfWeek: 2,
+        startMinutes: 16 * 60,
+        durationMinutes: 30,
+        startsOn: new Date(),
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+  }, 30000);
+
+  it('returns every teacher’s arrangements to an admin who also teaches', async () => {
+    const result = await callFunction<
+      Record<string, never>,
+      { schedules: { id: string; teacherId: string }[] }
+    >({
+      functionName: 'getStudentLessonSchedules',
+      data: {},
+      idToken: adminUser.idToken,
+    });
+
+    expect(result.status).toBe(200);
+    const ids = (result.data?.schedules ?? []).map((s) => s.id).sort();
+    expect(ids).toEqual(['sched-mine', 'sched-theirs']);
+  }, 30000);
+
+  it('still narrows to one teacher when the admin asks for one', async () => {
+    const result = await callFunction<
+      { teacherId: string },
+      { schedules: { id: string }[] }
+    >({
+      functionName: 'getStudentLessonSchedules',
+      data: { teacherId: OTHER_TEACHER },
+      idToken: adminUser.idToken,
+    });
+
+    expect((result.data?.schedules ?? []).map((s) => s.id)).toEqual([
+      'sched-theirs',
+    ]);
+  }, 30000);
+});
