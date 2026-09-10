@@ -1423,11 +1423,10 @@ landing in `maple-core` and quietly inheriting a 14s boot.
   function in the same window as a control. The codebase move deployed cleanly — firebase-tools
   relabelled the function in place, with no `functions:delete` and no gap in availability.
 - The five already-failed submissions are not recovered by this change; they must be resent from
-  Tally's events log after deploy. Verified 2026-08-07: all five leads (`lead1@example.com`,
-  `lead2@example.com`, `lead3@example.com`, `lead4@example.com`,
-  `lead5@example.com`) **are** active subscribers in MailerLite, so no signups were lost —
-  Tally's MailerLite integration delivers independently of the webhook. Only the GA4
-  `generate_lead` and Meta `Lead` attribution events were dropped.
+  Tally's events log after deploy. Verified 2026-08-07: all five of those leads **are** active
+  subscribers in MailerLite, so no signups were lost — Tally's MailerLite integration delivers
+  independently of the webhook. Only the GA4 `generate_lead` and Meta `Lead` attribution events
+  were dropped.
 
 ---
 

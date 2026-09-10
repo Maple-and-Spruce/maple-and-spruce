@@ -8,8 +8,8 @@
  * those she has already saved.
  *
  * The suggestions are the point. An adult student's card is in their own name,
- * but a child's is in a parent's — Devin Marlowe's card reads "Sasha Marlowe"
- * — so a list of cardholder names is not something Katie can pick from
+ * but a child's is in a parent's — sharing neither given name nor surname with
+ * the child — so a list of cardholder names is not something Katie can pick from
  * reliably. Every suggestion states **why** it was suggested, and nothing is
  * ever linked without her choosing it: a wrong link charges the wrong family.
  *

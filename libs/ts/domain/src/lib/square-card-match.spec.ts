@@ -1,10 +1,10 @@
 /**
  * Matching Square cards on file to students (#798).
  *
- * Built from the three cards actually on the live account, because the shape
- * of the problem is not what you would guess: an adult student's card is in
- * their own name, but a child's card is in a parent's — Devin Marlowe's card
- * reads "Sasha Marlowe" and shares nothing with his name.
+ * Built from the shape of the three cards actually on the live account,
+ * because it is not what you would guess: an adult student's card is in their
+ * own name, but a child's card is in a parent's, sharing nothing with the
+ * child's name. The people here are invented; the shapes are real.
  *
  * A wrong link charges the wrong family, so the bar here is that a suggestion
  * is never made without a stated reason, and never made automatically.
@@ -39,10 +39,10 @@ function student(over: Partial<Student> = {}): Student {
   } as Student;
 }
 
-/** The real cards, as read from the live account. */
-const delphine = card({
-  cardId: 'ccof:delphine',
-  customerId: 'cus_adele',
+/** An adult student's own card: cardholder, customer record and student agree. */
+const adultOwnCard = card({
+  cardId: 'ccof:adult',
+  customerId: 'cus_adult',
   cardholderName: 'Delphine Cray',
   customerGivenName: 'Delphine',
   customerFamilyName: 'Cray',
@@ -53,9 +53,10 @@ const delphine = card({
   expYear: 2026,
 });
 
-const sasha = card({
-  cardId: 'ccof:sasha',
-  customerId: 'cus_lark',
+/** A parent's card, which is how a child's lessons get paid for. */
+const parentCard = card({
+  cardId: 'ccof:parent',
+  customerId: 'cus_parent',
   cardholderName: 'Sasha Marlowe',
   customerGivenName: 'Sasha',
   customerFamilyName: 'Marlowe',
@@ -65,7 +66,7 @@ const sasha = card({
 
 /** A retail customer with a card, matching no student. */
 const stranger = card({
-  cardId: 'ccof:quinn',
+  cardId: 'ccof:retail',
   customerId: 'cus_retail',
   cardholderName: 'Quinn Vasser',
   customerGivenName: 'Quinn',
@@ -73,9 +74,9 @@ const stranger = card({
   last4: '1114',
 });
 
-describe('the real cases from the live account', () => {
+describe('the real shapes from the live account', () => {
   it('matches an adult student to their own card, by email', () => {
-    const adeleCray = student({
+    const adult = student({
       name: 'Delphine Cray',
       isAdultStudent: true,
       primaryContactName: 'Delphine Cray',
@@ -83,18 +84,23 @@ describe('the real cases from the live account', () => {
       primaryContactPhone: '555-555-0142',
     });
 
-    const [best] = rankCardsForStudent(adeleCray, [stranger, sasha, delphine]);
+    const [best] = rankCardsForStudent(adult, [
+      stranger,
+      parentCard,
+      adultOwnCard,
+    ]);
 
-    expect(best.card.cardId).toBe('ccof:delphine');
+    expect(best.card.cardId).toBe('ccof:adult');
     expect(best.strength).toBe('exact');
     // Email, phone and name all agree here.
     expect(best.reasons.length).toBeGreaterThanOrEqual(2);
   });
 
   it('matches a CHILD to their parent’s card, which shares no name with them', () => {
-    // The case that makes name-only matching useless. Devin's card reads
-    // "Sasha Marlowe"; the bridge is that his contact email is hers.
-    const devin = student({
+    // The case that makes name-only matching useless: the card is in the
+    // parent's name, and the bridge is that the child's contact email is the
+    // parent's.
+    const child = student({
       name: 'Devin Marlowe',
       isAdultStudent: false,
       primaryContactName: 'Sasha Marlowe',
@@ -102,24 +108,30 @@ describe('the real cases from the live account', () => {
       primaryContactPhone: '+15555550177',
     });
 
-    const [best] = rankCardsForStudent(devin, [stranger, delphine, sasha]);
+    const [best] = rankCardsForStudent(child, [
+      stranger,
+      adultOwnCard,
+      parentCard,
+    ]);
 
-    expect(best.card.cardId).toBe('ccof:sasha');
+    expect(best.card.cardId).toBe('ccof:parent');
     expect(best.strength).toBe('exact');
     expect(best.reasons[0]).toMatch(/same email/i);
   });
 
   it('suggests nothing for a student with no card on file', () => {
-    // Pip's contact is Marnie Underhill, who has no card. Forcing the nearest
-    // name would attach a stranger's card to his family.
-    const pip = student({
+    // This child's contact has no card at all. Forcing the nearest name would
+    // attach a stranger's card to their family.
+    const noCard = student({
       name: '"Pip" (Rosalind) Vance',
       isAdultStudent: false,
       primaryContactName: 'Marnie Underhill',
       primaryContactEmail: 'marnie.underhill@example.com',
     });
 
-    expect(rankCardsForStudent(pip, [stranger, delphine, sasha])).toEqual([]);
+    expect(
+      rankCardsForStudent(noCard, [stranger, adultOwnCard, parentCard])
+    ).toEqual([]);
   });
 
   it('leaves a retail customer’s card matched to nobody', () => {
@@ -178,12 +190,12 @@ describe('signals', () => {
     const s = student({
       name: '"Pip" (Rosalind) Vance',
       isAdultStudent: false,
-      primaryContactName: 'Rosalind Maple',
+      primaryContactName: 'Rosalind Vance',
       primaryContactEmail: 'none@example.com',
     });
 
     const [best] = rankCardsForStudent(s, [
-      card({ customerGivenName: 'Rosalind', customerFamilyName: 'Maple' }),
+      card({ customerGivenName: 'Rosalind', customerFamilyName: 'Vance' }),
     ]);
     expect(best.reasons[0]).toMatch(/cardholder name matches/i);
   });
@@ -197,31 +209,39 @@ describe('signals', () => {
     });
     const asAdult = { ...asChild, isAdultStudent: true };
 
-    expect(rankCardsForStudent(asChild, [sasha])).toHaveLength(1);
-    expect(rankCardsForStudent(asChild, [sasha])[0].strength).toBe('possible');
+    expect(rankCardsForStudent(asChild, [parentCard])).toHaveLength(1);
+    expect(rankCardsForStudent(asChild, [parentCard])[0].strength).toBe(
+      'possible'
+    );
     // An adult sharing a surname with an unrelated customer is a coincidence.
-    expect(rankCardsForStudent(asAdult, [sasha])).toEqual([]);
+    expect(rankCardsForStudent(asAdult, [parentCard])).toEqual([]);
   });
 });
 
 describe('cards that cannot be charged', () => {
   it('never offers a disabled card', () => {
     const s = student({ primaryContactEmail: 'delphine.cray@example.com' });
-    expect(rankCardsForStudent(s, [{ ...delphine, enabled: false }])).toEqual([]);
+    expect(
+      rankCardsForStudent(s, [{ ...adultOwnCard, enabled: false }])
+    ).toEqual([]);
   });
 
   it('knows when a card has expired', () => {
-    // Delphine's real card expires 12/2026 — it is valid through December and
-    // dead on the 1st of January.
-    expect(isCardExpired(delphine, new Date('2026-12-31T23:00:00Z'))).toBe(false);
-    expect(isCardExpired(delphine, new Date('2027-01-01T00:00:00Z'))).toBe(true);
+    // This card expires 12/2026 — valid through December, dead on the 1st of
+    // January.
+    expect(isCardExpired(adultOwnCard, new Date('2026-12-31T23:00:00Z'))).toBe(
+      false
+    );
+    expect(isCardExpired(adultOwnCard, new Date('2027-01-01T00:00:00Z'))).toBe(
+      true
+    );
   });
 
   it('flags a card expiring soon, so it is replaced before a charge fails', () => {
-    expect(isCardExpiringSoon(delphine, 60, new Date('2026-11-15T00:00:00Z'))).toBe(true);
-    expect(isCardExpiringSoon(delphine, 60, new Date('2026-06-01T00:00:00Z'))).toBe(false);
+    expect(isCardExpiringSoon(adultOwnCard, 60, new Date('2026-11-15T00:00:00Z'))).toBe(true);
+    expect(isCardExpiringSoon(adultOwnCard, 60, new Date('2026-06-01T00:00:00Z'))).toBe(false);
     // Already dead is not "expiring soon" — it is a different problem.
-    expect(isCardExpiringSoon(delphine, 60, new Date('2027-02-01T00:00:00Z'))).toBe(false);
+    expect(isCardExpiringSoon(adultOwnCard, 60, new Date('2027-02-01T00:00:00Z'))).toBe(false);
   });
 
   it('treats a card with no expiry as neither expired nor expiring', () => {

@@ -1,7 +1,7 @@
 /**
  * Student Lesson Schedule Repository (#797)
  *
- * The standing arrangement — "Nathan teaches Hazel on Tuesdays at 4:00" — as an
+ * The standing arrangement — "Nathan teaches Devin on Tuesdays at 4:00" — as an
  * object Katie edits, rather than N concrete lesson rows she has to maintain.
  *
  * Concrete `Lesson` records are still what everything downstream reads; they

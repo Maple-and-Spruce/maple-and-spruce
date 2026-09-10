@@ -99,10 +99,11 @@ describe('name matching, when a local roster is supplied', () => {
 
   it('does NOT match a name inside a longer word', () => {
     // This is the bug that made a first pass at scrubbing worse: a substring
-    // replace turned `useSquareCardCandidates` into nonsense, because a
-    // first name sits inside "Candidates".
+    // replace turned an identifier into nonsense, because a student's first
+    // name sat inside a longer word in it. `Pip` inside `Pipeline` is the same
+    // shape — a real roster name that is a prefix of an ordinary code word.
     expect(
-      findNames('export { useSquareCardCandidates };', ['Marisol'], 'f.ts')
+      findNames('export { buildPipeline };', ['Pip'], 'f.ts')
     ).toEqual([]);
   });
 

@@ -158,8 +158,9 @@ describe('mtApplyDiscount', () => {
   });
 
   it('leaves a paid installment-1 family at exactly half the plan', () => {
-    // Mabel's case: she paid $132 of the $264 plan before the code existed.
-    // Waiving installment 2 must land her on the same total a code would.
+    // The pilot case: a family paid $132 of the $264 plan before the code
+    // existed. Waiving installment 2 must land them on the same total a code
+    // would.
     const price = computeMusicTogetherFamilyPrice(section, 1);
     const planTotal = price.installments.reduce(
       (sum, i) => sum + i.amountCents,

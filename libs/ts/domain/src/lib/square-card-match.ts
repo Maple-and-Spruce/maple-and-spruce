@@ -11,14 +11,14 @@
  * Checked against the live account before writing this, because the shape is
  * not obvious:
  *
- *   - **An adult student's card is in their own name.** Odette Bramble, Delphine
- *     Cray — cardholder, customer record and student all agree.
- *   - **A child's card is in a parent's name.** Devin Marlowe's card is
- *     "Sasha Marlowe". Nothing about the cardholder matches the student.
+ *   - **An adult student's card is in their own name.** Cardholder, customer
+ *     record and student all agree.
+ *   - **A child's card is in a parent's name.** Nothing about the cardholder
+ *     matches the student — not the given name, not the surname.
  *
- * The one field that bridges both is **email**: Devin's `primaryContactEmail`
- * is his mother's, and it is exactly the email on her Square customer record.
- * All three real cards match on email alone.
+ * The one field that bridges both is **email**: a child's
+ * `primaryContactEmail` is the parent's, and it is exactly the email on that
+ * parent's Square customer record. All three real cards match on email alone.
  *
  * So email is the primary signal, phone is the reliable second, and name is a
  * fallback for records typed without either. Nothing is ever linked

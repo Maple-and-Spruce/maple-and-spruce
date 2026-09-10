@@ -4,11 +4,11 @@
  * Her source of truth is a spreadsheet laid out as one day, top to bottom, in
  * time order, with **open slots sitting in the sequence** alongside students:
  *
- *     Pip                  11-12
+ *     Pip                   11-12
  *     biweekly open slot    11-12
  *     Tobias                12-1
  *     weekly open slot      1:30-2
- *     Elowen                  2-3
+ *     Elowen                2-3
  *     biweekly open slot    2-3
  *
  * Two things there that nothing in the portal could express:
@@ -21,9 +21,9 @@
  *   2. **An opening has a cadence.** "biweekly open slot" is not free time. It
  *      is specifically the alternate week of Pip's hour, and it is sellable to
  *      exactly one biweekly student. An hour holding one biweekly student is
- *      half free; an hour holding two interleaved ones (Marisol and Odette share
- *      Tuesday 5pm) is not free at all, even though it looks identical from a
- *      typical-week view.
+ *      half free; an hour holding two interleaved ones (Marisol and Odette
+ *      share Tuesday 5pm) is not free at all, even though it looks identical
+ *      from a typical-week view.
  *
  * So occupancy is computed **per week over a repeating cycle** rather than as a
  * single busy/free flag. Cadences are capped at 4 weeks

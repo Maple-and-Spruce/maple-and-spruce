@@ -59,16 +59,17 @@ day and next week didn't move" needs to be a documented rule, not a surprise.
 `tools/backfill-lesson-schedules.ts --prod --execute` created **5 schedules** (4 active, 1 ended) and
 stamped 29 lessons. Its dry run is what caught two bugs in the tool before they reached data: three
 "arrangements" inferred from single lessons, and two students sharing one teacher's Tuesday 17:00
-slot — a permanent weekly double-booking, which turned out to be a slot handed from Marisol to Odette.
+slot — a permanent weekly double-booking, which turned out to be a slot handed from one student to
+another.
 
-Left needing a human, as intended: **Rowe Ashby** (Nathan's student, no lesson since May and no
-series to infer from), **Tamsin Reed** (one lesson, correctly refused as not a pattern), and
-**Devin Marlowe** (no lessons at all). There is also a lesson pointing at a deleted student record.
+Left needing a human, as intended: **three students** — one of Nathan's with no lesson since May and
+no series to infer from, one with a single lesson (correctly refused as not a pattern), and one with
+no lessons at all. There is also a lesson pointing at a deleted student record.
 
 
 ### Standing lesson schedules, PR 1: the arrangement becomes an object (2026-09-04, #797)
 
-Katie and Nathan think in standing arrangements — "Nathan teaches Hazel on Tuesdays at 4:00". The
+Katie and Nathan think in standing arrangements — "Nathan teaches Devin on Tuesdays at 4:00". The
 portal made them manage rows of concrete lessons, which is why moving a student to a new day meant
 editing every remaining row, and why **a series just ran out** on some future Tuesday with billing
 stopping silently behind it. `/suzuki` promises rolling enrollment, so that was the normal case.
@@ -962,7 +963,7 @@ student, and it lapses silently the first week she is busy.
 The load-bearing part is **parity**: which weeks belong to a student. Counted
 from the first occurrence on or after `startsOn`, in shop-timezone calendar
 days, so it survives a skipped week, a rescheduled lesson, the horizon rolling
-forward, and both DST changes. Marisol and Odette alternate in one Tuesday hour, so
+forward, and both DST changes. Two students alternate in one Tuesday hour, so
 a pattern that drifted a week would put two families in the room together.
 
 `tools/backfill-schedule-cadence.ts` migrates existing arrangements and refuses
@@ -989,7 +990,7 @@ been keeping by hand.
 The part no existing view could express: an opening has a cadence. "Open every
 other week" is the alternate week of a biweekly student's hour and fits exactly
 one more biweekly student, while an hour holding two interleaved biweekly
-students (Marisol and Odette share Tuesday 5pm) is not free at all. A busy/free
+students (two students sharing Tuesday 5pm) is not free at all. A busy/free
 view cannot tell those apart.
 
 Composed client-side from existing reads, so no new Cloud Function.
@@ -1006,9 +1007,9 @@ family to enter it again.
 
 `rankCardsForStudent` suggests matches. Email is the primary signal because it
 is the only field that bridges both real shapes: an adult student's card is in
-their own name, but a child's is in a parent's — Devin Marlowe's card reads
-"Sasha Marlowe", and the bridge is that his contact email is hers. Verified
-against the live account before building.
+their own name, but a child's is in a parent's — sharing no part of the child's
+name — and the bridge is that the child's contact email is the parent's.
+Verified against the live account before building.
 
 Nothing links automatically; a wrong link charges the wrong family.
 
@@ -1054,8 +1055,8 @@ Decision still open: keep and spread, keep and contain, or revert (see #851).
 
 Picking a time nothing covered used to be a dead end. The dialog said the
 lesson did not fit, and Katie had to leave, widen the block on the Lesson
-Blocks page, and come back. Devin Marlowe's 6:00–6:30 slot is exactly that:
-the Tuesday block ends at 6:00.
+Blocks page, and come back. A 6:00–6:30 slot is exactly that: the Tuesday
+block ends at 6:00.
 
 `BlockAttributionChoice` now offers the widening or the new block that would
 fit, computed by `planBlockAttribution` — the same pure function the server

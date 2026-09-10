@@ -6,8 +6,8 @@
  * Every lesson must sit inside a `LessonBlock` (#686). Until now, picking a
  * time nothing covered was a dead end: the dialog said the lesson did not fit
  * and Katie had to leave, widen the block on the Lesson Blocks page, and come
- * back. Devin Marlowe's 6:00–6:30 slot is exactly that — Katie's Tuesday
- * block ends at 6:00, so his half hour falls off the end of it.
+ * back. A 6:00–6:30 slot is exactly that — Katie's Tuesday block ends at
+ * 6:00, so that half hour falls off the end of it.
  *
  * The app already knows which widening would fit. `planBlockAttribution` works
  * it out, and this offers the result:

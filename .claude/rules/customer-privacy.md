@@ -73,8 +73,8 @@ npx tsx tools/check-no-customer-pii.ts
 ```
 
 Fails on an email address or phone number in source, tests, stories or docs that is not
-obviously fictional. It is **not yet wired into CI**: the repository still contains data this rule forbids,
-so the job would fail every build. Turning it on is the last step of the scrub (#855).
+obviously fictional. **CI runs it on every PR** (`build-check.yml` → `customer-pii` job), so a
+real address or number cannot reach main again through code.
 
 ### Names
 

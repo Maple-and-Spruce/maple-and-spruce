@@ -227,6 +227,42 @@ jobs:
       - name: Check repository mappers
         run: npx tsx tools/check-repository-mappers.ts
 
+  customer-pii:
+    name: Customer PII
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      # Families hand over a child's name, a parent's email and a card on file
+      # to take music lessons; none of them agreed to appear in an engineering
+      # artefact. Copying a real record into a fixture is the commonest way it
+      # happens, because the real record is right there and looks convenient —
+      # which is exactly what happened across #798, #835 and #838.
+      #
+      # This checks the mechanical half: emails at consumer mailbox providers,
+      # and non-fictional phone numbers. Names have no shape and no roster of
+      # them can live in this repo, so names stay the author's responsibility —
+      # see .claude/rules/customer-privacy.md.
+      - name: Check for customer PII
+        run: npx tsx tools/check-no-customer-pii.ts
+
   typecheck:
     name: TypeScript Check
     needs: [install]

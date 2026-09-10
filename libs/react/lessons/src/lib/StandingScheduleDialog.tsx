@@ -161,7 +161,7 @@ export function StandingScheduleDialog({
   //
   // Built from the start DATE and the start TIME together. `fromDateValue`
   // alone lands at midday, which would plan around the wrong hour entirely —
-  // Devin's 6pm slot would be judged against noon.
+  // A 6pm slot would be judged against noon.
   const firstOccurrence = useMemo(() => {
     const [y, m, d] = startsOn.split('-').map(Number);
     if (!y || !m || !d) return new Date(NaN);

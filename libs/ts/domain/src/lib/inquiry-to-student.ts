@@ -86,7 +86,8 @@ export function inferAdultStudent(
  * The studio's timezone, which is the only one this date can honestly be in.
  *
  * `submittedAt` is an instant; the *day* it happened on is a question you can
- * only answer relative to somewhere. Sasha's inquiry is 2026-08-26T03:42:50Z —
+ * only answer relative to somewhere. One real inquiry came in at
+ * 2026-08-26T03:42:50Z —
  * that is the evening of Aug 25 in Morgantown, and Aug 25 is what `/leads`
  * shows, so a note reading "submitted Aug 26" would contradict the row it was
  * created from.

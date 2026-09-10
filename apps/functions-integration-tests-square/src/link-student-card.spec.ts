@@ -27,22 +27,22 @@ const SQUARE_MOCK = `http://localhost:${process.env['SQUARE_MOCK_SERVER_PORT'] ?
 
 /** The shape a card saved in the Square app leaves behind. */
 const CARDS = {
-  'ccof:delphine': {
+  'ccof:adult': {
     card_brand: 'VISA',
     last_4: '1112',
     exp_month: 12,
     exp_year: 2031,
     cardholder_name: 'Delphine Cray',
-    customer_id: 'cus_adele',
+    customer_id: 'cus_adult',
     enabled: true,
   },
-  'ccof:sasha': {
+  'ccof:parent': {
     card_brand: 'VISA',
     last_4: '1113',
     exp_month: 1,
     exp_year: 2031,
     cardholder_name: 'Sasha Marlowe',
-    customer_id: 'cus_lark',
+    customer_id: 'cus_parent',
     enabled: true,
   },
   'ccof:stranger': {
@@ -75,14 +75,14 @@ const CARDS = {
 };
 
 const CUSTOMERS = {
-  cus_adele: {
-    id: 'cus_adele',
+  cus_adult: {
+    id: 'cus_adult',
     given_name: 'Delphine',
     family_name: 'Cray',
     email_address: 'delphine.cray@example.com',
   },
-  cus_lark: {
-    id: 'cus_lark',
+  cus_parent: {
+    id: 'cus_parent',
     given_name: 'Sasha',
     family_name: 'Marlowe',
     email_address: 'sasha.marlowe@example.com',
@@ -91,7 +91,7 @@ const CUSTOMERS = {
     id: 'cus_stranger',
     given_name: 'Quinn',
     family_name: 'Vasser',
-    email_address: 'quinn@example.com',
+    email_address: 'quinn.vasser@example.com',
   },
   cus_dead: { id: 'cus_dead', email_address: 'dead@example.com' },
   cus_off: { id: 'cus_off', email_address: 'off@example.com' },
@@ -139,13 +139,13 @@ describe('Linking a Square card to a student (#798)', () => {
       updatedAt: new Date(),
     });
 
-    await seedStudent('stu-delphine', {
+    await seedStudent('stu-adult', {
       name: 'Delphine Cray',
       isAdultStudent: true,
       primaryContactName: 'Delphine Cray',
       primaryContactEmail: 'delphine.cray@example.com',
     });
-    await seedStudent('stu-devin', {
+    await seedStudent('stu-child', {
       name: 'Devin Marlowe',
       isAdultStudent: false,
       primaryContactName: 'Sasha Marlowe',
@@ -175,9 +175,9 @@ describe('Linking a Square card to a student (#798)', () => {
     expect(result.status).toBe(200);
     const ids = (result.data?.cards ?? []).map((c) => c.cardId).sort();
     expect(ids).toEqual([
+      'ccof:adult',
       'ccof:dead',
-      'ccof:sasha',
-      'ccof:delphine',
+      'ccof:parent',
       'ccof:stranger',
     ]);
   }, 60000);
@@ -189,19 +189,19 @@ describe('Linking a Square card to a student (#798)', () => {
 
   it('carries the customer email, which is what matches a child to a parent’s card', async () => {
     const cards = (await candidates()).data?.cards ?? [];
-    const sasha = cards.find((c) => c.cardId === 'ccof:sasha');
+    const parent = cards.find((c) => c.cardId === 'ccof:parent');
 
-    expect(sasha?.customerEmail).toBe('sasha.marlowe@example.com');
-    expect(sasha?.customerFamilyName).toBe('Marlowe');
+    expect(parent?.customerEmail).toBe('sasha.marlowe@example.com');
+    expect(parent?.customerFamilyName).toBe('Marlowe');
   }, 30000);
 
   it('links a card, storing what the billing job needs', async () => {
-    const result = await link('stu-delphine', 'ccof:delphine');
+    const result = await link('stu-adult', 'ccof:adult');
 
     expect(result.status).toBe(200);
     expect(result.data?.student).toMatchObject({
-      squareCustomerId: 'cus_adele',
-      squareCardId: 'ccof:delphine',
+      squareCustomerId: 'cus_adult',
+      squareCardId: 'ccof:adult',
       cardBrand: 'VISA',
       cardLast4: '1112',
     });
@@ -210,8 +210,8 @@ describe('Linking a Square card to a student (#798)', () => {
 
   it('reports which cards are already spoken for', async () => {
     const result = await candidates();
-    expect(result.data?.linkedTo['ccof:delphine']).toMatchObject({
-      id: 'stu-delphine',
+    expect(result.data?.linkedTo['ccof:adult']).toMatchObject({
+      id: 'stu-adult',
       name: 'Delphine Cray',
     });
   }, 30000);
@@ -219,28 +219,28 @@ describe('Linking a Square card to a student (#798)', () => {
   it('refuses to link one card to a second student', async () => {
     // A card belongs to one family. Linking it twice bills one family for
     // another's lessons.
-    const result = await link('stu-devin', 'ccof:delphine');
+    const result = await link('stu-child', 'ccof:adult');
 
     expect(result.status).toBe(400);
     expect(JSON.stringify(result.error)).toMatch(/already linked to Delphine Cray/i);
   }, 30000);
 
   it('refuses an expired card', async () => {
-    const result = await link('stu-devin', 'ccof:dead');
+    const result = await link('stu-child', 'ccof:dead');
 
     expect(result.status).toBe(400);
     expect(JSON.stringify(result.error)).toMatch(/expired/i);
   }, 30000);
 
   it('refuses a card that is not on file at all', async () => {
-    const result = await link('stu-devin', 'ccof:invented');
+    const result = await link('stu-child', 'ccof:invented');
 
     expect(result.status).toBe(400);
     expect(JSON.stringify(result.error)).toMatch(/no longer on file/i);
   }, 30000);
 
   it('unlinks without touching Square, so the card stays usable by hand', async () => {
-    const result = await link('stu-delphine', null);
+    const result = await link('stu-adult', null);
 
     expect(result.status).toBe(200);
     expect(result.data?.student.squareCardId).toBeUndefined();
@@ -248,7 +248,7 @@ describe('Linking a Square card to a student (#798)', () => {
 
     // Still on file in Square — unlinking is a portal decision, not a deletion.
     const ids = ((await candidates()).data?.cards ?? []).map((c) => c.cardId);
-    expect(ids).toContain('ccof:delphine');
+    expect(ids).toContain('ccof:adult');
   }, 30000);
 
   it('rejects an unauthenticated caller', async () => {

@@ -1,7 +1,7 @@
 /**
  * Standing lesson schedules (#797).
  *
- * Katie and Nathan think in standing arrangements — "Nathan teaches Hazel on
+ * Katie and Nathan think in standing arrangements — "Nathan teaches Devin on
  * Tuesdays at 4:00, thirty minutes, in the Spruce Room". The portal made them
  * manage rows of concrete lessons instead, which is why moving a student to a
  * new day meant editing every remaining row, and why a series just *ran out*
