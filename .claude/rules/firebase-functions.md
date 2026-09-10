@@ -264,6 +264,46 @@ export const updateClass = createAdminFunction<Req, Res>(async (data) => {
 
 **Validation must run BEFORE any external writes** (Square, Webflow, payments). Invalid data must never reach external APIs and fail halfway through.
 
+## Repository Mappers Must Carry Every Entity Field
+
+**A field added to a domain entity must also be read back in that entity's `docToX` mapper.**
+
+Forgetting it is silent in every way that normally catches a mistake: it compiles (the
+mapper builds an object literal and new fields are optional), unit tests pass (they
+hand-build entities and never go through the mapper), and the value writes to Firestore
+fine. It just never comes back — and the symptom shows up somewhere else entirely.
+
+It shipped three times before the guard existed:
+
+| PR | Field | Symptom |
+|----|-------|---------|
+| #798 | `Student.squareCustomerId` / `squareCardId` | every student read back as "no card", so the billing job skipped everyone |
+| #835 | `LessonBlock.onDate` | every one-off block read back as recurring |
+| #837 | `StudentLessonSchedule.intervalWeeks` | every biweekly student read back as weekly |
+
+Each was found only by an emulator run.
+
+```bash
+npx tsx tools/check-repository-mappers.ts            # exits non-zero on a gap
+npx tsx tools/check-repository-mappers.ts --report   # every mapper + its field counts
+```
+
+CI runs this on every PR (`build-check.yml` → `repository-mappers` job).
+
+A field that genuinely should not be read back is declared on the line above the mapper,
+**with a reason**:
+
+```typescript
+// mapper-field-check-ignore: derivedTotal -- computed on read, never stored
+function docToThing(doc): Thing | undefined {
+```
+
+A mapper that spreads (`...data`) is skipped, since it maps everything by construction.
+
+**The write side is not covered.** The analyzer checks reads only. A repository whose
+`create` uses an explicit field list can still drop a field on the way in — that is what
+`SyncConflict.variantId` was doing. When adding a field, check both directions.
+
 ## Firestore Composite Indexes
 
 **Every `.where()` chain that requires a composite index MUST have a matching entry in `firestore.indexes.json` in the same PR that introduces it.** A 20-day production outage was caused by an undeclared agreementTemplates index in 2026-05; the CI guardrail below was added to prevent recurrence.

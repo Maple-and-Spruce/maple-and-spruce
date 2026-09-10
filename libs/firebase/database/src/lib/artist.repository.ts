@@ -35,6 +35,12 @@ function docToArtist(
     notes: data.notes,
     photoUrl: data.photoUrl,
     webflowItemId: data.webflowItemId,
+    // Written by create/update (which spread the input) but dropped here until
+    // #843 — so the "don't auto-publish" checkbox read back unticked, and the
+    // next save silently re-enabled publishing.
+    preventAutoPublish: data.preventAutoPublish,
+    payoutMethod: data.payoutMethod,
+    payoutDetails: data.payoutDetails,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
   };

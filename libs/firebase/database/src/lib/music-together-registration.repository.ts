@@ -48,6 +48,10 @@ function docToRegistration(
     address: data.address,
     accommodations: data.accommodations ?? undefined,
     paymentPlan: data.paymentPlan as MusicTogetherPaymentPlan,
+    // Persisted by create (which spreads the input); dropped here until #843,
+    // so a pilot-discounted registration read back as full price.
+    discountCode: data.discountCode,
+    discountAmountCents: data.discountAmountCents,
     policiesAcceptedAt: toDate(data.policiesAcceptedAt),
     privacyConsentAcceptedAt: data.privacyConsentAcceptedAt
       ? toDate(data.privacyConsentAcceptedAt)

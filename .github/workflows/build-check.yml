@@ -186,6 +186,38 @@ jobs:
       - name: Check callable roles
         run: npx tsx tools/check-callable-roles.ts
 
+  repository-mappers:
+    name: Repository Mappers
+    needs: [install]
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ needs.install.outputs.cache_key }}
+
+      # A field added to a domain entity but forgotten in that entity's docToX
+      # mapper is invisible: it compiles, unit tests pass (they hand-build
+      # entities and never touch the mapper), and the value writes to Firestore
+      # fine. It just never comes back. Shipped three times before this guard
+      # existed (#798 card fields, #835 onDate, #837 intervalWeeks) and found
+      # four more on main the first time it ran (#843).
+      - name: Check repository mappers
+        run: npx tsx tools/check-repository-mappers.ts
+
   typecheck:
     name: TypeScript Check
     needs: [install]

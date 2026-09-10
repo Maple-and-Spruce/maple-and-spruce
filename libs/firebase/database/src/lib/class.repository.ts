@@ -89,6 +89,7 @@ function docToClass(
     skillLevel: data.skillLevel,
     status: data.status,
     location: data.location,
+    room: data.room,
     materialsIncluded: data.materialsIncluded,
     whatToBring: data.whatToBring,
     minimumAge: data.minimumAge,

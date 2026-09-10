@@ -49,6 +49,8 @@ function docToSyncConflict(
       price: data.externalState.price,
       name: data.externalState.name,
     },
+    variantId: data.variantId,
+    variantLabel: data.variantLabel,
     status: data.status,
     resolution: data.resolution,
     resolvedAt: data.resolvedAt?.toDate(),
@@ -154,6 +156,14 @@ export const SyncConflictRepository = {
       localState: input.localState,
       externalState: input.externalState,
       status: 'pending' as SyncConflictStatus,
+      // detect-sync-conflicts raises variant-level conflicts with these set,
+      // and the explicit field list here used to discard them, so a variant
+      // conflict lost which variant it was about (#843). Spread conditionally
+      // because Firestore rejects an explicit `undefined`.
+      ...(input.variantId !== undefined ? { variantId: input.variantId } : {}),
+      ...(input.variantLabel !== undefined
+        ? { variantLabel: input.variantLabel }
+        : {}),
     };
 
     await docRef.set(data);
@@ -161,7 +171,7 @@ export const SyncConflictRepository = {
     return {
       id: docRef.id,
       ...data,
-    };
+    } as SyncConflict;
   },
 
   /**

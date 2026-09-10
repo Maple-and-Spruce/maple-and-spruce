@@ -967,3 +967,15 @@ a pattern that drifted a week would put two families in the room together.
 
 `tools/backfill-schedule-cadence.ts` migrates existing arrangements and refuses
 to write when the proposed parity does not match the student's real lessons.
+
+## Repository mapper ratchet + four live gaps it found
+
+`tools/check-repository-mappers.ts` fails CI when a domain entity declares a
+field its `docToX` mapper does not read back. That mistake is silent in every
+way that normally catches one: it compiles, unit tests pass (they hand-build
+entities and never touch the mapper), and the value writes to Firestore fine.
+
+It shipped three times (#798 card fields, #835 onDate, #837 intervalWeeks) and
+found four more the first time it ran — most consequentially
+`Artist.preventAutoPublish`, where the "don't auto-publish" checkbox read back
+unticked and the next save silently re-enabled publishing.
