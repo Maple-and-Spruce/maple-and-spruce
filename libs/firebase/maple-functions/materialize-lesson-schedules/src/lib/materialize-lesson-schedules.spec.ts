@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   findStudents: vi.fn(),
   findLessons: vi.fn(),
   createWithId: vi.fn(),
+  findConflictsForWindow: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -19,7 +20,15 @@ vi.mock('@maple/firebase/functions', () => {
     handle: <TReq, TRes>(handler: (d: TReq, c: unknown) => Promise<TRes>) =>
       handler,
   };
-  return { Functions: { endpoint: builder }, Role: { Admin: 'admin' } };
+  return {
+    Functions: { endpoint: builder },
+    Role: { Admin: 'admin' },
+    // The room-conflict check (#841). Free by default; the room-conflict
+    // cases below override it. Mocked rather than exercised because the
+    // real one reads calendar events, and that belongs in the integration
+    // suite where a trigger actually writes them.
+    findConflictsForWindow: mocks.findConflictsForWindow,
+  };
 });
 
 vi.mock('firebase-functions/v2/scheduler', () => ({
@@ -63,6 +72,8 @@ const activeStudent = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The room is free unless a test says otherwise (#841).
+  mocks.findConflictsForWindow.mockResolvedValue([]);
   mocks.findSchedules.mockResolvedValue([schedule]);
   mocks.findStudents.mockResolvedValue([activeStudent]);
   mocks.findLessons.mockResolvedValue([]);
@@ -175,5 +186,30 @@ describe('runMaterializeLessonSchedules', () => {
   it('asks the repository only for active schedules', async () => {
     await runMaterializeLessonSchedules(NOW, 1);
     expect(mocks.findSchedules).toHaveBeenCalledWith({ status: 'active' });
+  });
+});
+
+describe('room conflicts (#841)', () => {
+  it('skips an occurrence whose room is taken, and counts it', async () => {
+    // This job runs unattended. Throwing would abandon every remaining
+    // arrangement; writing anyway would double-book the room. So it skips,
+    // and the count is what tells a human a slot needs attention.
+    mocks.findConflictsForWindow.mockResolvedValue([
+      {
+        room: 'spruce',
+        event: {
+          id: 'evt-1',
+          title: 'Private rental',
+          startDateTime: new Date(),
+          endDateTime: new Date(),
+          sourceRef: null,
+        },
+      },
+    ]);
+
+    const result = await runMaterializeLessonSchedules(NOW);
+
+    expect(result.created).toBe(0);
+    expect(result.skippedRoomConflict).toBeGreaterThan(0);
   });
 });

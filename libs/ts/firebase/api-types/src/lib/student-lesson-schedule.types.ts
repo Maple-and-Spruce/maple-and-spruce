@@ -52,4 +52,10 @@ export interface MaterializeLessonSchedulesResult {
   /** Occurrences that already had a lesson — the steady state, not a problem. */
   alreadyPresent: number;
   skippedInactiveStudent: number;
+  /**
+   * Occurrences skipped because something else already had the room (#841).
+   * Counted rather than written, and rather than aborting the run — a slot
+   * nobody can teach in needs a human either way.
+   */
+  skippedRoomConflict: number;
 }

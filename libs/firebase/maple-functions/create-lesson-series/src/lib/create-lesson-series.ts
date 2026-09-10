@@ -9,6 +9,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
+  assertRoomIsFree,
   resolveLessonBlock,
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
@@ -69,6 +70,15 @@ export const createLessonSeries = createRoleFunction<
         context,
       });
     }
+
+    // Every date in the series, not just the first (#841).
+    await assertRoomIsFree(
+      coerced.scheduledAts.map((scheduledAt) => ({
+        room: coerced.room,
+        scheduledAt,
+        durationMinutes: coerced.durationMinutes,
+      }))
+    );
 
     const student = await StudentRepository.findById(coerced.studentId);
     if (!student) {

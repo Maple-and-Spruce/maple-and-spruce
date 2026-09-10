@@ -53,6 +53,7 @@ export * from './lib/teacher-payout';
 export * from './lib/calendar-event';
 export * from './lib/calendar-embed-config';
 export * from './lib/room';
+export * from './lib/room-conflict';
 
 // Agreements & Waivers
 export * from './lib/agreement-template';

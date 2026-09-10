@@ -72,6 +72,10 @@ export {
 
 // Lesson ↔ block enforcement (#686)
 export {
+  assertRoomIsFree,
+  findConflictsForWindow,
+} from './room-conflict.utility';
+export {
   assertLessonsFitBlock,
   resolveLessonBlock,
 } from './lesson-block.utility';

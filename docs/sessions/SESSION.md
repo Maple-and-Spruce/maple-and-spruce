@@ -1066,3 +1066,18 @@ changes that weekday for every future lesson, and it says so.
 
 Completes the UI half of #835, whose backend shipped in #836 and had been
 unused since.
+
+## #841 — two things cannot be in the room at once
+
+Nothing enforced this. Lessons, Music Together classes and private rentals
+could all be booked into the same hour. The only guard that existed is keyed
+`studentId|instant`, so it stopped a student clashing with themselves and was
+blind to two different people wanting the same room.
+
+The check reads `CalendarEvent`, which is already the room-occupancy model:
+`onLessonWrite` upserts one per lesson, the room-booking page creates them for
+rentals and Music Together, and a cancelled lesson has its event removed. So
+one check covers every way the room gets used.
+
+Interactive writes refuse. Materialisation, which runs unattended, skips the
+occurrence and counts it — throwing would abandon every remaining arrangement.

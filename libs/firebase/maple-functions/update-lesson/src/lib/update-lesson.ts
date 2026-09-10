@@ -11,6 +11,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
+  assertRoomIsFree,
   resolveLessonBlock,
   throwNotFound,
 } from '@maple/firebase/functions';
@@ -77,6 +78,25 @@ export const updateLesson = createRoleFunction<
         context,
       });
       coercedUpdates.blockId = resolvedBlockId;
+    }
+
+    // Only when the booking actually moves. A status or notes edit must not
+    // be refused because the lesson occupies its own slot (#841), and the
+    // lesson's own calendar event is excluded for the same reason.
+    const movesInRoom =
+      coercedUpdates.scheduledAt !== undefined ||
+      data.durationMinutes !== undefined ||
+      data.room !== undefined;
+
+    if (movesInRoom && merged.status !== 'cancelled') {
+      await assertRoomIsFree([
+        {
+          room: merged.room,
+          scheduledAt: merged.scheduledAt,
+          durationMinutes: merged.durationMinutes,
+          excludeSourceRef: `lessons/${data.id}`,
+        },
+      ]);
     }
 
     const lesson = await LessonRepository.update(coercedUpdates);

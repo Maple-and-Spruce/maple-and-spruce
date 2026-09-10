@@ -32,7 +32,11 @@
  * instant the student already has a lesson at, whatever that lesson's id.
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { Functions, Role } from '@maple/firebase/functions';
+import {
+  Functions,
+  Role,
+  findConflictsForWindow,
+} from '@maple/firebase/functions';
 import {
   LessonRepository,
   StudentLessonScheduleRepository,
@@ -62,6 +66,7 @@ export async function runMaterializeLessonSchedules(
     created: 0,
     alreadyPresent: 0,
     skippedInactiveStudent: 0,
+    skippedRoomConflict: 0,
   };
 
   const horizonEnd = scheduleHorizonEnd(now, horizonWeeks);
@@ -100,6 +105,28 @@ export async function runMaterializeLessonSchedules(
     for (const occurrence of occurrences) {
       if (occupied.has(`${schedule.studentId}|${occurrence.getTime()}`)) {
         result.alreadyPresent++;
+        continue;
+      }
+
+      // Two things cannot be in the room at once (#841). This job runs
+      // unattended, so a clash SKIPS the occurrence and is counted — throwing
+      // would abandon every remaining arrangement, and writing it anyway would
+      // silently double-book the room.
+      //
+      // The skip is not silent: the count surfaces in the result and the log,
+      // because a slot nobody can teach in needs a human either way.
+      const clashes = await findConflictsForWindow({
+        room: schedule.room,
+        scheduledAt: occurrence,
+        durationMinutes: schedule.durationMinutes,
+      });
+      if (clashes.length > 0) {
+        result.skippedRoomConflict++;
+        console.warn('[materialize] room taken, occurrence skipped:', {
+          scheduleId: schedule.id,
+          at: occurrence.toISOString(),
+          takenBy: clashes[0].event.title,
+        });
         continue;
       }
 

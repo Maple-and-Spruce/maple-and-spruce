@@ -10,6 +10,7 @@ import {
   createRoleFunction,
   Role,
   assertCanManageLesson,
+  assertRoomIsFree,
   resolveLessonBlock,
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
@@ -59,6 +60,17 @@ export const createLesson = createRoleFunction<
       recurring: false,
       context,
     });
+
+    // Two things cannot be in the room at once (#841). Checked against
+    // calendar events, so a rental or a Music Together class blocks the slot
+    // just as another lesson would.
+    await assertRoomIsFree([
+      {
+        room: coerced.room,
+        scheduledAt: coerced.scheduledAt,
+        durationMinutes: coerced.durationMinutes,
+      },
+    ]);
 
     const student = await StudentRepository.findById(coerced.studentId);
     if (!student) {
