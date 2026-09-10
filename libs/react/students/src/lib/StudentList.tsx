@@ -12,7 +12,6 @@ import {
   ListItemText,
   Menu,
   MenuItem,
-  Paper,
   Stack,
   Tooltip,
   Typography,
@@ -24,10 +23,10 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EventIcon from '@mui/icons-material/Event';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import {
-  DataGrid,
-  type GridColDef,
-  type GridRenderCellParams,
-} from '@mui/x-data-grid';
+  MaterialReactTable,
+  useMaterialReactTable,
+  type MRT_ColumnDef,
+} from 'material-react-table';
 import type {
   Instructor,
   Lesson,
@@ -241,15 +240,14 @@ export function StudentList({
     });
   }, [studentsState, scheduleByStudent, teacherNameById]);
 
-  const columns: GridColDef<StudentRow>[] = useMemo(
+  const columns = useMemo<MRT_ColumnDef<StudentRow>[]>(
     () => [
       {
-        field: 'name',
-        headerName: 'Student',
-        flex: 1,
-        minWidth: 160,
-        renderCell: (params: GridRenderCellParams<StudentRow>) => {
-          const { student } = params.row;
+        accessorKey: 'name',
+        header: 'Student',
+        size: 190,
+        Cell: ({ row }) => {
+          const { student } = row.original;
           if (!detailHrefBase) {
             return (
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -279,122 +277,106 @@ export function StudentList({
         },
       },
       {
-        field: 'instrumentLabel',
-        headerName: 'Instrument',
-        width: 140,
-        renderCell: (params: GridRenderCellParams<StudentRow>) => (
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              minWidth: 0,
-            }}
-          >
-            <Typography component="span" variant="body2" noWrap sx={{ lineHeight: 1.35 }}>
-              {params.row.instrumentLabel}
-            </Typography>
-            {params.row.lessonLengthLabel && (
-              <Typography
-                component="span"
-                variant="caption"
-                color="text.secondary"
-                noWrap
-                sx={{ lineHeight: 1.35 }}
-              >
-                {params.row.lessonLengthLabel}
-              </Typography>
-            )}
-          </Box>
-        ),
-      },
-      {
-        field: 'weekdaySortKey',
-        headerName: 'Lesson Day / Time',
-        flex: 1,
-        minWidth: 150,
-        sortComparator: (a: number, b: number) => a - b,
-        valueGetter: (_value, row) => row.weekdaySortKey,
-        renderCell: (params: GridRenderCellParams<StudentRow>) =>
-          params.row.dayDisplay ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                minWidth: 0,
-              }}
-            >
+        // Sorted on the numeric key, displayed as the day and time block.
+        // POSITIVE_INFINITY for a student with no slot, so they group last
+        // rather than scattering through the list (#847).
+        accessorKey: 'weekdaySortKey',
+        header: 'Lesson Day / Time',
+        size: 170,
+        Cell: ({ row }) =>
+          row.original.dayDisplay ? (
+            <Box sx={{ minWidth: 0 }}>
               <Typography
                 component="span"
                 variant="body2"
                 noWrap
-                sx={{ fontWeight: 500, lineHeight: 1.35 }}
+                sx={{ display: 'block', fontWeight: 500, lineHeight: 1.35 }}
               >
-                {params.row.dayDisplay}
+                {row.original.dayDisplay}
               </Typography>
               <Typography
                 component="span"
                 variant="caption"
                 color="text.secondary"
                 noWrap
-                sx={{ lineHeight: 1.35 }}
+                sx={{ display: 'block', lineHeight: 1.35 }}
               >
-                {params.row.timeBlockDisplay}
+                {row.original.timeBlockDisplay}
               </Typography>
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography component="span" variant="body2" color="text.secondary">
               —
             </Typography>
           ),
       },
       {
-        field: 'teacherName',
-        headerName: 'Teacher',
-        width: 140,
+        accessorKey: 'instrumentLabel',
+        header: 'Instrument',
+        size: 150,
+        Cell: ({ row }) => (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              component="span"
+              variant="body2"
+              noWrap
+              sx={{ display: 'block', lineHeight: 1.35 }}
+            >
+              {row.original.instrumentLabel}
+            </Typography>
+            {row.original.lessonLengthLabel && (
+              <Typography
+                component="span"
+                variant="caption"
+                color="text.secondary"
+                noWrap
+                sx={{ display: 'block', lineHeight: 1.35 }}
+              >
+                {row.original.lessonLengthLabel}
+              </Typography>
+            )}
+          </Box>
+        ),
       },
+      { accessorKey: 'teacherName', header: 'Teacher', size: 150 },
       {
-        field: 'contactName',
-        headerName: 'Contact',
-        flex: 1,
-        minWidth: 170,
-        renderCell: (params: GridRenderCellParams<StudentRow>) => (
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              minWidth: 0,
-            }}
-          >
-            <Typography component="span" variant="body2" noWrap sx={{ lineHeight: 1.35 }}>
-              {params.row.contactName}
+        accessorKey: 'contactName',
+        header: 'Contact',
+        size: 200,
+        Cell: ({ row }) => (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              component="span"
+              variant="body2"
+              noWrap
+              sx={{ display: 'block', lineHeight: 1.35 }}
+            >
+              {row.original.contactName}
             </Typography>
             <Typography
               component="span"
               variant="caption"
               color="text.secondary"
               noWrap
-              sx={{ lineHeight: 1.35 }}
+              sx={{ display: 'block', lineHeight: 1.35 }}
             >
-              {params.row.contactEmail}
+              {row.original.contactEmail}
             </Typography>
           </Box>
         ),
       },
       {
-        field: 'status',
-        headerName: 'Status',
-        width: 170,
-        renderCell: (params: GridRenderCellParams<StudentRow>) => (
+        accessorKey: 'status',
+        header: 'Status',
+        size: 190,
+        Cell: ({ row }) => (
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
             <Chip
-              label={params.row.status}
+              label={row.original.status}
               size="small"
-              color={statusColors[params.row.status]}
+              color={statusColors[row.original.status]}
             />
-            {params.row.isHopeScholarship && (
+            {row.original.isHopeScholarship && (
               <Chip
                 label="Hope Scholarship"
                 size="small"
@@ -403,25 +385,24 @@ export function StudentList({
                 icon={<StarsIcon />}
               />
             )}
-            {params.row.isAdultStudent && (
+            {row.original.isAdultStudent && (
               <Chip label="Adult" size="small" variant="outlined" />
             )}
           </Stack>
         ),
       },
       {
-        field: 'actions',
-        headerName: 'Actions',
-        width: 110,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        align: 'right',
-        headerAlign: 'right',
-        renderCell: (params: GridRenderCellParams<StudentRow>) => (
+        id: 'actions',
+        header: 'Actions',
+        size: 100,
+        enableSorting: false,
+        enableColumnActions: false,
+        muiTableBodyCellProps: { align: 'right' },
+        muiTableHeadCellProps: { align: 'right' },
+        Cell: ({ row }) => (
           <RowActionsMenu
-            student={params.row.student}
-            isHopeScholarship={params.row.isHopeScholarship}
+            student={row.original.student}
+            isHopeScholarship={row.original.isHopeScholarship}
             onEdit={onEdit}
             onDelete={onDelete}
             onScheduleLesson={onScheduleLesson}
@@ -430,14 +411,61 @@ export function StudentList({
         ),
       },
     ],
-    [
-      detailHrefBase,
-      onEdit,
-      onDelete,
-      onScheduleLesson,
-      onCreateInvoice,
-    ]
+    [detailHrefBase, onEdit, onDelete, onScheduleLesson, onCreateInvoice]
   );
+
+  const table = useMaterialReactTable({
+    columns,
+    data: rows,
+    state: { isLoading: studentsState.status === 'loading' },
+    // The point of the trial (#851). Who the row is and when they come stay
+    // on screen; what can be done about them stays reachable. Everything
+    // between scrolls.
+    enableColumnPinning: true,
+    initialState: {
+      // Katie reads her day in time order, so that is how the page opens
+      // (#847). Students with no slot carry POSITIVE_INFINITY and land last.
+      sorting: [{ id: 'weekdaySortKey', desc: false }],
+      columnPinning: { left: ['name', 'weekdaySortKey'], right: ['actions'] },
+      pagination: { pageIndex: 0, pageSize: 25 },
+      density: 'comfortable',
+    },
+    enableColumnFilters: false,
+    enableGlobalFilter: false,
+    enableDensityToggle: false,
+    enableFullScreenToggle: false,
+    enableHiding: false,
+    muiTablePaperProps: {
+      elevation: 0,
+      sx: {
+        backgroundColor: surfaces.paper,
+        borderRadius: `${radii.lg}px`,
+        border: `1px solid ${borders.default}`,
+        boxShadow: shadows.sm,
+        overflow: 'hidden',
+      },
+    },
+    // Pinned cells sit ON TOP of the scrolling ones, and MRT ships them at
+    // `opacity: 0.97` — enough for the columns underneath to read straight
+    // through as ghost text. Forced opaque here.
+    //
+    // Only found by looking at it scrolled: every test passed, and the
+    // computed background was already the right white.
+    muiTableHeadCellProps: {
+      sx: {
+        backgroundColor: surfaces.tableHeader,
+        fontWeight: 600,
+        '&[data-pinned="true"]': { opacity: 1 },
+      },
+    },
+    muiTableBodyCellProps: {
+      sx: {
+        backgroundColor: surfaces.paper,
+        borderColor: borders.subtle,
+        '&[data-pinned="true"]': { opacity: 1 },
+      },
+    },
+  });
 
   if (studentsState.status === 'error') {
     return (
@@ -462,50 +490,5 @@ export function StudentList({
     );
   }
 
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        width: '100%',
-        backgroundColor: surfaces.paper,
-        borderRadius: `${radii.lg}px`,
-        border: `1px solid ${borders.default}`,
-        boxShadow: shadows.sm,
-        overflow: 'hidden',
-      }}
-    >
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        loading={studentsState.status === 'loading'}
-        pageSizeOptions={[10, 25, 50, 100]}
-        initialState={{
-          pagination: { paginationModel: { pageSize: 25 } },
-          sorting: { sortModel: [{ field: 'name', sort: 'asc' }] },
-        }}
-        disableRowSelectionOnClick
-        autoHeight
-        sx={{
-          border: 'none',
-          backgroundColor: surfaces.paper,
-          '--DataGrid-containerBackground': surfaces.tableHeader,
-          '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: surfaces.tableHeader,
-            borderBottom: `1px solid ${borders.subtle}`,
-          },
-          '& .MuiDataGrid-columnHeaderTitle': {
-            fontWeight: 600,
-          },
-          '& .MuiDataGrid-cell': {
-            display: 'flex',
-            alignItems: 'center',
-            borderColor: borders.subtle,
-          },
-          '& .MuiDataGrid-row:last-child .MuiDataGrid-cell': {
-            borderBottom: 'none',
-          },
-        }}
-      />
-    </Paper>
-  );
+  return <MaterialReactTable table={table} />;
 }

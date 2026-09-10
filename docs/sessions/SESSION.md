@@ -1034,3 +1034,18 @@ wrong charge is that somebody saw it coming.
 
 Prod state at the time of writing: 0 billing rules, 0 charges, 0 linked cards —
 so nothing charges anyone today, and nothing will until a rule exists.
+
+## #851 — Material React Table trial on /students
+
+Column pinning is a paid MUI X Pro feature (verified in v7, v8 and v9), so
+`/students` now uses Material React Table (MIT) instead: Student and Lesson
+Day / Time pinned left, Actions pinned right.
+
+Also delivers #847's default sort by time slot, since `weekdaySortKey` already
+existed and already groups no-slot students last.
+
+One integration cost found by looking at it rather than by testing: MRT ships
+pinned cells at `opacity: 0.97`, so the scrolling columns read through as ghost
+text. Forced opaque, with a play test pinning it.
+
+Decision still open: keep and spread, keep and contain, or revert (see #851).

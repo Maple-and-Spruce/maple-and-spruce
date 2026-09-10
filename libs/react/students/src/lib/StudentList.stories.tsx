@@ -234,3 +234,84 @@ export const LessonDayTimeRendered: Story = {
     });
   },
 };
+
+// ============================================================
+// #851 — MATERIAL REACT TABLE TRIAL: pinning and default sort
+// ============================================================
+
+/**
+ * The reason for the trial (#851, #847). Katie's Actions column was being cut
+ * off, and scrolling to reach it lost the student's name. Pinning keeps *who
+ * this row is* and *what can be done about it* on screen at all times.
+ *
+ * Column pinning is a paid feature in MUI X DataGrid, which is what sent us
+ * looking for an alternative.
+ */
+export const PinsIdentityLeftAndActionsRight: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: mockStudents,
+    } as RequestState<Student[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const pinned = async (name: RegExp | string) => {
+      const header = await canvas.findByRole('columnheader', { name });
+      return getComputedStyle(header).position;
+    };
+
+    // Sticky is how pinning is actually implemented, so it is what proves the
+    // column will survive a horizontal scroll.
+    expect(await pinned(/Student/)).toBe('sticky');
+    expect(await pinned(/Lesson Day \/ Time/)).toBe('sticky');
+    expect(await pinned(/Actions/)).toBe('sticky');
+
+    // A column between them scrolls away, which is the intended trade.
+    expect(await pinned(/Contact/)).not.toBe('sticky');
+
+    // Pinned cells must be fully opaque. MRT ships them at opacity 0.97,
+    // which lets the scrolling columns read through as ghost text — the
+    // background is already correct, so only a screenshot catches it.
+    const cell = canvasElement.ownerDocument.querySelector(
+      '.MuiTableContainer-root tbody td[data-pinned="true"]'
+    );
+    expect(cell).toBeTruthy();
+    expect(getComputedStyle(cell as Element).opacity).toBe('1');
+  },
+};
+
+/**
+ * The page opens in the order Katie teaches, not alphabetically (#847).
+ *
+ * `weekdaySortKey` is POSITIVE_INFINITY for a student with no arrangement, so
+ * they group at the bottom — that group is the "NO CURRENT LESSON TIME"
+ * section of her spreadsheet, rather than a scattering of blanks.
+ */
+export const OpensSortedByTimeSlot: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: mockStudents,
+    } as RequestState<Student[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => {
+      expect(canvas.getAllByRole('row').length).toBeGreaterThan(1);
+    });
+
+    // Read the Day/Time cell of every row in render order. A student with no
+    // slot renders an em dash.
+    const rows = canvas.getAllByRole('row').slice(1);
+    const slotted = rows.map((r) => !r.textContent?.includes('—'));
+
+    // Every student with a slot comes before every student without one.
+    const firstBlank = slotted.indexOf(false);
+    if (firstBlank !== -1) {
+      expect(slotted.slice(firstBlank).every((has) => !has)).toBe(true);
+    }
+  },
+};
