@@ -67,7 +67,12 @@ export const ChangeExisting: Story = {
  * A time outside the block is caught here, not by a server error after saving.
  * The block is the container the arrangement has to sit inside (#686).
  */
-export const RefusesATimeOutsideTheBlock: Story = {
+/**
+ * A time outside every block still cannot be saved as-is — the #686 rule is
+ * intact. What changed in #835 is that it is no longer a dead end: the dialog
+ * offers the widening that would fit, instead of only saying no.
+ */
+export const OffersAWayThroughForATimeOutsideTheBlock: Story = {
   args: { schedule: existing },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
@@ -76,7 +81,10 @@ export const RefusesATimeOutsideTheBlock: Story = {
     await userEvent.clear(time);
     await userEvent.type(time, '19:00'); // block ends at 18:00
 
-    expect(await canvas.findByText(/does not fit inside/i)).toBeInTheDocument();
+    expect(
+      await canvas.findByText(/no block covers this time/i)
+    ).toBeInTheDocument();
+    // Still unsaveable until she picks how to make room.
     expect(canvas.getByRole('button', { name: /save change/i })).toBeDisabled();
   },
 };
@@ -178,5 +186,114 @@ export const DefaultsToWeekly: Story = {
     await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
     const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
     expect(input.intervalWeeks).toBe(1);
+  },
+};
+
+// ============================================================
+// #835 — no block covers the time: offer a way through
+// ============================================================
+
+/**
+ * Devin Marlowe's real case. Katie's Tuesday block runs 11:00–18:00 and his
+ * lesson is 18:00–18:30, so it falls just off the end.
+ *
+ * This used to be a dead end: the dialog said it did not fit, and she had to
+ * leave, widen the block on the Lesson Blocks page, and come back.
+ */
+export const OffersToExtendTheBlockWhenNothingFits: Story = {
+  args: {
+    schedule: {
+      ...existing,
+      startMinutes: 18 * 60,
+      durationMinutes: 30,
+    } as StudentLessonSchedule,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    expect(await canvas.findByText(/no block covers this time/i)).toBeTruthy();
+    // Named in Katie's terms, and honest that it changes every Tuesday.
+    expect(await canvas.findByText(/Extend Tuesdays to/i)).toBeTruthy();
+    expect(
+      await canvas.findByText(/changes every Tuesday, not just this one/i)
+    ).toBeTruthy();
+  },
+};
+
+/** Nothing can be saved until a way through is chosen. */
+export const CannotSaveUntilAChoiceIsMade: Story = {
+  args: {
+    schedule: {
+      ...existing,
+      startMinutes: 18 * 60,
+      durationMinutes: 30,
+    } as StudentLessonSchedule,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    const save = await canvas.findByRole('button', { name: /save change/i });
+    expect(save).toBeDisabled();
+
+    await userEvent.click(await canvas.findByRole('radio', { name: /Extend Tuesdays to/i }));
+    expect(save).toBeEnabled();
+
+    await userEvent.click(save);
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
+
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.blockStrategy).toMatchObject({
+      mode: 'extend',
+      scope: 'weekly',
+    });
+  },
+};
+
+/**
+ * A standing arrangement is never offered a one-off block: every week after
+ * the first would come back unattributed.
+ */
+export const NeverOffersAOneOffBlockForAStandingSlot: Story = {
+  args: {
+    schedule: {
+      ...existing,
+      startMinutes: 18 * 60,
+      durationMinutes: 30,
+    } as StudentLessonSchedule,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await canvas.findByText(/no block covers this time/i);
+    expect(canvas.queryByText(/just this Tuesday/i)).toBeNull();
+  },
+};
+
+/**
+ * Too far from any block to extend, so a new one is offered instead — capped
+ * at an hour's gap so a block is never stretched across an evening nobody
+ * teaches.
+ */
+export const OffersANewBlockWhenNothingIsNear: Story = {
+  args: {
+    schedule: {
+      ...existing,
+      startMinutes: 21 * 60,
+      durationMinutes: 30,
+    } as StudentLessonSchedule,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    expect(await canvas.findByText(/Add a new Tuesday block/i)).toBeTruthy();
+    expect(canvas.queryByText(/Extend Tuesdays to/i)).toBeNull();
+  },
+};
+
+/** A time already covered says nothing — there is no decision to make. */
+export const SaysNothingWhenABlockAlreadyFits: Story = {
+  args: { schedule: existing },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /save change/i });
+    expect(canvas.queryByText(/no block covers this time/i)).toBeNull();
   },
 };

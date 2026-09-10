@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import StarsIcon from '@mui/icons-material/Stars';
+import type { BlockStrategy } from '@maple/ts/domain';
 import type {
   CreateInvoiceInput,
   CreateLessonInput,
@@ -250,6 +251,8 @@ export default function StudentDetailPage() {
     durationMinutes: number;
     intervalWeeks: number;
     startsOn: Date;
+    /** How to make room when no block covers the time (#835). */
+    blockStrategy?: BlockStrategy;
   }) => {
     setScheduleError(null);
     try {

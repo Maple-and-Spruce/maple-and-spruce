@@ -20,6 +20,10 @@ export {
 export { MyWeek, type MyWeekProps } from './lib/MyWeek';
 export { DayColumn, type DayColumnProps } from './lib/DayColumn';
 export {
+  BlockAttributionChoice,
+  type BlockAttributionChoiceProps,
+} from './lib/BlockAttributionChoice';
+export {
   PaymentMethodCard,
   type PaymentMethodCardProps,
 } from './lib/PaymentMethodCard';

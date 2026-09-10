@@ -1049,3 +1049,19 @@ pinned cells at `opacity: 0.97`, so the scrolling columns read through as ghost
 text. Forced opaque, with a play test pinning it.
 
 Decision still open: keep and spread, keep and contain, or revert (see #851).
+
+## #835 — no block covers this time: offer a way through
+
+Picking a time nothing covered used to be a dead end. The dialog said the
+lesson did not fit, and Katie had to leave, widen the block on the Lesson
+Blocks page, and come back. Devin Marlowe's 6:00–6:30 slot is exactly that:
+the Tuesday block ends at 6:00.
+
+`BlockAttributionChoice` now offers the widening or the new block that would
+fit, computed by `planBlockAttribution` — the same pure function the server
+uses to validate the choice, so the dialog cannot offer something the server
+would refuse. Nothing is applied automatically; widening a recurring block
+changes that weekday for every future lesson, and it says so.
+
+Completes the UI half of #835, whose backend shipped in #836 and had been
+unused since.

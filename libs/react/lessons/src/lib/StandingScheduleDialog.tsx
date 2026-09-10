@@ -36,16 +36,20 @@ import type {
   Room,
   StudentLessonSchedule,
 } from '@maple/ts/domain';
+import type { BlockStrategy } from '@maple/ts/domain';
 import {
+  planBlockAttribution,
   SCHEDULE_INTERVAL_WEEKS,
   SCHEDULE_TIME_ZONE,
   WEEKDAY_LONG,
   cadenceLabel,
   cadencePhrase,
+  weekdayIndexInZone,
   zonedDateKey,
   zonedWallClockToInstant,
 } from '@maple/ts/domain';
 import { formatBlockOption, formatMinutes } from './block-format';
+import { BlockAttributionChoice } from './BlockAttributionChoice';
 
 export interface StandingScheduleDialogProps {
   open: boolean;
@@ -65,6 +69,8 @@ export interface StandingScheduleDialogProps {
     startMinutes: number;
     durationMinutes: number;
     intervalWeeks: number;
+    /** How to make room when no block covers the time (#835). */
+    blockStrategy?: BlockStrategy;
     room?: Room;
     startsOn: Date;
   }) => void;
@@ -120,6 +126,7 @@ export function StandingScheduleDialog({
     schedule?.intervalWeeks ?? 1
   );
   const [startsOn, setStartsOn] = useState(toDateValue(new Date()));
+  const [blockStrategy, setBlockStrategy] = useState<BlockStrategy | undefined>();
 
   // Re-seed whenever the dialog opens, so editing one arrangement then another
   // does not carry the first one's values across.
@@ -131,6 +138,7 @@ export function StandingScheduleDialog({
     setIntervalWeeks(schedule?.intervalWeeks ?? 1);
     setDurationMinutes(schedule?.durationMinutes ?? 30);
     setStartsOn(toDateValue(schedule?.startsOn ?? new Date()));
+    setBlockStrategy(undefined);
   }, [open, schedule, defaultTeacherId]);
 
   const teacherBlocks = useMemo(
@@ -147,8 +155,39 @@ export function StandingScheduleDialog({
     startMinutes >= block.startMinutes &&
     startMinutes + durationMinutes <= block.endMinutes;
 
+  // What could be done about a time no block covers (#835). Computed from the
+  // same pure function the server uses to validate the choice, so the dialog
+  // can never offer something the server would then refuse.
+  //
+  // Built from the start DATE and the start TIME together. `fromDateValue`
+  // alone lands at midday, which would plan around the wrong hour entirely —
+  // Devin's 6pm slot would be judged against noon.
+  const firstOccurrence = useMemo(() => {
+    const [y, m, d] = startsOn.split('-').map(Number);
+    if (!y || !m || !d) return new Date(NaN);
+    return zonedWallClockToInstant(y, m, d, startMinutes, SCHEDULE_TIME_ZONE);
+  }, [startsOn, startMinutes]);
+  const plan = useMemo(
+    () =>
+      teacherId
+        ? planBlockAttribution(blocks, {
+            teacherId,
+            scheduledAt: firstOccurrence,
+            durationMinutes,
+            recurring: true,
+          })
+        : undefined,
+    [blocks, teacherId, firstOccurrence, durationMinutes]
+  );
+
+  const weekday = weekdayIndexInZone(firstOccurrence, SCHEDULE_TIME_ZONE);
+
+  // Either an existing block already fits, or a way to make room was chosen.
+  // Nothing else can be saved, because the server would refuse it.
   const canSubmit =
-    Boolean(teacherId) && Boolean(blockId) && fitsBlock && !isSubmitting;
+    Boolean(teacherId) &&
+    ((Boolean(blockId) && fitsBlock) || Boolean(blockStrategy)) &&
+    !isSubmitting;
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -258,14 +297,17 @@ export function StandingScheduleDialog({
             fullWidth
           />
 
-          {block && !fitsBlock && (
-            <Alert severity="error">
-              {formatMinutes(startMinutes)} for {durationMinutes} minutes does
-              not fit inside{' '}
-              {formatMinutes(block.startMinutes)}–
-              {formatMinutes(block.endMinutes)}. Pick another time, or a
-              different block.
-            </Alert>
+          {/* No longer a dead end (#835). If nothing covers this time, offer
+              the widening or the new block that would — Katie used to have to
+              leave, edit the block on another page, and come back. */}
+          {plan && !plan.fits && (
+            <BlockAttributionChoice
+              plan={plan}
+              weekday={weekday}
+              recurring
+              value={blockStrategy}
+              onChange={setBlockStrategy}
+            />
           )}
 
           {block && fitsBlock && (
@@ -290,6 +332,7 @@ export function StandingScheduleDialog({
             onSubmit({
               teacherId,
               intervalWeeks,
+              blockStrategy,
               blockId,
               // The block already is a weekday; asking twice invites them to
               // disagree, and the server would reject the result.
