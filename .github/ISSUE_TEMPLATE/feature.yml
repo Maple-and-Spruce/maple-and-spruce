@@ -6,6 +6,13 @@ body:
   - type: markdown
     attributes:
       value: |
+        **No customer data, please.** No student, parent or lead names (children
+        included), emails, phone numbers or addresses — in the title, the body or
+        any screenshot. Describe the shape ("a child's card is in a parent's
+        name") or use a document id. Staff are fine to name.
+  - type: markdown
+    attributes:
+      value: |
         ## Feature Request
         Please describe the feature you'd like to add.
 

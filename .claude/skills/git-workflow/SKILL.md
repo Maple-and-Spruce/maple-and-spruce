@@ -81,7 +81,7 @@ git push -u origin feature/{branch-name}
 gh pr create --title "feat: description (#issue)" --body "..."
 ```
 
-**PR template:**
+**PR template** (no customer names, emails or phone numbers anywhere in it):
 ```markdown
 ## Summary
 [Brief description]
@@ -119,6 +119,7 @@ gh issue create \
 ## Checklists
 
 ### Before Committing
+- [ ] **No customer data** in the diff or the message — no student/parent/lead names, emails, phones or addresses. `npx tsx tools/check-no-customer-pii.ts`
 - [ ] On feature branch (not main)
 - [ ] Code follows patterns doc
 - [ ] No credentials committed
@@ -126,6 +127,7 @@ gh issue create \
 - [ ] Commit references issue
 
 ### Before PR
+- [ ] **Reread the description for names.** The PII guard finds emails and phone numbers; it cannot find a name. This text goes out in notification emails that an edit cannot unsend.
 - [ ] Commits pushed
 - [ ] PR description complete
 - [ ] Issue referenced

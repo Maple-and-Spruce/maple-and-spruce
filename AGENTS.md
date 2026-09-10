@@ -7,17 +7,18 @@
 ## Directives
 
 1. **NEVER read, access, or display secrets or credentials** -- PRIME DIRECTIVE. Never read `.secret.local`, `.env` files with tokens, or display API keys. Warn the user to rotate if seen accidentally.
-2. **Keep documentation current** -- Follow the self-updating doc workflow in .claude/CLAUDE.md and the `session-management` skill.
-3. **Read before acting** -- Start sessions by reading AGENTS.md, .claude/CLAUDE.md, and `docs/sessions/SESSION.md`.
-4. **Check GitHub issues** -- Run `gh issue list` for current work. Issues are the source of truth.
-5. **Use feature branches** -- Never commit directly to main. Local `main`/worktrees can lag `origin/main`; `git fetch` and branch/verify off `origin/main`, and instruct spawned subagents to do the same. See `git-workflow` skill.
-6. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017). Aim for **~85% coverage on new code** — the 80% CI threshold is a floor, not a target. See `docs/reference/code-standards.md` for per-file-type guidance.
-7. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
-8. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
-9. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
-10. **Function naming convention** -- `firebase-maple-functions-{name}`. See `create-cloud-function` skill.
-11. **gcloud commands OK** -- Run gcloud after user logs in via `gcloud auth login`.
-12. **Firebase/gcloud CLI account** -- This repo (and all `maple-and-spruce-*` worktrees) uses account `katie@mapleandsprucefolkarts.com`; Mountain SOL uses a different account. Firebase: `katie@` is the **global default** (covers all worktrees) — never `firebase login:use` from outside a repo. gcloud: use the **`maple`** named config (`export CLOUDSDK_ACTIVE_CONFIG_NAME=maple`). See `docs/guides/environment-setup.md` → "Firebase CLI Multi-Account" / "gcloud CLI Multi-Account".
+2. **NEVER write real customer data anywhere** -- Names, emails, phone numbers and addresses of students, parents and leads (including **children**) never go into code, tests, fixtures, stories, commit messages, PR descriptions, issue bodies or docs. Describe the shape ("a child's card is in a parent's name") or use a document id. Staff (Katie, Nathan) are fine to name. Reading production is fine; repeating it is not. See `.claude/rules/customer-privacy.md`.
+3. **Keep documentation current** -- Follow the self-updating doc workflow in .claude/CLAUDE.md and the `session-management` skill.
+4. **Read before acting** -- Start sessions by reading AGENTS.md, .claude/CLAUDE.md, and `docs/sessions/SESSION.md`.
+5. **Check GitHub issues** -- Run `gh issue list` for current work. Issues are the source of truth.
+6. **Use feature branches** -- Never commit directly to main. Local `main`/worktrees can lag `origin/main`; `git fetch` and branch/verify off `origin/main`, and instruct spawned subagents to do the same. See `git-workflow` skill.
+7. **Always write tests** -- Unit tests for new functions/utilities. Run `pnpm test` before PRs. Use `vi.mock()` for Cloud Functions (ADR-017). Aim for **~85% coverage on new code** — the 80% CI threshold is a floor, not a target. See `docs/reference/code-standards.md` for per-file-type guidance.
+8. **Use GitHub issues for tracking** -- Reference issues in PRs (`Closes #XX`).
+9. **Never deploy manually** -- CI/CD deploys on merge to main. Claude writes code and creates PRs.
+10. **No package.json in libs** -- Root `package.json` and `tsconfig.base.json` manage all dependencies.
+11. **Function naming convention** -- `firebase-maple-functions-{name}`. See `create-cloud-function` skill.
+12. **gcloud commands OK** -- Run gcloud after user logs in via `gcloud auth login`.
+13. **Firebase/gcloud CLI account** -- This repo (and all `maple-and-spruce-*` worktrees) uses account `katie@mapleandsprucefolkarts.com`; Mountain SOL uses a different account. Firebase: `katie@` is the **global default** (covers all worktrees) — never `firebase login:use` from outside a repo. gcloud: use the **`maple`** named config (`export CLOUDSDK_ACTIVE_CONFIG_NAME=maple`). See `docs/guides/environment-setup.md` → "Firebase CLI Multi-Account" / "gcloud CLI Multi-Account".
 
 ---
 
