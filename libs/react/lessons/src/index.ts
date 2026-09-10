@@ -19,6 +19,10 @@ export {
 } from './lib/LessonBlockList';
 export { MyWeek, type MyWeekProps } from './lib/MyWeek';
 export { DayColumn, type DayColumnProps } from './lib/DayColumn';
+export {
+  PaymentMethodCard,
+  type PaymentMethodCardProps,
+} from './lib/PaymentMethodCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,

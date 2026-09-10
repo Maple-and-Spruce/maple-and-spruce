@@ -6,6 +6,7 @@ export {
   useInstructors,
   useHopeQueue,
   useStudentLessonSchedules,
+  useSquareCardCandidates,
   useAllStudentLessonSchedules,
   useNeedsAttention,
   useLessonInquiries,

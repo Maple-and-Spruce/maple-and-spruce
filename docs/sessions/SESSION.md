@@ -1011,3 +1011,14 @@ their own name, but a child's is in a parent's — Devin Marlowe's card reads
 against the live account before building.
 
 Nothing links automatically; a wrong link charges the wrong family.
+
+## #798 — the payment method card on the student page
+
+`/students/[id]` now shows the card on file and, when there is none, the cards
+in Square that match this student, each with its reason. Katie saves the card
+in the Square app; this attaches it.
+
+Suggestions come from `rankCardsForStudent`, the same pure function the server
+uses to validate the choice. Nothing links automatically.
+
+Hidden for Hope students, who bill through the EMA portal.

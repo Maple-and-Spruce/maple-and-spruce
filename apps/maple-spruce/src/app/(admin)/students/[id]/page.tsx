@@ -31,6 +31,7 @@ import {
   HopeScholarshipBanner,
   LessonList,
   ScheduleLessonDialog,
+  PaymentMethodCard,
   StandingScheduleCard,
   StandingScheduleDialog,
   type LessonPendingAction,
@@ -41,6 +42,7 @@ import {
   useInstructors,
   useInvoices,
   useLessons,
+  useSquareCardCandidates,
   useStudentLessonSchedules,
   useLessonBlocks,
   useStudents,
@@ -50,8 +52,14 @@ export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const studentId = params?.id ?? '';
 
-  const { studentsState } = useStudents();
+  const { studentsState, fetchStudents } = useStudents();
   const { instructorsState } = useInstructors();
+  const {
+    cardsState,
+    isSaving: isCardSaving,
+    linkError,
+    setStudentCard,
+  } = useSquareCardCandidates();
   const {
     lessonsState,
     fetchLessons,
@@ -381,6 +389,28 @@ export default function StudentDetailPage() {
           registeredLessonLength={student.registeredLessonLength}
         />
       )}
+
+      <PaymentMethodCard
+        student={student}
+        cards={cardsState.status === 'success' ? cardsState.data.cards : []}
+        linkedTo={
+          cardsState.status === 'success' ? cardsState.data.linkedTo : {}
+        }
+        isLoading={cardsState.status === 'loading'}
+        isSaving={isCardSaving}
+        error={
+          linkError ??
+          (cardsState.status === 'error' ? cardsState.error : null)
+        }
+        onLink={async (cardId) => {
+          const updated = await setStudentCard(studentId, cardId);
+          if (updated) await fetchStudents();
+        }}
+        onUnlink={async () => {
+          const updated = await setStudentCard(studentId, null);
+          if (updated) await fetchStudents();
+        }}
+      />
 
       <StandingScheduleCard
         schedules={

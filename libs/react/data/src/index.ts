@@ -112,3 +112,7 @@ export { useClassWaitlistCounts } from './lib/useClassWaitlistCounts';
 
 // User & role administration
 export { useUsers } from './lib/useUsers';
+export {
+  useSquareCardCandidates,
+  type SquareCardCandidates,
+} from './lib/useSquareCardCandidates';
