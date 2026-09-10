@@ -327,3 +327,10 @@ overrides:
   # styled-jsx > @babel/core, @babel/preset-react, @nx/* > @babel/preset-env).
   # Bounded to the 4.x line. Added 2026-09-04.
   browserslist@<4.28.7: '>=4.28.7 <5'
+  # GHSA-7w5x-hrqm-74c2: smol-toml denial of service via malformed TOML
+  # documents — the parser degrades to quadratic/unbounded work on crafted
+  # input (patched in 1.7.1). Dev-only build tooling: every one of the ~100
+  # paths runs through nx (@nx/devkit > nx > smol-toml, and each @nx/* plugin
+  # re-entering the same edge), which parses TOML files from this repo, not
+  # untrusted input. Bounded to the 1.x line. Added 2026-09-09.
+  smol-toml@<1.7.1: '>=1.7.1 <2'
