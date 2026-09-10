@@ -28,6 +28,18 @@ export interface CreateCardOnFileInput {
   idempotencyKey: string;
 }
 
+/** A card on file, with enough of its customer to match it to a student. */
+export interface ListedCardOnFile {
+  cardId: string;
+  customerId: string;
+  cardBrand?: string;
+  last4?: string;
+  cardholderName?: string;
+  expMonth?: number;
+  expYear?: number;
+  enabled: boolean;
+}
+
 export interface CreateCardOnFileResult {
   cardId: string;
   last4?: string;
@@ -36,6 +48,47 @@ export interface CreateCardOnFileResult {
 
 export class CardsService {
   constructor(private readonly client: SquareClient) {}
+
+  /**
+   * Every card on file for the seller, newest first.
+   *
+   * This is the read behind linking a student to a card Katie already saved in
+   * the Square app (#798) — verified against the live account, where
+   * POS-saved cards come back here with `enabled: true`.
+   *
+   * Disabled cards are excluded by default: a disabled card cannot be charged,
+   * so offering one to link would be a trap.
+   */
+  async listCardsOnFile(
+    options: { includeDisabled?: boolean } = {}
+  ): Promise<ListedCardOnFile[]> {
+    const out: ListedCardOnFile[] = [];
+
+    // `cards.list` returns a Page, which is async-iterable and fetches the
+    // next page itself. Square caps a page at 25 cards, so iterating rather
+    // than reading `.data` is what stops a studio silently losing everyone
+    // past the 25th card.
+    const page = await this.client.cards.list({
+      includeDisabled: options.includeDisabled ?? false,
+      sortOrder: 'DESC',
+    });
+
+    for await (const card of page) {
+      if (!card.id || !card.customerId) continue;
+      out.push({
+        cardId: card.id,
+        customerId: card.customerId,
+        cardBrand: card.cardBrand ?? undefined,
+        last4: card.last4 ?? undefined,
+        cardholderName: card.cardholderName ?? undefined,
+        expMonth: card.expMonth ? Number(card.expMonth) : undefined,
+        expYear: card.expYear ? Number(card.expYear) : undefined,
+        enabled: card.enabled ?? false,
+      });
+    }
+
+    return out;
+  }
 
   /**
    * Convert a single-use payment nonce into a durable card on file under the

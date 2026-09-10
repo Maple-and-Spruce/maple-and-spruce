@@ -80,6 +80,7 @@ export {
   CardsService,
   type CreateCardOnFileInput,
   type CreateCardOnFileResult,
+  type ListedCardOnFile,
 } from './lib/cards.service';
 
 // Subscriptions service (recurring Craft Club billing)

@@ -30,6 +30,13 @@ interface ParsedRequest {
   method: string;
   path: string;
   params: Record<string, string>;
+  /**
+   * Parsed query string. Needed by any endpoint whose behaviour depends on it
+   * — a paginated list, most of all: without this a mock cannot read back the
+   * cursor it just issued, so it hands out the same page forever and the
+   * Square SDK's Page iterator never terminates (#798).
+   */
+  query: Record<string, string>;
   body: unknown;
   headers: Record<string, string | string[] | undefined>;
 }
@@ -97,7 +104,8 @@ export class SquareMockServer {
           timestamp: new Date(),
         });
 
-        const cleanPath = path.split('?')[0];
+        const [cleanPath, rawQuery = ''] = path.split('?');
+        const query = Object.fromEntries(new URLSearchParams(rawQuery));
 
         for (const route of this.routes) {
           if (route.method !== method) continue;
@@ -108,6 +116,7 @@ export class SquareMockServer {
                 method,
                 path: cleanPath,
                 params,
+                query,
                 body,
                 headers: req.headers,
               });

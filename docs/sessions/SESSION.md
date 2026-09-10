@@ -997,3 +997,17 @@ Composed client-side from existing reads, so no new Cloud Function.
 Also fixes `getStudentLessonSchedules`, which scoped by the caller's linked
 instructor record without checking for admin — so "all teachers" would have
 shown Katie only her own students.
+
+## #798 — linking a card Katie already saved in Square
+
+Katie saves cards in the Square app, in person. The portal now finds the card
+she already saved and attaches it to the right student, rather than asking the
+family to enter it again.
+
+`rankCardsForStudent` suggests matches. Email is the primary signal because it
+is the only field that bridges both real shapes: an adult student's card is in
+their own name, but a child's is in a parent's — Devin Marlowe's card reads
+"Sasha Marlowe", and the bridge is that his contact email is hers. Verified
+against the live account before building.
+
+Nothing links automatically; a wrong link charges the wrong family.

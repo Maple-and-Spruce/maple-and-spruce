@@ -47,6 +47,16 @@ const posFixturePayments = new Map<string, Record<string, unknown>>();
 const posFixtureOrders = new Map<string, Record<string, unknown>>();
 const posFixtureCustomers = new Map<string, Record<string, unknown>>();
 
+/**
+ * Cards on file, in Square WIRE shape, served by `GET /v2/cards`.
+ *
+ * Seeded via `POST /_mock/cards` so a test can stand up the state Katie
+ * actually produces — a card saved in the Square app, in person — without
+ * going through `POST /v2/cards`, which (correctly) demands an SCA
+ * verification token the POS flow never gives us.
+ */
+const cardsOnFile = new Map<string, Record<string, unknown>>();
+
 export function registerSquareRoutes(server: SquareMockServer): void {
   // Create order (required before payment in registration flow)
   server.post('/v2/orders', (req) => {
@@ -481,6 +491,16 @@ function registerMockControlRoutes(server: SquareMockServer): void {
     }
     return { status: 200, body: { ok: true } };
   });
+
+  // Seed cards on file, in Square wire shape, keyed by card id. This is the
+  // state a card saved in the Square app leaves behind (#798).
+  server.post('/_mock/cards', (req) => {
+    const body = (req.body ?? {}) as Record<string, Record<string, unknown>>;
+    for (const [id, obj] of Object.entries(body)) {
+      cardsOnFile.set(id, { id, ...obj });
+    }
+    return { status: 200, body: { ok: true } };
+  });
 }
 
 /**
@@ -595,7 +615,29 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
       cardholder_name: cardInput['cardholder_name'],
       enabled: true,
     };
+    cardsOnFile.set(id, card);
     return { status: 200, body: { card } };
+  });
+
+  // List cards on file. Real Square caps a page at 25 and returns a cursor;
+  // the mock paginates at 2 so the SDK's Page iteration is genuinely exercised
+  // rather than always fitting in one response (#798).
+  server.get('/v2/cards', (req) => {
+    const includeDisabled = req.query['include_disabled'] === 'true';
+    const all = [...cardsOnFile.values()].filter(
+      (c) => includeDisabled || c['enabled'] !== false
+    );
+
+    const PAGE = 2;
+    const cursor = req.query['cursor'];
+    const start = cursor ? Number(cursor) : 0;
+    const slice = all.slice(start, start + PAGE);
+    const next = start + PAGE < all.length ? String(start + PAGE) : undefined;
+
+    return {
+      status: 200,
+      body: next ? { cards: slice, cursor: next } : { cards: slice },
+    };
   });
 
   // Disable a card on file (used when a customer replaces the card behind a
@@ -686,6 +728,7 @@ export function resetSquareState(): void {
   inventoryChangeCounter = 0;
   customerCounter = 0;
   cardCounter = 0;
+  cardsOnFile.clear();
   subscriptionCounter = 0;
   paymentLinkCounter = 0;
   payments.clear();

@@ -4,6 +4,7 @@
  * Handles all Firestore operations for music lesson students.
  * All database access should go through this repository.
  */
+import { FieldValue } from 'firebase-admin/firestore';
 import { db, toDate } from './utilities/database.config';
 import type {
   Student,
@@ -119,6 +120,54 @@ export const StudentRepository = {
       id: docRef.id,
       ...data,
     };
+  },
+
+  /**
+   * Attach a card on file to a student, or detach whatever is attached (#798).
+   *
+   * Its own method rather than a plain `update` because **detaching has to
+   * delete the fields**, and the generic update path cannot: the Admin SDK
+   * drops `undefined` instead of clearing, so unlinking through it silently
+   * left the old card in place and the billing job kept charging it.
+   * `FieldValue.delete()` is the only thing that actually removes a field.
+   *
+   * Nothing in Square is touched either way — the card stays on file for Katie
+   * to charge by hand.
+   */
+  async setSquareCard(
+    id: string,
+    card: {
+      squareCustomerId: string;
+      squareCardId: string;
+      cardBrand?: string;
+      cardLast4?: string;
+    } | null
+  ): Promise<Student> {
+    const docRef = db.collection(COLLECTION).doc(id);
+
+    await docRef.update(
+      card
+        ? {
+            squareCustomerId: card.squareCustomerId,
+            squareCardId: card.squareCardId,
+            cardBrand: card.cardBrand ?? FieldValue.delete(),
+            cardLast4: card.cardLast4 ?? FieldValue.delete(),
+            cardLinkedAt: new Date(),
+            updatedAt: new Date(),
+          }
+        : {
+            squareCustomerId: FieldValue.delete(),
+            squareCardId: FieldValue.delete(),
+            cardBrand: FieldValue.delete(),
+            cardLast4: FieldValue.delete(),
+            cardLinkedAt: FieldValue.delete(),
+            updatedAt: new Date(),
+          }
+    );
+
+    const student = docToStudent(await docRef.get());
+    if (!student) throw new Error(`Student ${id} not found after update`);
+    return student;
   },
 
   async update(input: UpdateStudentInput): Promise<Student> {

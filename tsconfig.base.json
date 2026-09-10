@@ -575,6 +575,12 @@
       "@maple/firebase/maple-functions/run-lesson-billing": [
         "libs/firebase/maple-functions/run-lesson-billing/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/get-square-card-candidates": [
+        "libs/firebase/maple-functions/get-square-card-candidates/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/update-student-square-card": [
+        "libs/firebase/maple-functions/update-student-square-card/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-lesson-billing": [
         "libs/firebase/maple-functions/get-lesson-billing/src/index.ts"
       ],

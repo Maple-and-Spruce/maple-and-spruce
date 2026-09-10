@@ -98,3 +98,8 @@ export {
   runLessonBilling,
   triggerLessonBilling,
 } from '@maple/firebase/maple-functions/run-lesson-billing';
+
+// Linking a card Katie already saved in the Square app to a student (#798).
+// The read needs the Square SDK, so both live here rather than in maple-core.
+export { getSquareCardCandidates } from '@maple/firebase/maple-functions/get-square-card-candidates';
+export { updateStudentSquareCard } from '@maple/firebase/maple-functions/update-student-square-card';

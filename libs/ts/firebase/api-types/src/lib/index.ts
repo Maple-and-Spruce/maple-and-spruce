@@ -602,3 +602,10 @@ export type {
   RunLessonBillingRequest,
   RunLessonBillingResult,
 } from './lesson-billing.types';
+
+export type {
+  GetSquareCardCandidatesRequest,
+  GetSquareCardCandidatesResponse,
+  UpdateStudentSquareCardRequest,
+  UpdateStudentSquareCardResponse,
+} from './square-card-link.types';
