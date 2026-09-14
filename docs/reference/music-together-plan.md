@@ -1,6 +1,6 @@
 # Music Together — Findings Report & Implementation Plan
 
-> Status: **Planning** · Epic: [#508](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/508) · Phases: #510–#517
+> Status: **Planning** · Epic: [#508](https://github.com/david-shortman/maple-and-spruce/issues/508) · Phases: #510–#517
 > Last updated: 2026-06-26
 
 **Music Together (MT)** is a licensed early-childhood music program run at Maple & Spruce but operated as a **separate business** (Stephanie's single-member LLC) with its **own Square account and checking**. MT payments must route to MT's Square credentials, **not** M&S's. We treat the payment processor as **configurable per program**.
@@ -92,14 +92,14 @@ A registration is charged for installment 2 **at most once**, enforced at three 
 
 | Phase | Issue | Summary |
 |---|---|---|
-| 0 | [#510](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/510) | Multi-account Square plumbing: `squareNames(prefix)`, `MT_SQUARE_*`, `musicSquareWebhook` |
-| 1 | [#511](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/511) | MT data layer: sections + registrations (family/child/DOB), repositories, Vest, indexes |
-| 2 | [#512](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/512) | Card-on-file proof of concept (sandbox): `verifyBuyer` → `cards.create` → stored-card charge |
-| 3 | [#513](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/513) | Registration + checkout: Webflow widget, two payment options, 8-family cap |
-| 4 | [#514](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/514) | Week-5 auto-charge `onSchedule` + dry-run + overcharge safety + failure + refund/cancel |
-| 5 | [#515](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/515) | 8-family cap → ordered waitlist with availability capture |
-| 6 | [#516](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/516) | Admin Music Together section + licensee CSV export |
-| 7 | [#517](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/517) | Webflow pages + Music submenu + `musictogethermaplespruce.com` forward |
+| 0 | [#510](https://github.com/david-shortman/maple-and-spruce/issues/510) | Multi-account Square plumbing: `squareNames(prefix)`, `MT_SQUARE_*`, `musicSquareWebhook` |
+| 1 | [#511](https://github.com/david-shortman/maple-and-spruce/issues/511) | MT data layer: sections + registrations (family/child/DOB), repositories, Vest, indexes |
+| 2 | [#512](https://github.com/david-shortman/maple-and-spruce/issues/512) | Card-on-file proof of concept (sandbox): `verifyBuyer` → `cards.create` → stored-card charge |
+| 3 | [#513](https://github.com/david-shortman/maple-and-spruce/issues/513) | Registration + checkout: Webflow widget, two payment options, 8-family cap |
+| 4 | [#514](https://github.com/david-shortman/maple-and-spruce/issues/514) | Week-5 auto-charge `onSchedule` + dry-run + overcharge safety + failure + refund/cancel |
+| 5 | [#515](https://github.com/david-shortman/maple-and-spruce/issues/515) | 8-family cap → ordered waitlist with availability capture |
+| 6 | [#516](https://github.com/david-shortman/maple-and-spruce/issues/516) | Admin Music Together section + licensee CSV export |
+| 7 | [#517](https://github.com/david-shortman/maple-and-spruce/issues/517) | Webflow pages + Music submenu + `musictogethermaplespruce.com` forward |
 
 Earliest unknowns (do first): **Phase 0** (multi-account) and **Phase 2** (card-on-file PoC). Production MT credentials are swapped in only at Phase 7.
 

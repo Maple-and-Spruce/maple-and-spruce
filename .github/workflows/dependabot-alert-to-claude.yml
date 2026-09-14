@@ -12,7 +12,7 @@ jobs:
   open-issues:
     name: Open @claude issues for new high+critical alerts
     runs-on: ubuntu-latest
-    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    if: github.repository == 'david-shortman/maple-and-spruce'
     steps:
       - name: Open one issue per unhandled alert
         env:

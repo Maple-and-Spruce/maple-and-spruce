@@ -103,8 +103,8 @@ Site is published and live with Facebook/Instagram ads running. Closed issues: #
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
 | Pre-opening messaging | **Complete** | - | Banner in maple-nav component (all pages), `pre-opening-banner` style, contact link |
-| Content accuracy fixes | **Complete** | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | Jam times, typos, open hours refs fixed |
-| Fix broken nav links | **Complete** | [#113](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/113) | 5 broken hrefs in maple-nav fixed |
+| Content accuracy fixes | **Complete** | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | Jam times, typos, open hours refs fixed |
+| Fix broken nav links | **Complete** | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | 5 broken hrefs in maple-nav fixed |
 | Our Story text update | **Complete** | - | "soft opening mid-2026" → "Opening May 2026" |
 | Music Lessons page | **Complete** | - | `/music-lessons` — pricing, policies, instrument loan program |
 | Craft Classes page | **Complete** | - | `/classes` — 6 class offerings with pricing, pathway, policies |
@@ -117,16 +117,16 @@ Site is published and live with Facebook/Instagram ads running. Closed issues: #
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
-| Fix Artists page 404 | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | CMS template page returns 404 |
-| Clean CMS test data | Pending | [#114](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/114) | Replace with real artist profiles |
-| SEO metadata (existing pages) | Pending | [#115](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/115) | Some existing pages still need SEO |
-| Google Analytics setup | Pending | [#116](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/116) | No tracking configured |
-| Fix Webflow style inconsistencies | Pending | [#117](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/117) | Hardcoded colors, style bugs |
-| Image alt text | Pending | [#118](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/118) | ~10 images missing alt text |
-| Clean up class names/styles | Pending | [#119](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/119) | 37 default names, 311 empty styles |
-| Canonical domain + sitemap | Pending | [#120](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/120) | Dual domains, sitemap 404 |
-| Responsive bug fixes | Pending | [#121](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/121) | Card padding, visual bugs |
-| Align admin MUI theme to Webflow | Pending | [#122](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/122) | Update MUI colors to match Webflow |
+| Fix Artists page 404 | Pending | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | CMS template page returns 404 |
+| Clean CMS test data | Pending | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | Replace with real artist profiles |
+| SEO metadata (existing pages) | Pending | [#115](https://github.com/david-shortman/maple-and-spruce/issues/115) | Some existing pages still need SEO |
+| Google Analytics setup | Pending | [#116](https://github.com/david-shortman/maple-and-spruce/issues/116) | No tracking configured |
+| Fix Webflow style inconsistencies | Pending | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Hardcoded colors, style bugs |
+| Image alt text | Pending | [#118](https://github.com/david-shortman/maple-and-spruce/issues/118) | ~10 images missing alt text |
+| Clean up class names/styles | Pending | [#119](https://github.com/david-shortman/maple-and-spruce/issues/119) | 37 default names, 311 empty styles |
+| Canonical domain + sitemap | Pending | [#120](https://github.com/david-shortman/maple-and-spruce/issues/120) | Dual domains, sitemap 404 |
+| Responsive bug fixes | Pending | [#121](https://github.com/david-shortman/maple-and-spruce/issues/121) | Card padding, visual bugs |
+| Align admin MUI theme to Webflow | Pending | [#122](https://github.com/david-shortman/maple-and-spruce/issues/122) | Update MUI colors to match Webflow |
 
 ## Phase: Webflow Customer Interactions (In Progress)
 
@@ -134,10 +134,10 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 | Epic | Status | Issue | Notes |
 |------|--------|-------|-------|
-| **A: Artists on Webflow** | Not Started | [#161](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/161) | Artist profiles synced to Webflow CMS |
-| **B: Class Browsing on Webflow** | Not Started | [#162](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/162) | Public class listings on Webflow |
-| **C: Payment & Registration Testing** | **In Progress** | [#163](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/163) | End-to-end payment tested in dev with Square sandbox |
-| **D: Class Registration with Payment** | **In Progress** | [#164](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/164) | React Code Component working on Webflow (PR #201) |
+| **A: Artists on Webflow** | Not Started | [#161](https://github.com/david-shortman/maple-and-spruce/issues/161) | Artist profiles synced to Webflow CMS |
+| **B: Class Browsing on Webflow** | Not Started | [#162](https://github.com/david-shortman/maple-and-spruce/issues/162) | Public class listings on Webflow |
+| **C: Payment & Registration Testing** | **In Progress** | [#163](https://github.com/david-shortman/maple-and-spruce/issues/163) | End-to-end payment tested in dev with Square sandbox |
+| **D: Class Registration with Payment** | **In Progress** | [#164](https://github.com/david-shortman/maple-and-spruce/issues/164) | React Code Component working on Webflow (PR #201) |
 
 ### Webflow Registration Component (PR #201)
 
@@ -327,7 +327,7 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | **MT interest signup `Lead` (inline in the callable)** (#781) | **Complete** | `add-music-together-interest/` |
 | **Attribution persisted on demo/interest docs** (#781) | **Complete** | `libs/firebase/database/src/lib/utilities/meta-attribution.fields.ts` |
 | **`ct` / `st` / `zp` / `country` / `external_id` match keys** (#781) | **Complete** | `meta-capi.ts` (`hashLocationToken`, `hashZip`) + `us-address.ts` |
-| Separate dev pixel (dev signups currently hit prod attribution) | **Not Started** | [#782](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/782) |
+| Separate dev pixel (dev signups currently hit prod attribution) | **Not Started** | [#782](https://github.com/david-shortman/maple-and-spruce/issues/782) |
 
 The demo RSVP is the conversion the MT program optimizes against — paid
 enrollment is weeks later and in single digits, so `Purchase` alone can never

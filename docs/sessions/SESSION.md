@@ -810,7 +810,7 @@ Branch: `feat/image2pages-widget`
 - Nx scaffolding added: `apps/webflow-components/project.json` + `vitest.config.ts` (test target only — no build target; webflow-cli still drives bundling via `webflow.json`)
 - Published to workspace via `webflow library share` (env var aliasing: `WEBFLOW_TOKEN` → `WEBFLOW_WORKSPACE_API_TOKEN`)
 - Embedded on new "Pattern Scaling Tool" page (page id `69d7921b12449f27596c57e9`, draft) with maple-nav + Image to Pages + Footer
-- PR: [#231](https://github.com/Maple-and-Spruce/maple-and-spruce/pull/231)
+- PR: [#231](https://github.com/david-shortman/maple-and-spruce/pull/231)
 - Ported from standalone prototype: github.com/david-shortman/image2pages-web
 
 ### Registration Launch: Meta Ads Readiness
