@@ -473,6 +473,7 @@ from the docs will agree with whatever the code already assumes.
 - CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
 - Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
 - Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds all 4 codebases, copies `.env.dev` to each, starts per-service mock servers (Square, Webflow, Etsy), and runs `firebase emulators:exec`.
+- **Suites are sharded by measured runtime, not by count** (`tools/ci-integration-suite-weights.json`, #868). Every suite in a shard shares **one** emulator, so an overloaded shard starves it and the suite that happens to run *last* there starts failing with `The operation was aborted due to timeout` from google-gax — a green-looking test that never got a chance. Packing by count once put the four heaviest suites together (~333s) next to a shard doing ~159s. When you add a suite, it gets a default weight and packing degrades gracefully; measure it and add it to the weights file when it settles.
 
 ## After Changes
 

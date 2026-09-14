@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "Measured wall-clock seconds per integration suite, used to balance the CI",
+    "shards (#868). Packing by COUNT put the four heaviest suites on one shard,",
+    "which then ran ~360s while another ran ~159s — and the suite that happened",
+    "to run last there (registration) started timing out under the load.",
+    "",
+    "These are observations, not budgets. Nothing fails when a suite drifts past",
+    "its number; the packing just gets less even. Refresh them when the spread",
+    "gets bad, by reading the per-suite 'Duration' lines out of any green",
+    "integration job:",
+    "",
+    "  gh run view --job <id> --log | cat -v | perl -pe 's/\\^\\[\\[[0-9;]*m//g' \\",
+    "    | grep -oE '(--- functions-integration-tests-[a-z-]+ ---|Duration +[0-9.]+s)'",
+    "",
+    "A suite with no entry here gets DEFAULT_WEIGHT_SECONDS, so adding a suite",
+    "never breaks the matrix — it just packs a little less well until measured."
+  ],
+  "weights": {
+    "artist": 13,
+    "calendar": 26,
+    "category": 18,
+    "class": 98,
+    "class-catalog-feed": 4,
+    "class-category": 46,
+    "class-square": 79,
+    "discount": 17,
+    "etsy": 19,
+    "instructor": 11,
+    "invoice": 20,
+    "lesson": 138,
+    "lesson-inquiries": 3,
+    "music-together": 97,
+    "registration": 75,
+    "square": 110,
+    "student": 14,
+    "tally-lead-webhook": 2,
+    "teacher-payout": 15,
+    "utility": 67
+  }
+}
