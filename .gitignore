@@ -95,3 +95,16 @@ evidence/
 
 # Local-only customer roster for the PII guard. NEVER commit this.
 .customer-names.local
+
+# Vercel CLI local state
+.vercel
+
+# Local env overrides (these hold real tokens)
+.env*.local
+
+# Service-account key files. These are credentials: a single `git add -A` is
+# all it takes to publish one, and `sa-dev.json` was already sitting untracked
+# and unignored in the repo root.
+sa-*.json
+*-service-account*.json
+service-account*.json
