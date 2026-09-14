@@ -4,6 +4,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   callFunction,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import {
@@ -815,7 +816,7 @@ describe('Lesson Functions', () => {
     async function pollForLessonInvoice(
       sid: string,
       lessonId: string,
-      timeoutMs = 15000,
+      timeoutMs = TRIGGER_WAIT_TIMEOUT_MS,
     ) {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {

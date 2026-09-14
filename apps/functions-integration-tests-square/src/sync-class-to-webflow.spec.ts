@@ -20,6 +20,7 @@ import {
   deleteFirestoreDoc,
   callFunction,
   EMULATOR_CONFIG,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
@@ -110,7 +111,7 @@ async function getClassWebflowItemId(
 async function waitForClassWebflowItemId(
   classId: string,
   adminToken: string,
-  timeoutMs = 20000
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
 ): Promise<string | undefined> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {

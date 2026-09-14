@@ -13,6 +13,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   callFunction,
+  EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
@@ -23,7 +24,10 @@ import type {
   UpdateStudentSquareCardResponse,
 } from '@maple/ts/firebase/api-types';
 
-const SQUARE_MOCK = `http://localhost:${process.env['SQUARE_MOCK_SERVER_PORT'] ?? 9997}`;
+// From the shared config, which applies EMULATOR_PORT_OFFSET. Reading
+// SQUARE_MOCK_SERVER_PORT directly fell back to 9997 in a worktree, where the
+// mock listens on an offset port, so every test here was skipped locally.
+const SQUARE_MOCK = EMULATOR_CONFIG.squareMockServerUrl;
 
 /** The shape a card saved in the Square app leaves behind. */
 const CARDS = {

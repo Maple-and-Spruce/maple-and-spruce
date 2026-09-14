@@ -25,6 +25,7 @@ import {
   clearFirestoreEmulator,
   getFirestoreDoc,
   setFirestoreDoc,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 
 const META_MOCK_URL = EMULATOR_CONFIG.metaCapiMockServerUrl;
@@ -85,7 +86,7 @@ async function recordedRequests(): Promise<RecordedRequest[]> {
 async function waitForPurchases(
   contentId: string,
   count = 1,
-  timeoutMs = 15_000
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
 ): Promise<CapiEvent[]> {
   const deadline = Date.now() + timeoutMs;
   let events: CapiEvent[] = [];
@@ -330,7 +331,7 @@ describe('Meta CAPI Purchase triggers', () => {
       });
 
       // The mock still records the attempt even while returning 500.
-      const deadline = Date.now() + 15_000;
+      const deadline = Date.now() + TRIGGER_WAIT_TIMEOUT_MS;
       let attempts: RecordedRequest[] = [];
       while (Date.now() < deadline && attempts.length === 0) {
         attempts = await purchaseRequestsFor(classId);

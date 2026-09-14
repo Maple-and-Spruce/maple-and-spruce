@@ -19,6 +19,10 @@ export {
 } from './lib/utils/firestore-helper.js';
 export { callFunction } from './lib/utils/http-client.js';
 export type { FunctionResponse } from './lib/utils/http-client.js';
+export {
+  TRIGGER_WAIT_TIMEOUT_MS,
+  TRIGGER_SUITE_TEST_TIMEOUT_MS,
+} from './lib/utils/trigger-wait.js';
 
 // Fixtures
 export { ADMIN_USER, NON_ADMIN_USER } from './lib/fixtures/users.fixture.js';

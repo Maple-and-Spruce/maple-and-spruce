@@ -20,6 +20,7 @@ import {
   setFirestoreDoc,
   deleteFirestoreDoc,
   EMULATOR_CONFIG,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 
 /**
@@ -56,7 +57,7 @@ async function findMockItemByFirebaseId(
 async function waitForSpotsRemaining(
   sectionId: string,
   expected: number,
-  timeoutMs = 15_000
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
 ): Promise<WebflowMockItem> {
   const deadline = Date.now() + timeoutMs;
   let last: WebflowMockItem | undefined;

@@ -24,8 +24,10 @@ export default defineConfig({
     root: path.resolve(__dirname),
     include: ['src/**/*.spec.ts'],
     setupFiles: ['../../libs/firebase/integration-test-utils/src/lib/setup.ts'],
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    // TRIGGER_SUITE_TEST_TIMEOUT_MS (integration-test-utils/trigger-wait.ts):
+    // room for two full trigger waits on a slow CI runner.
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
     fileParallelism: false,
     sequence: {
       concurrent: false,

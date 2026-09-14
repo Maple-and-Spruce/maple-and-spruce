@@ -36,6 +36,7 @@ import {
   listFirestoreDocs,
   EMULATOR_CONFIG,
   PUBLISHED_CLASS,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 
 const squareMockUrl = EMULATOR_CONFIG.squareMockServerUrl;
@@ -131,11 +132,44 @@ async function seedPosFixture(fixture: PosFixture): Promise<void> {
 }
 
 /**
- * Wait long enough for BOTH async hops: webhook → posSaleRequests write, then
- * the processPosSale trigger → Square round-trip → registration create.
+ * A fixed wait, for the one test that proves something did NOT happen (C).
+ * A negative can only be shown by waiting and seeing nothing.
  */
 function waitForTrigger(ms = 7000): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Poll `read` until `done(value)` holds, up to TRIGGER_WAIT_TIMEOUT_MS, and
+ * return the last value so the test asserts on what it actually saw.
+ *
+ * The positive tests used to sleep a fixed 7 s for BOTH async hops (webhook →
+ * posSaleRequests write, then processPosSale → Square round-trip →
+ * registration). On a loaded CI runner the trigger landed after the
+ * assertions ran: test B failed on 2026-09-14 with the registration list still
+ * empty. Polling returns as soon as the registration exists.
+ */
+async function pollUntil<T>(
+  read: () => Promise<T>,
+  done: (value: T) => boolean
+): Promise<T> {
+  const deadline = Date.now() + TRIGGER_WAIT_TIMEOUT_MS;
+  let value = await read();
+  while (!done(value) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    value = await read();
+  }
+  return value;
+}
+
+/** POS-sourced registrations, once at least `count` exist (or the wait ends). */
+async function waitForPosRegistrations(
+  count = 1
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  const all = await pollUntil(listRegistrations, (regs) =>
+    regs.filter((r) => r.data['source'] === 'pos').length >= count
+  );
+  return all.filter((r) => r.data['source'] === 'pos');
 }
 
 /** All registrations currently in Firestore. */
@@ -249,10 +283,7 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     expect(res.status).toBe(200);
     expect((res.body as { action?: string }).action).toBe('enqueued');
 
-    await waitForTrigger();
-
-    const registrations = await listRegistrations();
-    const posRegs = registrations.filter((r) => r.data['source'] === 'pos');
+    const posRegs = await waitForPosRegistrations();
     expect(posRegs).toHaveLength(1);
 
     const reg = posRegs[0].data;
@@ -307,18 +338,18 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     const res = await postWebhook(paymentUpdatedEvent(paymentId, orderId));
     expect(res.status).toBe(200);
 
-    await waitForTrigger();
-
-    const posRegs = (await listRegistrations()).filter(
-      (r) => r.data['source'] === 'pos'
-    );
+    const posRegs = await waitForPosRegistrations();
     expect(posRegs).toHaveLength(1);
     const reg = posRegs[0].data;
     expect(reg['classId']).toBe(classId);
     expect(reg['customerEmail']).toBe('');
     expect(reg['customerName']).toBe('POS Sale');
 
-    const alerts = await listNoEmailAlerts();
+    // The alert is written after the registration, so it gets its own wait.
+    const alerts = await pollUntil(
+      listNoEmailAlerts,
+      (found) => found.length >= 1
+    );
     expect(alerts).toHaveLength(1);
     expect(alerts[0].data['to']).toBe(ADMIN_EMAIL);
     const message = alerts[0].data['message'] as Record<string, unknown>;

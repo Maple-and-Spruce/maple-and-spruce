@@ -468,7 +468,8 @@ jobs:
     name: Integration Tests (${{ matrix.group.index }}/${{ matrix.group.total }})
     needs: [install, integration-test-matrix]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 30, not 20: each suite now boots its own emulator session (~1 min each).
+    timeout-minutes: 30
     if: github.repository == 'david-shortman/maple-and-spruce' && fromJson(needs.integration-test-matrix.outputs.matrix).group[0] != null
     strategy:
       fail-fast: false
@@ -582,11 +583,35 @@ jobs:
           TALLY_MOCK_PID=$!
           sleep 2
 
-          # Run the suites assigned to this matrix group
-          npx firebase emulators:exec --project=dev --only auth,firestore,functions \
-            "node tools/run-integration-test-suites.js ${{ matrix.group.suites }}"
-          EXIT_CODE=$?
+          # Memory every 30s, with the number of node processes. If a runner is ever
+          # killed again, the last lines say whether it ran out of RAM.
+          ( while true; do echo "[mem $(date -u +%H:%M:%S)] $(free -m | awk '/^Mem:/{printf "used %s of %s MB, available %s MB", $3, $2, $7}'), node processes $(pgrep -c node)"; sleep 30; done ) &
+          MEM_LOG_PID=$!
 
+          # ONE EMULATOR SESSION PER SUITE, not one per shard.
+          #
+          # The functions emulator (firebase-tools, RuntimeWorkerPool in AUTO
+          # mode) starts a separate node worker for every distinct function a
+          # test invokes and keeps it alive IDLE until the emulator reloads code
+          # or exits. Each worker loads its whole codebase bundle. In one
+          # long-lived session those workers only accumulate: on 2026-09-14 a
+          # shard climbed from 1.6 GB to 7.8 GB of this runner's 7.9 GB across
+          # five suites, never dropping between them, and the runner was killed
+          # (Firestore emulator SIGKILL, "runner has received a shutdown signal").
+          #
+          # Restarting the emulators per suite frees every worker. It costs about
+          # a minute of boot per extra suite. --inspect-functions would force one
+          # worker per codebase instead, but it also serializes every function
+          # and disables timeouts, so triggers queue behind each other.
+          EXIT_CODE=0
+          for suite in $(echo "${{ matrix.group.suites }}" | tr ',' ' '); do
+            echo "::group::emulator session: $suite"
+            npx firebase emulators:exec --project=dev --only auth,firestore,functions \
+              "node tools/run-integration-test-suites.js $suite" || EXIT_CODE=1
+            echo "::endgroup::"
+          done
+
+          kill $MEM_LOG_PID 2>/dev/null || true
           kill $SQUARE_MOCK_PID 2>/dev/null || true
           kill $WEBFLOW_MOCK_PID 2>/dev/null || true
           kill $ETSY_MOCK_PID 2>/dev/null || true

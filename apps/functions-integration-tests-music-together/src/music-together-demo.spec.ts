@@ -24,6 +24,7 @@ import {
   callFunction,
   ADMIN_USER,
   NON_ADMIN_USER,
+  TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { MT_CLASS_DURATION_MINUTES } from '@maple/ts/domain';
@@ -69,7 +70,7 @@ function createInput(
 async function waitForCalendarEvent(
   eventId: string,
   present: boolean,
-  timeoutMs = 10_000
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
 ): Promise<Record<string, unknown> | null> {
   const start = Date.now();
   let doc = await getFirestoreDoc('calendarEvents', eventId);
