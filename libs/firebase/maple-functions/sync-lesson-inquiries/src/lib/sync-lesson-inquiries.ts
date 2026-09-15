@@ -49,7 +49,6 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { Functions, Role } from '@maple/firebase/functions';
 import { LessonInquiryRepository } from '@maple/firebase/database';
 import { ingestedFieldsMatch, mapSubmission } from './map-submission';
 import { fetchAllSubmissions } from './tally-client';
@@ -217,8 +216,8 @@ function currentConfig() {
   };
 }
 
-const TALLY_SECRET_NAMES = ['TALLY_API_KEY'] as const;
-const TALLY_STRING_NAMES = [
+export const TALLY_SECRET_NAMES = ['TALLY_API_KEY'] as const;
+export const TALLY_STRING_NAMES = [
   'TALLY_API_BASE_URL',
   'TALLY_LESSON_INQUIRY_FORM_IDS',
 ] as const;
@@ -239,23 +238,3 @@ export const syncLessonInquiries = onSchedule(
     await runSyncLessonInquiries(currentConfig(), new Date());
   }
 );
-
-/** Admin-callable twin — same logic on demand, and what the integration tests drive. */
-export const triggerLessonInquirySync = Functions.endpoint
-  .usingSecrets(...TALLY_SECRET_NAMES)
-  .usingStrings(...TALLY_STRING_NAMES)
-  .requiringRole(Role.Admin)
-  .handle<Record<string, never>, SyncLessonInquiriesResult>(
-    async (_data, _context, secrets, strings) => {
-      return runSyncLessonInquiries(
-        {
-          // The builder resolves secrets and strings before the handler runs,
-          // so these are plain values, not params.
-          baseUrl: strings.TALLY_API_BASE_URL,
-          apiKey: secrets.TALLY_API_KEY,
-          formIds: parseFormIds(strings.TALLY_LESSON_INQUIRY_FORM_IDS),
-        },
-        new Date()
-      );
-    }
-  );

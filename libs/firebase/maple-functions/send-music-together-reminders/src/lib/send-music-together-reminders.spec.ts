@@ -20,10 +20,6 @@ vi.mock('firebase-functions/v2/scheduler', () => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  Functions: {
-    endpoint: { requiringRole: () => ({ handle: (fn: unknown) => fn }) },
-  },
-  Role: { Admin: 'admin' },
   queueMail: mocks.queueMail,
   familyCalendarSubscribeUrl: (token: string) =>
     `webcal://host/calendar/family/${token}.ics`,

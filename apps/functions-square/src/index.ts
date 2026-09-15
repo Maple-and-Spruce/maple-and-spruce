@@ -67,10 +67,8 @@ export { cancelMusicTogetherRegistration } from '@maple/firebase/maple-functions
 export { updateMusicTogetherPaymentMethod } from '@maple/firebase/maple-functions/update-music-together-payment-method';
 
 // Music Together Week-5 auto-charge job (scheduled + admin-callable trigger)
-export {
-  chargeMusicTogetherInstallments,
-  triggerMusicTogetherInstallments,
-} from '@maple/firebase/maple-functions/charge-music-together-installments';
+export { chargeMusicTogetherInstallments } from '@maple/firebase/maple-functions/charge-music-together-installments';
+export { triggerMusicTogetherInstallments } from '@maple/firebase/maple-functions/trigger-music-together-installments';
 // Craft Club self-service (public, session-gated; Square subscription mutations)
 export { cancelCraftClubSubscription } from '@maple/firebase/maple-functions/cancel-craft-club-subscription';
 export { updateCraftClubPaymentMethod } from '@maple/firebase/maple-functions/update-craft-club-payment-method';
@@ -91,19 +89,18 @@ export { syncClassToSquare } from '@maple/firebase/maple-functions/sync-class-to
 export { syncClassInventoryToSquare } from '@maple/firebase/maple-functions/sync-class-inventory-to-square';
 
 // Lesson auto-billing (#798) — plans charges from each student's billing rule,
-// then takes the ones that are due against their card on file. Scheduled daily
+// then takes the ones that are due against their card on file. Scheduled daily,
 // plus an admin-callable twin for a dry run or a manual catch-up. M&S Square
 // account, not MT's.
-export {
-  runLessonBilling,
-  triggerLessonBilling,
-} from '@maple/firebase/maple-functions/run-lesson-billing';
+export { runLessonBilling } from '@maple/firebase/maple-functions/run-lesson-billing';
+export { triggerLessonBilling } from '@maple/firebase/maple-functions/trigger-lesson-billing';
 
-// Paying ahead for a block of lessons (#864). Same library — same domain, same
-// Square dependency, and ADR-029 counts every library as another Cloud Run
-// service. Produces the same charge record the scheduled job would, already
-// paid, so nothing downstream has to know which way the money was taken.
-export { chargeLessonsNow } from '@maple/firebase/maple-functions/run-lesson-billing';
+// Paying ahead for a block of lessons (#864). Produces the same charge record
+// the scheduled job would, already paid, so nothing downstream has to know
+// which way the money was taken. Its own library because one library deploys
+// exactly one function — co-locating it with runLessonBilling is precisely how
+// it shipped undeployed (#872).
+export { chargeLessonsNow } from '@maple/firebase/maple-functions/charge-lessons-now';
 
 // Linking a card Katie already saved in the Square app to a student (#798).
 // The read needs the Square SDK, so both live here rather than in maple-core.

@@ -16,7 +16,6 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { Functions, Role } from '@maple/firebase/functions';
 import {
   Square,
   SQUARE_SECRET_NAMES,
@@ -30,10 +29,7 @@ import {
   StudentRepository,
 } from '@maple/firebase/database';
 import type { Lesson, LessonScheduledCharge } from '@maple/ts/domain';
-import type {
-  RunLessonBillingRequest,
-  RunLessonBillingResult,
-} from '@maple/ts/firebase/api-types';
+import type { RunLessonBillingResult } from '@maple/ts/firebase/api-types';
 import { chargeDue, planCharges } from './run-lesson-billing.logic';
 
 const TIMEZONE = 'America/New_York';
@@ -181,21 +177,3 @@ export const runLessonBilling = onSchedule(
     await executeLessonBilling(new Date(), buildSquare());
   }
 );
-
-/**
- * Admin-callable twin — manual catch-up, a dry run, and the way integration
- * tests reach this at all (`onSchedule` is not callable over HTTP in the
- * emulator).
- */
-export const triggerLessonBilling = Functions.endpoint
-  .requiringRole(Role.Admin)
-  .usingSecrets(...SQUARE_SECRET_NAMES)
-  .usingStrings(...SQUARE_STRING_NAMES)
-  .handle<RunLessonBillingRequest, RunLessonBillingResult>(
-    async (data, _context, secrets, strings) => {
-      const square = new Square(secrets, strings);
-      return executeLessonBilling(new Date(), square, {
-        dryRun: data?.dryRun === true,
-      });
-    }
-  );

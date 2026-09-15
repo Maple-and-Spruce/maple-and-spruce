@@ -17,15 +17,6 @@ vi.mock('firebase-functions/params', () => ({
   defineSecret: (name: string) => ({ name, value: () => 'secret' }),
   defineString: (name: string) => ({ name, value: () => 'string' }),
 }));
-vi.mock('@maple/firebase/functions', () => {
-  const endpoint = {
-    requiringRole: vi.fn(() => endpoint),
-    usingSecrets: vi.fn(() => endpoint),
-    usingStrings: vi.fn(() => endpoint),
-    handle: vi.fn(() => 'admin-fn'),
-  };
-  return { Functions: { endpoint }, Role: { Admin: 'admin' } };
-});
 vi.mock('@maple/firebase/square', () => {
   class PaymentError extends Error {}
   return {

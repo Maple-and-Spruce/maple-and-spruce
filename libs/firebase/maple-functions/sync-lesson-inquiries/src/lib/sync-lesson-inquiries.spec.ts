@@ -19,18 +19,6 @@ vi.mock('./tally-client', () => ({
   fetchAllSubmissions: mocks.fetchAllSubmissions,
 }));
 
-// The module defines an admin-callable twin at import time; stub the builder
-// so importing it here doesn't need the real functions runtime.
-vi.mock('@maple/firebase/functions', () => {
-  const endpoint = {
-    usingSecrets: () => endpoint,
-    usingStrings: () => endpoint,
-    requiringRole: () => endpoint,
-    handle: () => 'mock-fn',
-  };
-  return { Functions: { endpoint }, Role: { Admin: 'admin' } };
-});
-
 vi.mock('firebase-functions/v2/scheduler', () => ({
   onSchedule: () => 'mock-schedule',
 }));

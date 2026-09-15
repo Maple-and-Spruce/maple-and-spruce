@@ -65,7 +65,10 @@
     "firebase-maple-functions-tally-lead-webhook": "maple-webhooks",
     "firebase-maple-functions-run-lesson-billing": "maple-square",
     "firebase-maple-functions-get-square-card-candidates": "maple-square",
-    "firebase-maple-functions-update-student-square-card": "maple-square"
+    "firebase-maple-functions-update-student-square-card": "maple-square",
+    "firebase-maple-functions-trigger-music-together-installments": "maple-square",
+    "firebase-maple-functions-trigger-lesson-billing": "maple-square",
+    "firebase-maple-functions-charge-lessons-now": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

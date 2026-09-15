@@ -39,7 +39,7 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineString } from 'firebase-functions/params';
-import { Functions, Role, isE2ETestEmail } from '@maple/firebase/functions';
+import { isE2ETestEmail } from '@maple/firebase/functions';
 import {
   ClassRepository,
   InstructorRepository,
@@ -352,19 +352,3 @@ export const sendClassReminders = onSchedule(
     await runSendClassReminders(new Date());
   }
 );
-
-/**
- * Admin-callable manual trigger — runs the same business logic on demand.
- *
- * Why this exists:
- *   - Manual catch-up if the daily schedule ever misfires (e.g. CloudScheduler
- *     pause/incident). Katie can run it from the admin UI to bring everyone
- *     who should have been reminded today back into compliance.
- *   - Drives integration tests — `onSchedule` triggers aren't reachable via
- *     HTTP in the Firebase emulator, but admin-callable HTTPS triggers are.
- */
-export const triggerClassReminders = Functions.endpoint
-  .requiringRole(Role.Admin)
-  .handle<Record<string, never>, SendClassRemindersResult>(async () => {
-    return runSendClassReminders(new Date());
-  });

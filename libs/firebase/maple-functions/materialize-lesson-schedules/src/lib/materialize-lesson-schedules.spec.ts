@@ -15,14 +15,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => {
-  const builder = {
-    requiringRole: () => builder,
-    handle: <TReq, TRes>(handler: (d: TReq, c: unknown) => Promise<TRes>) =>
-      handler,
-  };
   return {
-    Functions: { endpoint: builder },
-    Role: { Admin: 'admin' },
     // The room-conflict check (#841). Free by default; the room-conflict
     // cases below override it. Mocked rather than exercised because the
     // real one reads calendar events, and that belongs in the integration

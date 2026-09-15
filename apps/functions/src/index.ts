@@ -14,7 +14,6 @@
 // See global-runtime-options.ts for the ordering contract.
 import '@maple/firebase/functions/global-runtime-options';
 import { getApps, initializeApp } from 'firebase-admin/app';
-import { createPublicFunction } from '@maple/firebase/functions';
 
 // Initialize Firebase Admin at the entry point, before any function handlers run.
 // This ensures the admin SDK is ready for Firestore triggers (onDocumentWritten)
@@ -24,15 +23,7 @@ if (getApps().length === 0) {
 }
 
 // Health check for testing
-export const healthCheck = createPublicFunction<
-  Record<string, never>,
-  { status: string; timestamp: string }
->(async () => {
-  return {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  };
-});
+export { healthCheck } from '@maple/firebase/maple-functions/health-check';
 
 // Auth functions
 export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-status';
@@ -89,20 +80,16 @@ export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesso
 export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
 export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
 export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
-export {
-  materializeLessonSchedules,
-  triggerMaterializeLessonSchedules,
-} from '@maple/firebase/maple-functions/materialize-lesson-schedules';
+export { materializeLessonSchedules } from '@maple/firebase/maple-functions/materialize-lesson-schedules';
+export { triggerMaterializeLessonSchedules } from '@maple/firebase/maple-functions/trigger-materialize-lesson-schedules';
 export { getStudentLessonSchedules } from '@maple/firebase/maple-functions/get-student-lesson-schedules';
 export { createStudentLessonSchedule } from '@maple/firebase/maple-functions/create-student-lesson-schedule';
 export { updateStudentLessonSchedule } from '@maple/firebase/maple-functions/update-student-lesson-schedule';
 export { getNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
 export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
-export {
-  syncLessonInquiries,
-  triggerLessonInquirySync,
-} from '@maple/firebase/maple-functions/sync-lesson-inquiries';
+export { syncLessonInquiries } from '@maple/firebase/maple-functions/sync-lesson-inquiries';
+export { triggerLessonInquirySync } from '@maple/firebase/maple-functions/trigger-lesson-inquiry-sync';
 export { getLessonInquiries } from '@maple/firebase/maple-functions/get-lesson-inquiries';
 export { updateLessonInquiryStatus } from '@maple/firebase/maple-functions/update-lesson-inquiry-status';
 export { createLessonBlock } from '@maple/firebase/maple-functions/create-lesson-block';
@@ -246,16 +233,12 @@ export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-
 export { releaseStaleRegistrationHolds } from '@maple/firebase/maple-functions/release-stale-registration-holds';
 
 // Registration scheduled functions
-export {
-  sendClassReminders,
-  triggerClassReminders,
-} from '@maple/firebase/maple-functions/send-class-reminders';
+export { sendClassReminders } from '@maple/firebase/maple-functions/send-class-reminders';
+export { triggerClassReminders } from '@maple/firebase/maple-functions/trigger-class-reminders';
 
 // Music Together scheduled functions
-export {
-  sendMusicTogetherReminders,
-  triggerMusicTogetherReminders,
-} from '@maple/firebase/maple-functions/send-music-together-reminders';
+export { sendMusicTogetherReminders } from '@maple/firebase/maple-functions/send-music-together-reminders';
+export { triggerMusicTogetherReminders } from '@maple/firebase/maple-functions/trigger-music-together-reminders';
 
 // Etsy template functions (read/write Firestore only — no Etsy API dep)
 export { getEtsyTemplates } from '@maple/firebase/maple-functions/get-etsy-templates';

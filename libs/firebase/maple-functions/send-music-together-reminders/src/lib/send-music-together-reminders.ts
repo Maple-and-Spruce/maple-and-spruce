@@ -51,8 +51,6 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import {
-  Functions,
-  Role,
   queueMail,
   familyCalendarSubscribeUrl,
 } from '@maple/firebase/functions';
@@ -485,10 +483,3 @@ export const sendMusicTogetherReminders = onSchedule(
     await runSendMusicTogetherReminders(new Date());
   }
 );
-
-/** Admin-callable manual trigger — same logic on demand (and drives tests). */
-export const triggerMusicTogetherReminders = Functions.endpoint
-  .requiringRole([Role.Admin, Role.MtTeacher])
-  .handle<Record<string, never>, SendMusicTogetherRemindersResult>(async () => {
-    return runSendMusicTogetherReminders(new Date());
-  });

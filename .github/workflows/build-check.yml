@@ -188,11 +188,13 @@ jobs:
 
       # The merge deploy derives its filter from the LIBRARY DIRECTORY NAME
       # (firebase-maple-functions-get-artists -> functions:maple-core:getArtists),
-      # so a library exporting no function by that name produces a filter for a
-      # function that does not exist and firebase refuses the entire codebase
-      # batch: "No function matches the filter". It fails after merge, at deploy,
-      # and takes every other function in that batch with it (#845).
-      - name: Check function library names
+      # so one library deploys exactly one function and it breaks both ways.
+      # Export none by that name and the filter points at nothing: firebase
+      # refuses the entire codebase batch ("No function matches the filter"),
+      # after merge, at deploy, taking every other function with it (#845).
+      # Export MORE than that name and the extras sit outside every filter and
+      # are simply never created — no failure, no warning (#872).
+      - name: Check one function per library
         run: npx tsx tools/check-function-library-names.ts
 
   repository-mappers:

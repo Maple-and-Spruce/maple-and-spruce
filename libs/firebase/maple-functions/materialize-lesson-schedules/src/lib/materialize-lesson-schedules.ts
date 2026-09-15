@@ -32,11 +32,7 @@
  * instant the student already has a lesson at, whatever that lesson's id.
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import {
-  Functions,
-  Role,
-  findConflictsForWindow,
-} from '@maple/firebase/functions';
+import { findConflictsForWindow } from '@maple/firebase/functions';
 import {
   LessonRepository,
   StudentLessonScheduleRepository,
@@ -177,10 +173,3 @@ export const materializeLessonSchedules = onSchedule(
     await runMaterializeLessonSchedules(new Date());
   }
 );
-
-/** Admin-callable twin — same logic on demand, and what the integration tests drive. */
-export const triggerMaterializeLessonSchedules = Functions.endpoint
-  .requiringRole(Role.Admin)
-  .handle<Record<string, never>, MaterializeLessonSchedulesResult>(async () => {
-    return runMaterializeLessonSchedules(new Date());
-  });

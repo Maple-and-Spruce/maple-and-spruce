@@ -45,7 +45,14 @@ A genuinely new function is still fine when it needs materially different runtim
 (`memory`, `timeoutSeconds`, `minInstances`, `secrets`) from everything in its domain — those are
 properties of the function, not the route. Raise the baseline deliberately in that PR and say why.
 
-### The library name IS the deploy filter
+**"Add a route" means a route on a router function — not a second export in someone else's
+library.** The two look alike and are not: a router dispatches inside *one* deployed function,
+while a second export is a second function that the deploy filter never names, so it silently
+never ships. That misreading is how `chargeLessonsNow` was written into `run-lesson-billing`
+and stayed undeployed (#872). If the new endpoint is its own function, it is its own library
+and its own line in the baseline. See "one library, one function" below.
+
+### The library name IS the deploy filter — one library, one function
 
 The merge deploy builds its `--only` filter from the **library directory name**, not
 from what the library exports (`firebase-functions-merge.yml`):
@@ -54,23 +61,46 @@ from what the library exports (`firebase-functions-merge.yml`):
 firebase-maple-functions-get-artists  ->  functions:maple-core:getArtists
 ```
 
-So **every function library must export a function named after itself**. A library whose
-camelCase name matches none of its exports produces a filter for a function that does not
-exist, and firebase refuses the *entire codebase batch*:
+So a library deploys **exactly one** Cloud Function, and that function is named after the
+library. That is a bijection or it is nothing, and it breaks in both directions.
+
+**Export too few** and the filter names a function that does not exist, so firebase refuses
+the *entire codebase batch*:
 
 ```
 Error: No function matches the filter: maple-square:runLessonBilling
 ```
 
-This fails **after merge, at deploy**, and takes every other function in that batch with
-it. Nothing else catches it: it builds, it typechecks, the tests pass, and the entry-point
-exports are perfectly valid.
+That is not a partial failure — #835's `run-lesson-billing` exported
+`runLessonBillingScheduled` instead, and took all 26 maple-square functions down with it.
 
-A library may export more than its own name — a scheduled job plus its admin trigger twin
-is the usual shape — it just has to export that one too.
+**Export too many** and every *other* export sits outside the filter, so `firebase deploy`
+leaves it alone: untouched if it already exists, and **never created if it does not**. It
+does not fail and it does not warn. `chargeLessonsNow` (#866) shipped inside
+`run-lesson-billing` and never came into existence in prod — Pay ahead failed with
+`functions/not-found` — and six admin `trigger*` twins were in the same state (#872).
+An export declared *inline* in an entry point (`healthCheck` was) has no library behind it
+at all, so nothing can ever name it.
+
+Nothing else catches any of these. They build, they typecheck, the tests pass — the
+emulator loads the entry point wholesale, so every export exists there — and the
+entry-point exports are perfectly valid TypeScript.
+
+**A scheduled job's admin-callable twin gets its own library**, not a second export
+alongside the schedule. It imports what it needs from its sibling:
+
+```typescript
+// libs/firebase/maple-functions/trigger-class-reminders/src/lib/trigger-class-reminders.ts
+import { runSendClassReminders } from '@maple/firebase/maple-functions/send-class-reminders';
+```
+
+Both libraries deploy, and nx marks the trigger affected whenever the logic it imports
+changes. It costs one entry in the function-count baseline, which is the honest price —
+the twin *is* a Cloud Run service.
 
 ```bash
 npx tsx tools/check-function-library-names.ts
+npx tsx tools/check-function-library-names.ts --report   # every export + its library
 ```
 
 CI runs this on every PR (`build-check.yml` → `callable-roles` job).

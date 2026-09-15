@@ -1,4 +1,4 @@
 export {
   chargeMusicTogetherInstallments,
-  triggerMusicTogetherInstallments,
+  runDueInstallmentCharges,
 } from './lib/charge-music-together-installments';

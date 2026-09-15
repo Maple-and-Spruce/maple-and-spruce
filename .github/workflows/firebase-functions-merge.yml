@@ -207,6 +207,14 @@ jobs:
             CODEBASE=$(echo "$MAPPING" | jq -r --arg lib "$lib" '.functionToCodebase[$lib] // .defaultCodebase')
 
             # Extract function name from library name (e.g., firebase-maple-functions-get-artists -> getArtists)
+            #
+            # This names ONE function per library, and that is only correct
+            # because a library deploys exactly one function. Anything else a
+            # library exported would sit outside this filter and never be
+            # created — no failure, no warning (#872, `chargeLessonsNow`).
+            # `tools/check-function-library-names.ts` fails a PR on both halves
+            # of that invariant (build-check.yml -> callable-roles job), so do
+            # not relax it here without relaxing the guard.
             FUNC_NAME=${lib#firebase-maple-functions-}
             # Convert kebab-case to camelCase
             FUNC_NAME=$(echo "$FUNC_NAME" | awk -F'-' '{for(i=1;i<=NF;i++){if(i==1){printf("%s",$i)}else{printf("%s%s",toupper(substr($i,1,1)),substr($i,2))}}}')

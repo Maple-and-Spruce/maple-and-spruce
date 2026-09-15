@@ -83,6 +83,30 @@
       "@maple/firebase/maple-functions/update-craft-club-member": [
         "libs/firebase/maple-functions/update-craft-club-member/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/health-check": [
+        "libs/firebase/maple-functions/health-check/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/trigger-materialize-lesson-schedules": [
+        "libs/firebase/maple-functions/trigger-materialize-lesson-schedules/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/trigger-lesson-inquiry-sync": [
+        "libs/firebase/maple-functions/trigger-lesson-inquiry-sync/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/trigger-class-reminders": [
+        "libs/firebase/maple-functions/trigger-class-reminders/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/trigger-music-together-reminders": [
+        "libs/firebase/maple-functions/trigger-music-together-reminders/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/trigger-music-together-installments": [
+        "libs/firebase/maple-functions/trigger-music-together-installments/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/trigger-lesson-billing": [
+        "libs/firebase/maple-functions/trigger-lesson-billing/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/charge-lessons-now": [
+        "libs/firebase/maple-functions/charge-lessons-now/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-artists": [
         "libs/firebase/maple-functions/get-artists/src/index.ts"
       ],

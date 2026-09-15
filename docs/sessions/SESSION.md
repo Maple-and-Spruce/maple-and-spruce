@@ -6,6 +6,42 @@
 
 ## Current Status
 
+### One library, one function — the deploy filter was silently dropping exports (2026-09-14, #872)
+
+The merge deploy builds its `--only` filter from the **library directory name**, one function
+per library. Anything else a library exported sat outside every filter, and `firebase deploy`
+leaves what it is not asked about alone — untouched if it exists, **never created if it does
+not**. No failure, no warning.
+
+Eight functions were in that state. `chargeLessonsNow` (#866) was the live one: written into
+`run-lesson-billing` because ADR-029 says prefer an existing library, and never deployed at
+all, so Pay ahead failed with `functions/not-found`. Six admin `trigger*` twins of scheduled
+jobs were the same shape, and `healthCheck` was worse — declared inline in the entry point,
+with no library behind it for any filter to name.
+
+**The fix is to hold the invariant rather than teach the filter to expand.** One library
+deploys exactly one Cloud Function, named after it, so the directory name *is* the function
+name and the filter is correct by construction. Each of the eight got its own library; the
+twins import their sibling's logic across `@maple/firebase/maple-functions/<slug>`, so the
+scheduled job and its manual twin still share one implementation and nx marks both affected
+when it changes.
+
+`tools/check-function-library-names.ts` now parses the entry points and enforces the bijection
+in both directions — too few exports (the #835 batch-killer, where the filter names nothing)
+and too many (this bug), plus inline exports that belong to no library. It used to check only
+the first half, which is why this was invisible.
+
+**The count baseline went 236 → 244, and that is an accounting correction, not growth.** The
+ratchet counts library directories as a proxy for deployed functions; with seven functions
+riding along inside other libraries it was undercounting by exactly that much — #867's
+complaint, made concrete. The rule text at `.claude/rules/firebase-functions.md` said a
+library "may export more than its own name … a scheduled job plus its admin trigger twin is
+the usual shape", which is what led #866 straight into this, and now says the opposite.
+
+Also fixed: `charge-lessons-now.spec.ts` read `SQUARE_MOCK_SERVER_PORT` directly and fell back
+to 9997, so every test in it failed with ECONNREFUSED in a port-offset worktree — the same
+trap `link-student-card.spec.ts` documents. It uses `EMULATOR_CONFIG` now.
+
 ### Student page: lessons and billing as tables (2026-09-13, #828, #853)
 
 `/students/[id]` showed lessons as two lists (Upcoming / Past), invoices as a third list, and card

@@ -25,7 +25,6 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { Functions, Role } from '@maple/firebase/functions';
 import {
   Square,
   MT_SQUARE_SECRET_NAMES,
@@ -39,10 +38,7 @@ import {
   getDb,
 } from '@maple/firebase/database';
 import type { MusicTogetherScheduledCharge } from '@maple/ts/domain';
-import type {
-  ChargeMusicTogetherInstallmentsRequest,
-  MusicTogetherInstallmentChargeResult,
-} from '@maple/ts/firebase/api-types';
+import type { MusicTogetherInstallmentChargeResult } from '@maple/ts/firebase/api-types';
 
 const TIMEZONE = 'America/New_York';
 
@@ -218,23 +214,3 @@ export const chargeMusicTogetherInstallments = onSchedule(
     await runDueInstallmentCharges(new Date(), buildMtSquare());
   }
 );
-
-/**
- * Admin-callable manual trigger — same logic on demand, with an optional dry
- * run. Exists for manual catch-up if the schedule misfires, and because
- * `onSchedule` triggers aren't reachable over HTTP in the Firebase emulator
- * (so integration tests go through this).
- */
-export const triggerMusicTogetherInstallments = Functions.endpoint
-  .requiringRole(Role.Admin)
-  .usingSecrets(...MT_SQUARE_SECRET_NAMES)
-  .usingStrings(...MT_SQUARE_STRING_NAMES)
-  .handle<
-    ChargeMusicTogetherInstallmentsRequest,
-    MusicTogetherInstallmentChargeResult
-  >(async (data, _context, secrets, strings) => {
-    const square = new Square(secrets, strings, MT_SQUARE_KEYS);
-    return runDueInstallmentCharges(new Date(), square, {
-      dryRun: data?.dryRun === true,
-    });
-  });

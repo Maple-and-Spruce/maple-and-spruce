@@ -2,6 +2,12 @@
 
 > All Cloud Functions deploy to `us-east4` (Northern Virginia).
 > Functions are split into 6 codebases to reduce cold start times.
+>
+> **Every function on this page is one library under `libs/firebase/maple-functions/`,
+> named after it.** The merge deploy builds its `--only` filter from the library directory
+> name, so anything else a library exports is outside every filter and never created — which
+> is how `chargeLessonsNow` and six admin `trigger*` twins were listed here while being
+> absent from prod (#872). `tools/check-function-library-names.ts` now fails a PR on it.
 
 ## Codebase: `maple-core` (`apps/functions/`)
 
@@ -158,7 +164,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `revokeRole` _(admin only — revokes a scoped role; rejects `admin`)_
 
 ### Infrastructure
-- `healthCheck`
+- `healthCheck` _(public liveness probe; also served at `/healthCheck` via a hosting rewrite)_
 - `getSyncConflicts`, `getSyncConflictSummary`
 
 ### Top-of-funnel attribution (Music Together → Meta CAPI) (#781)
@@ -251,7 +257,7 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 
 ### Lesson billing (#798, #864)
 - `runLessonBilling` _(scheduled — daily 09:00 ET)_ — plans each eligible student's charges from their billing rule, then takes the ones that are due against the card on file. Daily rather than weekly because a charge anchored "the day before the first lesson" has to land on that day. Hope students are never touched (they bill through the EMA portal). Planning subtracts every lesson an existing charge already covers before blocking, so a prepaid block is not billed again and a cancelled first lesson cannot make a block re-form under a new id and charge twice.
-- `triggerLessonBilling` _(admin-only)_ — the callable twin: a manual catch-up, a dry run, and the only way integration tests can reach an `onSchedule`.
+- `triggerLessonBilling` _(admin-only, own library `trigger-lesson-billing`)_ — the callable twin: a manual catch-up, a dry run, and the only way integration tests can reach an `onSchedule`. Wraps `executeLessonBilling`, imported from the `run-lesson-billing` library.
 - `chargeLessonsNow` _(admin-only)_ — takes money on the spot for a block of lessons a family is paying ahead for. Produces the same `LessonScheduledCharge` record the scheduled job would, already `paid`, so there is no second ledger. The atomic `create` at the charge's deterministic id **is** the lease, claimed before the payment, so a double click cannot take a second payment. Also retries a `failed` charge, reusing the original idempotency key so an attempt that did reach Square comes back as the same payment.
 - `getLessonBilling` _(admin-only, `maple-core`)_ — rules, charges and the studio rate table in one read, so the screen prices a prepayment from the same numbers the server charges from.
 - `getSquareCardCandidates` / `updateStudentSquareCard` _(admin-only)_ — find the card Katie already saved in the Square app and attach it to the right student. The read needs the Square SDK, which is why both live here.
