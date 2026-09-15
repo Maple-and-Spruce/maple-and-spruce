@@ -6,6 +6,46 @@
 
 ## Current Status
 
+### Student page: lessons and billing as tables (2026-09-13, #828, #853)
+
+`/students/[id]` showed lessons as two lists (Upcoming / Past), invoices as a third list, and card
+charges in a card above everything. Now it is two Material React Table tables.
+
+**Lessons** open sorted by date/time, soonest first, with **Show past lessons** off. "Past" means a
+lesson with an outcome (taught, no-show, cancelled). A past lesson still `scheduled` stays visible,
+because it is waiting on "Mark taught" and hiding it would hide the studio's most common action.
+
+**Billing** merges invoices, automatic charges (#798) and manual charges (#864) into one table,
+also date-sorted, with **Show paid & closed** off. `failed` is never "closed": it is money earned and
+not collected. A block charge is one row with one amount and the span of lessons it covers, so four
+lessons paid in one go never reads as four charges. This replaces `InvoiceList` and the
+`UpcomingChargesCard` on the student page; the card still serves `/lesson-billing`. The records are
+unchanged (`buildBillingRecords` in `@maple/ts/domain` is presentation only).
+
+Manual charges (#864) are labelled from `source === 'manual'` or the `MANUAL_CHARGE_RULE_ID`
+sentinel. A failed charge gets **Try again** on its own row, which calls `chargeLessonsNow` with the
+original charge id, so an attempt that already reached Square comes back as the same payment.
+`PrepayLessonsCard` stays as its own card above the tables: taking a payment is a different job
+from reading the ledger.
+
+**Shared MRT options, as #853 asked for first.** `brandTableOptions()` in `@maple/react/ui` carries
+the brand surfaces and both pinning fixes (`mrtTheme.baseBackgroundColor`, pinned-cell
+`opacity: 1`). `StudentList` now spreads it too; each new table's story carries the pinning
+assertions. Five DataGrid tables remain.
+
+**A play story caught a sort bug nobody would have seen in a screenshot.** MRT sorts numeric
+columns descending first, so on a table that opens ascending by date, one header click *removed*
+the sort and dropped the rows into load order. The table looked sorted and wasn't.
+`brandTableOptions` now sets `enableSortingRemoval: false`, so every MRT table flips between
+ascending and descending only.
+
+**The page is covered end to end.** `apps/maple-spruce-e2e/src/student-page.spec.ts` runs in the
+existing Portal E2E CI job against seeded emulators. It proves the wiring the stories cannot: the
+charges reach the billing table, and Waive, Cancel and Mark paid hit the server and survive a reload.
+The seed (`student-page-seed.ts`) reseeds before each test, so a retry starts clean.
+
+Not done here: #828's original idea of a billing column on each lesson row.
+
 ### Paying ahead for a block of lessons (2026-09-13, #864)
 
 Some families agree with Katie to pay for the next few lessons up front, in exchange for the
@@ -38,7 +78,6 @@ The Square payments mock was lying about exactly this — it minted a fresh paym
 ignored idempotency keys entirely, so a double-charge bug would have passed the suite. It now
 returns the original payment for a reused key, the way real Square does, and can be told to
 decline so the failed-then-retry path is actually exercised.
-
 
 ### A one-field index froze every Firestore index deploy (2026-09-04, #826)
 

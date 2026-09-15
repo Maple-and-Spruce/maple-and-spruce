@@ -18,6 +18,7 @@ import {
   setFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
 import { PORTAL_E2E_USERS } from './fixtures';
+import { seedStudentPage } from './student-page-seed';
 
 async function globalSetup(): Promise<void> {
   console.log('[portal-e2e] Seeding auth + firestore emulators…');
@@ -42,6 +43,11 @@ async function globalSetup(): Promise<void> {
       })`
     );
   }
+
+  // The student page spec reseeds before each test too; seeding here as well
+  // means the page has data even when that spec is run on its own in UI mode.
+  await seedStudentPage();
+  console.log('[portal-e2e] Seeded student page data');
 }
 
 export default globalSetup;

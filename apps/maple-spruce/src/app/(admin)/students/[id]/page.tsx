@@ -21,7 +21,9 @@ import type {
   CreateLessonSeriesInput,
   Invoice,
   Lesson,
+  LessonScheduledCharge,
   ManualInvoicePaymentSource,
+  RequestState,
   StudentLessonSchedule,
   UpdateInvoiceInput,
   UpdateLessonInput,
@@ -35,11 +37,10 @@ import {
   PaymentMethodCard,
   PrepayLessonsCard,
   StandingScheduleCard,
-  UpcomingChargesCard,
   StandingScheduleDialog,
   type LessonPendingAction,
 } from '@maple/react/lessons';
-import { InvoiceBuilderDialog, InvoiceList } from '@maple/react/invoices';
+import { BillingTable, InvoiceBuilderDialog } from '@maple/react/invoices';
 import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from '@maple/react/students';
 import {
   useInstructors,
@@ -125,6 +126,15 @@ export default function StudentDetailPage() {
   const lessons = useMemo(
     () => (lessonsState.status === 'success' ? lessonsState.data : []),
     [lessonsState],
+  );
+
+  // The billing table only needs the charges; rules stay with the billing page.
+  const chargesState = useMemo<RequestState<LessonScheduledCharge[]>>(
+    () =>
+      billingState.status === 'success'
+        ? { status: 'success', data: billingState.data.charges }
+        : billingState,
+    [billingState],
   );
 
   const handleCreateSingle = async (input: CreateLessonInput) => {
@@ -425,22 +435,6 @@ export default function StudentDetailPage() {
         }}
       />
 
-      <UpcomingChargesCard
-        charges={
-          billingState.status === 'success' ? billingState.data.charges : []
-        }
-        hideStudent
-        isLoading={billingState.status === 'loading'}
-        pendingId={chargePendingId}
-        error={
-          chargeError ??
-          (billingState.status === 'error' ? billingState.error : null)
-        }
-        onCancel={(id) => stopCharge(id, 'cancelled')}
-        onWaive={(id, reason) => stopCharge(id, 'waived', reason)}
-        onRetry={(id) => chargeNow({ studentId, retryChargeId: id })}
-      />
-
       <PrepayLessonsCard
         student={student}
         lessons={lessons}
@@ -501,51 +495,37 @@ export default function StudentDetailPage() {
         pendingAction={pendingLessonAction}
       />
 
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mt: 4,
-          mb: 2,
-          gap: 2,
-          flexWrap: 'wrap',
-        }}
-      >
-        <Typography variant="h6" component="h2">
-          Invoices
+      {/*
+        Invoices and card charges, automatic and manual, in one table: they are
+        the same question ("is this family paid up?") answered three ways.
+      */}
+      <Typography variant="h6" component="h2" sx={{ mt: 4, mb: 2 }}>
+        Billing
+      </Typography>
+      {student.isHopeScholarship ? (
+        <Typography variant="body2" color="text.secondary">
+          Hope Scholarship students are invoiced through the EMA portal, so
+          nothing is billed here.
         </Typography>
-        {student.isHopeScholarship ? (
-          <Button
-            variant="outlined"
-            disabled
-            startIcon={<AddIcon />}
-            title="Hope Scholarship students are invoiced via the EMA portal"
-          >
-            New invoice (disabled for Hope)
-          </Button>
-        ) : (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setEditingInvoice(undefined);
-              setInvoiceDialogOpen(true);
-            }}
-          >
-            New invoice
-          </Button>
-        )}
-      </Box>
-
-      {!student.isHopeScholarship && (
-        <InvoiceList
+      ) : (
+        <BillingTable
           invoicesState={invoicesState}
-          onEdit={handleInvoiceEdit}
-          onSend={handleInvoiceSend}
+          chargesState={chargesState}
+          lessons={lessons}
+          onNewInvoice={() => {
+            setEditingInvoice(undefined);
+            setInvoiceDialogOpen(true);
+          }}
+          onEditInvoice={handleInvoiceEdit}
+          onSendInvoice={handleInvoiceSend}
           onRecordPayment={handleInvoiceRecordPayment}
-          onVoid={(invoice) => setInvoiceToVoid(invoice)}
-          onDelete={(invoice) => setInvoiceToDelete(invoice)}
+          onVoidInvoice={(invoice) => setInvoiceToVoid(invoice)}
+          onDeleteInvoice={(invoice) => setInvoiceToDelete(invoice)}
+          chargePendingId={chargePendingId}
+          error={chargeError}
+          onCancelCharge={(id) => stopCharge(id, 'cancelled')}
+          onWaiveCharge={(id, reason) => stopCharge(id, 'waived', reason)}
+          onRetryCharge={(id) => chargeNow({ studentId, retryChargeId: id })}
         />
       )}
 

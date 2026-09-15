@@ -41,6 +41,25 @@ export default defineConfig({
       '@mui/icons-material/ChevronRight',
       '@mui/icons-material/Today',
       'qrcode.react',
+      // The student page tables (#828) and pay-ahead card (#864). Paid is the one
+      // that tripped a mid-run re-optimize; the rest are listed so the next
+      // story to reach one first does not trip it again.
+      '@mui/icons-material/Add',
+      '@mui/icons-material/Block',
+      '@mui/icons-material/Cancel',
+      '@mui/icons-material/CreditCard',
+      '@mui/icons-material/Delete',
+      '@mui/icons-material/Edit',
+      '@mui/icons-material/Event',
+      '@mui/icons-material/MonetizationOn',
+      '@mui/icons-material/MoreVert',
+      '@mui/icons-material/Paid',
+      '@mui/icons-material/PersonOff',
+      '@mui/icons-material/PersonOutline',
+      '@mui/icons-material/ReceiptLong',
+      '@mui/icons-material/Send',
+      '@mui/icons-material/Stars',
+      '@mui/icons-material/WarningAmber',
     ],
   },
   plugins: [

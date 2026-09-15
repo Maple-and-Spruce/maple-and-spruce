@@ -1,20 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
+  FormControlLabel,
   IconButton,
-  List,
-  ListItem,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
-  Skeleton,
+  Stack,
+  Switch,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -23,13 +23,19 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
+import {
+  MaterialReactTable,
+  useMaterialReactTable,
+  type MRT_ColumnDef,
+} from 'material-react-table';
 import type {
   Instructor,
   Lesson,
   LessonBlock,
   RequestState,
 } from '@maple/ts/domain';
-import { isLessonUnattributed } from '@maple/ts/domain';
+import { isLessonShownByDefault, isLessonUnattributed } from '@maple/ts/domain';
+import { brandTableOptions, BRAND_TABLE_PAGE_SIZE } from '@maple/react/ui';
 
 /** A row action that can be in flight. */
 export type LessonRowAction = 'mark-rendered' | 'mark-no-show' | 'cancel';
@@ -71,6 +77,11 @@ interface LessonListProps {
   onMarkNoShow?: (lesson: Lesson) => void;
   /** The action currently in flight, if any. Drives per-row progress. */
   pendingAction?: LessonPendingAction | null;
+  /**
+   * Whether the "Show past lessons" switch starts on. Off by default: the page
+   * is read for what is coming, and a student's history grows every week.
+   */
+  defaultShowPast?: boolean;
   /** For deterministic testing; defaults to current wall clock. */
   now?: Date;
 }
@@ -110,30 +121,38 @@ function formatDateTime(d: Date): string {
   });
 }
 
-function LessonRow({
-  lesson,
-  teacherName,
-  isSubstitute,
-  isUnattributed,
-  isPast,
+interface LessonRow {
+  id: string;
+  lesson: Lesson;
+  /** Sorted on; the cell renders the formatted date. */
+  scheduledAtMs: number;
+  teacherName: string;
+  isSubstitute: boolean;
+  isUnattributed: boolean;
+  isPast: boolean;
+}
+
+/**
+ * The actions cell. "This lesson happened" gets a word on it and one click;
+ * everything else lives behind one overflow, the way StudentList does it.
+ */
+function LessonRowActions({
+  row,
   pending,
   onEdit,
   onCancel,
   onMarkRendered,
   onMarkNoShow,
 }: {
-  lesson: Lesson;
-  teacherName: string;
-  isSubstitute: boolean;
-  isUnattributed: boolean;
-  isPast: boolean;
+  row: LessonRow;
   /** The action in flight on THIS row, if any. */
   pending: LessonRowAction | null;
-  onEdit: () => void;
-  onCancel: () => void;
-  onMarkRendered?: () => void;
-  onMarkNoShow?: () => void;
+  onEdit: (lesson: Lesson) => void;
+  onCancel: (lesson: Lesson) => void;
+  onMarkRendered?: (lesson: Lesson) => void;
+  onMarkNoShow?: (lesson: Lesson) => void;
 }) {
+  const { lesson, isPast } = row;
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const close = () => setAnchorEl(null);
   const run = (fn: () => void) => () => {
@@ -148,153 +167,81 @@ function LessonRow({
   // Same rows as mark-rendered: you only know nobody came once the time passed.
   const canMarkNoShow = canMutate && isPast && !!onMarkNoShow;
 
+  if (!canMutate) return null;
+
   return (
-    <ListItem
+    <Box
       sx={{
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        gap: 2,
+        display: 'flex',
+        gap: 0.5,
         alignItems: 'center',
+        justifyContent: 'flex-end',
       }}
     >
-      <ListItemText
-        primary={
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              alignItems: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
-            <Typography variant="body1" component="span">
-              {formatDateTime(lesson.scheduledAt)}
-            </Typography>
-            <Chip
-              label={`${lesson.durationMinutes} min`}
-              size="small"
-              variant="outlined"
-            />
-            <Chip
-              label={statusChipLabel[lesson.status]}
-              size="small"
-              color={statusChipColor[lesson.status]}
-            />
-            {lesson.seriesId && (
-              <Chip label="Series" size="small" variant="outlined" />
-            )}
-            {isSubstitute && (
-              <Chip
-                label="Substitute"
-                size="small"
-                color="info"
-                variant="outlined"
-              />
-            )}
-            {isUnattributed && (
-              <Chip label="Needs a block" size="small" color="warning" />
-            )}
-          </Box>
-        }
-        secondary={
-          <Typography variant="body2" color="text.secondary">
-            Taught by {teacherName}
-            {lesson.notes ? ` · ${lesson.notes}` : ''}
-          </Typography>
-        }
-      />
-      {/*
-        A real flex sibling, not MUI's `secondaryAction`. That prop positions the
-        action absolutely, so a labelled button — wider than the icon buttons it
-        replaces — sat on top of the row's own chips at narrow widths. Verified
-        in Storybook at 420px before this was changed.
-      */}
-      {canMutate && (
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 0.5,
-            alignItems: 'center',
-            flexShrink: 0,
-          }}
+      {canMarkRendered && (
+        <Button
+          size="small"
+          variant="outlined"
+          color="success"
+          disabled={Boolean(pending)}
+          startIcon={
+            pending === 'mark-rendered' ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              <CheckCircleIcon fontSize="small" />
+            )
+          }
+          onClick={() => onMarkRendered?.(lesson)}
+          sx={{ whiteSpace: 'nowrap' }}
         >
-          {/*
-            The studio's most common action — "this lesson happened" — gets a
-            word on it and one click. It used to be an unlabelled 20px green
-            tick sitting beside an unlabelled orange cross that cancels.
-          */}
-          {canMarkRendered && (
-            <Button
-              size="small"
-              variant="outlined"
-              color="success"
-              disabled={Boolean(pending)}
-              startIcon={
-                pending === 'mark-rendered' ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : (
-                  <CheckCircleIcon fontSize="small" />
-                )
-              }
-              onClick={onMarkRendered}
-            >
-              {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
-            </Button>
-          )}
-          <Tooltip title="Actions">
-            {/* span so the tooltip still works while the button is disabled */}
-            <span>
-              <IconButton
-                size="small"
-                aria-label={`Actions for the lesson on ${formatDateTime(
-                  lesson.scheduledAt
-                )}`}
-                aria-haspopup="menu"
-                disabled={Boolean(pending)}
-                onClick={(e) => setAnchorEl(e.currentTarget)}
-              >
-                {pending === 'cancel' ? (
-                  <CircularProgress size={16} />
-                ) : (
-                  <MoreVertIcon fontSize="small" />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
-            {canMarkNoShow && onMarkNoShow && (
-              <MenuItem onClick={run(onMarkNoShow)}>
-                <ListItemIcon>
-                  <PersonOffIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Nobody came (no-show)</ListItemText>
-              </MenuItem>
-            )}
-            <MenuItem onClick={run(onEdit)}>
-              <ListItemIcon>
-                <EditIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Edit lesson</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={run(onCancel)} sx={{ color: 'warning.main' }}>
-              <ListItemIcon>
-                <CancelIcon fontSize="small" color="warning" />
-              </ListItemIcon>
-              <ListItemText>Cancel lesson</ListItemText>
-            </MenuItem>
-          </Menu>
-        </Box>
+          {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
+        </Button>
       )}
-    </ListItem>
-  );
-}
-
-function LoadingSkeleton() {
-  return (
-    <Box>
-      {[1, 2, 3].map((i) => (
-        <Skeleton key={i} variant="rectangular" height={56} sx={{ mb: 1 }} />
-      ))}
+      <Tooltip title="Actions">
+        {/* span so the tooltip still works while the button is disabled */}
+        <span>
+          <IconButton
+            size="small"
+            aria-label={`Actions for the lesson on ${formatDateTime(
+              lesson.scheduledAt
+            )}`}
+            aria-haspopup="menu"
+            disabled={Boolean(pending)}
+            onClick={(e) => setAnchorEl(e.currentTarget)}
+          >
+            {pending === 'cancel' ? (
+              <CircularProgress size={16} />
+            ) : (
+              <MoreVertIcon fontSize="small" />
+            )}
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+        {canMarkNoShow && onMarkNoShow && (
+          <MenuItem onClick={run(() => onMarkNoShow(lesson))}>
+            <ListItemIcon>
+              <PersonOffIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Nobody came (no-show)</ListItemText>
+          </MenuItem>
+        )}
+        <MenuItem onClick={run(() => onEdit(lesson))}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Edit lesson</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={run(() => onCancel(lesson))}
+          sx={{ color: 'warning.main' }}
+        >
+          <ListItemIcon>
+            <CancelIcon fontSize="small" color="warning" />
+          </ListItemIcon>
+          <ListItemText>Cancel lesson</ListItemText>
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }
@@ -309,11 +256,188 @@ export function LessonList({
   onMarkRendered,
   onMarkNoShow,
   pendingAction = null,
-  now = new Date(),
+  defaultShowPast = false,
+  now,
 }: LessonListProps) {
-  if (lessonsState.status === 'loading') {
-    return <LoadingSkeleton />;
-  }
+  const [showPast, setShowPast] = useState(defaultShowPast);
+  // Pinned once per mount unless injected, so rows do not shift between
+  // renders as the clock ticks past a lesson.
+  const [mountedAt] = useState(() => new Date());
+  const reference = now ?? mountedAt;
+
+  const allRows = useMemo<LessonRow[]>(() => {
+    if (lessonsState.status !== 'success') return [];
+    const teacherNameById = new Map(instructors.map((i) => [i.id, i.name]));
+    return lessonsState.data.map((lesson) => ({
+      id: lesson.id,
+      lesson,
+      scheduledAtMs: lesson.scheduledAt.getTime(),
+      teacherName: teacherNameById.get(lesson.teacherId) ?? 'Unassigned',
+      isSubstitute:
+        primaryTeacherId !== undefined && lesson.teacherId !== primaryTeacherId,
+      isUnattributed:
+        lesson.status !== 'cancelled' &&
+        blocks.length > 0 &&
+        isLessonUnattributed(lesson, blocks),
+      isPast: lesson.scheduledAt.getTime() <= reference.getTime(),
+    }));
+  }, [lessonsState, instructors, primaryTeacherId, blocks, reference]);
+
+  const rows = useMemo(
+    () =>
+      showPast
+        ? allRows
+        : allRows.filter((r) => isLessonShownByDefault(r.lesson, reference)),
+    [allRows, showPast, reference]
+  );
+  const hiddenPastCount = allRows.length - rows.length;
+
+  const columns = useMemo<MRT_ColumnDef<LessonRow>[]>(
+    () => [
+      {
+        accessorKey: 'scheduledAtMs',
+        header: 'Date / Time',
+        size: 210,
+        Cell: ({ row }) => (
+          <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
+            {formatDateTime(row.original.lesson.scheduledAt)}
+          </Typography>
+        ),
+      },
+      {
+        id: 'status',
+        accessorFn: (row) => statusChipLabel[row.lesson.status],
+        header: 'Status',
+        size: 220,
+        Cell: ({ row }) => {
+          const { lesson, isUnattributed } = row.original;
+          return (
+            <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+              <Chip
+                label={statusChipLabel[lesson.status]}
+                size="small"
+                color={statusChipColor[lesson.status]}
+              />
+              {lesson.seriesId && (
+                <Chip label="Series" size="small" variant="outlined" />
+              )}
+              {isUnattributed && (
+                <Chip label="Needs a block" size="small" color="warning" />
+              )}
+            </Stack>
+          );
+        },
+      },
+      {
+        accessorKey: 'teacherName',
+        header: 'Teacher',
+        size: 180,
+        Cell: ({ row }) => (
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <Typography variant="body2" noWrap>
+              {row.original.teacherName}
+            </Typography>
+            {row.original.isSubstitute && (
+              <Chip
+                label="Substitute"
+                size="small"
+                color="info"
+                variant="outlined"
+              />
+            )}
+          </Stack>
+        ),
+      },
+      {
+        id: 'duration',
+        accessorFn: (row) => row.lesson.durationMinutes,
+        header: 'Length',
+        size: 100,
+        Cell: ({ row }) => `${row.original.lesson.durationMinutes} min`,
+      },
+      {
+        id: 'notes',
+        accessorFn: (row) => row.lesson.notes ?? '',
+        header: 'Notes',
+        size: 220,
+        enableSorting: false,
+        Cell: ({ row }) => (
+          <Typography variant="body2" color="text.secondary" noWrap>
+            {row.original.lesson.notes ?? ''}
+          </Typography>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        size: 190,
+        enableSorting: false,
+        enableColumnActions: false,
+        muiTableBodyCellProps: { align: 'right' },
+        muiTableHeadCellProps: { align: 'right' },
+        Cell: ({ row }) => (
+          <LessonRowActions
+            row={row.original}
+            pending={
+              pendingAction?.lessonId === row.original.id
+                ? pendingAction.action
+                : null
+            }
+            onEdit={onEdit}
+            onCancel={onCancel}
+            onMarkRendered={onMarkRendered}
+            onMarkNoShow={onMarkNoShow}
+          />
+        ),
+      },
+    ],
+    [onEdit, onCancel, onMarkRendered, onMarkNoShow, pendingAction]
+  );
+
+  const table = useMaterialReactTable({
+    ...brandTableOptions<LessonRow>(),
+    columns,
+    data: rows,
+    getRowId: (row) => row.id,
+    state: { isLoading: lessonsState.status === 'loading' },
+    // When the lesson is, and what can be done about it, stay on screen while
+    // the details between scroll.
+    enableColumnPinning: true,
+    initialState: {
+      // Soonest first: the page is read for what is coming next.
+      sorting: [{ id: 'scheduledAtMs', desc: false }],
+      columnPinning: { left: ['scheduledAtMs'], right: ['actions'] },
+      pagination: { pageIndex: 0, pageSize: BRAND_TABLE_PAGE_SIZE },
+      density: 'comfortable',
+    },
+    renderTopToolbarCustomActions: () => (
+      <FormControlLabel
+        sx={{ ml: 0.5 }}
+        control={
+          <Switch
+            checked={showPast}
+            onChange={(e) => setShowPast(e.target.checked)}
+          />
+        }
+        label={
+          showPast || hiddenPastCount === 0
+            ? 'Show past lessons'
+            : `Show past lessons (${hiddenPastCount})`
+        }
+      />
+    ),
+    renderEmptyRowsFallback: () => (
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ py: 4, textAlign: 'center', width: '100%' }}
+      >
+        {allRows.length === 0
+          ? 'No lessons scheduled yet.'
+          : 'No upcoming lessons. Turn on “Show past lessons” to see history.'}
+      </Typography>
+    ),
+  });
 
   if (lessonsState.status === 'error') {
     return (
@@ -327,91 +451,5 @@ export function LessonList({
     return null;
   }
 
-  const lessons = lessonsState.data;
-
-  if (lessons.length === 0) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-        <Typography variant="body1">No lessons scheduled yet.</Typography>
-      </Box>
-    );
-  }
-
-  const teacherNameById = new Map(instructors.map((i) => [i.id, i.name]));
-
-  const upcoming = lessons
-    .filter(
-      (l) =>
-        l.status === 'scheduled' && l.scheduledAt.getTime() > now.getTime(),
-    )
-    .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
-
-  const past = lessons
-    .filter(
-      (l) =>
-        l.scheduledAt.getTime() <= now.getTime() || l.status !== 'scheduled',
-    )
-    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
-
-  const renderRow = (lesson: Lesson) => (
-    <LessonRow
-      key={lesson.id}
-      lesson={lesson}
-      teacherName={teacherNameById.get(lesson.teacherId) ?? 'Unassigned'}
-      isSubstitute={
-        primaryTeacherId !== undefined && lesson.teacherId !== primaryTeacherId
-      }
-      isUnattributed={
-        lesson.status !== 'cancelled' &&
-        blocks.length > 0 &&
-        isLessonUnattributed(lesson, blocks)
-      }
-      isPast={lesson.scheduledAt.getTime() <= now.getTime()}
-      pending={
-        pendingAction?.lessonId === lesson.id ? pendingAction.action : null
-      }
-      onEdit={() => onEdit(lesson)}
-      onCancel={() => onCancel(lesson)}
-      onMarkRendered={onMarkRendered ? () => onMarkRendered(lesson) : undefined}
-      onMarkNoShow={onMarkNoShow ? () => onMarkNoShow(lesson) : undefined}
-    />
-  );
-
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box>
-        <Typography
-          variant="overline"
-          color="text.secondary"
-          sx={{ display: 'block', mb: 1 }}
-        >
-          Upcoming
-        </Typography>
-        {upcoming.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No upcoming lessons.
-          </Typography>
-        ) : (
-          <List disablePadding>{upcoming.map(renderRow)}</List>
-        )}
-      </Box>
-
-      <Box>
-        <Typography
-          variant="overline"
-          color="text.secondary"
-          sx={{ display: 'block', mb: 1 }}
-        >
-          Past
-        </Typography>
-        {past.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No past lessons.
-          </Typography>
-        ) : (
-          <List disablePadding>{past.map(renderRow)}</List>
-        )}
-      </Box>
-    </Box>
-  );
+  return <MaterialReactTable table={table} />;
 }

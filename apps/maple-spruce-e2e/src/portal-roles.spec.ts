@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN, MT_TEACHER, type PortalE2EUser } from './fixtures';
+import { ADMIN, MT_TEACHER } from './fixtures';
+import { signIn } from './sign-in';
 
 /**
  * Admin-portal role scoping, end-to-end through the real Next.js app against
@@ -12,23 +13,6 @@ import { ADMIN, MT_TEACHER, type PortalE2EUser } from './fixtures';
  * userRoles/{uid} doc with roles:['mt-teacher']. Both are Auth-emulator
  * email/password users we sign in as through the login form.
  */
-
-/** Sign in through the real login UI and wait for the role-filtered shell. */
-async function signIn(
-  page: Page,
-  user: PortalE2EUser,
-  navItemWhenReady: string
-): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password').fill(user.password);
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  // A nav item only its roles unlock appears once redirect + getMyRoles +
-  // nav filtering all resolve — a single wait for the whole chain.
-  await expect(
-    page.getByRole('link', { name: navItemWhenReady, exact: true })
-  ).toBeVisible({ timeout: 20_000 });
-}
 
 /** Assert a nav link is absent (role-filtered out). */
 async function expectNoNavLink(page: Page, name: string): Promise<void> {

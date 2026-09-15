@@ -717,6 +717,41 @@ export function ArtistCard({ artist, onClick }: ArtistCardProps) {
 }
 ```
 
+### Data Tables: Material React Table + `brandTableOptions`
+
+New tables use **Material React Table** (MIT), not MUI X `DataGrid`: column pinning is a paid
+MUI X Pro feature, and MRT has it free with MUI rendering (#851, #853). Always spread the shared
+options first:
+
+```typescript
+import { MaterialReactTable, useMaterialReactTable } from 'material-react-table';
+import { brandTableOptions, BRAND_TABLE_PAGE_SIZE } from '@maple/react/ui';
+
+const table = useMaterialReactTable({
+  ...brandTableOptions<Row>(),
+  columns,
+  data: rows,
+  enableColumnPinning: true,
+  initialState: {
+    sorting: [{ id: 'dateMs', desc: false }],
+    columnPinning: { left: ['dateMs'], right: ['actions'] },
+    pagination: { pageIndex: 0, pageSize: BRAND_TABLE_PAGE_SIZE },
+  },
+});
+```
+
+`brandTableOptions` carries two fixes that no test or build catches, only a screenshot of the
+table **scrolled hard right**: `mrtTheme.baseBackgroundColor` (pinned cells otherwise paint the
+cream page background) and `opacity: 1` on `[data-pinned="true"]` cells (MRT ships 0.97, so
+scrolled columns ghost through). Carry the pinning assertions from `StudentList.stories.tsx` into
+each new table's stories.
+
+Sort on a numeric accessor (`scheduledAtMs`, `dateMs`) and render the formatted value in `Cell`.
+`brandTableOptions` also sets `enableSortingRemoval: false`: MRT sorts numbers descending first, so
+without it one click on an ascending date column returns the table to unsorted load order.
+Hide history behind a switch in `renderTopToolbarCustomActions` by filtering `data`, not with MRT
+column filters (see `LessonList`, `BillingTable`).
+
 ---
 
 ## Error Handling

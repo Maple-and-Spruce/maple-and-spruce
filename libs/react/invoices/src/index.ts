@@ -1,2 +1,2 @@
-export { InvoiceList } from './lib/InvoiceList';
+export { BillingTable, type BillingTableProps } from './lib/BillingTable';
 export { InvoiceBuilderDialog } from './lib/InvoiceBuilderDialog';
