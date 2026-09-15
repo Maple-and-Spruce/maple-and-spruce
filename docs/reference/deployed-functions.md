@@ -248,6 +248,13 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `updateCraftClubPaymentMethod` _(public, session-gated)_ — files a new card from a Web Payments nonce and points the subscription at it
 - `updateMusicTogetherPaymentMethod` _(public, session-gated, MT Square account)_ — vaults a new card on file for an installment registration, repoints `registration.squareCardId` at it (retargets pending Week-5 scheduled charges), and disables the old card
 - `adminPauseCraftClubSubscription` / `adminResumeCraftClubSubscription` / `adminCancelCraftClubSubscription` _(admin-only)_ — Square pause/resume/cancel + mirror member status (cancel also emails)
+
+### Lesson billing (#798, #864)
+- `runLessonBilling` _(scheduled — daily 09:00 ET)_ — plans each eligible student's charges from their billing rule, then takes the ones that are due against the card on file. Daily rather than weekly because a charge anchored "the day before the first lesson" has to land on that day. Hope students are never touched (they bill through the EMA portal). Planning subtracts every lesson an existing charge already covers before blocking, so a prepaid block is not billed again and a cancelled first lesson cannot make a block re-form under a new id and charge twice.
+- `triggerLessonBilling` _(admin-only)_ — the callable twin: a manual catch-up, a dry run, and the only way integration tests can reach an `onSchedule`.
+- `chargeLessonsNow` _(admin-only)_ — takes money on the spot for a block of lessons a family is paying ahead for. Produces the same `LessonScheduledCharge` record the scheduled job would, already `paid`, so there is no second ledger. The atomic `create` at the charge's deterministic id **is** the lease, claimed before the payment, so a double click cannot take a second payment. Also retries a `failed` charge, reusing the original idempotency key so an attempt that did reach Square comes back as the same payment.
+- `getLessonBilling` _(admin-only, `maple-core`)_ — rules, charges and the studio rate table in one read, so the screen prices a prepayment from the same numbers the server charges from.
+- `getSquareCardCandidates` / `updateStudentSquareCard` _(admin-only)_ — find the card Katie already saved in the Square app and attach it to the right student. The read needs the Square SDK, which is why both live here.
 - `createCraftClubSubscription` also emails a welcome on success.
 
 `squareWebhook` additionally handles `subscription.created` / `subscription.updated` — reconciles the member's status (ACTIVE/PAUSED/CANCELED/DEACTIVATED) and paid-through date from Square; idempotent on no-change.

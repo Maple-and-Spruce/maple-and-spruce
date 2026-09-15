@@ -29,7 +29,7 @@ import {
   LessonScheduledChargeRepository,
   StudentRepository,
 } from '@maple/firebase/database';
-import type { Lesson } from '@maple/ts/domain';
+import type { Lesson, LessonScheduledCharge } from '@maple/ts/domain';
 import type {
   RunLessonBillingRequest,
   RunLessonBillingResult,
@@ -53,13 +53,17 @@ export async function executeLessonBilling(
 ): Promise<RunLessonBillingResult> {
   const dryRun = opts.dryRun === true;
 
-  const [students, rules, defaultRule, ratesConfig, allLessons] =
+  const [students, rules, defaultRule, ratesConfig, allLessons, allCharges] =
     await Promise.all([
       StudentRepository.findAll(),
       LessonBillingRuleRepository.findAll(),
       LessonBillingRuleRepository.findDefault(),
       LessonRatesConfigRepository.get(),
       LessonRepository.findAll(),
+      // Every charge, not just the scheduled ones: planning needs to know which
+      // lessons are already spoken for, and a lesson paid ahead for (#864) is
+      // on a charge that is long since `paid`.
+      LessonScheduledChargeRepository.findAll(),
     ]);
 
   const lessonsByStudent = new Map<string, Lesson[]>();
@@ -69,11 +73,19 @@ export async function executeLessonBilling(
     lessonsByStudent.set(lesson.studentId, bucket);
   }
 
+  const chargesByStudent = new Map<string, LessonScheduledCharge[]>();
+  for (const charge of allCharges) {
+    const bucket = chargesByStudent.get(charge.studentId) ?? [];
+    bucket.push(charge);
+    chargesByStudent.set(charge.studentId, bucket);
+  }
+
   const plan = await planCharges(students, {
     rules,
     defaultRule,
     rateByLength: ratesConfig.rateByLength,
     lessonsByStudent,
+    chargesByStudent,
     // A dry run must not create charge documents either — a "planned" charge is
     // a promise to take money, not a preview.
     createIfAbsent: dryRun
@@ -81,8 +93,9 @@ export async function executeLessonBilling(
       : (input) => LessonScheduledChargeRepository.createIfAbsent(input),
   });
 
-  // Only `scheduled` charges can be taken; everything else is terminal or
-  // already in flight, and `chargeDue` re-checks the status anyway.
+  // Re-read after planning, so charges this very run created are taken in the
+  // same pass. Only `scheduled` ones can be taken; everything else is terminal
+  // or already in flight, and `chargeDue` re-checks the status anyway.
   const charges = await LessonScheduledChargeRepository.findAll({
     status: 'scheduled',
   });
@@ -119,6 +132,7 @@ export async function executeLessonBilling(
     chargesPlanned: plan.planned,
     chargesAlreadyPlanned: plan.alreadyPlanned,
     skippedNoRate: plan.skippedNoRate,
+    lessonsAlreadyCovered: plan.lessonsAlreadyCovered,
     charged: taken.charged,
     chargeFailed: taken.failed,
     skippedNoCard: taken.skippedNoCard,
@@ -130,7 +144,8 @@ export async function executeLessonBilling(
       `${result.studentsConsidered} student(s): planned ${result.chargesPlanned}, ` +
       `already planned ${result.chargesAlreadyPlanned}, charged ${result.charged}, ` +
       `failed ${result.chargeFailed}, no card ${result.skippedNoCard}, ` +
-      `no rate ${result.skippedNoRate}`
+      `no rate ${result.skippedNoRate}, ` +
+      `already covered ${result.lessonsAlreadyCovered} lesson(s)`
   );
 
   return result;

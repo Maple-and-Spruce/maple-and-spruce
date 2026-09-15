@@ -33,6 +33,7 @@ import {
   LessonList,
   ScheduleLessonDialog,
   PaymentMethodCard,
+  PrepayLessonsCard,
   StandingScheduleCard,
   UpcomingChargesCard,
   StandingScheduleDialog,
@@ -68,6 +69,7 @@ export default function StudentDetailPage() {
     pendingId: chargePendingId,
     actionError: chargeError,
     stopCharge,
+    chargeNow,
   } = useLessonBilling(studentId);
   const {
     lessonsState,
@@ -436,6 +438,33 @@ export default function StudentDetailPage() {
         }
         onCancel={(id) => stopCharge(id, 'cancelled')}
         onWaive={(id, reason) => stopCharge(id, 'waived', reason)}
+        onRetry={(id) => chargeNow({ studentId, retryChargeId: id })}
+      />
+
+      <PrepayLessonsCard
+        student={student}
+        lessons={lessons}
+        charges={
+          billingState.status === 'success' ? billingState.data.charges : []
+        }
+        rateByLength={
+          billingState.status === 'success'
+            ? billingState.data.rateByLength
+            : {}
+        }
+        isCharging={chargePendingId !== null}
+        error={chargeError}
+        onCharge={async ({ lessonIds, amountCents, note }) => {
+          const failure = await chargeNow({
+            studentId,
+            lessonIds,
+            amountCents,
+            note,
+          });
+          // A prepaid lesson changes nothing about the lesson rows, but the
+          // charge it produced belongs on screen straight away.
+          if (!failure) await fetchLessons();
+        }}
       />
 
       <StandingScheduleCard

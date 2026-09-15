@@ -153,6 +153,23 @@ function anchorLessonFor(
  *
  * `rateResolver` prices a single lesson — it is passed in rather than imported
  * so this stays pure and the caller keeps ownership of per-student overrides.
+ *
+ * LESSONS ALREADY SPOKEN FOR ARE REMOVED BEFORE BLOCKING (#864)
+ * ------------------------------------------------------------
+ * `coveredLessonIds` carries every lesson an existing charge already covers —
+ * paid, scheduled, waived or cancelled. Those are dropped first and the blocks
+ * re-form around what is left.
+ *
+ * That is what makes a family paying ahead actually stop autopay. Blocking from
+ * the start of the whole list would otherwise put a prepayment that did not
+ * land on a block boundary straight back into a planned charge.
+ *
+ * It also closes a double-charge that has been latent since this was written.
+ * A charge's id is keyed on the first lesson it covers; cancel that lesson and
+ * the block re-forms around the next one, earning a *different* id. The
+ * `createIfAbsent` collision that normally means "already handled" never fires,
+ * and every remaining lesson in the block is charged a second time. Matching on
+ * the lessons rather than the id is immune to that.
  */
 export function planChargesForStudent(
   studentId: string,
@@ -161,10 +178,11 @@ export function planChargesForStudent(
     'id' | 'cadence' | 'lessonsPerCharge' | 'anchor' | 'anchorOffsetDays' | 'flatAmountCents'
   >,
   lessons: Array<Pick<Lesson, 'id' | 'scheduledAt' | 'status' | 'durationMinutes'>>,
-  rateResolver: (lesson: Pick<Lesson, 'durationMinutes'>) => number
+  rateResolver: (lesson: Pick<Lesson, 'durationMinutes'>) => number,
+  coveredLessonIds: ReadonlySet<string> = new Set()
 ): PlannedLessonCharge[] {
   const chargeable = lessons
-    .filter(isChargeableLesson)
+    .filter((lesson) => isChargeableLesson(lesson) && !coveredLessonIds.has(lesson.id))
     .slice()
     .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 

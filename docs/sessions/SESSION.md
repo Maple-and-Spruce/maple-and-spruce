@@ -6,6 +6,40 @@
 
 ## Current Status
 
+### Paying ahead for a block of lessons (2026-09-13, #864)
+
+Some families agree with Katie to pay for the next few lessons up front, in exchange for the
+slot being a commitment on both sides. That conversation happens at the desk, so `chargeLessonsNow`
+takes the money there and then: next N lessons by default (4), or pick them by hand.
+
+The design decision worth remembering is that a manual charge produces the **same**
+`LessonScheduledCharge` an automatic one does, already `paid` with the Square payment id on it.
+No second ledger (epic #626 decided that), so the charges screen, teacher payouts and the next
+planning run all keep working without knowing which way the money was taken. It also inherits
+the at-most-once machinery for free: the atomic `create` at the deterministic charge id **is**
+the lease, claimed *before* the payment rather than after.
+
+**A latent double-charge in autopay came out of this.** `planChargesForStudent` blocked lessons
+from the start of the whole chargeable list, so a prepayment that did not land on a block
+boundary would have been billed again automatically. Fixing that meant subtracting every lesson
+an existing charge already covers *before* blocking — and that closes a bug that has been sitting
+in the scheduled job since #798: a charge's id is keyed on its first lesson, so cancelling that
+lesson re-forms the block around a different one, earns a *different* id, and the
+`createIfAbsent` collision that normally means "already handled" never fires. Every remaining
+lesson in a paid block would have been charged a second time. Matching on lessons rather than on
+the id is immune to it. There is a regression test pinning both behaviours.
+
+`failed` is deliberately the one status that does **not** cover its lessons: nothing was
+collected, so a human retrying by hand is the intended recovery. The retry reuses the original
+idempotency key, so an attempt that actually reached Square comes back as the same payment
+instead of a second one.
+
+The Square payments mock was lying about exactly this — it minted a fresh payment per call and
+ignored idempotency keys entirely, so a double-charge bug would have passed the suite. It now
+returns the original payment for a reused key, the way real Square does, and can be told to
+decline so the failed-then-retry path is actually exercised.
+
+
 ### A one-field index froze every Firestore index deploy (2026-09-04, #826)
 
 `deploy_firestore_indexes_dev` has failed on every merge since #818 with

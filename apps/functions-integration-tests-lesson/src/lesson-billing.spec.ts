@@ -237,10 +237,14 @@ describe('Lesson billing (#798)', () => {
 
       const second = await runBilling(adminUser.idToken);
 
-      // The deterministic id collides, so nothing new is planned; and the
-      // charge is no longer `scheduled`, so nothing is taken again.
+      // Nothing new is planned and nothing is taken again. The four lessons are
+      // filtered out *before* blocking, because the paid charge already covers
+      // them (#864) — so planning never reaches the deterministic-id collision
+      // that used to be what stopped it. The covered count is what makes a
+      // steady-state run distinguishable from one that planned nothing by
+      // mistake.
       expect(second.data?.chargesPlanned).toBe(0);
-      expect(second.data?.chargesAlreadyPlanned).toBe(1);
+      expect(second.data?.lessonsAlreadyCovered).toBe(4);
       expect(second.data?.charged).toBe(0);
 
       const charges = (await billing(adminUser.idToken)).data?.charges ?? [];

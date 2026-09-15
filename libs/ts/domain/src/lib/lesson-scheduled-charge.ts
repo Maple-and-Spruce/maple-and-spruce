@@ -37,6 +37,22 @@ export const LESSON_CHARGE_TERMINAL_STATUSES: readonly LessonChargeStatus[] = [
   'waived',
 ];
 
+/**
+ * Who initiated the charge. `manual` is a human charging on the spot; anything
+ * planned by the daily job leaves this unset.
+ */
+export type LessonChargeSource = 'manual';
+
+/**
+ * The `ruleId` a manual charge carries.
+ *
+ * `ruleId` is required on every charge, and a manual one was not produced by a
+ * rule. A sentinel rather than an optional field so that every reader — the
+ * charges screen, a future payout report — still finds a value there and can
+ * say plainly where the charge came from.
+ */
+export const MANUAL_CHARGE_RULE_ID = 'manual';
+
 export interface LessonScheduledCharge {
   /** `chg-{studentId}-{firstLessonId}` — see `plannedChargeId`. */
   id: string;
@@ -55,6 +71,20 @@ export interface LessonScheduledCharge {
    */
   idempotencyKey: string;
   squarePaymentId?: string;
+  /**
+   * How the charge came about. Absent means the daily billing job planned it;
+   * `manual` means a human took it on the spot, usually a family paying ahead
+   * for a block of lessons (#864).
+   *
+   * It is the same document either way, deliberately — a manual charge is the
+   * same money for the same teaching, and a second ledger for it would split
+   * every downstream reader in two (epic #626).
+   */
+  source?: LessonChargeSource;
+  /** Who took it, when a human did. */
+  chargedByUid?: string;
+  /** What the admin said it was for, so a prepaid block stays legible. */
+  note?: string;
   /** Why it failed, surfaced to an admin rather than retried silently. */
   lastError?: string;
   /** Why it was waived, and by whom, so a comped block stays legible. */
@@ -81,4 +111,53 @@ export function isLessonChargeDue(
   now: Date = new Date()
 ): boolean {
   return charge.status === 'scheduled' && charge.dueAt.getTime() <= now.getTime();
+}
+
+/**
+ * Statuses whose charge still speaks for the lessons it names.
+ *
+ * Everything except `failed`: a scheduled or in-flight charge is about to take
+ * the money, a paid one took it, and `waived`/`cancelled` are a human saying
+ * the studio is not charging for that teaching. Re-planning any of them would
+ * bill a family for lessons already settled one way or another.
+ *
+ * `failed` is the exception on purpose. It collected nothing, so those lessons
+ * are still owed — and a human retrying by hand (#864) is exactly the intended
+ * recovery. It keeps its document and its idempotency key; the retry reuses
+ * both, so a charge that actually went through at Square comes back as the
+ * original payment rather than a second one.
+ */
+export const LESSON_CHARGE_COVERING_STATUSES: readonly LessonChargeStatus[] = [
+  'scheduled',
+  'charging',
+  'paid',
+  'waived',
+  'cancelled',
+];
+
+/** Does this charge still speak for the lessons it names? */
+export function chargeCoversItsLessons(
+  charge: Pick<LessonScheduledCharge, 'status'>
+): boolean {
+  return LESSON_CHARGE_COVERING_STATUSES.includes(charge.status);
+}
+
+/**
+ * Every lesson id already spoken for by an existing charge.
+ *
+ * This is what stops a family being billed twice for one lesson. Matching on
+ * the **lessons** rather than on the charge id matters: a block's deterministic
+ * id is keyed on its first lesson, so if that lesson is cancelled the block
+ * re-forms around a different one and earns a different id — at which point the
+ * id alone no longer recognises the overlap, but the lesson ids still do.
+ */
+export function coveredLessonIds(
+  charges: Array<Pick<LessonScheduledCharge, 'status' | 'lessonIds'>>
+): Set<string> {
+  const covered = new Set<string>();
+  for (const charge of charges) {
+    if (!chargeCoversItsLessons(charge)) continue;
+    for (const id of charge.lessonIds) covered.add(id);
+  }
+  return covered;
 }

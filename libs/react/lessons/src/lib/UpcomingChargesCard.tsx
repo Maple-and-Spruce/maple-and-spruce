@@ -54,6 +54,12 @@ export interface UpcomingChargesCardProps {
   now?: Date;
   onCancel: (chargeId: string) => void;
   onWaive: (chargeId: string, reason: string) => void;
+  /**
+   * Try a failed charge again (#864). Optional, so the lesson-billing overview
+   * can show failures without offering to charge from a screen that has no one
+   * standing in front of it.
+   */
+  onRetry?: (chargeId: string) => void;
 }
 
 function money(cents: number): string {
@@ -79,6 +85,7 @@ export function UpcomingChargesCard({
   now,
   onCancel,
   onWaive,
+  onRetry,
 }: UpcomingChargesCardProps) {
   const [waiving, setWaiving] = useState<LessonScheduledCharge | null>(null);
   const [reason, setReason] = useState('');
@@ -135,7 +142,16 @@ export function UpcomingChargesCard({
         )}
       </Box>
 
-      {canStopCharge(charge) ? (
+      {charge.status === 'failed' && onRetry ? (
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={pendingId === charge.id}
+          onClick={() => onRetry(charge.id)}
+        >
+          Try again
+        </Button>
+      ) : canStopCharge(charge) ? (
         <Stack direction="row" spacing={1}>
           <Button
             size="small"

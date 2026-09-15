@@ -28,6 +28,21 @@ let paymentLinkCounter = 0;
 /** In-memory store of created payments for get/refund lookups */
 const payments = new Map<string, Record<string, unknown>>();
 /**
+ * Payments already taken, keyed by the idempotency key that took them.
+ *
+ * Real Square returns the ORIGINAL payment when a key is reused rather than
+ * taking a second one, and that behaviour is the whole reason the lesson
+ * billing path derives a stable key from the charge id (#798, #864). A mock
+ * that quietly minted a fresh payment per call would agree with whatever the
+ * code assumed and prove nothing.
+ */
+const paymentsByIdempotencyKey = new Map<string, Record<string, unknown>>();
+/**
+ * When set, the next `POST /v2/payments` fails with this error instead of
+ * succeeding — the declined card a test cannot otherwise produce.
+ */
+let declineNextPayment: string | null = null;
+/**
  * Orders created by the hosted-checkout Payment Link route, keyed by order id.
  * Stored in Square WIRE shape (snake_case) so `GET /v2/orders/:id` can serve
  * back the `reference_id` the webhook reconciliation reads.
@@ -82,6 +97,34 @@ export function registerSquareRoutes(server: SquareMockServer): void {
   // Create payment
   server.post('/v2/payments', (req) => {
     const body = req.body as Record<string, unknown>;
+
+    const idempotencyKey = (body['idempotency_key'] ??
+      body['idempotencyKey']) as string | undefined;
+
+    // Real Square hands back the original payment for a reused key. Taking a
+    // second one here would let a double-charge bug pass the suite.
+    if (idempotencyKey) {
+      const already = paymentsByIdempotencyKey.get(idempotencyKey);
+      if (already) return { status: 200, body: { payment: already } };
+    }
+
+    if (declineNextPayment) {
+      const code = declineNextPayment;
+      declineNextPayment = null;
+      return {
+        status: 402,
+        body: {
+          errors: [
+            {
+              category: 'PAYMENT_METHOD_ERROR',
+              code,
+              detail: `Mock decline: ${code}`,
+            },
+          ],
+        },
+      };
+    }
+
     paymentCounter++;
     const paymentId = `mock-payment-${paymentCounter}`;
 
@@ -106,6 +149,7 @@ export function registerSquareRoutes(server: SquareMockServer): void {
     };
 
     payments.set(paymentId, payment);
+    if (idempotencyKey) paymentsByIdempotencyKey.set(idempotencyKey, payment);
 
     return {
       status: 200,
@@ -492,6 +536,14 @@ function registerMockControlRoutes(server: SquareMockServer): void {
     return { status: 200, body: { ok: true } };
   });
 
+  // Make the next payment fail, so a test can exercise a declined card and the
+  // retry that follows it (#864). Real Square answers 402 with an error code.
+  server.post('/_mock/decline-next-payment', (req) => {
+    const body = (req.body ?? {}) as { code?: string };
+    declineNextPayment = body.code ?? 'CARD_DECLINED';
+    return { status: 200, body: { ok: true } };
+  });
+
   // Seed cards on file, in Square wire shape, keyed by card id. This is the
   // state a card saved in the Square app leaves behind (#798).
   server.post('/_mock/cards', (req) => {
@@ -732,6 +784,8 @@ export function resetSquareState(): void {
   subscriptionCounter = 0;
   paymentLinkCounter = 0;
   payments.clear();
+  paymentsByIdempotencyKey.clear();
+  declineNextPayment = null;
   createdOrders.clear();
   subscriptions.clear();
   posFixturePayments.clear();

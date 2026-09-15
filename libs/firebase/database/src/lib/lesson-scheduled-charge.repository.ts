@@ -7,6 +7,7 @@
  * installment path — a second, subtly different implementation would mean
  * re-earning that confidence with real money.
  */
+import { FieldValue } from 'firebase-admin/firestore';
 import { db, getDb, toDate } from './utilities/database.config';
 import {
   lessonChargeIdempotencyKey,
@@ -35,6 +36,9 @@ function docToCharge(
     status: data.status,
     idempotencyKey: data.idempotencyKey,
     squarePaymentId: data.squarePaymentId,
+    source: data.source,
+    chargedByUid: data.chargedByUid,
+    note: data.note,
     lastError: data.lastError,
     waivedReason: data.waivedReason,
     waivedByUid: data.waivedByUid,
@@ -157,6 +161,33 @@ export const LessonScheduledChargeRepository = {
       const snap = await tx.get(docRef);
       if (!snap.exists || snap.data()?.status !== 'scheduled') return false;
       tx.update(docRef, { status: 'charging', updatedAt: new Date() });
+      return true;
+    });
+  },
+
+  /**
+   * Re-claim a charge that failed, so a human can retry it: `failed → charging`.
+   *
+   * Deliberately narrower than `tryClaimLease` — only a `failed` charge may be
+   * retried, and only one retry can be in flight, because the transaction lets
+   * exactly one caller through. Nothing automatic ever calls this: a failed
+   * charge waits for someone to decide it is worth trying again.
+   *
+   * The document keeps its original `idempotencyKey`. That is the point of the
+   * retry: if the first attempt actually reached Square and we only failed to
+   * record it, Square returns that same payment instead of taking a second one.
+   */
+  async tryClaimRetry(id: string): Promise<boolean> {
+    const database = getDb();
+    const docRef = database.collection(COLLECTION).doc(id);
+    return database.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.status !== 'failed') return false;
+      tx.update(docRef, {
+        status: 'charging',
+        lastError: FieldValue.delete(),
+        updatedAt: new Date(),
+      });
       return true;
     });
   },

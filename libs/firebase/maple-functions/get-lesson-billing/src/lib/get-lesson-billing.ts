@@ -9,6 +9,7 @@
 import { Functions, Role } from '@maple/firebase/functions';
 import {
   LessonBillingRuleRepository,
+  LessonRatesConfigRepository,
   LessonScheduledChargeRepository,
 } from '@maple/firebase/database';
 import type {
@@ -19,9 +20,12 @@ import type {
 export const getLessonBilling = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<GetLessonBillingRequest, GetLessonBillingResponse>(async (data) => {
-    const [rules, charges] = await Promise.all([
+    const [rules, charges, rates] = await Promise.all([
       LessonBillingRuleRepository.findAll(),
       LessonScheduledChargeRepository.findAll({ studentId: data?.studentId }),
+      // The rate table rides along so the screen can price a prepayment from
+      // the same numbers the server will charge from (#864).
+      LessonRatesConfigRepository.get(),
     ]);
-    return { rules, charges };
+    return { rules, charges, rateByLength: rates.rateByLength };
   });

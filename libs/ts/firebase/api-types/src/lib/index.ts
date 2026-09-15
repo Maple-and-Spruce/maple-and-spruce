@@ -601,6 +601,8 @@ export type {
   UpdateLessonScheduledChargeResponse,
   RunLessonBillingRequest,
   RunLessonBillingResult,
+  ChargeLessonsNowRequest,
+  ChargeLessonsNowResponse,
 } from './lesson-billing.types';
 
 export type {

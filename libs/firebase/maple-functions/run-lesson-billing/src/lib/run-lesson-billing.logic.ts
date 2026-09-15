@@ -25,7 +25,9 @@
  * human. Nothing here retries a payment on its own.
  */
 import {
+  coveredLessonIds,
   isAutoChargeEligible,
+  isChargeableLesson,
   isLessonChargeDue,
   planChargesForStudent,
   plannedChargeId,
@@ -49,6 +51,16 @@ export interface LessonBillingResult {
   skippedNoCard: number;
   /** Blocks skipped because no rate resolved for the student. */
   skippedNoRate: number;
+  /**
+   * Lessons not planned because an existing charge already covers them —
+   * usually a family who paid ahead (#864).
+   *
+   * Counted rather than left silent for the same reason `skippedNoRate` is:
+   * once covered lessons are filtered out before blocking, a steady-state run
+   * and a run where planning quietly produced nothing look identical. This is
+   * the number that tells them apart.
+   */
+  lessonsAlreadyCovered: number;
   /** True when nothing was actually charged. */
   dryRun: boolean;
 }
@@ -58,6 +70,13 @@ export interface PlanDeps {
   defaultRule?: LessonBillingRule;
   rateByLength: LessonRateByLength;
   lessonsByStudent: Map<string, Lesson[]>;
+  /**
+   * Every charge that already exists, per student — not just the scheduled
+   * ones. Planning subtracts the lessons these cover before blocking, which is
+   * what stops a family paying ahead (#864) from also being billed
+   * automatically for the same teaching.
+   */
+  chargesByStudent: Map<string, LessonScheduledCharge[]>;
   createIfAbsent: (input: {
     id: string;
     studentId: string;
@@ -97,11 +116,14 @@ export async function planCharges(
   considered: number;
   /** Students with lessons to bill but no rate that resolves. */
   skippedNoRate: number;
+  /** Lessons an existing charge already covers, so not planned again. */
+  lessonsAlreadyCovered: number;
 }> {
   let planned = 0;
   let alreadyPlanned = 0;
   let considered = 0;
   let skippedNoRate = 0;
+  let lessonsAlreadyCovered = 0;
 
   for (const student of students) {
     // Hope students are never charged — they bill through EMA (#799).
@@ -113,8 +135,19 @@ export async function planCharges(
     considered++;
 
     const lessons = deps.lessonsByStudent.get(student.id) ?? [];
-    const charges = planChargesForStudent(student.id, rule, lessons, (lesson) =>
-      resolvePrivatePayLessonRateCents(lesson, student, deps.rateByLength)
+    const covered = coveredLessonIds(
+      deps.chargesByStudent.get(student.id) ?? []
+    );
+    lessonsAlreadyCovered += lessons.filter(
+      (lesson) => isChargeableLesson(lesson) && covered.has(lesson.id)
+    ).length;
+    const charges = planChargesForStudent(
+      student.id,
+      rule,
+      lessons,
+      (lesson) =>
+        resolvePrivatePayLessonRateCents(lesson, student, deps.rateByLength),
+      covered
     );
 
     for (const charge of charges) {
@@ -142,7 +175,13 @@ export async function planCharges(
     }
   }
 
-  return { planned, alreadyPlanned, considered, skippedNoRate };
+  return {
+    planned,
+    alreadyPlanned,
+    considered,
+    skippedNoRate,
+    lessonsAlreadyCovered,
+  };
 }
 
 export interface ChargeDeps {

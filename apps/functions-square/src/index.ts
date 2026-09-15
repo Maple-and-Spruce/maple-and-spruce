@@ -99,6 +99,12 @@ export {
   triggerLessonBilling,
 } from '@maple/firebase/maple-functions/run-lesson-billing';
 
+// Paying ahead for a block of lessons (#864). Same library — same domain, same
+// Square dependency, and ADR-029 counts every library as another Cloud Run
+// service. Produces the same charge record the scheduled job would, already
+// paid, so nothing downstream has to know which way the money was taken.
+export { chargeLessonsNow } from '@maple/firebase/maple-functions/run-lesson-billing';
+
 // Linking a card Katie already saved in the Square app to a student (#798).
 // The read needs the Square SDK, so both live here rather than in maple-core.
 export { getSquareCardCandidates } from '@maple/firebase/maple-functions/get-square-card-candidates';

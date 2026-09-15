@@ -113,12 +113,44 @@ describe('planCharges', () => {
     defaultRule: standardRule,
     rateByLength: { '30-min-full': 4125 },
     lessonsByStudent: new Map([['student-1', lessons(8)]]),
+    chargesByStudent: new Map(),
     createIfAbsent,
     ...over,
   });
 
   beforeEach(() => {
     createIfAbsent = vi.fn().mockResolvedValue({ id: 'created' });
+  });
+
+  it('reports lessons an existing charge already covers, so a steady-state run is not silent', async () => {
+    // Once covered lessons are filtered out before blocking, a run where
+    // everything is already paid for plans nothing — and so does a run where
+    // planning is broken. This counter is what tells them apart.
+    const paid = {
+      id: 'chg-student-1-lesson-1',
+      studentId: 'student-1',
+      ruleId: 'manual',
+      lessonIds: ['lesson-1', 'lesson-2', 'lesson-3', 'lesson-4'],
+      amountCents: 16500,
+      dueAt: new Date(),
+      status: 'paid' as const,
+      idempotencyKey: 'lesson-chg-student-1-lesson-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await planCharges([student()], deps({
+      chargesByStudent: new Map([['student-1', [paid]]]),
+    }));
+
+    expect(result.lessonsAlreadyCovered).toBe(4);
+    expect(result.planned).toBe(1);
+    expect(createIfAbsent.mock.calls[0][0].lessonIds).toEqual([
+      'lesson-5',
+      'lesson-6',
+      'lesson-7',
+      'lesson-8',
+    ]);
   });
 
   it('plans one charge per block at the resolved rate', async () => {
