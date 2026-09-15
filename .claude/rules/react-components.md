@@ -1,6 +1,7 @@
 ---
 globs:
   - "libs/react/**"
+  - "apps/maple-spruce/src/app/**"
   - "apps/maple-spruce/src/components/**"
   - "apps/maple-spruce/src/hooks/**"
 ---
@@ -68,6 +69,29 @@ Brand colors for reference (use through MUI theme only):
 - Use Preact Signals for form state (see ADR-015)
 - Use `RequestState<T>` for async state - never use boolean `isLoading`
 - See `libs/ts/domain/src/lib/request-state.ts`
+
+## Loading States Are First-Class
+
+Every surface that shows fetched data renders **four** states, and "not known
+yet" is never drawn as "none":
+
+| `RequestState` | Render |
+|---|---|
+| `idle` / `loading` | a skeleton shaped like the content (MUI `Skeleton`), with `aria-busy` |
+| `error` | an error `Alert` saying what failed to load |
+| `success`, empty | the empty-state message |
+| `success`, data | the content |
+
+- **Pass the state, not `data ?? []`.** A component handed only an array cannot
+  tell loading from empty, so it shows the empty message during every load —
+  the student page said "No standing schedule" for everyone until the fetch
+  landed. Take `xState: RequestState<T>` as the prop (see `LessonList`,
+  `StandingScheduleCard`).
+- **`idle` is not empty.** Hooks start `idle` before they fetch.
+- **Don't offer actions that depend on what exists** (add, bulk edit) until it
+  has loaded — adding before existing records are known invites duplicates.
+- **Cover it in stories:** a `Loading` and an error story with `play` asserting
+  the empty message is absent.
 
 ## Data Access
 

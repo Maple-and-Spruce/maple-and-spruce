@@ -21,18 +21,28 @@ import {
   Chip,
   CircularProgress,
   Paper,
+  Skeleton,
   Stack,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import EventRepeatIcon from '@mui/icons-material/EventRepeat';
-import type { Instructor, StudentLessonSchedule } from '@maple/ts/domain';
+import type {
+  Instructor,
+  RequestState,
+  StudentLessonSchedule,
+} from '@maple/ts/domain';
 import { SCHEDULE_TIME_ZONE, WEEKDAY_LONG } from '@maple/ts/domain';
 import { formatMinutes } from './block-format';
 
 export interface StandingScheduleCardProps {
-  schedules: StudentLessonSchedule[];
+  /**
+   * The whole request, not just its data. Handed only an array, the card could
+   * not tell "still loading" from "has none", and said "No standing schedule"
+   * for every student until the fetch landed.
+   */
+  schedulesState: RequestState<StudentLessonSchedule[]>;
   instructors: Instructor[];
   /** Id of the schedule currently saving, if any. */
   pendingId?: string | null;
@@ -63,7 +73,7 @@ function formatDate(d: Date): string {
 }
 
 export function StandingScheduleCard({
-  schedules,
+  schedulesState,
   instructors,
   pendingId = null,
   onAdd,
@@ -72,6 +82,14 @@ export function StandingScheduleCard({
 }: StandingScheduleCardProps) {
   const teacherName = (id: string) =>
     instructors.find((i) => i.id === id)?.name ?? 'Unassigned';
+
+  // Only a finished request says anything about what exists. Until then the
+  // card must not claim "none", and must not offer to add one: adding before
+  // the existing arrangements are known invites a duplicate slot.
+  const loaded = schedulesState.status === 'success';
+  const pending =
+    schedulesState.status === 'idle' || schedulesState.status === 'loading';
+  const schedules = loaded ? schedulesState.data : [];
 
   const active = schedules.filter((s) => s.status === 'active');
   const ended = schedules.filter((s) => s.status === 'ended');
@@ -94,12 +112,35 @@ export function StandingScheduleCard({
             Standing schedule
           </Typography>
         </Stack>
-        <Button size="small" startIcon={<AddIcon />} onClick={onAdd}>
+        <Button
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={onAdd}
+          disabled={!loaded}
+        >
           Add a standing slot
         </Button>
       </Box>
 
-      {active.length === 0 && (
+      {pending && (
+        <Stack
+          spacing={0.5}
+          sx={{ mt: 2 }}
+          aria-busy="true"
+          aria-label="Loading standing schedule"
+        >
+          <Skeleton variant="text" width="55%" height={28} />
+          <Skeleton variant="text" width="30%" />
+        </Stack>
+      )}
+
+      {schedulesState.status === 'error' && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          Could not load the standing schedule: {schedulesState.error}
+        </Alert>
+      )}
+
+      {loaded && active.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
           No standing schedule. Lessons for this student have to be created one
           at a time, and nothing keeps them on the books.

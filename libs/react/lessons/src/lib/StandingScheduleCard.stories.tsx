@@ -5,7 +5,7 @@ import {
   mockInstructor,
   mockInstructor2,
 } from '@maple/react/storybook-fixtures';
-import type { StudentLessonSchedule } from '@maple/ts/domain';
+import type { RequestState, StudentLessonSchedule } from '@maple/ts/domain';
 
 const instructors = [mockInstructor, mockInstructor2];
 
@@ -29,12 +29,18 @@ function schedule(
   };
 }
 
+function loaded(
+  data: StudentLessonSchedule[],
+): RequestState<StudentLessonSchedule[]> {
+  return { status: 'success', data };
+}
+
 const meta = {
   component: StandingScheduleCard,
   title: 'Lessons/StandingScheduleCard',
   parameters: { layout: 'padded' },
   args: {
-    schedules: [schedule()],
+    schedulesState: loaded([schedule()]),
     instructors,
     pendingId: null,
     onAdd: fn(),
@@ -75,7 +81,7 @@ export const ChangeIsOneAction: Story = {
  * the one whose lessons quietly run out.
  */
 export const NoStandingSchedule: Story = {
-  args: { schedules: [] },
+  args: { schedulesState: loaded([]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
@@ -85,12 +91,62 @@ export const NoStandingSchedule: Story = {
 };
 
 /**
+ * While the arrangements load, the card says so — it does not claim there are
+ * none. It used to show "No standing schedule" for every student until the
+ * fetch landed, which reads as a fact about the student, not a pause.
+ */
+export const Loading: Story = {
+  args: { schedulesState: { status: 'loading' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      await canvas.findByLabelText(/loading standing schedule/i),
+    ).toBeInTheDocument();
+    expect(canvas.queryByText(/no standing schedule/i)).toBeNull();
+    // Adding before we know what exists invites a duplicate slot.
+    expect(
+      canvas.getByRole('button', { name: /add a standing slot/i }),
+    ).toBeDisabled();
+  },
+};
+
+/** Before the fetch starts is still "not known yet", not "none". */
+export const NotYetRequested: Story = {
+  args: { schedulesState: { status: 'idle' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      await canvas.findByLabelText(/loading standing schedule/i),
+    ).toBeInTheDocument();
+    expect(canvas.queryByText(/no standing schedule/i)).toBeNull();
+  },
+};
+
+/** A failed load says it failed, rather than passing for an empty schedule. */
+export const FailedToLoad: Story = {
+  args: {
+    schedulesState: { status: 'error', error: 'Network unavailable' },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      await canvas.findByText(/could not load the standing schedule/i),
+    ).toBeInTheDocument();
+    expect(canvas.getByText(/network unavailable/i)).toBeInTheDocument();
+    expect(canvas.queryByText(/no standing schedule\./i)).toBeNull();
+    expect(
+      canvas.getByRole('button', { name: /add a standing slot/i }),
+    ).toBeDisabled();
+  },
+};
+
+/**
  * An ended arrangement stays visible as history rather than vanishing — that is
  * how a slot handed from one student to another reads correctly.
  */
 export const EndedArrangementShownAsHistory: Story = {
   args: {
-    schedules: [
+    schedulesState: loaded([
       schedule(),
       schedule({
         id: 'sched-old',
@@ -98,7 +154,7 @@ export const EndedArrangementShownAsHistory: Story = {
         startMinutes: 13 * 60,
         endsOn: new Date('2026-05-26T00:00:00Z'),
       }),
-    ],
+    ]),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -114,7 +170,10 @@ export const EndedArrangementShownAsHistory: Story = {
 /** Saving one arrangement must not freeze the others (#805's pattern). */
 export const SavingOneSlot: Story = {
   args: {
-    schedules: [schedule(), schedule({ id: 'sched-2', startMinutes: 17 * 60 })],
+    schedulesState: loaded([
+      schedule(),
+      schedule({ id: 'sched-2', startMinutes: 17 * 60 }),
+    ]),
     pendingId: 'sched-1',
   },
   play: async ({ canvasElement }) => {

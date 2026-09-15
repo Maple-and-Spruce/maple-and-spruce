@@ -462,9 +462,7 @@ export default function StudentDetailPage() {
       />
 
       <StandingScheduleCard
-        schedules={
-          schedulesState.status === 'success' ? schedulesState.data : []
-        }
+        schedulesState={schedulesState}
         instructors={instructors}
         pendingId={schedulePendingId}
         onAdd={() => {
