@@ -23,6 +23,8 @@ import type {
   CreateStudentLessonScheduleResponse,
   GetLessonBlocksRequest,
   GetLessonBlocksResponse,
+  UpdateStudentLessonScheduleRequest,
+  UpdateStudentLessonScheduleResponse,
 } from '@maple/ts/firebase/api-types';
 
 const TEACHER_ID = 'instructor-derive-blocks';
@@ -300,4 +302,116 @@ describe('Deriving lesson blocks from scheduling (#835)', () => {
     expect(result.status).toBe(400);
     expect(JSON.stringify(result.error)).toMatch(/no longer be extended/i);
   }, 60000);
+
+  describe('a standing arrangement just past its block', () => {
+    const scheduleStudentId = 'student-derive-blocks-standing';
+    let scheduleId: string;
+
+    beforeAll(async () => {
+      await setFirestoreDoc('students', scheduleStudentId, {
+        name: 'Test Student',
+        instrument: 'fiddle',
+        isAdultStudent: false,
+        primaryTeacherId: TEACHER_ID,
+        isHopeScholarship: false,
+        primaryContactName: 'Test Parent',
+        primaryContactEmail: 'parent@example.com',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }, 30000);
+
+    it('is created by widening the weekly block', async () => {
+      const before = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
+      const weekly = before.find((b) => !b.onDate && b.dayOfWeek === 2);
+      expect(weekly).toBeDefined();
+
+      // Starts where the weekly window ends — the "Extend Tuesdays" case.
+      const startMinutes = weekly!.endMinutes;
+      const result = await callFunction<
+        CreateStudentLessonScheduleRequest,
+        CreateStudentLessonScheduleResponse
+      >({
+        functionName: 'createStudentLessonSchedule',
+        data: {
+          studentId: scheduleStudentId,
+          teacherId: TEACHER_ID,
+          blockId: '',
+          dayOfWeek: 2,
+          startMinutes,
+          durationMinutes: 30,
+          startsOn: nextTuesday(12),
+          blockStrategy: {
+            mode: 'extend',
+            blockId: weekly!.id,
+            scope: 'weekly',
+          },
+        } as CreateStudentLessonScheduleRequest,
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.schedule.blockId).toBe(weekly!.id);
+      expect(result.data?.schedule.dayOfWeek).toBe(2);
+      scheduleId = result.data!.schedule.id;
+
+      const after = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
+      expect(after.find((b) => b.id === weekly!.id)?.endMinutes).toBe(
+        startMinutes + 30
+      );
+    }, 60000);
+
+    it('is CHANGED to a later time by widening the block again', async () => {
+      // The dialog offers the same way through when editing. The update used
+      // to drop the choice and fail the fit check, so this never saved.
+      const before = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
+      const weekly = before.find((b) => !b.onDate && b.dayOfWeek === 2);
+      const startMinutes = weekly!.endMinutes;
+
+      const result = await callFunction<
+        UpdateStudentLessonScheduleRequest,
+        UpdateStudentLessonScheduleResponse
+      >({
+        functionName: 'updateStudentLessonSchedule',
+        data: {
+          id: scheduleId,
+          blockId: '',
+          dayOfWeek: 2,
+          startMinutes,
+          blockStrategy: {
+            mode: 'extend',
+            blockId: weekly!.id,
+            scope: 'weekly',
+          },
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.schedule.blockId).toBe(weekly!.id);
+      expect(result.data?.schedule.startMinutes).toBe(startMinutes);
+      // An instruction for the save, not a field of the arrangement.
+      expect(result.data?.schedule).not.toHaveProperty('blockStrategy');
+
+      const after = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
+      expect(after.find((b) => b.id === weekly!.id)?.endMinutes).toBe(
+        startMinutes + 30
+      );
+    }, 60000);
+
+    it('still refuses a changed time outside the block with no choice made', async () => {
+      const before = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
+      const weekly = before.find((b) => !b.onDate && b.dayOfWeek === 2);
+
+      const result = await callFunction<UpdateStudentLessonScheduleRequest>({
+        functionName: 'updateStudentLessonSchedule',
+        data: { id: scheduleId, startMinutes: weekly!.endMinutes },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(400);
+      expect(JSON.stringify(result.error)).toMatch(/outside the selected block/i);
+    }, 60000);
+  });
 });

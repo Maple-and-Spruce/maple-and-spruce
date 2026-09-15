@@ -40,7 +40,13 @@ export interface CreateStudentLessonScheduleResponse {
 }
 
 export type UpdateStudentLessonScheduleRequest =
-  UpdateStudentLessonScheduleInput;
+  UpdateStudentLessonScheduleInput & {
+    /**
+     * How to make room when a changed time falls outside every block (#835).
+     * The same choice the dialog offers on create; never stored.
+     */
+    blockStrategy?: BlockStrategy;
+  };
 
 export interface UpdateStudentLessonScheduleResponse {
   schedule: StudentLessonSchedule;

@@ -7,7 +7,6 @@ import type {
   CreateStudentLessonScheduleInput,
   RequestState,
   StudentLessonSchedule,
-  UpdateStudentLessonScheduleInput,
 } from '@maple/ts/domain';
 import type {
   CreateStudentLessonScheduleRequest,
@@ -86,7 +85,7 @@ export function useStudentLessonSchedules(studentId?: string) {
   );
 
   const updateSchedule = useCallback(
-    async (input: UpdateStudentLessonScheduleInput): Promise<void> => {
+    async (input: UpdateStudentLessonScheduleRequest): Promise<void> => {
       setPendingId(input.id);
       try {
         const fn = httpsCallable<

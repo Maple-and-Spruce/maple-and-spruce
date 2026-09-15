@@ -1,5 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
+import {
+  fn,
+  expect,
+  fireEvent,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 import { StandingScheduleDialog } from './StandingScheduleDialog';
 import {
   mockInstructor,
@@ -295,5 +302,134 @@ export const SaysNothingWhenABlockAlreadyFits: Story = {
     const canvas = within(canvasElement.ownerDocument.body);
     await canvas.findByRole('button', { name: /save change/i });
     expect(canvas.queryByText(/no block covers this time/i)).toBeNull();
+  },
+};
+
+// ============================================================
+// A new slot with no block picked saves the weekday it was offered
+// ============================================================
+
+/**
+ * Fill in a brand-new slot the way Katie did: no block picked from the list, a
+ * Tuesday start date, and a time just past the Tuesday block.
+ */
+async function fillNewTuesdaySlotPastTheBlock(
+  canvas: ReturnType<typeof within>
+): Promise<void> {
+  // 2026-09-08 is a Tuesday. Set outright: the default is today, whose weekday
+  // depends on when the test runs.
+  fireEvent.change(canvas.getByLabelText(/starting/i), {
+    target: { value: '2026-09-08' },
+  });
+  const time = canvas.getByLabelText(/start time/i);
+  await userEvent.clear(time);
+  await userEvent.type(time, '18:00'); // block ends at 18:00
+  await canvas.findByText(/no block covers this time/i);
+}
+
+/**
+ * The offer said "Extend Tuesdays", so Tuesday is what is sent. With no block
+ * picked this used to fall back to weekday 0, and the server — planning from
+ * a Sunday — could not find the Tuesday block it had been asked to extend.
+ */
+export const ExtendingSavesTheOfferedWeekday: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await fillNewTuesdaySlotPastTheBlock(canvas);
+
+    await userEvent.click(
+      await canvas.findByRole('radio', { name: /Extend Tuesdays to/i })
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /add slot/i }));
+
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.dayOfWeek).toBe(2);
+    expect(input.blockStrategy).toMatchObject({
+      mode: 'extend',
+      blockId: 'block-1',
+      scope: 'weekly',
+    });
+  },
+};
+
+/**
+ * The same fall-back on "Add a new Tuesday block" derived a Sunday block and
+ * put every lesson on Sundays.
+ */
+export const AddingABlockSavesTheOfferedWeekday: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await fillNewTuesdaySlotPastTheBlock(canvas);
+
+    await userEvent.click(
+      await canvas.findByRole('radio', { name: /Add a new Tuesday block/i })
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /add slot/i }));
+
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.dayOfWeek).toBe(2);
+    expect(input.blockStrategy).toEqual({ mode: 'create' });
+  },
+};
+
+/**
+ * A picked block decides the weekday, not the start date. Starting on a Monday
+ * with the Tuesday block chosen plans — and offers — Tuesdays.
+ */
+export const APickedBlockDecidesTheWeekday: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByLabelText('Which block'));
+    await userEvent.click(
+      await canvas.findByRole('option', { name: /Tuesday afternoons/i })
+    );
+    fireEvent.change(canvas.getByLabelText(/starting/i), {
+      target: { value: '2026-09-07' }, // a Monday
+    });
+    const time = canvas.getByLabelText(/start time/i);
+    await userEvent.clear(time);
+    await userEvent.type(time, '18:00');
+
+    expect(await canvas.findByText(/Extend Tuesdays to/i)).toBeTruthy();
+    expect(canvas.queryByText(/Monday/i)).toBeNull();
+  },
+};
+
+/**
+ * A choice made while nothing fit is dropped once the time moves back inside
+ * the block. Sending it anyway asks the server to widen a block that already
+ * fits, which it refuses.
+ */
+export const DropsAStaleChoiceOnceTheTimeFitsAgain: Story = {
+  args: {
+    schedule: {
+      ...existing,
+      startMinutes: 18 * 60,
+      durationMinutes: 30,
+    } as StudentLessonSchedule,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(
+      await canvas.findByRole('radio', { name: /Extend Tuesdays to/i })
+    );
+    const time = canvas.getByLabelText(/start time/i);
+    await userEvent.clear(time);
+    await userEvent.type(time, '16:00'); // inside 15:00–18:00
+
+    await waitFor(() =>
+      expect(canvas.queryByText(/no block covers this time/i)).toBeNull()
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /save change/i }));
+
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledTimes(1));
+    const [input] = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0];
+    expect(input.blockStrategy).toBeUndefined();
+    expect(input.blockId).toBe('block-1');
+    expect(input.dayOfWeek).toBe(2);
   },
 };

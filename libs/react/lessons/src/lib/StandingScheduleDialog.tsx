@@ -44,6 +44,8 @@ import {
   WEEKDAY_LONG,
   cadenceLabel,
   cadencePhrase,
+  scheduleHorizonEnd,
+  scheduleOccurrences,
   weekdayIndexInZone,
   zonedDateKey,
   zonedWallClockToInstant,
@@ -148,6 +150,21 @@ export function StandingScheduleDialog({
 
   const block = teacherBlocks.find((b) => b.id === blockId);
   const startMinutes = fromTimeValue(time);
+  const startDate = useMemo(() => fromDateValue(startsOn), [startsOn]);
+
+  // The weekday this arrangement is for. A chosen block already is one, and an
+  // arrangement being changed keeps its own; only a new slot with no block
+  // picked has nothing but the start date to go on.
+  //
+  // Never a default. This was once `block?.dayOfWeek ?? 0` at save time, so a
+  // new slot whose block was being extended or created — none picked from the
+  // list — saved as weekday 0, Sunday, while the offer on screen said Tuesday.
+  const dayOfWeek =
+    block?.dayOfWeek ??
+    schedule?.dayOfWeek ??
+    (Number.isNaN(startDate.getTime())
+      ? undefined
+      : weekdayIndexInZone(startDate, SCHEDULE_TIME_ZONE));
 
   // The same rule the server enforces, shown before saving rather than after.
   const fitsBlock =
@@ -156,17 +173,26 @@ export function StandingScheduleDialog({
     startMinutes + durationMinutes <= block.endMinutes;
 
   // What could be done about a time no block covers (#835). Computed from the
-  // same pure function the server uses to validate the choice, so the dialog
-  // can never offer something the server would then refuse.
-  //
-  // Built from the start DATE and the start TIME together. `fromDateValue`
-  // alone lands at midday, which would plan around the wrong hour entirely —
-  // A 6pm slot would be judged against noon.
+  // same pure function the server uses to validate the choice, and from the
+  // same occurrence the server plans from — the first `dayOfWeek` on or after
+  // the start date, at the start time — so the weekday named in the offer is
+  // the weekday that gets saved, and the dialog can never offer something the
+  // server would then refuse.
   const firstOccurrence = useMemo(() => {
-    const [y, m, d] = startsOn.split('-').map(Number);
-    if (!y || !m || !d) return new Date(NaN);
-    return zonedWallClockToInstant(y, m, d, startMinutes, SCHEDULE_TIME_ZONE);
-  }, [startsOn, startMinutes]);
+    if (dayOfWeek === undefined) return new Date(NaN);
+    const [first] = scheduleOccurrences(
+      {
+        dayOfWeek,
+        startMinutes,
+        intervalWeeks,
+        startsOn: startDate,
+        status: 'active',
+      },
+      startDate,
+      scheduleHorizonEnd(startDate, 3)
+    );
+    return first ?? new Date(NaN);
+  }, [dayOfWeek, startMinutes, intervalWeeks, startDate]);
   const plan = useMemo(
     () =>
       teacherId
@@ -180,13 +206,19 @@ export function StandingScheduleDialog({
     [blocks, teacherId, firstOccurrence, durationMinutes]
   );
 
-  const weekday = weekdayIndexInZone(firstOccurrence, SCHEDULE_TIME_ZONE);
+  const usesExistingBlock = Boolean(blockId) && fitsBlock;
+  // A way to make room only counts while nothing covers the time. One picked
+  // before the time was moved back inside a block is stale, and the server
+  // would refuse to widen a block that already fits.
+  const offerChoice = !usesExistingBlock && plan !== undefined && !plan.fits;
+  const activeStrategy = offerChoice ? blockStrategy : undefined;
 
   // Either an existing block already fits, or a way to make room was chosen.
   // Nothing else can be saved, because the server would refuse it.
   const canSubmit =
     Boolean(teacherId) &&
-    ((Boolean(blockId) && fitsBlock) || Boolean(blockStrategy)) &&
+    dayOfWeek !== undefined &&
+    (usesExistingBlock || Boolean(activeStrategy)) &&
     !isSubmitting;
 
   return (
@@ -300,10 +332,10 @@ export function StandingScheduleDialog({
           {/* No longer a dead end (#835). If nothing covers this time, offer
               the widening or the new block that would — Katie used to have to
               leave, edit the block on another page, and come back. */}
-          {plan && !plan.fits && (
+          {offerChoice && dayOfWeek !== undefined && (
             <BlockAttributionChoice
               plan={plan}
-              weekday={weekday}
+              weekday={dayOfWeek}
               recurring
               value={blockStrategy}
               onChange={setBlockStrategy}
@@ -328,21 +360,22 @@ export function StandingScheduleDialog({
         <Button
           variant="contained"
           disabled={!canSubmit}
-          onClick={() =>
+          onClick={() => {
+            if (dayOfWeek === undefined) return;
             onSubmit({
               teacherId,
               intervalWeeks,
-              blockStrategy,
-              blockId,
-              // The block already is a weekday; asking twice invites them to
-              // disagree, and the server would reject the result.
-              dayOfWeek: block?.dayOfWeek ?? 0,
+              blockStrategy: activeStrategy,
+              // A block being widened or created is resolved on the server; a
+              // picked block that does not fit is not the one to attribute to.
+              blockId: usesExistingBlock ? blockId : '',
+              dayOfWeek,
               startMinutes,
               durationMinutes,
               room: schedule?.room,
-              startsOn: fromDateValue(startsOn),
-            })
-          }
+              startsOn: startDate,
+            });
+          }}
         >
           {isSubmitting ? 'Saving…' : schedule ? 'Save change' : 'Add slot'}
         </Button>
