@@ -30,7 +30,10 @@ import {
   StudentForm,
   StudentList,
 } from '@maple/react/students';
-import { ScheduleLessonDialog } from '@maple/react/lessons';
+import {
+  NeedsAttentionPanel,
+  ScheduleLessonDialog,
+} from '@maple/react/lessons';
 import { InvoiceBuilderDialog } from '@maple/react/invoices';
 import {
   useInstructors,
@@ -38,6 +41,7 @@ import {
   useLessonBlocks,
   useLessonInquiries,
   useLessons,
+  useNeedsAttention,
   useStudents,
 } from '../../../hooks';
 
@@ -156,6 +160,13 @@ export default function StudentsPage() {
     updateStudent,
     deleteStudent: deleteStudentApi,
   } = useStudents();
+  // Inline fixes go through this page's updateStudent, so the table row is
+  // patched in place rather than left stale behind the panel.
+  const {
+    attentionState,
+    resolveRow: resolveAttentionRow,
+    resolving: attentionResolving,
+  } = useNeedsAttention({ updateStudent });
   const { instructorsState } = useInstructors();
   // All lessons — the table derives each student's recurring day/time slot
   // from their scheduled lessons. The roster is small, so one unscoped fetch
@@ -324,6 +335,18 @@ export default function StudentsPage() {
           Add at least one instructor before creating student records — every
           student needs a primary teacher.
         </Alert>
+      )}
+
+      {/* Collapsed to a one-line count; renders nothing when clear (#807). */}
+      {attentionState.status === 'success' && (
+        <NeedsAttentionPanel
+          groups={attentionState.data.groups}
+          total={attentionState.data.total}
+          scopedToSelf={attentionState.data.scopedToSelf}
+          resolving={attentionResolving}
+          onResolve={resolveAttentionRow}
+          defaultExpanded={false}
+        />
       )}
 
       <Box sx={{ mb: 2 }}>

@@ -178,3 +178,36 @@ export const SaysWhenScopedToOneTeacher: Story = {
     ).toBeInTheDocument();
   },
 };
+
+/**
+ * On the dashboard and above the student table the panel is a side note, not
+ * the point of the page: it starts as one line with a count, and the groups
+ * are one click away.
+ */
+export const StartsCollapsed: Story = {
+  args: { defaultExpanded: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = canvas.getByRole('button', {
+      name: /expand needs attention/i,
+    });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(canvas.getByText(/7 things/i)).toBeVisible();
+    expect(
+      canvas.queryByRole('button', { name: /never reached square/i })
+    ).toBeNull();
+
+    await userEvent.click(toggle);
+
+    expect(
+      await canvas.findByRole('button', {
+        name: /collapse needs attention/i,
+      })
+    ).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => {
+      expect(
+        canvas.getByRole('button', { name: /never reached square/i })
+      ).toBeVisible();
+    });
+  },
+};

@@ -26,16 +26,33 @@ export interface NeedsAttentionData {
  *
  * `resolving` is a set of row ids rather than a page-wide flag, so fixing one
  * row does not freeze the rest (the pattern from #805).
+ *
+ * `updateStudent` lets a page that also shows the roster (the student table)
+ * route the inline fix through its own `useStudents().updateStudent`, so the
+ * row it is displaying — and would otherwise save back from a stale edit form —
+ * is patched in place instead of left saying automatic invoicing is off.
  */
-export function useNeedsAttention(options: { autoFetch?: boolean } = {}) {
-  const { autoFetch = true } = options;
+export function useNeedsAttention(
+  options: {
+    autoFetch?: boolean;
+    updateStudent?: (input: {
+      id: string;
+      autoInvoice: boolean;
+    }) => Promise<unknown>;
+  } = {}
+) {
+  const { autoFetch = true, updateStudent } = options;
   const [attentionState, setAttentionState] = useState<
     RequestState<NeedsAttentionData>
   >({ status: 'idle' });
   const [resolving, setResolving] = useState<Set<string>>(new Set());
 
   const fetchAttention = useCallback(async () => {
-    setAttentionState({ status: 'loading' });
+    // Refresh behind the panel once it has loaded. Dropping back to `loading`
+    // unmounts it, which re-folds a collapsed panel after every inline fix.
+    setAttentionState((prev) =>
+      prev.status === 'success' ? prev : { status: 'loading' }
+    );
     try {
       const fn = httpsCallable<
         GetNeedsAttentionRequest,
@@ -71,11 +88,15 @@ export function useNeedsAttention(options: { autoFetch?: boolean } = {}) {
       setResolving((prev) => new Set(prev).add(row.id));
       try {
         if (row.kind === 'student-autoinvoice-off') {
-          const fn = httpsCallable<UpdateStudentRequest, UpdateStudentResponse>(
-            getMapleFunctions(),
-            'updateStudent'
-          );
-          await fn({ id: row.id, autoInvoice: true });
+          if (updateStudent) {
+            await updateStudent({ id: row.id, autoInvoice: true });
+          } else {
+            const fn = httpsCallable<
+              UpdateStudentRequest,
+              UpdateStudentResponse
+            >(getMapleFunctions(), 'updateStudent');
+            await fn({ id: row.id, autoInvoice: true });
+          }
         }
         await fetchAttention();
       } finally {
@@ -86,7 +107,7 @@ export function useNeedsAttention(options: { autoFetch?: boolean } = {}) {
         });
       }
     },
-    [fetchAttention]
+    [fetchAttention, updateStudent]
   );
 
   useEffect(() => {

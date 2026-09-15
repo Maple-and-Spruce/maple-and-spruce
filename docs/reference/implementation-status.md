@@ -259,6 +259,7 @@ a weekly window a teacher's lessons must fall inside.
 | **Openings tab — open chunks within blocks, read-only (#687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
 | Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
 | My Day page (Today / Week / Openings tabs) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx` |
+| Needs Attention panel placement — collapsed on the dashboard and above the student table, not on My Day | **Complete** | `apps/maple-spruce/src/app/(admin)/page.tsx`, `apps/maple-spruce/src/app/(admin)/students/page.tsx` |
 
 ### Lesson Scheduling (#279, Complete)
 

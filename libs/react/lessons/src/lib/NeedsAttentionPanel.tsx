@@ -53,6 +53,12 @@ export interface NeedsAttentionPanelProps {
   resolving?: Set<string>;
   /** Fix an `inline` row. Currently only "turn on automatic invoicing". */
   onResolve?: (row: NeedsAttentionRow) => void;
+  /**
+   * Start folded down to its one-line header. Pages where the panel is a side
+   * note rather than the point (the dashboard, the student table) pass
+   * `false`, so it announces a count without pushing the page down.
+   */
+  defaultExpanded?: boolean;
 }
 
 /** Only the top group is open by default — the rest are one click away. */
@@ -195,42 +201,61 @@ export function NeedsAttentionPanel({
   scopedToSelf = false,
   resolving = new Set(),
   onResolve,
+  defaultExpanded = true,
 }: NeedsAttentionPanelProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
   // Renders nothing at all when there is nothing to do. See the header comment:
   // a panel that is usually empty is worse than no panel.
   if (total === 0 || groups.length === 0) return null;
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Stack
-        direction="row"
-        alignItems="baseline"
-        spacing={1}
-        sx={{ mb: 1, flexWrap: 'wrap' }}
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+        onClick={() => setExpanded((v) => !v)}
       >
-        <Typography variant="h6">Needs attention</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {total} thing{total === 1 ? '' : 's'}
-        </Typography>
-      </Stack>
+        <Stack
+          direction="row"
+          alignItems="baseline"
+          spacing={1}
+          sx={{ flex: 1, flexWrap: 'wrap' }}
+        >
+          <Typography variant="h6">Needs attention</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {total} thing{total === 1 ? '' : 's'}
+          </Typography>
+        </Stack>
+        <IconButton
+          size="small"
+          aria-label={`${expanded ? 'Collapse' : 'Expand'} needs attention`}
+          aria-expanded={expanded}
+        >
+          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
 
-      {scopedToSelf && (
-        <Alert severity="info" sx={{ mb: 1, py: 0 }}>
-          Showing only your own students.
-        </Alert>
-      )}
+      <Collapse in={expanded}>
+        <Box sx={{ mt: 1 }}>
+          {scopedToSelf && (
+            <Alert severity="info" sx={{ mb: 1, py: 0 }}>
+              Showing only your own students.
+            </Alert>
+          )}
 
-      <Stack divider={<Divider flexItem />}>
-        {groups.map((group, i) => (
-          <Group
-            key={group.kind}
-            group={group}
-            defaultOpen={isInitiallyOpen(i)}
-            resolving={resolving}
-            onResolve={onResolve}
-          />
-        ))}
-      </Stack>
+          <Stack divider={<Divider flexItem />}>
+            {groups.map((group, i) => (
+              <Group
+                key={group.kind}
+                group={group}
+                defaultOpen={isInitiallyOpen(i)}
+                resolving={resolving}
+                onResolve={onResolve}
+              />
+            ))}
+          </Stack>
+        </Box>
+      </Collapse>
     </Paper>
   );
 }

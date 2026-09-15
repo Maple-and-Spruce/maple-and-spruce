@@ -433,7 +433,8 @@ export default function DashboardPage() {
         Dashboard
       </Typography>
 
-      {/* Renders nothing when nothing needs attention — see #807. */}
+      {/* Renders nothing when nothing needs attention — see #807. Starts
+          collapsed: a count on the dashboard, the detail one click away. */}
       {attentionState.status === 'success' && (
         <NeedsAttentionPanel
           groups={attentionState.data.groups}
@@ -441,6 +442,7 @@ export default function DashboardPage() {
           scopedToSelf={attentionState.data.scopedToSelf}
           resolving={resolving}
           onResolve={resolveRow}
+          defaultExpanded={false}
         />
       )}
 
