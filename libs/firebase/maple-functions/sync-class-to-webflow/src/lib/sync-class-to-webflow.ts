@@ -41,6 +41,56 @@ const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) =>
 );
 
 /**
+ * Class fields a Webflow CMS card actually renders.
+ *
+ * Mirrors `SQUARE_RELEVANT_FIELDS` in `syncClassToSquare`. Without this guard
+ * the trigger re-runs the whole enrich-and-push on EVERY write to the class
+ * document — including `syncClassToSquare`'s own `updateSquareSyncIds`
+ * write-back, which lands while this trigger's first invocation is still in
+ * flight and has not yet stored `webflowItemId`. Both invocations then look
+ * the item up, both miss, and both create one: two CMS items for one class,
+ * and whichever loses the write-back is orphaned and never updated again.
+ *
+ * `registrationCount` is deliberately absent — it lives on the registrations
+ * collection and is `syncRegistrationCount`'s job, not a field on this doc.
+ */
+const WEBFLOW_RELEVANT_FIELDS: ReadonlyArray<keyof Class> = [
+  'name',
+  'description',
+  'shortDescription',
+  'sessions',
+  'durationMinutes',
+  'registrationClosesAt',
+  'capacity',
+  'priceCents',
+  'imageUrl',
+  'galleryImages',
+  'instructorId',
+  'categoryId',
+  'skillLevel',
+  'status',
+  'location',
+  'materialsIncluded',
+  'whatToBring',
+  'minimumAge',
+];
+
+/**
+ * Whether a write touched anything the CMS card shows. A create or a delete
+ * always counts. Compared by value, since `sessions` and `galleryImages` are
+ * arrays that are rebuilt on every read.
+ */
+export function isWebflowRelevantChange(
+  before: Class | null,
+  after: Class | null
+): boolean {
+  if (!before || !after) return true;
+  return WEBFLOW_RELEVANT_FIELDS.some(
+    (field) => JSON.stringify(before[field]) !== JSON.stringify(after[field])
+  );
+}
+
+/**
  * Resolve the Webflow item ID for a class's category, creating the Webflow
  * item on demand if it doesn't have one yet.
  *
@@ -183,6 +233,14 @@ export const syncClassToWebflow = onDocumentWritten(
         ? { name: afterClass.name, status: afterClass.status }
         : null,
     });
+
+    // Bail before constructing the Webflow client — a write that changes
+    // nothing the card renders must not re-enter this sync concurrently with
+    // the invocation still handling the real edit. See WEBFLOW_RELEVANT_FIELDS.
+    if (!isWebflowRelevantChange(beforeClass, afterClass)) {
+      console.log('No Webflow-relevant field changed, skipping sync');
+      return;
+    }
 
     const secrets = Object.fromEntries(
       webflowSecretParams.map((s) => [s.name, s.value()])

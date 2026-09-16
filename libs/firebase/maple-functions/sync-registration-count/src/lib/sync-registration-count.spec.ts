@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
     instructorFindById: vi.fn(),
     categoryfindById: vi.fn(),
     registrationCountByClassId: vi.fn(),
+    updateWebflowSync: vi.fn(),
     // Webflow mocks
     syncClass: vi.fn(),
     // FirebaseProject mock
@@ -30,6 +31,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('@maple/firebase/database', () => ({
   ClassRepository: {
     findById: mocks.classFindById,
+    updateWebflowSync: mocks.updateWebflowSync,
   },
   InstructorRepository: {
     findById: mocks.instructorFindById,
@@ -435,6 +437,51 @@ describe('Sync Registration Count', () => {
   });
 
   describe('handler — enrichment and sync', () => {
+    /**
+     * FAILING (bug C): this trigger creates Webflow items it never records.
+     *
+     * `syncClass` returns the item id it created, and `syncClassToWebflow`
+     * persists that with `ClassRepository.updateWebflowSync`. This function
+     * logs the result and returns. So when a registration write takes the
+     * create branch, the class document keeps `webflowItemId: undefined` and
+     * NOTHING in Firestore points at the item that now exists.
+     *
+     * The consequences compound: the next registration cannot take the fast
+     * path either, so it re-scans by firebase-id — and because
+     * `findByFirebaseId` reports a failed scan identically to an absent item
+     * (bug B), one flaky scan creates a SECOND item. Whichever item loses the
+     * race is never updated again, so its `spots-remaining` freezes at the
+     * value it had when it was created. That is exactly the live symptom: one
+     * class, two cards, disagreeing about availability.
+     */
+    it('persists the webflowItemId a create returned, so the next sync can find it', async () => {
+      const classEntity = createMockClass({ webflowItemId: undefined });
+      mocks.classFindById.mockResolvedValue(classEntity);
+      mocks.instructorFindById.mockResolvedValue(null);
+      mocks.categoryfindById.mockResolvedValue(null);
+      mocks.registrationCountByClassId.mockResolvedValue(1);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-created-by-registration-sync',
+        webflowSlug: 'pottery-101-9f2a1',
+        isNew: true,
+      });
+
+      await handler({
+        params: { registrationId: 'reg-persist' },
+        data: {
+          after: makeSnapshot(true, { classId: 'class-001' }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      expect(mocks.updateWebflowSync).toHaveBeenCalledWith(
+        'class-001',
+        'wf-created-by-registration-sync',
+        'pottery-101-9f2a1'
+      );
+    });
+
     it('fetches instructor, category, and count then calls syncClass', async () => {
       const classEntity = createMockClass({
         instructorId: 'instructor-001',

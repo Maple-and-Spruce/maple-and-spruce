@@ -211,8 +211,32 @@ export const syncRegistrationCount = onDocumentWritten(
       console.log('Webflow sync result:', {
         success: result.success,
         webflowItemId: result.webflowItemId,
+        webflowSlug: result.webflowSlug,
         isNew: result.isNew,
       });
+
+      // Persist what the sync produced, exactly as syncClassToWebflow does.
+      // Without this, an item created here is born orphaned: nothing in
+      // Firestore points at it, so no later sync can take the fast path and
+      // every subsequent registration re-scans by firebase-id. One failed scan
+      // then creates a SECOND item, and the loser's spot count freezes at
+      // creation time — one class, two cards, disagreeing about availability.
+      //
+      // Bare update, and only when something actually changed, so the write
+      // cannot re-trigger the class sync indefinitely.
+      const itemIdChanged =
+        !!result.webflowItemId &&
+        publishable.webflowItemId !== result.webflowItemId;
+      const slugChanged =
+        !!result.webflowSlug && publishable.webflowSlug !== result.webflowSlug;
+      if (result.success && (itemIdChanged || slugChanged)) {
+        await ClassRepository.updateWebflowSync(
+          publishable.id,
+          result.webflowItemId,
+          result.webflowSlug
+        );
+        console.log('Stored Webflow item ID and slug on the class');
+      }
     } catch (error) {
       console.error('Webflow sync error (registration count):', error);
       // Don't throw — prevent retry loops for Webflow API errors

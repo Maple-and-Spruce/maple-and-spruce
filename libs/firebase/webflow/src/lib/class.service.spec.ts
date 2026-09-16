@@ -598,10 +598,48 @@ describe('ClassService', () => {
       );
     });
 
+    /**
+     * FAILING (bug B): a transient failure must not be read as "absent".
+     *
+     * `getItemById` and `findByFirebaseId` both `return null` inside a bare
+     * `catch`, so a 500, a 429 or a socket timeout is indistinguishable from a
+     * genuinely deleted item — and `syncClass` routes `null` to `createItem`.
+     * One flaky request during a burst therefore mints a permanent duplicate
+     * CMS item, which no later sync will ever reconcile.
+     *
+     * Only a confirmed 404 is safe to create on. Anything else is "I could not
+     * tell", and the correct response to that is to abort and let the next
+     * write retry.
+     */
+    it('does not create a duplicate when the item lookup fails transiently', async () => {
+      const transient = Object.assign(new Error('Internal Server Error'), {
+        statusCode: 500,
+      });
+      mockClient.collections.items.getItem.mockRejectedValue(transient);
+      mockClient.collections.items.listItems.mockRejectedValue(transient);
+      mockClient.collections.items.createItem.mockResolvedValue({
+        id: 'wf-duplicate',
+      });
+
+      await expect(
+        service.syncClass({
+          classEntity: mockClass,
+          existingWebflowItemId: 'wf-known',
+        })
+      ).rejects.toThrow();
+
+      expect(
+        mockClient.collections.items.createItem,
+        'A lookup that failed is not a lookup that found nothing. Creating ' +
+          'here duplicates an item that almost certainly already exists.'
+      ).not.toHaveBeenCalled();
+    });
+
     it('falls back to listItems scan when known Webflow item is gone (404)', async () => {
-      // getItem rejects (item deleted in Webflow)
+      // getItem rejects with a real 404 — the item genuinely no longer exists,
+      // which is the one case where recreating it is correct.
       mockClient.collections.items.getItem.mockRejectedValue(
-        new Error('Not found')
+        Object.assign(new Error('Not found'), { statusCode: 404 })
       );
       mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
       mockClient.collections.items.createItem.mockResolvedValue({
@@ -775,13 +813,17 @@ describe('ClassService', () => {
       expect(result).toBe(false);
     });
 
-    it('returns null when listItems throws an error', async () => {
+    it('propagates a scan failure instead of reporting "not found"', async () => {
       mockClient.collections.items.listItems.mockRejectedValue(
         new Error('Network error')
       );
 
-      const result = await service.removeClass('class-abc');
-      expect(result).toBe(false);
+      // Previously this returned false, i.e. "no such item" — indistinguishable
+      // from a genuine absence. On the sync path that same conflation is what
+      // routes a transient failure into createItem and duplicates the item.
+      await expect(service.removeClass('class-abc')).rejects.toThrow(
+        'Network error'
+      );
     });
 
     it('returns null when matching item has no id', async () => {

@@ -534,7 +534,26 @@ export function ClassForm({
   // SUBMIT
   // ============================================================
 
+  /**
+   * Internal save-in-flight flag. Deliberately a signal rather than React
+   * state: it must flip synchronously so a second click cannot re-enter
+   * `handleSubmit` before React re-renders the disabled button.
+   */
+  const isSaving = useSignal(false);
+
   const handleSubmit = useCallback(async () => {
+    // Synchronous re-entrancy guard. The `isSubmitting` PROP is React state
+    // owned by the parent page and set with `setIsSubmitting(true)` after the
+    // await has already started — batched, so it does not reach the button
+    // until React re-renders. A second click inside that window otherwise
+    // reaches this handler again and fires a second createClass, and a create
+    // gets a server-generated id with no uniqueness check: one save, two
+    // classes. A signal mutates synchronously, so it closes the window.
+    // Same fix as RegistrationCheckoutForm (#286).
+    if (isSaving.value) {
+      return;
+    }
+
     showValidationErrors.value = true;
 
     if (!isValid.value) {
@@ -542,6 +561,7 @@ export function ClassForm({
     }
 
     submitError.value = null;
+    isSaving.value = true;
 
     try {
       let currentImageUrl = imageUrl.value;
@@ -622,6 +642,8 @@ export function ClassForm({
         message = String((error as { message: unknown }).message);
       }
       submitError.value = message;
+    } finally {
+      isSaving.value = false;
     }
   }, [onSubmit, onClose, classItem?.id]);
 
@@ -1265,15 +1287,21 @@ export function ClassForm({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} disabled={isSubmitting}>
+          <Button onClick={onClose} disabled={isSubmitting || isSaving.value}>
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={isSubmitting || imageUploadState.value.status === 'uploading'}
+            disabled={
+              isSubmitting ||
+              isSaving.value ||
+              imageUploadState.value.status === 'uploading'
+            }
           >
-            {isSubmitting || imageUploadState.value.status === 'uploading'
+            {isSubmitting ||
+            isSaving.value ||
+            imageUploadState.value.status === 'uploading'
               ? 'Saving...'
               : isEdit
                 ? 'Update'

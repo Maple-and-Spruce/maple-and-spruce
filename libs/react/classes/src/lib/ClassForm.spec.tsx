@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Vitest doesn't auto-cleanup between tests when @testing-library/react is
@@ -37,6 +44,7 @@ vi.mock('@maple/react/ui', () => ({
 }));
 
 import { ClassForm } from './ClassForm';
+import type { Class } from '@maple/ts/domain';
 
 // A future date that won't expire during tests
 const futureDate = new Date('2099-06-15T14:00:00');
@@ -52,6 +60,96 @@ describe('ClassForm', { timeout: 30_000 }, () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  /**
+   * FAILING (bug F): ClassForm has no re-entrancy guard on submit.
+   *
+   * `handleSubmit` runs validation and goes straight to `await onSubmit(input)`
+   * with no `if (isSubmitting) return`. The only brake is the `disabled` prop
+   * on the button — and `isSubmitting` is React state owned by the PARENT
+   * (`classes/page.tsx`), set with `setIsSubmitting(true)` *after* the async
+   * work has already started. `setState` is batched, so the prop does not
+   * reach the button until React re-renders; a second click inside that window
+   * reaches `handleSubmit` again and fires a second `createClass`.
+   *
+   * Class documents get server-generated ids and there is no uniqueness check
+   * anywhere in the create path, so a second call is a second class.
+   *
+   * This is the same bug that was found and fixed for registrations in #286,
+   * where the fix was a Preact signal (synchronous, so it both disables the
+   * button immediately AND short-circuits the re-entrant call):
+   *
+   *     const isSubmitting = useSignal(false);
+   *     const handleSubmit = useCallback(async () => {
+   *       if (isSubmitting.value) return;
+   *
+   * That fix was never ported here. `ClassForm` already uses signals for
+   * `imageUploadState` and `submitError`, so the pattern has local precedent.
+   *
+   * The `fireEvent` clicks below are load-bearing: unlike `userEvent`, they
+   * ignore the `disabled` attribute, so they prove the HANDLER guards itself
+   * rather than merely proving the CSS got applied.
+   */
+  describe('double submit', () => {
+    const existingClass = {
+      id: 'class-001',
+      name: 'Pottery Workshop',
+      description:
+        'Learn the basics of wheel throwing in this hands-on workshop.',
+      sessions: [{ dateTime: futureDate }],
+      durationMinutes: 120,
+      capacity: 10,
+      priceCents: 4500,
+      skillLevel: 'beginner',
+      status: 'draft',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    } as Class;
+
+    it('calls onSubmit once when the save button is clicked repeatedly during a cold start', async () => {
+      const user = userEvent.setup();
+
+      // A cold-starting callable: the promise stays pending until we resolve
+      // it, which is the window an impatient operator clicks into.
+      let resolveSubmit!: () => void;
+      const slowSubmit = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSubmit = () => resolve();
+          })
+      );
+
+      render(
+        <ClassForm
+          {...defaultProps}
+          onSubmit={slowSubmit}
+          classItem={existingClass}
+        />
+      );
+
+      const updateButton = await screen.findByRole('button', {
+        name: 'Update',
+      });
+      await user.click(updateButton);
+      await waitFor(() => expect(slowSubmit).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(updateButton);
+      fireEvent.click(updateButton);
+      fireEvent.click(updateButton);
+
+      expect(
+        slowSubmit,
+        'Repeat clicks during the pending save reached the handler again. ' +
+          'Each one is a separate createClass/updateClass call, and a create ' +
+          'has no server-side idempotency — so this is how one save becomes ' +
+          'two class records.'
+      ).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveSubmit();
+      });
+    });
   });
 
   describe('validation error display', () => {

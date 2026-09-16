@@ -8,4 +8,6 @@ export {
   registerWebflowRoutes,
   resetWebflowState,
   getWebflowDeleteLog,
+  failNextWebflowLookups,
+  clearWebflowLookupFailures,
 } from './lib/routes/webflow';

@@ -23,6 +23,26 @@ const collections = new Map<string, Map<string, Record<string, unknown>>>();
  */
 const deleteLog: Array<{ itemId: string; live: boolean }> = [];
 
+/**
+ * When set, the next `remaining` lookup requests (list + get-by-id) answer
+ * with `status` instead of succeeding.
+ *
+ * A mock that can only succeed or 404 cannot express the failure that matters
+ * most here: real Webflow rate-limits at 429 and 5xxs under load, and a sync
+ * that reads either as "this class has no CMS item" will create a duplicate.
+ * Without this hook that bug passes as green, which is exactly what happened.
+ * Mirrors `declineNextPayment` in the Square mock.
+ */
+let failNextLookups: { status: number; remaining: number } | null = null;
+
+function takeLookupFailure(): number | null {
+  if (!failNextLookups) return null;
+  const { status } = failNextLookups;
+  failNextLookups.remaining -= 1;
+  if (failNextLookups.remaining <= 0) failNextLookups = null;
+  return status;
+}
+
 function getCollection(
   collectionId: string
 ): Map<string, Record<string, unknown>> {
@@ -35,6 +55,14 @@ function getCollection(
 export function registerWebflowRoutes(server: WebflowMockServer): void {
   // List collection items
   server.get('/collections/:collectionId/items', (req) => {
+    const failure = takeLookupFailure();
+    if (failure) {
+      return {
+        status: failure,
+        body: { code: failure, msg: 'Mock transient lookup failure' },
+      };
+    }
+
     const collection = getCollection(req.params['collectionId']);
     const items = Array.from(collection.values());
 
@@ -60,6 +88,14 @@ export function registerWebflowRoutes(server: WebflowMockServer): void {
   // Registered before the list route is unnecessary (different arity), but the
   // handler must 404 on unknown IDs to keep the fallback behaviour testable.
   server.get('/collections/:collectionId/items/:itemId', (req) => {
+    const failure = takeLookupFailure();
+    if (failure) {
+      return {
+        status: failure,
+        body: { code: failure, msg: 'Mock transient lookup failure' },
+      };
+    }
+
     const collection = getCollection(req.params['collectionId']);
     const item = collection.get(req.params['itemId']);
 
@@ -188,6 +224,31 @@ export function resetWebflowState(): void {
   itemCounter = 0;
   collections.clear();
   deleteLog.length = 0;
+  failNextLookups = null;
+}
+
+/**
+ * Arm the next `count` lookup requests to fail with `status`.
+ *
+ * For in-process suites. Emulator-backed suites run the mock in a separate
+ * `tsx` process, where this module's state is unreachable — those arm it over
+ * HTTP with `POST /_mock/fail-next-lookups`.
+ */
+export function failNextWebflowLookups(status = 500, count = 1): void {
+  failNextLookups = { status, remaining: count };
+}
+
+/**
+ * Disarm any primed failures, leaving the stored items alone.
+ *
+ * The Webflow SDK retries 5xx internally, so a test has to arm SEVERAL
+ * failures for one to survive the retries and reach the code under test. That
+ * leaves unused failures primed, which would then answer the test's own
+ * verification requests with a 500 body instead of the collection. Call this
+ * between "make it fail" and "check what happened".
+ */
+export function clearWebflowLookupFailures(): void {
+  failNextLookups = null;
 }
 
 /**

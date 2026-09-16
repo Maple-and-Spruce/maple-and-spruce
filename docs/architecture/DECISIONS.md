@@ -1520,6 +1520,103 @@ is what blows a delivery budget.
 
 ---
 
+## ADR-033: One Class, One CMS Item — Layered Defence, Not a Distributed Lock
+
+**Status:** Accepted
+**Date:** 2026-09-16
+
+### Context
+`/upcoming-classes` rendered **12 cards for 8 classes**. Four pairs were the same class twice,
+disagreeing about availability: the Oct 7 Stained Glass class was full while its twin advertised 8
+free places.
+
+Every duplicated pair shares one `firebase-id`, and the twins were created **35ms–974ms apart**:
+
+| firebase-id | gap |
+|---|---|
+| `ixN2mcB85tO2AUckaS71` | 35 ms |
+| `97bqlUCTe3LKJVhULe8F` | 126 ms |
+| `xamOUcEl83EqqXqU4nzs` | 345 ms |
+| `7VguAyFbWtq6BNuSQInu` | 394 ms |
+| `AA65gwbCzUtPE0NbUCeC` | 663 ms |
+| `O8vpohxCCKDlvkCKVVeO` | 724 ms |
+| `xmXEAXlWjNVIwslA0V73` | 974 ms |
+
+So this is a **concurrency race in the sync, not duplicate source data**. `ClassService.syncClass`
+decided create-vs-update with an unguarded read-then-write (`resolveExistingItemId()` → else
+`createItem()`), and **Webflow enforces no uniqueness on `firebase-id`** — there is no conditional
+create, no upsert, and no idempotency key in the CMS API. Two invocations interleaving between the
+read and the write both create.
+
+The loser of the subsequent `webflowItemId` write-back is orphaned: nothing in Firestore points at
+it, so no later sync updates it, and its `spots-remaining` freezes at creation time. Every stale
+twin showed full capacity while its keeper tracked reality.
+
+**What made the race routine rather than rare:** `syncClassToSquare` has `SQUARE_RELEVANT_FIELDS`
+and skips writes that change nothing material; `syncClassToWebflow` had no equivalent, so
+`syncClassToSquare`'s own `updateSquareSyncIds` write-back re-fired it while the first invocation
+was still in flight and had not yet stored `webflowItemId`. One admin save, two concurrent syncs,
+both seeing `undefined`.
+
+### Decision
+Four layers, in order of how much of the problem each removes:
+
+1. **`WEBFLOW_RELEVANT_FIELDS` guard on `syncClassToWebflow`**, mirroring the Square sibling. This
+   removes the dominant *source* of concurrency rather than coping with it.
+2. **Only a confirmed 404 may route to `createItem`.** `getItemById` re-throws anything that is not
+   a 404, and `findAllByFirebaseId` no longer swallows scan failures. "I could not tell" is not
+   "it does not exist".
+3. **An in-process mutex** (`ClassService.inFlight`, keyed by class id) serialising concurrent
+   syncs for the same class within one container — the common case, since `syncClassToWebflow` and
+   `syncRegistrationCount` share a module instance.
+4. **Reconciliation on resolve.** `findAllByFirebaseId` returns *every* match; more than one means a
+   create raced, so keep the oldest (deterministic, so racing instances agree) and delete the rest.
+
+**The cross-instance race is deliberately left open.** Two Cloud Run instances still share no lock.
+Layer 3 does not help them; layer 4 cannot *prevent* the second create, only converge afterwards.
+
+### Rationale
+Closing the cross-instance race properly needs a distributed lease, and the only lock available is
+Firestore — which `ClassService` has no access to by design. It is a Webflow client; giving it a
+Firestore dependency to serialise itself inverts the layering and drags `firebase-admin` into a
+library whose whole job is the CMS API.
+
+The measured cost of leaving it open is low. With layer 1 in place, a class write no longer fans out
+into concurrent syncs at all, which is what actually produced all seven observed duplicates. Layers
+2–4 cover the residue: a transient failure can no longer manufacture a create, and any duplicate
+that does appear is reconciled by the next sync instead of persisting indefinitely.
+
+### Alternatives Considered
+- **A Firestore lease/transaction around the sync.** The only true fix for the cross-instance case.
+  Rejected for now: it inverts the layering (above), and it adds a failure mode of its own — a lease
+  held by a crashed instance blocks syncs until it expires. Revisit if duplicates recur *after*
+  layer 1 ships, which would be evidence the cross-instance path is real in practice rather than
+  theoretical.
+- **Post-create dedupe only** (create freely, clean up after). Simpler, but it means every race
+  briefly publishes a wrong card to the live site, and the cleanup itself races.
+- **A uniqueness constraint on `firebase-id`.** Not available — Webflow's CMS API has no unique
+  fields, no conditional create and no idempotency key. This is the root reason the invariant has to
+  be upheld in our code.
+- **Deterministic slugs as a de facto key.** Rejected: Webflow auto-suffixes slug collisions on
+  create (`name-94fde`) and 400s on update, which is what #395 already worked around — the slug
+  cannot carry identity.
+
+### Consequences
+- `libs/firebase/webflow/src/lib/class-identity-contract.integration.spec.ts` states the invariant
+  as a named contract and exercises it against the real SDK, because it is stateful and cross-call —
+  a mocked client or a mapper test cannot observe it.
+- **Do not remove the mutex on the grounds that reconciliation covers it.** They cover different
+  cases: the mutex prevents the duplicate, reconciliation only cleans one up after it has been live.
+- **The Webflow SDK retries 5xx internally**, so a single transient failure never reaches our code.
+  Layer 2 therefore matters for *sustained* failures and 429s, not one-off blips — and any test
+  injecting a failure must arm several to outlast the retries, then disarm before verifying.
+- The Webflow mock gained `failNextWebflowLookups` / `clearWebflowLookupFailures`
+  (mirroring `declineNextPayment` in the Square mock). Without failure injection the mock could only
+  succeed or 404, which is precisely why layer 2's bug was invisible: the existing spec rejected
+  `getItem` with a bare `Error` and asserted a create, passing identically for a 500.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1543,4 +1640,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-08-02 (ADR-030 added for vanity subdomain redirects via vercel.json)*
+*Last updated: 2026-09-16 (ADR-033 added for the one-class-one-CMS-item invariant)*

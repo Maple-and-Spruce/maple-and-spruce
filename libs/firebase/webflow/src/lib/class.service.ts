@@ -95,6 +95,21 @@ function extractSlug(item: CollectionItem | undefined): string {
 }
 
 /**
+ * A confirmed "this item does not exist" — the ONLY error safe to create on.
+ *
+ * Anything else (429, 5xx, a socket timeout) means "I could not tell", and
+ * treating that as absence is what turns one flaky request into a permanent
+ * duplicate CMS item that no later sync will ever reconcile.
+ */
+function isNotFound(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { statusCode?: number }).statusCode === 404
+  );
+}
+
+/**
  * Field data structure for Webflow CMS class items
  */
 export interface ClassWebflowFieldData {
@@ -273,10 +288,46 @@ export class ClassService {
   ) {}
 
   /**
+   * Syncs in flight, keyed by class id, so concurrent calls for the SAME class
+   * queue instead of racing. Static: two triggers in one container share a
+   * module instance, which is the common case here — `syncClassToWebflow` and
+   * `syncRegistrationCount` both sync the same class.
+   *
+   * This closes the same-instance race only. Two different Cloud Run instances
+   * still have no shared lock, and closing THAT needs a Firestore lease, which
+   * this service has no access to by design. The reconciliation in
+   * `resolveExistingItemId` is what covers the cross-instance case: it cannot
+   * prevent the second create, but it converges on one item afterwards.
+   */
+  private static readonly inFlight = new Map<string, Promise<unknown>>();
+
+  /**
    * Sync a class to Webflow CMS.
    * Creates a new item if it doesn't exist, updates if it does.
+   *
+   * Serialized per class — see `inFlight`.
    */
   async syncClass(input: SyncClassInput): Promise<SyncClassResult> {
+    const key = input.classEntity.id;
+    const previous = ClassService.inFlight.get(key) ?? Promise.resolve();
+    // Chain off the previous sync for this class, ignoring whether it failed:
+    // one sync's failure must not cascade into the next.
+    const run = previous
+      .catch(() => undefined)
+      .then(() => this.syncClassSerialized(input));
+    ClassService.inFlight.set(key, run);
+    try {
+      return await run;
+    } finally {
+      if (ClassService.inFlight.get(key) === run) {
+        ClassService.inFlight.delete(key);
+      }
+    }
+  }
+
+  private async syncClassSerialized(
+    input: SyncClassInput
+  ): Promise<SyncClassResult> {
     const {
       classEntity,
       publish = false,
@@ -436,18 +487,60 @@ export class ClassService {
     if (knownWebflowItemId) {
       const verified = await this.getItemById(knownWebflowItemId);
       if (verified) return verified.id;
-      // Item was deleted in Webflow; fall through to a fresh scan so we can
-      // recreate (or pick up a different item with this firebase-id).
+      // A confirmed 404 — the item really was deleted in Webflow. (A transient
+      // failure threw rather than landing here.) Fall through to a fresh scan
+      // so we can recreate, or adopt another item with this firebase-id.
     }
 
-    const found = await this.findByFirebaseId(firebaseId);
-    return found?.id ?? null;
+    const matches = await this.findAllByFirebaseId(firebaseId);
+    if (matches.length === 0) return null;
+    if (matches.length === 1) return matches[0].id;
+
+    // More than one item for a single class means a create raced (or did so
+    // historically). Converge: keep the oldest — deterministic, so two racing
+    // instances make the same choice — and delete the rest. Left alone, the
+    // item nothing points at is never updated again and its spot count freezes
+    // at creation time, which is how one class ends up rendering two cards
+    // that disagree about availability.
+    const [keeper, ...extras] = [...matches].sort((a, b) =>
+      String(a.createdOn ?? '').localeCompare(String(b.createdOn ?? ''))
+    );
+    for (const extra of extras) {
+      console.warn('Reconciling duplicate Webflow item for class', {
+        firebaseId,
+        keptItemId: keeper.id,
+        deletedItemId: extra.id,
+      });
+      // Unpublish first so it also leaves the live site, then remove the
+      // staged item. A 404 on the second call means the first already removed
+      // it outright, which is success, not failure.
+      try {
+        await this.client.collections.items.deleteItemLive(
+          this.collectionId,
+          extra.id
+        );
+      } catch (error) {
+        if (!isNotFound(error)) throw error;
+      }
+      try {
+        await this.client.collections.items.deleteItem(
+          this.collectionId,
+          extra.id
+        );
+      } catch (error) {
+        if (!isNotFound(error)) throw error;
+      }
+    }
+    return keeper.id;
   }
 
   /**
-   * Fetch a Webflow item by its Webflow ID. Returns `null` if missing —
-   * 404s and transient errors are treated as "not found" so the caller can
-   * fall back to a scan or recreate.
+   * Fetch a Webflow item by its Webflow ID. Returns `null` ONLY on a
+   * confirmed 404; every other failure is re-thrown.
+   *
+   * This used to swallow all errors and return `null`, which the caller reads
+   * as "no item exists" and answers by creating one. A single 429 during a
+   * burst was therefore enough to mint a duplicate.
    */
   private async getItemById(
     itemId: string
@@ -459,9 +552,11 @@ export class ClassService {
       );
       return item?.id ? (item as WebflowItemWithId) : null;
     } catch (error) {
-      console.warn('Webflow getItem failed, falling back to scan:', {
+      if (!isNotFound(error)) {
+        throw error;
+      }
+      console.warn('Webflow item is gone (404), falling back to scan:', {
         itemId,
-        error: error instanceof Error ? error.message : String(error),
       });
       return null;
     }
@@ -472,42 +567,42 @@ export class ClassService {
    * collection — Webflow's listItems caps page size at 100, so we must
    * page until we either match or exhaust the collection.
    */
-  private async findByFirebaseId(
+  private async findAllByFirebaseId(
     firebaseId: string
-  ): Promise<WebflowItemWithId | null> {
+  ): Promise<WebflowItemWithId[]> {
     const PAGE_SIZE = 100;
     let offset = 0;
+    const matches: WebflowItemWithId[] = [];
 
-    try {
-      // Bound the loop so a misbehaving API can't spin forever; 5000 items
-      // is far above any realistic collection size for this site.
-      while (offset < 5000) {
-        const response = await this.client.collections.items.listItems(
-          this.collectionId,
-          { limit: PAGE_SIZE, offset }
-        );
+    // Deliberately NOT wrapped in try/catch. A scan that failed is not a scan
+    // that found nothing, and the caller's answer to "found nothing" is to
+    // create an item. Let the error propagate and let the next write retry.
+    //
+    // Collects EVERY match rather than the first, because Webflow enforces no
+    // uniqueness on `firebase-id` — so duplicates are representable, and the
+    // caller has to be able to see and reconcile them.
+    //
+    // Bound the loop so a misbehaving API can't spin forever; 5000 items is
+    // far above any realistic collection size for this site.
+    while (offset < 5000) {
+      const response = await this.client.collections.items.listItems(
+        this.collectionId,
+        { limit: PAGE_SIZE, offset }
+      );
 
-        const items = response.items ?? [];
-        const matchingItem = items.find((item) => {
-          const fieldData = item.fieldData as Record<string, unknown>;
-          return fieldData?.['firebase-id'] === firebaseId;
-        });
-
-        if (matchingItem?.id) {
-          return matchingItem as WebflowItemWithId;
+      const items = response.items ?? [];
+      for (const item of items) {
+        const fieldData = item.fieldData as Record<string, unknown>;
+        if (item.id && fieldData?.['firebase-id'] === firebaseId) {
+          matches.push(item as WebflowItemWithId);
         }
-
-        if (items.length < PAGE_SIZE) {
-          return null;
-        }
-
-        offset += PAGE_SIZE;
       }
-      return null;
-    } catch (error) {
-      console.error('Error finding Webflow class item:', error);
-      return null;
+
+      if (items.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
+
+    return matches;
   }
 
   private async createItem(

@@ -6,6 +6,67 @@
 
 ## Current Status
 
+### One class, two CMS items: a race in the class → Webflow sync (2026-09-16, PR #879)
+
+`/upcoming-classes` was rendering **12 cards for 8 classes**. Four pairs were the same class
+twice, disagreeing about availability — the Oct 7 Stained Glass class was **full** while its twin
+advertised 8 free places, so the site was selling seats that did not exist.
+
+**It was a race, not duplicate data.** Every duplicated pair shares one `firebase-id`, and the
+twins were created **35ms–974ms apart**. `ClassService.syncClass` decided create-vs-update with an
+unguarded read-then-write, and Webflow enforces no uniqueness on `firebase-id`, so two invocations
+that interleaved between the read and the write both created. The loser of the `webflowItemId`
+write-back was then orphaned: nothing in Firestore pointed at it, so no later sync updated it and
+its `spots-remaining` froze at creation time. That frozen "8 spots" is the signature — every
+doomed item showed full capacity while its keeper tracked reality.
+
+**The concurrency source was a missing guard, not user behaviour.** `syncClassToSquare` has
+`SQUARE_RELEVANT_FIELDS` and skips writes that change nothing material. `syncClassToWebflow` had no
+equivalent, so `syncClassToSquare`'s own `updateSquareSyncIds` write-back re-fired it *while the
+first invocation was still in flight and had not yet stored `webflowItemId`*. Both saw `undefined`,
+both created. One admin save, two cards.
+
+**Five neighbouring defects came out of the same investigation**, all now fixed with tests:
+transient Webflow errors were laundered into "not found" and routed to `createItem`;
+`syncRegistrationCount` called `syncClass` and threw the returned `webflowItemId` away, so anything
+it created was born orphaned; `deleteClass` hard-deleted with no cascade, orphaning registrations;
+and `ClassForm` had no synchronous double-submit guard — the #286 signal fix was never ported, so
+two fast clicks meant two class documents.
+
+**Three things worth remembering.**
+
+- **The Webflow SDK retries 5xx internally.** A single injected 500 never reaches our code; the
+  retry absorbs it. So bug B's real shape is a *sustained* failure or a 429, not a one-off blip —
+  and any test that injects a transient failure must arm several to outlast the retries, then
+  disarm before verifying or the leftovers answer the test's own checks.
+- **The mock could only succeed or 404, which is why the bug was invisible.** The existing spec
+  rejects `getItem` with a bare `Error` and asserts a create, so it passes identically for a 500 as
+  for a deleted item — it encoded the bug as correct. `failNextWebflowLookups` /
+  `clearWebflowLookupFailures` now exist, mirroring `declineNextPayment` in the Square mock. Same
+  lesson as the Tally `label` case: a mock that cannot lie the way the real service lies will agree
+  with whatever the code already assumes.
+- **The cross-instance race is NOT closed** — see ADR-033. The in-process mutex serialises same
+  instance syncs and the reconciliation converges duplicates after the fact, but two Cloud Run
+  instances still have no shared lock. Deliberate; do not "fix" it with a Firestore lease without
+  reading the ADR first.
+
+**Production cleanup, already run.** `tools/dedupe-class-cms-items.ts` keeps the item Firestore
+points at, backs every removal up to JSON first, and verifies afterwards: **9 removed, 0
+survivors**, live page **12 → 7 cards**, every count matching Firestore. Verified against the
+rendered page, not just the API — the script's own check could not have caught an over-deletion,
+because a group holding *zero* items also satisfies "not more than one".
+
+**The 9 orphaned registrations across 3 deleted classes are test data** — one protonmail address,
+test tokens in the names, $2.12/$4.24 amounts, all April 2026. Left alone deliberately. The
+`deleteClass` guard stops new ones.
+
+**Incidental, but it blocked everything for a while:** the checkout's `node_modules` was two majors
+behind its own lockfile (typescript 5.9.3 vs 6.0.3, square 43.2.1 vs ^45.0.1), so every `nx build`
+failed with `TS5103` plus a phantom `fromLocationId` error. Repaired with `pnpm install`. Vitest
+strips types, so unit tests stayed green throughout and only a real build surfaced it — and
+`bootstrap-worktree.sh --link-node-modules` cannot catch this class of drift, because its guard
+compares lockfile *files*, which matched.
+
 ### One library, one function — the deploy filter was silently dropping exports (2026-09-14, #872)
 
 The merge deploy builds its `--only` filter from the **library directory name**, one function
