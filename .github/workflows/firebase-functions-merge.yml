@@ -87,7 +87,7 @@ concurrency:
 jobs:
   prepare_and_build:
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     outputs:
       matrix: ${{ steps.get_affected.outputs.matrix }}
       has_changes: ${{ steps.get_affected.outputs.has_changes }}
@@ -949,7 +949,7 @@ jobs:
     # forward-compatible). Runs early so dev has its indexes building as
     # soon as possible.
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
       contents: read
       id-token: write
@@ -1047,7 +1047,7 @@ jobs:
     # enforces declaration; gating here would only add wall-clock time
     # without catching anything new.
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
       contents: read
       id-token: write
@@ -1173,7 +1173,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       !cancelled() &&
-      github.repository == 'david-shortman/maple-and-spruce' &&
+      github.repository == 'Maple-and-Spruce/maple-and-spruce' &&
       needs.deploy_functions_prod.result != 'failure'
     permissions:
       contents: read

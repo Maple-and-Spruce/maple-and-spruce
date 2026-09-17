@@ -34,36 +34,48 @@ no issue edit history and no Actions logs.
   `link-student-card.spec.ts` and `PaymentMethodCard.stories.tsx`. Both now use invented
   values, and both still pass (square integration suite 65/65, Storybook play 8/8).
 - **Pushed to `david-shortman/maple-and-spruce-clean`**, private, `main` only. Every
-  workflow skipped there because the repository guards name
+  workflow skipped there because the repository guards named
   `david-shortman/maple-and-spruce`, so nothing deployed.
+- **Moved into the org as `Maple-and-Spruce/maple-and-spruce`** (2026-09-16), still
+  private. The personal account's Actions minutes were used up ("job was not started
+  because … your spending limit needs to be increased"). The org has its own pool of
+  2,000 private-repo minutes, and public repos get unlimited minutes on any owner. The
+  repo had only gone personal because Vercel Hobby won't deploy a *private* org repo, and
+  that stops mattering once it's public. The repository guards now name
+  `Maple-and-Spruce/maple-and-spruce`.
 
 ## Remaining steps
 
-Do these in order. Until step 4, don't merge anything into the old repo; any merge must be
-ported across (cherry-pick onto the new history, since the trees differ only in the two
-files above).
+Until step 5, don't merge anything into the old repo (`david-shortman/maple-and-spruce`).
+Any merge must be ported across by cherry-picking onto the new history (the trees differ
+only in the two files above).
 
-1. [ ] Merge the PII safeguards PR in the new repo.
-2. [ ] `gh secret set CUSTOMER_NAMES -R david-shortman/maple-and-spruce-clean < .customer-names.local`
-3. [ ] Recreate the other Actions secrets (`gh secret list` on the old repo shows the
-       names; the values come from their sources), the `production` environment with its
-       required reviewer, and branch protection on `main`.
-4. [ ] **Swap names:** rename the old repo to `maple-and-spruce-archive`, then rename
-       `maple-and-spruce-clean` to `maple-and-spruce`. The workflows' repository guards
-       name `david-shortman/maple-and-spruce` (26 of them), and a mismatch makes jobs skip
-       while the run still shows green.
-5. [ ] Reconnect Vercel (both projects) and Chromatic to the new repo. Check Dependabot
-       and the Claude GitHub app.
-6. [ ] Re-point local clones: `git remote set-url origin https://github.com/david-shortman/maple-and-spruce.git`,
+1. [x] `CUSTOMER_NAMES` secret set (it moved with the repo).
+2. [ ] Merge the PII safeguards PR (#1). Its guard change is what makes CI run here at all.
+3. [ ] Recreate the other Actions secrets (`gh secret list -R david-shortman/maple-and-spruce`
+       shows the names; the values come from their sources) and the `production`
+       environment.
+4. [ ] **GCP Workload Identity Federation:** the provider `attributeCondition` and the
+       deployer service account's `principalSet` binding name the repo. Point both at
+       `Maple-and-Spruce/maple-and-spruce` in the prod (`138840458966`) and dev
+       (`1062803455357`) pools. Until then, deploy jobs fail at auth.
+5. [ ] Rename the old repo to `maple-and-spruce-archive` so nothing confuses the two.
+6. [ ] Reconnect Vercel and Chromatic, the Claude GitHub App (install it on the org), and
+       the `DEPENDABOT_READ_TOKEN` PAT (resource owner: the org). Vercel Git previews
+       need the repo to be public first, since Hobby refuses private org repos. Production
+       deploys go through the Vercel CLI in Actions and don't depend on the Git link.
+7. [ ] Re-point local clones: `git remote set-url origin https://github.com/Maple-and-Spruce/maple-and-spruce.git`,
        then `git fetch && git reset --hard origin/main` on a **clean** `main`. Rebase
        in-flight branches with `git rebase --onto origin/main <old-base> <branch>`.
        Their old base commits don't exist in the new history.
-7. [ ] Recreate open issues. GitHub won't transfer them from a private repo to a public
+8. [ ] Recreate open issues. GitHub won't transfer them from a private repo to a public
        one. Script it with `gh issue create`; the Claude hook checks each body on the
        way in.
-8. [ ] Settings → Actions → "Require approval for all outside collaborators" for fork PRs.
-9. [ ] Flip to **public**. Watch the first CI run: the `customer-pii` job should report
-       "N roster name(s)".
-10. [ ] Later, once nothing needs the old PR discussions, **delete**
+9. [ ] Org settings → Actions → require approval for fork PRs from outside
+       collaborators. Once public, add branch protection or a ruleset on `main`.
+10. [ ] Flip to **public**. Watch the first CI run: the `customer-pii` job should report
+        "N roster name(s)", and the run should have jobs that actually ran, not a green
+        run made entirely of skips.
+11. [ ] Later, once nothing needs the old PR discussions, **delete**
         `maple-and-spruce-archive`. It's private with no forks, so deleting it removes the
         old refs without needing GitHub support.
