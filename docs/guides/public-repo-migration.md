@@ -65,7 +65,7 @@ only in the two files above).
        `Maple-and-Spruce/maple-and-spruce` in the prod (`138840458966`) and dev
        (`1062803455357`) pools. Until then, deploy jobs fail at auth.
 5. [ ] Rename the old repo to `maple-and-spruce-archive` so nothing confuses the two.
-6. [ ] Reconnect Vercel and Chromatic, the Claude GitHub App (install it on the org), and
+6. [ ] Reconnect Vercel, the Claude GitHub App (install it on the org), and
        the `DEPENDABOT_READ_TOKEN` PAT (resource owner: the org). Vercel Git previews
        need the repo to be public first, since Hobby refuses private org repos. Production
        deploys go through the Vercel CLI in Actions and don't depend on the Git link.
