@@ -52,7 +52,7 @@
 - [x] Firebase projects (dev + prod)
 - [x] CI/CD with Workload Identity Federation
 - [x] 19 Cloud Functions deployed
-- [x] Testing (Vitest + Storybook + Chromatic)
+- [x] Testing (Vitest + Storybook play tests)
 
 ### Phase 2: Public Website (NOW) - Epic #93
 *Webflow integration for public-facing content*

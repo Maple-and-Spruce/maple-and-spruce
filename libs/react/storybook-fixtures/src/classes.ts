@@ -3,7 +3,7 @@ import type { Class, ClassCategory, GalleryImage } from '@maple/ts/domain';
 /**
  * Mock class data for Storybook stories
  *
- * All dates are static to prevent Chromatic snapshot changes.
+ * All dates are static so stories render the same every time.
  */
 
 export const mockClass: Class = {

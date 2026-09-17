@@ -1,7 +1,7 @@
 import type { Discount } from '@maple/ts/domain';
 
 /**
- * All dates are static to prevent Chromatic snapshot changes.
+ * All dates are static so stories render the same every time.
  */
 
 export const mockDiscountPercent: Discount = {

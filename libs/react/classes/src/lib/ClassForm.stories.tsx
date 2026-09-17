@@ -15,7 +15,7 @@ import {
   mockInstructor,
 } from '@maple/react/storybook-fixtures';
 
-/** Static default date for deterministic Chromatic snapshots */
+/** Static default date so the story renders the same every time */
 const STATIC_DEFAULT_DATE = new Date('2030-04-01T10:00:00Z');
 
 const meta = {
