@@ -142,6 +142,8 @@ export function wordsIn(text: string): Set<string> {
 }
 
 function wordsInRepo(): Set<string> {
+  // A local dev tool: `git` from the developer's own PATH is the point.
+  // eslint-disable-next-line sonarjs/no-os-command-from-path
   const out = execFileSync('git', ['grep', '-hoIE', "[A-Za-z']{3,}", '--', '.', ':!pnpm-lock.yaml'], {
     cwd: REPO_ROOT,
     maxBuffer: 512 * 1024 * 1024,
