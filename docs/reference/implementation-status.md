@@ -32,7 +32,7 @@
 | Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
-| Chromatic CI | Complete | `.github/workflows/chromatic.yml` |
+| Chromatic CI | Removed (2026-09) | Snapshot quota kept running out; Storybook play tests cover it |
 | Unit testing (Vitest) | Complete | `libs/ts/validation/`, `libs/ts/domain/` |
 | Unit tests in CI | Complete | `.github/workflows/build-check.yml` |
 | Signals state management | Complete | `libs/react/signals/` (see ADR-015) |
@@ -429,7 +429,7 @@ Square foundation is complete. Ready for Product Management integration.
 | Firebase mocks | Complete | `apps/maple-spruce/.storybook/mocks/firebase.ts` |
 | ImageUpload stories | Complete | All states: idle, previewing, uploading, success, error, removed |
 | DeleteConfirmDialog stories | Complete | All 3 variants (artists, categories, inventory) |
-| Chromatic workflow | Complete | `.github/workflows/chromatic.yml` |
+| Chromatic workflow | Removed (2026-09) | — |
 | Storybook build in CI | Complete | Added to `.github/workflows/build-check.yml` |
 | Remaining component stories | Complete | All 15 components have stories with proper fixtures |
 | Vitest workspace config | Complete | `vitest.workspace.ts` |
@@ -443,7 +443,6 @@ Square foundation is complete. Ready for Product Management integration.
 | Integration tests in CI | Complete | Separate job with Java 21 + Firebase emulators |
 | Firebase emulator config | Complete | Auth (9099), Firestore (8080) added to `firebase.json` |
 | Vercel deployment | Pending | `storybook.maple-and-spruce.com` |
-| Chromatic project token | Pending | Add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets |
 
 ## Agreement & Waiver System - Epic #320
 

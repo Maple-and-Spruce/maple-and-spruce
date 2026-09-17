@@ -124,7 +124,7 @@ export default meta;
 type Story = StoryObj<typeof ProductForm>;
 
 // ============================================================
-// VISUAL STORIES (for Chromatic snapshots)
+// VISUAL STORIES
 // ============================================================
 
 /**
