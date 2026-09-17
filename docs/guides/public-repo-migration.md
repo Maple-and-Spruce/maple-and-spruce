@@ -55,14 +55,9 @@ only in the two files above).
 3. Actions secrets. GitHub never returns a secret's value, so each one is set again from its source:
    - [x] `SQUARE_SANDBOX_ACCESS_TOKEN`, `MT_SQUARE_SANDBOX_ACCESS_TOKEN`: from dev Secret Manager.
    - [x] `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `VERCEL_PROJECT_ID_DEV`: from `vercel api /v10/projects`.
-   - [ ] `VERCEL_TOKEN`: create a token at vercel.com/account/tokens (scope: the team) and
-         `gh secret set VERCEL_TOKEN`. **It is currently set to an empty value.**
-   - [ ] `WEBFLOW_WORKSPACE_API_TOKEN`: already in `apps/webflow-components/.env`; pipe it
-         into `gh secret set`.
-   - [ ] `DEPENDABOT_READ_TOKEN`: a new fine-grained PAT, owner **Maple-and-Spruce**, this
-         repo only, permission *Dependabot alerts: read*. The old one was personal-owner.
-   - [ ] `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token`), plus the Claude GitHub App
-         installed on the org. Needed only if `@claude` in issues is kept.
+   - [x] `VERCEL_TOKEN`, `WEBFLOW_WORKSPACE_API_TOKEN`
+   - [ ] `DEPENDABOT_READ_TOKEN`: #4
+   - [ ] `CLAUDE_CODE_OAUTH_TOKEN`, or drop the automation: #5
    - [x] `CHROMATIC_PROJECT_TOKEN`: not needed; Chromatic is removed (#2).
    - [x] Dependabot alerts and security updates are enabled on this repo.
 4. [ ] **GCP Workload Identity Federation:** the provider `attributeCondition` and the
