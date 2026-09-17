@@ -1,0 +1,4489 @@
+{
+  "newRepo": "Maple-and-Spruce/maple-and-spruce",
+  "items": {
+    "1": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Phase 1 - Etsy Integration & Artist Payouts"
+    },
+    "2": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Artist Management - CRUD for artist profiles"
+    },
+    "3": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Product/Inventory Tracking - Track items by artist"
+    },
+    "4": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Etsy API Integration - Sync listings and orders"
+    },
+    "5": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Sales Tracking - Record and attribute sales"
+    },
+    "6": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Payout Reports - Monthly artist payment calculation"
+    },
+    "7": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Infrastructure: Set up Firebase project and database"
+    },
+    "8": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Phase 5 - Store Opening & Sales Tracking",
+      "newNumber": 6
+    },
+    "9": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Phase 3 - Classes & Workshops"
+    },
+    "10": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Phase 4 - Music Lessons"
+    },
+    "11": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: document branch protection rules"
+    },
+    "12": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: add implementation status tracking and fix database references"
+    },
+    "13": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Firebase infrastructure setup (#7)"
+    },
+    "14": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: add reference repository section to AGENTS.md"
+    },
+    "15": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: configure Firebase App Hosting for Next.js SSR"
+    },
+    "16": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update SESSION.md with Vercel deployment info"
+    },
+    "17": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: configure Vercel for Nx monorepo build"
+    },
+    "18": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "Fix React Server Components CVE vulnerabilities"
+    },
+    "19": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: add comprehensive SOL patterns reference and update Phase 1 issues"
+    },
+    "20": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "Add infrastructure libraries (domain, validation, functions, api-types)"
+    },
+    "21": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: inventory CRUD foundation and auth infrastructure (#3)"
+    },
+    "22": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Deploy Firebase Functions to production"
+    },
+    "23": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Set up CI/CD for Firebase Functions"
+    },
+    "24": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Add testing infrastructure"
+    },
+    "25": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: comprehensive inventory system architecture design"
+    },
+    "26": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Square Integration Setup - Developer account and initial connection"
+    },
+    "27": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Inventory Movement Audit Log - Track all inventory changes"
+    },
+    "28": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Sync Conflict Resolution UI - Detect and resolve data mismatches"
+    },
+    "29": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: artist management CRUD (#2)"
+    },
+    "30": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: CI/CD for Firebase Functions (#23)"
+    },
+    "31": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: switch to Workload Identity Federation for CI/CD"
+    },
+    "32": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: sync package-lock.json with functions dependencies"
+    },
+    "33": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use gcloud access token for Firebase deploy"
+    },
+    "34": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: verify CI/CD deploy workflow"
+    },
+    "35": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use codebase prefix in function deploy filter"
+    },
+    "36": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: verify CI/CD deploy with codebase filter"
+    },
+    "37": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: deploy functions to us-east4 region"
+    },
+    "38": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add --force flag to deploy and redeploy getArtists to us-east4"
+    },
+    "39": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add vest dependency to functions package.json"
+    },
+    "40": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: auto-generate functions package.json with dependencies"
+    },
+    "41": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: remove static package.json, auto-generate with dependencies"
+    },
+    "42": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update AI docs with CI/CD deployment details"
+    },
+    "43": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add Next.js API rewrites to proxy to Firebase Functions"
+    },
+    "44": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add security audit and TypeScript checking to CI"
+    },
+    "45": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: configure Firebase Functions SDK to use us-east4 region"
+    },
+    "46": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: allow public HTTP access to Cloud Functions v2"
+    },
+    "47": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: switch to onRequest with manual CORS handling"
+    },
+    "48": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: remove localhost from production CORS origins"
+    },
+    "49": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update AI docs with CI/CD deployment details"
+    },
+    "50": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: copy .env.prod to dist for Firebase Functions deploy"
+    },
+    "51": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add env files to Nx affected calculation for functions"
+    },
+    "52": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: include hidden files in artifact upload for .env"
+    },
+    "53": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: trigger function redeploy with CORS fixes"
+    },
+    "54": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add invoker: 'public' to make functions publicly accessible"
+    },
+    "55": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use Firebase Hosting as API proxy instead of public invoker"
+    },
+    "56": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: correct function names in Firebase Hosting rewrites"
+    },
+    "57": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: restore invoker: 'public' for automatic public access on new functions"
+    },
+    "58": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: ensure Firebase Admin is initialized in auth.utility.ts"
+    },
+    "59": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update SESSION.md with production infrastructure milestone"
+    },
+    "60": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: update dependencies to resolve security vulnerabilities"
+    },
+    "61": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update README to reflect current project state"
+    },
+    "62": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: add link to AGENTS.md in Git Workflow section"
+    },
+    "63": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: update CORS for business subdomain"
+    },
+    "64": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: include env files in functions affected graph"
+    },
+    "65": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: deploy all functions when env files change"
+    },
+    "66": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add manual trigger to functions deploy workflow"
+    },
+    "67": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add responsive navigation menu and fix local functions serve"
+    },
+    "68": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update SESSION.md for Phase 1 kickoff"
+    },
+    "69": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Square Integration - Catalog & Inventory Foundation"
+    },
+    "70": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Square integration foundation (#69)"
+    },
+    "71": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: simplify secrets to per-project pattern"
+    },
+    "72": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update documentation for dev/prod setup (#71)"
+    },
+    "73": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add Square env config and eslint setup"
+    },
+    "74": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: simplify local dev setup and fix env loading"
+    },
+    "75": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: integrate artist selection into product management (#3)"
+    },
+    "76": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use NEXT_PUBLIC_FIREBASE_ENV for Firebase config detection"
+    },
+    "77": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add dev site to CORS allowed origins"
+    },
+    "78": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update dev environment setup documentation"
+    },
+    "79": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: reorganize session docs with history archive"
+    },
+    "80": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: fix product CRUD with Square sync (#3)"
+    },
+    "81": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add category management and design token system"
+    },
+    "82": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: image delete button not working in artist/product forms"
+    },
+    "83": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use dynamic storage bucket based on Firebase project"
+    },
+    "84": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: document FirebaseProject utility pattern"
+    },
+    "85": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Storybook with component stories and Chromatic CI"
+    },
+    "86": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add unit testing infrastructure with Vitest (#24)"
+    },
+    "87": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add @maple/react/theme and @maple/react/ui libraries"
+    },
+    "88": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add @maple/react/auth, layout, and data libraries"
+    },
+    "89": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Preact Signals migration for form components"
+    },
+    "90": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: enable image upload during product creation"
+    },
+    "91": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: signals-based forms not populating when editing"
+    },
+    "92": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: categoryId not saving for products"
+    },
+    "93": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Phase 2 - Public Website (Webflow Integration)"
+    },
+    "94": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: reorganize epics and update roadmap"
+    },
+    "95": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Public Artist API and Webflow integration strategy (ADR-016)"
+    },
+    "96": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: remove status and createdAt from PublicArtist type"
+    },
+    "97": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add artist tests and testing WoW documentation"
+    },
+    "98": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Webflow CMS sync for artists (#93)"
+    },
+    "99": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Webflow CMS sync with dev/prod separation (#93)"
+    },
+    "100": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: optimize Cloud Functions cold start times"
+    },
+    "101": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: complete signals migration and cleanup old form files"
+    },
+    "102": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: resolve Firestore settings already initialized error"
+    },
+    "103": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add sync conflict detection and resolution UI"
+    },
+    "104": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: prevent fork PRs from running GitHub Actions"
+    },
+    "105": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update session and history for sync conflict completion"
+    },
+    "106": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Phase 3a/3b - Classes & Workshops Backend + Admin UI"
+    },
+    "107": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update SESSION.md for Phase 3a/3b completion"
+    },
+    "108": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Phase 3c - Registration system with Square payments"
+    },
+    "109": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: reorganize AI documentation following Repository AI Documentation Standards"
+    },
+    "110": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "chore: backlog quick wins - fix drag handle, deterministic fixtures, untrack local settings"
+    },
+    "111": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: replace invalid npm install --frozen-lockfile with npm ci"
+    },
+    "112": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Webflow Go-Live Readiness"
+    },
+    "113": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Remove placeholder content and fix broken links on Webflow site"
+    },
+    "114": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Fix Artists page 404 and replace CMS test data with real profiles"
+    },
+    "115": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Add SEO metadata to all Webflow pages"
+    },
+    "116": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Set up Google Analytics / Tag Manager on Webflow site"
+    },
+    "117": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Fix hardcoded colors and style bugs within Webflow design system",
+      "newNumber": 7
+    },
+    "118": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Add alt text to all images on Webflow site"
+    },
+    "119": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Clean up default class names and unused styles in Webflow",
+      "newNumber": 8
+    },
+    "120": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Configure canonical domain, redirects, and sitemap for Webflow site"
+    },
+    "121": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Fix responsive bugs and visual issues in Webflow",
+      "newNumber": 9
+    },
+    "122": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Align admin app MUI theme with Webflow site design system",
+      "newNumber": 10
+    },
+    "123": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: add Webflow go-live tracking docs (#112)"
+    },
+    "124": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: Add Webflow profile fields to Artist management in admin app",
+      "newNumber": 11
+    },
+    "125": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "audit: Comprehensive Webflow site content, linking, and UX review"
+    },
+    "126": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "epic: Website quality fixes from site audit"
+    },
+    "127": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Broken navigation links in maple-nav component"
+    },
+    "128": {
+      "kind": "issue",
+      "state": "open",
+      "title": "fix: Enable sitemap.xml and verify SEO infrastructure",
+      "newNumber": 12
+    },
+    "129": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Resolve location inconsistency across site"
+    },
+    "130": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Add Artists link to site navigation"
+    },
+    "131": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Broken and misleading CTAs across all pages"
+    },
+    "132": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Add contact CTAs to Fiddle Repair and Craft Club pages"
+    },
+    "133": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "content: Enrich Katie McCoy artist profile"
+    },
+    "134": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Add footer and social media links to site"
+    },
+    "135": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Music page - fix Suzuki link and populate Music Teachers section"
+    },
+    "136": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Class-to-Webflow CMS Pipeline (Browsing Only)"
+    },
+    "137": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Create Gallery placeholder page in Webflow"
+    },
+    "138": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: Create Artists collection list page in Webflow",
+      "newNumber": 13
+    },
+    "139": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Create Classes CMS collection in Webflow"
+    },
+    "140": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Build ClassService for Webflow CMS sync"
+    },
+    "141": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Build syncClassToWebflow Cloud Function"
+    },
+    "142": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "ops: Configure WEBFLOW_CLASSES_COLLECTION_ID Firebase secrets"
+    },
+    "143": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Sync registration count changes to Webflow CMS"
+    },
+    "144": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Build Classes listing page in Webflow"
+    },
+    "145": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Build Class detail template page in Webflow"
+    },
+    "146": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "plan: Integrate checkout/registration directly into Webflow site"
+    },
+    "147": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: Create Instructors CMS collection in Webflow (optional)",
+      "newNumber": 14
+    },
+    "148": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: Build syncInstructorToWebflow Cloud Function (optional)",
+      "newNumber": 15
+    },
+    "149": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add admin authorization to business portal UI"
+    },
+    "150": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix: optimize CI to install dependencies once and share via cache"
+    },
+    "151": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: migrate from npm to pnpm for CI performance"
+    },
+    "152": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use firebase binary name in CI deploy workflows"
+    },
+    "153": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "Fix/pnpm firebase exec"
+    },
+    "154": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update context from Webflow content and planning sessions"
+    },
+    "155": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use static dates in Storybook fixtures"
+    },
+    "156": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Public Calendar System"
+    },
+    "157": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Calendar domain types, CRUD functions, and admin UI"
+    },
+    "158": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: ICS calendar feeds and onClassWrite trigger"
+    },
+    "159": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Public calendar page with FullCalendar"
+    },
+    "160": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add CalendarEvent domain, CRUD functions, and admin UI (#157)"
+    },
+    "161": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Artists on Webflow (Foundation)",
+      "newNumber": 16
+    },
+    "162": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Class Browsing on Webflow (No Registration)"
+    },
+    "163": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Payment & Registration Testing Infrastructure"
+    },
+    "164": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Class Registration with Payment on Webflow"
+    },
+    "165": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: update status for Webflow go-live and customer interaction phasing"
+    },
+    "166": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add ICS calendar feeds, onClassWrite trigger, and hosting rewrites (#158)"
+    },
+    "167": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "chore: Set up endpoint integration tests with Firebase emulators"
+    },
+    "168": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use static dates in Storybook to prevent Chromatic snapshot churn"
+    },
+    "169": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "feat: public calendar page with FullCalendar (#159)"
+    },
+    "170": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add VTIMEZONE to ICS feeds + ADR-025 Open Web Calendar (#159)"
+    },
+    "171": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: include VTIMEZONE in empty ICS feeds"
+    },
+    "172": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: remove duplicate X-WR-TIMEZONE causing OWC parse failure"
+    },
+    "173": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: configurable calendar embed with admin UI"
+    },
+    "174": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: shelf-style sidebar navigation for admin app"
+    },
+    "175": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Add dedicated Store Hours admin page",
+      "newNumber": 17
+    },
+    "176": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: replace homepage with admin dashboard"
+    },
+    "177": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add quick links tiles to admin dashboard"
+    },
+    "178": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: split functions into 4 Firebase codebases for cold start optimization"
+    },
+    "179": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: correct Facebook Ads Manager quick link URL"
+    },
+    "180": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: remediate pnpm audit vulnerabilities (19 → 2)"
+    },
+    "181": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Etsy API v3 client library and domain types (#4)"
+    },
+    "182": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Etsy OAuth bootstrap Cloud Functions (#4)"
+    },
+    "183": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Etsy templates, settings UI, and env config (#4)"
+    },
+    "184": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: scope path-to-regexp override to unblock function deploys"
+    },
+    "185": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor: move AppShell to layout.tsx instead of per-page wrapping",
+      "newNumber": 18
+    },
+    "186": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: wrap settings pages in AppShell for sidebar navigation"
+    },
+    "187": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Firebase functions integration test infrastructure"
+    },
+    "188": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: store date fields as Firestore Timestamps instead of strings"
+    },
+    "189": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Customer Self-Service (Registration Lookup, Cancellation, Refunds)"
+    },
+    "190": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: registration lookup page and public endpoint"
+    },
+    "191": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: customer self-service cancellation and refund"
+    },
+    "192": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: capture Square receipt URL and send email receipts"
+    },
+    "193": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Customer Account Linking (Optional)",
+      "newNumber": 19
+    },
+    "194": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: improve registration confirmation page"
+    },
+    "195": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: install Firebase Trigger Email extension on dev project"
+    },
+    "196": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "ops: configure Amazon SES for mapleandsprucefolkarts.com"
+    },
+    "197": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: create email templates for registration confirmations and cancellations"
+    },
+    "198": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: add Apple Pay and Google Pay to registration checkout",
+      "newNumber": 20
+    },
+    "199": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: build /my-registration lookup and cancellation page",
+      "newNumber": 21
+    },
+    "200": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Epic: Webflow Class Registration Integration"
+    },
+    "201": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Webflow Code Component for class registration (#200)"
+    },
+    "202": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: embed registration React component on Webflow class detail page"
+    },
+    "203": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: override koa to >=3.1.2 for Host Header Injection vulnerability"
+    },
+    "204": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Webflow CMS pipeline for class browsing and registration (#140, #141, #142, #144, #145)"
+    },
+    "205": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: class admin form missing data needed for Webflow display"
+    },
+    "206": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "test: add integration tests for syncClassToWebflow trigger"
+    },
+    "207": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Nx-generated pnpm-lock.yaml missing aliased deps in function dist"
+    },
+    "208": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: add time-display formatted field to class Webflow sync"
+    },
+    "209": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: hide Location and What to Bring when empty or default on class detail page"
+    },
+    "210": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: enhance Upcoming Classes listing page with context and visual interest"
+    },
+    "211": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: class roster view with contact list and refund/cancel actions for admin"
+    },
+    "212": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add date/time display fields and CMS collection updates (#208)"
+    },
+    "213": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: class roster page with email copy and per-class management (#211)"
+    },
+    "214": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add email templates for registration confirmations and cancellations (#197)"
+    },
+    "215": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: admin app email template management with preview",
+      "newNumber": 22
+    },
+    "216": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: sync registration count changes to Webflow CMS (#143)"
+    },
+    "217": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: add integration tests for syncClassToWebflow trigger (#206)"
+    },
+    "218": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: add integration tests for maple-core CRUD functions (#167)"
+    },
+    "219": {
+      "kind": "issue",
+      "state": "open",
+      "title": "test: add integration tests for ICS calendar feed endpoints",
+      "newNumber": 23
+    },
+    "220": {
+      "kind": "issue",
+      "state": "open",
+      "title": "test: add integration tests for registration admin and remaining maple-core endpoints",
+      "newNumber": 24
+    },
+    "221": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "test: add integration tests for maple-square payment and catalog functions"
+    },
+    "222": {
+      "kind": "issue",
+      "state": "open",
+      "title": "ops: configure required status checks for PR merging",
+      "newNumber": 25
+    },
+    "223": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "ops: create AWS account and configure SES for Maple & Spruce"
+    },
+    "224": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "ops: install Meta Pixel via Google Tag Manager"
+    },
+    "225": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "content: add privacy policy and cancellation policy pages to Webflow"
+    },
+    "226": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: capture Square receipt URL in registration emails (#192)"
+    },
+    "227": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: mock HTTP server for Square/Webflow integration tests (#221, #206)"
+    },
+    "228": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: allow public read access for class images in Firebase Storage"
+    },
+    "229": {
+      "kind": "issue",
+      "state": "open",
+      "title": "ops: add Firebase Storage rules and Firestore rules deployment to CI/CD",
+      "newNumber": 26
+    },
+    "230": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: resolve calendar-embed hosting base URL when invoked directly"
+    },
+    "231": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Image2Pages Webflow widget for printable pattern tiling"
+    },
+    "232": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): override basic-ftp to >=5.2.1 for GHSA-chqc-8p9q-pq6q"
+    },
+    "233": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: format date, duration, and amount in registration confirmation email"
+    },
+    "234": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: fire Meta CompleteRegistration event and integrate Conversions API"
+    },
+    "235": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: fire Meta Pixel and GTM events on registration completion (#234)"
+    },
+    "236": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: resolve critical security audit failures and update Nx"
+    },
+    "237": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: hide empty Location field on class detail page"
+    },
+    "238": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: instructor should be required or populated for published classes"
+    },
+    "239": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: redesign class detail page layout — move details from header to content area"
+    },
+    "240": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: improve post-registration confirmation UX"
+    },
+    "241": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: add phone number input masking to registration form"
+    },
+    "242": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Square receipt link not working from confirmation email"
+    },
+    "243": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: improve contact link in registration confirmation email"
+    },
+    "244": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: correct Square SDK environment detection for production app IDs"
+    },
+    "245": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: pass env prop to SquareCardForm for SDK environment selection"
+    },
+    "246": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add phone and contact page link to registration emails (#243)"
+    },
+    "247": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: omit sandbox Square receipt URL from confirmation email (#242)"
+    },
+    "248": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix: add phone number input masking to registration form (#241)"
+    },
+    "249": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: require instructorId for published classes (#238)"
+    },
+    "250": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: add timeouts to prevent integration tests from hanging"
+    },
+    "251": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: extract formatPhoneNumber to own module to fix CI coverage"
+    },
+    "252": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: sync instructor bio and image to Webflow CMS (#239)"
+    },
+    "253": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: show validation error summary in Add Class dialog"
+    },
+    "254": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add instructor image upload with Webflow CMS sync"
+    },
+    "255": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: improve post-registration confirmation UX (#240)"
+    },
+    "256": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add WV sales tax to class registration"
+    },
+    "257": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: remove unused cert import in seed-email-templates"
+    },
+    "258": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: add unit tests for calculateTax utility"
+    },
+    "259": {
+      "kind": "issue",
+      "state": "open",
+      "title": "ops: configure GTM trigger for complete_registration GA4 event",
+      "newNumber": 27
+    },
+    "260": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: capacity counting sums quantities instead of counting documents"
+    },
+    "261": {
+      "kind": "issue",
+      "state": "open",
+      "title": "fix: batch of registration UX tweaks from user testing",
+      "newNumber": 28
+    },
+    "262": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: use Eastern timezone for date/time display in Webflow CMS sync"
+    },
+    "263": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: improve class form UX — price input, duration dropdown, defaults (#261)"
+    },
+    "264": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: surface Square payment error details to users instead of generic 'internal' error"
+    },
+    "265": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: show visible capacity warning when quantity exceeds spots"
+    },
+    "266": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: establish Storybook interaction testing strategy for React components"
+    },
+    "267": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: integration test runner script and docs"
+    },
+    "268": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: boost backend unit test coverage for 3 key files"
+    },
+    "269": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: migrate Storybook to Vite + addon-vitest for unified coverage (#266)"
+    },
+    "270": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: revert security audit to pnpm audit"
+    },
+    "271": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: multi-session classes with optional registration cutoff"
+    },
+    "272": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test: add Storybook play functions for ClassForm — push coverage to 80%"
+    },
+    "273": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: parallel coverage pipeline with nyc merge and 80% threshold"
+    },
+    "274": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: upgrade pnpm to v11, drop --ignore-registry-errors"
+    },
+    "275": {
+      "kind": "issue",
+      "state": "open",
+      "title": "chore: remove managePackageManagerVersions workaround after Nx fix",
+      "newNumber": 29
+    },
+    "276": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: coerce session dateTime strings to Date in domain helpers"
+    },
+    "277": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: auto-publish Webflow CMS deletions to live site"
+    },
+    "278": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(admin): Student records + student list view"
+    },
+    "279": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(admin): Register lessons for student (first-lesson or recurring)"
+    },
+    "280": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(admin): Initiate invoice for student (private-pay)"
+    },
+    "281": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Parent invoice delivery + online payment"
+    },
+    "282": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Hope Scholarship student handling"
+    },
+    "283": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Teacher payout tracking"
+    },
+    "284": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Hope Scholarship, WV MyTaxes, Apple Business quick links"
+    },
+    "285": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: make repo worktree-compatible with port-isolated emulators"
+    },
+    "286": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: guard registration submit against duplicate cloud-function calls"
+    },
+    "287": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: convert RegistrationCheckoutForm to signals"
+    },
+    "288": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: music lesson student records backend (#278)"
+    },
+    "289": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: auto-publish webflow components on merge"
+    },
+    "290": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: detect webflow publish via nx affected in merge workflow"
+    },
+    "291": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: music lesson student admin UI (#278)"
+    },
+    "292": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: lesson scheduling + recurring series + student detail (#279)"
+    },
+    "293": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: migrate Vest suites to staticSuite and unify backend validation"
+    },
+    "294": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Hope Scholarship handling (#282)"
+    },
+    "295": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: private-pay invoice initiation (#280)"
+    },
+    "296": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Square-delivered invoice payment + webhook attribution (#281)"
+    },
+    "297": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Split monolithic integration-test-mock-server into per-service mocks"
+    },
+    "298": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: read-only Etsy listing import flow (pull into catalog) (#4)"
+    },
+    "299": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: switch PR build check to nx affected + add dev shortcuts"
+    },
+    "300": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add SonarJS + jscpd code quality tooling"
+    },
+    "301": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: migrate test targets to @nx/vitest:test executor"
+    },
+    "302": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add .validating() and .ensuringUnique() to FunctionBuilder"
+    },
+    "303": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: resolve Etsy shop ID from both response shapes + manual refresh"
+    },
+    "304": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: teacher payout tracking (#283)"
+    },
+    "305": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Product variant model refactor"
+    },
+    "306": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Square multi-variation catalog support"
+    },
+    "307": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Push-to-Etsy Cloud Function (admin → Etsy listings)"
+    },
+    "308": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Etsy import multi-variant support"
+    },
+    "309": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Sale recording + InventoryMovement audit log"
+    },
+    "310": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Etsy order polling + cross-channel inventory sync"
+    },
+    "311": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Etsy sync conflict detection + resolution"
+    },
+    "312": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Admin UI — variant management + sales page"
+    },
+    "313": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Artist payout calculation + admin page"
+    },
+    "314": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: product variant model for multi-channel inventory"
+    },
+    "315": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: fix misleading tax test comment"
+    },
+    "316": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: parallelize CI integration tests with dynamic matrix"
+    },
+    "317": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: sale recording + inventory movement audit log"
+    },
+    "318": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Square multi-variation support"
+    },
+    "319": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Push-to-Etsy Cloud Functions"
+    },
+    "320": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: agreement & waiver management system"
+    },
+    "321": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: agreement & waiver system foundation (#320)"
+    },
+    "322": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: support multi-variant Etsy listing imports"
+    },
+    "323": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: artist payout calculation + admin page"
+    },
+    "324": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Etsy order polling + cross-channel inventory sync"
+    },
+    "325": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Etsy sync conflict detection + resolution"
+    },
+    "326": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: public agreement signing page & email template (#320)"
+    },
+    "327": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: split monolithic mock server into per-service mocks"
+    },
+    "328": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: auto-attach waivers during class registration (#320)"
+    },
+    "329": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: syncRegistrationCount Firestore trigger feedback loop in CI"
+    },
+    "330": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: guard syncRegistrationCount against trigger feedback loop"
+    },
+    "331": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: agreement admin UI — template list, request list, send dialog (#320)"
+    },
+    "332": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: handle empty integration test matrix without failing CI"
+    },
+    "333": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: agreement template editor with section management"
+    },
+    "334": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: agreement request expiry cleanup scheduled function"
+    },
+    "335": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: SMS delivery for agreement signing links via Twilio",
+      "newNumber": 30
+    },
+    "336": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: scheduled expiry cleanup for agreement requests (#334)"
+    },
+    "337": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: agreement template editor dialog (#333)"
+    },
+    "338": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Apple Pay and Google Pay for class registration"
+    },
+    "339": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Firebase Remote Config for feature flags"
+    },
+    "340": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: public agreement signing page"
+    },
+    "341": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: required vs deferred signing mode on agreement templates"
+    },
+    "342": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: agreement signing in Webflow registration widget"
+    },
+    "343": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: required vs deferred agreement signing mode (#341, #342)"
+    },
+    "344": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: class categories admin CRUD page"
+    },
+    "345": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Nx affected stderr may break webflow publish detection in merge workflow"
+    },
+    "346": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: redirect stderr in Nx affected detection (#345)"
+    },
+    "347": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: correct timezone conversion for calendar ICS event times"
+    },
+    "348": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: class categories admin CRUD page (#344)"
+    },
+    "349": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add signed agreement detail view in admin portal"
+    },
+    "350": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: update Firestore record with final signature storage paths"
+    },
+    "351": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: wire Apple Pay checkout URL to Webflow component"
+    },
+    "352": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: update Webflow CLI to 1.15.0"
+    },
+    "353": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: payment method grouping and digital wallet initialization"
+    },
+    "354": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: digital wallets toggle and wallet payment validation"
+    },
+    "355": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf: cache calendarEmbed redirect for 5 minutes (#355)"
+    },
+    "356": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Class image gallery: data model + admin UI (PR 1)"
+    },
+    "357": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Class image gallery: Webflow sync + public site rendering (PR 2)"
+    },
+    "358": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Copy Class admin action (PR 3)"
+    },
+    "359": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: class & category image gallery data + admin UI"
+    },
+    "360": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: Build instructor detail template page in Webflow",
+      "newNumber": 31
+    },
+    "361": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat: Replace hardcoded instructor names on Music Lessons page with CMS-driven cards",
+      "newNumber": 32
+    },
+    "362": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "content: Add Nathan Zucker as instructor in admin app"
+    },
+    "363": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: sync class gallery images to Webflow CMS"
+    },
+    "364": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Backfill integration coverage for class-sync field mappings",
+      "newNumber": 33
+    },
+    "365": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: quantity-tier discounts (e.g., 'second slot 50% off')"
+    },
+    "366": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf: cut Cloud Function warm-instance spend"
+    },
+    "367": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Copy Class admin action"
+    },
+    "368": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: quantity-tier discount codes (#365)"
+    },
+    "369": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: limited-use discount codes (single-use core)"
+    },
+    "370": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Webflow sync log noise from sessions-less test classes",
+      "newNumber": 34
+    },
+    "371": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: class catalog feed for Meta + Google ads"
+    },
+    "372": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: limited-use discount codes with atomic redemption (#369)"
+    },
+    "373": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: referral program — auto-generate single-use codes in confirmation email"
+    },
+    "374": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: locality fields on class catalog feed"
+    },
+    "375": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: per-class referral program — auto-generate single-use codes (#373)"
+    },
+    "376": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: admin UI for per-class referral program config"
+    },
+    "377": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: admin UI for per-class referral program (#376)"
+    },
+    "378": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "test: PeriodPicker storybook test breaks every May 1st"
+    },
+    "379": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "test: harden PeriodPicker storybook test against month rollover (#378)"
+    },
+    "380": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: syncInvoiceToSquare crashes with NOT_FOUND when invoice is deleted mid-sync"
+    },
+    "381": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix: tolerate invoice doc deletion mid-Square-sync (#380)"
+    },
+    "382": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: Meta Pixel catalog match — emit ViewContent/AddToCart/Purchase with content_ids"
+    },
+    "383": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: PeriodPicker storybook test + bundle axios CVE bump (#378)"
+    },
+    "384": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "chore(deps): bump transitive axios to >=1.15.1 to clear 4 high CVEs"
+    },
+    "385": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: integration tests — invoice NOT_FOUND swallow + time-stable teacher-payout"
+    },
+    "386": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: move invoice NOT_FOUND swallow from repo to trigger handler"
+    },
+    "387": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: non-breaking space between month and day in class date displays"
+    },
+    "388": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: clarify multi-session class duration is per-session"
+    },
+    "389": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: class waitlist + sold-out widget upgrade"
+    },
+    "390": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: ClassList crash on Copied (empty-sessions) classes; brand PublishableClass"
+    },
+    "391": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Add optional MailerLite opt-in checkbox to class registration",
+      "newNumber": 35
+    },
+    "392": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: scheduled class reminder emails (8am ET) with Google review CTA"
+    },
+    "393": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Tally email-signup tracking (generate_lead + Meta Pixel Lead)"
+    },
+    "394": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "config: set real Google review URL for class reminders"
+    },
+    "395": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix: Webflow update fails with slug collision (spots-remaining stuck)"
+    },
+    "396": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: Webflow sync — omit slug on update, use webflowItemId fast-path, paginate fallback (#395)"
+    },
+    "397": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: brand fonts — Lora (headings) + Archivo (body) in MUI theme"
+    },
+    "398": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: timekeeping MVP — log hours, \"$ owed\" totals, mark paid"
+    },
+    "399": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix: useUserRole tolerates legacy checkAdminStatus response"
+    },
+    "400": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: admin /users page — list users, grant/revoke admin & employee roles"
+    },
+    "401": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): patch high-severity advisories surfaced by pnpm audit"
+    },
+    "402": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: variants in ProductForm + DataTable (#312)"
+    },
+    "403": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: pick employees from a user dropdown instead of pasting UID"
+    },
+    "404": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: /sales page + Push-to-Etsy on product edit (#312)"
+    },
+    "405": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: lift AppShell into app/(admin)/layout.tsx route group"
+    },
+    "406": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: hydrate Date fields from listUsers httpsCallable response"
+    },
+    "407": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: bump importEtsyListings timeout to 540s"
+    },
+    "408": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add dedupe-etsy-imported-products cleanup script"
+    },
+    "409": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: dedupe second-pass on etsyListingId"
+    },
+    "410": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: admin /classes — table view, filled/capacity, lock paid-class fields"
+    },
+    "411": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: align brand fonts to live Webflow site (Georgia + Archivo)"
+    },
+    "412": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: retire custom timesheet — Square Shifts + Square Payroll own hours"
+    },
+    "413": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add delete-orphan-square-items cleanup tool"
+    },
+    "414": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: write etsyListingId atomically with Product on import"
+    },
+    "415": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: add Registration.source field (web vs POS) for in-person POS class registrations"
+    },
+    "416": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "feat: sync classes to Square as catalog items + mirror capacity to inventory"
+    },
+    "417": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: multi-attendee class registration with per-attendee emails"
+    },
+    "418": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: wrap DiscountForm in LocalizationProvider so Create Discount opens"
+    },
+    "419": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: declare missing Firestore composite indexes + add CI guardrail"
+    },
+    "420": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: bump next 16.2.3 → 16.2.6 to clear high-severity CVEs"
+    },
+    "421": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: Register button shows loading state immediately on click"
+    },
+    "422": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: follow-up to #419 — single-filter indexes, prod-only entries, auto-deploy"
+    },
+    "423": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: registration cost off-by-one when adding/removing attendees"
+    },
+    "424": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor: cost summary renders from server response only"
+    },
+    "425": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: list registered attendees in purchaser confirmation email"
+    },
+    "426": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: override transitive deps with high/moderate CVEs (protobufjs et al)"
+    },
+    "427": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: PR-time registration E2E suite (Phase 1)"
+    },
+    "428": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: override remaining transitive CVEs (@tootallnate/once, webpack-dev-server, brace-expansion, ws)"
+    },
+    "429": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: server-side lead attribution via Tally webhook → GA4 + Meta CAPI"
+    },
+    "430": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: gate prod deploys on dev E2E (Phase 2 — known-good dev)"
+    },
+    "431": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: retry firebase deploy on transient GCS 5xx"
+    },
+    "432": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf: parallelize deploys across codebases"
+    },
+    "433": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: Phase 3 — manual approval gate before prod deploys"
+    },
+    "434": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: real Square sandbox in registration E2E (PR check + dev)"
+    },
+    "435": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(docs): Webflow Tally snippet handles modal-popup embeds"
+    },
+    "436": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): unblock prod deploy by setting defineString defaults in .env.prod"
+    },
+    "437": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: document defineSecret/defineString deploy requirements (forces prod redeploy)"
+    },
+    "438": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: add MailerLite ↔ registrations reconciliation script"
+    },
+    "439": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Add marketing opt-in checkbox to registration form",
+      "newNumber": 37
+    },
+    "440": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Auto-add opted-in registrants to MailerLite \"Class Attendees\" group",
+      "newNumber": 38
+    },
+    "441": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: monthly check-pnpm-overrides workflow"
+    },
+    "442": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(catalog-feed): drop sold-out classes from Meta/Google feed"
+    },
+    "443": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci: add Claude Code GitHub Actions"
+    },
+    "444": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix: defer Square catalog sync to async worker (root cause of webhook 504s)"
+    },
+    "445": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): pass --repo to gh label create in alert workflow"
+    },
+    "446": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): use DEPENDABOT_READ_TOKEN PAT for alert listing"
+    },
+    "447": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "deps: @vitest/browser — GHSA-2h32-95rg-cppp (critical)"
+    },
+    "448": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "deps: tmp — GHSA-ph9p-34f9-6g65 (high)"
+    },
+    "449": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(functions): client-driven warmup for cold callables"
+    },
+    "450": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): create alert issues with PAT so claude.yml triggers"
+    },
+    "451": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): bump @vitest/* to 4.1.8 (fixes GHSA-2h32-95rg-cppp)"
+    },
+    "452": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "chore(deps): override tmp >=0.2.6 (fixes GHSA-ph9p-34f9-6g65)"
+    },
+    "453": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(registration): warm downstream callables, keep agreements warm"
+    },
+    "454": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(mail): skip confirmation + reminder emails for E2E test recipients"
+    },
+    "455": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: teach the agent to commit the lockfile after overrides"
+    },
+    "456": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "deps: tmp — GHSA-ph9p-34f9-6g65 (high)"
+    },
+    "457": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): override tmp >=0.2.6 (fixes GHSA-ph9p-34f9-6g65)"
+    },
+    "458": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: overrides live in pnpm-workspace.yaml, not package.json"
+    },
+    "459": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(warmup): integration + unit coverage; harden sync-throw"
+    },
+    "460": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(ci): drop check-pnpm-overrides workflow"
+    },
+    "461": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): webflow affected detection — grep -qx, not jq on plain text"
+    },
+    "462": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "deps: @grpc/grpc-js — GHSA-5375-pq7m-f5r2 (high)"
+    },
+    "463": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: @grpc/grpc-js — GHSA-99f4-grh7-6pcq (high)"
+    },
+    "464": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "deps: shell-quote — GHSA-w7jw-789q-3m8p (critical)"
+    },
+    "465": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "deps: override shell-quote to >=1.8.4 (GHSA-w7jw-789q-3m8p)"
+    },
+    "466": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "deps: override @grpc/grpc-js >=1.9.16 to fix GHSA-5375-pq7m-f5r2"
+    },
+    "467": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Spruce Room availability & booking",
+      "newNumber": 39
+    },
+    "468": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Spruce room visibility — room field, lesson-derived events, getRoomSchedule, home widget (PR 1)"
+    },
+    "469": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Spruce room booking + inline conflict warnings in scheduling flows (PR 2)"
+    },
+    "470": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(rooms): Spruce Room visibility — room field, lesson-derived events, getRoomSchedule, dashboard widget (#468)"
+    },
+    "471": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: @grpc/grpc-js — GHSA-5375-pq7m-f5r2 (high)"
+    },
+    "472": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: esbuild — GHSA-gv7w-rqvm-qjhr (high)"
+    },
+    "473": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: esbuild — GHSA-gv7w-rqvm-qjhr (high)"
+    },
+    "474": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "deps: upgrade esbuild >=0.28.1 — GHSA-gv7w-rqvm-qjhr"
+    },
+    "475": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "deps: upgrade esbuild to ^0.28.1 (GHSA-gv7w-rqvm-qjhr)"
+    },
+    "476": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: vite — GHSA-fx2h-pf6j-xcff (high)"
+    },
+    "477": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: protobufjs — GHSA-wcpc-wj8m-hjx6 (high)"
+    },
+    "478": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: piscina — GHSA-x9g3-xrwr-cwfg (high)"
+    },
+    "479": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: undici — GHSA-vmh5-mc38-953g (high)"
+    },
+    "480": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: http-proxy-middleware — GHSA-gcq2-9pq2-cxqm (high)"
+    },
+    "481": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: hono — GHSA-88fw-hqm2-52qc (high)"
+    },
+    "482": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "deps: resolve piscina GHSA-x9g3-xrwr-cwfg"
+    },
+    "483": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "deps: pin http-proxy-middleware >=3.0.7 <4 (GHSA-gcq2-9pq2-cxqm)"
+    },
+    "484": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci: auto-deploy admin web app to dev Vercel project on merge"
+    },
+    "485": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci: deploy Firestore composite indexes to dev, not just prod"
+    },
+    "486": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): patch high-severity pnpm audit advisories"
+    },
+    "487": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(rooms): \"Book the Spruce Room\" quick form (#469)"
+    },
+    "488": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(rooms): conflict warnings + day strip in lesson scheduling (#469)"
+    },
+    "489": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(rooms): room pickers + conflict warnings on class & event forms (#469)"
+    },
+    "490": {
+      "kind": "issue",
+      "state": "open",
+      "title": "perf: business portal dashboard loads slowly (cold starts + serialized admin gate)",
+      "newNumber": 40
+    },
+    "491": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf(portal): warmup hot functions + de-serialize admin gate (#490)"
+    },
+    "492": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): let web-app-only merges reach the prod deploy gate (#490)"
+    },
+    "493": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf(portal): dedupe concurrent dashboard reads + stop admin-gate remount (#490)"
+    },
+    "494": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf(portal): drop unused Firestore client SDK from the bundle (#490)"
+    },
+    "495": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): unblock prod deploys skipped by approve_prod's always() (#490)"
+    },
+    "496": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): authenticate firebase deploys via ADC, not deprecated --token (#490)"
+    },
+    "497": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): bump firebase-tools 15.15→15.22 to fix functions deploy auth (#490)"
+    },
+    "498": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix(ci): authenticate functions deploys with a service-account key (#490)"
+    },
+    "499": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): keyless WIF access token via --token for functions deploys (#490)"
+    },
+    "500": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): keyless access token for harness + firestore deploys too (#490)"
+    },
+    "501": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): tolerate 'already the live version' on harness deploy (#490)"
+    },
+    "502": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(e2e): retry transient STS connection drops in dev seeding (#490)"
+    },
+    "503": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): pin e2e_dev to Node 22.22.3 (node-fetch keep-alive regression) (#490)"
+    },
+    "504": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat: Upcoming Spruce Room schedule (agenda view)"
+    },
+    "505": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(rooms): upcoming Spruce Room schedule agenda"
+    },
+    "506": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Craft Club recurring studio-access membership",
+      "newNumber": 41
+    },
+    "507": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(craft-club): Phase 1 — data model + admin approve/list (#506)"
+    },
+    "508": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Music Together program (separate Square account, installment checkout, licensee program)",
+      "newNumber": 94
+    },
+    "509": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(craft-club): Phase 2 — Square plan, signup widget, subscribe flow (#506)"
+    },
+    "510": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 0: Multi-account Square plumbing (squareNames factory + MT_SQUARE_* + musicSquareWebhook)"
+    },
+    "511": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 1: Data layer (sections + registrations w/ family/child/DOB, repositories, Vest, indexes)"
+    },
+    "512": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 2: Card-on-file proof of concept (verifyBuyer + Cards API CreateCard + stored-card charge)"
+    },
+    "513": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 3: Registration + checkout (two payment options, 8-family cap, MT Square account)"
+    },
+    "514": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 4: Week-5 auto-charge (onSchedule + dry-run, overcharge safety, failure email+admin, refund/cancel)"
+    },
+    "515": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 5: 8-family cap to ordered waitlist with availability capture"
+    },
+    "516": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Phase 6: Admin Music Together section + licensee CSV export"
+    },
+    "517": {
+      "kind": "issue",
+      "state": "open",
+      "title": "MT Phase 7: Webflow pages + Music submenu + musictogethermaplespruce.com forward",
+      "newNumber": 42
+    },
+    "518": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: Music Together findings report + phased plan (#508)"
+    },
+    "519": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(rooms): keep Spruce Room default booking within one day"
+    },
+    "520": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(square): multi-account credential routing for Music Together (#510)"
+    },
+    "521": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(craft-club): Phase 3 — magic-link self-service (#506)"
+    },
+    "522": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(craft-club): Phase 4 — webhooks, admin lifecycle, emails (#506)"
+    },
+    "523": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): data layer — sections + registrations (#511)"
+    },
+    "524": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs(craft-club): add go-live runbook (#506)"
+    },
+    "525": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): registration + checkout backend (#513)"
+    },
+    "526": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): public section read endpoint (#508)"
+    },
+    "527": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): Week-5 installment auto-charge job (#514)"
+    },
+    "528": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): cancel + refund registration (#514)"
+    },
+    "529": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Push Tally newsletter signups into MailerLite from tallyLeadWebhook (kill the CSV step)",
+      "newNumber": 43
+    },
+    "530": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(craft-club): fix CRAFT_CLUB_MANAGE_URL domain (#506)"
+    },
+    "531": {
+      "kind": "issue",
+      "state": "open",
+      "title": "ci: detect declared-but-unset Firebase secrets before deploy (mirror the index analyzer)",
+      "newNumber": 44
+    },
+    "532": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Send Meta CAPI Purchase events on registration completion"
+    },
+    "533": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): ordered waitlist with availability capture (#515)"
+    },
+    "534": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: stop tracking personal .claude/settings.local.json"
+    },
+    "535": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(craft-club): manage URL → /craft-club-manage (#506)"
+    },
+    "536": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): admin section CRUD endpoints (#516)"
+    },
+    "537": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): serialize codebase deploys + 409-aware retry (stop silent function drops)"
+    },
+    "538": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): 409-aware retry for Firestore index deploys + warn (not fail) on orphans"
+    },
+    "539": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(craft-club): signup payment-form styling + manage URL + welcome email link (#506)"
+    },
+    "540": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(craft-club): set production plan variation ID (#506)"
+    },
+    "541": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): retry deploy only on 'unable to queue', not benign 'already exists' (#506)"
+    },
+    "542": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): roster endpoint + licensee CSV builder (#516)"
+    },
+    "543": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): admin UI — sections + roster + licensee CSV (#516)"
+    },
+    "544": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(music-together): integration suite — checkout, charge job, cancel/refund (#508)"
+    },
+    "545": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(music-together): storybook interaction tests for admin UI (#516)"
+    },
+    "546": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(music-together): integration coverage for read/CRUD/waitlist/roster (#508)"
+    },
+    "547": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): public registration Code Component for Webflow (#508)"
+    },
+    "548": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): auto-populate calendar from MT sections + MT feed (#508)"
+    },
+    "549": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): semester construct — model, admin CRUD, calendar/site derivation (Phase A) (#508)"
+    },
+    "550": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(functions): accept any localhost origin in the emulator (CORS)"
+    },
+    "551": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): Firestore→Webflow CMS sync for MT sections (#508)"
+    },
+    "552": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs(git-workflow): always fetch/branch/verify off origin/main"
+    },
+    "553": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): Firestore→Webflow CMS sync for MT semesters (#508)"
+    },
+    "554": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): vercel --archive=tgz to avoid free-tier upload limit"
+    },
+    "555": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(cors): allow webflow.io staging origin for MT widget"
+    },
+    "556": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): richer time-display in Webflow sync"
+    },
+    "557": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): drive Square SDK env by App ID, not data env"
+    },
+    "558": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): override @xhmikosr/decompress to patch critical Zip Slip vuln"
+    },
+    "559": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): author confirmation + installment-failed emails"
+    },
+    "560": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(worktrees): create worktrees outside the repo tree via hooks"
+    },
+    "561": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: customer payment-method management (update card on file)"
+    },
+    "562": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: admin + customer cancel/refund (partial or full), matching M&S classes"
+    },
+    "563": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): name the missing field in the registration widget hint"
+    },
+    "564": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): show registered count in admin Sections table"
+    },
+    "565": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): deploy hosting:api so new calendar rewrites go live"
+    },
+    "566": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): Room dropdown defaulting to spruce"
+    },
+    "567": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(calendar): unauthenticated private planning ICS feed"
+    },
+    "568": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): order hosting deploy after function deploy (fix rewrite race)"
+    },
+    "569": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(admin): day-of-week + time-block columns in classes & students tables"
+    },
+    "570": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Lib Storybook stories import app fixtures → module-boundary violation crashes local nx lint",
+      "newNumber": 45
+    },
+    "571": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): room picker on lesson create/edit, defaulting to Spruce"
+    },
+    "572": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(admin): tighten two-line table cells (day/time spacing)"
+    },
+    "573": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT registration: add adult/child fields, accommodations, notes + privacy consent checkbox"
+    },
+    "574": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT site: standardize Music Together® trademark usage (superscript ®)"
+    },
+    "575": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Home/About page: nav active state, larger header logo, section copy edits"
+    },
+    "576": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT footer: copyright 2016–2026, larger logo, new-tab link, add tagline"
+    },
+    "577": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT Policies & FAQs page: replacement content (makeups, refunds, siblings, photos, attire, privacy)"
+    },
+    "578": {
+      "kind": "issue",
+      "state": "open",
+      "title": "[BLOCKED: after MT approval] M&S home Classes page: add Music Together button",
+      "newNumber": 95
+    },
+    "579": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): registration fields — adult name, address, accommodations, notes, privacy consent (#573)"
+    },
+    "580": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): split CSV exports — MTW licensee (adults only) vs internal roster (#573)"
+    },
+    "581": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: show sections on public calendar independent of enrollment status"
+    },
+    "582": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: scheduled enrollment-open date + enable/disable toggle per section"
+    },
+    "583": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: sync classes to Square catalog for in-person POS registration (PR A of 3)"
+    },
+    "584": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: duplicate a section into a hidden draft (overflow / reach-goal sections)"
+    },
+    "585": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(webflow): capture real Webflow slug so public class links resolve"
+    },
+    "586": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(portal): show class waitlist (list + count) on the roster page"
+    },
+    "587": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: mirror class capacity to Square inventory (PR B of 3, stacked on #583)"
+    },
+    "588": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(portal): add a Waitlist count column to the classes list"
+    },
+    "589": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: register in-person POS class sales from Square (PR C of 3)"
+    },
+    "590": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): section explicit controls + derived status (#581, #582)"
+    },
+    "591": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Per-family auto-updating calendar subscription link in registration confirmations + reminders"
+    },
+    "592": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Music Together Demo Classes: direct-linkable landing section + sign-up"
+    },
+    "593": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): duplicate a section into a hidden draft (#584)"
+    },
+    "594": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "tools: backfill existing published classes into Square catalog"
+    },
+    "595": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(portal): surface public calendar feed links in admin"
+    },
+    "596": {
+      "kind": "issue",
+      "state": "open",
+      "title": "MT: show installment pricing on the section listing (\"$252 (or 2 installments of $132)\")",
+      "newNumber": 46
+    },
+    "597": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(security): clear critical pnpm-audit failure (websocket-driver) + 9 transitive advisories"
+    },
+    "598": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): word installment-summary as \"installments\" not \"payments\" (#596)"
+    },
+    "599": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: sibling discount pricing (50% off 2nd & 3rd child, full-pay + installments)"
+    },
+    "600": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): semester status → derived from dates"
+    },
+    "601": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Flaky integration test: duplicate-class.spec.ts beforeAll (createInstructor returns undefined data)",
+      "newNumber": 47
+    },
+    "602": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT (+ classes): cross-section interest waitlist with preferences"
+    },
+    "603": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): admin partial/full cancel-refund parity with classes (#562)"
+    },
+    "604": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Automated make-up class scheduling (MT + M&S/Katie's classes)",
+      "newNumber": 48
+    },
+    "605": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): per-family auto-updating calendar subscription feed (#591)"
+    },
+    "606": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): self-service card-on-file update for installment families (#561)"
+    },
+    "607": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): per-child sibling discount (50% off 2nd & 3rd child)"
+    },
+    "608": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: end-to-end enrollment test (mirror M&S class Registration E2E)"
+    },
+    "609": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(e2e): real-sandbox POS class + product webhook coverage (Tier 1 of 2)"
+    },
+    "610": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): cross-section interest waitlist with preferences (#602)"
+    },
+    "611": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(music-together): end-to-end enrollment E2E (mirror class Registration E2E) (#608)"
+    },
+    "612": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(e2e): post-merge real-delivery POS smoke against deployed dev (Tier 2 of 2)"
+    },
+    "613": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "roles: PR 1 — role framework (enum + userRoles/{uid} + any-of requiringRole), behavior-neutral"
+    },
+    "614": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "roles: PR 2 — client plumbing (useMyRoles, role-aware guard, nav filtering, /users role UI)"
+    },
+    "615": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "roles: PR 3 — re-scope MT + clerk functions and nav per access matrix"
+    },
+    "616": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "roles: phase 2 — lesson-teacher read-all/manage-own (ownership + teacher↔uid link)"
+    },
+    "617": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: scoped roles for the business portal (MT teacher, clerk, lesson teacher)",
+      "newNumber": 49
+    },
+    "618": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat: route POS admin alerts per-environment (ADMIN_ALERT_EMAIL)"
+    },
+    "619": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(auth): role framework — scoped roles + any-of requiringRole (behavior-neutral, PR 1 of 3)"
+    },
+    "620": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "ci: analyzer — every exported callable must declare a role or be on an explicit public/auth-only allowlist"
+    },
+    "621": {
+      "kind": "issue",
+      "state": "open",
+      "title": "CI: retry vercel deploy on transient \"fetch failed\" (like the functions-deploy 409 retry)",
+      "newNumber": 50
+    },
+    "622": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT installment enrollment fails against REAL Square: card-on-file vault missing verification_token (caught by mt_e2e_dev; blocks prod gate)"
+    },
+    "623": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(portal): role-aware client — RolesProvider, RoleGuard, filtered nav, /users role toggles (PR 2 of 3)"
+    },
+    "624": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(payments): verify buyer (STORE intent) so card-on-file vaults survive real Square (#622)"
+    },
+    "625": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "test(e2e): first admin-portal browser e2e — role-scoped sign-in happy path (mt-teacher + admin)"
+    },
+    "626": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: lesson payments — Venmo, POS attribution, rendered-triggered auto-invoicing, teacher self-service",
+      "newNumber": 51
+    },
+    "627": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(lessons): Venmo payment source on invoices + Student.venmoUsername"
+    },
+    "628": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(square): attribute POS lesson-item sales to lesson invoices (review queue)"
+    },
+    "629": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(lessons): auto-invoice on lesson rendered (Student.autoInvoice + trigger)"
+    },
+    "630": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "tools: Venmo statement reconciliation (check-venmo-drift)"
+    },
+    "631": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(portal): teacher \"My Day\" page — mark rendered + record Venmo payment"
+    },
+    "632": {
+      "kind": "issue",
+      "state": "open",
+      "title": "feat(calendar): per-teacher ICS feed (stretch)",
+      "newNumber": 52
+    },
+    "633": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(auth): enforce the scoped-role matrix — 46 functions re-scoped + route guards (PR 3 of 3)"
+    },
+    "634": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): unblock installment vault — Customers Search rejects emails CreateCustomer accepts"
+    },
+    "635": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(waitlist): reframe full classes around the waitlist, not \"Class Full\""
+    },
+    "636": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "ci: deploy retry loop should retry transient auth failures (WIF token flake), not only 409 contention"
+    },
+    "637": {
+      "kind": "issue",
+      "state": "open",
+      "title": "ci: MT + Craft Club e2e must not be path-skipped for changes to shared payment code (libs/react/registrations, libs/firebase/square)",
+      "newNumber": 53
+    },
+    "638": {
+      "kind": "issue",
+      "state": "open",
+      "title": "test: harden Square mock + e2e fixtures against 'Search accepts ≠ Create accepts' email validation (root cause of #634)",
+      "newNumber": 54
+    },
+    "639": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci(auth): callable-role analyzer — every callable declares a role or is allowlisted (#620)"
+    },
+    "640": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): record Venmo/manual payments on invoices + Student.venmoUsername (#627)"
+    },
+    "641": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "refactor(waitlist): drop redundant sold-out banner now that the page owns the heading"
+    },
+    "642": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): MANAGE_URL magic link → flat /music-together-manage-payment slug"
+    },
+    "643": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(auth): lesson-teacher manage-own ownership (phase 2, #616)"
+    },
+    "644": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(pos): detect + attribute Square POS lesson sales (#628, backend PR 1/2)"
+    },
+    "645": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(security): override adm-zip to >=0.6.0 (GHSA-xcpc-8h2w-3j85)"
+    },
+    "646": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): pin pnpm to stable 11.14.0 + bump esbuild to 0.28.1"
+    },
+    "647": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(e2e): first admin-portal role-scoping browser E2E (#625)"
+    },
+    "648": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(square-mock): reject reserved-TLD emails on Customers Search (catch the #634 class)"
+    },
+    "649": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): migrate to Nx 23.1.0 (+ TypeScript 6, Storybook 10.5)"
+    },
+    "650": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): upgrade @mui/material + icons to v7 (align with @mui/x v7)"
+    },
+    "651": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): move Cloud Functions runtime to nodejs22 + @types/node 22"
+    },
+    "652": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): upgrade Square SDK 43 → 45"
+    },
+    "653": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(deps): upgrade firebase-admin 13 → 14 (namespaced → modular API)"
+    },
+    "654": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(payments): surface + measure Square SDK init failures (Safari/ITP)"
+    },
+    "655": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(tools): Venmo statement reconciliation (#630)"
+    },
+    "656": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): bump firebase-functions to ^7.3.0 for firebase-admin 14 peer"
+    },
+    "657": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(payments): self-heal corrupt cached square.js via cache-busted reload"
+    },
+    "658": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(pos): POS lesson review queue + config manager (#628, PR 2/2)"
+    },
+    "659": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Deps backlog: MUI 8/9, TypeScript 7 watch, override cleanup",
+      "newNumber": 55
+    },
+    "660": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): auto-invoice on lesson rendered, admin-configured rates (#629)"
+    },
+    "661": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(registration): Square hosted-checkout fallback — backend (PR 1 of 2)"
+    },
+    "662": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): teacher \"My Day\" page — rendered + Venmo payment (#631)"
+    },
+    "663": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(registration): inline-agreement parity for hosted checkout"
+    },
+    "664": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(widget): hosted-checkout fallback button (PR 2 — frontend)"
+    },
+    "665": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(auth): scope lesson-teacher to own students + strip calendar-event management"
+    },
+    "666": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(registration): harden hosted-checkout reconciliation (review findings)"
+    },
+    "667": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(lessons): idempotent auto-invoice to prevent double-billing"
+    },
+    "668": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(widget): hosted-checkout return confirmation (verify by lookup)"
+    },
+    "669": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: music-teacher contractor split-accounting (collection/agency, Square Payroll payout, 1099)",
+      "newNumber": 56
+    },
+    "670": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Split-accounting A: compute + persist teacher-share/commission on lesson payments",
+      "newNumber": 57
+    },
+    "671": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Split-accounting B: payout-owed ledger + Square Payroll remittance batch",
+      "newNumber": 58
+    },
+    "672": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Split-accounting C: Wave net-method posting (Due to Teachers) — blocked on CPA",
+      "newNumber": 59
+    },
+    "673": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(widget): hide card error + empty box when hosted-checkout fallback shows"
+    },
+    "674": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): table-shaped loading skeletons on the MT management page"
+    },
+    "675": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: brace-expansion — GHSA-3jxr-9vmj-r5cp (high)"
+    },
+    "676": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: axios — GHSA-gcfj-64vw-6mp9 (high)"
+    },
+    "677": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(attribution): server-side Meta CAPI Purchase for confirmed registrations"
+    },
+    "678": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: svgo — GHSA-2p49-hgcm-8545 (high)"
+    },
+    "679": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: immutable — GHSA-xvcm-6775-5m9r (high)"
+    },
+    "680": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: immutable — GHSA-v56q-mh7h-f735 (high)"
+    },
+    "681": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: svgo — GHSA-2p49-hgcm-8545 (high)"
+    },
+    "682": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: @vitest/browser — GHSA-p63j-vcc4-9vmv (critical)"
+    },
+    "683": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: teacher weekly availability & open-slot finder (My Day → Week + Openings tabs)",
+      "newNumber": 60
+    },
+    "684": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "my-day: PR 1 — getMyWeek self-scoped weekly commitments (lessons + classes + shared events) with recurring/one-off tagging"
+    },
+    "685": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "my-day: PR 4 — Week tab (blocks + color-coded 30-min lesson chunks + toggles)"
+    },
+    "686": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "my-day: PR 2 — LessonBlock backend (weekly constraint entity + lesson attribution/enforcement)"
+    },
+    "687": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "my-day: PR 5 — Openings tab (open chunks within blocks, read-only)"
+    },
+    "688": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): getMyWeek — self-scoped weekly commitments with recurring/one-off tagging (#684)"
+    },
+    "689": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "my-day: PR 3 — block admin UI + lesson-dialog block selection + unattributed flagging"
+    },
+    "690": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): LessonBlock weekly-constraint entity + attribution enforcement (#686)"
+    },
+    "691": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(security): clear high/critical pnpm audit advisories (next, sharp, brace-expansion, vitest/browser, +)"
+    },
+    "692": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: fast-uri — GHSA-4c8g-83qw-93j6 (high)"
+    },
+    "693": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(auth): assert AdminGuard lock icon via own data-testid, not MUI's dev-only one"
+    },
+    "694": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: brace-expansion — GHSA-mh99-v99m-4gvg (high)"
+    },
+    "695": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-89xv-2m56-2m9x (high)"
+    },
+    "696": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-p9j2-gv94-2wf4 (high)"
+    },
+    "697": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-6gpp-xcg3-4w24 (high)"
+    },
+    "698": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-m99w-x7hq-7vfj (high)"
+    },
+    "699": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-89xv-2m56-2m9x (high)"
+    },
+    "700": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-p9j2-gv94-2wf4 (high)"
+    },
+    "701": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-6gpp-xcg3-4w24 (high)"
+    },
+    "702": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-m99w-x7hq-7vfj (high)"
+    },
+    "703": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): cut MT Square to production (env + location)"
+    },
+    "704": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(functions): cap maxInstances=3 globally to fix Cloud Run CPU quota deploys"
+    },
+    "705": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): \"Coming Soon\" toggle — email capture instead of checkout"
+    },
+    "706": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): free Demo Class RSVP widget + admin viewer (#592)"
+    },
+    "707": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): block admin UI + lesson-dialog block selection + unattributed flagging (#689)"
+    },
+    "708": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(functions): lower global maxInstances 3 → 1 to stop intermittent deploy quota failures"
+    },
+    "709": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): Week tab — composite week with blocks, 30-min slots, color-coded toggles (#685)"
+    },
+    "710": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(music-together): rebrand display name to \"Music Together Maple & Spruce\""
+    },
+    "711": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): admin-managed demo classes (portal → widget + calendar) (#592)"
+    },
+    "712": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix(my-day): Week tab degrades gracefully when getMyWeek omits blocks/commitments"
+    },
+    "713": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "perf(music-together): warm downstream public callables + interest-read minInstances"
+    },
+    "714": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): demo duration default + semester break deletion not saving"
+    },
+    "715": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Spruce Room schedule: page through more than the next 8 weeks"
+    },
+    "716": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): getMyWeek returns the standing/typical-week pattern (#685)"
+    },
+    "717": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(music-together): integration coverage for demos + semester array-clear"
+    },
+    "718": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(rooms): page the Spruce Room schedule through many months (#715)"
+    },
+    "719": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): Week tab as a calendar grid — time axis, positioned items, block bands (#685)"
+    },
+    "720": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(functions): install @firebase/app so Cloud Run containers start (maple-square deploy crash)"
+    },
+    "721": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): clickable table Names open the row's review modal"
+    },
+    "722": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): \"Typical week\" toggle on the Week tab (#683)"
+    },
+    "723": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix(ci): functions deploy never retries, and fires ~165 updates at a 60/min write quota"
+    },
+    "724": {
+      "kind": "issue",
+      "state": "open",
+      "title": "epic: consolidate ~215 single-purpose Cloud Functions into routed apps",
+      "newNumber": 61
+    },
+    "725": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): batch function deploys and make the retry loop actually run (#723)"
+    },
+    "726": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: ADR-029 domain routers + function-count ratchet + queue: max on deploys (#724)"
+    },
+    "727": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): sync demos to Webflow CMS for landing cards (MT Demos)"
+    },
+    "728": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(webflow): draft dev-synced classes so a full-site publish can't leak them"
+    },
+    "729": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): Openings tab — open standing slots within blocks (#687)"
+    },
+    "730": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): re-land queue: max, and stop PR pushes stacking 19-job runs"
+    },
+    "731": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): discounts domain router (5 → 1) (#724)",
+      "newNumber": 62
+    },
+    "732": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): artists domain router (6 → 1) (#724)",
+      "newNumber": 63
+    },
+    "733": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): instructors domain router (6 → 1) (#724)",
+      "newNumber": 64
+    },
+    "734": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): people domain router (11 → 1) (#724)",
+      "newNumber": 65
+    },
+    "735": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): agreements domain router (14 → 1) (#724)",
+      "newNumber": 66
+    },
+    "736": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): lessons domain router (19 → 1) (#724)",
+      "newNumber": 67
+    },
+    "737": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): products domain router (10 → 2) (#724)",
+      "newNumber": 68
+    },
+    "738": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): webflow-sync domain router (13 → 3) (#724)",
+      "newNumber": 69
+    },
+    "739": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): etsy domain router (13 → 3) (#724)",
+      "newNumber": 70
+    },
+    "740": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): craft-club domain router (14 → 2) (#724)",
+      "newNumber": 71
+    },
+    "741": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): square-pos domain router (17 → 2) (#724)",
+      "newNumber": 72
+    },
+    "742": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): calendar domain router (18 → 2) (#724)",
+      "newNumber": 73
+    },
+    "743": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): classes domain router (31 → 2) (#724)",
+      "newNumber": 74
+    },
+    "744": {
+      "kind": "issue",
+      "state": "open",
+      "title": "refactor(functions): music-together domain router (34 → 4) (#724)",
+      "newNumber": 75
+    },
+    "745": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(lessons): subject-verb agreement in block-fit warning"
+    },
+    "746": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): pin mtDemoDisplayLabel to Eastern Time"
+    },
+    "747": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(web): redirect mt.mapleandsprucefolkarts.com to /music-together"
+    },
+    "748": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(my-day): show other teachers' blocks (room taken) + exclude from openings"
+    },
+    "749": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(attribution): Meta CAPI Purchase for Music Together + real _fbp/_fbc capture (#532)"
+    },
+    "750": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(students): row \"⋯\" action menu (schedule/invoice) + linkify name"
+    },
+    "751": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(attribution): MT Purchase value = full committed tuition, not installment 1"
+    },
+    "752": {
+      "kind": "pr",
+      "state": "open",
+      "title": "refactor(functions): discounts domain router — ADR-029 Phase 0 pilot (#731)"
+    },
+    "753": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: undici — GHSA-4cwx-7wf7-3272 (high)"
+    },
+    "754": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: fast-uri — GHSA-7p8r-x3mc-p8w7 (high)"
+    },
+    "755": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: ip-address — GHSA-mwp4-54f8-5fhr (high)"
+    },
+    "756": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Firebase Extensions deprecation: replace Trigger Email (firestore-send-email) before Mar 31 2027",
+      "newNumber": 76
+    },
+    "757": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: record prod storage bucket CORS config and commit cors.json"
+    },
+    "758": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(attribution): move tallyLeadWebhook to a tiny maple-webhooks codebase (fixes 10s Tally timeouts)"
+    },
+    "759": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(webflow): unpublish class detail pages once the class has happened"
+    },
+    "760": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): clear 8 new high-severity pnpm audit advisories"
+    },
+    "761": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(square): move squareWebhook to its own maple-square-webhook codebase"
+    },
+    "762": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: js-yaml — GHSA-5p4m-2wfm-xmqj (high)"
+    },
+    "763": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: js-yaml — GHSA-5p4m-2wfm-xmqj (high)"
+    },
+    "764": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: brace-expansion — GHSA-rgw5-rvv9-x895 (high)"
+    },
+    "765": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): clear nanoid advisory, accept the unfixable image-size pair"
+    },
+    "766": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: nanoid — GHSA-2v37-7h3g-55p8 (high)"
+    },
+    "767": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs: record measured cold-start outcome for both webhook codebase moves"
+    },
+    "768": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): track the three MT forms on the new Music Together pixel"
+    },
+    "769": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix(music-together): licensee credit line still uses the pre-rebrand name"
+    },
+    "770": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): use the center name in the MTW licensee credit line (#769)"
+    },
+    "771": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): MT updates signup banner + per-pixel Tally lead routing"
+    },
+    "772": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(analytics): scope Maple & Spruce pixel events with trackSingle"
+    },
+    "773": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(attribution): route Tally leads to the owning Meta pixel + dedupe with the browser"
+    },
+    "774": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(webflow): keep dev-synced CMS items as drafts (instructors, artists, MT)"
+    },
+    "775": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Move transactional email to a dedicated sending provider",
+      "newNumber": 77
+    },
+    "776": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(classes): render related classes from Webflow CMS instead of a Cloud Function"
+    },
+    "777": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(classes): render related classes from the Webflow CMS instead of a Cloud Function (#776)"
+    },
+    "778": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: no email on demo RSVP or waitlist signup (plus day-before demo reminder)"
+    },
+    "779": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(tools): stop the class-category backfill republishing unpublished classes"
+    },
+    "780": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): registration + demo email sequences (#778)"
+    },
+    "781": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "feat(music-together): server-side Meta CAPI for demo RSVPs and interest signups"
+    },
+    "782": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Separate dev/prod Meta pixels — dev test signups now poison production attribution",
+      "newNumber": 78
+    },
+    "783": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): server-side Meta signals for demo RSVPs + interest signups (#781)"
+    },
+    "784": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(security): bump tar override to >=7.5.21 (GHSA-r292-9mhp-454m)"
+    },
+    "785": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Music Together demo landing page: no h1, and too thin for cold ad traffic",
+      "newNumber": 79
+    },
+    "786": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "fix(music-together): give the demo landing page a real h1 (#785)"
+    },
+    "787": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: fast-uri — GHSA-5jgf-p345-68v8 (high)"
+    },
+    "788": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: fast-uri — GHSA-f65p-4m7j-42xc (high)"
+    },
+    "789": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: fast-uri — GHSA-fph4-wmhf-6fwf (high)"
+    },
+    "790": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: fast-uri — GHSA-jqff-g426-hqxp (high)"
+    },
+    "791": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "MT: PILOTCLASS half-off code + waive a scheduled installment"
+    },
+    "792": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(music-together): pilot half-off — discount codes at checkout + waivable installments (#791)"
+    },
+    "793": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Epic: Suzuki lessons end-to-end readiness (ad click → interview → automatic billing)",
+      "newNumber": 80
+    },
+    "794": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "suzuki 1: Suzuki intake form — dedicated Tally form, Meta/GA4 attribution, family acknowledgement"
+    },
+    "795": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "suzuki 2: persist lesson inquiries + /leads queue in the portal"
+    },
+    "796": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "suzuki: no-show lesson status + billing behavior (blocks Hope tracking)"
+    },
+    "797": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "suzuki 4: standing lesson schedules (recurring arrangement + exceptions), replacing manual series management"
+    },
+    "798": {
+      "kind": "issue",
+      "state": "open",
+      "title": "suzuki 5: card-on-file autopay + reusable lesson billing rules",
+      "newNumber": 81
+    },
+    "799": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "suzuki 6a: Hope services-rendered tracking + submission queue + historical entry"
+    },
+    "800": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Music Together spots count never updates on the public site after a registration"
+    },
+    "801": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(music-together): re-sync a section to Webflow when its registrations change (#800)"
+    },
+    "802": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Make registration records immutable and append-only: activity as child documents, state derived",
+      "newNumber": 82
+    },
+    "803": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(leads): dedicated Suzuki intake form + per-form Meta content_category (#794)"
+    },
+    "804": {
+      "kind": "issue",
+      "state": "open",
+      "title": "suzuki 6b: Hope portal-session view + count payouts at paid + admin-editable rates",
+      "newNumber": 83
+    },
+    "805": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "lessons UX: primary action + overflow menu, per-action progress state (replace inline icon buttons)"
+    },
+    "806": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): stop npm registry timeouts failing the Security Audit job"
+    },
+    "807": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "suzuki: Needs Attention queue (dashboard + My Day)"
+    },
+    "808": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(leads): capture lesson inquiries into the portal + /leads queue (#795)"
+    },
+    "809": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): labelled primary action + overflow menu, per-row progress (#805)"
+    },
+    "810": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): no-show status, billed for private pay and never for Hope (#796)"
+    },
+    "811": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(discounts): legacy codes vanished from the classes page under program scoping"
+    },
+    "812": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): re-mint the deploy token per attempt so long deploys stop 401ing"
+    },
+    "813": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(hope): services-rendered tracking, submission queue, historical entry (#799)"
+    },
+    "814": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(leads): stop dev ingesting production lesson inquiries"
+    },
+    "815": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(portal): Needs Attention panel — six invisible states become a to-do list (#807)"
+    },
+    "816": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(leads): lesson inquiry names and instruments never mapped"
+    },
+    "817": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs(webflow): the footer snippet must REPLACE its previous copy, not append"
+    },
+    "818": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): standing lesson schedules — backend + migration (#797, PR 1 of 2)"
+    },
+    "819": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(leads): create a student straight from an inquiry, and back"
+    },
+    "820": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(tools): stop the lesson-schedule backfill inventing recurring lessons"
+    },
+    "821": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): edit the standing arrangement, not the rows (#797, PR 2 of 2)"
+    },
+    "822": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(lessons): say \"taught\", not \"rendered\", where Katie reads it"
+    },
+    "823": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "test(leads): Tally mock server + integration coverage for syncLessonInquiries"
+    },
+    "824": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(webflow): forward utm params to Tally, so ad campaigns reach the lead"
+    },
+    "825": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): reusable billing rules + card-on-file charge job (#798)"
+    },
+    "826": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "fix(ci): single-field lessons index fails every Firestore index deploy"
+    },
+    "827": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): a one-field index was failing every Firestore index deploy (#826)"
+    },
+    "828": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Student page: fold invoices into the lesson rows as one table",
+      "newNumber": 84
+    },
+    "829": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(portal): Cancel / refund crashed the whole admin page"
+    },
+    "830": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): clear the audit — two next RCEs, plus sharp/js-yaml/svgo"
+    },
+    "831": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-2xp9-vwfh-vxw4 (critical)"
+    },
+    "832": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-p293-qw3h-jr36 (critical)"
+    },
+    "833": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-2xp9-vwfh-vxw4 (critical)"
+    },
+    "834": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: next — GHSA-p293-qw3h-jr36 (critical)"
+    },
+    "835": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Lessons: stop making Katie manage blocks by hand — derive and extend them from scheduling"
+    },
+    "836": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): derive and extend lesson blocks from scheduling (#835)"
+    },
+    "837": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Standing arrangements are weekly-only — Katie hand-cancels every off-week, and that protection lapses 2026-12-15"
+    },
+    "838": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "The day column: Katie's real working view — students and open slots in time order"
+    },
+    "839": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Per-student teaching state: what they're working on, what to polish, what they want",
+      "newNumber": 93
+    },
+    "840": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(deps): clear the smol-toml DoS advisory (GHSA-7w5x-hrqm-74c2)"
+    },
+    "841": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Nothing prevents two students being booked into the same room at the same time"
+    },
+    "842": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): biweekly standing arrangements (#837)"
+    },
+    "843": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci(database): fail when a repository mapper drops an entity field"
+    },
+    "844": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Extend the mapper guard to the write side: a create input that accepts a field the repository discards",
+      "newNumber": 85
+    },
+    "845": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): a function library must export its own name, or the deploy dies"
+    },
+    "846": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): the day column — students and openings in time order (#838)"
+    },
+    "847": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Students page: sort by time slot (ready), and keep Actions reachable (blocked on a call)",
+      "newNumber": 86
+    },
+    "848": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): link a card Katie already saved in Square to a student (#798)"
+    },
+    "849": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): payment method card on the student page (#798)"
+    },
+    "850": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): show and control the automatic charges (#798)"
+    },
+    "851": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Trial: Material React Table on /students, to get pinned columns without buying MUI X Pro",
+      "newNumber": 87
+    },
+    "852": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(students): trial Material React Table for pinned columns (#851)"
+    },
+    "853": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Migrate the remaining DataGrid tables to Material React Table",
+      "newNumber": 88
+    },
+    "854": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): offer a way through when no block covers the time (#835)"
+    },
+    "855": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "docs(privacy): hard rule against real customer data, and a guard for it"
+    },
+    "856": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): refuse to put two things in the room at once (#841)"
+    },
+    "857": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore(privacy): scrub real customer data, and turn the guard on"
+    },
+    "858": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(students): pinned columns were the brand cream, not white (#851)"
+    },
+    "859": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: image-size — GHSA-w3rx-r6r6-pgpr (high)"
+    },
+    "860": {
+      "kind": "issue",
+      "state": "open",
+      "title": "deps: image-size — GHSA-5p2g-fcmc-qvqq (high)"
+    },
+    "861": {
+      "kind": "pr",
+      "state": "closed",
+      "title": "chore: gitignore service-account keys and local env overrides"
+    },
+    "862": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "chore: gitignore service-account keys and local env overrides"
+    },
+    "863": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci: point repository guards at david-shortman/maple-and-spruce after the transfer"
+    },
+    "864": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Manual charging: let a family pay ahead for a block of lessons"
+    },
+    "865": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(students): lessons and billing as tables on the student page (#828, #853)"
+    },
+    "866": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "feat(lessons): pay ahead for a block of lessons (#864)"
+    },
+    "867": {
+      "kind": "issue",
+      "state": "open",
+      "title": "check-function-count counts libraries, not deployed functions",
+      "newNumber": 89
+    },
+    "868": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Integration shard 3 times out under load: registration suite fails on unrelated branches"
+    },
+    "869": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "ci(integration): one emulator session per suite, and wait long enough for triggers"
+    },
+    "870": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): balance integration shards by measured runtime (#868)"
+    },
+    "871": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(lessons): move Needs Attention off My Day, collapsed on dashboard + students"
+    },
+    "872": {
+      "kind": "issue",
+      "state": "closed",
+      "title": "Merge deploy only ships one function per library: every other export is silently never deployed"
+    },
+    "873": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(lessons): save a standing slot on the weekday it was offered"
+    },
+    "874": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Portal E2E: first test in each spec times out waiting for the first page to render, passes on retry",
+      "newNumber": 90
+    },
+    "875": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(lessons): show a loading state on the standing schedule card"
+    },
+    "876": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Make loading states first-class across the admin app",
+      "newNumber": 91
+    },
+    "877": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(ci): one library, one function — stop the deploy filter dropping exports (#872)"
+    },
+    "878": {
+      "kind": "issue",
+      "state": "open",
+      "title": "Six Cloud Run services exist only so integration tests can reach an onSchedule",
+      "newNumber": 92
+    },
+    "879": {
+      "kind": "pr",
+      "state": "merged",
+      "title": "fix(classes): one class, one CMS item — and the neighbouring defects the race exposed"
+    }
+  }
+}
