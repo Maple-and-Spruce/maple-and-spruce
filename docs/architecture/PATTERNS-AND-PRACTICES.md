@@ -1105,7 +1105,6 @@ The project uses a multi-layered testing approach:
 | Component Testing | Storybook + Vitest | Visual testing, interaction tests, accessibility |
 | Unit Testing | Vitest | Pure logic, validation, utilities |
 | E2E Testing | Playwright | Full user flows |
-| Visual Regression | Chromatic | Catch unintended UI changes |
 
 ### Storybook Component Testing
 
@@ -1188,13 +1187,12 @@ test('admin can create an artist', async ({ page }) => {
 });
 ```
 
-### Visual Regression (Chromatic)
+### Visual Regression
 
-Chromatic runs automatically on PRs to main branch.
-
-- **Free tier:** 5,000 snapshots/month
-- **Workflow:** `.github/workflows/chromatic.yml`
-- **Setup:** Requires `CHROMATIC_PROJECT_TOKEN` secret
+There is no hosted visual-regression service. Chromatic was removed in 2026-09 because the
+free snapshot quota kept running out. Storybook `play` tests in CI
+(`vitest.storybook.config.ts`) cover render and interaction; check how a change looks in
+local Storybook or Chrome (see `.claude/rules/verification.md`).
 
 ---
 

@@ -145,7 +145,7 @@ export const NotAdminShowsOnboardingMessage: Story = {
     // Verify the lock icon is present. We assert on our OWN explicit
     // data-testid (set on the icon in AdminGuard.tsx), not MUI's implicit
     // `LockOutlinedIcon` one — MUI only emits that in non-production builds,
-    // so it vanishes in Chromatic's production Storybook build.
+    // so it vanishes in a production Storybook build.
     expect(
       canvasElement.querySelector('[data-testid="admin-lock-icon"]')
     ).toBeInTheDocument();

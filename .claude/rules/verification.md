@@ -23,8 +23,8 @@ servers must be made up — `Robin Ashfield`, `robin@example.com`, `+15550000001
 the real row is while you are staring at it.
 
 Fixtures are not private: they live in the repo forever, get read aloud in CI
-logs, and **Storybook stories are published to Chromatic**, so a real family's
-name in a story is a real family's name on a hosted page. A test does not get
+logs, and the repo is **public**, so a real family's name in a story is a real
+family's name on the internet. A test does not get
 more realistic by using a real person; it only gets realistic by using the real
 *shape* (see the Tally mock, which mirrors the live API's `title` key).
 
