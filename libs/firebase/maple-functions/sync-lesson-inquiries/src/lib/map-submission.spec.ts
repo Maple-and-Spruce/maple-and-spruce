@@ -4,7 +4,7 @@
  * The difference cost us the whole queue: production put the question's human
  * text under a key other than `label`, every label-matched field mapped to
  * nothing, and all 14 leads stored as "Unknown" while these tests stayed green
- * (#816).
+ * (legacy #816).
  *
  * Treat everything below as *a* shape the mapper must handle, not as evidence
  * of what Tally actually sends. The regression block at the bottom is the part
@@ -385,7 +385,7 @@ describe('formNameFor', () => {
 });
 
 /**
- * REGRESSION: the queue shipped with 14 leads reading "Unknown" (#816).
+ * REGRESSION: the queue shipped with 14 leads reading "Unknown" (legacy #816).
  *
  * The fixtures above put the question's human text under `label`. Production
  * did not: every `byType` field (email, phone) arrived intact while every
@@ -483,7 +483,7 @@ describe('mapSubmission — question text is not always under `label`', () => {
 });
 
 /**
- * "Who is the student?" (#819)
+ * "Who is the student?" (legacy #819)
  *
  * The form has always asked this and we always threw the answer away. It is the
  * one answer that decides whether the person who filled the form becomes the

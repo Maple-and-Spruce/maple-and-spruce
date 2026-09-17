@@ -26,7 +26,7 @@ export type MyDayCardAction =
 interface MyDayLessonCardProps {
   item: MyDayLesson;
   onMarkRendered: (lessonId: string) => void;
-  /** Nobody came. Charged for private pay, charged to nobody for Hope (#796). */
+  /** Nobody came. Charged for private pay, charged to nobody for Hope (legacy #796). */
   onMarkNoShow: (lessonId: string) => void;
   onRecordPayment: (
     invoiceId: string,
@@ -36,7 +36,7 @@ interface MyDayLessonCardProps {
    * The action in flight on THIS card, if any.
    *
    * Replaces a page-wide `busy` boolean, which disabled every card in the day
-   * while one was saving and never said which action was running (#805).
+   * while one was saving and never said which action was running (legacy #805).
    */
   pending?: MyDayCardAction | null;
 }

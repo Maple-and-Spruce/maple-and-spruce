@@ -265,7 +265,7 @@ describe('Invoice Functions', () => {
       expect(result.data!.invoice.status).toBe('paid');
       expect(result.data!.invoice.paidAt).toBeTruthy();
       expect(result.data!.invoice.issuedAt).toBeTruthy();
-      // Manual paid transitions are attributed to the admin (#281).
+      // Manual paid transitions are attributed to the admin (legacy #281).
       expect(result.data!.invoice.paymentRecord).toBeTruthy();
       expect(result.data!.invoice.paymentRecord?.source).toBe('admin-manual');
       expect(result.data!.invoice.paymentRecord?.squarePaymentId).toBeUndefined();

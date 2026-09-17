@@ -1,5 +1,5 @@
 /**
- * Get Payouts Cloud Function (#313)
+ * Get Payouts Cloud Function (legacy #313)
  *
  * Admin callable. Returns artist payouts with optional filters.
  */

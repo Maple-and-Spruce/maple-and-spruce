@@ -500,7 +500,7 @@ When migrating a form component to signals:
 ### 2. Convert State to Signals
 - [ ] Replace `useState` with `useSignal` for form fields
 - [ ] Replace `useMemo` with `useComputed` for derived values
-- [ ] Keep `useEffect` for prop-dependent effects (see Pitfall #6)
+- [ ] Keep `useEffect` for prop-dependent effects (see Pitfall legacy #6)
 - [ ] Use `useSignalEffect` only for signal-dependent side effects
 
 ### 3. Integrate Validation

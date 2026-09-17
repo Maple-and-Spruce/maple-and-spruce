@@ -1,5 +1,5 @@
 /**
- * materializeLessonSchedules (#797)
+ * materializeLessonSchedules (legacy #797)
  *
  * Keeps concrete lessons on the books for every standing arrangement, out to a
  * rolling horizon. This is the fix for the bug that mattered most: a series was
@@ -104,7 +104,7 @@ export async function runMaterializeLessonSchedules(
         continue;
       }
 
-      // Two things cannot be in the room at once (#841). This job runs
+      // Two things cannot be in the room at once (legacy #841). This job runs
       // unattended, so a clash SKIPS the occurrence and is counted — throwing
       // would abandon every remaining arrangement, and writing it anyway would
       // silently double-book the room.

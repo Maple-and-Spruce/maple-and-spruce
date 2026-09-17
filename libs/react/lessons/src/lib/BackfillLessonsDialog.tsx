@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Record lessons that have already been taught (#799).
+ * Record lessons that have already been taught (legacy #799).
  *
  * Nathan has been teaching a Hope-covered guitar student with nothing recorded
  * anywhere, and Hope pays backwards — so every lesson entered here is claimable
@@ -13,7 +13,7 @@
  * "historical lesson" shape would have to be taught to every one of them.
  *
  * Backfilled lessons carry no block. That is not an oversight — the block rule
- * (#686) stops *new* lessons being dropped at arbitrary times, and a lesson that
+ * (legacy #686) stops *new* lessons being dropped at arbitrary times, and a lesson that
  * already happened happened whether or not a block covers that weekday. They
  * surface as "needs a block" for an admin to tidy, the same grandfather path
  * pre-block lessons already use.

@@ -1,7 +1,7 @@
 /**
- * Backfill Music Together signup confirmation emails (#778)
+ * Backfill Music Together signup confirmation emails (legacy #778)
  *
- * Demo RSVPs and section waitlist signups sent nothing until #778 — families
+ * Demo RSVPs and section waitlist signups sent nothing until legacy #778 — families
  * signed up and heard back only if someone got to them by hand. This queues the
  * confirmation they should have received, for everyone already in the data.
  *

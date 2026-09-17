@@ -1,5 +1,5 @@
 /**
- * Lesson ↔ block enforcement and derivation (#686, #835).
+ * Lesson ↔ block enforcement and derivation (legacy #686, legacy #835).
  *
  * New lessons must be attributed to a LessonBlock owned by the same teacher,
  * and every scheduled time must fall on the block's weekday and inside its
@@ -7,7 +7,7 @@
  * blocks shipped are exempt — enforcement runs on create and on reschedule,
  * never on incidental status/notes edits.
  *
- * #835 removes the dead end where no suitable block exists yet. Rather than
+ * legacy #835 removes the dead end where no suitable block exists yet. Rather than
  * refusing until Katie goes and builds one, the caller may ask for a block to
  * be **derived** from what is being scheduled, or for a nearby block to be
  * **widened** to fit.
@@ -103,7 +103,7 @@ export async function resolveLessonBlock(params: {
     context,
   } = params;
 
-  // No strategy: behave exactly as before #835.
+  // No strategy: behave exactly as before legacy #835.
   if (!strategy || strategy.mode === 'existing') {
     const chosen = strategy?.mode === 'existing' ? strategy.blockId : blockId;
     await assertLessonsFitBlock({

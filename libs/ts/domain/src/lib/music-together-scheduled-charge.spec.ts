@@ -58,7 +58,7 @@ describe('MT_TERMINAL_CHARGE_STATUSES', () => {
 
   it('keeps waived distinct from cancelled', () => {
     // Both stop the charge job, but only `cancelled` means the family left —
-    // collapsing them would make a comped installment (#791) unreadable on
+    // collapsing them would make a comped installment (legacy #791) unreadable on
     // the roster.
     const statuses: MusicTogetherChargeStatus[] = ['cancelled', 'waived'];
     expect(new Set(statuses).size).toBe(2);

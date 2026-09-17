@@ -1,5 +1,5 @@
 /**
- * Reusable lesson billing rules (#798).
+ * Reusable lesson billing rules (#81).
  *
  * Katie and Nathan already save a family's card in Square and initiate the
  * charge by hand. This is not introducing autopay — it is making the thing they
@@ -28,7 +28,7 @@
  *
  * HOPE IS NEVER TOUCHED
  * ---------------------
- * Hope students bill through the EMA portal (#799) and `createInvoice` refuses
+ * Hope students bill through the EMA portal (legacy #799) and `createInvoice` refuses
  * them outright. Nothing here may ever produce a charge for one.
  */
 import type { Lesson } from './lesson';
@@ -121,7 +121,7 @@ export function isAutoChargeEligible(
 /**
  * Which lessons a charge may be taken for.
  *
- * A lesson that consumed the slot (#796) is chargeable — rendered *or*
+ * A lesson that consumed the slot (legacy #796) is chargeable — rendered *or*
  * no-show, since studio policy charges a private-pay family for both.
  * A `scheduled` lesson is chargeable too, because these rules bill **ahead** of
  * the teaching; a `cancelled` one never is.
@@ -154,7 +154,7 @@ function anchorLessonFor(
  * `rateResolver` prices a single lesson — it is passed in rather than imported
  * so this stays pure and the caller keeps ownership of per-student overrides.
  *
- * LESSONS ALREADY SPOKEN FOR ARE REMOVED BEFORE BLOCKING (#864)
+ * LESSONS ALREADY SPOKEN FOR ARE REMOVED BEFORE BLOCKING (legacy #864)
  * ------------------------------------------------------------
  * `coveredLessonIds` carries every lesson an existing charge already covers —
  * paid, scheduled, waived or cancelled. Those are dropped first and the blocks
@@ -222,8 +222,8 @@ export function planChargesForStudent(
  * lesson was rescheduled would be taken twice. The lesson id is the stable
  * thing about a block.
  *
- * Same trick as the materialised lesson id (#797) and the Hope submission
- * (#799) — a collision means "already handled", never an error.
+ * Same trick as the materialised lesson id (legacy #797) and the Hope submission
+ * (legacy #799) — a collision means "already handled", never an error.
  */
 export function plannedChargeId(charge: PlannedLessonCharge): string {
   return `chg-${charge.studentId}-${charge.lessonIds[0]}`;

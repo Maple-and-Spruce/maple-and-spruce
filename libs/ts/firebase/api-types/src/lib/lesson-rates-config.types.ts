@@ -1,5 +1,5 @@
 /**
- * Lesson Rates Config API request/response types (#629).
+ * Lesson Rates Config API request/response types (legacy #629).
  *
  * Admin-configured default private-pay lesson rates by length, read by the
  * auto-invoice trigger.

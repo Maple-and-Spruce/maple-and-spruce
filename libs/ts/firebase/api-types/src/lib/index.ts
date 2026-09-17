@@ -121,7 +121,7 @@ export type {
   DetectSyncConflictsResponse,
 } from './sync-conflict.types';
 
-// POS Lesson Attribution types (#628)
+// POS Lesson Attribution types (legacy #628)
 export type {
   GetPosLessonAttributionsRequest,
   GetPosLessonAttributionsResponse,
@@ -311,7 +311,7 @@ export type {
   DeleteLessonResponse,
 } from './lesson.types';
 
-// Phase 4: Music Lessons - Lesson blocks (#686)
+// Phase 4: Music Lessons - Lesson blocks (legacy #686)
 export type {
   GetLessonBlocksRequest,
   GetLessonBlocksResponse,
@@ -337,7 +337,7 @@ export type {
   DeleteInvoiceResponse,
 } from './invoice.types';
 
-// Phase 4: Music Lessons - Lesson rates config (#629)
+// Phase 4: Music Lessons - Lesson rates config (legacy #629)
 export type {
   GetLessonRatesConfigRequest,
   GetLessonRatesConfigResponse,
@@ -345,7 +345,7 @@ export type {
   UpdateLessonRatesConfigResponse,
 } from './lesson-rates-config.types';
 
-// Phase 4: Music Lessons - Teacher My Day + business payment config (#631)
+// Phase 4: Music Lessons - Teacher My Day + business payment config (legacy #631)
 export type {
   MyDayLessonInvoice,
   MyDayLesson,
@@ -353,7 +353,7 @@ export type {
   GetMyDayLessonsResponse,
 } from './my-day.types';
 
-// Phase 4: Music Lessons - Teacher My Week schedule (#683/#684)
+// Phase 4: Music Lessons - Teacher My Week schedule (#60/#684)
 export type {
   MyWeekOwnership,
   MyWeekCadence,

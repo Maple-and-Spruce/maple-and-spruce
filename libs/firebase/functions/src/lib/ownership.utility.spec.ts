@@ -208,7 +208,7 @@ describe('instructorScopeForUser', () => {
   });
 });
 
-// ── Discount program scoping (#791) ──────────────────────────────────────
+// ── Discount program scoping (legacy #791) ──────────────────────────────────────
 //
 // The role gate on the discount functions is `[Admin, MtTeacher]` so
 // Stephanie can run Music Together promotions. These two helpers are the

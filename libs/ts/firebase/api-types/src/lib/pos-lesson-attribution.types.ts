@@ -1,5 +1,5 @@
 /**
- * POS Lesson Attribution API request/response types (#628 PR 2).
+ * POS Lesson Attribution API request/response types (legacy #628 PR 2).
  *
  * Admin review queue for in-person Square POS lesson sales that couldn't be
  * auto-attributed to a student, plus the lesson-catalog config that decides

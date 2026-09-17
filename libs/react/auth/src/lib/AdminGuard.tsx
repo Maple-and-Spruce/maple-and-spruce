@@ -164,7 +164,7 @@ export function AdminGuardView({
  *
  * @deprecated Use RoleGuard (with RolesProvider) instead — it admits
  * scoped roles and shares one getMyRoles fetch with the nav. This
- * remains only until per-page scoping fully replaces it (#615).
+ * remains only until per-page scoping fully replaces it (legacy #615).
  */
 export function AdminGuard({ children }: AdminGuardProps) {
   const { isAdmin, isCheckingAdmin, adminState } = useAdminStatus();

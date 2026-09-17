@@ -1,5 +1,5 @@
 /**
- * Matching a card already on file in Square to a student (#798).
+ * Matching a card already on file in Square to a student (#81).
  *
  * Katie saves cards **in the Square app, in person** — that is the starting
  * point, not a web form we get to design. So the portal's job is to find the

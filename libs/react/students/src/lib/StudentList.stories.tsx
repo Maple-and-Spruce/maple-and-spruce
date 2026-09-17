@@ -236,11 +236,11 @@ export const LessonDayTimeRendered: Story = {
 };
 
 // ============================================================
-// #851 — MATERIAL REACT TABLE TRIAL: pinning and default sort
+// #87 — MATERIAL REACT TABLE TRIAL: pinning and default sort
 // ============================================================
 
 /**
- * The reason for the trial (#851, #847). Katie's Actions column was being cut
+ * The reason for the trial (#87, #86). Katie's Actions column was being cut
  * off, and scrolling to reach it lost the student's name. Pinning keeps *who
  * this row is* and *what can be done about it* on screen at all times.
  *
@@ -310,7 +310,7 @@ export const PinsIdentityLeftAndActionsRight: Story = {
 };
 
 /**
- * The page opens in the order Katie teaches, not alphabetically (#847).
+ * The page opens in the order Katie teaches, not alphabetically (#86).
  *
  * `weekdaySortKey` is POSITIVE_INFINITY for a student with no arrangement, so
  * they group at the bottom — that group is the "NO CURRENT LESSON TIME"

@@ -1,5 +1,5 @@
 /**
- * Business Payment Config Repository (#631)
+ * Business Payment Config Repository (legacy #631)
  *
  * Single config doc (`appConfig/businessPayment`) holding the studio's Venmo
  * handle. Read by the teacher My Day page (to render the pay-by-Venmo QR);

@@ -197,7 +197,7 @@ export const SubstituteChipAppearsWhenTeacherDiffers: Story = {
 };
 
 // ============================================================
-// MARK RENDERED (added in #282)
+// MARK RENDERED (added in legacy #282)
 // ============================================================
 
 export const MarkRenderedShownOnPastScheduledLesson: Story = {
@@ -292,7 +292,7 @@ export const MarkRenderedHiddenOnRenderedRow: Story = {
 
 
 // ============================================================
-// ACTION PATTERN (#805)
+// ACTION PATTERN (legacy #805)
 // ============================================================
 
 /**

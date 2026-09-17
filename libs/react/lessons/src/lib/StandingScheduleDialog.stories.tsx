@@ -72,11 +72,11 @@ export const ChangeExisting: Story = {
 
 /**
  * A time outside the block is caught here, not by a server error after saving.
- * The block is the container the arrangement has to sit inside (#686).
+ * The block is the container the arrangement has to sit inside (legacy #686).
  */
 /**
- * A time outside every block still cannot be saved as-is — the #686 rule is
- * intact. What changed in #835 is that it is no longer a dead end: the dialog
+ * A time outside every block still cannot be saved as-is — the legacy #686 rule is
+ * intact. What changed in legacy #835 is that it is no longer a dead end: the dialog
  * offers the widening that would fit, instead of only saying no.
  */
 export const OffersAWayThroughForATimeOutsideTheBlock: Story = {
@@ -142,7 +142,7 @@ export const TeacherWithNoBlocks: Story = {
 };
 
 /**
- * Katie sets a biweekly student (#837). She had been expressing this by
+ * Katie sets a biweekly student (legacy #837). She had been expressing this by
  * hand-creating a lesson every off-week and cancelling it — roughly 26
  * cancellations a year, per student.
  */
@@ -197,7 +197,7 @@ export const DefaultsToWeekly: Story = {
 };
 
 // ============================================================
-// #835 — no block covers the time: offer a way through
+// legacy #835 — no block covers the time: offer a way through
 // ============================================================
 
 /**

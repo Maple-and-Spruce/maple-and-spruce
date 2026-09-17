@@ -5,7 +5,7 @@ import { workspaceRoot } from '@nx/devkit';
  * Admin-portal role-scoping E2E — drives the real Next.js app
  * (`apps/maple-spruce`) against the local Firebase emulators (auth + firestore
  * + functions with the PR's own code). The first browser-level proof that the
- * scoped-roles wiring holds in the assembled app (epic #617).
+ * scoped-roles wiring holds in the assembled app (epic #49).
  *
  * Run via `tools/run-portal-e2e.sh`, which starts the emulators and then
  * `nx run maple-spruce-e2e:e2e`. Playwright's own `webServer` boots the Next

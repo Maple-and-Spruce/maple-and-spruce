@@ -6,7 +6,7 @@ import { fonts } from '@maple/react/theme';
 
 /**
  * Scannable QR to the business Venmo profile, shown so a student can pay by
- * Venmo at their lesson (#631). Scanning opens venmo.com/u/<handle>.
+ * Venmo at their lesson (legacy #631). Scanning opens venmo.com/u/<handle>.
  */
 export function VenmoQr({ handle, size = 200 }: { handle: string; size?: number }) {
   const url = `https://venmo.com/u/${handle}`;

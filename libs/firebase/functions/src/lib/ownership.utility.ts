@@ -1,6 +1,6 @@
 /**
  * Resource-ownership checks layered on top of role gates (scoped-roles
- * epic #617, phase 2).
+ * epic #49, phase 2).
  *
  * Lesson teachers can READ all lessons but MUTATE only their own. The role
  * gate (`requiringRole([Role.Admin, Role.LessonTeacher])`) admits them to a
@@ -106,7 +106,7 @@ export async function assertCanManageStudent(
 
 /**
  * Enforce "lesson teachers record payments only on their own students'
- * lessons" (#631 — the teacher My Day page).
+ * lessons" (legacy #631 — the teacher My Day page).
  *
  * Passes unconditionally for admins. For a lesson-teacher it passes only when
  * the invoice has at least one line item referencing a lesson taught by their

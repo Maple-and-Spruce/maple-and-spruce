@@ -107,7 +107,7 @@ export const LessonRepository = {
 
   /**
    * Create a lesson at a caller-chosen document id, failing if it already
-   * exists (#797).
+   * exists (legacy #797).
    *
    * The materialiser derives that id from the schedule and the occurrence date,
    * which is what makes re-running a no-op — and what makes a skipped or moved

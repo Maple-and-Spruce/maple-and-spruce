@@ -33,7 +33,7 @@ that actually leaked) are caught. The checker never prints a matched name.
 - legacy #857 missed real card last-4s and two first names inside `cus_` ids. A full-name-only
   scrub can't see those.
 
-### One class, two CMS items: a race in the class → Webflow sync (2026-09-16, PR #879)
+### One class, two CMS items: a race in the class → Webflow sync (2026-09-16, legacy PR #879)
 
 `/upcoming-classes` was rendering **12 cards for 8 classes**. Four pairs were the same class
 twice, disagreeing about availability — the Oct 7 Stained Glass class was **full** while its twin
@@ -57,7 +57,7 @@ both created. One admin save, two cards.
 transient Webflow errors were laundered into "not found" and routed to `createItem`;
 `syncRegistrationCount` called `syncClass` and threw the returned `webflowItemId` away, so anything
 it created was born orphaned; `deleteClass` hard-deleted with no cascade, orphaning registrations;
-and `ClassForm` had no synchronous double-submit guard — the #286 signal fix was never ported, so
+and `ClassForm` had no synchronous double-submit guard — the legacy #286 signal fix was never ported, so
 two fast clicks meant two class documents.
 
 **Three things worth remembering.**
@@ -94,14 +94,14 @@ strips types, so unit tests stayed green throughout and only a real build surfac
 `bootstrap-worktree.sh --link-node-modules` cannot catch this class of drift, because its guard
 compares lockfile *files*, which matched.
 
-### One library, one function — the deploy filter was silently dropping exports (2026-09-14, #872)
+### One library, one function — the deploy filter was silently dropping exports (2026-09-14, legacy #872)
 
 The merge deploy builds its `--only` filter from the **library directory name**, one function
 per library. Anything else a library exported sat outside every filter, and `firebase deploy`
 leaves what it is not asked about alone — untouched if it exists, **never created if it does
 not**. No failure, no warning.
 
-Eight functions were in that state. `chargeLessonsNow` (#866) was the live one: written into
+Eight functions were in that state. `chargeLessonsNow` (legacy #866) was the live one: written into
 `run-lesson-billing` because ADR-029 says prefer an existing library, and never deployed at
 all, so Pay ahead failed with `functions/not-found`. Six admin `trigger*` twins of scheduled
 jobs were the same shape, and `healthCheck` was worse — declared inline in the entry point,
@@ -115,22 +115,22 @@ scheduled job and its manual twin still share one implementation and nx marks bo
 when it changes.
 
 `tools/check-function-library-names.ts` now parses the entry points and enforces the bijection
-in both directions — too few exports (the #835 batch-killer, where the filter names nothing)
+in both directions — too few exports (the legacy #835 batch-killer, where the filter names nothing)
 and too many (this bug), plus inline exports that belong to no library. It used to check only
 the first half, which is why this was invisible.
 
 **The count baseline went 236 → 244, and that is an accounting correction, not growth.** The
 ratchet counts library directories as a proxy for deployed functions; with seven functions
-riding along inside other libraries it was undercounting by exactly that much — #867's
+riding along inside other libraries it was undercounting by exactly that much — #89's
 complaint, made concrete. The rule text at `.claude/rules/firebase-functions.md` said a
 library "may export more than its own name … a scheduled job plus its admin trigger twin is
-the usual shape", which is what led #866 straight into this, and now says the opposite.
+the usual shape", which is what led legacy #866 straight into this, and now says the opposite.
 
 Also fixed: `charge-lessons-now.spec.ts` read `SQUARE_MOCK_SERVER_PORT` directly and fell back
 to 9997, so every test in it failed with ECONNREFUSED in a port-offset worktree — the same
 trap `link-student-card.spec.ts` documents. It uses `EMULATOR_CONFIG` now.
 
-### Student page: lessons and billing as tables (2026-09-13, #828, #853)
+### Student page: lessons and billing as tables (2026-09-13, #84, #88)
 
 `/students/[id]` showed lessons as two lists (Upcoming / Past), invoices as a third list, and card
 charges in a card above everything. Now it is two Material React Table tables.
@@ -139,20 +139,20 @@ charges in a card above everything. Now it is two Material React Table tables.
 lesson with an outcome (taught, no-show, cancelled). A past lesson still `scheduled` stays visible,
 because it is waiting on "Mark taught" and hiding it would hide the studio's most common action.
 
-**Billing** merges invoices, automatic charges (#798) and manual charges (#864) into one table,
+**Billing** merges invoices, automatic charges (#81) and manual charges (legacy #864) into one table,
 also date-sorted, with **Show paid & closed** off. `failed` is never "closed": it is money earned and
 not collected. A block charge is one row with one amount and the span of lessons it covers, so four
 lessons paid in one go never reads as four charges. This replaces `InvoiceList` and the
 `UpcomingChargesCard` on the student page; the card still serves `/lesson-billing`. The records are
 unchanged (`buildBillingRecords` in `@maple/ts/domain` is presentation only).
 
-Manual charges (#864) are labelled from `source === 'manual'` or the `MANUAL_CHARGE_RULE_ID`
+Manual charges (legacy #864) are labelled from `source === 'manual'` or the `MANUAL_CHARGE_RULE_ID`
 sentinel. A failed charge gets **Try again** on its own row, which calls `chargeLessonsNow` with the
 original charge id, so an attempt that already reached Square comes back as the same payment.
 `PrepayLessonsCard` stays as its own card above the tables: taking a payment is a different job
 from reading the ledger.
 
-**Shared MRT options, as #853 asked for first.** `brandTableOptions()` in `@maple/react/ui` carries
+**Shared MRT options, as #88 asked for first.** `brandTableOptions()` in `@maple/react/ui` carries
 the brand surfaces and both pinning fixes (`mrtTheme.baseBackgroundColor`, pinned-cell
 `opacity: 1`). `StudentList` now spreads it too; each new table's story carries the pinning
 assertions. Five DataGrid tables remain.
@@ -170,7 +170,7 @@ The seed (`student-page-seed.ts`) reseeds before each test, so a retry starts cl
 
 Not done here: #828's original idea of a billing column on each lesson row.
 
-### Paying ahead for a block of lessons (2026-09-13, #864)
+### Paying ahead for a block of lessons (2026-09-13, legacy #864)
 
 Some families agree with Katie to pay for the next few lessons up front, in exchange for the
 slot being a commitment on both sides. That conversation happens at the desk, so `chargeLessonsNow`
@@ -178,7 +178,7 @@ takes the money there and then: next N lessons by default (4), or pick them by h
 
 The design decision worth remembering is that a manual charge produces the **same**
 `LessonScheduledCharge` an automatic one does, already `paid` with the Square payment id on it.
-No second ledger (epic #626 decided that), so the charges screen, teacher payouts and the next
+No second ledger (epic #51 decided that), so the charges screen, teacher payouts and the next
 planning run all keep working without knowing which way the money was taken. It also inherits
 the at-most-once machinery for free: the atomic `create` at the deterministic charge id **is**
 the lease, claimed *before* the payment rather than after.
@@ -187,7 +187,7 @@ the lease, claimed *before* the payment rather than after.
 from the start of the whole chargeable list, so a prepayment that did not land on a block
 boundary would have been billed again automatically. Fixing that meant subtracting every lesson
 an existing charge already covers *before* blocking — and that closes a bug that has been sitting
-in the scheduled job since #798: a charge's id is keyed on its first lesson, so cancelling that
+in the scheduled job since #81: a charge's id is keyed on its first lesson, so cancelling that
 lesson re-forms the block around a different one, earns a *different* id, and the
 `createIfAbsent` collision that normally means "already handled" never fires. Every remaining
 lesson in a paid block would have been charged a second time. Matching on lessons rather than on
@@ -203,9 +203,9 @@ ignored idempotency keys entirely, so a double-charge bug would have passed the 
 returns the original payment for a reused key, the way real Square does, and can be told to
 decline so the failed-then-retry path is actually exercised.
 
-### A one-field index froze every Firestore index deploy (2026-09-04, #826)
+### A one-field index froze every Firestore index deploy (2026-09-04, legacy #826)
 
-`deploy_firestore_indexes_dev` has failed on every merge since #818 with
+`deploy_firestore_indexes_dev` has failed on every merge since legacy #818 with
 `400, this index is not necessary, configure using single field index controls`. Firestore
 auto-creates single-field indexes and refuses a declaration for one, and it fails the *whole* file:
 no index in `firestore.indexes.json` reached dev or prod while that entry sat there.
@@ -222,7 +222,7 @@ direction for the first time. Every *declared* index must be legal, so a pasted 
 single-field entry fails at PR time instead of at merge-time deploy. The rules moved into
 `tools/firestore-index-rules.ts` and finally have unit tests; the AST walking stayed put.
 
-### Standing lesson schedules, PR 2: Katie edits the arrangement (2026-09-04, #797)
+### Standing lesson schedules, PR 2: Katie edits the arrangement (2026-09-04, legacy #797)
 
 The student page now leads with **Standing schedule** — "Tuesdays at 4:00 PM · 30 min · Katie
 McCoy" — above the lesson rows. Moving a student to a new day is one edit instead of twelve. The
@@ -264,7 +264,7 @@ no series to infer from, one with a single lesson (correctly refused as not a pa
 no lessons at all. There is also a lesson pointing at a deleted student record.
 
 
-### Standing lesson schedules, PR 1: the arrangement becomes an object (2026-09-04, #797)
+### Standing lesson schedules, PR 1: the arrangement becomes an object (2026-09-04, legacy #797)
 
 Katie and Nathan think in standing arrangements — "Nathan teaches Devin on Tuesdays at 4:00". The
 portal made them manage rows of concrete lessons, which is why moving a student to a new day meant
@@ -305,7 +305,7 @@ unrelated footer-snippet fix, after their tests had passed. Rewritten and commit
 Checkpoint new files before switching branches in a worktree.
 
 
-### Needs Attention: six invisible states, now a to-do list (2026-09-04, #807)
+### Needs Attention: six invisible states, now a to-do list (2026-09-04, legacy #807)
 
 Six things were already true in the data and none of them surfaced anywhere, so finding any one meant
 going looking, per student. Each is money or compliance quietly going wrong — an invoice that never
@@ -329,7 +329,7 @@ mostly multi-field queries — six indexes to maintain for a dataset of a few hu
 code says so, so nobody "optimises" it into six indexes later without knowing why it wasn't.
 
 **Scoping is a real behaviour, not a filter.** An admin sees everything; a lesson teacher sees only
-their own students and lessons (`instructorIdForUser`, #616). The response carries `scopedToSelf` and
+their own students and lessons (`instructorIdForUser`, legacy #616). The response carries `scopedToSelf` and
 the panel says "showing only your own students" — because an empty panel means *"nothing is wrong"*
 to Katie and *"nothing of yours is wrong"* to Nathan, and those are different claims.
 
@@ -340,7 +340,7 @@ worth keeping: a **no-show counts as unbilled** for private pay (the slot was ch
 the row would be noise nobody can act on.
 
 
-### Hope Scholarship billing has a ledger (2026-09-04, #799)
+### Hope Scholarship billing has a ledger (2026-09-04, legacy #799)
 
 `Student.isHopeScholarship` did exactly two things: make `createInvoice` throw, and render a banner
 restating the EMA rules. **Nothing recorded what had actually been claimed.** That ledger lived in
@@ -364,7 +364,7 @@ paid for?**
   actually told, so `recordHopeSubmissions` keeps the original `rateCents` when a claim moves to paid.
 
 **The no-show guard is on the write, not just the read.** The queue filters on `isSubmittableToHope`
-(#796), *and* `recordHopeSubmissions` re-checks every lesson server-side. Hiding a no-show in the UI
+(legacy #796), *and* `recordHopeSubmissions` re-checks every lesson server-side. Hiding a no-show in the UI
 is not enough: a stale client could otherwise claim public money for a lesson nobody attended. Both
 halves are covered by integration tests.
 
@@ -373,7 +373,7 @@ optional `status`, so a backfill is "the same series creation, with past dates, 
 Everything downstream — payouts, the Hope queue, the room schedule — reads ordinary `Lesson` records,
 and a separate "historical lesson" entity would have had to be taught to all of it.
 
-Block attribution (#686) is **waived for a backfill only**. That rule stops *new* lessons being
+Block attribution (legacy #686) is **waived for a backfill only**. That rule stops *new* lessons being
 dropped at arbitrary times; a lesson that already happened happened whether or not a block covers
 that weekday, and refusing to record it would mean refusing to claim money the studio has earned.
 Backfilled lessons carry `blockId: null` and surface as "needs a block" — the existing grandfather
@@ -384,11 +384,11 @@ exemption cannot become a hole.
 `studentId + status + scheduledAt` that the emulator would never have complained about. Declared in
 the same PR, per the rule.
 
-**Still open (#804):** the EMA export format, moving payouts to count Hope at *paid* rather than
+**Still open (#83):** the EMA export format, moving payouts to count Hope at *paid* rather than
 *rendered*, and making Hope rates admin-editable. All three wait on answers.
 
 
-### `no-show` is its own lesson status, and it bills in two directions (2026-09-04, #796)
+### `no-show` is its own lesson status, and it bills in two directions (2026-09-04, legacy #796)
 
 `LessonStatus` was `scheduled | rendered | cancelled`. Registrations have carried a `no-show` all
 along; lessons never got one, so a no-show had to be filed as `rendered` (a lie, and for a Hope
@@ -406,7 +406,7 @@ everything routes through them so the rule cannot be re-derived differently in t
   room-occupancy test. A no-show still occupied the Spruce Room, so `onLessonWrite` keeps its
   calendar event; only an outright cancellation frees the room.
 - `isSubmittableToHope(status)` — **rendered only**. `isLessonPayoutEligible` now calls it instead of
-  comparing to `'rendered'` itself, so the payout aggregator and #799's EMA submission queue cannot
+  comparing to `'rendered'` itself, so the payout aggregator and legacy #799's EMA submission queue cannot
   disagree about what Hope may be billed for. A domain test asserts the two sets are strictly nested
   and that `no-show` is never in the Hope one.
 
@@ -422,15 +422,15 @@ slice makes one trigger decide money in two directions, so both guarantees are n
 emulator: a private-pay no-show produces a sent invoice with the right words on it, and a Hope
 no-show produces nothing at all.
 
-UI is built on #805's pattern: on `/my-day` "No-show" sits beside "Mark rendered" (two taps stays two
+UI is built on legacy #805's pattern: on `/my-day` "No-show" sits beside "Mark rendered" (two taps stays two
 taps), and in `LessonList` it is an overflow item — "it happened" is the overwhelmingly common
 answer, and two competing primaries on every past row would slow the common case to help the rare one.
 
-**This unblocks #799.** The Hope submission queue can now exclude no-shows structurally instead of
+**This unblocks legacy #799.** The Hope submission queue can now exclude no-shows structurally instead of
 hoping a UI filter remembers to.
 
 
-### Lesson row actions: labelled primary + overflow, per-row progress (2026-09-04, #805)
+### Lesson row actions: labelled primary + overflow, per-row progress (2026-09-04, legacy #805)
 
 David: the lesson action buttons are vague, have no progress state, and are a weird pattern. Looking
 at it, **`LessonList` was the outlier, not the house style** — `StudentList` already uses a
@@ -464,7 +464,7 @@ was a user who could not tell whether their click landed.
 obvious follow-up; left out to keep this reviewable and lesson-focused.
 
 
-### Lesson inquiries land in the portal (2026-09-04, #795 / epic #793)
+### Lesson inquiries land in the portal (2026-09-04, legacy #795 / epic #80)
 
 An inquiry used to live in Tally and in Katie's inbox and nowhere else — `tallyLeadWebhook` fires two
 analytics beacons and writes nothing. There was no way to answer "who asked us about lessons three
@@ -483,7 +483,7 @@ webhook.** Persisting from `tallyLeadWebhook` was the obvious approach and is th
   form, none of them ever in the portal. The first run backfills all of them.
 
 Splitting the two concerns by *mechanism* rather than by bundle dissolved the codebase question that
-#795 was originally framed around: a scheduled function has no cold-start budget to protect, so it
+legacy #795 was originally framed around: a scheduled function has no cold-start budget to protect, so it
 lives in `maple-core` with no new codebase and no second webhook to wire.
 
 **The API shape is not the webhook shape, and this was verified rather than assumed.** The webhook
@@ -496,19 +496,19 @@ passed an invented fixture, and captured nothing. The spec fixtures are real cap
 Idempotence is structural: the Firestore doc id **is** the Tally submission id and ingestion uses
 `create()`, so a re-poll cannot reset an `enrolled` lead back to `new`.
 
-`/leads` is built on the action pattern #805 is moving the lesson surfaces onto — one labelled
+`/leads` is built on the action pattern legacy #805 is moving the lesson surfaces onto — one labelled
 primary action, a `MoreVert` overflow, and **per-row** pending state rather than the page-wide `busy`
 boolean `/my-day` still uses. No reason to build a new surface with the defect we just filed.
 
 **Manual step, and the deploy fails without it:** set the **`TALLY_API_KEY`** secret in each
 project's Secret Manager before this merges. A declared-but-unset `defineSecret` breaks the deploy
-(#531 would detect this; it is still open).
+(#44 would detect this; it is still open).
 
 **Not done here:** the acknowledgement email to the family. Tally respondent notifications need Tally
 Pro, and `queueMail` still cannot enter `maple-webhooks`. Now that inquiries are Firestore documents,
 the natural home is a trigger on `lessonInquiries` — worth its own slice.
 
-### Suzuki intake form + lead attribution (2026-09-03, #794 / epic #793)
+### Suzuki intake form + lead attribution (2026-09-03, legacy #794 / epic #80)
 
 An audit of the lesson funnel against the live site found that **`/suzuki` was pointed at the generic
 `dWPQOr` "Music Lesson Inquiry" form**, which reports no conversion event to Meta or GA4 at all:
@@ -533,7 +533,7 @@ Tally hangs up at 10s and does not retry, so that codebase stays tiny (ADR-031).
 
 **Family acknowledgement is not done.** Tally respondent notifications require Tally Pro (the API
 refused it, `upgradeTrigger: RESPONDENT_EMAIL_NOTIFICATIONS`), and `queueMail` cannot go in
-`maple-webhooks` without re-inflating the bundle. It moves to **#795**, where persisting the lead
+`maple-webhooks` without re-inflating the bundle. It moves to **legacy #795**, where persisting the lead
 forces the codebase decision anyway.
 
 **Manual steps, in this order:**
@@ -546,13 +546,13 @@ forces the codebase decision anyway.
 4. Publish the Webflow site (the `/suzuki` embed is already swapped in the Designer, unpublished).
 
 Also corrected `docs/reference/REQUIREMENTS.md`, which claimed music lessons were built and complete.
-The admin surface is; the funnel and the billing automation are not. Epic **#793** holds the six
+The admin surface is; the funnel and the billing automation are not. Epic **#80** holds the six
 slices, and `docs/reference/suzuki-readiness-plan.md` is the standing execution plan.
 
-Closed **#362** (add Nathan as an instructor) as stale — he has been live at
+Closed **legacy #362** (add Nathan as an instructor) as stale — he has been live at
 `/instructors/nathan-zucker` for a while.
 
-### Music Together pilot half-off: discount codes at checkout + waivable installments (2026-09-03, #791)
+### Music Together pilot half-off: discount codes at checkout + waivable installments (2026-09-03, legacy #791)
 
 Stephanie wants to thank the families who came to the first demo with **half off** their first
 semester ("pilot discount", code `PilotClass`). One family had **already registered** on the
@@ -586,7 +586,7 @@ on the same number.
   pay-in-full registration; the integration suite caught it. A fixed `amount` comes off the plan
   **total once**, then apportions across installments (largest-remainder, so the parts still sum).
 - **`appliesTo: 'nth-slot-onward'` is rejected for MT**, not silently treated as an order discount.
-  MT prices a family, not slots, and additional children already get the sibling discount (#599).
+  MT prices a family, not slots, and additional children already get the sibling discount (legacy #599).
 - **`waived` is not `cancelled`.** Both stop the charge job, but `cancelled` means the family left.
   A comped installment has to stay legible on the roster, so the status, the reason, and the waiving
   admin are all recorded. A payment failure also **returns** a consumed redemption — burning a
@@ -644,7 +644,7 @@ page — now under **Music Together → Discounts**, and it is stamped `music-to
 for each family who registered before the offer. Anyone who paid **in full** before the offer needs a
 $126 refund through Cancel / refund instead — waiving does nothing for them.
 
-### Music Together spot counts never reached the public site (2026-09-03, #800)
+### Music Together spot counts never reached the public site (2026-09-03, legacy #800)
 
 Stephanie reported the Thursday Morning section still advertising **8 spots left** after a family
 registered (admin showed `1 / 8 families`). It was not a device cache — the stale number was in the
@@ -653,7 +653,7 @@ server-rendered HTML.
 `spots-remaining` / `spots-display` on an MT section were written by exactly one thing:
 `syncMusicTogetherSectionToWebflow`, a trigger on `musicTogetherSections/{sectionId}`. A registration
 never touches the section document, so the count Webflow captured at the last admin edit was frozen
-there. Classes have had the equivalent trigger since #143 (`syncRegistrationCount`); MT never got one.
+there. Classes have had the equivalent trigger since legacy #143 (`syncRegistrationCount`); MT never got one.
 
 `syncMusicTogetherRegistrationCount` is that mirror — a trigger on
 `musicTogetherRegistrations/{registrationId}` that re-syncs the owning section.
@@ -675,7 +675,7 @@ there. Classes have had the equivalent trigger since #143 (`syncRegistrationCoun
   *absent* from that list — capacity is per family, so adding a sibling consumes no spot.
   (The Week-5 installment job writes `musicTogetherScheduledCharges`, not the registration doc —
   it only reads the registration.) That a hand-maintained field allowlist is what stands between a
-  bookkeeping write and an outbound publish is the argument for #802.
+  bookkeeping write and an outbound publish is the argument for #82.
 - **Hidden sections are skipped, not synced.** A hidden section has no CMS item (the section trigger
   removes it); syncing one here would resurrect a card that was deliberately pulled.
 
@@ -689,7 +689,7 @@ Re-saving each affected section in admin republishes it with the live number.
 
 ---
 
-### Server-side Meta signals for MT demo RSVPs + interest signups (2026-08-22, #781)
+### Server-side Meta signals for MT demo RSVPs + interest signups (2026-08-22, legacy #781)
 
 The first Music Together campaign spent $124.43 over nine days — 8,319 reached, 389 link clicks,
 328 landing page views — and reported **zero** pixel-attributed conversions. Some of that was a
@@ -720,7 +720,7 @@ later and in single digits; `Schedule` is the only MT event with enough volume t
 - **The server half fires only on `created`.** Both endpoints are public and unauthenticated —
   sending on every call would let anyone inflate a campaign's conversion count by replaying a
   signup. The browser half still fires on a re-submit under the same stable id, which is what keeps
-  Meta from booking it twice. Same reasoning as the email idempotency from #778.
+  Meta from booking it twice. Same reasoning as the email idempotency from legacy #778.
 - **`external_id` is the lowercased email on every surface.** That is the thing that lets Meta
   resolve one family's demo RSVP, interest signup, and later enrollment to a single person — the
   basis for a lookalike off the RSVP. `country: 'us'` is now sent unconditionally everywhere; and
@@ -742,12 +742,12 @@ tracking that pays for the classes and had no browser-level coverage.
    submit a demo RSVP, and check that `Schedule` appears **once** with both a Browser and a Server
    source. If it shows twice, the `event_id` broke.
 2. Mark `Schedule` and `Lead` as conversions in the MT dataset once traffic starts.
-3. **#782 — dev and prod still share the production pixel.** This got sharper: it is no longer just
+3. **#78 — dev and prod still share the production pixel.** This got sharper: it is no longer just
    rare `Purchase` events, it is every dev demo RSVP and interest signup posting a real hashed email
    into the production MT dataset. Do not run repeated dev test signups, and prune test emails
    before building a lookalike off that data.
 
-### Music Together registration email sequences (2026-08-17, #778)
+### Music Together registration email sequences (2026-08-17, legacy #778)
 
 Demo RSVPs and section waitlist signups sent **nothing** until now: both functions wrote Firestore
 and returned. Families had signed up and heard back only if someone reached them by hand. This adds
@@ -772,7 +772,7 @@ a section waitlist signup.
 `queueMail({ to, templateName, data, sender })` in `@maple/firebase/functions` is now the single
 send path for Music Together. It sets `replyTo: musictogether@…` today and leaves `from` at the
 extension default, because Gmail SMTP rejects a `from` the account isn't authorized to send as. That
-map is the seam for **#775** (dedicated sending provider, arbitrary validated senders) and **#756**
+map is the seam for **#77** (dedicated sending provider, arbitrary validated senders) and **#76**
 (Trigger Email decommission 2027-03-31) — when either lands, only `SENDER_FROM` changes.
 
 Reminders run in one daily 08:00 ET function with five idempotent passes: sections meeting today
@@ -782,7 +782,7 @@ Reminders run in one daily 08:00 ET function with five idempotent passes: sectio
 been run against prod. Families who signed up before this shipped are still unacknowledged until it
 runs with `--send`.
 
-### Related classes moved from a Cloud Function to the Webflow CMS (2026-08-17, #776)
+### Related classes moved from a Cloud Function to the Webflow CMS (2026-08-17, legacy #776)
 
 The sold-out panel on a class page used to fetch sibling classes through
 `getRelatedPublicClasses`, a callable in the `maple-core` bundle (~6.1s cold, ADR-031). It only ran
@@ -896,7 +896,7 @@ Fix: new `maple-webhooks` codebase (`apps/functions-webhooks/`, 90kb vs 488kb) h
 Follow-up to the above. `squareWebhook` was **not** in `maple-core` (an error in ADR-031's first
 draft) — it was in `maple-square`. Same 10s ceiling; it survives on Square's retries. Moved to its
 own 141kb `maple-square-webhook` codebase; the Firestore-triggered workers stay in `maple-square`.
-Webhook URL is unchanged, so no Square dashboard change was needed. Shipped in #761.
+Webhook URL is unchanged, so no Square dashboard change was needed. Shipped in legacy #761.
 
 **Measured after deploy (2026-08-09), paired sampling:** `squareWebhook` ~3.4s cold vs ~5.7s for
 the `maple-square` bundle it left; `tallyLeadWebhook` ~2.6s vs ~6.1s for `maple-core`. Both moves
@@ -914,16 +914,16 @@ Two adjacent problems found and fixed while in there:
 1. **Every CMS detail page shared one static `<title>`** — classes, instructors, artists, and MT sections all rendered the template's literal SEO title (all 28 class pages said "Class Registration | Maple & Spruce Folk Arts Collective"). Fixed by binding each template's SEO title/description to CMS fields via `bulk_update_pages` (Webflow `{{wf {"path":...}}}` tokens work through the Data API), verified on the staging subdomain, then published.
 2. **Past classes never came down** — 19 of 28 live class pages were for classes that had already happened, accumulating in the live site and the auto-generated sitemap. Unpublished them (sitemap 62 → 43 URLs) and added the `expirePastClassPages` scheduled function so it does not drift back.
 
-Note: the dev-CMS-leak guard from #728 is working — all 21 dev-synced class items are correctly drafts. The stale pages were real prod classes, not dev leakage.
+Note: the dev-CMS-leak guard from legacy #728 is working — all 21 dev-synced class items are correctly drafts. The stale pages were real prod classes, not dev leakage.
 
 **Next steps**: recurring offerings still share a `<title>` (e.g. two "Stained Glass - TryIt Class"); binding a short date into the template title would make every page unique. Also consider the same auto-expiry for MT sections/semesters, and `/about` has no JSON-LD at all.
 
 ---
 
 **Date**: 2026-06-26
-**Status**: Phase 4 complete; Phase 5 in progress. Spruce Room availability epic (#467) — PRs 1 & 2 shipped; adding the upcoming-schedule agenda (#504).
+**Status**: Phase 4 complete; Phase 5 in progress. Spruce Room availability epic (#39) — PRs 1 & 2 shipped; adding the upcoming-schedule agenda (legacy #504).
 
-### Spruce Room upcoming-schedule agenda (#504, 2026-06-26)
+### Spruce Room upcoming-schedule agenda (legacy #504, 2026-06-26)
 
 The epic deferred a "check the calendar" view ("Add later only if missed"). It was missed — the portal could say if the room was free *right now* and warn on conflicts inline, but there was no way to see all upcoming usage to plan around. Added a read-only **agenda view** at `/room-schedule` (Calendar nav group + a "View schedule" link on the dashboard room widget): bookings over the next 2/4/8 weeks grouped by day, with consecutive free days collapsed into an "Open" range.
 
@@ -934,12 +934,12 @@ Pure additive UI on top of the existing `getRoomSchedule` callable — **no back
 
 ### Spruce Room availability — PR 1 shipped (2026-06-11)
 
-The Spruce Room is going multi-tenant (music lessons, Music Together, ad hoc uses); David/Katie/Nathan need to know if it's free. Epic #467 holds the product decisions and architecture; the portal is the source of truth for room occupancy.
+The Spruce Room is going multi-tenant (music lessons, Music Together, ad hoc uses); David/Katie/Nathan need to know if it's free. Epic #39 holds the product decisions and architecture; the portal is the source of truth for room occupancy.
 
-PR 1 (#468 / PR #470): `room` field on CalendarEvent/Class, `onLessonWrite` trigger deriving private room-blocking events from scheduled lessons (closing the gap where lessons were invisible to the calendar aggregation), `getRoomSchedule` admin callable + composite index, and the dashboard "Spruce Room right now" widget.
+PR 1 (legacy #468 / legacy PR #470): `room` field on CalendarEvent/Class, `onLessonWrite` trigger deriving private room-blocking events from scheduled lessons (closing the gap where lessons were invisible to the calendar aggregation), `getRoomSchedule` admin callable + composite index, and the dashboard "Spruce Room right now" widget.
 
 **Next steps**:
-- PR 2 (#469): ad hoc "Book the Spruce Room" form, day strip + warn-and-confirm conflict warnings in ScheduleLessonDialog / class form / event form
+- PR 2 (legacy #469): ad hoc "Book the Spruce Room" form, day strip + warn-and-confirm conflict warnings in ScheduleLessonDialog / class form / event form
 - Ops: onboard Nathan (he signs up at `/login`, grant admin from `/users`) — decided full admin is fine
 
 ### Timekeeping retired — replaced by Square (2026-05-09)
@@ -960,15 +960,15 @@ Admin `/users` page where Katie/David can see everyone who's signed up to the ad
 
 ### Phase 4 Music Lessons — Complete
 
-Branch: `feature/283-teacher-payouts` (PR #304)
+Branch: `feature/283-teacher-payouts` (legacy PR #304)
 
-All 6 sub-issues of epic #10 implemented:
-- #278 Student records + admin UI
-- #279 Lesson scheduling + recurring series
-- #280 Private-pay invoice initiation
-- #281 Square invoice delivery + webhook payment attribution
-- #282 Hope Scholarship handling (rates, rendered-lesson tracking, invoice guard)
-- #283 Teacher payout tracking (aggregation from both sources, substitute attribution)
+All 6 sub-issues of legacy epic #10 implemented:
+- legacy #278 Student records + admin UI
+- legacy #279 Lesson scheduling + recurring series
+- legacy #280 Private-pay invoice initiation
+- legacy #281 Square invoice delivery + webhook payment attribution
+- legacy #282 Hope Scholarship handling (rates, rendered-lesson tracking, invoice guard)
+- legacy #283 Teacher payout tracking (aggregation from both sources, substitute attribution)
 
 **Requirements reviewed and updated** — REQUIREMENTS.md Phase 4 section rewritten to match actual implementation. Deferred items documented (lesson packages, teacher availability, public profiles).
 
@@ -978,20 +978,20 @@ All 6 sub-issues of epic #10 implemented:
 
 **Etsy API approved** (2026-03-27, `maplspruce-listings` app, Personal Access tier).
 
-8 of 9 PRs merged 2026-04-19 → 2026-04-22. Picking up the remaining admin UI work (#312) on 2026-05-08, split into two reviewable PRs.
+8 of 9 PRs merged 2026-04-19 → 2026-04-22. Picking up the remaining admin UI work (legacy #312) on 2026-05-08, split into two reviewable PRs.
 
 | PR | Issue | Title | Status |
 |----|-------|-------|--------|
-| 1 | #305 | Product variant model refactor | Merged (#314) |
-| 2 | #306 | Square multi-variation catalog support | Merged (#318) |
-| 3 | #307 | Push-to-Etsy Cloud Function | Merged (#319) |
-| 4 | #308 | Etsy import multi-variant support | Merged (#322) |
-| 5 | #309 | Sale recording + InventoryMovement audit log | Merged (#317) |
-| 6 | #310 | Etsy order polling + cross-channel inventory sync | Merged (#324) |
-| 7 | #311 | Etsy sync conflict detection + resolution | Merged (#325) |
-| 8a | #312 | Admin UI — variants in ProductForm + DataTable | Merged (#402) |
-| 8b | #312 | Admin UI — `/sales` page + Push-to-Etsy button | **In progress** (this PR) |
-| 9 | #313 | Artist payout calculation + admin page | Merged (#321) |
+| 1 | legacy #305 | Product variant model refactor | Merged (legacy #314) |
+| 2 | legacy #306 | Square multi-variation catalog support | Merged (legacy #318) |
+| 3 | legacy #307 | Push-to-Etsy Cloud Function | Merged (legacy #319) |
+| 4 | legacy #308 | Etsy import multi-variant support | Merged (legacy #322) |
+| 5 | legacy #309 | Sale recording + InventoryMovement audit log | Merged (legacy #317) |
+| 6 | legacy #310 | Etsy order polling + cross-channel inventory sync | Merged (legacy #324) |
+| 7 | legacy #311 | Etsy sync conflict detection + resolution | Merged (legacy #325) |
+| 8a | legacy #312 | Admin UI — variants in ProductForm + DataTable | Merged (legacy #402) |
+| 8b | legacy #312 | Admin UI — `/sales` page + Push-to-Etsy button | **In progress** (this PR) |
+| 9 | legacy #313 | Artist payout calculation + admin page | Merged (legacy #321) |
 
 **Full plan:** `.claude/plans/wild-scribbling-stearns.md`
 
@@ -1007,7 +1007,7 @@ Branch: `feat/image2pages-widget`
 - Nx scaffolding added: `apps/webflow-components/project.json` + `vitest.config.ts` (test target only — no build target; webflow-cli still drives bundling via `webflow.json`)
 - Published to workspace via `webflow library share` (env var aliasing: `WEBFLOW_TOKEN` → `WEBFLOW_WORKSPACE_API_TOKEN`)
 - Embedded on new "Pattern Scaling Tool" page (page id `69d7921b12449f27596c57e9`, draft) with maple-nav + Image to Pages + Footer
-- PR: [#231](https://github.com/david-shortman/maple-and-spruce/pull/231)
+- PR: legacy #231
 - Ported from standalone prototype: github.com/david-shortman/image2pages-web
 
 ### Registration Launch: Meta Ads Readiness
@@ -1017,12 +1017,12 @@ Goal: enable paid Meta ads driving traffic to Webflow class registration pages.
 ### What's Done
 
 **Wave 1 code (all merged):**
-- PR #213 — Class roster admin page (#211)
-- PR #214 — Email templates for confirmation + cancellation (#197)
-- PR #216 — syncRegistrationCount Cloud Function (#143)
-- PR #217 — Integration tests for syncClassToWebflow (#206)
-- PR #218 — Integration test foundation with 8 domain-specific projects (#167)
-- PR #226 — Square receipt URL in registrations + emails (#192) — auto-merge pending
+- legacy PR #213 — Class roster admin page (legacy #211)
+- legacy PR #214 — Email templates for confirmation + cancellation (legacy #197)
+- legacy PR #216 — syncRegistrationCount Cloud Function (legacy #143)
+- legacy PR #217 — Integration tests for syncClassToWebflow (legacy #206)
+- legacy PR #218 — Integration test foundation with 8 domain-specific projects (legacy #167)
+- legacy PR #226 — Square receipt URL in registrations + emails (legacy #192) — auto-merge pending
 
 **Registration flow verified:**
 - Registration widget placed on Webflow CMS class detail page
@@ -1030,37 +1030,37 @@ Goal: enable paid Meta ads driving traffic to Webflow class registration pages.
 - Tested working end-to-end with dev Square configuration
 
 **Analysis completed:**
-- #205 sync fields already implemented — remaining work is Webflow Designer binding
-- #202 component already placed — just needed manual prop configuration (done)
+- legacy #205 sync fields already implemented — remaining work is Webflow Designer binding
+- legacy #202 component already placed — just needed manual prop configuration (done)
 
 ### Remaining Work (Manual Ops)
 
 | Task | Issue | Owner | Notes |
 |------|-------|-------|-------|
-| AWS account + SES setup | #223 | David | **Start first** — production access takes 24-48h |
-| Firebase email extension | #195 | David | After SES; then run `tools/seed-email-templates.ts` |
-| GA4 + GTM | #116 | David | Google/Webflow console work |
-| Meta Pixel | #224 | David | After GTM; needed for ad optimization |
-| Privacy + cancellation policy pages | #225 | David/Katie | Webflow content pages |
-| Canonical domain + sitemap | #120 | David | DNS + Webflow settings |
+| AWS account + SES setup | legacy #223 | David | **Start first** — production access takes 24-48h |
+| Firebase email extension | legacy #195 | David | After SES; then run `tools/seed-email-templates.ts` |
+| GA4 + GTM | legacy #116 | David | Google/Webflow console work |
+| Meta Pixel | legacy #224 | David | After GTM; needed for ad optimization |
+| Privacy + cancellation policy pages | legacy #225 | David/Katie | Webflow content pages |
+| Canonical domain + sitemap | legacy #120 | David | DNS + Webflow settings |
 | Switch widget to prod Square credentials | — | David | Webflow Designer, last step |
-| Upcoming Classes page enhancements | #210 | In progress | Agent working on Webflow MCP |
+| Upcoming Classes page enhancements | legacy #210 | In progress | Agent working on Webflow MCP |
 
 ### Issues Created This Session
 
 | Issue | Title |
 |-------|-------|
-| #215 | Admin email template management with preview |
-| #222 | Configure required status checks for PR merging |
-| #223 | Create AWS account + SES for Maple & Spruce |
-| #224 | Install Meta Pixel via GTM |
-| #225 | Privacy policy + cancellation policy pages |
+| #22 | Admin email template management with preview |
+| #25 | Configure required status checks for PR merging |
+| legacy #223 | Create AWS account + SES for Maple & Spruce |
+| legacy #224 | Install Meta Pixel via GTM |
+| legacy #225 | Privacy policy + cancellation policy pages |
 
 ### Key Decisions Made
 
 - **Handlebars templates** for emails (matches existing `createRegistration` code pattern, easier to update than inline HTML)
 - **Agent Teams** enabled for parallel development (experimental feature)
-- **Per-domain integration test apps** structure from #218 (artist, class, instructor, etc.)
+- **Per-domain integration test apps** structure from legacy #218 (artist, class, instructor, etc.)
 - **vitest.config.ts** excludes integration test apps from unit test runner
 
 ### Blockers
@@ -1115,7 +1115,7 @@ See `history/` folder for detailed session logs:
 
 *Last updated: 2026-04-05*
 
-## #798 PR 1 — lesson billing rules + the charge job (backend)
+## #81 PR 1 — lesson billing rules + the charge job (backend)
 
 Named `LessonBillingRule`s ("every 4 lessons, charged the day before the first"),
 planned `LessonScheduledCharge` documents, and a daily job that takes the ones
@@ -1123,7 +1123,7 @@ that are due against the family's card on file. Reuses the Music Together
 installment pattern rather than inventing a second charging mechanism.
 
 **Card capture stays in person.** Katie and Nathan save the card in Square at the
-studio; the portal links to that card. The original #798 scope line said web
+studio; the portal links to that card. The original #81 scope line said web
 capture would *replace* the manual step — that is wrong and is corrected here.
 `Student` now carries `squareCustomerId` / `squareCardId` / `cardBrand` /
 `cardLast4` / `cardLinkedAt`, and `docToStudent` maps them.
@@ -1132,7 +1132,7 @@ Next (PR 2): `listStudentSquareCards` / `linkStudentSquareCard`, the payment-met
 card on `/students/[id]`, the rule editor, and the upcoming-charges view with
 skip/waive.
 
-## #835 PR 1 — derive and extend lesson blocks from scheduling (backend)
+## legacy #835 PR 1 — derive and extend lesson blocks from scheduling (backend)
 
 Katie no longer has to build a `LessonBlock` by hand before she can schedule
 into it. A caller may pass a `blockStrategy` asking for a block to be derived
@@ -1150,7 +1150,7 @@ weekday for every future lesson.
 Next (PR 2): `ScheduleLessonDialog` and the standing-arrangement dialog surface
 the choices, with Storybook `play` coverage.
 
-## #837 — biweekly standing arrangements
+## legacy #837 — biweekly standing arrangements
 
 `StudentLessonSchedule` gains `intervalWeeks`. Katie had been expressing "every
 other Tuesday" by hand-creating a lesson on each off-week and cancelling it, so
@@ -1173,12 +1173,12 @@ field its `docToX` mapper does not read back. That mistake is silent in every
 way that normally catches one: it compiles, unit tests pass (they hand-build
 entities and never touch the mapper), and the value writes to Firestore fine.
 
-It shipped three times (#798 card fields, #835 onDate, #837 intervalWeeks) and
+It shipped three times (#81 card fields, legacy #835 onDate, legacy #837 intervalWeeks) and
 found four more the first time it ran — most consequentially
 `Artist.preventAutoPublish`, where the "don't auto-publish" checkbox read back
 unticked and the next save silently re-enabled publishing.
 
-## #838 — the day column
+## legacy #838 — the day column
 
 `/teaching-days` shows one day top to bottom in time order, with **open slots
 in the sequence** between the students — the shape of the spreadsheet Katie has
@@ -1196,7 +1196,7 @@ Also fixes `getStudentLessonSchedules`, which scoped by the caller's linked
 instructor record without checking for admin — so "all teachers" would have
 shown Katie only her own students.
 
-## #798 — linking a card Katie already saved in Square
+## #81 — linking a card Katie already saved in Square
 
 Katie saves cards in the Square app, in person. The portal now finds the card
 she already saved and attaches it to the right student, rather than asking the
@@ -1210,7 +1210,7 @@ Verified against the live account before building.
 
 Nothing links automatically; a wrong link charges the wrong family.
 
-## #798 — the payment method card on the student page
+## #81 — the payment method card on the student page
 
 `/students/[id]` now shows the card on file and, when there is none, the cards
 in Square that match this student, each with its reason. Katie saves the card
@@ -1221,7 +1221,7 @@ uses to validate the choice. Nothing links automatically.
 
 Hidden for Hope students, who bill through the EMA portal.
 
-## #798 — visibility and control over automatic charges
+## #81 — visibility and control over automatic charges
 
 New `/lesson-billing` page and a per-student section showing what the daily job
 is about to take, with Cancel and Waive on anything still scheduled.
@@ -1233,22 +1233,22 @@ wrong charge is that somebody saw it coming.
 Prod state at the time of writing: 0 billing rules, 0 charges, 0 linked cards —
 so nothing charges anyone today, and nothing will until a rule exists.
 
-## #851 — Material React Table trial on /students
+## #87 — Material React Table trial on /students
 
 Column pinning is a paid MUI X Pro feature (verified in v7, v8 and v9), so
 `/students` now uses Material React Table (MIT) instead: Student and Lesson
 Day / Time pinned left, Actions pinned right.
 
-Also delivers #847's default sort by time slot, since `weekdaySortKey` already
+Also delivers #86's default sort by time slot, since `weekdaySortKey` already
 existed and already groups no-slot students last.
 
 One integration cost found by looking at it rather than by testing: MRT ships
 pinned cells at `opacity: 0.97`, so the scrolling columns read through as ghost
 text. Forced opaque, with a play test pinning it.
 
-Decision still open: keep and spread, keep and contain, or revert (see #851).
+Decision still open: keep and spread, keep and contain, or revert (see #87).
 
-## #835 — no block covers this time: offer a way through
+## legacy #835 — no block covers this time: offer a way through
 
 Picking a time nothing covered used to be a dead end. The dialog said the
 lesson did not fit, and Katie had to leave, widen the block on the Lesson
@@ -1261,10 +1261,10 @@ uses to validate the choice, so the dialog cannot offer something the server
 would refuse. Nothing is applied automatically; widening a recurring block
 changes that weekday for every future lesson, and it says so.
 
-Completes the UI half of #835, whose backend shipped in #836 and had been
+Completes the UI half of legacy #835, whose backend shipped in legacy #836 and had been
 unused since.
 
-## #841 — two things cannot be in the room at once
+## legacy #841 — two things cannot be in the room at once
 
 Nothing enforced this. Lessons, Music Together classes and private rentals
 could all be booked into the same hour. The only guard that existed is keyed

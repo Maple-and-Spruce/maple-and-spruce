@@ -1,5 +1,5 @@
 /**
- * chargeLessonsNow (#864) — take money for a block of lessons on the spot.
+ * chargeLessonsNow (legacy #864) — take money for a block of lessons on the spot.
  *
  * Some families agree to pay for several lessons up front, in exchange for the
  * slot being a mutual commitment. That is a conversation at the desk, so the
@@ -7,7 +7,7 @@
  *
  * It produces the **same** `LessonScheduledCharge` an automatic charge would,
  * already `paid`, so the charges screen, teacher payouts and the next planning
- * run all keep working without knowing which way the money was taken. Epic #626
+ * run all keep working without knowing which way the money was taken. Epic #51
  * decided lesson money has one ledger; this does not add a second.
  *
  * Lives in this library rather than a new one: same domain, same secrets, same

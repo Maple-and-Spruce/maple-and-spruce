@@ -10,7 +10,7 @@
  * It lives in its own library because **one library deploys exactly one Cloud
  * Function** — CI derives the deploy filter from the library directory name, so
  * a second export co-located with the schedule would simply never be deployed
- * (#872).
+ * (legacy #872).
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {

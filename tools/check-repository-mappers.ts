@@ -12,11 +12,11 @@
  *
  * It has happened three times:
  *
- *   #798  Student.squareCustomerId / squareCardId  -> every student read back
+ *   #81  Student.squareCustomerId / squareCardId  -> every student read back
  *         as "no card", so the billing job skipped everyone.
- *   #835  LessonBlock.onDate                       -> every one-off block read
+ *   legacy #835  LessonBlock.onDate                       -> every one-off block read
  *         back as recurring.
- *   #837  StudentLessonSchedule.intervalWeeks      -> every biweekly student
+ *   legacy #837  StudentLessonSchedule.intervalWeeks      -> every biweekly student
  *         read back as weekly.
  *
  * Each time only an emulator run caught it, and each time the symptom looked
@@ -257,7 +257,7 @@ function main(): void {
   );
   console.error(
     'A dropped field writes to Firestore fine and never comes back. This has\n' +
-      'shipped three times (#798 card fields, #835 onDate, #837 intervalWeeks)\n' +
+      'shipped three times (#81 card fields, legacy #835 onDate, legacy #837 intervalWeeks)\n' +
       'and each time only an emulator run found it.\n'
   );
   for (const g of gaps) {

@@ -111,7 +111,7 @@ export default function StudentDetailPage() {
   /**
    * Which lesson action is in flight. The page already tracked `isSubmitting`
    * but never passed it to `LessonList`, so rows showed no progress at all
-   * (#805). Per-lesson so one row saving does not freeze the list.
+   * (legacy #805). Per-lesson so one row saving does not freeze the list.
    */
   const [pendingLessonAction, setPendingLessonAction] =
     useState<LessonPendingAction | null>(null);
@@ -263,7 +263,7 @@ export default function StudentDetailPage() {
     durationMinutes: number;
     intervalWeeks: number;
     startsOn: Date;
-    /** How to make room when no block covers the time (#835). */
+    /** How to make room when no block covers the time (legacy #835). */
     blockStrategy?: BlockStrategy;
   }) => {
     setScheduleError(null);

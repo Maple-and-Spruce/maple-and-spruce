@@ -553,7 +553,7 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
 // ============================================================
 // Quantity recalculation when attendees are added / removed
 //
-// Regression: PR #417 introduced a multi-attendee flow that called
+// Regression: legacy PR #417 introduced a multi-attendee flow that called
 // `calculateCost(quantity.value + 1)` after pushing a new attendee
 // into the signal. Because `quantity` is a computed of
 // `additionalAttendees.length + 1`, reading it after the write
@@ -671,7 +671,7 @@ describe('RegistrationCheckoutForm — attendee quantity recalculation', () => {
     // Source-of-truth contract: even if the server priced a different
     // quantity than the UI thinks it asked for, the cost summary
     // displays what the server said. This is the structural guarantee
-    // that prevents the line-item / totals divergence from #423.
+    // that prevents the line-item / totals divergence from legacy #423.
     const onCalculateCost = vi.fn().mockResolvedValue({
       quantity: 7,
       pricePerItemCents: 1234,

@@ -105,7 +105,7 @@ export const PaidShowsChipNoActions: Story = {
 
 /**
  * A card mid-save. The pressed control says what it is doing; its siblings on
- * the same card disable. Before #805 this was a page-wide boolean, so every
+ * the same card disable. Before legacy #805 this was a page-wide boolean, so every
  * card in the day greyed out and none of them said why.
  */
 export const RecordingVenmoPayment: Story = {

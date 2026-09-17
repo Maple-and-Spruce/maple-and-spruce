@@ -72,7 +72,7 @@ describe('isChargeableLesson', () => {
   it.each([
     ['scheduled', true], // these rules bill AHEAD of the teaching
     ['rendered', true],
-    ['no-show', true], // private pay is charged for a no-show (#796)
+    ['no-show', true], // private pay is charged for a no-show (legacy #796)
     ['cancelled', false],
   ] as const)('%s -> %s', (status, expected) => {
     expect(isChargeableLesson({ status })).toBe(expected);

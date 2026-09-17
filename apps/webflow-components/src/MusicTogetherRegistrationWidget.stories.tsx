@@ -3,7 +3,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { MusicTogetherRegistrationWidget } from './MusicTogetherRegistrationWidget';
 
 /**
- * Real-browser coverage for the discount-code affordance (#791 pilot half-off).
+ * Real-browser coverage for the discount-code affordance (legacy #791 pilot half-off).
  *
  * The jsdom spec already proves the arithmetic. What only a browser can show is
  * that the code row and the applied-code chip actually LAY OUT next to the

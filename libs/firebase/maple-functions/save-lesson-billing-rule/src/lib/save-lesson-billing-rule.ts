@@ -1,5 +1,5 @@
 /**
- * saveLessonBillingRule (#798) — create or update one billing rule.
+ * saveLessonBillingRule (#81) — create or update one billing rule.
  *
  * Create and update are one endpoint because the interesting work is identical:
  * a rule is a standing instruction to take money, so the same shape checks have

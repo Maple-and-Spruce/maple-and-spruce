@@ -7,13 +7,13 @@
  *   - `venmo-manual` — a Venmo payment witnessed at the studio (the student
  *     scanned the business Venmo QR). Venmo Business Profiles have no
  *     API/webhook, so the payment is attested here and later confirmed by the
- *     statement-reconciliation tool (#630). See epic #626.
+ *     statement-reconciliation tool (legacy #630). See epic #51.
  *
  * The `square-webhook` path (`markPaidBySquareWebhook`) is separate; clients
  * cannot spoof `square-webhook` or `venmo-import` — only the two manual
  * sources are accepted here.
  *
- * Admin OR the lesson teacher who taught a lesson on the invoice (#631 — the
+ * Admin OR the lesson teacher who taught a lesson on the invoice (legacy #631 — the
  * teacher My Day page). The role gate admits both; `assertCanRecordInvoicePayment`
  * then enforces that a non-admin caller only touches an invoice referencing one
  * of their own lessons.

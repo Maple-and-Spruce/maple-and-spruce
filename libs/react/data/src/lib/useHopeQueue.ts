@@ -47,11 +47,11 @@ export interface UseHopeQueueOptions {
 }
 
 /**
- * The Hope submission queue (#799).
+ * The Hope submission queue (legacy #799).
  *
  * `recording` is the set of lesson ids currently being written, so a bulk
  * action shows progress on exactly the rows it touches rather than freezing the
- * page (the pattern established in #805).
+ * page (the pattern established in legacy #805).
  */
 export function useHopeQueue(options: UseHopeQueueOptions = {}) {
   const { studentId, autoFetch = true } = options;

@@ -155,7 +155,7 @@ async function resolveDiscount<Item extends { amountCents: number; dueAt: Date }
   }
 
   const discount = await DiscountRepository.findByCode(code);
-  // Same branch, same wording, for a Maple & Spruce class code (#791): MT
+  // Same branch, same wording, for a Maple & Spruce class code (legacy #791): MT
   // bills to Stephanie's separate Square account, so honoring one here would
   // move a discount between two businesses' books — and a distinct message
   // would leak which class promotions are live.

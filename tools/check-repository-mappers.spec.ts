@@ -3,7 +3,7 @@
  *
  * These test the analyzer against fixture repositories, because the thing that
  * matters is not "does it pass on main today" — it is that it would have caught
- * the three real cases (#798 card fields, #835 onDate, #837 intervalWeeks) and
+ * the three real cases (#81 card fields, legacy #835 onDate, legacy #837 intervalWeeks) and
  * that it does not cry wolf on the shapes the codebase legitimately uses.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -35,7 +35,7 @@ const run = () => analyze(dbDir, domainDir, root);
 
 describe('catches a dropped field', () => {
   it('reports a field the entity declares and the mapper omits', () => {
-    // This is #837 exactly: intervalWeeks on the entity, absent from the mapper.
+    // This is legacy #837 exactly: intervalWeeks on the entity, absent from the mapper.
     domain(
       'schedule',
       `export interface Schedule {

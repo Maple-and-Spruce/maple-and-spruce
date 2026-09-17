@@ -16,7 +16,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Hook for the admin-configured default private-pay lesson rates (#629), shown
+ * Hook for the admin-configured default private-pay lesson rates (legacy #629), shown
  * on the Settings page. Per-student overrides live on the student record.
  */
 export function useLessonRatesConfig() {

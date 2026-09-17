@@ -14,9 +14,9 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Hook for the teacher "My Day" page (#631): the signed-in teacher's lessons
+ * Hook for the teacher "My Day" page (legacy #631): the signed-in teacher's lessons
  * for today, plus the two attest actions — mark a lesson rendered (which
- * auto-invoices #629) and record a Venmo/manual payment on its invoice. Both
+ * auto-invoices legacy #629) and record a Venmo/manual payment on its invoice. Both
  * are ownership-checked server-side.
  */
 export function useMyDay() {

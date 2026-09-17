@@ -1131,7 +1131,7 @@ Create a dedicated Nx app (`apps/functions-integration-tests/`) that tests Cloud
 **Date:** 2026-07-16
 
 ### Context
-The portal needs scoped access for more kinds of staff: Stephanie manages only Music Together, Nathan is a clerk (store/POS/registrations) *and* a lesson teacher, and future lesson teachers should read all lessons but mutate only their own. Access was binary admin (`admins/{uid}` doc existence). Researched RBAC vs ABAC vs ReBAC/Zanzibar (OpenFGA, SpiceDB) vs policy libraries (Cedar, Casbin) vs SaaS authz, and Firestore role docs vs Firebase custom claims, grounded in this codebase (epic #617).
+The portal needs scoped access for more kinds of staff: Stephanie manages only Music Together, Nathan is a clerk (store/POS/registrations) *and* a lesson teacher, and future lesson teachers should read all lessons but mutate only their own. Access was binary admin (`admins/{uid}` doc existence). Researched RBAC vs ABAC vs ReBAC/Zanzibar (OpenFGA, SpiceDB) vs policy libraries (Cedar, Casbin) vs SaaS authz, and Firestore role docs vs Firebase custom claims, grounded in this codebase (epic #49).
 
 ### Decision
 Plain RBAC: a `Role` enum (`admin`, `mt-teacher`, `clerk`, `lesson-teacher`), a `userRoles/{uid}` Firestore doc holding a roles array (multi-role, any-of checks via `requiringRole([...])`), with `admins/{uid}` remaining authoritative for admin. The one record-level rule — lesson teachers mutate only their own lessons — is an ownership predicate (`assertOwnerOrAdmin`-style helper) layered on the role gate, not a new authorization model. Client role state comes from a single `getMyRoles` callable via `RolesProvider`; nav filtering is UX only, enforcement is server-side per function.
@@ -1149,9 +1149,9 @@ Plain RBAC: a `Role` enum (`admin`, `mt-teacher`, `clerk`, `lesson-teacher`), a 
 - **SaaS authz (Permit.io, AWS Verified Permissions)**: external dependency + latency in the hot path of cold-start-sensitive callables
 
 ### Consequences
-- Scoping a function to roles is a one-line `requiringRole([...])` change (#615)
-- Phase-2 lesson ownership needs a teacher↔uid link on the instructor record (#616)
-- A CI analyzer should assert every exported callable declares a role or sits on an explicit public allowlist (#620)
+- Scoping a function to roles is a one-line `requiringRole([...])` change (legacy #615)
+- Phase-2 lesson ownership needs a teacher↔uid link on the instructor record (legacy #616)
+- A CI analyzer should assert every exported callable declares a role or sits on an explicit public allowlist (legacy #620)
 - Revisit if: >8–10 roles / one-off permission combos (→ policy library), per-resource grants or customer-scoped logins (→ ReBAC), multi-tenancy, or the client regains direct Firestore reads (→ reopen custom claims)
 
 ---
@@ -1177,7 +1177,7 @@ for total allowable CPU per project per region`, under a storm of 429s). Two quo
   ~0.5% at idle while a wide deploy still fails.
 
 Google's own first remedy is *"reduce deployment velocity"*, and it names CI systems deploying many
-functions at once as the cause. PR #725 batches the deploy, but that is a mitigation whose cost
+functions at once as the cause. legacy PR #725 batches the deploy, but that is a mitigation whose cost
 grows linearly with function count. Community datapoints put the pain threshold at
 [~60 functions, with 150+ taking ~45 minutes to deploy](https://groups.google.com/g/firebase-talk/c/Ym14sCZXHMA);
 the [Upcover writeup](https://blog.haroldadmin.com/posts/selective-redeployments-cloud-functions)
@@ -1218,7 +1218,7 @@ Craft Club straddles core and square. A "one router per domain" plan cannot work
 first revisiting the codebase split (ADR-026).
 
 ### Rationale
-- Attacks the actual cause. Batching (#725) makes a 215-function deploy survivable; it cannot make
+- Attacks the actual cause. Batching (legacy #725) makes a 215-function deploy survivable; it cannot make
   it fast, because the 60/60s write quota is a hard floor that scales with function count.
 - Cheap in this codebase specifically: the middleware exists, the wire format is already
   `{ data: … }`, and the container already loads the whole codebase.
@@ -1237,7 +1237,7 @@ first revisiting the codebase split (ADR-026).
 ### Alternatives Considered
 - **Raise the quotas.** The write quota is explicitly not increasable, and the CPU quota is a rate
   we breach only during deploys. Worth taking the free CPU bump as a stopgap; it is not a fix.
-- **Batching alone (#725).** Shipped, and necessary regardless — but its cost grows linearly and it
+- **Batching alone (legacy #725).** Shipped, and necessary regardless — but its cost grows linearly and it
   leaves a ≥4-minute write-quota floor in place.
 - **A single `{ action, payload }` dispatcher per codebase (4 functions).** Maximal deploy win, but
   every endpoint shares one URL, one log stream, one IAM identity, and one blast radius; every
@@ -1279,7 +1279,7 @@ first revisiting the codebase split (ADR-026).
 Marketing wants short, speakable subdomains that land on deep pages of the Webflow site — the
 first being `mt.mapleandsprucefolkarts.com` → `/music-together`. These go in Instagram bios, on
 printed cards, in QR codes, and as Meta ad destinations, so they must work over **HTTPS** and must
-**preserve `?utm_*` query strings** for lead attribution (see `tallyLeadWebhook`, PR #429).
+**preserve `?utm_*` query strings** for lead attribution (see `tallyLeadWebhook`, legacy PR #429).
 
 DNS is on Namecheap BasicDNS. The apex and `www` point at Webflow; `business.` already CNAMEs to
 Vercel; mail is Google Workspace.
@@ -1483,7 +1483,7 @@ distribution. 419kb → 141kb buys real margin against a ceiling we do not contr
 - `maple-square` keeps the Square SDK and the workers; only the receiver moved.
 - Moving a function between codebases relabels it in place. **Confirmed on deploy 2026-08-09:**
   firebase-tools adopted `squareWebhook` under `maple-square-webhook` with no
-  `firebase functions:delete` and no gap in availability (same as `tallyLeadWebhook` in #758).
+  `firebase functions:delete` and no gap in availability (same as `tallyLeadWebhook` in legacy #758).
   The delete-and-recreate fallback was not needed and should stay a last resort — it drops
   deliveries in the gap.
 
@@ -1598,7 +1598,7 @@ that does appear is reconciled by the next sync instead of persisting indefinite
   fields, no conditional create and no idempotency key. This is the root reason the invariant has to
   be upheld in our code.
 - **Deterministic slugs as a de facto key.** Rejected: Webflow auto-suffixes slug collisions on
-  create (`name-94fde`) and 400s on update, which is what #395 already worked around — the slug
+  create (`name-94fde`) and 400s on update, which is what legacy #395 already worked around — the slug
   cannot carry identity.
 
 ### Consequences

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * A student's standing arrangement (#797).
+ * A student's standing arrangement (legacy #797).
  *
  * This is what Katie and Nathan actually think in — "Tuesdays at 4:00, thirty
  * minutes, with Nathan" — and what they now edit. Before this, the same fact

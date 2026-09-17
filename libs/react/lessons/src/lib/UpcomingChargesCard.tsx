@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * UpcomingChargesCard (#798) — what the billing job is about to take, and the
+ * UpcomingChargesCard (#81) — what the billing job is about to take, and the
  * means to stop it.
  *
  * The job plans a charge and then takes it, both unattended. So the only thing
@@ -55,7 +55,7 @@ export interface UpcomingChargesCardProps {
   onCancel: (chargeId: string) => void;
   onWaive: (chargeId: string, reason: string) => void;
   /**
-   * Try a failed charge again (#864). Optional, so the lesson-billing overview
+   * Try a failed charge again (legacy #864). Optional, so the lesson-billing overview
    * can show failures without offering to charge from a screen that has no one
    * standing in front of it.
    */

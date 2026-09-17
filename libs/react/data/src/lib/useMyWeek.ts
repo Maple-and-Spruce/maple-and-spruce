@@ -12,7 +12,7 @@ import type {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Hook for the teacher "My Week" tab (#685): the signed-in teacher's
+ * Hook for the teacher "My Week" tab (legacy #685): the signed-in teacher's
  * commitments + blocks for the week starting at `weekStart` (a local Sunday
  * 00:00). Refetches when the week changes.
  */

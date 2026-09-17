@@ -48,7 +48,7 @@ export const updateInstructor = createAdminFunction<
   }
 
   // A portal login (uid) links one user to one instructor — required for the
-  // lesson-teacher "manage only your own lessons" check (#617 phase 2). Guard
+  // lesson-teacher "manage only your own lessons" check (#49 phase 2). Guard
   // uniqueness: a uid already linked to a different instructor must be
   // unlinked there first, or ownership would be ambiguous. `null` unlinks.
   if (data.uid) {

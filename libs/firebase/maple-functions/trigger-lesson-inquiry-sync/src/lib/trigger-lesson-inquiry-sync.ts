@@ -1,6 +1,6 @@
 /**
  * triggerLessonInquirySync — the admin-callable twin of the
- * `syncLessonInquiries` schedule (#795).
+ * `syncLessonInquiries` schedule (legacy #795).
  *
  * Same logic on demand, and what the integration tests drive: `onSchedule` is
  * not callable over HTTP in the Firebase emulator, an admin HTTPS endpoint is.
@@ -8,7 +8,7 @@
  * It lives in its own library because **one library deploys exactly one Cloud
  * Function** — CI derives the deploy filter from the library directory name, so
  * a second export co-located with the schedule would simply never be deployed
- * (#872).
+ * (legacy #872).
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {

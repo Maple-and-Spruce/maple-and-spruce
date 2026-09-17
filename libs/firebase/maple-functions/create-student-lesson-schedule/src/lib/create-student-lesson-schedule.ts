@@ -1,12 +1,12 @@
 /**
- * createStudentLessonSchedule (#797)
+ * createStudentLessonSchedule (legacy #797)
  *
  * Creates a standing arrangement and materialises its lessons straight away, so
  * setting one up produces visible lessons rather than nothing until the weekly
  * job next runs.
  *
  * The arrangement must fit its block, exactly as an individual lesson must
- * (#686) — checked here against a representative occurrence so a schedule can
+ * (legacy #686) — checked here against a representative occurrence so a schedule can
  * never be created that would generate lessons the lesson rules would reject.
  */
 import {
@@ -81,7 +81,7 @@ export const createStudentLessonSchedule = Functions.endpoint
         'That arrangement never occurs — check the weekday and the start date.'
       );
     }
-    // The primary #835 case. Katie describes a standing weekly arrangement —
+    // The primary legacy #835 case. Katie describes a standing weekly arrangement —
     // "Rowan, Tuesdays 4pm, indefinitely" — and the block is fully derivable
     // from it, so making her go create one by hand first is pure friction. A
     // standing arrangement *is* standing weekly availability, so the derived

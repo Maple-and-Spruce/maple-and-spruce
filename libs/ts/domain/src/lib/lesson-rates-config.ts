@@ -1,5 +1,5 @@
 /**
- * Admin-configured private-pay lesson rates (#629).
+ * Admin-configured private-pay lesson rates (legacy #629).
  *
  * The default per-lesson price by length is set by admins in the app (not
  * hardcoded), stored in a Firestore config doc. Per-student

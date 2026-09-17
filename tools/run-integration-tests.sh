@@ -87,7 +87,7 @@ echo "META_PIXEL_ID_MUSIC_TOGETHER=test-mt-pixel-id" >> dist/apps/functions/.env
 echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
 # syncLessonInquiries -> Tally mock server. `.env.dev` deliberately leaves
 # TALLY_LESSON_INQUIRY_FORM_IDS empty so dev never ingests production leads
-# (#814); the tests need it non-empty, and pointing at the mock keeps that
+# (legacy #814); the tests need it non-empty, and pointing at the mock keeps that
 # safe because no real form id is ever contacted.
 echo "TALLY_API_BASE_URL=http://localhost:$TALLY_MOCK_SERVER_PORT" >> dist/apps/functions/.env
 echo "TALLY_LESSON_INQUIRY_FORM_IDS=testform,otherform" >> dist/apps/functions/.env

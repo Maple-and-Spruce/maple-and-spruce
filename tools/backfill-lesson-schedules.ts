@@ -1,5 +1,5 @@
 /**
- * Infer standing schedules from existing lesson series (#797).
+ * Infer standing schedules from existing lesson series (legacy #797).
  *
  * Before schedules existed, a recurring arrangement was N `Lesson` rows sharing
  * a `seriesId` and nothing more. This reads those rows back into the
@@ -208,7 +208,7 @@ async function main(): Promise<void> {
 
     // A schedule must sit in a block. A grandfathered series with none stays as
     // it is rather than being given an arbitrary one — it surfaces as
-    // "needs a block" (#807) for a human to resolve, which is the honest state.
+    // "needs a block" (legacy #807) for a human to resolve, which is the honest state.
     const blockId = rows.find((r) => r.blockId)?.blockId;
     if (!blockId) {
       skippedNoBlock++;

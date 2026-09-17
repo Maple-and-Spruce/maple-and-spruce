@@ -8,7 +8,7 @@
  *     integration tests a way to drive it — the emulator doesn't expose
  *     `onSchedule` triggers over HTTP.
  *
- * FIVE PASSES, all idempotent, per run (#778):
+ * FIVE PASSES, all idempotent, per run (legacy #778):
  *
  *   Enrolled families (sections)
  *     A. Day-of reminder for every section meeting TODAY. Weekly nudge for a
@@ -43,7 +43,7 @@
  * class again?".
  *
  * Emails are queued through `queueMail` (which brands them as Music Together
- * and is the swap point for #775), rendered from Handlebars templates seeded by
+ * and is the swap point for #77), rendered from Handlebars templates seeded by
  * `tools/seed-email-templates.ts`.
  *
  * Deployed to us-east4 via CI/CD (maple-core codebase).

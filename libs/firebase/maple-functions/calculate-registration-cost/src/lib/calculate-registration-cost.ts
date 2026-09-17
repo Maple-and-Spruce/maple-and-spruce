@@ -57,7 +57,7 @@ export const calculateRegistrationCost = Functions.endpoint
         // Must agree with `reserveClassRegistration`, which is authoritative:
         // a Music Together code shows no discount here and is rejected there.
         // If this preview honored it, the customer would see a discounted
-        // price and then be refused at submit (#791).
+        // price and then be refused at submit (legacy #791).
         if (
           discount &&
           isDiscountValid(discount) &&

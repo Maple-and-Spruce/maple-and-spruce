@@ -1,5 +1,5 @@
 /**
- * Delete Lesson Block Cloud Function (#686)
+ * Delete Lesson Block Cloud Function (legacy #686)
  *
  * Admin-only. Deleting a block does not touch its lessons — any lessons that
  * referenced it become "unattributed" and are flagged for an admin to

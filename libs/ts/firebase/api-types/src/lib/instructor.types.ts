@@ -55,7 +55,7 @@ export interface UpdateInstructorRequest
   extends Omit<UpdateInstructorInput, 'uid'> {
   /**
    * Firebase Auth UID of the portal user who IS this instructor. A non-empty
-   * string links the login (for lesson-teacher ownership, #617 phase 2);
+   * string links the login (for lesson-teacher ownership, #49 phase 2);
    * `null` unlinks; omit to leave unchanged.
    */
   uid?: string | null;

@@ -1,7 +1,7 @@
 # Webflow Go-Live Checklist
 
 > Master checklist for launching the Maple & Spruce public website on Webflow.
-> Epic: [#112](https://github.com/david-shortman/maple-and-spruce/issues/112)
+> Epic: legacy #112
 >
 > **Status: Initial go-live is COMPLETE.** The site is live and published with Facebook/Instagram ads running. Remaining items (#114-#122) below are post-launch quality improvements.
 
@@ -16,7 +16,7 @@ The Webflow site uses an intentionally different color palette from the admin ap
 | **Webflow (public site)** | Lime green `#E0EF7D` | White `#FFFFFF` | Near-black `#1E1E1E` | **Source of truth** |
 | **Admin app (MUI)** | Sage green `#6B7B5E` | Cream `#D5D6C8` | Dark brown `#4A3728` | Will align to Webflow |
 
-Webflow defines the brand's visual identity. The admin app will be updated to match (#122).
+Webflow defines the brand's visual identity. The admin app will be updated to match (#10).
 
 ---
 
@@ -24,10 +24,10 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 
 | Item | Issue | Status |
 |------|-------|--------|
-| Remove "asdfasdf" placeholder from Music page | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | **Done** (not found; may have been removed already) |
-| Fix Contact page address ("\<location coming soon\>!") | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | **Done** (updated with opening date + address) |
-| Fix malformed fiddle repair link on Contact | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | **Done** (now uses page link, not URL) |
-| Fix broken anchor links (`#`) in navigation | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | **Done** (5 broken hrefs fixed in maple-nav) |
+| Remove "asdfasdf" placeholder from Music page | legacy #113 | **Done** (not found; may have been removed already) |
+| Fix Contact page address ("\<location coming soon\>!") | legacy #113 | **Done** (updated with opening date + address) |
+| Fix malformed fiddle repair link on Contact | legacy #113 | **Done** (now uses page link, not URL) |
+| Fix broken anchor links (`#`) in navigation | legacy #113 | **Done** (5 broken hrefs fixed in maple-nav) |
 | Add pre-opening messaging to all pages | - | **Done** (banner in maple-nav component, shows on all pages) |
 | Fix Craft Club typo ("not though") | - | **Done** ("not though" → "not through") |
 | Remove specific jam times (pre-opening) | - | **Done** (Music + Contact FAQ updated) |
@@ -36,23 +36,23 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 | Create Craft Classes page (`/classes`) | - | **Done** |
 | Create Shop page (`/shop`) | - | **Done** |
 | Add new pages to navigation | - | **Done** (Music Lessons + Shop in maple-nav) |
-| Fix Artists page 404 | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | Pending |
-| Remove CMS test data (4 fake artists) | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | Pending |
-| Add Katie's real artist profile via admin + sync | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | Pending |
+| Fix Artists page 404 | legacy #114 | Pending |
+| Remove CMS test data (4 fake artists) | legacy #114 | Pending |
+| Add Katie's real artist profile via admin + sync | legacy #114 | Pending |
 
 ## High Priority (Before Launch)
 
 | Item | Issue | Status |
 |------|-------|--------|
-| SEO titles + descriptions on all 7 pages | [#115](https://github.com/david-shortman/maple-and-spruce/issues/115) | Pending |
-| Open Graph tags for social sharing | [#115](https://github.com/david-shortman/maple-and-spruce/issues/115) | Pending |
-| Google Analytics / GTM setup | [#116](https://github.com/david-shortman/maple-and-spruce/issues/116) | Pending |
-| Fix 11x hardcoded `#6C7A5E` (not in variable system) | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Pending |
-| Fix Heading 2 wrong color (`#413023`) | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Pending |
-| Fix Button 2 (only styled at tiny breakpoint) | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Pending |
-| Fix Card Accent Tertiary transparent text | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Pending |
-| Remove `is-secondary Copy` leftover style | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Pending |
-| Add alt text to ~10 images | [#118](https://github.com/david-shortman/maple-and-spruce/issues/118) | Pending |
+| SEO titles + descriptions on all 7 pages | legacy #115 | Pending |
+| Open Graph tags for social sharing | legacy #115 | Pending |
+| Google Analytics / GTM setup | legacy #116 | Pending |
+| Fix 11x hardcoded `#6C7A5E` (not in variable system) | [legacy #7](legacy #7) | Pending |
+| Fix Heading 2 wrong color (`#413023`) | [legacy #7](legacy #7) | Pending |
+| Fix Button 2 (only styled at tiny breakpoint) | [legacy #7](legacy #7) | Pending |
+| Fix Card Accent Tertiary transparent text | [legacy #7](legacy #7) | Pending |
+| Remove `is-secondary Copy` leftover style | [legacy #7](legacy #7) | Pending |
+| Add alt text to ~10 images | legacy #118 | Pending |
 
 ## Launch Day
 
@@ -70,14 +70,14 @@ Webflow defines the brand's visual identity. The admin app will be updated to ma
 
 | Item | Issue | Status |
 |------|-------|--------|
-| Rename 37 default-named Webflow classes | [#119](https://github.com/david-shortman/maple-and-spruce/issues/119) | Pending |
-| Audit and remove 311 empty styles | [#119](https://github.com/david-shortman/maple-and-spruce/issues/119) | Pending |
-| Consolidate 35 font sizes to type scale | [#119](https://github.com/david-shortman/maple-and-spruce/issues/119) | Pending |
-| Choose canonical domain + set up redirects | [#120](https://github.com/david-shortman/maple-and-spruce/issues/120) | Pending |
-| Submit sitemap to Google Search Console | [#120](https://github.com/david-shortman/maple-and-spruce/issues/120) | Pending |
-| Fix card padding responsive bug (MobileP) | [#121](https://github.com/david-shortman/maple-and-spruce/issues/121) | Pending |
-| Full breakpoint QA across all pages | [#121](https://github.com/david-shortman/maple-and-spruce/issues/121) | Pending |
-| Align admin app MUI theme to Webflow palette | [#122](https://github.com/david-shortman/maple-and-spruce/issues/122) | Pending |
+| Rename 37 default-named Webflow classes | [#6](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/6) | Pending |
+| Audit and remove 311 empty styles | [#6](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/6) | Pending |
+| Consolidate 35 font sizes to type scale | [#6](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/6) | Pending |
+| Choose canonical domain + set up redirects | legacy #120 | Pending |
+| Submit sitemap to Google Search Console | legacy #120 | Pending |
+| Fix card padding responsive bug (MobileP) | [legacy #9](legacy #9) | Pending |
+| Full breakpoint QA across all pages | [legacy #9](legacy #9) | Pending |
+| Align admin app MUI theme to Webflow palette | [legacy #10](legacy #10) | Pending |
 
 ---
 

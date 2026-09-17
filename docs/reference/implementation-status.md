@@ -22,13 +22,13 @@
 | Functions app | Complete | `apps/functions/` |
 | Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
 | Admin authorization (UI) | Complete | `AdminGuard` + `useAdminStatus` + `checkAdminStatus` Cloud Function |
-| Scoped roles framework (PR 1 of epic #617) | Complete | `Role` enum (admin, mt-teacher, clerk, lesson-teacher) + `userRoles/{uid}` + any-of `requiringRole([...])` + `getMyRoles`/`grantRole`/`revokeRole`; behavior-neutral — client plumbing #614, re-scoping #615 |
-| Scoped roles client plumbing (PR 2 of epic #617) | Complete | `RolesProvider`/`useRoles`/`RoleGuard` (ADR-028), role-filtered nav (`nav-groups.tsx`), `/users` scoped-role toggles, `listUsers` roles join — enforcement re-scoping is #615 |
-| Scoped roles enforcement (PR 3 of epic #617) | Complete | 46 fns re-scoped to role sets (MT→mt-teacher, store/registrations→clerk, lesson reads→lesson-teacher, calendar→all staff); auth-only reads tightened; `PathRoleGuard` route gating; role-gated dashboard; matrix integration spec (`role-matrix.spec.ts`). Phase 2 ownership = #616, analyzer = #620 |
-| Callable-role analyzer (#620) | Complete | `tools/check-callable-roles.ts` + `callable-roles` CI job; every exported callable must be role-gated / trigger / allowlisted. Caught + fixed leftover auth-only `getArtist`/`getStudent` |
-| Lesson-teacher manage-own (phase 2 of epic #617, #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
-| Portal role-scoping E2E (#625) | Complete | First browser-level e2e (`apps/maple-spruce-e2e`): seeds admin + mt-teacher, signs in via login UI, asserts role-filtered nav + `/users` gate. `connectAuthEmulator` opt-in wiring; `tools/run-portal-e2e.sh` + `portal-e2e` CI job |
-| Lesson-teacher student + calendar scoping (epic #617) | Complete | `getStudents` reads-own (filter by `primaryTeacherId`); `getStudent`/create/update/delete-student → `[Admin, LessonTeacher]` + ownership; calendar events: lesson-teacher dropped from update/delete + create requires a `room` (book-room only) + Events nav hidden. `instructorScopeForUser`/`assertCanManageStudent`/`assertOwnsAsInstructor` helpers |
+| Scoped roles framework (PR 1 of epic #49) | Complete | `Role` enum (admin, mt-teacher, clerk, lesson-teacher) + `userRoles/{uid}` + any-of `requiringRole([...])` + `getMyRoles`/`grantRole`/`revokeRole`; behavior-neutral — client plumbing legacy #614, re-scoping legacy #615 |
+| Scoped roles client plumbing (PR 2 of epic #49) | Complete | `RolesProvider`/`useRoles`/`RoleGuard` (ADR-028), role-filtered nav (`nav-groups.tsx`), `/users` scoped-role toggles, `listUsers` roles join — enforcement re-scoping is legacy #615 |
+| Scoped roles enforcement (PR 3 of epic #49) | Complete | 46 fns re-scoped to role sets (MT→mt-teacher, store/registrations→clerk, lesson reads→lesson-teacher, calendar→all staff); auth-only reads tightened; `PathRoleGuard` route gating; role-gated dashboard; matrix integration spec (`role-matrix.spec.ts`). Phase 2 ownership = #616, analyzer = #620 |
+| Callable-role analyzer (legacy #620) | Complete | `tools/check-callable-roles.ts` + `callable-roles` CI job; every exported callable must be role-gated / trigger / allowlisted. Caught + fixed leftover auth-only `getArtist`/`getStudent` |
+| Lesson-teacher manage-own (phase 2 of epic #49, legacy #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
+| Portal role-scoping E2E (legacy #625) | Complete | First browser-level e2e (`apps/maple-spruce-e2e`): seeds admin + mt-teacher, signs in via login UI, asserts role-filtered nav + `/users` gate. `connectAuthEmulator` opt-in wiring; `tools/run-portal-e2e.sh` + `portal-e2e` CI job |
+| Lesson-teacher student + calendar scoping (epic #49) | Complete | `getStudents` reads-own (filter by `primaryTeacherId`); `getStudent`/create/update/delete-student → `[Admin, LessonTeacher]` + ownership; calendar events: lesson-teacher dropped from update/delete + create requires a `room` (book-room only) + Events nav hidden. `instructorScopeForUser`/`assertCanManageStudent`/`assertOwnsAsInstructor` helpers |
 | Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
@@ -42,69 +42,69 @@
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Artist CRUD | Complete | #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
-| Square integration | Complete | #69 | `libs/firebase/square/` |
-| Product management | Complete | #3 | `libs/firebase/maple-functions/get-products/`, etc. |
+| Artist CRUD | Complete | legacy #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
+| Square integration | Complete | legacy #69 | `libs/firebase/square/` |
+| Product management | Complete | legacy #3 | `libs/firebase/maple-functions/get-products/`, etc. |
 | Category management | Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
 
 ## Phase 2 Features (COMPLETE)
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
-| Public Artist API | Removed | #93 | Superseded by `syncArtistToWebflow` push to Webflow CMS |
-| Webflow integration | Complete | #93 | `libs/firebase/webflow/`, `syncArtistToWebflow` |
-| Sync Conflict Resolution | Complete | #28 | `/sync-conflicts` page, 4 Cloud Functions |
-| Artist showcase | Complete | #93 | Webflow CMS sync working |
+| Public Artist API | Removed | legacy #93 | Superseded by `syncArtistToWebflow` push to Webflow CMS |
+| Webflow integration | Complete | legacy #93 | `libs/firebase/webflow/`, `syncArtistToWebflow` |
+| Sync Conflict Resolution | Complete | legacy #28 | `/sync-conflicts` page, 4 Cloud Functions |
+| Artist showcase | Complete | legacy #93 | Webflow CMS sync working |
 
 ## Phase 3 Features (COMPLETE)
 
 | Feature | Status | Issue | Location |
 |---------|--------|-------|----------|
 | **Phase 3a: Backend** | | | |
-| Payee interface | Complete | #9 | `libs/ts/domain/src/lib/payee.ts` |
-| Instructor domain types | Complete | #9 | `libs/ts/domain/src/lib/instructor.ts` |
-| Class domain types | Complete | #9 | `libs/ts/domain/src/lib/class.ts` |
-| ClassCategory types | Complete | #9 | `libs/ts/domain/src/lib/class-category.ts` |
-| Registration placeholder | Complete | #9 | `libs/ts/domain/src/lib/registration.ts` |
-| Instructor validation | Complete | #9 | `libs/ts/validation/src/lib/instructor.validation.ts` |
-| Class validation | Complete | #9 | `libs/ts/validation/src/lib/class.validation.ts` |
-| InstructorRepository | Complete | #9 | `libs/firebase/database/src/lib/instructor.repository.ts` |
-| ClassRepository | Complete | #9 | `libs/firebase/database/src/lib/class.repository.ts` |
-| ClassCategoryRepository | Complete | #9 | `libs/firebase/database/src/lib/class-category.repository.ts` |
-| Instructor Cloud Functions (5) | Complete | #9 | `libs/firebase/maple-functions/get-instructors/`, etc. |
-| Class Cloud Functions (7) | Complete | #9 | `libs/firebase/maple-functions/get-classes/`, etc. |
-| ClassCategory Cloud Functions (1) | Complete | #9 | `libs/firebase/maple-functions/get-class-categories/` |
+| Payee interface | Complete | legacy #9 | `libs/ts/domain/src/lib/payee.ts` |
+| Instructor domain types | Complete | legacy #9 | `libs/ts/domain/src/lib/instructor.ts` |
+| Class domain types | Complete | legacy #9 | `libs/ts/domain/src/lib/class.ts` |
+| ClassCategory types | Complete | legacy #9 | `libs/ts/domain/src/lib/class-category.ts` |
+| Registration placeholder | Complete | legacy #9 | `libs/ts/domain/src/lib/registration.ts` |
+| Instructor validation | Complete | legacy #9 | `libs/ts/validation/src/lib/instructor.validation.ts` |
+| Class validation | Complete | legacy #9 | `libs/ts/validation/src/lib/class.validation.ts` |
+| InstructorRepository | Complete | legacy #9 | `libs/firebase/database/src/lib/instructor.repository.ts` |
+| ClassRepository | Complete | legacy #9 | `libs/firebase/database/src/lib/class.repository.ts` |
+| ClassCategoryRepository | Complete | legacy #9 | `libs/firebase/database/src/lib/class-category.repository.ts` |
+| Instructor Cloud Functions (5) | Complete | legacy #9 | `libs/firebase/maple-functions/get-instructors/`, etc. |
+| Class Cloud Functions (7) | Complete | legacy #9 | `libs/firebase/maple-functions/get-classes/`, etc. |
+| ClassCategory Cloud Functions (1) | Complete | legacy #9 | `libs/firebase/maple-functions/get-class-categories/` |
 | **Phase 3b: Admin UI** | | | |
-| Instructor components | Complete | #9 | `libs/react/instructors/` |
-| Class components | Complete | #9 | `libs/react/classes/` |
-| Instructors page | Complete | #9 | `/instructors` admin page |
-| Classes page | Complete | #9 | `/classes` admin page |
-| useInstructors hook | Complete | #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
-| useClasses hook | Complete | #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |
-| Storybook stories | Complete | #9 | `libs/react/*/src/**/*.stories.tsx` |
+| Instructor components | Complete | legacy #9 | `libs/react/instructors/` |
+| Class components | Complete | legacy #9 | `libs/react/classes/` |
+| Instructors page | Complete | legacy #9 | `/instructors` admin page |
+| Classes page | Complete | legacy #9 | `/classes` admin page |
+| useInstructors hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
+| useClasses hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |
+| Storybook stories | Complete | legacy #9 | `libs/react/*/src/**/*.stories.tsx` |
 | **Phase 3c: Registration** | | | |
-| Discount domain types + validation | Complete | #9 | `libs/ts/domain/src/lib/discount.ts`, `libs/ts/validation/src/lib/discount.validation.ts` |
-| Discount Cloud Functions (6) | Complete | #9 | `libs/firebase/maple-functions/get-discounts/`, etc. |
-| Registration domain types + validation | Complete | #9 | `libs/ts/domain/src/lib/registration.ts`, `libs/ts/validation/src/lib/registration.validation.ts` |
-| Registration Cloud Functions (5) | Complete | #9 | `libs/firebase/maple-functions/get-registrations/`, etc. |
-| Square PaymentsService | Complete | #9 | `libs/firebase/square/src/lib/payments.service.ts` |
-| createRegistration (public, with payment) | Complete | #9 | `libs/firebase/maple-functions/create-registration/` |
-| cancelRegistration (admin, with refund) | Complete | #9 | `libs/firebase/maple-functions/cancel-registration/` |
-| Enhanced getPublicClass | Complete | #9 | Instructor names, categories, spot counts (single-class endpoint; `getPublicClasses` removed in favor of Webflow CMS list) |
-| Admin UI (Discounts + Registrations pages) | Complete | #9 | `/discounts`, `/registrations` |
-| Public registration flow | Complete | #9 | Webflow embed via `apps/webflow-components/src/RegistrationWidget.tsx` (admin-app POC `/register` pages removed) |
-| useDiscounts + useRegistrations hooks | Complete | #9 | `libs/react/data/src/lib/` |
-| Storybook fixtures | Complete | #9 | `apps/maple-spruce/.storybook/fixtures/` |
+| Discount domain types + validation | Complete | legacy #9 | `libs/ts/domain/src/lib/discount.ts`, `libs/ts/validation/src/lib/discount.validation.ts` |
+| Discount Cloud Functions (6) | Complete | legacy #9 | `libs/firebase/maple-functions/get-discounts/`, etc. |
+| Registration domain types + validation | Complete | legacy #9 | `libs/ts/domain/src/lib/registration.ts`, `libs/ts/validation/src/lib/registration.validation.ts` |
+| Registration Cloud Functions (5) | Complete | legacy #9 | `libs/firebase/maple-functions/get-registrations/`, etc. |
+| Square PaymentsService | Complete | legacy #9 | `libs/firebase/square/src/lib/payments.service.ts` |
+| createRegistration (public, with payment) | Complete | legacy #9 | `libs/firebase/maple-functions/create-registration/` |
+| cancelRegistration (admin, with refund) | Complete | legacy #9 | `libs/firebase/maple-functions/cancel-registration/` |
+| Enhanced getPublicClass | Complete | legacy #9 | Instructor names, categories, spot counts (single-class endpoint; `getPublicClasses` removed in favor of Webflow CMS list) |
+| Admin UI (Discounts + Registrations pages) | Complete | legacy #9 | `/discounts`, `/registrations` |
+| Public registration flow | Complete | legacy #9 | Webflow embed via `apps/webflow-components/src/RegistrationWidget.tsx` (admin-app POC `/register` pages removed) |
+| useDiscounts + useRegistrations hooks | Complete | legacy #9 | `libs/react/data/src/lib/` |
+| Storybook fixtures | Complete | legacy #9 | `apps/maple-spruce/.storybook/fixtures/` |
 
 ## Webflow Go-Live (COMPLETE)
 
-Site is published and live with Facebook/Instagram ads running. Closed issues: #112, #126, #127, #129, #131, #132, #135, #137.
+Site is published and live with Facebook/Instagram ads running. Closed issues: #112, legacy #126, legacy #127, legacy #129, legacy #131, legacy #132, legacy #135, legacy #137.
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
 | Pre-opening messaging | **Complete** | - | Banner in maple-nav component (all pages), `pre-opening-banner` style, contact link |
-| Content accuracy fixes | **Complete** | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | Jam times, typos, open hours refs fixed |
-| Fix broken nav links | **Complete** | [#113](https://github.com/david-shortman/maple-and-spruce/issues/113) | 5 broken hrefs in maple-nav fixed |
+| Content accuracy fixes | **Complete** | legacy #113 | Jam times, typos, open hours refs fixed |
+| Fix broken nav links | **Complete** | legacy #113 | 5 broken hrefs in maple-nav fixed |
 | Our Story text update | **Complete** | - | "soft opening mid-2026" → "Opening May 2026" |
 | Music Lessons page | **Complete** | - | `/music-lessons` — pricing, policies, instrument loan program |
 | Craft Classes page | **Complete** | - | `/classes` — 6 class offerings with pricing, pathway, policies |
@@ -117,16 +117,16 @@ Site is published and live with Facebook/Instagram ads running. Closed issues: #
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
-| Fix Artists page 404 | Pending | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | CMS template page returns 404 |
-| Clean CMS test data | Pending | [#114](https://github.com/david-shortman/maple-and-spruce/issues/114) | Replace with real artist profiles |
-| SEO metadata (existing pages) | Pending | [#115](https://github.com/david-shortman/maple-and-spruce/issues/115) | Some existing pages still need SEO |
-| Google Analytics setup | Pending | [#116](https://github.com/david-shortman/maple-and-spruce/issues/116) | No tracking configured |
-| Fix Webflow style inconsistencies | Pending | [#117](https://github.com/david-shortman/maple-and-spruce/issues/117) | Hardcoded colors, style bugs |
-| Image alt text | Pending | [#118](https://github.com/david-shortman/maple-and-spruce/issues/118) | ~10 images missing alt text |
-| Clean up class names/styles | Pending | [#119](https://github.com/david-shortman/maple-and-spruce/issues/119) | 37 default names, 311 empty styles |
-| Canonical domain + sitemap | Pending | [#120](https://github.com/david-shortman/maple-and-spruce/issues/120) | Dual domains, sitemap 404 |
-| Responsive bug fixes | Pending | [#121](https://github.com/david-shortman/maple-and-spruce/issues/121) | Card padding, visual bugs |
-| Align admin MUI theme to Webflow | Pending | [#122](https://github.com/david-shortman/maple-and-spruce/issues/122) | Update MUI colors to match Webflow |
+| Fix Artists page 404 | Pending | legacy #114 | CMS template page returns 404 |
+| Clean CMS test data | Pending | legacy #114 | Replace with real artist profiles |
+| SEO metadata (existing pages) | Pending | legacy #115 | Some existing pages still need SEO |
+| Google Analytics setup | Pending | legacy #116 | No tracking configured |
+| Fix Webflow style inconsistencies | Pending | [legacy #7](legacy #7) | Hardcoded colors, style bugs |
+| Image alt text | Pending | legacy #118 | ~10 images missing alt text |
+| Clean up class names/styles | Pending | [#6](https://github.com/Maple-and-Spruce/maple-and-spruce/issues/6) | 37 default names, 311 empty styles |
+| Canonical domain + sitemap | Pending | legacy #120 | Dual domains, sitemap 404 |
+| Responsive bug fixes | Pending | [legacy #9](legacy #9) | Card padding, visual bugs |
+| Align admin MUI theme to Webflow | Pending | [legacy #10](legacy #10) | Update MUI colors to match Webflow |
 
 ## Phase: Webflow Customer Interactions (In Progress)
 
@@ -134,12 +134,12 @@ Phased rollout of customer-facing interactions on the Webflow site.
 
 | Epic | Status | Issue | Notes |
 |------|--------|-------|-------|
-| **A: Artists on Webflow** | Not Started | [#161](https://github.com/david-shortman/maple-and-spruce/issues/161) | Artist profiles synced to Webflow CMS |
-| **B: Class Browsing on Webflow** | Not Started | [#162](https://github.com/david-shortman/maple-and-spruce/issues/162) | Public class listings on Webflow |
-| **C: Payment & Registration Testing** | **In Progress** | [#163](https://github.com/david-shortman/maple-and-spruce/issues/163) | End-to-end payment tested in dev with Square sandbox |
-| **D: Class Registration with Payment** | **In Progress** | [#164](https://github.com/david-shortman/maple-and-spruce/issues/164) | React Code Component working on Webflow (PR #201) |
+| **A: Artists on Webflow** | Not Started | [legacy #16](legacy #16) | Artist profiles synced to Webflow CMS |
+| **B: Class Browsing on Webflow** | Not Started | legacy #162 | Public class listings on Webflow |
+| **C: Payment & Registration Testing** | **In Progress** | legacy #163 | End-to-end payment tested in dev with Square sandbox |
+| **D: Class Registration with Payment** | **In Progress** | legacy #164 | React Code Component working on Webflow (legacy PR #201) |
 
-### Webflow Registration Component (PR #201)
+### Webflow Registration Component (legacy PR #201)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -149,7 +149,7 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | Shadow DOM + Square SDK | **Complete** | External card mount workaround in `SquareCardForm.tsx` |
 | Published to workspace | **Complete** | Katie's Workspace, "Maple & Spruce Components" |
 | Test page | **Complete** | `mapleandsprucefolkarts.com/test-class-enrollment` |
-| CMS-bound class pages | Not Started | Needs #139-145, #202 |
+| CMS-bound class pages | Not Started | Needs #139-145, legacy #202 |
 
 ### Image2Pages Widget (PR pending)
 
@@ -170,13 +170,13 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | `cancelRegistrationPublic` Cloud Function | **Complete** | `libs/firebase/maple-functions/cancel-registration-public/` |
 | `confirmationNumber` on Registration type | **Complete** | `libs/ts/domain/src/lib/registration.ts` |
 | `findByConfirmationNumber` repository method | **Complete** | `libs/firebase/database/src/lib/registration.repository.ts` |
-| Frontend lookup/cancel page | Not Started | #199 |
+| Frontend lookup/cancel page | Not Started | #21 |
 
-## Phase 4: Music Lessons - Epic #10
+## Phase 4: Music Lessons - legacy Epic #10
 
-### Teacher Payout Tracking (#283, Complete)
+### Teacher Payout Tracking (legacy #283, Complete)
 
-Closes the last follow-up under epic #10. Aggregates what Katie owes each teacher in a date range from two sources: **paid private-pay invoice lines** (via `lessonId` linkback from #280) and **rendered Hope Scholarship lessons** (since Hope is invoiced externally, the rendered status is the signal). Substitutes get credit via a snapshotted `primaryTeacherAtCreateId` on each lesson so later reassignment of a student's primary teacher doesn't retroactively flip attribution.
+Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each teacher in a date range from two sources: **paid private-pay invoice lines** (via `lessonId` linkback from legacy #280) and **rendered Hope Scholarship lessons** (since Hope is invoiced externally, the rendered status is the signal). Substitutes get credit via a snapshotted `primaryTeacherAtCreateId` on each lesson so later reassignment of a student's primary teacher doesn't retroactively flip attribution.
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -191,7 +191,7 @@ Closes the last follow-up under epic #10. Aggregates what Katie owes each teache
 | Storybook interaction tests (14) | **Complete** | `libs/react/payouts/src/lib/*.stories.tsx` |
 | `/payouts` admin page + Music Lessons nav entry | **Complete** | `apps/maple-spruce/src/app/payouts/page.tsx`, `AppShellWrapper.tsx` |
 
-### Parent Invoice Delivery + Online Payment (#281, Complete)
+### Parent Invoice Delivery + Online Payment (legacy #281, Complete)
 
 Uses Square Invoices API rather than a custom Webflow payment page — Square sends the parent the email + hosted payment page, handles receipts and reminders, and webhooks us back when paid.
 
@@ -207,9 +207,9 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Unit tests: webhook handler + invoice domain paymentRecord shapes | **Complete** | 4 new (13 total in square-webhook.spec) + 2 new in invoice.spec |
 | Integration test: manual mark-paid stamps admin-manual attribution | **Complete** | `apps/functions-integration-tests-invoice/` |
 | Storybook interaction tests: attribution badges, sync-error badge | **Complete** | 4 new (32 total in Invoices family) |
-| Drive-by: migrated `invoiceValidation` from `create` → `staticSuite` | **Complete** | matches #293 |
+| Drive-by: migrated `invoiceValidation` from `create` → `staticSuite` | **Complete** | matches legacy #293 |
 
-### Invoice Initiation — Private Pay (#280, Complete)
+### Invoice Initiation — Private Pay (legacy #280, Complete)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -227,23 +227,23 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | `InvoiceBuilderDialog` (signals, Vest, "Add from lesson" picker) | **Complete** | `libs/react/invoices/src/lib/InvoiceBuilderDialog.tsx` |
 | Storybook interaction tests | **Complete** | 28 new (action visibility per status, line editing, picker, totals) |
 | Wired into `/students/[id]` with Hope guard in UI | **Complete** | `apps/maple-spruce/src/app/students/[id]/page.tsx` |
-| Parent invoice email + online payment | **Deferred to #281** | |
+| Parent invoice email + online payment | **Deferred to legacy #281** | |
 
-### Hope Scholarship Handling (#282, Complete)
+### Hope Scholarship Handling (legacy #282, Complete)
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| Hope flag on Student (set/unset by Katie) | **Complete** | shipped in #278 |
+| Hope flag on Student (set/unset by Katie) | **Complete** | shipped in legacy #278 |
 | Hope per-lesson rate constants + helpers | **Complete** | `libs/react/lessons/src/lib/hope-rates.ts` (+ 7 unit tests) |
 | `HopeRatesTable` (4-tier, highlight current) | **Complete** | `libs/react/lessons/src/lib/HopeRatesTable.tsx` |
 | `HopeScholarshipBanner` on student detail | **Complete** | `libs/react/lessons/src/lib/HopeScholarshipBanner.tsx` |
 | Mark-lesson-rendered action (past scheduled lessons) | **Complete** | `LessonList.tsx` + `/students/[id]/page.tsx` |
 | Hope filter on `/students` (All / Hope / Private) | **Complete** | `/students/page.tsx` |
-| Exclude Hope students from in-app invoice flow | **Deferred to #280** | invoice flow doesn't exist yet |
-| Rendered lessons feed teacher payouts | **Data ready** | `Lesson.status='rendered'` records exist; aggregation in #283 |
+| Exclude Hope students from in-app invoice flow | **Deferred to legacy #280** | invoice flow doesn't exist yet |
+| Rendered lessons feed teacher payouts | **Data ready** | `Lesson.status='rendered'` records exist; aggregation in legacy #283 |
 | Storybook interaction tests | **Complete** | 18 new (rates table, banner, mark-rendered on LessonList) |
 
-### Teacher Weekly Availability — Epic #683 (Complete)
+### Teacher Weekly Availability — Epic #60 (Complete)
 
 The "My Day → Week / Openings" tabs that let a teacher (Katie) see her week and
 find open standing slots for a new student. Blocks are the availability model:
@@ -251,21 +251,21 @@ a weekly window a teacher's lessons must fall inside.
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| LessonBlock domain type + `lessonFitsBlock` / `isLessonUnattributed` (#686) | **Complete** | `libs/ts/domain/src/lib/lesson-block.ts` |
-| LessonBlock repository + block-attribution enforcement on lessons (#686) | **Complete** | `libs/firebase/database/src/lib/lesson-block.repository.ts`, `libs/firebase/functions/src/lib/lesson-block.utility.ts` |
-| Block admin UI + lesson-dialog block selection + unattributed flag (#689) | **Complete** | `libs/react/lessons/src/lib/LessonBlock*.tsx`, `apps/maple-spruce/src/app/(admin)/lesson-blocks/page.tsx` |
-| `getMyWeek` callable — weekly commitments + standing pattern + blocks (#684/#716) | **Complete** | `libs/firebase/maple-functions/get-my-week/` |
-| Week tab — calendar grid + This week / Typical week toggle (#685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
-| **Openings tab — open chunks within blocks, read-only (#687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
+| LessonBlock domain type + `lessonFitsBlock` / `isLessonUnattributed` (legacy #686) | **Complete** | `libs/ts/domain/src/lib/lesson-block.ts` |
+| LessonBlock repository + block-attribution enforcement on lessons (legacy #686) | **Complete** | `libs/firebase/database/src/lib/lesson-block.repository.ts`, `libs/firebase/functions/src/lib/lesson-block.utility.ts` |
+| Block admin UI + lesson-dialog block selection + unattributed flag (legacy #689) | **Complete** | `libs/react/lessons/src/lib/LessonBlock*.tsx`, `apps/maple-spruce/src/app/(admin)/lesson-blocks/page.tsx` |
+| `getMyWeek` callable — weekly commitments + standing pattern + blocks (legacy #684/#716) | **Complete** | `libs/firebase/maple-functions/get-my-week/` |
+| Week tab — calendar grid + This week / Typical week toggle (legacy #685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
+| **Openings tab — open chunks within blocks, read-only (legacy #687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
 | Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
 | My Day page (Today / Week / Openings tabs) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx` |
 | Needs Attention panel placement — collapsed on the dashboard and above the student table, not on My Day | **Complete** | `apps/maple-spruce/src/app/(admin)/page.tsx`, `apps/maple-spruce/src/app/(admin)/students/page.tsx` |
 
-### Lesson Scheduling (#279, Complete)
+### Lesson Scheduling (legacy #279, Complete)
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| Lesson domain type (status incl. `rendered` for #282 forward-compat) | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
+| Lesson domain type (status incl. `rendered` for legacy #282 forward-compat) | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
 | Lesson + LessonSeries validation (Vest) | **Complete** | `libs/ts/validation/src/lib/lesson.validation.ts` |
 | LessonRepository (CRUD + atomic series batch write) | **Complete** | `libs/firebase/database/src/lib/lesson.repository.ts` |
 | Lesson API types | **Complete** | `libs/ts/firebase/api-types/src/lib/lesson.types.ts` |
@@ -278,7 +278,7 @@ a weekly window a teacher's lessons must fall inside.
 | Student detail page `/students/[id]` | **Complete** | `apps/maple-spruce/src/app/students/[id]/page.tsx` |
 | Student list row links to detail page | **Complete** | `StudentList.tsx` + `/students/page.tsx` |
 
-### Student Records (#278, Complete)
+### Student Records (legacy #278, Complete)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -324,11 +324,11 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | Tally newsletter `Lead` (routed by form id to the owning pixel) | Complete | `tally-lead-webhook/` |
 | Craft-class `Purchase` (Firestore trigger) | Complete | `send-registration-conversion/` |
 | Music Together `Purchase` (Firestore trigger) | Complete | `send-music-together-conversion/` |
-| **MT demo RSVP `Schedule` (inline in the callable)** (#781) | **Complete** | `add-music-together-demo-rsvp/` + `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts` |
-| **MT interest signup `Lead` (inline in the callable)** (#781) | **Complete** | `add-music-together-interest/` |
-| **Attribution persisted on demo/interest docs** (#781) | **Complete** | `libs/firebase/database/src/lib/utilities/meta-attribution.fields.ts` |
-| **`ct` / `st` / `zp` / `country` / `external_id` match keys** (#781) | **Complete** | `meta-capi.ts` (`hashLocationToken`, `hashZip`) + `us-address.ts` |
-| Separate dev pixel (dev signups currently hit prod attribution) | **Not Started** | [#782](https://github.com/david-shortman/maple-and-spruce/issues/782) |
+| **MT demo RSVP `Schedule` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-demo-rsvp/` + `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts` |
+| **MT interest signup `Lead` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-interest/` |
+| **Attribution persisted on demo/interest docs** (legacy #781) | **Complete** | `libs/firebase/database/src/lib/utilities/meta-attribution.fields.ts` |
+| **`ct` / `st` / `zp` / `country` / `external_id` match keys** (legacy #781) | **Complete** | `meta-capi.ts` (`hashLocationToken`, `hashZip`) + `us-address.ts` |
+| Separate dev pixel (dev signups currently hit prod attribution) | **Not Started** | [legacy #78](legacy #78) |
 
 The demo RSVP is the conversion the MT program optimizes against — paid
 enrollment is weeks later and in single digits, so `Purchase` alone can never
@@ -336,19 +336,19 @@ train a bidder. Full rationale (inline vs trigger, why the top-funnel
 `event_id` is a hash, match-key rules) in
 `docs/guides/music-together-ad-tracking.md`.
 
-## Spruce Room Availability — Epic #467 (In Progress)
+## Spruce Room Availability — Epic #39 (In Progress)
 
-The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Room occupancy is tracked via `CalendarEvent.room`; the portal is the source of truth. See #467 for product decisions and architecture.
+The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Room occupancy is tracked via `CalendarEvent.room`; the portal is the source of truth. See #39 for product decisions and architecture.
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| `Room` domain type + `getRoomStatus` logic | **Complete** (PR 1, #468) | `libs/ts/domain/src/lib/room.ts` |
-| `room` field on CalendarEvent + Class | **Complete** (PR 1, #468) | flows through `onClassWrite` |
-| `onLessonWrite` trigger (lessons → private room events) | **Complete** (PR 1, #468) | `libs/firebase/maple-functions/on-lesson-write/` |
-| `getRoomSchedule` Cloud Function | **Complete** (PR 1, #468) | `libs/firebase/maple-functions/get-room-schedule/` |
-| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` |
-| Ad hoc room booking form | Planned (PR 2, #469) | — |
-| Day strip + conflict warnings in scheduling flows | Planned (PR 2, #469) | — |
+| `Room` domain type + `getRoomStatus` logic | **Complete** (PR 1, legacy #468) | `libs/ts/domain/src/lib/room.ts` |
+| `room` field on CalendarEvent + Class | **Complete** (PR 1, legacy #468) | flows through `onClassWrite` |
+| `onLessonWrite` trigger (lessons → private room events) | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/on-lesson-write/` |
+| `getRoomSchedule` Cloud Function | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/get-room-schedule/` |
+| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` |
+| Ad hoc room booking form | Planned (PR 2, legacy #469) | — |
+| Day strip + conflict warnings in scheduling flows | Planned (PR 2, legacy #469) | — |
 
 ## Admin User Management — Complete
 
@@ -371,11 +371,11 @@ Replaced by Square Shifts (clock-in via Square POS on iPad) feeding Square Payro
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
-| Etsy integration | Deferred | #4 | Blocked on API approval |
-| Sales tracking | Deferred | #5 | Not valuable without store |
-| Payout reports | Deferred | #6 | Depends on sales |
+| Etsy integration | Deferred | legacy #4 | Blocked on API approval |
+| Sales tracking | Deferred | legacy #5 | Not valuable without store |
+| Payout reports | Deferred | legacy #6 | Depends on sales |
 
-## Square Integration (#69) - Complete
+## Square Integration (legacy #69) - Complete
 
 Square foundation is complete. Ready for Product Management integration.
 
@@ -388,7 +388,7 @@ Square foundation is complete. Ready for Product Management integration.
 | Webhooks | Complete | `squareWebhook` function deployed to both environments |
 | Dev environment | Complete | Separate Firebase project + Vercel app |
 
-## Product Management (#3) - Complete
+## Product Management (legacy #3) - Complete
 
 - ~~ProductForm status enum mismatch~~ - Fixed
 - ~~ProductForm missing quantity field~~ - Fixed
@@ -416,11 +416,11 @@ Square foundation is complete. Ready for Product Management integration.
 
 | Task | Status | Issue |
 |------|--------|-------|
-| Deploy Functions to Firebase | Complete | #22 |
-| CI/CD for Functions | Complete | #23 |
-| Testing infrastructure | Complete | #24 |
+| Deploy Functions to Firebase | Complete | legacy #22 |
+| CI/CD for Functions | Complete | legacy #23 |
+| Testing infrastructure | Complete | legacy #24 |
 
-## Storybook & Testing Infrastructure (#24) - Complete
+## Storybook & Testing Infrastructure (legacy #24) - Complete
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -445,9 +445,9 @@ Square foundation is complete. Ready for Product Management integration.
 | Vercel deployment | Pending | `storybook.maple-and-spruce.com` |
 | Chromatic project token | Pending | Add `CHROMATIC_PROJECT_TOKEN` to GitHub secrets |
 
-## Agreement & Waiver System - Epic #320
+## Agreement & Waiver System - legacy Epic #320
 
-### Phase 1: Foundation (Complete, #321)
+### Phase 1: Foundation (Complete, legacy #321)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -466,9 +466,9 @@ Square foundation is complete. Ready for Product Management integration.
 | SignatureCanvas component | **Complete** | `libs/react/agreements/src/lib/SignatureCanvas.tsx` |
 | Public signing page `/sign/:token` | **Complete** | `apps/maple-spruce/src/app/sign/[token]/page.tsx` |
 | Kiosk mode support | **Complete** | `?kiosk=true` query param |
-| Agreement template editor dialog | **Complete** | `libs/react/agreements/src/lib/AgreementTemplateForm.tsx` (#333) |
+| Agreement template editor dialog | **Complete** | `libs/react/agreements/src/lib/AgreementTemplateForm.tsx` (legacy #333) |
 
-### Phase 3: Registration Integration (PR #343)
+### Phase 3: Registration Integration (legacy PR #343)
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -484,7 +484,7 @@ Square foundation is complete. Ready for Product Management integration.
 
 | Feature | Status | Issue |
 |---------|--------|-------|
-| SMS delivery via Twilio | Not Started | #335 |
+| SMS delivery via Twilio | Not Started | #30 |
 | Kiosk mode improvements | Not Started | — |
 | Bulk re-send | Not Started | — |
 | PDF export | Not Started | — |
@@ -497,9 +497,9 @@ magic-link self-service management. Delivered in phases.
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **Complete (PR #507)** |
-| 2 | Square $30/mo plan (`tools/create-craft-club-plan.ts`) + cards/subscriptions/customers services + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` (unit + interaction + integration tests) | **Complete (PR #509)** |
-| 3 | Magic-link self-service: hashed single-use token + session repos, `requestCraftClubManageLink` / `startCraftClubSession` / `getCraftClubSubscription` / `cancelCraftClubSubscription` / `updateCraftClubPaymentMethod`, manage Webflow widget (unit + interaction + integration). E2E happy-path deferred to its own follow-up (needs a new Vite harness app + sandbox subscription fixtures). | **Complete (PR #521)** |
+| 1 | Data model + repository + Vest validation + admin approve/list UI (`/craft-club`) + `getCraftClubMembers` / `approveCraftClubMember` / `updateCraftClubMember` | **Complete (legacy PR #507)** |
+| 2 | Square $30/mo plan (`tools/create-craft-club-plan.ts`) + cards/subscriptions/customers services + signup Webflow widget + `checkCraftClubEligibility` / `createCraftClubSubscription` / `requestCraftClubAccess` (unit + interaction + integration tests) | **Complete (legacy PR #509)** |
+| 3 | Magic-link self-service: hashed single-use token + session repos, `requestCraftClubManageLink` / `startCraftClubSession` / `getCraftClubSubscription` / `cancelCraftClubSubscription` / `updateCraftClubPaymentMethod`, manage Webflow widget (unit + interaction + integration). E2E happy-path deferred to its own follow-up (needs a new Vite harness app + sandbox subscription fixtures). | **Complete (legacy PR #521)** |
 | 4 | `squareWebhook` subscription reconciliation (status + paid-through), admin pause/resume/cancel (`admin*CraftClubSubscription`) + UI buttons, welcome/cancellation emails. Unit + integration. | **In Progress** |
 
 **Remaining after Phase 4:** the deferred self-service E2E happy path (new Vite harness app + sandbox fixtures). One-time go-live setup: run `tools/create-craft-club-plan.ts` for sandbox + prod (fill `CRAFT_CLUB_PLAN_VARIATION_ID`), run `tools/seed-email-templates.ts`, and subscribe to `subscription.*` events in the Square dashboard.

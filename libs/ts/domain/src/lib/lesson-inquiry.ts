@@ -1,5 +1,5 @@
 /**
- * Lesson inquiry domain types (#795)
+ * Lesson inquiry domain types (legacy #795)
  *
  * A family asking about music lessons, captured from a Tally form and given a
  * status so it stops being an unread email.

@@ -10,7 +10,7 @@ import {
 
 describe('needsProgramBackfill', () => {
   it('selects a document with no program at all', () => {
-    // The case that matters: everything written before #791.
+    // The case that matters: everything written before legacy #791.
     expect(needsProgramBackfill({ id: 'a', code: 'SAVE10' })).toBe(true);
   });
 

@@ -1,5 +1,5 @@
 /**
- * Lesson billing API contracts (#798).
+ * Lesson billing API contracts (#81).
  */
 import type {
   CreateLessonBillingRuleInput,
@@ -18,7 +18,7 @@ export interface GetLessonBillingResponse {
   charges: LessonScheduledCharge[];
   /**
    * The studio rate table, so the screen can price a prepayment before taking
-   * it (#864). It travels with the charges rather than through a separate read
+   * it (legacy #864). It travels with the charges rather than through a separate read
    * because the number the admin approves and the number the server charges
    * must come from the same source — a preview computed from a stale or absent
    * rate is how someone agrees to one amount and a family is charged another.
@@ -71,7 +71,7 @@ export interface RunLessonBillingResult {
   skippedNoRate: number;
   /**
    * Lessons an existing charge already covers, so not planned again — usually
-   * a family who paid ahead (#864). Reported rather than left silent: once
+   * a family who paid ahead (legacy #864). Reported rather than left silent: once
    * covered lessons are filtered out before blocking, a steady-state run and a
    * run where planning quietly produced nothing look the same from outside.
    */
@@ -80,7 +80,7 @@ export interface RunLessonBillingResult {
 }
 
 /**
- * Take money for a block of lessons right now (#864).
+ * Take money for a block of lessons right now (legacy #864).
  *
  * Either name the lessons, or say how many of the next uncovered ones to take.
  * Naming them wins when both are present.

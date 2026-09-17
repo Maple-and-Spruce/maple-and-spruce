@@ -1,5 +1,5 @@
 /**
- * Lesson Rates Config Repository (#629)
+ * Lesson Rates Config Repository (legacy #629)
  *
  * Single config doc (`appConfig/lessonRates`) holding the admin-configured
  * default private-pay lesson rates by length. Read by the auto-invoice trigger

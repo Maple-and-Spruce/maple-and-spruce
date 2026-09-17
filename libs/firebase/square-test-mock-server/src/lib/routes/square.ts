@@ -32,7 +32,7 @@ const payments = new Map<string, Record<string, unknown>>();
  *
  * Real Square returns the ORIGINAL payment when a key is reused rather than
  * taking a second one, and that behaviour is the whole reason the lesson
- * billing path derives a stable key from the charge id (#798, #864). A mock
+ * billing path derives a stable key from the charge id (#81, legacy #864). A mock
  * that quietly minted a fresh payment per call would agree with whatever the
  * code assumed and prove nothing.
  */
@@ -537,7 +537,7 @@ function registerMockControlRoutes(server: SquareMockServer): void {
   });
 
   // Make the next payment fail, so a test can exercise a declined card and the
-  // retry that follows it (#864). Real Square answers 402 with an error code.
+  // retry that follows it (legacy #864). Real Square answers 402 with an error code.
   server.post('/_mock/decline-next-payment', (req) => {
     const body = (req.body ?? {}) as { code?: string };
     declineNextPayment = body.code ?? 'CARD_DECLINED';
@@ -545,7 +545,7 @@ function registerMockControlRoutes(server: SquareMockServer): void {
   });
 
   // Seed cards on file, in Square wire shape, keyed by card id. This is the
-  // state a card saved in the Square app leaves behind (#798).
+  // state a card saved in the Square app leaves behind (#81).
   server.post('/_mock/cards', (req) => {
     const body = (req.body ?? {}) as Record<string, Record<string, unknown>>;
     for (const [id, obj] of Object.entries(body)) {
@@ -591,7 +591,7 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
   // than CreateCustomer and rejects some addresses with INVALID_VALUE — e.g.
   // reserved/undeliverable TLDs (.test/.example/.invalid/.localhost). The mock
   // mirrors that so integration tests catch the class of bug where a customer
-  // upsert doesn't tolerate a search failure (fixed in #634: fall through to
+  // upsert doesn't tolerate a search failure (fixed in legacy #634: fall through to
   // create). Real customer emails (deliverable domains) still return empty.
   server.post('/v2/customers/search', (req) => {
     const email = extractSearchEmail(req.body);
@@ -636,7 +636,7 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
   // verifyBuyer({ intent: 'STORE' }) SCA step) to vault a card on file, and
   // rejects the request without it. The mock enforces the same contract so that
   // integration tests catch a missing token — a gap that previously only the
-  // real-Square e2e (#622) could surface.
+  // real-Square e2e (legacy #622) could surface.
   server.post('/v2/cards', (req) => {
     const body = req.body as Record<string, unknown>;
     const verificationToken = body['verification_token'];
@@ -673,7 +673,7 @@ function registerCraftClubRoutes(server: SquareMockServer): void {
 
   // List cards on file. Real Square caps a page at 25 and returns a cursor;
   // the mock paginates at 2 so the SDK's Page iteration is genuinely exercised
-  // rather than always fitting in one response (#798).
+  // rather than always fitting in one response (#81).
   server.get('/v2/cards', (req) => {
     const includeDisabled = req.query['include_disabled'] === 'true';
     const all = [...cardsOnFile.values()].filter(

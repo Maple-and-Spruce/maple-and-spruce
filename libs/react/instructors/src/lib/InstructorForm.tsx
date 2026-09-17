@@ -61,7 +61,7 @@ interface InstructorFormProps {
   /**
    * Portal users, for the optional "Portal login" picker. Provide only on the
    * admin page (it fetches users) — the link is what lets a lesson teacher
-   * manage their own lessons (#617 phase 2). Omit to hide the picker.
+   * manage their own lessons (#49 phase 2). Omit to hide the picker.
    */
   users?: readonly AppUser[];
 }
@@ -526,7 +526,7 @@ export function InstructorForm({
           </FormControl>
 
           {/* Portal login — links a user account to this instructor so a
-              lesson teacher can manage their own lessons (#617 phase 2). */}
+              lesson teacher can manage their own lessons (#49 phase 2). */}
           {users && (
             <FormControl fullWidth>
               <InputLabel>Portal login (for lesson teachers)</InputLabel>

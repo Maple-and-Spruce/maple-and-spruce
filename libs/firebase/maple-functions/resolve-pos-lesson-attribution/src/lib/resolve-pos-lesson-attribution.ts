@@ -1,5 +1,5 @@
 /**
- * Resolve POS Lesson Attribution Cloud Function (#628)
+ * Resolve POS Lesson Attribution Cloud Function (legacy #628)
  *
  * Resolves a pending in-person POS lesson sale from the review queue:
  *  - `attribute` — tie it to a student: settle their matching open invoice or

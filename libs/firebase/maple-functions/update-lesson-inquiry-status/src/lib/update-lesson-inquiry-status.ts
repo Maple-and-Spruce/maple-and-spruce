@@ -1,5 +1,5 @@
 /**
- * updateLessonInquiryStatus Cloud Function (#795)
+ * updateLessonInquiryStatus Cloud Function (legacy #795)
  *
  * Advances a lead through the follow-up. The status model is deliberately
  * permissive (see `isValidStatusChange`) because this is a queue two people

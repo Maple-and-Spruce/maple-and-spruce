@@ -9,7 +9,7 @@ interface CostSummaryProps {
    * displayed — including the `N x $price` line — comes from this
    * object so the UI can't disagree with what the server actually
    * priced. Locally-derived totals were the source of an overcharge
-   * bug (#423) where the line item read "2 x $100" while the totals
+   * bug (legacy #423) where the line item read "2 x $100" while the totals
    * reflected a different quantity the server had been told to price.
    */
   cost: CalculateRegistrationCostResponse;

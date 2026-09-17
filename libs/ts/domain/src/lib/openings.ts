@@ -1,5 +1,5 @@
 /**
- * Open-slot ("openings") math for the teacher availability finder (#683 / #687).
+ * Open-slot ("openings") math for the teacher availability finder (#60 / legacy #687).
  *
  * A teacher's LessonBlocks ARE the availability model: each block is a weekly
  * window (weekday + [startMinutes, endMinutes) in the shop timezone) that

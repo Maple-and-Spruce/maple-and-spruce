@@ -19,7 +19,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Hook for the POS lesson attribution review queue (#628): list + resolve
+ * Hook for the POS lesson attribution review queue (legacy #628): list + resolve
  * (attribute to a student, or dismiss), plus a status summary for the badge.
  */
 export function usePosLessonAttributions() {

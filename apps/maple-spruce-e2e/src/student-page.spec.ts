@@ -12,7 +12,7 @@ import {
 
 /**
  * The student page, assembled: real Next.js app, real callables, seeded
- * emulator data (#828, #853).
+ * emulator data (#84, #88).
  *
  * The tables are covered component by component in Storybook. What only this
  * can prove is the page's wiring — that the charges reach the billing table,

@@ -1,6 +1,6 @@
 /**
  * triggerLessonBilling — the admin-callable twin of the `runLessonBilling`
- * schedule (#798).
+ * schedule (#81).
  *
  * Manual catch-up, a dry run, and the way integration tests reach the billing
  * run at all: `onSchedule` is not callable over HTTP in the Firebase emulator,
@@ -9,7 +9,7 @@
  * It lives in its own library because **one library deploys exactly one Cloud
  * Function** — CI derives the deploy filter from the library directory name, so
  * a second export co-located with `runLessonBilling` would simply never be
- * deployed (#872). The billing logic itself stays put; this is a thin wrapper
+ * deployed (legacy #872). The billing logic itself stays put; this is a thin wrapper
  * over `executeLessonBilling`.
  */
 import { Functions, Role } from '@maple/firebase/functions';

@@ -36,11 +36,11 @@ export interface UseLessonInquiriesOptions {
 }
 
 /**
- * Lesson inquiries for the `/leads` queue (#795).
+ * Lesson inquiries for the `/leads` queue (legacy #795).
  *
  * `updatingId` is per-record rather than a single page-wide boolean, so
  * advancing one lead does not freeze every other row. That is the same defect
- * #805 is fixing on the lesson surfaces; no reason to reintroduce it here.
+ * legacy #805 is fixing on the lesson surfaces; no reason to reintroduce it here.
  */
 export function useLessonInquiries(options: UseLessonInquiriesOptions = {}) {
   const { status, autoFetch = true } = options;

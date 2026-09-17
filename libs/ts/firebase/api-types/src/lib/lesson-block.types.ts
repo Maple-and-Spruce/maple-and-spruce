@@ -1,5 +1,5 @@
 /**
- * Lesson block API request/response types (#686).
+ * Lesson block API request/response types (legacy #686).
  *
  * CRUD for the weekly LessonBlock constraint windows. Create/update/delete are
  * admin-only; read is available to admins + lesson-teachers.

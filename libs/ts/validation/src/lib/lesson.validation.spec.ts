@@ -124,7 +124,7 @@ describe('lessonValidation', () => {
       }
     );
 
-    it('accepts the no-show status (#796)', () => {
+    it('accepts the no-show status (legacy #796)', () => {
       // Private pay is charged for a no-show, Hope never is — but either way
       // the teacher has to be able to record what actually happened.
       const result = lessonValidation(

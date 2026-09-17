@@ -11,7 +11,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 // Admin-only, matching getArtists — Artists is an Admin-group area
-// (scoped-roles matrix, epic #617). Was auth-only before the analyzer (#620).
+// (scoped-roles matrix, epic #49). Was auth-only before the analyzer (legacy #620).
 export const getArtist = createAdminFunction<
   GetArtistRequest,
   GetArtistResponse

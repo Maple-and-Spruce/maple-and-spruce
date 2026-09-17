@@ -48,7 +48,7 @@ export type DiscountProgram = 'classes' | 'music-together';
 
 export const DISCOUNT_PROGRAMS: DiscountProgram[] = ['classes', 'music-together'];
 
-/** Program assumed for any discount stored before scoping existed (#791). */
+/** Program assumed for any discount stored before scoping existed (legacy #791). */
 export const LEGACY_DISCOUNT_PROGRAM: DiscountProgram = 'classes';
 
 /** Human label for a program, for admin UI and error messages. */

@@ -1,5 +1,5 @@
 /**
- * Two things cannot be in the room at once (#841).
+ * Two things cannot be in the room at once (legacy #841).
  *
  * The room is the real physical constraint — Katie tracks overridden lesson
  * times specifically to keep the Spruce Room free — and nothing enforced it.

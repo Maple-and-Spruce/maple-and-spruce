@@ -42,7 +42,7 @@ export interface UseLessonBlocksOptions {
 }
 
 /**
- * Hook for managing lesson-block CRUD (#686/#689). Blocks are the weekly
+ * Hook for managing lesson-block CRUD (legacy #686/#689). Blocks are the weekly
  * constraint windows lessons must fall inside. Create/update/delete are
  * admin-only server-side; this hook just calls the callables.
  */

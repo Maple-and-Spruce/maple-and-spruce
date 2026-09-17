@@ -13,7 +13,7 @@
  * **Reference** field pointing here, and Webflow can only filter a Collection
  * List against the current item's field when that field is a reference. That
  * filter is what renders related classes natively on the class template page
- * instead of a Cloud Function round trip from the sold-out panel (#776).
+ * instead of a Cloud Function round trip from the sold-out panel (legacy #776).
  *
  * IMPORTANT: This function uses inline secret definitions to avoid cold start
  * delays. Secrets are defined in the onDocumentWritten options, NOT at module

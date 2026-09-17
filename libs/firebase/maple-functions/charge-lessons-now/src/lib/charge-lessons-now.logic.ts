@@ -1,5 +1,5 @@
 /**
- * Taking a prepayment, in order (#864).
+ * Taking a prepayment, in order (legacy #864).
  *
  * Separated from the wiring for the same reason the scheduled job is: the part
  * that decides whether money moves should be testable without a Square client
@@ -108,7 +108,7 @@ export async function chargeLessonsNowLogic(
 
   // Re-checked here rather than trusted from the screen: a student can have
   // become a Hope student, or left, since the page was loaded. Hope families
-  // bill through the EMA portal and must never be charged here (#799).
+  // bill through the EMA portal and must never be charged here (legacy #799).
   if (!isAutoChargeEligible(student)) {
     return { ok: false, refusal: { kind: 'not-chargeable' } };
   }

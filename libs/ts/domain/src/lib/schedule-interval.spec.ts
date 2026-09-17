@@ -1,9 +1,9 @@
 /**
- * Biweekly arrangements (#837).
+ * Biweekly arrangements (legacy #837).
  *
  * What these guard is the *parity*: which weeks belong to this student. Katie
  * has two students alternating in one Tuesday hour, so a pattern that drifted
- * by a week would put both of them in the room at once — and, once #798 is
+ * by a week would put both of them in the room at once — and, once #81 is
  * charging cards, bill one of them for the other's lesson.
  *
  * The dangerous drift is not obvious: consecutive occurrences are 7 days apart

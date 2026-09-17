@@ -186,7 +186,7 @@ export const EXPIRED_BY_DATE_DISCOUNT = {
 
 /** Well-known doc IDs for test discounts */
 /**
- * A Music Together code (#791). Present so the classes checkout can be tested
+ * A Music Together code (legacy #791). Present so the classes checkout can be tested
  * for the thing that matters: it must REFUSE this, because MT settles to a
  * different business's Square account.
  *
@@ -226,7 +226,7 @@ export const DISCOUNT_IDS = {
 } as const;
 
 /**
- * Build a Music Together pilot code for the enrollment E2E (#791).
+ * Build a Music Together pilot code for the enrollment E2E (legacy #791).
  *
  * The code string is unique per run so concurrent CI runs never collide on the
  * globally-unique-code rule, exactly like the E2E's per-run section id.

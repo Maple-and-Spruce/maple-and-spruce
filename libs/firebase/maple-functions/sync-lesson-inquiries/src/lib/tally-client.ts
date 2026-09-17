@@ -1,5 +1,5 @@
 /**
- * Minimal Tally submissions API client (#795).
+ * Minimal Tally submissions API client (legacy #795).
  *
  * Barrel-free and dependency-free so it can be unit-tested with a stubbed
  * `fetch`, the same way `map-submission.ts` is.

@@ -70,7 +70,7 @@ export {
   discountProgramScopeForUser,
 } from './ownership.utility';
 
-// Lesson ↔ block enforcement (#686)
+// Lesson ↔ block enforcement (legacy #686)
 export {
   assertRoomIsFree,
   findConflictsForWindow,

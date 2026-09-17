@@ -1,5 +1,5 @@
 /**
- * Linking a Square card on file to a student (#798).
+ * Linking a Square card on file to a student (#81).
  */
 import type { SquareCardOnFile, Student } from '@maple/ts/domain';
 

@@ -1,5 +1,5 @@
 /**
- * getLessonInquiries Cloud Function (#795)
+ * getLessonInquiries Cloud Function (legacy #795)
  *
  * The read behind the `/leads` queue. Admin-only for now: an inquiry carries a
  * family's name, email and phone before they are a customer, which is not

@@ -1,5 +1,5 @@
 /**
- * Teacher "My Week" API types (#683, #684).
+ * Teacher "My Week" API types (#60, legacy #684).
  *
  * The signed-in teacher's own commitments for a week, plus the shared
  * store-wide events that affect room/context, assembled server-side (the
@@ -60,7 +60,7 @@ export interface MyWeekCommitment {
   cadence: MyWeekCadence;
   /**
    * True only for `mine` lesson commitments that aren't attributed to a
-   * fitting block (#689) — the "needs a block" flag. Always false for
+   * fitting block (legacy #689) — the "needs a block" flag. Always false for
    * classes, shared events, and block-attributed lessons.
    */
   unattributed: boolean;
@@ -70,7 +70,7 @@ export interface MyWeekCommitment {
  * A synthesized standing (typical-week) slot — a commitment that recurs on the
  * same weekday + clock-time across the lookback, projected onto a generic
  * Sun–Sat week with no concrete date. Powers the "Typical week" planning view
- * (#685): a standing lesson shows in its slot even on a concrete week where its
+ * (legacy #685): a standing lesson shows in its slot even on a concrete week where its
  * instance is cancelled or missing, and one-offs drop out entirely. Weekday /
  * time are evaluated in the shop timezone (America/New_York) so they line up
  * with lesson blocks.

@@ -12,7 +12,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Hook for the "POS lesson catalog items" config manager (#628): which Square
+ * Hook for the "POS lesson catalog items" config manager (legacy #628): which Square
  * catalog object ids count as lessons when rung up at the POS.
  */
 export function usePosLessonConfig() {

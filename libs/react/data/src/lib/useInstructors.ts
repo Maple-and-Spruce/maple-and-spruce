@@ -88,7 +88,7 @@ export function useInstructors() {
 
   const updateInstructor = useCallback(
     // UpdateInstructorRequest (not ...Input) so callers can pass uid: null to
-    // unlink a portal login (#617 phase 2).
+    // unlink a portal login (#49 phase 2).
     async (input: UpdateInstructorRequest): Promise<Instructor> => {
       const functions = getMapleFunctions();
       const update = httpsCallable<

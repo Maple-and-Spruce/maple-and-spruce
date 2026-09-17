@@ -151,7 +151,7 @@ export const CalendarEventRepository = {
 
   /**
    * All events whose start falls in [from, to), across every room and type.
-   * Powers the teacher My Week schedule (#683). A range + orderBy on a single
+   * Powers the teacher My Week schedule (#60). A range + orderBy on a single
    * field (startDateTime) is served by Firestore's automatic index — no
    * composite index is required (and a single-field entry in indexes.json is
    * rejected at deploy), hence the analyzer opt-out.

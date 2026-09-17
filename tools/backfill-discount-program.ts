@@ -1,5 +1,5 @@
 /**
- * One-time backfill for `Discount.program` (#791).
+ * One-time backfill for `Discount.program` (legacy #791).
  *
  * **This is a prerequisite for the admin Discounts pages, not a tidy-up.**
  *
@@ -19,7 +19,7 @@
  * scoping is invisible on BOTH admin pages.
  *
  * Assigns `classes` to everything it touches, which is a statement of fact
- * rather than a default: Music Together had no discount support before #791,
+ * rather than a default: Music Together had no discount support before legacy #791,
  * so no pre-existing code could have been its. See
  * `backfill-discount-program-core.ts` for the selection rules and their tests.
  *

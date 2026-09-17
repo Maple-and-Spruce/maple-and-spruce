@@ -45,10 +45,10 @@ export const createLessonSeries = createRoleFunction<
       throw new Error(`Validation failed: ${errorMessages}`);
     }
 
-    // Enforce block attribution (#686): every lesson in the series must fit the
+    // Enforce block attribution (legacy #686): every lesson in the series must fit the
     // same block, owned by this teacher.
     //
-    // A backfill of lessons that already happened is exempt (#799). The block
+    // A backfill of lessons that already happened is exempt (legacy #799). The block
     // rule stops *new* lessons being dropped at arbitrary times; a lesson that
     // already happened happened, whether or not a block covers that weekday,
     // and refusing to record it would mean refusing to claim money the studio
@@ -56,7 +56,7 @@ export const createLessonSeries = createRoleFunction<
     // as "needs a block", the same grandfather path pre-block lessons use.
     // An explicitly supplied block is still validated either way.
     // A series repeats, so a block derived for it may claim the weekday
-    // (#835) — that is what the series asserts anyway.
+    // (legacy #835) — that is what the series asserts anyway.
     const isBackfill = isBackfillSeries(coerced);
     let seriesBlockId = coerced.blockId;
     if (!isBackfill || coerced.blockId || data.blockStrategy) {
@@ -71,7 +71,7 @@ export const createLessonSeries = createRoleFunction<
       });
     }
 
-    // Every date in the series, not just the first (#841).
+    // Every date in the series, not just the first (legacy #841).
     await assertRoomIsFree(
       coerced.scheduledAts.map((scheduledAt) => ({
         room: coerced.room,
@@ -86,7 +86,7 @@ export const createLessonSeries = createRoleFunction<
     }
 
     // Snapshot primary teacher on every lesson in the series so later
-    // reassignment can't retroactively flip substitute attribution (#283).
+    // reassignment can't retroactively flip substitute attribution (legacy #283).
     const { lessons, seriesId } = await LessonRepository.createSeries({
       ...coerced,
       blockId: seriesBlockId,

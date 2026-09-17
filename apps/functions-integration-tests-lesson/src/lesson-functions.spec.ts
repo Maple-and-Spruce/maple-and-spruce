@@ -72,7 +72,7 @@ function etWeekday(d: Date): number {
 
 /** Deterministic id of the seeded all-day catch-all block for a teacher on the
  *  weekday of `d` (see seedAllDayBlocks). Lets existing lesson fixtures satisfy
- *  the #686 block-attribution requirement without reshaping every case. */
+ *  the legacy #686 block-attribution requirement without reshaping every case. */
 function blockFor(teacherId: string, d: Date): string {
   return `blk-${teacherId}-${etWeekday(d)}`;
 }
@@ -123,7 +123,7 @@ describe('Lesson Functions', () => {
       email: adminUser.email,
     });
 
-    // #686: lessons must be attributed to a block. Seed all-day catch-all
+    // legacy #686: lessons must be attributed to a block. Seed all-day catch-all
     // blocks so the existing lesson fixtures below stay valid.
     await seedAllDayBlocks(TEACHER_ID);
     await seedAllDayBlocks(SUBSTITUTE_ID);
@@ -191,7 +191,7 @@ describe('Lesson Functions', () => {
     });
   });
 
-  describe('Lesson-teacher ownership (#617 phase 2)', () => {
+  describe('Lesson-teacher ownership (#49 phase 2)', () => {
     // A lesson teacher = a portal user linked to an instructor record via
     // instructor.uid, with the lesson-teacher role. They may manage only
     // lessons whose teacherId is their linked instructor.
@@ -246,7 +246,7 @@ describe('Lesson Functions', () => {
       othersLessonId = others.data!.lesson.id;
     });
 
-    it('recordInvoicePayment (#631): teacher records on their own lesson, denied on others', async () => {
+    it('recordInvoicePayment (legacy #631): teacher records on their own lesson, denied on others', async () => {
       // A lesson the linked teacher teaches + an invoice referencing it.
       const ownLesson = await callFunction<
         CreateLessonRequest,
@@ -437,7 +437,7 @@ describe('Lesson Functions', () => {
       expect(result.data?.lesson.durationMinutes).toBe(30);
       expect(result.data?.lesson.status).toBe('scheduled');
       expect(result.data?.lesson.seriesId).toBeUndefined();
-      // Snapshot the student's primary teacher at create time (#283 payout
+      // Snapshot the student's primary teacher at create time (legacy #283 payout
       // attribution can't retroactively flip when Katie reassigns later).
       expect(result.data?.lesson.primaryTeacherAtCreateId).toBe(TEACHER_ID);
       lessonId = result.data!.lesson.id;
@@ -469,7 +469,7 @@ describe('Lesson Functions', () => {
           id: lessonId,
           scheduledAt: new Date('2026-05-02T16:00:00Z'),
           // Moves to a different weekday (Sat) — must re-attribute to that
-          // day's block (#686 enforces fit on reschedule).
+          // day's block (legacy #686 enforces fit on reschedule).
           blockId: blockFor(TEACHER_ID, new Date('2026-05-02T16:00:00Z')),
         },
         idToken: adminUser.idToken,
@@ -801,7 +801,7 @@ describe('Lesson Functions', () => {
     });
   });
 
-  describe('Auto-invoice on rendered (#629)', () => {
+  describe('Auto-invoice on rendered (legacy #629)', () => {
     async function getInvoicesFor(sid: string) {
       const res = await callFunction<GetInvoicesRequest, GetInvoicesResponse>({
         functionName: 'getInvoices',
@@ -944,7 +944,7 @@ describe('Lesson Functions', () => {
       expect(forLesson).toHaveLength(1);
     });
 
-    // ── no-show billing (#796) ─────────────────────────────────────────────
+    // ── no-show billing (legacy #796) ─────────────────────────────────────────────
     //
     // Money in two directions, decided by one trigger, so both are proven
     // against real emulators rather than only against mocked repositories:
@@ -1009,7 +1009,7 @@ describe('Lesson Functions', () => {
     });
   });
 
-  describe('Hope Scholarship submissions (#799)', () => {
+  describe('Hope Scholarship submissions (legacy #799)', () => {
     let hopeStudentId: string;
 
     async function hopeLesson(status: 'rendered' | 'no-show'): Promise<string> {
@@ -1221,7 +1221,7 @@ describe('Lesson Functions', () => {
     });
   });
 
-  describe('Needs Attention (#807)', () => {
+  describe('Needs Attention (legacy #807)', () => {
     // The classifiers are unit-tested. What this proves is the composition:
     // that the rows are actually derived from real Firestore state and land in
     // the right group. Assertions are on presence of specific rows rather than
@@ -1388,7 +1388,7 @@ describe('Lesson Functions', () => {
     });
   });
 
-  describe('Lesson blocks (#686)', () => {
+  describe('Lesson blocks (legacy #686)', () => {
     const BLOCK_TEACHER_ID = 'instructor-block-test';
     // 2026-09-01 is a Tuesday; block covers 10:00–12:00 ET.
     const TUE = new Date('2026-09-01T15:00:00Z'); // 11:00 ET, inside

@@ -1,13 +1,13 @@
 # Music Together — Findings Report & Implementation Plan
 
-> Status: **Planning** · Epic: [#508](https://github.com/david-shortman/maple-and-spruce/issues/508) · Phases: #510–#517
+> Status: **Planning** · Epic: [legacy #94](legacy #94) · Phases: #510–#42
 > Last updated: 2026-06-26
 
 **Music Together (MT)** is a licensed early-childhood music program run at Maple & Spruce but operated as a **separate business** (Stephanie's single-member LLC) with its **own Square account and checking**. MT payments must route to MT's Square credentials, **not** M&S's. We treat the payment processor as **configurable per program**.
 
 This document captures the codebase investigation behind the plan and the rationale for the key decisions. The actionable work lives in the GitHub issues; this is the durable "why".
 
-> **Update 2026-06-26 (post-#509):** Craft Club Phase 2 (#509) landed a `CardsService.createCardOnFile` (`client.cards.create`) + `CustomersService.upsertByEmail` on the `Square` wrapper, with Square mock-server routes. **Card-on-file is therefore no longer net-new** — the original "Cards API entirely unused" finding below is superseded. Because these services hang off the wrapper's client, the Phase 0 multi-account work composes for free: `new Square(secrets, strings, MT_SQUARE_KEYS).cardsService` vaults to the MT account. `create-craft-club-subscription.ts:78-89` is the reuse template. **Phase 2 (#512) shrinks** to: confirm card-on-file + a stored-card charge against the MT account, plus `verifyBuyer` on the frontend if required.
+> **Update 2026-06-26 (post-#509):** Craft Club Phase 2 (legacy #509) landed a `CardsService.createCardOnFile` (`client.cards.create`) + `CustomersService.upsertByEmail` on the `Square` wrapper, with Square mock-server routes. **Card-on-file is therefore no longer net-new** — the original "Cards API entirely unused" finding below is superseded. Because these services hang off the wrapper's client, the Phase 0 multi-account work composes for free: `new Square(secrets, strings, MT_SQUARE_KEYS).cardsService` vaults to the MT account. `create-craft-club-subscription.ts:78-89` is the reuse template. **Phase 2 (legacy #512) shrinks** to: confirm card-on-file + a stored-card charge against the MT account, plus `verifyBuyer` on the frontend if required.
 
 ---
 
@@ -81,7 +81,7 @@ A registration is charged for installment 2 **at most once**, enforced at three 
 
 1. **Stable idempotency key** `mt-installment2-{registrationId}` (no `Date.now()`). Square itself dedupes — a retry returns the original payment, never a new charge.
 2. **Firestore status lease**: `installment2.status: scheduled → charging → paid | failed | cancelled`. The job only picks up `scheduled && dueAt <= now && paymentPlan === 'installments'`, and flips to `charging` before charging so overlapping runs can't double-process (claim-lease pattern from `process-catalog-sync-request.ts:230`).
-3. **Card-on-file, not a nonce**, for charge #2 (no parent present). The nonce is used only at registration: take installment 1 + `verifyBuyer` to vault the card.
+3. **Card-on-file, not a nonce**, for charge legacy #2 (no parent present). The nonce is used only at registration: take installment 1 + `verifyBuyer` to vault the card.
 4. **Cancel guard**: `cancelMusicTogetherRegistration` always sets `installment2.status = 'cancelled'`, so the scheduler skips it — no separate timer to forget.
 5. **Loud failure**: `failed` → parent email (`mail` collection) + "past due" admin flag. No silent retries.
 6. **Testability**: `onSchedule` wrapper + admin-callable trigger + **dry-run** that lists what would be charged.
@@ -92,14 +92,14 @@ A registration is charged for installment 2 **at most once**, enforced at three 
 
 | Phase | Issue | Summary |
 |---|---|---|
-| 0 | [#510](https://github.com/david-shortman/maple-and-spruce/issues/510) | Multi-account Square plumbing: `squareNames(prefix)`, `MT_SQUARE_*`, `musicSquareWebhook` |
-| 1 | [#511](https://github.com/david-shortman/maple-and-spruce/issues/511) | MT data layer: sections + registrations (family/child/DOB), repositories, Vest, indexes |
-| 2 | [#512](https://github.com/david-shortman/maple-and-spruce/issues/512) | Card-on-file proof of concept (sandbox): `verifyBuyer` → `cards.create` → stored-card charge |
-| 3 | [#513](https://github.com/david-shortman/maple-and-spruce/issues/513) | Registration + checkout: Webflow widget, two payment options, 8-family cap |
-| 4 | [#514](https://github.com/david-shortman/maple-and-spruce/issues/514) | Week-5 auto-charge `onSchedule` + dry-run + overcharge safety + failure + refund/cancel |
-| 5 | [#515](https://github.com/david-shortman/maple-and-spruce/issues/515) | 8-family cap → ordered waitlist with availability capture |
-| 6 | [#516](https://github.com/david-shortman/maple-and-spruce/issues/516) | Admin Music Together section + licensee CSV export |
-| 7 | [#517](https://github.com/david-shortman/maple-and-spruce/issues/517) | Webflow pages + Music submenu + `musictogethermaplespruce.com` forward |
+| 0 | legacy #510 | Multi-account Square plumbing: `squareNames(prefix)`, `MT_SQUARE_*`, `musicSquareWebhook` |
+| 1 | legacy #511 | MT data layer: sections + registrations (family/child/DOB), repositories, Vest, indexes |
+| 2 | legacy #512 | Card-on-file proof of concept (sandbox): `verifyBuyer` → `cards.create` → stored-card charge |
+| 3 | legacy #513 | Registration + checkout: Webflow widget, two payment options, 8-family cap |
+| 4 | legacy #514 | Week-5 auto-charge `onSchedule` + dry-run + overcharge safety + failure + refund/cancel |
+| 5 | legacy #515 | 8-family cap → ordered waitlist with availability capture |
+| 6 | legacy #516 | Admin Music Together section + licensee CSV export |
+| 7 | [legacy #42](legacy #42) | Webflow pages + Music submenu + `musictogethermaplespruce.com` forward |
 
 Earliest unknowns (do first): **Phase 0** (multi-account) and **Phase 2** (card-on-file PoC). Production MT credentials are swapped in only at Phase 7.
 

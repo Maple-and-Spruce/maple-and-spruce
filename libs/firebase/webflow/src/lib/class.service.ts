@@ -49,7 +49,7 @@ export interface SyncClassInput {
    * Webflow item ID of this class's category in the Class Categories
    * collection. Populates the `category` Reference field, which is what lets
    * the class template page filter a Collection List to "other classes in this
-   * class's category" without a Cloud Function call (#776).
+   * class's category" without a Cloud Function call (legacy #776).
    */
   categoryWebflowItemId?: string;
   /** Current registration count for spots remaining calculation */
@@ -195,7 +195,7 @@ export function mapClassToFieldData(
     // Webflow conditional visibility can't be authored through the API, but an
     // element's visibility CAN bind to a Switch field. This is what shows the
     // sold-out "Other upcoming dates" list on the class template page, so the
-    // rule lives here in code rather than as a Designer-only setting (#776).
+    // rule lives here in code rather than as a Designer-only setting (legacy #776).
     'is-full': spotsRemaining <= 0,
     'price-display': priceDisplay,
     'duration-display': durationDisplay,

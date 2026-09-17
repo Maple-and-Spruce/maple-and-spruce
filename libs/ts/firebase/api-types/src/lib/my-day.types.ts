@@ -1,5 +1,5 @@
 /**
- * Teacher "My Day" API types (#631).
+ * Teacher "My Day" API types (legacy #631).
  *
  * A lesson teacher's own lessons for a day, each with the student and the
  * invoice tied to it — assembled server-side (the client can't resolve which

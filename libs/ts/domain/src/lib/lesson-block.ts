@@ -1,5 +1,5 @@
 /**
- * Lesson block domain types (#683 / #686).
+ * Lesson block domain types (#60 / legacy #686).
  *
  * A LessonBlock is a single **weekly constraint object**, created by an admin
  * (Katie) and attributed to one teacher. It does NOT reserve a room and has NO
@@ -40,8 +40,8 @@ export interface LessonBlock {
    * `YYYY-MM-DD` (shop timezone) when this block applies to **one date only**.
    *
    * Absent — the normal case — means a recurring weekly window, unchanged from
-   * #686. Present means a one-off: a block derived from a single lesson that
-   * has no standing arrangement behind it (#835).
+   * legacy #686. Present means a one-off: a block derived from a single lesson that
+   * has no standing arrangement behind it (legacy #835).
    *
    * The distinction is load-bearing, not cosmetic. A block is what `get-my-week`
    * reads as a teacher's *standing availability*, so deriving a recurring block
@@ -122,7 +122,7 @@ export function isLessonUnattributed(
 }
 
 // ---------------------------------------------------------------------------
-// Deriving a block from what is being scheduled (#835)
+// Deriving a block from what is being scheduled (legacy #835)
 // ---------------------------------------------------------------------------
 
 /**

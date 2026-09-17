@@ -41,7 +41,7 @@ describe('mtSiblingMultiplier', () => {
 });
 
 describe('computeMusicTogetherFamilyPrice', () => {
-  // The exact owner-confirmed table (issue #599):
+  // The exact owner-confirmed table (legacy issue #599):
   //   Children | Pay in full | Each installment
   //   1        | $252        | $132
   //   2        | $378        | $198
@@ -120,7 +120,7 @@ describe('computeMusicTogetherFamilyPrice', () => {
 
 // ── Discount codes ───────────────────────────────────────────────────────
 //
-// The pilot half-off promise (#791): a family who came to the demo pays half.
+// The pilot half-off promise (legacy #791): a family who came to the demo pays half.
 // The only reading that makes that true is "every amount is halved" — the
 // Week-5 scheduled charge included.
 

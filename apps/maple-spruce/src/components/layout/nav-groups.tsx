@@ -36,7 +36,7 @@ import { allowedRolesForPath, filterNavGroupsByRoles } from './nav-filter';
  * only. Admins always see everything, so 'admin' never needs listing.
  *
  * This is UX-side filtering ONLY — enforcement is each Cloud Function's
- * `requiringRole(...)` check (epic #617; re-scoping lands with #615).
+ * `requiringRole(...)` check (epic #49; re-scoping lands with legacy #615).
  * Keep this map in sync with the access matrix on the epic.
  */
 type RoleNavItem = NavItem & { roles?: readonly UserRole[] };

@@ -511,7 +511,7 @@ describe('createRegistration', () => {
       });
     });
 
-    it('THE POINT: refuses a Music Together code at class checkout (#791)', async () => {
+    it('THE POINT: refuses a Music Together code at class checkout (legacy #791)', async () => {
       // MT settles to Stephanie's separate Square account. Honoring her
       // pilot code here would discount a craft class against another
       // business's promotion — and the customer would be charged an amount

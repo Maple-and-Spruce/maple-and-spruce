@@ -9,7 +9,7 @@
  * take music lessons. None of them agreed to appear in an engineering
  * artefact. Copying a real record out of production into a fixture is the
  * commonest way that happens, because the real record is right there and looks
- * convenient — it is exactly what happened across #798, #835 and #838.
+ * convenient — it is exactly what happened across #81, legacy #835 and legacy #838.
  *
  * WHAT IT CAN AND CANNOT DO
  * -------------------------

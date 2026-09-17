@@ -1,5 +1,5 @@
 /**
- * Two things cannot be in the room at once (#841).
+ * Two things cannot be in the room at once (legacy #841).
  *
  * The room is the real physical constraint — the reason overridden lesson
  * times get tracked at all is keeping the Spruce Room free — and until now
@@ -61,7 +61,7 @@ function tuesdayAt(hour: number, minute = 0): Date {
   );
 }
 
-describe('Room conflicts (#841)', () => {
+describe('Room conflicts (legacy #841)', () => {
   let adminUser: TestUser;
 
   const createLesson = (
@@ -137,7 +137,7 @@ describe('Room conflicts (#841)', () => {
   }, 30000);
 
   it('refuses a second student in the room at the same time', async () => {
-    // The failure this exists for. Before #841 both writes succeeded and two
+    // The failure this exists for. Before legacy #841 both writes succeeded and two
     // families turned up to one room.
     const at = tuesdayAt(9);
 

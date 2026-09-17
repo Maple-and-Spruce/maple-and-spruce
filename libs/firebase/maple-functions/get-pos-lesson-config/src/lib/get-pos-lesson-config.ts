@@ -1,5 +1,5 @@
 /**
- * Get POS Lesson Config Cloud Function (#628)
+ * Get POS Lesson Config Cloud Function (legacy #628)
  *
  * Returns the Square catalog object ids that count as music lessons at the
  * POS, for the admin config manager.

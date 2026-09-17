@@ -49,7 +49,7 @@ function hydrateInvoice(invoice: Invoice): Invoice {
 /**
  * Hook for managing private-pay music lesson invoices. Hope Scholarship
  * students must NOT flow through this hook — the cloud function rejects
- * them server-side (#282). UI callers should use the
+ * them server-side (legacy #282). UI callers should use the
  * `student.isHopeScholarship` flag to hide invoice actions.
  */
 export function useInvoices({

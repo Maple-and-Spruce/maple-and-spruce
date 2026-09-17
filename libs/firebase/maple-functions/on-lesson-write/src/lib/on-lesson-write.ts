@@ -117,7 +117,7 @@ export const onLessonWrite = onDocumentWritten(
         room: afterLesson.room ?? 'spruce',
         sourceRef: `lessons/${lessonId}`,
         // Owner = the teacher of record, so the lesson shows up on their My
-        // Week schedule (#683). Never undefined (teacherId is required).
+        // Week schedule (#60). Never undefined (teacherId is required).
         ownerInstructorId: afterLesson.teacherId ?? null,
         createdBy: 'system',
       });

@@ -124,7 +124,7 @@ export const WithDiscountApplied: Story = {
 /**
  * Multi-attendee preview: opens the form with two attendee rows already
  * added, one with a name + email (so the "Send them confirmation" path is
- * visible) and one left at the default "Additional Person #2" label (so
+ * visible) and one left at the default "Additional Person legacy #2" label (so
  * the "remind your friends" path is visible). Use this to eyeball the
  * row-based pattern without clicking through.
  */

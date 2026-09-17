@@ -14,7 +14,7 @@ import {
 import { useBusinessPaymentConfig } from '@maple/react/data';
 
 /**
- * Settings card to set the business Venmo handle (#631) — rendered as a
+ * Settings card to set the business Venmo handle (legacy #631) — rendered as a
  * pay-by-Venmo QR on the teacher My Day page.
  */
 export function BusinessVenmoConfigCard() {

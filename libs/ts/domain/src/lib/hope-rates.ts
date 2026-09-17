@@ -8,10 +8,10 @@
  * studio pricing changes.
  *
  * Lives in domain (not in a React lib) so server-side payout aggregation
- * (#283) can resolve a Hope lesson's base revenue by the student's
+ * (legacy #283) can resolve a Hope lesson's base revenue by the student's
  * registered tier.
  *
- * Source: ESP Handbook + Katie's studio rates (docs captured in #282).
+ * Source: ESP Handbook + Katie's studio rates (docs captured in legacy #282).
  */
 import type { LessonLength } from './student';
 

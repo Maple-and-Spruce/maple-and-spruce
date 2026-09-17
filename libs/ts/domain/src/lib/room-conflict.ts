@@ -1,5 +1,5 @@
 /**
- * Two things cannot be in the room at once (#841).
+ * Two things cannot be in the room at once (legacy #841).
  *
  * Nothing enforced this. Lessons, Music Together classes and private rentals
  * could all be booked into the same hour and the model would not object. The

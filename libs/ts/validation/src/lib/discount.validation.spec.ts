@@ -564,7 +564,7 @@ describe('discountValidation', () => {
       expect(result.hasErrors()).toBe(false);
     });
   });
-  // ── Program scoping (#791) ───────────────────────────────────────────
+  // ── Program scoping (legacy #791) ───────────────────────────────────────────
 
   describe('program', () => {
     it('requires a program — an unscoped code would default to classes', () => {

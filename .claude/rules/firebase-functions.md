@@ -29,7 +29,7 @@ For the full creation procedure, use the `create-cloud-function` skill.
 Every function library is a separate Cloud Run service. The gen-2 deploy write quota is
 **60 per 60 seconds and cannot be increased**, so the function count sets a hard floor on how
 long a full deploy takes — at 215 functions that floor is already ~4 minutes, and wide deploys
-have been failing outright. See ADR-029 and epic #724.
+have been failing outright. See ADR-029 and epic #61.
 
 CI enforces this as a ratchet (`build-check.yml` → `function-count` job):
 
@@ -49,7 +49,7 @@ properties of the function, not the route. Raise the baseline deliberately in th
 library.** The two look alike and are not: a router dispatches inside *one* deployed function,
 while a second export is a second function that the deploy filter never names, so it silently
 never ships. That misreading is how `chargeLessonsNow` was written into `run-lesson-billing`
-and stayed undeployed (#872). If the new endpoint is its own function, it is its own library
+and stayed undeployed (legacy #872). If the new endpoint is its own function, it is its own library
 and its own line in the baseline. See "one library, one function" below.
 
 ### The library name IS the deploy filter — one library, one function
@@ -71,14 +71,14 @@ the *entire codebase batch*:
 Error: No function matches the filter: maple-square:runLessonBilling
 ```
 
-That is not a partial failure — #835's `run-lesson-billing` exported
+That is not a partial failure — legacy #835's `run-lesson-billing` exported
 `runLessonBillingScheduled` instead, and took all 26 maple-square functions down with it.
 
 **Export too many** and every *other* export sits outside the filter, so `firebase deploy`
 leaves it alone: untouched if it already exists, and **never created if it does not**. It
-does not fail and it does not warn. `chargeLessonsNow` (#866) shipped inside
+does not fail and it does not warn. `chargeLessonsNow` (legacy #866) shipped inside
 `run-lesson-billing` and never came into existence in prod — Pay ahead failed with
-`functions/not-found` — and six admin `trigger*` twins were in the same state (#872).
+`functions/not-found` — and six admin `trigger*` twins were in the same state (legacy #872).
 An export declared *inline* in an entry point (`healthCheck` was) has no library behind it
 at all, so nothing can ever name it.
 
@@ -264,7 +264,7 @@ warmup(functions, 'calculateRegistrationCost', 'createRegistration');
 
 ## Role Gating (callable-roles analyzer)
 
-Every function exported from a codebase entry point **MUST** either declare a role (`.requiringRole([...])`, `createAdminFunction`, or `createRoleFunction`), be a Firestore/scheduled trigger, or be explicitly allowlisted as public/auth-only in `tools/check-callable-roles.ts`. This prevents a new callable shipping reachable without a role check (how the singular `getArtist`/`getStudent` were left auth-only until #620). Scoped-roles matrix: epic #617; authoritative access table: `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
+Every function exported from a codebase entry point **MUST** either declare a role (`.requiringRole([...])`, `createAdminFunction`, or `createRoleFunction`), be a Firestore/scheduled trigger, or be explicitly allowlisted as public/auth-only in `tools/check-callable-roles.ts`. This prevents a new callable shipping reachable without a role check (how the singular `getArtist`/`getStudent` were left auth-only until legacy #620). Scoped-roles matrix: epic #49; authoritative access table: `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
 
 ```bash
 npx tsx tools/check-callable-roles.ts            # exits non-zero on any un-gated, un-allowlisted callable
@@ -337,9 +337,9 @@ It shipped three times before the guard existed:
 
 | PR | Field | Symptom |
 |----|-------|---------|
-| #798 | `Student.squareCustomerId` / `squareCardId` | every student read back as "no card", so the billing job skipped everyone |
-| #835 | `LessonBlock.onDate` | every one-off block read back as recurring |
-| #837 | `StudentLessonSchedule.intervalWeeks` | every biweekly student read back as weekly |
+| #81 | `Student.squareCustomerId` / `squareCardId` | every student read back as "no card", so the billing job skipped everyone |
+| legacy #835 | `LessonBlock.onDate` | every one-off block read back as recurring |
+| legacy #837 | `StudentLessonSchedule.intervalWeeks` | every biweekly student read back as weekly |
 
 Each was found only by an emulator run.
 
@@ -409,7 +409,7 @@ The merge-time deploy does NOT pass `--force`. Two behaviors to know about:
 
 - New indexes from `firestore.indexes.json` are applied normally.
 - Any index that exists in prod but isn't in the file (an "orphan") is **left untouched** and surfaced as a CI **warning** (not a hard fail) — orphans are unused, low-risk indexes, and blocking unrelated merges on pre-existing drift is friction. The real outage risk (a *missing* index) is caught at PR time by the analyzer, not here.
-- A `409 "index already exists"` is **benign** and **auto-retried** (up to 12×) — it means the declared index is already present (a prior partial run, an auto-create-URL, or firebase-tools failing to match an index it just created). The job only fails if it's stuck on the *same* 409 twice (not converging) or hits a non-409 error. This mirrors the functions-deploy 409 retry from #537.
+- A `409 "index already exists"` is **benign** and **auto-retried** (up to 12×) — it means the declared index is already present (a prior partial run, an auto-create-URL, or firebase-tools failing to match an index it just created). The job only fails if it's stuck on the *same* 409 twice (not converging) or hits a non-409 error. This mirrors the functions-deploy 409 retry from legacy #537.
 
 Two ways to resolve an orphan (optional — it only warns):
 
@@ -494,7 +494,7 @@ Each external service has its own mock server library under `libs/firebase/{serv
 **A mock is only worth having if it lies the way the real service does.** The
 Tally mock emits question text under `title` and *never* `label`, because the
 live API has no `label` key — reading it is what stored `contactName: "Unknown"`
-on all 14 leads (#816) while the unit tests stayed green on hand-written
+on all 14 leads (legacy #816) while the unit tests stayed green on hand-written
 fixtures. Capture a real response before writing a mock's fixtures; a mock built
 from the docs will agree with whatever the code already assumes.
 
@@ -503,7 +503,7 @@ from the docs will agree with whatever the code already assumes.
 - CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
 - Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
 - Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds all 4 codebases, copies `.env.dev` to each, starts per-service mock servers (Square, Webflow, Etsy), and runs `firebase emulators:exec`.
-- **Suites are sharded by measured runtime, not by count** (`tools/ci-integration-suite-weights.json`, #868). Every suite in a shard shares **one** emulator, so an overloaded shard starves it and the suite that happens to run *last* there starts failing with `The operation was aborted due to timeout` from google-gax — a green-looking test that never got a chance. Packing by count once put the four heaviest suites together (~333s) next to a shard doing ~159s. When you add a suite, it gets a default weight and packing degrades gracefully; measure it and add it to the weights file when it settles.
+- **Suites are sharded by measured runtime, not by count** (`tools/ci-integration-suite-weights.json`, legacy #868). Every suite in a shard shares **one** emulator, so an overloaded shard starves it and the suite that happens to run *last* there starts failing with `The operation was aborted due to timeout` from google-gax — a green-looking test that never got a chance. Packing by count once put the four heaviest suites together (~333s) next to a shard doing ~159s. When you add a suite, it gets a default weight and packing degrades gracefully; measure it and add it to the weights file when it settles.
 
 ## After Changes
 

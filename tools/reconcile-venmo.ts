@@ -1,8 +1,8 @@
 /**
- * Venmo statement ↔ Firestore invoice reconciliation (#630).
+ * Venmo statement ↔ Firestore invoice reconciliation (legacy #630).
  *
  * Venmo Business Profiles have no API/webhook, so in-person lesson payments are
- * attested by a human (`venmo-manual`, PR #640). This tool takes the downloaded
+ * attested by a human (`venmo-manual`, legacy PR #640). This tool takes the downloaded
  * Venmo Business statement CSV and reconciles it against the invoices:
  *
  *   - SETTLE   — a statement row matches an unpaid `sent` invoice (the teacher

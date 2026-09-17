@@ -50,7 +50,7 @@ interface EditLessonDialogProps {
   lesson?: Lesson;
   primaryTeacherId: string;
   instructors: Instructor[];
-  /** All blocks; filtered to the lesson's teacher for the block picker (#689). */
+  /** All blocks; filtered to the lesson's teacher for the block picker (legacy #689). */
   blocks: LessonBlock[];
   onSubmit: (input: UpdateLessonInput) => Promise<unknown>;
   isSubmitting?: boolean;
@@ -109,7 +109,7 @@ export function EditLessonDialog({
     });
   });
 
-  // Block attribution (#689). Unattributed ('') is allowed — a grandfathered
+  // Block attribution (legacy #689). Unattributed ('') is allowed — a grandfathered
   // lesson stays editable. If a block is picked, a non-fitting time is a
   // non-blocking warning (the server enforces fit on reschedule).
   const blockFitWarning = useComputed<string | null>(() => {
@@ -224,7 +224,7 @@ export function EditLessonDialog({
             </FormHelperText>
           </FormControl>
 
-          {/* Block attribution (#689). Includes an explicit "unattributed"
+          {/* Block attribution (legacy #689). Includes an explicit "unattributed"
               option so grandfathered lessons can stay as-is or be migrated. */}
           <FormControl fullWidth>
             <InputLabel id="edit-block-label">Block</InputLabel>

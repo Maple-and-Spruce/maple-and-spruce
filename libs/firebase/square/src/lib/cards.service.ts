@@ -53,7 +53,7 @@ export class CardsService {
    * Every card on file for the seller, newest first.
    *
    * This is the read behind linking a student to a card Katie already saved in
-   * the Square app (#798) — verified against the live account, where
+   * the Square app (#81) — verified against the live account, where
    * POS-saved cards come back here with `enabled: true`.
    *
    * Disabled cards are excluded by default: a disabled card cannot be charged,

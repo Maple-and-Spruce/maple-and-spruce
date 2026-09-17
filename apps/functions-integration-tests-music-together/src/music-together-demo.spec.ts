@@ -219,7 +219,7 @@ describe('MT demo admin CRUD', () => {
   });
 });
 
-describe('createMusicTogetherDemo blank-duration regression (#714)', () => {
+describe('createMusicTogetherDemo blank-duration regression (legacy #714)', () => {
   let admin: TestUser;
 
   beforeAll(async () => {
@@ -262,7 +262,7 @@ describe('createMusicTogetherDemo blank-duration regression (#714)', () => {
     expect(demo?.durationMinutes).toBe(MT_CLASS_DURATION_MINUTES);
   });
 
-  it('accepts a demo with durationMinutes: null → effective 45 (the #714 bug)', async () => {
+  it('accepts a demo with durationMinutes: null → effective 45 (the legacy #714 bug)', async () => {
     const created = await callFunction<
       CreateMusicTogetherDemoRequest,
       CreateMusicTogetherDemoResponse

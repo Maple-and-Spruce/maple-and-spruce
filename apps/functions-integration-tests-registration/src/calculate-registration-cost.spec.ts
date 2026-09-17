@@ -203,7 +203,7 @@ describe('calculateRegistrationCost', () => {
       // Server echoes back the quantity and per-item price it used so
       // the checkout UI can render the cost summary line item directly
       // from this response, avoiding any locally-derived multiplier
-      // drift (regression guard for #423).
+      // drift (regression guard for legacy #423).
       expect(result.data?.quantity).toBe(quantity);
       expect(result.data?.pricePerItemCents).toBe(PUBLISHED_CLASS.priceCents);
     });
@@ -744,7 +744,7 @@ describe('calculateRegistrationCost', () => {
     });
   });
   // ===========================================================================
-  // Program scoping (#791)
+  // Program scoping (legacy #791)
   // ===========================================================================
 
   describe('Program scoping', () => {

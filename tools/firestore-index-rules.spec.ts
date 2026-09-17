@@ -19,7 +19,7 @@ describe('needsCompositeIndex', () => {
     // `LessonRepository.findAll({ from, to })` — two `.where()` calls, one
     // field. Firestore serves this from the auto-created single-field index
     // and rejects a declaration for it at deploy time with
-    // "400, this index is not necessary" (the #818 dev-deploy failure).
+    // "400, this index is not necessary" (the legacy #818 dev-deploy failure).
     expect(
       needsCompositeIndex(
         chain(

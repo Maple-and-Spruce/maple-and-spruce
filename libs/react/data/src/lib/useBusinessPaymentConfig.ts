@@ -12,7 +12,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 /**
- * Hook for the business Venmo handle config (#631), shown on the admin
+ * Hook for the business Venmo handle config (legacy #631), shown on the admin
  * Settings page. Used to render the pay-by-Venmo QR on the teacher My Day page.
  */
 export function useBusinessPaymentConfig() {

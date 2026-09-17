@@ -158,7 +158,7 @@ export const SyncConflictRepository = {
       status: 'pending' as SyncConflictStatus,
       // detect-sync-conflicts raises variant-level conflicts with these set,
       // and the explicit field list here used to discard them, so a variant
-      // conflict lost which variant it was about (#843). Spread conditionally
+      // conflict lost which variant it was about (legacy #843). Spread conditionally
       // because Firestore rejects an explicit `undefined`.
       ...(input.variantId !== undefined ? { variantId: input.variantId } : {}),
       ...(input.variantLabel !== undefined

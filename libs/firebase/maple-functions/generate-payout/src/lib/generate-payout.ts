@@ -1,5 +1,5 @@
 /**
- * Generate Payout Cloud Function (#313)
+ * Generate Payout Cloud Function (legacy #313)
  *
  * Admin callable. Aggregates unpaid sales for an artist over a date range,
  * creates a Payout record, and marks each included Sale with the payoutId.

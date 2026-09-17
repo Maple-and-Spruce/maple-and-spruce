@@ -1,5 +1,5 @@
 /**
- * getSquareCardCandidates (#798)
+ * getSquareCardCandidates (#81)
  *
  * The cards already on file in Square, each with enough of its customer to
  * match it to a student.

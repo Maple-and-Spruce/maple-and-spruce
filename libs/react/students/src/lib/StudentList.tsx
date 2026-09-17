@@ -279,7 +279,7 @@ export function StudentList({
       {
         // Sorted on the numeric key, displayed as the day and time block.
         // POSITIVE_INFINITY for a student with no slot, so they group last
-        // rather than scattering through the list (#847).
+        // rather than scattering through the list (#86).
         accessorKey: 'weekdaySortKey',
         header: 'Lesson Day / Time',
         size: 170,
@@ -415,18 +415,18 @@ export function StudentList({
   );
 
   const table = useMaterialReactTable({
-    // Brand surfaces and the two pinning fixes from the trial (#851, #853).
+    // Brand surfaces and the two pinning fixes from the trial (#87, #88).
     ...brandTableOptions<StudentRow>(),
     columns,
     data: rows,
     state: { isLoading: studentsState.status === 'loading' },
-    // The point of the trial (#851). Who the row is and when they come stay
+    // The point of the trial (#87). Who the row is and when they come stay
     // on screen; what can be done about them stays reachable. Everything
     // between scrolls.
     enableColumnPinning: true,
     initialState: {
       // Katie reads her day in time order, so that is how the page opens
-      // (#847). Students with no slot carry POSITIVE_INFINITY and land last.
+      // (#86). Students with no slot carry POSITIVE_INFINITY and land last.
       sorting: [{ id: 'weekdaySortKey', desc: false }],
       columnPinning: { left: ['name', 'weekdaySortKey'], right: ['actions'] },
       pagination: { pageIndex: 0, pageSize: BRAND_TABLE_PAGE_SIZE },

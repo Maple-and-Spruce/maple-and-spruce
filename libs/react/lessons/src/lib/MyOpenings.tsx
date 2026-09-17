@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * MyOpenings — the teacher's open weekly lesson slots (#687, the epic payoff).
+ * MyOpenings — the teacher's open weekly lesson slots (legacy #687, the epic payoff).
  *
  * Blocks ARE the availability model, so an opening is just the empty space in a
  * block: for each of the teacher's blocks (weekday + window) we subtract the

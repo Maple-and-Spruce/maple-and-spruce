@@ -3,7 +3,7 @@
  *
  * Forgives one scheduled installment without cancelling the registration: the
  * family keeps its seat and every other charge, and this one is simply never
- * taken. Written for the pilot-semester half-off (#791), where families who
+ * taken. Written for the pilot-semester half-off (legacy #791), where families who
  * came to the demo were promised half tuition *after* some had already
  * registered — for a family on the two-installment plan, waiving installment 2
  * lands them on exactly half the plan total, so no refund is involved.

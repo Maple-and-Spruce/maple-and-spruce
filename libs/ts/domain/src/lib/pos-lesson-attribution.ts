@@ -5,7 +5,7 @@
  * catalog item, e.g. "Guitar Lesson"), `processPosSale` can't tell which
  * student it was — lessons, unlike classes, are not sold as a per-student
  * catalog item. This record captures that in-person lesson sale so it never
- * silently disappears (the leak #628 closes):
+ * silently disappears (the leak legacy #628 closes):
  *
  *  - Auto-attributed when the Square customer's email maps to exactly one
  *    known student (status `attributed`, `attributedBy: 'auto'`).
@@ -14,7 +14,7 @@
  *
  * On attribution the matching open invoice is settled (`square-pos`), or a
  * paid invoice is created — so lesson payments and teacher payouts stay
- * consistent regardless of how the money came in. See epic #626.
+ * consistent regardless of how the money came in. See epic #51.
  */
 
 export type PosLessonAttributionStatus = 'pending' | 'attributed' | 'dismissed';

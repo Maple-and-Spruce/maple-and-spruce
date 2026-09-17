@@ -1,5 +1,5 @@
 /**
- * Deriving and widening blocks from a scheduling call (#835).
+ * Deriving and widening blocks from a scheduling call (legacy #835).
  *
  * Two things are worth proving here, and neither is arithmetic:
  *

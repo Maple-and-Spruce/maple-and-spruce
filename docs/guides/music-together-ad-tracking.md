@@ -235,7 +235,7 @@ hashes are exactly what a lookalike audience is seeded from, so a handful of
 `verify-mt-*@mapleandsprucefolkarts.com` test families would teach Meta to go
 find more people like us.
 
-Tracked in **#782**: a separate dev pixel, or a `META_CAPI_ENABLED=false`
+Tracked in **#78**: a separate dev pixel, or a `META_CAPI_ENABLED=false`
 switch in `.env.dev`. See the "Dev / prod isolation" section of
 `tally-lead-webhook-setup.md` for the pattern.
 

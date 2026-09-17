@@ -3,7 +3,7 @@
  *
  * Single config doc (`appConfig/posLessons`) holding the Square catalog
  * object (variation) ids that count as music lessons at the POS. Read by
- * `processPosSale` to route lesson line items to attribution (#628); managed
+ * `processPosSale` to route lesson line items to attribution (legacy #628); managed
  * from the admin app (PR 2).
  */
 import { db, toDate } from './utilities/database.config';

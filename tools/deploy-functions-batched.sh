@@ -21,7 +21,7 @@
 #
 # With `-e` + pipefail, a failing deploy aborted the step *before* PIPESTATUS
 # was read, so the 4-attempt retry loop never ran once in its entire life
-# (issue #723: zero `attempt N incomplete` warnings across every failed run,
+# (legacy issue #723: zero `attempt N incomplete` warnings across every failed run,
 # each function logged `updating ...` exactly once). Only the exit-0 +
 # "unable to queue the operation" path ever retried.
 #
@@ -199,7 +199,7 @@ deploy_batch() {
     fi
 
     # A quota breach needs to outlast the 1-minute quota window; anything else
-    # (GCS 5xx on upload, 409 contention, WIF token flake — #636) clears fast.
+    # (GCS 5xx on upload, 409 contention, WIF token flake — legacy #636) clears fast.
     if grep -qiE 'Quota exceeded|HTTP Error: 429' "$log"; then
       backoff="$QUOTA_BACKOFF"
       echo "::warning::$label hit a quota limit (exit=$status); backing off ${backoff}s"

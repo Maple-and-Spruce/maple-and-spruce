@@ -14,7 +14,7 @@
  * that, see `apps/functions-integration-tests-square/src/sync-class-to-webflow.spec.ts`,
  * which points the Webflow SDK at the mock server via `WEBFLOW_BASE_URL` and
  * asserts on the actual `fieldData` — including the fields the CMS-native
- * related-classes list binds to (#776).
+ * related-classes list binds to (legacy #776).
  *
  * (An earlier version of this comment claimed Webflow calls simply fail in the
  * emulator. They do not: the mock server handles them.)

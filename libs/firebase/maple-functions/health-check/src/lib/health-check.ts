@@ -7,7 +7,7 @@
  * no deploy filter could ever name it: CI builds `--only functions:<codebase>:<name>`
  * from the **library directory name**, and an export with no library behind it
  * is invisible to that. Giving it a library is what makes it deployable at all
- * (#872).
+ * (legacy #872).
  */
 import { createPublicFunction } from '@maple/firebase/functions';
 

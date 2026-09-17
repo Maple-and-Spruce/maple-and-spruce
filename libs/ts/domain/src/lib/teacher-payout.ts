@@ -1,5 +1,5 @@
 /**
- * Teacher payout aggregation (#283).
+ * Teacher payout aggregation (legacy #283).
  *
  * Pure functions that derive what Katie owes each teacher in a period,
  * from existing data — no new entity. Two sources feed this:
@@ -121,7 +121,7 @@ export function computeLessonCompensationCents(
  * (private) or rendered yet (Hope).
  *
  * A **no-show** splits the two sources, which is the whole point of it being
- * its own status (#796): a private-pay no-show is billed, so once that invoice
+ * its own status (legacy #796): a private-pay no-show is billed, so once that invoice
  * is paid the teacher is owed their share; a Hope no-show is billed to nobody
  * and therefore earns nothing.
  */
@@ -136,7 +136,7 @@ export function isLessonPayoutEligible(
   }
   // Hope rendered — the lesson itself must genuinely have been rendered.
   // Routed through the shared helper so this and the EMA submission queue
-  // (#799) can never disagree about what Hope may be billed for.
+  // (legacy #799) can never disagree about what Hope may be billed for.
   return isSubmittableToHope(status);
 }
 

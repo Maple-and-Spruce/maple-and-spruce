@@ -54,7 +54,7 @@ The Webflow Typography collection does not yet expose font-family as a token, bu
 
 Google Fonts loaded by Webflow: `Archivo` (300–700) and `Lora` (300–700). **Lora is loaded but not referenced** by any active variable — leftover from the original Webflow template, do not introduce new uses.
 
-The admin React app mirrors this stack via `fonts.body` / `fonts.heading` / `fonts.button` exported from `@maple/react/theme` (see `libs/react/theme/src/lib/theme.ts`). The `feat: brand fonts — Lora (headings) + Archivo (body)` change in PR #397 was based on a misread of the Webflow site; PR `feat/brand-fonts-georgia` corrects it.
+The admin React app mirrors this stack via `fonts.body` / `fonts.heading` / `fonts.button` exported from `@maple/react/theme` (see `libs/react/theme/src/lib/theme.ts`). The `feat: brand fonts — Lora (headings) + Archivo (body)` change in legacy PR #397 was based on a misread of the Webflow site; PR `feat/brand-fonts-georgia` corrects it.
 
 ### Sizes
 

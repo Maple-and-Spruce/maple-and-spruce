@@ -1,5 +1,5 @@
 /**
- * Get POS Lesson Attribution Summary Cloud Function (#628)
+ * Get POS Lesson Attribution Summary Cloud Function (legacy #628)
  *
  * Lightweight status counts for the nav badge (pending count) — mirrors
  * getSyncConflictSummary.

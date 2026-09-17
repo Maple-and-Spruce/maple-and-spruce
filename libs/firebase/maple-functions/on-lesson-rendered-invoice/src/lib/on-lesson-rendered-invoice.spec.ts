@@ -178,7 +178,7 @@ describe('onLessonRenderedInvoice', () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  // ── no-show billing (#796) ───────────────────────────────────────────────
+  // ── no-show billing (legacy #796) ───────────────────────────────────────────────
   //
   // Studio policy: a private-pay no-show is charged (the slot was held, the
   // teacher was there). A Hope no-show is charged to NOBODY — Hope pays only

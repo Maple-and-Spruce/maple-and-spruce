@@ -1,5 +1,5 @@
 /**
- * Lesson Block Repository (#686)
+ * Lesson Block Repository (legacy #686)
  *
  * Firestore access for LessonBlock — the weekly constraint windows lessons
  * are attributed to. All database access goes through this repository.
@@ -27,7 +27,7 @@ function docToLessonBlock(
     dayOfWeek: data.dayOfWeek,
     startMinutes: data.startMinutes,
     endMinutes: data.endMinutes,
-    // Present only on a one-off block (#835). Absent means recurring weekly,
+    // Present only on a one-off block (legacy #835). Absent means recurring weekly,
     // which is the normal case.
     onDate: data.onDate,
     label: data.label,

@@ -41,7 +41,7 @@ export class CustomersService {
 
     return {
       emailAddress: customer.emailAddress ?? undefined,
-      // Carried for student card matching (#798): a portal contact's phone is
+      // Carried for student card matching (#81): a portal contact's phone is
       // sometimes the only field that agrees with the Square record.
       phoneNumber: customer.phoneNumber ?? undefined,
       givenName: customer.givenName ?? undefined,

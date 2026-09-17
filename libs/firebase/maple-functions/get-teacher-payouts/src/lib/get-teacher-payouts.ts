@@ -1,5 +1,5 @@
 /**
- * Get Teacher Payouts Cloud Function (#283)
+ * Get Teacher Payouts Cloud Function (legacy #283)
  *
  * Aggregates teacher payouts for a period:
  *   - Paid private-pay invoice lines that reference a lesson

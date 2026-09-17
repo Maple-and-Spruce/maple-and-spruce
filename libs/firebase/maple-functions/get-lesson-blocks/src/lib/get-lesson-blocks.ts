@@ -1,5 +1,5 @@
 /**
- * Get Lesson Blocks Cloud Function (#686)
+ * Get Lesson Blocks Cloud Function (legacy #686)
  *
  * Lists weekly LessonBlocks, optionally scoped to one teacher. Readable by
  * admins and lesson-teachers (a teacher needs to see their own blocks to know
