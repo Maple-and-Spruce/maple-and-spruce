@@ -6,6 +6,33 @@
 
 ## Current Status
 
+### Going public again: rewritten history + PII safeguards (2026-09-16)
+
+The repo went private after customer data leaked into tests and docs. #857 scrubbed the
+files, but the data was still in older commits and in PR refs and edit history that only
+GitHub support can purge. `main` was rewritten with `git filter-repo` and pushed to a new
+private repo, `maple-and-spruce-clean`, to become the public `maple-and-spruce`. The
+rewrite was verified against a prod-built roster: no roster names, emails or phones
+anywhere in history. See `docs/guides/public-repo-migration.md` for what was done and the
+remaining manual steps (secrets, repo rename, Vercel/Chromatic, issues, flip to public).
+
+The safeguards PR adds four layers (see `.claude/rules/customer-privacy.md` → Enforcement):
+- git pre-commit, commit-msg and pre-push hooks, turned on by `pnpm install`
+- a Claude review of the pushed lines on pre-push (`tools/pii-claude-review.sh`)
+- a Claude Code PreToolUse hook guarding commits, pushes, PR/issue text and GitHub MCP
+  writes (`tools/claude-pii-guard.sh`)
+- names checked in CI from a `CUSTOMER_NAMES` secret
+
+Names now match on letter boundaries, so `cus_<name>` and `<name><Surname>` (the shapes
+that actually leaked) are caught. The checker never prints a matched name.
+
+**Gotchas.**
+- `claude -p` from a hook needs `--strict-mcp-config --disable-slash-commands
+  --setting-sources "" --tools ""`. A fully loaded profile was ~234k tokens, over the
+  context limit before the prompt was even read.
+- #857 missed real card last-4s and two first names inside `cus_` ids. A full-name-only
+  scrub can't see those.
+
 ### One class, two CMS items: a race in the class → Webflow sync (2026-09-16, PR #879)
 
 `/upcoming-classes` was rendering **12 cards for 8 classes**. Four pairs were the same class

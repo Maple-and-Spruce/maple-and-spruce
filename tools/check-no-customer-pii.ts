@@ -22,11 +22,16 @@
  * nearly all of them `a@b.com` placeholders and the studio's own addresses. A
  * guard that noisy gets switched off, which is worse than no guard at all.
  *
- * So this catches the mechanical half. The other half is on the author, and
- * `.claude/rules/customer-privacy.md` says so.
+ * Names are checked against a roster that never lives in the repo: the
+ * gitignored `.customer-names.local` (built by `generate-customer-roster.ts`)
+ * and, in CI, the `CUSTOMER_NAMES` secret.
  *
- *   npx tsx tools/check-no-customer-pii.ts
- *   npx tsx tools/check-no-customer-pii.ts --report   # every match, allowed or not
+ *   npx tsx tools/check-no-customer-pii.ts                  # the whole repo
+ *   npx tsx tools/check-no-customer-pii.ts --files a.ts b.md # just these (git hooks)
+ *   gh pr view 1 --json body -q .body | npx tsx tools/check-no-customer-pii.ts --stdin
+ *
+ * A matched name is never printed — only the file, line and which roster
+ * entry. The output of this script lands in CI logs and agent transcripts.
  *
  * A genuinely necessary real address (a support inbox, a config default) is
  * declared on the line above:
@@ -107,40 +112,65 @@ export function isFictionalPhone(phone: string): boolean {
 }
 
 /**
- * Optional local roster, one name per line, for a stricter local run.
+ * The roster, one name (or email) per line.
  *
  * Names have no shape, so no pattern can find them and no list can be
  * committed — writing the customers' names into a guard against writing the
- * customers' names would defeat the point. This is the compromise: whoever
- * legitimately has the roster (the owner, or a session doing a deliberate
- * scrub) drops it in `.customer-names.local`, which is gitignored, and gets
- * name checking. CI never has the file and checks patterns only.
+ * customers' names would defeat the point. So the roster comes from outside
+ * the repo: `.customer-names.local` (gitignored, built from prod by
+ * `tools/generate-customer-roster.ts`) and the `CUSTOMER_NAMES` env var, which
+ * CI fills from a repository secret. Fork PRs get neither and check patterns
+ * only.
  *
  * Blank lines and `#` comments are ignored.
  */
-function loadLocalNames(root: string): string[] {
+export function loadNames(root: string, env: NodeJS.ProcessEnv = process.env): string[] {
   const file = path.join(root, '.customer-names.local');
-  if (!fs.existsSync(file)) return [];
-  return fs
-    .readFileSync(file, 'utf8')
+  const fromFile = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const all = `${fromFile}\n${env['CUSTOMER_NAMES'] ?? ''}`
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l.length > 1 && !l.startsWith('#'));
+  return [...new Set(all)];
 }
 
-/** Whole-word matches only. A substring replace once turned
- *  `useSquareCardCandidates` into nonsense, because a first name was inside it. */
+/**
+ * A name matches only as its own word — a substring replace once turned
+ * `useSquareCardCandidates` into nonsense, because a first name was inside it.
+ *
+ * But "its own word" has to mean what it means in code, not what `\b` means.
+ * The leak this guard exists for lived in `cus_<firstname>` and
+ * `<firstname><Surname>`, and `\b` sees neither: `_` is a word character, and a
+ * camelCase join has no boundary at all. So the edges are letters: nothing
+ * alphabetic before, and no lowercase letter after (an uppercase one starts
+ * the next camelCase word — but only a real hump, uppercase then lowercase,
+ * or `LEASE_TTL` would contain a three-letter name). Case-insensitivity is
+ * spelled out per letter, because the `i` flag would break those lookaheads.
+ */
+export function namePattern(name: string): RegExp {
+  const body = [...name]
+    .map((ch) => {
+      const lo = ch.toLowerCase();
+      const up = ch.toUpperCase();
+      if (lo !== up) return `[${lo}${up}]`;
+      return ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    })
+    .join('');
+  return new RegExp(`(?<![A-Za-z])${body}(?:(?![A-Za-z])|(?=[A-Z][a-z]))`);
+}
+
 export function findNames(text: string, names: string[], file: string): PiiHit[] {
   const hits: PiiHit[] = [];
+  const patterns = names.map(namePattern);
   const lines = text.split('\n');
   lines.forEach((line, i) => {
     if (i > 0 && lines[i - 1].includes('customer-pii-check-ignore:')) return;
-    for (const name of names) {
-      const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    patterns.forEach((re, n) => {
       if (re.test(line)) {
-        hits.push({ file, line: i + 1, kind: 'name', value: name });
+        // Never echo the name itself: this output reaches CI logs and transcripts.
+        hits.push({ file, line: i + 1, kind: 'name', value: `roster entry #${n + 1}` });
       }
-    }
+    });
   });
   return hits;
 }
@@ -185,45 +215,82 @@ export function scanText(text: string, file: string): PiiHit[] {
 }
 
 export function scanRepo(root: string = REPO_ROOT): PiiHit[] {
+  const files: string[] = [];
+  for (const dir of SCAN_DIRS) files.push(...walk(path.join(root, dir)));
+  return scanFiles(files, root);
+}
+
+/** Lockfiles are full of hashes that look like phone numbers, and nobody writes them by hand. */
+const SKIP_FILES = /(^|\/)(pnpm-lock\.yaml|package-lock\.json|yarn\.lock|function-count-baseline\.json)$/;
+
+/** The guard's own examples would otherwise flag it. */
+const isGuardFile = (file: string): boolean =>
+  /check-no-customer-pii(\.spec)?\.ts$/.test(file);
+
+/**
+ * Scan an explicit list of files — what the git hooks hand over. Any text file
+ * counts here, not just SCAN_DIRS/SCAN_EXT: a staged `.csv` or `.yml` is
+ * exactly where a pasted export would turn up.
+ */
+export function scanFiles(files: string[], root: string = REPO_ROOT): PiiHit[] {
   const hits: PiiHit[] = [];
-  const names = loadLocalNames(root);
-  for (const dir of SCAN_DIRS) {
-    for (const file of walk(path.join(root, dir))) {
-      // The guard's own examples would otherwise flag it.
-      if (file.endsWith('check-no-customer-pii.ts')) continue;
-      if (file.endsWith('check-no-customer-pii.spec.ts')) continue;
-      const text = fs.readFileSync(file, 'utf8');
-      const rel = path.relative(root, file);
-      hits.push(...scanText(text, rel));
-      if (names.length > 0) hits.push(...findNames(text, names, rel));
-    }
+  const names = loadNames(root);
+  for (const file of files) {
+    const full = path.resolve(root, file);
+    const rel = path.relative(root, full);
+    if (isGuardFile(rel) || SKIP_FILES.test(rel)) continue;
+    if (!fs.existsSync(full) || !fs.statSync(full).isFile()) continue;
+    const buf = fs.readFileSync(full);
+    if (buf.includes(0)) continue; // binary
+    const text = buf.toString('utf8');
+    hits.push(...scanText(text, rel));
+    if (names.length > 0) hits.push(...findNames(text, names, rel));
   }
   return hits;
 }
 
-function main(): void {
-  const hits = scanRepo();
+/** Commit messages, PR bodies, issue comments — text that never becomes a file. */
+export function scanStdinText(text: string, root: string = REPO_ROOT): PiiHit[] {
+  const names = loadNames(root);
+  return [
+    ...scanText(text, '<stdin>'),
+    ...(names.length > 0 ? findNames(text, names, '<stdin>') : []),
+  ];
+}
 
-  const names = loadLocalNames(REPO_ROOT);
+/** `someone@gmail.com` → `s***@gmail.com`; a phone keeps its last two digits. */
+export function redact(hit: PiiHit): string {
+  if (hit.kind === 'email') return hit.value.replace(/^(.)[^@]*/, '$1***');
+  if (hit.kind === 'phone') return `***-***-**${hit.value.replace(/\D/g, '').slice(-2)}`;
+  return hit.value;
+}
+
+function main(): void {
+  const args = process.argv.slice(2);
+  const hits = args.includes('--stdin')
+    ? scanStdinText(fs.readFileSync(0, 'utf8'))
+    : args.includes('--files')
+      ? scanFiles(args.filter((a) => !a.startsWith('--')))
+      : scanRepo();
+
+  const names = loadNames(REPO_ROOT);
   const scope = names.length
-    ? `emails, phone numbers and ${names.length} local name(s)`
-    : 'emails and phone numbers (no .customer-names.local — names unchecked)';
+    ? `emails, phone numbers and ${names.length} roster name(s)`
+    : 'emails and phone numbers (no roster — names unchecked; run tools/generate-customer-roster.ts)';
 
   if (hits.length === 0) {
-    console.log(`✓ Nothing found. Checked: ${scope}.`);
+    if (!args.includes('--quiet')) console.log(`✓ Nothing found. Checked: ${scope}.`);
     return;
   }
 
-  console.error(
-    `✗ ${hits.length} personal contact detail(s) found in tracked source.\n`
-  );
+  console.error(`✗ ${hits.length} personal detail(s) found.\n`);
   console.error(
     'Customer names, emails and phone numbers must not appear in code, tests,\n' +
       'fixtures, stories, docs, commit messages, PRs or issues — see\n' +
       '.claude/rules/customer-privacy.md. Use @example.com and 555-01xx.\n'
   );
   for (const hit of hits) {
-    console.error(`  ${hit.file}:${hit.line}  ${hit.kind}  ${hit.value}`);
+    console.error(`  ${hit.file}:${hit.line}  ${hit.kind}  ${redact(hit)}`);
   }
   console.error(
     '\nIf one is genuinely not a customer, say so on the line above:\n' +

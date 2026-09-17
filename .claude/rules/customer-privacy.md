@@ -68,33 +68,53 @@ The list of names does not add to it.
 
 ## Enforcement
 
+The repo is public, so a leak is published the moment it is pushed or posted. Four layers
+stand between a customer's details and GitHub:
+
+| Layer | When | What it checks |
+|---|---|---|
+| `.githooks/pre-commit` + `commit-msg` | every commit | staged files and the message |
+| `.githooks/pre-push` | every push | the whole tree, pushed commit messages, and a Claude read of the added lines (`tools/pii-claude-review.sh`) |
+| `tools/claude-pii-guard.sh` (PreToolUse) | before an agent runs `git commit/push`, `gh pr/issue/release/api`, or a GitHub MCP write | the command text, `--body-file`s, staged files, MCP tool input |
+| CI `customer-pii` job | every PR | the whole tree, with the roster from the `CUSTOMER_NAMES` secret |
+
+The git hooks switch on with `pnpm install` (the `prepare` script sets `core.hooksPath`).
+The agent hook is the one that matters most for PR and issue text: CI runs after a body is
+posted, and notification emails have already gone out by then.
+
 ```bash
-npx tsx tools/check-no-customer-pii.ts
+npx tsx tools/check-no-customer-pii.ts                      # whole repo
+npx tsx tools/check-no-customer-pii.ts --files a.ts b.md    # specific files
+echo "some text" | npx tsx tools/check-no-customer-pii.ts --stdin
 ```
 
-Fails on an email address or phone number in source, tests, stories or docs that is not
-obviously fictional. **CI runs it on every PR** (`build-check.yml` → `customer-pii` job), so a
-real address or number cannot reach main again through code.
+Emails at consumer mail providers and phone numbers outside the 555 block are found by pattern.
 
 ### Names
 
 No pattern can find a name, and no list of them can be committed — writing the customers'
-names into a guard against writing the customers' names would defeat the point.
-
-So the guard checks names only when you give it a roster it can use locally:
+names into a guard against writing the customers' names would defeat the point. So the
+roster lives outside the repo:
 
 ```bash
-# gitignored; never commit it
-printf 'Firstname Lastname\nFirstname\n' >> .customer-names.local
-npx tsx tools/check-no-customer-pii.ts
+npx tsx tools/generate-customer-roster.ts                 # prod → .customer-names.local (gitignored)
+gh secret set CUSTOMER_NAMES < .customer-names.local       # same roster for CI
 ```
 
-Whoever legitimately holds the roster — the owner, or a session doing a deliberate
-scrub — gets name checking. CI never has the file, so it checks patterns only.
+Rebuild it when the student list changes. It holds every customer's full name (also as a
+camelCase identifier), their emails, and the single first/last names **the repo does not
+already use** — a leak usually hides a first name inside an id (`cus_<name>`), but common
+names already live in invented fixtures, and a guard that fires on every "Sarah" gets
+switched off.
 
-Matching is **whole-word and case-insensitive**. That matters: a substring replace once
-turned `useSquareCardCandidates` into nonsense, because a first name sits inside
-"Candidates".
+Matching is by **letter boundary**, not `\b`: the name must not have a letter before it,
+and must be followed by a non-letter or a camelCase hump. So `cus_<name>` and
+`<name><Surname>` match, while `Pip` does not match inside `Pipeline` and `Lea` does not
+match inside `LEASE_TTL`. Matching ignores case. The checker **never prints the matched
+name**, only `roster entry #N`, because its output goes to CI logs and agent transcripts.
 
-Without that file, **names are on you**. Before opening a PR or filing an issue, reread it
-and ask whether any person named in it is a customer.
+A roster word that is genuinely not a customer here (a street, a common noun) gets the
+usual `customer-pii-check-ignore: <why>` comment on the line above.
+
+Fork PRs get no secrets, so CI checks patterns only there. Before opening a PR or filing
+an issue, still reread it and ask whether any person named in it is a customer.

@@ -21,6 +21,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__.*[Gg]it[Hh]ub.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-$PWD}/tools/claude-pii-guard.sh\"",
+            "timeout": 60
+          }
+        ]
+      }
     ]
   }
 }

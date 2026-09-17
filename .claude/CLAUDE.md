@@ -93,6 +93,8 @@ By task type:
   messages, PR descriptions, issue bodies or docs. Describe the shape ("a child's card is
   in a parent's name") or use a document id. Staff (Katie, Nathan) are fine to name.
   Reading prod is fine; repeating it is not. See `.claude/rules/customer-privacy.md`.
+  A PreToolUse hook (`tools/claude-pii-guard.sh`) blocks commits, pushes and PR/issue text
+  that match; when it fires, rewrite to the shape and never echo the flagged value.
 - **Never deploy** -- Never run `firebase deploy`. CI/CD handles deployment on merge to main.
 - **Never read secrets** -- Never read `.secret.local`, `.env` files with tokens, or output API keys.
 - **Testing mocks** -- Use `vi.mock()` to mock repositories and external services in Cloud Function tests (ADR-017).

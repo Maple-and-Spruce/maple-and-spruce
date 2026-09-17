@@ -258,11 +258,16 @@ jobs:
       # happens, because the real record is right there and looks convenient —
       # which is exactly what happened across #798, #835 and #838.
       #
-      # This checks the mechanical half: emails at consumer mailbox providers,
-      # and non-fictional phone numbers. Names have no shape and no roster of
-      # them can live in this repo, so names stay the author's responsibility —
-      # see .claude/rules/customer-privacy.md.
+      # Emails at consumer mailbox providers and non-fictional phone numbers
+      # are checked by pattern. Names have no shape, so they are checked
+      # against a roster that lives in the CUSTOMER_NAMES secret, never in the
+      # repo (refresh: tools/generate-customer-roster.ts, then
+      # `gh secret set CUSTOMER_NAMES < .customer-names.local`). Fork PRs get no
+      # secrets and fall back to patterns only. The script never prints a
+      # matched name, so the secret can't leak through this log.
       - name: Check for customer PII
+        env:
+          CUSTOMER_NAMES: ${{ secrets.CUSTOMER_NAMES }}
         run: npx tsx tools/check-no-customer-pii.ts
 
   typecheck:

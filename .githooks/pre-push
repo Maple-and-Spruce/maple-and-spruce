@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Last stop before anything leaves the machine:
+#   1. the whole tree, against the pattern checks and the roster
+#   2. every commit message being pushed
+#   3. a Claude read of the added lines, for the leaks a roster can't know about
+#      (a new student, a name typed differently). Off with PII_REVIEW=off.
+set -euo pipefail
+. "$(dirname "$0")/_pii-lib.sh"
+
+pii_no_roster_warning
+pii_check --quiet
+
+zero=0000000000000000000000000000000000000000
+ranges=()
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a branch
+  if [ "$remote_sha" = "$zero" ]; then
+    base="$(git merge-base "$local_sha" origin/main 2>/dev/null || true)"
+    ranges+=("${base:+$base..}$local_sha")
+  else
+    ranges+=("$remote_sha..$local_sha")
+  fi
+done
+
+for range in "${ranges[@]+"${ranges[@]}"}"; do
+  git log --format=%B "$range" | pii_check --stdin --quiet
+  "$PII_ROOT/tools/pii-claude-review.sh" "$range"
+done
