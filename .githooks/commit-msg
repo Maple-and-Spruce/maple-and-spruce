@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# A commit message is as permanent as the code. Check it too.
+set -euo pipefail
+. "$(dirname "$0")/_pii-lib.sh"
+grep -v '^#' "$1" | pii_check --stdin --quiet

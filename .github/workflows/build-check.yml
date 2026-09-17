@@ -29,7 +29,7 @@ jobs:
   install:
     name: Install Dependencies
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     outputs:
       cache_key: ${{ steps.set_cache_key.outputs.key }}
     steps:
@@ -70,7 +70,7 @@ jobs:
     name: Security Audit
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -101,7 +101,7 @@ jobs:
     name: Firestore Indexes
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -134,7 +134,7 @@ jobs:
     name: Function Count
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -160,7 +160,7 @@ jobs:
     name: Callable Roles
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -201,7 +201,7 @@ jobs:
     name: Repository Mappers
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -233,7 +233,7 @@ jobs:
     name: Customer PII
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -258,18 +258,23 @@ jobs:
       # happens, because the real record is right there and looks convenient —
       # which is exactly what happened across #798, #835 and #838.
       #
-      # This checks the mechanical half: emails at consumer mailbox providers,
-      # and non-fictional phone numbers. Names have no shape and no roster of
-      # them can live in this repo, so names stay the author's responsibility —
-      # see .claude/rules/customer-privacy.md.
+      # Emails at consumer mailbox providers and non-fictional phone numbers
+      # are checked by pattern. Names have no shape, so they are checked
+      # against a roster that lives in the CUSTOMER_NAMES secret, never in the
+      # repo (refresh: tools/generate-customer-roster.ts, then
+      # `gh secret set CUSTOMER_NAMES < .customer-names.local`). Fork PRs get no
+      # secrets and fall back to patterns only. The script never prints a
+      # matched name, so the secret can't leak through this log.
       - name: Check for customer PII
+        env:
+          CUSTOMER_NAMES: ${{ secrets.CUSTOMER_NAMES }}
         run: npx tsx tools/check-no-customer-pii.ts
 
   typecheck:
     name: TypeScript Check
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -300,7 +305,7 @@ jobs:
     name: ESLint
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -329,7 +334,7 @@ jobs:
     name: Build
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -368,7 +373,7 @@ jobs:
     name: Webflow Components Typecheck
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -400,7 +405,7 @@ jobs:
     name: Unit Tests & Coverage
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     permissions:
       contents: read
       pull-requests: write
@@ -436,7 +441,7 @@ jobs:
     name: Plan Integration Tests
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -472,7 +477,7 @@ jobs:
     runs-on: ubuntu-latest
     # 30, not 20: each suite now boots its own emulator session (~1 min each).
     timeout-minutes: 30
-    if: github.repository == 'david-shortman/maple-and-spruce' && fromJson(needs.integration-test-matrix.outputs.matrix).group[0] != null
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce' && fromJson(needs.integration-test-matrix.outputs.matrix).group[0] != null
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.integration-test-matrix.outputs.matrix) }}
@@ -669,7 +674,7 @@ jobs:
     needs: [install]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -837,7 +842,7 @@ jobs:
     needs: [install]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -975,7 +980,7 @@ jobs:
     needs: [install]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     env:
       MT_SQUARE_SANDBOX_ACCESS_TOKEN: ${{ secrets.MT_SQUARE_SANDBOX_ACCESS_TOKEN }}
     steps:
@@ -1127,7 +1132,7 @@ jobs:
     needs: [install]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 
@@ -1219,7 +1224,7 @@ jobs:
     name: Storybook Build & Tests
     needs: [install]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1263,7 +1268,7 @@ jobs:
     name: Merged Coverage Check
     needs: [install, unit-tests, storybook]
     runs-on: ubuntu-latest
-    if: github.repository == 'david-shortman/maple-and-spruce'
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     steps:
       - uses: actions/checkout@v4
 

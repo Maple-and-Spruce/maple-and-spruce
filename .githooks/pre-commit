@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Block a commit that stages a customer's name, email or phone number.
+# See .claude/rules/customer-privacy.md. Bypass (don't): git commit --no-verify
+set -euo pipefail
+. "$(dirname "$0")/_pii-lib.sh"
+
+files=()
+while IFS= read -r -d '' f; do files+=("$f"); done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+[ ${#files[@]} -eq 0 ] && exit 0
+
+pii_no_roster_warning
+pii_check --files --quiet "${files[@]}"
