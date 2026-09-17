@@ -5,7 +5,7 @@
 # The git hooks cover what gets committed. They can't see a PR description, an
 # issue body or a comment — and those go out in notification emails the moment
 # they're posted, before any CI runs, so there is no fixing them afterwards.
-# That is where most of the #857 scrub had to happen (9 PR bodies, 4 issues).
+# That is where most of the legacy #857 scrub had to happen (9 PR bodies, 4 issues).
 #
 # Checks, before the tool runs:
 #   - Bash: `git commit`, `git push`, `gh pr|issue|release ...`, `gh api` —

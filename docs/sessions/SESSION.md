@@ -8,7 +8,7 @@
 
 ### Going public again: rewritten history + PII safeguards (2026-09-16)
 
-The repo went private after customer data leaked into tests and docs. #857 scrubbed the
+The repo went private after customer data leaked into tests and docs. legacy #857 scrubbed the
 files, but the data was still in older commits and in PR refs and edit history that only
 GitHub support can purge. `main` was rewritten with `git filter-repo` and pushed to a new
 private repo, `maple-and-spruce-clean`, to become the public `maple-and-spruce`. The
@@ -30,7 +30,7 @@ that actually leaked) are caught. The checker never prints a matched name.
 - `claude -p` from a hook needs `--strict-mcp-config --disable-slash-commands
   --setting-sources "" --tools ""`. A fully loaded profile was ~234k tokens, over the
   context limit before the prompt was even read.
-- #857 missed real card last-4s and two first names inside `cus_` ids. A full-name-only
+- legacy #857 missed real card last-4s and two first names inside `cus_` ids. A full-name-only
   scrub can't see those.
 
 ### One class, two CMS items: a race in the class → Webflow sync (2026-09-16, PR #879)

@@ -6,7 +6,7 @@
 ## Why a new repo
 
 The repo was public, which kept GitHub Actions minutes free. Real customer data got into
-tests and docs (#798, #835, #838), so it was taken private. #857 scrubbed the files, PR
+tests and docs (legacy #798, legacy #835, legacy #838), so it was taken private. legacy #857 scrubbed the files, PR
 bodies and issues, but the data was still in the **file contents of older commits on
 `main`**. It also survived in places only GitHub support can purge: PR refs
 (`refs/pull/N/head`) and the edit history of issue and PR bodies. Flipping the old repo
@@ -20,7 +20,7 @@ no issue edit history and no Actions logs.
 - **Roster built from prod** (students, contacts, leads, registrants, Music Together, Craft
   Club, signers) and kept outside the repo.
 - **History rewritten** with `git filter-repo --replace-text` on a fresh clone. Every
-  identifying string from the leak window was swapped for the invented stand-in #857 had
+  identifying string from the leak window was swapped for the invented stand-in legacy #857 had
   already chosen. That covered full names, first names used as ids (`slot('<name>')`,
   `cus_<name>`), standalone surnames and real card last-4s. The replacement list lived only
   in a scratch directory.
@@ -29,7 +29,7 @@ no issue edit history and no Actions logs.
     of the leaked single names
   - gitleaks: 6 findings, all benign (Firebase web API keys, which are public by design,
     and test tokens)
-- **The current tree differs from the old `main` in two files.** The #857 scrub had missed
+- **The current tree differs from the old `main` in two files.** The legacy #857 scrub had missed
   the real card last-4s and two first names inside `cus_` ids in
   `link-student-card.spec.ts` and `PaymentMethodCard.stories.tsx`. Both now use invented
   values, and both still pass (square integration suite 65/65, Storybook play 8/8).
