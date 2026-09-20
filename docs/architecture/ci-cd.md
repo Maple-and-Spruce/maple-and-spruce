@@ -41,7 +41,7 @@ merge to main
   ├── deploy_harness_dev     → maple-spruce-registration-test.web.app
   ├── deploy_vercel_dev      → admin app on dev Vercel project (business-dev.*)
   └── e2e_dev (registration Playwright suite vs deployed dev)
-       └── approve_prod  ← MANUAL APPROVAL via `production` Environment
+       └── prod_gate  ← promotion gate: dev must be green (no human approval)
             ├── deploy_functions_prod        → maple-and-spruce
             ├── publish_webflow_components   → Webflow library share
             └── deploy_vercel_prod           → maple-spruce on Vercel
@@ -50,11 +50,11 @@ merge to main
   + deploy_firestore_indexes        (independent → maple-and-spruce, prod)
 ```
 
-**Two gates**:
-1. **`e2e_dev`** must pass — the suite hits deployed dev callables + dev Firestore. Failures here mean prod stays on the previous deploy. `approve_prod` is *also* gated on `deploy_vercel_dev` succeeding, so a broken dev admin-app deploy blocks prod promotion too.
-2. **`approve_prod`** requires a human to click "Review pending deployments" in the GitHub UI. Uses the `production` Environment (Settings → Environments) which has required reviewers configured. One approval unlocks all three prod jobs.
+**Two gates**, both automatic:
+1. **`e2e_dev`** must pass — the suite hits deployed dev callables + dev Firestore. Failures here mean prod stays on the previous deploy. `prod_gate` is *also* gated on `deploy_vercel_dev` succeeding, so a broken dev admin-app deploy blocks prod promotion too.
+2. **`prod_gate`** is automatic — it passes as soon as the conditions above hold, and unlocks all three prod jobs. It used to pause on a `production` Environment with required reviewers; the click added delay without catching anything the dev E2E hadn't, so it was dropped (2026-09). **A merge to `main` that leaves dev green deploys to production.**
 
-**Why `deploy_vercel_dev` runs every merge and isn't approval-gated**: dev must *lead* prod — it's the known-good environment we check before promoting. `vercel.json` sets `git.deploymentEnabled.main = false`, which disables Vercel's native git auto-deploy for **every** project linked to this repo (prod *and* dev), so without this job the dev project's production domain (`business-dev.*`) silently freezes at the last pre-disable commit. It runs unconditionally (no affected gate) because web-only changes don't flip the functions `has_changes` flag.
+**Why `deploy_vercel_dev` runs every merge and isn't gated**: dev must *lead* prod — it's the known-good environment we check before promoting. `vercel.json` sets `git.deploymentEnabled.main = false`, which disables Vercel's native git auto-deploy for **every** project linked to this repo (prod *and* dev), so without this job the dev project's production domain (`business-dev.*`) silently freezes at the last pre-disable commit. It runs unconditionally (no affected gate) because web-only changes don't flip the functions `has_changes` flag.
 
 **Why Firestore indexes don't gate**: index additions are forward-compatible (queries work without them, just slower or with a "missing index" error). Index builds take minutes server-side after the deploy submits the spec, so gating E2E on index readiness would add a lot of wall-clock without catching anything new. The PR-time analyzer (`tools/check-firestore-indexes.ts`) enforces declaration; that's the load-bearing check.
 
@@ -68,16 +68,11 @@ merge to main
 
 **Region**: All functions deploy to `us-east4` (Northern Virginia)
 
-### Required GitHub Environment
+### No GitHub Environment
 
-A `production` Environment must exist (Settings → Environments → New environment). Without it, `approve_prod` auto-passes for any actor — defeating the gate.
+`prod_gate` is a plain job: no `environment:`, no reviewers. Dev being green is the whole gate.
 
-Configure:
-- **Required reviewers**: at minimum the repo owner. Multiple is fine — any one can approve.
-- **Wait timer**: leave at 0 (the dev E2E is already the substantive check).
-- **Deployment branches**: restrict to `main` only.
-
-Optional but recommended: move `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` from repo-level secrets to Environment secrets scoped to `production`. That way only post-approval runs can read them.
+To bring an approval step back, add `environment: production` to `prod_gate` and configure the Environment with required reviewers. Two things to know: required reviewers are a **paid** feature on a private repo (the API rejects the rule with "Please ensure the billing plan supports the required reviewers protection rule"), and an `environment:` naming an Environment that has **no** protection rules auto-passes for any actor, which looks like a gate and isn't one.
 
 ### Required secrets
 
@@ -88,7 +83,7 @@ The Vercel jobs need these secrets (set once in repo settings → Secrets and va
 - `VERCEL_PROJECT_ID` — prod project (`maple-and-spruce-maple-spruce`), used by `deploy_vercel_prod`
 - `VERCEL_PROJECT_ID_DEV` — dev project (`maple-and-spruce-dev`), used by `deploy_vercel_dev`. Same Vercel team, so `VERCEL_ORG_ID` and `VERCEL_TOKEN` are reused — only the project id differs.
 
-Without `VERCEL_PROJECT_ID`, `deploy_vercel_prod` fails and prod Vercel stays on the previous deploy. Without `VERCEL_PROJECT_ID_DEV`, `deploy_vercel_dev` fails and `business-dev` stays stale (which now also blocks prod promotion, since `approve_prod` depends on it). Firebase deploys are unaffected either way.
+Without `VERCEL_PROJECT_ID`, `deploy_vercel_prod` fails and prod Vercel stays on the previous deploy. Without `VERCEL_PROJECT_ID_DEV`, `deploy_vercel_dev` fails and `business-dev` stays stale (which now also blocks prod promotion, since `prod_gate` depends on it). Firebase deploys are unaffected either way.
 
 ### Required Firebase Hosting site
 

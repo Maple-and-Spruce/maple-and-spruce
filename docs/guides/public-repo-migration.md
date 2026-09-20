@@ -51,7 +51,7 @@ Any merge must be ported across by cherry-picking onto the new history (the tree
 only in the two files above).
 
 1. [x] `CUSTOMER_NAMES` secret set (it moved with the repo).
-2. [ ] Merge the PII safeguards PR (#1). Its guard change is what makes CI run here at all.
+2. [x] Merge the PII safeguards PR (#1). Its guard change is what makes CI run here at all.
 3. Actions secrets. GitHub never returns a secret's value, so each one is set again from its source:
    - [x] `SQUARE_SANDBOX_ACCESS_TOKEN`, `MT_SQUARE_SANDBOX_ACCESS_TOKEN`: from dev Secret Manager.
    - [x] `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `VERCEL_PROJECT_ID_DEV`: from `vercel api /v10/projects`.
@@ -60,10 +60,14 @@ only in the two files above).
    - [ ] `CLAUDE_CODE_OAUTH_TOKEN`, or drop the automation: #5
    - [x] `CHROMATIC_PROJECT_TOKEN`: not needed; Chromatic is removed (#2).
    - [x] Dependabot alerts and security updates are enabled on this repo.
-4. [ ] **GCP Workload Identity Federation:** the provider `attributeCondition` and the
-       deployer service account's `principalSet` binding name the repo. Point both at
-       `Maple-and-Spruce/maple-and-spruce` in the prod (`138840458966`) and dev
-       (`1062803455357`) pools. Until then, deploy jobs fail at auth.
+4. **GCP Workload Identity Federation:** the provider `attributeCondition` and the
+       deployer service account's `principalSet` binding name the repo. Both must point at
+       `Maple-and-Spruce/maple-and-spruce`. Until then, deploy jobs fail at auth, and a
+       service-account binding takes a few minutes to take effect — a deploy run seconds
+       after the change still fails, with a different error (`iam.serviceAccounts.getAccessToken`
+       denied rather than a federated-token failure).
+   - [x] dev pool `1062803455357` (project `maple-and-spruce-dev`)
+   - [ ] prod pool `138840458966` (project `maple-and-spruce`)
 5. [ ] Rename the old repo to `maple-and-spruce-archive` so nothing confuses the two.
 6. [ ] Reconnect Vercel, the Claude GitHub App (install it on the org), and
        the `DEPENDABOT_READ_TOKEN` PAT (resource owner: the org). Vercel Git previews
@@ -76,8 +80,13 @@ only in the two files above).
 8. [ ] Recreate open issues. GitHub won't transfer them from a private repo to a public
        one. Script it with `gh issue create`; the Claude hook checks each body on the
        way in.
-9. [ ] Org settings → Actions → require approval for fork PRs from outside
-       collaborators. Once public, add branch protection or a ruleset on `main`.
+9. [x] Org settings → Actions → require approval for fork PRs from outside
+       collaborators. Once public, optionally add a ruleset on `main`.
+
+   **There is no production approval gate.** GitHub refuses required reviewers on a
+   private repo on this plan, and a merge to `main` that leaves dev green now deploys
+   straight to prod by design — `prod_gate` was made automatic deliberately. Merging
+   anything to `main` promotes it.
 10. [ ] Flip to **public**. Watch the first CI run: the `customer-pii` job should report
         "N roster name(s)", and the run should have jobs that actually ran, not a green
         run made entirely of skips.
