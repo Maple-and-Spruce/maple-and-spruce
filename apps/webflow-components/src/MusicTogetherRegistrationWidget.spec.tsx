@@ -592,7 +592,7 @@ describe('MusicTogetherRegistrationWidget', () => {
       screen.queryByRole('button', { name: /Register — \$/i })
     ).not.toBeInTheDocument();
   });
-  // ── Discount codes (#791 pilot half-off) ───────────────────────────────
+  // ── Discount codes (legacy #791 pilot half-off) ───────────────────────────────
 
   const PILOT_HALF_OFF = {
     id: 'disc-1',

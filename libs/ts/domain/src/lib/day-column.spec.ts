@@ -1,5 +1,5 @@
 /**
- * The day column (#838).
+ * The day column (legacy #838).
  *
  * These are written against Katie's real Tuesday, because the whole point of
  * the view is to replace the spreadsheet she keeps by hand — so if it cannot
@@ -148,7 +148,7 @@ describe('an hour is not simply busy or free', () => {
   it('still offers the leftover week when two biweekly students land on the SAME week', () => {
     // Both anchored to the same week, so the other week is genuinely free —
     // even though the slot is double-booked on their shared week, which is
-    // #841's problem, not this view's.
+    // legacy #841's problem, not this view's.
     const rows = buildDayColumn(
       2,
       [block],
@@ -266,7 +266,7 @@ describe('scope', () => {
   });
 
   it('leaves a one-off block out of the typical week', () => {
-    // A block scoped to a single date (#835) is an exception, not availability.
+    // A block scoped to a single date (legacy #835) is an exception, not availability.
     const rows = buildDayColumn(
       2,
       [{ ...block, id: 'blk-once', onDate: '2026-09-08' }],

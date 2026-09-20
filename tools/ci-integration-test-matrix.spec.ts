@@ -65,7 +65,7 @@ describe('packByWeight', () => {
     const lightest = Math.min(...loads);
 
     // Count-based chunking produced 159s vs 333s — a 2.1x spread, and the
-    // heavy shard's last suite timed out (#868). Anything under 1.25x means no
+    // heavy shard's last suite timed out (legacy #868). Anything under 1.25x means no
     // shard is carrying enough extra to starve its emulator.
     expect(heaviest / lightest).toBeLessThan(1.25);
   });

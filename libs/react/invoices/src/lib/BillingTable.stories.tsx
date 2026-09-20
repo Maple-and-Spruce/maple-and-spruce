@@ -51,7 +51,7 @@ function charge(
 }
 
 const upcomingBlock = charge({ id: 'chg-upcoming' });
-/** Taken on the spot (#864) — carries the manual rule id sentinel. */
+/** Taken on the spot (legacy #864) — carries the manual rule id sentinel. */
 const manualPrepay = charge({
   id: 'chg-manual',
   ruleId: 'manual',
@@ -193,7 +193,7 @@ export const FailedChargeNeverHides: Story = {
 };
 
 // ============================================================
-// RETRY (#864)
+// RETRY (legacy #864)
 // ============================================================
 
 /**
@@ -260,7 +260,7 @@ export const PendingRetryIsDisabled: Story = {
 
 /**
  * A block charge is ONE row with ONE amount. Repeating $165.00 on four lesson
- * rows would read as four charges (#828).
+ * rows would read as four charges (#84).
  */
 export const BlockChargeIsOneRow: Story = {
   args: {
@@ -341,7 +341,7 @@ export const PaidChargeHasNoActions: Story = {
 };
 
 // ============================================================
-// TABLE BEHAVIOUR: default sort and pinning (#853)
+// TABLE BEHAVIOUR: default sort and pinning (#88)
 // ============================================================
 
 /** Opens in date order, oldest first, invoices and charges interleaved. */
@@ -581,7 +581,7 @@ export const TotalFormattedAsDollars: Story = {
 };
 
 // ============================================================
-// INVOICES — payment attribution + sync error (#281)
+// INVOICES — payment attribution + sync error (legacy #281)
 // ============================================================
 
 export const PaidViaSquareBadge: Story = {

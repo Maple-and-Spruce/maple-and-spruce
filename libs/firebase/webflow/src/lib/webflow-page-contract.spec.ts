@@ -2,7 +2,7 @@
  * Contract tests: the Webflow field slugs the live pages actually bind to.
  *
  * The class template page renders the sold-out "Other upcoming dates" list
- * natively from the CMS (#776) — no Cloud Function is involved any more. That
+ * natively from the CMS (legacy #776) — no Cloud Function is involved any more. That
  * makes a handful of field slugs a **published contract** between this sync and
  * the Designer: rename or drop one here and the live section silently stops
  * working, with green unit tests and no error anywhere.

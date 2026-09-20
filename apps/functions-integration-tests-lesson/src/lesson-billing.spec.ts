@@ -1,5 +1,5 @@
 /**
- * Lesson auto-billing, end to end against real Firestore + the Square mock (#798).
+ * Lesson auto-billing, end to end against real Firestore + the Square mock (#81).
  *
  * The unit tests in `run-lesson-billing.logic.spec.ts` cover the decisions.
  * These cover what only a real database can show, and it is the difference
@@ -105,7 +105,7 @@ function runBilling(
   });
 }
 
-describe('Lesson billing (#798)', () => {
+describe('Lesson billing (#81)', () => {
   let adminUser: TestUser;
 
   beforeAll(async () => {
@@ -239,7 +239,7 @@ describe('Lesson billing (#798)', () => {
 
       // Nothing new is planned and nothing is taken again. The four lessons are
       // filtered out *before* blocking, because the paid charge already covers
-      // them (#864) — so planning never reaches the deterministic-id collision
+      // them (legacy #864) — so planning never reaches the deterministic-id collision
       // that used to be what stopped it. The covered count is what makes a
       // steady-state run distinguishable from one that planned nothing by
       // mistake.

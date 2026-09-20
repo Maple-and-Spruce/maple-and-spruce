@@ -1,5 +1,5 @@
 /**
- * Paying ahead for a block of lessons (#864).
+ * Paying ahead for a block of lessons (legacy #864).
  *
  * What has to be true here cannot be proven by unit tests: that the charge
  * document and the Square payment agree, that a second click cannot take a
@@ -76,7 +76,7 @@ async function seedLessons(studentId: string, count: number): Promise<void> {
   }
 }
 
-describe('Charging a block of lessons now (#864)', () => {
+describe('Charging a block of lessons now (legacy #864)', () => {
   let adminUser: TestUser;
 
   beforeAll(async () => {

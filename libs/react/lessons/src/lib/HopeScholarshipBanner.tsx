@@ -6,7 +6,7 @@
  * the current per-lesson rate plus an expandable rates table.
  *
  * Billing rules are frozen in the component copy (not fetched) — they come
- * from the ESP Handbook and the studio policy tension documented in #282.
+ * from the ESP Handbook and the studio policy tension documented in legacy #282.
  */
 
 import { useState } from 'react';

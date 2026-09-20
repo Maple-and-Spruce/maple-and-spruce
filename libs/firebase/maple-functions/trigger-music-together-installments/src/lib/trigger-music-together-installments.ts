@@ -1,18 +1,18 @@
 /**
  * triggerMusicTogetherInstallments — the admin-callable twin of the
- * `chargeMusicTogetherInstallments` schedule (#508).
+ * `chargeMusicTogetherInstallments` schedule (#94).
  *
  * Manual catch-up if the schedule misfires, an optional dry run, and the way
  * integration tests reach the charge run at all: `onSchedule` is not callable
  * over HTTP in the Firebase emulator, an admin HTTPS endpoint is.
  *
  * Charges against the **Music Together** Square account (`MT_SQUARE_KEYS`),
- * which settles to a different business than Maple & Spruce (#791).
+ * which settles to a different business than Maple & Spruce (legacy #791).
  *
  * It lives in its own library because **one library deploys exactly one Cloud
  * Function** — CI derives the deploy filter from the library directory name, so
  * a second export co-located with the schedule would simply never be deployed
- * (#872).
+ * (legacy #872).
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {

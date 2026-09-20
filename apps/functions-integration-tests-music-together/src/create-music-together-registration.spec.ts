@@ -168,7 +168,7 @@ describe('createMusicTogetherRegistration', () => {
   it('installments: an email Square Customers Search rejects still succeeds via the create fallback', async () => {
     // Real Square's Customers Search rejects reserved-TLD emails (the mock now
     // mirrors this). upsertByEmail must treat that search failure as "not
-    // found" and create the customer anyway (#634) — otherwise the whole
+    // found" and create the customer anyway (legacy #634) — otherwise the whole
     // installment registration fails. This is the class of bug the real-Square
     // e2e caught but the mock previously hid.
     const result = await callFunction<
@@ -322,7 +322,7 @@ describe('createMusicTogetherRegistration', () => {
 });
 
 /**
- * Discount codes at MT checkout (#791 pilot half-off).
+ * Discount codes at MT checkout (legacy #791 pilot half-off).
  *
  * The money-critical assertion is the LAST one in the first test: the
  * materialized Week-5 charge is halved too. A code that only discounted the
@@ -491,7 +491,7 @@ describe('createMusicTogetherRegistration — discount codes', () => {
     expect(second.status).not.toBe(200);
   });
 
-  it('rejects a Maple & Spruce class code (#791 program scoping)', async () => {
+  it('rejects a Maple & Spruce class code (legacy #791 program scoping)', async () => {
     await setFirestoreDoc(
       'discounts',
       'disc-classes-only',

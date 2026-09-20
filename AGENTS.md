@@ -42,7 +42,7 @@
 | 4 | Music Lessons | Complete |
 | 5 | Store Opening & Sales Tracking | Next |
 
-**Deferred** (Phase 5): #5 Sales tracking, #6 Payout reports
+**Deferred** (Phase 5): #5 Sales tracking, legacy #6 Payout reports
 
 ## Tech Stack
 
@@ -124,4 +124,4 @@ Always use MUI theme tokens, not hardcoded hex values.
 ### Public Website (Webflow) -- Source of Truth
 
 The Webflow site defines the brand's visual identity. The admin app MUI
-theme will be updated to align with Webflow's palette (see #122).
+theme will be updated to align with Webflow's palette (see #10).

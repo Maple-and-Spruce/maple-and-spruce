@@ -23,7 +23,7 @@ export interface Instructor extends Payee {
   /**
    * Firebase Auth UID of the portal user who IS this instructor, when they
    * have a login. Set only for lesson teachers who manage their own lessons
-   * in the portal (scoped-roles epic #617) — most instructors (class-only
+   * in the portal (scoped-roles epic #49) — most instructors (class-only
    * payees) have no login and leave this unset. Used to enforce
    * "lesson teachers manage only their own lessons".
    */

@@ -1,5 +1,5 @@
 /**
- * Deriving and widening blocks from scheduling, end to end (#835).
+ * Deriving and widening blocks from scheduling, end to end (legacy #835).
  *
  * Before this, Katie had to go build a LessonBlock by hand before she could
  * schedule anything into it — a dead end reached from the one screen where she
@@ -48,7 +48,7 @@ function blocksFor(idToken: string) {
   });
 }
 
-describe('Deriving lesson blocks from scheduling (#835)', () => {
+describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
   let adminUser: TestUser;
   let studentId: string;
 
@@ -87,7 +87,7 @@ describe('Deriving lesson blocks from scheduling (#835)', () => {
   }, 30000);
 
   it('still refuses to schedule with no block and no strategy', async () => {
-    // The #686 guardrail is intact — nothing here loosens it. Deriving a block
+    // The legacy #686 guardrail is intact — nothing here loosens it. Deriving a block
     // is something the caller asks for, never something that happens quietly.
     const result = await callFunction<CreateLessonRequest>({
       functionName: 'createLesson',

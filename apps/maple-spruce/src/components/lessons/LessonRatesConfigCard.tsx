@@ -18,7 +18,7 @@ import { useLessonRatesConfig } from '@maple/react/data';
 
 /**
  * Settings card to manage the default private-pay lesson rates by length
- * (#629). Used to auto-invoice a rendered lesson; per-student overrides live
+ * (legacy #629). Used to auto-invoice a rendered lesson; per-student overrides live
  * on the student record. A blank tier means that length is never
  * auto-invoiced by default.
  */

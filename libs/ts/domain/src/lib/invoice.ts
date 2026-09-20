@@ -3,7 +3,7 @@
  *
  * Private-pay invoices for music lesson students. Hope Scholarship
  * students are invoiced externally via the EMA portal and must NOT flow
- * through this entity (guarded at the cloud-function layer, see #282).
+ * through this entity (guarded at the cloud-function layer, see legacy #282).
  *
  * Line items are inlined on the invoice document rather than sub-collected
  * — invoices typically have at most a few dozen lines, and bundling keeps
@@ -50,14 +50,14 @@ export interface InvoiceLineItem {
  *  - `venmo-manual`    — a human recorded a Venmo payment they witnessed
  *                        (student scanned the business Venmo QR at a lesson).
  *  - `venmo-import`    — the Venmo statement reconciliation tool matched a
- *                        statement row to this invoice (see #630).
+ *                        statement row to this invoice (see legacy #630).
  *  - `square-pos`      — an in-person Square POS lesson sale was attributed to
  *                        this invoice (auto by customer email, or by a human
- *                        from the review queue). See #628.
+ *                        from the review queue). See legacy #628.
  *
  * Venmo Business Profiles have no API/webhook, so Venmo payments are attested
  * by a human (`venmo-manual`) and later confirmed by CSV import
- * (`venmo-import`). See epic #626.
+ * (`venmo-import`). See epic #51.
  */
 export type InvoicePaymentSource =
   | 'admin-manual'
@@ -87,7 +87,7 @@ export interface InvoicePaymentRecord {
   note?: string;
   /** Firebase Auth uid of whoever recorded a manual/Venmo payment
    *  (server-stamped). Unset for the Square webhook path. Powers the future
-   *  teacher-attestation audit trail (#631). */
+   *  teacher-attestation audit trail (legacy #631). */
   recordedByUid?: string;
   /** When the payment was recorded (distinct from paidAt which is the
    *  invoice status transition timestamp — typically the same but the

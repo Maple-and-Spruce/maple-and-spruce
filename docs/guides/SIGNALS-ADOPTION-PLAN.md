@@ -70,7 +70,7 @@ readonly isValid = computed(() => this.#validation().isValid());
 
 **Status**: ✅ Supported (as of late 2024)
 
-The [GitHub issue #566](https://github.com/preactjs/signals/issues/566) confirms React 19 works with signals. For React Compiler compatibility:
+The [GitHub legacy issue #566](https://github.com/preactjs/signals/issues/566) confirms React 19 works with signals. For React Compiler compatibility:
 
 ```javascript
 // babel.config.js

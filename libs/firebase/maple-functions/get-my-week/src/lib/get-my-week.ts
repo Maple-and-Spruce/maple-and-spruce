@@ -1,5 +1,5 @@
 /**
- * Get My Week Cloud Function (#683 / #684)
+ * Get My Week Cloud Function (#60 / legacy #684)
  *
  * The signed-in teacher's own commitments for a week — the lessons they teach
  * and the classes they teach — plus the shared store-wide events that affect
@@ -262,7 +262,7 @@ export const getMyWeek = createRoleFunction<
 
     // One range query over [lookbackStart, to) for recurrence classification,
     // ALL teachers' blocks (mine anchor the layout; others mark room-taken
-    // time), this week's lessons to flag unattributed ones (#689), and
+    // time), this week's lessons to flag unattributed ones (legacy #689), and
     // instructors for the other-block owner names.
     const [events, allBlocks, lessons, instructors] = await Promise.all([
       CalendarEventRepository.findByStartInRange(lookbackStart, to),
@@ -273,7 +273,7 @@ export const getMyWeek = createRoleFunction<
 
     const myBlocks = allBlocks.filter((b) => b.teacherId === myInstructorId);
     // The week view is a *typical* week, so only recurring blocks frame it —
-    // a one-off block (#835) is an exception to manage, not a standing slot,
+    // a one-off block (legacy #835) is an exception to manage, not a standing slot,
     // and showing it here would claim the teacher works that time every week.
     //
     // Attribution below deliberately uses the UNfiltered list: a lesson sitting

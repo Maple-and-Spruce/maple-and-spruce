@@ -1,5 +1,5 @@
 /**
- * Lesson Scheduled Charge Repository (#798)
+ * Lesson Scheduled Charge Repository (#81)
  *
  * Deliberately mirrors `MusicTogetherScheduledChargeRepository`. The lease, the
  * stable idempotency key and the cancel guard are what make "charge at most

@@ -1,6 +1,6 @@
 /**
  * One-time backfill for the Webflow Class Categories collection and the
- * `category` Reference field on class items (#776).
+ * `category` Reference field on class items (legacy #776).
  *
  * The related-classes list on the class template page is a native Webflow
  * Collection List filtered to "Category = Current Class's Category". That

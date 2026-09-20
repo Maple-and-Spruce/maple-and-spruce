@@ -46,7 +46,7 @@ function docToDiscount(
       ? data.generatedFromRegistrationId
       : undefined;
 
-  // Program back-fill (#791). Every code written before scoping existed was
+  // Program back-fill (legacy #791). Every code written before scoping existed was
   // created for Maple & Spruce class checkout — Music Together had no discount
   // support at all — so LEGACY_DISCOUNT_PROGRAM is a statement of fact, not a
   // guess. Defaulting the other way would silently make old codes redeemable
@@ -132,7 +132,7 @@ export const DiscountRepository = {
     //
     // `!=` is no escape either: not-equal and not-in also exclude documents
     // where the field does not exist. So documents written before program
-    // scoping (#791) MUST be backfilled — `tools/backfill-discount-program.ts`
+    // scoping (legacy #791) MUST be backfilled — `tools/backfill-discount-program.ts`
     // does that, and is a hard prerequisite for this query, not a tidy-up. An
     // unbackfilled document is invisible to both admin pages.
     //

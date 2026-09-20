@@ -1,5 +1,5 @@
 /**
- * Linking a card Katie already saved in Square to a student (#798).
+ * Linking a card Katie already saved in Square to a student (#81).
  *
  * Katie saves cards in the Square app, in person. The portal's job is to find
  * the card she already saved and attach it to the right student — so what is
@@ -117,7 +117,7 @@ async function seedStudent(
   });
 }
 
-describe('Linking a Square card to a student (#798)', () => {
+describe('Linking a Square card to a student (#81)', () => {
   let adminUser: TestUser;
 
   beforeAll(async () => {

@@ -22,10 +22,10 @@ export interface NeedsAttentionData {
 }
 
 /**
- * The Needs Attention panel (#807).
+ * The Needs Attention panel (legacy #807).
  *
  * `resolving` is a set of row ids rather than a page-wide flag, so fixing one
- * row does not freeze the rest (the pattern from #805).
+ * row does not freeze the rest (the pattern from legacy #805).
  *
  * `updateStudent` lets a page that also shows the roster (the student table)
  * route the inline fix through its own `useStudents().updateStudent`, so the

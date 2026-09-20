@@ -1,5 +1,5 @@
 /**
- * Update Lesson Rates Config Cloud Function (#629)
+ * Update Lesson Rates Config Cloud Function (legacy #629)
  *
  * Sets the admin-configured default private-pay lesson rates by length.
  * Drops non-positive / non-integer entries so a bad value never prices an

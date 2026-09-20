@@ -94,7 +94,7 @@ describe('updateCraftClubPaymentMethod', () => {
     })) as { cardLast4?: string };
 
     // The STORE-intent verification token must reach the card vault — real
-    // Square rejects cards.create without it (#622).
+    // Square rejects cards.create without it (legacy #622).
     expect(mocks.createCardOnFile).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceId: 'cnon:new',

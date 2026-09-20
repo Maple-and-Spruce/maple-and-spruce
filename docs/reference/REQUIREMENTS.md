@@ -15,9 +15,9 @@
 | Admin platform | ✅ Built | Artist/product/class/lesson management |
 | Public website | ✅ Live | Webflow with registration widget |
 | Classes | ✅ Built | Online registration + payment via Square |
-| Music lessons | ⚠️ Partial | Admin scheduling, blocks, per-lesson invoicing and payouts built. Lead capture, no-show handling, series top-up and automatic billing are gaps — see epic #793 |
+| Music lessons | ⚠️ Partial | Admin scheduling, blocks, per-lesson invoicing and payouts built. Lead capture, no-show handling, series top-up and automatic billing are gaps — see epic #80 |
 
-**Key insight**: Website and classes are built. The music lesson *admin surface* is built; the funnel in front of it and the billing automation behind it are not. Epic #793 closes that, with the plan in `docs/reference/suzuki-readiness-plan.md`.
+**Key insight**: Website and classes are built. The music lesson *admin surface* is built; the funnel in front of it and the billing automation behind it are not. Epic #80 closes that, with the plan in `docs/reference/suzuki-readiness-plan.md`.
 
 ---
 
@@ -54,7 +54,7 @@
 - [x] 19 Cloud Functions deployed
 - [x] Testing (Vitest + Storybook play tests)
 
-### Phase 2: Public Website (NOW) - Epic #93
+### Phase 2: Public Website (NOW) - legacy Epic #93
 *Webflow integration for public-facing content*
 
 **2a. Artist Showcase**
@@ -72,9 +72,9 @@
 **2c. Music Lesson Information**
 - [x] Music program overview pages (`/music`, `/music-lessons`, `/suzuki`)
 - [x] Teacher profiles (`/instructors/katie-mccoy`, `/instructors/nathan-zucker`)
-- [x] Inquiry/contact form for lessons (Tally `dWPQOr`; Suzuki has its own, see #794)
+- [x] Inquiry/contact form for lessons (Tally `dWPQOr`; Suzuki has its own, see legacy #794)
 
-### Phase 3: Classes & Workshops - Epic #9
+### Phase 3: Classes & Workshops - legacy Epic #9
 *Online registration and payment for crafting classes*
 
 - [ ] Class domain types and validation
@@ -87,11 +87,11 @@
 - [ ] Admin: view registrations, class rosters
 - [ ] Instructor payout tracking
 
-### Phase 4: Music Lessons - Epic #10 ✅ COMPLETE (admin surface only)
+### Phase 4: Music Lessons - legacy Epic #10 ✅ COMPLETE (admin surface only)
 
 > The checklist below is accurate: every item shipped. What it does not cover is the customer
 > funnel, the states a real teaching week produces (no-show, a series running out), or billing that
-> does not require a family to act every week. Those are epic **#793** —
+> does not require a family to act every week. Those are epic **#80** —
 > `docs/reference/suzuki-readiness-plan.md`.
 *Admin-driven registration, scheduling, invoicing, and payout tracking for Suzuki method instruction*
 
@@ -101,51 +101,51 @@
 - Two payment tracks: private-pay (Square invoicing) and Hope Scholarship (external portal)
 - Substitute teacher attribution: credit goes to whoever actually taught the lesson
 
-**4a. Student Records (#278)** ✅
+**4a. Student Records (legacy #278)** ✅
 - [x] Student domain type (Instrument, LessonLength enums, Hope Scholarship flag)
 - [x] Student CRUD Cloud Functions (5)
 - [x] Admin `/students` page with Hope/Private filter
 - [x] Student detail page `/students/[id]`
 
-**4b. Lesson Scheduling (#279)** ✅
-- [x] Lesson domain type (status: scheduled/rendered/no-show/cancelled — `no-show` added in #796)
+**4b. Lesson Scheduling (legacy #279)** ✅
+- [x] Lesson domain type (status: scheduled/rendered/no-show/cancelled — `no-show` added in legacy #796)
 - [x] Lesson + LessonSeries validation (Vest)
 - [x] First-lesson booking (single date) and recurring series generation
 - [x] Lesson CRUD Cloud Functions (5) including `createLessonSeries`
 - [x] `useLessons` hook scoped by studentId
 - [x] ScheduleLessonDialog + EditLessonDialog (signals, Vest)
 
-**4c. Invoice Initiation — Private Pay (#280)** ✅
+**4c. Invoice Initiation — Private Pay (legacy #280)** ✅
 - [x] Invoice domain type with status transitions (draft → sent → paid/void)
 - [x] Invoice CRUD Cloud Functions (4) with Hope guard, transition enforcement, draft-only delete
 - [x] InvoiceBuilderDialog with "Add from lesson" picker
 - [x] Wired into `/students/[id]` with Hope guard in UI
 
-**4d. Parent Invoice Delivery + Online Payment (#281)** ✅
+**4d. Parent Invoice Delivery + Online Payment (legacy #281)** ✅
 - [x] Square Invoices API integration (InvoicesService: Customers + Orders + Invoices)
 - [x] `syncInvoiceToSquare` Firestore trigger (draft → sent, sent → void)
 - [x] `square-webhook` extended for `invoice.payment_made`
 - [x] Payment attribution ("Paid via Square" / "Marked paid manually" chips)
 
-**4e. Hope Scholarship Handling (#282)** ✅
+**4e. Hope Scholarship Handling (legacy #282)** ✅
 - [x] Hope per-lesson rate constants (30/45/60 min tiers, initial vs full)
 - [x] HopeRatesTable + HopeScholarshipBanner on student detail
 - [x] Mark-lesson-rendered action (past scheduled lessons only)
 - [x] Exclude Hope students from in-app invoice flow
 
-**4f. Teacher Payout Tracking (#283)** ✅
+**4f. Teacher Payout Tracking (legacy #283)** ✅
 - [x] `teacher-payout.ts` aggregator (paid private-pay + rendered Hope lessons)
 - [x] `primaryTeacherAtCreateId` snapshot for substitute attribution
 - [x] `getTeacherPayouts` Cloud Function (admin, date range + teacher filter)
 - [x] PeriodPicker + TeacherPayoutsList with Hope/Private/Substitute chips
 - [x] `/payouts` admin page + Music Lessons nav entry
 
-**Deferred from Phase 4** (all now tracked under epic #793):
+**Deferred from Phase 4** (all now tracked under epic #80):
 - Lesson packages (buy 4 get 1 free) — not needed at launch
 - Teacher availability/calendar management — using external scheduling for now
-- Public music teacher profiles on Webflow — blocked on instructor-to-Webflow sync (#147, #148)
+- Public music teacher profiles on Webflow — blocked on instructor-to-Webflow sync (#14, #15)
 
-### Phase 5: Store Opening & Sales Tracking - Epic #8
+### Phase 5: Store Opening & Sales Tracking - Epic #6
 *When physical store opens - POS, Etsy sync, payouts*
 
 **5a. Square POS**

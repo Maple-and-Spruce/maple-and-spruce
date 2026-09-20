@@ -97,7 +97,7 @@ export const discountValidation = staticSuite(
       }
     });
 
-    // Program scoping (#791). Required: an unscoped code would read back as a
+    // Program scoping (legacy #791). Required: an unscoped code would read back as a
     // classes code via the legacy back-fill, which is wrong for an MT code and
     // moves money between two businesses' books.
     test('program', 'Program is required', () => {

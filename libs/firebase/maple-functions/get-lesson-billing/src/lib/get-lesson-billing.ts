@@ -1,5 +1,5 @@
 /**
- * getLessonBilling (#798) — everything the billing screen shows, in one read.
+ * getLessonBilling (#81) — everything the billing screen shows, in one read.
  *
  * Rules and charges are fetched together rather than as two callables because
  * the screen is meaningless with only one of them: a charge is unreadable
@@ -24,7 +24,7 @@ export const getLessonBilling = Functions.endpoint
       LessonBillingRuleRepository.findAll(),
       LessonScheduledChargeRepository.findAll({ studentId: data?.studentId }),
       // The rate table rides along so the screen can price a prepayment from
-      // the same numbers the server will charge from (#864).
+      // the same numbers the server will charge from (legacy #864).
       LessonRatesConfigRepository.get(),
     ]);
     return { rules, charges, rateByLength: rates.rateByLength };

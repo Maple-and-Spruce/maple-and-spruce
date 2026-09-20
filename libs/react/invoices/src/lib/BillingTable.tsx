@@ -4,7 +4,7 @@
  * BillingTable — every invoice and card charge for one student, in one table.
  *
  * A lesson is paid for by an invoice, by an automatic charge a billing rule
- * planned (#798), or by a charge a person took on the spot (#864). The student
+ * planned (#81), or by a charge a person took on the spot (legacy #864). The student
  * page used to show invoices in one list and charges in a card above it, so
  * "is this family paid up?" meant reading both. The records themselves are
  * untouched; this is only how they are shown together
@@ -96,7 +96,7 @@ export interface BillingTableProps {
   /** It happened and the studio is not charging for it. */
   onWaiveCharge: (chargeId: string, reason: string) => void;
   /**
-   * Try a failed charge again (#864). Optional, so a read-only view of this
+   * Try a failed charge again (legacy #864). Optional, so a read-only view of this
    * table can show failures without offering to move money from a screen
    * nobody is standing in front of.
    *

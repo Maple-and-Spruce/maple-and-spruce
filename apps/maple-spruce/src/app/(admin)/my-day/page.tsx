@@ -38,7 +38,7 @@ export default function MyDayPage() {
   /**
    * Which action is running, on which lesson. Was a single page-wide boolean,
    * which froze every card in the day while one saved and never said which
-   * action was in flight (#805).
+   * action was in flight (legacy #805).
    */
   const [pending, setPending] = useState<{
     lessonId: string;

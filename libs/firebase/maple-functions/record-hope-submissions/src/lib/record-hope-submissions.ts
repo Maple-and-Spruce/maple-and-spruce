@@ -1,5 +1,5 @@
 /**
- * recordHopeSubmissions Cloud Function (#799)
+ * recordHopeSubmissions Cloud Function (legacy #799)
  *
  * Records what has been claimed from the EMA portal for a batch of rendered
  * Hope lessons — Katie submits a term's worth at once, so this is bulk by
@@ -9,7 +9,7 @@
  * --------------------------------
  * Hope pays only for services rendered. Every lesson is re-checked server-side
  * against `isSubmittableToHope` and against the student actually being a Hope
- * student, so a no-show (#796) cannot be claimed even if a client asks for it.
+ * student, so a no-show (legacy #796) cannot be claimed even if a client asks for it.
  * A refused lesson is *skipped and reported*, not thrown — one bad id in a
  * batch of forty must not lose the other thirty-nine.
  *

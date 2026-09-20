@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Needs Attention (#807).
+ * Needs Attention (legacy #807).
  *
  * Six states that were already true in the data and that nobody could see
  * without going looking, per student. Each row is money or compliance quietly

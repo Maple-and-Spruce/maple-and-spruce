@@ -14,12 +14,12 @@
  * to (`sender`), so that:
  *
  *   - MT mail can at least carry `replyTo: musictogether@…` now, and
- *   - when #775 moves transactional email to a provider that supports
+ *   - when #77 moves transactional email to a provider that supports
  *     arbitrary validated senders, ONLY the `SENDER_FROM` map below changes.
  *     No re-audit of every send site, no risk of missing one and having a
  *     Music Together family get a reply-to pointing at the wrong inbox.
  *
- * See also #756 — the Trigger Email extension is decommissioned 2027-03-31, so
+ * See also #76 — the Trigger Email extension is decommissioned 2027-03-31, so
  * this indirection is the migration seam for that too.
  */
 import { getDb } from '@maple/firebase/database';
@@ -36,7 +36,7 @@ export type MailSender = 'maple-spruce' | 'music-together';
  * the authenticated account isn't authorized to send as — setting a Music
  * Together `from` here now would break delivery, not fix branding.
  *
- * #775 is what makes these settable. When it lands, fill in the MT row.
+ * #77 is what makes these settable. When it lands, fill in the MT row.
  */
 const SENDER_FROM: Record<MailSender, string | null> = {
   'maple-spruce': null,

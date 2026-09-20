@@ -5,7 +5,7 @@ import { mockDiscounts } from '@maple/react/storybook-fixtures';
 import { DiscountsManager } from './DiscountsManager';
 
 /**
- * The single management experience behind BOTH discount pages (#791):
+ * The single management experience behind BOTH discount pages (legacy #791):
  * `/discounts` for Maple & Spruce classes and `/music-together/discounts` for
  * Music Together. They pass different `program` + copy and nothing else, which
  * is what stops the two drifting apart.

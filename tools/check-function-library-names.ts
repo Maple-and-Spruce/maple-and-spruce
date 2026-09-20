@@ -18,16 +18,16 @@
  *
  *     Error: No function matches the filter: maple-square:runLessonBilling
  *
- * That is not a partial failure. #835's `run-lesson-billing` library exported
+ * That is not a partial failure. legacy #835's `run-lesson-billing` library exported
  * `runLessonBillingScheduled` and `triggerLessonBilling`, and took all 26
  * maple-square functions down with it for four retry attempts.
  *
  * **Too many** — every *other* export of a library is outside the filter, so it
  * is left alone: untouched if it already exists, and **never created if it does
- * not**. It does not fail and it does not warn. `chargeLessonsNow` (#866) was
+ * not**. It does not fail and it does not warn. `chargeLessonsNow` (legacy #866) was
  * added alongside `runLessonBilling` and never came into existence in prod; the
  * Pay-ahead button failed with `functions/not-found`, and the six `trigger*`
- * twins were in the same state (#872).
+ * twins were in the same state (legacy #872).
  *
  * **Neither** — an export declared inline in an entry point has no library
  * behind it at all, so no filter can ever name it. `healthCheck` sat like that.
@@ -78,7 +78,7 @@ export type Violation =
  *
  * Parsed rather than grepped, because the distinction that matters is which
  * module an export came *from* — and because `runLessonBillingScheduled` must
- * not read as a match for `runLessonBilling` (that is the #835 bug exactly).
+ * not read as a match for `runLessonBilling` (that is the legacy #835 bug exactly).
  * Type-only exports are skipped: firebase has nothing to deploy for them.
  */
 export function parseEntryExports(source: string, fileName = 'index.ts'): EntryExport[] {

@@ -1,5 +1,5 @@
 /**
- * Lesson inquiry API contracts (#795).
+ * Lesson inquiry API contracts (legacy #795).
  */
 import type {
   LessonInquiry,

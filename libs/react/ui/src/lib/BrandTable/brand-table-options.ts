@@ -1,5 +1,5 @@
 /**
- * Shared Material React Table setup (#853).
+ * Shared Material React Table setup (#88).
  *
  * Every MRT table spreads these options first, then adds its own columns,
  * data and initial state:
@@ -14,7 +14,7 @@
  * It exists because two MRT defaults are wrong for this theme, and neither
  * shows up in a passing test or a clean build — only in a screenshot of a
  * table scrolled hard right, the one state where pinning means anything. Both
- * were found on /students (#851) and neither should be found again.
+ * were found on /students (#87) and neither should be found again.
  */
 import type { MRT_RowData, MRT_TableOptions } from 'material-react-table';
 import { borders, radii, shadows, surfaces } from '@maple/react/theme';

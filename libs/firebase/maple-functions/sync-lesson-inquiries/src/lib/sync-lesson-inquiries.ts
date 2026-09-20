@@ -1,5 +1,5 @@
 /**
- * syncLessonInquiries — pull music lesson inquiries from Tally into the portal (#795)
+ * syncLessonInquiries — pull music lesson inquiries from Tally into the portal (legacy #795)
  *
  * WHY A SCHEDULED POLL AND NOT A WEBHOOK
  * --------------------------------------

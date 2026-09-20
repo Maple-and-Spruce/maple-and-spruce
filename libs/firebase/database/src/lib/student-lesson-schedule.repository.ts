@@ -1,5 +1,5 @@
 /**
- * Student Lesson Schedule Repository (#797)
+ * Student Lesson Schedule Repository (legacy #797)
  *
  * The standing arrangement — "Nathan teaches Devin on Tuesdays at 4:00" — as an
  * object Katie edits, rather than N concrete lesson rows she has to maintain.
@@ -30,9 +30,9 @@ function docToSchedule(
     blockId: data.blockId,
     dayOfWeek: data.dayOfWeek,
     startMinutes: data.startMinutes,
-    // Absent means weekly (#837). Dropping this here is how a biweekly student
+    // Absent means weekly (legacy #837). Dropping this here is how a biweekly student
     // silently reverts to weekly — the same mapper gap that hid the student
-    // card fields in #798 and LessonBlock.onDate in #835.
+    // card fields in #81 and LessonBlock.onDate in legacy #835.
     intervalWeeks: data.intervalWeeks,
     durationMinutes: data.durationMinutes,
     room: data.room,

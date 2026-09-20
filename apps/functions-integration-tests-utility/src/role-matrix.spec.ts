@@ -1,11 +1,11 @@
 /**
  * Role access matrix — integration proof of the scoped-roles enforcement
- * (epic #617, re-scope #615).
+ * (epic #49, re-scope legacy #615).
  *
  * Table-driven: each case is (caller role, function, expected status), so
  * this spec IS the access matrix. Samples 2-4 representative functions
  * per group rather than every callable — the requiringRole change is
- * uniform, and the callable-coverage analyzer (#620) will guarantee no
+ * uniform, and the callable-coverage analyzer (legacy #620) will guarantee no
  * endpoint is left undeclared.
  *
  * Callers are seeded directly into Firestore (admins/{uid} and
@@ -54,16 +54,16 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'getClasses', expect: 403 },
   { as: 'stephanie', functionName: 'getRegistrations', expect: 403 },
   { as: 'stephanie', functionName: 'getStudents', expect: 403 },
-  // getStudent (singular) was auth-only until #620; now admin + lesson-teacher.
+  // getStudent (singular) was auth-only until legacy #620; now admin + lesson-teacher.
   { as: 'stephanie', functionName: 'getStudent', expect: 403 },
-  // Student mutations are now [Admin, LessonTeacher] (#617) — mt-teacher denied.
+  // Student mutations are now [Admin, LessonTeacher] (#49) — mt-teacher denied.
   { as: 'stephanie', functionName: 'createStudent', expect: 403 },
   { as: 'stephanie', functionName: 'updateStudent', expect: 403 },
   { as: 'stephanie', functionName: 'getLessons', expect: 403 },
   { as: 'stephanie', functionName: 'listUsers', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },
   { as: 'stephanie', functionName: 'getSyncConflictSummary', expect: 403 },
-  // Music Together discounts are hers to run (#791) — the function is open to
+  // Music Together discounts are hers to run (legacy #791) — the function is open to
   // her, and per-program authorization inside it keeps her off class codes
   // (proved in the discount suite).
   { as: 'stephanie', functionName: 'getDiscounts', expect: 200 },
@@ -82,7 +82,7 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'nathan', functionName: 'getMusicTogetherRoster', expect: 403 },
   // Waiving an installment forgives money on Stephanie's Square account —
-  // [Admin, MtTeacher] only, never the clerk/lesson-teacher union (#791).
+  // [Admin, MtTeacher] only, never the clerk/lesson-teacher union (legacy #791).
   {
     as: 'nathan',
     functionName: 'waiveMusicTogetherInstallment',
@@ -93,7 +93,7 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'updateClass', expect: 403 },
   { as: 'nathan', functionName: 'getTeacherPayouts', expect: 403 },
   { as: 'nathan', functionName: 'getArtists', expect: 403 },
-  // getArtist (singular) was auth-only until #620; now admin-only like getArtists.
+  // getArtist (singular) was auth-only until legacy #620; now admin-only like getArtists.
   { as: 'nathan', functionName: 'getArtist', expect: 403 },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },

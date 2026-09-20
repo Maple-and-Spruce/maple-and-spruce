@@ -116,7 +116,7 @@ export function useMusicTogetherRoster(sectionId: string | undefined) {
   /**
    * Forgive one scheduled installment without cancelling the registration —
    * the family keeps its seat and simply never owes this charge. Used for
-   * comped tuition (the pilot-semester half-off, #791). Reloads the roster so
+   * comped tuition (the pilot-semester half-off, legacy #791). Reloads the roster so
    * the charge shows as waived.
    */
   const waiveInstallment = useCallback(

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * DayColumn — one teaching day, top to bottom, in time order (#838).
+ * DayColumn — one teaching day, top to bottom, in time order (legacy #838).
  *
  * This replaces the spreadsheet Katie keeps by hand rather than working around
  * it, so it is laid out the way she laid that out: students in time order with
@@ -10,7 +10,7 @@
  * parent on the phone, and no per-student page can answer that.
  *
  * An opening carries a cadence. "Free every other week" is the alternate week
- * of a biweekly student's hour (#837), and it is sellable to exactly one more
+ * of a biweekly student's hour (legacy #837), and it is sellable to exactly one more
  * biweekly student. Saying only "open" there would sell it twice.
  *
  * Presentational: the page owns the data and `buildDayColumn` owns the layout.

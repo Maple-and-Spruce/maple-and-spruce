@@ -1,5 +1,5 @@
 /**
- * Lesson block validation suite (#686)
+ * Lesson block validation suite (legacy #686)
  *
  * Vest validation for the LessonBlock weekly-constraint entity. Shape-only —
  * "the lesson fits the block" and "the block belongs to this teacher" are

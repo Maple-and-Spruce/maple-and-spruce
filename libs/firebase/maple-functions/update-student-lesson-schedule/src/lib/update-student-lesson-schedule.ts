@@ -1,5 +1,5 @@
 /**
- * updateStudentLessonSchedule (#797)
+ * updateStudentLessonSchedule (legacy #797)
  *
  * Changing the arrangement — a new day, a new time, or ending it — is **one
  * edit**, which is the whole point of the entity existing.
@@ -92,7 +92,7 @@ export const updateStudentLessonSchedule = Functions.endpoint
       );
       if (sample.length > 0) {
         // The dialog offers the same way through when a CHANGED time falls
-        // outside every block (#835). This used to check fit only, dropping
+        // outside every block (legacy #835). This used to check fit only, dropping
         // the choice — so "Extend Tuesdays" could never save on an existing
         // arrangement. With no strategy it is exactly that fit check.
         resolvedBlockId = await resolveLessonBlock({

@@ -249,7 +249,7 @@ See ADR-017 for the mocking patterns used.
 
 ## References
 
-- [GitHub Issue #24](https://github.com/david-shortman/maple-and-spruce/issues/24)
+- [GitHub legacy Issue #24](legacy #24)
 - [Vitest Documentation](https://vitest.dev/)
 - [Nx + Vitest Guide](https://nx.dev/recipes/testing/vitest)
 - [Vest Validation](https://vestjs.dev/)

@@ -321,7 +321,7 @@ export const syncClassToWebflow = onDocumentWritten(
       ]);
 
       // The `category` Reference field is what makes the related-classes list
-      // on the class template page native (#776), so make sure the category
+      // on the class template page native (legacy #776), so make sure the category
       // exists in Webflow before linking to it. A category that predates the
       // sync — or one whose class syncs before its own trigger lands — has no
       // webflowItemId yet, so create it on demand rather than shipping a class

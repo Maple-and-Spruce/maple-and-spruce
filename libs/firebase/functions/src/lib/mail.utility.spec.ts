@@ -64,7 +64,7 @@ describe('queueMail', () => {
   });
 
   it('never sets `from` today — Gmail SMTP would reject an unauthorized sender', async () => {
-    // Guards the #775 migration seam: when a provider that supports arbitrary
+    // Guards the #77 migration seam: when a provider that supports arbitrary
     // validated senders lands, THIS is the assertion that should change.
     for (const sender of ['maple-spruce', 'music-together'] as const) {
       await queueMail({ to: 'a@b.com', templateName: 't', data: {}, sender });

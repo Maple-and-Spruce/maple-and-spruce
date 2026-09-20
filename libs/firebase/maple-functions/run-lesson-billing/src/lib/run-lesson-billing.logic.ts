@@ -1,5 +1,5 @@
 /**
- * Lesson billing: plan, then charge (#798).
+ * Lesson billing: plan, then charge (#81).
  *
  * Kept separate from the trigger wiring so both triggers and the tests share
  * exactly one implementation, and so the parts that decide money can be tested
@@ -53,7 +53,7 @@ export interface LessonBillingResult {
   skippedNoRate: number;
   /**
    * Lessons not planned because an existing charge already covers them —
-   * usually a family who paid ahead (#864).
+   * usually a family who paid ahead (legacy #864).
    *
    * Counted rather than left silent for the same reason `skippedNoRate` is:
    * once covered lessons are filtered out before blocking, a steady-state run
@@ -73,7 +73,7 @@ export interface PlanDeps {
   /**
    * Every charge that already exists, per student — not just the scheduled
    * ones. Planning subtracts the lessons these cover before blocking, which is
-   * what stops a family paying ahead (#864) from also being billed
+   * what stops a family paying ahead (legacy #864) from also being billed
    * automatically for the same teaching.
    */
   chargesByStudent: Map<string, LessonScheduledCharge[]>;
@@ -126,7 +126,7 @@ export async function planCharges(
   let lessonsAlreadyCovered = 0;
 
   for (const student of students) {
-    // Hope students are never charged — they bill through EMA (#799).
+    // Hope students are never charged — they bill through EMA (legacy #799).
     if (!isAutoChargeEligible(student)) continue;
 
     const rule = ruleForStudent(student, deps.rules, deps.defaultRule);

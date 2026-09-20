@@ -226,7 +226,7 @@ export async function reserveClassRegistration(
     // longer valid at submit time we must NOT silently charge full price.
     //
     // A code scoped to another program is rejected on the SAME branch, with
-    // the same wording, as an unknown code (#791). Music Together settles to a
+    // the same wording, as an unknown code (legacy #791). Music Together settles to a
     // separate business's Square account, so honoring an MT code here would
     // discount a Maple & Spruce class against Stephanie's promotion — and a
     // distinct message would leak which codes exist over there.

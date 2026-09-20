@@ -159,7 +159,7 @@ function generateIcsFile(opts: {
  * effectively always a cold start and the section took seconds to appear.
  * The class template page now renders those cards natively from the Webflow
  * CMS — a Collection List filtered on the class's `category` Reference field
- * — so they are in the HTML at first paint. See #776.
+ * — so they are in the HTML at first paint. See legacy #776.
  */
 function SoldOutPanel({
   classId,

@@ -1,5 +1,5 @@
 /**
- * getNeedsAttention Cloud Function (#807)
+ * getNeedsAttention Cloud Function (legacy #807)
  *
  * Six states already existed as data and none of them surfaced as a to-do, so
  * finding any of them meant going looking, per student. Every one is money or
@@ -18,7 +18,7 @@
  * SCOPING
  * -------
  * An admin sees everything. A lesson teacher sees only their own students and
- * their own lessons (`instructorIdForUser`, per #616). The response says which,
+ * their own lessons (`instructorIdForUser`, per legacy #616). The response says which,
  * because an empty panel means two different things to those two people.
  */
 import { Functions, Role, instructorIdForUser } from '@maple/firebase/functions';

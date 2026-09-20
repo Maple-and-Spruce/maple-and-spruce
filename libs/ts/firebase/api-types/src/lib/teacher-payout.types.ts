@@ -1,5 +1,5 @@
 /**
- * Teacher payout API types (#283).
+ * Teacher payout API types (legacy #283).
  *
  * `getTeacherPayouts` aggregates what Katie owes each teacher in a
  * period from existing data — no new Firestore collection.

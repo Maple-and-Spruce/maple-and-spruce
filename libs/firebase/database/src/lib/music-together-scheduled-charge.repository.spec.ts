@@ -49,7 +49,7 @@ const snap = (data: Record<string, unknown> | null) => ({
 
 /**
  * `tryWaive` is the transactional half of the comped-installment feature
- * (#791). Its whole job is to be un-raceable against the charge job: the
+ * (legacy #791). Its whole job is to be un-raceable against the charge job: the
  * status check and the write share one transaction, exactly like
  * `tryClaimLease`. These tests pin that, because a waive that lands on an
  * already-`charging` doc would either double-charge a family or silently

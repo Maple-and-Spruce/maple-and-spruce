@@ -167,7 +167,7 @@ export const EndedArrangementShownAsHistory: Story = {
   },
 };
 
-/** Saving one arrangement must not freeze the others (#805's pattern). */
+/** Saving one arrangement must not freeze the others (legacy #805's pattern). */
 export const SavingOneSlot: Story = {
   args: {
     schedulesState: loaded([

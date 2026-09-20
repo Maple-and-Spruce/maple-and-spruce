@@ -39,7 +39,7 @@ Runs on http://localhost:3000. On localhost the app auto-connects to the **Funct
 ./tools/run-portal-e2e.sh          # emulators + next dev + Playwright
 ```
 
-Drives the real app in a browser: seeds an admin + an mt-teacher into the emulators, signs in through the login form, asserts the role-filtered shell. First browser-level proof of the scoped-roles wiring (epic #617).
+Drives the real app in a browser: seeds an admin + an mt-teacher into the emulators, signs in through the login form, asserts the role-filtered shell. First browser-level proof of the scoped-roles wiring (epic #49).
 
 ## Running Storybook
 

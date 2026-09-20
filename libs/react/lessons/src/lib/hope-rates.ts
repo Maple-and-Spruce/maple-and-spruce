@@ -1,6 +1,6 @@
 /**
  * Hope rate constants + helpers moved to @maple/ts/domain so server-side
- * payout aggregation (#283) can consume them. This module now only
+ * payout aggregation (legacy #283) can consume them. This module now only
  * re-exports them plus the React-facing `formatCents` presenter.
  */
 export {

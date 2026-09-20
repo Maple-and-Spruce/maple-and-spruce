@@ -17,7 +17,7 @@ import { usePosLessonConfig } from '@maple/react/data';
 
 /**
  * Settings card to manage which Square catalog items count as music lessons
- * at the POS (#628). A line item rung up with one of these catalog object ids
+ * at the POS (legacy #628). A line item rung up with one of these catalog object ids
  * is routed to the POS lesson review queue instead of being ignored.
  */
 export function PosLessonConfigCard() {

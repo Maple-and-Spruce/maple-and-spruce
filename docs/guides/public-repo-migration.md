@@ -76,10 +76,14 @@ only in the two files above).
 7. [ ] Re-point local clones: `git remote set-url origin https://github.com/Maple-and-Spruce/maple-and-spruce.git`,
        then `git fetch && git reset --hard origin/main` on a **clean** `main`. Rebase
        in-flight branches with `git rebase --onto origin/main <old-base> <branch>`.
-       Their old base commits don't exist in the new history.
-8. [ ] Recreate open issues. GitHub won't transfer them from a private repo to a public
-       one. Script it with `gh issue create`; the Claude hook checks each body on the
-       way in.
+       Their old base commits don't exist in the new history. **Before** rebasing, run
+       `npx tsx tools/rewrite-legacy-issue-refs.ts --write` (no `--base`) on the branch
+       and commit: everything it wrote uses old numbers.
+8. [x] Recreate open issues. GitHub won't transfer them from a private repo to a public
+       one, so the 91 open issues that weren't Dependabot alerts were recreated (#6–#95).
+       Comments were folded into each body, and every body passed the PII check. Old
+       references in the repo now read either the new number or `legacy #N`; see
+       `docs/reference/legacy-issues.md` and `tools/rewrite-legacy-issue-refs.ts` (#36).
 9. [x] Org settings → Actions → require approval for fork PRs from outside
        collaborators. Once public, optionally add a ruleset on `main`.
 

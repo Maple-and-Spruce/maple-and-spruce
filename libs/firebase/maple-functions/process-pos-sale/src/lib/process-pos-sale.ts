@@ -21,7 +21,7 @@
  *     queue an admin alert so staff can collect it. A line item that matches a
  *     configured lesson catalog item is instead attributed to a student —
  *     automatically when the customer email maps to exactly one student, else
- *     captured in the POS-lesson review queue for a human (#628).
+ *     captured in the POS-lesson review queue for a human (legacy #628).
  *
  * Creating the registration fires PR B's `syncClassInventoryToSquare`, which
  * reconciles remaining POS stock — nothing extra to do here for inventory.
@@ -282,7 +282,7 @@ export const processPosSale = onDocumentWritten(
 
       // Configured lesson catalog items (e.g. a "Guitar Lesson" POS button).
       // Lessons aren't sold as a per-student catalog item, so a lesson line
-      // needs human/auto attribution rather than a class registration (#628).
+      // needs human/auto attribution rather than a class registration (legacy #628).
       const lessonCatalogIds = new Set(
         await PosLessonConfigRepository.getLessonCatalogObjectIds()
       );

@@ -11,7 +11,7 @@
  * shards, and prints a JSON object suitable for `fromJson()` in a GitHub
  * Actions matrix strategy.
  *
- * SHARDS ARE BALANCED BY MEASURED RUNTIME, NOT BY COUNT (#868)
+ * SHARDS ARE BALANCED BY MEASURED RUNTIME, NOT BY COUNT (legacy #868)
  * -----------------------------------------------------------
  * Chunking alphabetically N-at-a-time treated a 2-second suite and a
  * 138-second suite as equal work. That put `lesson`, `music-together`,

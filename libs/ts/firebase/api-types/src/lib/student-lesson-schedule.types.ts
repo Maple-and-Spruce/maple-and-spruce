@@ -1,5 +1,5 @@
 /**
- * Standing lesson schedule API contracts (#797).
+ * Standing lesson schedule API contracts (legacy #797).
  */
 import type {
   BlockStrategy,
@@ -21,7 +21,7 @@ export interface GetStudentLessonSchedulesResponse {
 export type CreateStudentLessonScheduleRequest =
   CreateStudentLessonScheduleInput & {
     /**
-     * How to attribute the arrangement to a block when none fits yet (#835).
+     * How to attribute the arrangement to a block when none fits yet (legacy #835).
      *
      * This is the case the feature was built for: Katie describes a standing
      * weekly slot and the block is derivable from it, so she should not have to
@@ -42,7 +42,7 @@ export interface CreateStudentLessonScheduleResponse {
 export type UpdateStudentLessonScheduleRequest =
   UpdateStudentLessonScheduleInput & {
     /**
-     * How to make room when a changed time falls outside every block (#835).
+     * How to make room when a changed time falls outside every block (legacy #835).
      * The same choice the dialog offers on create; never stored.
      */
     blockStrategy?: BlockStrategy;
@@ -59,7 +59,7 @@ export interface MaterializeLessonSchedulesResult {
   alreadyPresent: number;
   skippedInactiveStudent: number;
   /**
-   * Occurrences skipped because something else already had the room (#841).
+   * Occurrences skipped because something else already had the room (legacy #841).
    * Counted rather than written, and rather than aborting the run — a slot
    * nobody can teach in needs a human either way.
    */

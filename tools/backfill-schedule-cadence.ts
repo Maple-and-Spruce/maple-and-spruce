@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * Set `intervalWeeks` on existing standing arrangements from real lesson
- * history (#837).
+ * history (legacy #837).
  *
  * Katie worked around the missing cadence by hand-creating a lesson on each
  * off-week and cancelling it, so the materialiser would skip that date. This

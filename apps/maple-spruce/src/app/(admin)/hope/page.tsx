@@ -13,7 +13,7 @@ import { BackfillLessonsDialog, HopeQueue } from '@maple/react/lessons';
 import { useHopeQueue, useStudents, useInstructors } from '../../../hooks';
 
 /**
- * Hope Scholarship billing (#799).
+ * Hope Scholarship billing (legacy #799).
  *
  * The one screen that answers "what have we taught and not been paid for".
  * Hope invoices through the EMA portal, never through Square, so none of this

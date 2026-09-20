@@ -1,5 +1,5 @@
 /**
- * Lesson Billing Rule Repository (#798)
+ * Lesson Billing Rule Repository (#81)
  *
  * Named, reusable rules — "Every 4 lessons, charged the day before" — attached
  * to many students, so a change in studio policy is one edit rather than one

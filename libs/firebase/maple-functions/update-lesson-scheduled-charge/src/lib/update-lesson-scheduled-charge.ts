@@ -1,5 +1,5 @@
 /**
- * updateLessonScheduledCharge (#798) — the human override on a planned charge.
+ * updateLessonScheduledCharge (#81) — the human override on a planned charge.
  *
  * Katie and Nathan have to be able to stop money before it moves. Two ways to
  * stop it, kept separate on purpose (same as the MT installment path):

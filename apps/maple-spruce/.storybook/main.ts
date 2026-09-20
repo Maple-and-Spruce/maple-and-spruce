@@ -53,7 +53,7 @@ const config: StorybookConfig = {
           '@mui/icons-material/ChevronRight',
           '@mui/icons-material/Today',
           'qrcode.react',
-          // Student page tables (#828) + pay-ahead card (#864). Keep in step with
+          // Student page tables (#84) + pay-ahead card (legacy #864). Keep in step with
           // vitest.storybook.config.ts.
           '@mui/icons-material/Add',
           '@mui/icons-material/Block',

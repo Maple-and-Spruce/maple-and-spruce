@@ -1,7 +1,7 @@
 {
   "_comment": [
     "Measured wall-clock seconds per integration suite, used to balance the CI",
-    "shards (#868). Packing by COUNT put the four heaviest suites on one shard,",
+    "shards (legacy #868). Packing by COUNT put the four heaviest suites on one shard,",
     "which then ran ~360s while another ran ~159s — and the suite that happened",
     "to run last there (registration) started timing out under the load.",
     "",

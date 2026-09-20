@@ -8,13 +8,13 @@
  * exception semantics.
  *
  * `teacherId` on a Lesson is whoever actually taught it (primary or
- * substitute), which is what downstream payout tracking (#283) reads.
+ * substitute), which is what downstream payout tracking (legacy #283) reads.
  *
- * `status` includes 'rendered' for #282 Hope Scholarship handling (Hope
+ * `status` includes 'rendered' for legacy #282 Hope Scholarship handling (Hope
  * invoicing is per-rendered-lesson).
  *
  * 'no-show' is NOT a flavour of 'cancelled' and NOT a flavour of 'rendered'.
- * It is its own fact, because the two programs treat it oppositely (#796):
+ * It is its own fact, because the two programs treat it oppositely (legacy #796):
  *
  *   - Private pay: the slot was held and the teacher was there, so the family
  *     is charged exactly as if the lesson had happened.
@@ -80,7 +80,7 @@ export interface Lesson {
   teacherId: string;
   /**
    * Student's primary teacher at the time this lesson was created.
-   * Snapshotted so substitute-attribution in #283 payout tracking doesn't
+   * Snapshotted so substitute-attribution in legacy #283 payout tracking doesn't
    * retroactively flip if Katie later reassigns the student's primary
    * teacher. Optional for backwards-compat with lessons created before
    * this field was introduced — `wasTaughtBySubstitute` falls back to
@@ -90,14 +90,14 @@ export interface Lesson {
   /** Groups lessons generated together as a recurring series */
   seriesId?: string;
   /**
-   * The weekly LessonBlock this lesson is attributed to (#686). Required for
+   * The weekly LessonBlock this lesson is attributed to (legacy #686). Required for
    * lessons created after blocks shipped — a lesson must fall on the block's
    * weekday and inside its window. Optional/null for grandfathered lessons
    * created before blocks; those surface as "unattributed" for an admin to fix.
    */
   blockId?: string | null;
   /**
-   * The standing arrangement this lesson was materialised from (#797).
+   * The standing arrangement this lesson was materialised from (legacy #797).
    *
    * Absent for one-off lessons and for anything created before schedules
    * existed. Its presence does NOT make the lesson read-only: moving or
@@ -154,14 +154,14 @@ export interface CreateLessonSeriesInput {
   room?: Room;
   /** Snapshot stamp applied to every lesson in the series; set server-side. */
   primaryTeacherAtCreateId?: string;
-  /** Weekly block every lesson in the series is attributed to (#686). */
+  /** Weekly block every lesson in the series is attributed to (legacy #686). */
   blockId?: string | null;
   /**
    * Status to create the lessons in. Defaults to `scheduled`.
    *
    * Set to `rendered` (or `no-show`) to **backfill lessons that already
    * happened** — the path that gets a Hope student's taught-but-unrecorded
-   * lessons into the portal so they can be claimed (#799). Backfilling produces
+   * lessons into the portal so they can be claimed (legacy #799). Backfilling produces
    * ordinary Lesson records, deliberately: everything downstream (payouts,
    * the Hope queue, the room schedule) reads lessons, and a parallel "historical
    * lesson" shape would have to be taught to all of it.
@@ -172,7 +172,7 @@ export interface CreateLessonSeriesInput {
 /**
  * Is this series request a backfill of lessons that already happened?
  *
- * Backfills are exempt from block attribution (#686). That rule exists so *new*
+ * Backfills are exempt from block attribution (legacy #686). That rule exists so *new*
  * lessons cannot be dropped at arbitrary times; a lesson that already happened
  * happened, whether or not a block covers that weekday, and refusing to record
  * it would mean refusing to claim money the studio has earned. Such lessons are
@@ -208,7 +208,7 @@ export function isLessonPast(lesson: Lesson, now: Date = new Date()): boolean {
  * falls back to the student's current `primaryTeacherId` for legacy
  * lessons created before the snapshot field was introduced.
  *
- * Payout attribution in #283 relies on this: substitutes get credit for
+ * Payout attribution in legacy #283 relies on this: substitutes get credit for
  * lessons they actually taught, regardless of which teacher the student
  * is currently assigned to.
  */

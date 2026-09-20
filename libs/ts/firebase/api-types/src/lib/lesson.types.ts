@@ -37,7 +37,7 @@ export interface GetLessonsResponse {
 
 export interface CreateLessonRequest extends CreateLessonInput {
   /**
- * How to attribute this to a block when none already fits (#835).
+ * How to attribute this to a block when none already fits (legacy #835).
  *
  * Omit it for the pre-#835 behaviour: `blockId` must already name a block the
  * lesson fits, or the call is refused. Supply it to have a block derived from
@@ -56,7 +56,7 @@ export interface CreateLessonResponse {
 
 export interface CreateLessonSeriesRequest extends CreateLessonSeriesInput {
   /**
- * How to attribute this to a block when none already fits (#835).
+ * How to attribute this to a block when none already fits (legacy #835).
  *
  * Omit it for the pre-#835 behaviour: `blockId` must already name a block the
  * lesson fits, or the call is refused. Supply it to have a block derived from
@@ -76,7 +76,7 @@ export interface CreateLessonSeriesResponse {
 
 export interface UpdateLessonRequest extends UpdateLessonInput {
   /**
-   * How to attribute this to a block when the new time fits none (#835).
+   * How to attribute this to a block when the new time fits none (legacy #835).
    * Moving a lesson out of its block is the case this exists for.
    */
   blockStrategy?: BlockStrategy;

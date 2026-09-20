@@ -40,7 +40,7 @@ export interface QueryShape {
  * auto-created single-field index. Declaring it is not merely redundant —
  * `firebase deploy --only firestore:indexes` fails the whole job with
  * `HTTP Error: 400, this index is not necessary, configure using single field
- * index controls`, which is how #818 broke the dev index deploy. So we count
+ * index controls`, which is how legacy #818 broke the dev index deploy. So we count
  * distinct fields, and `deriveIndexFields` is the final authority: anything
  * that collapses to fewer than two fields needs no composite index.
  */
@@ -109,7 +109,7 @@ export function deriveIndexFields(chain: QueryShape): IndexField[] {
  *   index controls
  *
  * One bad entry therefore blocks every other index in the file from deploying
- * (#818). The analyzer's main job is "every required index is declared"; this
+ * (legacy #818). The analyzer's main job is "every required index is declared"; this
  * is the other direction — "every declared index is legal" — so a hand-added
  * or pasted entry gets caught at PR time instead of at merge-time deploy.
  */

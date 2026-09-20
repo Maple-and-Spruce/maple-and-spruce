@@ -176,7 +176,7 @@ export const onClassWrite = onDocumentWritten(
             room: afterClass.room ?? null,
             sourceRef,
             // Owner = the instructor teaching it, so the class shows up on
-            // their My Week schedule (#683). Null when unassigned.
+            // their My Week schedule (#60). Null when unassigned.
             ownerInstructorId: afterClass.instructorId ?? null,
             createdBy: 'system',
           });

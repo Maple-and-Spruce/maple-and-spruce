@@ -51,7 +51,7 @@ export { deleteProduct } from '@maple/firebase/maple-functions/delete-product';
 // Sync conflict functions (read-only — resolution is in maple-square codebase)
 export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
 export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
-// POS lesson attribution review queue + config (#628)
+// POS lesson attribution review queue + config (legacy #628)
 export { getPosLessonAttributions } from '@maple/firebase/maple-functions/get-pos-lesson-attributions';
 export { getPosLessonAttributionSummary } from '@maple/firebase/maple-functions/get-pos-lesson-attribution-summary';
 export { resolvePosLessonAttribution } from '@maple/firebase/maple-functions/resolve-pos-lesson-attribution';
@@ -103,7 +103,7 @@ export { updateInvoice } from '@maple/firebase/maple-functions/update-invoice';
 export { recordInvoicePayment } from '@maple/firebase/maple-functions/record-invoice-payment';
 export { deleteInvoice } from '@maple/firebase/maple-functions/delete-invoice';
 
-// Teacher payout aggregation (Phase 4, #283)
+// Teacher payout aggregation (Phase 4, legacy #283)
 export { getTeacherPayouts } from '@maple/firebase/maple-functions/get-teacher-payouts';
 
 // Class functions
@@ -182,7 +182,7 @@ export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
 export { onLessonRenderedInvoice } from '@maple/firebase/maple-functions/on-lesson-rendered-invoice';
 export { getLessonRatesConfig } from '@maple/firebase/maple-functions/get-lesson-rates-config';
-// Teacher My Day + business payment config (#631)
+// Teacher My Day + business payment config (legacy #631)
 export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';
 export { getMyWeek } from '@maple/firebase/maple-functions/get-my-week';
 export { getBusinessPaymentConfig } from '@maple/firebase/maple-functions/get-business-payment-config';
@@ -252,7 +252,7 @@ export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-list
 export { recordSale } from '@maple/firebase/maple-functions/record-sale';
 export { getSales } from '@maple/firebase/maple-functions/get-sales';
 
-// Phase 5: Artist payouts (#313)
+// Phase 5: Artist payouts (legacy #313)
 export { generatePayout } from '@maple/firebase/maple-functions/generate-payout';
 export { markPayoutPaid } from '@maple/firebase/maple-functions/mark-payout-paid';
 export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';
@@ -292,7 +292,7 @@ export { getCraftClubSubscription } from '@maple/firebase/maple-functions/get-cr
 export { requestMusicTogetherManageLink } from '@maple/firebase/maple-functions/request-music-together-manage-link';
 export { startMusicTogetherManageSession } from '@maple/firebase/maple-functions/start-music-together-manage-session';
 
-// Lesson billing rules (#798) — the reusable "every 4 lessons, charged the day
+// Lesson billing rules (#81) — the reusable "every 4 lessons, charged the day
 // before" rules Katie and Nathan attach to students, plus a read of what is
 // going to be charged. Plain Firestore; the job that moves money needs the
 // Square SDK and lives in the maple-square codebase.

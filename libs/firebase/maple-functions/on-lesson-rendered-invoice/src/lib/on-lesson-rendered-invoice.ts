@@ -1,11 +1,11 @@
 /**
- * onLessonRenderedInvoice Firestore Trigger (#629)
+ * onLessonRenderedInvoice Firestore Trigger (legacy #629)
  *
  * When a lesson transitions to `rendered` **or `no-show`**, auto-create + send
  * a private-pay invoice for students flagged `autoInvoice` — so the teacher's
  * single tap is the whole billing action.
  *
- * WHY A NO-SHOW BILLS (#796)
+ * WHY A NO-SHOW BILLS (legacy #796)
  * --------------------------
  * Studio policy: the slot was held and the teacher was there, so a private-pay
  * family is charged exactly as if the lesson had happened. **Hope Scholarship
@@ -26,7 +26,7 @@
  *
  * Guards:
  *  - student must exist, be flagged `autoInvoice`, and NOT be Hope Scholarship
- *    (Hope bills externally via EMA — #282; replicated here since a trigger
+ *    (Hope bills externally via EMA — legacy #282; replicated here since a trigger
  *    doesn't go through the create-invoice callable's guard).
  *  - idempotent: skip if any non-void invoice already has a line item for this
  *    lessonId (line items are inlined, so scan the student's invoices).

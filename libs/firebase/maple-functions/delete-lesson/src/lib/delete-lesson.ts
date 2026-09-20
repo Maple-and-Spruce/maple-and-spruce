@@ -1,7 +1,7 @@
 /**
  * Delete Lesson Cloud Function
  *
- * Admin + lesson-teacher (own lessons only; scoped-roles epic #617). UI
+ * Admin + lesson-teacher (own lessons only; scoped-roles epic #49). UI
  * prefers cancel (updateLesson with status='cancelled') to preserve history;
  * use delete sparingly.
  */

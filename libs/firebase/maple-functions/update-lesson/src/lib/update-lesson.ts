@@ -1,11 +1,11 @@
 /**
  * Update Lesson Cloud Function
  *
- * Admin + lesson-teacher (scoped-roles epic #617). A lesson teacher may only
+ * Admin + lesson-teacher (scoped-roles epic #49). A lesson teacher may only
  * update lessons they teach (ownership check on the lesson's teacherId);
  * admins may update any. Used for reschedule (scheduledAt), duration change,
  * substitute teacher, status transitions (scheduled ↔ cancelled; rendered is
- * set by #282), and notes.
+ * set by legacy #282), and notes.
  */
 import {
   createRoleFunction,
@@ -58,7 +58,7 @@ export const updateLesson = createRoleFunction<
       throw new Error(`Validation failed: ${errorMessages}`);
     }
 
-    // Block enforcement (#686): only when this update reschedules (time/duration)
+    // Block enforcement (legacy #686): only when this update reschedules (time/duration)
     // or (re)attributes a block, AND a block is in effect. Grandfathered lessons
     // with no block stay editable for status/notes without being forced into one.
     const reschedules =
@@ -66,7 +66,7 @@ export const updateLesson = createRoleFunction<
       data.durationMinutes !== undefined;
     const reattributes = data.blockId !== undefined;
     // A `blockStrategy` is itself a reattribution — Katie moving a lesson to a
-    // time no block covers and asking for one to be derived or widened (#835).
+    // time no block covers and asking for one to be derived or widened (legacy #835).
     if ((reschedules || reattributes || data.blockStrategy) && (merged.blockId || data.blockStrategy)) {
       const resolvedBlockId = await resolveLessonBlock({
         strategy: data.blockStrategy,
@@ -81,7 +81,7 @@ export const updateLesson = createRoleFunction<
     }
 
     // Only when the booking actually moves. A status or notes edit must not
-    // be refused because the lesson occupies its own slot (#841), and the
+    // be refused because the lesson occupies its own slot (legacy #841), and the
     // lesson's own calendar event is excluded for the same reason.
     const movesInRoom =
       coercedUpdates.scheduledAt !== undefined ||

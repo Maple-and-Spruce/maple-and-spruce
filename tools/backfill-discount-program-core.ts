@@ -1,5 +1,5 @@
 /**
- * Pure selection logic for the `Discount.program` backfill (#791).
+ * Pure selection logic for the `Discount.program` backfill (legacy #791).
  *
  * No firebase-admin imports — self-contained and unit-testable. The runnable
  * script (`backfill-discount-program.ts`) does the Firestore I/O and calls
@@ -32,7 +32,7 @@ export interface StoredDiscountLite {
  * Program assigned to every document that lacks one.
  *
  * A statement of fact, not a default: Music Together had no discount support
- * before #791, so no pre-existing code could have belonged to it. Assigning
+ * before legacy #791, so no pre-existing code could have belonged to it. Assigning
  * the other way would make old Maple & Spruce codes redeemable against
  * Stephanie's separate Square account.
  */

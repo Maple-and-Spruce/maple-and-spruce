@@ -1,5 +1,5 @@
 /**
- * Standing lesson schedules (#797).
+ * Standing lesson schedules (legacy #797).
  *
  * Katie and Nathan think in standing arrangements — "Nathan teaches Devin on
  * Tuesdays at 4:00, thirty minutes, in the Spruce Room". The portal made them
@@ -58,7 +58,7 @@ export interface StudentLessonSchedule {
   id: string;
   studentId: string;
   teacherId: string;
-  /** The weekly block this standing slot sits inside (#686). */
+  /** The weekly block this standing slot sits inside (legacy #686). */
   blockId: string;
   /** Weekday, 0 (Sun) – 6 (Sat), in the shop timezone. */
   dayOfWeek: number;
@@ -69,7 +69,7 @@ export interface StudentLessonSchedule {
    *
    * Katie has biweekly students and worked around the gap by hand-creating a
    * lesson on each off-week and cancelling it, so the materialiser would skip
-   * that date (#837). That is ~26 cancellations a year per student, and it
+   * that date (legacy #837). That is ~26 cancellations a year per student, and it
    * fails silently the first week she is too busy.
    *
    * Two students can alternate in one hour — Marisol and Odette share Tuesday
@@ -223,7 +223,7 @@ export const SCHEDULE_INTERVAL_WEEKS = [1, 2, 3, 4] as const;
 /**
  * Is this a usable cadence? One definition, shared by both callables and the
  * dialog — a 3-week "biweekly" typo would quietly halve a student's lessons,
- * and #798 bills from the lessons that exist.
+ * and #81 bills from the lessons that exist.
  */
 export function isValidScheduleInterval(value: unknown): boolean {
   return (

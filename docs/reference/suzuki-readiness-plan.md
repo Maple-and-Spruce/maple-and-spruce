@@ -1,6 +1,6 @@
 # Suzuki lessons readiness — execution plan
 
-> Standing plan for epic **#793**. Written so an agent can pick up the next slice and ship it
+> Standing plan for epic **#80**. Written so an agent can pick up the next slice and ship it
 > without being orchestrated by hand. Read this, pick the next unblocked slice, do it, open the PR.
 
 ---
@@ -25,30 +25,30 @@ Do them in order unless a slice says otherwise. Each is one PR.
 
 | # | Issue | Slice | Status | Note |
 |---|---|---|---|---|
-| 1 | #794 | Suzuki intake form + Meta/GA4 attribution | **merged** (PR #803) | the 4 manual steps still outstanding |
-| 2 | #795 | Persist lesson inquiries + `/leads` queue | **in review** (PR #808) | needs `TALLY_API_KEY` in Secret Manager |
-| 3 | #805 | Lesson action UX: primary action + overflow menu + per-action progress | **merged** (PR #809) | `/leads` already follows this pattern |
-| 4 | #796 | `no-show` lesson status + billing behaviour | **merged** (PR #810) | unblocked #799 |
-| 5 | #799 | Hope services-rendered tracking + submission queue + historical entry | **merged** (PR #813) | the revenue |
-| 6 | #807 | Needs Attention queue | **merged** (PR #815) | carries the Hope row |
-| 7 | #797 | Standing lesson schedules — PR 1 merged (#818), **PR 2 editing UI in review** | in review | — |
-| 8 | #798 | Card-on-file autopay + reusable billing rules | ready | easier after #797 |
-| 9 | #804 | Hope portal-session view + payouts at *paid* + editable rates | partly blocked | backfill Q only |
+| 1 | legacy #794 | Suzuki intake form + Meta/GA4 attribution | **merged** (legacy PR #803) | the 4 manual steps still outstanding |
+| 2 | legacy #795 | Persist lesson inquiries + `/leads` queue | **in review** (legacy PR #808) | needs `TALLY_API_KEY` in Secret Manager |
+| 3 | legacy #805 | Lesson action UX: primary action + overflow menu + per-action progress | **merged** (legacy PR #809) | `/leads` already follows this pattern |
+| 4 | legacy #796 | `no-show` lesson status + billing behaviour | **merged** (legacy PR #810) | unblocked legacy #799 |
+| 5 | legacy #799 | Hope services-rendered tracking + submission queue + historical entry | **merged** (legacy PR #813) | the revenue |
+| 6 | legacy #807 | Needs Attention queue | **merged** (legacy PR #815) | carries the Hope row |
+| 7 | legacy #797 | Standing lesson schedules — PR 1 merged (legacy #818), **PR 2 editing UI in review** | in review | — |
+| 8 | #81 | Card-on-file autopay + reusable billing rules | ready | easier after legacy #797 |
+| 9 | #83 | Hope portal-session view + payouts at *paid* + editable rates | partly blocked | backfill Q only |
 
 **Order set 2026-09-04** from two answers: the Suzuki ad goes live in about two weeks, and among
 everything else the unrecorded Hope revenue matters most.
 
-**What the ad actually needs is #794, not #795.** Merging #794 and doing its four manual steps is what
-makes the spend measurable; #795 is what stops leads rotting in an inbox once volume arrives. If the
-ad has to go on before #795 lands, that is survivable — it is how the site works today — but do not
+**What the ad actually needs is legacy #794, not legacy #795.** Merging legacy #794 and doing its four manual steps is what
+makes the spend measurable; legacy #795 is what stops leads rotting in an inbox once volume arrives. If the
+ad has to go on before legacy #795 lands, that is survivable — it is how the site works today — but do not
 let it run long that way.
 
-**The path to Hope revenue is #805 → #796 → #799.** #796 is the load-bearing one: without a `no-show`
+**The path to Hope revenue is legacy #805 → legacy #796 → legacy #799.** legacy #796 is the load-bearing one: without a `no-show`
 status, a Hope lesson nobody attended has to be recorded as `cancelled` (losing the fact) or
-`rendered` (and would be submitted to EMA as a service never rendered). #805 comes first only because
-#796 adds a fourth action to a row of unlabeled icon buttons.
+`rendered` (and would be submitted to EMA as a service never rendered). legacy #805 comes first only because
+legacy #796 adds a fourth action to a row of unlabeled icon buttons.
 
-**Persistence is a scheduled poll, not a webhook** (settled in #795). The webhook path is one-shot
+**Persistence is a scheduled poll, not a webhook** (settled in legacy #795). The webhook path is one-shot
 and unretryable, has to keep `maple-webhooks` tiny, and cannot backfill history. Analytics stays on
 the webhook; anything that only has to be *right* rather than *instant* polls the Tally API instead.
 The API shape is **not** the webhook shape — see the header comment on `map-submission.ts` before
@@ -96,7 +96,7 @@ Follow the repo's own rules; the ones this epic keeps running into:
 - A Storybook `play` story for any React UI.
 - **Look at it.** Storybook or the running app. A green suite is not evidence the thing works.
 - Update `docs/sessions/SESSION.md`, and `docs/reference/deployed-functions.md` if a function was added.
-- Tick the slice's box on #793 and update the board above.
+- Tick the slice's box on #80 and update the board above.
 
 ### Stop and ask when
 
@@ -118,16 +118,16 @@ Settled. Do not reopen without a reason.
   telling Meta a $130/month lead apart from an email signup. Browser and server halves must always
   agree; they share one `eventID` and Meta keeps the first event it sees.
 - **Invoice stays the payment locus.** No new ledger, no generic transactions collection. Venmo, POS
-  and card-on-file are `paymentRecord` sources on the existing model (#626).
+  and card-on-file are `paymentRecord` sources on the existing model (#51).
 - **Hope never flows through `Invoice`.** The guard in `create-invoice.ts` is load-bearing; Hope
   bills externally via the EMA portal. Model Hope submission state alongside, not through it.
-- **Autopay is a rule, not a per-student toggle** (#798). Katie and Nathan already save cards in
+- **Autopay is a rule, not a per-student toggle** (#81). Katie and Nathan already save cards in
   Square and charge by hand; the requirement is reusable, overridable rules with smart defaults, not
   a checkbox.
 - **Materialise, then drain.** Recurring things become documents (lesson series, MT scheduled
   charges) and a job processes them. Billing rules generate scheduled charges the same way.
 - **The recurring arrangement is a first-class object; concrete rows are a materialised window**
-  (#797). Katie and Nathan think in standing slots, not lesson rows, and the row-only model is why a
+  (legacy #797). Katie and Nathan think in standing slots, not lesson rows, and the row-only model is why a
   series silently runs out and why the Spruce Room is only visible as far as someone has materialised.
   Concrete `Lesson` records stay — rendered status, invoice line items, payouts, block attribution,
   POS attribution, `/my-day` and derived room events all read one — they just stop being the thing a
@@ -136,17 +136,17 @@ Settled. Do not reopen without a reason.
   Suzuki. Anything Hope-shaped applies across all music lessons.
 - **`rendered` and `no-show` are different facts, not two labels for one billing outcome.** Both
   charge a private-pay family; only `rendered` is ever submittable to Hope. That distinction has to
-  survive from #796 into #799's queue structurally, not as a UI filter.
+  survive from legacy #796 into legacy #799's queue structurally, not as a UI filter.
 - **`rendered` and `no-show` are different facts, and `isSubmittableToHope` is the only
-  Hope-billing test** (#796). Private pay charges for both; Hope charges for neither a no-show nor
+  Hope-billing test** (legacy #796). Private pay charges for both; Hope charges for neither a no-show nor
   the family. Never re-derive "may Hope be billed for this" — call the helper, so the payout
   aggregator and the EMA queue cannot drift apart.
 - **Row actions follow `StudentList`, not `LessonList`.** A single labeled primary action plus a
   `MoreVert` overflow menu, with per-action pending state. Unlabeled inline icon buttons for
-  state-changing actions are the pattern being removed (#805) — do not add more of them.
+  state-changing actions are the pattern being removed (legacy #805) — do not add more of them.
 - **Site framing is a directory of independent teachers.** Future lesson teachers are 1099
   contractors and Nathan is the sole W-2 exception; "Maple & Spruce assigns students" is a
-  behavioral-control signal. See #669 and the contractor model notes.
+  behavioral-control signal. See #56 and the contractor model notes.
 
 ---
 
@@ -156,7 +156,7 @@ Blocking where marked. Ask, don't guess.
 
 | Question | Blocks | Why it can't be decided in code |
 |---|---|---|
-| On moving Hope payouts from *rendered* to *paid*: backfill existing rendered lessons as paid, or start clean? | **#804** | Changes historical payout figures. |
+| On moving Hope payouts from *rendered* to *paid*: backfill existing rendered lessons as paid, or start clean? | **#83** | Changes historical payout figures. |
 
 
 ### Answered
@@ -164,10 +164,10 @@ Blocking where marked. Ask, don't guess.
 | Question | Answer (David, 2026-09-03/04) |
 |---|---|
 | Is the `/suzuki` offer a free trial lesson or a no-cost meeting? | **A no-cost interview.** Not as strong a selling point as a trial lesson, but it is what the studio offers, and the live page and form copy already say it correctly. The page has to carry more of the persuasive weight as a result. |
-| What format does the EMA portal want for submissions? | **There is no export.** David works the EMA portal by hand, entering lessons and recording payments. #804 is therefore about making that manual session fast (group by student, stable order, copy affordances, tick off as you go), not about generating a file. Never build a CSV for this. |
-| Is a no-show charged? | **Yes for private pay. For Hope, charged to nobody** — Hope pays only for services rendered and the family does not owe it privately. The studio absorbs it, so it should be visible rather than silent. See #796. |
-| Can Hope be billed for services rendered before the guitar listing was approved? | **Yes, Hope pays backwards.** So historical entry (#799) is revenue recovery, not bookkeeping. A lesson rendered months ago is a normal `pending` submission and the queue must not de-prioritise it by age. |
-| CPA (Danny Fink) on agent-vs-reseller revenue treatment. | #672, not this epic | Already tracked on #669. |
+| What format does the EMA portal want for submissions? | **There is no export.** David works the EMA portal by hand, entering lessons and recording payments. #83 is therefore about making that manual session fast (group by student, stable order, copy affordances, tick off as you go), not about generating a file. Never build a CSV for this. |
+| Is a no-show charged? | **Yes for private pay. For Hope, charged to nobody** — Hope pays only for services rendered and the family does not owe it privately. The studio absorbs it, so it should be visible rather than silent. See legacy #796. |
+| Can Hope be billed for services rendered before the guitar listing was approved? | **Yes, Hope pays backwards.** So historical entry (legacy #799) is revenue recovery, not bookkeeping. A lesson rendered months ago is a normal `pending` submission and the queue must not de-prioritise it by age. |
+| CPA (Danny Fink) on agent-vs-reseller revenue treatment. | #59, not this epic | Already tracked on #56. |
 
 ---
 

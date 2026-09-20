@@ -285,7 +285,7 @@ describe('syncClassToWebflow Trigger', () => {
   });
 
   // ===========================================================================
-  // The fields the CMS-native related-classes list depends on (#776)
+  // The fields the CMS-native related-classes list depends on (legacy #776)
   // ===========================================================================
 
   describe('Related-classes fields on the synced item', () => {

@@ -1,5 +1,5 @@
 /**
- * Business payment config (#631).
+ * Business payment config (legacy #631).
  *
  * Small admin-configured settings for how the studio takes in-person payment.
  * Today: the business Venmo handle, rendered as a scannable QR on the teacher

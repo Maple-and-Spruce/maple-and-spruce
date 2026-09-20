@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LessonBlockForm — create/edit a weekly lesson block (#689).
+ * LessonBlockForm — create/edit a weekly lesson block (legacy #689).
  *
  * A block is a weekly constraint window (teacher + weekday + start/end time)
  * that lessons must fall inside. Times are entered as shop wall-clock (ET) and

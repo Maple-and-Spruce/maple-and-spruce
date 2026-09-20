@@ -252,7 +252,7 @@ describe('createMusicTogetherRegistration', () => {
 
     expect(mocks.upsertByEmail).toHaveBeenCalled();
     // The STORE-intent verification token must be threaded into the card vault —
-    // real Square rejects cards.create without it (#622).
+    // real Square rejects cards.create without it (legacy #622).
     expect(mocks.createCardOnFile).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceId: 'cnon:card-nonce-abc',
@@ -537,7 +537,7 @@ describe('createMusicTogetherRegistration', () => {
       expect(mail.data.firstClassDate).toBe('');
     });
   });
-  // ── Discount codes (#791 pilot half-off) ──────────────────────────────
+  // ── Discount codes (legacy #791 pilot half-off) ──────────────────────────────
   //
   // The promise is "half off tuition", not "half off the first payment", so
   // the code has to reach the scheduled Week-5 charge too. These lock that in.

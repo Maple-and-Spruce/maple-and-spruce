@@ -1,5 +1,5 @@
 /**
- * Hope Scholarship submission tracking (#799).
+ * Hope Scholarship submission tracking (legacy #799).
  *
  * WV Hope students are invoiced through the EMA portal, not through Square, so
  * `Invoice` is deliberately closed to them — `createInvoice` throws for a Hope
@@ -22,7 +22,7 @@
  * SERVICES RENDERED ONLY
  * ----------------------
  * Hope pays only for services actually rendered. A `no-show` is charged to
- * nobody (#796) and must never reach a submission — enforced server-side
+ * nobody (legacy #796) and must never reach a submission — enforced server-side
  * through `isSubmittableToHope`, not by a filter in a UI that could be
  * forgotten or bypassed.
  */

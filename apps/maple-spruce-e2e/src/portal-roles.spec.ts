@@ -6,7 +6,7 @@ import { signIn } from './sign-in';
  * Admin-portal role scoping, end-to-end through the real Next.js app against
  * the Firebase emulators (auth + firestore + functions with the PR's own
  * code). The first browser-level proof that the scoped-roles wiring
- * (RolesProvider → getMyRoles → RoleGuard + nav filtering, epic #617) holds in
+ * (RolesProvider → getMyRoles → RoleGuard + nav filtering, epic #49) holds in
  * the assembled app — not just in unit/Storybook/integration layers.
  *
  * Seeding (global-setup.ts): ADMIN gets an admins/{uid} doc; MT_TEACHER gets a

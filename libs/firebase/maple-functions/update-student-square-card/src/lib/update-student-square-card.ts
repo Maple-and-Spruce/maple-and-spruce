@@ -1,5 +1,5 @@
 /**
- * updateStudentSquareCard (#798) — link a card on file to a student, or unlink.
+ * updateStudentSquareCard (#81) — link a card on file to a student, or unlink.
  *
  * Both directions in one endpoint because the interesting part is identical:
  * this is the field the billing job charges against, so it is worth being

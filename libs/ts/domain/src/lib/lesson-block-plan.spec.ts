@@ -1,5 +1,5 @@
 /**
- * Deriving a block from what is being scheduled (#835).
+ * Deriving a block from what is being scheduled (legacy #835).
  *
  * The thing these guard is not "does the maths work" — it is that a derived
  * block never claims more availability than the thing it came from. A block is

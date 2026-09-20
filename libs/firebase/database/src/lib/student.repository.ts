@@ -40,7 +40,7 @@ function docToStudent(
     autoInvoice: data.autoInvoice ?? false,
     lessonRateCents: data.lessonRateCents,
     // Card on file. Katie and Nathan save the card in Square in person; the
-    // portal links to it rather than making the family re-enter it (#798).
+    // portal links to it rather than making the family re-enter it (#81).
     squareCustomerId: data.squareCustomerId,
     squareCardId: data.squareCardId,
     cardBrand: data.cardBrand,
@@ -92,7 +92,7 @@ export const StudentRepository = {
    * caller's part — pass an already-normalized email). Returns an array
    * because siblings share a parent/guardian email; callers auto-attribute
    * only when exactly one student matches and route ambiguous (0 or >1) cases
-   * to human review. See #628.
+   * to human review. See legacy #628.
    */
   async findByPrimaryContactEmail(email: string): Promise<Student[]> {
     const snapshot = await db
@@ -123,7 +123,7 @@ export const StudentRepository = {
   },
 
   /**
-   * Attach a card on file to a student, or detach whatever is attached (#798).
+   * Attach a card on file to a student, or detach whatever is attached (#81).
    *
    * Its own method rather than a plain `update` because **detaching has to
    * delete the fields**, and the generic update path cannot: the Admin SDK

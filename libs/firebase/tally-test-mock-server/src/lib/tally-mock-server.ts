@@ -4,7 +4,7 @@
  * Serves `GET /forms/{formId}/submissions` for `syncLessonInquiries`, the one
  * function that had no integration coverage at all — which is how a mapping
  * bug reached production and stored `contactName: "Unknown"` on all 14 leads
- * (#816). Unit tests could not catch it because their fixtures were written
+ * (legacy #816). Unit tests could not catch it because their fixtures were written
  * from the documented shape rather than a real response, so they asserted the
  * assumption that was wrong.
  *

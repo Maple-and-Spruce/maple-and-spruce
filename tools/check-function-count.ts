@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Cloud Function count ratchet (ADR-029, epic #724).
+ * Cloud Function count ratchet (ADR-029, epic #61).
  *
  * We deploy one Cloud Run service per function library under
  * `libs/firebase/maple-functions/`. At 215 of them a full deploy needs >=4
@@ -48,7 +48,7 @@ export function evaluate(count: number, baseline: number): Verdict {
       message:
         `Function count went UP: ${count} (baseline ${baseline}).\n\n` +
         `Adding a new single-purpose Cloud Function contradicts ADR-029 — we are\n` +
-        `consolidating endpoints into domain routers (#724) because the gen-2 write\n` +
+        `consolidating endpoints into domain routers (#61) because the gen-2 write\n` +
         `quota (60/60s) cannot be raised and already floors a full deploy at ~4 min.\n\n` +
         `Add the endpoint as a route on the relevant domain router instead. If it\n` +
         `genuinely needs its own function (materially different memory, timeout, or\n` +

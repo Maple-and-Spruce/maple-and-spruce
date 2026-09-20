@@ -393,7 +393,7 @@ export const EmptyDisablesExport: Story = {
 };
 
 /**
- * Waiving a scheduled installment (#791 pilot half-off). Drives the full flow:
+ * Waiving a scheduled installment (legacy #791 pilot half-off). Drives the full flow:
  * the per-charge Waive button names its amount, the confirm dialog states that
  * nothing is refunded, and the typed reason reaches the callback with the right
  * charge id. Also asserts the button is offered ONLY for a `scheduled` charge —

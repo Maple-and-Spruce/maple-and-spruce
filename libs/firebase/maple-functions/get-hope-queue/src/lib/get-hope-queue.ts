@@ -1,5 +1,5 @@
 /**
- * getHopeQueue Cloud Function (#799)
+ * getHopeQueue Cloud Function (legacy #799)
  *
  * "What have we taught a Hope student and not yet been paid for?" — a question
  * that previously had no answer anywhere in the portal.
@@ -10,7 +10,7 @@
  *
  * NO-SHOWS ARE EXCLUDED STRUCTURALLY. The lesson query asks for `rendered`, and
  * `isSubmittableToHope` is the only test used anywhere for "may Hope be billed
- * for this" (#796). Hope pays for services rendered; a no-show is charged to
+ * for this" (legacy #796). Hope pays for services rendered; a no-show is charged to
  * nobody, and that must not depend on a UI remembering to filter.
  */
 import { Functions, Role } from '@maple/firebase/functions';

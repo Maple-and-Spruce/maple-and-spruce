@@ -1,5 +1,5 @@
 /**
- * Get My Day Lessons Cloud Function (#631)
+ * Get My Day Lessons Cloud Function (legacy #631)
  *
  * The signed-in lesson teacher's own lessons for a day, each enriched with the
  * student name and the invoice tied to the lesson — assembled server-side

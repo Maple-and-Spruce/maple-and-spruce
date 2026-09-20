@@ -1,5 +1,5 @@
 /**
- * A future card-on-file charge for a block of lessons (#798).
+ * A future card-on-file charge for a block of lessons (#81).
  *
  * Deliberately the same shape as `MusicTogetherScheduledCharge`: a status
  * lease, a stable idempotency key derived from the document id, and a cancel
@@ -74,11 +74,11 @@ export interface LessonScheduledCharge {
   /**
    * How the charge came about. Absent means the daily billing job planned it;
    * `manual` means a human took it on the spot, usually a family paying ahead
-   * for a block of lessons (#864).
+   * for a block of lessons (legacy #864).
    *
    * It is the same document either way, deliberately — a manual charge is the
    * same money for the same teaching, and a second ledger for it would split
-   * every downstream reader in two (epic #626).
+   * every downstream reader in two (epic #51).
    */
   source?: LessonChargeSource;
   /** Who took it, when a human did. */
@@ -122,7 +122,7 @@ export function isLessonChargeDue(
  * bill a family for lessons already settled one way or another.
  *
  * `failed` is the exception on purpose. It collected nothing, so those lessons
- * are still owed — and a human retrying by hand (#864) is exactly the intended
+ * are still owed — and a human retrying by hand (legacy #864) is exactly the intended
  * recovery. It keeps its document and its idempotency key; the retry reuses
  * both, so a charge that actually went through at Square comes back as the
  * original payment rather than a second one.

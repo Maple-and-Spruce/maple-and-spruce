@@ -1,5 +1,5 @@
 /**
- * Biweekly standing arrangements, end to end (#837).
+ * Biweekly standing arrangements, end to end (legacy #837).
  *
  * The case these exist for is Katie's real Tuesday: Marisol and Odette alternate
  * in the 5pm hour. Before cadence support the only way to express that was to
@@ -8,7 +8,7 @@
  *
  * So what is proven here is not "does 2 mean 2". It is that two alternating
  * arrangements never land on the same week, which is the failure that would put
- * two families in the room at once and, once #798 charges cards, bill one for
+ * two families in the room at once and, once #81 charges cards, bill one for
  * the other's lesson.
  */
 import {
@@ -74,7 +74,7 @@ async function lessonsFor(studentId: string, idToken: string) {
     .sort();
 }
 
-describe('Standing arrangement cadence (#837)', () => {
+describe('Standing arrangement cadence (legacy #837)', () => {
   let adminUser: TestUser;
   let blockId: string;
 
@@ -267,14 +267,14 @@ describe('Standing arrangement cadence (#837)', () => {
 });
 
 /**
- * Reading arrangements across the whole studio (#838).
+ * Reading arrangements across the whole studio (legacy #838).
  *
  * The day column shows one day for *all* teachers, so the read behind it has to
  * actually return all of them. It did not: `getStudentLessonSchedules` scoped
  * by the caller's linked instructor record without checking for admin, so an
  * admin who also teaches — which Katie does — silently saw only her own.
  */
-describe('getStudentLessonSchedules scope (#838)', () => {
+describe('getStudentLessonSchedules scope (legacy #838)', () => {
   const TEACHING_ADMIN = 'instructor-teaching-admin';
   const OTHER_TEACHER = 'instructor-someone-else';
   let adminUser: TestUser;

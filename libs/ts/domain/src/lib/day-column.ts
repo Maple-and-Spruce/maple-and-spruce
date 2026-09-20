@@ -1,5 +1,5 @@
 /**
- * The day column (#838) — Katie's real working view.
+ * The day column (legacy #838) — Katie's real working view.
  *
  * Her source of truth is a spreadsheet laid out as one day, top to bottom, in
  * time order, with **open slots sitting in the sequence** alongside students:
@@ -251,7 +251,7 @@ export function buildDayColumn(
   const dayBlocks = blocks.filter(
     (b) =>
       b.dayOfWeek === weekday &&
-      !b.onDate && // a one-off block is not part of a typical week (#835)
+      !b.onDate && // a one-off block is not part of a typical week (legacy #835)
       (!teacherId || b.teacherId === teacherId)
   );
 

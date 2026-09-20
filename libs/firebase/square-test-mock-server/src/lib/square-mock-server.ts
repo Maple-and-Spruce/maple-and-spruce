@@ -34,7 +34,7 @@ interface ParsedRequest {
    * Parsed query string. Needed by any endpoint whose behaviour depends on it
    * — a paginated list, most of all: without this a mock cannot read back the
    * cursor it just issued, so it hands out the same page forever and the
-   * Square SDK's Page iterator never terminates (#798).
+   * Square SDK's Page iterator never terminates (#81).
    */
   query: Record<string, string>;
   body: unknown;

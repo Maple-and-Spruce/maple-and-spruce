@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * The `/leads` queue (#795).
+ * The `/leads` queue (legacy #795).
  *
  * Built to be *cleared*, not browsed. Each row shows everything needed to make
  * the next call without opening anything — name, how to reach them, the child's
  * age, when they can come in, whether they are on Hope — and carries one
  * labelled primary action plus an overflow for the rest.
  *
- * That action shape is the pattern #805 is moving the lesson surfaces onto:
+ * That action shape is the pattern legacy #805 is moving the lesson surfaces onto:
  * a labelled primary button, a `MoreVert` overflow, and **per-row** pending
  * state. A page-wide `busy` boolean (which `/my-day` still has) freezes every
  * row while one is saving, and unlabelled icon buttons make a state change a
@@ -46,7 +46,7 @@ export interface LessonInquiryListProps {
   /** Opens the enrol flow, which needs a student and so cannot be one click. */
   onEnroll?: (inquiry: LessonInquiry) => void;
   /**
-   * Opens the create-student flow seeded from this inquiry (#819).
+   * Opens the create-student flow seeded from this inquiry (legacy #819).
    *
    * Distinct from `onEnroll`, which links to a student that already exists.
    * This is the path for the far more common case: the family said yes and

@@ -1,5 +1,5 @@
 /**
- * Hope submission API contracts (#799).
+ * Hope submission API contracts (legacy #799).
  */
 import type {
   HopeQueueEntry,

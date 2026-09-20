@@ -376,7 +376,7 @@ export const HopeScholarshipToggles: Story = {
 };
 
 // ============================================================
-// PREFILL FROM AN INQUIRY (#819)
+// PREFILL FROM AN INQUIRY (legacy #819)
 // ============================================================
 
 /**

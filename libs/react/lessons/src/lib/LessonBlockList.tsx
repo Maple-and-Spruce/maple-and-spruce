@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LessonBlockList — weekly lesson blocks grouped by teacher (#689).
+ * LessonBlockList — weekly lesson blocks grouped by teacher (legacy #689).
  */
 import {
   Alert,

@@ -1,5 +1,5 @@
 /**
- * Get Lesson Rates Config Cloud Function (#629)
+ * Get Lesson Rates Config Cloud Function (legacy #629)
  *
  * Returns the admin-configured default private-pay lesson rates by length.
  */

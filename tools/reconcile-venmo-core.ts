@@ -1,5 +1,5 @@
 /**
- * Pure matching core for the Venmo statement reconciliation tool (#630).
+ * Pure matching core for the Venmo statement reconciliation tool (legacy #630).
  *
  * No firebase-admin / no @maple imports — self-contained and unit-testable.
  * The runnable script (`reconcile-venmo.ts`) does the Firestore I/O and calls

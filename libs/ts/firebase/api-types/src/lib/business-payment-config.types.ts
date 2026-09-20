@@ -1,5 +1,5 @@
 /**
- * Business Payment Config API types (#631) — the studio Venmo handle.
+ * Business Payment Config API types (legacy #631) — the studio Venmo handle.
  */
 import type { BusinessPaymentConfig } from '@maple/ts/domain';
 

@@ -1,5 +1,5 @@
 /**
- * Update Lesson Block Cloud Function (#686)
+ * Update Lesson Block Cloud Function (legacy #686)
  *
  * Admin-only. Edits a block's weekday/window/label (the teacher can't be
  * reassigned — delete + recreate instead). Existing lessons keep their

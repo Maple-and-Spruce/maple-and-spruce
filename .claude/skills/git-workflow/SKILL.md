@@ -58,7 +58,7 @@ Patterns:
 
 [optional body]
 
-[Fixes #123]
+[Fixes legacy #123]
 ```
 
 **Types:** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
@@ -70,8 +70,8 @@ Patterns:
 
 **Examples:**
 ```bash
-git commit -m "feat: add artist creation form (#2)"
-git commit -m "fix: correct commission calculation (#5)"
+git commit -m "feat: add artist creation form (legacy #2)"
+git commit -m "fix: correct commission calculation (legacy #5)"
 ```
 
 ## Pull Request Process

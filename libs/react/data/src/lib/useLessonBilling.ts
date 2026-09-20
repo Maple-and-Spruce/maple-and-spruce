@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Billing rules and scheduled charges (#798).
+ * Billing rules and scheduled charges (#81).
  *
  * One read serves both, because a charge is unreadable without the rule that
  * produced it — that is why `getLessonBilling` returns them together.
@@ -106,7 +106,7 @@ export function useLessonBilling(studentId?: string) {
   );
 
   /**
-   * Take money now, for a block of lessons a family is paying ahead for (#864).
+   * Take money now, for a block of lessons a family is paying ahead for (legacy #864).
    *
    * Resolves to the error message when it is refused, and null when the money
    * moved — the caller needs to know which, because a declined card is

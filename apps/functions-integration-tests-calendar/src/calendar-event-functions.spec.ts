@@ -72,7 +72,7 @@ describe('Calendar Event Functions', () => {
     await clearFirestoreEmulator();
   });
 
-  describe('Lesson-teacher calendar scoping (#617): book rooms only', () => {
+  describe('Lesson-teacher calendar scoping (#49): book rooms only', () => {
     // A pure lesson teacher may book a room but not manage arbitrary calendar
     // events (their lessons are derived). Additive on the suite's admin seed.
     let teacher: TestUser;

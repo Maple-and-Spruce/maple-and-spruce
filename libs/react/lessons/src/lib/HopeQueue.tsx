@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The Hope submission queue (#799).
+ * The Hope submission queue (legacy #799).
  *
  * Answers one question on one screen: **what have we taught a Hope student and
  * not yet been paid for?** Before this, that lived only in the EMA portal and in

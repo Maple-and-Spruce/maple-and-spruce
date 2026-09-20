@@ -1,5 +1,5 @@
 /**
- * Refuse to put two things in the room at once (#841).
+ * Refuse to put two things in the room at once (legacy #841).
  *
  * Reads `CalendarEvent`, which is the room-occupancy model: `onLessonWrite`
  * upserts one per scheduled/rendered/no-show lesson, the room-booking page

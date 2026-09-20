@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * BlockAttributionChoice (#835) — what to do when no block covers the time.
+ * BlockAttributionChoice (legacy #835) — what to do when no block covers the time.
  *
- * Every lesson must sit inside a `LessonBlock` (#686). Until now, picking a
+ * Every lesson must sit inside a `LessonBlock` (legacy #686). Until now, picking a
  * time nothing covered was a dead end: the dialog said the lesson did not fit
  * and Katie had to leave, widen the block on the Lesson Blocks page, and come
  * back. A 6:00–6:30 slot is exactly that — Katie's Tuesday block ends at

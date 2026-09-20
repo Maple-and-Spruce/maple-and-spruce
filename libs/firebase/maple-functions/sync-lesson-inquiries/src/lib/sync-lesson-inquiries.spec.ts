@@ -98,7 +98,7 @@ describe('runSyncLessonInquiries — no forms configured', () => {
 });
 
 /**
- * REPAIRING ROWS THAT ARE ALREADY STORED (#816)
+ * REPAIRING ROWS THAT ARE ALREADY STORED (legacy #816)
  *
  * `createIfAbsent` made "already stored" mean "never written again", which is
  * what protected Katie's statuses — and what froze 14 leads at

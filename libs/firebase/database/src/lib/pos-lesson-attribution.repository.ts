@@ -5,7 +5,7 @@
  * student (`posLessonAttributions` collection). Written by `processPosSale`
  * when a configured lesson catalog item is rung up; resolved either
  * automatically (customer email → student) or by a human from the review
- * queue (#628).
+ * queue (legacy #628).
  *
  * Doc-id is deterministic — `${paymentId}__${catalogObjectId}` — so a Square
  * webhook retry (which re-runs `processPosSale`) never creates a duplicate

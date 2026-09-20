@@ -1,5 +1,5 @@
 /**
- * Hope Submission Repository (#799)
+ * Hope Submission Repository (legacy #799)
  *
  * What has been claimed from the EMA portal for a rendered Hope lesson.
  *

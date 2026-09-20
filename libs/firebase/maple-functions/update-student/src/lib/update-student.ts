@@ -1,7 +1,7 @@
 /**
  * Update Student Cloud Function
  *
- * Admin + lesson-teacher (own students only; scoped-roles epic #617).
+ * Admin + lesson-teacher (own students only; scoped-roles epic #49).
  */
 import {
   createRoleFunction,

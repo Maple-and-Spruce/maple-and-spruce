@@ -8,7 +8,7 @@
 # Why this isn't just `pnpm audit` inline any more: pnpm POSTs the entire
 # dependency tree (2,380 packages) to npm's /-/npm/v1/security/advisories/bulk
 # endpoint. That call times out often enough to fail PRs on its own -- it took
-# down the Security Audit job on #801 after 4m42s, and reproduced twice locally
+# down the Security Audit job on legacy #801 after 4m42s, and reproduced twice locally
 # on 2026-09-04. pnpm retries it 3 times internally and then throws
 # `TimeoutError: The operation was aborted due to timeout`, exit code 1, which
 # is indistinguishable at the shell from "we found a critical CVE".

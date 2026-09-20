@@ -394,5 +394,5 @@ For checkout/payment processing, we'll use **Square Web Payments SDK** embedded 
 - [Webflow JS SDK](https://github.com/webflow/js-webflow-api)
 - [Webflow Rate Limits](https://developers.webflow.com/data/reference/rate-limits)
 - [Webflow Authentication](https://developers.webflow.com/data/reference/authentication)
-- [Epic #93 - Public Website](https://github.com/mapleandspruce/maple-and-spruce/issues/93)
+- [legacy Epic #93 - Public Website](https://github.com/mapleandspruce/maple-and-spruce/issues/93)
 - Phase 2 roadmap in AGENTS.md

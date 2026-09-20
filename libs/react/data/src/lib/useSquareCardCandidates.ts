@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The cards already on file in Square, for linking one to a student (#798).
+ * The cards already on file in Square, for linking one to a student (#81).
  *
  * Read once per student page. The ranking that turns these into suggestions is
  * `rankCardsForStudent` in the domain, so the same rules run here and on the

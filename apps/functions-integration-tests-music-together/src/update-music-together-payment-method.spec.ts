@@ -200,7 +200,7 @@ describe('updateMusicTogetherPaymentMethod — end-to-end card replacement', () 
     const createReq = cardReqs.find((r) => r.path === '/v2/cards');
     expect(createReq).toBeDefined();
     // The card vault request must carry the STORE-intent verification token —
-    // the mock now enforces this, mirroring real Square (#622).
+    // the mock now enforces this, mirroring real Square (legacy #622).
     expect(
       (createReq?.body as Record<string, unknown>)['verification_token']
     ).toBe('verf:store-token');

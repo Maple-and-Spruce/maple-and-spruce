@@ -1,5 +1,5 @@
 /**
- * Needs Attention API contracts (#807).
+ * Needs Attention API contracts (legacy #807).
  */
 import type { NeedsAttentionGroup } from '@maple/ts/domain';
 

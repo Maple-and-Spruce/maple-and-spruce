@@ -143,7 +143,7 @@ describe('Lesson domain helpers', () => {
   });
 });
 
-describe('no-show status (#796)', () => {
+describe('no-show status (legacy #796)', () => {
   // A no-show is its own fact because the two programs treat it oppositely:
   // private pay charges for it, Hope must never bill for it.
 

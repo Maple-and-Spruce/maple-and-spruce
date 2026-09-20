@@ -7,7 +7,7 @@
 > named after it.** The merge deploy builds its `--only` filter from the library directory
 > name, so anything else a library exports is outside every filter and never created — which
 > is how `chargeLessonsNow` and six admin `trigger*` twins were listed here while being
-> absent from prod (#872). `tools/check-function-library-names.ts` now fails a PR on it.
+> absent from prod (legacy #872). `tools/check-function-library-names.ts` now fails a PR on it.
 
 ## Codebase: `maple-core` (`apps/functions/`)
 
@@ -31,24 +31,24 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Music Lessons
 - `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`
 
-### Lesson Inquiries (#795)
+### Lesson Inquiries (legacy #795)
 - `syncLessonInquiries` _(scheduled, every 15 min — pulls submissions from the Tally API for the Suzuki form `QKQb6k` and the shared music form `dWPQOr` into `lessonInquiries`. Doc id = Tally submission id, written with `create()`, so a re-poll is a skip and never overwrites a status Katie has advanced. Deliberately NOT persisted from `tallyLeadWebhook`: that path is one-shot and unretryable, lives in the tiny `maple-webhooks` bundle, and cannot backfill history.)_
 - `triggerLessonInquirySync` _(admin callable twin — `onSchedule` triggers are not reachable over HTTP in the emulator)_
 - `getLessonInquiries`, `updateLessonInquiryStatus` _(admin; the `/leads` queue)_
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
-### Standing lesson schedules (#797)
+### Standing lesson schedules (legacy #797)
 - `materializeLessonSchedules` _(scheduled, weekly — keeps concrete lessons on the books to a 12-week horizon for every active arrangement. **This is the fix for "a series silently runs out"**: a series was a finite date list nothing extended, so lessons stopped on some future Tuesday and, because billing hangs off a rendered lesson, so did the revenue.)_
 - `triggerMaterializeLessonSchedules` _(admin callable twin — `onSchedule` is not reachable over HTTP in the emulator)_
 - `getStudentLessonSchedules`, `createStudentLessonSchedule`, `updateStudentLessonSchedule` _(admin + lesson-teacher, self-scoped; create materialises immediately so an arrangement is real straight away, and both create and update re-check block fit)_
 - **Idempotence is structural.** A materialised lesson's id is `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady state — which is also what makes *skipping* a week (cancel that lesson) and *moving* one (edit its time) work with no exceptions table.
 - `tools/backfill-lesson-schedules.ts` infers arrangements from existing `seriesId` lessons. Dry-run by default; `--apply` to write. Each inferred schedule starts the day **after** its series' last lesson, because pre-schedule lessons lack the deterministic id and would otherwise be duplicated.
 
-### Needs Attention (#807)
+### Needs Attention (legacy #807)
 - `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
 
-### Hope Scholarship billing (#799)
+### Hope Scholarship billing (legacy #799)
 - `getHopeQueue` _(admin — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
 - `recordHopeSubmissions` _(admin, bulk — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
 - `createLessonSeries` now accepts `status` — set `rendered` with past dates to **backfill lessons already taught**. Block attribution is waived for that case only (see `isBackfillSeries`); a future-dated series without a block is still refused.
@@ -56,7 +56,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Music Lesson Invoices (private-pay)
 - `getInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`
-- `recordInvoicePayment` _(records an off-Square payment against a sent invoice — `admin-manual` (cash/check) or `venmo-manual` (Venmo QR witnessed at a lesson); idempotent, admin-gated; see epic #626)_
+- `recordInvoicePayment` _(records an off-Square payment against a sent invoice — `admin-manual` (cash/check) or `venmo-manual` (Venmo QR witnessed at a lesson); idempotent, admin-gated; see epic #51)_
 - `syncInvoiceToSquare` _(Firestore trigger on `invoices/{id}` — sends via Square Invoices API on draft → sent, cancels on sent → void)_
 - `squareWebhook` now additionally handles `invoice.payment_made` → flips matching invoice to `paid` with `paymentRecord.source = 'square-webhook'`
 
@@ -72,7 +72,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `notifyWaitlistOnSpotOpen` _(Firestore trigger on `registrations/{id}`; on active → inactive transition or delete, queues `class-spot-available` mail to every waitlist email then clears the subcollection)_
 - `classCatalogFeed` _(public RSS 2.0 feed at `/catalog/classes.xml`; consumed by Meta Commerce Manager + Google Merchant Center; 15-min cache)_
 
-### Music Together — cross-section interest list (#602)
+### Music Together — cross-section interest list (legacy #602)
 - `getPublicMusicTogetherSections` _(public; customer-safe list of visible section options — id, name, first-session, location, derived status — drives the interest form's checkboxes)_
 - `addMusicTogetherInterest` _(public; idempotent-per-email upsert to `musicTogetherInterest/{emailKey}` capturing `interestedSectionIds[]` + preference/alternate-time/notes; validates + verifies referenced sections before writing. Broader than the per-section `addToMusicTogetherWaitlist` — works even when nothing is full. Also persists Meta attribution and sends a server-side `Lead` — see "Top-of-funnel attribution" below)_
 - `getMusicTogetherInterest` _(admin; returns all interest entries, a per-section demand tally (highest first), and a section-id→name map; powers the MT admin "Interest list" dialog)_
@@ -83,7 +83,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 ### Discounts
 - `getDiscounts`, `createDiscount`, `updateDiscount`, `deleteDiscount`, `lookupDiscount`
 
-**Program scoping (#791).** Every discount carries `program: 'classes' | 'music-together'` and is redeemable at **only** that checkout. The two programs settle to **different Square accounts owned by different businesses**, so an unscoped code let a Music Together promotion take money off a craft class and vice versa. Enforced in four places, all of which must agree:
+**Program scoping (legacy #791).** Every discount carries `program: 'classes' | 'music-together'` and is redeemable at **only** that checkout. The two programs settle to **different Square accounts owned by different businesses**, so an unscoped code let a Music Together promotion take money off a craft class and vice versa. Enforced in four places, all of which must agree:
 
 | Where | Behavior on a wrong-program code |
 |---|---|
@@ -96,7 +96,7 @@ The preview and the authoritative path must stay in step: if the preview honored
 
 Codes are **globally unique across programs** — a customer types a code without knowing which program owns it, so one string means one thing everywhere. `program` is **immutable** after creation (like `type`): repointing a live code would change what a customer holding it can buy, and on whose books.
 
-**Legacy back-fill:** a document with no stored `program` reads as `classes`. That is a statement of fact, not a guess — MT had no discount support before #791, so every pre-existing code was authored for class checkout. Defaulting the other way would silently expose Stephanie's account.
+**Legacy back-fill:** a document with no stored `program` reads as `classes`. That is a statement of fact, not a guess — MT had no discount support before legacy #791, so every pre-existing code was authored for class checkout. Defaulting the other way would silently expose Stephanie's account.
 
 **Roles.** `getDiscounts` / `createDiscount` / `updateDiscount` / `deleteDiscount` are gated `[Admin, MtTeacher]` (they were admin-only) so Stephanie can run Music Together promotions from `/music-together/discounts`. The role gate alone would also hand her Maple & Spruce class pricing, so each function narrows it:
 
@@ -104,9 +104,9 @@ Codes are **globally unique across programs** — a customer types a code withou
 - create — `assertCanManageDiscountProgram` on the program being written
 - update / delete — the same check on the **stored** program, the one whose money is at stake
 
-`lookupDiscount` is public and called by **both** checkout widgets, each passing its own `program` (an omitted program defaults to `classes`, so a widget bundle deployed before scoping keeps working). A discount with `appliesTo: 'nth-slot-onward'` is additionally **rejected** by the MT path (`mtApplyDiscount` throws) and hidden from the MT admin form — MT prices a family, not slots, and additional children already get the sibling discount (#599).
+`lookupDiscount` is public and called by **both** checkout widgets, each passing its own `program` (an omitted program defaults to `classes`, so a widget bundle deployed before scoping keeps working). A discount with `appliesTo: 'nth-slot-onward'` is additionally **rejected** by the MT path (`mtApplyDiscount` throws) and hidden from the MT admin form — MT prices a family, not slots, and additional children already get the sibling discount (legacy #599).
 
-### Music Together — comped installments (#791)
+### Music Together — comped installments (legacy #791)
 - `waiveMusicTogetherInstallment` _(admin + mt-teacher; flips one `musicTogetherScheduledCharges` doc `scheduled → waived` inside a transaction, recording `waivedReason` + `waivedByUid`. The family stays enrolled and every other charge stands — only this one is never taken._
 
   `waived` is a **new terminal status, deliberately distinct from `cancelled`**: both stop `chargeMusicTogetherInstallments` (which queries `status == 'scheduled'`), but `cancelled` is written by `cancelMusicTogetherRegistration` and means the family left. Collapsing them would make a comped installment unreadable on the roster.
@@ -125,7 +125,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `onLessonWrite` — Firestore trigger: auto-generates a private (`public: false`) Spruce Room CalendarEvent per scheduled lesson; removes it on cancel/delete
 - `onMusicTogetherSectionWrite` — Firestore trigger: auto-generates a public `musictogether` CalendarEvent per session of a `visible` MT section; reconciles on edit and removes when the section is hidden or deleted
 
-### Room Availability (#467)
+### Room Availability (#39)
 - `getRoomSchedule` — admin-only: busy windows for a room over a time range (powers the dashboard "Spruce Room" widget and booking conflict checks)
 
 ### Calendar Embed Config
@@ -136,7 +136,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `recordSale` — manually record a product sale with automatic commission calculation, inventory movement, and quantity decrement
 - `getSales` — retrieve sales with optional filters (artistId, source, date range)
 
-### Artist Payouts (Phase 5, #313)
+### Artist Payouts (Phase 5, legacy #313)
 - `generatePayout` — aggregates unpaid sales for an artist over a date range, creates a Payout record, marks each sale with the payoutId
 - `markPayoutPaid` — marks a pending payout as paid with payment method and optional reference
 - `getPayouts` — retrieves artist payouts with optional filters (artistId, status)
@@ -154,7 +154,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `checkAdminStatus` _(returns `{ isAdmin, isEmployee, role }` — `role` is the highest-privilege role)_
 - `getMyRoles` _(auth only — returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating)_
 
-> **Roles (epic #617, ADR-028):** "admin only" annotations below predate the scoped-roles matrix. Since PR 3, callables are gated by role sets: Music Together mgmt → admin + `mt-teacher`; store inventory/sales/categories + class registrations/rosters/waitlists/refunds + class reads → admin + `clerk`; lesson/student/invoice/instructor **reads** → admin + `lesson-teacher`; calendar events + room schedule → all staff roles. Everything else remains admin-only. The authoritative table is `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
+> **Roles (epic #49, ADR-028):** "admin only" annotations below predate the scoped-roles matrix. Since PR 3, callables are gated by role sets: Music Together mgmt → admin + `mt-teacher`; store inventory/sales/categories + class registrations/rosters/waitlists/refunds + class reads → admin + `clerk`; lesson/student/invoice/instructor **reads** → admin + `lesson-teacher`; calendar events + room schedule → all staff roles. Everything else remains admin-only. The authoritative table is `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
 
 ### User & role administration
 - `listUsers` _(admin only — Firebase Auth users joined with admin records + scoped roles from `userRoles/{uid}`; powers `/users` page; capped at 1000 per call)_
@@ -167,7 +167,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `healthCheck` _(public liveness probe; also served at `/healthCheck` via a hosting rewrite)_
 - `getSyncConflicts`, `getSyncConflictSummary`
 
-### Top-of-funnel attribution (Music Together → Meta CAPI) (#781)
+### Top-of-funnel attribution (Music Together → Meta CAPI) (legacy #781)
 
 No new functions — both events are sent **inline by the existing callable**, in
 the same request. See `docs/guides/music-together-ad-tracking.md` for why (the
@@ -255,7 +255,7 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `updateMusicTogetherPaymentMethod` _(public, session-gated, MT Square account)_ — vaults a new card on file for an installment registration, repoints `registration.squareCardId` at it (retargets pending Week-5 scheduled charges), and disables the old card
 - `adminPauseCraftClubSubscription` / `adminResumeCraftClubSubscription` / `adminCancelCraftClubSubscription` _(admin-only)_ — Square pause/resume/cancel + mirror member status (cancel also emails)
 
-### Lesson billing (#798, #864)
+### Lesson billing (#81, legacy #864)
 - `runLessonBilling` _(scheduled — daily 09:00 ET)_ — plans each eligible student's charges from their billing rule, then takes the ones that are due against the card on file. Daily rather than weekly because a charge anchored "the day before the first lesson" has to land on that day. Hope students are never touched (they bill through the EMA portal). Planning subtracts every lesson an existing charge already covers before blocking, so a prepaid block is not billed again and a cancelled first lesson cannot make a block re-form under a new id and charge twice.
 - `triggerLessonBilling` _(admin-only, own library `trigger-lesson-billing`)_ — the callable twin: a manual catch-up, a dry run, and the only way integration tests can reach an `onSchedule`. Wraps `executeLessonBilling`, imported from the `run-lesson-billing` library.
 - `chargeLessonsNow` _(admin-only)_ — takes money on the spot for a block of lessons a family is paying ahead for. Produces the same `LessonScheduledCharge` record the scheduled job would, already `paid`, so there is no second ledger. The atomic `create` at the charge's deterministic id **is** the lease, claimed before the payment, so a double click cannot take a second payment. Also retries a `failed` charge, reusing the original idempotency key so an attempt that did reach Square comes back as the same payment.
@@ -285,7 +285,7 @@ Webflow CMS synchronization. Isolates `webflow-api`.
 
 - `syncArtistToWebflow` — Firestore trigger: syncs artist data to Webflow CMS
 - `syncClassToWebflow` — Firestore trigger: syncs class data to Webflow CMS. Also links each class item to its category via the `category` Reference field, syncing the category on demand if it has no Webflow item yet.
-- `syncClassCategoryToWebflow` — Firestore trigger: syncs `classCategories` to the Webflow Class Categories collection. That collection exists so classes can carry a `category` **Reference** field — Webflow can only filter a Collection List against the current item's field when that field is a reference, which is what renders related classes natively on the class template page instead of a callable (#776).
+- `syncClassCategoryToWebflow` — Firestore trigger: syncs `classCategories` to the Webflow Class Categories collection. That collection exists so classes can carry a `category` **Reference** field — Webflow can only filter a Collection List against the current item's field when that field is a reference, which is what renders related classes natively on the class template page instead of a callable (legacy #776).
 - `syncMusicTogetherSectionToWebflow` — Firestore trigger: syncs Music Together section data to Webflow CMS (`visible` sections; enriches spots-remaining from live family count; sends the derived section status)
 - `syncMusicTogetherSemesterToWebflow` — Firestore trigger: syncs Music Together semester (term) data to Webflow CMS (all statuses incl. `planned`; only removed on delete)
 - `syncRegistrationCount` — Firestore trigger: re-syncs class to Webflow when registrations change (spots remaining)

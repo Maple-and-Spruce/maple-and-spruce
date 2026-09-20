@@ -66,7 +66,7 @@ export interface CalendarEvent {
   sourceRef: string | null;
   /**
    * Instructor id that "owns" this event — denormalized from the source so a
-   * teacher's own schedule is a single query (My Week / #683). Set on
+   * teacher's own schedule is a single query (My Week / #60). Set on
    * lesson-derived events (the lesson's `teacherId`) and class-derived events
    * (the class's `instructorId`). Null for shared/ad-hoc events with no single
    * owning teacher (jams, store hours, Music Together, manual bookings).

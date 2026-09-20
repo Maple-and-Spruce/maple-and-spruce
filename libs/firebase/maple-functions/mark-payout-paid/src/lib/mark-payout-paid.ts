@@ -1,5 +1,5 @@
 /**
- * Mark Payout Paid Cloud Function (#313)
+ * Mark Payout Paid Cloud Function (legacy #313)
  *
  * Admin callable. Updates a pending payout to 'paid' status with
  * payment method and optional reference.

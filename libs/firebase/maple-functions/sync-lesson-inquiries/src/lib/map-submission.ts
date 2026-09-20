@@ -1,5 +1,5 @@
 /**
- * Tally submission -> LessonInquiry mapping (#795).
+ * Tally submission -> LessonInquiry mapping (legacy #795).
  *
  * Kept barrel-free and dependency-free on purpose: this is the part most likely
  * to break silently (Tally labels are editable by a human in a web UI), so it

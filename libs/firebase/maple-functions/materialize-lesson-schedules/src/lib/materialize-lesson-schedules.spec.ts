@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@maple/firebase/functions', () => {
   return {
-    // The room-conflict check (#841). Free by default; the room-conflict
+    // The room-conflict check (legacy #841). Free by default; the room-conflict
     // cases below override it. Mocked rather than exercised because the
     // real one reads calendar events, and that belongs in the integration
     // suite where a trigger actually writes them.
@@ -65,7 +65,7 @@ const activeStudent = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // The room is free unless a test says otherwise (#841).
+  // The room is free unless a test says otherwise (legacy #841).
   mocks.findConflictsForWindow.mockResolvedValue([]);
   mocks.findSchedules.mockResolvedValue([schedule]);
   mocks.findStudents.mockResolvedValue([activeStudent]);
@@ -182,7 +182,7 @@ describe('runMaterializeLessonSchedules', () => {
   });
 });
 
-describe('room conflicts (#841)', () => {
+describe('room conflicts (legacy #841)', () => {
   it('skips an occurrence whose room is taken, and counts it', async () => {
     // This job runs unattended. Throwing would abandon every remaining
     // arrangement; writing anyway would double-book the room. So it skips,

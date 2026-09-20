@@ -1,5 +1,5 @@
 /**
- * Create Lesson Block Cloud Function (#686)
+ * Create Lesson Block Cloud Function (legacy #686)
  *
  * Admin-only. Creates a weekly LessonBlock attributed to a teacher — the
  * constraint window that teacher's lessons must fall inside. Lesson-teachers

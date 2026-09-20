@@ -72,7 +72,7 @@ env:
 # merges landing inside that window silently stranded the middle one:
 # cancelled with zero jobs ever started, nothing deployed, and
 # nx-affected won't recover it because the next run diffs HEAD~1.
-# That is how #703 (MT Square production cutover) and the #725 merge
+# That is how legacy #703 (MT Square production cutover) and the legacy #725 merge
 # both reached main without ever deploying.
 #
 # `queue: max` makes up to 100 runs wait in FIFO order instead. It is
@@ -211,7 +211,7 @@ jobs:
             # This names ONE function per library, and that is only correct
             # because a library deploys exactly one function. Anything else a
             # library exported would sit outside this filter and never be
-            # created — no failure, no warning (#872, `chargeLessonsNow`).
+            # created — no failure, no warning (legacy #872, `chargeLessonsNow`).
             # `tools/check-function-library-names.ts` fails a PR on both halves
             # of that invariant (build-check.yml -> callable-roles job), so do
             # not relax it here without relaxing the guard.
@@ -425,7 +425,7 @@ jobs:
       - name: Deploy functions group to Dev
         if: matrix.functions != ''
         # Batched + retried by tools/deploy-functions-batched.sh — see that
-        # script for the full rationale (#723). Two things it fixes:
+        # script for the full rationale (legacy #723). Two things it fixes:
         #
         #   1. The retry loop that used to live inline here NEVER RAN. Actions
         #      executes `run:` as `bash -e {0}`; with the step's own
@@ -930,7 +930,7 @@ jobs:
       - name: Deploy functions group
         if: matrix.functions != ''
         # Same batched deploy as deploy_functions_dev — see there, and
-        # tools/deploy-functions-batched.sh, for the rationale (#723).
+        # tools/deploy-functions-batched.sh, for the rationale (legacy #723).
         env:
           FIREBASE_DEPLOY_TOKEN: ${{ steps.auth.outputs.access_token }}
           FN_TARGETS: ${{ matrix.functions }}
@@ -1113,7 +1113,7 @@ jobs:
         # touched firestore.indexes.json. We retry while each attempt errors on
         # a DIFFERENT index (forward progress) and fail only if stuck on the
         # same 409 twice or on any non-409 error. Mirrors the functions-deploy
-        # 409 retry added in #537.
+        # 409 retry added in legacy #537.
         run: |
           set -o pipefail
           OUTPUT=$(mktemp)
@@ -1151,7 +1151,7 @@ jobs:
     # /calendar/*.ics rewrites declared in firebase.json. CI deployed functions,
     # the registration-test hosting target, and firestore indexes — but NEVER
     # this hosting target. So a new calendar-feed rewrite (e.g.
-    # /calendar/musictogether.ics, added to firebase.json in #548) 404'd in prod
+    # /calendar/musictogether.ics, added to firebase.json in legacy #548) 404'd in prod
     # even after its Cloud Function deployed, because the rewrite mapping it to
     # the function was only ever pushed by a manual `firebase deploy --only
     # hosting:api`. This job closes that gap: whenever firebase.json or public/
@@ -1162,7 +1162,7 @@ jobs:
     # function is bound at hosting-deploy time — if the function doesn't exist
     # yet, Firebase warns "Unable to find a valid endpoint" and the rewrite
     # 404s until the next hosting deploy. When a PR ships a NEW function and its
-    # rewrite together (as #567 did for calendarPrivateFeed), deploying hosting
+    # rewrite together (as legacy #567 did for calendarPrivateFeed), deploying hosting
     # first races the function into existence and strands the rewrite. Gating on
     # deploy_functions_prod guarantees the function exists first.
     #   - `!cancelled()` + `result != 'failure'`: deploy_functions_prod is
@@ -1292,7 +1292,7 @@ jobs:
     # `!cancelled()` is required because prod_gate uses `always()` — a job
     # depending on an `always()` job is implicitly skipped unless it also uses
     # a status-check function. Without this, deploy_vercel_prod was skipped on
-    # #493 despite prod_gate succeeding, so the portal never reached prod.
+    # legacy #493 despite prod_gate succeeding, so the portal never reached prod.
     if: ${{ !cancelled() && needs.prod_gate.result == 'success' }}
     runs-on: ubuntu-latest
     steps:

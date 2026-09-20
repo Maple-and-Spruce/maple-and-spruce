@@ -29,10 +29,10 @@ function hydrate(s: StudentLessonSchedule): StudentLessonSchedule {
 }
 
 /**
- * A student's standing arrangements (#797).
+ * A student's standing arrangements (legacy #797).
  *
  * `pendingId` is per-schedule, so saving one does not freeze the others — the
- * pattern from #805.
+ * pattern from legacy #805.
  */
 export function useStudentLessonSchedules(studentId?: string) {
   const [schedulesState, setSchedulesState] = useState<
@@ -118,7 +118,7 @@ export function useStudentLessonSchedules(studentId?: string) {
  * Every standing arrangement, optionally scoped to one teacher.
  *
  * Separate from `useStudentLessonSchedules`, which is per-student and returns
- * early without one. The day column (#838) needs the whole day rather than one
+ * early without one. The day column (legacy #838) needs the whole day rather than one
  * student's slice, and read-only — booking happens through the arrangement
  * hook on a student's page.
  */

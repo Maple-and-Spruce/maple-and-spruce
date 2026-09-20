@@ -7,7 +7,7 @@ import { useDiscounts } from '../../../hooks';
  * Maple & Spruce class discount codes.
  *
  * Scoped to `program: 'classes'` — Music Together codes live on their own page
- * under Music Together (#791). Both pages render the same `DiscountsManager`,
+ * under Music Together (legacy #791). Both pages render the same `DiscountsManager`,
  * so the two experiences stay identical apart from which codes they show.
  */
 export default function DiscountsPage() {

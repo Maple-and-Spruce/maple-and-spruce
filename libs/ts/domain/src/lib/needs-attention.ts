@@ -1,5 +1,5 @@
 /**
- * Needs Attention (#807).
+ * Needs Attention (legacy #807).
  *
  * Six states already existed as data and none of them surfaced as a to-do, so
  * finding any of them meant going looking, per student. Each one is money or

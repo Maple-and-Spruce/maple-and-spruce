@@ -197,7 +197,7 @@ export function ClassForm({
 
   // Referral program (per-class opt-in). When the toggle is on, every
   // confirmed registration auto-generates a single-use code in the
-  // confirmation email — see #373/#375.
+  // confirmation email — see legacy #373/#375.
   const referralEnabled = useSignal(false);
   const referralPercent = useSignal<number>(50);
   const referralExpiresAfterDays = useSignal<number>(60);
@@ -549,7 +549,7 @@ export function ClassForm({
     // reaches this handler again and fires a second createClass, and a create
     // gets a server-generated id with no uniqueness check: one save, two
     // classes. A signal mutates synchronously, so it closes the window.
-    // Same fix as RegistrationCheckoutForm (#286).
+    // Same fix as RegistrationCheckoutForm (legacy #286).
     if (isSaving.value) {
       return;
     }

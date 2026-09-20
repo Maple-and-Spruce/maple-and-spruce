@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Teaching Days (#838) — the day, top to bottom, the way Katie keeps it.
+ * Teaching Days (legacy #838) — the day, top to bottom, the way Katie keeps it.
  *
  * Her source of truth has been a spreadsheet laid out as one day in time order
  * with **open slots sitting in the sequence** between the students. Nothing in

@@ -1,5 +1,5 @@
 /**
- * syncLessonInquiries integration tests (#821)
+ * syncLessonInquiries integration tests (legacy #821)
  *
  * WHY THIS SUITE EXISTS
  * ---------------------
@@ -8,7 +8,7 @@
  * 14 lesson inquiries with `contactName: "Unknown"` and no instrument, and
  * every unit test stayed green — because their fixtures were hand-written from
  * the documented Tally shape rather than captured from a real response, so they
- * asserted the assumption that was wrong (#816).
+ * asserted the assumption that was wrong (legacy #816).
  *
  * The mock server here answers with the **real** shape: question text under
  * `title`, never `label`. That single detail is what turns this from a test
@@ -190,7 +190,7 @@ describe('syncLessonInquiries', () => {
     expect(doc?.['email']).toBe('robin@example.com');
     expect(doc?.['phone']).toBe('+15550000001');
     // "Who is the student?" decides parent vs student when the lead becomes a
-    // student record (#819). Dropping it makes that prefill a coin flip.
+    // student record (legacy #819). Dropping it makes that prefill a coin flip.
     expect(doc?.['studentIs']).toBe('child');
     expect(doc?.['status']).toBe('new');
   });
@@ -214,7 +214,7 @@ describe('syncLessonInquiries', () => {
     // Exactly the production state on 2026-09-04: contactable, nameless, and
     // already worked by a human. `createIfAbsent` alone could never fix this —
     // the only route left was delete-and-re-ingest, discarding the status
-    // along with the bug (#816).
+    // along with the bug (legacy #816).
     await setFirestoreDoc('lessonInquiries', 'sub-1', {
       formId: FORM_ID,
       formName: FORM_ID,

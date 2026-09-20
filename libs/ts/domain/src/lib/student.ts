@@ -5,10 +5,10 @@
  *
  * Students are admin-ingested by Katie (unlike craft classes, lessons are not
  * pay-to-reserve). Each student has a 1:1 primary teacher; individual lessons
- * may record a substitute teacher for payout attribution (see issue #279).
+ * may record a substitute teacher for payout attribution (see legacy issue #279).
  *
  * Hope Scholarship (WV) students are invoiced externally via the EMA portal
- * under per-lesson-after-rendered billing rules; see issue #282.
+ * under per-lesson-after-rendered billing rules; see legacy issue #282.
  */
 
 /**
@@ -91,7 +91,7 @@ export interface Student {
    * chosen per lesson / per invoice.
    */
   registeredLessonLength?: LessonLength;
-  /** WV Hope Scholarship flag. Hope students are invoiced externally (#282). */
+  /** WV Hope Scholarship flag. Hope students are invoiced externally (legacy #282). */
   isHopeScholarship: boolean;
   /** Parent/guardian for minors; student themselves for adults */
   primaryContactName: string;
@@ -101,19 +101,19 @@ export interface Student {
   secondaryContactPhone?: string;
   /**
    * The payer's Venmo username (stored without the leading @), when they pay
-   * lesson invoices via Venmo. Lets the reconciliation tool (#630) match
+   * lesson invoices via Venmo. Lets the reconciliation tool (legacy #630) match
    * Venmo statement rows back to this student. Optional — most students pay
-   * by Square. See epic #626.
+   * by Square. See epic #51.
    */
   venmoUsername?: string;
   /**
    * Auto-create + send a private-pay invoice when one of this student's
-   * lessons is marked `rendered` (#629). Hope Scholarship students are never
+   * lessons is marked `rendered` (legacy #629). Hope Scholarship students are never
    * auto-invoiced — they bill externally via EMA. Defaults to off.
    */
   autoInvoice?: boolean;
   /**
-   * The billing rule this student is on (#798). Unset means the studio default.
+   * The billing rule this student is on (#81). Unset means the studio default.
    *
    * An override lives on the rule attachment, not by cloning the rule, so
    * changing studio policy still reaches everyone who has not deviated —
@@ -141,7 +141,7 @@ export interface Student {
   cardLinkedAt?: Date;
   /**
    * Per-student private-pay lesson rate override, in cents. When set it wins
-   * over the standard rate-by-length table (#629). Leave unset to use the
+   * over the standard rate-by-length table (legacy #629). Leave unset to use the
    * default for their registered lesson length.
    */
   lessonRateCents?: number;

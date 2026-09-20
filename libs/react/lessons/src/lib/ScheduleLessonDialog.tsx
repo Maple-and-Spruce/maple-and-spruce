@@ -67,7 +67,7 @@ interface ScheduleLessonDialogProps {
   defaultTeacherId: string;
   /** For the teacher dropdown. */
   instructors: Instructor[];
-  /** All lesson blocks; the dialog filters to the chosen teacher (#689). A
+  /** All lesson blocks; the dialog filters to the chosen teacher (legacy #689). A
    *  lesson must be attributed to one of its teacher's blocks. */
   blocks: LessonBlock[];
   /** Default lesson length in minutes (30, 45, 60). */
@@ -219,7 +219,7 @@ export function ScheduleLessonDialog({
     }),
   );
 
-  // Block attribution (#689). Selecting a block is required (hard); whether the
+  // Block attribution (legacy #689). Selecting a block is required (hard); whether the
   // chosen time fits it is a non-blocking warning — the server enforces fit, so
   // we guide rather than trap (mirrors the RoomAvailability warn pattern).
   const selectedBlock = useComputed(() =>
@@ -465,7 +465,7 @@ export function ScheduleLessonDialog({
             </FormHelperText>
           </FormControl>
 
-          {/* Block attribution (#689) — a lesson must sit inside one of the
+          {/* Block attribution (legacy #689) — a lesson must sit inside one of the
               teacher's weekly blocks. */}
           {blocksForTeacher(teacherId.value).length === 0 ? (
             <Alert severity="warning">

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PaymentMethodCard (#798) — the card on file the billing job will charge.
+ * PaymentMethodCard (#81) — the card on file the billing job will charge.
  *
  * Katie saves cards in the Square app, in person. So this does not collect a
  * card; it shows which one is attached, and helps her find the right one among

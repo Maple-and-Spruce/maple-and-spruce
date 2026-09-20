@@ -20,7 +20,7 @@
  *
  * Why these tests exist:
  * - Storybook interaction tests mock `onCalculateCost`; they cannot
- *   catch a bug in the args the frontend chooses to send (#423 was
+ *   catch a bug in the args the frontend chooses to send (legacy #423 was
  *   exactly that — quantity off by one).
  * - Cloud-function integration tests verify the backend in isolation;
  *   they cannot see a frontend that lies about its own state.
@@ -91,7 +91,7 @@ test('adding an attendee recalculates cost from the server', async ({
 
   // The line item ("2 x $45.00") and the totals must agree because
   // both come from the same server response (the structural guard
-  // we landed in #424). If a frontend off-by-one returned, the
+  // we landed in legacy #424). If a frontend off-by-one returned, the
   // line item would still say 2 but the totals would reflect 3 —
   // these assertions would fail in lockstep.
   await expect(page.getByText(`2 x ${PRICE_LABEL}`)).toBeVisible();

@@ -1,5 +1,5 @@
 /**
- * Lesson Inquiry Repository (#795)
+ * Lesson Inquiry Repository (legacy #795)
  *
  * Firestore access for lesson inquiries captured from Tally.
  *

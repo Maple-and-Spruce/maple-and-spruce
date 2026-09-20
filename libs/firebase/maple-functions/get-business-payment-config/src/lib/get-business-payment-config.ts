@@ -1,5 +1,5 @@
 /**
- * Get Business Payment Config Cloud Function (#631)
+ * Get Business Payment Config Cloud Function (legacy #631)
  *
  * Returns the studio Venmo handle for the admin Settings card. (Teachers get
  * the handle via getMyDayLessons, so this stays admin-only.)

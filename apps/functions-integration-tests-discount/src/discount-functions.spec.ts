@@ -630,7 +630,7 @@ describe('Discount Functions', () => {
 });
 
 /**
- * Program scoping (#791).
+ * Program scoping (legacy #791).
  *
  * Maple & Spruce classes and Music Together settle to **different Square
  * accounts owned by different businesses**. An unscoped code let a Music
@@ -741,7 +741,7 @@ describe('Discount program scoping', () => {
       // will never be returned as a result for any query based on the index."
       // https://firebase.google.com/docs/firestore/query-data/index-overview
       //
-      // `!=` is no escape either. So a discount written before scoping (#791)
+      // `!=` is no escape either. So a discount written before scoping (legacy #791)
       // cannot be listed by a program-filtered query at all — which is why
       // tools/backfill-discount-program.ts is a HARD PREREQUISITE for these
       // pages, not a tidy-up. This test exists so that is a stated contract

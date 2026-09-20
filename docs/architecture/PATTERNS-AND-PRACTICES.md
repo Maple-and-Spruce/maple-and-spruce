@@ -720,7 +720,7 @@ export function ArtistCard({ artist, onClick }: ArtistCardProps) {
 ### Data Tables: Material React Table + `brandTableOptions`
 
 New tables use **Material React Table** (MIT), not MUI X `DataGrid`: column pinning is a paid
-MUI X Pro feature, and MRT has it free with MUI rendering (#851, #853). Always spread the shared
+MUI X Pro feature, and MRT has it free with MUI rendering (#87, #88). Always spread the shared
 options first:
 
 ```typescript

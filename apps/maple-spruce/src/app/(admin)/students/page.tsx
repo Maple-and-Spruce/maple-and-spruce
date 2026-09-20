@@ -173,7 +173,7 @@ export default function StudentsPage() {
   // is fine.
   const { lessonsState } = useLessons({});
   const { lessonBlocksState } = useLessonBlocks();
-  // Inquiries power the "Start from an inquiry" suggestions (#819). Same seam
+  // Inquiries power the "Start from an inquiry" suggestions (legacy #819). Same seam
   // as /leads → "Create student…", offered from whichever page you are on.
   const { inquiriesState, updateStatus } = useLessonInquiries();
 
@@ -337,7 +337,7 @@ export default function StudentsPage() {
         </Alert>
       )}
 
-      {/* Collapsed to a one-line count; renders nothing when clear (#807). */}
+      {/* Collapsed to a one-line count; renders nothing when clear (legacy #807). */}
       {attentionState.status === 'success' && (
         <NeedsAttentionPanel
           groups={attentionState.data.groups}

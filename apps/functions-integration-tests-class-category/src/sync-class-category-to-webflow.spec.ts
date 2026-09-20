@@ -1,5 +1,5 @@
 /**
- * Integration tests for the syncClassCategoryToWebflow Firestore trigger (#776).
+ * Integration tests for the syncClassCategoryToWebflow Firestore trigger (legacy #776).
  *
  * The trigger runs in the Firebase emulator and calls the Webflow SDK, which is
  * redirected to the Webflow mock server via `WEBFLOW_BASE_URL`. That lets these

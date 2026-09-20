@@ -2,11 +2,11 @@
  * Static analyzer: every deployed callable declares a role, or is explicitly
  * allowlisted as public / auth-only.
  *
- * Why this exists: the scoped-roles enforcement (epic #617) gates each Cloud
+ * Why this exists: the scoped-roles enforcement (epic #49) gates each Cloud
  * Function with `requiringRole(...)`. The failure mode it introduces is a NEW
  * callable that ships with no role check — silently reachable by anyone signed
  * in, or anyone at all. That's exactly how ~18 reads were left auth-only before
- * #633 (getStudents, etc. — children's PII). A green test suite doesn't catch
+ * legacy #633 (getStudents, etc. — children's PII). A green test suite doesn't catch
  * it; review discipline is unreliable. This turns "did we protect the new
  * endpoint" into a failing check.
  *

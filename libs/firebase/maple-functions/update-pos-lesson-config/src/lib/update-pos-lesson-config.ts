@@ -1,5 +1,5 @@
 /**
- * Update POS Lesson Config Cloud Function (#628)
+ * Update POS Lesson Config Cloud Function (legacy #628)
  *
  * Sets which Square catalog object ids count as music lessons at the POS.
  * De-dupes and trims the ids; stamps the editor uid.

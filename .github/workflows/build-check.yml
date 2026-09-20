@@ -90,7 +90,7 @@ jobs:
           key: ${{ needs.install.outputs.cache_key }}
 
       # Not `pnpm audit` inline: the npm advisories endpoint times out often
-      # enough to red-X unrelated PRs (it killed this job on #801 after 4m42s),
+      # enough to red-X unrelated PRs (it killed this job on legacy #801 after 4m42s),
       # and `pnpm audit` exits 1 for that exactly as it does for a real CVE.
       # The wrapper retries, keeps failing on genuine advisories, and downgrades
       # a registry outage to a warning annotation. See the header comment there.
@@ -150,7 +150,7 @@ jobs:
       # One Cloud Run service per function library. The gen-2 deploy write
       # quota is 60/60s and CANNOT be raised, so the function count sets a
       # hard floor on how long a full deploy takes. ADR-029 consolidates
-      # endpoints into domain routers (#724); this ratchet stops the count
+      # endpoints into domain routers (#61); this ratchet stops the count
       # drifting back up while that work is in flight. Resolve either
       # direction with: npx tsx tools/check-function-count.ts --fix
       - name: Check Cloud Function count ratchet
@@ -182,7 +182,7 @@ jobs:
       # Every function exported from a codebase entry point must declare a role
       # (requiringRole / createAdminFunction / createRoleFunction), be a trigger,
       # or be explicitly allowlisted as public / auth-only. Prevents a new
-      # callable shipping reachable without a role check. See epic #617.
+      # callable shipping reachable without a role check. See epic #49.
       - name: Check callable roles
         run: npx tsx tools/check-callable-roles.ts
 
@@ -191,9 +191,9 @@ jobs:
       # so one library deploys exactly one function and it breaks both ways.
       # Export none by that name and the filter points at nothing: firebase
       # refuses the entire codebase batch ("No function matches the filter"),
-      # after merge, at deploy, taking every other function with it (#845).
+      # after merge, at deploy, taking every other function with it (legacy #845).
       # Export MORE than that name and the extras sit outside every filter and
-      # are simply never created — no failure, no warning (#872).
+      # are simply never created — no failure, no warning (legacy #872).
       - name: Check one function per library
         run: npx tsx tools/check-function-library-names.ts
 
@@ -224,8 +224,8 @@ jobs:
       # mapper is invisible: it compiles, unit tests pass (they hand-build
       # entities and never touch the mapper), and the value writes to Firestore
       # fine. It just never comes back. Shipped three times before this guard
-      # existed (#798 card fields, #835 onDate, #837 intervalWeeks) and found
-      # four more on main the first time it ran (#843).
+      # existed (#81 card fields, legacy #835 onDate, legacy #837 intervalWeeks) and found
+      # four more on main the first time it ran (legacy #843).
       - name: Check repository mappers
         run: npx tsx tools/check-repository-mappers.ts
 
@@ -256,7 +256,7 @@ jobs:
       # to take music lessons; none of them agreed to appear in an engineering
       # artefact. Copying a real record into a fixture is the commonest way it
       # happens, because the real record is right there and looks convenient —
-      # which is exactly what happened across #798, #835 and #838.
+      # which is exactly what happened across #81, legacy #835 and legacy #838.
       #
       # Emails at consumer mailbox providers and non-fictional phone numbers
       # are checked by pattern. Names have no shape, so they are checked
@@ -536,7 +536,7 @@ jobs:
           echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
           # syncLessonInquiries -> Tally mock server. `.env.dev` deliberately
           # leaves TALLY_LESSON_INQUIRY_FORM_IDS empty so dev never ingests
-          # production leads (#814); the tests need it non-empty, and pointing
+          # production leads (legacy #814); the tests need it non-empty, and pointing
           # at the mock keeps that safe because no real form is ever contacted.
           echo "TALLY_API_BASE_URL=http://localhost:9993" >> dist/apps/functions/.env
           echo "TALLY_LESSON_INQUIRY_FORM_IDS=testform,otherform" >> dist/apps/functions/.env
@@ -1124,7 +1124,7 @@ jobs:
   portal-e2e:
     # Admin-portal role-scoping E2E — the first browser-level proof that the
     # scoped-roles wiring (RolesProvider → getMyRoles → RoleGuard + nav
-    # filtering, epic #617) holds in the assembled Next.js app. Drives the real
+    # filtering, epic #49) holds in the assembled Next.js app. Drives the real
     # app against local emulators (auth + firestore + functions with the PR's
     # own code): sign in through the login form, assert the role-filtered shell.
     # No external services — always runs (no secret gate).

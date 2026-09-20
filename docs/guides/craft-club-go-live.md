@@ -1,6 +1,6 @@
 # Craft Club — Go-Live Runbook
 
-All four build phases (#507, #509, #521, #522) are merged, so the **code** is
+All four build phases (legacy #507, legacy #509, legacy #521, legacy #522) are merged, so the **code** is
 deployed. This runbook covers the **one-time configuration** that can't live in
 code: creating the Square subscription plan, seeding email templates,
 subscribing to webhook events, and publishing the Webflow pages.

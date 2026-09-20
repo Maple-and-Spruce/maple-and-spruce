@@ -205,7 +205,7 @@ setting and installed site-wide; the site-wide install is the correct one.)
     // The five UTMs the Tally forms declare. These arrive as query string
     // params on the ad click, NOT as cookies — which is why they were the
     // five fields sitting permanently empty while the cookie-derived five
-    // worked (#824).
+    // worked (legacy #824).
     var UTM_KEYS = [
       'utm_source',
       'utm_medium',

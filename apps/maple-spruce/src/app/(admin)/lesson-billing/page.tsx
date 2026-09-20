@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Lesson Billing (#798) — every automatic charge across the studio.
+ * Lesson Billing (#81) — every automatic charge across the studio.
  *
  * The daily job plans a charge and then takes it, both unattended. This is the
  * one place that shows what is about to happen and lets Katie stop it, so it

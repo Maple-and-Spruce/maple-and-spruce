@@ -45,7 +45,7 @@ export type LessonRowAction = 'mark-rendered' | 'mark-no-show' | 'cancel';
  *
  * Per-row and per-action rather than a page-wide boolean: acting on one lesson
  * must not freeze the rest of the list, and the pressed control has to be the
- * one that shows progress. See #805.
+ * one that shows progress. See legacy #805.
  */
 export interface LessonPendingAction {
   lessonId: string;
@@ -59,7 +59,7 @@ interface LessonListProps {
    *  primary teacher is shown as "Substitute". */
   primaryTeacherId?: string;
   /** Teacher blocks; when provided, lessons not sitting in one of their
-   *  teacher's blocks get a "needs a block" flag (#689). */
+   *  teacher's blocks get a "needs a block" flag (legacy #689). */
   blocks?: LessonBlock[];
   onEdit: (lesson: Lesson) => void;
   onCancel: (lesson: Lesson) => void;
@@ -67,12 +67,12 @@ interface LessonListProps {
    * Optional — when provided, past scheduled lessons get a
    * "Mark rendered" action. Required for Hope Scholarship students so
    * invoicing via EMA can only pull from rendered records; useful for
-   * private-pay too so #283 payout tracking has accurate counts.
+   * private-pay too so legacy #283 payout tracking has accurate counts.
    */
   onMarkRendered?: (lesson: Lesson) => void;
   /**
    * Record that nobody came. Offered on the same rows as mark-rendered, since
-   * it is the other half of the same question (#796).
+   * it is the other half of the same question (legacy #796).
    */
   onMarkNoShow?: (lesson: Lesson) => void;
   /** The action currently in flight, if any. Drives per-row progress. */

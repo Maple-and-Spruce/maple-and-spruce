@@ -49,7 +49,7 @@ function dayInCurrentMonth(day: number): Date {
   return new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), day, 15));
 }
 
-// #686: lessons must be attributed to a block. These helpers seed all-day
+// legacy #686: lessons must be attributed to a block. These helpers seed all-day
 // catch-all blocks per teacher/weekday and resolve a lesson's block id, so the
 // dynamic-date fixtures below satisfy enforcement without reshaping.
 function etWeekday(d: Date): number {
@@ -132,7 +132,7 @@ describe('getTeacherPayouts integration', () => {
     });
     substituteTeacherId = substitute.data!.instructor.id;
 
-    // Blocks so lessons created below satisfy #686 attribution.
+    // Blocks so lessons created below satisfy legacy #686 attribution.
     await seedAllDayBlocks(primaryTeacherId);
     await seedAllDayBlocks(substituteTeacherId);
 

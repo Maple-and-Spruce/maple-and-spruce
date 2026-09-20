@@ -1,5 +1,5 @@
 /**
- * Update Business Payment Config Cloud Function (#631)
+ * Update Business Payment Config Cloud Function (legacy #631)
  *
  * Sets the studio Venmo handle (stored without a leading @). An empty value
  * clears it.

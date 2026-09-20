@@ -74,7 +74,7 @@ describe('Student Functions', () => {
     await clearFirestoreEmulator();
   });
 
-  describe('Lesson-teacher scoping (#617): read-own, manage-own', () => {
+  describe('Lesson-teacher scoping (#49): read-own, manage-own', () => {
     // A lesson teacher = a portal user linked to an instructor (instructor.uid)
     // with the lesson-teacher role. They see + manage only their own students.
     const OWN = 'instructor-owned-by-teacher';

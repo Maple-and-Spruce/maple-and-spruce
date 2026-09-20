@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * MyWeek — the teacher's week as a calendar (#685).
+ * MyWeek — the teacher's week as a calendar (legacy #685).
  *
  * A calendar-style week grid: a shared hourly time axis on the left and seven
  * day columns, with items absolutely positioned by time so the same hour lines
@@ -10,7 +10,7 @@
  * in a band. Categories are color-coded and can be toggled off (sticky per
  * browser).
  *
- * Two modes (#683):
+ * Two modes (#60):
  *  - "This week" projects the concrete `commitments` for the navigated week.
  *  - "Typical week" projects the synthesized `standing` slots onto a generic
  *    Sun–Sat week — the recurring pattern from the last few weeks, with

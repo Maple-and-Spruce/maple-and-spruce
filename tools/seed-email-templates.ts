@@ -950,7 +950,7 @@ const musicTogetherManageLinkHtml = `<!DOCTYPE html>
 // ---------------------------------------------------------------------------
 // Seed to Firestore
 // ---------------------------------------------------------------------------
-// Music Together registration sequences (#778)
+// Music Together registration sequences (legacy #778)
 //
 // Copy from Stephanie's "Registration Email Sequences" doc: three emails for a
 // regular session registration and three for a free demo RSVP, at signup, one

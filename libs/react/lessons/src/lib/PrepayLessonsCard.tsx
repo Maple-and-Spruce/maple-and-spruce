@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PrepayLessonsCard (#864) — take money for a block of lessons at the desk.
+ * PrepayLessonsCard (legacy #864) — take money for a block of lessons at the desk.
  *
  * Autopay handles the steady state. This is for the other conversation: a
  * family agrees to pay for the next few lessons now, and in exchange the slot

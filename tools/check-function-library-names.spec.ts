@@ -1,6 +1,6 @@
 /**
  * The guard for the deploy-filter bijection: one library, one function, named
- * after it. Both directions of breaking it have shipped (#835, #872).
+ * after it. Both directions of breaking it have shipped (legacy #835, legacy #872).
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -82,7 +82,7 @@ describe('findViolations', () => {
     expect(findViolations(['get-artists'], exportsOf(entry))).toEqual([]);
   });
 
-  it('catches the #835 case — the filter would name nothing', () => {
+  it('catches the legacy #835 case — the filter would name nothing', () => {
     // The library exported runLessonBillingScheduled, not runLessonBilling.
     // The filter asked for runLessonBilling, and all 26 maple-square functions
     // failed with it.
@@ -101,7 +101,7 @@ describe('findViolations', () => {
     expect(violations.some((v) => v.kind === 'missing')).toBe(true);
   });
 
-  it('catches the #872 case — a second export that never deploys', () => {
+  it('catches the legacy #872 case — a second export that never deploys', () => {
     // chargeLessonsNow shipped inside run-lesson-billing and was never created
     // in prod; the Pay-ahead button failed with functions/not-found.
     const entry = `export {

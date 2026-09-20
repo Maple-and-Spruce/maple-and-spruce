@@ -18,7 +18,7 @@ export default function InstructorsPage() {
   } = useInstructors();
 
   // Users power the "Portal login" picker on the form (links a login to an
-  // instructor so a lesson teacher can manage their own lessons, #617).
+  // instructor so a lesson teacher can manage their own lessons, #49).
   const { usersState } = useUsers();
   const users = usersState.status === 'success' ? usersState.data : undefined;
 

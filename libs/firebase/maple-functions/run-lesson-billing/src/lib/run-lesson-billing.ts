@@ -1,5 +1,5 @@
 /**
- * runLessonBilling — plan lesson charges, then take the ones that are due (#798).
+ * runLessonBilling — plan lesson charges, then take the ones that are due (#81).
  *
  * Katie and Nathan were already vaulting a family's card in Square and charging
  * by hand every month. This does that on a schedule, from a rule they set once.
@@ -9,7 +9,7 @@
  * file is the wiring: repositories in, a Square client in, counters out.
  *
  * Uses the **Maple & Spruce** Square account, not Music Together's — lessons are
- * M&S revenue, and MT settles to a different business (#791).
+ * M&S revenue, and MT settles to a different business (legacy #791).
  *
  * Deployed to us-east4 via CI/CD (maple-square codebase — it needs the Square
  * SDK, so it belongs with the other Square work rather than in maple-core).
@@ -57,7 +57,7 @@ export async function executeLessonBilling(
       LessonRatesConfigRepository.get(),
       LessonRepository.findAll(),
       // Every charge, not just the scheduled ones: planning needs to know which
-      // lessons are already spoken for, and a lesson paid ahead for (#864) is
+      // lessons are already spoken for, and a lesson paid ahead for (legacy #864) is
       // on a charge that is long since `paid`.
       LessonScheduledChargeRepository.findAll(),
     ]);

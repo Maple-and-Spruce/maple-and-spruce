@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Create or change a standing arrangement (#797).
+ * Create or change a standing arrangement (legacy #797).
  *
  * The point of this dialog is that moving a student to a new day is **one
  * edit**, not twelve. It edits the arrangement, never the lessons already on
  * the calendar.
  *
  * The block is not a detail to be filled in — it is the container the
- * arrangement has to sit inside (#686), and the server rejects a schedule that
+ * arrangement has to sit inside (legacy #686), and the server rejects a schedule that
  * does not fit. So the form narrows to the chosen teacher's blocks, and derives
  * the weekday from the block rather than asking twice: a block already *is* a
  * weekday and a window.
@@ -71,7 +71,7 @@ export interface StandingScheduleDialogProps {
     startMinutes: number;
     durationMinutes: number;
     intervalWeeks: number;
-    /** How to make room when no block covers the time (#835). */
+    /** How to make room when no block covers the time (legacy #835). */
     blockStrategy?: BlockStrategy;
     room?: Room;
     startsOn: Date;
@@ -172,7 +172,7 @@ export function StandingScheduleDialog({
     startMinutes >= block.startMinutes &&
     startMinutes + durationMinutes <= block.endMinutes;
 
-  // What could be done about a time no block covers (#835). Computed from the
+  // What could be done about a time no block covers (legacy #835). Computed from the
   // same pure function the server uses to validate the choice, and from the
   // same occurrence the server plans from — the first `dayOfWeek` on or after
   // the start date, at the start time — so the weekday named in the offer is
@@ -329,7 +329,7 @@ export function StandingScheduleDialog({
             fullWidth
           />
 
-          {/* No longer a dead end (#835). If nothing covers this time, offer
+          {/* No longer a dead end (legacy #835). If nothing covers this time, offer
               the widening or the new block that would — Katie used to have to
               leave, edit the block on another page, and come back. */}
           {offerChoice && dayOfWeek !== undefined && (

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 /**
- * Behavioural spec for tools/deploy-functions-batched.sh (#723).
+ * Behavioural spec for tools/deploy-functions-batched.sh (legacy #723).
  *
  * The script is exercised for real (bash, child process) with a stub standing
  * in for `firebase`. The stub records every `--only` list it was handed and
@@ -174,7 +174,7 @@ describe('deploy-functions-batched.sh', () => {
   });
 
   it('retries a batch that exits non-zero, then succeeds', () => {
-    // THE regression test for #723: under the old inline `run:` block, `bash -e`
+    // THE regression test for legacy #723: under the old inline `run:` block, `bash -e`
     // aborted the step here and attempt 2 never happened.
     const { status, output, calls } = run(targets(2), [
       '2 Error: There was an error deploying functions',

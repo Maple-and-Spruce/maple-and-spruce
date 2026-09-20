@@ -87,7 +87,7 @@ describe('SquareCardForm SDK environment selection', () => {
 });
 
 /**
- * Locks the card-on-file contract that a real-Square e2e (#622) had to catch:
+ * Locks the card-on-file contract that a real-Square e2e (legacy #622) had to catch:
  * vaulting a card requires a STORE-intent `verifyBuyer` token in addition to
  * the tokenize nonce. `verifyBuyerForStore` must produce it; a one-time charge
  * (default) must NOT call verifyBuyer.

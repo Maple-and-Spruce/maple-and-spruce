@@ -238,7 +238,7 @@ test.describe('Enrollment pay flow', () => {
   test('discount code halves the charge today AND the scheduled Week-5 charge', async ({
     page,
   }) => {
-    // The whole promise of the pilot half-off (#791) is "half off tuition",
+    // The whole promise of the pilot half-off (legacy #791) is "half off tuition",
     // not "half off the first payment". This drives the real widget against
     // MT's Square sandbox and then reads back what was actually stored, so a
     // regression that discounted only the charge taken at checkout — leaving

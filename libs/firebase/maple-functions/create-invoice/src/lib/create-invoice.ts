@@ -4,7 +4,7 @@
  * Creates a private-pay music-lesson invoice for a student. Hope
  * Scholarship students are guarded at the server boundary and MUST NOT be
  * invoiced through this flow — they invoice externally via the EMA
- * portal. See epic #10 / issue #282.
+ * portal. See legacy epic #10 / legacy issue #282.
  */
 import { createAdminFunction } from '@maple/firebase/functions';
 import {

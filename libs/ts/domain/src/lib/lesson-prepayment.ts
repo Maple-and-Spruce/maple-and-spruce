@@ -1,5 +1,5 @@
 /**
- * Paying ahead for a block of lessons (#864).
+ * Paying ahead for a block of lessons (legacy #864).
  *
  * Autopay covers the steady state. This covers the conversation Katie actually
  * has with some families: pay for the next few lessons now, and in exchange the
@@ -10,7 +10,7 @@
  * ----------------------------
  * A prepayment produces the same `LessonScheduledCharge` as an automatic one —
  * same deterministic id, same idempotency key — just already `paid`. It is not
- * a second ledger, because epic #626 decided lesson money has exactly one, and
+ * a second ledger, because epic #51 decided lesson money has exactly one, and
  * every downstream reader (the charges screen, teacher payouts, the next
  * planning run) keeps working without knowing which way a charge was taken.
  *

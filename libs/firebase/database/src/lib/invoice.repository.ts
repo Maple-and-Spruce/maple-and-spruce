@@ -346,7 +346,7 @@ export const InvoiceRepository = {
    * Record an off-Square payment (cash/check = `admin-manual`, or
    * `venmo-manual`) against a sent invoice, flipping it to paid. Idempotent
    * — if already paid, leaves the earlier paymentRecord intact. Mirrors
-   * `markPaidBySquareWebhook` but for human-attested payments. See epic #626.
+   * `markPaidBySquareWebhook` but for human-attested payments. See epic #51.
    *
    * `note`/`recordedByUid` are optional; undefined fields are dropped by
    * Firestore (`ignoreUndefinedProperties`), so they never persist as null.
@@ -394,7 +394,7 @@ export const InvoiceRepository = {
   },
 
   /**
-   * Flip an invoice to paid from an in-person Square POS lesson sale (#628),
+   * Flip an invoice to paid from an in-person Square POS lesson sale (legacy #628),
    * attributing it to `square-pos`. Idempotent — already-paid invoices keep
    * their earlier paymentRecord.
    */
@@ -487,7 +487,7 @@ export const InvoiceRepository = {
    * Attribute a POS lesson sale to a student: settle their single open `sent`
    * invoice whose pre-tax total matches the sale, or create a paid invoice
    * when there's no unambiguous match. Shared by the auto-attribution path in
-   * `processPosSale` and the manual review-queue resolver (#628).
+   * `processPosSale` and the manual review-queue resolver (legacy #628).
    */
   async settleOrCreatePosLessonInvoice(args: {
     studentId: string;

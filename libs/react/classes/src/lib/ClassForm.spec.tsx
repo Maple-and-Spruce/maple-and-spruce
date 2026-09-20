@@ -76,7 +76,7 @@ describe('ClassForm', { timeout: 30_000 }, () => {
    * Class documents get server-generated ids and there is no uniqueness check
    * anywhere in the create path, so a second call is a second class.
    *
-   * This is the same bug that was found and fixed for registrations in #286,
+   * This is the same bug that was found and fixed for registrations in legacy #286,
    * where the fix was a Preact signal (synchronous, so it both disables the
    * button immediately AND short-circuits the re-entrant call):
    *

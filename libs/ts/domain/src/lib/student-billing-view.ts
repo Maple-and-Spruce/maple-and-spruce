@@ -7,12 +7,12 @@
  *   - an **invoice** — the per-lesson auto-invoice, or one Katie builds by hand
  *   - an **automatic charge** — planned by a billing rule, taken by the daily job
  *   - a **manual charge** — taken on the spot, usually a family paying ahead
- *     for a block (#864)
+ *     for a block (legacy #864)
  *
  * Reading "is this family paid up?" meant holding one list in your head while
  * scanning the other. This merges them into rows a single table can show,
  * without touching either record: invoices stay invoices and charges stay
- * charges (epic #626 decided lesson money has one ledger, not a third view
+ * charges (epic #51 decided lesson money has one ledger, not a third view
  * that stores anything).
  *
  * Pure, so the table's filtering and the tests agree by construction.
@@ -46,7 +46,7 @@ export type BillingRecord =
     };
 
 /**
- * Was this charge taken by a person rather than planned by a rule (#864)?
+ * Was this charge taken by a person rather than planned by a rule (legacy #864)?
  *
  * Checks `source` and the `ruleId` sentinel both. A manual charge carries both
  * today, but `ruleId` is the field every charge is guaranteed to have, so a
