@@ -1,6 +1,6 @@
 name: Deploy on merge
 
-# Pipeline ("known-good dev" + manual prod approval):
+# Pipeline ("known-good dev", then automatic promotion to prod):
 #
 #   merge to main
 #     ├── prepare_and_build  (compute affected, build artifacts)
@@ -9,20 +9,20 @@ name: Deploy on merge
 #     ├── deploy_vercel_dev      (build + deploy admin app → dev Vercel project / business-dev)
 #     ├── e2e_dev                (Playwright → deployed dev URL)
 #     │     │
-#     │     └── approve_prod  ← MANUAL APPROVAL via `production` Environment
+#     │     └── prod_gate  ← promotion gate: dev must be green (no human approval)
 #     │            │                (gated on deploy_vercel_dev AND e2e_dev success;
 #     │            │                 a web-app-only merge skips e2e_dev, which is
 #     │            │                 treated as a pass so the portal still promotes)
-#     │            ├── deploy_functions_prod        (only if approve_prod passed)
+#     │            ├── deploy_functions_prod        (only if prod_gate passed)
 #     │            │      └── deploy_hosting_api (prod)  (republishes the `api` Hosting
 #     │            │                              target when firebase.json/public change;
 #     │            │                              runs AFTER functions so a new function
 #     │            │                              exists before its rewrite publishes.
 #     │            │                              Skips fast+ungated for hosting-only
-#     │            │                              changes since the approval chain
+#     │            │                              changes since the promotion chain
 #     │            │                              auto-skips when no fn/web-app changed)
-#     │            ├── publish_webflow_components   (only if approve_prod passed)
-#     │            └── deploy_vercel_prod           (only if approve_prod passed)
+#     │            ├── publish_webflow_components   (only if prod_gate passed)
+#     │            └── deploy_vercel_prod           (only if prod_gate passed)
 #     │
 #     ├── deploy_firestore_indexes_dev   (independent — declared indexes → maple-and-spruce-dev)
 #     └── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
@@ -30,7 +30,7 @@ name: Deploy on merge
 #                                          additive; analyzer enforces declaration at PR)
 #
 # Setup: a "production" GitHub Environment must exist in repo Settings →
-# Environments, with at least one required reviewer. Without it, approve_prod
+# Environments, with at least one required reviewer. Without it, prod_gate
 # auto-passes (any user counts as approver) — defeating the purpose.
 #
 # Per-feature-branch dev deploys are gone — the old
@@ -161,7 +161,7 @@ jobs:
           # The registration E2E suite (e2e_dev) only runs when functions or
           # webflow-components are affected, so a web-app-only merge skips
           # e2e_dev and — without this flag — never reaches the prod gate
-          # (approve_prod), silently stranding portal changes at the last
+          # (prod_gate), silently stranding portal changes at the last
           # function-touching deploy. Detect the web app the same way as
           # webflow-components: a full-line match (so "maple-spruce-e2e" can't
           # false-positive), with nx's graph marking it affected transitively
@@ -558,7 +558,7 @@ jobs:
     # merge, so business-dev.* always mirrors main — the known-good dev
     # environment we exercise before promoting to prod. Mirrors
     # deploy_vercel_prod but targets the dev project (VERCEL_PROJECT_ID_DEV)
-    # and is NOT gated on approval: dev must lead prod, not follow it.
+    # and is NOT gated on prod_gate: dev must lead prod, not follow it.
     #
     # vercel.json disables Vercel's own git auto-deploy on main for every
     # project linked to this repo (git.deploymentEnabled.main = false), so
@@ -793,14 +793,19 @@ jobs:
             apps/music-together-e2e/test-results/
           retention-days: 7
 
-  approve_prod:
-    # Phase 3 manual gate: every prod-side job depends on this, and this
-    # job uses the `production` Environment which is configured (in repo
-    # Settings → Environments) with required reviewers. GitHub pauses
-    # the job until a reviewer clicks "Review pending deployments".
+  prod_gate:
+    # The one place prod promotion is decided: every prod-side job depends on
+    # this, so the conditions below are what "safe to promote" means.
     #
-    # A single gate covers all three prod jobs (functions, webflow,
-    # vercel) — one approval click unlocks the whole prod side.
+    # There is NO human approval step. It used to pause on the `production`
+    # Environment with required reviewers; in practice the click added delay
+    # without catching anything the dev E2E had not, so it was dropped
+    # (2026-09). The substantive gates are dev being green: the registration
+    # and Music Together E2E suites against deployed dev, plus the dev admin
+    # app actually deploying.
+    #
+    # Required reviewers are a paid feature on a private repo, so re-adding a
+    # gate means an Environment rule this repo's plan supports.
     #
     # Also gated on deploy_vercel_dev: we never promote to prod unless the
     # dev admin app actually deployed, so "known-good dev" includes the web
@@ -830,21 +835,20 @@ jobs:
           needs.prepare_and_build.outputs.webflow_components_affected != 'true' &&
           needs.prepare_and_build.outputs.web_app_affected == 'true'))
     runs-on: ubuntu-latest
-    environment: production
     steps:
-      - name: Approved for production deploy
-        run: echo "Production deploys unlocked by approver — proceeding."
+      - name: Dev is green — promote to production
+        run: echo "dev E2E + dev Vercel deploy passed; unlocking the prod jobs."
 
   deploy_functions_prod:
-    needs: [prepare_and_build, approve_prod]
-    # `!cancelled()` is required because approve_prod uses `always()` in its
+    needs: [prepare_and_build, prod_gate]
+    # `!cancelled()` is required because prod_gate uses `always()` in its
     # own `if` (to survive a skipped e2e_dev on web-app-only merges). A job
     # that depends on an `always()` job is implicitly skipped unless it also
     # uses a status-check function in its `if` — without this, the prod
-    # deploy was silently skipped even after approve_prod succeeded.
+    # deploy was silently skipped even after prod_gate passed.
     if: >-
       !cancelled() &&
-      needs.approve_prod.result == 'success' &&
+      needs.prod_gate.result == 'success' &&
       needs.prepare_and_build.outputs.has_changes == 'true' &&
       needs.prepare_and_build.outputs.matrix != '' &&
       toJson(fromJson(needs.prepare_and_build.outputs.matrix).include) != '[]'
@@ -1163,12 +1167,12 @@ jobs:
     # deploy_functions_prod guarantees the function exists first.
     #   - `!cancelled()` + `result != 'failure'`: deploy_functions_prod is
     #     SKIPPED for hosting-only / static-file changes (empty function matrix,
-    #     and the whole approve_prod chain auto-skips when nothing function- or
+    #     and the whole prod_gate chain auto-skips when nothing function- or
     #     web-app-related changed) — so hosting still deploys promptly and
     #     ungated in that common case. Only a genuine function-deploy FAILURE
     #     blocks it (don't publish rewrites pointing at functions that failed).
-    #   - When functions DO deploy, hosting waits for them (and the approval
-    #     they require) — which is exactly the ordering we want.
+    #   - When functions DO deploy, hosting waits for them (and the gate
+    #     they pass through) — which is exactly the ordering we want.
     needs: [deploy_functions_prod]
     runs-on: ubuntu-latest
     if: >-
@@ -1239,15 +1243,15 @@ jobs:
           exit 1
 
   publish_webflow_components:
-    needs: [prepare_and_build, approve_prod]
-    # Gate the webflow-components publish on the manual approval (which
-    # itself depends on E2E passing). The published bundle becomes the
-    # live widget, so it's treated as a prod-side action.
-    # `!cancelled()` is required because approve_prod uses `always()` — see
+    needs: [prepare_and_build, prod_gate]
+    # Gate the webflow-components publish on prod_gate (which itself
+    # depends on E2E passing). The published bundle becomes the live
+    # widget, so it's treated as a prod-side action.
+    # `!cancelled()` is required because prod_gate uses `always()` — see
     # deploy_functions_prod for why a status-check function is needed here.
     if: >-
       !cancelled() &&
-      needs.approve_prod.result == 'success' &&
+      needs.prod_gate.result == 'success' &&
       needs.prepare_and_build.outputs.webflow_components_affected == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -1281,15 +1285,15 @@ jobs:
   deploy_vercel_prod:
     # Vercel's auto-deploy-on-main is disabled via vercel.json
     # (git.deploymentEnabled.main = false). Prod promotion happens here,
-    # gated on the manual approval (which itself requires E2E success).
+    # gated on prod_gate (which itself requires E2E success).
     # PR previews still auto-deploy from Vercel because the disable only
     # covers `main`.
-    needs: approve_prod
-    # `!cancelled()` is required because approve_prod uses `always()` — a job
+    needs: prod_gate
+    # `!cancelled()` is required because prod_gate uses `always()` — a job
     # depending on an `always()` job is implicitly skipped unless it also uses
     # a status-check function. Without this, deploy_vercel_prod was skipped on
-    # legacy #493 despite approve_prod succeeding, so the portal never reached prod.
-    if: ${{ !cancelled() && needs.approve_prod.result == 'success' }}
+    # legacy #493 despite prod_gate succeeding, so the portal never reached prod.
+    if: ${{ !cancelled() && needs.prod_gate.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
