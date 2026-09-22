@@ -6,6 +6,25 @@
 
 ## Current Status
 
+### Lesson billing: first manual run in dev (2026-09-21/22)
+
+`docs/guides/lesson-billing-manual-test-plan.md` was run through Claude in Chrome against
+`business-dev` and the Square sandbox. Card linking, auto-invoice, the Square invoice webhook,
+Waive/Cancel, and publishing and cancelling invoices in Square all work. **Automatic lesson billing is not usable yet:**
+
+- **#99:** every card charge is rejected by Square. The idempotency key is about 52–69 chars and
+  Square allows 45. This blocks Pay ahead, Try again and the job.
+- **#100:** once any charge has failed, `runLessonBilling` aborts for every student on every later
+  run (409 on the re-planned charge id).
+- **#101–#105:** invoices and charges double-bill each other, failed charges allow overlaps, Pay
+  ahead breaks after 8 PM ET (UTC "today"), manual/Venmo-paid invoices stay payable in Square, and
+  cancelling a lesson doesn't adjust its charge.
+- **#106–#107:** UI fixes, plus no admin UI for rules, rule assignment or running the job.
+
+The mock Square server doesn't enforce the 45-char key limit, which is why the integration suites
+stayed green. Dev still holds 3 unclearable failed test charges on inactive test students.
+
+
 ### Going public again: rewritten history + PII safeguards (2026-09-16)
 
 The repo went private after customer data leaked into tests and docs. legacy #857 scrubbed the
