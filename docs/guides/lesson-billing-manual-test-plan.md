@@ -25,7 +25,7 @@
   Dev may hold other rows; do not copy their names into the results log or any issue. Refer
   to them by document id if you must.
 - **Sign-in** is email + password. Use the 1Password `request_credentials` flow for the dev
-  admin account (and the dev lesson-teacher account for §10). Never type a password yourself.
+  portal admin account. Never type a password yourself.
 - **No money moves.** Sandbox charges are fake, but still ask David in chat before the first
   charge of a run, per the browser safety rules. One approval covers the charging steps of
   this plan in that run.
@@ -49,20 +49,32 @@ Phones, if a form wants one: `304-555-0101` … `304-555-0105`.
 
 ---
 
-## 1. Prerequisites (David, before the first run)
+## 1. Sign-ins and sandbox customers
 
-Claude cannot do these without handling secrets or accounts:
+Everything here is done by Claude in Chrome. The only thing David may need to do is sign in.
 
-1. **Square sandbox cards.** In the Square **Sandbox** seller dashboard (Developer Console →
-   Sandbox test account → open), create customers for A, B and E with the emails above and
-   save the test card `4111 1111 1111 1111` (any future expiry, any CVV, ZIP `26505`) on
-   each. For B, also save a **second** card that will decline if the sandbox allows it
-   (`4000 0000 0000 0002`). If the sandbox refuses to save a declining card, §6's failure
-   steps are `BLOCKED` and the integration spec remains their only cover.
-2. **1Password items** for the dev admin and a dev `lesson-teacher` user, with the latter
-   assigned as teacher on student B's lessons (or say which dev teacher to use).
-3. **Console access** in Chrome to the Firebase console and Cloud Scheduler for
-   `maple-and-spruce-dev` (needed for §7: no screen creates a billing rule or runs the job).
+1. **Portal:** use the existing 1Password entry for the **dev portal admin** through
+   `request_credentials` / `autofill_credential`. If autofill fails, ask David to sign in in
+   the Chrome tab.
+2. **Square Developer Console** (`developer.squareup.com`): ask David to sign in, or use a
+   1Password item for it if one exists. Then open the **Sandbox** test account's seller
+   dashboard (Sandbox test accounts → the Maple & Spruce sandbox account → **Open in Square
+   Dashboard**). Confirm the page says it is a sandbox before going further.
+3. **Create the sandbox customers** (Customers → Create customer) for A, B (in the parent's
+   name, Harper Thompson) and E, using the emails in the test-data table and the `304-555-01xx`
+   phones. Skip a customer that already exists from an earlier run.
+4. **Save a card on file** for each (customer → Cards on file → Add card): Square's published
+   sandbox test card `4111 1111 1111 1111`, any future expiry, CVV `111`, ZIP `26505`. For B
+   also save the sandbox decline card `4000 0000 0000 0002`. These are Square's public test
+   numbers, not anyone's card; never enter any other card number. If the sandbox refuses to
+   save the decline card, §6's failure steps are `BLOCKED` and the integration spec remains
+   their only cover.
+5. **Firebase console and Cloud Scheduler** for `maple-and-spruce-dev` must be reachable in
+   the same Chrome profile (needed for §7: no screen creates a billing rule or runs the job).
+   If Google asks for a sign-in, ask David.
+
+**Out of scope for now:** the lesson-teacher role (§10). There is no dev teacher account in
+1Password yet.
 
 ---
 
@@ -189,7 +201,9 @@ Cloud Scheduler in Chrome, on **`maple-and-spruce-dev`** only.
 
 ---
 
-## 10. Roles (lesson-teacher)
+## 10. Roles (lesson-teacher) — deferred
+
+> Skipped until a dev lesson-teacher account exists in 1Password. Log these as `SKIPPED`.
 
 Sign out, sign in as the dev lesson-teacher (1Password).
 
