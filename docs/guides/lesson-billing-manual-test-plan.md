@@ -40,7 +40,7 @@
 | Handle | Student | Contact / email | Setup |
 |---|---|---|---|
 | **A** | Robin Ashfield (adult) | `robin.ashfield@example.com` | card on file, weekly, on the test rule |
-| **B** | Olive Thompson (child) | parent "Harper Thompson", `harper.thompson@example.com` | card on file, **biweekly**, Pay ahead + failure paths |
+| **B** | Testchild Placeholder (child) | parent "Testparent Placeholder", `parent.placeholder@example.com` | card on file, **biweekly**, Pay ahead + failure paths |
 | **C** | Test Nocard | `test.nocard@example.com` | no card anywhere |
 | **D** | Test Hope | `test.hope@example.com` | Hope Scholarship on |
 | **E** | Test Autoinvoice | `test.autoinvoice@example.com` | auto-invoice on, card on file, on the test rule |
@@ -61,7 +61,7 @@ Everything here is done by Claude in Chrome. The only thing David may need to do
    dashboard (Sandbox test accounts → the Maple & Spruce sandbox account → **Open in Square
    Dashboard**). Confirm the page says it is a sandbox before going further.
 3. **Create the sandbox customers** (Customers → Create customer) for A, B (in the parent's
-   name, Harper Thompson) and E, using the emails in the test-data table and the `304-555-01xx`
+   name, Testparent Placeholder) and E, using the emails in the test-data table and the `304-555-01xx`
    phones. Skip a customer that already exists from an earlier run.
 4. **Save a card on file** for each (customer → Cards on file → Add card): Square's published
    sandbox test card `4111 1111 1111 1111`, any future expiry, CVV `111`, ZIP `26505`. For B
