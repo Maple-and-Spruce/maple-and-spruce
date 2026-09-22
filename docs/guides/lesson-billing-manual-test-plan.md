@@ -7,7 +7,7 @@
 > `student-page.spec.ts` (portal e2e, emulators only) and the Storybook play tests for
 > `PaymentMethodCard`, `PrepayLessonsCard`, `UpcomingChargesCard` and `BillingTable`.
 >
-> What only this plan covers: the **deployed** dev functions (the #872 class of bug, where
+> What only this plan covers: the **deployed** dev functions (the legacy #872 class of bug, where
 > `chargeLessonsNow` was never deployed and Pay ahead failed with `functions/not-found`), the
 > **real Square sandbox** instead of the mock server, the real scheduled job, and the
 > Square invoice webhook.
