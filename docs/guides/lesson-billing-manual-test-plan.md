@@ -73,6 +73,23 @@ Everything here is done by Claude in Chrome. The only thing David may need to do
    the same Chrome profile (needed for §7: no screen creates a billing rule or runs the job).
    If Google asks for a sign-in, ask David.
 
+**Learned on the first run (2026-09-21/22):**
+- The Square sandbox dashboard **will not save** the decline card `4000 0000 0000 0002`. A failed
+  charge is easy to produce anyway while #99 (idempotency key) is open.
+- The Firebase console for `maple-and-spruce-dev` is under Katie's Google account. Ask David to
+  re-verify it before §7. Local `gcloud`/`firebase` credentials may also have expired.
+- Rules and the job can be driven through the real callables from the signed-in portal tab: read the ID
+  token from IndexedDB `firebaseLocalStorageDb`, then POST `{data:…}` to
+  `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/<fn>`. Use `saveLessonBillingRule`
+  (create/archive), `triggerLessonBilling` (`{dryRun}`), `getLessonBilling`,
+  `updateLessonScheduledCharge`, `updateStudentSquareCard` and `updateStudent` (cleanup). Reload the
+  page first if the token is older than an hour. Never print the token.
+- `billingRuleId` can only be set in the console (#107).
+- Give each test student a different Monday time (4:00, 4:30, 5:00, 5:30), or the room-conflict guard
+  and block prompts get in the way. Add a one-off lesson earlier today for "Mark taught".
+- `/my-day` shows only the signed-in user's lessons, so LB-7.11 needs the teacher account.
+- Results of the first run: issues #99–#107.
+
 **Out of scope for now:** the lesson-teacher role (§10). There is no dev teacher account in
 1Password yet.
 
