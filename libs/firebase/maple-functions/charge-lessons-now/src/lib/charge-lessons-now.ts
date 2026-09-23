@@ -19,6 +19,7 @@ import { Functions, Role } from '@maple/firebase/functions';
 import { throwInvalidArgument, throwNotFound } from '@maple/firebase/functions';
 import { Square, SQUARE_SECRET_NAMES, SQUARE_STRING_NAMES } from '@maple/firebase/square';
 import {
+  InvoiceRepository,
   LessonRatesConfigRepository,
   LessonRepository,
   LessonScheduledChargeRepository,
@@ -27,6 +28,7 @@ import {
 import {
   MANUAL_CHARGE_RULE_ID,
   describePrepaymentProblem,
+  invoicedLessonIds,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import type {
@@ -87,12 +89,18 @@ export const chargeLessonsNow = Functions.endpoint
       const uid = context?.uid;
       if (!uid) throwInvalidArgument('Sign in again before charging');
 
-      const [student, lessons, existingCharges, rates] = await Promise.all([
-        StudentRepository.findById(data.studentId),
-        LessonRepository.findAll({ studentId: data.studentId }),
-        LessonScheduledChargeRepository.findAll({ studentId: data.studentId }),
-        LessonRatesConfigRepository.get(),
-      ]);
+      const [student, lessons, existingCharges, rates, invoices] =
+        await Promise.all([
+          StudentRepository.findById(data.studentId),
+          LessonRepository.findAll({ studentId: data.studentId }),
+          LessonScheduledChargeRepository.findAll({
+            studentId: data.studentId,
+          }),
+          LessonRatesConfigRepository.get(),
+          // A lesson already on a live invoice must not also be charged to the
+          // card — the two halves of "billed" have to see each other (#101).
+          InvoiceRepository.findAll({ studentId: data.studentId }),
+        ]);
 
       if (!student) throwNotFound('Student', data.studentId);
 
@@ -103,6 +111,7 @@ export const chargeLessonsNow = Functions.endpoint
           student,
           lessons,
           existingCharges,
+          alreadyInvoiced: invoicedLessonIds(invoices),
           lessonIds: data.lessonIds,
           lessonCount: data.lessonCount,
           expectedAmountCents: data.expectedAmountCents,

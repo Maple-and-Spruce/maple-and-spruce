@@ -107,12 +107,6 @@ export interface Student {
    */
   venmoUsername?: string;
   /**
-   * Auto-create + send a private-pay invoice when one of this student's
-   * lessons is marked `rendered` (legacy #629). Hope Scholarship students are never
-   * auto-invoiced — they bill externally via EMA. Defaults to off.
-   */
-  autoInvoice?: boolean;
-  /**
    * The billing rule this student is on (#81). Unset means the studio default.
    *
    * An override lives on the rule attachment, not by cloning the rule, so

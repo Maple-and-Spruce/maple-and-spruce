@@ -5,7 +5,6 @@ import {
   isHopeUnsubmitted,
   isInvoiceOverdue,
   isLessonUnbilled,
-  needsAutoInvoiceEnabled,
   sortAttentionGroups,
   totalAttentionCount,
 } from './needs-attention';
@@ -125,49 +124,6 @@ describe('isLessonUnbilled', () => {
   });
 });
 
-describe('needsAutoInvoiceEnabled', () => {
-  it('flags an active private-pay student who will never bill automatically', () => {
-    expect(
-      needsAutoInvoiceEnabled({
-        status: 'active',
-        isHopeScholarship: false,
-        autoInvoice: false,
-      })
-    ).toBe(true);
-  });
-
-  it('ignores an inactive student', () => {
-    expect(
-      needsAutoInvoiceEnabled({
-        status: 'inactive',
-        isHopeScholarship: false,
-        autoInvoice: false,
-      })
-    ).toBe(false);
-  });
-
-  it('ignores a Hope student, for whom the flag is meaningless', () => {
-    // createInvoice refuses Hope students outright, so autoInvoice is moot.
-    expect(
-      needsAutoInvoiceEnabled({
-        status: 'active',
-        isHopeScholarship: true,
-        autoInvoice: false,
-      })
-    ).toBe(false);
-  });
-
-  it('is false once the flag is on', () => {
-    expect(
-      needsAutoInvoiceEnabled({
-        status: 'active',
-        isHopeScholarship: false,
-        autoInvoice: true,
-      })
-    ).toBe(false);
-  });
-});
-
 describe('isHopeUnsubmitted', () => {
   it('flags a rendered Hope lesson with no claim', () => {
     expect(isHopeUnsubmitted({ status: 'rendered' }, undefined)).toBe(true);
@@ -204,7 +160,7 @@ describe('sortAttentionGroups', () => {
 
   it('puts money that will never arrive above money that is merely late', () => {
     const sorted = sortAttentionGroups([
-      group('student-autoinvoice-off', 9),
+      group('lesson-unattributed', 9),
       group('invoice-overdue', 5),
       group('invoice-sync-failed', 1),
     ]);
@@ -214,7 +170,7 @@ describe('sortAttentionGroups', () => {
     expect(sorted.map((g) => g.kind)).toEqual([
       'invoice-sync-failed',
       'invoice-overdue',
-      'student-autoinvoice-off',
+      'lesson-unattributed',
     ]);
   });
 

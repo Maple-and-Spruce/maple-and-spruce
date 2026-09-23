@@ -160,13 +160,7 @@ export default function StudentsPage() {
     updateStudent,
     deleteStudent: deleteStudentApi,
   } = useStudents();
-  // Inline fixes go through this page's updateStudent, so the table row is
-  // patched in place rather than left stale behind the panel.
-  const {
-    attentionState,
-    resolveRow: resolveAttentionRow,
-    resolving: attentionResolving,
-  } = useNeedsAttention({ updateStudent });
+  const { attentionState } = useNeedsAttention();
   const { instructorsState } = useInstructors();
   // All lessons — the table derives each student's recurring day/time slot
   // from their scheduled lessons. The roster is small, so one unscoped fetch
@@ -343,8 +337,6 @@ export default function StudentsPage() {
           groups={attentionState.data.groups}
           total={attentionState.data.total}
           scopedToSelf={attentionState.data.scopedToSelf}
-          resolving={attentionResolving}
-          onResolve={resolveAttentionRow}
           defaultExpanded={false}
         />
       )}

@@ -220,10 +220,7 @@ export const AutoInvoiceAndLessonRateSubmit: Story = {
       'anita@example.com'
     );
 
-    // Flip auto-invoice on and set a $41.25 rate → 4125 cents.
-    await userEvent.click(
-      canvas.getByRole('switch', { name: /automatically invoice after each lesson/i })
-    );
+    // A $41.25 rate → 4125 cents.
     await userEvent.type(
       canvas.getByLabelText(/lesson rate override/i),
       '41.25'
@@ -240,24 +237,8 @@ export const AutoInvoiceAndLessonRateSubmit: Story = {
 
     await waitFor(() => {
       expect(args.onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ autoInvoice: true, lessonRateCents: 4125 })
+        expect.objectContaining({ lessonRateCents: 4125 })
       );
-    });
-  },
-};
-
-export const HopeScholarshipDisablesAutoInvoice: Story = {
-  args: { open: true, isSubmitting: false },
-  play: async () => {
-    const canvas = await waitForDialog();
-    // Auto-invoice must not be available for Hope students (they bill via EMA).
-    await userEvent.click(
-      canvas.getByRole('switch', { name: /hope scholarship/i })
-    );
-    await waitFor(() => {
-      expect(
-        canvas.getByRole('switch', { name: /automatically invoice after each lesson/i })
-      ).toBeDisabled();
     });
   },
 };

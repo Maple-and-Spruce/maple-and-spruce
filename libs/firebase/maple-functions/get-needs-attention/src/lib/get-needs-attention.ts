@@ -35,7 +35,6 @@ import {
   isInvoiceOverdue,
   isLessonUnattributed,
   isLessonUnbilled,
-  needsAutoInvoiceEnabled,
   sortAttentionGroups,
   totalAttentionCount,
 } from '@maple/ts/domain';
@@ -187,17 +186,6 @@ export const getNeedsAttention = Functions.endpoint
           teacherId: lesson.teacherId,
         }));
 
-      const autoInvoiceOff: NeedsAttentionRow[] = students
-        .filter(needsAutoInvoiceEnabled)
-        .map((student) => ({
-          kind: 'student-autoinvoice-off' as const,
-          id: student.id,
-          label: student.name,
-          detail: 'Lessons will not bill automatically',
-          // The only one the panel can fix itself: it is a single boolean.
-          resolution: 'inline' as const,
-        }));
-
       const groups: NeedsAttentionGroup[] = [
         {
           kind: 'invoice-sync-failed',
@@ -208,8 +196,7 @@ export const getNeedsAttention = Functions.endpoint
         {
           kind: 'lesson-unbilled',
           title: 'Lessons taught but never invoiced',
-          because:
-            'Usually means no rate resolved for the student, so the auto-invoice skipped.',
+          because: 'Taught, and nobody has been asked to pay for them yet.',
           rows: unbilled,
         },
         {
@@ -230,12 +217,6 @@ export const getNeedsAttention = Functions.endpoint
           because:
             'They do not appear in the openings finder and skew the weekly view.',
           rows: unattributed,
-        },
-        {
-          kind: 'student-autoinvoice-off',
-          title: 'Students who will not bill automatically',
-          because: 'Every future lesson for them has to be invoiced by hand.',
-          rows: autoInvoiceOff,
         },
       ];
 

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { NeedsAttentionPanel } from './NeedsAttentionPanel';
 import { sortAttentionGroups, totalAttentionCount } from '@maple/ts/domain';
 import type {
@@ -12,38 +12,36 @@ function row(
   kind: NeedsAttentionKind,
   id: string,
   label: string,
-  detail: string,
-  resolution: NeedsAttentionRow['resolution'] = 'navigate'
+  detail: string
 ): NeedsAttentionRow {
   return {
     kind,
     id,
     label,
     detail,
-    resolution,
-    href: resolution === 'navigate' ? `/students/${id}` : undefined,
+    resolution: 'navigate',
+    href: `/students/${id}`,
   };
 }
 
 const groups: NeedsAttentionGroup[] = sortAttentionGroups([
   {
-    kind: 'student-autoinvoice-off',
-    title: 'Students who will not bill automatically',
-    because: 'Every future lesson for them has to be invoiced by hand.',
+    kind: 'lesson-unattributed',
+    title: 'Lessons with no block',
+    because:
+      'They do not appear in the openings finder and skew the weekly view.',
     rows: [
       row(
-        'student-autoinvoice-off',
-        'student-1',
+        'lesson-unattributed',
+        'lesson-9',
         'Rowan Fields',
-        'Lessons will not bill automatically',
-        'inline'
+        'Mon, Oct 5 sits in no block'
       ),
       row(
-        'student-autoinvoice-off',
-        'student-2',
+        'lesson-unattributed',
+        'lesson-10',
         'Ada Okonkwo',
-        'Lessons will not bill automatically',
-        'inline'
+        'Mon, Oct 12 sits in no block'
       ),
     ],
   },
@@ -88,8 +86,6 @@ const meta = {
     groups,
     total: totalAttentionCount(groups),
     scopedToSelf: false,
-    resolving: new Set<string>(),
-    onResolve: fn(),
   },
 } satisfies Meta<typeof NeedsAttentionPanel>;
 
@@ -125,44 +121,10 @@ export const WorstFirstNotBiggestFirst: Story = {
 
     expect(headings[0]).toMatch(/never reached square/i);
     // The most numerous group is not first.
-    expect(headings[headings.length - 1]).toMatch(/not bill automatically/i);
+    expect(headings[headings.length - 1]).toMatch(/no block/i);
   },
 };
 
-/** The one row the panel can fix itself: a single boolean. */
-export const ResolvesInline: Story = {
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    // Open the group that holds the inline action.
-    await userEvent.click(
-      canvas.getByRole('button', { name: /show students who will not bill/i })
-    );
-    const turnOn = await canvas.findAllByRole('button', { name: /turn on/i });
-    await userEvent.click(turnOn[0]);
-
-    await waitFor(() => {
-      expect(args.onResolve).toHaveBeenCalledTimes(1);
-    });
-    const [resolved] = (args.onResolve as ReturnType<typeof fn>).mock.calls[0];
-    expect(resolved.kind).toBe('student-autoinvoice-off');
-  },
-};
-
-/** A row being fixed shows progress; the others stay live. */
-export const ResolvingOneRow: Story = {
-  args: { resolving: new Set(['student-1']) },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole('button', { name: /show students who will not bill/i })
-    );
-
-    expect(await canvas.findByRole('button', { name: /saving/i })).toBeDisabled();
-    const others = canvas.getAllByRole('button', { name: /^turn on$/i });
-    expect(others[0]).not.toBeDisabled();
-  },
-};
 
 /**
  * A lesson teacher sees only their own students, and the panel says so —

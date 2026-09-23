@@ -99,7 +99,6 @@ export function StudentForm({
   const secondaryContactEmail = useSignal('');
   const secondaryContactPhone = useSignal('');
   const venmoUsername = useSignal('');
-  const autoInvoice = useSignal(false);
   const lessonRateCents = useSignal('');
   const notes = useSignal('');
   const status = useSignal<StudentStatus>('active');
@@ -123,7 +122,6 @@ export function StudentForm({
       primaryTeacherId: primaryTeacherId.value,
       registeredLessonLength: registeredLessonLength.value || undefined,
       isHopeScholarship: isHopeScholarship.value,
-      autoInvoice: autoInvoice.value,
       lessonRateCents: lessonRateCents.value
         ? Math.round(parseFloat(lessonRateCents.value) * 100)
         : undefined,
@@ -170,7 +168,6 @@ export function StudentForm({
         secondaryContactEmail.value = student.secondaryContactEmail ?? '';
         secondaryContactPhone.value = student.secondaryContactPhone ?? '';
         venmoUsername.value = student.venmoUsername ?? '';
-        autoInvoice.value = student.autoInvoice ?? false;
         lessonRateCents.value =
           student.lessonRateCents != null
             ? (student.lessonRateCents / 100).toString()
@@ -194,7 +191,6 @@ export function StudentForm({
         secondaryContactEmail.value = '';
         secondaryContactPhone.value = '';
         venmoUsername.value = '';
-        autoInvoice.value = false;
         lessonRateCents.value = '';
         notes.value = '';
         status.value = 'active';
@@ -260,8 +256,7 @@ export function StudentForm({
         primaryTeacherId: primaryTeacherId.value,
         registeredLessonLength: registeredLessonLength.value || undefined,
         isHopeScholarship: isHopeScholarship.value,
-        autoInvoice: autoInvoice.value,
-        lessonRateCents: lessonRateCents.value
+          lessonRateCents: lessonRateCents.value
           ? Math.round(parseFloat(lessonRateCents.value) * 100)
           : undefined,
         primaryContactName: primaryContactName.value,
@@ -428,19 +423,9 @@ export function StudentForm({
               }
               label="Hope Scholarship (WV)"
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={autoInvoice.value}
-                  disabled={isHopeScholarship.value}
-                  onChange={(e) => (autoInvoice.value = e.target.checked)}
-                />
-              }
-              label="Automatically invoice after each lesson is taught"
-            />
           </Box>
 
-          {/* Lesson rate — the per-student override for auto-invoicing */}
+          {/* Lesson rate — the per-student override used when pricing a lesson */}
           <TextField
             label="Lesson rate override ($)"
             value={lessonRateCents.value}

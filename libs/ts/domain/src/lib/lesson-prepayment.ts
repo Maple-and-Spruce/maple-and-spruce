@@ -76,13 +76,24 @@ export interface PrepaymentSelection {
  */
 export function prepayableLessons<
   T extends Pick<Lesson, 'id' | 'scheduledAt' | 'status'>,
->(lessons: T[], charges: LessonScheduledCharge[], now: Date): T[] {
+>(
+  lessons: T[],
+  charges: LessonScheduledCharge[],
+  now: Date,
+  /**
+   * Lessons a live invoice already asks the family to pay for. Since invoicing
+   * became explicit these are the other half of "already billed": a lesson on
+   * an invoice must not also be charged to the card (#101).
+   */
+  alreadyInvoiced: ReadonlySet<string> = new Set()
+): T[] {
   const covered = coveredLessonIds(charges);
   return lessons
     .filter(
       (lesson) =>
         isChargeableLesson(lesson) &&
         !covered.has(lesson.id) &&
+        !alreadyInvoiced.has(lesson.id) &&
         lesson.scheduledAt.getTime() >= startOfDay(now).getTime()
     )
     .slice()
@@ -138,9 +149,10 @@ export function planPrepayment(
   charges: LessonScheduledCharge[],
   selection: PrepaymentSelection,
   rateResolver: (lesson: Pick<Lesson, 'durationMinutes'>) => number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  alreadyInvoiced: ReadonlySet<string> = new Set()
 ): PrepaymentOutcome {
-  const available = prepayableLessons(lessons, charges, now);
+  const available = prepayableLessons(lessons, charges, now, alreadyInvoiced);
 
   let chosen: typeof available;
   if (selection.lessonIds && selection.lessonIds.length > 0) {

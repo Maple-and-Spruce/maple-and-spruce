@@ -38,6 +38,7 @@ export * from './lib/hope-submission';
 export * from './lib/needs-attention';
 export * from './lib/student-lesson-schedule';
 export * from './lib/lesson-billing-rule';
+export * from './lib/lesson-billing-state';
 export * from './lib/lesson-scheduled-charge';
 export * from './lib/openings';
 export * from './lib/day-column';

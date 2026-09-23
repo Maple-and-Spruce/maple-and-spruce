@@ -9,7 +9,6 @@
  *   - an invoice that never reached Square     → the family was never asked to pay
  *   - an invoice sent and unpaid for weeks     → nobody is chasing it
  *   - a rendered lesson with no invoice        → work done, never billed
- *   - an active student with autoInvoice off   → every future lesson bills nobody
  *   - a rendered Hope lesson never claimed     → money left with the state
  *
  * The classifiers here are pure so the rules can be tested without Firestore,
@@ -28,21 +27,24 @@ export type NeedsAttentionKind =
   | 'invoice-sync-failed'
   | 'invoice-overdue'
   | 'lesson-unbilled'
-  | 'student-autoinvoice-off'
   | 'hope-unsubmitted';
 
 /**
  * How a row is resolved.
  *
- * `inline` means the panel itself can fix it in one action. `navigate` means
- * the row links to the exact record — not a list to search. Anything that can
+ * Every row links to the exact record — not a list to search. Anything that can
  * only be described, never acted on, does not belong in this panel at all.
+ *
+ * There used to be an `inline` kind too, for the one fix the panel could make
+ * itself: turning a student's automatic invoicing back on. Invoicing is
+ * explicit now, so that row and the machinery behind it are gone. Bring the
+ * concept back when a fix genuinely is one click.
  */
-export type NeedsAttentionResolution = 'inline' | 'navigate';
+export type NeedsAttentionResolution = 'navigate';
 
 export interface NeedsAttentionRow {
   kind: NeedsAttentionKind;
-  /** Stable id for the underlying record, used for keys and inline actions. */
+  /** Stable id for the underlying record, used for keys. */
   id: string;
   /** What is wrong, in the words someone would use out loud. */
   label: string;
@@ -92,10 +94,10 @@ export function hasInvoiceSyncFailed(
 /**
  * A lesson that was taught and has no invoice line anywhere.
  *
- * Deliberately checked for *every* private-pay student, not only those flagged
- * `autoInvoice`: the trigger silently skips when no rate resolves, and that
- * skip is exactly the case worth surfacing. Hope lessons are excluded — they
- * bill through EMA and have their own row.
+ * Since invoicing became explicit, this is the row that carries the work:
+ * nothing bills on its own any more, so a taught lesson with no invoice and no
+ * charge is money the studio has not asked for yet. Hope lessons are excluded —
+ * they bill through EMA and have their own row.
  */
 export function isLessonUnbilled(
   lesson: Pick<Lesson, 'id' | 'status'>,
@@ -105,22 +107,6 @@ export function isLessonUnbilled(
   if (student.isHopeScholarship) return false;
   if (lesson.status !== 'rendered' && lesson.status !== 'no-show') return false;
   return !invoicedLessonIds.has(lesson.id);
-}
-
-/**
- * An active student whose lessons will never bill automatically.
- *
- * Hope students are excluded: `autoInvoice` is meaningless for them, since
- * `createInvoice` refuses Hope students outright.
- */
-export function needsAutoInvoiceEnabled(
-  student: Pick<Student, 'status' | 'isHopeScholarship' | 'autoInvoice'>
-): boolean {
-  return (
-    student.status === 'active' &&
-    !student.isHopeScholarship &&
-    !student.autoInvoice
-  );
 }
 
 /** A rendered Hope lesson with no claim, or one EMA rejected. */
@@ -148,7 +134,6 @@ const KIND_PRIORITY: NeedsAttentionKind[] = [
   'hope-unsubmitted',
   'invoice-overdue',
   'lesson-unattributed',
-  'student-autoinvoice-off',
 ];
 
 export function sortAttentionGroups(

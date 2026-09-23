@@ -180,7 +180,6 @@ export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-cale
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
-export { onLessonRenderedInvoice } from '@maple/firebase/maple-functions/on-lesson-rendered-invoice';
 export { getLessonRatesConfig } from '@maple/firebase/maple-functions/get-lesson-rates-config';
 // Teacher My Day + business payment config (legacy #631)
 export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';

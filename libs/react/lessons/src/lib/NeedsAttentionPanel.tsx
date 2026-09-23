@@ -24,9 +24,7 @@ import { useState } from 'react';
 import {
   Alert,
   Box,
-  Button,
   Chip,
-  CircularProgress,
   Collapse,
   Divider,
   IconButton,
@@ -49,10 +47,6 @@ export interface NeedsAttentionPanelProps {
   total: number;
   /** True when a lesson teacher is seeing only their own students. */
   scopedToSelf?: boolean;
-  /** Ids currently being resolved inline. */
-  resolving?: Set<string>;
-  /** Fix an `inline` row. Currently only "turn on automatic invoicing". */
-  onResolve?: (row: NeedsAttentionRow) => void;
   /**
    * Start folded down to its one-line header. Pages where the panel is a side
    * note rather than the point (the dashboard, the student table) pass
@@ -73,31 +67,7 @@ const SEVERITY: Partial<Record<NeedsAttentionKind, 'error' | 'warning'>> = {
   'invoice-overdue': 'warning',
 };
 
-function RowAction({
-  row,
-  resolving,
-  onResolve,
-}: {
-  row: NeedsAttentionRow;
-  resolving: boolean;
-  onResolve?: (row: NeedsAttentionRow) => void;
-}) {
-  if (row.resolution === 'inline') {
-    return (
-      <Button
-        size="small"
-        variant="outlined"
-        disabled={resolving || !onResolve}
-        startIcon={
-          resolving ? <CircularProgress size={14} color="inherit" /> : null
-        }
-        onClick={() => onResolve?.(row)}
-      >
-        {resolving ? 'Saving…' : 'Turn on'}
-      </Button>
-    );
-  }
-
+function RowAction({ row }: { row: NeedsAttentionRow }) {
   return (
     <MuiLink
       href={row.href}
@@ -113,13 +83,9 @@ function RowAction({
 function Group({
   group,
   defaultOpen,
-  resolving,
-  onResolve,
 }: {
   group: NeedsAttentionGroup;
   defaultOpen: boolean;
-  resolving: Set<string>;
-  onResolve?: (row: NeedsAttentionRow) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const severity = SEVERITY[group.kind];
@@ -182,11 +148,7 @@ function Group({
                   </Typography>
                 )}
               </Box>
-              <RowAction
-                row={row}
-                resolving={resolving.has(row.id)}
-                onResolve={onResolve}
-              />
+              <RowAction row={row} />
             </Box>
           ))}
         </Stack>
@@ -199,8 +161,6 @@ export function NeedsAttentionPanel({
   groups,
   total,
   scopedToSelf = false,
-  resolving = new Set(),
-  onResolve,
   defaultExpanded = true,
 }: NeedsAttentionPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -249,8 +209,6 @@ export function NeedsAttentionPanel({
                 key={group.kind}
                 group={group}
                 defaultOpen={isInitiallyOpen(i)}
-                resolving={resolving}
-                onResolve={onResolve}
               />
             ))}
           </Stack>

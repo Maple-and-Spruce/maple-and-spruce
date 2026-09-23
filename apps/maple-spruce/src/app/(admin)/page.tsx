@@ -425,7 +425,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
 export default function DashboardPage() {
   const { isAdmin, roles } = useRoles();
   const isClerk = roles.includes('clerk');
-  const { attentionState, resolveRow, resolving } = useNeedsAttention();
+  const { attentionState } = useNeedsAttention();
 
   return (
     <>
@@ -440,8 +440,6 @@ export default function DashboardPage() {
           groups={attentionState.data.groups}
           total={attentionState.data.total}
           scopedToSelf={attentionState.data.scopedToSelf}
-          resolving={resolving}
-          onResolve={resolveRow}
           defaultExpanded={false}
         />
       )}
