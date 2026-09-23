@@ -21,6 +21,8 @@ import type { Student } from './student';
 import { isLessonUnattributed } from './lesson-block';
 import type { LessonBlock } from './lesson-block';
 import { isSubmittableToHope } from './lesson';
+import { lessonBillingState } from './lesson-billing-state';
+import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 
 export type NeedsAttentionKind =
   | 'lesson-unattributed'
@@ -92,21 +94,40 @@ export function hasInvoiceSyncFailed(
 }
 
 /**
- * A lesson that was taught and has no invoice line anywhere.
+ * A lesson that was taught and that nobody has been asked to pay for.
  *
  * Since invoicing became explicit, this is the row that carries the work:
  * nothing bills on its own any more, so a taught lesson with no invoice and no
  * charge is money the studio has not asked for yet. Hope lessons are excluded —
  * they bill through EMA and have their own row.
+ *
+ * It answers through `lessonBillingState`, and it has to (#111). It used to take
+ * a set of invoiced lesson ids and nothing else, which was wrong twice over:
+ *
+ *  - **charges were invisible.** Charging the card is Katie's main way of
+ *    billing, so every card-paid lesson was listed as "never invoiced" — the
+ *    panel disagreed with the lesson's own screen, and a panel that is mostly
+ *    wrong stops being read.
+ *  - **a voided invoice still counted.** A void invoice is a cancelled ask and
+ *    its lessons are owed again, so it must not keep suppressing the row.
+ *
+ * Both follow from asking the one question in the one place rather than
+ * re-deriving half of it here.
  */
 export function isLessonUnbilled(
   lesson: Pick<Lesson, 'id' | 'status'>,
   student: Pick<Student, 'isHopeScholarship'>,
-  invoicedLessonIds: Set<string>
+  charges: Array<
+    Pick<
+      LessonScheduledCharge,
+      'status' | 'lessonIds' | 'dueAt' | 'resolvedAt' | 'updatedAt'
+    >
+  >,
+  invoices: Array<Pick<Invoice, 'status' | 'lineItems'>>
 ): boolean {
   if (student.isHopeScholarship) return false;
   if (lesson.status !== 'rendered' && lesson.status !== 'no-show') return false;
-  return !invoicedLessonIds.has(lesson.id);
+  return lessonBillingState(lesson.id, charges, invoices).kind === 'unbilled';
 }
 
 /** A rendered Hope lesson with no claim, or one EMA rejected. */

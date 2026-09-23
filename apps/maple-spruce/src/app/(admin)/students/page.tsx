@@ -40,6 +40,7 @@ import {
   useInvoices,
   useLessonBlocks,
   useLessonInquiries,
+  useLessonBilling,
   useLessons,
   useNeedsAttention,
   useStudents,
@@ -113,10 +114,13 @@ function InvoiceLauncher({
   student: Student;
   onClose: () => void;
 }) {
-  const { createInvoice, updateInvoice } = useInvoices({
+  const { invoicesState, createInvoice, updateInvoice } = useInvoices({
     studentId: student.id,
   });
   const { lessonsState } = useLessons({ studentId: student.id });
+  // The picker needs to know what already bills each lesson, or it offers a
+  // second ask for teaching a card charge already paid for (#110).
+  const { billingState } = useLessonBilling(student.id);
   const lessons =
     lessonsState.status === 'success' ? lessonsState.data : [];
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,6 +148,10 @@ function InvoiceLauncher({
       onClose={onClose}
       studentId={student.id}
       lessons={lessons}
+      charges={
+        billingState.status === 'success' ? billingState.data.charges : []
+      }
+      invoices={invoicesState.status === 'success' ? invoicesState.data : []}
       onCreate={handleCreate}
       onUpdate={handleUpdate}
       isSubmitting={isSubmitting}

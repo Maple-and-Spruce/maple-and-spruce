@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { lessonBillingState } from './lesson-billing-state';
+import {
+  describeLessonBillingState,
+  canStillBillLesson,
+  lessonBillingState,
+} from './lesson-billing-state';
 import type { Invoice } from './invoice';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 
@@ -107,5 +111,68 @@ describe('has this lesson been billed?', () => {
     expect(lessonBillingState('lesson-2', [charge()], [invoice()])).toEqual({
       kind: 'unbilled',
     });
+  });
+});
+
+describe('saying what already bills a lesson', () => {
+  it('says nothing for an unbilled lesson, because that is the default', () => {
+    // A picker labels the rows it cannot offer. Labelling the offerable ones
+    // with an absence only makes the billed ones harder to find.
+    expect(describeLessonBillingState({ kind: 'unbilled' })).toBeNull();
+  });
+
+  it('names the day the money moved', () => {
+    expect(
+      describeLessonBillingState({
+        kind: 'charge-paid',
+        on: new Date('2026-10-05T20:00:00Z'),
+      })
+    ).toBe('Paid Mon, Oct 5');
+  });
+
+  it('names the day a charge is coming', () => {
+    expect(
+      describeLessonBillingState({
+        kind: 'charge-pending',
+        dueAt: new Date('2026-10-18T20:00:00Z'),
+      })
+    ).toBe('On a charge due Sun, Oct 18');
+  });
+
+  it('says a comped block was not charged for', () => {
+    expect(describeLessonBillingState({ kind: 'charge-written-off' })).toBe(
+      'Not charged for'
+    );
+  });
+
+  it('carries an invoice’s status, since sent and draft are different asks', () => {
+    expect(
+      describeLessonBillingState({ kind: 'invoiced', status: 'draft' })
+    ).toBe('On an invoice (draft)');
+    expect(describeLessonBillingState({ kind: 'invoiced', status: 'paid' })).toBe(
+      'Paid by invoice'
+    );
+  });
+});
+
+describe('whether the studio can still ask for this lesson', () => {
+  it('yes when nothing has billed it', () => {
+    expect(canStillBillLesson({ kind: 'unbilled' })).toBe(true);
+  });
+
+  it.each([
+    { kind: 'charge-paid', on: NOW },
+    { kind: 'charge-pending', dueAt: NOW },
+    { kind: 'invoiced', status: 'sent' },
+  ] as const)('no for $kind, which would take the money twice', (state) => {
+    expect(canStillBillLesson(state)).toBe(false);
+  });
+
+  it('yes for a written-off charge, or a declined card would lose the money', () => {
+    // The way out of a failed charge is to waive or cancel it (#102), which
+    // lands here. If this said no, a card that declined would mean the lesson
+    // could never be invoiced either. The caller shows the label so the second
+    // ask is a decision rather than an accident.
+    expect(canStillBillLesson({ kind: 'charge-written-off' })).toBe(true);
   });
 });

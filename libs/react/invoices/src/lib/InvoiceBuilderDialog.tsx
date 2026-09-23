@@ -36,12 +36,17 @@ import type {
   Invoice,
   InvoiceLineItem,
   Lesson,
+  LessonScheduledCharge,
   UpdateInvoiceInput,
 } from '@maple/ts/domain';
 import {
   computeInvoiceTotalCents,
   computeLineSubtotal,
+  describeLessonBillingState,
   describeLessonLine,
+  canStillBillLesson,
+  lessonBillingState,
+  SCHEDULE_TIME_ZONE,
 } from '@maple/ts/domain';
 import { invoiceValidation } from '@maple/ts/validation';
 import { formatCents } from '@maple/react/lessons';
@@ -60,6 +65,14 @@ interface InvoiceBuilderDialogProps {
   invoice?: Invoice;
   /** Past lessons for the "Add from lesson" picker. */
   lessons: Lesson[];
+  /**
+   * The student's card charges and invoices, so the picker can say which
+   * lessons are already spoken for instead of offering a second ask for the
+   * same teaching (#110). Optional and empty-by-default: a caller that has not
+   * loaded them gets today's behaviour rather than a crash.
+   */
+  charges?: LessonScheduledCharge[];
+  invoices?: Invoice[];
   onCreate: (input: CreateInvoiceInput) => Promise<unknown>;
   onUpdate: (input: UpdateInvoiceInput) => Promise<unknown>;
   isSubmitting?: boolean;
@@ -80,6 +93,21 @@ export function newInvoiceLineId(): string {
     return cryptoObj.randomUUID();
   }
   return `line-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * When the lesson was, for a picker row. The shop's timezone, like every other
+ * lesson date on screen — this row used to format in the machine's.
+ */
+function lessonPickerWhen(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: SCHEDULE_TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function blankLine(): InvoiceLineItem {
@@ -116,6 +144,8 @@ export function InvoiceBuilderDialog({
   studentId,
   invoice,
   lessons,
+  charges = [],
+  invoices = [],
   onCreate,
   onUpdate,
   isSubmitting = false,
@@ -232,9 +262,38 @@ export function InvoiceBuilderDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoice, isSubmitting, onCreate, onUpdate, onClose, studentId]);
 
+  /**
+   * Every choosable lesson with what already bills it, newest first.
+   *
+   * The picker used to list every lesson flat, so a lesson already covered by a
+   * `paid` charge could be invoiced again — the same double-ask #101 fixed on
+   * the charge side, in the other direction (#110). A billed lesson stays
+   * visible and says why rather than disappearing, because a date vanishing
+   * from the list is its own kind of confusing.
+   */
   const eligibleLessons = lessons
     .filter((l) => l.status !== 'cancelled')
-    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
+    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())
+    .map((lesson) => {
+      // Already a line on the invoice being built? That is the live draft, and
+      // it outranks the saved copy — a line removed a moment ago must become
+      // choosable again rather than staying blocked by its own invoice.
+      if (lineItems.value.some((line) => line.lessonId === lesson.id)) {
+        return { lesson, billed: true, billedBecause: 'Already a line below' };
+      }
+      // Everything else the student has, except the invoice being edited: its
+      // saved lines are stale the moment the draft above diverges from them.
+      const state = lessonBillingState(
+        lesson.id,
+        charges,
+        invoices.filter((i) => i.id !== invoice?.id)
+      );
+      return {
+        lesson,
+        billed: !canStillBillLesson(state),
+        billedBecause: describeLessonBillingState(state),
+      };
+    });
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -407,9 +466,10 @@ export function InvoiceBuilderDialog({
               </Typography>
             ) : (
               <>
-                {eligibleLessons.map((lesson) => (
+                {eligibleLessons.map(({ lesson, billed, billedBecause }) => (
                   <FormControlLabel
                     key={lesson.id}
+                    disabled={billed}
                     control={
                       <Checkbox
                         checked={!!pickerSelected.value[lesson.id]}
@@ -422,19 +482,20 @@ export function InvoiceBuilderDialog({
                       />
                     }
                     label={
-                      <Typography variant="body2">
-                        {lesson.scheduledAt.toLocaleString(undefined, {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                        {' · '}
-                        {lesson.durationMinutes} min
-                        {' · '}
-                        {lesson.status}
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2">
+                          {lessonPickerWhen(lesson.scheduledAt)}
+                          {' · '}
+                          {lesson.durationMinutes} min
+                          {' · '}
+                          {lesson.status}
+                        </Typography>
+                        {billedBecause && (
+                          <Typography variant="caption" color="text.secondary">
+                            {billedBecause}
+                          </Typography>
+                        )}
+                      </Box>
                     }
                     sx={{ display: 'flex', mb: 0.25 }}
                   />

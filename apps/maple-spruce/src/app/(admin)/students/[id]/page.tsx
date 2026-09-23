@@ -684,6 +684,10 @@ export default function StudentDetailPage() {
         studentId={student.id}
         invoice={editingInvoice}
         lessons={lessons}
+        charges={
+          billingState.status === 'success' ? billingState.data.charges : []
+        }
+        invoices={invoicesState.status === 'success' ? invoicesState.data : []}
         onCreate={handleInvoiceCreate}
         onUpdate={handleInvoiceUpdate}
         isSubmitting={isSubmitting}
