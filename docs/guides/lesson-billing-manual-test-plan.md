@@ -104,6 +104,20 @@ Everything here is done by Claude in Chrome. The only thing David may need to do
 - Almost every mutation on the student page leaves the card it lives in stale. Reload after
   each one rather than trusting the screen (#106).
 
+**Learned on the third run (2026-09-23, verifying #109 in dev):**
+- **A mutation made from the page has not landed when the click returns.** A dry run fired
+  straight after deleting an invoice still saw the invoice, which reads exactly like the fix not
+  working. Re-run the check before believing a negative.
+- To prove the job skips an already-billed lesson, set the rule's `lessonsPerCharge` to **1** so a
+  single lesson forms its own block, then A/B the dry run either side of creating the invoice.
+  At 4 there are rarely 4 uncovered lessons left, so the counters do not move and prove nothing.
+  Put the rule back afterwards.
+- `Mark taught` only appears on a **past, `scheduled`** lesson. To stage one, `createLesson` (or
+  `updateLesson` to move an existing one) on the student's block weekday and inside its window —
+  the callable accepts a past `scheduledAt` that the date picker makes awkward to enter.
+- A **draft** invoice already holds its lessons against both charge paths; only `void` releases
+  them.
+
 **Out of scope for now:** the lesson-teacher role (§10). There is no dev teacher account in
 1Password yet.
 

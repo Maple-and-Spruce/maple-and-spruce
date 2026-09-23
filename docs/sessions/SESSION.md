@@ -6,6 +6,30 @@
 
 ## Current Status
 
+### Lesson billing: invoicing is explicit, and it holds (2026-09-23)
+
+#109 merged and was verified in dev on the deployed build. **#101 closed.**
+
+- **Nothing invoices by itself.** The `autoInvoice` toggle is gone from the student form and the
+  trigger is deleted. Marking a lesson taught raises one notice and nothing else: an uncovered
+  lesson offers a single **Send invoice ($X)** action, a covered one says who already paid and
+  offers nothing.
+- **An invoice counts as billed on both charge paths.** Pay ahead was refused server-side with
+  `already-covered` and wrote no charge and no payment. The job was A/B'd either side of deleting
+  the invoice, with the rule at 1 lesson per charge: `chargesPlanned` 0 with the invoice present,
+  1 without it. A **draft** invoice is enough to hold a lesson; only `void` releases it.
+
+**What #109 did not do, filed as #110:** the server is safe but the pickers are not. Pay ahead
+still lists an invoiced lesson (`PrepayLessonsCard` never passes `alreadyInvoiced`) and only fails
+on confirm, saying "already covered by another **charge**" and advising a reload that changes
+nothing. "Add from lesson" in the invoice builder lists lessons already on a `paid` charge — the
+same double-ask in the other direction. `lessonBillingState` already answers this and nothing
+outside the toast calls it.
+
+**Leftover:** `InvoiceRepository.createAutoLessonInvoice` has no callers now that the trigger is
+gone, and its comment still describes it. `onLessonRenderedInvoice` also needs deleting by hand in
+dev and prod — CI does not prune removed functions.
+
 ### Lesson billing: the charge path works in dev (2026-09-23)
 
 #108 shipped the correctness fixes and was verified against `business-dev` + the Square sandbox
