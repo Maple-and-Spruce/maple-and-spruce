@@ -503,6 +503,31 @@ magic-link self-service management. Delivered in phases.
 
 **Remaining after Phase 4:** the deferred self-service E2E happy path (new Vite harness app + sandbox fixtures). One-time go-live setup: run `tools/create-craft-club-plan.ts` for sandbox + prod (fill `CRAFT_CLUB_PLAN_VARIATION_ID`), run `tools/seed-email-templates.ts`, and subscribe to `subscription.*` events in the Square dashboard.
 
+## Lesson billing — epic #51 (In Progress)
+
+Katie and Nathan already vaulted a family's card in Square and charged it by hand every
+month. This makes that reliable without becoming autopay-by-surprise: one ledger
+(`LessonScheduledCharge`), invoicing that only ever happens because a person said so, and
+one card at the end of a lesson that carries the whole conversation.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `LessonScheduledCharge` ledger + rules + daily `runLessonBilling` | **Complete** | Status lease, deterministic id keyed on the first lesson, `coveredLessonIds`; `triggerLessonBilling` is the admin-callable twin |
+| Pay ahead at the desk (`chargeLessonsNow`) | **Complete** | `planPrepayment` is the one pure planner the screen and the function share |
+| Card charges actually reach Square (#99) | **Complete** | Idempotency key is `lc-` + a 64-bit FNV-1a of the charge id, 19 chars against Square's 45 limit; the mock server now enforces the limit too |
+| One failed charge no longer aborts the run (#100, #102) | **Complete** | `failed` is a covering status, plus a per-student `try/catch` and a `planningFailed` counter |
+| Waive / cancel a failed charge, retry with a re-derived key (#102) | **Complete** | `tryTerminate` accepts `failed`; `squareIdempotencyKeyFor` rescues charges written before #99 |
+| Cancelling a lesson reprices its charge (#105) | **Complete** | `releaseLessonFromCharge`, priced by the charge's own average so a rate change cannot reprice a block |
+| Invoicing is explicit (#101) | **Complete** | Auto-invoice trigger and the per-student toggle removed; a taught lesson raises one notice offering **Send invoice**, and an invoice counts as billed on both charge paths |
+| Commit and charge, one card (#113) | **Complete** | Commit to the next N lessons, move or skip a date in place, then charge the card or send an invoice for the block; `lessonInvoiceLines` is the one description of a lesson line |
+| Admin UI for rules, rule assignment, running the job | **Not Started** | #107 — rules are console/callable-only today |
+| Manual / voided invoices stay payable in Square | **Not Started** | #104 |
+| Lesson pickers still offer already-billed lessons | **Partly done** | #110 — the commit card now excludes invoiced lessons; the invoice builder's "Add from lesson" still does not |
+| Needs attention ignores charges | **Not Started** | #111 — a card-paid lesson is listed as "never invoiced" |
+
+Verified end-to-end in dev against the Square sandbox on 2026-09-23; see
+`docs/guides/lesson-billing-manual-test-plan.md`.
+
 ## External Dependencies
 
 - [x] Firebase projects created (`maple-and-spruce` prod, `maple-and-spruce-dev` dev)
