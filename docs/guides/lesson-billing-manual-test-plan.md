@@ -90,6 +90,20 @@ Everything here is done by Claude in Chrome. The only thing David may need to do
 - `/my-day` shows only the signed-in user's lessons, so LB-7.11 needs the teacher account.
 - Results of the first run: issues #99–#107.
 
+**Learned on the second run (2026-09-23, verifying #108 in dev):**
+- A **default billing rule** now exists in dev (`Standard 4-lesson block`, 4 lessons,
+  `before-first`, −1 day). Every eligible student inherits it, so §7 no longer needs a rule
+  created first — and a run started from §3 will now plan real charges. Archive it if a run
+  needs a clean slate.
+- Two test students were switched to `active` and one given a `$30` rate override so a charge
+  could be taken at all. An **inactive or Hope student still renders an enabled "Charge now"
+  button that silently does nothing** — check `status` before blaming the charge path (#106).
+- `triggerLessonBilling` takes `{dryRun: true}`. Run it dry first: it reports
+  `studentsConsidered` / `chargesPlanned` / `lessonsAlreadyCovered` / `planningFailed`
+  without writing anything, which is enough to prove the planning fixes on its own.
+- Almost every mutation on the student page leaves the card it lives in stale. Reload after
+  each one rather than trusting the screen (#106).
+
 **Out of scope for now:** the lesson-teacher role (§10). There is no dev teacher account in
 1Password yet.
 

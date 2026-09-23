@@ -6,6 +6,31 @@
 
 ## Current Status
 
+### Lesson billing: the charge path works in dev (2026-09-23)
+
+#108 shipped the correctness fixes and was verified against `business-dev` + the Square sandbox
+on the deployed build, not just in tests. **#99, #100, #102, #103 and #105 are closed.**
+
+- **A card charge goes through.** Pay ahead took a real sandbox payment. The 45-char idempotency
+  key is derived by hashing the charge id (`lc-` + 16 hex = 19 chars), so it stays stable per
+  charge and a retry still matches the original payment.
+- **Charges written before the fix recover.** "Try again" on a charge still carrying the
+  over-long key re-derived a legal one and the payment succeeded — the fallback path working on
+  exactly the documents it was written for.
+- **A failed charge no longer poisons the run.** Two dry runs and three real runs reported
+  `planningFailed: 0` with failed charges present, and the second run planned nothing new.
+  `failed` is now a covering status, so the block re-forms around the next unbilled lesson
+  instead of colliding with the failed charge's id.
+- **Failed charges can be dealt with.** Waive and Cancel accept `failed`; the three charges this
+  bug had stranded in dev are cleared.
+- **Cancelling a lesson reprices its charge.** $140 / 4 lessons became $105 / 3 lessons in place.
+
+Still open: **#101** (double billing — PR #109 makes invoicing explicit and teaches both charge
+paths to respect an invoice), **#104**, **#106**, **#107**.
+
+Dev now carries a **default billing rule** (`Standard 4-lesson block`) that every eligible student
+inherits, two test students switched to `active`, and two scheduled charges due Oct 18 / Nov 15.
+
 ### Lesson billing: first manual run in dev (2026-09-21/22)
 
 `docs/guides/lesson-billing-manual-test-plan.md` was run through Claude in Chrome against
@@ -22,7 +47,7 @@ Waive/Cancel, and publishing and cancelling invoices in Square all work. **Autom
 - **#106–#107:** UI fixes, plus no admin UI for rules, rule assignment or running the job.
 
 The mock Square server doesn't enforce the 45-char key limit, which is why the integration suites
-stayed green. Dev still holds 3 unclearable failed test charges on inactive test students.
+stayed green. Dev held 3 unclearable failed test charges after this run; they were cleared on 2026-09-23 (above).
 
 
 ### Going public again: rewritten history + PII safeguards (2026-09-16)
