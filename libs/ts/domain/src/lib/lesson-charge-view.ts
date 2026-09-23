@@ -76,11 +76,18 @@ export function groupLessonCharges(
   return groups;
 }
 
-/** Can a human still stop this charge? */
+/**
+ * Can a human still stop this charge?
+ *
+ * `scheduled` because the money has not moved, and `failed` because a failed
+ * charge now holds its lessons (#102) — waiving or cancelling it is the only
+ * way to release them when the studio decides not to collect. `charging` is
+ * out: the money is moving as we speak.
+ */
 export function canStopCharge(
   charge: Pick<LessonScheduledCharge, 'status'>
 ): boolean {
-  return charge.status === 'scheduled';
+  return charge.status === 'scheduled' || charge.status === 'failed';
 }
 
 /**

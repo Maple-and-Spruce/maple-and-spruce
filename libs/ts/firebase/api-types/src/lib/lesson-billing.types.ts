@@ -76,6 +76,12 @@ export interface RunLessonBillingResult {
    * run where planning quietly produced nothing look the same from outside.
    */
   lessonsAlreadyCovered: number;
+  /**
+   * Students whose planning threw and was skipped. Never fatal to the run:
+   * one student's bad state used to abort billing for everybody (#100), so the
+   * failure is now contained here and counted where an admin can see it.
+   */
+  planningFailed: number;
   dryRun: boolean;
 }
 

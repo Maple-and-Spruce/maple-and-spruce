@@ -20,6 +20,25 @@ const COLLECTION = 'lessonScheduledCharges';
 
 /** gRPC ALREADY_EXISTS — the steady state when re-planning, not an error. */
 const GRPC_ALREADY_EXISTS = 6;
+/** The same outcome when the client is on REST rather than gRPC. */
+const HTTP_CONFLICT = 409;
+
+/**
+ * Did this write lose to a document that is already there?
+ *
+ * Matching only the gRPC code was not enough: in dev the admin SDK reported the
+ * collision over REST as a 409 whose body carried `"status": "ALREADY_EXISTS"`,
+ * the guard below missed it, and the throw aborted the whole billing run for
+ * every student (#100). Both transports, and the message as a last resort.
+ */
+function isAlreadyExists(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const code = (err as { code?: unknown }).code;
+  if (code === GRPC_ALREADY_EXISTS || code === HTTP_CONFLICT) return true;
+  if ((err as { status?: unknown }).status === 'ALREADY_EXISTS') return true;
+  const message = (err as { message?: unknown }).message;
+  return typeof message === 'string' && message.includes('ALREADY_EXISTS');
+}
 
 function docToCharge(
   doc: FirebaseFirestore.DocumentSnapshot
@@ -72,7 +91,13 @@ async function tryTerminate(
   const docRef = database.collection(COLLECTION).doc(id);
   const won = await database.runTransaction(async (tx) => {
     const snap = await tx.get(docRef);
-    if (!snap.exists || snap.data()?.status !== 'scheduled') return false;
+    // `failed` is stoppable too: since a failed charge now holds its lessons
+    // (#102), waiving or cancelling it is the only way to release them when
+    // the studio decides not to collect after all.
+    const current = snap.data()?.status;
+    if (!snap.exists || (current !== 'scheduled' && current !== 'failed')) {
+      return false;
+    }
     tx.update(docRef, {
       ...extra,
       status,
@@ -106,12 +131,7 @@ export const LessonScheduledChargeRepository = {
     try {
       await db.collection(COLLECTION).doc(id).create(payload);
     } catch (err) {
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'code' in err &&
-        (err as { code: unknown }).code === GRPC_ALREADY_EXISTS
-      ) {
+      if (isAlreadyExists(err)) {
         return null;
       }
       throw err;
@@ -229,6 +249,39 @@ export const LessonScheduledChargeRepository = {
    * `scheduled → cancelled`. Separate from `waived` on purpose — "we are not
    * charging for this" and "this is not happening" are different facts.
    */
+  /**
+   * Drop a lesson from a charge that has not been taken yet, repricing it.
+   *
+   * A cancelled lesson used to stay inside its planned charge, so a family was
+   * billed for teaching that everyone agreed would not happen (#105). Guarded
+   * by the same `scheduled` check as the lease: once a charge is in flight or
+   * paid, the money has moved and this is a refund conversation, not an edit.
+   *
+   * Returns false when the charge was not in a state to be edited, so the
+   * caller can tell "nothing to do" from "someone else got there first".
+   */
+  async tryReleaseLesson(
+    id: string,
+    lessonId: string,
+    amountCents: number
+  ): Promise<boolean> {
+    const database = getDb();
+    const docRef = database.collection(COLLECTION).doc(id);
+    return database.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const data = snap.data();
+      if (!snap.exists || !data || data['status'] !== 'scheduled') return false;
+      const lessonIds: string[] = (data['lessonIds'] ?? []) as string[];
+      if (!lessonIds.includes(lessonId)) return false;
+      tx.update(docRef, {
+        lessonIds: lessonIds.filter((x) => x !== lessonId),
+        amountCents,
+        updatedAt: new Date(),
+      });
+      return true;
+    });
+  },
+
   async tryCancel(id: string): Promise<LessonScheduledCharge | undefined> {
     return tryTerminate(id, 'cancelled');
   },

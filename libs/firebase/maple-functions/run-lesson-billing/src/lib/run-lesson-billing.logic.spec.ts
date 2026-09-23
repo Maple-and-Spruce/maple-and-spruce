@@ -52,10 +52,15 @@ function student(overrides: Partial<Student> = {}): Student {
   } as Student;
 }
 
-function lessons(count: number): Lesson[] {
+function lessons(count: number, studentId = 'student-1'): Lesson[] {
   return Array.from({ length: count }, (_, i) => ({
-    id: `lesson-${i + 1}`,
-    studentId: 'student-1',
+    // Lesson ids stay unprefixed for the default student, so the expectations
+    // below read as plainly as the data does.
+    id:
+      studentId === 'student-1'
+        ? `lesson-${i + 1}`
+        : `${studentId}-lesson-${i + 1}`,
+    studentId,
     scheduledAt: new Date(NOW.getTime() + (i + 1) * 7 * 86_400_000),
     durationMinutes: 30,
     teacherId: 'teacher-1',
@@ -217,6 +222,35 @@ describe('planCharges', () => {
       })
     );
     expect(createIfAbsent).not.toHaveBeenCalled();
+  });
+
+  it('keeps billing everyone else when one student’s planning throws', async () => {
+    // The shape of the outage this closes: a failed charge made planning
+    // collide on its deterministic id, the throw escaped the loop, and NOBODY
+    // was billed — every run, every day, until a human noticed (#100).
+    createIfAbsent.mockImplementation(async (input) =>
+      input.studentId === 'student-1'
+        ? Promise.reject(new Error('ALREADY_EXISTS'))
+        : { id: input.id }
+    );
+
+    const result = await planCharges(
+      [student(), student({ id: 'student-2' })],
+      deps({
+        lessonsByStudent: new Map([
+          ['student-1', lessons(8)],
+          ['student-2', lessons(8, 'student-2')],
+        ]),
+      })
+    );
+
+    expect(result.planningFailed).toBe(1);
+    expect(result.planned).toBeGreaterThan(0);
+    expect(
+      createIfAbsent.mock.calls.some(
+        ([input]) => input.studentId === 'student-2'
+      )
+    ).toBe(true);
   });
 });
 

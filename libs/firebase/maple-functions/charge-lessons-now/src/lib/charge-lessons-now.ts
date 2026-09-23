@@ -40,6 +40,24 @@ function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+/**
+ * Square's own words for a decline, or an honest "this is on us" otherwise.
+ *
+ * Square answers a malformed request and a refused card through the same
+ * channel, and calling both a decline points the admin at the family's card
+ * when the problem is ours (#99). A real decline carries a payment-method
+ * error; anything else is a request we got wrong.
+ */
+function describePaymentFailure(message: string): string {
+  const looksLikeDecline =
+    /declin|insufficient|cvv|expir|card_not_supported|card error|PAYMENT_METHOD_ERROR|GENERIC_DECLINE/i.test(
+      message
+    );
+  return looksLikeDecline
+    ? `The card was declined: ${message}`
+    : `The payment could not be sent to Square: ${message}. Nothing was charged — this one is on us, not the card.`;
+}
+
 /** Turn a refusal into the sentence the admin sees, and never a stack trace. */
 function refusalMessage(refusal: ChargeNowRefusal): string {
   switch (refusal.kind) {
@@ -134,9 +152,14 @@ export const chargeLessonsNow = Functions.endpoint
         // A declined card is not a bug in the request, and the charge document
         // already records why. Surfacing the reason verbatim is what lets Katie
         // tell a family "your card was declined" instead of "it didn't work".
+        //
+        // Only when it really was a decline, though. Square's rejection of an
+        // over-long idempotency key came back as "The card was declined: Field
+        // must not be greater than 45 length", which sent everyone looking at
+        // the family's card instead of at our request (#99).
         throwInvalidArgument(
           'message' in outcome.refusal
-            ? `The card was declined: ${outcome.refusal.message}`
+            ? describePaymentFailure(outcome.refusal.message)
             : refusalMessage(outcome.refusal)
         );
       }

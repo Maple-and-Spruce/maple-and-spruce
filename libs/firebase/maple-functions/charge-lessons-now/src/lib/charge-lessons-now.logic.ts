@@ -20,6 +20,7 @@ import {
   MANUAL_CHARGE_RULE_ID,
   isAutoChargeEligible,
   lessonChargeIdempotencyKey,
+  squareIdempotencyKeyFor,
   planPrepayment,
 } from '@maple/ts/domain';
 import type {
@@ -130,8 +131,10 @@ export async function chargeLessonsNowLogic(
     amountCents = existing.amountCents;
     lessonCount = existing.lessonIds.length;
     // The stored key, not a fresh one. If the first attempt did reach Square,
-    // this returns that payment rather than taking a second.
-    idempotencyKey = existing.idempotencyKey;
+    // this returns that payment rather than taking a second. Charges written
+    // before #99 stored a key Square rejects outright, so those are re-derived
+    // from the (deterministic) charge id instead.
+    idempotencyKey = squareIdempotencyKeyFor(existing);
 
     if (!(await deps.claimRetry(chargeId))) {
       return { ok: false, refusal: { kind: 'already-claimed' } };

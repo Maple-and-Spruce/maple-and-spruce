@@ -100,7 +100,13 @@ describe('stopping a charge', () => {
     expect(canStopCharge({ status: 'scheduled' })).toBe(true);
   });
 
-  it.each(['charging', 'paid', 'failed', 'cancelled', 'waived'] as const)(
+  it('can stop a failed one, which is how its lessons are released', () => {
+    // A failed charge holds its lessons (#102), so waiving or cancelling it is
+    // the only way to free them when the studio is not collecting after all.
+    expect(canStopCharge({ status: 'failed' })).toBe(true);
+  });
+
+  it.each(['charging', 'paid', 'cancelled', 'waived'] as const)(
     'cannot stop a %s charge',
     (status) => {
       expect(canStopCharge({ status })).toBe(false);

@@ -100,6 +100,34 @@ export const FailedChargesComeFirst: Story = {
   },
 };
 
+/**
+ * A failed charge holds its lessons until someone deals with it (#102), so the
+ * row has to offer both ways out: try the card again, or stop the charge.
+ * Without Waive/Cancel here those lessons could never be released at all.
+ */
+export const FailedChargeOffersAWayOut: Story = {
+  args: {
+    charges: [
+      charge({
+        studentId: 'stu-devin',
+        status: 'failed',
+        lastError: 'CARD_DECLINED',
+        dueAt: new Date(NOW.getTime() - 2 * DAY),
+      }),
+    ],
+    onRetry: () => undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    expect(await canvas.findByRole('button', { name: 'Try again' })).toBeTruthy();
+    expect(await canvas.findByRole('button', { name: 'Waive' })).toBeTruthy();
+    expect(await canvas.findByRole('button', { name: 'Cancel' })).toBeTruthy();
+    // The state still reads at a glance.
+    expect(await canvas.findByText('Failed')).toBeTruthy();
+  },
+};
+
 /** An overdue scheduled charge is the shape of a family with no card. */
 export const OverdueStaysVisible: Story = {
   args: {

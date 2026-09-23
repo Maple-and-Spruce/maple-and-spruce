@@ -557,14 +557,15 @@ export function BillingTable({
           const { charge } = record;
           const busy = chargePendingId === charge.id;
 
-          if (charge.status === 'failed') {
-            if (!onRetryCharge) return null;
-            return (
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ justifyContent: 'flex-end' }}
-              >
+          if (!canStopCharge(charge)) return null;
+          return (
+            <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+              {/*
+                A failed charge offers all three: try the card again, or — since
+                a failed charge now holds its lessons (#102) — waive or cancel it
+                to release them.
+              */}
+              {charge.status === 'failed' && onRetryCharge && (
                 <Button
                   size="small"
                   variant="outlined"
@@ -574,13 +575,7 @@ export function BillingTable({
                 >
                   Try again
                 </Button>
-              </Stack>
-            );
-          }
-
-          if (!canStopCharge(charge)) return null;
-          return (
-            <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+              )}
               <Button
                 size="small"
                 disabled={busy}

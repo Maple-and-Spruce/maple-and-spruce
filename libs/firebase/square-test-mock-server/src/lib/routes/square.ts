@@ -101,6 +101,26 @@ export function registerSquareRoutes(server: SquareMockServer): void {
     const idempotencyKey = (body['idempotency_key'] ??
       body['idempotencyKey']) as string | undefined;
 
+    // Real Square caps the key at 45 characters and rejects the request
+    // outright. The mock used to accept any length, so the suite was green
+    // while every lesson charge in production was refused (#99). A mock is
+    // only worth having if it lies the way the real service does.
+    if (idempotencyKey && idempotencyKey.length > 45) {
+      return {
+        status: 400,
+        body: {
+          errors: [
+            {
+              category: 'INVALID_REQUEST_ERROR',
+              code: 'VALUE_TOO_LONG',
+              detail: 'Field must not be greater than 45 length',
+              field: 'idempotency_key',
+            },
+          ],
+        },
+      };
+    }
+
     // Real Square hands back the original payment for a reused key. Taking a
     // second one here would let a double-charge bug pass the suite.
     if (idempotencyKey) {
