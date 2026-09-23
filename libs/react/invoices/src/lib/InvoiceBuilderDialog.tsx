@@ -41,6 +41,7 @@ import type {
 import {
   computeInvoiceTotalCents,
   computeLineSubtotal,
+  describeLessonLine,
 } from '@maple/ts/domain';
 import { invoiceValidation } from '@maple/ts/validation';
 import { formatCents } from '@maple/react/lessons';
@@ -91,15 +92,17 @@ function blankLine(): InvoiceLineItem {
   };
 }
 
+/**
+ * The line still arrives at $0 for a human to price — #106 — but the wording and
+ * the day now come from `describeLessonLine`, the one description shared with
+ * the commit card and the taught-lesson offer (#113). It formatted the date in
+ * the *machine's* timezone before, so an admin a timezone west of the studio
+ * raised invoices naming the previous day for an evening lesson.
+ */
 function lineFromLesson(lesson: Lesson): InvoiceLineItem {
-  const date = lesson.scheduledAt.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
   return {
     id: newInvoiceLineId(),
-    description: `${lesson.durationMinutes}-min lesson on ${date}`,
+    description: describeLessonLine(lesson),
     lessonId: lesson.id,
     quantity: 1,
     unitAmountCents: 0,

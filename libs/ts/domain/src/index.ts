@@ -47,6 +47,7 @@ export * from './lib/lesson-charge-view';
 export * from './lib/student-billing-view';
 export * from './lib/lesson-prepayment';
 export * from './lib/invoice';
+export * from './lib/lesson-invoice';
 export * from './lib/hope-rates';
 export * from './lib/lesson-rates-config';
 export * from './lib/business-payment-config';

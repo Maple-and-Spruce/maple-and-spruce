@@ -19,6 +19,7 @@ import type { BlockStrategy } from '@maple/ts/domain';
 import {
   SCHEDULE_TIME_ZONE,
   lessonBillingState,
+  lessonInvoiceLines,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import type {
@@ -41,9 +42,10 @@ import {
   LessonList,
   ScheduleLessonDialog,
   PaymentMethodCard,
-  PrepayLessonsCard,
+  CommitLessonsCard,
   StandingScheduleCard,
   StandingScheduleDialog,
+  type CommitLessonsInvoiceInput,
   type LessonPendingAction,
 } from '@maple/react/lessons';
 import {
@@ -101,6 +103,7 @@ export default function StudentDetailPage() {
   } = useLessons({ studentId });
   const {
     invoicesState,
+    fetchInvoices,
     createInvoice,
     updateInvoice,
     recordPayment,
@@ -406,19 +409,48 @@ export default function StudentDetailPage() {
       await createInvoice({
         studentId: lesson.studentId,
         status: 'sent',
-        lineItems: [
-          {
-            id: newInvoiceLineId(),
-            description: `${lesson.durationMinutes}-min lesson on ${formatDay(
-              lesson.scheduledAt
-            )}`,
-            quantity: 1,
-            unitAmountCents: amountCents,
-            subtotalCents: amountCents,
-            lessonId: lesson.id,
-          },
-        ],
+        lineItems: lessonInvoiceLines(
+          [lesson],
+          () => amountCents,
+          newInvoiceLineId
+        ),
       });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Invoice a committed block, one line per lesson (#113).
+   *
+   * Sent rather than drafted: Katie is standing with the family and the point of
+   * the button is that they can pay it. Every line carries `lessonId`, which is
+   * what stops the same teaching also being charged to a card, here or by the
+   * nightly job (#101).
+   */
+  const handleInvoiceBlock = async ({
+    lessons: block,
+    note,
+  }: CommitLessonsInvoiceInput) => {
+    if (!student || block.length === 0) return;
+    const rateByLength =
+      billingState.status === 'success' ? billingState.data.rateByLength : {};
+    setIsSubmitting(true);
+    try {
+      await createInvoice({
+        studentId: student.id,
+        status: 'sent',
+        notes: note,
+        lineItems: lessonInvoiceLines(
+          block,
+          (lesson) =>
+            resolvePrivatePayLessonRateCents(lesson, student, rateByLength),
+          newInvoiceLineId
+        ),
+      });
+      // The block's dates have to stop being offered for a card charge the
+      // moment the invoice exists, and that comes from the invoices list.
+      await fetchInvoices();
     } finally {
       setIsSubmitting(false);
     }
@@ -543,18 +575,20 @@ export default function StudentDetailPage() {
         }}
       />
 
-      <PrepayLessonsCard
+      <CommitLessonsCard
         student={student}
         lessons={lessons}
         charges={
           billingState.status === 'success' ? billingState.data.charges : []
         }
+        invoices={invoicesState.status === 'success' ? invoicesState.data : []}
         rateByLength={
           billingState.status === 'success'
             ? billingState.data.rateByLength
             : {}
         }
         isCharging={chargePendingId !== null}
+        isInvoicing={isSubmitting}
         error={chargeError}
         onCharge={async ({ lessonIds, amountCents, note }) => {
           const failure = await chargeNow({
@@ -567,6 +601,12 @@ export default function StudentDetailPage() {
           // charge it produced belongs on screen straight away.
           if (!failure) await fetchLessons();
         }}
+        onSendInvoice={handleInvoiceBlock}
+        // Move and Skip reuse the dialogs the page already owns, so a date is
+        // fixed without leaving the conversation and without a second editor
+        // that could drift from the one in the Lessons table.
+        onMoveLesson={(lesson) => setEditLesson(lesson)}
+        onSkipLesson={(lesson) => setCancelLesson(lesson)}
       />
 
       <StandingScheduleCard

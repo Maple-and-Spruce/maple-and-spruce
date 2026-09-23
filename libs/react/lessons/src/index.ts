@@ -32,10 +32,11 @@ export {
   type UpcomingChargesCardProps,
 } from './lib/UpcomingChargesCard';
 export {
-  PrepayLessonsCard,
-  type PrepayLessonsCardProps,
-  type PrepayLessonsChargeInput,
-} from './lib/PrepayLessonsCard';
+  CommitLessonsCard,
+  type CommitLessonsCardProps,
+  type CommitLessonsChargeInput,
+  type CommitLessonsInvoiceInput,
+} from './lib/CommitLessonsCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,
