@@ -129,6 +129,7 @@ export async function executeLessonBilling(
     chargesAlreadyPlanned: plan.alreadyPlanned,
     skippedNoRate: plan.skippedNoRate,
     lessonsAlreadyCovered: plan.lessonsAlreadyCovered,
+    planningFailed: plan.planningFailed,
     charged: taken.charged,
     chargeFailed: taken.failed,
     skippedNoCard: taken.skippedNoCard,
@@ -141,7 +142,8 @@ export async function executeLessonBilling(
       `already planned ${result.chargesAlreadyPlanned}, charged ${result.charged}, ` +
       `failed ${result.chargeFailed}, no card ${result.skippedNoCard}, ` +
       `no rate ${result.skippedNoRate}, ` +
-      `already covered ${result.lessonsAlreadyCovered} lesson(s)`
+      `already covered ${result.lessonsAlreadyCovered} lesson(s), ` +
+      `planning failed for ${result.planningFailed} student(s)`
   );
 
   return result;

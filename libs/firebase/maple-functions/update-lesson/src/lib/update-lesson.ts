@@ -15,12 +15,53 @@ import {
   resolveLessonBlock,
   throwNotFound,
 } from '@maple/firebase/functions';
-import { LessonRepository } from '@maple/firebase/database';
+import {
+  LessonRepository,
+  LessonScheduledChargeRepository,
+} from '@maple/firebase/database';
 import { lessonValidation } from '@maple/ts/validation';
+import { releaseLessonFromCharge } from '@maple/ts/domain';
 import type {
   UpdateLessonRequest,
   UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
+
+/**
+ * Take a just-cancelled lesson out of any charge that has not been taken yet.
+ *
+ * Failures here are logged and swallowed: the lesson *is* cancelled, and
+ * throwing would tell the teacher their cancellation failed when it did not.
+ * The charge screen still shows the block, so an admin can waive or cancel it.
+ */
+async function releaseLessonFromScheduledCharges(
+  studentId: string,
+  lessonId: string
+): Promise<void> {
+  try {
+    const charges = await LessonScheduledChargeRepository.findAll({
+      studentId,
+      status: 'scheduled',
+    });
+    for (const charge of charges) {
+      if (!charge.lessonIds.includes(lessonId)) continue;
+      const outcome = releaseLessonFromCharge(charge, lessonId);
+      if (outcome.action === 'cancel') {
+        await LessonScheduledChargeRepository.tryCancel(charge.id);
+      } else {
+        await LessonScheduledChargeRepository.tryReleaseLesson(
+          charge.id,
+          lessonId,
+          outcome.amountCents
+        );
+      }
+    }
+  } catch (error) {
+    console.error(
+      `[update-lesson] could not release cancelled lesson ${lessonId} from its charge:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 
 export const updateLesson = createRoleFunction<
   UpdateLessonRequest,
@@ -100,6 +141,17 @@ export const updateLesson = createRoleFunction<
     }
 
     const lesson = await LessonRepository.update(coercedUpdates);
+
+    // A cancelled lesson must not stay inside a charge nobody has paid yet:
+    // the family would be billed for teaching everyone agreed would not
+    // happen (#105). Only `scheduled` charges are touched — once the money has
+    // moved, studio policy is that prepaid means committed.
+    if (
+      coercedUpdates.status === 'cancelled' &&
+      existing.status !== 'cancelled'
+    ) {
+      await releaseLessonFromScheduledCharges(existing.studentId, data.id);
+    }
 
     return { lesson };
   },

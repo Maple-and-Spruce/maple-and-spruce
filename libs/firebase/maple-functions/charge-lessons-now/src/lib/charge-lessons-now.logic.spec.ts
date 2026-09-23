@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockedFunction } from 'vitest';
 import { chargeLessonsNowLogic } from './charge-lessons-now.logic';
 import type { ChargeNowDeps } from './charge-lessons-now.logic';
+import {
+  MAX_SQUARE_IDEMPOTENCY_KEY_LENGTH,
+  lessonChargeIdempotencyKey,
+} from '@maple/ts/domain';
 import type {
   Lesson,
   LessonScheduledCharge,
@@ -103,7 +107,7 @@ describe('chargeLessonsNowLogic', () => {
         amountCents: 4 * RATE,
         cardId: 'sq-card-1',
         customerId: 'sq-cust-1',
-        idempotencyKey: 'lesson-chg-student-1-lesson-1',
+        idempotencyKey: lessonChargeIdempotencyKey('chg-student-1-lesson-1'),
       })
     );
     expect(deps.markPaid).toHaveBeenCalledWith(
@@ -237,6 +241,26 @@ describe('chargeLessonsNowLogic', () => {
           idempotencyKey: 'lesson-chg-student-1-lesson-1',
           amountCents: 2 * RATE,
         })
+      );
+    });
+
+    it('re-derives a stored key Square would reject, so the retry can land', async () => {
+      // Every charge written before #99 carries a key over Square's 45-char
+      // limit. Reusing it verbatim failed exactly as the first attempt did, so
+      // "Try again" could never succeed on the charges that needed it most.
+      const legacyKey = `lesson-chg-student-1-sched-CB9jfaPgnHobrjfEnqBo-2026-09-28`;
+      deps.findCharge.mockResolvedValue({
+        ...failedCharge(),
+        idempotencyKey: legacyKey,
+      });
+
+      const outcome = await run({ retryChargeId: 'chg-student-1-lesson-1' });
+
+      expect(outcome).toMatchObject({ ok: true });
+      const sent = deps.charge.mock.calls[0][0].idempotencyKey;
+      expect(sent).not.toBe(legacyKey);
+      expect(sent.length).toBeLessThanOrEqual(
+        MAX_SQUARE_IDEMPOTENCY_KEY_LENGTH
       );
       expect(deps.claimByCreate).not.toHaveBeenCalled();
     });

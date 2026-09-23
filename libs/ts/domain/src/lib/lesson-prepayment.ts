@@ -29,6 +29,7 @@ import type { Lesson } from './lesson';
 import { isChargeableLesson, plannedChargeId } from './lesson-billing-rule';
 import { coveredLessonIds } from './lesson-scheduled-charge';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
+import { SCHEDULE_TIME_ZONE } from './student-lesson-schedule';
 
 /** How many lessons a "pay ahead" covers by default. */
 export const DEFAULT_PREPAY_LESSON_COUNT = 4;
@@ -89,16 +90,39 @@ export function prepayableLessons<
 }
 
 /**
- * Midnight local to the runtime, used only to keep *today's* lesson selectable.
+ * Midnight **in the studio's timezone**, used only to keep *today's* lesson
+ * selectable.
  *
  * A lesson earlier today has almost always just been taught, and a family
  * settling up at the door should be able to pay for it. Comparing against the
  * raw clock would drop it an hour after the lesson ended.
+ *
+ * The timezone has to be the studio's rather than the runtime's, because this
+ * runs in two places: the browser (Eastern, at the desk) and Cloud Run (UTC).
+ * Taking the runtime's meant that from 8pm Eastern the server's "today" had
+ * already rolled over, so it dropped the lesson the admin was looking at and
+ * the refusal came back as "already covered by another charge" — which was not
+ * true and not fixable by the reload it suggested (#103).
  */
 function startOfDay(now: Date): Date {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: SCHEDULE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? '0');
+  // How far into the studio's day we are, subtracted from the instant itself:
+  // no calendar arithmetic, so DST transitions need no special case.
+  const sinceMidnightMs =
+    ((get('hour') % 24) * 60 * 60 + get('minute') * 60 + get('second')) * 1000 +
+    now.getMilliseconds();
+  return new Date(now.getTime() - sinceMidnightMs);
 }
 
 /**

@@ -94,13 +94,17 @@ describe('prepayableLessons', () => {
     expect(ids).toEqual(['l3']);
   });
 
-  it('re-offers lessons under a FAILED charge, because nothing was collected', () => {
+  it('does not re-offer lessons under a FAILED charge — that charge still holds them', () => {
+    // The recovery for a failed charge is Try again on the charge itself. When
+    // these lessons were re-offered instead, a second charge could overlap the
+    // failed one and retrying both took payment twice for the same lesson
+    // (#102).
     const ids = prepayableLessons(
       lessons,
       [charge('chg-stu-1-l1', ['l1', 'l2'], 'failed')],
       NOW
     ).map((l) => l.id);
-    expect(ids).toEqual(['l1', 'l2', 'l3']);
+    expect(ids).toEqual(['l3']);
   });
 
   it('does not re-offer waived lessons — the studio chose not to charge', () => {
@@ -110,6 +114,43 @@ describe('prepayableLessons', () => {
       NOW
     ).map((l) => l.id);
     expect(ids).toEqual(['l2', 'l3']);
+  });
+
+  describe('the day boundary is the studio’s, not the runtime’s', () => {
+    // 11:15pm Eastern on 21 September — which is already the 22nd in UTC.
+    const LATE_EVENING_ET = new Date('2026-09-22T03:15:00Z');
+    // The lesson taught at 5:30pm that same Eastern evening.
+    const TAUGHT_EARLIER_TODAY = new Date('2026-09-21T21:30:00Z');
+
+    const todaysLesson = {
+      id: 'today',
+      scheduledAt: TAUGHT_EARLIER_TODAY,
+      status: 'rendered' as const,
+      durationMinutes: 30,
+    };
+
+    it('still offers a lesson taught earlier the same evening', () => {
+      // On Cloud Run (UTC) the day had already rolled over, so the server
+      // dropped this lesson and the admin was told it was "already covered by
+      // another charge" — untrue, and unfixable by the reload it suggested.
+      // After 8pm Eastern that made Pay ahead unusable for anyone taught that
+      // day (#103).
+      const ids = prepayableLessons(
+        [todaysLesson],
+        [],
+        LATE_EVENING_ET
+      ).map((l) => l.id);
+      expect(ids).toEqual(['today']);
+    });
+
+    it('still drops a lesson from the previous studio day', () => {
+      const yesterday = {
+        ...todaysLesson,
+        id: 'yesterday',
+        scheduledAt: new Date('2026-09-20T21:30:00Z'),
+      };
+      expect(prepayableLessons([yesterday], [], LATE_EVENING_ET)).toEqual([]);
+    });
   });
 });
 
@@ -281,9 +322,13 @@ describe('a prepayment suppresses autopay', () => {
     expect(guarded[0].lessonIds).toEqual(['l4', 'l5', 'l6', 'l7']);
   });
 
-  it('leaves a failed charge’s lessons plannable, since nothing was collected', () => {
+  it('does not re-plan a failed charge’s lessons — the charge already holds them', () => {
+    // Re-planning them produced the same deterministic id as the failed
+    // charge, the create collided, and the throw aborted the whole daily run
+    // for every student (#100). The way out of a failed charge is Try again,
+    // or waiving/cancelling it.
     const failed = charge('chg-stu-1-l0', ['l0', 'l1', 'l2', 'l3'], 'failed');
-    expect(chargeCoversItsLessons(failed)).toBe(false);
+    expect(chargeCoversItsLessons(failed)).toBe(true);
     const planned = planChargesForStudent(
       'stu-1',
       rule,
@@ -291,6 +336,6 @@ describe('a prepayment suppresses autopay', () => {
       rate,
       coveredLessonIds([failed])
     );
-    expect(planned[0].lessonIds).toEqual(['l0', 'l1', 'l2', 'l3']);
+    expect(planned[0].lessonIds).toEqual(['l4', 'l5', 'l6', 'l7']);
   });
 });

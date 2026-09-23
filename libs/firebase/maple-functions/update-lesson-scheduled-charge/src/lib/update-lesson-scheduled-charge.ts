@@ -42,7 +42,10 @@ export const updateLessonScheduledCharge = Functions.endpoint
     const existing = await LessonScheduledChargeRepository.findById(data.id);
     if (!existing) throwNotFound('Lesson charge', data.id);
 
-    if (existing.status !== 'scheduled') {
+    // `failed` is stoppable as well as `scheduled`: a failed charge holds its
+    // lessons (#102), so waiving or cancelling it is how an admin releases
+    // them when the money is not going to be collected.
+    if (existing.status !== 'scheduled' && existing.status !== 'failed') {
       throwInvalidArgument(
         existing.status === 'charging'
           ? 'This charge is being taken right now and can no longer be stopped'

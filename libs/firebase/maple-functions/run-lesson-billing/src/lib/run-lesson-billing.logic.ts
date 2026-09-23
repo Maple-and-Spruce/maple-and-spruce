@@ -32,6 +32,7 @@ import {
   planChargesForStudent,
   plannedChargeId,
   resolvePrivatePayLessonRateCents,
+  squareIdempotencyKeyFor,
 } from '@maple/ts/domain';
 import type {
   Lesson,
@@ -61,6 +62,8 @@ export interface LessonBillingResult {
    * the number that tells them apart.
    */
   lessonsAlreadyCovered: number;
+  /** Students whose planning threw and was skipped, never fatal (#100). */
+  planningFailed: number;
   /** True when nothing was actually charged. */
   dryRun: boolean;
 }
@@ -118,60 +121,75 @@ export async function planCharges(
   skippedNoRate: number;
   /** Lessons an existing charge already covers, so not planned again. */
   lessonsAlreadyCovered: number;
+  /** Students whose planning threw. Counted, never fatal — see below. */
+  planningFailed: number;
 }> {
   let planned = 0;
   let alreadyPlanned = 0;
   let considered = 0;
   let skippedNoRate = 0;
   let lessonsAlreadyCovered = 0;
+  let planningFailed = 0;
 
   for (const student of students) {
-    // Hope students are never charged — they bill through EMA (legacy #799).
-    if (!isAutoChargeEligible(student)) continue;
+    try {
+      // Hope students are never charged — they bill through EMA (legacy #799).
+      if (!isAutoChargeEligible(student)) continue;
 
-    const rule = ruleForStudent(student, deps.rules, deps.defaultRule);
-    if (!rule || rule.archived) continue;
+      const rule = ruleForStudent(student, deps.rules, deps.defaultRule);
+      if (!rule || rule.archived) continue;
 
-    considered++;
+      considered++;
 
-    const lessons = deps.lessonsByStudent.get(student.id) ?? [];
-    const covered = coveredLessonIds(
-      deps.chargesByStudent.get(student.id) ?? []
-    );
-    lessonsAlreadyCovered += lessons.filter(
-      (lesson) => isChargeableLesson(lesson) && covered.has(lesson.id)
-    ).length;
-    const charges = planChargesForStudent(
-      student.id,
-      rule,
-      lessons,
-      (lesson) =>
-        resolvePrivatePayLessonRateCents(lesson, student, deps.rateByLength),
-      covered
-    );
+      const lessons = deps.lessonsByStudent.get(student.id) ?? [];
+      const covered = coveredLessonIds(
+        deps.chargesByStudent.get(student.id) ?? []
+      );
+      lessonsAlreadyCovered += lessons.filter(
+        (lesson) => isChargeableLesson(lesson) && covered.has(lesson.id)
+      ).length;
+      const charges = planChargesForStudent(
+        student.id,
+        rule,
+        lessons,
+        (lesson) =>
+          resolvePrivatePayLessonRateCents(lesson, student, deps.rateByLength),
+        covered
+      );
 
-    for (const charge of charges) {
-      // A charge that prices at nothing means no rate resolved for this
-      // student — no per-student override, and nothing in the rates config for
-      // their lesson length. Taking $0 would look like a successful bill, so
-      // it is skipped and COUNTED: an unbilled student is otherwise invisible,
-      // and invisible is how revenue goes missing.
-      if (charge.amountCents <= 0) {
-        skippedNoRate++;
-        continue;
+      for (const charge of charges) {
+        // A charge that prices at nothing means no rate resolved for this
+        // student — no per-student override, and nothing in the rates config for
+        // their lesson length. Taking $0 would look like a successful bill, so
+        // it is skipped and COUNTED: an unbilled student is otherwise invisible,
+        // and invisible is how revenue goes missing.
+        if (charge.amountCents <= 0) {
+          skippedNoRate++;
+          continue;
+        }
+
+        const created = await deps.createIfAbsent({
+          id: plannedChargeId(charge),
+          studentId: charge.studentId,
+          ruleId: charge.ruleId,
+          lessonIds: charge.lessonIds,
+          amountCents: charge.amountCents,
+          dueAt: charge.dueAt,
+        });
+
+        if (created) planned++;
+        else alreadyPlanned++;
       }
-
-      const created = await deps.createIfAbsent({
-        id: plannedChargeId(charge),
-        studentId: charge.studentId,
-        ruleId: charge.ruleId,
-        lessonIds: charge.lessonIds,
-        amountCents: charge.amountCents,
-        dueAt: charge.dueAt,
-      });
-
-      if (created) planned++;
-      else alreadyPlanned++;
+    } catch (error) {
+      // One student's planning must never take the run down with it. That is
+      // exactly what happened when a failed charge's id collided and the throw
+      // escaped this loop: nothing was planned for anybody, on any day, until
+      // that failed charge was dealt with by hand (#100).
+      planningFailed++;
+      console.error(
+        `[run-lesson-billing] planning failed for student ${student.id}:`,
+        error instanceof Error ? error.message : error
+      );
     }
   }
 
@@ -181,6 +199,7 @@ export async function planCharges(
     considered,
     skippedNoRate,
     lessonsAlreadyCovered,
+    planningFailed,
   };
 }
 
@@ -240,7 +259,10 @@ export async function chargeDue(
         customerId: student.squareCustomerId,
         cardId: student.squareCardId,
         amountCents: charge.amountCents,
-        idempotencyKey: charge.idempotencyKey,
+        // Re-derived when the stored key is one Square would reject, which is
+        // every charge written before #99. Still deterministic, so a charge
+        // that did reach Square comes back as the original payment.
+        idempotencyKey: squareIdempotencyKeyFor(charge),
       });
       await deps.markPaid(charge.id, paymentId);
       charged++;

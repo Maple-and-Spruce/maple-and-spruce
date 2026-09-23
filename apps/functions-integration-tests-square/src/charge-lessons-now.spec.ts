@@ -62,9 +62,24 @@ async function seedStudent(
   });
 }
 
+/**
+ * Lesson ids the length production actually produces.
+ *
+ * A materialised lesson is `sched-{20-char schedule id}-{YYYY-MM-DD}`, and the
+ * charge id built from one of those plus a 20-character student id is what
+ * pushed the Square idempotency key past its 45-character limit (#99). Short
+ * fixture ids kept the key under the limit, so the suite stayed green while
+ * every real charge was rejected — the ids have to have the real shape for the
+ * mock's length check to mean anything.
+ */
+function realisticLessonId(studentId: string, index: number): string {
+  const day = String(index + 1).padStart(2, '0');
+  return `sched-${studentId.padEnd(20, 'x').slice(0, 20)}-2026-11-${day}`;
+}
+
 async function seedLessons(studentId: string, count: number): Promise<void> {
   for (let i = 0; i < count; i++) {
-    await setFirestoreDoc('lessons', `${studentId}-lesson-${i}`, {
+    await setFirestoreDoc('lessons', realisticLessonId(studentId, i), {
       studentId,
       teacherId: 'instructor-x',
       scheduledAt: futureLesson(i),

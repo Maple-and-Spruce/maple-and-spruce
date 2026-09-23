@@ -142,17 +142,29 @@ export function UpcomingChargesCard({
         )}
       </Box>
 
-      {charge.status === 'failed' && onRetry ? (
-        <Button
-          size="small"
-          variant="outlined"
-          disabled={pendingId === charge.id}
-          onClick={() => onRetry(charge.id)}
-        >
-          Try again
-        </Button>
-      ) : canStopCharge(charge) ? (
-        <Stack direction="row" spacing={1}>
+      {canStopCharge(charge) ? (
+        <Stack direction="row" spacing={1} alignItems="center">
+          {/*
+            A failed charge keeps its status chip — the row is still the record
+            of a payment that did not happen — and gains all three actions: try
+            the card again, or waive/cancel, since a failed charge now holds its
+            lessons until someone deals with it (#102).
+          */}
+          {charge.status === 'failed' && (
+            <>
+              <Chip size="small" label={shortChargeStatus(charge)} />
+              {onRetry && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={pendingId === charge.id}
+                  onClick={() => onRetry(charge.id)}
+                >
+                  Try again
+                </Button>
+              )}
+            </>
+          )}
           <Button
             size="small"
             disabled={pendingId === charge.id}

@@ -21,7 +21,7 @@ import {
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
-import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
+import { ADMIN_USER, EMULATOR_CONFIG } from '@maple/firebase/integration-test-utils';
 import type {
   GetLessonBillingRequest,
   GetLessonBillingResponse,
@@ -29,11 +29,14 @@ import type {
   RunLessonBillingResult,
   SaveLessonBillingRuleRequest,
   SaveLessonBillingRuleResponse,
+  UpdateLessonRequest,
+  UpdateLessonResponse,
   UpdateLessonScheduledChargeRequest,
   UpdateLessonScheduledChargeResponse,
 } from '@maple/ts/firebase/api-types';
 
 const TEACHER_ID = 'instructor-billing-teacher';
+const SQUARE_MOCK = EMULATOR_CONFIG.squareMockServerUrl;
 const DAY = 86_400_000;
 
 /** `count` weekly lessons, the first `firstOffsetDays` from now. */
@@ -325,5 +328,135 @@ describe('Lesson billing (#81)', () => {
       expect(after).toHaveLength(1);
       expect(after?.[0].status).toBe('waived');
     }, 60000);
+  });
+  describe('a failed charge holds its lessons', () => {
+    const DECLINED = 'student-billing-declined';
+    const NEIGHBOUR = 'student-billing-neighbour';
+
+    it('does not re-plan them, and does not stop the run for anyone else', async () => {
+      // The outage this closes (#100, #102): a failed charge left its lessons
+      // looking unbilled, so the next run re-planned the same block, collided
+      // with the failed charge's deterministic id, and threw — taking billing
+      // for EVERY student down with it, every day, until someone noticed.
+      await seedStudent(DECLINED);
+      await seedLessons(DECLINED, 4, 1);
+
+      await fetch(`${SQUARE_MOCK}/_mock/decline-next-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'CARD_DECLINED' }),
+      });
+
+      const first = await runBilling(adminUser.idToken);
+      expect(first.status).toBe(200);
+      expect(first.data?.chargeFailed).toBe(1);
+
+      const failed = (await billing(adminUser.idToken, DECLINED)).data?.charges;
+      expect(failed).toHaveLength(1);
+      expect(failed?.[0].status).toBe('failed');
+
+      // A second student, billed for the first time on the run after the
+      // failure: proof the failure is contained rather than fatal.
+      await seedStudent(NEIGHBOUR);
+      await seedLessons(NEIGHBOUR, 4, 1);
+
+      const second = await runBilling(adminUser.idToken);
+      expect(second.status).toBe(200);
+      expect(second.data?.planningFailed).toBe(0);
+
+      const neighbour = (await billing(adminUser.idToken, NEIGHBOUR)).data
+        ?.charges;
+      expect(neighbour).toHaveLength(1);
+      expect(neighbour?.[0].status).toBe('paid');
+
+      // And the declined student still has exactly one charge — no duplicate
+      // block was planned over the lessons the failed charge names.
+      const still = (await billing(adminUser.idToken, DECLINED)).data?.charges;
+      expect(still).toHaveLength(1);
+      expect(still?.[0].id).toBe(failed?.[0].id);
+    }, 120000);
+
+    it('can be waived, which is how an admin closes it out', async () => {
+      // Waive and cancel accept `failed` now: with the lessons held by the
+      // charge, this is the only way to say "we are not collecting this".
+      const failed = (await billing(adminUser.idToken, DECLINED)).data
+        ?.charges?.[0];
+
+      const waived = await callFunction<
+        UpdateLessonScheduledChargeRequest,
+        UpdateLessonScheduledChargeResponse
+      >({
+        functionName: 'updateLessonScheduledCharge',
+        data: {
+          id: failed?.id ?? '',
+          status: 'waived',
+          waivedReason: 'Card never went through; comped',
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(waived.status).toBe(200);
+      expect(waived.data?.charge.status).toBe('waived');
+    }, 60000);
+  });
+  describe('cancelling a lesson inside a planned charge', () => {
+    const STUDENT = 'student-billing-cancel';
+
+    it('takes the lesson out of the charge and reprices it', async () => {
+      // A cancelled lesson used to stay inside its planned charge, so the
+      // family was billed for teaching everyone had agreed would not
+      // happen (#105).
+      await seedStudent(STUDENT);
+      // Far enough out that the charge is planned but not yet due.
+      await seedLessons(STUDENT, 4, 30);
+
+      await runBilling(adminUser.idToken);
+      const planned = (await billing(adminUser.idToken, STUDENT)).data
+        ?.charges?.[0];
+      expect(planned?.status).toBe('scheduled');
+      expect(planned?.lessonIds).toHaveLength(4);
+      expect(planned?.amountCents).toBe(4 * 4125);
+
+      const cancelled = await callFunction<
+        UpdateLessonRequest,
+        UpdateLessonResponse
+      >({
+        functionName: 'updateLesson',
+        data: { id: `${STUDENT}-lesson-1`, status: 'cancelled' },
+        idToken: adminUser.idToken,
+      });
+      expect(cancelled.status).toBe(200);
+
+      const after = (await billing(adminUser.idToken, STUDENT)).data
+        ?.charges?.[0];
+      expect(after?.lessonIds).toEqual([
+        `${STUDENT}-lesson-2`,
+        `${STUDENT}-lesson-3`,
+        `${STUDENT}-lesson-4`,
+      ]);
+      expect(after?.amountCents).toBe(3 * 4125);
+      expect(after?.status).toBe('scheduled');
+    }, 120000);
+
+    it('cancels the charge outright when its last lesson goes', async () => {
+      const SOLO = 'student-billing-cancel-solo';
+      await seedStudent(SOLO);
+      await seedLessons(SOLO, 4, 30);
+
+      await runBilling(adminUser.idToken);
+      const planned = (await billing(adminUser.idToken, SOLO)).data?.charges?.[0];
+      expect(planned?.lessonIds).toHaveLength(4);
+
+      for (let i = 1; i <= 4; i++) {
+        await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
+          functionName: 'updateLesson',
+          data: { id: `${SOLO}-lesson-${i}`, status: 'cancelled' },
+          idToken: adminUser.idToken,
+        });
+      }
+
+      const after = (await billing(adminUser.idToken, SOLO)).data?.charges?.[0];
+      expect(after?.status).toBe('cancelled');
+    }, 120000);
   });
 });
