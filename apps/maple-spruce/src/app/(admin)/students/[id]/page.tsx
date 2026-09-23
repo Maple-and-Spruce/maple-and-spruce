@@ -10,11 +10,17 @@ import {
   Button,
   Chip,
   Skeleton,
+  Snackbar,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import StarsIcon from '@mui/icons-material/Stars';
 import type { BlockStrategy } from '@maple/ts/domain';
+import {
+  SCHEDULE_TIME_ZONE,
+  lessonBillingState,
+  resolvePrivatePayLessonRateCents,
+} from '@maple/ts/domain';
 import type {
   CreateInvoiceInput,
   CreateLessonInput,
@@ -40,7 +46,11 @@ import {
   StandingScheduleDialog,
   type LessonPendingAction,
 } from '@maple/react/lessons';
-import { BillingTable, InvoiceBuilderDialog } from '@maple/react/invoices';
+import {
+  BillingTable,
+  InvoiceBuilderDialog,
+  newInvoiceLineId,
+} from '@maple/react/invoices';
 import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from '@maple/react/students';
 import {
   useInstructors,
@@ -52,6 +62,16 @@ import {
   useLessonBlocks,
   useStudents,
 } from '../../../../hooks';
+
+/** "Mon, Oct 5" in the studio's timezone, so the date matches the lesson list. */
+function formatDay(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: SCHEDULE_TIME_ZONE,
+  });
+}
 
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
@@ -122,6 +142,19 @@ export default function StudentDetailPage() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | undefined>();
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [invoiceToVoid, setInvoiceToVoid] = useState<Invoice | null>(null);
+  /**
+   * What to say after a lesson is marked taught.
+   *
+   * Invoicing is explicit now (#101), so marking a lesson taught bills nobody.
+   * The lesson is usually already paid for — Katie charges a block up front —
+   * and in that case this just confirms it in passing. When nothing has billed
+   * it, the same line carries the one action worth offering.
+   */
+  const [taughtNotice, setTaughtNotice] = useState<{
+    message: string;
+    lesson?: Lesson;
+    amountCents?: number;
+  } | null>(null);
 
   const lessons = useMemo(
     () => (lessonsState.status === 'success' ? lessonsState.data : []),
@@ -310,9 +343,84 @@ export default function StudentDetailPage() {
     setIsSubmitting(true);
     try {
       await updateLesson({ id: lesson.id, status: 'rendered' });
+      setTaughtNotice(noticeForTaughtLesson(lesson));
     } finally {
       setIsSubmitting(false);
       setPendingLessonAction(null);
+    }
+  };
+
+  /** One sentence about who, if anyone, has been asked to pay for this lesson. */
+  const noticeForTaughtLesson = (
+    lesson: Lesson
+  ): { message: string; lesson?: Lesson; amountCents?: number } => {
+    const charges =
+      billingState.status === 'success' ? billingState.data.charges : [];
+    const invoices =
+      invoicesState.status === 'success' ? invoicesState.data : [];
+    const state = lessonBillingState(lesson.id, charges, invoices);
+
+    switch (state.kind) {
+      case 'charge-paid':
+        return { message: `Marked taught. Paid on ${formatDay(state.on)}.` };
+      case 'charge-pending':
+        return {
+          message: `Marked taught. Covered by a block due ${formatDay(state.dueAt)}.`,
+        };
+      case 'charge-written-off':
+        return { message: 'Marked taught. This block was not charged for.' };
+      case 'invoiced':
+        return { message: 'Marked taught. Already on an invoice.' };
+      default:
+        break;
+    }
+
+    if (!student) return { message: 'Marked taught.' };
+    const rateByLength =
+      billingState.status === 'success' ? billingState.data.rateByLength : {};
+    const amountCents = resolvePrivatePayLessonRateCents(
+      lesson,
+      student,
+      rateByLength
+    );
+    if (student.isHopeScholarship) {
+      return { message: 'Marked taught. Hope lessons bill through EMA.' };
+    }
+    if (amountCents <= 0) {
+      return {
+        message:
+          'Marked taught. No rate is set for this student, so there is nothing to invoice yet.',
+      };
+    }
+    return { message: 'Marked taught. Nothing has billed it yet.', lesson, amountCents };
+  };
+
+  /** Invoice the one lesson, sent straight away so the family can pay it. */
+  const handleInvoiceTaughtLesson = async (
+    lesson: Lesson,
+    amountCents: number
+  ) => {
+    setTaughtNotice(null);
+    setIsSubmitting(true);
+    try {
+      await createInvoice({
+        studentId: lesson.studentId,
+        status: 'sent',
+        lineItems: [
+          {
+            id: newInvoiceLineId(),
+            description: `${lesson.durationMinutes}-min lesson on ${formatDay(
+              lesson.scheduledAt
+            )}`,
+            quantity: 1,
+            unitAmountCents: amountCents,
+            subtotalCents: amountCents,
+            lessonId: lesson.id,
+          },
+        ],
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -651,6 +759,35 @@ export default function StudentDetailPage() {
             Drafts can be hard-deleted. Sent or paid invoices must be voided
             instead to preserve history.
           </Alert>
+        }
+      />
+      {/*
+        Marking a lesson taught bills nobody now that invoicing is explicit
+        (#101). This says who has already been asked to pay — usually the block
+        Katie charged up front — and offers the invoice when nobody has.
+      */}
+      <Snackbar
+        open={Boolean(taughtNotice)}
+        autoHideDuration={taughtNotice?.lesson ? 12000 : 5000}
+        onClose={() => setTaughtNotice(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        message={taughtNotice?.message}
+        action={
+          taughtNotice?.lesson && taughtNotice.amountCents ? (
+            <Button
+              size="small"
+              color="secondary"
+              disabled={isSubmitting}
+              onClick={() =>
+                handleInvoiceTaughtLesson(
+                  taughtNotice.lesson as Lesson,
+                  taughtNotice.amountCents as number
+                )
+              }
+            >
+              {`Send invoice ($${(taughtNotice.amountCents / 100).toFixed(2)})`}
+            </Button>
+          ) : undefined
         }
       />
     </>

@@ -590,9 +590,6 @@
       "@maple/firebase/maple-functions/on-lesson-write": [
         "libs/firebase/maple-functions/on-lesson-write/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/on-lesson-rendered-invoice": [
-        "libs/firebase/maple-functions/on-lesson-rendered-invoice/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-lesson-rates-config": [
         "libs/firebase/maple-functions/get-lesson-rates-config/src/index.ts"
       ],

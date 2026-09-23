@@ -80,6 +80,14 @@ export interface PlanDeps {
    * automatically for the same teaching.
    */
   chargesByStudent: Map<string, LessonScheduledCharge[]>;
+  /**
+   * Lessons a live invoice already asks each family to pay for.
+   *
+   * Invoicing is explicit now, so an invoice is a deliberate ask — and card-
+   * charging the same lesson would bill it twice (#101). Charges and invoices
+   * are the two ways a lesson gets billed, and planning has to see both.
+   */
+  invoicedLessonIdsByStudent: Map<string, Set<string>>;
   createIfAbsent: (input: {
     id: string;
     studentId: string;
@@ -145,6 +153,9 @@ export async function planCharges(
       const covered = coveredLessonIds(
         deps.chargesByStudent.get(student.id) ?? []
       );
+      for (const id of deps.invoicedLessonIdsByStudent.get(student.id) ?? []) {
+        covered.add(id);
+      }
       lessonsAlreadyCovered += lessons.filter(
         (lesson) => isChargeableLesson(lesson) && covered.has(lesson.id)
       ).length;

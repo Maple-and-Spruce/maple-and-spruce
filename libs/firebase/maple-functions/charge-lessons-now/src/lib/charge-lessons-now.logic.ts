@@ -94,6 +94,8 @@ export async function chargeLessonsNowLogic(
     student: Student;
     lessons: Lesson[];
     existingCharges: LessonScheduledCharge[];
+    /** Lessons a live invoice already asks this family to pay for (#101). */
+    alreadyInvoiced?: ReadonlySet<string>;
     lessonIds?: string[];
     lessonCount?: number;
     expectedAmountCents?: number;
@@ -146,7 +148,8 @@ export async function chargeLessonsNowLogic(
       input.existingCharges,
       { lessonIds: input.lessonIds, lessonCount: input.lessonCount },
       rateResolver,
-      now
+      now,
+      input.alreadyInvoiced
     );
     if (!outcome.ok) {
       return { ok: false, refusal: { kind: 'plan', problem: outcome.problem } };

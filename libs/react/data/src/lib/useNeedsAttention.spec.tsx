@@ -17,11 +17,12 @@ vi.mock('@maple/ts/firebase/firebase-config', () => ({
 import { useNeedsAttention } from './useNeedsAttention';
 
 const row: NeedsAttentionRow = {
-  kind: 'student-autoinvoice-off',
-  id: 'student-1',
+  kind: 'lesson-unbilled',
+  id: 'lesson-1',
   label: 'Test Student',
-  detail: 'Lessons will not bill automatically',
-  resolution: 'inline',
+  detail: 'Taught Mon, Oct 5 — never invoiced',
+  resolution: 'navigate',
+  href: '/students/student-1',
 };
 
 function attentionResponse(total: number) {
@@ -32,9 +33,9 @@ function attentionResponse(total: number) {
           ? []
           : [
               {
-                kind: 'student-autoinvoice-off',
-                title: 'Students who will not bill automatically',
-                because: 'Every future lesson has to be invoiced by hand.',
+                kind: 'lesson-unbilled',
+                title: 'Lessons taught but never invoiced',
+                because: 'Taught, and nobody has been asked to pay for them yet.',
                 rows: [row],
               },
             ],
@@ -52,36 +53,6 @@ describe('useNeedsAttention', () => {
     };
   });
 
-  it("routes the inline fix through the page's own updateStudent when given one", async () => {
-    const updateStudent = vi.fn().mockResolvedValue({});
-    const { result } = renderHook(() => useNeedsAttention({ updateStudent }));
-    await waitFor(() =>
-      expect(result.current.attentionState.status).toBe('success')
-    );
-
-    await act(() => result.current.resolveRow(row));
-
-    expect(updateStudent).toHaveBeenCalledWith({
-      id: 'student-1',
-      autoInvoice: true,
-    });
-    expect(mocks.callables.updateStudent).not.toHaveBeenCalled();
-  });
-
-  it('falls back to the updateStudent callable on pages without a roster', async () => {
-    const { result } = renderHook(() => useNeedsAttention());
-    await waitFor(() =>
-      expect(result.current.attentionState.status).toBe('success')
-    );
-
-    await act(() => result.current.resolveRow(row));
-
-    expect(mocks.callables.updateStudent).toHaveBeenCalledWith({
-      id: 'student-1',
-      autoInvoice: true,
-    });
-  });
-
   it('refreshes behind a loaded panel instead of unmounting it back to loading', async () => {
     const { result } = renderHook(() => useNeedsAttention());
     await waitFor(() =>
@@ -95,9 +66,9 @@ describe('useNeedsAttention', () => {
       })
     );
 
-    let resolving: Promise<void> = Promise.resolve();
+    let refreshing: Promise<void> = Promise.resolve();
     act(() => {
-      resolving = result.current.resolveRow(row);
+      refreshing = result.current.fetchAttention();
     });
     await waitFor(() =>
       expect(mocks.callables.getNeedsAttention).toHaveBeenCalledTimes(2)
@@ -106,7 +77,7 @@ describe('useNeedsAttention', () => {
 
     await act(async () => {
       finishRefresh(attentionResponse(0));
-      await resolving;
+      await refreshing;
     });
     expect(result.current.attentionState).toMatchObject({
       status: 'success',

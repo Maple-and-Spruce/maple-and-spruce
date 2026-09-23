@@ -274,4 +274,46 @@ describe('Charging a block of lessons now (legacy #864)', () => {
       expect(retried.data?.charge.lastError).toBeFalsy();
     }, 120000);
   });
+  describe('a lesson already on an invoice', () => {
+    it('is never also charged to the card', async () => {
+      // Invoicing is explicit now, so an invoice is a deliberate ask. Charging
+      // the same lesson would bill the family twice for one lesson (#101).
+      await seedStudent('stu-invoiced');
+      await seedLessons('stu-invoiced', 4);
+      const firstLesson = realisticLessonId('stu-invoiced', 0);
+
+      await setFirestoreDoc('invoices', 'inv-stu-invoiced', {
+        studentId: 'stu-invoiced',
+        status: 'sent',
+        lineItems: [
+          {
+            id: 'line-1',
+            description: '30-min lesson',
+            quantity: 1,
+            unitAmountCents: 4125,
+            subtotalCents: 4125,
+            lessonId: firstLesson,
+          },
+        ],
+        totalCents: 4125,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const named = await chargeNow({
+        studentId: 'stu-invoiced',
+        lessonIds: [firstLesson],
+      });
+      expect(named.status).not.toBe(200);
+
+      // And counting forward skips it rather than silently including it.
+      const forward = await chargeNow({
+        studentId: 'stu-invoiced',
+        lessonCount: 3,
+      });
+      expect(forward.status).toBe(200);
+      expect(forward.data?.charge.lessonIds).not.toContain(firstLesson);
+      expect(forward.data?.charge.lessonIds).toHaveLength(3);
+    }, 120000);
+  });
 });

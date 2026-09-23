@@ -189,3 +189,27 @@ export function isInvoiceStatusTransitionAllowed(
 export function isInvoiceDeletable(invoice: Pick<Invoice, 'status'>): boolean {
   return invoice.status === 'draft';
 }
+
+/**
+ * Every lesson a live invoice already asks the family to pay for.
+ *
+ * One definition, because two subsystems answer "has this lesson been billed?"
+ * and they must not disagree: the charge planner (which must never card-charge
+ * a lesson that is on an invoice) and the Needs Attention panel (which lists
+ * taught lessons nobody has billed).
+ *
+ * Void invoices are excluded — a voided invoice is a cancelled ask, and its
+ * lessons are owed again.
+ */
+export function invoicedLessonIds(
+  invoices: Array<Pick<Invoice, 'status' | 'lineItems'>>
+): Set<string> {
+  const ids = new Set<string>();
+  for (const invoice of invoices) {
+    if (invoice.status === 'void') continue;
+    for (const line of invoice.lineItems) {
+      if (line.lessonId) ids.add(line.lessonId);
+    }
+  }
+  return ids;
+}

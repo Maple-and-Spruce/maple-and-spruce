@@ -64,7 +64,14 @@ interface InvoiceBuilderDialogProps {
   isSubmitting?: boolean;
 }
 
-function newLineId(): string {
+/**
+ * Stable client-side id for a line, so an edit can target the right one.
+ *
+ * Exported because the student page builds a one-line invoice of its own when
+ * a taught lesson has not been billed (#101), and two id schemes for the same
+ * field is how they drift apart.
+ */
+export function newInvoiceLineId(): string {
   const cryptoObj: { randomUUID?: () => string } =
     (globalThis as unknown as { crypto?: { randomUUID?: () => string } })
       .crypto ?? {};
@@ -76,7 +83,7 @@ function newLineId(): string {
 
 function blankLine(): InvoiceLineItem {
   return {
-    id: newLineId(),
+    id: newInvoiceLineId(),
     description: '',
     quantity: 1,
     unitAmountCents: 0,
@@ -91,7 +98,7 @@ function lineFromLesson(lesson: Lesson): InvoiceLineItem {
     day: 'numeric',
   });
   return {
-    id: newLineId(),
+    id: newInvoiceLineId(),
     description: `${lesson.durationMinutes}-min lesson on ${date}`,
     lessonId: lesson.id,
     quantity: 1,

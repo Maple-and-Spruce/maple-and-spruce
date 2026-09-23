@@ -22,12 +22,14 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 import {
+  InvoiceRepository,
   LessonBillingRuleRepository,
   LessonRatesConfigRepository,
   LessonRepository,
   LessonScheduledChargeRepository,
   StudentRepository,
 } from '@maple/firebase/database';
+import { invoicedLessonIds } from '@maple/ts/domain';
 import type { Lesson, LessonScheduledCharge } from '@maple/ts/domain';
 import type { RunLessonBillingResult } from '@maple/ts/firebase/api-types';
 import { chargeDue, planCharges } from './run-lesson-billing.logic';
@@ -49,7 +51,15 @@ export async function executeLessonBilling(
 ): Promise<RunLessonBillingResult> {
   const dryRun = opts.dryRun === true;
 
-  const [students, rules, defaultRule, ratesConfig, allLessons, allCharges] =
+  const [
+    students,
+    rules,
+    defaultRule,
+    ratesConfig,
+    allLessons,
+    allCharges,
+    allInvoices,
+  ] =
     await Promise.all([
       StudentRepository.findAll(),
       LessonBillingRuleRepository.findAll(),
@@ -60,6 +70,9 @@ export async function executeLessonBilling(
       // lessons are already spoken for, and a lesson paid ahead for (legacy #864) is
       // on a charge that is long since `paid`.
       LessonScheduledChargeRepository.findAll(),
+      // Invoices count as "already billed" too, now that invoicing is
+      // explicit — a lesson Katie invoiced must not also be charged (#101).
+      InvoiceRepository.findAll(),
     ]);
 
   const lessonsByStudent = new Map<string, Lesson[]>();
@@ -67,6 +80,16 @@ export async function executeLessonBilling(
     const bucket = lessonsByStudent.get(lesson.studentId) ?? [];
     bucket.push(lesson);
     lessonsByStudent.set(lesson.studentId, bucket);
+  }
+
+  const invoicedLessonIdsByStudent = new Map<string, Set<string>>();
+  for (const invoice of allInvoices) {
+    const ids = invoicedLessonIds([invoice]);
+    if (ids.size === 0) continue;
+    const bucket =
+      invoicedLessonIdsByStudent.get(invoice.studentId) ?? new Set<string>();
+    for (const id of ids) bucket.add(id);
+    invoicedLessonIdsByStudent.set(invoice.studentId, bucket);
   }
 
   const chargesByStudent = new Map<string, LessonScheduledCharge[]>();
@@ -82,6 +105,7 @@ export async function executeLessonBilling(
     rateByLength: ratesConfig.rateByLength,
     lessonsByStudent,
     chargesByStudent,
+    invoicedLessonIdsByStudent,
     // A dry run must not create charge documents either — a "planned" charge is
     // a promise to take money, not a preview.
     createIfAbsent: dryRun

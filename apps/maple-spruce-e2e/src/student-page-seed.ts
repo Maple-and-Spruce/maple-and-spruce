@@ -50,7 +50,6 @@ export async function seedStudentPage(now: Date = new Date()): Promise<void> {
     primaryContactName: 'Test Parent',
     status: 'active',
     // Never let a lesson write here spin up a real auto-invoice.
-    autoInvoice: false,
     ...stamps,
   };
   await setFirestoreDoc('students', STUDENT_ID, {

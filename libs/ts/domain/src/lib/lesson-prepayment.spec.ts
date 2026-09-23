@@ -107,6 +107,25 @@ describe('prepayableLessons', () => {
     expect(ids).toEqual(['l3']);
   });
 
+  it('does not offer a lesson a live invoice already asks the family to pay', () => {
+    // Invoicing is explicit now, so an invoice is a deliberate ask. Charging
+    // the card for the same lesson would bill it twice (#101).
+    const ids = prepayableLessons(
+      lessons,
+      [],
+      NOW,
+      new Set(['l1'])
+    ).map((l) => l.id);
+    expect(ids).toEqual(['l2', 'l3']);
+  });
+
+  it('offers it again once that invoice is voided', () => {
+    // A voided invoice is a cancelled ask; the lesson is owed again. The caller
+    // passes the ids, and `invoicedLessonIds` is what drops void invoices.
+    const ids = prepayableLessons(lessons, [], NOW, new Set()).map((l) => l.id);
+    expect(ids).toEqual(['l1', 'l2', 'l3']);
+  });
+
   it('does not re-offer waived lessons — the studio chose not to charge', () => {
     const ids = prepayableLessons(
       lessons,

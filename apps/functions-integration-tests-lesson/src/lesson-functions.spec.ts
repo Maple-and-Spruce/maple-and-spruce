@@ -801,214 +801,6 @@ describe('Lesson Functions', () => {
     });
   });
 
-  describe('Auto-invoice on rendered (legacy #629)', () => {
-    async function getInvoicesFor(sid: string) {
-      const res = await callFunction<GetInvoicesRequest, GetInvoicesResponse>({
-        functionName: 'getInvoices',
-        data: { studentId: sid },
-        idToken: adminUser.idToken,
-      });
-      return res.data!.invoices;
-    }
-
-    // Poll rather than a fixed wait — the trigger chain (onLessonRenderedInvoice
-    // → create invoice) is async and its latency varies in the emulator.
-    async function pollForLessonInvoice(
-      sid: string,
-      lessonId: string,
-      timeoutMs = TRIGGER_WAIT_TIMEOUT_MS,
-    ) {
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs) {
-        const invoices = await getInvoicesFor(sid);
-        const found = invoices.find((i) =>
-          i.lineItems.some((l) => l.lessonId === lessonId),
-        );
-        if (found) return found;
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-      return undefined;
-    }
-
-    /** Create a scheduled lesson, then move it into a terminal status. */
-    async function createLessonWithStatus(
-      sid: string,
-      status: 'rendered' | 'no-show',
-    ): Promise<string> {
-      const res = await callFunction<CreateLessonRequest, CreateLessonResponse>(
-        {
-          functionName: 'createLesson',
-          data: {
-            studentId: sid,
-            teacherId: TEACHER_ID,
-            scheduledAt: new Date('2026-08-01T15:00:00Z'),
-            durationMinutes: 30,
-            status: 'scheduled',
-            blockId: blockFor(TEACHER_ID, new Date('2026-08-01T15:00:00Z')),
-          },
-          idToken: adminUser.idToken,
-        },
-      );
-      const lessonId = res.data!.lesson.id;
-      await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
-        data: { id: lessonId, status },
-        idToken: adminUser.idToken,
-      });
-      return lessonId;
-    }
-
-    const createRenderedLesson = (sid: string) =>
-      createLessonWithStatus(sid, 'rendered');
-    /** The teacher marks that nobody came. */
-    const createNoShowLesson = (sid: string) =>
-      createLessonWithStatus(sid, 'no-show');
-
-    async function createAutoStudent(
-      overrides: Partial<CreateStudentRequest>,
-    ): Promise<string> {
-      const res = await callFunction<
-        CreateStudentRequest,
-        CreateStudentResponse
-      >({
-        functionName: 'createStudent',
-        data: { ...SAMPLE_STUDENT, autoInvoice: true, ...overrides },
-        idToken: adminUser.idToken,
-      });
-      return res.data!.student.id;
-    }
-
-    it('auto-creates a sent invoice at the per-student override rate', async () => {
-      const sid = await createAutoStudent({
-        name: 'Override Kid',
-        primaryContactEmail: 'override@test.com',
-        lessonRateCents: 4125,
-      });
-      const lessonId = await createRenderedLesson(sid);
-
-      const invoice = await pollForLessonInvoice(sid, lessonId);
-      expect(invoice).toBeTruthy();
-      expect(invoice?.status).toBe('sent');
-      expect(invoice?.lineItems[0].unitAmountCents).toBe(4125);
-    });
-
-    it('prices from the admin-configured rate table when there is no override', async () => {
-      // Seed the default rates config; student has no per-student rate.
-      await setFirestoreDoc('appConfig', 'lessonRates', {
-        rateByLength: { '30-min-full': 3900 },
-      });
-      const sid = await createAutoStudent({
-        name: 'Config Rate Kid',
-        primaryContactEmail: 'configrate@test.com',
-        registeredLessonLength: '30-min-full',
-      });
-      const lessonId = await createRenderedLesson(sid);
-
-      const invoice = await pollForLessonInvoice(sid, lessonId);
-      expect(invoice).toBeTruthy();
-      expect(invoice?.lineItems[0].unitAmountCents).toBe(3900);
-    });
-
-    it('does NOT auto-invoice a student without the autoInvoice flag', async () => {
-      // SAMPLE_STUDENT (studentId) has autoInvoice unset.
-      const lessonId = await createRenderedLesson(studentId);
-      await waitForTrigger(6000);
-
-      const invoices = await getInvoicesFor(studentId);
-      expect(
-        invoices.some((i) => i.lineItems.some((l) => l.lessonId === lessonId)),
-      ).toBe(false);
-    });
-
-    it('is idempotent — re-rendering does not create a second invoice', async () => {
-      const sid = await createAutoStudent({
-        name: 'Idempotent Kid',
-        primaryContactEmail: 'idem@test.com',
-        lessonRateCents: 5000,
-      });
-      const lessonId = await createRenderedLesson(sid);
-      await pollForLessonInvoice(sid, lessonId);
-
-      // A no-op re-write of the already-rendered lesson must not re-invoice.
-      await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
-        data: { id: lessonId, notes: 'touch' },
-        idToken: adminUser.idToken,
-      });
-      await waitForTrigger(6000);
-
-      const invoices = await getInvoicesFor(sid);
-      const forLesson = invoices.filter((i) =>
-        i.lineItems.some((l) => l.lessonId === lessonId),
-      );
-      expect(forLesson).toHaveLength(1);
-    });
-
-    // ── no-show billing (legacy #796) ─────────────────────────────────────────────
-    //
-    // Money in two directions, decided by one trigger, so both are proven
-    // against real emulators rather than only against mocked repositories:
-    // a private-pay no-show that fails to invoice is lost revenue, and a Hope
-    // no-show that produces a charge is a compliance problem.
-
-    it('bills a private-pay no-show — the slot was held and the teacher was there', async () => {
-      const sid = await createAutoStudent({
-        name: 'No Show Kid',
-        primaryContactEmail: 'noshow@test.com',
-        lessonRateCents: 4125,
-      });
-      const lessonId = await createNoShowLesson(sid);
-
-      const invoice = await pollForLessonInvoice(sid, lessonId);
-      expect(invoice).toBeTruthy();
-      expect(invoice?.status).toBe('sent');
-      expect(invoice?.lineItems[0].unitAmountCents).toBe(4125);
-      // And it says what it is for, or the family will dispute it.
-      expect(invoice?.lineItems[0].description).toMatch(/missed lesson/i);
-    });
-
-    it('never bills a Hope Scholarship no-show — Hope pays only for services rendered', async () => {
-      const sid = await createAutoStudent({
-        name: 'Hope No Show Kid',
-        primaryContactEmail: 'hopenoshow@test.com',
-        isHopeScholarship: true,
-        lessonRateCents: 4125,
-      });
-      const lessonId = await createNoShowLesson(sid);
-      await waitForTrigger(6000);
-
-      const invoices = await getInvoicesFor(sid);
-      expect(
-        invoices.some((i) => i.lineItems.some((l) => l.lessonId === lessonId)),
-      ).toBe(false);
-    });
-
-    it('does not bill twice when a rendered lesson is corrected to no-show', async () => {
-      // Both statuses bill, so the trigger guards the EDGE. Without that,
-      // fixing a mis-tap charges the family a second time.
-      const sid = await createAutoStudent({
-        name: 'Corrected Kid',
-        primaryContactEmail: 'corrected@test.com',
-        lessonRateCents: 4125,
-      });
-      const lessonId = await createRenderedLesson(sid);
-      await pollForLessonInvoice(sid, lessonId);
-
-      await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
-        data: { id: lessonId, status: 'no-show' },
-        idToken: adminUser.idToken,
-      });
-      await waitForTrigger(6000);
-
-      const invoices = await getInvoicesFor(sid);
-      const forLesson = invoices.filter((i) =>
-        i.lineItems.some((l) => l.lessonId === lessonId),
-      );
-      expect(forLesson).toHaveLength(1);
-    });
-  });
-
   describe('Hope Scholarship submissions (legacy #799)', () => {
     let hopeStudentId: string;
 
@@ -1247,66 +1039,6 @@ describe('Lesson Functions', () => {
       return data.groups.find((g) => g.kind === kind)?.rows ?? [];
     }
 
-    it('flags an active private-pay student with automatic invoicing off', async () => {
-      const created = await callFunction<
-        CreateStudentRequest,
-        CreateStudentResponse
-      >({
-        functionName: 'createStudent',
-        data: {
-          ...SAMPLE_STUDENT,
-          name: 'Attention AutoInvoice Off',
-          primaryContactEmail: 'attention-autoinvoice@test.com',
-          autoInvoice: false,
-        },
-        idToken: adminUser.idToken,
-      });
-      const sid = created.data!.student.id;
-
-      const data = await attention();
-      const row = rowsOf(data, 'student-autoinvoice-off').find(
-        (r) => r.id === sid,
-      );
-      expect(row).toBeTruthy();
-      expect(data.total).toBeGreaterThan(0);
-    });
-
-    it('clears that row once the flag is turned on', async () => {
-      // The panel's whole promise is that acting on a row removes it.
-      const created = await callFunction<
-        CreateStudentRequest,
-        CreateStudentResponse
-      >({
-        functionName: 'createStudent',
-        data: {
-          ...SAMPLE_STUDENT,
-          name: 'Attention Resolvable',
-          primaryContactEmail: 'attention-resolvable@test.com',
-          autoInvoice: false,
-        },
-        idToken: adminUser.idToken,
-      });
-      const sid = created.data!.student.id;
-
-      expect(
-        rowsOf(await attention(), 'student-autoinvoice-off').some(
-          (r) => r.id === sid,
-        ),
-      ).toBe(true);
-
-      await callFunction({
-        functionName: 'updateStudent',
-        data: { id: sid, autoInvoice: true },
-        idToken: adminUser.idToken,
-      });
-
-      expect(
-        rowsOf(await attention(), 'student-autoinvoice-off').some(
-          (r) => r.id === sid,
-        ),
-      ).toBe(false);
-    });
-
     it('never flags a Hope student for automatic invoicing', async () => {
       // createInvoice refuses Hope students outright, so the flag is meaningless
       // for them and the row would be noise no one can act on.
@@ -1320,14 +1052,15 @@ describe('Lesson Functions', () => {
           name: 'Attention Hope Student',
           primaryContactEmail: 'attention-hope@test.com',
           isHopeScholarship: true,
-          autoInvoice: false,
         },
         idToken: adminUser.idToken,
       });
       const sid = created.data!.student.id;
 
+      // Hope lessons bill through EMA, so they never show up as unbilled
+      // private-pay work.
       expect(
-        rowsOf(await attention(), 'student-autoinvoice-off').some(
+        rowsOf(await attention(), 'lesson-unbilled').some(
           (r) => r.id === sid,
         ),
       ).toBe(false);
@@ -1343,7 +1076,6 @@ describe('Lesson Functions', () => {
           ...SAMPLE_STUDENT,
           name: 'Attention Unbilled',
           primaryContactEmail: 'attention-unbilled@test.com',
-          autoInvoice: false, // so nothing auto-invoices it
         },
         idToken: adminUser.idToken,
       });
@@ -1380,10 +1112,10 @@ describe('Lesson Functions', () => {
       const data = await attention();
       expect(data.groups.every((g) => g.rows.length > 0)).toBe(true);
       const kinds = data.groups.map((g) => g.kind);
+      const unbilledAt = kinds.indexOf('lesson-unbilled');
       const overdueAt = kinds.indexOf('invoice-overdue');
-      const autoOffAt = kinds.indexOf('student-autoinvoice-off');
-      if (overdueAt >= 0 && autoOffAt >= 0) {
-        expect(overdueAt).toBeLessThan(autoOffAt);
+      if (unbilledAt >= 0 && overdueAt >= 0) {
+        expect(unbilledAt).toBeLessThan(overdueAt);
       }
     });
   });

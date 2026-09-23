@@ -119,6 +119,7 @@ describe('planCharges', () => {
     rateByLength: { '30-min-full': 4125 },
     lessonsByStudent: new Map([['student-1', lessons(8)]]),
     chargesByStudent: new Map(),
+    invoicedLessonIdsByStudent: new Map(),
     createIfAbsent,
     ...over,
   });
@@ -222,6 +223,27 @@ describe('planCharges', () => {
       })
     );
     expect(createIfAbsent).not.toHaveBeenCalled();
+  });
+
+  it('never charges a lesson a live invoice already asks the family to pay', async () => {
+    // Invoicing is explicit now, so an invoice is a deliberate ask. The job
+    // has to see it, or the family is billed twice for one lesson (#101).
+    const result = await planCharges(
+      [student()],
+      deps({
+        invoicedLessonIdsByStudent: new Map([
+          ['student-1', new Set(['lesson-1', 'lesson-2'])],
+        ]),
+      })
+    );
+
+    expect(result.lessonsAlreadyCovered).toBe(2);
+    expect(createIfAbsent.mock.calls[0][0].lessonIds).toEqual([
+      'lesson-3',
+      'lesson-4',
+      'lesson-5',
+      'lesson-6',
+    ]);
   });
 
   it('keeps billing everyone else when one student’s planning throws', async () => {

@@ -37,7 +37,6 @@ function docToStudent(
     secondaryContactEmail: data.secondaryContactEmail,
     secondaryContactPhone: data.secondaryContactPhone,
     venmoUsername: data.venmoUsername,
-    autoInvoice: data.autoInvoice ?? false,
     lessonRateCents: data.lessonRateCents,
     // Card on file. Katie and Nathan save the card in Square in person; the
     // portal links to it rather than making the family re-enter it (#81).
