@@ -26,9 +26,17 @@ nothing. "Add from lesson" in the invoice builder lists lessons already on a `pa
 same double-ask in the other direction. `lessonBillingState` already answers this and nothing
 outside the toast calls it.
 
+**Prod kept auto-invoicing after the merge.** Deleting a function's source does not delete the
+function: `onLessonRenderedInvoice` was still ACTIVE in prod on `lessons/{lessonId}`, so every
+lesson marked taught still raised an invoice — and with #101 in place that invoice then *blocked*
+the card charge for the same lesson. Deleted by hand in dev and prod on 2026-09-23. CI does not
+prune removed functions, so **check `gcloud functions list` after any PR that deletes a function
+library.** The firebase CLI's own credentials had expired independently of gcloud's, and
+`firebase login --reauth` is interactive; `gcloud functions delete <name> --gen2 --region us-east4`
+does the same job.
+
 **Leftover:** `InvoiceRepository.createAutoLessonInvoice` has no callers now that the trigger is
-gone, and its comment still describes it. `onLessonRenderedInvoice` also needs deleting by hand in
-dev and prod — CI does not prune removed functions.
+gone, and its comment still describes it.
 
 ### Lesson billing: the charge path works in dev (2026-09-23)
 
