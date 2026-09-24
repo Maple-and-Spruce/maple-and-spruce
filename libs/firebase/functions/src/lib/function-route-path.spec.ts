@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { routeNameFromPath } from './functions.utility';
+import { routeNameFromPath } from './function-route-path';
 
 /**
  * Route resolution is the one piece of a domain router that has no equivalent in

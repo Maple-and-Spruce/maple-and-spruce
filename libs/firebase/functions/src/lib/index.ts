@@ -32,8 +32,11 @@ export {
   type ValidatorFn,
   type UniquenessCheck,
   type FunctionRoute,
-  routeNameFromPath,
 } from './functions.utility';
+
+// Route resolution — its own module so a spec can reach it without loading
+// functions.utility's real graph (see function-route-path.ts).
+export { routeNameFromPath } from './function-route-path';
 
 // Auth utilities
 export {

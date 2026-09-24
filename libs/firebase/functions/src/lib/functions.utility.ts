@@ -22,6 +22,7 @@ import {
 import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'express';
 import { Role, hasAnyRole } from './auth.utility';
+import { routeNameFromPath } from './function-route-path';
 import { throwAlreadyExists, throwValidationError } from './errors.utility';
 import { getAuth } from 'firebase-admin/auth';
 import { getApps, initializeApp } from 'firebase-admin/app';
@@ -682,12 +683,6 @@ async function runRequestPipeline(
  * cannot collide with the function name because a bare call to the router with
  * no route is an error anyway.
  */
-export function routeNameFromPath(path: string, routerName: string): string | undefined {
-  const segments = path.split('/').filter(Boolean);
-  const last = segments[segments.length - 1];
-  if (!last || last === routerName) return undefined;
-  return last;
-}
 
 /**
  * Functions factory for creating HTTP functions
