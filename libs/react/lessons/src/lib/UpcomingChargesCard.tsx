@@ -66,6 +66,16 @@ function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+/** What stopping this charge gives up, in one sentence. */
+function describeStoppedCharge(
+  charge: Pick<LessonScheduledCharge, 'amountCents' | 'lessonIds'>
+): string {
+  const n = charge.lessonIds.length;
+  return `${money(charge.amountCents)} for ${n} lesson${
+    n === 1 ? '' : 's'
+  } will not be taken.`;
+}
+
 function dueLabel(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
@@ -89,6 +99,12 @@ export function UpcomingChargesCard({
 }: UpcomingChargesCardProps) {
   const [waiving, setWaiving] = useState<LessonScheduledCharge | null>(null);
   const [reason, setReason] = useState('');
+  // Cancelling fired straight from the row with no confirmation, although it is
+  // the more permanent of the two stop actions: `cancelled` counts as covering,
+  // so those lessons leave automatic billing and do not come back (#106).
+  const [cancelling, setCancelling] = useState<LessonScheduledCharge | null>(
+    null
+  );
 
   if (isLoading) {
     return (
@@ -179,7 +195,7 @@ export function UpcomingChargesCard({
             size="small"
             color="inherit"
             disabled={pendingId === charge.id}
-            onClick={() => onCancel(charge.id)}
+            onClick={() => setCancelling(charge)}
           >
             Cancel
           </Button>
@@ -256,6 +272,38 @@ export function UpcomingChargesCard({
           </Box>
         )}
       </Stack>
+
+      <Dialog
+        open={!!cancelling}
+        onClose={() => setCancelling(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Stop this charge?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            {cancelling ? describeStoppedCharge(cancelling) : ''}
+          </Typography>
+          <Alert severity="warning">
+            Those lessons leave automatic billing for good — a cancelled charge
+            still speaks for them, so no later run will plan them again. Bill them
+            by hand if the studio is still charging for that teaching.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelling(null)}>Back</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              if (cancelling) onCancel(cancelling.id);
+              setCancelling(null);
+            }}
+          >
+            Stop the charge
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!waiving} onClose={() => setWaiving(null)} fullWidth maxWidth="sm">
         <DialogTitle>Waive this charge</DialogTitle>

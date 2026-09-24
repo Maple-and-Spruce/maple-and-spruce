@@ -456,6 +456,15 @@ export default function StudentDetailPage() {
     }
   };
 
+  /** Spelled out here rather than inline, so the dialog's props stay readable. */
+  let voidInvoiceMessage: string | undefined;
+  if (invoiceToVoid) {
+    const lines = invoiceToVoid.lineItems.length;
+    voidInvoiceMessage = `Void the invoice for ${lines} line${
+      lines === 1 ? '' : 's'
+    }? It stays on the record, marked cancelled.`;
+  }
+
   if (studentsState.status === 'loading') {
     return (
       <>
@@ -755,6 +764,14 @@ export default function StudentDetailPage() {
               })
             : ''
         }
+        confirmationMessage={
+          cancelLesson
+            ? `Cancel the lesson on ${formatDay(cancelLesson.scheduledAt)}? It stays on the record, marked cancelled.`
+            : undefined
+        }
+        confirmLabel="Cancel the lesson"
+        busyLabel="Cancelling..."
+        dismissLabel="Back"
         warningContent={
           <Alert severity="info">
             The lesson stays on record with status &quot;cancelled&quot;. For
@@ -776,6 +793,10 @@ export default function StudentDetailPage() {
               }`
             : ''
         }
+        confirmationMessage={voidInvoiceMessage}
+        confirmLabel="Void the invoice"
+        busyLabel="Voiding..."
+        dismissLabel="Back"
         warningContent={
           <Alert severity="warning">
             Voiding preserves the invoice for history but marks it as cancelled.

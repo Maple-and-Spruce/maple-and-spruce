@@ -359,3 +359,40 @@ export const HiddenForHopeStudents: Story = {
     ).not.toBeInTheDocument();
   },
 };
+
+/**
+ * Nothing ticked charges nothing (#106).
+ *
+ * `planPrepayment` used to fall back to `lessonCount` for an empty selection, so
+ * the picker offered "Charge $165.00 to the card · 4 lessons" while every
+ * checkbox was clear — the screen and the charge disagreeing about what the
+ * family agreed to.
+ */
+export const AnEmptyPickerOffersNothing: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Choose lessons instead' })
+    );
+
+    // No amount in the label, and nothing to press.
+    const charge = canvas.getByRole('button', { name: 'Charge the card' });
+    expect(charge).toBeDisabled();
+    expect(
+      canvas.queryByRole('button', { name: /Charge \$165\.00/ })
+    ).not.toBeInTheDocument();
+    expect(args.onCharge).not.toHaveBeenCalled();
+  },
+};
+
+/** …and it does not nag about it, since that is where the picker starts. */
+export const AnEmptyPickerDoesNotScold: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Choose lessons instead' })
+    );
+    expect(canvas.queryByText(/Tick the lessons/)).not.toBeInTheDocument();
+  },
+};
