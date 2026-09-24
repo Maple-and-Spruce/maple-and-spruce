@@ -15,30 +15,9 @@ import {
   type LessonChargeStatus,
   type LessonScheduledCharge,
 } from '@maple/ts/domain';
+import { isAlreadyExists } from './utilities/already-exists';
 
 const COLLECTION = 'lessonScheduledCharges';
-
-/** gRPC ALREADY_EXISTS — the steady state when re-planning, not an error. */
-const GRPC_ALREADY_EXISTS = 6;
-/** The same outcome when the client is on REST rather than gRPC. */
-const HTTP_CONFLICT = 409;
-
-/**
- * Did this write lose to a document that is already there?
- *
- * Matching only the gRPC code was not enough: in dev the admin SDK reported the
- * collision over REST as a 409 whose body carried `"status": "ALREADY_EXISTS"`,
- * the guard below missed it, and the throw aborted the whole billing run for
- * every student (#100). Both transports, and the message as a last resort.
- */
-function isAlreadyExists(err: unknown): boolean {
-  if (typeof err !== 'object' || err === null) return false;
-  const code = (err as { code?: unknown }).code;
-  if (code === GRPC_ALREADY_EXISTS || code === HTTP_CONFLICT) return true;
-  if ((err as { status?: unknown }).status === 'ALREADY_EXISTS') return true;
-  const message = (err as { message?: unknown }).message;
-  return typeof message === 'string' && message.includes('ALREADY_EXISTS');
-}
 
 function docToCharge(
   doc: FirebaseFirestore.DocumentSnapshot

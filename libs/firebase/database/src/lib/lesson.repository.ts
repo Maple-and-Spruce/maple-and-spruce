@@ -11,6 +11,7 @@ import type {
   CreateLessonSeriesInput,
   LessonStatus,
 } from '@maple/ts/domain';
+import { isAlreadyExists } from './utilities/already-exists';
 
 const COLLECTION = 'lessons';
 
@@ -124,15 +125,12 @@ export const LessonRepository = {
     try {
       await db.collection(COLLECTION).doc(id).create(data);
     } catch (err) {
-      // gRPC ALREADY_EXISTS
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'code' in err &&
-        (err as { code: unknown }).code === 6
-      ) {
-        return null;
-      }
+      // A collision here is the steady state, not a failure: the id is derived
+      // from the schedule and the occurrence date, so re-materialising finds
+      // what is already there. It has to recognise the collision on **both**
+      // transports — matching the gRPC code alone meant a REST 409 escaped and
+      // took every standing arrangement down with it (#117).
+      if (isAlreadyExists(err)) return null;
       throw err;
     }
     return { id, ...data };

@@ -18,20 +18,9 @@ import type {
   LessonInquiryStatus,
   UpdateLessonInquiryStatusInput,
 } from '@maple/ts/domain';
+import { isAlreadyExists } from './utilities/already-exists';
 
 const COLLECTION = 'lessonInquiries';
-
-/** gRPC ALREADY_EXISTS — Firestore throws this from `create()` on a known id. */
-const GRPC_ALREADY_EXISTS = 6;
-
-function isAlreadyExists(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: unknown }).code === GRPC_ALREADY_EXISTS
-  );
-}
 
 function docToLessonInquiry(
   doc: FirebaseFirestore.DocumentSnapshot
