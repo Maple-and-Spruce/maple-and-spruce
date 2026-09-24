@@ -4,9 +4,6 @@
   "sourceRoot": "libs/firebase/functions/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:util"],
-  "namedInputs": {
-    "default": ["{projectRoot}/**/*", "functionsEnv"]
-  },
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint"
