@@ -7,7 +7,7 @@
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
-      "inputs": ["default", "functionsEnv"],
+      "inputs": ["default"],
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/functions",
