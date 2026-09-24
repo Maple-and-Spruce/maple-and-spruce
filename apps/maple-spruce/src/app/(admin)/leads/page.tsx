@@ -24,6 +24,7 @@ import {
   useInstructors,
   useLessonInquiries,
   useStudents,
+  useLessonBilling,
 } from '../../../hooks';
 
 /**
@@ -47,6 +48,13 @@ import {
 export default function LeadsPage() {
   const { inquiriesState, updateStatus, updatingId } = useLessonInquiries();
   const { studentsState, createStudent } = useStudents();
+
+  // The rules list, so the form can put a student on one (#107). The page is
+  // already fetching several unscoped lists; this is one more small one.
+  const { billingState: billingState } = useLessonBilling();
+  const billingRules =
+    billingState.status === 'success' ? billingState.data.rules : [];
+
   const { instructorsState } = useInstructors();
 
   const [enrolling, setEnrolling] = useState<LessonInquiry | null>(null);
@@ -151,6 +159,7 @@ export default function LeadsPage() {
         onClose={() => setCreatingFrom(null)}
         onSubmit={handleCreateStudent}
         instructors={instructors}
+        billingRules={billingRules}
         isSubmitting={creating}
         prefill={
           creatingFrom ? studentDraftFromInquiry(creatingFrom) : undefined

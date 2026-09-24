@@ -37,6 +37,7 @@ import type {
   Student,
   StudentStatus,
   CreateStudentInput,
+  LessonBillingRule,
 } from '@maple/ts/domain';
 import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
 import { studentValidation } from '@maple/ts/validation';
@@ -54,6 +55,14 @@ interface StudentFormProps {
   onSubmit: (data: CreateStudentInput) => Promise<void>;
   student?: Student;
   instructors: Instructor[];
+  /**
+   * The studio's live billing rules, so a student can be put on one (#107).
+   *
+   * Empty or omitted hides the picker entirely: offering "which rule bills this
+   * family" before any rule exists is a choice nobody can make, and the rules
+   * screen is where that gets fixed.
+   */
+  billingRules?: Array<Pick<LessonBillingRule, 'id' | 'name' | 'isDefault' | 'archived'>>;
   isSubmitting?: boolean;
   /**
    * Seed values for a NEW student, e.g. everything a lesson inquiry already
@@ -78,6 +87,7 @@ export function StudentForm({
   onSubmit,
   student,
   instructors,
+  billingRules = [],
   isSubmitting = false,
   prefill,
   prefillNote,
@@ -100,6 +110,7 @@ export function StudentForm({
   const secondaryContactPhone = useSignal('');
   const venmoUsername = useSignal('');
   const lessonRateCents = useSignal('');
+  const billingRuleId = useSignal('');
   const notes = useSignal('');
   const status = useSignal<StudentStatus>('active');
 
@@ -125,6 +136,7 @@ export function StudentForm({
       lessonRateCents: lessonRateCents.value
         ? Math.round(parseFloat(lessonRateCents.value) * 100)
         : undefined,
+      billingRuleId: billingRuleId.value || undefined,
       primaryContactName: primaryContactName.value,
       primaryContactEmail: primaryContactEmail.value,
       primaryContactPhone: primaryContactPhone.value || undefined,
@@ -142,6 +154,21 @@ export function StudentForm({
   });
 
   const isValid = useComputed(() => validation.value.isValid());
+
+  /** The rule a blank picker actually means, named so blank is not a mystery. */
+  const defaultRuleName = billingRules.find(
+    (r) => r.isDefault && !r.archived
+  )?.name;
+
+  /** What the current choice means for this student, in one sentence. */
+  let billingRuleHelp =
+    'No studio default is set, so nothing is charged automatically for this student.';
+  if (billingRuleId.value) {
+    billingRuleHelp =
+      'This student is billed by this rule regardless of the studio default.';
+  } else if (defaultRuleName) {
+    billingRuleHelp = `Follows the studio default (${defaultRuleName}).`;
+  }
 
   const getFieldError = (field: string): string | null => {
     const fieldErrors = errors.value[field];
@@ -172,6 +199,7 @@ export function StudentForm({
           student.lessonRateCents != null
             ? (student.lessonRateCents / 100).toString()
             : '';
+        billingRuleId.value = student.billingRuleId ?? '';
         notes.value = student.notes ?? '';
         status.value = student.status;
         showValidationErrors.value = false;
@@ -192,6 +220,7 @@ export function StudentForm({
         secondaryContactPhone.value = '';
         venmoUsername.value = '';
         lessonRateCents.value = '';
+        billingRuleId.value = '';
         notes.value = '';
         status.value = 'active';
 
@@ -259,6 +288,7 @@ export function StudentForm({
           lessonRateCents: lessonRateCents.value
           ? Math.round(parseFloat(lessonRateCents.value) * 100)
           : undefined,
+        billingRuleId: billingRuleId.value || undefined,
         primaryContactName: primaryContactName.value,
         primaryContactEmail: primaryContactEmail.value,
         primaryContactPhone: primaryContactPhone.value || undefined,
@@ -438,6 +468,39 @@ export function StudentForm({
             type="number"
             fullWidth
           />
+
+          {/*
+            Which rule bills this family (#107). Hidden when the studio has no
+            rules, because the choice does not exist yet — the rules screen is
+            where that gets fixed, not here.
+
+            Blank means "whatever the studio default is", and the option says so
+            by name rather than leaving Katie to work out what blank implies.
+          */}
+          {billingRules.length > 0 && (
+            <TextField
+              select
+              label="Billing rule"
+              value={billingRuleId.value}
+              onChange={(e) => (billingRuleId.value = e.target.value)}
+              helperText={billingRuleHelp}
+              fullWidth
+            >
+              <MenuItem value="">
+                {defaultRuleName
+                  ? `Studio default — ${defaultRuleName}`
+                  : 'Studio default — none set'}
+              </MenuItem>
+              {billingRules
+                .filter((r) => !r.archived || r.id === billingRuleId.value)
+                .map((r) => (
+                  <MenuItem key={r.id} value={r.id}>
+                    {r.name}
+                    {r.archived ? ' (retired)' : ''}
+                  </MenuItem>
+                ))}
+            </TextField>
+          )}
 
           <Divider />
 

@@ -22,6 +22,10 @@ import type {
   GetLessonBillingResponse,
   UpdateLessonScheduledChargeRequest,
   UpdateLessonScheduledChargeResponse,
+  SaveLessonBillingRuleRequest,
+  SaveLessonBillingRuleResponse,
+  RunLessonBillingRequest,
+  RunLessonBillingResult,
 } from '@maple/ts/firebase/api-types';
 
 export interface LessonBillingData {
@@ -154,12 +158,77 @@ export function useLessonBilling(studentId?: string) {
     [fetchBilling]
   );
 
+  /**
+   * Create or edit a rule (#107).
+   *
+   * Resolves to the error message when the server refuses, and null when it
+   * saved — a rule is a standing instruction to take money, so a refusal has to
+   * reach the form rather than a toast that scrolls away.
+   */
+  const saveRule = useCallback(
+    async (input: SaveLessonBillingRuleRequest): Promise<string | null> => {
+      setPendingId(input.id ?? 'new-rule');
+      setActionError(null);
+      try {
+        const fn = httpsCallable<
+          SaveLessonBillingRuleRequest,
+          SaveLessonBillingRuleResponse
+        >(getMapleFunctions(), 'saveLessonBillingRule');
+        await fn(input);
+        await fetchBilling();
+        return null;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Could not save that rule';
+        setActionError(message);
+        return message;
+      } finally {
+        setPendingId(null);
+      }
+    },
+    [fetchBilling]
+  );
+
+  /**
+   * Run the billing job now, or preview what it would do.
+   *
+   * `dryRun` reports the same counters and writes nothing, which is the only way
+   * to find out what a rule will do without waiting for 09:00 and finding out by
+   * charging somebody.
+   */
+  const runBilling = useCallback(
+    async (opts: { dryRun: boolean }): Promise<RunLessonBillingResult | null> => {
+      setPendingId(opts.dryRun ? 'preview-run' : 'billing-run');
+      setActionError(null);
+      try {
+        const fn = httpsCallable<
+          RunLessonBillingRequest,
+          RunLessonBillingResult
+        >(getMapleFunctions(), 'triggerLessonBilling');
+        const result = await fn({ dryRun: opts.dryRun });
+        // A real run plans and takes charges, so the screen behind it is stale.
+        if (!opts.dryRun) await fetchBilling();
+        return result.data;
+      } catch (error) {
+        setActionError(
+          error instanceof Error ? error.message : 'Could not run the billing job'
+        );
+        return null;
+      } finally {
+        setPendingId(null);
+      }
+    },
+    [fetchBilling]
+  );
+
   return {
     billingState,
     pendingId,
     actionError,
     stopCharge,
     chargeNow,
+    saveRule,
+    runBilling,
     refetch: fetchBilling,
   };
 }

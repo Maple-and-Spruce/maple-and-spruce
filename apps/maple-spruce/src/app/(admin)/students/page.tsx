@@ -179,6 +179,13 @@ export default function StudentsPage() {
   // as /leads → "Create student…", offered from whichever page you are on.
   const { inquiriesState, updateStatus } = useLessonInquiries();
 
+  // The rules list, so the form can put a student on one (#107). The page is
+  // already fetching several unscoped lists; this is one more small one.
+  const { billingState: studioBillingState } = useLessonBilling();
+  const billingRules =
+    studioBillingState.status === 'success' ? studioBillingState.data.rules : [];
+
+
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
   const lessons =
@@ -398,6 +405,7 @@ export default function StudentsPage() {
         onSubmit={handleSubmitForm}
         student={editingStudent}
         instructors={instructors}
+        billingRules={billingRules}
         isSubmitting={isSubmitting}
         prefill={
           creatingFromInquiry
