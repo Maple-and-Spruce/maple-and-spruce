@@ -283,6 +283,31 @@ jobs:
       - name: Derive nx affected SHAs
         uses: nrwl/nx-set-shas@v4
 
+      # `projectsAffectedByDependencyUpdates: auto` (nx.json) makes nx diff the
+      # lock file and mark only the projects whose resolved dependencies changed.
+      # That is right for a feature that happens to add a dependency — 37 of the
+      # 46 lock-file-only PRs in this repo's history — and wrong for a bump to
+      # build-time tooling: nothing *imports* typescript, so bumping it marked 22
+      # projects instead of 315 (eslint: 15). Measured, not guessed.
+      #
+      # So when a PR changes nothing but the dependency manifests, widen the base
+      # to the root commit, which makes `nx affected` behave like `--all`. Setting
+      # NX_BASE is enough: nx-set-shas exports it and every `nx affected` call
+      # reads it, so no call site needs to know about this.
+      #
+      # git does the filtering rather than grep, so the test cannot depend on
+      # printf/grep semantics differing between shells.
+      - name: Check everything when only dependencies changed
+        run: |
+          manifests="$(git diff --name-only "$NX_BASE" "$NX_HEAD" \
+            -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
+          others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
+            ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
+          if [ -n "$manifests" ] && [ -z "$others" ]; then
+            echo "Dependency-only change — widening nx affected to the whole workspace."
+            echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
+          fi
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
@@ -342,6 +367,31 @@ jobs:
 
       - name: Derive nx affected SHAs
         uses: nrwl/nx-set-shas@v4
+
+      # `projectsAffectedByDependencyUpdates: auto` (nx.json) makes nx diff the
+      # lock file and mark only the projects whose resolved dependencies changed.
+      # That is right for a feature that happens to add a dependency — 37 of the
+      # 46 lock-file-only PRs in this repo's history — and wrong for a bump to
+      # build-time tooling: nothing *imports* typescript, so bumping it marked 22
+      # projects instead of 315 (eslint: 15). Measured, not guessed.
+      #
+      # So when a PR changes nothing but the dependency manifests, widen the base
+      # to the root commit, which makes `nx affected` behave like `--all`. Setting
+      # NX_BASE is enough: nx-set-shas exports it and every `nx affected` call
+      # reads it, so no call site needs to know about this.
+      #
+      # git does the filtering rather than grep, so the test cannot depend on
+      # printf/grep semantics differing between shells.
+      - name: Check everything when only dependencies changed
+        run: |
+          manifests="$(git diff --name-only "$NX_BASE" "$NX_HEAD" \
+            -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
+          others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
+            ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
+          if [ -n "$manifests" ] && [ -z "$others" ]; then
+            echo "Dependency-only change — widening nx affected to the whole workspace."
+            echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -451,6 +501,31 @@ jobs:
 
       - name: Derive nx affected SHAs
         uses: nrwl/nx-set-shas@v4
+
+      # `projectsAffectedByDependencyUpdates: auto` (nx.json) makes nx diff the
+      # lock file and mark only the projects whose resolved dependencies changed.
+      # That is right for a feature that happens to add a dependency — 37 of the
+      # 46 lock-file-only PRs in this repo's history — and wrong for a bump to
+      # build-time tooling: nothing *imports* typescript, so bumping it marked 22
+      # projects instead of 315 (eslint: 15). Measured, not guessed.
+      #
+      # So when a PR changes nothing but the dependency manifests, widen the base
+      # to the root commit, which makes `nx affected` behave like `--all`. Setting
+      # NX_BASE is enough: nx-set-shas exports it and every `nx affected` call
+      # reads it, so no call site needs to know about this.
+      #
+      # git does the filtering rather than grep, so the test cannot depend on
+      # printf/grep semantics differing between shells.
+      - name: Check everything when only dependencies changed
+        run: |
+          manifests="$(git diff --name-only "$NX_BASE" "$NX_HEAD" \
+            -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
+          others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
+            ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
+          if [ -n "$manifests" ] && [ -z "$others" ]; then
+            echo "Dependency-only change — widening nx affected to the whole workspace."
+            echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -1232,6 +1307,31 @@ jobs:
 
       - name: Derive nx affected SHAs
         uses: nrwl/nx-set-shas@v4
+
+      # `projectsAffectedByDependencyUpdates: auto` (nx.json) makes nx diff the
+      # lock file and mark only the projects whose resolved dependencies changed.
+      # That is right for a feature that happens to add a dependency — 37 of the
+      # 46 lock-file-only PRs in this repo's history — and wrong for a bump to
+      # build-time tooling: nothing *imports* typescript, so bumping it marked 22
+      # projects instead of 315 (eslint: 15). Measured, not guessed.
+      #
+      # So when a PR changes nothing but the dependency manifests, widen the base
+      # to the root commit, which makes `nx affected` behave like `--all`. Setting
+      # NX_BASE is enough: nx-set-shas exports it and every `nx affected` call
+      # reads it, so no call site needs to know about this.
+      #
+      # git does the filtering rather than grep, so the test cannot depend on
+      # printf/grep semantics differing between shells.
+      - name: Check everything when only dependencies changed
+        run: |
+          manifests="$(git diff --name-only "$NX_BASE" "$NX_HEAD" \
+            -- package.json pnpm-lock.yaml pnpm-workspace.yaml)"
+          others="$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- . \
+            ':!package.json' ':!pnpm-lock.yaml' ':!pnpm-workspace.yaml')"
+          if [ -n "$manifests" ] && [ -z "$others" ]; then
+            echo "Dependency-only change — widening nx affected to the whole workspace."
+            echo "NX_BASE=$(git rev-list --max-parents=0 HEAD | tail -1)" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

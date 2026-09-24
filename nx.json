@@ -82,5 +82,10 @@
       "inputs": ["production", "^production"]
     }
   },
-  "analytics": true
+  "analytics": true,
+  "pluginsConfig": {
+    "@nx/js": {
+      "projectsAffectedByDependencyUpdates": "auto"
+    }
+  }
 }
