@@ -25,6 +25,8 @@ import type {
   CreateStudentLessonScheduleResponse,
   GetLessonsRequest,
   GetLessonsResponse,
+  UpdateLessonRequest,
+  UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
 
 const TEACHER_ID = 'instructor-cadence';
@@ -354,4 +356,123 @@ describe('getStudentLessonSchedules scope (legacy #838)', () => {
       'sched-theirs',
     ]);
   }, 30000);
+});
+
+/**
+ * A moved week must not break the next arrangement (#117).
+ *
+ * A materialised lesson's id carries the occurrence date it was made for, so
+ * moving that lesson to another date leaves the original slot looking unfilled.
+ * Re-materialising then collides on the old id — and that collision is meant to
+ * be a **no-op**, which is the whole reason exceptions need no exceptions table.
+ *
+ * When the collision escaped instead, every caller went down with it: creating a
+ * standing arrangement for an unrelated student, and the nightly job for the
+ * whole studio. Hit in dev for real.
+ *
+ * This only reproduces on the REST transport, which is what dev and prod use and
+ * what the harness now forces (`FIRESTORE_PREFER_REST=1`). On the emulator's
+ * default gRPC the old guard caught the collision and this passed regardless —
+ * that is why two rounds of integration tests missed it.
+ */
+describe('a moved lesson and the arrangements that follow it (#117)', () => {
+  let adminUser: TestUser;
+  const BLOCK_ID = 'blk-moved-tue';
+
+  beforeAll(async () => {
+    await clearAuthEmulator();
+    await clearFirestoreEmulator();
+
+    adminUser = await createTestUser(ADMIN_USER.email, ADMIN_USER.password);
+    await setFirestoreDoc('admins', adminUser.uid, {
+      userId: adminUser.uid,
+      email: adminUser.email,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await setFirestoreDoc('instructors', TEACHER_ID, {
+      name: 'Cadence Teacher',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await setFirestoreDoc('lessonBlocks', BLOCK_ID, {
+      teacherId: TEACHER_ID,
+      dayOfWeek: 2,
+      startMinutes: 9 * 60,
+      endMinutes: 20 * 60,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }, 30000);
+
+  async function scheduleFor(
+    studentId: string,
+    startMinutes: number
+  ): Promise<number> {
+    const res = await callFunction<
+      CreateStudentLessonScheduleRequest,
+      CreateStudentLessonScheduleResponse
+    >({
+      functionName: 'createStudentLessonSchedule',
+      data: {
+        studentId,
+        teacherId: TEACHER_ID,
+        blockId: BLOCK_ID,
+        dayOfWeek: 2,
+        startMinutes,
+        durationMinutes: 30,
+        startsOn: tuesdayFromNow(1),
+      } as CreateStudentLessonScheduleRequest,
+      idToken: adminUser.idToken,
+    });
+    expect(res.status).toBe(200);
+    return res.data!.lessonsCreated ?? 0;
+  }
+
+  it('lets the next student be set up, and does not refill the slot', async () => {
+    await seedStudent('moved-first', 'First Student');
+    expect(await scheduleFor('moved-first', 11 * 60)).toBeGreaterThan(6);
+
+    const before = await callFunction<GetLessonsRequest, GetLessonsResponse>({
+      functionName: 'getLessons',
+      data: { studentId: 'moved-first' },
+      idToken: adminUser.idToken,
+    });
+    const materialised = (before.data?.lessons ?? []).filter((l) =>
+      l.id.startsWith('sched-')
+    );
+    expect(materialised.length).toBeGreaterThan(6);
+
+    // Move the last week to a Tuesday before the arrangement starts — the same
+    // shape as an admin pulling one lesson earlier. No sibling occupies it, and
+    // the schedule generates nothing there, so the only thing left behind is the
+    // original slot's id.
+    const moving = materialised[materialised.length - 1];
+    const earlier = new Date(tuesdayFromNow(1).getTime() - 7 * 86_400_000);
+    earlier.setUTCHours(16, 0, 0, 0);
+
+    const moved = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
+      functionName: 'updateLesson',
+      data: { id: moving.id, scheduledAt: earlier },
+      idToken: adminUser.idToken,
+    });
+    expect(moved.status).toBe(200);
+
+    // The failure: this used to come back 400, carrying a REST 409 about the
+    // *first* student's lesson id, for a student that has nothing to do with it.
+    await seedStudent('moved-second', 'Second Student');
+    expect(await scheduleFor('moved-second', 12 * 60)).toBeGreaterThan(6);
+
+    // And the moved week is not quietly refilled behind itself, which is the
+    // property the deterministic id exists to give.
+    const after = await callFunction<GetLessonsRequest, GetLessonsResponse>({
+      functionName: 'getLessons',
+      data: { studentId: 'moved-first' },
+      idToken: adminUser.idToken,
+    });
+    const ids = (after.data?.lessons ?? []).map((l) => l.id);
+    expect(ids.filter((id) => id === moving.id)).toHaveLength(1);
+    expect(ids).toHaveLength(materialised.length);
+  }, 60000);
 });
