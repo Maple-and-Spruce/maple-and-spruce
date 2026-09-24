@@ -12,8 +12,7 @@
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
       "!{projectRoot}/tsconfig.spec.json"
     ],
-    "sharedGlobals": [],
-    "functionsEnv": ["{workspaceRoot}/.env.prod", "{workspaceRoot}/.env.dev"]
+    "sharedGlobals": []
   },
   "sync": {
     "applyChanges": false,
