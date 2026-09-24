@@ -31,6 +31,8 @@ export {
   type ValidationResultLike,
   type ValidatorFn,
   type UniquenessCheck,
+  type FunctionRoute,
+  routeNameFromPath,
 } from './functions.utility';
 
 // Auth utilities

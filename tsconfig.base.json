@@ -107,6 +107,9 @@
       "@maple/firebase/maple-functions/charge-lessons-now": [
         "libs/firebase/maple-functions/charge-lessons-now/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/artists": [
+        "libs/firebase/maple-functions/artists/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/get-artists": [
         "libs/firebase/maple-functions/get-artists/src/index.ts"
       ],
