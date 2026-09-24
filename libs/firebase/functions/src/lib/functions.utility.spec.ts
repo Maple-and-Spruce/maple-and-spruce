@@ -114,12 +114,14 @@ function makeReq(overrides: Partial<{
   body: unknown;
   headers: Record<string, string>;
   ip: string;
+  path: string;
 }> = {}) {
   return {
     method: overrides.method ?? 'POST',
     body: overrides.body ?? {},
     headers: { origin: 'https://example.test', ...(overrides.headers ?? {}) },
     ...(overrides.ip !== undefined ? { ip: overrides.ip } : {}),
+    ...(overrides.path !== undefined ? { path: overrides.path } : {}),
   };
 }
 
@@ -912,5 +914,155 @@ describe('FunctionContext request metadata (ad-attribution signal)', () => {
     const context = await contextFor(makeReq());
     expect(context.ip).toBeUndefined();
     expect(context.userAgent).toBeUndefined();
+  });
+});
+
+/**
+ * Domain routers (ADR-029).
+ *
+ * These run against the same mocked firebase-functions harness as `handle()`,
+ * because that is the point of the design: a router dispatches to routes built
+ * by the same builder chain, through the same request pipeline. What is worth
+ * asserting here is the part `handle()` has no equivalent of — choosing a route,
+ * refusing to guess when there isn't one, and the options the one deployed
+ * function ends up with.
+ */
+describe('Functions.router', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.onRequest.mockClear();
+  });
+
+  it('dispatches to the route named by the last path segment', async () => {
+    const getArtists = vi.fn(async () => ({ artists: ['a'] }));
+    const router = Functions.router('artists', {
+      getArtists: Functions.endpoint.asRoute(getArtists),
+    });
+
+    const res = await invoke(
+      router,
+      makeReq({ path: '/artists/getArtists', body: { data: {} } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ data: { artists: ['a'] } });
+    expect(getArtists).toHaveBeenCalledOnce();
+  });
+
+  it('routes each name to its own handler, not to the first one', async () => {
+    const getArtists = vi.fn(async () => ({ which: 'list' }));
+    const getArtist = vi.fn(async () => ({ which: 'one' }));
+    const router = Functions.router('artists', {
+      getArtists: Functions.endpoint.asRoute(getArtists),
+      getArtist: Functions.endpoint.asRoute(getArtist),
+    });
+
+    const res = await invoke(
+      router,
+      makeReq({ path: '/artists/getArtist', body: { data: {} } })
+    );
+
+    expect(res.body).toEqual({ data: { which: 'one' } });
+    expect(getArtists).not.toHaveBeenCalled();
+  });
+
+  it('404s an unknown route and names it, rather than dispatching to a default', async () => {
+    const handler = vi.fn();
+    const router = Functions.router('artists', {
+      getArtists: Functions.endpoint.asRoute(handler),
+    });
+
+    const res = await invoke(
+      router,
+      makeReq({ path: '/artists/getArtizts', body: { data: {} } })
+    );
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toMatchObject({
+      error: { status: 'NOT_FOUND', message: expect.stringContaining('getArtizts') },
+    });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('404s the bare router path, which names no route', async () => {
+    const handler = vi.fn();
+    const router = Functions.router('artists', {
+      getArtists: Functions.endpoint.asRoute(handler),
+    });
+
+    const res = await invoke(router, makeReq({ path: '/artists', body: { data: {} } }));
+
+    expect(res.statusCode).toBe(404);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('applies the route\'s own role gate, not the router\'s', async () => {
+    mocks.verifyIdToken.mockResolvedValue({ uid: 'u1' });
+    mocks.hasAnyRole.mockResolvedValue(false);
+    const open = vi.fn(async () => ({ ok: true }));
+    const gated = vi.fn();
+    const router = Functions.router('artists', {
+      getArtists: Functions.endpoint.asRoute(open),
+      deleteArtist: Functions.endpoint.requiringRole('admin' as never).asRoute(gated),
+    });
+
+    const forbidden = await invoke(
+      router,
+      makeReq({
+        path: '/artists/deleteArtist',
+        body: { data: {} },
+        headers: { origin: 'https://example.test', authorization: 'Bearer t' },
+      })
+    );
+    expect(forbidden.statusCode).toBe(403);
+    expect(gated).not.toHaveBeenCalled();
+
+    const allowed = await invoke(
+      router,
+      makeReq({ path: '/artists/getArtists', body: { data: {} } })
+    );
+    expect(allowed.statusCode).toBe(200);
+  });
+
+  it('answers a preflight once, without resolving a route', async () => {
+    const handler = vi.fn();
+    const router = Functions.router('artists', {
+      getArtists: Functions.endpoint.asRoute(handler),
+    });
+
+    const res = await invoke(
+      router,
+      makeReq({ method: 'OPTIONS', path: '/artists/getArtists' })
+    );
+
+    expect(res.statusCode).toBe(204);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('declares the union of its routes\' secrets, deduped', () => {
+    Functions.router('artists', {
+      a: Functions.endpoint.usingSecrets('STRIPE_KEY').asRoute(vi.fn()),
+      b: Functions.endpoint.usingSecrets('STRIPE_KEY', 'SQUARE_TOKEN').asRoute(vi.fn()),
+    });
+
+    const [opts] = mocks.onRequest.mock.calls.at(-1) ?? [];
+    const names = ((opts as { secrets: { name: string }[] }).secrets ?? [])
+      .map((s) => s.name)
+      .sort();
+    // Cloud Run grants secrets to the function, so a route reading one its
+    // router never declared would fail at runtime — and granting it twice is
+    // not a thing the deploy accepts.
+    expect(names).toEqual(['SQUARE_TOKEN', 'STRIPE_KEY']);
+  });
+
+  it('takes runtime options for the whole router', () => {
+    Functions.router(
+      'artists',
+      { getArtists: Functions.endpoint.asRoute(vi.fn()) },
+      { memory: '512MiB', timeoutSeconds: 120 }
+    );
+
+    const [opts] = mocks.onRequest.mock.calls.at(-1) ?? [];
+    expect(opts).toMatchObject({ memory: '512MiB', timeoutSeconds: 120 });
   });
 });

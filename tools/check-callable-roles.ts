@@ -134,6 +134,8 @@ type Gate =
   | 'public'
   | 'trigger'
   | 'raw-http'
+  /** A domain router: no gate of its own, one per route (ADR-029). */
+  | 'router'
   | 'unknown';
 
 const ROLE_FACTORIES = new Set(['createAdminFunction', 'createRoleFunction']);
@@ -204,12 +206,52 @@ function classifyInitializer(expr: ts.Expression): Gate {
   if (base && TRIGGER_FACTORIES.has(base)) return 'trigger';
   if (base === 'onRequest') return 'raw-http';
 
-  // Functions.endpoint fluent chain
+  // A domain router (ADR-029) has no gate of its own — each route carries one,
+  // so it is classified by the weakest route. Handled by the caller, which has
+  // the argument list; here we only need to say "ask about the routes".
+  if (base === 'Functions' && methods.has('router')) return 'router';
+
+  // Functions.endpoint fluent chain. `asRoute` is `handle`'s sibling: same
+  // builder, same gate, it just hands the pieces to a router instead of
+  // defining a function.
   if (methods.has('requiringRole')) return 'role';
   if (methods.has('requiringAuth')) return 'auth';
-  if (base === 'Functions' || methods.has('handle')) return 'public';
+  if (base === 'Functions' || methods.has('handle') || methods.has('asRoute'))
+    return 'public';
 
   return 'unknown';
+}
+
+/**
+ * The gate on every route of a `Functions.router(name, { … })` call.
+ *
+ * A router's own export is ungated by construction, so classifying it alone
+ * would report every router as public and invite an allowlist entry — which is
+ * precisely how an ungated *route* would ship unnoticed. So we look inside.
+ */
+function classifyRouterRoutes(
+  expr: ts.Expression
+): Array<{ route: string; gate: Gate }> {
+  let node: ts.Node = expr;
+  while (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node)
+  ) {
+    node = node.expression;
+  }
+  if (!ts.isCallExpression(node)) return [];
+
+  const routesArg = node.arguments.find((a) => ts.isObjectLiteralExpression(a));
+  if (!routesArg || !ts.isObjectLiteralExpression(routesArg)) return [];
+
+  const out: Array<{ route: string; gate: Gate }> = [];
+  for (const prop of routesArg.properties) {
+    if (!ts.isPropertyAssignment(prop)) continue;
+    const route = prop.name.getText();
+    out.push({ route, gate: classifyInitializer(prop.initializer) });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,13 +293,20 @@ function findExportedConstInitializer(
 }
 
 /** Resolve a maple-functions slug to the gate of its exported `name`. */
-function classifyReexport(slug: string, name: string): Gate {
+type Classification = Gate | { gate: Gate; routes: Array<{ route: string; gate: Gate }> };
+
+function classifyReexport(slug: string, name: string): Classification {
   const libDir = path.join(ROOT, 'libs/firebase/maple-functions', slug, 'src');
   if (!fs.existsSync(libDir)) return 'unknown';
   const files = walkTs(libDir).filter((f) => !/\.spec\.ts$/.test(f));
   for (const file of files) {
     const init = findExportedConstInitializer(parse(file), name);
-    if (init) return classifyInitializer(init);
+    if (init) {
+      const gate = classifyInitializer(init);
+      return gate === 'router'
+        ? { gate, routes: classifyRouterRoutes(init) }
+        : gate;
+    }
   }
   return 'unknown';
 }
@@ -276,6 +325,8 @@ interface FunctionInfo {
   name: string;
   gate: Gate;
   entry: string;
+  /** Present when `gate === 'router'`: the gate on each of its routes. */
+  routes?: Array<{ route: string; gate: Gate }>;
 }
 
 /** Collect every function exported from an entry point, with its gate. */
@@ -299,7 +350,12 @@ function collectFromEntry(entryRel: string): FunctionInfo[] {
       );
       for (const el of node.exportClause.elements) {
         const name = el.name.text;
-        out.push({ name, gate: classifyReexport(slug, name), entry: entryRel });
+        const c = classifyReexport(slug, name);
+          out.push(
+            typeof c === 'string'
+              ? { name, gate: c, entry: entryRel }
+              : { name, gate: c.gate, routes: c.routes, entry: entryRel }
+          );
       }
     }
     // Inline: `export const name = <builder>(...)`
@@ -342,6 +398,9 @@ function main(): void {
   if (REPORT) {
     for (const fn of functions) {
       console.log(`${fn.gate.padEnd(9)} ${fn.name}`);
+      for (const r of fn.routes ?? []) {
+        console.log(`${''.padEnd(9)}   ${r.gate.padEnd(7)} ${fn.name}/${r.route}`);
+      }
     }
     console.log(`\n${functions.length} functions across ${ENTRY_POINTS.length} codebases`);
   }
@@ -357,6 +416,32 @@ function main(): void {
       case 'role':
       case 'trigger':
         break; // always fine
+      case 'router': {
+        // The router itself is ungated by design; every route must not be.
+        const routes = fn.routes ?? [];
+        if (routes.length === 0) {
+          violations.push(
+            `  ${fn.name} — a router with no routes the analyzer could read`
+          );
+          break;
+        }
+        for (const r of routes) {
+          if (r.gate === 'role' || r.gate === 'trigger') continue;
+          const allowlisted = PUBLIC_ALLOWLIST.has(`${fn.name}/${r.route}`);
+          if (r.gate === 'auth' && AUTH_ONLY_ALLOWLIST.has(`${fn.name}/${r.route}`)) {
+            seenAuth.add(`${fn.name}/${r.route}`);
+            continue;
+          }
+          if (allowlisted) {
+            seenPublic.add(`${fn.name}/${r.route}`);
+            continue;
+          }
+          violations.push(
+            `  ${fn.name}/${r.route} — ${r.gate} (no role check) on a router route; gate the route or allowlist "${fn.name}/${r.route}"`
+          );
+        }
+        break;
+      }
       case 'auth':
         if (!AUTH_ONLY_ALLOWLIST.has(fn.name)) {
           violations.push(

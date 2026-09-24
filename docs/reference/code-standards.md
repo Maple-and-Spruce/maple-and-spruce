@@ -79,6 +79,43 @@ Concretely, when you add a new file:
 - **HTTPS endpoint** — mock `onRequest` similarly; exercise signature verification, method rejection, event dispatch, and the catch-all error path. See `libs/firebase/maple-functions/square-webhook/src/lib/square-webhook.spec.ts` (endpoint describe block).
 - **Repository method** — add a spec in `libs/firebase/database/src/lib/{entity}.repository.spec.ts`. Mock `./utilities/database.config`. See `invoice.repository.spec.ts` and `registration.repository.spec.ts` for the mock-chain pattern.
 - **Square / Webflow service method** — add a sibling spec mocking the SDK client at the method level. See `libs/firebase/square/src/lib/invoices.service.spec.ts`.
-- **New lib with tests** — also add the lib's `vitest.config.ts` to `vitest.workspace.ts`, otherwise the merged coverage report won't include it.
+- **New lib with tests** — nothing to register. The root `vitest.config.ts` discovers every `*.spec.{ts,tsx}` in the workspace by a flat glob; the libs' own `vitest.config.ts` files are unused by that run, and `vitest.workspace.ts` no longer exists (a `test.projects` list silently dropped ~90 spec files and cratered merged coverage, which is why it went).
+
+### A spec can drop coverage ~7 points by importing nothing new
+
+Coverage counts **only files loaded during the run**. So the denominator is set by what your
+specs import, and the cheapest way to fail this check is to add a *passing* test.
+
+A spec that imports a module which imports a barrel pulls in everything that barrel re-exports,
+all of it uninstrumented-but-counted. This PR did it: a 7-test spec for one pure function reached
+it through `functions.utility`, whose real graph runs `auth.utility` → firebase-admin →
+the whole `@maple/firebase/database` repository layer. **101 files at ~6%**, merged coverage
+83.7% → 76.7%, on a change that added ~40 lines. It looked like the new code was untested. It
+wasn't; the new code was fine and 33 unrelated repository files had joined the report.
+
+Note what hid it: `functions.utility.spec.ts` has imported that module for months without
+consequence, because it mocks `./auth.utility` and firebase-admin, so the real graph never loads.
+An unmocked import of the *same module* behaves completely differently.
+
+Before pushing a new spec, count its footprint:
+
+```bash
+pnpm exec vitest run --coverage <spec> 2>&1 | grep -cE "^\s+[a-zA-Z0-9._-]+\.tsx?\s+\|"
+```
+
+Want ~1, not 100+. If it's large, either:
+
+- **Extract the pure logic into a sibling module that imports nothing** (or only `import type`,
+  which is erased at runtime and costs zero coverage) and point the spec at that —
+  `function-route-path.ts` exists for exactly this reason; or
+- **Add the test to a spec that already mocks the heavy dependencies**, which is where this PR's
+  router-dispatch tests went.
+
+Reimplementing a three-line helper can genuinely beat importing it, when the import is what drags
+the barrel in.
+
+**Always verify against a merged report, never a unit-only one** — unit-only reads several points
+higher and passes while CI fails. Compare against `origin/main` measured the same way: a single
+number tells you nothing about whether *you* moved it.
 
 If you're adding a new large handler to an existing test-covered file (like `square-webhook.ts`), **export the handler** so the spec can target it directly rather than going through the HTTPS endpoint wrapper for every branch.

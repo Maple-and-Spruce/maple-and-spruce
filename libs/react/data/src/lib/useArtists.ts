@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Artist,
   CreateArtistInput,
@@ -35,9 +38,9 @@ export function useArtists() {
 
     try {
       const functions = getMapleFunctions();
-      const getArtists = httpsCallable<GetArtistsRequest, GetArtistsResponse>(
+      const getArtists = httpsCallableFromURL<GetArtistsRequest, GetArtistsResponse>(
         functions,
-        'getArtists'
+        routerCallableUrl('artists', 'getArtists')
       );
 
       const result = await getArtists({});
@@ -58,9 +61,9 @@ export function useArtists() {
   const createArtist = useCallback(
     async (input: CreateArtistInput): Promise<Artist> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<CreateArtistRequest, CreateArtistResponse>(
+      const create = httpsCallableFromURL<CreateArtistRequest, CreateArtistResponse>(
         functions,
-        'createArtist'
+        routerCallableUrl('artists', 'createArtist')
       );
 
       const result = await create(input);
@@ -86,9 +89,9 @@ export function useArtists() {
   const updateArtist = useCallback(
     async (input: UpdateArtistInput): Promise<Artist> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<UpdateArtistRequest, UpdateArtistResponse>(
+      const update = httpsCallableFromURL<UpdateArtistRequest, UpdateArtistResponse>(
         functions,
-        'updateArtist'
+        routerCallableUrl('artists', 'updateArtist')
       );
 
       const result = await update(input);
@@ -114,10 +117,10 @@ export function useArtists() {
 
   const deleteArtist = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteArtistRequest, DeleteArtistResponse>(
-      functions,
-      'deleteArtist'
-    );
+    const del = httpsCallableFromURL<DeleteArtistRequest, DeleteArtistResponse>(
+        functions,
+        routerCallableUrl('artists', 'deleteArtist')
+      );
 
     await del({ id });
 

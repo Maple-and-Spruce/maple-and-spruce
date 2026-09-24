@@ -105,6 +105,49 @@ npx tsx tools/check-function-library-names.ts --report   # every export + its li
 
 CI runs this on every PR (`build-check.yml` → `callable-roles` job).
 
+## Writing a domain router (ADR-029)
+
+A router is one deployed function serving many routes. `Functions.router(name, routes)` takes the
+same builder chain each endpoint already used, via `.asRoute()` instead of `.handle()`:
+
+```typescript
+export const artists = Functions.router('artists', {
+  getArtists: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetArtistsRequest, GetArtistsResponse>(async (data) => { ... }),
+});
+```
+
+The route name is the **last path segment**, so `POST /artists/getArtists` runs the `getArtists`
+route. An unknown segment is a 404 naming the route; the bare router URL is a 404 too.
+
+**Spell the gate out on every route. Do not factor it into a helper.**
+`tools/check-callable-roles.ts` reads the AST — it sees `Functions.endpoint.requiringRole(...)`
+written literally, and cannot see through `const admin = () => Functions.endpoint.requiringRole(...)`.
+A helper makes every route on the router read as *public* to the analyzer, and the tempting fix
+(an allowlist entry) would then permit a route that really is ungated. Repetition is the price of
+the gate being checkable; the analyzer reports per route (`artists/getArtist`), so a single missing
+gate fails the build on its own name.
+
+**The router answers CORS once, for all its routes.** `runRequestPipeline` deliberately does not
+do CORS — the router wraps the whole dispatch in it, so a preflight is answered before any route
+is resolved. Do not add CORS per route.
+
+**Runtime options are per function, so co-located routes share them.** `memory`,
+`timeoutSeconds`, `minInstances` and `secrets` belong to the router. Secrets are the union of every
+route's, deduped by name — so a route that needs a secret grants the whole router access to it. A
+route needing materially different limits stays its own library (see "one library, one function").
+
+**Per-route observability is not free.** The function name no longer identifies the endpoint, so
+the router logs `[<router>] <route>` on every call. Keep it.
+
+**Clients use `httpsCallableFromURL`**, with the URL built by `routerCallableUrl(router, route)`
+from `@maple/ts/firebase/firebase-config` — it handles the emulator host as well as prod. The
+`{ data: ... }` envelope is unchanged, so hooks keep the same shape.
+
+Old per-endpoint functions stay live until their call sites have moved, then get deleted by hand
+(`firebase functions:delete`) and dropped from the count baseline — CI does not prune.
+
 ## Codebases
 
 Functions are split into 6 Firebase codebases to reduce cold start times:
