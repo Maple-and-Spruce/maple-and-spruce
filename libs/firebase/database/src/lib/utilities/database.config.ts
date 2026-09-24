@@ -25,21 +25,29 @@ function ensureAdminInitialized(): void {
 }
 
 /**
- * Which transport the admin SDK should use — and why a test can override it.
+ * Which transport the admin SDK should use.
  *
- * Dev and prod prefer REST; the emulator defaults to gRPC because gRPC is faster
- * against a local emulator and REST there was historically flaky.
+ * Dev and prod prefer REST; the emulator uses gRPC. That difference matters more
+ * than it looks: the two report the same Firestore failure differently — a
+ * `create()` onto an existing id is `code: 6` over gRPC and a `409` carrying
+ * `status: 'ALREADY_EXISTS'` over REST — so a guard written against one shape is
+ * green in every emulator suite and broken in production. That is how #100 and
+ * #117 both shipped.
  *
- * That default means **every integration test runs on the opposite transport
- * from production**, and the two report the same failure differently. A
- * `create()` onto an existing id is `code: 6` over gRPC and `409` with
- * `status: 'ALREADY_EXISTS'` over REST — so a guard matching only the gRPC shape
- * is green in every emulator suite and broken in prod. That is exactly how #100
- * and #117 shipped, twice, in the same subsystem.
+ * **The suites cannot simply be switched to REST.** The REST transport
+ * authenticates even when `FIRESTORE_EMULATOR_HOST` is set, where gRPC
+ * short-circuits auth entirely. With no Application Default Credentials every
+ * write dies on `Could not refresh access token`, so forcing REST in CI fails
+ * outright — and forcing it *locally* appears to work only because a developer
+ * happens to be logged in to gcloud, which is the worst of both worlds: green on
+ * one machine, red on the runner. Tried in #119; do not try it again without
+ * solving the credential problem first.
  *
- * So the choice is overridable: `FIRESTORE_PREFER_REST=1` forces REST, and the
- * integration harness sets it, so the suites exercise the transport the studio
- * actually runs on. Nothing about dev or prod changes.
+ * So the override exists for one narrow job: bisecting a transport-specific
+ * failure on a machine that does have credentials. `FIRESTORE_PREFER_REST=1`
+ * forces REST, `0` forces gRPC, unset keeps the environment's default. The
+ * transport-shaped guards are covered by unit tests over each error shape
+ * instead — see `utilities/already-exists.spec.ts`.
  */
 function preferRestTransport(): boolean {
   if (process.env['FIRESTORE_PREFER_REST'] === '1') return true;

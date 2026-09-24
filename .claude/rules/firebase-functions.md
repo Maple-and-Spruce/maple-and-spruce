@@ -469,6 +469,38 @@ Firebase emulator requires ALL project-level `defineString`/`defineSecret` param
 
 When adding a new `defineString`/`defineSecret` param, add it to `.env.dev` and it will propagate to all codebases.
 
+### The emulator speaks gRPC; dev and prod speak REST
+
+`database.config.ts` sets `preferRest: !useEmulator`. So **every integration and E2E suite runs on a
+different transport from production**, and the two report the same Firestore failure differently:
+
+| | gRPC (emulator) | REST (dev, prod) |
+|---|---|---|
+| `create()` onto an existing id | `code: 6` | `code: 409` + `status: 'ALREADY_EXISTS'` |
+
+A guard that matches one shape is green in every suite and broken in prod. That is not hypothetical
+— it shipped twice, in the same subsystem: the billing run aborted for every student (#100), then
+`createStudentLessonSchedule` failed for unrelated students (#117).
+
+**Do not try to fix this by running the suites on REST.** It was tried in #119 and cannot work as
+things stand: the REST transport **authenticates even when `FIRESTORE_EMULATOR_HOST` is set**, where
+gRPC short-circuits auth entirely. With no Application Default Credentials on the runner, every write
+dies:
+
+```
+Could not refresh access token: A Not Found error was returned while attempting to retrieve an
+access token for the Compute Engine built-in service account
+```
+
+Worse, it *appears* to work locally, because a developer logged in to gcloud has ADC — green on one
+machine, 36 failures on the runner. `FIRESTORE_PREFER_REST=1` exists only for bisecting a
+transport-specific failure on a machine that has credentials.
+
+**So cover error-shape handling with unit tests, one per transport.** `utilities/already-exists.ts`
+is the shared answer to "did this write lose to a document that is already there?" — use it rather
+than matching a code inline, and its spec is the pattern for any other error the two transports
+disagree about.
+
 ### Firestore trigger feedback loops
 
 Sync functions that write back to the document they're triggered on (e.g., storing `webflowItemId` after syncing to Webflow) must guard against re-triggering themselves:
