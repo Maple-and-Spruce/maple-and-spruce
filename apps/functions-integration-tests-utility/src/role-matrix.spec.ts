@@ -92,9 +92,13 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'createClass', expect: 403 },
   { as: 'nathan', functionName: 'updateClass', expect: 403 },
   { as: 'nathan', functionName: 'getTeacherPayouts', expect: 403 },
-  { as: 'nathan', functionName: 'getArtists', expect: 403 },
+  // Artists moved onto a domain router (ADR-029). The gate is declared per
+  // route, so the matrix has to name routes — a router whose dispatch ran
+  // before its gates would show up right here.
+  { as: 'nathan', functionName: 'artists/getArtists', expect: 403 },
   // getArtist (singular) was auth-only until legacy #620; now admin-only like getArtists.
-  { as: 'nathan', functionName: 'getArtist', expect: 403 },
+  { as: 'nathan', functionName: 'artists/getArtist', expect: 403 },
+  { as: 'nathan', functionName: 'artists/deleteArtist', expect: 403 },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the
@@ -113,7 +117,7 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'getLessons', expect: 200 },
   { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'listUsers', expect: 200 },
-  { as: 'admin', functionName: 'getArtists', expect: 200 },
+  { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
 
   // ── No roles at all: nothing opens ────────────────────────────────
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
