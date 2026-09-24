@@ -32,6 +32,7 @@ import type {
   CreateInvoiceResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
+  UpdateInvoiceRequest,
   GetNeedsAttentionRequest,
   GetNeedsAttentionResponse,
   GetHopeQueueRequest,
@@ -1106,6 +1107,161 @@ describe('Lesson Functions', () => {
 
       const rows = rowsOf(await attention(), 'lesson-unbilled');
       expect(rows.some((r) => r.id === lessonId)).toBe(true);
+    });
+
+    /**
+     * A lesson the card already paid for is not a task (#111).
+     *
+     * The panel used to look only at invoices, and charging the card is the
+     * studio's main way of billing — so nearly every billed lesson was listed
+     * as "never invoiced", disagreeing with the lesson's own screen.
+     */
+    it('does not flag a lesson a card charge already paid for', async () => {
+      const created = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Attention Carded',
+          primaryContactEmail: 'attention-carded@test.com',
+        },
+        idToken: adminUser.idToken,
+      });
+      const sid = created.data!.student.id;
+      const at = new Date('2026-08-08T15:00:00Z');
+
+      const lesson = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId: sid,
+          teacherId: TEACHER_ID,
+          scheduledAt: at,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, at),
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = lesson.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+
+      // Before the charge exists the lesson is a genuine task, which is what
+      // makes the assertion after it mean something.
+      expect(
+        rowsOf(await attention(), 'lesson-unbilled').some(
+          (r) => r.id === lessonId,
+        ),
+      ).toBe(true);
+
+      await setFirestoreDoc('lessonScheduledCharges', `chg-${lessonId}`, {
+        studentId: sid,
+        ruleId: 'manual',
+        lessonIds: [lessonId],
+        amountCents: 3000,
+        dueAt: at,
+        status: 'paid',
+        idempotencyKey: 'lc-0000000000000009',
+        resolvedAt: at,
+        createdAt: at,
+        updatedAt: at,
+      });
+      await waitForTrigger(1000);
+
+      expect(
+        rowsOf(await attention(), 'lesson-unbilled').some(
+          (r) => r.id === lessonId,
+        ),
+      ).toBe(false);
+    });
+
+    /**
+     * A voided invoice is a cancelled ask, so the money is owed again (#111).
+     * The panel's own inline set counted void invoices and kept the row hidden.
+     */
+    it('flags a lesson again once its only invoice is voided', async () => {
+      const created = await callFunction<
+        CreateStudentRequest,
+        CreateStudentResponse
+      >({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'Attention Voided',
+          primaryContactEmail: 'attention-voided@test.com',
+        },
+        idToken: adminUser.idToken,
+      });
+      const sid = created.data!.student.id;
+      const at = new Date('2026-08-15T15:00:00Z');
+
+      const lesson = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId: sid,
+          teacherId: TEACHER_ID,
+          scheduledAt: at,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, at),
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = lesson.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+
+      await setFirestoreDoc('invoices', `inv-${lessonId}`, {
+        studentId: sid,
+        status: 'sent',
+        lineItems: [
+          {
+            id: 'line-1',
+            description: '30-min lesson',
+            lessonId,
+            quantity: 1,
+            unitAmountCents: 3000,
+            subtotalCents: 3000,
+          },
+        ],
+        totalCents: 3000,
+        createdAt: at,
+        updatedAt: at,
+      });
+      await waitForTrigger(1000);
+
+      expect(
+        rowsOf(await attention(), 'lesson-unbilled').some(
+          (r) => r.id === lessonId,
+        ),
+      ).toBe(false);
+
+      await callFunction<UpdateInvoiceRequest>({
+        functionName: 'updateInvoice',
+        data: { id: `inv-${lessonId}`, status: 'void' },
+        idToken: adminUser.idToken,
+      });
+      await waitForTrigger(1000);
+
+      expect(
+        rowsOf(await attention(), 'lesson-unbilled').some(
+          (r) => r.id === lessonId,
+        ),
+      ).toBe(true);
     });
 
     it('reports groups worst-first, and only non-empty ones', async () => {

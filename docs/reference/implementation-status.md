@@ -522,8 +522,8 @@ one card at the end of a lesson that carries the whole conversation.
 | Commit and charge, one card (#113) | **Complete** | Commit to the next N lessons, move or skip a date in place, then charge the card or send an invoice for the block; `lessonInvoiceLines` is the one description of a lesson line |
 | Admin UI for rules, rule assignment, running the job | **Not Started** | #107 — rules are console/callable-only today |
 | Manual / voided invoices stay payable in Square | **Not Started** | #104 |
-| Lesson pickers still offer already-billed lessons | **Partly done** | #110 — the commit card now excludes invoiced lessons; the invoice builder's "Add from lesson" still does not |
-| Needs attention ignores charges | **Not Started** | #111 — a card-paid lesson is listed as "never invoiced" |
+| Every lesson picker knows what is already billed | **Complete** | #110 — the commit card excludes invoiced lessons, and the invoice builder's "Add from lesson" disables a billed row and says what bills it |
+| Needs attention answers through `lessonBillingState` | **Complete** | #111 — charges count, and a voided invoice releases its lesson again |
 
 Verified end-to-end in dev against the Square sandbox on 2026-09-23; see
 `docs/guides/lesson-billing-manual-test-plan.md`.

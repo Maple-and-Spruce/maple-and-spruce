@@ -9,6 +9,8 @@ import {
   totalAttentionCount,
 } from './needs-attention';
 import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention';
+import type { Invoice } from './invoice';
+import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 
 const NOW = new Date('2026-09-10T12:00:00Z');
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000);
@@ -68,23 +70,58 @@ describe('hasInvoiceSyncFailed', () => {
 });
 
 describe('isLessonUnbilled', () => {
-  const invoiced = new Set(['lesson-invoiced']);
+  const AT = new Date('2026-10-05T16:00:00Z');
 
-  it('flags a rendered private-pay lesson with no invoice line', () => {
+  /** An invoice naming one lesson. */
+  const invoiceFor = (lessonId: string, status: Invoice['status'] = 'sent') =>
+    ({
+      id: `inv-${lessonId}`,
+      studentId: 'stu-1',
+      status,
+      lineItems: [{ id: 'l', description: 'lesson', lessonId, quantity: 1, unitAmountCents: 3000, subtotalCents: 3000 }],
+      totalCents: 3000,
+      createdAt: AT,
+      updatedAt: AT,
+    }) as Invoice;
+
+  /** A charge covering one lesson. */
+  const chargeFor = (
+    lessonId: string,
+    status: LessonScheduledCharge['status'] = 'paid'
+  ) =>
+    ({
+      id: `chg-${lessonId}`,
+      studentId: 'stu-1',
+      ruleId: 'manual',
+      lessonIds: [lessonId],
+      amountCents: 3000,
+      dueAt: AT,
+      status,
+      idempotencyKey: 'lc-1',
+      resolvedAt: AT,
+      createdAt: AT,
+      updatedAt: AT,
+    }) as LessonScheduledCharge;
+
+  const invoiced = [invoiceFor('lesson-invoiced')];
+
+  it('flags a rendered private-pay lesson nobody has been asked to pay for', () => {
     expect(
       isLessonUnbilled(
         { id: 'lesson-1', status: 'rendered' },
         { isHopeScholarship: false },
+        [],
         invoiced
       )
     ).toBe(true);
   });
 
-  it('flags an uninvoiced no-show too, because private pay charges for it', () => {
+  it('flags an unbilled no-show too, because private pay charges for it', () => {
     expect(
       isLessonUnbilled(
         { id: 'lesson-1', status: 'no-show' },
         { isHopeScholarship: false },
+        [],
         invoiced
       )
     ).toBe(true);
@@ -95,6 +132,7 @@ describe('isLessonUnbilled', () => {
       isLessonUnbilled(
         { id: 'lesson-1', status: 'rendered' },
         { isHopeScholarship: true },
+        [],
         invoiced
       )
     ).toBe(false);
@@ -107,6 +145,7 @@ describe('isLessonUnbilled', () => {
         isLessonUnbilled(
           { id: 'lesson-1', status },
           { isHopeScholarship: false },
+          [],
           invoiced
         )
       ).toBe(false);
@@ -118,9 +157,83 @@ describe('isLessonUnbilled', () => {
       isLessonUnbilled(
         { id: 'lesson-invoiced', status: 'rendered' },
         { isHopeScholarship: false },
+        [],
         invoiced
       )
     ).toBe(false);
+  });
+
+  // #111. Charging the card is the studio's main way of billing, so a panel
+  // that only looks at invoices calls almost every billed lesson unbilled.
+  it('is satisfied by a paid card charge, not only by an invoice', () => {
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'rendered' },
+        { isHopeScholarship: false },
+        [chargeFor('lesson-1', 'paid')],
+        []
+      )
+    ).toBe(false);
+  });
+
+  it('is satisfied by a charge still to be taken — it has been asked for', () => {
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'rendered' },
+        { isHopeScholarship: false },
+        [chargeFor('lesson-1', 'scheduled')],
+        []
+      )
+    ).toBe(false);
+  });
+
+  it('is satisfied by a failed charge — it is owed on a charge that exists', () => {
+    // The failed charge is its own task on the billing screen, with Try again
+    // and Waive on it. Listing the lesson here as well would double-count it.
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'rendered' },
+        { isHopeScholarship: false },
+        [chargeFor('lesson-1', 'failed')],
+        []
+      )
+    ).toBe(false);
+  });
+
+  it('is satisfied by a waived charge — a human decided not to charge', () => {
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'rendered' },
+        { isHopeScholarship: false },
+        [chargeFor('lesson-1', 'waived')],
+        []
+      )
+    ).toBe(false);
+  });
+
+  it('flags a lesson again once its only invoice is voided', () => {
+    // A void invoice is a cancelled ask, so the money is owed again and the row
+    // has to come back. The old inline set counted void invoices and kept it
+    // hidden (#111).
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'rendered' },
+        { isHopeScholarship: false },
+        [],
+        [invoiceFor('lesson-1', 'void')]
+      )
+    ).toBe(true);
+  });
+
+  it('does not confuse one lesson with another on the same charge', () => {
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-2', status: 'rendered' },
+        { isHopeScholarship: false },
+        [chargeFor('lesson-1', 'paid')],
+        []
+      )
+    ).toBe(true);
   });
 });
 

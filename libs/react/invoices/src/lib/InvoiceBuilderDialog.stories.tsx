@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, waitFor, within } from 'storybook/test';
 import { InvoiceBuilderDialog } from './InvoiceBuilderDialog';
+import type { Invoice, LessonScheduledCharge } from '@maple/ts/domain';
 import {
   mockInvoiceDraft,
   mockInvoiceMultiLine,
@@ -265,5 +266,230 @@ export const EditModeSubmitsViaOnUpdate: Story = {
       const arg = (args.onUpdate as ReturnType<typeof fn>).mock.calls[0][0];
       expect(arg.id).toBe(mockInvoiceDraft.id);
     });
+  },
+};
+
+// ============================================================
+// THE LESSON PICKER KNOWS WHAT IS ALREADY BILLED (#110)
+// ============================================================
+
+const NOW = new Date('2026-05-01T12:00:00Z');
+
+/** A charge covering one lesson, in whichever state the story needs. */
+function chargeFor(
+  lessonId: string,
+  status: LessonScheduledCharge['status']
+): LessonScheduledCharge {
+  return {
+    id: `chg-${lessonId}`,
+    studentId: 'student-001',
+    ruleId: 'manual',
+    lessonIds: [lessonId],
+    amountCents: 3000,
+    dueAt: new Date('2026-04-25T12:00:00Z'),
+    status,
+    idempotencyKey: 'lc-0000000000000001',
+    // Deliberately a different day from `dueAt`: the paid label must name the
+    // day the money moved, not the day it was owed.
+    resolvedAt: new Date('2026-04-27T12:00:00Z'),
+    createdAt: NOW,
+    updatedAt: NOW,
+  } as LessonScheduledCharge;
+}
+
+function invoiceFor(lessonId: string, status: Invoice['status']): Invoice {
+  return {
+    id: `inv-${lessonId}`,
+    studentId: 'student-001',
+    status,
+    lineItems: [
+      {
+        id: 'line-1',
+        description: '30-min lesson',
+        lessonId,
+        quantity: 1,
+        unitAmountCents: 3000,
+        subtotalCents: 3000,
+      },
+    ],
+    totalCents: 3000,
+    createdAt: NOW,
+    updatedAt: NOW,
+  } as Invoice;
+}
+
+const openPicker = async () => {
+  const canvas = await waitForDialog();
+  await userEvent.click(
+    canvas.getByRole('button', { name: /add from lesson/i })
+  );
+  return canvas;
+};
+
+/**
+ * A lesson a card charge already paid for cannot be invoiced as well — that is
+ * the same double-ask #101 closed on the charge side, in the other direction.
+ * It stays visible and says why, because a date disappearing from the list is
+ * its own kind of confusing.
+ */
+export const PickerBlocksAnAlreadyPaidLesson: Story = {
+  args: {
+    open: true,
+    charges: [chargeFor(mockLessonPastRendered.id, 'paid')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+
+    await expect(await canvas.findByText('Paid Mon, Apr 27')).toBeInTheDocument();
+
+    const boxes = canvas
+      .getAllByRole('checkbox')
+      .filter((b) => (b as HTMLInputElement).disabled);
+    await expect(boxes.length).toBe(1);
+  },
+};
+
+/** A charge still to be taken has already asked for the money. */
+export const PickerBlocksALessonWithAChargeComing: Story = {
+  args: {
+    open: true,
+    charges: [chargeFor(mockLessonPastScheduled.id, 'scheduled')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+    await expect(
+      await canvas.findByText(/On a charge due Sat, Apr 25/)
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A waived block says so and stays choosable, on purpose.
+ *
+ * Nothing is going to collect on a waived or cancelled charge, so a fresh
+ * invoice is not a double-collect — and blocking it would be a dead end, since
+ * waiving or cancelling is the documented way out of a **failed** charge (#102).
+ * A declined card would otherwise mean the lesson could never be billed at all.
+ * The label is what makes the second ask a decision rather than an accident.
+ */
+export const PickerLabelsAWaivedLessonButStillOffersIt: Story = {
+  args: {
+    open: true,
+    charges: [chargeFor(mockLessonPastRendered.id, 'waived')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+    await expect(await canvas.findByText('Not charged for')).toBeInTheDocument();
+    const disabled = canvas
+      .getAllByRole('checkbox')
+      .filter((b) => (b as HTMLInputElement).disabled);
+    await expect(disabled.length).toBe(0);
+  },
+};
+
+/**
+ * The whole point of the previous story, end to end: a charge that failed and
+ * was then cancelled leaves the lesson billable, so the money is still
+ * collectable by invoice.
+ */
+export const PickerStillOffersALessonWhoseChargeWasCancelled: Story = {
+  args: {
+    open: true,
+    charges: [chargeFor(mockLessonPastRendered.id, 'cancelled')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+    await expect(await canvas.findByText('Not charged for')).toBeInTheDocument();
+
+    const boxes = canvas.getAllByRole('checkbox');
+    await userEvent.click(boxes[0]);
+    await expect(
+      canvas.getByRole('button', { name: /add selected/i })
+    ).toBeEnabled();
+  },
+};
+
+/** A failed charge still holds the lesson: the way out is through that charge. */
+export const PickerBlocksALessonWithAFailedCharge: Story = {
+  args: {
+    open: true,
+    charges: [chargeFor(mockLessonPastRendered.id, 'failed')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+    // Not "Charge due" — it failed, and the label must not imply it is merely
+    // pending.
+    await expect(
+      await canvas.findByText(/On a charge due Sat, Apr 25/)
+    ).toBeInTheDocument();
+    const disabled = canvas
+      .getAllByRole('checkbox')
+      .filter((b) => (b as HTMLInputElement).disabled);
+    await expect(disabled.length).toBe(1);
+  },
+};
+
+/** A lesson already on another invoice, named with that invoice's status. */
+export const PickerBlocksALessonOnAnotherInvoice: Story = {
+  args: {
+    open: true,
+    invoices: [invoiceFor(mockLessonPastRendered.id, 'sent')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+    await expect(
+      await canvas.findByText('On an invoice (sent)')
+    ).toBeInTheDocument();
+  },
+};
+
+/** A voided invoice is a cancelled ask, so its lesson is offerable again. */
+export const PickerOffersALessonWhoseInvoiceWasVoided: Story = {
+  args: {
+    open: true,
+    invoices: [invoiceFor(mockLessonPastRendered.id, 'void')],
+  },
+  play: async () => {
+    const canvas = await openPicker();
+    const disabled = canvas
+      .getAllByRole('checkbox')
+      .filter((b) => (b as HTMLInputElement).disabled);
+    await expect(disabled.length).toBe(0);
+  },
+};
+
+/** With nothing billed, every lesson is choosable and nothing is labelled. */
+export const PickerOffersEverythingWhenNothingIsBilled: Story = {
+  args: { open: true },
+  play: async () => {
+    const canvas = await openPicker();
+    const disabled = canvas
+      .getAllByRole('checkbox')
+      .filter((b) => (b as HTMLInputElement).disabled);
+    await expect(disabled.length).toBe(0);
+    await expect(canvas.queryByText(/^Paid /)).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * A lesson already added as a line cannot be added twice, and the live draft is
+ * what decides that — not the saved invoice. Removing the line must make the
+ * lesson choosable again, which it cannot do if the check reads the stored copy.
+ */
+export const PickerBlocksALessonAlreadyAddedAsALine: Story = {
+  args: { open: true },
+  play: async () => {
+    const canvas = await openPicker();
+
+    const boxes = canvas.getAllByRole('checkbox');
+    await userEvent.click(boxes[0]);
+    await userEvent.click(canvas.getByRole('button', { name: /add selected/i }));
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /add from lesson/i })
+    );
+    await expect(
+      await canvas.findByText('Already a line below')
+    ).toBeInTheDocument();
   },
 };

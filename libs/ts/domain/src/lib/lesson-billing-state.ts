@@ -9,6 +9,7 @@
  */
 import { invoicedLessonIds } from './invoice';
 import type { Invoice } from './invoice';
+import { lessonLineDay } from './lesson-invoice';
 import { chargeCoversItsLessons } from './lesson-scheduled-charge';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 
@@ -59,4 +60,56 @@ export function lessonBillingState(
   }
 
   return { kind: 'unbilled' };
+}
+
+/**
+ * The state in a few words, for a list where a lesson has to be recognisably
+ * spoken-for at a glance (#110).
+ *
+ * `null` for `unbilled`, because "nothing has billed it" is the default a
+ * picker is offering to change — labelling every choosable row with an absence
+ * only makes the billed ones harder to spot.
+ */
+export function describeLessonBillingState(
+  state: LessonBillingState
+): string | null {
+  switch (state.kind) {
+    case 'charge-paid':
+      return `Paid ${lessonLineDay(state.on)}`;
+    case 'charge-pending':
+      // "On a charge" rather than "Charge due", because this state also covers a
+      // charge that is in flight and one that has **failed**, and neither is
+      // honestly described by a due date alone.
+      return `On a charge due ${lessonLineDay(state.dueAt)}`;
+    case 'charge-written-off':
+      return 'Not charged for';
+    case 'invoiced':
+      return state.status === 'paid'
+        ? 'Paid by invoice'
+        : `On an invoice (${state.status})`;
+    case 'unbilled':
+      return null;
+  }
+}
+
+/**
+ * Could the studio still ask for money for this lesson, without asking twice?
+ *
+ * `unbilled` obviously. And **`charge-written-off` too**, which is the part worth
+ * explaining: nothing is going to collect on a waived or cancelled charge, so a
+ * fresh ask is not a double-collect — it is a decision, and the caller is
+ * expected to show `describeLessonBillingState` beside it so the decision is
+ * made knowingly rather than by accident.
+ *
+ * Blocking it instead produced a dead end. The way out of a **failed** charge is
+ * to waive or cancel it (#102), which lands in `charge-written-off` — so if that
+ * state blocked billing, a declined card would mean the lesson could never be
+ * invoiced either, and the money was simply lost. A comped block is protected by
+ * the label, not by making the screen refuse.
+ *
+ * What it does refuse is anything that would take the money twice: a `paid`
+ * charge, one still coming, or a live invoice.
+ */
+export function canStillBillLesson(state: LessonBillingState): boolean {
+  return state.kind === 'unbilled' || state.kind === 'charge-written-off';
 }

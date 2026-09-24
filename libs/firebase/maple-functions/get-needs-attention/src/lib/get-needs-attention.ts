@@ -27,6 +27,7 @@ import {
   InvoiceRepository,
   LessonBlockRepository,
   LessonRepository,
+  LessonScheduledChargeRepository,
   StudentRepository,
 } from '@maple/firebase/database';
 import {
@@ -70,12 +71,17 @@ export const getNeedsAttention = Functions.endpoint
       const ownInstructorId = await instructorIdForUser(context?.uid);
       const scopedToSelf = Boolean(ownInstructorId);
 
-      const [allStudents, allLessons, blocks, allInvoices] = await Promise.all([
-        StudentRepository.findAll(),
-        LessonRepository.findAll(),
-        LessonBlockRepository.findAll(),
-        InvoiceRepository.findAll(),
-      ]);
+      const [allStudents, allLessons, blocks, allInvoices, allCharges] =
+        await Promise.all([
+          StudentRepository.findAll(),
+          LessonRepository.findAll(),
+          LessonBlockRepository.findAll(),
+          InvoiceRepository.findAll(),
+          // Charges too, because charging the card is how most lessons get
+          // billed. Without them every card-paid lesson showed up as "never
+          // invoiced" (#111).
+          LessonScheduledChargeRepository.findAll(),
+        ]);
 
       const students = scopedToSelf
         ? allStudents.filter((s) => s.primaryTeacherId === ownInstructorId)
@@ -89,16 +95,7 @@ export const getNeedsAttention = Functions.endpoint
           (!scopedToSelf || l.teacherId === ownInstructorId)
       );
       const invoices = allInvoices.filter((i) => studentIds.has(i.studentId));
-
-      // Every lesson referenced by a non-void invoice line, so "taught but
-      // never billed" is answered without a query per lesson.
-      const invoicedLessonIds = new Set<string>();
-      for (const invoice of invoices) {
-        if (invoice.status === 'void') continue;
-        for (const line of invoice.lineItems) {
-          if (line.lessonId) invoicedLessonIds.add(line.lessonId);
-        }
-      }
+      const charges = allCharges.filter((c) => studentIds.has(c.studentId));
 
       const hopeLessons = lessons.filter(
         (l) => studentById.get(l.studentId)?.isHopeScholarship
@@ -127,7 +124,7 @@ export const getNeedsAttention = Functions.endpoint
           const student = studentById.get(lesson.studentId);
           return (
             student !== undefined &&
-            isLessonUnbilled(lesson, student, invoicedLessonIds)
+            isLessonUnbilled(lesson, student, charges, invoices)
           );
         })
         .map((lesson) => ({
