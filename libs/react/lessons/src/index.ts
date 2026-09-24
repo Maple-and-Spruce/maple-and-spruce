@@ -28,6 +28,17 @@ export {
   type PaymentMethodCardProps,
 } from './lib/PaymentMethodCard';
 export {
+  BillingRulesCard,
+  studentsOnRule,
+  type BillingRulesCardProps,
+} from './lib/BillingRulesCard';
+export {
+  BillingRuleDialog,
+  type BillingRuleDialogProps,
+  type BillingRuleDraft,
+} from './lib/BillingRuleDialog';
+export { RunBillingCard, type RunBillingCardProps } from './lib/RunBillingCard';
+export {
   UpcomingChargesCard,
   type UpcomingChargesCardProps,
 } from './lib/UpcomingChargesCard';

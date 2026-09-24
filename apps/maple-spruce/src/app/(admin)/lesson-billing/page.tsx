@@ -11,11 +11,15 @@
  */
 import { useMemo } from 'react';
 import { Alert, Box, Typography } from '@mui/material';
-import { UpcomingChargesCard } from '@maple/react/lessons';
+import {
+  BillingRulesCard,
+  RunBillingCard,
+  UpcomingChargesCard,
+} from '@maple/react/lessons';
 import { useLessonBilling, useStudents } from '../../../hooks';
 
 export default function LessonBillingPage() {
-  const { billingState, pendingId, actionError, stopCharge } =
+  const { billingState, pendingId, actionError, stopCharge, saveRule, runBilling } =
     useLessonBilling();
   const { studentsState } = useStudents();
 
@@ -40,14 +44,6 @@ export default function LessonBillingPage() {
         that runs each morning. Anything still scheduled can be stopped here.
       </Typography>
 
-      {rules.length === 0 && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          No billing rules exist yet, so <strong>nothing is charged
-          automatically</strong> for anyone. Lessons are invoiced the existing
-          way until a rule is set up.
-        </Alert>
-      )}
-
       <UpcomingChargesCard
         charges={
           billingState.status === 'success' ? billingState.data.charges : []
@@ -61,6 +57,26 @@ export default function LessonBillingPage() {
         }
         onCancel={(id) => stopCharge(id, 'cancelled')}
         onWaive={(id, reason) => stopCharge(id, 'waived', reason)}
+      />
+
+      {/*
+        Rules and the run control sit below the charges on purpose: see what is
+        about to happen first, change the policy second (#107).
+      */}
+      <BillingRulesCard
+        rules={rules}
+        students={students}
+        isLoading={billingState.status === 'loading'}
+        pendingId={pendingId}
+        error={actionError}
+        onSave={(draft) => saveRule(draft)}
+      />
+
+      <RunBillingCard
+        pendingId={pendingId}
+        error={actionError}
+        hasRules={rules.some((r) => !r.archived)}
+        onRun={runBilling}
       />
 
       {cardless.length > 0 && (

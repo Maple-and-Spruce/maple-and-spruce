@@ -113,3 +113,4 @@ export {
   type MusicTogetherSemesterValidationInput,
   type MusicTogetherSemesterBreakInput,
 } from './music-together-semester.validation';
+export * from './lesson-billing-rule.validation';

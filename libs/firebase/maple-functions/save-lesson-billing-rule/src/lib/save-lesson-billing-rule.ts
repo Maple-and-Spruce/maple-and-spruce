@@ -14,47 +14,29 @@
 import {
   Functions,
   Role,
-  throwInvalidArgument,
   throwNotFound,
+  throwValidationError,
 } from '@maple/firebase/functions';
 import { LessonBillingRuleRepository } from '@maple/firebase/database';
-import { LESSON_BILLING_ANCHORS } from '@maple/ts/domain';
-import type { LessonBillingRule } from '@maple/ts/domain';
+import { lessonBillingRuleValidation } from '@maple/ts/validation';
+import type { CreateLessonBillingRuleInput } from '@maple/ts/domain';
 import type {
   SaveLessonBillingRuleRequest,
   SaveLessonBillingRuleResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
- * A charge should land near the teaching it pays for. Two weeks is generous for
- * "the day before the block starts" while still catching a typo that would bill
- * a family months out of step with their lessons.
+ * Shape checks that must hold whether the rule is new or edited.
+ *
+ * Through the shared Vest suite, not by hand: a rule is now created from a screen
+ * as well as from a script, and two copies of "what makes a rule valid" is how
+ * the form starts accepting something this endpoint then refuses (#107). The
+ * limits themselves live with the suite.
  */
-const MAX_ANCHOR_OFFSET_DAYS = 14;
-
-/** Shape checks that must hold whether the rule is new or edited. */
-function assertValidRule(
-  rule: Pick<
-    LessonBillingRule,
-    'name' | 'cadence' | 'lessonsPerCharge' | 'anchor' | 'anchorOffsetDays'
-  > & { flatAmountCents?: number }
-): void {
-  if (!rule.name?.trim()) {
-    throwInvalidArgument('A rule needs a name');
-  }
-  if (!LESSON_BILLING_ANCHORS.includes(rule.anchor)) {
-    throwInvalidArgument(`Unknown anchor: ${rule.anchor}`);
-  }
-  if (rule.cadence === 'every-n-lessons' && rule.lessonsPerCharge < 1) {
-    throwInvalidArgument('A charge has to cover at least one lesson');
-  }
-  if (Math.abs(rule.anchorOffsetDays) > MAX_ANCHOR_OFFSET_DAYS) {
-    throwInvalidArgument(
-      `A charge must land within ${MAX_ANCHOR_OFFSET_DAYS} days of the lesson it pays for`
-    );
-  }
-  if (rule.flatAmountCents !== undefined && rule.flatAmountCents <= 0) {
-    throwInvalidArgument('A flat amount must be more than zero');
+function assertValidRule(rule: Partial<CreateLessonBillingRuleInput>): void {
+  const result = lessonBillingRuleValidation(rule);
+  if (result.hasErrors()) {
+    throwValidationError(result.getErrors());
   }
 }
 

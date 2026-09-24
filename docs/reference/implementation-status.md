@@ -520,7 +520,7 @@ one card at the end of a lesson that carries the whole conversation.
 | Cancelling a lesson reprices its charge (#105) | **Complete** | `releaseLessonFromCharge`, priced by the charge's own average so a rate change cannot reprice a block |
 | Invoicing is explicit (#101) | **Complete** | Auto-invoice trigger and the per-student toggle removed; a taught lesson raises one notice offering **Send invoice**, and an invoice counts as billed on both charge paths |
 | Commit and charge, one card (#113) | **Complete** | Commit to the next N lessons, move or skip a date in place, then charge the card or send an invoice for the block; `lessonInvoiceLines` is the one description of a lesson line |
-| Admin UI for rules, rule assignment, running the job | **Not Started** | #107 — rules are console/callable-only today |
+| Admin UI for rules, rule assignment, running the job | **Complete** | #107 — rules CRUD on `/lesson-billing`, a `billingRuleId` picker on the student form, and Preview / Run with the counters |
 | Manual / voided invoices stay payable in Square | **Not Started** | #104 |
 | Every lesson picker knows what is already billed | **Complete** | #110 — the commit card excludes invoiced lessons, and the invoice builder's "Add from lesson" disables a billed row and says what bills it |
 | Needs attention answers through `lessonBillingState` | **Complete** | #111 — charges count, and a voided invoice releases its lesson again |

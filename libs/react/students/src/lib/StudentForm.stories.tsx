@@ -436,3 +436,121 @@ export const PrefillLeavesTheRealDecisionsOpen: Story = {
     expect(teacher).not.toHaveTextContent(mockInstructor2.name);
   },
 };
+
+// ============================================================
+// BILLING RULE (#107)
+// ============================================================
+
+const NOW = new Date('2026-09-24T12:00:00Z');
+
+const billingRules = [
+  {
+    id: 'rule-standard',
+    name: 'Standard 4-lesson block',
+    isDefault: true,
+  },
+  {
+    id: 'rule-monthly',
+    name: 'Monthly, flat',
+    isDefault: false,
+  },
+  {
+    id: 'rule-old',
+    name: 'Old termly',
+    isDefault: false,
+    archived: true,
+  },
+] as const;
+
+/**
+ * With no rules configured the picker is not offered at all: "which rule bills
+ * this family" is not a choice anybody can make yet, and the rules screen is
+ * where that gets fixed.
+ */
+export const NoBillingRulesHidesThePicker: Story = {
+  args: { open: true },
+  play: async () => {
+    const canvas = await waitForDialog();
+    expect(canvas.queryByLabelText('Billing rule')).toBeNull();
+  },
+};
+
+/** Blank is not a mystery — it names the rule it actually defers to. */
+export const BlankMeansTheStudioDefaultByName: Story = {
+  args: { open: true, billingRules: [...billingRules] },
+  play: async () => {
+    const canvas = await waitForDialog();
+    expect(await canvas.findByLabelText('Billing rule')).toBeTruthy();
+    expect(
+      await canvas.findByText(/Follows the studio default \(Standard 4-lesson block\)/)
+    ).toBeTruthy();
+  },
+};
+
+/** No default set is worth saying, because it means nobody is charged. */
+export const NoDefaultSaysNothingIsCharged: Story = {
+  args: {
+    open: true,
+    billingRules: billingRules.map((r) => ({ ...r, isDefault: false })),
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    expect(
+      await canvas.findByText(/nothing is charged automatically for this student/i)
+    ).toBeTruthy();
+  },
+};
+
+/** A retired rule is not offered for somebody new. */
+export const RetiredRulesAreNotOffered: Story = {
+  args: { open: true, billingRules: [...billingRules] },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await userEvent.click(await canvas.findByLabelText('Billing rule'));
+    // Scope to the open menu: a MUI Select also renders the selected value in
+    // the closed display, so a bare text query matches twice.
+    const options = within(await canvas.findByRole('listbox'));
+    expect(options.getByText('Monthly, flat')).toBeTruthy();
+    expect(options.queryByText('Old termly (retired)')).toBeNull();
+  },
+};
+
+/** …but a student already on one still sees it, or saving would move them off it. */
+export const AStudentOnARetiredRuleStillSeesIt: Story = {
+  args: {
+    open: true,
+    billingRules: [...billingRules],
+    student: { ...mockStudent, billingRuleId: 'rule-old', updatedAt: NOW } as never,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await userEvent.click(await canvas.findByLabelText('Billing rule'));
+    const options = within(await canvas.findByRole('listbox'));
+    expect(options.getByText('Old termly (retired)')).toBeTruthy();
+  },
+};
+
+/** Choosing a rule is what actually reaches `updateStudent`. */
+export const PuttingAStudentOnARule: Story = {
+  args: {
+    open: true,
+    billingRules: [...billingRules],
+    student: { ...mockStudent, updatedAt: NOW } as never,
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.click(await canvas.findByLabelText('Billing rule'));
+    await userEvent.click(
+      within(await canvas.findByRole('listbox')).getByText('Monthly, flat')
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: /update|save/i }));
+
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ billingRuleId: 'rule-monthly' })
+      )
+    );
+  },
+};
