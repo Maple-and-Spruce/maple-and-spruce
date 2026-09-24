@@ -219,3 +219,33 @@ export const DatesAreReadInShopTime: Story = {
     expect(await canvas.findByText(/Since Jan 6, 2026/i)).toBeInTheDocument();
   },
 };
+
+/**
+ * A biweekly arrangement read as "Mondays at 4:00 PM" — identical to a weekly
+ * one (#106). Katie has students alternating in one hour, so a cadence the
+ * summary never mentions is a cadence nobody can check, and reading biweekly
+ * back as weekly is the bug legacy #837 existed to fix.
+ */
+export const BiweeklySaysSo: Story = {
+  args: {
+    schedulesState: loaded([schedule({ intervalWeeks: 2 })]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      await canvas.findByText(/every other week/i)
+    ).toBeTruthy();
+  },
+};
+
+/** A weekly slot stays terse — no cadence clause to read past. */
+export const WeeklyStaysTerse: Story = {
+  args: {
+    schedulesState: loaded([schedule()]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.queryByText(/every other week/i)).toBeNull();
+    expect(canvas.queryByText(/every week/i)).toBeNull();
+  },
+};

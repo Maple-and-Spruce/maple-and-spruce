@@ -448,10 +448,12 @@ export function CommitLessonsCard({
     );
 
   const plan = outcome.ok ? outcome.plan : null;
-  // Picking nothing yet is not an error worth shouting about — it is just the
-  // starting state of the manual picker.
+  // `nothing-picked` is the starting state of the manual picker, not a mistake
+  // worth shouting about — but it *is* the reason there is no plan, so the
+  // buttons stay disabled rather than offering to charge the next four with
+  // nothing ticked (#106).
   const problem =
-    !outcome.ok && !(picking && picked.length === 0) ? outcome.problem : null;
+    !outcome.ok && outcome.problem !== 'nothing-picked' ? outcome.problem : null;
 
   /** The full lesson rows behind the plan, so move/skip have something to act on. */
   const planRows: Lesson[] = plan

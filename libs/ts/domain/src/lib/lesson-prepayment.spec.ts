@@ -358,3 +358,79 @@ describe('a prepayment suppresses autopay', () => {
     expect(planned[0].lessonIds).toEqual(['l4', 'l5', 'l6', 'l7']);
   });
 });
+
+describe('picking lessons by hand', () => {
+  const NOW = new Date('2026-09-10T12:00:00Z');
+  const DAY = 86_400_000;
+  const rate = () => 3500;
+
+  const lesson = (n: number) => ({
+    id: `lesson-${n}`,
+    studentId: 'stu-1',
+    scheduledAt: new Date(NOW.getTime() + n * 7 * DAY),
+    durationMinutes: 30,
+    status: 'scheduled' as const,
+  });
+
+  const lessons = [1, 2, 3, 4, 5, 6].map(lesson);
+
+  it('refuses an empty selection instead of charging the next few (#106)', () => {
+    // The manual picker sends `lessonIds: []` before anything is ticked. Falling
+    // back to a count there meant the button offered "Charge $140.00 · 4
+    // lessons" while every checkbox was clear — the screen and the charge
+    // disagreeing about what the family agreed to.
+    const outcome = planPrepayment(
+      'stu-1',
+      lessons,
+      [],
+      { lessonIds: [] },
+      rate,
+      NOW
+    );
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.problem).toBe('nothing-picked');
+  });
+
+  it('still falls back to the count when no selection was made at all', () => {
+    // `lessonIds` absent is "I have not chosen, use the next N" — the automatic
+    // mode. Only a *present* empty array means "nothing ticked".
+    const outcome = planPrepayment(
+      'stu-1',
+      lessons,
+      [],
+      { lessonCount: 2 },
+      rate,
+      NOW
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) expect(outcome.plan.lessons).toHaveLength(2);
+  });
+
+  it('charges exactly what was ticked', () => {
+    const outcome = planPrepayment(
+      'stu-1',
+      lessons,
+      [],
+      { lessonIds: ['lesson-2', 'lesson-4'] },
+      rate,
+      NOW
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) {
+      expect(outcome.plan.lessons.map((l) => l.id)).toEqual([
+        'lesson-2',
+        'lesson-4',
+      ]);
+      expect(outcome.plan.amountCents).toBe(7000);
+    }
+  });
+
+  it('says what to do about an empty selection', () => {
+    expect(describePrepaymentProblem('nothing-picked')).toBe(
+      'Tick the lessons this payment covers.'
+    );
+  });
+});

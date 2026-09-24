@@ -522,6 +522,7 @@ one card at the end of a lesson that carries the whole conversation.
 | Commit and charge, one card (#113) | **Complete** | Commit to the next N lessons, move or skip a date in place, then charge the card or send an invoice for the block; `lessonInvoiceLines` is the one description of a lesson line |
 | Admin UI for rules, rule assignment, running the job | **Not Started** | #107 — rules are console/callable-only today |
 | Manual / voided invoices stay payable in Square | **Not Started** | #104 |
+| Billing UI correctness batch | **Partly done** | #106 — the empty-picker charge, honest dialog verbs, a confirmation before stopping a charge, and biweekly reading as biweekly are fixed; the $0 lesson line, stale-data refreshes and the lost paid caption remain |
 | Every lesson picker knows what is already billed | **Complete** | #110 — the commit card excludes invoiced lessons, and the invoice builder's "Add from lesson" disables a billed row and says what bills it |
 | Needs attention answers through `lessonBillingState` | **Complete** | #111 — charges count, and a voided invoice releases its lesson again |
 

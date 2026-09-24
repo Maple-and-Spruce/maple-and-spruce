@@ -27,6 +27,23 @@ export interface DeleteConfirmDialogProps {
   warningContent?: ReactNode;
   /** Custom confirmation message. Defaults to "Are you sure you want to delete..." */
   confirmationMessage?: string;
+  /**
+   * The confirm button's label. Defaults to `Delete`.
+   *
+   * This dialog is reused for actions that are **not** deletions — cancelling a
+   * lesson, voiding an invoice — and a button saying "Delete" on "Void this
+   * invoice?" tells the person the wrong thing about what is going to happen
+   * (#106). Override it whenever the verb is not "delete".
+   */
+  confirmLabel?: string;
+  /** Shown on the confirm button while the action runs. Defaults to `Deleting...`. */
+  busyLabel?: string;
+  /**
+   * The dismiss button's label. Defaults to `Cancel` — override it when the
+   * *action* is itself a cancellation, so the dialog does not offer two
+   * different buttons both called Cancel.
+   */
+  dismissLabel?: string;
 }
 
 /**
@@ -69,6 +86,9 @@ export function DeleteConfirmDialog({
   itemName,
   warningContent,
   confirmationMessage,
+  confirmLabel = 'Delete',
+  busyLabel = 'Deleting...',
+  dismissLabel = 'Cancel',
 }: DeleteConfirmDialogProps) {
   const message =
     confirmationMessage ??
@@ -83,7 +103,7 @@ export function DeleteConfirmDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={isDeleting}>
-          Cancel
+          {dismissLabel}
         </Button>
         <Button
           onClick={onConfirm}
@@ -91,7 +111,7 @@ export function DeleteConfirmDialog({
           variant="contained"
           disabled={isDeleting}
         >
-          {isDeleting ? 'Deleting...' : 'Delete'}
+          {isDeleting ? busyLabel : confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>

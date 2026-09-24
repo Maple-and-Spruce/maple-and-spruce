@@ -42,6 +42,7 @@ export const MAX_PREPAY_LESSON_COUNT = 24;
 
 export type PrepaymentProblem =
   | 'no-lessons'
+  | 'nothing-picked'
   | 'already-covered'
   | 'no-rate'
   | 'too-many';
@@ -155,7 +156,14 @@ export function planPrepayment(
   const available = prepayableLessons(lessons, charges, now, alreadyInvoiced);
 
   let chosen: typeof available;
-  if (selection.lessonIds && selection.lessonIds.length > 0) {
+  // A **present** `lessonIds` is an explicit selection and is authoritative,
+  // even when it is empty. Falling back to `lessonCount` for an empty array is
+  // what let the manual picker offer to charge "the next four" with nothing
+  // ticked: the checkboxes said one thing and the button said another (#106).
+  if (selection.lessonIds) {
+    if (selection.lessonIds.length === 0) {
+      return { ok: false, problem: 'nothing-picked' };
+    }
     const wanted = new Set(selection.lessonIds);
     chosen = available.filter((lesson) => wanted.has(lesson.id));
     // Every id the caller named must have survived the filter. If one did not,
@@ -213,6 +221,8 @@ export function describePrepaymentProblem(problem: PrepaymentProblem): string {
   switch (problem) {
     case 'no-lessons':
       return 'There are no upcoming lessons left to pay for. Schedule some first.';
+    case 'nothing-picked':
+      return 'Tick the lessons this payment covers.';
     case 'already-covered':
       return 'One of those lessons is already covered by another charge. Reload and pick again.';
     case 'no-rate':

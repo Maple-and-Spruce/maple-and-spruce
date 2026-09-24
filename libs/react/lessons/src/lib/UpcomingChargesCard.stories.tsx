@@ -141,14 +141,57 @@ export const OverdueStaysVisible: Story = {
   },
 };
 
-export const CancelsACharge: Story = {
+/**
+ * Cancelling asks first, because it is the more permanent of the two stop
+ * actions: `cancelled` counts as covering, so those lessons leave automatic
+ * billing and no later run plans them again (#106).
+ */
+export const CancellingAChargeAsksFirst: Story = {
   play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = within(canvasElement.ownerDocument.body);
 
     const cancels = await canvas.findAllByRole('button', { name: 'Cancel' });
     await userEvent.click(cancels[0]);
 
+    expect(await canvas.findByText('Stop this charge?')).toBeTruthy();
+    expect(
+      await canvas.findByText(/leave automatic billing for good/i)
+    ).toBeTruthy();
+    expect(args.onCancel).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Stop the charge' })
+    );
     expect(args.onCancel).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** Backing out of that must stop nothing. */
+export const BackingOutOfACancelStopsNothing: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(
+      (await canvas.findAllByRole('button', { name: 'Cancel' }))[0]
+    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'Back' }));
+
+    expect(args.onCancel).not.toHaveBeenCalled();
+  },
+};
+
+/** The dialog names the money and the lessons it is about to let go. */
+export const TheCancelDialogNamesWhatIsLost: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(
+      (await canvas.findAllByRole('button', { name: 'Cancel' }))[0]
+    );
+
+    expect(
+      await canvas.findByText(/\$247\.50 for 4 lessons will not be taken|\$165\.00 for 4 lessons will not be taken|for 4 lessons will not be taken/)
+    ).toBeTruthy();
   },
 };
 

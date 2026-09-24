@@ -33,7 +33,7 @@ import type {
   RequestState,
   StudentLessonSchedule,
 } from '@maple/ts/domain';
-import { SCHEDULE_TIME_ZONE, WEEKDAY_LONG } from '@maple/ts/domain';
+import { SCHEDULE_TIME_ZONE, WEEKDAY_LONG, cadenceLabel } from '@maple/ts/domain';
 import { formatMinutes } from './block-format';
 
 export interface StandingScheduleCardProps {
@@ -53,9 +53,20 @@ export interface StandingScheduleCardProps {
 
 /** "Tuesdays at 4:00 PM" — how a person says it out loud. */
 export function describeSchedule(
-  schedule: Pick<StudentLessonSchedule, 'dayOfWeek' | 'startMinutes'>
+  schedule: Pick<
+    StudentLessonSchedule,
+    'dayOfWeek' | 'startMinutes' | 'intervalWeeks'
+  >
 ): string {
-  return `${WEEKDAY_LONG[schedule.dayOfWeek]}s at ${formatMinutes(schedule.startMinutes)}`;
+  const when = `${WEEKDAY_LONG[schedule.dayOfWeek]}s at ${formatMinutes(schedule.startMinutes)}`;
+  // A biweekly arrangement read as "Mondays at 4:00 PM" — identical to a weekly
+  // one (#106). Katie has alternating students, so a cadence the summary does
+  // not mention is a cadence nobody can check, and `intervalWeeks` read back as
+  // weekly is the bug legacy #837 was about in the first place.
+  const interval = schedule.intervalWeeks ?? 1;
+  return interval > 1
+    ? `${when}, ${cadenceLabel(interval).toLowerCase()}`
+    : when;
 }
 
 /**
