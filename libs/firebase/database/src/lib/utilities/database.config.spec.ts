@@ -43,6 +43,11 @@ describe('database.config', () => {
     vi.clearAllMocks();
     mocks.apps.length = 0;
 
+    // The transport is read from the environment, so a test that sets one of
+    // these must not leak it into the next.
+    delete process.env['FIRESTORE_EMULATOR_HOST'];
+    delete process.env['FIRESTORE_PREFER_REST'];
+
     // Reset module cache to get fresh imports
     vi.resetModules();
   });
@@ -83,6 +88,44 @@ describe('database.config', () => {
       expect(mocks.firestoreSettings).toHaveBeenCalledWith({
         ignoreUndefinedProperties: true,
         preferRest: true,
+      });
+    });
+
+    /**
+     * The transport is not cosmetic: gRPC and REST report the same Firestore
+     * failures with different shapes, and a guard written against one is green
+     * while broken on the other. That is how #100 and #117 both shipped, so the
+     * choice each environment makes is pinned here.
+     */
+    describe('which transport each environment gets', () => {
+      it('prefers gRPC under the emulator, which is faster locally', async () => {
+        process.env['FIRESTORE_EMULATOR_HOST'] = 'localhost:8080';
+        const { getDb } = await import('./database.config');
+        getDb();
+        expect(mocks.firestoreSettings).toHaveBeenCalledWith(
+          expect.objectContaining({ preferRest: false })
+        );
+      });
+
+      it('lets a test force REST, the transport dev and prod run on', async () => {
+        // The integration harness sets this, so the suites exercise the shapes
+        // production actually produces rather than the emulator's.
+        process.env['FIRESTORE_EMULATOR_HOST'] = 'localhost:8080';
+        process.env['FIRESTORE_PREFER_REST'] = '1';
+        const { getDb } = await import('./database.config');
+        getDb();
+        expect(mocks.firestoreSettings).toHaveBeenCalledWith(
+          expect.objectContaining({ preferRest: true })
+        );
+      });
+
+      it('lets it be forced off too, for bisecting a transport-specific failure', async () => {
+        process.env['FIRESTORE_PREFER_REST'] = '0';
+        const { getDb } = await import('./database.config');
+        getDb();
+        expect(mocks.firestoreSettings).toHaveBeenCalledWith(
+          expect.objectContaining({ preferRest: false })
+        );
       });
     });
 

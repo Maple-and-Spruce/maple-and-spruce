@@ -25,6 +25,29 @@ function ensureAdminInitialized(): void {
 }
 
 /**
+ * Which transport the admin SDK should use — and why a test can override it.
+ *
+ * Dev and prod prefer REST; the emulator defaults to gRPC because gRPC is faster
+ * against a local emulator and REST there was historically flaky.
+ *
+ * That default means **every integration test runs on the opposite transport
+ * from production**, and the two report the same failure differently. A
+ * `create()` onto an existing id is `code: 6` over gRPC and `409` with
+ * `status: 'ALREADY_EXISTS'` over REST — so a guard matching only the gRPC shape
+ * is green in every emulator suite and broken in prod. That is exactly how #100
+ * and #117 shipped, twice, in the same subsystem.
+ *
+ * So the choice is overridable: `FIRESTORE_PREFER_REST=1` forces REST, and the
+ * integration harness sets it, so the suites exercise the transport the studio
+ * actually runs on. Nothing about dev or prod changes.
+ */
+function preferRestTransport(): boolean {
+  if (process.env['FIRESTORE_PREFER_REST'] === '1') return true;
+  if (process.env['FIRESTORE_PREFER_REST'] === '0') return false;
+  return !process.env['FIRESTORE_EMULATOR_HOST'];
+}
+
+/**
  * Get the Firestore database instance
  *
  * Lazily initializes Firebase Admin and Firestore on first call.
@@ -45,8 +68,10 @@ export function getDb(): FirebaseFirestore.Firestore {
     // Wrap in try-catch because settings() throws if called after any Firestore operation.
     if (!settingsApplied) {
       try {
-        const useEmulator = !!process.env['FIRESTORE_EMULATOR_HOST'];
-        dbInstance.settings({ ignoreUndefinedProperties: true, preferRest: !useEmulator });
+        dbInstance.settings({
+          ignoreUndefinedProperties: true,
+          preferRest: preferRestTransport(),
+        });
       } catch {
         // Settings already applied or Firestore already in use - ignore
       }

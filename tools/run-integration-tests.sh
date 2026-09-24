@@ -72,6 +72,11 @@ echo "Setting up emulator environment..."
 for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sync dist/apps/functions-calendar dist/apps/functions-webhooks dist/apps/functions-square-webhook; do
   # Strip comments and blank lines — Firebase .env parser needs clean key=value pairs
   grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
+  # Force the REST transport, the one dev and prod use. The emulator defaults to
+  # gRPC, and the two report the same failure differently — a create() collision is
+  # `code: 6` over gRPC and a 409 with `status: ALREADY_EXISTS` over REST. Testing
+  # only gRPC is how #100 and #117 both shipped green. See preferRestTransport().
+  echo "FIRESTORE_PREFER_REST=1" >> "$dir/.env"
 done
 
 # maple-core: Etsy mock server URL + fake secrets (for listEtsyListings, getEtsyTemplates)
