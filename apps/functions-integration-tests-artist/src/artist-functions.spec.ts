@@ -18,6 +18,20 @@ import type {
   DeleteArtistResponse,
 } from '@maple/ts/firebase/api-types';
 
+/**
+ * The artist endpoints' behavioural contract — unchanged by ADR-029.
+ *
+ * These cases were written against five separate Cloud Functions. When those
+ * were replaced by the `artists` router, only the `functionName` changed
+ * (`createArtist` → `artists/createArtist`): the auth guard, the duplicate-email
+ * rejection, the validation failures and the CRUD lifecycle all still have to
+ * hold, and a router that quietly dropped one of them would fail here. That is
+ * the point of leaving this suite pointed at the new function rather than
+ * deleting it alongside the old ones.
+ *
+ * Routing itself — dispatch, unknown routes, per-route gating — is covered in
+ * `artists-router.spec.ts`.
+ */
 describe('Artist Functions', () => {
   let adminUser: TestUser;
   let nonAdminUser: TestUser;
@@ -49,7 +63,7 @@ describe('Artist Functions', () => {
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction<CreateArtistRequest>({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: SAMPLE_ARTIST,
       });
       expect(result.status).toBe(401);
@@ -57,7 +71,7 @@ describe('Artist Functions', () => {
 
     it('should reject non-admin users', async () => {
       const result = await callFunction<CreateArtistRequest>({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: SAMPLE_ARTIST,
         idToken: nonAdminUser.idToken,
       });
@@ -73,7 +87,7 @@ describe('Artist Functions', () => {
         CreateArtistRequest,
         CreateArtistResponse
       >({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: SAMPLE_ARTIST,
         idToken: adminUser.idToken,
       });
@@ -92,7 +106,7 @@ describe('Artist Functions', () => {
 
     it('should reject duplicate email on create', async () => {
       const result = await callFunction<CreateArtistRequest>({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: SAMPLE_ARTIST,
         idToken: adminUser.idToken,
       });
@@ -105,7 +119,7 @@ describe('Artist Functions', () => {
         Record<string, never>,
         GetArtistsResponse
       >({
-        functionName: 'getArtists',
+        functionName: 'artists/getArtists',
         idToken: adminUser.idToken,
       });
 
@@ -119,7 +133,7 @@ describe('Artist Functions', () => {
         { id: string },
         GetArtistResponse
       >({
-        functionName: 'getArtist',
+        functionName: 'artists/getArtist',
         data: { id: artistId },
         idToken: adminUser.idToken,
       });
@@ -134,7 +148,7 @@ describe('Artist Functions', () => {
         UpdateArtistRequest,
         UpdateArtistResponse
       >({
-        functionName: 'updateArtist',
+        functionName: 'artists/updateArtist',
         data: {
           id: artistId,
           name: 'Updated Artist Name',
@@ -154,7 +168,7 @@ describe('Artist Functions', () => {
         DeleteArtistRequest,
         DeleteArtistResponse
       >({
-        functionName: 'deleteArtist',
+        functionName: 'artists/deleteArtist',
         data: { id: artistId },
         idToken: adminUser.idToken,
       });
@@ -165,7 +179,7 @@ describe('Artist Functions', () => {
 
     it('should return not-found for deleted artist', async () => {
       const result = await callFunction<{ id: string }>({
-        functionName: 'getArtist',
+        functionName: 'artists/getArtist',
         data: { id: artistId },
         idToken: adminUser.idToken,
       });
@@ -177,7 +191,7 @@ describe('Artist Functions', () => {
   describe('Validation', () => {
     it('should reject artist with missing name', async () => {
       const result = await callFunction<Partial<CreateArtistRequest>>({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: {
           email: 'no-name@test.com',
           status: 'active',
@@ -191,7 +205,7 @@ describe('Artist Functions', () => {
 
     it('should reject artist with invalid email', async () => {
       const result = await callFunction<Partial<CreateArtistRequest>>({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: {
           name: 'Bad Email Artist',
           email: 'not-an-email',
@@ -206,7 +220,7 @@ describe('Artist Functions', () => {
 
     it('should reject artist with commission rate > 1', async () => {
       const result = await callFunction<Partial<CreateArtistRequest>>({
-        functionName: 'createArtist',
+        functionName: 'artists/createArtist',
         data: {
           name: 'Bad Rate Artist',
           email: 'bad-rate@test.com',

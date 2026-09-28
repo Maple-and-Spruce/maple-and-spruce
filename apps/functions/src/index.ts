@@ -29,15 +29,10 @@ export { healthCheck } from '@maple/firebase/maple-functions/health-check';
 export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-status';
 
 // Artist functions
-// Artists as one domain router (ADR-029). The five single-purpose artist
-// functions below stay exported until their call sites have moved and the
-// router is proven in dev; a follow-up deletes them.
+// One domain router serving getArtists / getArtist / createArtist /
+// updateArtist / deleteArtist (ADR-029). The five single-purpose functions it
+// replaced were deleted once it was verified in dev.
 export { artists } from '@maple/firebase/maple-functions/artists';
-export { getArtists } from '@maple/firebase/maple-functions/get-artists';
-export { getArtist } from '@maple/firebase/maple-functions/get-artist';
-export { createArtist } from '@maple/firebase/maple-functions/create-artist';
-export { updateArtist } from '@maple/firebase/maple-functions/update-artist';
-export { deleteArtist } from '@maple/firebase/maple-functions/delete-artist';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions

@@ -18,9 +18,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `artists/getArtists`, `artists/getArtist`, `artists/createArtist`,
   `artists/updateArtist`, `artists/deleteArtist`. Each route keeps its own role gate,
   validation and uniqueness checks.
-- `getArtists`, `getArtist`, `createArtist`, `updateArtist`, `deleteArtist` — the
-  per-endpoint originals. Still deployed, and no longer called: ADR-029 keeps them live
-  until every call site has moved, then they are deleted manually (CI does not prune).
+  The five per-endpoint originals (`getArtists`, `getArtist`, `createArtist`,
+  `updateArtist`, `deleteArtist`) were deleted once the router was verified in dev —
+  five Cloud Run services replaced by one.
 - `uploadArtistImage` — left off the router in this pilot to keep the change to the five
   CRUD endpoints. It is built with `createAdminFunction` rather than the
   `Functions.endpoint` chain, and it takes a base64 image body, so whether it wants its own
