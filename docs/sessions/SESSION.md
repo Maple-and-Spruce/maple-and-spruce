@@ -6,6 +6,82 @@
 
 ## Current Status
 
+### Lesson billing: invoicing is explicit, and it holds (2026-09-23)
+
+#109 merged and was verified in dev on the deployed build. **#101 closed.**
+
+- **Nothing invoices by itself.** The `autoInvoice` toggle is gone from the student form and the
+  trigger is deleted. Marking a lesson taught raises one notice and nothing else: an uncovered
+  lesson offers a single **Send invoice ($X)** action, a covered one says who already paid and
+  offers nothing.
+- **An invoice counts as billed on both charge paths.** Pay ahead was refused server-side with
+  `already-covered` and wrote no charge and no payment. The job was A/B'd either side of deleting
+  the invoice, with the rule at 1 lesson per charge: `chargesPlanned` 0 with the invoice present,
+  1 without it. A **draft** invoice is enough to hold a lesson; only `void` releases it.
+
+**What #109 did not do, filed as #110:** the server is safe but the pickers are not. Pay ahead
+still lists an invoiced lesson (`PrepayLessonsCard` never passes `alreadyInvoiced`) and only fails
+on confirm, saying "already covered by another **charge**" and advising a reload that changes
+nothing. "Add from lesson" in the invoice builder lists lessons already on a `paid` charge — the
+same double-ask in the other direction. `lessonBillingState` already answers this and nothing
+outside the toast calls it.
+
+**Prod kept auto-invoicing after the merge.** Deleting a function's source does not delete the
+function: `onLessonRenderedInvoice` was still ACTIVE in prod on `lessons/{lessonId}`, so every
+lesson marked taught still raised an invoice — and with #101 in place that invoice then *blocked*
+the card charge for the same lesson. Deleted by hand in dev and prod on 2026-09-23. CI does not
+prune removed functions, so **check `gcloud functions list` after any PR that deletes a function
+library.** The firebase CLI's own credentials had expired independently of gcloud's, and
+`firebase login --reauth` is interactive; `gcloud functions delete <name> --gen2 --region us-east4`
+does the same job.
+
+**Leftover:** `InvoiceRepository.createAutoLessonInvoice` has no callers now that the trigger is
+gone, and its comment still describes it.
+
+### Lesson billing: the charge path works in dev (2026-09-23)
+
+#108 shipped the correctness fixes and was verified against `business-dev` + the Square sandbox
+on the deployed build, not just in tests. **#99, #100, #102, #103 and #105 are closed.**
+
+- **A card charge goes through.** Pay ahead took a real sandbox payment. The 45-char idempotency
+  key is derived by hashing the charge id (`lc-` + 16 hex = 19 chars), so it stays stable per
+  charge and a retry still matches the original payment.
+- **Charges written before the fix recover.** "Try again" on a charge still carrying the
+  over-long key re-derived a legal one and the payment succeeded — the fallback path working on
+  exactly the documents it was written for.
+- **A failed charge no longer poisons the run.** Two dry runs and three real runs reported
+  `planningFailed: 0` with failed charges present, and the second run planned nothing new.
+  `failed` is now a covering status, so the block re-forms around the next unbilled lesson
+  instead of colliding with the failed charge's id.
+- **Failed charges can be dealt with.** Waive and Cancel accept `failed`; the three charges this
+  bug had stranded in dev are cleared.
+- **Cancelling a lesson reprices its charge.** $140 / 4 lessons became $105 / 3 lessons in place.
+
+Still open: **#101** (double billing — PR #109 makes invoicing explicit and teaches both charge
+paths to respect an invoice), **#104**, **#106**, **#107**.
+
+Dev now carries a **default billing rule** (`Standard 4-lesson block`) that every eligible student
+inherits, two test students switched to `active`, and two scheduled charges due Oct 18 / Nov 15.
+
+### Lesson billing: first manual run in dev (2026-09-21/22)
+
+`docs/guides/lesson-billing-manual-test-plan.md` was run through Claude in Chrome against
+`business-dev` and the Square sandbox. Card linking, auto-invoice, the Square invoice webhook,
+Waive/Cancel, and publishing and cancelling invoices in Square all work. **Automatic lesson billing is not usable yet:**
+
+- **#99:** every card charge is rejected by Square. The idempotency key is about 52–69 chars and
+  Square allows 45. This blocks Pay ahead, Try again and the job.
+- **#100:** once any charge has failed, `runLessonBilling` aborts for every student on every later
+  run (409 on the re-planned charge id).
+- **#101–#105:** invoices and charges double-bill each other, failed charges allow overlaps, Pay
+  ahead breaks after 8 PM ET (UTC "today"), manual/Venmo-paid invoices stay payable in Square, and
+  cancelling a lesson doesn't adjust its charge.
+- **#106–#107:** UI fixes, plus no admin UI for rules, rule assignment or running the job.
+
+The mock Square server doesn't enforce the 45-char key limit, which is why the integration suites
+stayed green. Dev held 3 unclearable failed test charges after this run; they were cleared on 2026-09-23 (above).
+
+
 ### Going public again: rewritten history + PII safeguards (2026-09-16)
 
 The repo went private after customer data leaked into tests and docs. legacy #857 scrubbed the
