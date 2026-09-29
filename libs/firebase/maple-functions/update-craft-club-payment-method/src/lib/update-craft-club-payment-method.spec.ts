@@ -17,7 +17,15 @@ vi.mock('@maple/firebase/functions', () => {
       super(m);
     }
   }
-  const endpoint = {
+  const endpoint: Record<string, unknown> = {
+    withAppCheck: (mode: string) => {
+      endpoint['appCheckMode'] = mode;
+      return endpoint;
+    },
+    throttling: (scope: string, rules: unknown) => {
+      endpoint['throttle'] = { scope, rules };
+      return endpoint;
+    },
     usingSecrets: vi.fn(() => endpoint),
     usingStrings: vi.fn(() => endpoint),
     handle: vi.fn((h: typeof mocks.capturedHandler) => {
@@ -27,6 +35,7 @@ vi.mock('@maple/firebase/functions', () => {
   };
   return {
     Functions: { endpoint },
+    paymentThrottles: (field: string) => ['ip', field],
     throwInvalidArgument: (m: string) => {
       throw new HttpsError('invalid-argument', m);
     },
@@ -134,5 +143,17 @@ describe('updateCraftClubPaymentMethod', () => {
       })
     ).rejects.toThrow(/session has expired/);
     expect(mocks.createCardOnFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateCraftClubPaymentMethod declaration', () => {
+  it('opts into App Check and per-IP and per-account throttling', async () => {
+    const { Functions } = await import('@maple/firebase/functions');
+    const endpoint = Functions.endpoint as unknown as Record<string, unknown>;
+    expect(endpoint['appCheckMode']).toBe('monitor');
+    expect(endpoint['throttle']).toEqual({
+      scope: 'updateCraftClubPaymentMethod',
+      rules: ['ip', 'sessionToken'],
+    });
   });
 });

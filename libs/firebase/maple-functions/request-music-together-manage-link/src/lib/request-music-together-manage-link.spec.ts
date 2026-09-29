@@ -10,7 +10,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => {
-  const endpoint = {
+  const endpoint: Record<string, unknown> = {
+    withAppCheck: (mode: string) => {
+      endpoint['appCheckMode'] = mode;
+      return endpoint;
+    },
+    throttling: (scope: string, rules: unknown) => {
+      endpoint['throttle'] = { scope, rules };
+      return endpoint;
+    },
     usingStrings: vi.fn(() => endpoint),
     handle: vi.fn((h: typeof mocks.capturedHandler) => {
       mocks.capturedHandler = h;
@@ -19,6 +27,7 @@ vi.mock('@maple/firebase/functions', () => {
   };
   return {
     Functions: { endpoint },
+    emailLinkThrottles: () => ['ip', 'email'],
     throwInvalidArgument: (m: string) => {
       throw new Error(m);
     },
@@ -126,5 +135,17 @@ describe('requestMusicTogetherManageLink', () => {
 
   it('rejects a missing email', async () => {
     await expect(run({})).rejects.toThrow(/Email is required/);
+  });
+});
+
+describe('requestMusicTogetherManageLink declaration', () => {
+  it('opts into App Check and per-IP and per-address throttling', async () => {
+    const { Functions } = await import('@maple/firebase/functions');
+    const endpoint = Functions.endpoint as unknown as Record<string, unknown>;
+    expect(endpoint['appCheckMode']).toBe('monitor');
+    expect(endpoint['throttle']).toEqual({
+      scope: 'requestMusicTogetherManageLink',
+      rules: ['ip', 'email'],
+    });
   });
 });

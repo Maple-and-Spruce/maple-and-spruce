@@ -1617,6 +1617,86 @@ that does appear is reconciled by the next sync instead of persisting indefinite
 
 ---
 
+## ADR-034: App Check and Request Throttling on Public Callables
+
+**Status:** Accepted (monitor phase)
+**Date:** 2026-09-29
+
+### Context
+The Webflow widgets call about a dozen callables that take no sign-in: registration and
+checkout, Craft Club and Music Together payment-method updates, discount lookups, and the
+manage-link emails. We want these endpoints to verify that calls come from our widgets, and to
+serve them at the volume a family actually generates.
+
+Our functions are gen-2 `onRequest` built by `Functions.endpoint`, not `onCall`, so Firebase's
+built-in `enforceAppCheck` option does not apply.
+
+### Decision
+Two opt-in steps in `runRequestPipeline`, declared per endpoint on the builder chain:
+
+1. **`.withAppCheck(mode)`** verifies the `X-Firebase-AppCheck` header (which `httpsCallable`
+   attaches once the widget has initialized App Check with reCAPTCHA Enterprise) through
+   `firebase-admin/app-check`. Modes:
+
+   | mode | behaviour |
+   |---|---|
+   | `off` | not checked |
+   | `monitor` | verified and logged (`{"event":"app_check",…}`), never rejected |
+   | `enforce` | a missing or invalid token gets 401 `UNAUTHENTICATED` |
+
+   The effective mode is the lower of the endpoint's mode and the `APP_CHECK_MODE` value in
+   `.env.dev` / `.env.prod`. An unset value means `off`.
+
+2. **`.throttling(scope, rules)`** counts each request against fixed-window rules keyed on the
+   client IP and on an account field (email or session token). A request over a limit gets 429
+   `RESOURCE_EXHAUSTED` before validation or the handler run. Counters live in
+   `requestThrottles/{scope}:{rule}:{sha256(key)}:{windowStart}`, written in a transaction, with an
+   `expiresAt` for a TTL policy. Presets and limits are in `throttle.utility.ts`
+   (`paymentThrottles`, `emailLinkThrottles`, `codeLookupThrottles`).
+
+Rollout is two PRs: **monitor** first (all ten endpoints, `APP_CHECK_MODE=monitor`), then
+**enforce** once the logs show real widget traffic arriving with valid tokens across browsers,
+Safari included.
+
+### Rationale
+- **Opt-in per endpoint.** Admin callables already require a signed-in role, and the admin app's
+  public signing page is not a widget. Only endpoints that ask for it pay the verification call.
+- **Env ceiling.** Turning enforcement down is a one-line `.env.prod` change, not an edit to ten
+  libraries.
+- **Warmup runs first.** Warmup pings are answered before App Check and throttling, so they keep
+  booting instances and are never counted.
+- **Right-most `x-forwarded-for`.** Google's front end appends the address it saw, so the
+  right-most entry is the one it vouches for. `context.ip` keeps the left-most entry for ad
+  attribution; throttling uses `extractTrustedClientIp`.
+- **Firestore over memory.** `maxInstances` is 1 today, but an in-memory counter resets on every
+  cold start and deploy, and would silently split if an endpoint were ever given more instances.
+  Every access is a document-id read, so no composite index is needed.
+- **Fails open.** If the counter store errors, the request runs and the error is logged. A
+  Firestore problem must not turn into families being unable to register.
+- **Hashed keys.** Counter ids hold a truncated SHA-256 of the email, token or IP, never the raw
+  value.
+- **Generous limits.** Payment: 20 per IP and 8 per account per hour. Email links: 10 per IP and
+  3 per address per hour. Code lookups: 30 per IP per 10 minutes. A family retrying a declined
+  card should never reach them.
+
+### Alternatives Considered
+- **Converting to `onCall` for `enforceAppCheck`.** This changes the wire format for every
+  widget and the router, for a check that is a dozen lines in the pipeline.
+- **In-memory token bucket.** Rejected for the reasons above.
+- **reCAPTCHA checkbox challenge.** This adds friction to every checkout. Score-based reCAPTCHA
+  Enterprise behind App Check is invisible.
+
+### Consequences
+- Adding `.withAppCheck()` / `.throttling()` to an endpoint breaks its spec's hand-rolled builder
+  mock until those two methods are added to it.
+- The Admin App Check API is called once per protected request, adding a network hop.
+- A Firestore TTL policy on `requestThrottles.expiresAt` has to be enabled per project (manual,
+  `gcloud firestore fields ttls update`); without it, spent windows accumulate but are harmless.
+- The enforce PR must keep `.env.dev` at `monitor` (or supply a debug token), because the
+  post-merge E2E against dev runs the widgets without reCAPTCHA.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1640,4 +1720,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-09-16 (ADR-033 added for the one-class-one-CMS-item invariant)*
+*Last updated: 2026-09-29 (ADR-034 added for App Check and request throttling on public callables)*
