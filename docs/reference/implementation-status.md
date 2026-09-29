@@ -354,6 +354,8 @@ The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Ro
 
 Admin `/users` page lists every Firebase Auth user with admin status. Admins can grant or revoke the admin role on others. Self-protection: an admin cannot revoke their own admin role.
 
+**Adding a staff member:** the login page is sign-in only. Create the account in Firebase Console → Authentication → **Add user**, have them use **Forgot password** on `/login` to set their own password, then grant roles from `/users`.
+
 | Layer | Status | Path |
 |------|--------|------|
 | `AppUser` domain type | **Complete** | `libs/ts/domain/src/lib/app-user.ts` |
