@@ -8,10 +8,13 @@
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {
+  InstructorRepository,
   LessonBillingRuleRepository,
   LessonRatesConfigRepository,
   LessonScheduledChargeRepository,
+  StudentRepository,
 } from '@maple/firebase/database';
+import { effectiveRateByLength } from '@maple/ts/domain';
 import type {
   GetLessonBillingRequest,
   GetLessonBillingResponse,
@@ -27,5 +30,24 @@ export const getLessonBilling = Functions.endpoint
       // the same numbers the server will charge from (legacy #864).
       LessonRatesConfigRepository.get(),
     ]);
-    return { rules, charges, rateByLength: rates.rateByLength };
+
+    // For one student, the table is theirs: their primary teacher's rates for
+    // their instrument over the studio default. That is what chargeLessonsNow
+    // prices from, and every screen that prices this student's lessons reads
+    // it from here. Studio-wide, there is no one teacher, so it stays the
+    // studio default.
+    if (!data?.studentId) {
+      return { rules, charges, rateByLength: rates.rateByLength };
+    }
+    const student = await StudentRepository.findById(data.studentId);
+    const primaryTeacher = student?.primaryTeacherId
+      ? await InstructorRepository.findById(student.primaryTeacherId)
+      : undefined;
+    return {
+      rules,
+      charges,
+      rateByLength: student
+        ? effectiveRateByLength(student, primaryTeacher, rates.rateByLength)
+        : rates.rateByLength,
+    };
   });

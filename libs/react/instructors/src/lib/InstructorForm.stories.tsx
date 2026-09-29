@@ -280,3 +280,102 @@ export const EmailValidation: Story = {
     await expect(args.onSubmit).not.toHaveBeenCalled();
   },
 };
+
+// ============================================================
+// LESSON RATES
+// ============================================================
+
+/**
+ * What families pay, per instrument and length, lives on the teacher. Existing
+ * rates load as dollars; an instrument can be added and a length priced, and
+ * the whole table is sent in cents.
+ */
+export const EditingLessonRates: Story = {
+  args: {
+    open: true,
+    instructor: {
+      ...mockInstructor,
+      lessonRates: { violin: { '30-min-full': 4500 } },
+    },
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    const violin30 = canvas.getByLabelText('Violin 30 min (full) rate');
+    await expect(violin30).toHaveValue(45);
+    await userEvent.clear(violin30);
+    await userEvent.type(violin30, '48');
+
+    await userEvent.click(canvas.getByLabelText('Add an instrument'));
+    await userEvent.click(
+      await canvas.findByRole('option', { name: 'Piano' })
+    );
+    await userEvent.type(canvas.getByLabelText('Piano 60 min rate'), '80');
+
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lessonRates: {
+            violin: { '30-min-full': 4800 },
+            piano: { '60-min': 8000 },
+          },
+        })
+      );
+    });
+  },
+};
+
+/** Removing an instrument sends the table without it, so it is really gone. */
+export const RemovingAnInstrumentsRates: Story = {
+  args: {
+    open: true,
+    instructor: {
+      ...mockInstructor,
+      lessonRates: {
+        violin: { '30-min-full': 4500 },
+        cello: { '45-min': 6000 },
+      },
+    },
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Remove Cello rates' })
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lessonRates: { violin: { '30-min-full': 4500 } },
+        })
+      );
+    });
+  },
+};
+
+/** A zero price would bill a family nothing; the form refuses it. */
+export const AZeroRateIsRefused: Story = {
+  args: {
+    open: true,
+    instructor: { ...mockInstructor, lessonRates: { violin: {} } },
+    isSubmitting: false,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.type(
+      canvas.getByLabelText('Violin 30 min (full) rate'),
+      '0'
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await expect(
+      await canvas.findByText('Lesson rates must be positive amounts')
+    ).toBeInTheDocument();
+    await expect(args.onSubmit).not.toHaveBeenCalled();
+  },
+};
