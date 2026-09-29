@@ -60,7 +60,12 @@ export {
   StandingScheduleDialog,
   type StandingScheduleDialogProps,
 } from './lib/StandingScheduleDialog';
-export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
+export {
+  HopeStudentBilling,
+  type HopeStudentBillingProps,
+  type HopeOrderRow,
+  type SaveHopeOrderDraft,
+} from './lib/HopeStudentBilling';
 export {
   HopeProductsCard,
   type HopeProductsCardProps,
