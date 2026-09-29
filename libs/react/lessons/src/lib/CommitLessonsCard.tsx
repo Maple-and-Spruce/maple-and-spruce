@@ -380,10 +380,16 @@ function ConfirmDialog({
   studentName,
   priceFor,
   busy,
+  prepaying,
   onBack,
   onConfirm,
 }: {
   mode: 'charge' | 'invoice' | null;
+  /**
+   * Any lesson in the plan is still to come. Settling teaching already given
+   * is not "paying ahead", and saying so would misdescribe the charge.
+   */
+  prepaying: boolean;
   plan: PrepaymentPlan | null;
   studentName: string;
   priceFor: (lesson: Pick<Lesson, 'durationMinutes'>) => number;
@@ -417,9 +423,11 @@ function ConfirmDialog({
         </Stack>
         {charging ? (
           <Alert severity="warning">
-            Paying ahead is a commitment on both sides. There is no refund from
-            here. If the studio decides to give something back, credit it by hand
-            in Square.
+            {prepaying
+              ? 'Paying ahead is a commitment on both sides. There is no refund from here. '
+              : 'There is no refund from here. '}
+            If the studio decides to give something back, credit it by hand in
+            Square.
           </Alert>
         ) : (
           <Alert severity="info">
@@ -828,6 +836,9 @@ export function CommitLessonsCard({
         studentName={student.name}
         priceFor={rateResolver}
         busy={busy}
+        prepaying={Boolean(
+          plan?.lessons.some((l) => !owed.some((o) => o.id === l.id))
+        )}
         onBack={() => setConfirming(null)}
         onConfirm={confirming === 'charge' ? charge : send}
       />

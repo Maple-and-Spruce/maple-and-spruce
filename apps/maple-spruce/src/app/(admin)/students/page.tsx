@@ -56,7 +56,7 @@ export default function StudentsPage() {
   // from their scheduled lessons. The roster is small, so one unscoped fetch
   // is fine.
   const { lessonsState, fetchLessons } = useLessons({});
-  const { lessonBlocksState } = useLessonBlocks();
+  const { lessonBlocksState, fetchLessonBlocks } = useLessonBlocks();
   // Inquiries power the "Start from an inquiry" suggestions (legacy #819). Same seam
   // as /leads → "Create student…", offered from whichever page you are on.
   const { inquiriesState, updateStatus } = useLessonInquiries();
@@ -297,8 +297,12 @@ export default function StudentsPage() {
           instructors={instructors}
           blocks={blocks}
           onClose={() => setWeeklyFor(null)}
-          // A new slot materialises lessons, and the Day/Time column reads them.
-          onSaved={() => fetchLessons()}
+          // A new slot materialises lessons, which the Day/Time column reads,
+          // and may have made a block, which the next open of the dialog needs.
+          onSaved={() => {
+            fetchLessons();
+            fetchLessonBlocks();
+          }}
         />
       )}
 

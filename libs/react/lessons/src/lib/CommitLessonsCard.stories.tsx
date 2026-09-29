@@ -619,3 +619,21 @@ export const EmbeddedHasNoHeading: Story = {
     ).toBeNull();
   },
 };
+
+/**
+ * Settling lessons already taught is not paying ahead, so the confirmation
+ * does not call it that. It still says the charge cannot be refunded here.
+ */
+export const ChargingPastLessonsIsNotCalledPayingAhead: Story = {
+  args: { scope: 'owed', lessons: [...taught, ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Tick all 2' }));
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /Charge \$82\.50 to the card/ })
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(dialog.getByText(/no refund from here/i)).toBeInTheDocument();
+    await expect(dialog.queryByText(/paying ahead/i)).toBeNull();
+  },
+};
