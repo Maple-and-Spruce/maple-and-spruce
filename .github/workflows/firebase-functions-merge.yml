@@ -28,6 +28,8 @@ name: Deploy on merge
 #     └── deploy_firestore_indexes (prod) (independent — index changes don't block on E2E
 #                                          because they take minutes to build and are
 #                                          additive; analyzer enforces declaration at PR)
+#     └── deploy_rules (dev + prod)       (independent — firestore.rules / storage.rules
+#                                          → both projects when either file changes)
 #
 # Setup: a "production" GitHub Environment must exist in repo Settings →
 # Environments, with at least one required reviewer. Without it, prod_gate
@@ -1145,6 +1147,66 @@ jobs:
           if grep -qi "not present in your firestore indexes file" "$OUTPUT"; then
             echo "::warning title=Firestore index orphans::Prod has composite indexes not declared in firestore.indexes.json. Resolve by adding them to the file, or delete a stale one with: gcloud firestore indexes composite delete <INDEX_ID> --project maple-and-spruce"
           fi
+
+  deploy_rules:
+    # Publishes firestore.rules and storage.rules to dev and prod whenever
+    # either file changes (or on a manual run). Independent of the
+    # dev→E2E→prod chain, like the index jobs: rules are small, deploy in
+    # seconds, and the repo files are the source of truth for both projects.
+    runs-on: ubuntu-latest
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: maple-and-spruce-dev
+            workload_identity_provider: 'projects/1062803455357/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+            service_account: 'github-deployer@maple-and-spruce-dev.iam.gserviceaccount.com'
+          - project: maple-and-spruce
+            workload_identity_provider: 'projects/138840458966/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+            service_account: 'github-deployer@maple-and-spruce.iam.gserviceaccount.com'
+    name: deploy_rules (${{ matrix.project }})
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if rules files changed
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only HEAD~1 HEAD | grep -qE '^(firestore|storage)\.rules$'; then
+            echo "Rules changed in this push — deploying"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Rules unchanged — skipping"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        if: steps.changed.outputs.changed == 'true'
+        # Mint an access token for --token — see deploy_harness_dev.
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ matrix.workload_identity_provider }}
+          service_account: ${{ matrix.service_account }}
+          create_credentials_file: true
+          token_format: 'access_token'
+
+      - name: Deploy Firestore and Storage rules
+        if: steps.changed.outputs.changed == 'true'
+        timeout-minutes: 10
+        run: |
+          npx -y firebase-tools@latest deploy --only firestore:rules,storage \
+            --project ${{ matrix.project }} \
+            --token "${{ steps.auth.outputs.access_token }}" \
+            --non-interactive < /dev/null
 
   deploy_hosting_api:
     # The `api` Firebase Hosting target (maple-and-spruce-api) serves the

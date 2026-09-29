@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   sendPasswordResetEmail,
 } from 'firebase/auth';
 import { getMapleAuth } from '@maple/ts/firebase/firebase-config';
+import { getAuthErrorMessage } from './auth-error-message';
 import {
   Box,
   Card,
@@ -20,12 +20,9 @@ import {
   CircularProgress,
 } from '@mui/material';
 
-type LoginMode = 'sign-in' | 'sign-up';
-
 interface LoginState {
   email: string;
   password: string;
-  mode: LoginMode;
   error: string | null;
   isSubmitting: boolean;
   resetEmailSent: boolean;
@@ -36,7 +33,6 @@ export default function LoginPage() {
   const [state, setState] = useState<LoginState>({
     email: '',
     password: '',
-    mode: 'sign-in',
     error: null,
     isSubmitting: false,
     resetEmailSent: false,
@@ -48,17 +44,12 @@ export default function LoginPage() {
 
     try {
       const auth = getMapleAuth();
-
-      if (state.mode === 'sign-in') {
-        await signInWithEmailAndPassword(auth, state.email, state.password);
-      } else {
-        await createUserWithEmailAndPassword(auth, state.email, state.password);
-      }
+      await signInWithEmailAndPassword(auth, state.email, state.password);
 
       // Redirect to home on success
       router.push('/');
     } catch (error) {
-      const message = getErrorMessage(error);
+      const message = getAuthErrorMessage(error);
       setState((prev) => ({ ...prev, error: message, isSubmitting: false }));
     }
   };
@@ -83,18 +74,9 @@ export default function LoginPage() {
         isSubmitting: false,
       }));
     } catch (error) {
-      const message = getErrorMessage(error);
+      const message = getAuthErrorMessage(error);
       setState((prev) => ({ ...prev, error: message, isSubmitting: false }));
     }
-  };
-
-  const toggleMode = () => {
-    setState((prev) => ({
-      ...prev,
-      mode: prev.mode === 'sign-in' ? 'sign-up' : 'sign-in',
-      error: null,
-      resetEmailSent: false,
-    }));
   };
 
   return (
@@ -111,7 +93,7 @@ export default function LoginPage() {
       <Card sx={{ maxWidth: 400, width: '100%' }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" component="h1" gutterBottom align="center">
-            {state.mode === 'sign-in' ? 'Sign In' : 'Create Account'}
+            Sign In
           </Typography>
 
           <Typography
@@ -160,9 +142,7 @@ export default function LoginPage() {
               }
               margin="normal"
               required
-              autoComplete={
-                state.mode === 'sign-in' ? 'current-password' : 'new-password'
-              }
+              autoComplete="current-password"
             />
 
             <Button
@@ -174,70 +154,31 @@ export default function LoginPage() {
             >
               {state.isSubmitting ? (
                 <CircularProgress size={24} color="inherit" />
-              ) : state.mode === 'sign-in' ? (
-                'Sign In'
               ) : (
-                'Create Account'
+                'Sign In'
               )}
             </Button>
           </form>
 
           <Box sx={{ textAlign: 'center' }}>
-            {state.mode === 'sign-in' && (
-              <Link
-                component="button"
-                type="button"
-                variant="body2"
-                onClick={handleForgotPassword}
-                sx={{ display: 'block', mb: 1 }}
-              >
-                Forgot password?
-              </Link>
-            )}
-
             <Link
               component="button"
               type="button"
               variant="body2"
-              onClick={toggleMode}
+              onClick={handleForgotPassword}
             >
-              {state.mode === 'sign-in'
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
+              Forgot password?
             </Link>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 2 }}
+            >
+              Accounts are created by an administrator.
+            </Typography>
           </Box>
         </CardContent>
       </Card>
     </Box>
   );
-}
-
-/**
- * Convert Firebase auth errors to user-friendly messages
- */
-function getErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object' && 'code' in error) {
-    const code = (error as { code: string }).code;
-    switch (code) {
-      case 'auth/invalid-email':
-        return 'Invalid email address';
-      case 'auth/user-disabled':
-        return 'This account has been disabled';
-      case 'auth/user-not-found':
-        return 'No account found with this email';
-      case 'auth/wrong-password':
-        return 'Incorrect password';
-      case 'auth/invalid-credential':
-        return 'Invalid email or password';
-      case 'auth/email-already-in-use':
-        return 'An account already exists with this email';
-      case 'auth/weak-password':
-        return 'Password should be at least 6 characters';
-      case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please try again later';
-      default:
-        return 'An error occurred. Please try again';
-    }
-  }
-  return 'An unexpected error occurred';
 }

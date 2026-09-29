@@ -1,31 +1,29 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Artist, class, and instructor photos are publicly readable (for Webflow integration)
+    // All writes go through Cloud Functions (admin SDK bypasses rules), so
+    // clients never write directly. Only the image paths Webflow renders are
+    // publicly readable; everything else is server-only.
+
     match /artists/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
     }
 
     match /classes/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
     }
 
     match /instructors/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
     }
 
-    // Class category gallery pool — publicly readable (referenced by classes pulled into Webflow)
+    // Class category gallery pool (referenced by classes pulled into Webflow)
     match /categories/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
     }
 
-    // Default: authenticated access only
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

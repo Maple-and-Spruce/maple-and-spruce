@@ -24,6 +24,102 @@ are occasional. Both screens now follow that order.
   and adds Weekly schedule…, Charge for past lessons…, Next lessons…, each a
   dialog (`students/student-launchers.tsx`), sharing components with the page.
 
+### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
+
+**Artists is the pilot** (#126, #127). ADR-029 was accepted in August and nothing had been
+built on it. The primitive turned out to be mostly extraction rather than new code: `handle()`
+already did CORS, auth, the role gate, validation, uniqueness, warmup and the `{ data: … }`
+envelope inline, so that body became `runRequestPipeline(route, req, res)` and `handle()` now
+calls it with a single route. A router therefore runs the *same* middleware per route rather
+than a second implementation of it, which is what the ADR predicted.
+
+Two things a router loses unless they are put back deliberately, and both cost a real outage
+if forgotten:
+
+- **Per-route observability.** The function name is the domain now, so a log line cannot say
+  which endpoint wrote it. The router logs `[artists] getArtist`, and a 404 names the route
+  asked for *and* the routes that exist.
+- **A checkable role gate.** `check-callable-roles.ts` reads the AST, so it now classifies each
+  route and reports per route. That forces the gate to be written out literally on every route:
+  a `const admin = () => Functions.endpoint.requiringRole(...)` helper is invisible to the
+  analyzer, every route reads as *public*, and the tempting fix is an allowlist entry that would
+  then permit a genuinely ungated route. Written down in `.claude/rules/firebase-functions.md`
+  so the next router does not rediscover it.
+
+**Then the count was made honest.** #127 deleted the five old artist libraries, and the five
+deployed functions were removed by hand in dev and prod (CI does not prune). While counting,
+prod turned out to carry **9 further orphans** and dev **13**: eight from the custom timesheet
+retired for Square Shifts + Payroll (legacy #412), `getRelatedPublicClasses` replaced by native
+Webflow CMS rendering (legacy #777), and in dev also `getPublicArtists` / `getPublicClasses`
+plus two functions from an unmerged branch (see below). All pruned after checking each for
+repo references and 30 days of invocation logs, with the log query validated against functions
+known to have been called.
+
+Both projects now reconcile **exactly**: 239 repo functions + 1 Firebase Extension = 240
+deployed, nothing dangling in either direction. That is the first time the baseline and reality
+have agreed, which also makes #89 (the guard counts libraries, not deployments) measurable
+rather than theoretical.
+
+**Gotchas worth keeping.**
+- A bare call to a router legitimately 404s from our own code (`Unknown route ""`). A probe
+  that reads status alone will report a live router as missing; read the body.
+- #126 shipped without adding its library to `apps/functions/tsconfig.app.json`.
+  `validate-function-tsconfigs.sh` catches it, but **nothing in CI runs that script**, so it
+  merged.
+- A 7-assertion spec for one pure function dropped merged coverage 83.7% → 76.7%, by importing
+  `functions.utility` unmocked and pulling the whole `@maple/firebase/database` layer into the
+  denominator: 101 files at ~6%. The sibling spec had imported that module for months without
+  consequence because it mocks its dependencies. Now documented in
+  `docs/reference/code-standards.md`, along with the habit that found it — measure `origin/main`
+  with the same command before concluding anything from one number.
+- `role-matrix.spec.ts` names ~30 callables from every domain, so any function rename or
+  deletion touches it. It declared **2** implicit dependencies, so nx does not mark it affected;
+  it broke on this work and only surfaced because an unrelated `tsconfig.base.json` edit dragged
+  the suite in.
+
+### Charging for teaching already given (#128, #129)
+
+Katie could always *invoice* a past unpaid lesson, but not take it from the card on file: the
+charge path filtered to `scheduledAt >= startOfDay(now)`, with a comment that a past lesson is
+"a conversation about a debt". That is a fair description of paying **ahead**, and not a reason
+the studio should have no way to collect for teaching it has already given.
+
+`unpaidTaughtLessons` is the other half of chargeable, disjoint from `prepayableLessons` and
+sharing its midnight boundary so a lesson taught earlier today appears in exactly one of the
+two. It requires `didConsumeSlot` rather than merely being past-dated: a lesson still marked
+`scheduled` last Tuesday has not been taught as far as this system knows, and charging for it
+would invent the fact that it happened.
+
+**Only an explicit tick reaches a past lesson.** `planPrepayment` widens its pool for
+`lessonIds` and leaves the `lessonCount` shortcut upcoming-only, so "charge the next four" can
+never quietly collect a debt nobody ticked. No date cutoff, by decision: a year-old unpaid
+lesson is still owed and the judgement belongs to Katie rather than a constant.
+
+Two ways in, one charge path: an "Already taught, not paid for" section in the picker, and the
+attention row now carrying the lesson so it lands pre-ticked. That link crosses a library
+boundary, so the query parameter is a shared constant with a `studentChargeHref` builder —
+two spellings of `chargeLesson` would fail no build, typecheck or test, and the link would
+simply arrive with nothing ticked.
+
+Left alone deliberately: a **waived** charge still suppresses a past lesson, because
+billed-ness is decided exactly as the forward path decides it. That is #115, it predates this,
+and making past lessons behave differently would hide it rather than fix it.
+
+### Deploy fan-out (#122, #123, #124, #125)
+
+Roughly half of all PRs were redeploying every function. Two config causes were fixed and
+verified on main: `projectsAffectedByDependencyUpdates: "auto"` took a lock-file change from
+315 affected projects to 1, and removing the `.env.dev` `namedInput` took 240 to 1 (any
+`{workspaceRoot}` glob in a named input marks every project affected — nrwl/nx#11922).
+
+#125 then cleaned up after #124, which removed the `functionsEnv` named input but left one
+reference in `libs/firebase/functions/project.json`. Worth knowing the shape: nx tolerates a
+dangling named input when the project is targeted **directly** and errors when a *dependent*
+resolves `^default`. No CI job hit it, because the ESLint job shells out to `eslint .` rather
+than going through nx — it only broke nx-mediated lint run locally.
+
+Still open from #122: slicing the four domain libs, worth about 112 PRs (20%).
+
 ### Going public again: rewritten history + PII safeguards (2026-09-16)
 
 The repo went private after customer data leaked into tests and docs. legacy #857 scrubbed the
@@ -958,7 +1054,7 @@ PR 1 (legacy #468 / legacy PR #470): `room` field on CalendarEvent/Class, `onLes
 
 **Next steps**:
 - PR 2 (legacy #469): ad hoc "Book the Spruce Room" form, day strip + warn-and-confirm conflict warnings in ScheduleLessonDialog / class form / event form
-- Ops: onboard Nathan (he signs up at `/login`, grant admin from `/users`) — decided full admin is fine
+- Ops: onboard Nathan (add him in Firebase Console → Authentication, he sets a password via Forgot password, grant admin from `/users`) — decided full admin is fine
 
 ### Timekeeping retired — replaced by Square (2026-05-09)
 
