@@ -8,7 +8,9 @@
  * Behaviour:
  * - Cloned: description, instructorId, durationMinutes, capacity, priceCents,
  *   imageUrl, galleryImages, categoryId, skillLevel, location,
- *   materialsIncluded, whatToBring, minimumAge.
+ *   materialsIncluded, whatToBring, minimumAge, minimumEnrollment.
+ * - `underMinimumAlertSentAt` is not copied: the duplicate is a new run of
+ *   the class and gets its own under-minimum alert.
  * - `name` gets a " (Copy)" suffix so the duplicate is easy to find in
  *   admin lists.
  * - `status` is forced to `draft`. Katie reviews the new dates before
@@ -67,6 +69,7 @@ export const duplicateClass = createAdminFunction<
     materialsIncluded: source.materialsIncluded,
     whatToBring: source.whatToBring,
     minimumAge: source.minimumAge,
+    minimumEnrollment: source.minimumEnrollment,
   };
 
   const created = await ClassRepository.create(input);
