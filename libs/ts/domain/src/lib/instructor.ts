@@ -17,6 +17,88 @@ import type { Payee } from './payee';
 export type InstructorPayRateType = 'flat' | 'hourly' | 'percentage';
 
 /**
+ * How a contract instructor was set up to be paid.
+ *
+ * - `square-payroll`: onboarded as a Square Payroll contractor, which collects
+ *   their tax info itself.
+ * - `w9-on-file`: paid through Square Bill Pay, with a W-9 collected by us.
+ */
+export type InstructorPaymentSetupMethod = 'square-payroll' | 'w9-on-file';
+
+export const INSTRUCTOR_PAYMENT_SETUP_METHODS: readonly InstructorPaymentSetupMethod[] =
+  ['square-payroll', 'w9-on-file'];
+
+export const INSTRUCTOR_PAYMENT_SETUP_METHOD_LABELS: Record<
+  InstructorPaymentSetupMethod,
+  string
+> = {
+  'square-payroll': 'Square Payroll contractor',
+  'w9-on-file': 'W-9 on file (Square Bill Pay)',
+};
+
+/**
+ * What has been done to clear a contract instructor to teach.
+ *
+ * Every date is a calendar date, `YYYY-MM-DD`: the day a thing happened, not
+ * an instant. A string keeps it timezone-independent and lets it cross the
+ * callable wire unchanged (a `Date` arrives on the client as a string anyway).
+ *
+ * There is deliberately no stored "ready" flag — it would drift from the
+ * dates. Use {@link instructorReadiness}. Admin-only: never public, never
+ * synced to Webflow.
+ */
+export interface InstructorReadiness {
+  /** The independent contractor agreement was signed. */
+  contractorAgreement?: {
+    signedOn: string;
+    /** Where the signed copy lives: a link, or a note such as "paper, in the office binder". */
+    reference?: string;
+  };
+  /** The background check came back clear. Run outside this system; this is the record of it. */
+  backgroundCheck?: {
+    clearedOn: string;
+  };
+  /** The instructor can be paid: tax info collected one way or the other. */
+  paymentSetup?: {
+    completedOn: string;
+    method: InstructorPaymentSetupMethod;
+  };
+}
+
+/** One thing that must be done before a contract instructor can teach. */
+export type InstructorReadinessItem =
+  | 'contractor-agreement'
+  | 'background-check'
+  | 'payment-setup';
+
+export const INSTRUCTOR_READINESS_ITEMS: readonly InstructorReadinessItem[] = [
+  'contractor-agreement',
+  'background-check',
+  'payment-setup',
+];
+
+export const INSTRUCTOR_READINESS_ITEM_LABELS: Record<
+  InstructorReadinessItem,
+  string
+> = {
+  'contractor-agreement': 'Contractor agreement',
+  'background-check': 'Background check',
+  'payment-setup': 'Payment setup',
+};
+
+/**
+ * Whether an instructor is cleared to teach.
+ *
+ * - `not-applicable`: not a paid contractor, so nothing is tracked.
+ * - `ready`: all three items are recorded.
+ * - `not-ready`: `missing` lists what is still outstanding, in checklist order.
+ */
+export type InstructorReadinessStatus =
+  | { kind: 'not-applicable' }
+  | { kind: 'ready' }
+  | { kind: 'not-ready'; missing: InstructorReadinessItem[] };
+
+/**
  * Instructor entity - implements Payee interface
  */
 export interface Instructor extends Payee {
@@ -46,6 +128,59 @@ export interface Instructor extends Payee {
    * @see docs/decisions/ADR-016-webflow-integration-strategy.md
    */
   webflowItemId?: string;
+  /**
+   * A paid 1099 contractor, who must be cleared (see `readiness`) before
+   * teaching. Explicit rather than inferred from `payRate`: staff can have a
+   * pay rate without being contractors, and a new contractor may not have a
+   * rate agreed yet. Unset means "not tracked", so existing records raise no
+   * warnings until someone opts them in. Admin-only.
+   */
+  isContractor?: boolean;
+  /** Contractor onboarding record. Admin-only. */
+  readiness?: InstructorReadiness;
+}
+
+/**
+ * Whether an instructor is cleared to teach. Derived from `readiness`, never
+ * stored.
+ */
+export function instructorReadiness(
+  instructor: Pick<Instructor, 'isContractor' | 'readiness'>
+): InstructorReadinessStatus {
+  if (!instructor.isContractor) {
+    return { kind: 'not-applicable' };
+  }
+
+  const r = instructor.readiness ?? {};
+  const done: Record<InstructorReadinessItem, boolean> = {
+    'contractor-agreement': !!r.contractorAgreement?.signedOn,
+    'background-check': !!r.backgroundCheck?.clearedOn,
+    'payment-setup': !!r.paymentSetup?.completedOn && !!r.paymentSetup.method,
+  };
+  const missing = INSTRUCTOR_READINESS_ITEMS.filter((item) => !done[item]);
+
+  return missing.length === 0 ? { kind: 'ready' } : { kind: 'not-ready', missing };
+}
+
+/**
+ * The instructor without its admin-only onboarding fields, for a reader who
+ * is not an admin (a lesson teacher listing colleagues). Whether a colleague
+ * has cleared a background check is not theirs to see.
+ */
+export function withoutContractorReadiness(instructor: Instructor): Instructor {
+  const { isContractor: _isContractor, readiness: _readiness, ...rest } = instructor;
+  return rest;
+}
+
+/** "contractor agreement and background check" — the missing items, as prose. */
+export function describeMissingReadiness(
+  missing: readonly InstructorReadinessItem[]
+): string {
+  const words = missing.map((item) =>
+    INSTRUCTOR_READINESS_ITEM_LABELS[item].toLowerCase()
+  );
+  if (words.length <= 1) return words.join('');
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
 }
 
 /**

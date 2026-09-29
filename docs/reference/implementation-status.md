@@ -78,6 +78,7 @@
 | Instructor components | Complete | legacy #9 | `libs/react/instructors/` |
 | Class components | Complete | legacy #9 | `libs/react/classes/` |
 | Instructors page | Complete | legacy #9 | `/instructors` admin page |
+| Contract instructor readiness | Complete | — | `Instructor.isContractor` + `readiness` (agreement signed, background check cleared, payment setup via Square Payroll or W-9), dates as `YYYY-MM-DD`; "ready" derived by `instructorReadiness()`, never stored. Admin-only: stripped from `getInstructor(s)` for non-admins, never in `toPublicInstructor`/Webflow. Form section, list "Not ready" chip, class-form warning (warns, never blocks), `instructor-not-ready` Needs Attention row (admin only, upcoming classes) linking to `/instructors?edit=<id>`. No insurance tracking (venue-carried coverage) |
 | Classes page | Complete | legacy #9 | `/classes` admin page |
 | useInstructors hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
 | useClasses hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |

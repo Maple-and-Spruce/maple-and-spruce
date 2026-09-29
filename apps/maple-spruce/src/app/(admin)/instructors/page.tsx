@@ -1,14 +1,28 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { Suspense, useState, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Typography, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type { Instructor, CreateInstructorInput } from '@maple/ts/domain';
+import {
+  EDIT_INSTRUCTOR_PARAM,
+  type Instructor,
+  type CreateInstructorInput,
+} from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { InstructorList, InstructorForm } from '@maple/react/instructors';
 import { useInstructors, useUsers } from '../../../hooks';
 
 export default function InstructorsPage() {
+  // useSearchParams needs a Suspense boundary on a statically rendered route.
+  return (
+    <Suspense>
+      <InstructorsPageContent />
+    </Suspense>
+  );
+}
+
+function InstructorsPageContent() {
   // Instructor state from hook (fetches on mount)
   const {
     instructorsState,
@@ -38,6 +52,19 @@ export default function InstructorsPage() {
     setEditingInstructor(instructor);
     setIsFormOpen(true);
   }, []);
+
+  // `?edit=<id>` opens that instructor's form — where a Needs Attention row
+  // for an instructor who is not cleared to teach lands. The parameter is
+  // dropped once used, so closing the dialog does not reopen it.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get(EDIT_INSTRUCTOR_PARAM);
+  useEffect(() => {
+    if (!editId || instructorsState.status !== 'success') return;
+    const target = instructorsState.data.find((i) => i.id === editId);
+    if (target) handleOpenForm(target);
+    router.replace('/instructors', { scroll: false });
+  }, [editId, instructorsState, handleOpenForm, router]);
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);

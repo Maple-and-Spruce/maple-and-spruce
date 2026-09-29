@@ -8,11 +8,51 @@ import { db, toDate } from './utilities/database.config';
 import type {
   Instructor,
   CreateInstructorInput,
+  InstructorReadiness,
   UpdateInstructorInput,
   PayeeStatus,
 } from '@maple/ts/domain';
 
 const COLLECTION = 'instructors';
+
+/**
+ * Read the readiness map back item by item, so a partial or hand-edited
+ * document yields only well-formed items (an item without its date is
+ * dropped, which reads as "not done" — the safe direction).
+ */
+function docToReadiness(raw: unknown): InstructorReadiness | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, Record<string, unknown> | undefined>;
+  const readiness: InstructorReadiness = {};
+
+  const agreement = r['contractorAgreement'];
+  if (typeof agreement?.['signedOn'] === 'string') {
+    readiness.contractorAgreement = {
+      signedOn: agreement['signedOn'],
+      ...(typeof agreement['reference'] === 'string'
+        ? { reference: agreement['reference'] }
+        : {}),
+    };
+  }
+
+  const check = r['backgroundCheck'];
+  if (typeof check?.['clearedOn'] === 'string') {
+    readiness.backgroundCheck = { clearedOn: check['clearedOn'] };
+  }
+
+  const payment = r['paymentSetup'];
+  if (
+    typeof payment?.['completedOn'] === 'string' &&
+    (payment['method'] === 'square-payroll' || payment['method'] === 'w9-on-file')
+  ) {
+    readiness.paymentSetup = {
+      completedOn: payment['completedOn'],
+      method: payment['method'],
+    };
+  }
+
+  return readiness;
+}
 
 /**
  * Convert Firestore document to Instructor
@@ -42,6 +82,8 @@ function docToInstructor(
     payRate: data.payRate,
     payRateType: data.payRateType,
     webflowItemId: data.webflowItemId,
+    isContractor: data.isContractor ?? undefined,
+    readiness: docToReadiness(data.readiness),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -135,7 +177,11 @@ export const InstructorRepository = {
   },
 
   /**
-   * Update an existing instructor
+   * Update an existing instructor.
+   *
+   * `readiness`, when present, replaces the whole stored record (Firestore
+   * `update` replaces a top-level map), so the form sends every item it
+   * knows about and an item left out is cleared.
    */
   async update(
     // uid accepts null so callers can unlink a portal login (writes null;

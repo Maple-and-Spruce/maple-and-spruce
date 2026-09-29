@@ -49,6 +49,12 @@ import {
   batch,
   useSignals,
 } from '@maple/react/signals';
+import { InstructorReadinessSection } from './InstructorReadinessSection';
+import {
+  readinessFormValuesFrom,
+  readinessFromFormValues,
+  type ReadinessFormValues,
+} from './readiness-form';
 
 interface InstructorFormProps {
   open: boolean;
@@ -127,6 +133,8 @@ export function InstructorForm({
   // Portal login link ('' = not a portal user). Only surfaced when `users`
   // is provided.
   const linkedUid = useSignal('');
+  // Contractor readiness (admin-only), as flat input values.
+  const readinessValues = useSignal<ReadinessFormValues>(readinessFormValuesFrom());
 
   // ============================================================
   // UI STATE SIGNALS
@@ -154,6 +162,7 @@ export function InstructorForm({
       specialties: specialties.value.length > 0 ? specialties.value : undefined,
       payRate: payRate.value,
       payRateType: payRateType.value,
+      ...readinessFromFormValues(readinessValues.value),
     });
   });
 
@@ -188,6 +197,7 @@ export function InstructorForm({
         payRate.value = instructor.payRate;
         payRateType.value = instructor.payRateType;
         linkedUid.value = instructor.uid ?? '';
+        readinessValues.value = readinessFormValuesFrom(instructor);
         photoUrl.value = instructor.photoUrl ?? '';
 
         if (instructor.photoUrl) {
@@ -215,6 +225,7 @@ export function InstructorForm({
         payRate.value = undefined;
         payRateType.value = undefined;
         linkedUid.value = '';
+        readinessValues.value = readinessFormValuesFrom();
         photoUrl.value = '';
         imageUploadState.value = { status: 'idle' };
         pendingImageFile.value = null;
@@ -321,6 +332,7 @@ export function InstructorForm({
         payRate: payRate.value,
         payRateType: payRateType.value,
         photoUrl: currentPhotoUrl || undefined,
+        ...readinessFromFormValues(readinessValues.value),
         // Only emit uid when the picker is in play. '' => null (unlink /
         // not a portal user); a uid => link. undefined leaves it unchanged.
         ...(users ? { uid: linkedUid.value || null } : {}),
@@ -552,6 +564,14 @@ export function InstructorForm({
               </FormHelperText>
             </FormControl>
           )}
+
+          <InstructorReadinessSection
+            values={readinessValues.value}
+            onChange={(patch) =>
+              (readinessValues.value = { ...readinessValues.value, ...patch })
+            }
+            getFieldError={getFieldError}
+          />
 
           {/* Notes */}
           <TextField

@@ -5,7 +5,24 @@
  * @see https://vestjs.dev/
  */
 import { staticSuite, test, enforce, only } from 'vest';
-import type { CreateInstructorInput } from '@maple/ts/domain';
+import {
+  INSTRUCTOR_PAYMENT_SETUP_METHODS,
+  type CreateInstructorInput,
+} from '@maple/ts/domain';
+
+/** A real `YYYY-MM-DD` calendar date (rejects `2026-02-30`). */
+function isCalendarDate(value: unknown): boolean {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d
+  );
+}
 
 /**
  * Validate instructor form data
@@ -95,6 +112,44 @@ export const instructorValidation = staticSuite(
       if (data.payRateType === 'percentage' && data.payRate !== undefined && data.payRate !== null) {
         enforce(data.payRate).greaterThanOrEquals(0);
         enforce(data.payRate).lessThanOrEquals(1);
+      }
+    });
+
+    // Contractor readiness (admin-only). Each item, once present, needs a real
+    // calendar date; nothing here is required, because "not done yet" is a
+    // valid state that the UI warns about rather than blocks.
+    const readiness = data.readiness;
+
+    test('agreementSignedOn', 'Date signed must be a valid date', () => {
+      if (readiness?.contractorAgreement) {
+        enforce(isCalendarDate(readiness.contractorAgreement.signedOn)).isTruthy();
+      }
+    });
+
+    test('agreementReference', 'Reference must be 500 characters or fewer', () => {
+      const reference = readiness?.contractorAgreement?.reference;
+      if (reference) {
+        enforce(reference).shorterThanOrEquals(500);
+      }
+    });
+
+    test('backgroundCheckClearedOn', 'Date cleared must be a valid date', () => {
+      if (readiness?.backgroundCheck) {
+        enforce(isCalendarDate(readiness.backgroundCheck.clearedOn)).isTruthy();
+      }
+    });
+
+    test('paymentSetupCompletedOn', 'Date completed must be a valid date', () => {
+      if (readiness?.paymentSetup) {
+        enforce(isCalendarDate(readiness.paymentSetup.completedOn)).isTruthy();
+      }
+    });
+
+    test('paymentSetupMethod', 'Choose how this instructor is paid', () => {
+      if (readiness?.paymentSetup) {
+        enforce(readiness.paymentSetup.method).inside([
+          ...INSTRUCTOR_PAYMENT_SETUP_METHODS,
+        ]);
       }
     });
   }

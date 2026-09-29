@@ -21,9 +21,16 @@
  * their own lessons (`instructorIdForUser`, per legacy #616). The response says which,
  * because an empty panel means two different things to those two people.
  */
-import { Functions, Role, instructorIdForUser } from '@maple/firebase/functions';
 import {
+  Functions,
+  Role,
+  hasRole,
+  instructorIdForUser,
+} from '@maple/firebase/functions';
+import {
+  ClassRepository,
   HopeSubmissionRepository,
+  InstructorRepository,
   InvoiceRepository,
   LessonBlockRepository,
   LessonRepository,
@@ -31,7 +38,10 @@ import {
   StudentRepository,
 } from '@maple/firebase/database';
 import {
+  describeMissingReadiness,
   hasInvoiceSyncFailed,
+  instructorEditHref,
+  instructorsNotReadyToTeach,
   isHopeUnsubmitted,
   isInvoiceOverdue,
   isLessonUnattributed,
@@ -69,20 +79,38 @@ export const getNeedsAttention = Functions.endpoint
 
       // An admin has no linked instructor record, so this is undefined for them
       // and defined for a lesson teacher — which is exactly the scoping test.
-      const ownInstructorId = await instructorIdForUser(context?.uid);
+      const [ownInstructorId, isAdmin] = await Promise.all([
+        instructorIdForUser(context?.uid),
+        context?.uid ? hasRole(context.uid, Role.Admin) : Promise.resolve(false),
+      ]);
       const scopedToSelf = Boolean(ownInstructorId);
 
-      const [allStudents, allLessons, blocks, allInvoices, allCharges] =
-        await Promise.all([
-          StudentRepository.findAll(),
-          LessonRepository.findAll(),
-          LessonBlockRepository.findAll(),
-          InvoiceRepository.findAll(),
-          // Charges too, because charging the card is how most lessons get
-          // billed. Without them every card-paid lesson showed up as "never
-          // invoiced" (#111).
-          LessonScheduledChargeRepository.findAll(),
-        ]);
+      const [
+        allStudents,
+        allLessons,
+        blocks,
+        allInvoices,
+        allCharges,
+        activeInstructors,
+        upcomingClasses,
+      ] = await Promise.all([
+        StudentRepository.findAll(),
+        LessonRepository.findAll(),
+        LessonBlockRepository.findAll(),
+        InvoiceRepository.findAll(),
+        // Charges too, because charging the card is how most lessons get
+        // billed. Without them every card-paid lesson showed up as "never
+        // invoiced" (#111).
+        LessonScheduledChargeRepository.findAll(),
+        // Contractor readiness is admin-only, so a lesson teacher's panel
+        // neither reads nor shows it. Gated on the role, not on `scopedToSelf`:
+        // a lesson teacher with no linked instructor record is unscoped but
+        // still not an admin.
+        isAdmin
+          ? InstructorRepository.findAll({ status: 'active' })
+          : Promise.resolve([]),
+        isAdmin ? ClassRepository.findAll({ upcoming: true }) : Promise.resolve([]),
+      ]);
 
       const students = scopedToSelf
         ? allStudents.filter((s) => s.primaryTeacherId === ownInstructorId)
@@ -189,7 +217,26 @@ export const getNeedsAttention = Functions.endpoint
           teacherId: lesson.teacherId,
         }));
 
+      const instructorsNotReady: NeedsAttentionRow[] =
+        instructorsNotReadyToTeach(activeInstructors, upcomingClasses, now).map(
+          ({ instructor, missing, nextSessionAt }) => ({
+            kind: 'instructor-not-ready' as const,
+            id: instructor.id,
+            label: instructor.name,
+            detail: `Teaches ${formatDate(nextSessionAt)} · missing ${describeMissingReadiness(missing)}`,
+            href: instructorEditHref(instructor.id),
+            resolution: 'navigate' as const,
+          })
+        );
+
       const groups: NeedsAttentionGroup[] = [
+        {
+          kind: 'instructor-not-ready',
+          title: 'Instructors teaching soon who are not cleared',
+          because:
+            'A contract instructor has a class coming up without a signed agreement, a cleared background check or payment set up.',
+          rows: instructorsNotReady,
+        },
         {
           kind: 'invoice-sync-failed',
           title: 'Invoices that never reached Square',

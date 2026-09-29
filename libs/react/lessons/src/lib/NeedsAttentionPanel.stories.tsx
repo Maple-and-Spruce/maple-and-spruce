@@ -173,3 +173,53 @@ export const StartsCollapsed: Story = {
     });
   },
 };
+
+const withUnclearedInstructor: NeedsAttentionGroup[] = sortAttentionGroups([
+  ...groups,
+  {
+    kind: 'instructor-not-ready',
+    title: 'Instructors teaching soon who are not cleared',
+    because:
+      'A contract instructor has a class coming up without a signed agreement, a cleared background check or payment set up.',
+    rows: [
+      {
+        kind: 'instructor-not-ready',
+        id: 'instructor-008',
+        label: 'Olive Thompson',
+        detail: 'Teaches Oct 7, 2026 · missing background check and payment setup',
+        resolution: 'navigate',
+        href: '/instructors?edit=instructor-008',
+      },
+    ],
+  },
+]);
+
+/**
+ * An uncleared contract instructor with a class coming up (admin view only)
+ * sits just below invoices that never reached Square, and links straight to
+ * that instructor's form.
+ */
+export const InstructorNotClearedToTeach: Story = {
+  args: {
+    groups: withUnclearedInstructor,
+    total: totalAttentionCount(withUnclearedInstructor),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const headings = canvas
+      .getAllByRole('button', { name: /^(show|hide) /i })
+      .map((b) => b.getAttribute('aria-label') ?? '');
+    expect(headings[1]).toMatch(/instructors teaching soon/i);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /show instructors teaching soon/i })
+    );
+    await waitFor(() => {
+      const link = canvas
+        .getAllByRole('link', { name: /open/i })
+        .find((a) => a.getAttribute('href') === '/instructors?edit=instructor-008');
+      expect(link).toBeDefined();
+    });
+    expect(canvas.getByText(/missing background check and payment setup/)).toBeVisible();
+  },
+};

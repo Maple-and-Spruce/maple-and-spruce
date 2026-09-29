@@ -33,7 +33,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`
 
 ### Instructors
-- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`
+- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor` _(contractor `readiness` is admin-only: `getInstructor(s)` strip it for lesson teachers)_
 
 ### Music Lesson Students
 - `getStudents`, `getStudent`, `createStudent`, `updateStudent`, `deleteStudent`
@@ -55,7 +55,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `tools/backfill-lesson-schedules.ts` infers arrangements from existing `seriesId` lessons. Dry-run by default; `--apply` to write. Each inferred schedule starts the day **after** its series' last lesson, because pre-schedule lessons lack the deterministic id and would otherwise be duplicated.
 
 ### Needs Attention (legacy #807)
-- `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
+- `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Admins also get contract instructors with an upcoming class who are not cleared to teach (reads active instructors + upcoming classes; lesson teachers never see it). Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
 
 ### Hope Scholarship billing (legacy #799)

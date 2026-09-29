@@ -47,7 +47,12 @@ import type {
   GalleryImage,
   Room,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel } from '@maple/ts/domain';
+import {
+  ROOMS,
+  describeMissingReadiness,
+  getRoomLabel,
+  instructorReadiness,
+} from '@maple/ts/domain';
 import { RoomAvailability } from '@maple/react/rooms';
 import type {
   UploadClassImageRequest,
@@ -98,6 +103,25 @@ function readFileAsBase64(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Warn, don't block, when the chosen instructor is a contractor who has not
+ * been cleared to teach. A class is often scheduled while the paperwork is
+ * still coming back. Only drawn for an instructor we actually have: while the
+ * list is loading the instructor is unknown, which is not "not ready".
+ */
+function InstructorNotReadyAlert({ instructor }: { instructor?: Instructor }) {
+  if (!instructor) return null;
+  const status = instructorReadiness(instructor);
+  if (status.kind !== 'not-ready') return null;
+  return (
+    <Alert severity="warning" data-testid="instructor-not-ready-alert">
+      {instructor.name} isn&apos;t cleared to teach yet: missing{' '}
+      {describeMissingReadiness(status.missing)}. You can still save this
+      class.
+    </Alert>
+  );
 }
 
 /**
@@ -1132,6 +1156,9 @@ export function ClassForm({
                 </FormHelperText>
               </FormControl>
             )}
+            <InstructorNotReadyAlert
+              instructor={instructors.find((i) => i.id === instructorId.value)}
+            />
 
             {/* Location */}
             <TextField

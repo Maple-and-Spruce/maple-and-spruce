@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn, expect, within, userEvent, waitFor } from 'storybook/test';
+import { fn, expect, fireEvent, within, userEvent, waitFor } from 'storybook/test';
 import { InstructorForm } from './InstructorForm';
 import {
   mockInstructor,
   mockInstructorPercentage,
   mockInstructorMinimal,
+  mockContractorNotReady,
 } from '@maple/react/storybook-fixtures';
 
 const meta = {
@@ -277,6 +278,106 @@ export const EmailValidation: Story = {
     });
 
     // onSubmit should not be called
+    await expect(args.onSubmit).not.toHaveBeenCalled();
+  },
+};
+
+// ============================================================
+// CONTRACTOR READINESS
+// ============================================================
+
+/**
+ * A new instructor starts as a contractor, and a save with nothing recorded
+ * goes through (warned, not blocked) with an empty readiness record.
+ */
+export const CreateNewDefaultsToContractor: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await expect(canvas.getByRole('switch', { name: /paid contractor/i })).toBeChecked();
+    await expect(canvas.getByText(/not ready: missing contractor agreement/i)).toBeInTheDocument();
+
+    await userEvent.type(canvas.getByRole('textbox', { name: /name/i }), 'Robin Ashfield');
+    await userEvent.type(canvas.getByLabelText(/email/i), 'robin@example.com');
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ isContractor: true, readiness: {} })
+      );
+    });
+  },
+};
+
+/**
+ * Editing a contractor partway through onboarding: record the background
+ * check and payment setup, and the save carries the whole record.
+ */
+export const EditRecordsReadiness: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructor: mockContractorNotReady,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await expect(
+      canvas.getByText(/missing background check and payment setup/i)
+    ).toBeInTheDocument();
+
+    fireEvent.change(canvas.getByLabelText(/date cleared/i), {
+      target: { value: '2026-09-27' },
+    });
+    fireEvent.change(canvas.getByLabelText(/date completed/i), {
+      target: { value: '2026-09-28' },
+    });
+    await userEvent.click(canvas.getByLabelText(/how they're paid/i));
+    await userEvent.click(canvas.getByRole('option', { name: /square payroll/i }));
+
+    await expect(canvas.getByText(/ready to teach/i)).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isContractor: true,
+          readiness: {
+            contractorAgreement: { signedOn: '2026-09-20' },
+            backgroundCheck: { clearedOn: '2026-09-27' },
+            paymentSetup: { completedOn: '2026-09-28', method: 'square-payroll' },
+          },
+        })
+      );
+    });
+  },
+};
+
+/**
+ * A payment method with no date is reported, not silently dropped.
+ */
+export const HalfFilledPaymentSetupIsReported: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructor: mockContractorNotReady,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.click(canvas.getByLabelText(/how they're paid/i));
+    await userEvent.click(canvas.getByRole('option', { name: /w-9 on file/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+
+    await expect(
+      await canvas.findByText('Date completed must be a valid date')
+    ).toBeInTheDocument();
     await expect(args.onSubmit).not.toHaveBeenCalled();
   },
 };

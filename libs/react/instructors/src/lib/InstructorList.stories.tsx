@@ -6,6 +6,8 @@ import {
   mockActiveInstructors,
   mockInstructor,
   mockInstructorInactive,
+  mockContractorReady,
+  mockContractorNotReady,
 } from '@maple/react/storybook-fixtures';
 import type { RequestState } from '@maple/ts/domain';
 import type { Instructor } from '@maple/ts/domain';
@@ -36,6 +38,15 @@ export const Idle: Story = {
   args: {
     instructorsState: { status: 'idle' } as RequestState<Instructor[]>,
   },
+  // Idle is "not fetched yet": drawn as loading, never as "no instructors".
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText('Loading instructors')).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    await expect(canvas.queryByText(/no instructors yet/i)).not.toBeInTheDocument();
+  },
 };
 
 /**
@@ -44,6 +55,15 @@ export const Idle: Story = {
 export const Loading: Story = {
   args: {
     instructorsState: { status: 'loading' } as RequestState<Instructor[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText('Loading instructors')).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    await expect(canvas.queryByText(/no instructors yet/i)).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Not ready')).not.toBeInTheDocument();
   },
 };
 
@@ -170,5 +190,32 @@ export const DeleteButtonCallsOnDelete: Story = {
       expect(args.onDelete).toHaveBeenCalledTimes(1);
       expect(args.onDelete).toHaveBeenCalledWith(mockInstructor);
     });
+  },
+};
+
+/**
+ * A contract instructor who is not cleared to teach gets a "Not ready" chip;
+ * a cleared contractor and a non-contractor do not.
+ */
+export const NotReadyChip: Story = {
+  args: {
+    instructorsState: {
+      status: 'success',
+      data: [mockContractorNotReady, mockContractorReady, mockInstructor],
+    } as RequestState<Instructor[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const chips = canvas.getAllByText('Not ready');
+    await expect(chips).toHaveLength(1);
+
+    const card = canvas
+      .getByRole('heading', { name: mockContractorNotReady.name })
+      .closest('.MuiCard-root') as HTMLElement;
+    await expect(
+      within(card).getByLabelText(
+        'Not ready to teach: missing background check and payment setup'
+      )
+    ).toBeInTheDocument();
   },
 };

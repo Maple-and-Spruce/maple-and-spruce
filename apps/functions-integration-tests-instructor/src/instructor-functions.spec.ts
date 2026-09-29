@@ -18,6 +18,8 @@ import type {
   UpdateInstructorResponse,
   DeleteInstructorRequest,
   DeleteInstructorResponse,
+  GetNeedsAttentionRequest,
+  GetNeedsAttentionResponse,
 } from '@maple/ts/firebase/api-types';
 
 const SAMPLE_INSTRUCTOR: CreateInstructorRequest = {
@@ -229,6 +231,206 @@ describe('Instructor Functions', () => {
       });
 
       expect(result.status).not.toBe(200);
+    });
+  });
+
+  describe('Contractor readiness', () => {
+    let teacherUser: TestUser;
+    let contractorId: string;
+
+    const allDone = {
+      contractorAgreement: { signedOn: '2026-09-01', reference: 'Office binder' },
+      backgroundCheck: { clearedOn: '2026-09-10' },
+      paymentSetup: { completedOn: '2026-09-12', method: 'square-payroll' as const },
+    };
+
+    beforeAll(async () => {
+      teacherUser = await createTestUser('readiness-teacher@test.com', 'password123');
+      await setFirestoreDoc('userRoles', teacherUser.uid, {
+        roles: ['lesson-teacher'],
+      });
+    });
+
+    it('creates a contractor with a partial readiness record', async () => {
+      const result = await callFunction<
+        CreateInstructorRequest,
+        CreateInstructorResponse
+      >({
+        functionName: 'createInstructor',
+        data: {
+          name: 'Robin Ashfield',
+          email: 'robin.readiness@example.com',
+          status: 'active',
+          isContractor: true,
+          readiness: { backgroundCheck: { clearedOn: '2026-09-10' } },
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.instructor.isContractor).toBe(true);
+      expect(result.data?.instructor.readiness).toEqual({
+        backgroundCheck: { clearedOn: '2026-09-10' },
+      });
+      contractorId = result.data!.instructor.id;
+    });
+
+    it('reads every item back after an update records them all', async () => {
+      const update = await callFunction<
+        UpdateInstructorRequest,
+        UpdateInstructorResponse
+      >({
+        functionName: 'updateInstructor',
+        data: { id: contractorId, readiness: allDone },
+        idToken: adminUser.idToken,
+      });
+      expect(update.status).toBe(200);
+
+      const read = await callFunction<GetInstructorRequest, GetInstructorResponse>({
+        functionName: 'getInstructor',
+        data: { id: contractorId },
+        idToken: adminUser.idToken,
+      });
+
+      expect(read.status).toBe(200);
+      expect(read.data?.instructor.isContractor).toBe(true);
+      expect(read.data?.instructor.readiness).toEqual(allDone);
+    });
+
+    it('clears an item the update leaves out', async () => {
+      const { contractorAgreement: _dropped, ...withoutAgreement } = allDone;
+
+      const update = await callFunction<
+        UpdateInstructorRequest,
+        UpdateInstructorResponse
+      >({
+        functionName: 'updateInstructor',
+        data: { id: contractorId, readiness: withoutAgreement },
+        idToken: adminUser.idToken,
+      });
+
+      expect(update.status).toBe(200);
+      expect(update.data?.instructor.readiness).toEqual(withoutAgreement);
+    });
+
+    it('leaves readiness untouched by an update that does not mention it', async () => {
+      const update = await callFunction<
+        UpdateInstructorRequest,
+        UpdateInstructorResponse
+      >({
+        functionName: 'updateInstructor',
+        data: { id: contractorId, bio: 'Teaches stained glass.' },
+        idToken: adminUser.idToken,
+      });
+
+      expect(update.status).toBe(200);
+      expect(update.data?.instructor.readiness?.backgroundCheck).toEqual({
+        clearedOn: '2026-09-10',
+      });
+    });
+
+    it('rejects an invalid date with invalid-argument', async () => {
+      const result = await callFunction<UpdateInstructorRequest>({
+        functionName: 'updateInstructor',
+        data: {
+          id: contractorId,
+          readiness: { backgroundCheck: { clearedOn: '09/10/2026' } },
+        },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(400);
+    });
+
+    describe('Needs attention', () => {
+      const inDays = (n: number) =>
+        new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
+
+      async function attention(idToken: string): Promise<GetNeedsAttentionResponse> {
+        const res = await callFunction<
+          GetNeedsAttentionRequest,
+          GetNeedsAttentionResponse
+        >({ functionName: 'getNeedsAttention', data: {}, idToken });
+        expect(res.status).toBe(200);
+        return res.data!;
+      }
+
+      beforeAll(async () => {
+        // Seeded directly: the class only needs to exist with this instructor
+        // and a future session, and createClass would drag in Square.
+        const sessionAt = inDays(5);
+        await setFirestoreDoc('classes', 'readiness-upcoming-class', {
+          name: 'Readiness Upcoming Class',
+          description: 'A class taught by a contractor who is not cleared.',
+          instructorId: contractorId,
+          sessions: [{ dateTime: sessionAt }],
+          firstSessionAt: sessionAt,
+          durationMinutes: 120,
+          capacity: 8,
+          priceCents: 4500,
+          skillLevel: 'all-levels',
+          status: 'draft',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      });
+
+      it('flags a contractor who is teaching soon without being cleared', async () => {
+        // By now the agreement was cleared by an earlier test.
+        const data = await attention(adminUser.idToken);
+        const group = data.groups.find((g) => g.kind === 'instructor-not-ready');
+
+        expect(group).toBeDefined();
+        const row = group!.rows.find((r) => r.id === contractorId);
+        expect(row).toMatchObject({
+          label: 'Robin Ashfield',
+          href: `/instructors?edit=${contractorId}`,
+          resolution: 'navigate',
+        });
+        expect(row!.detail).toContain('missing contractor agreement');
+      });
+
+      it('never shows the group to a lesson teacher', async () => {
+        const data = await attention(teacherUser.idToken);
+
+        expect(data.groups.map((g) => g.kind)).not.toContain('instructor-not-ready');
+      });
+
+      it('drops the row once every item is recorded', async () => {
+        const update = await callFunction<UpdateInstructorRequest>({
+          functionName: 'updateInstructor',
+          data: { id: contractorId, readiness: allDone },
+          idToken: adminUser.idToken,
+        });
+        expect(update.status).toBe(200);
+
+        const data = await attention(adminUser.idToken);
+        const rows =
+          data.groups.find((g) => g.kind === 'instructor-not-ready')?.rows ?? [];
+        expect(rows.map((r) => r.id)).not.toContain(contractorId);
+      });
+    });
+
+    it('hides readiness from a lesson teacher listing instructors', async () => {
+      const list = await callFunction<GetInstructorsRequest, GetInstructorsResponse>({
+        functionName: 'getInstructors',
+        idToken: teacherUser.idToken,
+      });
+
+      expect(list.status).toBe(200);
+      const contractor = list.data?.instructors.find((i) => i.id === contractorId);
+      expect(contractor).toBeDefined();
+      expect(contractor).not.toHaveProperty('readiness');
+      expect(contractor).not.toHaveProperty('isContractor');
+
+      const single = await callFunction<GetInstructorRequest, GetInstructorResponse>({
+        functionName: 'getInstructor',
+        data: { id: contractorId },
+        idToken: teacherUser.idToken,
+      });
+
+      expect(single.status).toBe(200);
+      expect(single.data?.instructor).not.toHaveProperty('readiness');
     });
   });
 });
