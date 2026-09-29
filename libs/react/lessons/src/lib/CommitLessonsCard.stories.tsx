@@ -396,3 +396,122 @@ export const AnEmptyPickerDoesNotScold: Story = {
     expect(canvas.queryByText(/Tick the lessons/)).not.toBeInTheDocument();
   },
 };
+
+/**
+ * Teaching already given (#128).
+ *
+ * `taught` are two lessons a fortnight and a week back, marked `rendered` and
+ * never billed. They are the case Katie asked for: the studio taught them and
+ * nobody has been asked to pay.
+ */
+const taught = [
+  lesson(-2, { id: 'taught-1', status: 'rendered' }),
+  lesson(-1, { id: 'taught-2', status: 'rendered' }),
+];
+
+/**
+ * In count mode the picker is closed, so the debt has to announce itself —
+ * otherwise the only person it helps is one who already knew to look.
+ */
+export const UnpaidTaughtLessonsAnnounceThemselves: Story = {
+  args: { lessons: [...taught, ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('2 lessons have been taught and not paid for.')
+    ).toBeInTheDocument();
+    // The count shortcut must still be pricing only the upcoming four.
+    await expect(
+      canvas.getByRole('button', { name: /Charge \$165\.00 to the card/ })
+    ).toBeEnabled();
+  },
+};
+
+/** One is one, not "1 lessons". */
+export const OneUnpaidTaughtLesson: Story = {
+  args: { lessons: [taught[1], ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('1 lesson has been taught and not paid for.')
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * "Pick them" is the whole path from noticing to collecting: it opens the
+ * picker with the owed lessons ticked and the total already reflecting them.
+ */
+export const PickingUpTheUnpaidOnes: Story = {
+  args: { lessons: [...taught, ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Pick them' }));
+
+    await expect(
+      await canvas.findByText('Already taught, not paid for')
+    ).toBeInTheDocument();
+    // Two owed lessons, ticked, and nothing else — $82.50.
+    await expect(
+      await canvas.findByRole('button', { name: /Charge \$82\.50 to the card/ })
+    ).toBeEnabled();
+  },
+};
+
+/**
+ * Arriving from the attention row, which already knows which lesson it means.
+ * The card opens in manual mode with that lesson ticked — a pre-tick behind a
+ * closed picker would be a lie about what the button will charge.
+ */
+export const OpeningPreTickedFromElsewhere: Story = {
+  args: {
+    lessons: [...taught, ...lessons],
+    preselectLessonIds: ['taught-1'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Already taught, not paid for')
+    ).toBeInTheDocument();
+    await expect(
+      await canvas.findByRole('button', { name: /Charge \$41\.25 to the card/ })
+    ).toBeEnabled();
+  },
+};
+
+/**
+ * A past lesson nobody marked taught is not offered. It is still `scheduled`,
+ * so as far as this system knows the teaching did not happen — charging for it
+ * would invent the fact that it did.
+ */
+export const APastLessonNobodyMarkedTaughtIsNotOffered: Story = {
+  args: {
+    lessons: [lesson(-3, { id: 'unmarked', status: 'scheduled' }), ...lessons],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: /Charge \$165\.00 to the card/ })
+    ).toBeEnabled();
+    await expect(
+      canvas.queryByText(/taught and not paid for/)
+    ).not.toBeInTheDocument();
+  },
+};
+
+/** Already invoiced means already asked for: the card must not ask twice. */
+export const AnInvoicedTaughtLessonIsNotOwedAgain: Story = {
+  args: {
+    lessons: [...taught, ...lessons],
+    invoices: [invoiceFor('taught-1'), invoiceFor('taught-2')],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: /Charge \$165\.00 to the card/ })
+    ).toBeEnabled();
+    await expect(
+      canvas.queryByText(/taught and not paid for/)
+    ).not.toBeInTheDocument();
+  },
+};

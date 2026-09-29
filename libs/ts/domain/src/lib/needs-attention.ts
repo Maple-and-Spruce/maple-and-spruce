@@ -170,3 +170,20 @@ export function sortAttentionGroups(
 export function totalAttentionCount(groups: NeedsAttentionGroup[]): number {
   return groups.reduce((sum, g) => sum + g.rows.length, 0);
 }
+
+/**
+ * The query parameter the attention row uses to name the lesson it means (#128).
+ *
+ * A constant rather than two string literals: the Cloud Function writes this
+ * into the row's href and the student page reads it back, and those are in
+ * different libraries built at different times. Two spellings of `chargeLesson`
+ * would not fail a build, a typecheck or a test — the link would simply land on
+ * the student page with nothing ticked, which looks exactly like "there was
+ * nothing to charge".
+ */
+export const CHARGE_LESSON_PARAM = 'chargeLesson';
+
+/** The student page, pointed at one lesson's charge (#128). */
+export function studentChargeHref(studentId: string, lessonId: string): string {
+  return `/students/${studentId}?${CHARGE_LESSON_PARAM}=${lessonId}`;
+}

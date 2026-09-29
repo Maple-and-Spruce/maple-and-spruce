@@ -77,6 +77,27 @@ function realisticLessonId(studentId: string, index: number): string {
   return `sched-${studentId.padEnd(20, 'x').slice(0, 20)}-2026-11-${day}`;
 }
 
+/**
+ * A lesson already taught, `weeksAgo` back (#128). `status` so a caller can
+ * seed the "nobody marked it taught" case as well as the billable one.
+ */
+async function seedTaughtLesson(
+  studentId: string,
+  id: string,
+  weeksAgo: number,
+  status = 'rendered'
+): Promise<void> {
+  await setFirestoreDoc('lessons', id, {
+    studentId,
+    teacherId: 'instructor-x',
+    scheduledAt: new Date(Date.now() - weeksAgo * 7 * DAY),
+    durationMinutes: 30,
+    status,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+}
+
 async function seedLessons(studentId: string, count: number): Promise<void> {
   for (let i = 0; i < count; i++) {
     await setFirestoreDoc('lessons', realisticLessonId(studentId, i), {
@@ -314,6 +335,108 @@ describe('Charging a block of lessons now (legacy #864)', () => {
       expect(forward.status).toBe(200);
       expect(forward.data?.charge.lessonIds).not.toContain(firstLesson);
       expect(forward.data?.charge.lessonIds).toHaveLength(3);
+    }, 120000);
+  });
+
+  describe('collecting for teaching already given (#128)', () => {
+    it('charges a lesson that was taught weeks ago and never paid for', async () => {
+      await seedStudent('stu-owed');
+      await seedTaughtLesson('stu-owed', 'lesson-owed-1', 3);
+
+      const result = await chargeNow({
+        studentId: 'stu-owed',
+        lessonIds: ['lesson-owed-1'],
+        note: 'Caught up on Sep 3',
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.charge.status).toBe('paid');
+      expect(result.data?.charge.lessonIds).toEqual(['lesson-owed-1']);
+      expect(result.data?.charge.amountCents).toBe(RATE_CENTS);
+      // The same record an automatic charge writes, so the charges screen,
+      // teacher payouts and the next planning run need no special case.
+      expect(result.data?.charge.source).toBe('manual');
+    }, 120000);
+
+    it('charges a past lesson and an upcoming one in a single payment', async () => {
+      await seedStudent('stu-mixed');
+      await seedTaughtLesson('stu-mixed', 'lesson-mixed-past', 2);
+      await seedLessons('stu-mixed', 2);
+
+      const upcoming = realisticLessonId('stu-mixed', 0);
+      const result = await chargeNow({
+        studentId: 'stu-mixed',
+        lessonIds: ['lesson-mixed-past', upcoming],
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.charge.amountCents).toBe(2 * RATE_CENTS);
+      expect(result.data?.charge.lessonIds).toHaveLength(2);
+      expect(result.data?.charge.lessonIds).toContain('lesson-mixed-past');
+      expect(result.data?.charge.lessonIds).toContain(upcoming);
+    }, 120000);
+
+    it('never sweeps a past lesson into a count-based charge', async () => {
+      // The safety property, proven against the real function: "charge the next
+      // two" sells teaching still to come. A debt has to be ticked by name.
+      await seedStudent('stu-count');
+      await seedTaughtLesson('stu-count', 'lesson-count-past', 2);
+      await seedLessons('stu-count', 3);
+
+      const result = await chargeNow({
+        studentId: 'stu-count',
+        lessonCount: 2,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.charge.lessonIds).not.toContain('lesson-count-past');
+      expect(result.data?.charge.lessonIds).toHaveLength(2);
+    }, 120000);
+
+    it('refuses a past lesson nobody marked taught', async () => {
+      await seedStudent('stu-unmarked');
+      await seedTaughtLesson(
+        'stu-unmarked',
+        'lesson-unmarked',
+        2,
+        'scheduled'
+      );
+
+      const result = await chargeNow({
+        studentId: 'stu-unmarked',
+        lessonIds: ['lesson-unmarked'],
+      });
+
+      expect(result.status).toBe(400);
+    }, 120000);
+
+    it('will not charge the card for a past lesson a live invoice already asks for', async () => {
+      await seedStudent('stu-owed-invoiced');
+      await seedTaughtLesson('stu-owed-invoiced', 'lesson-owed-inv', 2);
+      await setFirestoreDoc('invoices', 'inv-owed', {
+        studentId: 'stu-owed-invoiced',
+        status: 'sent',
+        lineItems: [
+          {
+            id: 'line-1',
+            description: '30-min lesson',
+            lessonId: 'lesson-owed-inv',
+            quantity: 1,
+            unitAmountCents: RATE_CENTS,
+            subtotalCents: RATE_CENTS,
+          },
+        ],
+        totalCents: RATE_CENTS,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await chargeNow({
+        studentId: 'stu-owed-invoiced',
+        lessonIds: ['lesson-owed-inv'],
+      });
+
+      expect(result.status).toBe(400);
     }, 120000);
   });
 });
