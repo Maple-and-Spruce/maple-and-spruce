@@ -271,7 +271,7 @@ a weekly window a teacher's lessons must fall inside.
 | Week tab — calendar grid + This week / Typical week toggle (legacy #685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
 | **Openings tab — open chunks within blocks, read-only (legacy #687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
 | Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
-| My Day page (Today / Week / Openings tabs) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx` |
+| My Week page (Week / Today / Openings tabs; opens on Week, route stays `/my-day`) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx`, `apps/maple-spruce/src/components/my-day/MyWeekPageView.tsx` |
 | Needs Attention panel placement — collapsed on the dashboard and above the student table, not on My Day | **Complete** | `apps/maple-spruce/src/app/(admin)/page.tsx`, `apps/maple-spruce/src/app/(admin)/students/page.tsx` |
 
 ### Lesson Scheduling (legacy #279, Complete)
