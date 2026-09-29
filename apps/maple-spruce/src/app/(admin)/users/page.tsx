@@ -66,9 +66,8 @@ export default function UsersPage() {
           Users
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Everyone who&apos;s signed up to the admin app. Grant admin or a
-          scoped role (MT teacher, clerk, lesson teacher) to those who need
-          it.
+          Everyone with an account on the admin app. Grant admin or a scoped
+          role (MT teacher, clerk, lesson teacher) to those who need it.
         </Typography>
       </Box>
 

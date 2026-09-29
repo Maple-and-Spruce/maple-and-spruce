@@ -1036,7 +1036,7 @@ PR 1 (legacy #468 / legacy PR #470): `room` field on CalendarEvent/Class, `onLes
 
 **Next steps**:
 - PR 2 (legacy #469): ad hoc "Book the Spruce Room" form, day strip + warn-and-confirm conflict warnings in ScheduleLessonDialog / class form / event form
-- Ops: onboard Nathan (he signs up at `/login`, grant admin from `/users`) — decided full admin is fine
+- Ops: onboard Nathan (add him in Firebase Console → Authentication, he sets a password via Forgot password, grant admin from `/users`) — decided full admin is fine
 
 ### Timekeeping retired — replaced by Square (2026-05-09)
 
