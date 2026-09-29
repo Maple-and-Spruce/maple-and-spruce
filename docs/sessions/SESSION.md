@@ -47,7 +47,7 @@ rather than theoretical.
   that reads status alone will report a live router as missing; read the body.
 - #126 shipped without adding its library to `apps/functions/tsconfig.app.json`.
   `validate-function-tsconfigs.sh` catches it, but **nothing in CI runs that script**, so it
-  merged.
+  merged. #135 wires it into the existing `callable-roles` job.
 - A 7-assertion spec for one pure function dropped merged coverage 83.7% → 76.7%, by importing
   `functions.utility` unmocked and pulling the whole `@maple/firebase/database` layer into the
   denominator: 101 files at ~6%. The sibling spec had imported that module for months without
