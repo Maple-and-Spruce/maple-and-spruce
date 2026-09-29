@@ -315,6 +315,29 @@ export const PrimaryActionIsLabelled: Story = {
   },
 };
 
+/**
+ * "Does marking it taught bill them?" The button answers on hover: it records
+ * the lesson and never charges or invoices anyone.
+ */
+export const MarkTaughtSaysItDoesNotBill: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [mockLessonPastScheduled],
+    } as RequestState<Lesson[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button', { name: /mark taught/i });
+    await userEvent.hover(button);
+    await expect(
+      await within(document.body).findByRole('tooltip')
+    ).toHaveTextContent(/does not charge or invoice anyone/i);
+    // The description does not replace the button's name.
+    await expect(button).toHaveAccessibleName(/mark taught/i);
+  },
+};
+
 /** Everything else moves behind one overflow, the way StudentList already does. */
 export const SecondaryActionsLiveInTheOverflow: Story = {
   args: {

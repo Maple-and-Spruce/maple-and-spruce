@@ -51,7 +51,10 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  FormLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Paper,
   Skeleton,
   Stack,
@@ -66,6 +69,7 @@ import type {
   BlockStrategy,
   Invoice,
   Lesson,
+  ManualInvoicePaymentSource,
   LessonRateByLength,
   LessonScheduledCharge,
   Student,
@@ -108,6 +112,13 @@ export interface CommitLessonsInvoiceInput {
  *  - `all`: both in one card, the original shape.
  */
 export type CommitLessonsScope = 'all' | 'owed' | 'upcoming';
+
+/** Lessons the family has already paid for outside Square. */
+export interface CommitLessonsRecordPaidInput extends CommitLessonsInvoiceInput {
+  paidWith: ManualInvoicePaymentSource;
+}
+
+type ConfirmMode = 'charge' | 'invoice' | 'record';
 
 export interface CommitLessonsCardProps {
   student: Student;
@@ -181,6 +192,11 @@ export interface CommitLessonsCardProps {
   };
   /** Open the full scheduling form, for when the suggested dates are wrong. */
   onPickOtherDates?: () => void;
+  /**
+   * The family paid in cash, by check or by Venmo. Records the lessons as
+   * paid with no charge and no invoice email. Omit to hide the option.
+   */
+  onRecordPaid?: (input: CommitLessonsRecordPaidInput) => void;
   /** Open the page's lesson editor on one date in the block. */
   onMoveLesson?: (lesson: Lesson) => void;
   /** Cancel one date; the block pulls the next one in behind it. */
@@ -294,21 +310,34 @@ function PaymentActions({
   disabled,
   onCharge,
   onInvoice,
+  onRecordPaid,
 }: {
   hasCard: boolean;
   amountCents?: number;
   disabled: boolean;
   onCharge: () => void;
   onInvoice: () => void;
+  onRecordPaid?: () => void;
 }) {
   const priced = (verb: string, fallback: string) =>
     amountCents === undefined ? fallback : `${verb} ${money(amountCents)}`;
 
+  // Money already in hand is its own answer, whichever way the card leans:
+  // there is nothing to charge and nobody to invoice.
+  const alreadyPaid = onRecordPaid && (
+    <Button disabled={disabled} onClick={onRecordPaid}>
+      Paid in cash or Venmo
+    </Button>
+  );
+
   if (!hasCard) {
     return (
-      <Button variant="contained" disabled={disabled} onClick={onInvoice}>
-        {priced('Send an invoice for', 'Send an invoice')}
-      </Button>
+      <>
+        <Button variant="contained" disabled={disabled} onClick={onInvoice}>
+          {priced('Send an invoice for', 'Send an invoice')}
+        </Button>
+        {alreadyPaid}
+      </>
     );
   }
 
@@ -322,6 +351,7 @@ function PaymentActions({
       <Button disabled={disabled} onClick={onInvoice}>
         Send an invoice instead
       </Button>
+      {alreadyPaid}
     </>
   );
 }
@@ -421,10 +451,14 @@ function ConfirmDialog({
   priceFor,
   busy,
   prepaying,
+  paidWith,
+  onPaidWithChange,
   onBack,
   onConfirm,
 }: {
-  mode: 'charge' | 'invoice' | null;
+  mode: ConfirmMode | null;
+  paidWith: ManualInvoicePaymentSource;
+  onPaidWithChange: (source: ManualInvoicePaymentSource) => void;
   /**
    * Any lesson in the plan is still to come. Settling teaching already given
    * is not "paying ahead", and saying so would misdescribe the charge.
@@ -441,17 +475,27 @@ function ConfirmDialog({
   const count = plan?.lessons.length ?? 0;
   const lessonWord = `${count} lesson${count === 1 ? '' : 's'}`;
   const charging = mode === 'charge';
+  const recording = mode === 'record';
+
+  let title = `Send an invoice for ${total}?`;
+  let lead = `${studentName} is asked to pay for ${lessonWord}, one line each:`;
+  let confirmLabel = `Send ${total}`;
+  if (charging) {
+    title = `Charge ${total} now?`;
+    lead = `This charges ${studentName}’s card on file straight away, for ${lessonWord}:`;
+    confirmLabel = `Charge ${total}`;
+  } else if (recording) {
+    title = `Record ${total} as paid?`;
+    lead = `${studentName} already paid for ${lessonWord}, outside Square:`;
+    confirmLabel = `Record ${total} paid`;
+  }
 
   return (
     <Dialog open={mode !== null} onClose={onBack} fullWidth maxWidth="sm">
-      <DialogTitle>
-        {charging ? `Charge ${total} now?` : `Send an invoice for ${total}?`}
-      </DialogTitle>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" sx={{ mb: 2 }}>
-          {charging
-            ? `This charges ${studentName}’s card on file straight away, for ${lessonWord}:`
-            : `${studentName} is asked to pay for ${lessonWord}, one line each:`}
+          {lead}
         </Typography>
         <Stack spacing={0.25} sx={{ mb: 2 }}>
           {plan?.lessons.map((lesson) => (
@@ -461,7 +505,36 @@ function ConfirmDialog({
             </Typography>
           ))}
         </Stack>
-        {charging ? (
+        {recording && (
+          <Box sx={{ mb: 2 }}>
+            <FormLabel id="paid-with-label">How they paid</FormLabel>
+            <RadioGroup
+              row
+              aria-labelledby="paid-with-label"
+              value={paidWith}
+              onChange={(e) =>
+                onPaidWithChange(e.target.value as ManualInvoicePaymentSource)
+              }
+            >
+              <FormControlLabel
+                value="admin-manual"
+                control={<Radio size="small" />}
+                label="Cash or check"
+              />
+              <FormControlLabel
+                value="venmo-manual"
+                control={<Radio size="small" />}
+                label="Venmo"
+              />
+            </RadioGroup>
+          </Box>
+        )}
+        {recording ? (
+          <Alert severity="info">
+            Nothing is charged and no invoice is emailed. These lessons are
+            marked paid, so they will not be charged later either.
+          </Alert>
+        ) : charging ? (
           <Alert severity="warning">
             {prepaying
               ? 'Paying ahead is a commitment on both sides. There is no refund from here. '
@@ -480,7 +553,7 @@ function ConfirmDialog({
       <DialogActions>
         <Button onClick={onBack}>Back</Button>
         <Button variant="contained" disabled={!plan || busy} onClick={onConfirm}>
-          {charging ? `Charge ${total}` : `Send ${total}`}
+          {confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>
@@ -531,6 +604,7 @@ export function CommitLessonsCard({
   preselectLessonIds,
   onCharge,
   onSendInvoice,
+  onRecordPaid,
   onMoveLesson,
   onSkipLesson,
   onFillLessons,
@@ -549,7 +623,9 @@ export function CommitLessonsCard({
   const [note, setNote] = useState('');
   const [filling, setFilling] = useState(false);
   const [fillError, setFillError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<'charge' | 'invoice' | null>(null);
+  const [confirming, setConfirming] = useState<ConfirmMode | null>(null);
+  const [paidWith, setPaidWith] =
+    useState<ManualInvoicePaymentSource>('admin-manual');
 
   const reference = useMemo(() => now ?? new Date(), [now]);
 
@@ -687,6 +763,17 @@ export function CommitLessonsCard({
     setConfirming(null);
   };
 
+  const recordPaid = () => {
+    if (!plan || !onRecordPaid) return;
+    onRecordPaid({
+      lessons: plan.lessons,
+      amountCents: plan.amountCents,
+      note: note.trim() || undefined,
+      paidWith,
+    });
+    setConfirming(null);
+  };
+
   const charge = () => {
     if (!plan) return;
     onCharge({
@@ -695,6 +782,12 @@ export function CommitLessonsCard({
       note: note.trim() || undefined,
     });
     setConfirming(null);
+  };
+
+  const confirmActions: Record<ConfirmMode, () => void> = {
+    charge,
+    invoice: send,
+    record: recordPaid,
   };
 
   const copy = SCOPE_COPY[scope];
@@ -960,6 +1053,7 @@ export function CommitLessonsCard({
             disabled={!plan || busy}
             onCharge={() => setConfirming('charge')}
             onInvoice={() => setConfirming('invoice')}
+            onRecordPaid={onRecordPaid ? () => setConfirming('record') : undefined}
           />
           {scope !== 'owed' && (
             <Button
@@ -1001,7 +1095,9 @@ export function CommitLessonsCard({
           plan?.lessons.some((l) => !owed.some((o) => o.id === l.id))
         )}
         onBack={() => setConfirming(null)}
-        onConfirm={confirming === 'charge' ? charge : send}
+        paidWith={paidWith}
+        onPaidWithChange={setPaidWith}
+        onConfirm={confirming ? confirmActions[confirming] : send}
       />
     </>
   );
