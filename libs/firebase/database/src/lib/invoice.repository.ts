@@ -126,7 +126,10 @@ export const InvoiceRepository = {
     return docToInvoice(snapshot.docs[0]);
   },
 
-  async create(input: CreateInvoiceInput): Promise<Invoice> {
+  async create(
+    input: CreateInvoiceInput,
+    opts: { recordedByUid?: string } = {}
+  ): Promise<Invoice> {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
     const status = input.status ?? 'draft';
@@ -148,7 +151,9 @@ export const InvoiceRepository = {
       paymentRecord:
         status === 'paid'
           ? {
-              source: 'admin-manual' as const,
+              source: input.paidWith ?? ('admin-manual' as const),
+              note: input.notes,
+              recordedByUid: opts.recordedByUid,
               recordedAt: now,
             }
           : undefined,

@@ -44,6 +44,7 @@ import {
   ScheduleLessonDialog,
   StandingScheduleDialog,
   type CommitLessonsInvoiceInput,
+  type CommitLessonsRecordPaidInput,
   type CommitLessonsScope,
 } from '@maple/react/lessons';
 import { InvoiceBuilderDialog, newInvoiceLineId } from '@maple/react/invoices';
@@ -82,6 +83,23 @@ export function blockInvoiceInput(
         resolvePrivatePayLessonRateCents(lesson, student, rateByLength),
       newInvoiceLineId,
     ),
+  };
+}
+
+/**
+ * The record of lessons the family already paid for outside Square: the same
+ * lines as a block invoice, created paid. It never reaches Square, so nobody
+ * is emailed a bill, and its lines stop the lessons being charged later.
+ */
+export function paidLessonsInvoiceInput(
+  student: Student,
+  input: CommitLessonsRecordPaidInput,
+  rateByLength: LessonRateByLength
+): CreateInvoiceInput {
+  return {
+    ...blockInvoiceInput(student, input, rateByLength),
+    status: 'paid',
+    paidWith: input.paidWith,
   };
 }
 
@@ -424,6 +442,19 @@ export function LessonBillingLauncher({
               );
               onBilled?.();
               setDone('Invoice sent.');
+            } finally {
+              setIsInvoicing(false);
+            }
+          }}
+          onRecordPaid={async (input) => {
+            if (input.lessons.length === 0) return;
+            setIsInvoicing(true);
+            try {
+              await createInvoice(
+                paidLessonsInvoiceInput(student, input, rateByLength),
+              );
+              onBilled?.();
+              setDone('Recorded as paid.');
             } finally {
               setIsInvoicing(false);
             }

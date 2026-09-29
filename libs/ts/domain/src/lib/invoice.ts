@@ -129,6 +129,13 @@ export type CreateInvoiceInput = {
   status?: InvoiceStatus; // defaults to 'draft' server-side
   lineItems: InvoiceLineItem[];
   notes?: string;
+  /**
+   * With `status: 'paid'`: the family has already paid, off Square (cash,
+   * check or Venmo), and this is the record of it. Created paid, it never
+   * reaches Square, so nobody is emailed a bill they have already settled.
+   * Defaults to `admin-manual` (cash or check).
+   */
+  paidWith?: ManualInvoicePaymentSource;
 };
 
 /** Input for updating an invoice. Partial everything except id. */

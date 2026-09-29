@@ -637,3 +637,56 @@ export const ChargingPastLessonsIsNotCalledPayingAhead: Story = {
     await expect(dialog.queryByText(/paying ahead/i)).toBeNull();
   },
 };
+
+/**
+ * Paid in cash, by check or by Venmo: the lessons are recorded as paid with
+ * how they paid, and nothing is charged or invoiced. The dialog names every
+ * date, like the charge and invoice ones do.
+ */
+export const RecordingACashOrVenmoPayment: Story = {
+  args: {
+    scope: 'owed',
+    lessons: [...taught, ...lessons],
+    onRecordPaid: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Tick all 2' }));
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Paid in cash or Venmo' })
+    );
+
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(dialog.getByText('Record $82.50 as paid?')).toBeInTheDocument();
+    await expect(dialog.getByText(/no invoice is emailed/i)).toBeInTheDocument();
+    // Cash or check is the default; Venmo is one tap.
+    await expect(dialog.getByLabelText('Cash or check')).toBeChecked();
+    await userEvent.click(dialog.getByLabelText('Venmo'));
+    await userEvent.click(dialog.getByRole('button', { name: 'Record $82.50 paid' }));
+
+    await expect(args.onRecordPaid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 8250,
+        paidWith: 'venmo-manual',
+        lessons: expect.arrayContaining([
+          expect.objectContaining({ id: 'taught-1' }),
+          expect.objectContaining({ id: 'taught-2' }),
+        ]),
+      })
+    );
+    await expect(args.onCharge).not.toHaveBeenCalled();
+    await expect(args.onSendInvoice).not.toHaveBeenCalled();
+  },
+};
+
+/** Without a handler the option is not offered at all. */
+export const NoCashOptionWithoutAHandler: Story = {
+  args: { scope: 'owed', lessons: [...taught, ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: 'Tick all 2' });
+    await expect(
+      canvas.queryByRole('button', { name: 'Paid in cash or Venmo' })
+    ).toBeNull();
+  },
+};

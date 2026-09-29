@@ -179,23 +179,31 @@ function LessonRowActions({
       }}
     >
       {canMarkRendered && (
-        <Button
-          size="small"
-          variant="outlined"
-          color="success"
-          disabled={Boolean(pending)}
-          startIcon={
-            pending === 'mark-rendered' ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <CheckCircleIcon fontSize="small" />
-            )
-          }
-          onClick={() => onMarkRendered?.(lesson)}
-          sx={{ whiteSpace: 'nowrap' }}
+        // "Does this bill them?" was the question Katie kept asking. It does
+        // not: taught is a record that the lesson happened. `describeChild`
+        // keeps the button's name "Mark taught" and adds this as a description.
+        <Tooltip
+          describeChild
+          title="Records that the lesson happened. It does not charge or invoice anyone."
         >
-          {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
-        </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="success"
+            disabled={Boolean(pending)}
+            startIcon={
+              pending === 'mark-rendered' ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <CheckCircleIcon fontSize="small" />
+              )
+            }
+            onClick={() => onMarkRendered?.(lesson)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
+          </Button>
+        </Tooltip>
       )}
       <Tooltip title="Actions">
         {/* span so the tooltip still works while the button is disabled */}
@@ -203,7 +211,7 @@ function LessonRowActions({
           <IconButton
             size="small"
             aria-label={`Actions for the lesson on ${formatDateTime(
-              lesson.scheduledAt
+              lesson.scheduledAt,
             )}`}
             aria-haspopup="menu"
             disabled={Boolean(pending)}
@@ -288,7 +296,7 @@ export function LessonList({
       showPast
         ? allRows
         : allRows.filter((r) => isLessonShownByDefault(r.lesson, reference)),
-    [allRows, showPast, reference]
+    [allRows, showPast, reference],
   );
   const hiddenPastCount = allRows.length - rows.length;
 
@@ -391,7 +399,7 @@ export function LessonList({
         ),
       },
     ],
-    [onEdit, onCancel, onMarkRendered, onMarkNoShow, pendingAction]
+    [onEdit, onCancel, onMarkRendered, onMarkNoShow, pendingAction],
   );
 
   const table = useMaterialReactTable({
