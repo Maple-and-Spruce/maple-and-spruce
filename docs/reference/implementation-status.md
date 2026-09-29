@@ -162,15 +162,28 @@ Phased rollout of customer-facing interactions on the Webflow site.
 | Published to workspace | **Complete** | `webflow library share` published to Katie's Workspace |
 | Embedded on a Webflow page | **Complete** | New "Pattern Scaling Tool" page (`/untitled` slug, draft) with maple-nav + Image to Pages + Footer |
 
-### Customer Self-Service (Backend only, PR pending)
+### Customer Self-Service (unmerged — see #130)
+
+**Most of this is not in the repo.** It was written on
+`feature/190-registration-lookup` (2026-04-03), deployed to **dev**, and never merged, so it
+has never existed in production. The dev functions were the only working trace, and they were
+pruned on 2026-09-29 once the reconciliation found them — so nothing of the endpoint half
+survives outside that branch.
+
+This table said **Complete** against library paths that do not exist for about six months. The
+row that made it plausible is the last one: a "Not Started" frontend made the backend rows look
+like the finished part of a half-done feature, rather than the thing to check.
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| `lookupRegistration` Cloud Function | **Complete** | `libs/firebase/maple-functions/lookup-registration/` |
-| `cancelRegistrationPublic` Cloud Function | **Complete** | `libs/firebase/maple-functions/cancel-registration-public/` |
+| `lookupRegistration` Cloud Function | On an unmerged branch | `feature/190-registration-lookup` |
+| `cancelRegistrationPublic` Cloud Function | On an unmerged branch | `feature/190-registration-lookup` |
 | `confirmationNumber` on Registration type | **Complete** | `libs/ts/domain/src/lib/registration.ts` |
-| `findByConfirmationNumber` repository method | **Complete** | `libs/firebase/database/src/lib/registration.repository.ts` |
+| `findByConfirmationNumber` repository method | On an unmerged branch | not in `registration.repository.ts` |
 | Frontend lookup/cancel page | Not Started | #21 |
+
+So a customer cannot look up or cancel their own registration, and the confirmation number
+they are given has nothing to look it up with. #130 decides whether to finish or drop it.
 
 ## Phase 4: Music Lessons - legacy Epic #10
 
