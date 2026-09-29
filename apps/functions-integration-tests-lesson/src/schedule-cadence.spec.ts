@@ -133,7 +133,8 @@ describe('Standing arrangement cadence (legacy #837)', () => {
     expect(res.status).toBe(200);
 
     const days = await lessonsFor('cad-weekly', adminUser.idToken);
-    expect(days.length).toBeGreaterThan(6);
+    // The next four, not twelve weeks of them: Katie works four at a time.
+    expect(days.length).toBe(4);
     // Consecutive lessons are exactly 7 days apart.
     for (let i = 1; i < days.length; i++) {
       const gap =
@@ -432,7 +433,7 @@ describe('a moved lesson and the arrangements that follow it (#117)', () => {
 
   it('lets the next student be set up, and does not refill the slot', async () => {
     await seedStudent('moved-first', 'First Student');
-    expect(await scheduleFor('moved-first', 11 * 60)).toBeGreaterThan(6);
+    expect(await scheduleFor('moved-first', 11 * 60)).toBe(4);
 
     const before = await callFunction<GetLessonsRequest, GetLessonsResponse>({
       functionName: 'getLessons',
@@ -442,7 +443,7 @@ describe('a moved lesson and the arrangements that follow it (#117)', () => {
     const materialised = (before.data?.lessons ?? []).filter((l) =>
       l.id.startsWith('sched-')
     );
-    expect(materialised.length).toBeGreaterThan(6);
+    expect(materialised).toHaveLength(4);
 
     // Move the last week to a Tuesday before the arrangement starts — the same
     // shape as an admin pulling one lesson earlier. No sibling occupies it, and
@@ -462,7 +463,7 @@ describe('a moved lesson and the arrangements that follow it (#117)', () => {
     // The failure: this used to come back 400, carrying a REST 409 about the
     // *first* student's lesson id, for a student that has nothing to do with it.
     await seedStudent('moved-second', 'Second Student');
-    expect(await scheduleFor('moved-second', 12 * 60)).toBeGreaterThan(6);
+    expect(await scheduleFor('moved-second', 12 * 60)).toBe(4);
 
     // And the moved week is not quietly refilled behind itself, which is the
     // property the deterministic id exists to give.
@@ -471,8 +472,15 @@ describe('a moved lesson and the arrangements that follow it (#117)', () => {
       data: { studentId: 'moved-first' },
       idToken: adminUser.idToken,
     });
-    const ids = (after.data?.lessons ?? []).map((l) => l.id);
+    const lessonsAfter = after.data?.lessons ?? [];
+    const ids = lessonsAfter.map((l) => l.id);
     expect(ids.filter((id) => id === moving.id)).toHaveLength(1);
-    expect(ids).toHaveLength(materialised.length);
+    // Nothing new sits in the slot the moved lesson left. (Moving it out of the
+    // upcoming four can add the NEXT date, which is the four-ahead contract;
+    // what must never happen is the vacated date filling up again.)
+    const vacated = new Date(moving.scheduledAt).getTime();
+    expect(
+      lessonsAfter.filter((l) => new Date(l.scheduledAt).getTime() === vacated)
+    ).toHaveLength(0);
   }, 60000);
 });

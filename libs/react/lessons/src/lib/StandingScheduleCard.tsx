@@ -120,7 +120,7 @@ export function StandingScheduleCard({
         <Stack direction="row" spacing={1} alignItems="center">
           <EventRepeatIcon color="action" />
           <Typography variant="h6" component="h2">
-            Standing schedule
+            Weekly schedule
           </Typography>
         </Stack>
         <Button
@@ -129,7 +129,7 @@ export function StandingScheduleCard({
           onClick={onAdd}
           disabled={!loaded}
         >
-          Add a standing slot
+          Set a weekly time
         </Button>
       </Box>
 
@@ -138,7 +138,7 @@ export function StandingScheduleCard({
           spacing={0.5}
           sx={{ mt: 2 }}
           aria-busy="true"
-          aria-label="Loading standing schedule"
+          aria-label="Loading weekly schedule"
         >
           <Skeleton variant="text" width="55%" height={28} />
           <Skeleton variant="text" width="30%" />
@@ -147,14 +147,14 @@ export function StandingScheduleCard({
 
       {schedulesState.status === 'error' && (
         <Alert severity="error" sx={{ mt: 2 }}>
-          Could not load the standing schedule: {schedulesState.error}
+          Could not load the weekly schedule: {schedulesState.error}
         </Alert>
       )}
 
       {loaded && active.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
-          No standing schedule. Lessons for this student have to be created one
-          at a time, and nothing keeps them on the books.
+          No weekly time yet. Set one and the next 4 lessons go on the calendar
+          and stay topped up. Without it, lessons have to be added one by one.
         </Alert>
       )}
 

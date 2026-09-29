@@ -224,7 +224,7 @@ export function StandingScheduleDialog({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
-        {schedule ? 'Change the standing schedule' : 'Add a standing slot'}
+        {schedule ? 'Change the weekly time' : 'Set a weekly time'}
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -348,7 +348,7 @@ export function StandingScheduleDialog({
               {formatMinutes(startMinutes)}, {durationMinutes} minutes.
               {intervalWeeks > 1 &&
                 ' Which weeks are counted from the start date, so the pattern holds even if a lesson moves.'}{' '}
-              Lessons will be kept on the books twelve weeks ahead.
+              The next 4 lessons are kept on the calendar, and a new one is added as each is taught.
             </Alert>
           )}
 

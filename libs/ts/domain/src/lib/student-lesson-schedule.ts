@@ -52,6 +52,18 @@ export const SCHEDULE_TIME_ZONE = 'America/New_York';
  */
 export const DEFAULT_SCHEDULE_HORIZON_WEEKS = 12;
 
+/**
+ * How many upcoming lessons a standing arrangement keeps on the books.
+ *
+ * Katie works in blocks of four: she agrees the next four with the family,
+ * fixes dates around holidays, and often takes payment for them. Twelve weeks
+ * of lessons appearing the moment she saved a slot was more than she wanted to
+ * look at or manage. Counted in lessons, not weeks, so a fortnightly student
+ * also has four ahead rather than two. A cancelled week does not count: the
+ * next date is added so four lessons are still actually happening.
+ */
+export const SCHEDULE_LESSONS_AHEAD = 4;
+
 export type StudentLessonScheduleStatus = 'active' | 'ended';
 
 export interface StudentLessonSchedule {
@@ -212,8 +224,8 @@ export function isScheduleActiveOn(
  */
 /**
  * Beyond this an arrangement is not a standing slot any more — it is an
- * occasional booking, and the 12-week materialisation horizon would often hold
- * no lessons at all for it.
+ * occasional booking, and would often have no lesson at all inside the window
+ * the materialiser searches for the next four.
  */
 export const MAX_SCHEDULE_INTERVAL_WEEKS = 4;
 

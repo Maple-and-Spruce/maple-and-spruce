@@ -43,7 +43,7 @@ test.describe('Student management — task order', () => {
     // No slot yet, so the dialog opens to add one, once it knows that.
     await openRowAction(page, /weekly schedule/i);
     await expect(
-      page.getByRole('dialog').getByText('Add a standing slot')
+      page.getByRole('dialog').getByText('Set a weekly time')
     ).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: 'Cancel' }).click();
 
@@ -75,13 +75,22 @@ test.describe('Student management — task order', () => {
     ).toBeVisible({ timeout: 20_000 });
 
     const sections = page.getByRole('heading', { level: 2 });
-    await expect(sections.first()).toHaveText('Standing schedule');
+    await expect(sections.first()).toHaveText('Weekly schedule');
     const order = await sections.allTextContents();
     const at = (name: string) => order.indexOf(name);
-    expect(at('Standing schedule')).toBeLessThan(at('Charge for past lessons'));
+    expect(at('Weekly schedule')).toBeLessThan(at('Charge for past lessons'));
     expect(at('Charge for past lessons')).toBeLessThan(at('Next lessons'));
     expect(at('Next lessons')).toBeLessThan(at('Lessons'));
     expect(at('Lessons')).toBeLessThan(at('Payment method'));
+
+    // No lessons ahead and no weekly time: the Next lessons card leads with
+    // setting one up instead of a warning and disabled buttons.
+    await expect(page.getByText(/No upcoming lessons yet/)).toBeVisible();
+    await page.getByRole('button', { name: 'Set a weekly time' }).last().click();
+    await expect(
+      page.getByRole('dialog').getByText('Set a weekly time')
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel' }).click();
 
     // Edit the rate from the page, and see it land in the header and the price.
     await page.getByRole('button', { name: 'Edit student' }).click();

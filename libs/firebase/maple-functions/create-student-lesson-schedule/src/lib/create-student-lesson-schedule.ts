@@ -101,8 +101,12 @@ export const createStudentLessonSchedule = Functions.endpoint
       blockId,
     });
 
-    // Materialise now so the arrangement is immediately real.
-    const materialized = await runMaterializeLessonSchedules(new Date());
+    // Materialise now so the arrangement is immediately real: this one only.
+    const materialized = await runMaterializeLessonSchedules(
+      new Date(),
+      undefined,
+      schedule.id
+    );
 
     return { schedule, lessonsCreated: materialized.created };
   });
