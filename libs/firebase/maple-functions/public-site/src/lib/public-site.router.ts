@@ -92,7 +92,7 @@ export const publicSite = Functions.router(
      * per-IP throttle (ADR-037).
      */
     lookupDiscount: Functions.endpoint
-      .withAppCheck('monitor')
+      .withAppCheck('enforce')
       .throttling('lookupDiscount', codeLookupThrottles())
       .asRoute<LookupDiscountRequest, LookupDiscountResponse>(lookupDiscount),
 

@@ -24,7 +24,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const requestCraftClubManageLink = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('requestCraftClubManageLink', emailLinkThrottles())
   .usingStrings('CRAFT_CLUB_MANAGE_URL')
   .handle<

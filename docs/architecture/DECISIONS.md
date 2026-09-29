@@ -1843,7 +1843,7 @@ Use the conventional Nx + Vitest layout:
 
 ## ADR-037: App Check and Request Throttling on Public Callables
 
-**Status:** Accepted (monitor phase)
+**Status:** Accepted (enforce phase)
 **Date:** 2026-09-29
 
 ### Context
@@ -1909,6 +1909,14 @@ Safari included.
 - **In-memory token bucket.** Rejected for the reasons above.
 - **reCAPTCHA checkbox challenge.** This adds friction to every checkout. Score-based reCAPTCHA
   Enterprise behind App Check is invisible.
+
+### Enforce phase
+`.env.prod` sets `APP_CHECK_MODE=enforce`, and nine of the ten endpoints declare `enforce`.
+`createRegistrationCheckoutLink` stays `monitor`: it is the hosted-checkout fallback for a
+browser whose in-page card form cannot start, takes no card, and must keep working if that
+browser also cannot obtain a token. `.env.dev` stays `monitor` so the post-merge E2E against dev
+keeps working without reCAPTCHA. `app-check-config.spec.ts` fails CI if an env file enforces
+while its project's widget site key is empty. To roll back, set `.env.prod` back to `monitor`.
 
 ### Consequences
 - Adding `.withAppCheck()` / `.throttling()` to an endpoint breaks its spec's hand-rolled builder
