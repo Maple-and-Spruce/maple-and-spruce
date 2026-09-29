@@ -27,7 +27,11 @@ export { useClassCategories } from './lib/useClassCategories';
 
 // Phase 4: Music Lessons
 export { useStudents } from './lib/useStudents';
-export { useHopeQueue, type UseHopeQueueOptions } from './lib/useHopeQueue';
+export {
+  useHopeQueue,
+  type UseHopeQueueOptions,
+  type HopeQueueData,
+} from './lib/useHopeQueue';
 export { useHopeProducts } from './lib/useHopeProducts';
 export {
   useStudentLessonSchedules,

@@ -9,12 +9,29 @@
  * Each route spells its gate out in full: `tools/check-callable-roles.ts` reads
  * `requiringRole` off the AST and cannot see through a helper.
  */
-import { Functions, Role, assertValid, throwNotFound } from '@maple/firebase/functions';
-import { HopeProductRepository } from '@maple/firebase/database';
-import { hopeProductValidation } from '@maple/ts/validation';
+import {
+  Functions,
+  Role,
+  assertValid,
+  throwInvalidArgument,
+  throwNotFound,
+} from '@maple/firebase/functions';
+import {
+  HopeOrderRepository,
+  HopeProductRepository,
+  HopeSubmissionRepository,
+  StudentRepository,
+} from '@maple/firebase/database';
+import { isHopeInvoiced } from '@maple/ts/domain';
+import {
+  hopeOrderValidation,
+  hopeProductValidation,
+} from '@maple/ts/validation';
 import type {
   GetHopeProductsRequest,
   GetHopeProductsResponse,
+  SaveHopeOrderRequest,
+  SaveHopeOrderResponse,
   SaveHopeProductRequest,
   SaveHopeProductResponse,
 } from '@maple/ts/firebase/api-types';
@@ -34,5 +51,60 @@ export const hope = Functions.router('hope', {
         throwNotFound('EMA product', data.id);
       }
       return { product: await HopeProductRepository.save(data) };
+    }),
+
+  /**
+   * Record an EMA order a Hope family placed, or correct one.
+   *
+   * The price is copied from the product when the order is recorded (or its
+   * product changed), so a later price change does not rewrite what an order
+   * already placed is worth. An order's count cannot drop below the lessons
+   * already invoiced against it: those invoices exist in the portal.
+   */
+  saveHopeOrder: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<SaveHopeOrderRequest, SaveHopeOrderResponse>(async (data) => {
+      assertValid(hopeOrderValidation(data));
+
+      const student = await StudentRepository.findById(data.studentId);
+      if (!student) throwNotFound('Student', data.studentId);
+      if (!student.isHopeScholarship) {
+        throwInvalidArgument('Only Hope Scholarship students have EMA orders.');
+      }
+
+      const product = await HopeProductRepository.findById(data.productId);
+      if (!product) throwNotFound('EMA product', data.productId);
+
+      let priceCents = product.priceCents;
+      if (data.id) {
+        const existing = await HopeOrderRepository.findById(data.id);
+        if (!existing) throwNotFound('EMA order', data.id);
+        if (existing.studentId !== data.studentId) {
+          throwInvalidArgument('An order cannot be moved to another student.');
+        }
+        if (existing.productId === data.productId) {
+          priceCents = existing.priceCents;
+        }
+        const invoiced = (
+          await HopeSubmissionRepository.findByOrderId(data.id)
+        ).filter((s) => isHopeInvoiced(s)).length;
+        if (data.lessonCount < invoiced) {
+          throwInvalidArgument(
+            `${invoiced} lessons are already invoiced against this order, so it cannot be for fewer.`
+          );
+        }
+      }
+
+      const order = await HopeOrderRepository.save({
+        id: data.id,
+        studentId: data.studentId,
+        productId: data.productId,
+        priceCents,
+        lessonCount: data.lessonCount,
+        emaOrderId: data.emaOrderId,
+        orderedOn: new Date(data.orderedOn),
+        notes: data.notes,
+      });
+      return { order };
     }),
 });

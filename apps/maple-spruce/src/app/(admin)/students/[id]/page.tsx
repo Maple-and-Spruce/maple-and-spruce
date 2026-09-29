@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
@@ -46,6 +46,7 @@ import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   EditLessonDialog,
   HopeScholarshipBanner,
+  HopeStudentBilling,
   LessonList,
   ScheduleLessonDialog,
   PaymentMethodCard,
@@ -73,6 +74,7 @@ import {
   useLessons,
   useSquareCardCandidates,
   useHopeProducts,
+  useHopeQueue,
   useLessonBilling,
   useStudentLessonSchedules,
   useLessonBlocks,
@@ -136,6 +138,15 @@ export default function StudentDetailPage() {
   } = useInvoices({ studentId });
   const { lessonBlocksState } = useLessonBlocks();
   const { productsState: hopeProductsState } = useHopeProducts();
+  // This student's Hope billing: fetched only once we know they are on Hope.
+  const {
+    queueState: hopeQueueState,
+    fetchQueue: fetchHopeQueue,
+    recordSubmissions: recordHopeSubmissions,
+    recording: hopeRecording,
+    saveOrder: saveHopeOrder,
+    isSavingOrder: isSavingHopeOrder,
+  } = useHopeQueue({ studentId, autoFetch: false });
   const hopeProducts =
     hopeProductsState.status === 'success' ? hopeProductsState.data : [];
 
@@ -143,6 +154,11 @@ export default function StudentDetailPage() {
     if (studentsState.status !== 'success') return undefined;
     return studentsState.data.find((s) => s.id === studentId);
   }, [studentsState, studentId]);
+
+  const isHopeStudent = Boolean(student?.isHopeScholarship);
+  useEffect(() => {
+    if (isHopeStudent) fetchHopeQueue();
+  }, [isHopeStudent, fetchHopeQueue]);
 
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
@@ -367,6 +383,8 @@ export default function StudentDetailPage() {
     try {
       await updateLesson({ id: lesson.id, status: 'rendered' });
       setTaughtNotice(noticeForTaughtLesson(lesson));
+      // A taught Hope lesson is now ready to invoice, or needs an order.
+      if (student?.isHopeScholarship) await fetchHopeQueue();
     } finally {
       setIsSubmitting(false);
       setPendingLessonAction(null);
@@ -748,6 +766,54 @@ export default function StudentDetailPage() {
         }}
         onEnd={handleEndSchedule}
       />
+
+      {/*
+        Hope students are billed in the EMA portal, so their "past lessons"
+        step is invoicing there against the family's orders, not charging a
+        card. Same place on the page, the right job for the student.
+      */}
+      {student.isHopeScholarship && (
+        <>
+          {(hopeQueueState.status === 'idle' ||
+            hopeQueueState.status === 'loading') && (
+            <Skeleton
+              variant="rectangular"
+              height={140}
+              sx={{ mb: 3 }}
+              aria-label="Loading Hope billing"
+            />
+          )}
+          {hopeQueueState.status === 'error' && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              Could not load Hope billing: {hopeQueueState.error}
+            </Alert>
+          )}
+          {hopeQueueState.status === 'success' && (
+            <HopeStudentBilling
+              studentName="Hope billing"
+              entries={hopeQueueState.data.entries}
+              orders={hopeQueueState.data.orders}
+              products={hopeProducts}
+              defaultProductId={student.hopeProductId}
+              recording={hopeRecording}
+              isSavingOrder={isSavingHopeOrder}
+              onSaveOrder={(input) => saveHopeOrder({ ...input, studentId })}
+              onMarkInvoiced={async (lessonIds, emaReference) => {
+                const result = await recordHopeSubmissions(
+                  lessonIds,
+                  'submitted',
+                  { emaReference }
+                );
+                if (result.skipped.length > 0) {
+                  throw new Error(
+                    result.skipped.map((s) => s.reason).join('; ')
+                  );
+                }
+              }}
+            />
+          )}
+        </>
+      )}
 
       <CommitLessonsCard
         scope="owed"

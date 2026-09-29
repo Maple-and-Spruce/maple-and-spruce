@@ -22,6 +22,7 @@ import {
   throwInvalidArgument,
 } from '@maple/firebase/functions';
 import {
+  HopeOrderRepository,
   HopeProductRepository,
   HopeSubmissionRepository,
   LessonRepository,
@@ -29,10 +30,11 @@ import {
 } from '@maple/firebase/database';
 import {
   HOPE_SUBMISSION_STATUSES,
+  allocateHopeLessons,
   isSubmittableToHope,
   resolveHopeLessonRate,
 } from '@maple/ts/domain';
-import type { HopeProduct } from '@maple/ts/domain';
+import type { HopeAllocation, HopeOrder, HopeProduct } from '@maple/ts/domain';
 import type {
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
@@ -57,6 +59,37 @@ export const recordHopeSubmissions = Functions.endpoint
       if (!HOPE_SUBMISSION_STATUSES.includes(data.status)) {
         throwInvalidArgument(`Unknown Hope submission status: ${data.status}`);
       }
+
+      // Invoicing ('submitted') is against an EMA order: work out, once per
+      // student, which of their taught lessons an order has room for.
+      const allocations = new Map<
+        string,
+        { allocation: HopeAllocation; orders: HopeOrder[] }
+      >();
+      const allocationFor = async (studentId: string) => {
+        const cached = allocations.get(studentId);
+        if (cached) return cached;
+        const [taught, orders] = await Promise.all([
+          LessonRepository.findAll({ studentId, status: 'rendered' }),
+          HopeOrderRepository.findAll({ studentId }),
+        ]);
+        const claims = await HopeSubmissionRepository.findByLessonIds(
+          taught.map((l) => l.id)
+        );
+        const allocation = allocateHopeLessons(
+          taught
+            .filter((l) => isSubmittableToHope(l.status))
+            .map((l) => ({
+              lessonId: l.id,
+              scheduledAt: l.scheduledAt,
+              submission: claims.get(l.id),
+            })),
+          orders
+        );
+        const result = { allocation, orders };
+        allocations.set(studentId, result);
+        return result;
+      };
 
       const now = new Date();
       const recordedLessonIds: string[] = [];
@@ -94,6 +127,29 @@ export const recordHopeSubmissions = Functions.endpoint
 
         const existing = await HopeSubmissionRepository.findById(lessonId);
 
+        // Invoicing needs an order with room. A lesson already invoiced keeps
+        // the order it was invoiced against; one that no order covers is
+        // refused, because the portal has nothing to invoice it against.
+        let orderId = existing?.orderId;
+        let orderPriceCents: number | undefined;
+        if (data.status === 'submitted') {
+          const { allocation, orders } = await allocationFor(student.id);
+          const state = allocation.states.get(lessonId);
+          if (state?.kind === 'needs-order') {
+            skipped.push({
+              lessonId,
+              reason:
+                'No EMA order has room for this lesson. Record the family’s order first.',
+            });
+            continue;
+          }
+          if (state?.kind === 'ready-to-invoice') {
+            orderId = state.orderId;
+            orderPriceCents = orders.find((o) => o.id === state.orderId)
+              ?.priceCents;
+          }
+        }
+
         await HopeSubmissionRepository.record({
           lessonId,
           studentId: lesson.studentId,
@@ -103,9 +159,11 @@ export const recordHopeSubmissions = Functions.endpoint
           // Keep the rate the claim was originally made at; only stamp a new
           // one when there was nothing claimed before.
           rateCents:
+            orderPriceCents ??
             existing?.rateCents ??
             resolveHopeLessonRate(student, lesson, await productsById())
               .rateCents,
+          orderId,
           submittedAt: existing?.submittedAt ?? now,
           paidAt: data.status === 'paid' ? now : existing?.paidAt,
           emaReference: data.emaReference ?? existing?.emaReference,

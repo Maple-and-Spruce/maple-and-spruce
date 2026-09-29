@@ -15,12 +15,14 @@
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {
+  HopeOrderRepository,
   HopeProductRepository,
   HopeSubmissionRepository,
   LessonRepository,
   StudentRepository,
 } from '@maple/firebase/database';
 import {
+  allocateHopeLessons,
   isSubmittableToHope,
   resolveHopeLessonRate,
   summarizeHopeQueue,
@@ -29,6 +31,7 @@ import type { HopeQueueEntry } from '@maple/ts/domain';
 import type {
   GetHopeQueueRequest,
   GetHopeQueueResponse,
+  HopeOrderWithRoom,
 } from '@maple/ts/firebase/api-types';
 
 export const getHopeQueue = Functions.endpoint
@@ -86,11 +89,44 @@ export const getHopeQueue = Functions.endpoint
       if (submission) entry.submission = submission;
     }
 
+    // Where each taught lesson stands against the family's EMA orders: needs
+    // an order, ready to invoice (priced at that order), or invoiced.
+    const allOrders = await HopeOrderRepository.findAll(
+      data?.studentId ? { studentId: data.studentId } : {}
+    );
+    const orders: HopeOrderWithRoom[] = [];
+    for (const student of hopeStudents) {
+      const studentOrders = allOrders.filter((o) => o.studentId === student.id);
+      const studentEntries = entries.filter((e) => e.studentId === student.id);
+      const { states, remainingByOrder } = allocateHopeLessons(
+        studentEntries.map((e) => ({
+          lessonId: e.lesson.id,
+          scheduledAt: e.lesson.scheduledAt,
+          submission: e.submission,
+        })),
+        studentOrders
+      );
+      for (const entry of studentEntries) {
+        const state = states.get(entry.lesson.id);
+        entry.state = state;
+        if (state?.kind === 'ready-to-invoice') {
+          const order = studentOrders.find((o) => o.id === state.orderId);
+          if (order) {
+            entry.rateCents = order.priceCents;
+            entry.rateSource = 'product';
+          }
+        }
+      }
+      for (const order of studentOrders) {
+        orders.push({ ...order, remaining: remainingByOrder.get(order.id) ?? 0 });
+      }
+    }
+
     // Oldest first: the longest-unclaimed lesson is the most urgent, and after
     // a backfill the queue is mostly history.
     entries.sort(
       (a, b) => a.lesson.scheduledAt.getTime() - b.lesson.scheduledAt.getTime()
     );
 
-    return { entries, totals: summarizeHopeQueue(entries) };
+    return { entries, totals: summarizeHopeQueue(entries), orders };
   });

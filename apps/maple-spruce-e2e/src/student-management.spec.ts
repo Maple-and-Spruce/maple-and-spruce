@@ -5,6 +5,7 @@ import {
   OWED_STUDENT_ID,
   OWED_STUDENT_NAME,
   TWO_AHEAD_STUDENT_ID,
+  HOPE_BILLING_STUDENT_ID,
   seedStudentManagement,
 } from './student-management-seed';
 
@@ -125,5 +126,36 @@ test.describe('Student management — task order', () => {
     await expect(page.getByText('4 lessons', { exact: true })).toBeVisible({
       timeout: 20_000,
     });
+  });
+
+  test('a Hope student: record the EMA order, then mark lessons invoiced', async ({
+    page,
+  }) => {
+    await page.goto(`/students/${HOPE_BILLING_STUDENT_ID}`);
+    await expect(page.getByText('2 need an order', { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
+    // Billed as the product, not the old table's estimate.
+    await expect(
+      page.getByText('Suzuki Violin Lesson - 30 min · $32.50 / lesson')
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Record an order' }).first().click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('EMA order ID (optional)').fill('55501');
+    await dialog.getByRole('button', { name: 'Save order' }).click();
+
+    await expect(page.getByText('2 ready to invoice', { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByRole('button', { name: 'Tick all 2' }).click();
+    await page.getByRole('button', { name: 'Mark 2 invoiced ($65.00)' }).click();
+
+    await expect(page.getByText('2 invoiced', { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('0 ready to invoice', { exact: true })).toBeVisible();
+
+    // The server recorded it, not just the screen.
+    await page.reload();
+    await expect(page.getByText('2 invoiced', { exact: true })).toBeVisible({ timeout: 20_000 });
   });
 });
