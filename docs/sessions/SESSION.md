@@ -30,6 +30,24 @@ not a missing upstream fix.
 - Deferred, each its own PR: Square SDK 46, MUI 9 + MUI X 9, vest 6,
   @webflow/* 2.x (payments / UI / live registration widget). Blocked upstream:
   TypeScript 7 and vitest 5 (nx + typescript-eslint), Babel 8 (nx).
+### Hope billing: EMA orders and invoicing (2026-09-29)
+
+Katie's Hope work: record the family's EMA order (a block of lessons), mark
+lessons taught, invoice them in the portal, tick them off. "Invoice completed"
+is the end state (EMA payment is not tracked).
+
+- `HopeOrder` (`hopeOrders`): product, price copied at order time, lesson count,
+  EMA order id, ordered-on. `allocateHopeLessons` draws taught lessons down
+  oldest order first: each is needs-order / ready-to-invoice / invoiced.
+  Pre-order claims stay invoiced and use no order's room.
+- Invoicing (`recordHopeSubmissions` status `submitted`) refuses a lesson no
+  order has room for and stamps `orderId` + the order's price on the claim.
+- `HopeStudentBilling` card: orders with room left, needs-order warning, ready
+  lessons with tick-all + "Mark N invoiced" + optional EMA invoice #, invoiced
+  folded away. On the student page (for Hope, in the past-lessons slot) and once
+  per student on the Hope Billing page, which replaced the flat `HopeQueue`.
+- Follow-up: the Needs Attention "Hope lessons not yet claimed" row does not
+  distinguish needs-order from ready yet.
 
 ### Hope lessons priced from EMA products (2026-09-29)
 

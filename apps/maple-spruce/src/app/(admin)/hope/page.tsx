@@ -12,8 +12,9 @@ import type {
 import {
   BackfillLessonsDialog,
   HopeProductsCard,
-  HopeQueue,
+  HopeStudentBilling,
 } from '@maple/react/lessons';
+import { formatHopePrice } from '@maple/ts/domain';
 import {
   useHopeProducts,
   useHopeQueue,
@@ -24,13 +25,22 @@ import {
 /**
  * Hope Scholarship billing (legacy #799).
  *
- * The one screen that answers "what have we taught and not been paid for".
- * Hope invoices through the EMA portal, never through Square, so none of this
- * touches `Invoice`.
+ * The one screen that answers "what have we taught and not invoiced in the EMA
+ * portal". One card per Hope student: their EMA orders, the taught lessons
+ * those orders have room for (ready to invoice), and the ones that need the
+ * family to order more. Grouped by student because that is how the portal is
+ * worked, one family at a time. Hope invoices through EMA, never through
+ * Square, so none of this touches `Invoice`.
  */
 export default function HopePage() {
-  const { queueState, fetchQueue, recordSubmissions, recording } =
-    useHopeQueue();
+  const {
+    queueState,
+    fetchQueue,
+    recordSubmissions,
+    recording,
+    saveOrder,
+    isSavingOrder,
+  } = useHopeQueue();
   const { studentsState } = useStudents();
   const { productsState, isSaving: isSavingProduct, saveProduct } =
     useHopeProducts();
@@ -45,11 +55,16 @@ export default function HopePage() {
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
 
-  const handleRecord = async (
+  const products =
+    productsState.status === 'success' ? productsState.data : [];
+
+  const handleMarkInvoiced = async (
     lessonIds: string[],
-    status: Parameters<typeof recordSubmissions>[1],
+    emaReference?: string,
   ) => {
-    const result = await recordSubmissions(lessonIds, status);
+    const result = await recordSubmissions(lessonIds, 'submitted', {
+      emaReference,
+    });
     // Skips are reported rather than thrown, so say so instead of silently
     // recording fewer claims than were asked for.
     setNotice(
@@ -127,14 +142,74 @@ export default function HopePage() {
         {queueState.status === 'error' && (
           <Alert severity="error">{queueState.error}</Alert>
         )}
-        {queueState.status === 'success' && (
-          <HopeQueue
-            entries={queueState.data.entries}
-            totals={queueState.data.totals}
-            recording={recording}
-            onRecord={handleRecord}
-          />
-        )}
+        {queueState.status === 'success' && (() => {
+          const { entries, orders, totals } = queueState.data;
+          const hopeStudents = students.filter((st) => st.isHopeScholarship);
+          const withWork = hopeStudents.filter(
+            (st) =>
+              entries.some((e) => e.studentId === st.id) ||
+              orders.some((o) => o.studentId === st.id),
+          );
+          return (
+            <>
+              <Stack direction="row" spacing={3} sx={{ mb: 3, flexWrap: 'wrap' }}>
+                <Box>
+                  <Typography variant="overline" color="text.secondary">
+                    Ready to invoice
+                  </Typography>
+                  <Typography variant="h5">
+                    {formatHopePrice(totals.readyCents)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {totals.readyCount} lessons
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="overline" color="text.secondary">
+                    Need an order
+                  </Typography>
+                  <Typography variant="h5">{totals.needsOrderCount}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    taught lessons
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="overline" color="text.secondary">
+                    Invoiced
+                  </Typography>
+                  <Typography variant="h5">
+                    {formatHopePrice(totals.invoicedCents)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {totals.invoicedCount} lessons
+                  </Typography>
+                </Box>
+              </Stack>
+              {withWork.length === 0 && (
+                <Alert severity="info">
+                  No taught Hope lessons or EMA orders yet.
+                </Alert>
+              )}
+              {withWork.map((student) => (
+                <HopeStudentBilling
+                  key={student.id}
+                  studentName={student.name}
+                  studentHref={`/students/${student.id}`}
+                  entries={entries.filter((e) => e.studentId === student.id)}
+                  orders={orders.filter((o) => o.studentId === student.id)}
+                  products={products}
+                  defaultProductId={student.hopeProductId}
+                  recording={recording}
+                  isSavingOrder={isSavingOrder}
+                  onSaveOrder={(input) =>
+                    saveOrder({ ...input, studentId: student.id })
+                  }
+                  onMarkInvoiced={handleMarkInvoiced}
+                />
+              ))}
+            </>
+          );
+        })()}
       </Box>
 
       {/*
