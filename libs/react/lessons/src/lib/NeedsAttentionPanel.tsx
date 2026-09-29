@@ -65,6 +65,7 @@ const SEVERITY: Partial<Record<NeedsAttentionKind, 'error' | 'warning'>> = {
   'lesson-unbilled': 'error',
   'hope-unsubmitted': 'warning',
   'invoice-overdue': 'warning',
+  'instructor-not-ready': 'warning',
 };
 
 function RowAction({ row }: { row: NeedsAttentionRow }) {

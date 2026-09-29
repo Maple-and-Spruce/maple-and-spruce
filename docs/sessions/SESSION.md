@@ -6,6 +6,16 @@
 
 ## Current Status
 
+### Contract instructor readiness (2026-09-29)
+
+Contract instructors (1099) now carry an admin-only readiness record: contractor agreement
+signed, background check cleared, payment setup (Square Payroll or W-9 + Bill Pay). An explicit
+`isContractor` flag opts an instructor in (not `payRate`: staff can have a rate); "ready" is
+derived, never stored. The class form **warns, never blocks**, and admins get an
+`instructor-not-ready` Needs Attention row for uncleared contractors with a class coming up.
+Insurance is deliberately not tracked (venue-carried coverage). Existing instructors are
+unflagged, so nothing warns until Katie or David opens each contractor and ticks the switch.
+
 ### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
 
 **Artists is the pilot** (#126, #127). ADR-029 was accepted in August and nothing had been

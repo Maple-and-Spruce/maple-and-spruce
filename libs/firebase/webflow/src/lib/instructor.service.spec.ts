@@ -102,6 +102,27 @@ describe('mapInstructorToFieldData', () => {
     expect(fieldData).not.toHaveProperty('updatedAt');
   });
 
+  it('never syncs the contractor flag or readiness record (admin-only)', () => {
+    const contractor: Instructor = {
+      ...mockInstructor,
+      isContractor: true,
+      readiness: {
+        contractorAgreement: { signedOn: '2026-09-01', reference: 'https://example.com/signed.pdf' },
+        backgroundCheck: { clearedOn: '2026-09-10' },
+        paymentSetup: { completedOn: '2026-09-12', method: 'square-payroll' },
+      },
+    };
+
+    const fieldData = mapInstructorToFieldData(contractor, prodOptions);
+
+    // Same keys as an instructor without them, and no trace of the values.
+    expect(Object.keys(fieldData).sort()).toEqual(
+      Object.keys(mapInstructorToFieldData(mockInstructor, prodOptions)).sort()
+    );
+    const serialized = JSON.stringify(fieldData);
+    expect(serialized).not.toMatch(/readiness|contractor|2026-09|square-payroll|signed\.pdf/i);
+  });
+
   it('includes only expected synced fields with all data present', () => {
     const fieldData = mapInstructorToFieldData(mockInstructor, prodOptions);
     const keys = Object.keys(fieldData);

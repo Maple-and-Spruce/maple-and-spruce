@@ -18,6 +18,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PersonIcon from '@mui/icons-material/Person';
 import type { Instructor } from '@maple/ts/domain';
 import type { RequestState } from '@maple/ts/domain';
+import { InstructorReadinessChip } from './InstructorReadinessChip';
 
 interface InstructorListProps {
   instructorsState: RequestState<Instructor[]>;
@@ -125,6 +126,7 @@ function InstructorCard({
                 size="small"
                 color={statusColors[instructor.status]}
               />
+              <InstructorReadinessChip instructor={instructor} />
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -148,7 +150,7 @@ function InstructorCard({
 
 function LoadingSkeleton() {
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={2} aria-busy="true" aria-label="Loading instructors">
       {[1, 2, 3].map((i) => (
         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
           <Card>
@@ -173,7 +175,8 @@ export function InstructorList({
   onEdit,
   onDelete,
 }: InstructorListProps) {
-  if (instructorsState.status === 'loading') {
+  // Idle is "not fetched yet", not "none": draw it like loading.
+  if (instructorsState.status === 'loading' || instructorsState.status === 'idle') {
     return <LoadingSkeleton />;
   }
 
@@ -183,10 +186,6 @@ export function InstructorList({
         Failed to load instructors: {instructorsState.error}
       </Alert>
     );
-  }
-
-  if (instructorsState.status === 'idle') {
-    return null;
   }
 
   const instructors = instructorsState.data;

@@ -345,4 +345,97 @@ describe('instructorValidation', () => {
       expect(result.hasErrors('status')).toBe(false);
     });
   });
+
+  describe('contractor readiness', () => {
+    const contractor: CreateInstructorInput = {
+      ...validInstructor,
+      isContractor: true,
+    };
+
+    it('passes for a contractor with nothing recorded yet (warned, not blocked)', () => {
+      expect(instructorValidation(contractor).isValid()).toBe(true);
+      expect(instructorValidation({ ...contractor, readiness: {} }).isValid()).toBe(true);
+    });
+
+    it('passes with every item recorded', () => {
+      const result = instructorValidation({
+        ...contractor,
+        readiness: {
+          contractorAgreement: { signedOn: '2026-09-01', reference: 'Office binder' },
+          backgroundCheck: { clearedOn: '2026-09-10' },
+          paymentSetup: { completedOn: '2026-09-12', method: 'w9-on-file' },
+        },
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it.each([
+      ['empty', ''],
+      ['not a date', 'last week'],
+      ['a US-style date', '09/01/2026'],
+      ['an impossible date', '2026-02-30'],
+    ])('rejects an agreement date that is %s', (_label, signedOn) => {
+      const result = instructorValidation({
+        ...contractor,
+        readiness: { contractorAgreement: { signedOn } },
+      });
+      expect(result.getErrors('agreementSignedOn')).toContain(
+        'Date signed must be a valid date'
+      );
+    });
+
+    it('rejects an invalid background check date', () => {
+      const result = instructorValidation({
+        ...contractor,
+        readiness: { backgroundCheck: { clearedOn: '2026-13-01' } },
+      });
+      expect(result.getErrors('backgroundCheckClearedOn')).toContain(
+        'Date cleared must be a valid date'
+      );
+    });
+
+    it('rejects a payment setup with no date', () => {
+      const result = instructorValidation({
+        ...contractor,
+        readiness: { paymentSetup: { completedOn: '', method: 'square-payroll' } },
+      });
+      expect(result.getErrors('paymentSetupCompletedOn')).toContain(
+        'Date completed must be a valid date'
+      );
+    });
+
+    it('rejects a payment setup with an unknown method', () => {
+      const result = instructorValidation({
+        ...contractor,
+        readiness: {
+          paymentSetup: {
+            completedOn: '2026-09-12',
+            method: 'cash' as unknown as 'w9-on-file',
+          },
+        },
+      });
+      expect(result.getErrors('paymentSetupMethod')).toContain(
+        'Choose how this instructor is paid'
+      );
+    });
+
+    it('rejects an agreement reference over 500 characters', () => {
+      const result = instructorValidation({
+        ...contractor,
+        readiness: {
+          contractorAgreement: { signedOn: '2026-09-01', reference: 'x'.repeat(501) },
+        },
+      });
+      expect(result.getErrors('agreementReference')).toHaveLength(1);
+    });
+
+    it('validates a single readiness field on its own', () => {
+      const result = instructorValidation(
+        { readiness: { backgroundCheck: { clearedOn: 'nope' } } },
+        'backgroundCheckClearedOn'
+      );
+      expect(result.hasErrors('backgroundCheckClearedOn')).toBe(true);
+      expect(result.hasErrors('name')).toBe(false);
+    });
+  });
 });

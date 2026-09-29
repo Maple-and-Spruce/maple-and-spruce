@@ -13,6 +13,8 @@ import {
 import {
   mockActiveInstructors,
   mockInstructor,
+  mockContractorNotReady,
+  mockContractorReady,
 } from '@maple/react/storybook-fixtures';
 
 /** Static default date so the story renders the same every time */
@@ -591,5 +593,101 @@ export const WithCategoryPoolPicker: Story = {
     );
     expect(allCheckboxes.length).toBeGreaterThanOrEqual(5);
     expect(enabled.length).toBe(2);
+  },
+};
+
+// ============================================================
+// INSTRUCTOR READINESS
+// ============================================================
+
+const classWithNotReadyInstructor = {
+  ...mockClass,
+  instructorId: mockContractorNotReady.id,
+};
+
+const readinessInstructors = [
+  mockInstructor,
+  mockContractorReady,
+  mockContractorNotReady,
+];
+
+/**
+ * Editing a class whose contract instructor is not cleared to teach: a
+ * warning names what is missing, and saving still goes through.
+ */
+export const InstructorNotReadyWarns: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: classWithNotReadyInstructor,
+    instructors: readinessInstructors,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    const alert = await canvas.findByTestId('instructor-not-ready-alert');
+    await expect(alert).toHaveTextContent(
+      "Olive Thompson isn't cleared to teach yet: missing background check and payment setup. You can still save this class."
+    );
+
+    const save = canvas.getByRole('button', { name: /^update$/i });
+    await expect(save).toBeEnabled();
+    await userEvent.click(save);
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ instructorId: mockContractorNotReady.id })
+      );
+    });
+  },
+};
+
+/**
+ * Picking a not-ready instructor raises the warning; switching to a cleared
+ * one clears it.
+ */
+export const SelectingInstructorTogglesWarning: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructors: readinessInstructors,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByLabelText(/^instructor$/i));
+    await userEvent.click(canvas.getByRole('option', { name: mockContractorNotReady.name }));
+    await expect(
+      await canvas.findByTestId('instructor-not-ready-alert')
+    ).toHaveTextContent(/missing background check and payment setup/);
+    // The menu animates out; wait for it before reopening.
+    await waitFor(() => {
+      expect(canvas.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(canvas.getByLabelText(/^instructor$/i));
+    await userEvent.click(canvas.getByRole('option', { name: mockContractorReady.name }));
+    await waitFor(() => {
+      expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
+    });
+  },
+};
+
+/**
+ * Instructors still loading: the class names an instructor we cannot see
+ * yet. Unknown is not "not ready", so no warning is drawn.
+ */
+export const InstructorsLoadingShowsNoWarning: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: classWithNotReadyInstructor,
+    instructors: [],
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/isn't cleared to teach/i)).not.toBeInTheDocument();
   },
 };

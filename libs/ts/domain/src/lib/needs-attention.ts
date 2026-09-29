@@ -10,6 +10,8 @@
  *   - an invoice sent and unpaid for weeks     → nobody is chasing it
  *   - a rendered lesson with no invoice        → work done, never billed
  *   - a rendered Hope lesson never claimed     → money left with the state
+ *   - a contract instructor not cleared, with  → someone uncleared is about to
+ *     a class coming up                          teach (admin-only)
  *
  * The classifiers here are pure so the rules can be tested without Firestore,
  * and so the "is this wrong?" question has exactly one definition per state
@@ -23,13 +25,20 @@ import type { LessonBlock } from './lesson-block';
 import { isSubmittableToHope } from './lesson';
 import { lessonBillingState } from './lesson-billing-state';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
+import type { Class } from './class';
+import {
+  instructorReadiness,
+  type Instructor,
+  type InstructorReadinessItem,
+} from './instructor';
 
 export type NeedsAttentionKind =
   | 'lesson-unattributed'
   | 'invoice-sync-failed'
   | 'invoice-overdue'
   | 'lesson-unbilled'
-  | 'hope-unsubmitted';
+  | 'hope-unsubmitted'
+  | 'instructor-not-ready';
 
 /**
  * How a row is resolved.
@@ -151,6 +160,7 @@ export type { LessonBlock };
  */
 const KIND_PRIORITY: NeedsAttentionKind[] = [
   'invoice-sync-failed',
+  'instructor-not-ready',
   'lesson-unbilled',
   'hope-unsubmitted',
   'invoice-overdue',
@@ -186,4 +196,60 @@ export const CHARGE_LESSON_PARAM = 'chargeLesson';
 /** The student page, pointed at one lesson's charge (#128). */
 export function studentChargeHref(studentId: string, lessonId: string): string {
   return `/students/${studentId}?${CHARGE_LESSON_PARAM}=${lessonId}`;
+}
+
+/** The instructor edit dialog, opened on one instructor. */
+export const EDIT_INSTRUCTOR_PARAM = 'edit';
+
+export function instructorEditHref(instructorId: string): string {
+  return `/instructors?${EDIT_INSTRUCTOR_PARAM}=${instructorId}`;
+}
+
+export interface InstructorNotReadyToTeach {
+  instructor: Instructor;
+  missing: InstructorReadinessItem[];
+  /** When they next teach: the earliest upcoming session across their classes. */
+  nextSessionAt: Date;
+}
+
+/**
+ * Active contract instructors who are not cleared to teach and have a class
+ * coming up. An instructor with nothing scheduled is not urgent — they show
+ * as "Not ready" on the instructors page instead — and a cancelled class is
+ * not coming up. Drafts count: a draft is a class someone means to run.
+ * Soonest first, because that is the order they need fixing in.
+ */
+export function instructorsNotReadyToTeach(
+  instructors: readonly Instructor[],
+  classes: readonly Class[],
+  now: Date
+): InstructorNotReadyToTeach[] {
+  const nextSessionByInstructor = new Map<string, Date>();
+  for (const c of classes) {
+    if (!c.instructorId || c.status === 'cancelled' || c.status === 'completed') {
+      continue;
+    }
+    for (const session of c.sessions) {
+      const at = new Date(session.dateTime);
+      if (at.getTime() <= now.getTime()) continue;
+      const current = nextSessionByInstructor.get(c.instructorId);
+      if (!current || at < current) {
+        nextSessionByInstructor.set(c.instructorId, at);
+      }
+    }
+  }
+
+  const result: InstructorNotReadyToTeach[] = [];
+  for (const instructor of instructors) {
+    if (instructor.status !== 'active') continue;
+    const nextSessionAt = nextSessionByInstructor.get(instructor.id);
+    if (!nextSessionAt) continue;
+    const readiness = instructorReadiness(instructor);
+    if (readiness.kind !== 'not-ready') continue;
+    result.push({ instructor, missing: readiness.missing, nextSessionAt });
+  }
+
+  return result.sort(
+    (a, b) => a.nextSessionAt.getTime() - b.nextSessionAt.getTime()
+  );
 }
