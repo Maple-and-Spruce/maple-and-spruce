@@ -12,16 +12,10 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type {
-  CreateInvoiceInput,
   LessonInquiry,
-  CreateLessonInput,
-  CreateLessonSeriesInput,
   CreateStudentInput,
-  Instructor,
-  LessonBlock,
   RequestState,
   Student,
-  UpdateInvoiceInput,
 } from '@maple/ts/domain';
 import { studentDraftFromInquiry } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
@@ -30,14 +24,9 @@ import {
   StudentForm,
   StudentList,
 } from '@maple/react/students';
-import {
-  NeedsAttentionPanel,
-  ScheduleLessonDialog,
-} from '@maple/react/lessons';
-import { InvoiceBuilderDialog } from '@maple/react/invoices';
+import { NeedsAttentionPanel } from '@maple/react/lessons';
 import {
   useInstructors,
-  useInvoices,
   useLessonBlocks,
   useLessonInquiries,
   useLessonBilling,
@@ -45,119 +34,12 @@ import {
   useNeedsAttention,
   useStudents,
 } from '../../../hooks';
-
-/** Duration default from a student's registered lesson length. */
-function defaultDurationFor(student: Student): 30 | 45 | 60 {
-  if (student.registeredLessonLength === '45-min') return 45;
-  if (student.registeredLessonLength === '60-min') return 60;
-  return 30;
-}
-
-/**
- * Opens the schedule-lesson dialog for one student, owning that student's
- * lesson hook. Mounted only while scheduling, so the per-student fetch is lazy.
- */
-function ScheduleLessonLauncher({
-  student,
-  instructors,
-  blocks,
-  onClose,
-}: {
-  student: Student;
-  instructors: Instructor[];
-  blocks: LessonBlock[];
-  onClose: () => void;
-}) {
-  const { createLesson, createLessonSeries } = useLessons({
-    studentId: student.id,
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleCreateSingle = async (input: CreateLessonInput) => {
-    setIsSubmitting(true);
-    try {
-      await createLesson(input);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  const handleCreateSeries = async (input: CreateLessonSeriesInput) => {
-    setIsSubmitting(true);
-    try {
-      await createLessonSeries(input);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <ScheduleLessonDialog
-      open
-      onClose={onClose}
-      studentId={student.id}
-      defaultTeacherId={student.primaryTeacherId}
-      instructors={instructors}
-      blocks={blocks}
-      defaultDurationMinutes={defaultDurationFor(student)}
-      onCreateSingle={handleCreateSingle}
-      onCreateSeries={handleCreateSeries}
-      isSubmitting={isSubmitting}
-    />
-  );
-}
-
-/** Opens the create-invoice dialog for one student, owning its invoice hook. */
-function InvoiceLauncher({
-  student,
-  onClose,
-}: {
-  student: Student;
-  onClose: () => void;
-}) {
-  const { invoicesState, createInvoice, updateInvoice } = useInvoices({
-    studentId: student.id,
-  });
-  const { lessonsState } = useLessons({ studentId: student.id });
-  // The picker needs to know what already bills each lesson, or it offers a
-  // second ask for teaching a card charge already paid for (#110).
-  const { billingState } = useLessonBilling(student.id);
-  const lessons =
-    lessonsState.status === 'success' ? lessonsState.data : [];
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleCreate = async (input: CreateInvoiceInput) => {
-    setIsSubmitting(true);
-    try {
-      await createInvoice(input);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  const handleUpdate = async (input: UpdateInvoiceInput) => {
-    setIsSubmitting(true);
-    try {
-      await updateInvoice(input);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <InvoiceBuilderDialog
-      open
-      onClose={onClose}
-      studentId={student.id}
-      lessons={lessons}
-      charges={
-        billingState.status === 'success' ? billingState.data.charges : []
-      }
-      invoices={invoicesState.status === 'success' ? invoicesState.data : []}
-      onCreate={handleCreate}
-      onUpdate={handleUpdate}
-      isSubmitting={isSubmitting}
-    />
-  );
-}
+import {
+  InvoiceLauncher,
+  LessonBillingLauncher,
+  ScheduleLessonLauncher,
+  StandingScheduleLauncher,
+} from './student-launchers';
 
 type HopeFilter = 'all' | 'hope' | 'private';
 
@@ -168,13 +50,13 @@ export default function StudentsPage() {
     updateStudent,
     deleteStudent: deleteStudentApi,
   } = useStudents();
-  const { attentionState } = useNeedsAttention();
+  const { attentionState, fetchAttention } = useNeedsAttention();
   const { instructorsState } = useInstructors();
   // All lessons — the table derives each student's recurring day/time slot
   // from their scheduled lessons. The roster is small, so one unscoped fetch
   // is fine.
-  const { lessonsState } = useLessons({});
-  const { lessonBlocksState } = useLessonBlocks();
+  const { lessonsState, fetchLessons } = useLessons({});
+  const { lessonBlocksState, fetchLessonBlocks } = useLessonBlocks();
   // Inquiries power the "Start from an inquiry" suggestions (legacy #819). Same seam
   // as /leads → "Create student…", offered from whichever page you are on.
   const { inquiriesState, updateStatus } = useLessonInquiries();
@@ -205,9 +87,23 @@ export default function StudentsPage() {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Row-action launchers (schedule / invoice) — one student at a time.
+  // Row-action launchers — one student at a time.
   const [scheduleFor, setScheduleFor] = useState<Student | null>(null);
   const [invoiceFor, setInvoiceFor] = useState<Student | null>(null);
+  const [weeklyFor, setWeeklyFor] = useState<Student | null>(null);
+  const [billingFor, setBillingFor] = useState<{
+    student: Student;
+    scope: 'owed' | 'upcoming';
+  } | null>(null);
+
+  const handleChargePast = useCallback(
+    (student: Student) => setBillingFor({ student, scope: 'owed' }),
+    []
+  );
+  const handlePlanNext = useCallback(
+    (student: Student) => setBillingFor({ student, scope: 'upcoming' }),
+    []
+  );
 
   // Hope Scholarship filter — client-side since roster is small.
   const [hopeFilter, setHopeFilter] = useState<HopeFilter>('all');
@@ -378,6 +274,9 @@ export default function StudentsPage() {
         lessons={lessons}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
+        onSetWeeklySchedule={setWeeklyFor}
+        onChargePastLessons={handleChargePast}
+        onPlanNextLessons={handlePlanNext}
         onScheduleLesson={setScheduleFor}
         onCreateInvoice={setInvoiceFor}
         detailHrefBase="/students"
@@ -389,6 +288,31 @@ export default function StudentsPage() {
           instructors={instructors}
           blocks={blocks}
           onClose={() => setScheduleFor(null)}
+        />
+      )}
+
+      {weeklyFor && (
+        <StandingScheduleLauncher
+          student={weeklyFor}
+          instructors={instructors}
+          blocks={blocks}
+          onClose={() => setWeeklyFor(null)}
+          // A new slot materialises lessons, which the Day/Time column reads,
+          // and may have made a block, which the next open of the dialog needs.
+          onSaved={() => {
+            fetchLessons();
+            fetchLessonBlocks();
+          }}
+        />
+      )}
+
+      {billingFor && (
+        <LessonBillingLauncher
+          student={billingFor.student}
+          scope={billingFor.scope}
+          onClose={() => setBillingFor(null)}
+          // Settling a lesson clears its "taught, not paid" attention row.
+          onBilled={() => fetchAttention()}
         />
       )}
 

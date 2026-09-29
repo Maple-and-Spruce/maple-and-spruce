@@ -39,7 +39,7 @@
  * from `lessonInvoiceLines`, so a block invoice is priced by the same resolver
  * as the card charge.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   Alert,
   Box,
@@ -53,6 +53,7 @@ import {
   FormControlLabel,
   MenuItem,
   Paper,
+  Skeleton,
   Stack,
   TextField,
   Tooltip,
@@ -92,8 +93,37 @@ export interface CommitLessonsInvoiceInput {
   note?: string;
 }
 
+/**
+ * Which part of the billing conversation the card is having.
+ *
+ * Katie does two different jobs with this card, at different times: settling
+ * lessons already taught, and lining up (and maybe prepaying) the next ones.
+ * The student page shows them as two cards in the order she does them, so each
+ * reads as one task rather than a mode to switch into.
+ *
+ *  - `owed`: only teaching already given and not paid for, picked by hand.
+ *  - `upcoming`: only the next lessons, "the next four" or picked by hand.
+ *  - `all`: both in one card, the original shape.
+ */
+export type CommitLessonsScope = 'all' | 'owed' | 'upcoming';
+
 export interface CommitLessonsCardProps {
   student: Student;
+  /** Defaults to `all`. */
+  scope?: CommitLessonsScope;
+  /**
+   * Drop the outlined surface and the heading, for use inside a dialog that
+   * supplies its own title (the students table's row actions).
+   */
+  embedded?: boolean;
+  /**
+   * The lessons, charges or invoices are still loading. Until they land the
+   * card cannot tell "nothing owed" from "not known yet", so it shows a
+   * skeleton rather than claiming everything is paid for.
+   */
+  isLoading?: boolean;
+  /** Extra control in the heading, such as "Add lessons". */
+  headerAction?: ReactNode;
   lessons: Lesson[];
   charges: LessonScheduledCharge[];
   /**
@@ -350,10 +380,16 @@ function ConfirmDialog({
   studentName,
   priceFor,
   busy,
+  prepaying,
   onBack,
   onConfirm,
 }: {
   mode: 'charge' | 'invoice' | null;
+  /**
+   * Any lesson in the plan is still to come. Settling teaching already given
+   * is not "paying ahead", and saying so would misdescribe the charge.
+   */
+  prepaying: boolean;
   plan: PrepaymentPlan | null;
   studentName: string;
   priceFor: (lesson: Pick<Lesson, 'durationMinutes'>) => number;
@@ -387,9 +423,11 @@ function ConfirmDialog({
         </Stack>
         {charging ? (
           <Alert severity="warning">
-            Paying ahead is a commitment on both sides. There is no refund from
-            here. If the studio decides to give something back, credit it by hand
-            in Square.
+            {prepaying
+              ? 'Paying ahead is a commitment on both sides. There is no refund from here. '
+              : 'There is no refund from here. '}
+            If the studio decides to give something back, credit it by hand in
+            Square.
           </Alert>
         ) : (
           <Alert severity="info">
@@ -409,8 +447,38 @@ function ConfirmDialog({
   );
 }
 
+const SCOPE_COPY: Record<
+  CommitLessonsScope,
+  { title: string; intro: string }
+> = {
+  all: {
+    title: 'Commit and charge',
+    intro:
+      'Agree a block of lessons with the family, fix any dates that do not ' +
+      'work, and take the money. Lessons paid for here are not charged again ' +
+      'automatically.',
+  },
+  owed: {
+    title: 'Charge for past lessons',
+    intro:
+      'Lessons already taught that nobody has paid for yet. Tick the ones to ' +
+      'settle and charge the card or send an invoice.',
+  },
+  upcoming: {
+    title: 'Next lessons',
+    intro:
+      'Line up the next lessons and fix any dates that do not work. Taking ' +
+      'payment now is optional; lessons paid for here are not charged again ' +
+      'automatically.',
+  },
+};
+
 export function CommitLessonsCard({
   student,
+  scope = 'all',
+  embedded = false,
+  isLoading = false,
+  headerAction,
   lessons,
   charges,
   invoices = [],
@@ -426,8 +494,10 @@ export function CommitLessonsCard({
   onSkipLesson,
 }: CommitLessonsCardProps) {
   const [count, setCount] = useState(DEFAULT_PREPAY_LESSON_COUNT);
+  // Past lessons are always chosen one by one: "the next four" means nothing
+  // looking backwards, and a debt should never be collected by a shortcut.
   const [picking, setPicking] = useState(
-    () => (preselectLessonIds?.length ?? 0) > 0
+    () => scope === 'owed' || (preselectLessonIds?.length ?? 0) > 0
   );
   const [picked, setPicked] = useState<string[]>(
     () => preselectLessonIds ?? []
@@ -449,8 +519,11 @@ export function CommitLessonsCard({
   );
 
   const available = useMemo(
-    () => prepayableLessons(lessons, charges, reference, alreadyInvoiced),
-    [lessons, charges, reference, alreadyInvoiced]
+    () =>
+      scope === 'owed'
+        ? []
+        : prepayableLessons(lessons, charges, reference, alreadyInvoiced),
+    [scope, lessons, charges, reference, alreadyInvoiced]
   );
 
   /**
@@ -461,8 +534,11 @@ export function CommitLessonsCard({
    * debt. Which means the card has to *offer* these, or they stay invisible.
    */
   const owed = useMemo(
-    () => unpaidTaughtLessons(lessons, charges, reference, alreadyInvoiced),
-    [lessons, charges, reference, alreadyInvoiced]
+    () =>
+      scope === 'upcoming'
+        ? []
+        : unpaidTaughtLessons(lessons, charges, reference, alreadyInvoiced),
+    [scope, lessons, charges, reference, alreadyInvoiced]
   );
 
   const outcome = useMemo(
@@ -501,7 +577,14 @@ export function CommitLessonsCard({
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
     );
 
-  const plan = outcome.ok ? outcome.plan : null;
+  // A tick carried in from elsewhere (the attention row) can name a lesson this
+  // scope does not show. Charging what is not on screen is the one thing this
+  // card must never do, so only the visible ticks count.
+  const visibleIds = new Set([...owed, ...available].map((l) => l.id));
+  const plan =
+    outcome.ok && outcome.plan.lessons.every((l) => visibleIds.has(l.id))
+      ? outcome.plan
+      : null;
   // `nothing-picked` is the starting state of the manual picker, not a mistake
   // worth shouting about — but it *is* the reason there is no plan, so the
   // buttons stay disabled rather than offering to charge the next four with
@@ -538,19 +621,61 @@ export function CommitLessonsCard({
     setConfirming(null);
   };
 
-  return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+  const copy = SCOPE_COPY[scope];
+
+  const heading = embedded ? null : (
+    <>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
         <PaidIcon fontSize="small" color="action" />
         <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
-          Commit and charge
+          {copy.title}
         </Typography>
+        {headerAction}
       </Stack>
+    </>
+  );
+
+  const surface = (children: ReactNode) =>
+    embedded ? (
+      <Box>{children}</Box>
+    ) : (
+      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+        {children}
+      </Paper>
+    );
+
+  if (isLoading) {
+    return surface(
+      <>
+        {heading}
+        <Stack spacing={1} aria-busy="true" aria-label={`Loading ${copy.title}`}>
+          <Skeleton variant="text" width="70%" />
+          <Skeleton variant="text" width="45%" />
+          <Skeleton variant="rectangular" height={36} width={220} />
+        </Stack>
+      </>
+    );
+  }
+
+  // Nothing owed is the good outcome, and it deserves one quiet line rather
+  // than a picker with nothing in it and two disabled buttons.
+  if (scope === 'owed' && owed.length === 0) {
+    return surface(
+      <>
+        {heading}
+        <Typography variant="body2" color="text.secondary">
+          Every lesson taught so far is paid for or on an invoice.
+        </Typography>
+      </>
+    );
+  }
+
+  return surface(
+    <>
+      {heading}
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Agree a block of lessons with the family, fix any dates that do not
-        work, and take the money. Lessons paid for here are not charged again
-        automatically.
+        {copy.intro}
       </Typography>
 
       {error && (
@@ -619,6 +744,23 @@ export function CommitLessonsCard({
           />
         )}
 
+        {scope === 'owed' && owed.length > 1 && (
+          <Box>
+            <Button
+              size="small"
+              onClick={() =>
+                setPicked(
+                  picked.length === owed.length ? [] : owed.map((l) => l.id)
+                )
+              }
+            >
+              {picked.length === owed.length
+                ? 'Untick all'
+                : `Tick all ${owed.length}`}
+            </Button>
+          </Box>
+        )}
+
         {!picking && plan && (
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -658,15 +800,17 @@ export function CommitLessonsCard({
             onCharge={() => setConfirming('charge')}
             onInvoice={() => setConfirming('invoice')}
           />
-          <Button
-            size="small"
-            onClick={() => {
-              setPicking((v) => !v);
-              setPicked([]);
-            }}
-          >
-            {picking ? 'Use the next lessons' : 'Choose lessons instead'}
-          </Button>
+          {scope !== 'owed' && (
+            <Button
+              size="small"
+              onClick={() => {
+                setPicking((v) => !v);
+                setPicked([]);
+              }}
+            >
+              {picking ? 'Use the next lessons' : 'Choose lessons instead'}
+            </Button>
+          )}
           {plan && (
             <Chip
               size="small"
@@ -680,8 +824,8 @@ export function CommitLessonsCard({
 
         {!hasCard && (
           <Typography variant="body2" color="text.secondary">
-            No card is on file, so the block can only be invoiced. To charge a
-            card instead, save it in the Square app and link it above.
+            No card is on file, so this can only be invoiced. To charge a card
+            instead, save it in the Square app and link it under Payment method.
           </Typography>
         )}
       </Stack>
@@ -692,9 +836,12 @@ export function CommitLessonsCard({
         studentName={student.name}
         priceFor={rateResolver}
         busy={busy}
+        prepaying={Boolean(
+          plan?.lessons.some((l) => !owed.some((o) => o.id === l.id))
+        )}
         onBack={() => setConfirming(null)}
         onConfirm={confirming === 'charge' ? charge : send}
       />
-    </Paper>
+    </>
   );
 }

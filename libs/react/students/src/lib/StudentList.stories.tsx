@@ -22,6 +22,9 @@ const meta = {
   args: {
     onEdit: fn(),
     onDelete: fn(),
+    onSetWeeklySchedule: fn(),
+    onChargePastLessons: fn(),
+    onPlanNextLessons: fn(),
     onScheduleLesson: fn(),
     onCreateInvoice: fn(),
     instructors,
@@ -119,7 +122,7 @@ export const EditFromMenuCallsOnEdit: Story = {
   },
   play: async ({ args, canvasElement }) => {
     const menu = await openRowMenu(canvasElement);
-    await userEvent.click(menu.getByRole('menuitem', { name: /^edit$/i }));
+    await userEvent.click(menu.getByRole('menuitem', { name: /^edit student/i }));
     await waitFor(() => {
       expect(args.onEdit).toHaveBeenCalledTimes(1);
       expect(args.onEdit).toHaveBeenCalledWith(mockStudent);
@@ -154,14 +157,111 @@ export const ScheduleFromMenu: Story = {
   play: async ({ args, canvasElement }) => {
     const menu = await openRowMenu(canvasElement);
     await expect(
-      menu.getByRole('menuitem', { name: /schedule lesson/i }),
+      menu.getByRole('menuitem', { name: /one-off lesson/i }),
     ).toBeInTheDocument();
     await userEvent.click(
-      menu.getByRole('menuitem', { name: /schedule lesson/i }),
+      menu.getByRole('menuitem', { name: /one-off lesson/i }),
     );
     await waitFor(() => {
       expect(args.onScheduleLesson).toHaveBeenCalledWith(mockStudent);
     });
+  },
+};
+
+/** Editing is the commonest row action, so it is a button, not a menu item. */
+export const EditButtonIsVisibleOnTheRow: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudent],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: `Edit ${mockStudent.name}` }),
+    );
+    await waitFor(() => {
+      expect(args.onEdit).toHaveBeenCalledWith(mockStudent);
+    });
+  },
+};
+
+/**
+ * The menu reads in the order Katie works: the student, the weekly slot,
+ * settling past lessons, then the next ones. Delete stays last.
+ */
+export const MenuFollowsTheTaskOrder: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudent],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const menu = await openRowMenu(canvasElement);
+    const labels = menu
+      .getAllByRole('menuitem')
+      .map((item) => item.textContent?.trim());
+    await expect(labels).toEqual([
+      'Edit student…',
+      'Weekly schedule…',
+      'Charge for past lessons…',
+      'Next lessons…',
+      'Add a one-off lesson…',
+      'Create invoice…',
+      'Delete',
+    ]);
+  },
+};
+
+export const LessonActionsCallTheirHandlers: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudent],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    let menu = await openRowMenu(canvasElement);
+    await userEvent.click(
+      menu.getByRole('menuitem', { name: /weekly schedule/i }),
+    );
+    await waitFor(() =>
+      expect(args.onSetWeeklySchedule).toHaveBeenCalledWith(mockStudent),
+    );
+
+    menu = await openRowMenu(canvasElement);
+    await userEvent.click(
+      menu.getByRole('menuitem', { name: /charge for past lessons/i }),
+    );
+    await waitFor(() =>
+      expect(args.onChargePastLessons).toHaveBeenCalledWith(mockStudent),
+    );
+
+    menu = await openRowMenu(canvasElement);
+    await userEvent.click(menu.getByRole('menuitem', { name: /next lessons/i }));
+    await waitFor(() =>
+      expect(args.onPlanNextLessons).toHaveBeenCalledWith(mockStudent),
+    );
+  },
+};
+
+/** Hope families bill through EMA: charging is labelled and disabled. */
+export const ChargeDisabledForHope: Story = {
+  args: {
+    studentsState: {
+      status: 'success',
+      data: [mockStudentHope],
+    } as RequestState<Student[]>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const menu = await openRowMenu(canvasElement);
+    const item = menu.getByRole('menuitem', {
+      name: /charge for past lessons.*\(hope\)/i,
+    });
+    await expect(item).toHaveAttribute('aria-disabled', 'true');
+    await expect(args.onChargePastLessons).not.toHaveBeenCalled();
   },
 };
 
