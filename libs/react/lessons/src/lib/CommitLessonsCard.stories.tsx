@@ -637,3 +637,28 @@ export const ChargingPastLessonsIsNotCalledPayingAhead: Story = {
     await expect(dialog.queryByText(/paying ahead/i)).toBeNull();
   },
 };
+
+/**
+ * A student with nothing upcoming (no weekly time yet). The card becomes the
+ * way to create lessons rather than a warning with disabled buttons.
+ */
+export const UpcomingWithNoLessonsOffersToCreateThem: Story = {
+  args: {
+    scope: 'upcoming',
+    lessons: [],
+    headerAction: <button type="button">Add lessons</button>,
+    emptyActions: <button type="button">Set a weekly time</button>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/No upcoming lessons yet/)
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Set a weekly time' })
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: /Charge/ })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /invoice/i })).toBeNull();
+    await expect(canvas.queryByLabelText('Note (optional)')).toBeNull();
+  },
+};

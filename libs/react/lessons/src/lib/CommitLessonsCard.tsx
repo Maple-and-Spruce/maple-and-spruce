@@ -124,6 +124,13 @@ export interface CommitLessonsCardProps {
   isLoading?: boolean;
   /** Extra control in the heading, such as "Add lessons". */
   headerAction?: ReactNode;
+  /**
+   * What to offer when there are no upcoming lessons at all, such as "Set a
+   * weekly time". Without lessons there is nothing to line up or pay for, so
+   * the card becomes the way to create them instead of a warning and two
+   * disabled buttons.
+   */
+  emptyActions?: ReactNode;
   lessons: Lesson[];
   charges: LessonScheduledCharge[];
   /**
@@ -479,6 +486,7 @@ export function CommitLessonsCard({
   embedded = false,
   isLoading = false,
   headerAction,
+  emptyActions,
   lessons,
   charges,
   invoices = [],
@@ -666,6 +674,23 @@ export function CommitLessonsCard({
         <Typography variant="body2" color="text.secondary">
           Every lesson taught so far is paid for or on an invoice.
         </Typography>
+      </>
+    );
+  }
+
+  if (scope === 'upcoming' && available.length === 0) {
+    return surface(
+      <>
+        {heading}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          No upcoming lessons yet. Set a weekly time and the next 4 go on the
+          calendar, or add lessons one at a time.
+        </Typography>
+        {emptyActions && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {emptyActions}
+          </Stack>
+        )}
       </>
     );
   }

@@ -389,6 +389,17 @@ export function LessonBillingLauncher({
         <CommitLessonsCard
           embedded
           scope={scope}
+          // Setting up lessons needs the weekly-time and lesson dialogs, which
+          // live on the student page; send Katie there rather than duplicate them.
+          emptyActions={
+            <Button
+              variant="contained"
+              component={Link}
+              href={`/students/${student.id}`}
+            >
+              Set up lessons on their page
+            </Button>
+          }
           student={student}
           isLoading={isLoading}
           lessons={lessons}

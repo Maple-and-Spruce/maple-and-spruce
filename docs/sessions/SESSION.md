@@ -6,6 +6,23 @@
 
 ## Current Status
 
+### Four lessons ahead, and a way in for students with no weekly time (2026-09-29)
+
+Katie's feedback: saving a weekly slot put 12 lessons on the calendar and she
+works four at a time; and a student with no weekly time got a warning and two
+disabled buttons in "Next lessons".
+
+- `SCHEDULE_LESSONS_AHEAD = 4`: each active arrangement is topped up to four
+  upcoming lessons of its own (cancelled ones do not count, so a skipped week
+  pulls the next date in). Nothing is deleted; students already holding twelve
+  keep them until they run down. Fortnightly students get four too.
+- `materializeLessonSchedules` now runs **daily** (was weekly), so a weekly
+  student is back to four the morning after a lesson.
+- Creating an arrangement fills only that arrangement (it used to top up every
+  student's and report their lessons as this one's).
+- "Next lessons" with nothing upcoming offers **Set a weekly time** / **Add
+  lessons one at a time**. The student-page card is "Weekly schedule".
+
 ### Lesson rates per teacher, per instrument (2026-09-29)
 
 Base lesson prices were one studio-wide table by length, buried in Settings,
