@@ -52,6 +52,7 @@ import {
   DialogTitle,
   FormControlLabel,
   FormLabel,
+  InputAdornment,
   MenuItem,
   Radio,
   RadioGroup,
@@ -78,6 +79,8 @@ import type { PrepaymentPlan } from '@maple/ts/domain';
 import {
   DEFAULT_PREPAY_LESSON_COUNT,
   PREPAY_LESSON_COUNTS,
+  MANUAL_INVOICE_PAYMENT_SOURCES,
+  MANUAL_PAYMENT_SOURCE_LABELS,
   describePrepaymentProblem,
   fillWeeklyLessonDates,
   invoicedLessonIds,
@@ -197,6 +200,14 @@ export interface CommitLessonsCardProps {
    * paid with no charge and no invoice email. Omit to hide the option.
    */
   onRecordPaid?: (input: CommitLessonsRecordPaidInput) => void;
+  /**
+   * Mark these past lessons taught. Lessons from before the app was used are
+   * often still "scheduled" in the past; with this set they are offered with
+   * the taught ones, and whichever are ticked are marked taught before the
+   * charge, invoice or payment record goes through. Omit to offer only
+   * lessons already marked taught.
+   */
+  onMarkTaught?: (lessonIds: string[]) => Promise<void>;
   /** Open the page's lesson editor on one date in the block. */
   onMoveLesson?: (lesson: Lesson) => void;
   /** Cancel one date; the block pulls the next one in behind it. */
@@ -325,8 +336,8 @@ function PaymentActions({
   // Money already in hand is its own answer, whichever way the card leans:
   // there is nothing to charge and nobody to invoice.
   const alreadyPaid = onRecordPaid && (
-    <Button disabled={disabled} onClick={onRecordPaid}>
-      Paid in cash or Venmo
+    <Button variant="outlined" disabled={disabled} onClick={onRecordPaid}>
+      Already paid (cash, Venmo, Square)
     </Button>
   );
 
@@ -367,6 +378,7 @@ function PaymentActions({
 function LessonPicker({
   available,
   owed,
+  unmarked,
   picked,
   priceFor,
   onToggle,
@@ -374,6 +386,8 @@ function LessonPicker({
   available: Lesson[];
   /** Teaching already given that nobody has paid for (#128). */
   owed: Lesson[];
+  /** Which of `owed` are past lessons never marked taught. */
+  unmarked: ReadonlySet<string>;
   picked: string[];
   priceFor: (lesson: Pick<Lesson, 'durationMinutes'>) => number;
   onToggle: (id: string) => void;
@@ -410,12 +424,26 @@ function LessonPicker({
         The heading says what these are rather than just "past", because the
         distinction that matters is that the studio is owed for them.
       */}
-      {owed.length > 0 && (
+      {owed.filter((l) => !unmarked.has(l.id)).length > 0 && (
         <Box sx={{ mb: 1.5 }}>
           <Typography variant="overline" color="text.secondary">
             Already taught, not paid for
           </Typography>
-          <Stack>{owed.slice(0, 20).map(row)}</Stack>
+          <Stack>{owed.filter((l) => !unmarked.has(l.id)).map(row)}</Stack>
+        </Box>
+      )}
+
+      {/*
+        Past lessons nobody marked taught: most of the history from before the
+        app was used. Uncapped, because settling that history is the point,
+        and ticking one marks it taught on the way through.
+      */}
+      {unmarked.size > 0 && (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="overline" color="text.secondary">
+            Past, not marked taught
+          </Typography>
+          <Stack>{owed.filter((l) => unmarked.has(l.id)).map(row)}</Stack>
         </Box>
       )}
 
@@ -453,12 +481,20 @@ function ConfirmDialog({
   prepaying,
   paidWith,
   onPaidWithChange,
+  recordTotal,
+  onRecordTotalChange,
+  markingCount,
   onBack,
   onConfirm,
 }: {
   mode: ConfirmMode | null;
   paidWith: ManualInvoicePaymentSource;
   onPaidWithChange: (source: ManualInvoicePaymentSource) => void;
+  /** The total paid, as typed, for recording a payment already taken. */
+  recordTotal: string;
+  onRecordTotalChange: (value: string) => void;
+  /** How many of the lessons will be marked taught on the way through. */
+  markingCount: number;
   /**
    * Any lesson in the plan is still to come. Settling teaching already given
    * is not "paying ahead", and saying so would misdescribe the charge.
@@ -485,10 +521,16 @@ function ConfirmDialog({
     lead = `This charges ${studentName}’s card on file straight away, for ${lessonWord}:`;
     confirmLabel = `Charge ${total}`;
   } else if (recording) {
-    title = `Record ${total} as paid?`;
-    lead = `${studentName} already paid for ${lessonWord}, outside Square:`;
-    confirmLabel = `Record ${total} paid`;
+    const typed = Math.round(parseFloat(recordTotal) * 100);
+    const shown = Number.isFinite(typed) && typed > 0 ? money(typed) : total;
+    title = `Record ${shown} as paid?`;
+    lead = `${studentName} already paid for ${lessonWord}:`;
+    confirmLabel = `Record ${shown} paid`;
   }
+  const recordTotalValid = (() => {
+    const cents = Math.round(parseFloat(recordTotal) * 100);
+    return Number.isFinite(cents) && cents > 0;
+  })();
 
   return (
     <Dialog open={mode !== null} onClose={onBack} fullWidth maxWidth="sm">
@@ -516,18 +558,43 @@ function ConfirmDialog({
                 onPaidWithChange(e.target.value as ManualInvoicePaymentSource)
               }
             >
-              <FormControlLabel
-                value="admin-manual"
-                control={<Radio size="small" />}
-                label="Cash or check"
-              />
-              <FormControlLabel
-                value="venmo-manual"
-                control={<Radio size="small" />}
-                label="Venmo"
-              />
+              {MANUAL_INVOICE_PAYMENT_SOURCES.map((source) => (
+                <FormControlLabel
+                  key={source}
+                  value={source}
+                  control={<Radio size="small" />}
+                  label={MANUAL_PAYMENT_SOURCE_LABELS[source]}
+                />
+              ))}
             </RadioGroup>
+            <TextField
+              label="Total paid"
+              type="number"
+              size="small"
+              value={recordTotal}
+              onChange={(e) => onRecordTotalChange(e.target.value)}
+              error={!recordTotalValid}
+              helperText={
+                recordTotalValid
+                  ? 'Filled from their rate. Change it to what was actually paid; it is split across the lessons.'
+                  : 'Enter the amount paid'
+              }
+              slotProps={{
+                input: {
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                },
+                htmlInput: { min: 0, step: '0.01' },
+              }}
+              sx={{ mt: 1.5 }}
+            />
           </Box>
+        )}
+        {markingCount > 0 && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {markingCount === 1
+              ? '1 of these was never marked taught; it will be marked taught.'
+              : `${markingCount} of these were never marked taught; they will be marked taught.`}
+          </Alert>
         )}
         {recording ? (
           <Alert severity="info">
@@ -552,7 +619,11 @@ function ConfirmDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onBack}>Back</Button>
-        <Button variant="contained" disabled={!plan || busy} onClick={onConfirm}>
+        <Button
+          variant="contained"
+          disabled={!plan || busy || (recording && !recordTotalValid)}
+          onClick={onConfirm}
+        >
           {confirmLabel}
         </Button>
       </DialogActions>
@@ -574,8 +645,9 @@ const SCOPE_COPY: Record<
   owed: {
     title: 'Charge for past lessons',
     intro:
-      'Lessons already taught that nobody has paid for yet. Tick the ones to ' +
-      'settle and charge the card or send an invoice.',
+      'Past lessons nobody has paid for in the app yet, including ones never ' +
+      'marked taught. Tick the ones to settle: charge the card, send an ' +
+      'invoice, or record a payment already taken in cash, Venmo or Square.',
   },
   upcoming: {
     title: 'Next lessons',
@@ -605,6 +677,7 @@ export function CommitLessonsCard({
   onCharge,
   onSendInvoice,
   onRecordPaid,
+  onMarkTaught,
   onMoveLesson,
   onSkipLesson,
   onFillLessons,
@@ -626,6 +699,9 @@ export function CommitLessonsCard({
   const [confirming, setConfirming] = useState<ConfirmMode | null>(null);
   const [paidWith, setPaidWith] =
     useState<ManualInvoicePaymentSource>('admin-manual');
+  /** The total actually paid, as typed; prefilled from the rate. */
+  const [recordTotal, setRecordTotal] = useState('');
+  const [markError, setMarkError] = useState<string | null>(null);
 
   const reference = useMemo(() => now ?? new Date(), [now]);
 
@@ -655,12 +731,36 @@ export function CommitLessonsCard({
    * shortcut upcoming-only, so "the next four" can never quietly collect a
    * debt. Which means the card has to *offer* these, or they stay invisible.
    */
-  const owed = useMemo(
+  const owed = useMemo(() => {
+    if (scope === 'upcoming') return [];
+    // Past lessons nobody marked taught are owed too, once they can be marked
+    // on the way through. Read as taught for this question only; the date
+    // filter inside keeps anything from today on out of it.
+    const asTaught = onMarkTaught
+      ? lessons.map((l) =>
+          l.status === 'scheduled' ? { ...l, status: 'rendered' as const } : l
+        )
+      : lessons;
+    return unpaidTaughtLessons(asTaught, charges, reference, alreadyInvoiced);
+  }, [scope, lessons, charges, reference, alreadyInvoiced, onMarkTaught]);
+
+  /** Of those, the ones still "scheduled": ticking one marks it taught. */
+  const unmarkedIds = useMemo(() => {
+    const scheduled = new Set(
+      lessons.filter((l) => l.status === 'scheduled').map((l) => l.id)
+    );
+    return new Set(owed.filter((l) => scheduled.has(l.id)).map((l) => l.id));
+  }, [owed, lessons]);
+
+  /** What the plan sees: unmarked past lessons as the taught lessons they are. */
+  const planningLessons = useMemo(
     () =>
-      scope === 'upcoming'
-        ? []
-        : unpaidTaughtLessons(lessons, charges, reference, alreadyInvoiced),
-    [scope, lessons, charges, reference, alreadyInvoiced]
+      unmarkedIds.size === 0
+        ? lessons
+        : lessons.map((l) =>
+            unmarkedIds.has(l.id) ? { ...l, status: 'rendered' as const } : l
+          ),
+    [lessons, unmarkedIds]
   );
 
   /**
@@ -687,7 +787,7 @@ export function CommitLessonsCard({
     () =>
       planPrepayment(
         student.id,
-        lessons,
+        planningLessons,
         charges,
         picking ? { lessonIds: picked } : { lessonCount: count },
         rateResolver,
@@ -696,7 +796,7 @@ export function CommitLessonsCard({
       ),
     [
       student.id,
-      lessons,
+      planningLessons,
       charges,
       picking,
       picked,
@@ -753,36 +853,62 @@ export function CommitLessonsCard({
       ? spanLabel(planRows.map((l) => l.scheduledAt))
       : null;
 
-  const send = () => {
+  /**
+   * Mark the ticked past lessons that were never marked taught, then act. The
+   * server only charges, invoices or records taught lessons, and a lesson that
+   * was paid for was taught.
+   */
+  const afterMarkingTaught = async (action: () => void) => {
     if (!plan) return;
-    onSendInvoice({
-      lessons: plan.lessons,
-      amountCents: plan.amountCents,
-      note: note.trim() || undefined,
-    });
+    const toMark = plan.lessons
+      .map((l) => l.id)
+      .filter((id) => unmarkedIds.has(id));
+    setMarkError(null);
+    try {
+      if (toMark.length > 0 && onMarkTaught) await onMarkTaught(toMark);
+    } catch (err) {
+      setMarkError(
+        err instanceof Error ? err.message : 'Could not mark the lessons taught'
+      );
+      setConfirming(null);
+      return;
+    }
+    action();
     setConfirming(null);
   };
 
-  const recordPaid = () => {
-    if (!plan || !onRecordPaid) return;
-    onRecordPaid({
-      lessons: plan.lessons,
-      amountCents: plan.amountCents,
-      note: note.trim() || undefined,
-      paidWith,
+  const send = () =>
+    afterMarkingTaught(() => {
+      if (!plan) return;
+      onSendInvoice({
+        lessons: plan.lessons,
+        amountCents: plan.amountCents,
+        note: note.trim() || undefined,
+      });
     });
-    setConfirming(null);
-  };
 
-  const charge = () => {
-    if (!plan) return;
-    onCharge({
-      lessonIds: plan.lessons.map((l) => l.id),
-      amountCents: plan.amountCents,
-      note: note.trim() || undefined,
+  const recordTotalCents = Math.round(parseFloat(recordTotal) * 100);
+  const recordPaid = () =>
+    afterMarkingTaught(() => {
+      if (!plan || !onRecordPaid) return;
+      onRecordPaid({
+        lessons: plan.lessons,
+        // What was actually paid, which for history may not be today's rate.
+        amountCents: recordTotalCents,
+        note: note.trim() || undefined,
+        paidWith,
+      });
     });
-    setConfirming(null);
-  };
+
+  const charge = () =>
+    afterMarkingTaught(() => {
+      if (!plan) return;
+      onCharge({
+        lessonIds: plan.lessons.map((l) => l.id),
+        amountCents: plan.amountCents,
+        note: note.trim() || undefined,
+      });
+    });
 
   const confirmActions: Record<ConfirmMode, () => void> = {
     charge,
@@ -864,9 +990,9 @@ export function CommitLessonsCard({
         {copy.intro}
       </Typography>
 
-      {error && (
+      {(error || markError) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {markError ?? error}
         </Alert>
       )}
 
@@ -924,6 +1050,7 @@ export function CommitLessonsCard({
           <LessonPicker
             available={available}
             owed={owed}
+            unmarked={unmarkedIds}
             picked={picked}
             priceFor={rateResolver}
             onToggle={toggle}
@@ -1053,7 +1180,16 @@ export function CommitLessonsCard({
             disabled={!plan || busy}
             onCharge={() => setConfirming('charge')}
             onInvoice={() => setConfirming('invoice')}
-            onRecordPaid={onRecordPaid ? () => setConfirming('record') : undefined}
+            onRecordPaid={
+              onRecordPaid
+                ? () => {
+                    setRecordTotal(
+                      plan ? (plan.amountCents / 100).toFixed(2) : ''
+                    );
+                    setConfirming('record');
+                  }
+                : undefined
+            }
           />
           {scope !== 'owed' && (
             <Button
@@ -1097,6 +1233,11 @@ export function CommitLessonsCard({
         onBack={() => setConfirming(null)}
         paidWith={paidWith}
         onPaidWithChange={setPaidWith}
+        recordTotal={recordTotal}
+        onRecordTotalChange={setRecordTotal}
+        markingCount={
+          plan ? plan.lessons.filter((l) => unmarkedIds.has(l.id)).length : 0
+        }
         onConfirm={confirming ? confirmActions[confirming] : send}
       />
     </>

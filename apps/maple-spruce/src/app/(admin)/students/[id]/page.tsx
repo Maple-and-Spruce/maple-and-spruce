@@ -636,6 +636,13 @@ export default function StudentDetailPage() {
     },
     onSendInvoice: handleInvoiceBlock,
     onRecordPaid: handleRecordPaid,
+    // History from before the app: past lessons never marked taught are
+    // offered too, and marked taught when they are settled.
+    onMarkTaught: async (lessonIds: string[]) => {
+      for (const id of lessonIds) {
+        await updateLesson({ id, status: 'rendered' });
+      }
+    },
     // Move and Skip reuse the dialogs the page already owns, so a date is
     // fixed without leaving the conversation and without a second editor
     // that could drift from the one in the Lessons table.

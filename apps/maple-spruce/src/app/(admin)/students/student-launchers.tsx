@@ -39,6 +39,7 @@ import {
   WEEKDAY_LONG,
   lessonInvoiceLines,
   planBlockAttribution,
+  splitCentsEvenly,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import {
@@ -152,8 +153,26 @@ export function paidLessonsInvoiceInput(
   input: CommitLessonsRecordPaidInput,
   rateByLength: LessonRateByLength
 ): CreateInvoiceInput {
+  const atRate = blockInvoiceInput(student, input, rateByLength);
+  const rateTotal = atRate.lineItems.reduce((sum, l) => sum + l.subtotalCents, 0);
+  // Recorded at the rate unless Katie typed what was actually paid (often the
+  // case for history); then that total is split across the lessons, so the
+  // record matches the money that changed hands.
+  const lineItems =
+    input.amountCents === rateTotal
+      ? atRate.lineItems
+      : (() => {
+          const parts = splitCentsEvenly(input.amountCents, input.lessons.length);
+          const byId = new Map(input.lessons.map((l, i) => [l.id, parts[i]]));
+          return lessonInvoiceLines(
+            input.lessons,
+            (lesson) => byId.get(lesson.id) ?? 0,
+            newInvoiceLineId
+          );
+        })();
   return {
-    ...blockInvoiceInput(student, input, rateByLength),
+    ...atRate,
+    lineItems,
     status: 'paid',
     paidWith: input.paidWith,
   };
@@ -417,9 +436,10 @@ export function LessonBillingLauncher({
   /** Money was asked for, so studio-wide billing views are stale. */
   onBilled?: () => void;
 }) {
-  const { lessonsState, fetchLessons, createLessonSeries } = useLessons({
-    studentId: student.id,
-  });
+  const { lessonsState, fetchLessons, createLessonSeries, updateLesson } =
+    useLessons({
+      studentId: student.id,
+    });
   const { billingState, pendingId, actionError, chargeNow } = useLessonBilling(
     student.id,
   );
@@ -470,6 +490,11 @@ export function LessonBillingLauncher({
         <CommitLessonsCard
           embedded
           scope={scope}
+          onMarkTaught={async (lessonIds) => {
+            for (const id of lessonIds) {
+              await updateLesson({ id, status: 'rendered' });
+            }
+          }}
           onFillLessons={async ({ like, scheduledAts, blockStrategy }) => {
             await createLessonSeries({
               studentId: student.id,

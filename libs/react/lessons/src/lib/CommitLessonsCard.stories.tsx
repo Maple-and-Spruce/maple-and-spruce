@@ -653,7 +653,7 @@ export const RecordingACashOrVenmoPayment: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Tick all 2' }));
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Paid in cash or Venmo' })
+      canvas.getByRole('button', { name: 'Already paid (cash, Venmo, Square)' })
     );
 
     const dialog = within(await screen.findByRole('dialog'));
@@ -686,7 +686,7 @@ export const NoCashOptionWithoutAHandler: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole('button', { name: 'Tick all 2' });
     await expect(
-      canvas.queryByRole('button', { name: 'Paid in cash or Venmo' })
+      canvas.queryByRole('button', { name: 'Already paid (cash, Venmo, Square)' })
     ).toBeNull();
   },
 };
@@ -841,5 +841,86 @@ export const DatesShowEvenWithoutARate: Story = {
     await expect(
       canvas.getByRole('button', { name: 'Charge the card' })
     ).toBeDisabled();
+  },
+};
+
+/**
+ * History from before the app: past lessons nobody marked taught are offered
+ * alongside taught ones, however many there are. Recording them as paid in
+ * Square at what was actually paid marks them taught on the way through.
+ */
+const unmarkedHistory = Array.from({ length: 24 }, (_, i) =>
+  lesson(-(i + 1), { id: `hist-${i + 1}`, status: 'scheduled' })
+);
+
+export const SettlingHistoryPaidInSquare: Story = {
+  args: {
+    scope: 'owed',
+    lessons: [...unmarkedHistory, ...lessons],
+    onMarkTaught: fn(async () => undefined),
+    onRecordPaid: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Past, not marked taught')
+    ).toBeInTheDocument();
+    // All 24, not the first 20.
+    await expect(canvas.getAllByRole('checkbox')).toHaveLength(24);
+
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Thu, Sep 3/ }));
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Thu, Aug 27/ }));
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Already paid (cash, Venmo, Square)' })
+    );
+
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(
+      dialog.getByText(/2 of these were never marked taught/)
+    ).toBeInTheDocument();
+    await userEvent.click(dialog.getByLabelText('Card, in Square'));
+    const total = dialog.getByLabelText('Total paid');
+    await expect(total).toHaveValue(82.5);
+    await userEvent.clear(total);
+    await userEvent.type(total, '80');
+    await userEvent.click(dialog.getByRole('button', { name: 'Record $80.00 paid' }));
+
+    await expect(args.onMarkTaught).toHaveBeenCalledWith(
+      expect.arrayContaining(['hist-1', 'hist-2'])
+    );
+    await expect(args.onRecordPaid).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 8000, paidWith: 'square-manual' })
+    );
+  },
+};
+
+/** No way to mark lessons taught here: only taught ones are offered. */
+export const UnmarkedHiddenWithoutAMarkHandler: Story = {
+  args: { scope: 'owed', lessons: [...unmarkedHistory, ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/Every lesson taught so far is paid for/)
+    ).toBeInTheDocument();
+  },
+};
+
+/** A blank total cannot be recorded. */
+export const ABlankTotalIsRefused: Story = {
+  args: {
+    scope: 'owed',
+    lessons: [...taught, ...lessons],
+    onRecordPaid: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Tick all 2' }));
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Already paid (cash, Venmo, Square)' })
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.clear(dialog.getByLabelText('Total paid'));
+    await expect(dialog.getByText('Enter the amount paid')).toBeInTheDocument();
+    await expect(dialog.getByRole('button', { name: /^Record .* paid$/ })).toBeDisabled();
   },
 };
