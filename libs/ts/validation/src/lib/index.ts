@@ -43,6 +43,7 @@ export {
 
 // Phase 4: Music Lessons
 export { studentValidation } from './student.validation';
+export { hopeProductValidation } from './hope-product.validation';
 export { lessonValidation, lessonSeriesValidation } from './lesson.validation';
 export { lessonBlockValidation } from './lesson-block.validation';
 export { invoiceValidation } from './invoice.validation';

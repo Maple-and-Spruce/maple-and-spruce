@@ -10,6 +10,7 @@
  */
 import { createAdminFunction } from '@maple/firebase/functions';
 import {
+  HopeProductRepository,
   InstructorRepository,
   InvoiceRepository,
   LessonRepository,
@@ -74,12 +75,15 @@ export const getTeacherPayouts = createAdminFunction<
 
   const students = await StudentRepository.findAll();
   const instructors = await InstructorRepository.findAll();
+  // A Hope lesson earns what EMA pays for the student's product.
+  const hopeProducts = await HopeProductRepository.findAll();
 
   const payouts = aggregateTeacherPayouts({
     lessons: [...lessonsInRange, ...extraLessons],
     paidInvoices,
     students,
     instructors,
+    hopeProducts,
     teacherIdFilter: data.teacherId,
   });
 

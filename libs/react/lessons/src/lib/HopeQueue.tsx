@@ -31,6 +31,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import type {
@@ -260,6 +261,22 @@ export function HopeQueue({
                   </TableCell>
                   <TableCell align="right">
                     {formatCents(entry.submission?.rateCents ?? entry.rateCents)}
+                    {/*
+                      A claimed lesson's rate is what was claimed. An unclaimed
+                      one with no EMA product is a guess from the old table,
+                      and says so rather than passing for EMA's price.
+                    */}
+                    {!entry.submission && entry.rateSource !== 'product' && (
+                      <Tooltip title="Estimate: this student has no EMA product set">
+                        <Typography
+                          variant="caption"
+                          color="warning.main"
+                          display="block"
+                        >
+                          estimate
+                        </Typography>
+                      </Tooltip>
+                    )}
                   </TableCell>
                   <TableCell>
                     {claimStatusChip(entry)}

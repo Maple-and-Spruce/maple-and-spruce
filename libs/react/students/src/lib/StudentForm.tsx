@@ -37,9 +37,14 @@ import type {
   Student,
   StudentStatus,
   CreateStudentInput,
+  HopeProduct,
   LessonBillingRule,
 } from '@maple/ts/domain';
-import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
+import {
+  INSTRUMENTS,
+  LESSON_LENGTHS,
+  formatHopePrice,
+} from '@maple/ts/domain';
 import { studentValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -63,6 +68,11 @@ interface StudentFormProps {
    * screen is where that gets fixed.
    */
   billingRules?: Array<Pick<LessonBillingRule, 'id' | 'name' | 'isDefault' | 'archived'>>;
+  /**
+   * EMA portal products, so a Hope student can be put on the one their lessons
+   * are billed under. Omit to hide the picker.
+   */
+  hopeProducts?: HopeProduct[];
   isSubmitting?: boolean;
   /**
    * Seed values for a NEW student, e.g. everything a lesson inquiry already
@@ -88,6 +98,7 @@ export function StudentForm({
   student,
   instructors,
   billingRules = [],
+  hopeProducts,
   isSubmitting = false,
   prefill,
   prefillNote,
@@ -103,6 +114,7 @@ export function StudentForm({
   const primaryTeacherId = useSignal('');
   const registeredLessonLength = useSignal<LessonLength | ''>('');
   const isHopeScholarship = useSignal(false);
+  const hopeProductId = useSignal('');
   const primaryContactName = useSignal('');
   const primaryContactEmail = useSignal('');
   const primaryContactPhone = useSignal('');
@@ -189,6 +201,7 @@ export function StudentForm({
         primaryTeacherId.value = student.primaryTeacherId;
         registeredLessonLength.value = student.registeredLessonLength ?? '';
         isHopeScholarship.value = student.isHopeScholarship;
+        hopeProductId.value = student.hopeProductId ?? '';
         primaryContactName.value = student.primaryContactName;
         primaryContactEmail.value = student.primaryContactEmail;
         primaryContactPhone.value = student.primaryContactPhone ?? '';
@@ -213,6 +226,7 @@ export function StudentForm({
         primaryTeacherId.value = '';
         registeredLessonLength.value = '';
         isHopeScholarship.value = false;
+        hopeProductId.value = '';
         primaryContactName.value = '';
         primaryContactEmail.value = '';
         primaryContactPhone.value = '';
@@ -285,6 +299,10 @@ export function StudentForm({
         primaryTeacherId: primaryTeacherId.value,
         registeredLessonLength: registeredLessonLength.value || undefined,
         isHopeScholarship: isHopeScholarship.value,
+        // Only meaningful on Hope. '' clears a product that was set.
+        ...(hopeProducts && isHopeScholarship.value
+          ? { hopeProductId: hopeProductId.value }
+          : {}),
           lessonRateCents: lessonRateCents.value
           ? Math.round(parseFloat(lessonRateCents.value) * 100)
           : undefined,
@@ -454,6 +472,38 @@ export function StudentForm({
               label="Hope Scholarship (WV)"
             />
           </Box>
+
+          {/*
+            What EMA pays per lesson for this student. Retired products still
+            appear when they are the one already set, so editing an older
+            student does not silently drop it.
+          */}
+          {hopeProducts && isHopeScholarship.value && (
+            <TextField
+              select
+              label="EMA product"
+              value={hopeProductId.value}
+              onChange={(e) => (hopeProductId.value = e.target.value)}
+              helperText={
+                hopeProducts.length === 0
+                  ? 'Add the EMA products on the Hope Billing page first.'
+                  : 'The EMA portal product this student’s lessons are billed under.'
+              }
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>Not set</em>
+              </MenuItem>
+              {hopeProducts
+                .filter((p) => p.active || p.id === hopeProductId.value)
+                .map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name} · {formatHopePrice(p.priceCents)}
+                    {p.active ? '' : ' (retired)'}
+                  </MenuItem>
+                ))}
+            </TextField>
+          )}
 
           {/* Lesson rate — the per-student override used when pricing a lesson */}
           <TextField

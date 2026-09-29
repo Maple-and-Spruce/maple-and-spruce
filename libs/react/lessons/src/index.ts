@@ -62,6 +62,10 @@ export {
 } from './lib/StandingScheduleDialog';
 export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
 export {
+  HopeProductsCard,
+  type HopeProductsCardProps,
+} from './lib/HopeProductsCard';
+export {
   NeedsAttentionPanel,
   type NeedsAttentionPanelProps,
 } from './lib/NeedsAttentionPanel';
@@ -69,7 +73,6 @@ export {
   BackfillLessonsDialog,
   type BackfillLessonsDialogProps,
 } from './lib/BackfillLessonsDialog';
-export { HopeRatesTable } from './lib/HopeRatesTable';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';
 export {

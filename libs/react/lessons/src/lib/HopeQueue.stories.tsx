@@ -155,3 +155,30 @@ export const RecordingInProgress: Story = {
     ).toBeInTheDocument();
   },
 };
+
+/**
+ * A lesson whose student has no EMA product is priced from the old table, and
+ * says "estimate" so a guess is not read as what EMA pays. One on a product
+ * does not.
+ */
+const pricedEntries: HopeQueueEntry[] = [
+  entry('l-est', '2026-07-07T19:00:00Z'),
+  entry('l-prod', '2026-07-14T19:00:00Z', {
+    studentName: 'Priced Student',
+    rateCents: 3000,
+    rateSource: 'product',
+    productName: 'Standard Child Guitar Lesson 30 minutes',
+  }),
+];
+
+export const EstimatesAreLabelled: Story = {
+  args: { entries: pricedEntries, totals: summarizeHopeQueue(pricedEntries) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const estimateRow = canvas.getByRole('row', { name: /Rowan Fields/ });
+    await expect(within(estimateRow).getByText('estimate')).toBeInTheDocument();
+    const productRow = canvas.getByRole('row', { name: /Priced Student/ });
+    await expect(within(productRow).getByText('$30.00')).toBeInTheDocument();
+    await expect(within(productRow).queryByText('estimate')).toBeNull();
+  },
+};

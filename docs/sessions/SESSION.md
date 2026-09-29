@@ -6,6 +6,24 @@
 
 ## Current Status
 
+### Hope lessons priced from EMA products (2026-09-29)
+
+Hope rates were a hardcoded length table (`hope-rates.ts`): a 30-minute guitar
+lesson showed $41.25 while EMA pays $30, and teacher payouts inherited it. The
+website, the EMA products and the table also disagree with each other (see PR).
+
+- `HopeProduct` (EMA id, name, price, active) in `hopeProducts`, managed on the
+  Hope Billing page ("EMA products"); `Student.hopeProductId` set in the form.
+- `resolveHopeLessonRate(student, lesson, productsById)` is the one rate
+  definition: product price, else the old table as an `estimate` (flagged in the
+  queue and the banner). Replaces three copies of the length fallback in
+  getHopeQueue, recordHopeSubmissions and teacher payouts.
+- New `hope` router (function count 239 → 240); the old rates table component
+  is gone; the Hope banner is compact with rules folded away.
+- Next (PR 2): EMA orders (one order covers several lessons, drawn down oldest
+  first), per-lesson needs-order / ready-to-invoice / invoiced, and a Hope card
+  on the student page. "Invoice completed" is the end state.
+
 ### "The next 4" fills itself in (2026-09-29)
 
 A student with two lessons made by hand and no weekly time: "the next 4"

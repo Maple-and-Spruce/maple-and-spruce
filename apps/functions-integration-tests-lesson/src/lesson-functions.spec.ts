@@ -5,6 +5,7 @@ import {
   setFirestoreDoc,
   callFunction,
   TRIGGER_WAIT_TIMEOUT_MS,
+  getFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import {
@@ -38,6 +39,11 @@ import type {
   GetHopeQueueRequest,
   GetHopeQueueResponse,
   RecordHopeSubmissionsRequest,
+  UpdateStudentRequest,
+  SaveHopeProductRequest,
+  SaveHopeProductResponse,
+  GetHopeProductsRequest,
+  GetHopeProductsResponse,
   RecordHopeSubmissionsResponse,
   CreateLessonBlockRequest,
   CreateLessonBlockResponse,
@@ -1435,6 +1441,121 @@ describe('Lesson Functions', () => {
       });
       expect(deleted.status).toBe(200);
       expect(deleted.data!.success).toBe(true);
+    });
+  });
+
+  describe('EMA products price Hope lessons', () => {
+    let pricedStudentId: string;
+    let productId: string;
+
+    beforeAll(async () => {
+      const res = await callFunction<CreateStudentRequest, CreateStudentResponse>({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'EMA Priced Kid',
+          instrument: 'guitar',
+          primaryContactEmail: 'emapriced@test.com',
+          isHopeScholarship: true,
+          // The old table priced this at $41.25; EMA pays $30.
+          registeredLessonLength: '30-min-full',
+        },
+        idToken: adminUser.idToken,
+      });
+      pricedStudentId = res.data!.student.id;
+    });
+
+    it('saves a product from the portal, and only for admins', async () => {
+      const product = {
+        emaProductId: '137571',
+        name: 'Standard Child Guitar Lesson 30 minutes',
+        priceCents: 3000,
+        active: true,
+      };
+
+      const refused = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: product,
+        idToken: nonAdminUser.idToken,
+      });
+      expect(refused.status).not.toBe(200);
+
+      const saved = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: product,
+        idToken: adminUser.idToken,
+      });
+      expect(saved.status).toBe(200);
+      productId = saved.data!.product.id;
+
+      const listed = await callFunction<GetHopeProductsRequest, GetHopeProductsResponse>({
+        functionName: 'hope/getHopeProducts',
+        data: {},
+        idToken: adminUser.idToken,
+      });
+      expect(listed.data!.products).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: productId, priceCents: 3000 }),
+        ])
+      );
+    });
+
+    it('refuses a product with no price', async () => {
+      const res = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: { emaProductId: '1', name: 'Nothing', priceCents: 0, active: true },
+        idToken: adminUser.idToken,
+      });
+      expect(res.status).not.toBe(200);
+    });
+
+    it("queues, claims and pays out the student's lessons at the product price", async () => {
+      await callFunction<UpdateStudentRequest>({
+        functionName: 'updateStudent',
+        data: { id: pricedStudentId, hopeProductId: productId },
+        idToken: adminUser.idToken,
+      });
+
+      const at = new Date('2026-07-08T19:00:00Z');
+      const created = await callFunction<CreateLessonRequest, CreateLessonResponse>({
+        functionName: 'createLesson',
+        data: {
+          studentId: pricedStudentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: at,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, at),
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = created.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+
+      const queue = await callFunction<GetHopeQueueRequest, GetHopeQueueResponse>({
+        functionName: 'getHopeQueue',
+        data: { studentId: pricedStudentId },
+        idToken: adminUser.idToken,
+      });
+      const entry = queue.data!.entries.find((e) => e.lesson.id === lessonId);
+      expect(entry?.rateCents).toBe(3000);
+      expect(entry?.rateSource).toBe('product');
+
+      const recorded = await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: { lessonIds: [lessonId], status: 'submitted' },
+        idToken: adminUser.idToken,
+      });
+      expect(recorded.data!.recordedLessonIds).toEqual([lessonId]);
+      const claim = await getFirestoreDoc('hopeSubmissions', lessonId);
+      expect(claim?.['rateCents']).toBe(3000);
     });
   });
 });

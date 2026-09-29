@@ -9,8 +9,17 @@ import type {
   CreateLessonSeriesRequest,
   CreateLessonSeriesResponse,
 } from '@maple/ts/firebase/api-types';
-import { BackfillLessonsDialog, HopeQueue } from '@maple/react/lessons';
-import { useHopeQueue, useStudents, useInstructors } from '../../../hooks';
+import {
+  BackfillLessonsDialog,
+  HopeProductsCard,
+  HopeQueue,
+} from '@maple/react/lessons';
+import {
+  useHopeProducts,
+  useHopeQueue,
+  useStudents,
+  useInstructors,
+} from '../../../hooks';
 
 /**
  * Hope Scholarship billing (legacy #799).
@@ -23,6 +32,8 @@ export default function HopePage() {
   const { queueState, fetchQueue, recordSubmissions, recording } =
     useHopeQueue();
   const { studentsState } = useStudents();
+  const { productsState, isSaving: isSavingProduct, saveProduct } =
+    useHopeProducts();
   const { instructorsState } = useInstructors();
 
   const [backfillOpen, setBackfillOpen] = useState(false);
@@ -124,6 +135,22 @@ export default function HopePage() {
             onRecord={handleRecord}
           />
         )}
+      </Box>
+
+      {/*
+        Below the queue: the products are set up once and rarely touched, the
+        queue is the daily work. A price change re-prices unclaimed lessons,
+        so the queue is refetched after a save.
+      */}
+      <Box sx={{ mt: 4 }}>
+        <HopeProductsCard
+          productsState={productsState}
+          isSaving={isSavingProduct}
+          onSave={async (input) => {
+            await saveProduct(input);
+            await fetchQueue();
+          }}
+        />
       </Box>
 
       <BackfillLessonsDialog

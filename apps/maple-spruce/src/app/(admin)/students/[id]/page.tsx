@@ -72,6 +72,7 @@ import {
   useInvoices,
   useLessons,
   useSquareCardCandidates,
+  useHopeProducts,
   useLessonBilling,
   useStudentLessonSchedules,
   useLessonBlocks,
@@ -134,6 +135,9 @@ export default function StudentDetailPage() {
     deleteInvoice,
   } = useInvoices({ studentId });
   const { lessonBlocksState } = useLessonBlocks();
+  const { productsState: hopeProductsState } = useHopeProducts();
+  const hopeProducts =
+    hopeProductsState.status === 'success' ? hopeProductsState.data : [];
 
   const student = useMemo(() => {
     if (studentsState.status !== 'success') return undefined;
@@ -721,7 +725,10 @@ export default function StudentDetailPage() {
 
       {student.isHopeScholarship && (
         <HopeScholarshipBanner
+          hopeProductId={student.hopeProductId}
+          products={hopeProducts}
           registeredLessonLength={student.registeredLessonLength}
+          onChooseProduct={() => setEditStudentOpen(true)}
         />
       )}
 
@@ -889,6 +896,7 @@ export default function StudentDetailPage() {
         billingRules={
           billingState.status === 'success' ? billingState.data.rules : []
         }
+        hopeProducts={hopeProducts}
         isSubmitting={isSavingStudent}
       />
 

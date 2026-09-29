@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  findProducts: vi.fn(async () => [] as unknown[]),
   findLesson: vi.fn(),
   findStudent: vi.fn(),
   findSubmission: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('@maple/firebase/functions', () => {
 vi.mock('@maple/firebase/database', () => ({
   LessonRepository: { findById: mocks.findLesson },
   StudentRepository: { findById: mocks.findStudent },
+  HopeProductRepository: { findAll: mocks.findProducts },
   HopeSubmissionRepository: {
     findById: mocks.findSubmission,
     record: mocks.record,
@@ -96,6 +98,28 @@ describe('recordHopeSubmissions', () => {
       rateCents: 4125, // 30-min-full
       recordedByUid: 'admin-1',
     });
+  });
+
+  it("claims at the student's EMA product price, not the old length table", async () => {
+    // A 30-minute guitar lesson: the length table said $41.25, EMA pays $30.
+    mocks.findStudent.mockResolvedValue({
+      ...hopeStudent,
+      hopeProductId: 'prod-guitar-30',
+    });
+    mocks.findProducts.mockResolvedValue([
+      {
+        id: 'prod-guitar-30',
+        emaProductId: '137571',
+        name: 'Guitar 30 minutes',
+        priceCents: 3000,
+        active: true,
+      },
+    ]);
+
+    await handler({ lessonIds: ['lesson-1'], status: 'submitted' }, { uid: 'admin-1' });
+
+    const [payload] = mocks.record.mock.calls[0];
+    expect(payload.rateCents).toBe(3000);
   });
 
   it('refuses to claim a no-show — Hope pays only for services rendered', async () => {
