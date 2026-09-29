@@ -12,7 +12,7 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { createPublicFunction } from '@maple/firebase/functions';
+import { Functions, codeLookupThrottles } from '@maple/firebase/functions';
 import { DiscountRepository } from '@maple/firebase/database';
 import { isDiscountValid, isDiscountForProgram } from '@maple/ts/domain';
 import type { DiscountProgram } from '@maple/ts/domain';
@@ -29,10 +29,10 @@ import type {
  */
 const DEFAULT_PROGRAM: DiscountProgram = 'classes';
 
-export const lookupDiscount = createPublicFunction<
-  LookupDiscountRequest,
-  LookupDiscountResponse
->(async (data) => {
+export const lookupDiscount = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('lookupDiscount', codeLookupThrottles())
+  .handle<LookupDiscountRequest, LookupDiscountResponse>(async (data) => {
   if (!data.code || typeof data.code !== 'string') {
     return { discount: undefined };
   }

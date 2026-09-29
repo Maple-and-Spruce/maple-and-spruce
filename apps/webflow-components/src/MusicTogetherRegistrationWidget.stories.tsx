@@ -21,7 +21,16 @@ import { MusicTogetherRegistrationWidget } from './MusicTogetherRegistrationWidg
  * The Square card form needs an application id it can't get here, so the card
  * area renders its own error; everything above it — which is what these stories
  * assert — renders normally.
+ *
+ * ## App Check
+ *
+ * The decorator sets `__MAPLE_APP_CHECK_TEST_TOKEN__`, so `firebase-init` starts
+ * App Check with a fixed token instead of reCAPTCHA. The fetch stub records the
+ * headers each lookup arrived with, which lets a story prove the token actually
+ * rides on the callable request (ADR-034).
  */
+
+const STORY_APP_CHECK_TOKEN = 'story-app-check-token';
 
 const SECTION = {
   id: 'sec-thu',
@@ -50,9 +59,15 @@ const PILOT_DISCOUNT = {
   usageCount: 0,
 };
 
+/** Headers of every non-warmup `lookupDiscount` call, oldest first. */
+const lookupHeaders: Headers[] = [];
+
 /** Stub the callable transport. `PILOTCLASS` is the only code that resolves. */
 function installStubs(): void {
   (window as { __mtPixelInitialized?: boolean }).__mtPixelInitialized = true;
+  (
+    globalThis as { __MAPLE_APP_CHECK_TEST_TOKEN__?: string }
+  ).__MAPLE_APP_CHECK_TEST_TOKEN__ = STORY_APP_CHECK_TOKEN;
 
   window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input.toString();
@@ -71,6 +86,7 @@ function installStubs(): void {
       };
       // The widget warms this callable on mount; that ping isn't a lookup.
       if (sent.data?.__warmup) return json({ data: { warm: true } });
+      lookupHeaders.push(new Headers(init?.headers));
       return json({
         data: {
           discount:
@@ -150,6 +166,11 @@ export const AppliesTheHalfOffCode: Story = {
     await expect(
       canvas.getByText(/including the second installment/i)
     ).toBeInTheDocument();
+
+    // The lookup went out carrying the App Check token.
+    await expect(lookupHeaders.at(-1)?.get('X-Firebase-AppCheck')).toBe(
+      STORY_APP_CHECK_TOKEN
+    );
   },
 };
 
