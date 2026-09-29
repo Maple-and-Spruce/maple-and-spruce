@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import StarsIcon from '@mui/icons-material/Stars';
 import {
   CHARGE_LESSON_PARAM,
@@ -570,6 +571,13 @@ export default function StudentDetailPage() {
     }
   }
 
+  // Whether a weekly time already exists decides what the empty "Next lessons"
+  // card leads with: set one up, or (if one exists but nothing is upcoming yet)
+  // just add lessons. Unknown until loaded, so it does not offer a duplicate.
+  const hasWeeklyTime =
+    schedulesState.status === 'success' &&
+    schedulesState.data.some((s) => s.status === 'active');
+
   const addLessonsButton = (
     <Button
       size="small"
@@ -729,6 +737,32 @@ export default function StudentDetailPage() {
           student={student}
           isLoading={billingDataLoading}
           headerAction={addLessonsButton}
+          emptyActions={
+            <>
+              {!hasWeeklyTime && (
+                <Button
+                  variant="contained"
+                  startIcon={<EventRepeatIcon />}
+                  onClick={() => {
+                    setEditingSchedule(undefined);
+                    setScheduleError(null);
+                    setScheduleDialogOpen(true);
+                  }}
+                  disabled={schedulesState.status !== 'success'}
+                >
+                  Set a weekly time
+                </Button>
+              )}
+              <Button
+                variant={hasWeeklyTime ? 'contained' : 'text'}
+                startIcon={<AddIcon />}
+                onClick={() => setScheduleOpen(true)}
+                disabled={instructors.length === 0}
+              >
+                Add lessons one at a time
+              </Button>
+            </>
+          }
           {...billingCardProps}
         />
       )}

@@ -85,7 +85,7 @@ export const NoStandingSchedule: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByText(/nothing keeps them on the books/i),
+      await canvas.findByText(/no weekly time yet/i),
     ).toBeInTheDocument();
   },
 };
@@ -100,12 +100,12 @@ export const Loading: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByLabelText(/loading standing schedule/i),
+      await canvas.findByLabelText(/loading weekly schedule/i),
     ).toBeInTheDocument();
-    expect(canvas.queryByText(/no standing schedule/i)).toBeNull();
+    expect(canvas.queryByText(/no weekly time yet/i)).toBeNull();
     // Adding before we know what exists invites a duplicate slot.
     expect(
-      canvas.getByRole('button', { name: /add a standing slot/i }),
+      canvas.getByRole('button', { name: /set a weekly time/i }),
     ).toBeDisabled();
   },
 };
@@ -116,9 +116,9 @@ export const NotYetRequested: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByLabelText(/loading standing schedule/i),
+      await canvas.findByLabelText(/loading weekly schedule/i),
     ).toBeInTheDocument();
-    expect(canvas.queryByText(/no standing schedule/i)).toBeNull();
+    expect(canvas.queryByText(/no weekly time yet/i)).toBeNull();
   },
 };
 
@@ -130,12 +130,12 @@ export const FailedToLoad: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByText(/could not load the standing schedule/i),
+      await canvas.findByText(/could not load the weekly schedule/i),
     ).toBeInTheDocument();
     expect(canvas.getByText(/network unavailable/i)).toBeInTheDocument();
-    expect(canvas.queryByText(/no standing schedule\./i)).toBeNull();
+    expect(canvas.queryByText(/no weekly time yet/i)).toBeNull();
     expect(
-      canvas.getByRole('button', { name: /add a standing slot/i }),
+      canvas.getByRole('button', { name: /set a weekly time/i }),
     ).toBeDisabled();
   },
 };

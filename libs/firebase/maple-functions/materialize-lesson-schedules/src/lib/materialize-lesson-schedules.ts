@@ -39,7 +39,8 @@ import {
   StudentRepository,
 } from '@maple/firebase/database';
 import {
-  DEFAULT_SCHEDULE_HORIZON_WEEKS,
+  MAX_SCHEDULE_INTERVAL_WEEKS,
+  SCHEDULE_LESSONS_AHEAD,
   materializedLessonId,
   scheduleHorizonEnd,
   scheduleOccurrences,
@@ -55,7 +56,13 @@ const TIMEZONE = 'America/New_York';
  */
 export async function runMaterializeLessonSchedules(
   now: Date = new Date(),
-  horizonWeeks: number = DEFAULT_SCHEDULE_HORIZON_WEEKS
+  lessonsAhead: number = SCHEDULE_LESSONS_AHEAD,
+  /**
+   * Fill just this arrangement. Saving a new weekly time should make that
+   * student's lessons, not top up everyone else's as a side effect (and report
+   * their lessons as this one's).
+   */
+  onlyScheduleId?: string
 ): Promise<MaterializeLessonSchedulesResult> {
   const result: MaterializeLessonSchedulesResult = {
     schedulesConsidered: 0,
@@ -65,7 +72,13 @@ export async function runMaterializeLessonSchedules(
     skippedRoomConflict: 0,
   };
 
-  const horizonEnd = scheduleHorizonEnd(now, horizonWeeks);
+  // Far enough to find `lessonsAhead` dates for the sparsest cadence, with the
+  // same again to spare for cancelled weeks. Only a search window: what gets
+  // created is capped by the count, not by this.
+  const horizonEnd = scheduleHorizonEnd(
+    now,
+    lessonsAhead * MAX_SCHEDULE_INTERVAL_WEEKS * 2
+  );
 
   const [schedules, students, lessonsInWindow] = await Promise.all([
     StudentLessonScheduleRepository.findAll({ status: 'active' }),
@@ -82,6 +95,7 @@ export async function runMaterializeLessonSchedules(
   );
 
   for (const schedule of schedules) {
+    if (onlyScheduleId && schedule.id !== onlyScheduleId) continue;
     result.schedulesConsidered++;
 
     const student = studentById.get(schedule.studentId);
@@ -98,9 +112,29 @@ export async function runMaterializeLessonSchedules(
       TIMEZONE
     );
 
+    // Top up to `lessonsAhead` upcoming lessons, never past it. Lessons this
+    // arrangement already made count, wherever they were moved to; cancelled
+    // ones do not, so skipping a week pulls the next date in. Nothing is ever
+    // removed: a student who already has more ahead simply gets none added.
+    const own = lessonsInWindow.filter(
+      (l) => l.scheduleId === schedule.id && l.scheduledAt >= now
+    );
+    const ownTimes = new Set(own.map((l) => l.scheduledAt.getTime()));
+    let ahead = own.filter((l) => l.status !== 'cancelled').length;
+
     for (const occurrence of occurrences) {
-      if (occupied.has(`${schedule.studentId}|${occurrence.getTime()}`)) {
+      if (ahead >= lessonsAhead) break;
+
+      if (ownTimes.has(occurrence.getTime())) {
+        // Already counted above (or cancelled, which does not count).
         result.alreadyPresent++;
+        continue;
+      }
+      if (occupied.has(`${schedule.studentId}|${occurrence.getTime()}`)) {
+        // A lesson from before the arrangement at this very time: it is the
+        // student's lesson that week, so it counts toward the four.
+        result.alreadyPresent++;
+        ahead++;
         continue;
       }
 
@@ -142,9 +176,11 @@ export async function runMaterializeLessonSchedules(
 
       if (created) {
         result.created++;
+        ahead++;
         occupied.add(`${schedule.studentId}|${occurrence.getTime()}`);
       } else {
-        // The id already exists — cancelled, moved, or simply already made.
+        // The id already exists: cancelled, or moved outside the window. Either
+        // way it is not a lesson happening at this date, so keep looking.
         result.alreadyPresent++;
       }
     }
@@ -160,12 +196,14 @@ export async function runMaterializeLessonSchedules(
 }
 
 /**
- * Weekly, early Monday. Nothing depends on the exact moment — the horizon is
- * twelve weeks out, so a missed run costs nothing and the next one catches up.
+ * Daily, early morning. With only four lessons kept ahead, a weekly student
+ * drops to three the day after a lesson; running daily puts the fourth back
+ * before Katie next looks, so "the next four" is always there to commit to.
+ * A missed run just leaves one fewer lesson ahead until the next.
  */
 export const materializeLessonSchedules = onSchedule(
   {
-    schedule: '15 5 * * 1',
+    schedule: '15 5 * * *',
     timeZone: TIMEZONE,
     region: 'us-east4',
   },
