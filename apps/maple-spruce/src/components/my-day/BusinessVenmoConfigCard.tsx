@@ -15,7 +15,7 @@ import { useBusinessPaymentConfig } from '@maple/react/data';
 
 /**
  * Settings card to set the business Venmo handle (legacy #631) — rendered as a
- * pay-by-Venmo QR on the teacher My Day page.
+ * pay-by-Venmo QR on the teacher My Week page (`/my-day`).
  */
 export function BusinessVenmoConfigCard() {
   const { configState, saveVenmoHandle } = useBusinessPaymentConfig();
@@ -52,7 +52,7 @@ export function BusinessVenmoConfigCard() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Your studio Venmo username. Teachers can show a scannable QR to it on
-          the My Day page so a student can pay by Venmo at their lesson.
+          the My Week page so a student can pay by Venmo at their lesson.
         </Typography>
 
         {configState.status === 'loading' && (
