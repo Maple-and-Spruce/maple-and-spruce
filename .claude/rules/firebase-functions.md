@@ -325,7 +325,9 @@ export const createRegistration = Functions.endpoint
 - **App Check** verifies the `X-Firebase-AppCheck` header that `httpsCallable` sends once the
   widget has initialized App Check (`apps/webflow-components/src/firebase-init.ts`). Mode
   `monitor` logs `{"event":"app_check",…}` and never rejects. Mode `enforce` answers 401. The
-  `APP_CHECK_MODE` value in `.env.dev` / `.env.prod` caps every endpoint's mode.
+  `APP_CHECK_MODE` value in `.env.dev` / `.env.prod` caps every endpoint's mode. Prod is
+  `enforce` and dev is `monitor`. A new widget-facing endpoint should declare `enforce`, unless it
+  is a fallback path that must work without a token (see `createRegistrationCheckoutLink`).
 - **Throttling** answers 429 `RESOURCE_EXHAUSTED` before validation. Counters are in
   `requestThrottles`, keyed by `scope` + a hash of the value, so **`scope` must be unique per
   endpoint** (use the function name). Every access is a doc-id read, so no index is needed. It
