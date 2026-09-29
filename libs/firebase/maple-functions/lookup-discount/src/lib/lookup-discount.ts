@@ -30,7 +30,7 @@ import type {
 const DEFAULT_PROGRAM: DiscountProgram = 'classes';
 
 export const lookupDiscount = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('lookupDiscount', codeLookupThrottles())
   .handle<LookupDiscountRequest, LookupDiscountResponse>(async (data) => {
   if (!data.code || typeof data.code !== 'string') {

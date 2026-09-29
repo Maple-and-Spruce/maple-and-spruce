@@ -142,7 +142,7 @@ describe('requestMusicTogetherManageLink declaration', () => {
   it('opts into App Check and per-IP and per-address throttling', async () => {
     const { Functions } = await import('@maple/firebase/functions');
     const endpoint = Functions.endpoint as unknown as Record<string, unknown>;
-    expect(endpoint['appCheckMode']).toBe('monitor');
+    expect(endpoint['appCheckMode']).toBe('enforce');
     expect(endpoint['throttle']).toEqual({
       scope: 'requestMusicTogetherManageLink',
       rules: ['ip', 'email'],

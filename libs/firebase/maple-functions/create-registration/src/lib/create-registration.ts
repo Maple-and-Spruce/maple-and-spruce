@@ -72,7 +72,7 @@ function getAppUrl(allowedOrigins: string): string {
 }
 
 export const createRegistration = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('createRegistration', paymentThrottles('customerEmail'))
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')

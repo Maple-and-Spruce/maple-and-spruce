@@ -73,6 +73,6 @@ describe('lookupDiscount', () => {
   it('opts into App Check and per-IP throttling', () => {
     expect(
       (lookupDiscount as unknown as { declared: unknown }).declared
-    ).toEqual({ mode: 'monitor', scope: 'lookupDiscount', rules: ['ip'] });
+    ).toEqual({ mode: 'enforce', scope: 'lookupDiscount', rules: ['ip'] });
   });
 });
