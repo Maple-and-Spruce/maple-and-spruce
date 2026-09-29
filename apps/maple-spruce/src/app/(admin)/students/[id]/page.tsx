@@ -28,6 +28,7 @@ import {
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import type {
+  BlockStrategy,
   CreateInvoiceInput,
   CreateStudentInput,
   CreateLessonInput,
@@ -78,6 +79,7 @@ import {
 import {
   blockInvoiceInput,
   defaultDurationFor,
+  planFillBlock,
   type StandingScheduleSubmit,
 } from '../student-launchers';
 
@@ -572,6 +574,34 @@ export default function StudentDetailPage() {
     // Move and Skip reuse the dialogs the page already owns, so a date is
     // fixed without leaving the conversation and without a second editor
     // that could drift from the one in the Lessons table.
+    // Only the next-lessons card uses these; the owed card never falls short.
+    onFillLessons: async ({
+      like,
+      scheduledAts,
+      blockStrategy,
+    }: {
+      like: Lesson;
+      scheduledAts: Date[];
+      blockStrategy?: BlockStrategy;
+    }) => {
+      await createLessonSeries({
+        studentId,
+        teacherId: like.teacherId,
+        durationMinutes: like.durationMinutes,
+        scheduledAts,
+        room: like.room,
+        blockStrategy,
+      });
+    },
+    planFillBlock: ({
+      like,
+      scheduledAts,
+    }: {
+      like: Lesson;
+      scheduledAts: Date[];
+    }) =>
+      planFillBlock(blocks, instructors, like, scheduledAts),
+    onPickOtherDates: () => setScheduleOpen(true),
     onMoveLesson: (lesson: Lesson) => setEditLesson(lesson),
     onSkipLesson: (lesson: Lesson) => setCancelLesson(lesson),
   };

@@ -63,6 +63,7 @@ import PaidIcon from '@mui/icons-material/Paid';
 import EditCalendarIcon from '@mui/icons-material/EditCalendar';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import type {
+  BlockStrategy,
   Invoice,
   Lesson,
   LessonRateByLength,
@@ -74,6 +75,7 @@ import {
   DEFAULT_PREPAY_LESSON_COUNT,
   PREPAY_LESSON_COUNTS,
   describePrepaymentProblem,
+  fillWeeklyLessonDates,
   invoicedLessonIds,
   planPrepayment,
   prepayableLessons,
@@ -155,6 +157,30 @@ export interface CommitLessonsCardProps {
   preselectLessonIds?: string[];
   onCharge: (input: CommitLessonsChargeInput) => void;
   onSendInvoice: (input: CommitLessonsInvoiceInput) => void;
+  /**
+   * Create the lessons "the next N" is short of, on the dates the card shows.
+   * Katie plans in fours; a student with two lessons made by hand should be one
+   * click from four, not a trip through the scheduling form. Omit to hide.
+   */
+  onFillLessons?: (input: {
+    /** The lesson whose teacher, length and room the new ones copy. */
+    like: Lesson;
+    scheduledAts: Date[];
+    blockStrategy?: BlockStrategy;
+  }) => Promise<void>;
+  /**
+   * Which teaching block the filled lessons go in. Every lesson needs one, and
+   * lessons made by hand often have none, so the page (which has the blocks)
+   * says whether one fits, one will be added (`note` says so), or none can be
+   * (`blocked`, which disables the one-click fill).
+   */
+  planFillBlock?: (input: { like: Lesson; scheduledAts: Date[] }) => {
+    blockStrategy?: BlockStrategy;
+    note?: string;
+    blocked?: string;
+  };
+  /** Open the full scheduling form, for when the suggested dates are wrong. */
+  onPickOtherDates?: () => void;
   /** Open the page's lesson editor on one date in the block. */
   onMoveLesson?: (lesson: Lesson) => void;
   /** Cancel one date; the block pulls the next one in behind it. */
@@ -174,6 +200,13 @@ function lessonDate(date: Date): string {
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
+}
+
+/** "Thu, Sep 24, 8:00 AM and Thu, Oct 8, 8:00 AM"; dates carry commas, so "and"/";" separate them. */
+function listDates(dates: Date[]): string {
+  const labels = dates.map(lessonDate);
+  if (labels.length <= 2) return labels.join(' and ');
+  return `${labels.slice(0, -1).join('; ')}; and ${labels[labels.length - 1]}`;
 }
 
 /** `Oct 5 – Nov 23`, the weeks Katie just talked through, read back. */
@@ -500,6 +533,9 @@ export function CommitLessonsCard({
   onSendInvoice,
   onMoveLesson,
   onSkipLesson,
+  onFillLessons,
+  planFillBlock,
+  onPickOtherDates,
 }: CommitLessonsCardProps) {
   const [count, setCount] = useState(DEFAULT_PREPAY_LESSON_COUNT);
   // Past lessons are always chosen one by one: "the next four" means nothing
@@ -511,6 +547,8 @@ export function CommitLessonsCard({
     () => preselectLessonIds ?? []
   );
   const [note, setNote] = useState('');
+  const [filling, setFilling] = useState(false);
+  const [fillError, setFillError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<'charge' | 'invoice' | null>(null);
 
   const reference = useMemo(() => now ?? new Date(), [now]);
@@ -548,6 +586,26 @@ export function CommitLessonsCard({
         : unpaidTaughtLessons(lessons, charges, reference, alreadyInvoiced),
     [scope, lessons, charges, reference, alreadyInvoiced]
   );
+
+  /**
+   * "The next N" when fewer than N exist: the dates that would make up the
+   * difference, weekly from the first upcoming lesson, skipping weeks that
+   * already have one. Empty when nothing is short or there is no lesson to
+   * take the day and time from (the empty state covers that case).
+   */
+  const shortfall = useMemo(() => {
+    if (scope === 'owed' || available.length === 0) return null;
+    const needed = count - available.length;
+    if (needed <= 0) return null;
+    const like = available[0];
+    const existing = lessons.filter(
+      (l) => l.scheduledAt.getTime() >= like.scheduledAt.getTime()
+    );
+    const dates = fillWeeklyLessonDates(like, existing, needed);
+    if (dates.length === 0) return null;
+    const block = planFillBlock?.({ like, scheduledAts: dates }) ?? {};
+    return { like, dates, block };
+  }, [scope, available, count, lessons, planFillBlock]);
 
   const outcome = useMemo(
     () =>
@@ -600,14 +658,24 @@ export function CommitLessonsCard({
   const problem =
     !outcome.ok && outcome.problem !== 'nothing-picked' ? outcome.problem : null;
 
-  /** The full lesson rows behind the plan, so move/skip have something to act on. */
-  const planRows: Lesson[] = plan
-    ? plan.lessons
-        .map((l) => lessons.find((full) => full.id === l.id))
-        .filter((l): l is Lesson => l !== undefined)
-    : [];
+  /**
+   * The lessons "the next N" covers, so move/skip have something to act on.
+   * Shown even when there is no plan to take money for (no rate set, say):
+   * lining up the dates does not depend on charging for them.
+   */
+  let planRows: Lesson[] = [];
+  if (plan) {
+    planRows = plan.lessons
+      .map((l) => lessons.find((full) => full.id === l.id))
+      .filter((l): l is Lesson => l !== undefined);
+  } else if (!picking && scope !== 'owed') {
+    planRows = available.slice(0, count);
+  }
 
-  const span = plan ? spanLabel(plan.lessons.map((l) => l.scheduledAt)) : null;
+  const span =
+    planRows.length > 0
+      ? spanLabel(planRows.map((l) => l.scheduledAt))
+      : null;
 
   const send = () => {
     if (!plan) return;
@@ -786,7 +854,7 @@ export function CommitLessonsCard({
           </Box>
         )}
 
-        {!picking && plan && (
+        {!picking && planRows.length > 0 && (
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               This covers
@@ -803,6 +871,74 @@ export function CommitLessonsCard({
               ))}
             </Stack>
           </Box>
+        )}
+
+        {!picking && shortfall && onFillLessons && (
+          <Alert
+            severity="info"
+            action={
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={filling || busy || Boolean(shortfall.block.blocked)}
+                  onClick={async () => {
+                    setFilling(true);
+                    setFillError(null);
+                    try {
+                      await onFillLessons({
+                        like: shortfall.like,
+                        scheduledAts: shortfall.dates,
+                        blockStrategy: shortfall.block.blockStrategy,
+                      });
+                    } catch (err) {
+                      setFillError(
+                        err instanceof Error
+                          ? err.message
+                          : 'Could not add the lessons'
+                      );
+                    } finally {
+                      setFilling(false);
+                    }
+                  }}
+                >
+                  {filling
+                    ? 'Adding…'
+                    : `Add ${shortfall.dates.length} lesson${
+                        shortfall.dates.length === 1 ? '' : 's'
+                      }`}
+                </Button>
+                {onPickOtherDates && (
+                  <Button size="small" onClick={onPickOtherDates}>
+                    Other dates
+                  </Button>
+                )}
+              </Stack>
+            }
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Only {available.length} of the next {count} lessons{' '}
+              {available.length === 1 ? 'is' : 'are'} on the calendar.
+            </Typography>
+            <Typography variant="body2">
+              Add {listDates(shortfall.dates)}, same teacher and length?
+            </Typography>
+            {shortfall.block.note && (
+              <Typography variant="body2" color="text.secondary">
+                {shortfall.block.note}
+              </Typography>
+            )}
+            {shortfall.block.blocked && (
+              <Typography variant="body2" color="error">
+                {shortfall.block.blocked}
+              </Typography>
+            )}
+            {fillError && (
+              <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
+                {fillError}
+              </Typography>
+            )}
+          </Alert>
         )}
 
         {problem && (

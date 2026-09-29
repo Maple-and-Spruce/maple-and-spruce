@@ -5,6 +5,7 @@ import {
   planPrepayment,
   prepayableLessons,
   describePrepaymentProblem,
+  fillWeeklyLessonDates,
   unpaidTaughtLessons,
 } from './lesson-prepayment';
 import { planChargesForStudent } from './lesson-billing-rule';
@@ -605,5 +606,78 @@ describe('charging for teaching already given (#128)', () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     expect(outcome.plan.amountCents).toBe(RATE * 2);
+  });
+});
+
+describe('fillWeeklyLessonDates', () => {
+  // Tue Sep 29 2026, 5:00 PM Eastern (EDT, UTC-4).
+  const sep29 = new Date('2026-09-29T21:00:00Z');
+  const oct13 = new Date('2026-10-13T21:00:00Z');
+  const et = (d: Date) =>
+    d.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+  it('fills the weeks between and after, not the ones already booked', () => {
+    // Two lessons made by hand, a week apart from nothing: the next four
+    // weeks are Sep 29, Oct 6, Oct 13, Oct 20, so Oct 6 and Oct 20 are missing.
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: sep29 },
+      [
+        { scheduledAt: sep29, status: 'scheduled' },
+        { scheduledAt: oct13, status: 'scheduled' },
+      ],
+      2
+    );
+    expect(dates.map(et)).toEqual([
+      'Tue, Oct 6, 5:00 PM',
+      'Tue, Oct 20, 5:00 PM',
+    ]);
+  });
+
+  it('keeps the wall-clock time across the change back from daylight time', () => {
+    // Nov 1 2026 is the fall-back date: 5:00 PM stays 5:00 PM, which is a
+    // different UTC hour.
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: new Date('2026-10-27T21:00:00Z') },
+      [{ scheduledAt: new Date('2026-10-27T21:00:00Z'), status: 'scheduled' }],
+      1
+    );
+    expect(et(dates[0])).toBe('Tue, Nov 3, 5:00 PM');
+    expect(dates[0].toISOString()).toBe('2026-11-03T22:00:00.000Z');
+  });
+
+  it('treats a week with a moved lesson as booked', () => {
+    // The Oct 6 lesson was moved to the Monday; that week is still covered.
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: sep29 },
+      [
+        { scheduledAt: sep29, status: 'scheduled' },
+        { scheduledAt: new Date('2026-10-05T21:00:00Z'), status: 'scheduled' },
+      ],
+      1
+    );
+    expect(et(dates[0])).toBe('Tue, Oct 13, 5:00 PM');
+  });
+
+  it('refills a week whose lesson was cancelled', () => {
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: sep29 },
+      [
+        { scheduledAt: sep29, status: 'scheduled' },
+        { scheduledAt: new Date('2026-10-06T21:00:00Z'), status: 'cancelled' },
+      ],
+      1
+    );
+    expect(et(dates[0])).toBe('Tue, Oct 6, 5:00 PM');
+  });
+
+  it('asks for nothing when nothing is needed', () => {
+    expect(fillWeeklyLessonDates({ scheduledAt: sep29 }, [], 0)).toEqual([]);
   });
 });

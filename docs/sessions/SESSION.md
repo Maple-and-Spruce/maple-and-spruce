@@ -6,6 +6,22 @@
 
 ## Current Status
 
+### "The next 4" fills itself in (2026-09-29)
+
+A student with two lessons made by hand and no weekly time: "the next 4"
+quietly covered two, and getting to four meant the full scheduling form.
+
+- `fillWeeklyLessonDates(like, existing, needed)` (domain, tested across the
+  DST change): the missing weeks, weekly from the first upcoming lesson at its
+  weekday and time, skipping weeks that already have a lesson.
+- "Next lessons" shows "Only 2 of the next 4 lessons are on the calendar. Add
+  <dates>, same teacher and length?" with **Add 2 lessons** / **Other dates**.
+  It calls `createLessonSeries` with those dates.
+- Every lesson needs a block and hand-made ones often have none, so
+  `planFillBlock` uses a fitting recurring block, else derives a new one and
+  the notice says so; widening a block is never done from here.
+- "This covers" now lists the dates even when there is no rate to charge.
+
 ### Four lessons ahead, and a way in for students with no weekly time (2026-09-29)
 
 Katie's feedback: saving a weekly slot put 12 lessons on the calendar and she

@@ -30,7 +30,11 @@ import type { Lesson } from './lesson';
 import { isChargeableLesson, plannedChargeId } from './lesson-billing-rule';
 import { coveredLessonIds } from './lesson-scheduled-charge';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
-import { SCHEDULE_TIME_ZONE } from './student-lesson-schedule';
+import {
+  SCHEDULE_TIME_ZONE,
+  scheduleOccurrences,
+} from './student-lesson-schedule';
+import { minutesOfDayInZone, weekdayIndexInZone } from './schedule-format';
 
 /** How many lessons a "pay ahead" covers by default. */
 export const DEFAULT_PREPAY_LESSON_COUNT = 4;
@@ -290,4 +294,62 @@ export function describePrepaymentProblem(problem: PrepaymentProblem): string {
     case 'too-many':
       return `That is more than ${MAX_PREPAY_LESSON_COUNT} lessons in one payment.`;
   }
+}
+
+const WEEK_MS = 7 * 86_400_000;
+
+/**
+ * The dates that would bring "the next N" up to N, one a week at the same
+ * weekday and time as `like`.
+ *
+ * Katie plans in fours. A student who is not on a weekly time yet often has a
+ * couple of lessons made by hand, and "the next 4" then quietly covers two.
+ * This is what the missing ones would be: the weeks after `like`, skipping any
+ * week the student already has a lesson in (so a lesson made for the 13th is
+ * not doubled by a new one on the 13th), until `needed` dates are found.
+ *
+ * Weekly from `like`, read in the studio's timezone so a clock change does not
+ * move 5:00 PM to 4:00 PM. Pure; the caller creates the lessons.
+ */
+export function fillWeeklyLessonDates(
+  like: Pick<Lesson, 'scheduledAt'>,
+  /** Every lesson the student has from `like` on that is still happening. */
+  existing: Array<Pick<Lesson, 'scheduledAt' | 'status'>>,
+  needed: number,
+  timeZone: string = SCHEDULE_TIME_ZONE
+): Date[] {
+  if (needed <= 0) return [];
+
+  const taken = existing
+    .filter((l) => l.status !== 'cancelled')
+    .map((l) => l.scheduledAt.getTime());
+  // A week is "taken" if the student has a lesson within half a week of the
+  // candidate: a lesson moved to the Monday still means that week is covered.
+  const weekTaken = (at: Date) =>
+    taken.some((t) => Math.abs(t - at.getTime()) < WEEK_MS / 2);
+
+  const from = like.scheduledAt;
+  // Enough weeks for every existing lesson to sit in one, plus the new ones.
+  const to = new Date(from.getTime() + (needed + taken.length + 1) * WEEK_MS);
+  const occurrences = scheduleOccurrences(
+    {
+      dayOfWeek: weekdayIndexInZone(from, timeZone),
+      startMinutes: minutesOfDayInZone(from, timeZone),
+      status: 'active',
+      startsOn: from,
+      endsOn: undefined,
+      intervalWeeks: 1,
+    },
+    from,
+    to,
+    timeZone
+  );
+
+  const dates: Date[] = [];
+  for (const at of occurrences) {
+    if (dates.length >= needed) break;
+    if (weekTaken(at)) continue;
+    dates.push(at);
+  }
+  return dates;
 }
