@@ -7,6 +7,7 @@ import {
   classRefundEntryId,
   classSessionEntryId,
   isPayoutMonth,
+  isInStatementWindow,
   isPayoutMonthOver,
   monthKeyInStudioZone,
   paidTotalForYear,
@@ -167,6 +168,14 @@ describe('month helpers', () => {
     expect(isPayoutMonth(202610)).toBe(false);
   });
 
+  it('puts the month itself and stragglers back to the start month in the window', () => {
+    expect(isInStatementWindow('2026-10', '2026-10', '2026-09')).toBe(true);
+    expect(isInStatementWindow('2026-09', '2026-10', '2026-09')).toBe(true);
+    expect(isInStatementWindow('2026-08', '2026-10', '2026-09')).toBe(false);
+    expect(isInStatementWindow('2026-11', '2026-10', '2026-09')).toBe(false);
+    expect(isInStatementWindow('2025-10', '2025-10', '2026-09')).toBe(true);
+  });
+
   it('knows when a month is over in studio time', () => {
     expect(isPayoutMonthOver('2026-10', new Date('2026-11-01T03:30:00Z'))).toBe(false);
     expect(isPayoutMonthOver('2026-10', new Date('2026-11-01T05:00:00Z'))).toBe(true);
@@ -275,10 +284,15 @@ describe('buildClassInstructorStatementDraft', () => {
     expect(draft.shareCents).toBe(4000);
   });
 
-  it('never reaches back before the start month', () => {
+  it('never sweeps in stragglers from before the start month', () => {
     const august = klass({ sessions: ['2026-08-20T18:00:00Z'] });
     expect(build({ classes: [august] }).classes).toHaveLength(0);
     expect(build({ classes: [august], startMonth: '2026-08' }).classes).toHaveLength(1);
+  });
+
+  it('still pays a month before the start month when asked for it directly', () => {
+    const august = klass({ sessions: ['2026-08-20T18:00:00Z'] });
+    expect(build({ classes: [august], month: '2026-08' }).classes).toHaveLength(1);
   });
 
   it('ignores cancelled classes and classes taught by someone else', () => {

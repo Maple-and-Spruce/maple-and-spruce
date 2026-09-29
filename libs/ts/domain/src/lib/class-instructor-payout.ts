@@ -30,8 +30,9 @@ import type { Registration } from './registration';
 import { zonedDateKey } from './schedule-format';
 
 /**
- * Sessions before this month are never swept onto a statement, so the first
- * statement doesn't pay out all of history.
+ * Unclaimed sessions from earlier months are swept onto a statement, but never
+ * from before this month, so the first statement doesn't pay out all of
+ * history. It does not stop anyone generating an earlier month on purpose.
  */
 export const CLASS_INSTRUCTOR_PAYOUTS_START_MONTH = '2026-09';
 
@@ -162,6 +163,18 @@ export function isPayoutMonth(value: unknown): value is string {
 /** `YYYY-MM` for an instant, read in the studio's timezone. */
 export function monthKeyInStudioZone(instant: Date): string {
   return zonedDateKey(instant).slice(0, 7);
+}
+
+/**
+ * Whether a session held in `sessionMonth` belongs on `month`'s statement:
+ * that month itself, or an earlier one back to `startMonth` (a straggler).
+ */
+export function isInStatementWindow(
+  sessionMonth: string,
+  month: string,
+  startMonth: string = CLASS_INSTRUCTOR_PAYOUTS_START_MONTH
+): boolean {
+  return sessionMonth === month || (sessionMonth >= startMonth && sessionMonth < month);
 }
 
 /** True once every day of `month` is in the past, in studio time. */
@@ -351,7 +364,7 @@ function buildClassLine(
     sessions.forEach((session, index) => {
       const at = new Date(session.dateTime);
       const sessionMonth = monthKeyInStudioZone(at);
-      if (sessionMonth > ctx.month || sessionMonth < ctx.startMonth) return;
+      if (!isInStatementWindow(sessionMonth, ctx.month, ctx.startMonth)) return;
       if (getSessionEndTime(session, classEntity.durationMinutes) > ctx.now) return;
       const id = classSessionEntryId(registration.id, index);
       if (ctx.existingIds.has(id)) return;
