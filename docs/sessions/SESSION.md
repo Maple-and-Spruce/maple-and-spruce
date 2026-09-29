@@ -6,6 +6,28 @@
 
 ## Current Status
 
+### Class-instructor payouts: monthly statements, marked paid by hand (2026-09-29, PRs #141 → #142 → this)
+
+Contract instructors now get a **monthly statement** at `/payouts?tab=classes`. The policy is David's (2026-09-28/29):
+- The instructor gets 80% (`Instructor.payRate`, percentage) of what the student paid for the class, after discount and before tax.
+- M&S absorbs the card fee.
+- Revenue is split evenly by session, and each session is paid in the month it was held.
+- `confirmed`, `no-show` and unrefunded `cancelled` registrations count.
+- A refund after a statement is paid comes off the next statement.
+
+The app never moves money. David pays in Square Payroll or Bill Pay and records the date, method and reference.
+
+**The double-pay guard is a ledger** (ADR-034). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path has no such guard and could still pay twice under a race.
+
+**Three things found on the way.**
+- `getNetAmountPaid` took the discount off twice and left the sales tax in. It now returns `subtotalCents`.
+- Refunds were recorded with no time or amount; the Square refund id was thrown away. `cancelRegistration` now writes `refundedAt`, `refundedAmountCents` and `squareRefundId`.
+- **Refunds made in the Square dashboard never reach the app.** This is not fixed: `squareWebhook` would need a refund handler.
+
+**Gotcha: `next dev` writes `apps/maple-spruce/AGENTS.md` + `CLAUDE.md`** (Next's agent rules) and rewrites `next-env.d.ts` to `.next/dev/types`. Delete and restore them before committing, or set `agentRules: false` in `next.config`.
+
+**Next:** move `getPayouts`, `generatePayout`, `markPayoutPaid` and `getTeacherPayouts` onto the `payouts` router (net −3 functions), and give lesson teachers the same ledger (#58).
+
 ### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
 
 **Artists is the pilot** (#126, #127). ADR-029 was accepted in August and nothing had been
