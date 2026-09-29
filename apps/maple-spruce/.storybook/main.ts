@@ -27,7 +27,21 @@ const config: StorybookConfig = {
   // Storybook (vitest) tests — see RosterDialog's Download icon.
   async viteFinal(viteConfig) {
     const { mergeConfig } = await import('vite');
+    const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
     return mergeConfig(viteConfig, {
+      // On Vite 8, @storybook/nextjs-vite resolves `@maple/*` through Vite's
+      // native `resolve.tsconfigPaths`, which only applies a tsconfig's paths
+      // to files that tsconfig `include`s. Stories and `.storybook/preview.tsx`
+      // sit outside every include (the libs' tsconfig.lib.json excludes
+      // stories), so every story failed to resolve its imports. Resolve from
+      // tsconfig.base.json instead, the same way the unit-test config does.
+      plugins: [
+        tsconfigPaths({
+          projects: [
+            fileURLToPath(new URL('../../../tsconfig.base.json', import.meta.url)),
+          ],
+        }),
+      ],
       optimizeDeps: {
         include: [
           '@mui/icons-material/Download',
