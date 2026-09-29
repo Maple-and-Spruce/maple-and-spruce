@@ -9,13 +9,16 @@ import {
   Breadcrumbs,
   Button,
   Chip,
+  Divider,
+  Paper,
   Skeleton,
   Snackbar,
+  Stack,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 import StarsIcon from '@mui/icons-material/Stars';
-import type { BlockStrategy } from '@maple/ts/domain';
 import {
   CHARGE_LESSON_PARAM,
   SCHEDULE_TIME_ZONE,
@@ -25,6 +28,7 @@ import {
 } from '@maple/ts/domain';
 import type {
   CreateInvoiceInput,
+  CreateStudentInput,
   CreateLessonInput,
   CreateLessonSeriesInput,
   Invoice,
@@ -46,6 +50,7 @@ import {
   CommitLessonsCard,
   StandingScheduleCard,
   StandingScheduleDialog,
+  type CommitLessonsChargeInput,
   type CommitLessonsInvoiceInput,
   type LessonPendingAction,
 } from '@maple/react/lessons';
@@ -54,7 +59,11 @@ import {
   InvoiceBuilderDialog,
   newInvoiceLineId,
 } from '@maple/react/invoices';
-import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from '@maple/react/students';
+import {
+  INSTRUMENT_LABELS,
+  LESSON_LENGTH_LABELS,
+  StudentForm,
+} from '@maple/react/students';
 import {
   useInstructors,
   useInvoices,
@@ -65,6 +74,11 @@ import {
   useLessonBlocks,
   useStudents,
 } from '../../../../hooks';
+import {
+  blockInvoiceInput,
+  defaultDurationFor,
+  type StandingScheduleSubmit,
+} from '../student-launchers';
 
 /** "Mon, Oct 5" in the studio's timezone, so the date matches the lesson list. */
 function formatDay(date: Date): string {
@@ -84,7 +98,7 @@ export default function StudentDetailPage() {
   const searchParams = useSearchParams();
   const chargeLessonId = searchParams?.get(CHARGE_LESSON_PARAM) ?? null;
 
-  const { studentsState, fetchStudents } = useStudents();
+  const { studentsState, fetchStudents, updateStudent } = useStudents();
   const { instructorsState } = useInstructors();
   const {
     cardsState,
@@ -134,6 +148,8 @@ export default function StudentDetailPage() {
   }, [student, instructors]);
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [editStudentOpen, setEditStudentOpen] = useState(false);
+  const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [editLesson, setEditLesson] = useState<Lesson | undefined>();
   const [cancelLesson, setCancelLesson] = useState<Lesson | null>(null);
   /**
@@ -296,17 +312,7 @@ export default function StudentDetailPage() {
   >();
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
-  const handleScheduleSubmit = async (input: {
-    teacherId: string;
-    blockId: string;
-    dayOfWeek: number;
-    startMinutes: number;
-    durationMinutes: number;
-    intervalWeeks: number;
-    startsOn: Date;
-    /** How to make room when no block covers the time (legacy #835). */
-    blockStrategy?: BlockStrategy;
-  }) => {
+  const handleScheduleSubmit = async (input: StandingScheduleSubmit) => {
     setScheduleError(null);
     try {
       if (editingSchedule) {
@@ -433,31 +439,29 @@ export default function StudentDetailPage() {
    * what stops the same teaching also being charged to a card, here or by the
    * nightly job (#101).
    */
-  const handleInvoiceBlock = async ({
-    lessons: block,
-    note,
-  }: CommitLessonsInvoiceInput) => {
-    if (!student || block.length === 0) return;
+  const handleInvoiceBlock = async (input: CommitLessonsInvoiceInput) => {
+    if (!student || input.lessons.length === 0) return;
     const rateByLength =
       billingState.status === 'success' ? billingState.data.rateByLength : {};
     setIsSubmitting(true);
     try {
-      await createInvoice({
-        studentId: student.id,
-        status: 'sent',
-        notes: note,
-        lineItems: lessonInvoiceLines(
-          block,
-          (lesson) =>
-            resolvePrivatePayLessonRateCents(lesson, student, rateByLength),
-          newInvoiceLineId
-        ),
-      });
+      await createInvoice(blockInvoiceInput(student, input, rateByLength));
       // The block's dates have to stop being offered for a card charge the
       // moment the invoice exists, and that comes from the invoices list.
       await fetchInvoices();
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  /** Saving the student record from the page; the form throws on failure. */
+  const handleSaveStudent = async (data: CreateStudentInput) => {
+    setIsSavingStudent(true);
+    try {
+      await updateStudent({ id: studentId, ...data });
+      setEditStudentOpen(false);
+    } finally {
+      setIsSavingStudent(false);
     }
   };
 
@@ -498,6 +502,72 @@ export default function StudentDetailPage() {
     );
   }
 
+  // Both billing cards need all three lists; until each lands, "nothing owed"
+  // and "not known yet" look the same, so the cards show a skeleton instead.
+  const billingDataLoading =
+    lessonsState.status !== 'success' ||
+    billingState.status !== 'success' ||
+    invoicesState.status !== 'success';
+
+  const rateByLength =
+    billingState.status === 'success' ? billingState.data.rateByLength : {};
+
+  /** What a lesson costs this family, so a rate change is checkable at a glance. */
+  let rateLabel: string | null = null;
+  if (!student.isHopeScholarship) {
+    const cents = resolvePrivatePayLessonRateCents(
+      { durationMinutes: defaultDurationFor(student) },
+      student,
+      rateByLength
+    );
+    if (student.lessonRateCents) {
+      rateLabel = `$${(cents / 100).toFixed(2)}/lesson (custom rate)`;
+    } else if (billingState.status === 'success') {
+      rateLabel =
+        cents > 0 ? `$${(cents / 100).toFixed(2)}/lesson` : 'No rate set';
+    }
+  }
+
+  const addLessonsButton = (
+    <Button
+      size="small"
+      startIcon={<AddIcon />}
+      onClick={() => setScheduleOpen(true)}
+      disabled={instructors.length === 0}
+    >
+      Add lessons
+    </Button>
+  );
+
+  /** What the two billing cards share; only the scope differs. */
+  const billingCardProps = {
+    lessons,
+    charges:
+      billingState.status === 'success' ? billingState.data.charges : [],
+    invoices: invoicesState.status === 'success' ? invoicesState.data : [],
+    rateByLength,
+    isCharging: chargePendingId !== null,
+    isInvoicing: isSubmitting,
+    error: chargeError,
+    onCharge: async ({ lessonIds, amountCents, note }: CommitLessonsChargeInput) => {
+      const failure = await chargeNow({
+        studentId,
+        lessonIds,
+        amountCents,
+        note,
+      });
+      // A prepaid lesson changes nothing about the lesson rows, but the
+      // charge it produced belongs on screen straight away.
+      if (!failure) await fetchLessons();
+    },
+    onSendInvoice: handleInvoiceBlock,
+    // Move and Skip reuse the dialogs the page already owns, so a date is
+    // fixed without leaving the conversation and without a second editor
+    // that could drift from the one in the Lessons table.
+    onMoveLesson: (lesson: Lesson) => setEditLesson(lesson),
+    onSkipLesson: (lesson: Lesson) => setCancelLesson(lesson),
+  };
+
   return (
     <>
       <Breadcrumbs sx={{ mb: 2 }}>
@@ -507,6 +577,12 @@ export default function StudentDetailPage() {
         <Typography color="text.primary">{student.name}</Typography>
       </Breadcrumbs>
 
+      {/*
+        The page reads in the order Katie works: who the student is and what
+        they pay, their weekly slot, settling lessons already taught, then
+        lining up the next ones. Card links and the full lesson and billing
+        history are looked at far less often, so they sit at the bottom.
+      */}
       <Box
         sx={{
           display: 'flex',
@@ -526,6 +602,7 @@ export default function StudentDetailPage() {
             {student.registeredLessonLength &&
               ` · ${LESSON_LENGTH_LABELS[student.registeredLessonLength]}`}
             {` · Teacher: ${primaryTeacherName}`}
+            {rateLabel && ` · ${rateLabel}`}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {student.isAdultStudent ? 'Contact' : 'Parent/guardian'}:{' '}
@@ -552,12 +629,12 @@ export default function StudentDetailPage() {
           </Box>
         </Box>
         <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setScheduleOpen(true)}
+          variant="outlined"
+          startIcon={<EditIcon />}
+          onClick={() => setEditStudentOpen(true)}
           disabled={instructors.length === 0}
         >
-          Schedule lessons
+          Edit student
         </Button>
       </Box>
 
@@ -566,63 +643,6 @@ export default function StudentDetailPage() {
           registeredLessonLength={student.registeredLessonLength}
         />
       )}
-
-      <PaymentMethodCard
-        student={student}
-        cards={cardsState.status === 'success' ? cardsState.data.cards : []}
-        linkedTo={
-          cardsState.status === 'success' ? cardsState.data.linkedTo : {}
-        }
-        isLoading={cardsState.status === 'loading'}
-        isSaving={isCardSaving}
-        error={
-          linkError ??
-          (cardsState.status === 'error' ? cardsState.error : null)
-        }
-        onLink={async (cardId) => {
-          const updated = await setStudentCard(studentId, cardId);
-          if (updated) await fetchStudents();
-        }}
-        onUnlink={async () => {
-          const updated = await setStudentCard(studentId, null);
-          if (updated) await fetchStudents();
-        }}
-      />
-
-      <CommitLessonsCard
-        student={student}
-        preselectLessonIds={chargeLessonId ? [chargeLessonId] : undefined}
-        lessons={lessons}
-        charges={
-          billingState.status === 'success' ? billingState.data.charges : []
-        }
-        invoices={invoicesState.status === 'success' ? invoicesState.data : []}
-        rateByLength={
-          billingState.status === 'success'
-            ? billingState.data.rateByLength
-            : {}
-        }
-        isCharging={chargePendingId !== null}
-        isInvoicing={isSubmitting}
-        error={chargeError}
-        onCharge={async ({ lessonIds, amountCents, note }) => {
-          const failure = await chargeNow({
-            studentId,
-            lessonIds,
-            amountCents,
-            note,
-          });
-          // A prepaid lesson changes nothing about the lesson rows, but the
-          // charge it produced belongs on screen straight away.
-          if (!failure) await fetchLessons();
-        }}
-        onSendInvoice={handleInvoiceBlock}
-        // Move and Skip reuse the dialogs the page already owns, so a date is
-        // fixed without leaving the conversation and without a second editor
-        // that could drift from the one in the Lessons table.
-        onMoveLesson={(lesson) => setEditLesson(lesson)}
-        onSkipLesson={(lesson) => setCancelLesson(lesson)}
-      />
 
       <StandingScheduleCard
         schedulesState={schedulesState}
@@ -640,6 +660,45 @@ export default function StudentDetailPage() {
         }}
         onEnd={handleEndSchedule}
       />
+
+      <CommitLessonsCard
+        scope="owed"
+        student={student}
+        isLoading={billingDataLoading}
+        preselectLessonIds={chargeLessonId ? [chargeLessonId] : undefined}
+        {...billingCardProps}
+      />
+
+      {student.isHopeScholarship ? (
+        // The billing card hides itself for Hope, and with it the way to add
+        // lessons, so the heading and the button stand on their own here.
+        <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
+              Next lessons
+            </Typography>
+            {addLessonsButton}
+          </Stack>
+        </Paper>
+      ) : (
+        <CommitLessonsCard
+          scope="upcoming"
+          student={student}
+          isLoading={billingDataLoading}
+          headerAction={addLessonsButton}
+          {...billingCardProps}
+        />
+      )}
+
+      <Divider sx={{ my: 4 }} />
+      <Typography
+        variant="overline"
+        component="p"
+        color="text.secondary"
+        sx={{ mb: 2 }}
+      >
+        History and settings
+      </Typography>
 
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
         Lessons
@@ -690,6 +749,42 @@ export default function StudentDetailPage() {
         />
       )}
 
+      <Box sx={{ mt: 4 }}>
+        <PaymentMethodCard
+          student={student}
+          cards={cardsState.status === 'success' ? cardsState.data.cards : []}
+          linkedTo={
+            cardsState.status === 'success' ? cardsState.data.linkedTo : {}
+          }
+          isLoading={cardsState.status === 'loading'}
+          isSaving={isCardSaving}
+          error={
+            linkError ??
+            (cardsState.status === 'error' ? cardsState.error : null)
+          }
+          onLink={async (cardId) => {
+            const updated = await setStudentCard(studentId, cardId);
+            if (updated) await fetchStudents();
+          }}
+          onUnlink={async () => {
+            const updated = await setStudentCard(studentId, null);
+            if (updated) await fetchStudents();
+          }}
+        />
+      </Box>
+
+      <StudentForm
+        open={editStudentOpen}
+        onClose={() => setEditStudentOpen(false)}
+        onSubmit={handleSaveStudent}
+        student={student}
+        instructors={instructors}
+        billingRules={
+          billingState.status === 'success' ? billingState.data.rules : []
+        }
+        isSubmitting={isSavingStudent}
+      />
+
       <InvoiceBuilderDialog
         open={invoiceDialogOpen}
         onClose={() => {
@@ -730,13 +825,7 @@ export default function StudentDetailPage() {
         defaultTeacherId={student.primaryTeacherId}
         instructors={instructors}
         blocks={blocks}
-        defaultDurationMinutes={
-          student.registeredLessonLength === '45-min'
-            ? 45
-            : student.registeredLessonLength === '60-min'
-              ? 60
-              : 30
-        }
+        defaultDurationMinutes={defaultDurationFor(student)}
         onCreateSingle={handleCreateSingle}
         onCreateSeries={handleCreateSeries}
         isSubmitting={isSubmitting}

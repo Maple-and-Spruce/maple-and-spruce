@@ -45,6 +45,7 @@ export {
 export {
   CommitLessonsCard,
   type CommitLessonsCardProps,
+  type CommitLessonsScope,
   type CommitLessonsChargeInput,
   type CommitLessonsInvoiceInput,
 } from './lib/CommitLessonsCard';

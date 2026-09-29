@@ -515,3 +515,107 @@ export const AnInvoicedTaughtLessonIsNotOwedAgain: Story = {
     ).not.toBeInTheDocument();
   },
 };
+
+/*
+ * The student page splits the conversation into the two jobs Katie does, in
+ * the order she does them: settle what was taught, then line up what is next.
+ */
+
+/**
+ * Past lessons only. Nothing upcoming is offered, the count shortcut is gone
+ * (a debt is never collected by "the next four"), and nothing is ticked until
+ * Katie ticks it.
+ */
+export const OwedScopeListsOnlyTaughtLessons: Story = {
+  args: { scope: 'owed', lessons: [...taught, ...lessons] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('heading', { name: 'Charge for past lessons' })
+    ).toBeInTheDocument();
+    await expect(canvas.getAllByRole('checkbox')).toHaveLength(2);
+    await expect(canvas.queryByLabelText('Commit to')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Choose lessons instead' })
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Charge the card' })
+    ).toBeDisabled();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Tick all 2' }));
+    await expect(
+      await canvas.findByRole('button', { name: /Charge \$82\.50 to the card/ })
+    ).toBeEnabled();
+  },
+};
+
+/** Nothing owed is one quiet line, not an empty picker. */
+export const OwedScopeWithNothingOwed: Story = {
+  args: { scope: 'owed' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/Every lesson taught so far is paid for/)
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: /Charge/ })).toBeNull();
+  },
+};
+
+/**
+ * Still loading is not "nothing owed". Until the lessons land the card must
+ * not tell Katie everything is paid for.
+ */
+export const OwedScopeWhileLoading: Story = {
+  args: { scope: 'owed', lessons: [], isLoading: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByLabelText('Loading Charge for past lessons')
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText(/Every lesson taught so far/)).toBeNull();
+  },
+};
+
+/**
+ * Upcoming only. The debt has its own card on the page, so it does not
+ * announce itself here too, and the header carries the page's "Add lessons".
+ */
+export const UpcomingScopeLeavesPastLessonsAlone: Story = {
+  args: {
+    scope: 'upcoming',
+    lessons: [...taught, ...lessons],
+    headerAction: <button type="button">Add lessons</button>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('heading', { name: 'Next lessons' })
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Add lessons' })
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText(/taught and not paid for/)).toBeNull();
+    await expect(
+      canvas.getByRole('button', { name: /Charge \$165\.00 to the card/ })
+    ).toBeEnabled();
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Choose lessons instead' })
+    );
+    await expect(canvas.queryByText('Already taught, not paid for')).toBeNull();
+  },
+};
+
+/** Inside a dialog the card drops its own surface and heading. */
+export const EmbeddedHasNoHeading: Story = {
+  args: { scope: 'upcoming', embedded: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: /Charge \$165\.00 to the card/ })
+    ).toBeEnabled();
+    await expect(
+      canvas.queryByRole('heading', { name: 'Next lessons' })
+    ).toBeNull();
+  },
+};

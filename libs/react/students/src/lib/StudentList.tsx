@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   Alert,
@@ -8,6 +8,7 @@ import {
   Chip,
   Divider,
   IconButton,
+  ListSubheader,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -22,6 +23,10 @@ import StarsIcon from '@mui/icons-material/Stars';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EventIcon from '@mui/icons-material/Event';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import EventRepeatIcon from '@mui/icons-material/EventRepeat';
+import PaidIcon from '@mui/icons-material/Paid';
+import UpcomingIcon from '@mui/icons-material/Upcoming';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
   MaterialReactTable,
   useMaterialReactTable,
@@ -43,6 +48,12 @@ interface StudentListProps {
   instructors: Instructor[];
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
+  /** Set or change the student's weekly slot. Omit to hide the action. */
+  onSetWeeklySchedule?: (student: Student) => void;
+  /** Charge for lessons already taught and not paid for. Omit to hide. */
+  onChargePastLessons?: (student: Student) => void;
+  /** Line up the next lessons, with an optional charge ahead. Omit to hide. */
+  onPlanNextLessons?: (student: Student) => void;
   /** Open the schedule-lesson flow for a student. Omit to hide the action. */
   onScheduleLesson?: (student: Student) => void;
   /** Open the create-invoice flow for a student. Omit to hide the action. */
@@ -116,21 +127,38 @@ function buildScheduleByStudent(
   return result;
 }
 
-/** Per-row "⋯" menu consolidating a student's actions. Owns its own anchor. */
+type RowAction = (student: Student) => void;
+
+/**
+ * Per-row actions, in the order Katie does them: the student record, the
+ * weekly slot, settling past lessons, lining up the next ones. The one-off and
+ * record-keeping actions come after, and delete sits alone at the bottom.
+ *
+ * Edit is also a visible button beside the menu, because changing a rate,
+ * instrument or teacher is the commonest thing done from this table.
+ */
 function RowActionsMenu({
   student,
   isHopeScholarship,
+  detailHref,
   onEdit,
   onDelete,
+  onSetWeeklySchedule,
+  onChargePastLessons,
+  onPlanNextLessons,
   onScheduleLesson,
   onCreateInvoice,
 }: {
   student: Student;
   isHopeScholarship: boolean;
-  onEdit: (student: Student) => void;
-  onDelete: (student: Student) => void;
-  onScheduleLesson?: (student: Student) => void;
-  onCreateInvoice?: (student: Student) => void;
+  detailHref?: string;
+  onEdit: RowAction;
+  onDelete: RowAction;
+  onSetWeeklySchedule?: RowAction;
+  onChargePastLessons?: RowAction;
+  onPlanNextLessons?: RowAction;
+  onScheduleLesson?: RowAction;
+  onCreateInvoice?: RowAction;
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const close = () => setAnchorEl(null);
@@ -139,9 +167,61 @@ function RowActionsMenu({
     fn();
   };
 
+  const item = (
+    label: string,
+    icon: ReactNode,
+    action: RowAction | undefined,
+    disabled = false
+  ) =>
+    action ? (
+      <MenuItem
+        key={label}
+        onClick={run(() => action(student))}
+        disabled={disabled}
+      >
+        <ListItemIcon>{icon}</ListItemIcon>
+        <ListItemText>{label}</ListItemText>
+      </MenuItem>
+    ) : null;
+
+  // Hope families bill through EMA, so the billing actions say so rather than
+  // vanishing: a missing item reads as a bug, a labelled one as a rule.
+  const hope = (label: string) =>
+    isHopeScholarship ? label.replace(/…$/, ' (Hope)') : label;
+
+  const lessonItems = [
+    item('Weekly schedule…', <EventRepeatIcon fontSize="small" />, onSetWeeklySchedule),
+    item(
+      hope('Charge for past lessons…'),
+      <PaidIcon fontSize="small" />,
+      onChargePastLessons,
+      isHopeScholarship
+    ),
+    item('Next lessons…', <UpcomingIcon fontSize="small" />, onPlanNextLessons),
+  ].filter(Boolean);
+
+  const otherItems = [
+    item('Add a one-off lesson…', <EventIcon fontSize="small" />, onScheduleLesson),
+    item(
+      hope('Create invoice…'),
+      <ReceiptLongIcon fontSize="small" />,
+      onCreateInvoice,
+      isHopeScholarship
+    ),
+  ].filter(Boolean);
+
   return (
-    <>
-      <Tooltip title="Actions">
+    <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+      <Tooltip title="Edit student">
+        <IconButton
+          size="small"
+          aria-label={`Edit ${student.name}`}
+          onClick={() => onEdit(student)}
+        >
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="More actions">
         <IconButton
           size="small"
           aria-label={`Actions for ${student.name}`}
@@ -152,34 +232,22 @@ function RowActionsMenu({
         </IconButton>
       </Tooltip>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
-        {onScheduleLesson && (
-          <MenuItem onClick={run(() => onScheduleLesson(student))}>
+        {item('Edit student…', <EditIcon fontSize="small" />, onEdit)}
+        {lessonItems.length > 0 && <Divider />}
+        {lessonItems.length > 0 && <ListSubheader>Lessons</ListSubheader>}
+        {lessonItems}
+        {otherItems.length > 0 && <Divider />}
+        {otherItems}
+        {detailHref && <Divider />}
+        {detailHref && (
+          <MenuItem component={Link} href={detailHref} onClick={close}>
             <ListItemIcon>
-              <EventIcon fontSize="small" />
+              <OpenInNewIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Schedule lesson</ListItemText>
+            <ListItemText>Open student page</ListItemText>
           </MenuItem>
         )}
-        {onCreateInvoice && (
-          <MenuItem
-            onClick={run(() => onCreateInvoice(student))}
-            disabled={isHopeScholarship}
-          >
-            <ListItemIcon>
-              <ReceiptLongIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>
-              {isHopeScholarship ? 'Create invoice (Hope)' : 'Create invoice'}
-            </ListItemText>
-          </MenuItem>
-        )}
-        {(onScheduleLesson || onCreateInvoice) && <Divider />}
-        <MenuItem onClick={run(() => onEdit(student))}>
-          <ListItemIcon>
-            <EditIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Edit</ListItemText>
-        </MenuItem>
+        <Divider />
         <MenuItem
           onClick={run(() => onDelete(student))}
           sx={{ color: 'error.main' }}
@@ -190,7 +258,7 @@ function RowActionsMenu({
           <ListItemText>Delete</ListItemText>
         </MenuItem>
       </Menu>
-    </>
+    </Stack>
   );
 }
 
@@ -199,6 +267,9 @@ export function StudentList({
   instructors,
   onEdit,
   onDelete,
+  onSetWeeklySchedule,
+  onChargePastLessons,
+  onPlanNextLessons,
   onScheduleLesson,
   onCreateInvoice,
   detailHrefBase,
@@ -394,7 +465,7 @@ export function StudentList({
       {
         id: 'actions',
         header: 'Actions',
-        size: 100,
+        size: 110,
         enableSorting: false,
         enableColumnActions: false,
         muiTableBodyCellProps: { align: 'right' },
@@ -403,15 +474,32 @@ export function StudentList({
           <RowActionsMenu
             student={row.original.student}
             isHopeScholarship={row.original.isHopeScholarship}
+            detailHref={
+              detailHrefBase
+                ? `${detailHrefBase}/${row.original.student.id}`
+                : undefined
+            }
             onEdit={onEdit}
             onDelete={onDelete}
+            onSetWeeklySchedule={onSetWeeklySchedule}
+            onChargePastLessons={onChargePastLessons}
+            onPlanNextLessons={onPlanNextLessons}
             onScheduleLesson={onScheduleLesson}
             onCreateInvoice={onCreateInvoice}
           />
         ),
       },
     ],
-    [detailHrefBase, onEdit, onDelete, onScheduleLesson, onCreateInvoice]
+    [
+      detailHrefBase,
+      onEdit,
+      onDelete,
+      onSetWeeklySchedule,
+      onChargePastLessons,
+      onPlanNextLessons,
+      onScheduleLesson,
+      onCreateInvoice,
+    ]
   );
 
   const table = useMaterialReactTable({

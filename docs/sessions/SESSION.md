@@ -6,6 +6,24 @@
 
 ## Current Status
 
+### Student management follows Katie's task order (2026-09-29)
+
+Katie's jobs with a music student, most to least common: add them, edit rate /
+instrument / teacher, set the weekly slot, charge for past lessons, line up the
+next lessons (paying ahead optional). Card links and the lesson/billing history
+are occasional. Both screens now follow that order.
+
+- **Student page**: header with rate in the summary and an **Edit student**
+  button (was table-only) → Standing schedule → **Charge for past lessons** →
+  **Next lessons** (with "Add lessons") → *History and settings*: Lessons,
+  Billing, Payment method.
+- `CommitLessonsCard` takes `scope` (`owed` / `upcoming` / `all`), `embedded`,
+  `isLoading` and `headerAction`, so one card became the two task cards without
+  a second pricing path. A pre-tick outside the scope is never charged.
+- **Students table**: visible edit button per row; the ⋯ menu is in task order
+  and adds Weekly schedule…, Charge for past lessons…, Next lessons…, each a
+  dialog (`students/student-launchers.tsx`), sharing components with the page.
+
 ### Going public again: rewritten history + PII safeguards (2026-09-16)
 
 The repo went private after customer data leaked into tests and docs. legacy #857 scrubbed the
