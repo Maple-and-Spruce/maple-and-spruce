@@ -6,6 +6,23 @@
 
 ## Current Status
 
+### Paid in cash or Venmo, and what "Mark taught" does (2026-09-29)
+
+Katie asked whether "Mark taught" invoices or charges (it does neither; it
+only records the lesson) and for a simple way to record a cash payment.
+
+- `createInvoice` takes `paidWith` (`admin-manual` = cash/check, or
+  `venmo-manual`) with `status: 'paid'`: the invoice is created already paid,
+  stamped with who recorded it. It never reaches Square (sync only acts on
+  sent/void), so no bill is emailed. On that path the server refuses lessons
+  already covered by a charge or a live invoice.
+- "Paid in cash or Venmo" sits beside Charge / Send invoice on both lesson
+  cards (and the table dialogs); the confirm names every date and asks how.
+- "Mark taught" has a tooltip saying it never charges or invoices; the notice
+  after marking one adds a "Paid in cash" action next to "Send invoice".
+- Auto-charging is separate and unchanged: the nightly job charges active,
+  non-Hope students on a billing rule with a linked card, in blocks ahead.
+
 ### Four lessons ahead, and a way in for students with no weekly time (2026-09-29)
 
 Katie's feedback: saving a weekly slot put 12 lessons on the calendar and she

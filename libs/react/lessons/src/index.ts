@@ -48,6 +48,7 @@ export {
   type CommitLessonsScope,
   type CommitLessonsChargeInput,
   type CommitLessonsInvoiceInput,
+  type CommitLessonsRecordPaidInput,
 } from './lib/CommitLessonsCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {

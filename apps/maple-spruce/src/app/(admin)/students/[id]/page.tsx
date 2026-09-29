@@ -53,6 +53,7 @@ import {
   StandingScheduleDialog,
   type CommitLessonsChargeInput,
   type CommitLessonsInvoiceInput,
+  type CommitLessonsRecordPaidInput,
   type LessonPendingAction,
 } from '@maple/react/lessons';
 import {
@@ -78,6 +79,7 @@ import {
 import {
   blockInvoiceInput,
   defaultDurationFor,
+  paidLessonsInvoiceInput,
   type StandingScheduleSubmit,
 } from '../student-launchers';
 
@@ -407,7 +409,12 @@ export default function StudentDetailPage() {
           'Marked taught. No rate is set for this student, so there is nothing to invoice yet.',
       };
     }
-    return { message: 'Marked taught. Nothing has billed it yet.', lesson, amountCents };
+    return {
+      message:
+        'Marked taught. Marking taught never charges or invoices, and nothing has billed this lesson yet.',
+      lesson,
+      amountCents,
+    };
   };
 
   /** Invoice the one lesson, sent straight away so the family can pay it. */
@@ -432,6 +439,27 @@ export default function StudentDetailPage() {
     }
   };
 
+  /** They paid for this one lesson in cash at the door: record it, charge nothing. */
+  const handleCashTaughtLesson = async (lesson: Lesson, amountCents: number) => {
+    setTaughtNotice(null);
+    setIsSubmitting(true);
+    try {
+      await createInvoice({
+        studentId: lesson.studentId,
+        status: 'paid',
+        paidWith: 'admin-manual',
+        lineItems: lessonInvoiceLines(
+          [lesson],
+          () => amountCents,
+          newInvoiceLineId
+        ),
+      });
+      await fetchInvoices();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   /**
    * Invoice a committed block, one line per lesson (#113).
    *
@@ -449,6 +477,20 @@ export default function StudentDetailPage() {
       await createInvoice(blockInvoiceInput(student, input, rateByLength));
       // The block's dates have to stop being offered for a card charge the
       // moment the invoice exists, and that comes from the invoices list.
+      await fetchInvoices();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /** The family paid in cash, by check or by Venmo: record it, charge nothing. */
+  const handleRecordPaid = async (input: CommitLessonsRecordPaidInput) => {
+    if (!student || input.lessons.length === 0) return;
+    const rateByLength =
+      billingState.status === 'success' ? billingState.data.rateByLength : {};
+    setIsSubmitting(true);
+    try {
+      await createInvoice(paidLessonsInvoiceInput(student, input, rateByLength));
       await fetchInvoices();
     } finally {
       setIsSubmitting(false);
@@ -569,6 +611,7 @@ export default function StudentDetailPage() {
       if (!failure) await fetchLessons();
     },
     onSendInvoice: handleInvoiceBlock,
+    onRecordPaid: handleRecordPaid,
     // Move and Skip reuse the dialogs the page already owns, so a date is
     // fixed without leaving the conversation and without a second editor
     // that could drift from the one in the Lessons table.
@@ -968,19 +1011,34 @@ export default function StudentDetailPage() {
         message={taughtNotice?.message}
         action={
           taughtNotice?.lesson && taughtNotice.amountCents ? (
-            <Button
-              size="small"
-              color="secondary"
-              disabled={isSubmitting}
-              onClick={() =>
-                handleInvoiceTaughtLesson(
-                  taughtNotice.lesson as Lesson,
-                  taughtNotice.amountCents as number
-                )
-              }
-            >
-              {`Send invoice ($${(taughtNotice.amountCents / 100).toFixed(2)})`}
-            </Button>
+            <>
+              <Button
+                size="small"
+                color="secondary"
+                disabled={isSubmitting}
+                onClick={() =>
+                  handleInvoiceTaughtLesson(
+                    taughtNotice.lesson as Lesson,
+                    taughtNotice.amountCents as number
+                  )
+                }
+              >
+                {`Send invoice ($${(taughtNotice.amountCents / 100).toFixed(2)})`}
+              </Button>
+              <Button
+                size="small"
+                color="secondary"
+                disabled={isSubmitting}
+                onClick={() =>
+                  handleCashTaughtLesson(
+                    taughtNotice.lesson as Lesson,
+                    taughtNotice.amountCents as number
+                  )
+                }
+              >
+                Paid in cash
+              </Button>
+            </>
           ) : undefined
         }
       />
