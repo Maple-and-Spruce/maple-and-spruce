@@ -554,3 +554,72 @@ export const PuttingAStudentOnARule: Story = {
     );
   },
 };
+
+// ============================================================
+// EMA PRODUCT (WV Hope Scholarship)
+// ============================================================
+
+const emaProducts = [
+  {
+    id: 'prod-guitar-30',
+    emaProductId: '137571',
+    name: 'Standard Child Guitar Lesson 30 minutes',
+    priceCents: 3000,
+    active: true,
+    createdAt: new Date('2026-09-01T00:00:00Z'),
+    updatedAt: new Date('2026-09-01T00:00:00Z'),
+  },
+  {
+    id: 'prod-retired',
+    emaProductId: '1',
+    name: 'Retired Product',
+    priceCents: 9900,
+    active: false,
+    createdAt: new Date('2026-09-01T00:00:00Z'),
+    updatedAt: new Date('2026-09-01T00:00:00Z'),
+  },
+];
+
+/**
+ * A Hope student is put on the EMA product their lessons are billed under;
+ * that price, not a table in code, is what each lesson is worth. Retired
+ * products are not offered for a student who is not already on one.
+ */
+export const HopeStudentChoosesAnEmaProduct: Story = {
+  args: {
+    open: true,
+    student: mockStudentHope,
+    hopeProducts: emaProducts,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(canvas.getByRole('combobox', { name: 'EMA product' }));
+    await expect(
+      await canvas.findByRole('option', {
+        name: 'Standard Child Guitar Lesson 30 minutes · $30.00',
+      })
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole('option', { name: /Retired Product/ })).toBeNull();
+    await userEvent.click(
+      canvas.getByRole('option', {
+        name: 'Standard Child Guitar Lesson 30 minutes · $30.00',
+      })
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ hopeProductId: 'prod-guitar-30' })
+      )
+    );
+  },
+};
+
+/** Not a Hope student: no EMA product to choose. */
+export const NoEmaProductOffStudentsNotOnHope: Story = {
+  args: { open: true, student: mockStudent, hopeProducts: emaProducts },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(canvas.queryByRole('combobox', { name: 'EMA product' })).toBeNull();
+  },
+};

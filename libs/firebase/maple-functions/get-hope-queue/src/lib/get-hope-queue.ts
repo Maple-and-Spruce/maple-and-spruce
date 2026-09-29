@@ -15,13 +15,14 @@
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {
+  HopeProductRepository,
   HopeSubmissionRepository,
   LessonRepository,
   StudentRepository,
 } from '@maple/firebase/database';
 import {
-  getHopePerLessonRateCents,
   isSubmittableToHope,
+  resolveHopeLessonRate,
   summarizeHopeQueue,
 } from '@maple/ts/domain';
 import type { HopeQueueEntry } from '@maple/ts/domain';
@@ -30,25 +31,14 @@ import type {
   GetHopeQueueResponse,
 } from '@maple/ts/firebase/api-types';
 
-/** A student with no registered tier still gets a rate, from their lesson length. */
-function rateForStudent(
-  registeredLessonLength: string | undefined,
-  durationMinutes: number
-): number {
-  if (registeredLessonLength) {
-    return getHopePerLessonRateCents(
-      registeredLessonLength as Parameters<typeof getHopePerLessonRateCents>[0]
-    );
-  }
-  if (durationMinutes >= 60) return getHopePerLessonRateCents('60-min');
-  if (durationMinutes >= 45) return getHopePerLessonRateCents('45-min');
-  return getHopePerLessonRateCents('30-min-full');
-}
-
 export const getHopeQueue = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<GetHopeQueueRequest, GetHopeQueueResponse>(async (data) => {
-    const students = await StudentRepository.findAll();
+    const [students, products] = await Promise.all([
+      StudentRepository.findAll(),
+      HopeProductRepository.findAll(),
+    ]);
+    const productsById = new Map(products.map((p) => [p.id, p]));
     const hopeStudents = students.filter(
       (s) =>
         s.isHopeScholarship &&
@@ -73,15 +63,17 @@ export const getHopeQueue = Functions.endpoint
         if (from && lesson.scheduledAt < from) continue;
         if (to && lesson.scheduledAt > to) continue;
 
+        // What EMA pays for this student's product; an estimate, flagged as
+        // one, until the student is put on a product.
+        const rate = resolveHopeLessonRate(student, lesson, productsById);
         entries.push({
           lesson,
           studentId: student.id,
           studentName: student.name,
           registeredLessonLength: student.registeredLessonLength,
-          rateCents: rateForStudent(
-            student.registeredLessonLength,
-            lesson.durationMinutes
-          ),
+          rateCents: rate.rateCents,
+          rateSource: rate.source,
+          productName: rate.product?.name,
         });
       }
     }

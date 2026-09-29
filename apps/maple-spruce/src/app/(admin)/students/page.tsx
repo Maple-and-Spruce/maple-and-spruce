@@ -29,6 +29,7 @@ import {
   useInstructors,
   useLessonBlocks,
   useLessonInquiries,
+  useHopeProducts,
   useLessonBilling,
   useLessons,
   useNeedsAttention,
@@ -66,6 +67,10 @@ export default function StudentsPage() {
   const { billingState: studioBillingState } = useLessonBilling();
   const billingRules =
     studioBillingState.status === 'success' ? studioBillingState.data.rules : [];
+  // EMA products, so the form can put a Hope student on the one they bill under.
+  const { productsState: hopeProductsState } = useHopeProducts();
+  const hopeProducts =
+    hopeProductsState.status === 'success' ? hopeProductsState.data : [];
 
 
   const instructors =
@@ -332,6 +337,7 @@ export default function StudentsPage() {
         student={editingStudent}
         instructors={instructors}
         billingRules={billingRules}
+        hopeProducts={hopeProducts}
         isSubmitting={isSubmitting}
         prefill={
           creatingFromInquiry

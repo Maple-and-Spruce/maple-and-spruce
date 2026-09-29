@@ -26,6 +26,7 @@
  * through `isSubmittableToHope`, not by a filter in a UI that could be
  * forgotten or bypassed.
  */
+import type { HopeRateSource } from './hope-product';
 import type { Lesson } from './lesson';
 import type { Student } from './student';
 
@@ -89,6 +90,14 @@ export interface HopeQueueEntry {
   registeredLessonLength?: Student['registeredLessonLength'];
   /** The rate this lesson would be claimed at today, in cents. */
   rateCents: number;
+  /**
+   * `product` when the rate is the student's EMA product price; `estimate`
+   * when the student is not on a product yet and the old length table stood
+   * in. Absent on entries built before products existed; treat as estimate.
+   */
+  rateSource?: HopeRateSource;
+  /** The EMA product's name, when the rate came from one. */
+  productName?: string;
   /** Absent until something has been claimed. */
   submission?: HopeSubmission;
 }

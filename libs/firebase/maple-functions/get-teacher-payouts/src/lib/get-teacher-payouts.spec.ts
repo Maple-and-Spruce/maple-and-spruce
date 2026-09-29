@@ -35,6 +35,7 @@ vi.mock('@maple/firebase/database', () => ({
   InvoiceRepository: { findAll: mocks.invoiceFindAll },
   StudentRepository: { findAll: mocks.studentFindAll },
   InstructorRepository: { findAll: mocks.instructorFindAll },
+  HopeProductRepository: { findAll: vi.fn(async () => []) },
 }));
 
 import { getTeacherPayouts } from './get-teacher-payouts';

@@ -576,6 +576,12 @@ export type {
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
 } from './hope-submission.types';
+export type {
+  GetHopeProductsRequest,
+  GetHopeProductsResponse,
+  SaveHopeProductRequest,
+  SaveHopeProductResponse,
+} from './hope-product.types';
 
 export type {
   GetNeedsAttentionRequest,

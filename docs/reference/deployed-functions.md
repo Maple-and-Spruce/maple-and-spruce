@@ -59,6 +59,11 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
 
 ### Hope Scholarship billing (legacy #799)
+- `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
+  `hope/getHopeProducts`, `hope/saveHopeProduct` _(admin — the studio's EMA portal
+  products: EMA id, name, price per lesson. A Hope student's `hopeProductId` sets what
+  their lessons are worth in the queue, on the claim and in teacher payouts)_. Orders and
+  invoice tracking are to join as routes here.
 - `getHopeQueue` _(admin — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
 - `recordHopeSubmissions` _(admin, bulk — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
 - `createLessonSeries` now accepts `status` — set `rendered` with past dates to **backfill lessons already taught**. Block attribution is waived for that case only (see `isBackfillSeries`); a future-dated series without a block is still refused.

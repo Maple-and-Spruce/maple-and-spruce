@@ -23,8 +23,9 @@ import type { Invoice } from './invoice';
 import type { Lesson, LessonStatus } from './lesson';
 import { isSubmittableToHope } from './lesson';
 import { wasTaughtBySubstitute } from './lesson';
-import type { Student, LessonLength } from './student';
-import { getHopePerLessonRateCents } from './hope-rates';
+import type { Student } from './student';
+import type { HopeProduct } from './hope-product';
+import { resolveHopeLessonRate } from './hope-product';
 
 export type TeacherPayoutLineSource = 'private-paid' | 'hope-rendered';
 
@@ -69,33 +70,25 @@ export interface AggregateTeacherPayoutsInput {
   paidInvoices: Invoice[];
   students: Student[];
   instructors: Instructor[];
+  /**
+   * EMA products, so a Hope lesson's base revenue is what EMA pays for the
+   * student's product. Omitted or unmatched, the old length table stands in.
+   */
+  hopeProducts?: HopeProduct[];
   /** Optional restriction to a single teacher. */
   teacherIdFilter?: string;
 }
 
 /**
- * Map a lesson duration to a default Hope tier when the student has no
- * `registeredLessonLength` set. 30-min defaults to `30-min-full` (the
- * common case — `30-min-initial` applies only to brand-new students).
- */
-function defaultTierForDuration(durationMinutes: number): LessonLength {
-  if (durationMinutes >= 60) return '60-min';
-  if (durationMinutes >= 45) return '45-min';
-  return '30-min-full';
-}
-
-/**
- * Resolve the base revenue (in cents) for a Hope rendered lesson. Uses
- * the student's registered tier when set; falls back to a tier derived
- * from the lesson's duration.
+ * Resolve the base revenue (in cents) for a Hope rendered lesson: the
+ * student's EMA product price, else the old length table as an estimate.
  */
 export function hopeLessonBaseRevenueCents(
   lesson: Pick<Lesson, 'durationMinutes'>,
-  student: Pick<Student, 'registeredLessonLength'>
+  student: Pick<Student, 'registeredLessonLength' | 'hopeProductId'>,
+  productsById: ReadonlyMap<string, HopeProduct> = new Map()
 ): number {
-  const tier =
-    student.registeredLessonLength ?? defaultTierForDuration(lesson.durationMinutes);
-  return getHopePerLessonRateCents(tier);
+  return resolveHopeLessonRate(student, lesson, productsById).rateCents;
 }
 
 /**
@@ -202,6 +195,9 @@ export function aggregateTeacherPayouts(
   }
 
   // --- 2) Hope rendered: emit a line per rendered Hope lesson not already counted ---
+  const hopeProductsById = new Map(
+    (input.hopeProducts ?? []).map((p) => [p.id, p])
+  );
   for (const lesson of lessons) {
     if (!isLessonPayoutEligible(lesson.status, 'hope-rendered')) continue;
     if (privatePaidLessonIds.has(lesson.id)) continue; // already counted as private-paid
@@ -213,7 +209,11 @@ export function aggregateTeacherPayouts(
     if (!teacher) continue;
     if (teacherIdFilter && teacher.id !== teacherIdFilter) continue;
 
-    const baseRevenueCents = hopeLessonBaseRevenueCents(lesson, student);
+    const baseRevenueCents = hopeLessonBaseRevenueCents(
+      lesson,
+      student,
+      hopeProductsById
+    );
     const compensationCents = computeLessonCompensationCents(
       teacher,
       lesson,

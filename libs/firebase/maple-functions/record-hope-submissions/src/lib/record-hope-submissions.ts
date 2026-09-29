@@ -22,38 +22,35 @@ import {
   throwInvalidArgument,
 } from '@maple/firebase/functions';
 import {
+  HopeProductRepository,
   HopeSubmissionRepository,
   LessonRepository,
   StudentRepository,
 } from '@maple/firebase/database';
 import {
   HOPE_SUBMISSION_STATUSES,
-  getHopePerLessonRateCents,
   isSubmittableToHope,
+  resolveHopeLessonRate,
 } from '@maple/ts/domain';
-import type { LessonLength } from '@maple/ts/domain';
+import type { HopeProduct } from '@maple/ts/domain';
 import type {
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
 } from '@maple/ts/firebase/api-types';
-
-function rateFor(
-  registeredLessonLength: LessonLength | undefined,
-  durationMinutes: number
-): number {
-  if (registeredLessonLength) {
-    return getHopePerLessonRateCents(registeredLessonLength);
-  }
-  if (durationMinutes >= 60) return getHopePerLessonRateCents('60-min');
-  if (durationMinutes >= 45) return getHopePerLessonRateCents('45-min');
-  return getHopePerLessonRateCents('30-min-full');
-}
 
 export const recordHopeSubmissions = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<RecordHopeSubmissionsRequest, RecordHopeSubmissionsResponse>(
     async (data, context) => {
       const lessonIds = data?.lessonIds ?? [];
+      // Read once, and only if a claim actually needs stamping.
+      let products: Map<string, HopeProduct> | undefined;
+      const productsById = async () => {
+        products ??= new Map(
+          (await HopeProductRepository.findAll()).map((p) => [p.id, p])
+        );
+        return products;
+      };
       if (lessonIds.length === 0) {
         throwInvalidArgument('At least one lesson is required');
       }
@@ -107,7 +104,8 @@ export const recordHopeSubmissions = Functions.endpoint
           // one when there was nothing claimed before.
           rateCents:
             existing?.rateCents ??
-            rateFor(student.registeredLessonLength, lesson.durationMinutes),
+            resolveHopeLessonRate(student, lesson, await productsById())
+              .rateCents,
           submittedAt: existing?.submittedAt ?? now,
           paidAt: data.status === 'paid' ? now : existing?.paidAt,
           emaReference: data.emaReference ?? existing?.emaReference,
