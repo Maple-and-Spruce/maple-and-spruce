@@ -14,7 +14,8 @@
 > `createMusicTogetherRegistration`, `createCraftClubSubscription`,
 > `updateCraftClubPaymentMethod`, `updateMusicTogetherPaymentMethod`, `lookupDiscount`,
 > `requestCraftClubAccess`, `requestCraftClubManageLink`, `requestMusicTogetherManageLink`.
-> Over a limit they answer 429 `RESOURCE_EXHAUSTED`. App Check currently runs in `monitor`.
+> Over a limit they answer 429 `RESOURCE_EXHAUSTED`. App Check is enforced in prod (401 without
+> a valid token), except `createRegistrationCheckoutLink`, which stays in `monitor`.
 
 ## Codebase: `maple-core` (`apps/functions/`)
 

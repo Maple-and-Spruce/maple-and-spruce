@@ -6,6 +6,13 @@
 
 ## Current Status
 
+### App Check enforced on public callables (2026-09-29, #136)
+
+The enforce PR sets `.env.prod` to `enforce`. Nine endpoints declare `enforce`;
+`createRegistrationCheckoutLink` stays `monitor` because it is the hosted-checkout fallback.
+Dev stays `monitor`. `app-check-config.spec.ts` blocks the merge until the prod site key is in
+`firebase-init.ts`. Rollback: set `.env.prod` back to `monitor` and merge.
+
 ### App Check + request throttling on public callables, monitor phase (2026-09-29)
 
 ADR-034, #136. Ten public callables used by the Webflow widgets now declare `.withAppCheck('monitor')`
