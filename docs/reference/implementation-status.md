@@ -204,6 +204,18 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 | Storybook interaction tests (14) | **Complete** | `libs/react/payouts/src/lib/*.stories.tsx` |
 | `/payouts` admin page + Music Lessons nav entry | **Complete** | `apps/maple-spruce/src/app/payouts/page.tsx`, `AppShellWrapper.tsx` |
 
+### Class-Instructor Payouts (In progress, 3 PRs)
+
+Contract instructors get `payRate` (0.8) of what the student paid for the class, after discount and before tax. Revenue is split evenly across sessions, and each session is paid in the month it was held. Statements are generated monthly and marked paid by hand; the app never moves money. See the domain module's header for the full policy.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Domain: statement builder, per-session proration, cumulative share rounding, refund adjustments, stale check, year total | **Complete** (PR 1) | `libs/ts/domain/src/lib/class-instructor-payout.ts` |
+| `getNetAmountPaid` fixed: returns `subtotalCents` (it had subtracted the discount twice and included tax) | **Complete** (PR 1) | `libs/ts/domain/src/lib/registration.ts` |
+| Refunds record `refundedAt` / `refundedAmountCents` / `squareRefundId` | **Complete** (PR 1) | `cancel-registration`, `registration.repository.ts` |
+| Ledger + statement repositories, `payouts` router (preview / generate / list / get / mark paid / void) | Planned (PR 2) | |
+| `/payouts` Class instructors tab, printable statement page | Planned (PR 3) | |
+
 ### Parent Invoice Delivery + Online Payment (legacy #281, Complete)
 
 Uses Square Invoices API rather than a custom Webflow payment page — Square sends the parent the email + hosted payment page, handles receipts and reminders, and webhooks us back when paid.
