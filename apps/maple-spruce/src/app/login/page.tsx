@@ -7,6 +7,7 @@ import {
   sendPasswordResetEmail,
 } from 'firebase/auth';
 import { getMapleAuth } from '@maple/ts/firebase/firebase-config';
+import { getAuthErrorMessage } from './auth-error-message';
 import {
   Box,
   Card,
@@ -48,7 +49,7 @@ export default function LoginPage() {
       // Redirect to home on success
       router.push('/');
     } catch (error) {
-      const message = getErrorMessage(error);
+      const message = getAuthErrorMessage(error);
       setState((prev) => ({ ...prev, error: message, isSubmitting: false }));
     }
   };
@@ -73,7 +74,7 @@ export default function LoginPage() {
         isSubmitting: false,
       }));
     } catch (error) {
-      const message = getErrorMessage(error);
+      const message = getAuthErrorMessage(error);
       setState((prev) => ({ ...prev, error: message, isSubmitting: false }));
     }
   };
@@ -168,35 +169,16 @@ export default function LoginPage() {
             >
               Forgot password?
             </Link>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 2 }}
+            >
+              Accounts are created by an administrator.
+            </Typography>
           </Box>
         </CardContent>
       </Card>
     </Box>
   );
-}
-
-/**
- * Convert Firebase auth errors to user-friendly messages
- */
-function getErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object' && 'code' in error) {
-    const code = (error as { code: string }).code;
-    switch (code) {
-      case 'auth/invalid-email':
-        return 'Invalid email address';
-      case 'auth/user-disabled':
-        return 'This account has been disabled';
-      case 'auth/user-not-found':
-        return 'No account found with this email';
-      case 'auth/wrong-password':
-        return 'Incorrect password';
-      case 'auth/invalid-credential':
-        return 'Invalid email or password';
-      case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please try again later';
-      default:
-        return 'An error occurred. Please try again';
-    }
-  }
-  return 'An unexpected error occurred';
 }
