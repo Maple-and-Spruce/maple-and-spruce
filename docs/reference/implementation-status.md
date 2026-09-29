@@ -213,7 +213,10 @@ Contract instructors get `payRate` (0.8) of what the student paid for the class,
 | Domain: statement builder, per-session proration, cumulative share rounding, refund adjustments, stale check, year total | **Complete** (PR 1) | `libs/ts/domain/src/lib/class-instructor-payout.ts` |
 | `getNetAmountPaid` fixed: returns `subtotalCents` (it had subtracted the discount twice and included tax) | **Complete** (PR 1) | `libs/ts/domain/src/lib/registration.ts` |
 | Refunds record `refundedAt` / `refundedAmountCents` / `squareRefundId` | **Complete** (PR 1) | `cancel-registration`, `registration.repository.ts` |
-| Ledger + statement repositories, `payouts` router (preview / generate / list / get / mark paid / void) | Planned (PR 2) | |
+| Ledger + statement repositories (transactional generate / mark paid / void, ADR-034) | **Complete** (PR 2) | `libs/firebase/database/src/lib/class-instructor-statement.repository.ts` |
+| `payouts` router: preview / generate / list / get / mark paid / void, admin-only | **Complete** (PR 2) | `libs/firebase/maple-functions/payouts/` |
+| Vest suites for generate + mark paid | **Complete** (PR 2) | `libs/ts/validation/src/lib/class-instructor-statement.validation.ts` |
+| Integration suite (split across months, double generate, race, void + regenerate, refund after payment, gating) + role matrix | **Complete** (PR 2) | `apps/functions-integration-tests-payouts/` |
 | `/payouts` Class instructors tab, printable statement page | Planned (PR 3) | |
 
 ### Parent Invoice Delivery + Online Payment (legacy #281, Complete)
