@@ -6,9 +6,18 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createPublicFunction: <TReq, TRes>(
-    handler: (data: TReq) => Promise<TRes>
-  ) => handler,
+  // handle() returns the handler itself, so the export is directly callable.
+  Functions: {
+    endpoint: {
+      withAppCheck: (mode: string) => ({
+        throttling: (scope: string, rules: unknown) => ({
+          handle: <TReq, TRes>(handler: (data: TReq) => Promise<TRes>) =>
+            Object.assign(handler, { declared: { mode, scope, rules } }),
+        }),
+      }),
+    },
+  },
+  emailLinkThrottles: () => ['ip', 'email'],
   throwValidationError: (errors: Record<string, string[]>) => {
     throw new Error(`validation: ${Object.keys(errors).join(',')}`);
   },
@@ -56,5 +65,17 @@ describe('requestCraftClubAccess', () => {
   it('rejects an invalid email before writing', async () => {
     await expect(handler({ email: 'bad' })).rejects.toThrow(/validation: email/);
     expect(mocks.findByEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('requestCraftClubAccess declaration', () => {
+  it('opts into App Check and per-IP and per-address throttling', () => {
+    expect(
+      (requestCraftClubAccess as unknown as { declared: unknown }).declared
+    ).toEqual({
+      mode: 'monitor',
+      scope: 'requestCraftClubAccess',
+      rules: ['ip', 'email'],
+    });
   });
 });

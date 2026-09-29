@@ -8,6 +8,13 @@
 > name, so anything else a library exports is outside every filter and never created — which
 > is how `chargeLessonsNow` and six admin `trigger*` twins were listed here while being
 > absent from prod (legacy #872). `tools/check-function-library-names.ts` now fails a PR on it.
+>
+> **Public callables used by the widgets** declare `.withAppCheck()` and `.throttling()`
+> (ADR-037): `createRegistration`, `createRegistrationCheckoutLink`,
+> `createMusicTogetherRegistration`, `createCraftClubSubscription`,
+> `updateCraftClubPaymentMethod`, `updateMusicTogetherPaymentMethod`, `lookupDiscount`,
+> `requestCraftClubAccess`, `requestCraftClubManageLink`, `requestMusicTogetherManageLink`.
+> Over a limit they answer 429 `RESOURCE_EXHAUSTED`. App Check currently runs in `monitor`.
 
 ## Codebase: `maple-core` (`apps/functions/`)
 

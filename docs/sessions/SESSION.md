@@ -442,6 +442,35 @@ are occasional. Both screens now follow that order.
   and adds Weekly schedule…, Charge for past lessons…, Next lessons…, each a
   dialog (`students/student-launchers.tsx`), sharing components with the page.
 
+### App Check + request throttling on public callables, monitor phase (2026-09-29)
+
+ADR-037, #136. Ten public callables used by the Webflow widgets now declare `.withAppCheck('monitor')`
+and `.throttling(scope, rules)` on `Functions.endpoint`. The pipeline order is warmup → App Check
+→ auth → role → throttle → validation → handler. `APP_CHECK_MODE=monitor` in both env files caps
+every endpoint. `lookupDiscount` and `requestCraftClubAccess` moved off `createPublicFunction`
+so they could chain.
+
+The widgets start App Check with reCAPTCHA Enterprise in `firebase-init.ts`, in the browser only
+and only once a site key is filled in. `RECAPTCHA_ENTERPRISE_SITE_KEY` ships empty.
+
+**Outstanding before this does anything in prod:**
+- enable the App Check and reCAPTCHA Enterprise APIs on both projects
+- create the site keys and register them in the App Check console
+- paste the keys into `firebase-init.ts`
+- publish the Webflow site
+- enable the TTL policy on `requestThrottles.expiresAt`
+- create a log-based metric on `jsonPayload.event="app_check"`
+
+**Then:** watch the `app_check` results per endpoint and browser for about a week, and open the
+enforce PR.
+
+**Gotchas.**
+- The CORS allow-list had to gain `X-Firebase-AppCheck`, or the browser's preflight rejects every
+  call the moment a token is attached. The SDK reports that as `permission-denied`.
+- Per-function specs hand-roll the builder mock, so every new chain method must be added there.
+- `context.ip` (left-most XFF, for attribution) and `extractTrustedClientIp` (right-most, for
+  counting) deliberately disagree.
+
 ### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
 
 **Artists is the pilot** (#126, #127). ADR-029 was accepted in August and nothing had been
