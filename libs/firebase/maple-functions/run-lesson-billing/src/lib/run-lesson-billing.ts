@@ -22,6 +22,7 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 import {
+  InstructorRepository,
   InvoiceRepository,
   LessonBillingRuleRepository,
   LessonRatesConfigRepository,
@@ -59,6 +60,7 @@ export async function executeLessonBilling(
     allLessons,
     allCharges,
     allInvoices,
+    instructors,
   ] =
     await Promise.all([
       StudentRepository.findAll(),
@@ -73,6 +75,8 @@ export async function executeLessonBilling(
       // Invoices count as "already billed" too, now that invoicing is
       // explicit — a lesson Katie invoiced must not also be charged (#101).
       InvoiceRepository.findAll(),
+      // Each student is priced from their primary teacher's rates.
+      InstructorRepository.findAll(),
     ]);
 
   const lessonsByStudent = new Map<string, Lesson[]>();
@@ -103,6 +107,7 @@ export async function executeLessonBilling(
     rules,
     defaultRule,
     rateByLength: ratesConfig.rateByLength,
+    teacherRatesById: new Map(instructors.map((i) => [i.id, i])),
     lessonsByStudent,
     chargesByStudent,
     invoicedLessonIdsByStudent,

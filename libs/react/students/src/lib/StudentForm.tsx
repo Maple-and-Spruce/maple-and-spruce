@@ -463,7 +463,7 @@ export function StudentForm({
             error={!!getFieldError('lessonRateCents')}
             helperText={
               getFieldError('lessonRateCents') ||
-              'Dollars per lesson. Leave blank to use the standard rate for their lesson length.'
+              'Dollars per lesson. Leave blank to use their teacher’s rate for their instrument (set on the Instructors page), or the studio default.'
             }
             type="number"
             fullWidth

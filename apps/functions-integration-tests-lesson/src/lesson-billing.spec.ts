@@ -459,4 +459,45 @@ describe('Lesson billing (#81)', () => {
       expect(after?.status).toBe('cancelled');
     }, 120000);
   });
+
+  describe("a teacher's own rates", () => {
+    const RATED_TEACHER = 'instructor-billing-rated';
+
+    beforeAll(async () => {
+      await setFirestoreDoc('instructors', RATED_TEACHER, {
+        name: 'Rated Teacher',
+        email: 'rated-teacher@example.com',
+        status: 'active',
+        lessonRates: { violin: { '30-min-full': 4800, '60-min': 9000 } },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      await seedStudent('student-rated-violin', {
+        primaryTeacherId: RATED_TEACHER,
+      });
+      await seedStudent('student-rated-cello', {
+        primaryTeacherId: RATED_TEACHER,
+        instrument: 'cello',
+      });
+    }, 30000);
+
+    it("prices a student from their teacher's rate for their instrument", async () => {
+      const result = await billing(adminUser.idToken, 'student-rated-violin');
+      expect(result.status).toBe(200);
+      expect(result.data?.rateByLength).toEqual({
+        '30-min-full': 4800,
+        '60-min': 9000,
+      });
+    }, 30000);
+
+    it('falls back to the studio default for an instrument the teacher has not priced', async () => {
+      const result = await billing(adminUser.idToken, 'student-rated-cello');
+      expect(result.data?.rateByLength).toEqual({ '30-min-full': 4125 });
+    }, 30000);
+
+    it('studio-wide, the table is the studio default', async () => {
+      const result = await billing(adminUser.idToken);
+      expect(result.data?.rateByLength).toEqual({ '30-min-full': 4125 });
+    }, 30000);
+  });
 });

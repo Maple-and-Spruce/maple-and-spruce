@@ -6,6 +6,24 @@
 
 ## Current Status
 
+### Lesson rates per teacher, per instrument (2026-09-29)
+
+Base lesson prices were one studio-wide table by length, buried in Settings,
+and empty in prod, so every student without an override priced at $0. Rates
+now live on the teacher: `Instructor.lessonRates` is instrument → length →
+cents, edited in the Instructors form ("Lesson rates").
+
+- Price order: the student's own `lessonRateCents` → their **primary
+  teacher's** rate for their instrument and length → the studio default
+  (Settings) → nothing. Primary teacher, not whoever taught, so a substitute
+  week costs the family the same.
+- `effectiveRateByLength(student, teacher, studioRates)` builds the table;
+  `resolvePrivatePayLessonRateCents` is unchanged and takes it.
+- `getLessonBilling({ studentId })` returns that student's effective table, so
+  every screen that prices a student (student page, billing cards, launchers)
+  picked this up with no client change. `chargeLessonsNow` and the nightly
+  `runLessonBilling` price from the same table.
+
 ### Student management follows Katie's task order (2026-09-29)
 
 Katie's jobs with a music student, most to least common: add them, edit rate /

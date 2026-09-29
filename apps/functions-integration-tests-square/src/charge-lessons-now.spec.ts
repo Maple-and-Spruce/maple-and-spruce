@@ -176,6 +176,30 @@ describe('Charging a block of lessons now (legacy #864)', () => {
     expect(payments).toHaveLength(1);
   }, 90000);
 
+  it("prices from the primary teacher's rate for the student's instrument", async () => {
+    // The teacher has priced fiddle; the studio default is RATE_CENTS. The
+    // teacher's rate is what the screen showed and what must be taken.
+    await setFirestoreDoc('instructors', 'instructor-rated', {
+      name: 'Rated Teacher',
+      email: 'rated-teacher@example.com',
+      status: 'active',
+      lessonRates: { fiddle: { '30-min-full': 5000 } },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await seedStudent('stu-teacher-rate', { primaryTeacherId: 'instructor-rated' });
+    await seedLessons('stu-teacher-rate', 2);
+
+    const result = await chargeNow({
+      studentId: 'stu-teacher-rate',
+      lessonCount: 2,
+      expectedAmountCents: 2 * 5000,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.data?.charge.amountCents).toBe(2 * 5000);
+  }, 90000);
+
   it('charging the same lessons twice does not take a second payment', async () => {
     await seedStudent('stu-twice');
     await seedLessons('stu-twice', 4);
