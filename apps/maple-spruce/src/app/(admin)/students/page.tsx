@@ -309,6 +309,8 @@ export default function StudentsPage() {
       {billingFor && (
         <LessonBillingLauncher
           student={billingFor.student}
+          blocks={blocks}
+          instructors={instructors}
           scope={billingFor.scope}
           onClose={() => setBillingFor(null)}
           // Settling a lesson clears its "taught, not paid" attention row.

@@ -4,6 +4,7 @@ import { signIn } from './sign-in';
 import {
   OWED_STUDENT_ID,
   OWED_STUDENT_NAME,
+  TWO_AHEAD_STUDENT_ID,
   seedStudentManagement,
 } from './student-management-seed';
 
@@ -98,5 +99,31 @@ test.describe('Student management — task order', () => {
     await page.getByRole('button', { name: 'Update' }).click();
     await expect(page.getByText(/\$45\.00\/lesson \(custom rate\)/)).toBeVisible();
     await expect(page.getByText(/· \$45\.00$/)).toBeVisible();
+  });
+
+  test('two lessons made by hand become the next four in one click', async ({
+    page,
+  }) => {
+    await page.goto(`/students/${TWO_AHEAD_STUDENT_ID}`);
+    const next = page.getByText(
+      'Only 2 of the next 4 lessons are on the calendar.'
+    );
+    await expect(next).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole('button', { name: 'Add 2 lessons' }).click();
+
+    // The lessons are real: the notice goes, and the plan now covers four.
+    await expect(next).toBeHidden({ timeout: 20_000 });
+    await expect(page.getByText('4 lessons', { exact: true })).toBeVisible();
+    // Priced and ready to take payment for, which is optional.
+    await expect(
+      page.getByRole('button', { name: 'Send an invoice for $160.00' })
+    ).toBeVisible();
+
+    // And they survive a reload, so the server made them.
+    await page.reload();
+    await expect(page.getByText('4 lessons', { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
   });
 });

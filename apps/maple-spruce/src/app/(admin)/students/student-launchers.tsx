@@ -36,7 +36,9 @@ import type {
   UpdateInvoiceInput,
 } from '@maple/ts/domain';
 import {
+  WEEKDAY_LONG,
   lessonInvoiceLines,
+  planBlockAttribution,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import {
@@ -83,6 +85,60 @@ export function blockInvoiceInput(
         resolvePrivatePayLessonRateCents(lesson, student, rateByLength),
       newInvoiceLineId,
     ),
+  };
+}
+
+/** "5:00 PM" from minutes past midnight. */
+function clockLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hour12 = ((h + 11) % 12) + 1;
+  return `${hour12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+/**
+ * Which teaching block lessons filled in from `like` go in.
+ *
+ * Every lesson needs a block, and lessons made by hand before blocks mattered
+ * often have none, so copying `like.blockId` is not enough. A recurring block
+ * that already fits is used quietly. Otherwise a new one is derived from the
+ * lessons themselves, and the note says so, because a block is standing
+ * availability Katie should know she now has. Widening an existing block is
+ * never done from here: it changes every future week on that weekday, which is
+ * the scheduling form's question to ask, not a one-click default.
+ */
+export function planFillBlock(
+  blocks: LessonBlock[],
+  instructors: Instructor[],
+  like: Lesson,
+  scheduledAts: Date[]
+): { blockStrategy?: BlockStrategy; note?: string; blocked?: string } {
+  if (scheduledAts.length === 0) return {};
+  const plan = planBlockAttribution(blocks, {
+    teacherId: like.teacherId,
+    scheduledAt: scheduledAts[0],
+    durationMinutes: like.durationMinutes,
+    recurring: true,
+  });
+  if (plan.fits) {
+    return { blockStrategy: { mode: 'existing', blockId: plan.fits.id } };
+  }
+  if (plan.draft) {
+    const teacher =
+      instructors.find((i) => i.id === like.teacherId)?.name ?? 'this teacher';
+    return {
+      blockStrategy: { mode: 'create' },
+      note:
+        `No teaching block covers that time, so this also adds a ` +
+        `${WEEKDAY_LONG[plan.draft.dayOfWeek]} ` +
+        `${clockLabel(plan.draft.startMinutes)} to ` +
+        `${clockLabel(plan.draft.endMinutes)} block for ${teacher}.`,
+    };
+  }
+  return {
+    blocked:
+      plan.blocked ??
+      'No teaching block can cover these times. Use Other dates to pick different ones.',
   };
 }
 
@@ -347,16 +403,23 @@ const BILLING_TITLES: Record<Exclude<CommitLessonsScope, 'all'>, string> = {
 export function LessonBillingLauncher({
   student,
   scope,
+  blocks = [],
+  instructors = [],
   onClose,
   onBilled,
 }: {
   student: Student;
   scope: Exclude<CommitLessonsScope, 'all'>;
+  /** For placing lessons the "next lessons" card fills in. */
+  blocks?: LessonBlock[];
+  instructors?: Instructor[];
   onClose: () => void;
   /** Money was asked for, so studio-wide billing views are stale. */
   onBilled?: () => void;
 }) {
-  const { lessonsState, fetchLessons } = useLessons({ studentId: student.id });
+  const { lessonsState, fetchLessons, createLessonSeries } = useLessons({
+    studentId: student.id,
+  });
   const { billingState, pendingId, actionError, chargeNow } = useLessonBilling(
     student.id,
   );
@@ -407,6 +470,19 @@ export function LessonBillingLauncher({
         <CommitLessonsCard
           embedded
           scope={scope}
+          onFillLessons={async ({ like, scheduledAts, blockStrategy }) => {
+            await createLessonSeries({
+              studentId: student.id,
+              teacherId: like.teacherId,
+              durationMinutes: like.durationMinutes,
+              scheduledAts,
+              room: like.room,
+              blockStrategy,
+            });
+          }}
+          planFillBlock={({ like, scheduledAts }) =>
+            planFillBlock(blocks, instructors, like, scheduledAts)
+          }
           // Setting up lessons needs the weekly-time and lesson dialogs, which
           // live on the student page; send Katie there rather than duplicate them.
           emptyActions={

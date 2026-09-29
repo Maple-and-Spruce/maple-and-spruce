@@ -715,3 +715,131 @@ export const UpcomingWithNoLessonsOffersToCreateThem: Story = {
     await expect(canvas.queryByLabelText('Note (optional)')).toBeNull();
   },
 };
+
+/**
+ * Two lessons made by hand, "the next 4" asked for. The card names the two
+ * missing weeks and makes them in one click, copying the lesson that is there,
+ * so charging for four is one step away rather than a trip through the form.
+ */
+export const FillingUpToTheNextFour: Story = {
+  args: {
+    scope: 'upcoming',
+    lessons: [lesson(1), lesson(3)],
+    onFillLessons: fn().mockResolvedValue(undefined),
+    onPickOtherDates: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Only 2 of the next 4 lessons are on the calendar.')
+    ).toBeInTheDocument();
+    // Weeks 2 and 4: the gap between the two, and the week after.
+    await expect(canvas.getByText(/Thu, Sep 24.*Thu, Oct 8/)).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Add 2 lessons' }));
+    await expect(args.onFillLessons).toHaveBeenCalledWith({
+      like: expect.objectContaining({ id: 'lesson-1' }),
+      scheduledAts: [
+        new Date(NOW.getTime() + 2 * 7 * DAY),
+        new Date(NOW.getTime() + 4 * 7 * DAY),
+      ],
+    });
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Other dates' }));
+    await expect(args.onPickOtherDates).toHaveBeenCalled();
+  },
+};
+
+/** Four already on the calendar: nothing to fill, no notice. */
+export const NoFillOfferWhenFourExist: Story = {
+  args: { scope: 'upcoming', onFillLessons: fn() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /Charge \$165\.00 to the card/ });
+    await expect(canvas.queryByText(/lessons are on the calendar/)).toBeNull();
+  },
+};
+
+/** A failure to make the lessons is said in place, not swallowed. */
+export const FillingFailsVisibly: Story = {
+  args: {
+    scope: 'upcoming',
+    lessons: [lesson(1)],
+    // An implementation passed to fn() survives Storybook's per-story mock
+    // reset; a chained mockRejectedValue does not.
+    onFillLessons: fn(async () => {
+      throw new Error('That room is booked');
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Add 3 lessons' })
+    );
+    await expect(await canvas.findByText('That room is booked')).toBeInTheDocument();
+  },
+};
+
+/**
+ * Lessons made by hand often sit in no teaching block, and every lesson needs
+ * one. When none fits, the fill adds one, and the notice says so before Katie
+ * clicks rather than leaving a new block to be discovered later.
+ */
+export const FillingAddsABlockAndSaysSo: Story = {
+  args: {
+    scope: 'upcoming',
+    lessons: [lesson(1), lesson(3)],
+    onFillLessons: fn(async () => undefined),
+    planFillBlock: () => ({
+      blockStrategy: { mode: 'create' },
+      note: 'No teaching block covers that time, so this also adds a Thursday 8:00 AM to 8:30 AM block for Test Teacher.',
+    }),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/this also adds a Thursday 8:00 AM to 8:30 AM block/)
+    ).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Add 2 lessons' }));
+    await expect(args.onFillLessons).toHaveBeenCalledWith(
+      expect.objectContaining({ blockStrategy: { mode: 'create' } })
+    );
+  },
+};
+
+/** No block can hold them: say why, and keep the one-click fill off. */
+export const FillingBlockedExplainsWhy: Story = {
+  args: {
+    scope: 'upcoming',
+    lessons: [lesson(1), lesson(3)],
+    onFillLessons: fn(async () => undefined),
+    onPickOtherDates: fn(),
+    planFillBlock: () => ({
+      blocked: 'This lesson runs past midnight, which no block can cover.',
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/runs past midnight/)
+    ).toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: 'Add 2 lessons' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Other dates' })).toBeEnabled();
+  },
+};
+
+/**
+ * No rate set: nothing can be charged, but the dates are still listed, because
+ * lining up the next lessons does not depend on taking money for them.
+ */
+export const DatesShowEvenWithoutARate: Story = {
+  args: { scope: 'upcoming', rateByLength: {} },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('This covers')).toBeInTheDocument();
+    await expect(canvas.getByText('Sep 17 – Oct 8')).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Charge the card' })
+    ).toBeDisabled();
+  },
+};
