@@ -76,6 +76,7 @@ import {
   invoicedLessonIds,
   planPrepayment,
   prepayableLessons,
+  unpaidTaughtLessons,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 
@@ -107,6 +108,14 @@ export interface CommitLessonsCardProps {
   error?: string | null;
   /** Reference point for "upcoming"; injectable so stories are deterministic. */
   now?: Date;
+  /**
+   * Open with these lessons already ticked, for arriving from somewhere that
+   * already knows which lesson it means — the attention row for an unpaid
+   * taught lesson, say (#128). The card starts in manual mode when this is set,
+   * because a pre-tick the picker is not showing is a lie about what will be
+   * charged.
+   */
+  preselectLessonIds?: string[];
   onCharge: (input: CommitLessonsChargeInput) => void;
   onSendInvoice: (input: CommitLessonsInvoiceInput) => void;
   /** Open the page's lesson editor on one date in the block. */
@@ -257,43 +266,71 @@ function PaymentActions({
  */
 function LessonPicker({
   available,
+  owed,
   picked,
   priceFor,
   onToggle,
 }: {
   available: Lesson[];
+  /** Teaching already given that nobody has paid for (#128). */
+  owed: Lesson[];
   picked: string[];
   priceFor: (lesson: Pick<Lesson, 'durationMinutes'>) => number;
   onToggle: (id: string) => void;
 }) {
+  const row = (lesson: Lesson) => (
+    <FormControlLabel
+      key={lesson.id}
+      control={
+        <Checkbox
+          size="small"
+          checked={picked.includes(lesson.id)}
+          onChange={() => onToggle(lesson.id)}
+        />
+      }
+      label={
+        <Typography variant="body2">
+          {lessonDate(lesson.scheduledAt)} · {money(priceFor(lesson))}
+        </Typography>
+      }
+    />
+  );
+
   return (
     <Box>
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
         Choose the lessons
       </Typography>
+
+      {/*
+        Teaching already given comes first, and only when there is any. It is
+        the thing most likely to be forgotten — an upcoming lesson will come
+        round again, an unpaid one from three weeks ago will not — and putting
+        it below a list of twenty future dates is how it stays unpaid (#128).
+        The heading says what these are rather than just "past", because the
+        distinction that matters is that the studio is owed for them.
+      */}
+      {owed.length > 0 && (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="overline" color="text.secondary">
+            Already taught, not paid for
+          </Typography>
+          <Stack>{owed.slice(0, 20).map(row)}</Stack>
+        </Box>
+      )}
+
       <Stack>
-        {available.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
-            No upcoming lessons are waiting to be paid for.
+        {owed.length > 0 && available.length > 0 && (
+          <Typography variant="overline" color="text.secondary">
+            Upcoming
           </Typography>
         )}
-        {available.slice(0, 20).map((lesson) => (
-          <FormControlLabel
-            key={lesson.id}
-            control={
-              <Checkbox
-                size="small"
-                checked={picked.includes(lesson.id)}
-                onChange={() => onToggle(lesson.id)}
-              />
-            }
-            label={
-              <Typography variant="body2">
-                {lessonDate(lesson.scheduledAt)} · {money(priceFor(lesson))}
-              </Typography>
-            }
-          />
-        ))}
+        {available.length === 0 && owed.length === 0 && (
+          <Typography variant="body2" color="text.secondary">
+            No lessons are waiting to be paid for.
+          </Typography>
+        )}
+        {available.slice(0, 20).map(row)}
       </Stack>
     </Box>
   );
@@ -382,14 +419,19 @@ export function CommitLessonsCard({
   isInvoicing = false,
   error = null,
   now,
+  preselectLessonIds,
   onCharge,
   onSendInvoice,
   onMoveLesson,
   onSkipLesson,
 }: CommitLessonsCardProps) {
   const [count, setCount] = useState(DEFAULT_PREPAY_LESSON_COUNT);
-  const [picking, setPicking] = useState(false);
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picking, setPicking] = useState(
+    () => (preselectLessonIds?.length ?? 0) > 0
+  );
+  const [picked, setPicked] = useState<string[]>(
+    () => preselectLessonIds ?? []
+  );
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState<'charge' | 'invoice' | null>(null);
 
@@ -408,6 +450,18 @@ export function CommitLessonsCard({
 
   const available = useMemo(
     () => prepayableLessons(lessons, charges, reference, alreadyInvoiced),
+    [lessons, charges, reference, alreadyInvoiced]
+  );
+
+  /**
+   * Teaching already given that nobody has paid for (#128).
+   *
+   * Only reachable by ticking it: `planPrepayment` keeps the count-based
+   * shortcut upcoming-only, so "the next four" can never quietly collect a
+   * debt. Which means the card has to *offer* these, or they stay invisible.
+   */
+  const owed = useMemo(
+    () => unpaidTaughtLessons(lessons, charges, reference, alreadyInvoiced),
     [lessons, charges, reference, alreadyInvoiced]
   );
 
@@ -526,9 +580,39 @@ export function CommitLessonsCard({
           </Stack>
         )}
 
+        {/*
+          In count mode the picker is hidden, so an unpaid lesson from three
+          weeks ago is invisible — and the count shortcut deliberately will not
+          include it. Without this line the feature only helps someone who
+          already knew to go looking (#128). It offers the switch rather than
+          forcing it: an old lesson may be being settled some other way, and
+          hijacking the fast path every time would train Katie to ignore it.
+        */}
+        {!picking && owed.length > 0 && (
+          <Alert
+            severity="info"
+            action={
+              <Button
+                size="small"
+                onClick={() => {
+                  setPicking(true);
+                  setPicked(owed.map((l) => l.id));
+                }}
+              >
+                Pick them
+              </Button>
+            }
+          >
+            {owed.length === 1
+              ? '1 lesson has been taught and not paid for.'
+              : `${owed.length} lessons have been taught and not paid for.`}
+          </Alert>
+        )}
+
         {picking && (
           <LessonPicker
             available={available}
+            owed={owed}
             picked={picked}
             priceFor={rateResolver}
             onToggle={toggle}

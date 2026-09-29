@@ -36,6 +36,7 @@ import {
   isInvoiceOverdue,
   isLessonUnattributed,
   isLessonUnbilled,
+  studentChargeHref,
   sortAttentionGroups,
   totalAttentionCount,
 } from '@maple/ts/domain';
@@ -132,7 +133,12 @@ export const getNeedsAttention = Functions.endpoint
           id: lesson.id,
           label: nameFor(lesson.studentId),
           detail: `${lesson.status === 'no-show' ? 'Missed' : 'Taught'} ${formatDate(lesson.scheduledAt)}, never invoiced`,
-          href: `/students/${lesson.studentId}`,
+          // Carries the lesson, not just the student (#128). The student page
+          // opens the charge picker with this lesson ticked, so the row goes
+          // from noticing to collecting in one click instead of landing Katie
+          // on a page where she has to find the date again. Built through the
+          // shared helper so the page cannot read a different parameter name.
+          href: studentChargeHref(lesson.studentId, lesson.id),
           resolution: 'navigate' as const,
           teacherId: lesson.teacherId,
         }));

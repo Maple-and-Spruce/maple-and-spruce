@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   Alert,
   Box,
@@ -17,6 +17,7 @@ import AddIcon from '@mui/icons-material/Add';
 import StarsIcon from '@mui/icons-material/Stars';
 import type { BlockStrategy } from '@maple/ts/domain';
 import {
+  CHARGE_LESSON_PARAM,
   SCHEDULE_TIME_ZONE,
   lessonBillingState,
   lessonInvoiceLines,
@@ -78,6 +79,10 @@ function formatDay(date: Date): string {
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const studentId = params?.id ?? '';
+  // Arriving from the attention row for a taught-but-unpaid lesson (#128): the
+  // row knows which lesson it means, so the charge picker opens with it ticked.
+  const searchParams = useSearchParams();
+  const chargeLessonId = searchParams?.get(CHARGE_LESSON_PARAM) ?? null;
 
   const { studentsState, fetchStudents } = useStudents();
   const { instructorsState } = useInstructors();
@@ -586,6 +591,7 @@ export default function StudentDetailPage() {
 
       <CommitLessonsCard
         student={student}
+        preselectLessonIds={chargeLessonId ? [chargeLessonId] : undefined}
         lessons={lessons}
         charges={
           billingState.status === 'success' ? billingState.data.charges : []

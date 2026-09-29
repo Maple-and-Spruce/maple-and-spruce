@@ -7,6 +7,8 @@ import {
   isLessonUnbilled,
   sortAttentionGroups,
   totalAttentionCount,
+  CHARGE_LESSON_PARAM,
+  studentChargeHref,
 } from './needs-attention';
 import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention';
 import type { Invoice } from './invoice';
@@ -300,5 +302,23 @@ describe('sortAttentionGroups', () => {
     const sorted = sortAttentionGroups([group('invoice-overdue', 0)]);
     expect(sorted).toEqual([]);
     expect(totalAttentionCount(sorted)).toBe(0);
+  });
+});
+
+describe('the attention row names the lesson it means (#128)', () => {
+  it('round-trips through the parameter the page reads', () => {
+    const href = studentChargeHref('stu-1', 'lesson-9');
+
+    // The point of the constant: this is the exact read the student page does.
+    // Written as two literals in two libraries, a typo would not fail a build,
+    // a typecheck or any other test — the link would just land with nothing
+    // ticked, indistinguishable from "there was nothing to charge".
+    const params = new URLSearchParams(href.split('?')[1]);
+    expect(params.get(CHARGE_LESSON_PARAM)).toBe('lesson-9');
+  });
+
+  it('points at the student whose lesson it is', () => {
+    expect(studentChargeHref('stu-7', 'lesson-1').startsWith('/students/stu-7'))
+      .toBe(true);
   });
 });

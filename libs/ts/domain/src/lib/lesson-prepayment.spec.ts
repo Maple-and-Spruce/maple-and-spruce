@@ -5,6 +5,7 @@ import {
   planPrepayment,
   prepayableLessons,
   describePrepaymentProblem,
+  unpaidTaughtLessons,
 } from './lesson-prepayment';
 import { planChargesForStudent } from './lesson-billing-rule';
 import {
@@ -432,5 +433,177 @@ describe('picking lessons by hand', () => {
     expect(describePrepaymentProblem('nothing-picked')).toBe(
       'Tick the lessons this payment covers.'
     );
+  });
+});
+
+describe('unpaidTaughtLessons (#128)', () => {
+  it('lists teaching already given that nobody paid for, newest first', () => {
+    const lessons = [
+      lesson('old', -21, 'rendered'),
+      lesson('mid', -14, 'rendered'),
+      lesson('recent', -7, 'rendered'),
+    ];
+
+    expect(
+      unpaidTaughtLessons(lessons, [], NOW).map((l) => l.id)
+    ).toEqual(['recent', 'mid', 'old']);
+  });
+
+  it('has no cutoff — a lesson from a year ago is still owed', () => {
+    const lessons = [lesson('ancient', -400, 'rendered')];
+
+    expect(unpaidTaughtLessons(lessons, [], NOW).map((l) => l.id)).toEqual([
+      'ancient',
+    ]);
+  });
+
+  it('bills a no-show, because studio policy charges for the slot', () => {
+    const lessons = [lesson('missed', -3, 'no-show')];
+
+    expect(unpaidTaughtLessons(lessons, [], NOW).map((l) => l.id)).toEqual([
+      'missed',
+    ]);
+  });
+
+  it('will not charge for a past lesson nobody marked taught', () => {
+    // Still `scheduled` a week later: as far as this system knows the teaching
+    // did not happen, and charging would invent the fact that it did.
+    const lessons = [lesson('unmarked', -7, 'scheduled')];
+
+    expect(unpaidTaughtLessons(lessons, [], NOW)).toEqual([]);
+  });
+
+  it('leaves a cancelled lesson alone', () => {
+    const lessons = [lesson('called-off', -7, 'cancelled')];
+
+    expect(unpaidTaughtLessons(lessons, [], NOW)).toEqual([]);
+  });
+
+  it('drops one a charge already covers', () => {
+    const lessons = [lesson('paid-for', -7, 'rendered'), lesson('owed', -6, 'rendered')];
+
+    expect(
+      unpaidTaughtLessons(lessons, [charge('c1', ['paid-for'])], NOW).map(
+        (l) => l.id
+      )
+    ).toEqual(['owed']);
+  });
+
+  it('drops one a live invoice already asks for — the card must not ask twice', () => {
+    const lessons = [lesson('invoiced', -7, 'rendered'), lesson('owed', -6, 'rendered')];
+
+    expect(
+      unpaidTaughtLessons(lessons, [], NOW, new Set(['invoiced'])).map(
+        (l) => l.id
+      )
+    ).toEqual(['owed']);
+  });
+
+  it('does not overlap prepayableLessons: today belongs to the forward set', () => {
+    // A lesson taught earlier today is future-side, since the cutoff both
+    // functions share is the studio's midnight. It must appear exactly once
+    // across the two, or a picker showing both sections lists it twice.
+    const lessons = [lesson('taught-today', 0, 'rendered')];
+
+    expect(prepayableLessons(lessons, [], NOW).map((l) => l.id)).toEqual([
+      'taught-today',
+    ]);
+    expect(unpaidTaughtLessons(lessons, [], NOW)).toEqual([]);
+  });
+});
+
+describe('charging for teaching already given (#128)', () => {
+  const taught = [
+    lesson('t1', -14, 'rendered'),
+    lesson('t2', -7, 'rendered'),
+  ];
+  const upcoming = [lesson('u1', 3), lesson('u2', 10)];
+  const all = [...taught, ...upcoming];
+
+  it('charges a past lesson when it is ticked by name', () => {
+    const outcome = planPrepayment(
+      'stu-1',
+      all,
+      [],
+      { lessonIds: ['t2'] },
+      rate,
+      NOW
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.plan.lessons.map((l) => l.id)).toEqual(['t2']);
+    expect(outcome.plan.amountCents).toBe(RATE);
+  });
+
+  it('charges past and upcoming lessons together in one payment', () => {
+    const outcome = planPrepayment(
+      'stu-1',
+      all,
+      [],
+      { lessonIds: ['t1', 'u1'] },
+      rate,
+      NOW
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.plan.lessons.map((l) => l.id).sort()).toEqual(['t1', 'u1']);
+    expect(outcome.plan.amountCents).toBe(2 * RATE);
+  });
+
+  it('never hands a past lesson to the "charge the next few" shortcut', () => {
+    // The whole safety property: a count-based charge sells the teaching still
+    // to come. Collecting a debt has to be ticked deliberately.
+    const outcome = planPrepayment('stu-1', all, [], { lessonCount: 4 }, rate, NOW);
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.plan.lessons.map((l) => l.id)).toEqual(['u1', 'u2']);
+  });
+
+  it('refuses a past lesson that is already covered, rather than charging the rest', () => {
+    const outcome = planPrepayment(
+      'stu-1',
+      all,
+      [charge('c1', ['t1'])],
+      { lessonIds: ['t1', 't2'] },
+      rate,
+      NOW
+    );
+
+    expect(outcome).toEqual({ ok: false, problem: 'already-covered' });
+  });
+
+  it('refuses a past lesson nobody marked taught', () => {
+    const outcome = planPrepayment(
+      'stu-1',
+      [lesson('unmarked', -7, 'scheduled')],
+      [],
+      { lessonIds: ['unmarked'] },
+      rate,
+      NOW
+    );
+
+    expect(outcome).toEqual({ ok: false, problem: 'already-covered' });
+  });
+
+  it('prices a past lesson by its own duration, like any other', () => {
+    const long = { ...lesson('t-long', -7, 'rendered'), durationMinutes: 60 };
+    const byDuration = (l: { durationMinutes: number }) =>
+      l.durationMinutes === 60 ? RATE * 2 : RATE;
+
+    const outcome = planPrepayment(
+      'stu-1',
+      [long],
+      [],
+      { lessonIds: ['t-long'] },
+      byDuration,
+      NOW
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.plan.amountCents).toBe(RATE * 2);
   });
 });
