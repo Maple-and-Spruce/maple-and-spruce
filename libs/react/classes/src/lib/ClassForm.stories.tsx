@@ -8,6 +8,7 @@ import {
   mockClassCategories,
   mockClassWithGallery,
   mockClassWithReferral,
+  mockClassWithMinimum,
   mockClassCategoriesWithPool,
 } from '@maple/react/storybook-fixtures';
 import {
@@ -300,6 +301,77 @@ export const EditWithReferralProgram: Story = {
     });
     expect(canvas.getByLabelText(/friend gets/i)).toHaveValue(50);
     expect(canvas.getByLabelText(/code expires after/i)).toHaveValue(60);
+  },
+};
+
+/**
+ * Minimum enrollment: pre-populated on edit, rejected above capacity, and
+ * submitted as a number once valid.
+ */
+export const EditMinimumEnrollment: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassWithMinimum,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const input = await waitFor(() => {
+      const el = canvas.getByLabelText(/minimum enrollment/i);
+      expect(el).toHaveValue(4);
+      return el;
+    });
+
+    // Above capacity (10) is refused and never submitted.
+    await userEvent.clear(input);
+    await userEvent.type(input, '12');
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(
+        canvas.getAllByText(/minimum enrollment cannot exceed capacity/i).length
+      ).toBeGreaterThan(0);
+    });
+    expect(args.onSubmit).not.toHaveBeenCalled();
+
+    // A valid minimum submits.
+    await userEvent.clear(input);
+    await userEvent.type(input, '6');
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ minimumEnrollment: 6 })
+      );
+    });
+  },
+};
+
+/**
+ * Clearing the minimum submits `null`, so the stored value is removed
+ * rather than silently kept.
+ */
+export const ClearMinimumEnrollment: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassWithMinimum,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const input = await waitFor(() => {
+      const el = canvas.getByLabelText(/minimum enrollment/i);
+      expect(el).toHaveValue(4);
+      return el;
+    });
+
+    await userEvent.clear(input);
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ minimumEnrollment: null })
+      );
+    });
   },
 };
 

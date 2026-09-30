@@ -213,6 +213,31 @@ export const classValidation = staticSuite(
       }
     });
 
+    // Minimum enrollment (optional). A whole number of seats, at least 1, and
+    // no more than capacity: a minimum the class can never reach would alert
+    // staff about every run of it.
+    test('minimumEnrollment', 'Minimum enrollment must be a whole number', () => {
+      if (data.minimumEnrollment !== undefined && data.minimumEnrollment !== null) {
+        enforce(Number.isInteger(data.minimumEnrollment)).isTruthy();
+      }
+    });
+
+    test('minimumEnrollment', 'Minimum enrollment must be at least 1', () => {
+      if (data.minimumEnrollment !== undefined && data.minimumEnrollment !== null) {
+        enforce(data.minimumEnrollment).greaterThanOrEquals(1);
+      }
+    });
+
+    test('minimumEnrollment', 'Minimum enrollment cannot exceed capacity', () => {
+      if (
+        data.minimumEnrollment !== undefined &&
+        data.minimumEnrollment !== null &&
+        typeof data.capacity === 'number'
+      ) {
+        enforce(data.minimumEnrollment).lessThanOrEquals(data.capacity);
+      }
+    });
+
     // Materials included validation (optional)
     test('materialsIncluded', 'Materials included must be less than 500 characters', () => {
       if (data.materialsIncluded) {

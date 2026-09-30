@@ -53,6 +53,18 @@ export const mockClass2: Class = {
 };
 
 /** Class opted into the friend-referral program. */
+/**
+ * Instructor-led class with a minimum headcount, for the admin-only
+ * "Minimum Enrollment" field.
+ */
+export const mockClassWithMinimum: Class = {
+  ...mockClass,
+  id: 'class-min-001',
+  name: 'Beginner Block Printing',
+  capacity: 10,
+  minimumEnrollment: 4,
+};
+
 export const mockClassWithReferral: Class = {
   ...mockClass,
   id: 'class-005',

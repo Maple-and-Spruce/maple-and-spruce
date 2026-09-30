@@ -19,6 +19,9 @@
  *      ISO `dateTime` so multi-session classes get one reminder per session.
  *   4. Stamp `reminderSentForSessions[sessionIso]` after queuing each email
  *      so a second run on the same day is a no-op (run-twice idempotent).
+ *   5. Before the reminders: email staff about any class whose first session
+ *      is 7 days out and whose confirmed seats are below its
+ *      `minimumEnrollment` (once per class; see `under-minimum-alert.ts`).
  *
  * Emails are queued via the firestore-send-email extension by writing a doc
  * to the `mail` collection. The Handlebars template body lives in the
@@ -47,6 +50,11 @@ import {
   getDb,
 } from '@maple/firebase/database';
 import type { Class, ClassSession, Registration } from '@maple/ts/domain';
+import { TIMEZONE, getEtDayWindow } from './et-day-window';
+import {
+  runUnderMinimumAlerts,
+  type UnderMinimumAlertResult,
+} from './under-minimum-alert';
 
 /**
  * Customer-visible default location. Falls back to this when a class doesn't
@@ -54,11 +62,6 @@ import type { Class, ClassSession, Registration } from '@maple/ts/domain';
  */
 const DEFAULT_CLASS_LOCATION = '688 Beulah Rd, Morgantown, WV 26508';
 
-/**
- * Timezone the schedule and "today" window are computed in. Same TZ as
- * `expireAgreementRequests`; matches store hours.
- */
-const TIMEZONE = 'America/New_York';
 
 /**
  * Google review shortlink. Configured via Firebase string param so the
@@ -88,71 +91,16 @@ export interface SendClassRemindersResult {
   skippedNotPaid: number;
   /** Number of published classes that had a session inside today's window */
   classesWithSessionToday: number;
+  /** The staff "below minimum enrollment" check for classes 7 days out */
+  underMinimum: UnderMinimumAlertResult;
 }
 
 /**
- * Compute the [start, end] of "today" in the configured timezone, expressed
- * as JS `Date` instances (which are UTC under the hood). Used to bracket
- * sessions whose `dateTime` falls inside today in ET.
+ * [start, end] of "today" in ET, as JS `Date`s (UTC under the hood). Used to
+ * bracket sessions whose `dateTime` falls inside today in ET.
  */
 function getTodayWindow(now: Date): { start: Date; end: Date } {
-  // Build YYYY-MM-DD for "now" in ET.
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const ymd = formatter.format(now); // "2026-05-06"
-
-  // Compute the UTC offset for ET at this instant. ET is either -5 or -4.
-  const tzOffsetMinutes = getTimezoneOffsetMinutes(now, TIMEZONE);
-
-  // Start of day in ET → UTC: subtract the offset.
-  // e.g. 2026-05-06 00:00 ET (DST) = 2026-05-06 04:00 UTC. offset = -240.
-  const [yStr, mStr, dStr] = ymd.split('-');
-  const y = Number(yStr);
-  const m = Number(mStr) - 1;
-  const d = Number(dStr);
-  const startUtcMs = Date.UTC(y, m, d, 0, 0, 0, 0) - tzOffsetMinutes * 60_000;
-  const start = new Date(startUtcMs);
-  const end = new Date(startUtcMs + 24 * 60 * 60 * 1000 - 1);
-
-  return { start, end };
-}
-
-/**
- * Resolve a timezone's offset (in minutes east of UTC) at a given instant.
- * Uses Intl to handle DST automatically.
- */
-function getTimezoneOffsetMinutes(at: Date, timeZone: string): number {
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-  const parts = dtf.formatToParts(at);
-  const map: Record<string, string> = {};
-  for (const p of parts) {
-    if (p.type !== 'literal') map[p.type] = p.value;
-  }
-  // Hour can be "24" in en-US for midnight; normalize.
-  const hour = map['hour'] === '24' ? '00' : map['hour'];
-  const tzMs = Date.UTC(
-    Number(map['year']),
-    Number(map['month']) - 1,
-    Number(map['day']),
-    Number(hour),
-    Number(map['minute']),
-    Number(map['second'])
-  );
-  // (tz wall-clock as if UTC) - (actual UTC) = offset in ms east of UTC.
-  return Math.round((tzMs - at.getTime()) / 60_000);
+  return getEtDayWindow(now, 0);
 }
 
 /**
@@ -239,6 +187,22 @@ export async function runSendClassReminders(
     status: 'published',
   });
 
+  // Staff alert for classes a week out that are below their minimum. Runs
+  // before the reminders so a quiet reminder day still checks, and is fenced
+  // off so a failure here never costs a student their reminder.
+  let underMinimum: UnderMinimumAlertResult;
+  try {
+    underMinimum = await runUnderMinimumAlerts(publishedClasses, now);
+  } catch (error) {
+    console.error('[sendClassReminders] Under-minimum check failed', error);
+    underMinimum = {
+      classesChecked: 0,
+      alertsSent: 0,
+      skippedMinimumMet: 0,
+      skippedAlreadyAlerted: 0,
+    };
+  }
+
   const todayClasses = publishedClasses
     .map((c) => ({ class: c, session: findSessionToday(c, start, end) }))
     .filter(
@@ -255,6 +219,7 @@ export async function runSendClassReminders(
       skippedAlreadySent: 0,
       skippedNotPaid: 0,
       classesWithSessionToday: 0,
+      underMinimum,
     };
   }
 
@@ -336,6 +301,7 @@ export async function runSendClassReminders(
     skippedAlreadySent,
     skippedNotPaid,
     classesWithSessionToday: todayClasses.length,
+    underMinimum,
   };
 }
 

@@ -180,6 +180,9 @@ export function ClassForm({
 
   const durationMinutes = useSignal(60);
   const capacity = useSignal(8);
+  // Instructor's minimum headcount; staff get an email a week out if
+  // confirmed seats are below it. Admin-only, never shown publicly.
+  const minimumEnrollment = useSignal<number | null>(null);
   const priceCents = useSignal(0);
   const priceDisplay = useSignal('0.00');
   const imageUrl = useSignal('');
@@ -253,6 +256,7 @@ export function ClassForm({
       registrationClosesAt: registrationClosesAt.value ?? undefined,
       durationMinutes: durationMinutes.value,
       capacity: capacity.value,
+      minimumEnrollment: minimumEnrollment.value,
       priceCents: priceCents.value,
       categoryId: categoryId.value || undefined,
       skillLevel: skillLevel.value,
@@ -294,6 +298,7 @@ export function ClassForm({
     registrationClosesAt: 'Registration Close',
     durationMinutes: 'Duration',
     capacity: 'Capacity',
+    minimumEnrollment: 'Minimum Enrollment',
     priceCents: 'Price',
     skillLevel: 'Skill Level',
     status: 'Status',
@@ -349,6 +354,7 @@ export function ClassForm({
           : null;
         durationMinutes.value = classItem.durationMinutes;
         capacity.value = classItem.capacity;
+        minimumEnrollment.value = classItem.minimumEnrollment ?? null;
         priceCents.value = classItem.priceCents;
         priceDisplay.value = (classItem.priceCents / 100).toFixed(2);
         imageUrl.value = classItem.imageUrl ?? '';
@@ -409,6 +415,7 @@ export function ClassForm({
         durationMinutes.value = 120;
         durationMode.value = 'preset';
         capacity.value = 8;
+        minimumEnrollment.value = null;
         priceCents.value = 4500;
         priceDisplay.value = '45.00';
         imageUrl.value = '';
@@ -608,6 +615,9 @@ export function ClassForm({
         registrationClosesAt: registrationClosesAt.value ?? undefined,
         durationMinutes: durationMinutes.value,
         capacity: capacity.value,
+        // null (not undefined) so clearing the field on edit removes the
+        // stored minimum instead of being dropped from the update.
+        minimumEnrollment: minimumEnrollment.value,
         priceCents: priceCents.value,
         imageUrl: currentImageUrl || undefined,
         galleryImages:
@@ -1068,6 +1078,22 @@ export function ClassForm({
                 helperText={getFieldError('capacity') || 'Max participants'}
                 sx={{ width: 120 }}
                 required
+              />
+              <TextField
+                label="Minimum Enrollment"
+                type="number"
+                value={minimumEnrollment.value ?? ''}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  minimumEnrollment.value = isNaN(val) ? null : val;
+                }}
+                error={!!getFieldError('minimumEnrollment')}
+                helperText={
+                  getFieldError('minimumEnrollment') ||
+                  'Optional. Staff get an email a week out if below this'
+                }
+                inputProps={{ min: 1 }}
+                sx={{ width: 220 }}
               />
               <FormControl sx={{ minWidth: 140 }}>
                 <InputLabel id="skill-level-label">Skill Level</InputLabel>
