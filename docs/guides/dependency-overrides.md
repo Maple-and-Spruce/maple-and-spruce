@@ -4,9 +4,32 @@ How to handle `pnpm audit` vulnerabilities and maintain the `overrides:` block i
 
 ---
 
-## Strategy: Update Top-Level First
+## Strategy: Re-resolve, Then Update Top-Level
 
-Always try to fix vulnerabilities by updating direct dependencies before adding overrides:
+### Step 0: is the lockfile just stale?
+
+A lockfile keeps every transitive version it once picked, even after the parent
+has moved to a patched range. `pnpm update` and ordinary installs leave those
+entries alone. On 2026-09-29 a fresh resolve cleared ~45 of the 50 overrides
+this repo carried: the fixes had shipped upstream months earlier and nothing had
+re-resolved them. So before adding an override, re-resolve:
+
+```bash
+rm -rf node_modules pnpm-lock.yaml   # BOTH — pnpm 11 keeps a lockfile copy in
+                                     # node_modules and reuses it ("Already up to date")
+pnpm install
+pnpm audit --audit-level=high
+```
+
+Changing `overrides:` makes pnpm ask to purge `node_modules`, which hangs a
+non-interactive shell. Use `CI=true pnpm install --config.confirm-modules-purge=false`.
+
+Whatever is still flagged after that is pinned by its parent. Check which parent
+with `pnpm why <pkg>`, then continue below.
+
+### Then update the top-level dependency
+
+Try to fix what's left by updating direct dependencies before adding overrides:
 
 1. **Run `pnpm audit`** to identify vulnerable packages and their paths
 2. **Run `pnpm why <package>`** to find which top-level dependency pulls it in
@@ -57,9 +80,13 @@ Use scoped overrides (`pkg@<range>`) when only some version ranges are vulnerabl
 
 Overrides should be reviewed periodically (e.g., when updating Nx or other major deps):
 
-1. **Check if the override is still needed**:
+1. **Check if the override is still needed**. The fastest way is to remove
+   *all* of them and re-resolve (Step 0 above), then add back only what the
+   audit still flags. Removing one entry and running a plain `pnpm install` is
+   not a real test, because the lockfile keeps the version the override forced:
    ```bash
-   # Temporarily remove the entry (and its comment) from pnpm-workspace.yaml, then:
+   # Remove the overrides: block from pnpm-workspace.yaml, then:
+   rm -rf node_modules pnpm-lock.yaml
    pnpm install
    pnpm audit --audit-level=high
    ```

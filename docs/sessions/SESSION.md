@@ -6,6 +6,31 @@
 
 ## Current Status
 
+### Dependency refresh: 50 overrides down to 5 (2026-09-29)
+
+Security Audit was failing on main (6 high). A fresh resolve (no lockfile, no
+overrides) showed almost every override was covering a *stale lockfile* entry,
+not a missing upstream fix.
+
+- Minor bumps across the board: nx 23.2.1 (+ its migrations), Next 16.3.7,
+  React 19.3, Storybook 10.6.1, Firebase 12.19 / admin 14.5 / functions 7.4,
+  firebase-tools 15.32, vite 8.3, vitest 4.1.11, Playwright 1.63.
+- Majors: ESLint 10 (+ @eslint/js 10), jsdom 30, jscpd 5,
+  jsonc-eslint-parser 3, @vitejs/plugin-react 6, date-fns 4, ical-generator 11.
+- Removed unused deps: @tanstack/react-query, wait-on (it pulled the flagged
+  joi), concurrently, node-ical, http-server, ts-node, @vitest/ui.
+- Overrides: ~50 down to 5 (adm-zip/koa/ws/form-data pinned by
+  @webflow/webflow-cli; smol-toml pinned by nx). `auditConfig.ignoreGhsas`
+  is gone because image-size is no longer in the tree. Audit: 52 findings → 3
+  (0 high).
+- Storybook on Vite 8 resolves `@maple/*` through Vite's native tsconfig paths,
+  which skips files outside a tsconfig `include` (every story). `.storybook/main.ts`
+  now adds vite-tsconfig-paths on tsconfig.base.json, as the unit config does.
+- New ESLint 10 / sonarjs 4.2 rules set to warn (~80 pre-existing hits).
+- Deferred, each its own PR: Square SDK 46, MUI 9 + MUI X 9, vest 6,
+  @webflow/* 2.x (payments / UI / live registration widget). Blocked upstream:
+  TypeScript 7 and vitest 5 (nx + typescript-eslint), Babel 8 (nx).
+
 ### Recording history: past lessons paid outside the app (2026-09-29)
 
 Katie had paid private-pay history (cash, Venmo, cards run in Square by hand)
