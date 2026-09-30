@@ -54,6 +54,7 @@ export * from './lib/hope-order';
 export * from './lib/lesson-rates-config';
 export * from './lib/business-payment-config';
 export * from './lib/teacher-payout';
+export * from './lib/class-instructor-payout';
 
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';

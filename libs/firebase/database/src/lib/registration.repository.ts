@@ -46,6 +46,9 @@ function docToRegistration(
     discountCode: data.discountCode,
     discountAmountCents: data.discountAmountCents,
     status: data.status as RegistrationStatus,
+    refundedAt: data.refundedAt ? toDate(data.refundedAt) : undefined,
+    refundedAmountCents: data.refundedAmountCents ?? undefined,
+    squareRefundId: data.squareRefundId ?? undefined,
     confirmationNumber: data.confirmationNumber,
     // Default to 'web' so registrations created before the source field
     // existed (all of which were web checkouts) read back with a usable value.
