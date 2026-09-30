@@ -17,6 +17,8 @@ export const TWO_AHEAD_STUDENT_NAME = 'Linden Farrow';
 /** A Hope student with two taught lessons and no EMA order yet. */
 export const HOPE_BILLING_STUDENT_ID = 'e2e-stu-hope-billing';
 const HOPE_PRODUCT_ID = 'e2e-hope-product';
+/** Two past lessons never marked taught: history from before the app. */
+export const HISTORY_STUDENT_ID = 'e2e-stu-history';
 const TEACHER_ID = 'e2e-teacher';
 const DAY = 86_400_000;
 
@@ -126,6 +128,39 @@ export async function seedStudentManagement(
       scheduledAt: at(days),
       durationMinutes: 30,
       status: 'rendered',
+      ...stamps,
+    });
+  }
+
+  await setFirestoreDoc('students', HISTORY_STUDENT_ID, {
+    name: 'Sorrel Ashby',
+    instrument: 'guitar',
+    isAdultStudent: true,
+    isHopeScholarship: false,
+    primaryTeacherId: TEACHER_ID,
+    registeredLessonLength: '30-min-full',
+    primaryContactName: 'Sorrel Ashby',
+    primaryContactEmail: 'sorrel@example.com',
+    status: 'active',
+    lessonRateCents: 4000,
+    ...stamps,
+  });
+  // A retry starts from unpaid, unmarked history again.
+  for (const doc of await listFirestoreDocs('invoices')) {
+    if (doc.data['studentId'] === HISTORY_STUDENT_ID) {
+      await deleteFirestoreDoc('invoices', doc.id);
+    }
+  }
+  for (const [id, days] of [
+    ['e2e-history-1', -21],
+    ['e2e-history-2', -14],
+  ] as const) {
+    await setFirestoreDoc('lessons', id, {
+      studentId: HISTORY_STUDENT_ID,
+      teacherId: TEACHER_ID,
+      scheduledAt: at(days),
+      durationMinutes: 30,
+      status: 'scheduled',
       ...stamps,
     });
   }
