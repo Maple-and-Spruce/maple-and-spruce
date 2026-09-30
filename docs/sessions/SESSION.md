@@ -6,6 +6,20 @@
 
 ## Current Status
 
+### Recording history: past lessons paid outside the app (2026-09-29)
+
+Katie had paid private-pay history (cash, Venmo, cards run in Square by hand)
+with no way to record it: "Paid in cash or Venmo" only appeared once the
+past-lessons card listed something, and it listed only lessons marked taught.
+
+- "Charge for past lessons" now also offers past lessons still `scheduled`
+  ("Past, not marked taught"), uncapped; ticking and acting marks them taught
+  first (`onMarkTaught`), then charges, invoices or records the payment.
+- **Already paid (cash, Venmo, Square)**: new `square-manual` source ("Card, in
+  Square": a payment already taken in Square, nothing charged). Total is
+  prefilled from the rate and editable; `splitCentsEvenly` spreads it across
+  the lesson lines. Also on the billing table's mark-paid menu.
+
 ### Hope billing: EMA orders and invoicing (2026-09-29)
 
 Katie's Hope work: record the family's EMA order (a block of lessons), mark

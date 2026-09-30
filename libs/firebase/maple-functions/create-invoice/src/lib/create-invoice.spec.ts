@@ -210,6 +210,14 @@ describe('createInvoice', () => {
       ).rejects.toThrow(/Validation failed/);
     });
 
+    it('accepts a card payment already taken in Square', async () => {
+      await handler(paidPayload({ paidWith: 'square-manual' }), { uid: 'katie-uid' });
+      expect(mocks.invoiceCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ paidWith: 'square-manual' }),
+        { recordedByUid: 'katie-uid' }
+      );
+    });
+
     it('rejects a payment source a person cannot record by hand', async () => {
       await expect(
         handler(paidPayload({ paidWith: 'square-webhook' }), { uid: 'katie-uid' })

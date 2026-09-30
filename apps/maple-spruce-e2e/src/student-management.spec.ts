@@ -5,6 +5,7 @@ import {
   OWED_STUDENT_ID,
   OWED_STUDENT_NAME,
   TWO_AHEAD_STUDENT_ID,
+  HISTORY_STUDENT_ID,
   HOPE_BILLING_STUDENT_ID,
   seedStudentManagement,
 } from './student-management-seed';
@@ -157,5 +158,36 @@ test.describe('Student management — task order', () => {
     // The server recorded it, not just the screen.
     await page.reload();
     await expect(page.getByText('2 invoiced', { exact: true })).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('history: past lessons never marked taught, recorded as paid in Square', async ({
+    page,
+  }) => {
+    await page.goto(`/students/${HISTORY_STUDENT_ID}`);
+    await expect(page.getByText('Past, not marked taught')).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByRole('button', { name: 'Tick all 2' }).click();
+    await page
+      .getByRole('button', { name: 'Already paid (cash, Venmo, Square)' })
+      .click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Card, in Square').check();
+    await dialog.getByLabel('Total paid').fill('75');
+    await dialog.getByRole('button', { name: 'Record $75.00 paid' }).click();
+
+    // Settled: nothing left owed, and both lessons are now taught.
+    await expect(
+      page.getByText(/Every lesson taught so far is paid for/)
+    ).toBeVisible({ timeout: 20_000 });
+
+    await page.reload();
+    await expect(
+      page.getByText(/Every lesson taught so far is paid for/)
+    ).toBeVisible({ timeout: 20_000 });
+    await page.getByLabel(/show paid & closed/i).click();
+    const row = page.getByRole('row').filter({ hasText: '$75.00' });
+    await expect(row).toContainText('Paid by card in Square');
   });
 });

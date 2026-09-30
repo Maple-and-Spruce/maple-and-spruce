@@ -141,6 +141,8 @@ function paymentAttribution(source: InvoicePaymentSource): {
       return { icon: <AccountBalanceWalletIcon />, label: 'Paid via Venmo' };
     case 'square-pos':
       return { icon: <CreditCardIcon />, label: 'Paid in person' };
+    case 'square-manual':
+      return { icon: <CreditCardIcon />, label: 'Paid by card in Square' };
     case 'admin-manual':
     default:
       return { icon: <PersonOutlineIcon />, label: 'Marked paid manually' };
@@ -369,6 +371,10 @@ function InvoiceActions({
             <MenuItem onClick={() => recordAndClose('admin-manual')}>
               <PersonOutlineIcon fontSize="small" sx={{ mr: 1 }} />
               Cash, check, or other
+            </MenuItem>
+            <MenuItem onClick={() => recordAndClose('square-manual')}>
+              <CreditCardIcon fontSize="small" sx={{ mr: 1 }} />
+              Paid by card in Square
             </MenuItem>
           </Menu>
         </>
