@@ -5,7 +5,8 @@
  * containers. A product is a price the studio bills a state program at, so it
  * must be a real, positive, whole-cent amount and carry the portal's id.
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { SaveHopeProductInput } from '@maple/ts/domain';
 
 export const hopeProductValidation = staticSuite(

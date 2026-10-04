@@ -318,7 +318,7 @@ CI runs this on every PR (`build-check.yml` → `callable-roles` job). To add an
 
 ## Input Validation
 
-Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with `staticSuite` (never `create`) so they're pure functions — no retained state across invocations, safe to call from warm cloud function containers without `.reset()`.
+Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with the local `staticSuite` from `libs/ts/validation/src/lib/static-suite.ts` (never Vest's `create` or `runStatic`), so they're pure functions: no retained state across invocations, safe to call from warm cloud function containers without `.reset()`. Vest 6's `runStatic` is **not** isolated, because a focused `only(fields)` run reports stale errors from the previous call; see the comment in `static-suite.ts`.
 
 **Create pattern** — validate the full payload:
 

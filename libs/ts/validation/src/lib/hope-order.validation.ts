@@ -1,7 +1,8 @@
 /**
  * EMA order validation (WV Hope Scholarship). `staticSuite`, so pure.
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { SaveHopeOrderInput } from '@maple/ts/domain';
 
 export const hopeOrderValidation = staticSuite(

@@ -4,7 +4,8 @@
  * Vest validation for calendar event forms.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateCalendarEventInput } from '@maple/ts/domain';
 import { CALENDAR_EVENT_TYPES, ROOMS } from '@maple/ts/domain';
 
