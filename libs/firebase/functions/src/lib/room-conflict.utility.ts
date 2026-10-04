@@ -6,9 +6,10 @@
  * creates them for rentals and Music Together, and a cancelled lesson has its
  * event removed. Checking lessons instead would miss the rentals entirely.
  *
- * Call BEFORE the write. A lesson with no room cannot clash — the room is
- * optional for backwards compatibility, and a lesson that claims no room
- * occupies none.
+ * Call BEFORE the write. The room is required here on purpose: a lesson that
+ * names no room is still mirrored into Spruce by `onLessonWrite`, so a caller
+ * that passed "no room" would skip the check for a slot the calendar then
+ * shows as taken. Resolve it with `lessonRoom()` first.
  */
 import { CalendarEventRepository } from '@maple/firebase/database';
 import { findRoomConflicts, describeRoomConflict } from '@maple/ts/domain';
@@ -16,7 +17,7 @@ import type { Room, RoomConflict } from '@maple/ts/domain';
 import { throwFailedPrecondition } from './errors.utility';
 
 export interface RoomWindow {
-  room?: Room | null;
+  room: Room;
   scheduledAt: Date;
   durationMinutes: number;
   /** `lessons/{id}` — the booking's own event, so an edit does not clash with itself. */
@@ -32,7 +33,6 @@ export interface RoomWindow {
 export async function findConflictsForWindow(
   window: RoomWindow
 ): Promise<RoomConflict[]> {
-  if (!window.room) return [];
   if (Number.isNaN(window.scheduledAt.getTime())) return [];
 
   const end = new Date(

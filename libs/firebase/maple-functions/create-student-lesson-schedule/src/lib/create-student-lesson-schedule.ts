@@ -25,6 +25,7 @@ import { runMaterializeLessonSchedules } from '@maple/firebase/maple-functions/m
 import {
   MAX_SCHEDULE_INTERVAL_WEEKS,
   isValidScheduleInterval,
+  lessonRoom,
   scheduleHorizonEnd,
   scheduleOccurrences,
 } from '@maple/ts/domain';
@@ -50,6 +51,9 @@ export const createStudentLessonSchedule = Functions.endpoint
 
     const input = {
       ...data,
+      // Every lesson this arrangement makes is taught in Spruce unless it
+      // says otherwise; record that on the arrangement itself.
+      room: lessonRoom(data.room),
       startsOn: coerceDate(data.startsOn),
       endsOn: data.endsOn ? coerceDate(data.endsOn) : undefined,
     };
