@@ -25,6 +25,10 @@
  * Recording a no-show as 'rendered' would bill Hope for a service never
  * rendered; recording it as 'cancelled' would lose the fact and drop the
  * teacher's payout credit on the private-pay side. Hence a third status.
+ *
+ * Since #157 nobody *has* to set 'rendered' or 'no-show': a past lesson that
+ * was not removed happened (`lessonHappened`). Both statuses remain valid for
+ * lessons recorded under the old workflow.
  */
 
 import type { Room } from './room';
@@ -59,14 +63,50 @@ export function didConsumeSlot(status: LessonStatus): boolean {
 }
 
 /**
+ * Did this lesson happen? (#157)
+ *
+ * **A lesson whose time has come and that nobody removed happened.** Nothing
+ * has to be marked. Katie books lessons a few at a time and deletes the ones
+ * that do not take place; asking her to also confirm every one that did was
+ * a chore she would not do, and every downstream rule — past-unpaid charging,
+ * the Hope queue, teacher payouts — silently saw nothing until she did.
+ *
+ * 'rendered' and 'no-show' are still honoured, so lessons marked under the
+ * old workflow keep meaning what they meant. 'cancelled' never happened.
+ *
+ * "Has come" is the lesson's start, so the lesson Katie has just taught can be
+ * charged for before she leaves the room.
+ */
+export function lessonHappened(
+  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
+  now: Date
+): boolean {
+  switch (lesson.status) {
+    case 'cancelled':
+      return false;
+    case 'scheduled':
+      return lesson.scheduledAt.getTime() <= now.getTime();
+    case 'rendered':
+    case 'no-show':
+      return true;
+  }
+}
+
+/**
  * May this lesson be billed to the Hope Scholarship?
  *
- * Only a genuinely rendered lesson. Hope funds cannot be retained for services
- * not rendered, so a no-show is structurally excluded here rather than filtered
- * out in a UI somewhere — the exclusion has to be impossible to forget.
+ * Only a lesson that genuinely happened. Hope funds cannot be retained for
+ * services not rendered, so a recorded no-show is structurally excluded here
+ * rather than filtered out in a UI somewhere — the exclusion has to be
+ * impossible to forget. A lesson that did not happen is deleted (or, under the
+ * old workflow, cancelled), so it never reaches this test at all.
  */
-export function isSubmittableToHope(status: LessonStatus): boolean {
-  return status === 'rendered';
+export function isSubmittableToHope(
+  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
+  now: Date
+): boolean {
+  if (lesson.status === 'no-show') return false;
+  return lessonHappened(lesson, now);
 }
 
 export interface Lesson {

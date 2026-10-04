@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUserRoles: vi.fn(),
+  instructorIdForUser: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -15,6 +16,7 @@ vi.mock('@maple/firebase/functions', () => ({
     },
   },
   getUserRoles: mocks.getUserRoles,
+  instructorIdForUser: mocks.instructorIdForUser,
 }));
 
 import { getMyRoles } from './get-my-roles';
@@ -34,6 +36,28 @@ describe('getMyRoles', () => {
 
     expect(result.roles).toEqual(['clerk', 'lesson-teacher']);
     expect(mocks.getUserRoles).toHaveBeenCalledWith('nathan-uid');
+  });
+
+  it('names the instructor the login is linked to (#157)', async () => {
+    mocks.getUserRoles.mockResolvedValue(['admin']);
+    mocks.instructorIdForUser.mockResolvedValue('instructor-katie');
+
+    const result = await handler({}, { uid: 'katie-uid' });
+
+    expect(result).toEqual({
+      roles: ['admin'],
+      instructorId: 'instructor-katie',
+    });
+    expect(mocks.instructorIdForUser).toHaveBeenCalledWith('katie-uid');
+  });
+
+  it('omits instructorId for a login that teaches nothing', async () => {
+    mocks.getUserRoles.mockResolvedValue(['clerk']);
+    mocks.instructorIdForUser.mockResolvedValue(undefined);
+
+    expect(await handler({}, { uid: 'clerk-uid' })).toEqual({
+      roles: ['clerk'],
+    });
   });
 
   it('returns empty roles without a uid (defensive)', async () => {

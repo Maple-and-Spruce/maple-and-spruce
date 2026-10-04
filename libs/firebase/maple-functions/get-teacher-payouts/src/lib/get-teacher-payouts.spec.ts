@@ -77,7 +77,7 @@ describe('getTeacherPayouts', () => {
   });
 
   describe('happy path', () => {
-    it('passes rendered lessons + paid invoices to the aggregator', async () => {
+    it('passes the period’s lessons + paid invoices to the aggregator', async () => {
       const instructor = {
         id: 'instructor-1',
         name: 'Sarah',
@@ -147,13 +147,12 @@ describe('getTeacherPayouts', () => {
       expect(result.payouts[0].totalOwedCents).toBe(5000);
       expect(result.payouts[0].lines).toHaveLength(1);
 
-      expect(mocks.lessonFindAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: 'rendered',
-          from: expect.any(Date),
-          to: expect.any(Date),
-        })
-      );
+      // Every lesson in the period, not just 'rendered' ones: a past lesson
+      // nobody removed happened (#157), and the aggregation decides that.
+      expect(mocks.lessonFindAll).toHaveBeenCalledWith({
+        from: expect.any(Date),
+        to: expect.any(Date),
+      });
     });
 
     it('filters paid invoices whose paidAt falls outside the period', async () => {

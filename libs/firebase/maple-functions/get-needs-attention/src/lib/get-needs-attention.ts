@@ -125,14 +125,14 @@ export const getNeedsAttention = Functions.endpoint
           const student = studentById.get(lesson.studentId);
           return (
             student !== undefined &&
-            isLessonUnbilled(lesson, student, charges, invoices)
+            isLessonUnbilled(lesson, student, charges, invoices, now)
           );
         })
         .map((lesson) => ({
           kind: 'lesson-unbilled' as const,
           id: lesson.id,
           label: nameFor(lesson.studentId),
-          detail: `${lesson.status === 'no-show' ? 'Missed' : 'Taught'} ${formatDate(lesson.scheduledAt)}, never invoiced`,
+          detail: `${lesson.status === 'no-show' ? 'Missed' : 'Lesson'} ${formatDate(lesson.scheduledAt)}, not paid for`,
           // Carries the lesson, not just the student (#128). The student page
           // opens the charge picker with this lesson ticked, so the row goes
           // from noticing to collecting in one click instead of landing Katie
@@ -145,7 +145,11 @@ export const getNeedsAttention = Functions.endpoint
 
       const hopeUnsubmitted: NeedsAttentionRow[] = hopeLessons
         .filter((lesson) =>
-          isHopeUnsubmitted(lesson, hopeSubmissions.get(lesson.id)?.status)
+          isHopeUnsubmitted(
+            lesson,
+            hopeSubmissions.get(lesson.id)?.status,
+            now
+          )
         )
         .map((lesson) => ({
           kind: 'hope-unsubmitted' as const,
@@ -198,7 +202,7 @@ export const getNeedsAttention = Functions.endpoint
         },
         {
           kind: 'lesson-unbilled',
-          title: 'Lessons taught but never invoiced',
+          title: 'Past lessons not paid for',
           because: 'Taught, and nobody has been asked to pay for them yet.',
           rows: unbilled,
         },

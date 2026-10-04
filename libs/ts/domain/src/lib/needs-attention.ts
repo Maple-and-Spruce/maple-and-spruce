@@ -20,7 +20,7 @@ import type { Lesson } from './lesson';
 import type { Student } from './student';
 import { isLessonUnattributed } from './lesson-block';
 import type { LessonBlock } from './lesson-block';
-import { isSubmittableToHope } from './lesson';
+import { isSubmittableToHope, lessonHappened } from './lesson';
 import { lessonBillingState } from './lesson-billing-state';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 
@@ -115,7 +115,7 @@ export function hasInvoiceSyncFailed(
  * re-deriving half of it here.
  */
 export function isLessonUnbilled(
-  lesson: Pick<Lesson, 'id' | 'status'>,
+  lesson: Pick<Lesson, 'id' | 'status' | 'scheduledAt'>,
   student: Pick<Student, 'isHopeScholarship'>,
   charges: Array<
     Pick<
@@ -123,19 +123,23 @@ export function isLessonUnbilled(
       'status' | 'lessonIds' | 'dueAt' | 'resolvedAt' | 'updatedAt'
     >
   >,
-  invoices: Array<Pick<Invoice, 'status' | 'lineItems'>>
+  invoices: Array<Pick<Invoice, 'status' | 'lineItems'>>,
+  now: Date
 ): boolean {
   if (student.isHopeScholarship) return false;
-  if (lesson.status !== 'rendered' && lesson.status !== 'no-show') return false;
+  // A past lesson nobody removed happened (#157) — it does not wait to be
+  // marked taught before it can be owed.
+  if (!lessonHappened(lesson, now)) return false;
   return lessonBillingState(lesson.id, charges, invoices).kind === 'unbilled';
 }
 
-/** A rendered Hope lesson with no claim, or one EMA rejected. */
+/** A Hope lesson that happened with no claim, or one EMA rejected. */
 export function isHopeUnsubmitted(
-  lesson: Pick<Lesson, 'status'>,
-  submissionStatus: 'submitted' | 'paid' | 'rejected' | undefined
+  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
+  submissionStatus: 'submitted' | 'paid' | 'rejected' | undefined,
+  now: Date
 ): boolean {
-  if (!isSubmittableToHope(lesson.status)) return false;
+  if (!isSubmittableToHope(lesson, now)) return false;
   return submissionStatus === undefined || submissionStatus === 'rejected';
 }
 

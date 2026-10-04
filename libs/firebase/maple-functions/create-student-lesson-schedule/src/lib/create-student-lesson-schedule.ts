@@ -1,9 +1,9 @@
 /**
  * createStudentLessonSchedule (legacy #797)
  *
- * Creates a standing arrangement and materialises its lessons straight away, so
- * setting one up produces visible lessons rather than nothing until the weekly
- * job next runs.
+ * Records a student's weekly time. It books nothing (#157): the weekly time is
+ * a planning note, and lessons are booked a few at a time when the family pays
+ * for them (`planNextLessons`).
  *
  * The arrangement must fit its block, exactly as an individual lesson must
  * (legacy #686) — checked here against a representative occurrence so a schedule can
@@ -21,7 +21,6 @@ import {
   StudentLessonScheduleRepository,
   StudentRepository,
 } from '@maple/firebase/database';
-import { runMaterializeLessonSchedules } from '@maple/firebase/maple-functions/materialize-lesson-schedules';
 import {
   MAX_SCHEDULE_INTERVAL_WEEKS,
   isValidScheduleInterval,
@@ -101,12 +100,5 @@ export const createStudentLessonSchedule = Functions.endpoint
       blockId,
     });
 
-    // Materialise now so the arrangement is immediately real: this one only.
-    const materialized = await runMaterializeLessonSchedules(
-      new Date(),
-      undefined,
-      schedule.id
-    );
-
-    return { schedule, lessonsCreated: materialized.created };
+    return { schedule };
   });

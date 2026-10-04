@@ -73,6 +73,7 @@ describe('hasInvoiceSyncFailed', () => {
 
 describe('isLessonUnbilled', () => {
   const AT = new Date('2026-10-05T16:00:00Z');
+  const PAST = new Date('2026-09-28T20:00:00Z');
 
   /** An invoice naming one lesson. */
   const invoiceFor = (lessonId: string, status: Invoice['status'] = 'sent') =>
@@ -110,10 +111,11 @@ describe('isLessonUnbilled', () => {
   it('flags a rendered private-pay lesson nobody has been asked to pay for', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [],
-        invoiced
+        invoiced,
+        AT
       )
     ).toBe(true);
   });
@@ -121,10 +123,11 @@ describe('isLessonUnbilled', () => {
   it('flags an unbilled no-show too, because private pay charges for it', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'no-show' },
+        { id: 'lesson-1', status: 'no-show', scheduledAt: PAST },
         { isHopeScholarship: false },
         [],
-        invoiced
+        invoiced,
+        AT
       )
     ).toBe(true);
   });
@@ -132,35 +135,63 @@ describe('isLessonUnbilled', () => {
   it('never flags a Hope lesson — those bill through EMA', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: true },
         [],
-        invoiced
+        invoiced,
+        AT
       )
     ).toBe(false);
   });
 
-  it.each(['scheduled', 'cancelled'] as const)(
-    'does not flag a %s lesson',
-    (status) => {
-      expect(
-        isLessonUnbilled(
-          { id: 'lesson-1', status },
-          { isHopeScholarship: false },
-          [],
-          invoiced
-        )
-      ).toBe(false);
-    }
-  );
+  it('flags a past lesson nobody marked taught — past means it happened (#157)', () => {
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'scheduled', scheduledAt: PAST },
+        { isHopeScholarship: false },
+        [],
+        invoiced,
+        AT
+      )
+    ).toBe(true);
+  });
+
+  it('does not flag a lesson that has not happened yet', () => {
+    expect(
+      isLessonUnbilled(
+        {
+          id: 'lesson-1',
+          status: 'scheduled',
+          scheduledAt: new Date('2026-10-12T20:00:00Z'),
+        },
+        { isHopeScholarship: false },
+        [],
+        invoiced,
+        AT
+      )
+    ).toBe(false);
+  });
+
+  it('does not flag a cancelled lesson', () => {
+    expect(
+      isLessonUnbilled(
+        { id: 'lesson-1', status: 'cancelled', scheduledAt: PAST },
+        { isHopeScholarship: false },
+        [],
+        invoiced,
+        AT
+      )
+    ).toBe(false);
+  });
 
   it('is satisfied once an invoice line exists', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-invoiced', status: 'rendered' },
+        { id: 'lesson-invoiced', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [],
-        invoiced
+        invoiced,
+        AT
       )
     ).toBe(false);
   });
@@ -170,10 +201,11 @@ describe('isLessonUnbilled', () => {
   it('is satisfied by a paid card charge, not only by an invoice', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [chargeFor('lesson-1', 'paid')],
-        []
+        [],
+        AT
       )
     ).toBe(false);
   });
@@ -181,10 +213,11 @@ describe('isLessonUnbilled', () => {
   it('is satisfied by a charge still to be taken — it has been asked for', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [chargeFor('lesson-1', 'scheduled')],
-        []
+        [],
+        AT
       )
     ).toBe(false);
   });
@@ -194,10 +227,11 @@ describe('isLessonUnbilled', () => {
     // and Waive on it. Listing the lesson here as well would double-count it.
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [chargeFor('lesson-1', 'failed')],
-        []
+        [],
+        AT
       )
     ).toBe(false);
   });
@@ -205,10 +239,11 @@ describe('isLessonUnbilled', () => {
   it('is satisfied by a waived charge — a human decided not to charge', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [chargeFor('lesson-1', 'waived')],
-        []
+        [],
+        AT
       )
     ).toBe(false);
   });
@@ -219,10 +254,11 @@ describe('isLessonUnbilled', () => {
     // hidden (#111).
     expect(
       isLessonUnbilled(
-        { id: 'lesson-1', status: 'rendered' },
+        { id: 'lesson-1', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [],
-        [invoiceFor('lesson-1', 'void')]
+        [invoiceFor('lesson-1', 'void')],
+        AT
       )
     ).toBe(true);
   });
@@ -230,30 +266,50 @@ describe('isLessonUnbilled', () => {
   it('does not confuse one lesson with another on the same charge', () => {
     expect(
       isLessonUnbilled(
-        { id: 'lesson-2', status: 'rendered' },
+        { id: 'lesson-2', status: 'rendered', scheduledAt: PAST },
         { isHopeScholarship: false },
         [chargeFor('lesson-1', 'paid')],
-        []
+        [],
+        AT
       )
     ).toBe(true);
   });
 });
 
 describe('isHopeUnsubmitted', () => {
+  const AT = new Date('2026-10-05T16:00:00Z');
+  const PAST = new Date('2026-09-28T20:00:00Z');
+
+  it('flags a past Hope lesson nobody marked taught (#157)', () => {
+    expect(
+      isHopeUnsubmitted({ status: 'scheduled', scheduledAt: PAST }, undefined, AT)
+    ).toBe(true);
+  });
+
+  it('does not flag a Hope lesson still to come', () => {
+    expect(
+      isHopeUnsubmitted(
+        { status: 'scheduled', scheduledAt: new Date('2026-10-12T20:00:00Z') },
+        undefined,
+        AT
+      )
+    ).toBe(false);
+  });
+
   it('flags a rendered Hope lesson with no claim', () => {
-    expect(isHopeUnsubmitted({ status: 'rendered' }, undefined)).toBe(true);
+    expect(isHopeUnsubmitted({ status: 'rendered', scheduledAt: PAST }, undefined, AT)).toBe(true);
   });
 
   it('flags one EMA rejected, because it is still unpaid work', () => {
-    expect(isHopeUnsubmitted({ status: 'rendered' }, 'rejected')).toBe(true);
+    expect(isHopeUnsubmitted({ status: 'rendered', scheduledAt: PAST }, 'rejected', AT)).toBe(true);
   });
 
   it.each(['submitted', 'paid'] as const)('clears once %s', (status) => {
-    expect(isHopeUnsubmitted({ status: 'rendered' }, status)).toBe(false);
+    expect(isHopeUnsubmitted({ status: 'rendered', scheduledAt: PAST }, status, AT)).toBe(false);
   });
 
   it('never flags a no-show — Hope pays only for services rendered', () => {
-    expect(isHopeUnsubmitted({ status: 'no-show' }, undefined)).toBe(false);
+    expect(isHopeUnsubmitted({ status: 'no-show', scheduledAt: PAST }, undefined, AT)).toBe(false);
   });
 });
 

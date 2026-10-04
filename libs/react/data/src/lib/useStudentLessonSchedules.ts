@@ -67,16 +67,15 @@ export function useStudentLessonSchedules(studentId?: string) {
   const createSchedule = useCallback(
     async (
       input: CreateStudentLessonScheduleInput
-    ): Promise<{ lessonsCreated: number }> => {
+    ): Promise<void> => {
       setPendingId('new');
       try {
         const fn = httpsCallable<
           CreateStudentLessonScheduleRequest,
           CreateStudentLessonScheduleResponse
         >(getMapleFunctions(), 'createStudentLessonSchedule');
-        const result = await fn(input);
+        await fn(input);
         await fetchSchedules();
-        return { lessonsCreated: result.data.lessonsCreated ?? 0 };
       } finally {
         setPendingId(null);
       }

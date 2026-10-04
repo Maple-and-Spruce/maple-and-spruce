@@ -52,17 +52,16 @@ export const getHopeQueue = Functions.endpoint
     const to = data?.to ? new Date(data.to) : undefined;
 
     const entries: HopeQueueEntry[] = [];
+    const now = new Date();
 
     for (const student of hopeStudents) {
-      const lessons = await LessonRepository.findAll({
-        studentId: student.id,
-        status: 'rendered',
-      });
+      // Every lesson, not just 'rendered' ones: a past lesson nobody removed
+      // happened (#157), so the status alone no longer says what Hope owes.
+      const lessons = await LessonRepository.findAll({ studentId: student.id });
 
       for (const lesson of lessons) {
-        // Belt and braces: the query already asks for rendered, but this is the
-        // single test that decides what Hope may be billed for.
-        if (!isSubmittableToHope(lesson.status)) continue;
+        // The single test that decides what Hope may be billed for.
+        if (!isSubmittableToHope(lesson, now)) continue;
         if (from && lesson.scheduledAt < from) continue;
         if (to && lesson.scheduledAt > to) continue;
 
