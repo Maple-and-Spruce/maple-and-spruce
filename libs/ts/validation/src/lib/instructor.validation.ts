@@ -4,7 +4,8 @@
  * Vest validation for instructor forms.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateInstructorInput } from '@maple/ts/domain';
 import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
 

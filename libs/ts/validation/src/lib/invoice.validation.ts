@@ -4,7 +4,8 @@
  * Vest validation for private-pay music lesson invoices. Used both by the
  * admin form and the cloud-function createInvoice/updateInvoice handlers.
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateInvoiceInput } from '@maple/ts/domain';
 import {
   INVOICE_STATUSES,

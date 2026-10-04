@@ -95,8 +95,8 @@ importers:
         specifier: ^46.0.0
         version: 46.0.0
       vest:
-        specifier: ^5.4.6
-        version: 5.4.6
+        specifier: ^6.3.4
+        version: 6.3.4
       webflow-api:
         specifier: ^3.3.4
         version: 3.3.4
@@ -5158,8 +5158,8 @@ packages:
     resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
     engines: {node: '>=18'}
 
-  context@3.1.0:
-    resolution: {integrity: sha512-foRhGPhITOiZWqoDx9oUv0UXidbgib9wWDykR7n5pZNa7hvW8rbM/KX+yoc91PbhuiRBWdBvO2f83DUy7N27Ww==}
+  context@4.0.18:
+    resolution: {integrity: sha512-kJoI6eSw+haK++CDuGzitDDRiydybT7HX1ChiZPqcTootjXzEJEHOlpl/jY4ymiZTVhv7bW7ziVQuKYVD9TfVA==}
 
   convert-hrtime@5.0.0:
     resolution: {integrity: sha512-lOETlkIeYSJWcbbcvjRKGxVMXJR+8+OQb/mTPbA4ObPMytYIsUbuOE0Jzy60hjARYszq1id0j8KgVhC+WGZVTg==}
@@ -7516,8 +7516,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  n4s@5.0.28:
-    resolution: {integrity: sha512-64ap7Qn8Oyua2ImIZH6/pkql89qyiTZ4jJqpS2g863++0tgbM4cuv3KJvZqMpa8kY2ovZ4q3cD0/KU4SImjg5g==}
+  n4s@6.2.2:
+    resolution: {integrity: sha512-uasGNzSesDlOGV/aTpYUWIlVYfX4sAR6lur7BAr2dFSZ7AYI/2u525zmIQWM92sTvpTJKYJUr2rbK4wXP2f4cg==}
 
   nan@2.29.0:
     resolution: {integrity: sha512-GlGk3HIvitbvs+LT3g6XUP1kpirKNvmDFwF/bmo6XNWSb/eYEs/O4bfgIEIXCZ+lIOTS5xNwDvSGMw6FJdAhtA==}
@@ -9353,21 +9353,18 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  vast@1.1.0:
-    resolution: {integrity: sha512-+NLhVyK8sjgagou51U3YVOjhfQVb8nq7QK7C6D3c2Jghgoblz+VbpiGfeq/xtPYFQFidKsbXxY4qFFoHYZ2A+Q==}
-
   verkit@0.3.2:
     resolution: {integrity: sha512-zj/ob3UsvJGN0whEAKFp53REA5X66hvffVqoCtVQAakJKnKlH+/PcOfMoFwIG/o4rElqLv/ycAFlx8ZlXUorCg==}
     engines: {node: '>=18.12.0'}
 
-  vest-utils@1.5.0:
-    resolution: {integrity: sha512-nHbYeo3ZhMfttkzwrrHaU1OfJuNTrkWwme5kGDZOKhpdb8tYs8fBxhE9S7U/2uVLBLVPwNSGXul7lgopB1vSJQ==}
+  vest-utils@2.0.18:
+    resolution: {integrity: sha512-Pn897hpDMROyfrycky71azKpToZAlD65gLwj+Zp52laLKLy4m3xinzhuXqilAC2Doon81fFjmcYIggJlaikxAA==}
 
-  vest@5.4.6:
-    resolution: {integrity: sha512-Q3KQYluxdjnz5/HmR8coHNlXbJPLWMfrwz4wlcqMX4SaJ8qcmy5Ix9NTiQt3hTMrETdj+q+513J/kt+ahdJlLg==}
+  vest@6.3.4:
+    resolution: {integrity: sha512-P3Lg3Q4l0DdggdIfr4SxfXGc0xjlzWTQ43363bnchsgP9Bqm1wQpHyD+aP5WVTerVsmy9jEpYP8nxoT2rgwRtQ==}
 
-  vestjs-runtime@1.7.0:
-    resolution: {integrity: sha512-b9CLKaNJopi7zXfJYZY9WYw4EOCIp1lsjheeq9ckNh9Qh7Dze1+yXQ1stwFw+oe22H7zJy/+vjn4/yJSoaDbpw==}
+  vestjs-runtime@2.0.18:
+    resolution: {integrity: sha512-OfqQNdeIPaViinLzGolAB0DhxZIDIOokBhbCdlzXpR+TuQFXTPZ1TZbVyXvR50ryyvyNZXzLnX1D8gQay439Dw==}
 
   vite-plugin-storybook-nextjs@10.6.1:
     resolution: {integrity: sha512-QsTwFjX350v+NRzbbcKD74Dr5/t07Iolnvn9y4EeKmBkv9DjvuAkvVkwx/NKsUUrz49vHxqnEZ+RVN3f22LVAQ==}
@@ -15144,9 +15141,9 @@ snapshots:
 
   content-type@2.1.0: {}
 
-  context@3.1.0:
+  context@4.0.18:
     dependencies:
-      vest-utils: 1.5.0
+      vest-utils: 2.0.18
 
   convert-hrtime@5.0.0: {}
 
@@ -17829,10 +17826,10 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  n4s@5.0.28:
+  n4s@6.2.2:
     dependencies:
-      context: 3.1.0
-      vest-utils: 1.5.0
+      context: 4.0.18
+      vest-utils: 2.0.18
 
   nan@2.29.0:
     optional: true
@@ -19999,26 +19996,21 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vast@1.1.0:
-    dependencies:
-      vest-utils: 1.5.0
-
   verkit@0.3.2: {}
 
-  vest-utils@1.5.0: {}
+  vest-utils@2.0.18: {}
 
-  vest@5.4.6:
+  vest@6.3.4:
     dependencies:
-      context: 3.1.0
-      n4s: 5.0.28
-      vast: 1.1.0
-      vest-utils: 1.5.0
-      vestjs-runtime: 1.7.0
+      context: 4.0.18
+      n4s: 6.2.2
+      vest-utils: 2.0.18
+      vestjs-runtime: 2.0.18
 
-  vestjs-runtime@1.7.0:
+  vestjs-runtime@2.0.18:
     dependencies:
-      context: 3.1.0
-      vest-utils: 1.5.0
+      context: 4.0.18
+      vest-utils: 2.0.18
 
   vite-plugin-storybook-nextjs@10.6.1(next@16.3.7(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(storybook@10.6.1(@types/react@19.3.0)(prettier@3.9.9)(react@19.3.0))(typescript@6.0.3)(vite@8.3.2(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)):
     dependencies:
