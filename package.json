@@ -99,7 +99,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "signature_pad": "^5.1.4",
-    "square": "^45.0.1",
+    "square": "^46.0.0",
     "vest": "^5.4.6",
     "webflow-api": "^3.3.4"
   }

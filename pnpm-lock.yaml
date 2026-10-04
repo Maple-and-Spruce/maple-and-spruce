@@ -92,8 +92,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4
       square:
-        specifier: ^45.0.1
-        version: 45.1.0
+        specifier: ^46.0.0
+        version: 46.0.0
       vest:
         specifier: ^5.4.6
         version: 5.4.6
@@ -8726,8 +8726,8 @@ packages:
     resolution: {integrity: sha512-75b/UWbXl6xk1cG0jEWeWTRHAbDseF78kdPa3N4Cm57KMkDwOS2qGSLfooyqMDmFEKhQAfTA0WSiMkw40hQ/2A==}
     engines: {node: '>=14.17.0'}
 
-  square@45.1.0:
-    resolution: {integrity: sha512-A7nCXOU6RgKo40ZpxAHv+VwlUh8mEiBV7aEz4TDnVSnE3BRcT0sHKhAI6oKc45VSXYwcUSGI3AbWh9d7dID0OQ==}
+  square@46.0.0:
+    resolution: {integrity: sha512-kxjA2w1ttzVPPojuwRnco0zIPBEfXOz7zaNsIy0YD1hmtryz92v1jGtw5VNoWb4H/hw9O0crsWnLFjZlJUUQYA==}
     engines: {node: '>=18.0.0'}
 
   stack-trace@0.0.10:
@@ -19378,7 +19378,7 @@ snapshots:
       - debug
       - supports-color
 
-  square@45.1.0:
+  square@46.0.0:
     dependencies:
       form-data: 4.0.6
       form-data-encoder: 4.1.0
