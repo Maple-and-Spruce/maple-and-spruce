@@ -6,6 +6,36 @@
 
 ## Current Status
 
+### Dependency refresh: 50 overrides down to 9 (2026-09-29, refreshed 2026-10-04)
+
+Security Audit was failing on main (6 high). A fresh resolve (no lockfile, no
+overrides) showed almost every override was covering a *stale lockfile* entry,
+not a missing upstream fix.
+
+- Minor bumps across the board: nx 23.2.1 (+ its migrations), Next 16.3.7,
+  React 19.3, Storybook 10.6.1, Firebase 12.19 / admin 14.5 / functions 7.4,
+  firebase-tools 15.32, vite 8.3, vitest 4.1.11, Playwright 1.63.
+- Majors: ESLint 10 (+ @eslint/js 10), jsdom 30, jscpd 5,
+  jsonc-eslint-parser 3, @vitejs/plugin-react 6, date-fns 4, ical-generator 11.
+- Removed unused deps: @tanstack/react-query, wait-on (it pulled the flagged
+  joi), concurrently, node-ical, http-server, ts-node, @vitest/ui.
+- Overrides: ~50 down to 9, each pinned by a named parent: adm-zip/koa/ws/
+  form-data (@webflow/webflow-cli), smol-toml/axios/brace-expansion 5.x (nx),
+  @grpc/grpc-js (@firebase/firestore ~1.9), basic-ftp (firebase-tools >
+  get-uri ^5). The last four came from advisories published 2026-09-30 to
+  10-01, after the first pass.
+- `auditConfig.ignoreGhsas`: image-size is gone from the tree; one new entry,
+  braces GHSA-vfj7-8cjw-p6xm, which has no patched release and is in no
+  production dependency tree. Audit: 52 findings → 4 (only high is the
+  ignored braces).
+- Storybook on Vite 8 resolves `@maple/*` through Vite's native tsconfig paths,
+  which skips files outside a tsconfig `include` (every story). `.storybook/main.ts`
+  now adds vite-tsconfig-paths on tsconfig.base.json, as the unit config does.
+- New ESLint 10 / sonarjs 4.2 rules set to warn (~80 pre-existing hits).
+- Deferred, each its own PR: Square SDK 46, MUI 9 + MUI X 9, vest 6,
+  @webflow/* 2.x (payments / UI / live registration widget). Blocked upstream:
+  TypeScript 7 and vitest 5 (nx + typescript-eslint), Babel 8 (nx).
+
 ### Recording history: past lessons paid outside the app (2026-09-29)
 
 Katie had paid private-pay history (cash, Venmo, cards run in Square by hand)

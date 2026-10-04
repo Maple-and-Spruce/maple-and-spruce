@@ -1,109 +1,60 @@
 {
   "migrations": [
     {
-      "cli": "nx",
-      "version": "17.3.0-beta.6",
-      "description": "Updates the nx wrapper.",
-      "implementation": "./src/migrations/update-17-3-0/update-nxw",
+      "version": "23.2.0-beta.8",
+      "description": "Sets \"cache\" on some executor-based target defaults whose caching was previously enabled by a target name default, maintaining compatibility with how cacheability resolved before Nx 23. Keys the migration cannot decide are left alone and keep working through a deprecated runtime fallback.",
+      "implementation": "./dist/src/migrations/update-23-2-0/set-cache-on-executor-target-defaults",
+      "documentation": "./dist/src/migrations/update-23-2-0/set-cache-on-executor-target-defaults.md",
       "package": "nx",
-      "name": "17.3.0-update-nx-wrapper"
+      "name": "23-2-0-set-cache-on-executor-target-defaults"
     },
     {
-      "cli": "nx",
-      "version": "18.0.0-beta.2",
-      "description": "Updates nx.json to disabled adding plugins when generating projects in an existing Nx workspace",
-      "implementation": "./src/migrations/update-18-0-0/disable-crystal-for-existing-workspaces",
-      "x-repair-skip": true,
-      "package": "nx",
-      "name": "18.0.0-disable-adding-plugins-for-existing-workspaces"
+      "version": "23.2.0-beta.6",
+      "description": "Replace `__dirname` with `import.meta.dirname` in `vite.config.mts`/`vitest.config.mts` files so they work with Vite's `configLoader: 'native'`.",
+      "implementation": "./dist/src/migrations/update-23-2-0/use-import-meta-dirname",
+      "documentation": "./dist/src/migrations/update-23-2-0/use-import-meta-dirname.md",
+      "package": "@nx/vitest",
+      "name": "update-23-2-0-use-import-meta-dirname"
     },
     {
-      "version": "18.1.0-beta.3",
-      "description": "Moves affected.defaultBase to defaultBase in `nx.json`",
-      "implementation": "./src/migrations/update-17-2-0/move-default-base",
-      "package": "nx",
-      "name": "move-default-base-to-nx-json-root"
-    },
-    {
-      "cli": "nx",
-      "version": "19.2.0-beta.2",
-      "description": "Updates the default workspace data directory to .nx/workspace-data",
-      "implementation": "./src/migrations/update-19-2-0/move-workspace-data-directory",
-      "package": "nx",
-      "name": "19-2-0-move-graph-cache-directory"
-    },
-    {
-      "cli": "nx",
-      "version": "19.2.2-beta.0",
-      "description": "Updates the nx wrapper.",
-      "implementation": "./src/migrations/update-17-3-0/update-nxw",
-      "package": "nx",
-      "name": "19-2-2-update-nx-wrapper"
-    },
-    {
-      "version": "19.2.4-beta.0",
-      "description": "Set project name in nx.json explicitly",
-      "implementation": "./src/migrations/update-19-2-4/set-project-name",
-      "x-repair-skip": true,
-      "package": "nx",
-      "name": "19-2-4-set-project-name"
-    },
-    {
-      "version": "20.0.0-beta.7",
-      "description": "Migration for v20.0.0-beta.7",
-      "implementation": "./src/migrations/update-20-0-0/move-use-daemon-process",
-      "package": "nx",
-      "name": "move-use-daemon-process"
-    },
-    {
-      "version": "20.0.1",
-      "description": "Set `useLegacyCache` to true for migrating workspaces",
-      "implementation": "./src/migrations/update-20-0-1/use-legacy-cache",
-      "x-repair-skip": true,
-      "package": "nx",
-      "name": "use-legacy-cache"
-    },
-    {
-      "version": "21.0.0-beta.8",
-      "description": "Removes the legacy cache configuration from nx.json",
-      "implementation": "./src/migrations/update-21-0-0/remove-legacy-cache",
-      "package": "nx",
-      "name": "remove-legacy-cache"
-    },
-    {
-      "version": "21.0.0-beta.8",
-      "description": "Removes the legacy cache configuration from nx.json",
-      "implementation": "./src/migrations/update-21-0-0/remove-custom-tasks-runner",
-      "package": "nx",
-      "name": "remove-custom-tasks-runner"
-    },
-    {
-      "version": "21.0.0-beta.11",
-      "description": "Updates release version config based on the breaking changes in Nx v21",
-      "implementation": "./src/migrations/update-21-0-0/release-version-config-changes",
-      "package": "nx",
-      "name": "release-version-config-changes"
-    },
-    {
-      "version": "21.0.0-beta.11",
-      "description": "Updates release changelog config based on the breaking changes in Nx v21",
-      "implementation": "./src/migrations/update-21-0-0/release-changelog-config-changes",
-      "package": "nx",
-      "name": "release-changelog-config-changes"
-    },
-    {
-      "version": "21.1.0-beta.2",
-      "description": "Adds **/nx-rules.mdc and **/nx.instructions.md to .gitignore if not present",
-      "implementation": "./src/migrations/update-21-1-0/add-gitignore-entry",
-      "package": "nx",
-      "name": "21-1-0-add-ignore-entries-for-nx-rule-files"
-    },
-    {
-      "version": "21.5.0-beta.2",
-      "description": "Migrate the legacy 'development' custom condition to a workspace-unique custom condition name.",
-      "factory": "./src/migrations/update-21-5-0/migrate-development-custom-condition",
+      "version": "23.2.0-beta.11",
+      "description": "Add the pnpm-workspace.yaml, patches, and local_path_modules paths to the outputs of @nx/js:prune-lockfile targets in pnpm workspaces, and the workspace root pnpm-workspace.yaml, package.json, and a pnpm-major runtime probe to their inputs, so a cache replay restores the pnpm install settings, patch files, and vendored local-path dependencies the executor now emits, and a change to the root pnpm install settings or a pnpm major switch does not replay a stale one.",
+      "implementation": "./dist/src/migrations/update-23-2-0/add-pnpm-prune-lockfile-cache-config",
+      "documentation": "./dist/src/migrations/update-23-2-0/add-pnpm-prune-lockfile-cache-config.md",
       "package": "@nx/js",
-      "name": "migrate-development-custom-condition"
+      "name": "update-23-2-0-add-pnpm-prune-lockfile-cache-config"
+    },
+    {
+      "version": "23.2.0-beta.11",
+      "description": "Add the workspace root pnpm-workspace.yaml, the pnpm settings fields of the root package.json, and a pnpm-major runtime probe to the inputs of build targets that emit the pruned pnpm deploy output (webpack, rspack, vite, esbuild with generatePackageJson; next, remix, tsc, swc with generateLockfile), so revoking a build-script approval, changing another pnpm install setting, or crossing the pnpm 10/11 boundary does not replay a cached output that still carries the old one.",
+      "implementation": "./dist/src/migrations/update-23-2-0/add-pnpm-deploy-output-cache-inputs",
+      "documentation": "./dist/src/migrations/update-23-2-0/add-pnpm-deploy-output-cache-inputs.md",
+      "package": "@nx/js",
+      "name": "update-23-2-0-add-pnpm-deploy-output-cache-inputs"
+    },
+    {
+      "version": "23.2.0-beta.4",
+      "description": "Add `@svgr/webpack` when a next config references it.",
+      "implementation": "./dist/src/migrations/update-23-2-0/add-svgr-webpack-if-used",
+      "documentation": "./dist/src/migrations/update-23-2-0/add-svgr-webpack-if-used.md",
+      "package": "@nx/next",
+      "name": "update-23-2-0-add-svgr-webpack-if-used"
+    },
+    {
+      "version": "23.2.0-beta.4",
+      "description": "Add optional Module Federation packages when existing targets require them.",
+      "implementation": "./dist/src/migrations/update-23-2-0/add-optional-module-federation-packages",
+      "documentation": "./dist/src/migrations/update-23-2-0/add-optional-module-federation-packages.md",
+      "package": "@nx/react",
+      "name": "update-23-2-0-add-optional-module-federation-packages"
+    },
+    {
+      "version": "23.2.0-beta.4",
+      "description": "Add `@svgr/webpack` when a webpack config references it.",
+      "implementation": "./dist/src/migrations/update-23-2-0/add-svgr-webpack-if-used",
+      "documentation": "./dist/src/migrations/update-23-2-0/add-svgr-webpack-if-used.md",
+      "package": "@nx/react",
+      "name": "update-23-2-0-add-svgr-webpack-if-used"
     }
   ]
 }
