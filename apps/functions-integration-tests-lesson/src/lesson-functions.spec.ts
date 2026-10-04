@@ -551,11 +551,13 @@ describe('Lesson Functions', () => {
     let seriesLessonIds: string[];
 
     it('creates a series atomically and returns shared seriesId', async () => {
+      // 17:00Z, clear of the ownership suite's 06-01 15:00Z lesson: the room
+      // is checked, and a series with no room is checked as Spruce (#156).
       const scheduledAts = [
-        new Date('2026-06-01T15:00:00Z'),
-        new Date('2026-06-08T15:00:00Z'),
-        new Date('2026-06-15T15:00:00Z'),
-        new Date('2026-06-22T15:00:00Z'),
+        new Date('2026-06-01T17:00:00Z'),
+        new Date('2026-06-08T17:00:00Z'),
+        new Date('2026-06-15T17:00:00Z'),
+        new Date('2026-06-22T17:00:00Z'),
       ];
 
       const result = await callFunction<
@@ -812,8 +814,15 @@ describe('Lesson Functions', () => {
 
   describe('Hope Scholarship submissions (legacy #799)', () => {
     let hopeStudentId: string;
+    // Each Hope lesson gets its own back-to-back slot that day. They all used
+    // to share one instant, which only worked while a lesson with no room
+    // skipped the room check (#156).
+    let hopeSlot = 0;
 
     async function hopeLesson(status: 'rendered' | 'no-show'): Promise<string> {
+      const scheduledAt = new Date(
+        new Date('2026-07-07T19:00:00Z').getTime() + hopeSlot++ * 30 * 60_000
+      );
       const created = await callFunction<
         CreateLessonRequest,
         CreateLessonResponse
@@ -822,10 +831,10 @@ describe('Lesson Functions', () => {
         data: {
           studentId: hopeStudentId,
           teacherId: TEACHER_ID,
-          scheduledAt: new Date('2026-07-07T19:00:00Z'),
+          scheduledAt,
           durationMinutes: 30,
           status: 'scheduled',
-          blockId: blockFor(TEACHER_ID, new Date('2026-07-07T19:00:00Z')),
+          blockId: blockFor(TEACHER_ID, scheduledAt),
         },
         idToken: adminUser.idToken,
       });
