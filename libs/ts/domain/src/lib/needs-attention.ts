@@ -20,7 +20,6 @@ import type { Lesson } from './lesson';
 import type { Student } from './student';
 import { isLessonUnattributed } from './lesson-block';
 import type { LessonBlock } from './lesson-block';
-import { isSubmittableToHope, lessonHappened } from './lesson';
 import { lessonBillingState } from './lesson-billing-state';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 
@@ -115,7 +114,7 @@ export function hasInvoiceSyncFailed(
  * re-deriving half of it here.
  */
 export function isLessonUnbilled(
-  lesson: Pick<Lesson, 'id' | 'status' | 'scheduledAt'>,
+  lesson: Pick<Lesson, 'id' | 'status'>,
   student: Pick<Student, 'isHopeScholarship'>,
   charges: Array<
     Pick<
@@ -123,23 +122,30 @@ export function isLessonUnbilled(
       'status' | 'lessonIds' | 'dueAt' | 'resolvedAt' | 'updatedAt'
     >
   >,
-  invoices: Array<Pick<Invoice, 'status' | 'lineItems'>>,
-  now: Date
+  invoices: Array<Pick<Invoice, 'status' | 'lineItems'>>
 ): boolean {
   if (student.isHopeScholarship) return false;
-  // A past lesson nobody removed happened (#157) — it does not wait to be
-  // marked taught before it can be owed.
-  if (!lessonHappened(lesson, now)) return false;
+  // Only lessons someone explicitly marked taught or missed. Since #157 a past
+  // lesson nobody removed counts as having happened everywhere else, but an
+  // unpaid one is NOT a problem to chase: past payments were settled outside
+  // the portal, and Katie decided they should not be called out (charging one
+  // stays possible from the student's Activity, without a nudge). Nobody marks
+  // lessons any more, so nothing new lands here.
+  if (lesson.status !== 'rendered' && lesson.status !== 'no-show') return false;
   return lessonBillingState(lesson.id, charges, invoices).kind === 'unbilled';
 }
 
-/** A Hope lesson that happened with no claim, or one EMA rejected. */
+/**
+ * A Hope lesson explicitly marked taught with no claim, or one EMA rejected.
+ *
+ * Only *marked* lessons, deliberately — see `isLessonUnbilled`. The Hope page
+ * queues every lesson that happened (#157); this panel does not chase them.
+ */
 export function isHopeUnsubmitted(
-  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
-  submissionStatus: 'submitted' | 'paid' | 'rejected' | undefined,
-  now: Date
+  lesson: Pick<Lesson, 'status'>,
+  submissionStatus: 'submitted' | 'paid' | 'rejected' | undefined
 ): boolean {
-  if (!isSubmittableToHope(lesson, now)) return false;
+  if (lesson.status !== 'rendered') return false;
   return submissionStatus === undefined || submissionStatus === 'rejected';
 }
 
