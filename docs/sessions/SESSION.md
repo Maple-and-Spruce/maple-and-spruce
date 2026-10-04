@@ -6,6 +6,15 @@
 
 ## Current Status
 
+### Square SDK 45 → 46 (2026-10-04)
+
+SDK 46 moves the default `Square-Version` from 2026-08-19 to 2026-09-16. That
+API version's only change is retiring the Transactions API write endpoints
+(Charge, CreateRefund, CaptureTransaction, VoidTransaction), which nothing here
+calls; all payments go through the Payments/Orders APIs. No type changes across
+any lib (same 334 pre-existing `tsc` errors as main). First of the deferred
+majors from the dependency refresh; next are vest 6, then MUI 9.
+
 ### Dependency refresh: 50 overrides down to 9 (2026-09-29, refreshed 2026-10-04)
 
 Security Audit was failing on main (6 high). A fresh resolve (no lockfile, no
