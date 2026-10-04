@@ -6,7 +6,7 @@
 
 ## Current Status
 
-### Dependency refresh: 50 overrides down to 5 (2026-09-29)
+### Dependency refresh: 50 overrides down to 9 (2026-09-29, refreshed 2026-10-04)
 
 Security Audit was failing on main (6 high). A fresh resolve (no lockfile, no
 overrides) showed almost every override was covering a *stale lockfile* entry,
@@ -19,10 +19,15 @@ not a missing upstream fix.
   jsonc-eslint-parser 3, @vitejs/plugin-react 6, date-fns 4, ical-generator 11.
 - Removed unused deps: @tanstack/react-query, wait-on (it pulled the flagged
   joi), concurrently, node-ical, http-server, ts-node, @vitest/ui.
-- Overrides: ~50 down to 5 (adm-zip/koa/ws/form-data pinned by
-  @webflow/webflow-cli; smol-toml pinned by nx). `auditConfig.ignoreGhsas`
-  is gone because image-size is no longer in the tree. Audit: 52 findings → 3
-  (0 high).
+- Overrides: ~50 down to 9, each pinned by a named parent: adm-zip/koa/ws/
+  form-data (@webflow/webflow-cli), smol-toml/axios/brace-expansion 5.x (nx),
+  @grpc/grpc-js (@firebase/firestore ~1.9), basic-ftp (firebase-tools >
+  get-uri ^5). The last four came from advisories published 2026-09-30 to
+  10-01, after the first pass.
+- `auditConfig.ignoreGhsas`: image-size is gone from the tree; one new entry,
+  braces GHSA-vfj7-8cjw-p6xm, which has no patched release and is in no
+  production dependency tree. Audit: 52 findings → 4 (only high is the
+  ignored braces).
 - Storybook on Vite 8 resolves `@maple/*` through Vite's native tsconfig paths,
   which skips files outside a tsconfig `include` (every story). `.storybook/main.ts`
   now adds vite-tsconfig-paths on tsconfig.base.json, as the unit config does.
