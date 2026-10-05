@@ -22,31 +22,34 @@ import {
   throwInvalidArgument,
 } from '@maple/firebase/functions';
 import {
+  HopeOrderRepository,
+  HopeProductRepository,
   HopeSubmissionRepository,
   LessonRepository,
   StudentRepository,
 } from '@maple/firebase/database';
 import {
   HOPE_SUBMISSION_STATUSES,
-  getHopePerLessonRateCents,
+  allocateHopeLessons,
   isSubmittableToHope,
+  resolveHopeLessonRate,
 } from '@maple/ts/domain';
-import type { LessonLength } from '@maple/ts/domain';
+import type { HopeAllocation, HopeOrder, HopeProduct } from '@maple/ts/domain';
 import type {
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
 } from '@maple/ts/firebase/api-types';
 
-function rateFor(
-  registeredLessonLength: LessonLength | undefined,
-  durationMinutes: number
-): number {
-  if (registeredLessonLength) {
-    return getHopePerLessonRateCents(registeredLessonLength);
+/** Why a lesson that failed `isSubmittableToHope` cannot be claimed. */
+function whyNotSubmittable(status: string): string {
+  switch (status) {
+    case 'no-show':
+      return 'Hope pays only for services rendered, and this lesson was a no-show';
+    case 'cancelled':
+      return 'Hope can only be billed for a lesson that happened, and this one was cancelled';
+    default:
+      return 'Hope can only be billed for a lesson that has happened, and this one is still to come';
   }
-  if (durationMinutes >= 60) return getHopePerLessonRateCents('60-min');
-  if (durationMinutes >= 45) return getHopePerLessonRateCents('45-min');
-  return getHopePerLessonRateCents('30-min-full');
 }
 
 export const recordHopeSubmissions = Functions.endpoint
@@ -54,6 +57,14 @@ export const recordHopeSubmissions = Functions.endpoint
   .handle<RecordHopeSubmissionsRequest, RecordHopeSubmissionsResponse>(
     async (data, context) => {
       const lessonIds = data?.lessonIds ?? [];
+      // Read once, and only if a claim actually needs stamping.
+      let products: Map<string, HopeProduct> | undefined;
+      const productsById = async () => {
+        products ??= new Map(
+          (await HopeProductRepository.findAll()).map((p) => [p.id, p])
+        );
+        return products;
+      };
       if (lessonIds.length === 0) {
         throwInvalidArgument('At least one lesson is required');
       }
@@ -62,6 +73,40 @@ export const recordHopeSubmissions = Functions.endpoint
       }
 
       const now = new Date();
+
+      // Invoicing ('submitted') is against an EMA order: work out, once per
+      // student, which of their taught lessons an order has room for.
+      const allocations = new Map<
+        string,
+        { allocation: HopeAllocation; orders: HopeOrder[] }
+      >();
+      const allocationFor = async (studentId: string) => {
+        const cached = allocations.get(studentId);
+        if (cached) return cached;
+        const [lessons, orders] = await Promise.all([
+          // All of them: whether a lesson happened is decided below, not by its
+          // status alone (#157).
+          LessonRepository.findAll({ studentId }),
+          HopeOrderRepository.findAll({ studentId }),
+        ]);
+        const taught = lessons.filter((l) => isSubmittableToHope(l, now));
+        const claims = await HopeSubmissionRepository.findByLessonIds(
+          taught.map((l) => l.id)
+        );
+        const allocation = allocateHopeLessons(
+          taught
+            .map((l) => ({
+              lessonId: l.id,
+              scheduledAt: l.scheduledAt,
+              submission: claims.get(l.id),
+            })),
+          orders
+        );
+        const result = { allocation, orders };
+        allocations.set(studentId, result);
+        return result;
+      };
+
       const recordedLessonIds: string[] = [];
       const skipped: Array<{ lessonId: string; reason: string }> = [];
 
@@ -72,13 +117,11 @@ export const recordHopeSubmissions = Functions.endpoint
           continue;
         }
 
-        if (!isSubmittableToHope(lesson.status)) {
+        if (!isSubmittableToHope(lesson, now)) {
           // The important one. Hope funds cannot be retained for services not
-          // rendered, so a no-show or a cancellation can never be claimed.
-          skipped.push({
-            lessonId,
-            reason: `Hope can only be billed for a rendered lesson (this one is ${lesson.status})`,
-          });
+          // rendered, so a no-show, a cancellation or a lesson still to come
+          // can never be claimed.
+          skipped.push({ lessonId, reason: whyNotSubmittable(lesson.status) });
           continue;
         }
 
@@ -97,6 +140,29 @@ export const recordHopeSubmissions = Functions.endpoint
 
         const existing = await HopeSubmissionRepository.findById(lessonId);
 
+        // Invoicing needs an order with room. A lesson already invoiced keeps
+        // the order it was invoiced against; one that no order covers is
+        // refused, because the portal has nothing to invoice it against.
+        let orderId = existing?.orderId;
+        let orderPriceCents: number | undefined;
+        if (data.status === 'submitted') {
+          const { allocation, orders } = await allocationFor(student.id);
+          const state = allocation.states.get(lessonId);
+          if (state?.kind === 'needs-order') {
+            skipped.push({
+              lessonId,
+              reason:
+                'No EMA order has room for this lesson. Record the family’s order first.',
+            });
+            continue;
+          }
+          if (state?.kind === 'ready-to-invoice') {
+            orderId = state.orderId;
+            orderPriceCents = orders.find((o) => o.id === state.orderId)
+              ?.priceCents;
+          }
+        }
+
         await HopeSubmissionRepository.record({
           lessonId,
           studentId: lesson.studentId,
@@ -106,8 +172,11 @@ export const recordHopeSubmissions = Functions.endpoint
           // Keep the rate the claim was originally made at; only stamp a new
           // one when there was nothing claimed before.
           rateCents:
+            orderPriceCents ??
             existing?.rateCents ??
-            rateFor(student.registeredLessonLength, lesson.durationMinutes),
+            resolveHopeLessonRate(student, lesson, await productsById())
+              .rateCents,
+          orderId,
           submittedAt: existing?.submittedAt ?? now,
           paidAt: data.status === 'paid' ? now : existing?.paidAt,
           emaReference: data.emaReference ?? existing?.emaReference,

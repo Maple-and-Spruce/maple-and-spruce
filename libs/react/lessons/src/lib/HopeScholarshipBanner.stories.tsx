@@ -1,124 +1,71 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
+import type { HopeProduct } from '@maple/ts/domain';
 import { HopeScholarshipBanner } from './HopeScholarshipBanner';
+
+const NOW = new Date('2026-09-01T12:00:00Z');
+const guitar30: HopeProduct = {
+  id: 'prod-guitar-30',
+  emaProductId: '137571',
+  name: 'Standard Child Guitar Lesson 30 minutes',
+  priceCents: 3000,
+  active: true,
+  createdAt: NOW,
+  updatedAt: NOW,
+};
 
 const meta = {
   component: HopeScholarshipBanner,
   title: 'Lessons/HopeScholarshipBanner',
   parameters: { layout: 'padded' },
+  args: { products: [guitar30], onChooseProduct: fn() },
 } satisfies Meta<typeof HopeScholarshipBanner>;
 
 export default meta;
 type Story = StoryObj<typeof HopeScholarshipBanner>;
 
-// ============================================================
-// VISUAL STATES
-// ============================================================
-
-export const WithInitialTier: Story = {
-  args: { registeredLessonLength: '30-min-initial' },
+/**
+ * On a product: the product's name, EMA id and price, which is what EMA pays.
+ * Not the old length table's $41.25 for a 30-minute lesson.
+ */
+export const OnAnEmaProduct: Story = {
+  args: { hopeProductId: 'prod-guitar-30', registeredLessonLength: '30-min-full' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByText('Standard Child Guitar Lesson 30 minutes · $30.00 / lesson')
+    ).toBeInTheDocument();
+    await expect(canvas.getByText('EMA product 137571')).toBeInTheDocument();
+    await expect(canvas.queryByText(/\$41\.25/)).toBeNull();
+    await expect(canvas.queryByText(/No EMA product set/)).toBeNull();
+  },
 };
 
-export const WithFullTier: Story = {
+/** No product: the price is labelled an estimate, with a way to fix it. */
+export const NoProductIsAnEstimate: Story = {
   args: { registeredLessonLength: '30-min-full' },
-};
-
-export const With45Min: Story = {
-  args: { registeredLessonLength: '45-min' },
-};
-
-export const With60Min: Story = {
-  args: { registeredLessonLength: '60-min' },
-};
-
-export const WithoutTier: Story = {
-  args: {},
-};
-
-export const RatesExpandedByDefault: Story = {
-  args: {
-    registeredLessonLength: '45-min',
-    defaultRatesExpanded: true,
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('No EMA product set.')).toBeInTheDocument();
+    await expect(canvas.getByText(/\$41\.25 \/ lesson is only an estimate/)).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Choose EMA product' }));
+    await expect(args.onChooseProduct).toHaveBeenCalled();
   },
 };
 
-// ============================================================
-// INTERACTION TESTS
-// ============================================================
-
-export const BillingRulesAreRendered: Story = {
-  args: { registeredLessonLength: '30-min-initial' },
+/** The fixed rules are there, but folded away until asked for. */
+export const BillingRulesFoldAway: Story = {
+  args: { hopeProductId: 'prod-guitar-30' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => {
-      expect(canvas.getByText(/Hope Scholarship/i)).toBeInTheDocument();
-      expect(canvas.getByText(/per lesson after it is rendered/i)).toBeInTheDocument();
-      expect(
-        canvas.getByText(/cannot be retained for services not rendered/i)
-      ).toBeInTheDocument();
-      expect(
-        canvas.getByText(/credit back to the Hope account/i)
-      ).toBeInTheDocument();
-    });
-  },
-};
-
-export const CurrentRateChipShowsPerLessonAmount: Story = {
-  args: { registeredLessonLength: '45-min' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => {
-      expect(
-        canvas.getByText(/Current rate: \$58\.75 \/ lesson/i)
-      ).toBeInTheDocument();
-      expect(canvas.getByText(/Monthly equiv: \$235\.00/i)).toBeInTheDocument();
-    });
-  },
-};
-
-export const NoRateChipWhenTierNotSet: Story = {
-  args: {},
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => {
-      expect(canvas.getByText(/Hope Scholarship/i)).toBeInTheDocument();
-    });
-    expect(canvas.queryByText(/Current rate:/i)).toBeNull();
-  },
-};
-
-export const ExpandRatesShowsTable: Story = {
-  args: { registeredLessonLength: '30-min-full' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    // Table should not be visible initially
-    expect(canvas.queryByRole('table')).toBeNull();
-
-    const toggle = canvas.getByRole('button', { name: /view all rates/i });
+    const toggle = canvas.getByRole('button', { name: 'Billing rules' });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(toggle);
-
-    await waitFor(() => {
-      expect(canvas.getByRole('table')).toBeInTheDocument();
-      // Button label flips
-      expect(
-        canvas.getByRole('button', { name: /hide all rates/i })
-      ).toBeInTheDocument();
-    });
-  },
-};
-
-export const ExpandedTableHighlightsCurrentTier: Story = {
-  args: {
-    registeredLessonLength: '60-min',
-    defaultRatesExpanded: true,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(() => {
-      // Row containing $75.00 (60-min rate) should be highlighted
-      const row = canvas.getByText('$75.00').closest('tr');
-      expect(row?.className).toMatch(/Mui-selected/);
-    });
+    await expect(
+      await canvas.findByText(/credit back to the Hope account/i)
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Hide billing rules' })
+    ).toHaveAttribute('aria-expanded', 'true');
   },
 };

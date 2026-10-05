@@ -128,7 +128,7 @@ export function MyOpenings({ weekState }: MyOpeningsProps) {
   );
 
   const intro = (
-    <Typography color="text.secondary" sx={{ mb: 3 }}>
+    <Typography color="textSecondary" sx={{ mb: 3 }}>
       Open time inside your teaching blocks — the standing weekly slots you could
       offer a new student. Book from the student&rsquo;s page.
     </Typography>
@@ -200,7 +200,7 @@ export function MyOpenings({ weekState }: MyOpeningsProps) {
                 {WEEKDAY_LONG[weekday]}
               </Typography>
               {dayOpenings.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   Fully booked — no open time in your blocks.
                 </Typography>
               ) : (

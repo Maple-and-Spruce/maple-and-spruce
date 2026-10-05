@@ -590,9 +590,18 @@ export type {
 export type {
   GetHopeQueueRequest,
   GetHopeQueueResponse,
+  HopeOrderWithRoom,
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
 } from './hope-submission.types';
+export type {
+  GetHopeProductsRequest,
+  GetHopeProductsResponse,
+  SaveHopeProductRequest,
+  SaveHopeProductResponse,
+  SaveHopeOrderRequest,
+  SaveHopeOrderResponse,
+} from './hope-product.types';
 
 export type {
   GetNeedsAttentionRequest,

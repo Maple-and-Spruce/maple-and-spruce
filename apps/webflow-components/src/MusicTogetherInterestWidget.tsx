@@ -233,7 +233,7 @@ export function MusicTogetherInterestWidget({
             <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
               {heading}
             </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
+            <Typography color="textSecondary" sx={{ mb: 3 }}>
               {intro}
             </Typography>
             <Stack spacing={2.5}>
@@ -260,7 +260,7 @@ export function MusicTogetherInterestWidget({
                 {loadState.sections.length === 0 ? (
                   <Typography
                     variant="body2"
-                    color="text.secondary"
+                    color="textSecondary"
                     sx={{ mt: 1 }}
                   >
                     No class times are posted yet — tell us below what days and

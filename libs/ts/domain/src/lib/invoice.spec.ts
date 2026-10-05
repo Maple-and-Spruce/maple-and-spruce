@@ -7,6 +7,7 @@ import {
   type Invoice,
   type InvoiceLineItem,
   type InvoiceStatus,
+  splitCentsEvenly,
 } from './invoice';
 
 describe('Invoice domain helpers', () => {
@@ -176,5 +177,18 @@ describe('Invoice domain helpers', () => {
       expect(invoice.paymentRecord?.source).toBe('admin-manual');
       expect(invoice.paymentRecord?.squarePaymentId).toBeUndefined();
     });
+  });
+});
+
+describe('splitCentsEvenly', () => {
+  it('splits exactly, odd cents to the first lessons', () => {
+    expect(splitCentsEvenly(10000, 3)).toEqual([3334, 3333, 3333]);
+    expect(splitCentsEvenly(10000, 3).reduce((a, b) => a + b, 0)).toBe(10000);
+  });
+  it('is the rate when it divides evenly', () => {
+    expect(splitCentsEvenly(13000, 4)).toEqual([3250, 3250, 3250, 3250]);
+  });
+  it('gives nothing for no lessons', () => {
+    expect(splitCentsEvenly(5000, 0)).toEqual([]);
   });
 });

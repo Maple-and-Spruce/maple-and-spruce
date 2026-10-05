@@ -9,6 +9,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  findProducts: vi.fn(async () => [] as unknown[]),
+  findTaught: vi.fn(),
+  findClaims: vi.fn(),
+  findOrders: vi.fn(),
   findLesson: vi.fn(),
   findStudent: vi.fn(),
   findSubmission: vi.fn(),
@@ -36,10 +40,13 @@ vi.mock('@maple/firebase/functions', () => {
 });
 
 vi.mock('@maple/firebase/database', () => ({
-  LessonRepository: { findById: mocks.findLesson },
+  LessonRepository: { findById: mocks.findLesson, findAll: mocks.findTaught },
+  HopeOrderRepository: { findAll: mocks.findOrders },
   StudentRepository: { findById: mocks.findStudent },
+  HopeProductRepository: { findAll: mocks.findProducts },
   HopeSubmissionRepository: {
     findById: mocks.findSubmission,
+    findByLessonIds: mocks.findClaims,
     record: mocks.record,
   },
 }));
@@ -75,6 +82,20 @@ const hopeStudent = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.findLesson.mockResolvedValue(renderedLesson);
+  mocks.findTaught.mockResolvedValue([renderedLesson]);
+  mocks.findClaims.mockResolvedValue(new Map());
+  // One order with room, priced like the old 30-min-full tier, so the
+  // pre-order tests still read as they did.
+  mocks.findOrders.mockResolvedValue([
+    {
+      id: 'order-1',
+      studentId: 'student-1',
+      productId: 'prod-1',
+      priceCents: 4125,
+      lessonCount: 4,
+      orderedOn: new Date('2026-07-01T00:00:00Z'),
+    },
+  ]);
   mocks.findStudent.mockResolvedValue(hopeStudent);
   mocks.findSubmission.mockResolvedValue(undefined);
   mocks.record.mockResolvedValue(undefined);
@@ -98,6 +119,61 @@ describe('recordHopeSubmissions', () => {
     });
   });
 
+  it('refuses to invoice a lesson no EMA order has room for', async () => {
+    mocks.findOrders.mockResolvedValue([]);
+
+    const result = await handler(
+      { lessonIds: ['lesson-1'], status: 'submitted' },
+      { uid: 'admin-1' }
+    );
+
+    expect(result.recordedLessonIds).toEqual([]);
+    expect(result.skipped[0].reason).toMatch(/Record the family’s order first/);
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
+  it('stamps the order and its price on the invoice', async () => {
+    mocks.findOrders.mockResolvedValue([
+      {
+        id: 'order-9',
+        studentId: 'student-1',
+        productId: 'prod-guitar-30',
+        priceCents: 3250,
+        lessonCount: 8,
+        orderedOn: new Date('2026-07-01T00:00:00Z'),
+      },
+    ]);
+
+    await handler({ lessonIds: ['lesson-1'], status: 'submitted' }, { uid: 'admin-1' });
+
+    const [payload] = mocks.record.mock.calls[0];
+    expect(payload).toMatchObject({ orderId: 'order-9', rateCents: 3250 });
+  });
+
+  it("claims at the student's EMA product price, not the old length table", async () => {
+    // Marking paid does not need an order; the rate falls back to the product.
+    mocks.findOrders.mockResolvedValue([]);
+    // A 30-minute guitar lesson: the length table said $41.25, EMA pays $30.
+    mocks.findStudent.mockResolvedValue({
+      ...hopeStudent,
+      hopeProductId: 'prod-guitar-30',
+    });
+    mocks.findProducts.mockResolvedValue([
+      {
+        id: 'prod-guitar-30',
+        emaProductId: '137571',
+        name: 'Guitar 30 minutes',
+        priceCents: 3000,
+        active: true,
+      },
+    ]);
+
+    await handler({ lessonIds: ['lesson-1'], status: 'paid' }, { uid: 'admin-1' });
+
+    const [payload] = mocks.record.mock.calls[0];
+    expect(payload.rateCents).toBe(3000);
+  });
+
   it('refuses to claim a no-show — Hope pays only for services rendered', async () => {
     mocks.findLesson.mockResolvedValue({
       ...renderedLesson,
@@ -112,6 +188,36 @@ describe('recordHopeSubmissions', () => {
     expect(mocks.record).not.toHaveBeenCalled();
     expect(result.recordedLessonIds).toEqual([]);
     expect(result.skipped[0].reason).toMatch(/rendered/i);
+  });
+
+  it('claims a past lesson nobody marked taught — it happened (#157)', async () => {
+    mocks.findLesson.mockResolvedValue({
+      ...renderedLesson,
+      status: 'scheduled',
+    });
+
+    const result = await handler(
+      { lessonIds: ['lesson-1'], status: 'paid' },
+      { uid: 'admin-1' }
+    );
+
+    expect(result.recordedLessonIds).toEqual(['lesson-1']);
+  });
+
+  it('refuses to claim a lesson still to come', async () => {
+    mocks.findLesson.mockResolvedValue({
+      ...renderedLesson,
+      status: 'scheduled',
+      scheduledAt: new Date(Date.now() + 7 * 86_400_000),
+    });
+
+    const result = await handler(
+      { lessonIds: ['lesson-1'], status: 'paid' },
+      { uid: 'admin-1' }
+    );
+
+    expect(mocks.record).not.toHaveBeenCalled();
+    expect(result.skipped[0].reason).toMatch(/still to come/);
   });
 
   it('refuses to claim a cancelled lesson', async () => {

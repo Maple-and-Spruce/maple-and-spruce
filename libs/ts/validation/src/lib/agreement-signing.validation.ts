@@ -6,7 +6,8 @@
  *
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only, skipWhen } from 'vest';
+import { test, enforce, only, skipWhen } from 'vest';
+import { staticSuite } from './static-suite';
 
 export interface AgreementSigningValidationInput {
   token?: string;

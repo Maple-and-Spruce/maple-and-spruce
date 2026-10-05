@@ -55,7 +55,7 @@ export default defineConfig({
       '@mui/icons-material/MoreVert',
       '@mui/icons-material/Paid',
       '@mui/icons-material/PersonOff',
-      '@mui/icons-material/PersonOutline',
+      '@mui/icons-material/PersonOutlined',
       '@mui/icons-material/ReceiptLong',
       '@mui/icons-material/Send',
       '@mui/icons-material/Stars',

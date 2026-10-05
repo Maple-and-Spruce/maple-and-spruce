@@ -97,7 +97,7 @@ export default function LessonBlocksPage() {
           Add Block
         </Button>
       </Box>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
+      <Typography color="textSecondary" sx={{ mb: 3 }}>
         Weekly windows a teacher takes lessons in. Every lesson must be
         scheduled inside one of its teacher&rsquo;s blocks.
       </Typography>

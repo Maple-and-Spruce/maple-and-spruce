@@ -15,40 +15,33 @@
  */
 import { Functions, Role } from '@maple/firebase/functions';
 import {
+  HopeOrderRepository,
+  HopeProductRepository,
   HopeSubmissionRepository,
   LessonRepository,
   StudentRepository,
 } from '@maple/firebase/database';
 import {
-  getHopePerLessonRateCents,
+  allocateHopeLessons,
   isSubmittableToHope,
+  resolveHopeLessonRate,
   summarizeHopeQueue,
 } from '@maple/ts/domain';
 import type { HopeQueueEntry } from '@maple/ts/domain';
 import type {
   GetHopeQueueRequest,
   GetHopeQueueResponse,
+  HopeOrderWithRoom,
 } from '@maple/ts/firebase/api-types';
-
-/** A student with no registered tier still gets a rate, from their lesson length. */
-function rateForStudent(
-  registeredLessonLength: string | undefined,
-  durationMinutes: number
-): number {
-  if (registeredLessonLength) {
-    return getHopePerLessonRateCents(
-      registeredLessonLength as Parameters<typeof getHopePerLessonRateCents>[0]
-    );
-  }
-  if (durationMinutes >= 60) return getHopePerLessonRateCents('60-min');
-  if (durationMinutes >= 45) return getHopePerLessonRateCents('45-min');
-  return getHopePerLessonRateCents('30-min-full');
-}
 
 export const getHopeQueue = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<GetHopeQueueRequest, GetHopeQueueResponse>(async (data) => {
-    const students = await StudentRepository.findAll();
+    const [students, products] = await Promise.all([
+      StudentRepository.findAll(),
+      HopeProductRepository.findAll(),
+    ]);
+    const productsById = new Map(products.map((p) => [p.id, p]));
     const hopeStudents = students.filter(
       (s) =>
         s.isHopeScholarship &&
@@ -59,29 +52,30 @@ export const getHopeQueue = Functions.endpoint
     const to = data?.to ? new Date(data.to) : undefined;
 
     const entries: HopeQueueEntry[] = [];
+    const now = new Date();
 
     for (const student of hopeStudents) {
-      const lessons = await LessonRepository.findAll({
-        studentId: student.id,
-        status: 'rendered',
-      });
+      // Every lesson, not just 'rendered' ones: a past lesson nobody removed
+      // happened (#157), so the status alone no longer says what Hope owes.
+      const lessons = await LessonRepository.findAll({ studentId: student.id });
 
       for (const lesson of lessons) {
-        // Belt and braces: the query already asks for rendered, but this is the
-        // single test that decides what Hope may be billed for.
-        if (!isSubmittableToHope(lesson.status)) continue;
+        // The single test that decides what Hope may be billed for.
+        if (!isSubmittableToHope(lesson, now)) continue;
         if (from && lesson.scheduledAt < from) continue;
         if (to && lesson.scheduledAt > to) continue;
 
+        // What EMA pays for this student's product; an estimate, flagged as
+        // one, until the student is put on a product.
+        const rate = resolveHopeLessonRate(student, lesson, productsById);
         entries.push({
           lesson,
           studentId: student.id,
           studentName: student.name,
           registeredLessonLength: student.registeredLessonLength,
-          rateCents: rateForStudent(
-            student.registeredLessonLength,
-            lesson.durationMinutes
-          ),
+          rateCents: rate.rateCents,
+          rateSource: rate.source,
+          productName: rate.product?.name,
         });
       }
     }
@@ -94,11 +88,44 @@ export const getHopeQueue = Functions.endpoint
       if (submission) entry.submission = submission;
     }
 
+    // Where each taught lesson stands against the family's EMA orders: needs
+    // an order, ready to invoice (priced at that order), or invoiced.
+    const allOrders = await HopeOrderRepository.findAll(
+      data?.studentId ? { studentId: data.studentId } : {}
+    );
+    const orders: HopeOrderWithRoom[] = [];
+    for (const student of hopeStudents) {
+      const studentOrders = allOrders.filter((o) => o.studentId === student.id);
+      const studentEntries = entries.filter((e) => e.studentId === student.id);
+      const { states, remainingByOrder } = allocateHopeLessons(
+        studentEntries.map((e) => ({
+          lessonId: e.lesson.id,
+          scheduledAt: e.lesson.scheduledAt,
+          submission: e.submission,
+        })),
+        studentOrders
+      );
+      for (const entry of studentEntries) {
+        const state = states.get(entry.lesson.id);
+        entry.state = state;
+        if (state?.kind === 'ready-to-invoice') {
+          const order = studentOrders.find((o) => o.id === state.orderId);
+          if (order) {
+            entry.rateCents = order.priceCents;
+            entry.rateSource = 'product';
+          }
+        }
+      }
+      for (const order of studentOrders) {
+        orders.push({ ...order, remaining: remainingByOrder.get(order.id) ?? 0 });
+      }
+    }
+
     // Oldest first: the longest-unclaimed lesson is the most urgent, and after
     // a backfill the queue is mostly history.
     entries.sort(
       (a, b) => a.lesson.scheduledAt.getTime() - b.lesson.scheduledAt.getTime()
     );
 
-    return { entries, totals: summarizeHopeQueue(entries) };
+    return { entries, totals: summarizeHopeQueue(entries), orders };
   });

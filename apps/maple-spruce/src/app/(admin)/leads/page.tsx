@@ -122,7 +122,7 @@ export default function LeadsPage() {
       <Typography variant="h4" gutterBottom>
         Lesson inquiries
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
         Families who asked about music lessons, pulled in from the website forms
         every 15 minutes.
       </Typography>
@@ -176,7 +176,7 @@ export default function LeadsPage() {
       <Dialog open={Boolean(enrolling)} onClose={closeEnroll} fullWidth maxWidth="xs">
         <DialogTitle>Mark enrolled</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             Link {enrolling?.contactName} to the student record they became, so
             the inquiry and the enrolment stay connected.
           </Typography>

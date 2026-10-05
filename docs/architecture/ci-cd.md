@@ -4,7 +4,7 @@
 
 This project uses **pnpm** (v9.x) via Corepack. The version is pinned in `package.json` under `packageManager`.
 
-All CI workflows use `pnpm/action-setup@v4` which reads the version from `package.json` automatically.
+All CI workflows use `pnpm/action-setup@v6.1.0` (the first release that can install pnpm 12; the floating `v6` tag lagged behind it), which reads the version from `package.json` automatically.
 
 ## PR Build Check
 

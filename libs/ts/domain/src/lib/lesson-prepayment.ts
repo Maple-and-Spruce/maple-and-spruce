@@ -25,12 +25,17 @@
  * credited by hand in Square. So nothing here reverses a charge, and the
  * confirmation the admin sees says as much before they take the money.
  */
-import { didConsumeSlot } from './lesson';
+import { lessonHappened } from './lesson';
 import type { Lesson } from './lesson';
 import { isChargeableLesson, plannedChargeId } from './lesson-billing-rule';
 import { coveredLessonIds } from './lesson-scheduled-charge';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
-import { SCHEDULE_TIME_ZONE } from './student-lesson-schedule';
+import {
+  SCHEDULE_TIME_ZONE,
+  scheduleOccurrences,
+} from './student-lesson-schedule';
+import type { StudentLessonSchedule } from './student-lesson-schedule';
+import { minutesOfDayInZone, weekdayIndexInZone } from './schedule-format';
 
 /** How many lessons a "pay ahead" covers by default. */
 export const DEFAULT_PREPAY_LESSON_COUNT = 4;
@@ -114,12 +119,11 @@ export function prepayableLessons<
  * gap this closes is narrow and specific: taking it from the card on file
  * instead of asking twice.
  *
- * **Taught, not merely past-dated.** A lesson still marked `scheduled` last
- * Tuesday has not been taught as far as this system knows, and charging for it
- * would be inventing the fact that it happened. So this requires
- * `didConsumeSlot` — rendered or no-show, the two states studio policy bills a
- * private-pay family for — where `prepayableLessons` accepts `scheduled`
- * because billing ahead is the whole point there.
+ * **Past means taught (#157).** A past lesson nobody removed happened —
+ * `lessonHappened` — so a lesson still marked `scheduled` last Tuesday is owed
+ * just like one marked taught. It used to require 'rendered' or 'no-show', and
+ * since nobody marks lessons any more that hid every debt until someone did.
+ * `prepayableLessons` accepts `scheduled` for the teaching still to come.
  *
  * **Newest first**, the reverse of paying ahead: the useful question about a
  * debt is "what is outstanding from recently", and it matches the order the
@@ -143,7 +147,7 @@ export function unpaidTaughtLessons<
   return lessons
     .filter(
       (lesson) =>
-        didConsumeSlot(lesson.status) &&
+        lessonHappened(lesson, now) &&
         !covered.has(lesson.id) &&
         !alreadyInvoiced.has(lesson.id) &&
         lesson.scheduledAt.getTime() < startOfDay(now).getTime()
@@ -290,4 +294,146 @@ export function describePrepaymentProblem(problem: PrepaymentProblem): string {
     case 'too-many':
       return `That is more than ${MAX_PREPAY_LESSON_COUNT} lessons in one payment.`;
   }
+}
+
+const WEEK_MS = 7 * 86_400_000;
+
+/**
+ * The dates that would bring "the next N" up to N, one a week at the same
+ * weekday and time as `like`.
+ *
+ * Katie plans in fours. A student who is not on a weekly time yet often has a
+ * couple of lessons made by hand, and "the next 4" then quietly covers two.
+ * This is what the missing ones would be: the weeks after `like`, skipping any
+ * week the student already has a lesson in (so a lesson made for the 13th is
+ * not doubled by a new one on the 13th), until `needed` dates are found.
+ *
+ * Weekly from `like`, read in the studio's timezone so a clock change does not
+ * move 5:00 PM to 4:00 PM. Pure; the caller creates the lessons.
+ */
+export function fillWeeklyLessonDates(
+  like: Pick<Lesson, 'scheduledAt'>,
+  /** Every lesson the student has from `like` on that is still happening. */
+  existing: Array<Pick<Lesson, 'scheduledAt' | 'status'>>,
+  needed: number,
+  timeZone: string = SCHEDULE_TIME_ZONE
+): Date[] {
+  if (needed <= 0) return [];
+
+  const taken = existing
+    .filter((l) => l.status !== 'cancelled')
+    .map((l) => l.scheduledAt.getTime());
+  // A week is "taken" if the student has a lesson within half a week of the
+  // candidate: a lesson moved to the Monday still means that week is covered.
+  const weekTaken = (at: Date) =>
+    taken.some((t) => Math.abs(t - at.getTime()) < WEEK_MS / 2);
+
+  const from = like.scheduledAt;
+  // Enough weeks for every existing lesson to sit in one, plus the new ones.
+  const to = new Date(from.getTime() + (needed + taken.length + 1) * WEEK_MS);
+  const occurrences = scheduleOccurrences(
+    {
+      dayOfWeek: weekdayIndexInZone(from, timeZone),
+      startMinutes: minutesOfDayInZone(from, timeZone),
+      status: 'active',
+      startsOn: from,
+      endsOn: undefined,
+      intervalWeeks: 1,
+    },
+    from,
+    to,
+    timeZone
+  );
+
+  const dates: Date[] = [];
+  for (const at of occurrences) {
+    if (dates.length >= needed) break;
+    if (weekTaken(at)) continue;
+    dates.push(at);
+  }
+  return dates;
+}
+
+/** What "the next N" means for one student right now (#157). */
+export interface NextLessonsPlan<T> {
+  /**
+   * Upcoming lessons already on the calendar and not yet paid for, soonest
+   * first. They count toward the N: booking four more on top of two unpaid
+   * ones would ask the family for six.
+   */
+  booked: T[];
+  /** Weekly-time dates still to book to make up the N, soonest first. */
+  toBook: Date[];
+  /**
+   * The student has no active weekly time, so there is nothing to propose
+   * beyond `booked`. The caller offers to set one instead.
+   */
+  noSlot: boolean;
+}
+
+/**
+ * The lessons Katie books and takes payment for at the end of a lesson (#157).
+ *
+ * Lessons are no longer generated ahead of time: the weekly time is a planning
+ * note, and the calendar holds only what has been booked. So "the next 4" is
+ * the upcoming lessons already booked and unpaid, topped up with dates from
+ * the weekly time.
+ *
+ * **New dates go after everything already booked**, paid or not. A family
+ * that has paid through the 28th and pays again early is buying from the
+ * following lesson on, not filling gaps before the 28th. The weekly time's
+ * cadence and its start and end dates are respected, so a biweekly student
+ * gets every other week.
+ *
+ * Pure; the caller creates the lessons and takes the payment.
+ */
+export function planNextLessons<
+  T extends Pick<Lesson, 'id' | 'scheduledAt' | 'status'>,
+>(
+  schedule:
+    | Pick<
+        StudentLessonSchedule,
+        | 'dayOfWeek'
+        | 'startMinutes'
+        | 'status'
+        | 'startsOn'
+        | 'endsOn'
+        | 'intervalWeeks'
+      >
+    | undefined,
+  lessons: T[],
+  charges: LessonScheduledCharge[],
+  now: Date,
+  alreadyInvoiced: ReadonlySet<string> = new Set(),
+  count: number = DEFAULT_PREPAY_LESSON_COUNT,
+  timeZone: string = SCHEDULE_TIME_ZONE
+): NextLessonsPlan<T> {
+  const booked = prepayableLessons(lessons, charges, now, alreadyInvoiced).slice(
+    0,
+    count
+  );
+  const needed = count - booked.length;
+  const noSlot = !schedule || schedule.status !== 'active';
+  if (needed <= 0 || !schedule || noSlot) {
+    return { booked, toBook: [], noSlot };
+  }
+
+  const lastBooked = lessons
+    .filter((l) => l.status !== 'cancelled')
+    .reduce((latest, l) => Math.max(latest, l.scheduledAt.getTime()), 0);
+  const from = new Date(Math.max(now.getTime(), lastBooked + 1));
+
+  const interval =
+    schedule.intervalWeeks && schedule.intervalWeeks > 1
+      ? Math.floor(schedule.intervalWeeks)
+      : 1;
+  // Wide enough for `needed` occurrences at the slot's cadence, plus a week
+  // of slack for `from` landing just after this week's slot.
+  const to = new Date(from.getTime() + (needed * interval + 1) * WEEK_MS);
+
+  const toBook = scheduleOccurrences(schedule, from, to, timeZone).slice(
+    0,
+    needed
+  );
+  return { booked, toBook, noSlot };
 }

@@ -13,328 +13,95 @@ allowBuilds:
   re2: true
   sharp: true
 
-managePackageManagerVersions: false
 minimumReleaseAge: 0
 nodeLinker: hoisted
 verifyDepsBeforeRun: false
 shamefullyHoist: true
 strictPeerDependencies: false
 
-# Advisories that cannot be resolved via `overrides` and are consciously
-# accepted go under a top-level `auditConfig.ignoreGhsas:` list, which
-# `pnpm audit --audit-level=high` (build-check.yml → Security Audit) honors.
-# Keep each entry justified; prefer an override every time one exists that
-# doesn't break the build. (GHSA-mh99-v99m-4gvg, brace-expansion OOM DoS, was
-# accepted on 2026-07-24 and removed on 2026-08-07 once upstream backported
-# the fix to 1.1.17/2.1.3 — see the brace-expansion overrides below.)
+# Security overrides — keep this list SHORT.
+#
+# Before adding one, check the vulnerable package is not simply stale: delete
+# node_modules AND pnpm-lock.yaml (pnpm 11+ keeps a copy of the lockfile in
+# node_modules and will reuse it), `pnpm install`, then `pnpm audit`. On
+# 2026-09-29 that alone cleared ~45 of the 50 overrides this file used to carry
+# — the lockfile was holding old transitive versions long after their parents
+# had moved to patched ranges. Only add an override when a parent pins the
+# vulnerable version *exactly* (or to a range that excludes the fix), and name
+# that parent so the entry can be deleted when it moves.
+#
+# Each override is bounded to the major line its parent expects.
+#
+# Accepted, not overridden (below the `--audit-level=high` gate that
+# build-check.yml → Security Audit enforces; revisit when the parent moves):
+#   - @opentelemetry/core 1.x (GHSA-8988-4f7v-96qf, moderate): the fix is 2.x;
+#     firebase-tools > @google-cloud/pubsub still depends on 1.x.
+#   - uuid 9.x (GHSA-w5hq-g745-h8pq, moderate): the fix is 11.x; firebase-admin
+#     > @google-cloud/storage > gaxios still depends on 9.x. Only the buf-arg
+#     form of v3/v5/v6 is affected, which gaxios does not call.
+#   - elliptic 6.6.1 (GHSA-848j-6mx2-7j84, low): no patched release exists;
+#     webflow-api > crypto-browserify.
 
+# A HIGH advisory with no patched release anywhere cannot be overridden away;
+# it is accepted here, with the reason, and `pnpm audit` reports it as ignored.
 auditConfig:
   ignoreGhsas:
-    # GHSA-w3rx-r6r6-pgpr (ICNS parser infinite loop) and GHSA-5p2g-fcmc-qvqq
-    # (JXL/HEIF parser infinite loops) in image-size. Both advisories declare
-    # a patch in ">=2.0.3", but **image-size 2.0.3 does not exist** — the npm
-    # registry's latest is 2.0.2 (dist-tags: latest 2.0.2, legacy 1.2.1), so
-    # an override to >=2.0.3 cannot resolve. Nothing to upgrade to yet.
-    #
-    # Accepted because the reachable paths are build tooling only:
-    # web > @nx/vite > @nx/vitest > vite > less > image-size (101 paths, all
-    # via less inside vite). `less` compiles stylesheets at build time in CI
-    # and dev; it never runs in a deployed Cloud Function or in the browser
-    # bundle, and it never parses attacker-supplied ICNS/JXL/HEIF images. The
-    # impact is a local DoS on our own build if we fed it a malicious image.
-    #
-    # Revisit once image-size publishes 2.0.3 and swap this for an override.
-    # Accepted 2026-08-07.
-    - GHSA-w3rx-r6r6-pgpr
-    - GHSA-5p2g-fcmc-qvqq
+    # braces <=3.0.3: stack exhaustion on deeply nested brace patterns. No
+    # patched release exists (latest is 3.0.3, advisory has no fix). braces
+    # only expands glob patterns written in our own build-tool configs
+    # (micromatch under fast-glob, webflow-cli, firebase-tools, nx), never
+    # request input, and it is in no production dependency tree
+    # (`pnpm why braces --prod` is empty). Accepted 2026-10-04; swap for an
+    # override once 3.0.4 ships.
+    - GHSA-vfj7-8cjw-p6xm
 
 overrides:
-  # GHSA-2v37-7h3g-55p8: nanoid custom generators can loop indefinitely when
-  # size is zero (patched in 3.3.17). Transitive dep of @nx/vite > @nx/vitest >
-  # vite > postcss > nanoid. Bounded to <4 because postcss depends on the 3.x
-  # line; nanoid 4+ is ESM-only and would break its CJS require. Added 2026-08-07.
-  nanoid@>=3.0.0 <4: '>=3.3.17 <4'
-  # GHSA-r5fr-rjxr-66jc: Code injection via _.template. Transitive dep of html-webpack-plugin, pretty-error, firebase-tools, wait-on. Added 2026-04-01.
-  lodash: '>=4.18.0'
-  # GHSA-3p68-rc4w-qgx5 (SSRF via NO_PROXY bypass), GHSA-jr5f-v2jv-69x6
-  # (header injection cloud-metadata exfil), GHSA-4hjh-wcwx-xvwj (prototype
-  # pollution → response tampering / data exfil / request hijacking),
-  # GHSA-rfp4-9hxv-h4v3 (header injection via prototype pollution). All
-  # patched in axios 1.15.1. Plus GHSA-gcfj-64vw-6mp9 (Node HTTP adapter can
-  # use an inherited proxy after interceptor config cloning), patched in
-  # 1.18.0. Transitive dep of nx@22.6.5, square@43.2.1, and wait-on. Bumped
-  # from >=1.15.1 to >=1.18.0 on 2026-07-24.
-  axios: '>=1.18.0'
-  # GHSA-7gcc-r8m5-44qm: Host Header Injection via ctx.hostname. Transitive dep of @webflow/webflow-cli > @module-federation/dts-plugin. Added 2026-04-04.
-  koa: '>=3.1.2'
-  # GHSA-v2wj-q39q-566r (server.fs.deny bypass) and GHSA-p9ff-h696-f583 (arbitrary file read via dev server WebSocket). Transitive dep of @nx/vitest@22.6.4 > vitest@4.1.2. Added 2026-04-07.
-  vite@>=7.0.0 <7.3.2: '>=7.3.2'
-  # GHSA-chqc-8p9q-pq6q (FTP command injection via CRLF), GHSA-6v7q-wjvx-w8wg (incomplete CRLF protection), and GHSA-rpmf-866q-6p89 (client-side DoS via unbounded multiline control response buffering, patched in 5.3.1). Transitive dep of firebase-tools > proxy-agent > pac-proxy-agent > get-uri. Pinned to 5.x because get-uri targets the 5.x API; 6.0.0 is a major bump. Updated 2026-05-08.
-  basic-ftp: '^5.3.1'
-  # GHSA-5wm8-gmm8-39j9: fast-xml-builder allows attribute values with unwanted quotes to bypass malicious or unwanted attributes (patched in 1.1.7). Transitive dep of firebase-admin > @google-cloud/storage > fast-xml-parser. Added 2026-05-08.
-  fast-xml-builder: '>=1.1.7'
-  # GHSA-q3j6-qgpj-74h6: fast-uri vulnerable to path traversal via percent-encoded dot segments (patched in 3.1.1). Plus GHSA-4c8g-83qw-93j6 (host confusion via failed IDN canonicalization, patched in 3.1.3) and GHSA-v2hh-gcrm-f6hx (host confusion via literal backslash authority delimiter, patched in 3.1.4). Transitive dep of @nx/next > @nx/react > @nx/module-federation > ajv. Bumped from >=3.1.1 to >=3.1.4 on 2026-07-24.
-  # Plus GHSA-7p8r-x3mc-p8w7 (host confusion via backslash authority introducer),
-  # patched per-line in 2.4.4/3.1.5/4.1.2. The unbounded >=3.1.4 selector above
-  # had already resolved the whole tree onto the 4.x line (4.1.1), so this is
-  # bumped to the 4.x patch and bounded to <5. Bumped on 2026-08-07.
-  # Plus GHSA-fph4-wmhf-6fwf (SSRF via repeated hostname percent-decoding),
-  # GHSA-f65p-4m7j-42xc (SSRF via malformed IPv6 normalization),
-  # GHSA-jqff-g426-hqxp (host confusion via percent-encoded scheme
-  # normalization) and GHSA-5jgf-p345-68v8 (host confusion via skipped IDN
-  # canonicalization on scheme-relative references). All four patched in
-  # 4.1.3. Bumped from >=4.1.2 on 2026-09-04.
-  fast-uri: '>=4.1.3 <5'
-  # GHSA-fv7c-fp4j-7gwp: @babel/plugin-transform-modules-systemjs generates arbitrary code when compiling malicious input (patched in 7.29.4). Transitive dep of @nx/* > @nx/js > @babel/preset-env. Added 2026-05-08.
-  '@babel/plugin-transform-modules-systemjs': '>=7.29.4'
-  # GHSA-66ff-xgx4-vchm (code injection via bytes field defaults),
-  # GHSA-75px-5xx7-5xc7 (code generation gadget after prototype pollution),
-  # GHSA-jvwf-75h9-cwgg (process-wide DoS via unsafe option paths),
-  # GHSA-685m-2w69-288q (DoS via unbounded recursion), plus moderate
-  # GHSA-q6x5-8v7m-xcrf (overlong UTF-8), GHSA-2pr8-phx7-x9h3 (DoS via
-  # crafted field names), GHSA-fx83-v9x8-x52w (prototype injection in
-  # generated constructors). All patched in protobufjs 7.5.6. Plus
-  # GHSA-wcpc-wj8m-hjx6 (DoS via unbounded Any expansion during JSON
-  # conversion), patched in 8.4.1. Transitive dep of firebase >
-  # @firebase/firestore > @grpc/* and firebase-admin >
-  # @google-cloud/firestore > google-gax (now on 8.x). Bumped from >=7.5.6
-  # to >=8.4.1 on 2026-06-20.
-  protobufjs: '>=8.4.1'
-  # GHSA-w5hq-g745-h8pq: uuid missing buffer bounds check in v3/v5/v6 when
-  # buf is provided (patched in 11.1.1). Transitive dep of firebase-admin.
-  # Added 2026-05-12.
-  uuid@>=11.0.0 <11.1.1: '>=11.1.1'
-  # GHSA-qx2v-qp2m-jg93: PostCSS XSS via unescaped </style> in CSS stringify
-  # output (patched in 8.5.10). Plus GHSA-6g55-p6wh-862q (arbitrary file read
-  # via attacker-controlled sourceMappingURL in CSS comments, patched in
-  # 8.5.12) and GHSA-r28c-9q8g-f849 (path traversal in previous source-map
-  # auto-loading → arbitrary .map file disclosure, patched in 8.5.18).
-  # Transitive dep of next and @nx/next > next. Bumped from >=8.5.10 to
-  # >=8.5.18 on 2026-07-24.
-  postcss: '>=8.5.18'
-  # GHSA-9vqf-7f2p-gf9v (bodyLimit() bypass for chunked / unknown-length
-  # requests) and GHSA-69xw-7hcm-h432 (unvalidated JSX tag names allow HTML
-  # injection). Both patched in hono 4.12.16. Plus GHSA-88fw-hqm2-52qc (CORS
-  # middleware reflects any Origin with credentials when `origin` defaults to
-  # the wildcard), patched in 4.12.25. Transitive dep of firebase-tools >
-  # @modelcontextprotocol/sdk. Bumped from >=4.12.16 to >=4.12.25 on 2026-06-20.
-  hono: '>=4.12.25'
-  # GHSA-v2v4-37r5-5v8g: ip-address XSS in Address6 HTML-emitting methods
-  # (patched in 10.1.1). Plus GHSA-mwp4-54f8-5fhr (Address4 decodes leading-zero
-  # octets as decimal while resolvers decode them as octal, enabling SSRF /
-  # trust-boundary bypass), patched in 10.3.1. Transitive dep of firebase-tools >
-  # proxy-agent > socks-proxy-agent > socks and firebase-tools >
-  # @modelcontextprotocol/sdk > express-rate-limit. Bumped from >=10.1.1 to
-  # >=10.3.1 on 2026-08-07; bounded to the 10.x line.
-  ip-address: '>=10.3.1 <11'
-  # GHSA covering fast-xml-parser XMLBuilder XML comment / CDATA injection
-  # via unescaped delimiters (patched in 5.7.0). Transitive dep of
-  # firebase-admin > @google-cloud/storage. Added 2026-05-12.
-  fast-xml-parser: '>=5.7.0'
-  # GHSA-vpq2-c234-7xj6: @tootallnate/once incorrect control flow scoping
-  # (patched in 3.0.1). Transitive (optional) dep of firebase-admin >
-  # @google-cloud/* > teeny-request > http-proxy-agent. Added 2026-05-18.
-  '@tootallnate/once': '>=3.0.1'
-  # GHSA-79cf-xcqc-c78w: webpack-dev-server cross-origin source code
-  # exposure on non-HTTPS origins (patched in 5.2.4). Plus GHSA-mx8g-39q3-5c79
-  # (HMR WebSocket interception via permissive user proxies), patched in
-  # 5.2.5. Dev-only transitive dep of @nx/next > @nx/webpack. Bumped from
-  # >=5.2.4 to >=5.2.5 on 2026-07-15. Bounded to the 5.x line (nx's webpack
-  # tooling targets webpack-dev-server 5; 6.0.0 is an untested major bump).
-  webpack-dev-server: '>=5.2.5 <6'
-  # GHSA-jxxr-4gwj-5jf2 (large numeric range defeats the `max` DoS protection,
-  # patched 5.0.6), GHSA-3jxr-9vmj-r5cp (exponential-time expansion of
-  # consecutive non-expanding {} groups, patched per-line in 1.1.16/2.1.2/5.0.7),
-  # GHSA-mh99-v99m-4gvg (unbounded-expansion OOM DoS, now backported per-line to
-  # 1.1.17/2.1.3/5.0.8) and GHSA-rgw5-rvv9-x895 / CVE-2026-69152 (DoS via
-  # unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation;
-  # patched per-line in 1.1.18/2.1.4/5.0.9). Each brace-expansion major is bumped
-  # to its own patched line rather than consolidated, because 5.x cannot replace
-  # the 1.x/2.x lines: brace-expansion 5.x's CJS entry exports an OBJECT
-  # ({ expand, ... }) whereas 1.x/2.x export the `expand` FUNCTION directly, so
-  # the old CJS consumers (@nx/* bundled minimatch, eslint > @eslint/config-array
-  # > minimatch@3, firebase-admin > google-gax > rimraf > glob > minimatch) call
-  # require('brace-expansion')(...) and crash with "expand is not a function" on
-  # 5.x. Upstream has since backported every open advisory to the 1.x and 2.x
-  # lines, so the GHSA-mh99-v99m-4gvg auditConfig ignore is no longer needed and
-  # was removed. Bumped from 1.1.16/2.1.2/5.0.8 on 2026-08-07.
-  brace-expansion@>=1.0.0 <1.1.18: '>=1.1.18 <2'
-  brace-expansion@>=2.0.0 <2.1.4: '>=2.1.4 <3'
-  brace-expansion@>=3.0.0 <5.0.9: '>=5.0.9 <6'
-  # GHSA-58qx-3vcg-4xpx: ws uninitialized memory disclosure (patched in
-  # 8.20.1). Plus GHSA-96hv-2xvq-fx4p (memory-exhaustion DoS from tiny
-  # fragments and data chunks), patched in 8.21.0. Transitive dep present via
-  # several SDKs. Bumped from >=8.20.1 to >=8.21.0 on 2026-06-20.
-  ws@>=8.0.0 <8.21.0: '>=8.21.0'
-  # GHSA-96hv-2xvq-fx4p also affects the ws 7.x line (patched in 7.5.11),
-  # pulled in via firebase-tools. Added 2026-06-20.
-  ws@>=7.0.0 <7.5.11: '>=7.5.11'
-  # path-to-regexp override
-  path-to-regexp@>=2: '>=8.4.0'
-  # GHSA-ph9p-34f9-6g65: tmp Path Traversal via unsanitized prefix/postfix
-  # enables directory escape (patched in 0.2.6). Transitive dep of
-  # firebase-tools and nx. Added 2026-06-07.
-  tmp: '>=0.2.6'
-  # GHSA-5375-pq7m-f5r2 (malformed request → server crash) and
-  # GHSA-99f4-grh7-6pcq (malformed compressed message → client/server crash),
-  # both patched in 1.14.4. Transitive dep of firebase > @firebase/firestore.
-  # Bumped from >=1.9.16 to >=1.14.4 on 2026-06-20.
-  '@grpc/grpc-js': '>=1.14.4'
-  # GHSA-w7jw-789q-3m8p: shell-quote quote() does not escape newlines in object
-  # .op values (patched in 1.8.4). Plus GHSA-395f-4hp3-45gv (quadratic-complexity
-  # DoS in parse(), patched in 1.8.5). concurrently@9.2.1 exact-pins shell-quote
-  # 1.8.3; also pulled in via webpack-dev-server > launch-editor. Bumped from
-  # >=1.8.4 to >=1.8.5 on 2026-07-24.
-  shell-quote: '>=1.8.5'
-  # GHSA-vmh5-mc38-953g (TLS certificate validation bypass via dropped
-  # requestTls in SOCKS5 ProxyAgent), GHSA-vxpw-j846-p89q (WebSocket client
-  # DoS via fragment count bypass), and GHSA-hm92-r4w5-c3mj (cross-origin
-  # request routing via SOCKS5 proxy pool reuse). All patched in 7.28.0.
-  # Transitive dep of @nx/next > @nx/react > @nx/module-federation >
-  # @module-federation/* > undici. Added 2026-06-20. Plus GHSA-4cwx-7wf7-3272
-  # (cross-user information disclosure and parse-time crash via degenerate
-  # private cache directives), patched in 7.29.0 / 8.9.0. The unbounded >=7.28.0
-  # selector had already carried the tree onto the 8.x line (8.5.0), so both
-  # vulnerable lines are folded into one selector targeting 8.9.0, bounded to
-  # <9. Bumped on 2026-08-07.
-  undici@>=7.0.0 <8.9.0: '>=8.9.0 <9'
-  # GHSA-fx2h-pf6j-xcff: vite `server.fs.deny` bypass on Windows alternate
-  # paths (patched in 8.0.16). The 8.x line is pulled in via @nx/vitest >
-  # vitest; the separate vite@7 override above covers the 7.x line.
-  # Added 2026-06-20.
-  vite@>=8.0.0 <8.0.16: '>=8.0.16'
-  # GHSA-hmw2-7cc7-3qxx: form-data CRLF injection via unescaped multipart
-  # field names and filenames (patched in 4.0.6). Transitive dep present via
-  # several SDKs. Added 2026-06-20.
-  form-data@>=4.0.0 <4.0.6: '>=4.0.6'
-  # GHSA-hmw2-7cc7-3qxx also affects the form-data 2.x line (patched in
-  # 2.5.6), pulled in via firebase-admin > @google-cloud/* > google-gax >
-  # retry-request > @types/request. Added 2026-06-20.
-  form-data@>=2.0.0 <2.5.6: '>=2.5.6'
-  # GHSA-gcq2-9pq2-cxqm: http-proxy-middleware multipart/form-data field
-  # injection via unescaped CRLF in `fixRequestBody` (patched in 3.0.7).
-  # Added 2026-06-20.
-  http-proxy-middleware@>=3.0.4 <3.0.7: '>=3.0.7'
-  # GHSA-x9g3-xrwr-cwfg: piscina prototype-pollution gadget → RCE via
-  # inherited options.filename (patched in 4.9.3). Transitive dep of @nx/*.
-  # Added 2026-06-20.
-  piscina@<4.9.3: '>=4.9.3'
-  # GHSA-mp2f-45pm-3cg9 (critical): @xhmikosr/decompress archive extraction
-  # can create files and links outside the target directory (Zip Slip)
-  # (patched in 11.1.3). Transitive dep of @swc/cli > @xhmikosr/bin-wrapper >
-  # @xhmikosr/downloader > @xhmikosr/decompress. Added 2026-07-06.
-  '@xhmikosr/decompress@>=11.0.0 <11.1.3': '>=11.1.3'
-  # GHSA-xcpc-8h2w-3j85: adm-zip crafted ZIP triggers 4GB memory allocation
-  # DoS (patched in 0.6.0). Dev-only transitive dep of @nx/next > @nx/react >
-  # @nx/module-federation > @module-federation/* > @module-federation/dts-plugin
-  # and @webflow/webflow-cli. Added 2026-07-17.
-  #
-  # Raised to >=0.6.1 on 2026-09-20: a second uncontrolled-memory-allocation
-  # advisory landed against <0.6.1, so the original floor stopped being enough
-  # and the Security Audit job started failing on every PR.
-  adm-zip: '>=0.6.1'
-  # GHSA-xv26-6w52-cph6 (critical): websocket-driver message corruption via
-  # abuse of protocol length headers, plus resource-limit bypass via message
-  # compression. Both patched in 0.7.5. Transitive dep of firebase &
-  # firebase-admin > @firebase/database > faye-websocket. Added 2026-07-15.
-  websocket-driver@<0.7.5: '>=0.7.5'
-  # GHSA-q8mj-m7cp-5q26: qs remotely triggerable DoS — qs.stringify crashes
-  # on null/undefined entries in comma-format arrays when encodeValuesOnly is
-  # set (patched in 6.15.2). Transitive dep present via several SDKs.
-  # Added 2026-07-15.
-  qs@>=6.11.1 <=6.15.1: '>=6.15.2'
-  # GHSA-q7cg-457f-vx79: joi uncaught RangeError on deeply nested input
-  # through recursive link() schemas (patched in 18.2.1). Transitive dep of
-  # firebase-admin > @google-cloud/*. Added 2026-07-15.
-  joi@<18.2.1: '>=18.2.1'
-  # GHSA-vmf3-w455-68vh: node-tar applies PAX size override to intermediary
-  # GNU long-name/long-link headers, causing a parser interpretation
-  # differential / file smuggling (patched in 7.5.16). Plus GHSA-r292-9mhp-454m
-  # (uncontrolled recursion in mapHas/filesFilter lets a crafted tar with very
-  # long member paths blow the stack — an uncatchable RangeError, so it kills
-  # the process rather than throwing where the caller can handle it), patched
-  # in 7.5.21. Transitive dep of nx, firebase-tools & @webflow/webflow-cli.
-  # Bumped from >=7.5.16 to >=7.5.21 on 2026-08-22.
-  tar@<7.5.21: '>=7.5.21'
-  # GHSA-4vj7-5mj6-jm8m: morgan log forging via unneutralized control
-  # characters in :remote-user (patched in 1.10.2; first published fix is
-  # 1.11.0). Transitive dep present via express tooling. Added 2026-07-15.
-  morgan@<1.10.2: '>=1.10.2'
-  # GHSA-h67p-54hq-rp68: js-yaml quadratic-complexity DoS in merge-key
-  # handling via repeated aliases. Patched in 3.15.0 (3.x line) and 4.1.2
-  # (4.x line). Plus GHSA-52cp-r559-cp3m (merge-key chains force quadratic CPU
-  # consumption), patched in 4.3.0 (4.x line). Transitive dep of many dev/build
-  # tools. 4.x bumped from >=4.1.2 to >=4.3.0 on 2026-07-24. Plus
-  # GHSA-5p4m-2wfm-xmqj (quadratic CPU consumption in !!omap resolution — the
-  # CVE-2026-59870 fix was not backported), patched in 3.15.1 / 4.3.1. Bumped
-  # from 3.15.0/4.3.0 on 2026-08-07. Plus GHSA-2883-xcg3-v3hh: the
-  # `maxTotalMergeKeys` cap counts keys it actually merges, so a document made
-  # of *empty* merge sources burns quadratic CPU without ever incrementing the
-  # counter — the mitigation added for the advisories above does not bound it.
-  # Patched in 3.15.2 / 4.3.2. Bumped from 3.15.1/4.3.1 on 2026-09-08.
-  js-yaml@>=3.0.0 <3.15.2: '>=3.15.2 <4'
-  js-yaml@>=4.0.0 <4.3.2: '>=4.3.2 <5'
-  # GHSA-v6wh-96g9-6wx3: launch-editor NTLMv2 hash disclosure via UNC path
-  # handling on Windows (patched in 2.14.1). Dev-only transitive dep of
-  # webpack-dev-server. Added 2026-07-15.
-  launch-editor@<2.14.1: '>=2.14.1'
-  # GHSA-64mm-vxmg-q3vj: http-proxy-middleware `router` host+path substring
-  # matching allows Host-header-driven backend routing bypass (2.x line
-  # patched in 2.0.10; the 3.x override above covers GHSA-gcq2 separately).
-  # Dev-only transitive dep of webpack-dev-server 5. Bounded to the 2.x line
-  # so it stays compatible with webpack-dev-server's ^2 range. Added 2026-07-15.
-  http-proxy-middleware@>=0.16.0 <2.0.10: '>=2.0.10 <3'
-  # GHSA-p63j-vcc4-9vmv (critical): @vitest/browser Browser Mode provider
-  # commands bypass the file-access permission gate (patched in 4.1.10).
-  # Dev-only transitive dep of @nx/vitest > vitest > @vitest/browser-playwright
-  # and @vitest/coverage-v8. Scoped to the 4.x line vitest resolves. Added 2026-07-24.
-  '@vitest/browser@>=4.0.0 <4.1.10': '>=4.1.10 <5'
-  # GHSA-v56q-mh7h-f735 (List 32-bit trie overflow → unrecoverable DoS) and
-  # GHSA-xvcm-6775-5m9r (hash-collision algorithmic-complexity DoS in Map/Set),
-  # both patched in immutable 5.1.8. Transitive dep of next > sass and
-  # @nx/vitest > vite > sass. Scoped to the vulnerable 5.x line. Added 2026-07-24.
-  immutable@>=5.0.0-beta.1 <5.1.8: '>=5.1.8 <6'
-  # GHSA-6gpp-xcg3-4w24 (middleware/proxy bypass with Turbopack + single
-  # locale), GHSA-m99w-x7hq-7vfj (DoS in App Router Server Actions),
-  # GHSA-89xv-2m56-2m9x (SSRF in Server Actions on custom servers), and
-  # GHSA-p9j2-gv94-2wf4 (SSRF in rewrites via attacker-controlled destination
-  # hostname). All patched in next 16.2.11. Direct dep (16.2.6) plus @nx/next
-  # and @storybook/nextjs-vite. Added 2026-07-24. Plus two criticals:
-  # GHSA-p293-qw3h-jr36 (unauthenticated RCE on Windows-hosted servers) and
-  # GHSA-2xp9-vwfh-vxw4 (unauthenticated RCE in the Image Optimization API
-  # when AVIF files are used). Both patched in 16.3.3. The Windows one does
-  # not reach us — the admin app builds and runs on Linux — but the Image
-  # Optimization one is platform-independent and sits on a request path we
-  # actually serve. Bumped from >=16.2.11 on 2026-09-08.
-  next@>=16.0.0 <16.3.3: '>=16.3.3 <17'
-  # GHSA-f88m-g3jw-g9cj: sharp inherits libvips vulnerabilities CVE-2026-33327,
-  # CVE-2026-33328, CVE-2026-35590, CVE-2026-35591 (patched in 0.35.0).
-  # Transitive dep of next. Scoped to the pre-0.35 line. Added 2026-07-24.
-  # Plus GHSA-rgj7-g3m4-5g8c: sharp inherits two further libheif advisories
-  # (GHSA-g89c-p67h-r497, GHSA-2jg2-4ch7-h545) reachable through HEIF/AVIF
-  # decoding, patched in 0.35.4. Bumped from >=0.35.0 on 2026-09-08.
-  sharp@<0.35.4: '>=0.35.4'
-  # GHSA-2p49-hgcm-8545: SVGO removeScripts plugin leaves some executable
-  # scripts intact. Patched in 3.3.4 (3.x line, via @svgr/webpack) and 4.0.2
-  # (4.x line, via @nx/webpack > cssnano > postcss-svgo). Dev-only build
-  # tooling. Added 2026-07-24. Plus GHSA-w27v-7q3p-w38r: that fix was
-  # incomplete — `removeScripts` still lets executable links through via
-  # namespaced attributes and control characters embedded in the scheme.
-  # Patched in 3.3.5 (3.x) and 4.1.0 (4.x). Bumped on 2026-09-08.
-  svgo@>=3.0.0 <3.3.5: '>=3.3.5 <4'
-  svgo@>=4.0.0 <4.1.0: '>=4.1.0 <5'
-  # GHSA-c83g-rgw3-j3cx (unbounded memory growth — the query cache never
-  # evicts, so distinct queries grow it until OOM) and GHSA-73wf-gq98-2v4g
-  # (uncaught crash / prototype write in normalizeStats when fed an untrusted
-  # browserslist-stats.json). Both patched in 4.28.7. Dev-only build tooling:
-  # every path runs through @babel/helper-compilation-targets (next >
-  # styled-jsx > @babel/core, @babel/preset-react, @nx/* > @babel/preset-env).
-  # Bounded to the 4.x line. Added 2026-09-04.
-  browserslist@<4.28.7: '>=4.28.7 <5'
-  # GHSA-7w5x-hrqm-74c2: smol-toml denial of service via malformed TOML
-  # documents — the parser degrades to quadratic/unbounded work on crafted
-  # input (patched in 1.7.1). Dev-only build tooling: every one of the ~100
-  # paths runs through nx (@nx/devkit > nx > smol-toml, and each @nx/* plugin
-  # re-entering the same edge), which parses TOML files from this repo, not
-  # untrusted input. Bounded to the 1.x line. Added 2026-09-09.
+  # @webflow/webflow-cli@2.x > @module-federation/enhanced@2.5.1 >
+  # @module-federation/dts-plugin pins adm-zip 0.5.10 and undici 7.24.7
+  # exactly, and webflow-cli itself pins form-data 4.0.4. (CLI 1.x also
+  # pinned koa 3.0.1 and ws 8.18.0; 2.x dropped koa and ships a fixed ws, so
+  # those two overrides were removed on 2026-10-05.)
+  #   adm-zip:   GHSA-xcpc-8h2w-3j85, GHSA-7q85-xj36-vmfc, GHSA-j5f4-cc29-5x44,
+  #              GHSA-rcw4-f5rp-g42v, GHSA-8238-w5pm-2374, GHSA-vwc7-r8mq-g2x9
+  #              (all fixed in 0.6.1)
+  #   undici:    21 advisories on the 7.x line, the newest fixed in 7.29.1
+  #              (e.g. GHSA-w293-vg96-wgc3, GHSA-4cwx-7wf7-3272,
+  #              GHSA-vmh5-mc38-953g). Kept on 7.x, the line dts-plugin targets.
+  #   form-data: GHSA-hmw2-7cc7-3qxx (CRLF injection in multipart field
+  #              names), fixed in 4.0.6.
+  adm-zip@<0.6.1: '>=0.6.1 <0.7'
+  undici@>=7.0.0 <7.29.1: '>=7.29.1 <8'
+  form-data@>=4.0.0 <4.0.6: '>=4.0.6 <5'
+  # nx@23.2.1 pins smol-toml 1.6.1 exactly. GHSA-7w5x-hrqm-74c2 (DoS on
+  # malformed TOML), fixed in 1.7.1. nx only parses TOML files from this repo.
   smol-toml@<1.7.1: '>=1.7.1 <2'
+  # nx@23.2.1 (latest) pins axios 1.18.1 exactly. GHSA-3pq3-5fj3-cg6v,
+  # GHSA-542g-h47m-68v8, GHSA-mghh-pgcx-3jjj, GHSA-x97p-jq2g-jp4f,
+  # GHSA-m8m8-qj5v-23w3, GHSA-c29m-xwm3-cm6r, GHSA-r4gj-5m52-g5wh, all
+  # fixed in 1.20.0. Added 2026-10-04.
+  axios@<1.20.0: '>=1.20.0 <2'
+  # nx@23.2.1 pins brace-expansion 5.0.9 exactly. GHSA-6j4f-fj2g-mc7p (5.0.10)
+  # and GHSA-qhr7-859c-m2p7 (5.0.11). Scoped to the 5.x line: the 1.x/2.x
+  # lines are unaffected, and 5.x cannot replace them (its CJS entry exports an
+  # object, not the expand function). Added 2026-10-04.
+  brace-expansion@>=5.0.0 <5.0.11: '>=5.0.11 <6'
+  # @firebase/firestore depends on @grpc/grpc-js ~1.9.0. GHSA-m9gg-hp2v-232j
+  # (getAuthContext can report unauthorized certificates as authorized), fixed
+  # in 1.13.6 / 1.14.5. main overrode the 1.9 line onto 1.14 before this
+  # refresh, so the jump is proven. Added 2026-10-04.
+  '@grpc/grpc-js@<1.14.5': '>=1.14.5 <2'
+  # firebase-tools > proxy-agent > pac-proxy-agent > get-uri depends on
+  # basic-ftp ^5. GHSA-c475-qrg2-pj4r (quadratic CPU in Client.list()) is
+  # fixed only in 6.2.1. 6.x's one breaking change refuses separate FTP
+  # transfer hosts by default, a security default get-uri does not rely on.
+  # Added 2026-10-04.
+  basic-ftp@<6.2.1: '>=6.2.2 <7'
+
+# material-react-table 3.2.1 (still latest) passes props MUI 9 removed and now
+# ignores: the table search box would lose its icon and clear button, and its
+# menus their list settings. The patch renames them to MUI 9's slotProps in
+# both dist builds. The inline cell editor is left unpatched because no table
+# here enables editing. Delete the patch when MRT supports MUI 9; pnpm refuses
+# to apply it to any other version, so a bump forces the check. Tracked in #166.
+patchedDependencies:
+  material-react-table@3.2.1: patches/material-react-table@3.2.1.patch

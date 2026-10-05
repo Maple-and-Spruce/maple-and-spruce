@@ -98,7 +98,7 @@ export default function LoginPage() {
 
           <Typography
             variant="body2"
-            color="text.secondary"
+            color="textSecondary"
             align="center"
             sx={{ mb: 3 }}
           >
@@ -171,7 +171,7 @@ export default function LoginPage() {
             </Link>
             <Typography
               variant="body2"
-              color="text.secondary"
+              color="textSecondary"
               sx={{ mt: 2 }}
             >
               Accounts are created by an administrator.

@@ -76,3 +76,20 @@ export function lessonInvoiceLines(
 export function lessonInvoiceTotalCents(lines: InvoiceLineItem[]): number {
   return lines.reduce((sum, line) => sum + line.subtotalCents, 0);
 }
+
+/**
+ * Stable client-side id for a line, so an edit can target the right one.
+ *
+ * Shared by the invoice builder and the student page's block invoices, because
+ * two id schemes for the same field is how they drift apart (#101). Lives in
+ * the domain so pure modules can use it without loading a component library.
+ */
+export function newInvoiceLineId(): string {
+  const cryptoObj: { randomUUID?: () => string } =
+    (globalThis as unknown as { crypto?: { randomUUID?: () => string } })
+      .crypto ?? {};
+  if (typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID();
+  }
+  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}

@@ -11,7 +11,8 @@
  * `staticSuite`, so it is a pure function safe to call from a warm Cloud Function
  * container without `.reset()` (ADR-017).
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import {
   LESSON_BILLING_ANCHORS,
   type CreateLessonBillingRuleInput,

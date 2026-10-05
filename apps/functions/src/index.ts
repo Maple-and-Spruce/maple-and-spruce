@@ -35,6 +35,7 @@ export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-st
 export { artists } from '@maple/firebase/maple-functions/artists';
 // Payouts domain router: class-instructor statements (ADR-029).
 export { payouts } from '@maple/firebase/maple-functions/payouts';
+export { hope } from '@maple/firebase/maple-functions/hope';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions
