@@ -1339,10 +1339,12 @@ jobs:
         if: steps.restore-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Share webflow components library
+      - name: Import webflow components library
         env:
           WEBFLOW_WORKSPACE_API_TOKEN: ${{ secrets.WEBFLOW_WORKSPACE_API_TOKEN }}
-        run: pnpm exec webflow library share --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
+        # `devlink import` is the CLI 2.x name for `library share` (same
+        # implementation; the `library` group goes away in CLI 3).
+        run: pnpm exec webflow devlink import --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
 
   deploy_vercel_prod:
     # Vercel's auto-deploy-on-main is disabled via vercel.json
