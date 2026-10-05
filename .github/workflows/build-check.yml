@@ -442,14 +442,16 @@ jobs:
           path: node_modules
           key: ${{ needs.install.outputs.cache_key }}
 
-      # Webflow's CLI `library bundle` command is broken upstream with
-      # current webpack / Module Federation transitive versions (fails
-      # with "no files found for remoteEntry chunk"). The actual
-      # `library share` command on merge has its own working pipeline.
-      # A typecheck is the best PR-time gate we have against shipping
-      # broken component code.
       - name: Typecheck webflow components
         run: pnpm exec tsc --noEmit -p apps/webflow-components/tsconfig.json
+
+      # Build the library exactly as the merge-time `devlink import` does,
+      # without uploading it, so a widget that typechecks but will not bundle
+      # fails here instead of in the publish after merge. (`library bundle`
+      # used to fail upstream with "no files found for remoteEntry chunk";
+      # it works again as of webflow-cli 2.x.) ~20s, needs no token.
+      - name: Bundle webflow components
+        run: pnpm exec webflow devlink bundle --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
 
   unit-tests:
     name: Unit Tests & Coverage

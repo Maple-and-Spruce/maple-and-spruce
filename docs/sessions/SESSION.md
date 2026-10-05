@@ -6,6 +6,26 @@
 
 ## Current Status
 
+### Webflow code components 1 → 2 (2026-10-05)
+
+`@webflow/react` 1.x only supported React up to 19.0.0, and the refresh moved
+the app to React 19.3, so the widgets were outside their supported range.
+2.x supports all of React 19 and fixes a React 19 prerender race.
+
+- `@webflow/react`, `data-types`, `emotion-utils` 1.3 → 2.5; `webflow-cli`
+  1.23 → 2.10 (needs Node ≥ 22.13; CI's `node-version: '22'` resolves above it).
+  Our widgets only use `declareComponent`, `props` and the emotion decorator,
+  none of which changed.
+- Merge-time publish: `webflow library share` → `webflow devlink import`
+  (same implementation in the CLI; `library` is deprecated, gone in CLI 3).
+- PR CI now runs `webflow devlink bundle` after the typecheck (~20s). The old
+  comment said bundling was broken upstream; it works with both 1.x and 2.x.
+- Overrides: `koa` and `ws` removed (CLI 2.x no longer pins vulnerable ones);
+  `undici` added (dts-plugin pins 7.24.7). `adm-zip`, `form-data` stay.
+- Same 8 components, same React 19.3; client bundle ~170KB smaller.
+- After merge: publish the Webflow **site** (not just the library) and check
+  the widgets on staging, or the old widget JS keeps serving.
+
 ### MUI 7 → 9, MUI X 7 → 9 (2026-10-04)
 
 Last of the deferred majors from the dependency refresh. Codemods did the bulk
