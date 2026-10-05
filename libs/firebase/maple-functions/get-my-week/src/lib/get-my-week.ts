@@ -28,6 +28,8 @@ import {
   InstructorRepository,
   LessonBlockRepository,
   LessonRepository,
+  StudentLessonScheduleRepository,
+  StudentRepository,
 } from '@maple/firebase/database';
 import {
   DEFAULT_LESSON_TIME_ZONE,
@@ -36,7 +38,11 @@ import {
   minutesOfDayInZone,
   weekdayIndexInZone,
 } from '@maple/ts/domain';
-import type { CalendarEvent, LessonBlock } from '@maple/ts/domain';
+import type {
+  CalendarEvent,
+  LessonBlock,
+  StudentLessonSchedule,
+} from '@maple/ts/domain';
 import type {
   GetMyWeekRequest,
   GetMyWeekResponse,
@@ -90,6 +96,11 @@ export function buildCommitments(
   myInstructorId: string,
   /** sourceRefs ("lessons/{id}") of the caller's lessons that need a block. */
   unattributedRefs: Set<string> = new Set(),
+  /**
+   * The student behind each of the caller's lessons, by sourceRef (#160).
+   * Only the caller's own: another teacher's lesson stays "Music Lesson".
+   */
+  studentByRef: Map<string, { id: string; name: string }> = new Map(),
 ): MyWeekCommitment[] {
   // key -> set of distinct week indices it occurred in
   const weeksByKey = new Map<string, Set<number>>();
@@ -112,6 +123,11 @@ export function buildCommitments(
     .sort((a, b) => a.startDateTime.getTime() - b.startDateTime.getTime())
     .map((e) => {
       const weeks = weeksByKey.get(recurrenceKey(e));
+      const mine = e.ownerInstructorId === myInstructorId;
+      const student =
+        mine && e.type === 'lesson' && e.sourceRef
+          ? studentByRef.get(e.sourceRef)
+          : undefined;
       return {
         id: e.id,
         title: e.title,
@@ -125,8 +141,48 @@ export function buildCommitments(
           e.type === 'lesson' &&
           !!e.sourceRef &&
           unattributedRefs.has(e.sourceRef),
+        ...(student ? { studentId: student.id, studentName: student.name } : {}),
       };
     });
+}
+
+/**
+ * The caller's own lessons in the typical week come from their students'
+ * weekly times (#160), not from inferring recurrence out of past lessons:
+ * lessons are booked a few at a time now (#157), so a weekly student between
+ * bookings has no history to infer from, and would drop out of the week.
+ *
+ * Replaces the caller's lesson slots that `buildStandingSlots` inferred; every
+ * other slot (their classes, shared events, other teachers' lessons) stands.
+ */
+export function withWeeklyTimes(
+  inferred: MyWeekStandingSlot[],
+  schedules: StudentLessonSchedule[],
+  myInstructorId: string,
+  studentNameById: Map<string, string>,
+): MyWeekStandingSlot[] {
+  const fromSchedules: MyWeekStandingSlot[] = schedules
+    .filter((s) => s.status === 'active' && s.teacherId === myInstructorId)
+    .map((s) => {
+      const name = studentNameById.get(s.studentId) ?? 'Music Lesson';
+      return {
+        id: `schedule-${s.id}`,
+        weekday: s.dayOfWeek,
+        startMinutes: s.startMinutes,
+        durationMinutes: s.durationMinutes,
+        category: 'lesson' as const,
+        ownership: 'mine' as const,
+        title: name,
+        studentId: s.studentId,
+        studentName: name,
+      };
+    });
+  return [
+    ...inferred.filter(
+      (slot) => !(slot.category === 'lesson' && slot.ownership === 'mine'),
+    ),
+    ...fromSchedules,
+  ].sort((a, b) => a.weekday - b.weekday || a.startMinutes - b.startMinutes);
 }
 
 /**
@@ -264,12 +320,29 @@ export const getMyWeek = createRoleFunction<
     // ALL teachers' blocks (mine anchor the layout; others mark room-taken
     // time), this week's lessons to flag unattributed ones (legacy #689), and
     // instructors for the other-block owner names.
-    const [events, allBlocks, lessons, instructors] = await Promise.all([
-      CalendarEventRepository.findByStartInRange(lookbackStart, to),
-      LessonBlockRepository.findAll(),
-      LessonRepository.findAll({ teacherId: myInstructorId, from, to }),
-      InstructorRepository.findAll(),
-    ]);
+    const [events, allBlocks, lessons, instructors, schedules, students] =
+      await Promise.all([
+        CalendarEventRepository.findByStartInRange(lookbackStart, to),
+        LessonBlockRepository.findAll(),
+        LessonRepository.findAll({ teacherId: myInstructorId, from, to }),
+        InstructorRepository.findAll(),
+        StudentLessonScheduleRepository.findAll({
+          teacherId: myInstructorId,
+          status: 'active',
+        }),
+        StudentRepository.findAll(),
+      ]);
+    const studentNameById = new Map(students.map((s) => [s.id, s.name]));
+    const studentByRef = new Map<string, { id: string; name: string }>();
+    for (const lesson of lessons) {
+      const name = studentNameById.get(lesson.studentId);
+      if (name) {
+        studentByRef.set(`lessons/${lesson.id}`, {
+          id: lesson.studentId,
+          name,
+        });
+      }
+    }
 
     const myBlocks = allBlocks.filter((b) => b.teacherId === myInstructorId);
     // The week view is a *typical* week, so only recurring blocks frame it —
@@ -301,11 +374,17 @@ export const getMyWeek = createRoleFunction<
       lookbackStart,
       myInstructorId,
       unattributedRefs,
+      studentByRef,
     );
 
     return {
       commitments,
-      standing: buildStandingSlots(events, lookbackStart, myInstructorId),
+      standing: withWeeklyTimes(
+        buildStandingSlots(events, lookbackStart, myInstructorId),
+        schedules,
+        myInstructorId,
+        studentNameById,
+      ),
       blocks: myStandingBlocks.map(toMyWeekBlock),
       otherBlocks,
       unlinked: false,
