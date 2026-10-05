@@ -80,6 +80,7 @@ export {
   PayoutRepository,
   type PayoutFilters,
   type CreatePayoutInput,
+  type GeneratePayoutOutcome,
 } from './lib/payout.repository';
 export {
   ClassInstructorStatementRepository,

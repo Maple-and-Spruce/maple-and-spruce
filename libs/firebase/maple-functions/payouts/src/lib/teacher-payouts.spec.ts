@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
- * Unit tests for the getTeacherPayouts cloud function handler.
+ * Unit tests for the payouts router's getTeacherPayouts route handler.
  *
  * The aggregation math is thoroughly tested in
  * libs/ts/domain/src/lib/teacher-payout.spec.ts. Here we verify the
- * cloud function wires everything together correctly:
+ * handler wires everything together correctly:
  *   - date-range validation (invalid + reversed)
  *   - filters paid invoices by paidAt in range
  *   - backfills lessons referenced by invoice lines but outside the
@@ -22,9 +22,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: <TReq, TRes>(
-    handler: (data: TReq, ctx: unknown) => Promise<TRes>
-  ) => handler,
+  throwInvalidArgument: (msg: string) => {
+    throw new Error(msg);
+  },
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -37,9 +37,9 @@ vi.mock('@maple/firebase/database', () => ({
   InstructorRepository: { findAll: mocks.instructorFindAll },
 }));
 
-import { getTeacherPayouts } from './get-teacher-payouts';
+import { getTeacherPayouts } from './teacher-payouts';
 
-type Handler = (data: unknown, ctx?: unknown) => Promise<unknown>;
+type Handler = (data: unknown) => Promise<unknown>;
 const handler = getTeacherPayouts as unknown as Handler;
 
 const FROM_ISO = '2026-04-01T00:00:00Z';

@@ -1676,6 +1676,10 @@ would claim. The transaction decides whether it may.
   one is not reconciled.
 - Refunds made directly in the Square dashboard are invisible: only `cancelRegistration` records
   `refundedAt`.
+- The artist-payout path was brought up to the same guarantee when it moved onto the `payouts`
+  router (#145), without a ledger: a sale is already one payable unit, so its `payoutId` stamp is
+  the claim. `PayoutRepository.generate` reads every sale, refuses if any is stamped, and writes
+  the payout and all the stamps in one transaction.
 
 ---
 

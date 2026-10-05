@@ -5,7 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
-    "firebase-maple-functions-get-teacher-payouts",
+    "firebase-maple-functions-payouts",
     "firebase-maple-functions-create-invoice",
     "firebase-maple-functions-update-invoice",
     "firebase-maple-functions-create-student",
