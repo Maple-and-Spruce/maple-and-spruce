@@ -18,6 +18,7 @@
  * list: see `InstrumentsConfig`. A student keeps whatever key they were
  * recorded with, even after it stops being offered.
  */
+// eslint-disable-next-line sonarjs/redundant-type-aliases -- the name says which string: an instrument key, used across domain, validation and UI
 export type Instrument = string;
 
 /**
