@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Alert,
   Box,
@@ -14,35 +14,35 @@ import AddIcon from '@mui/icons-material/Add';
 import type {
   LessonInquiry,
   CreateStudentInput,
-  RequestState,
   Student,
 } from '@maple/ts/domain';
-import { studentDraftFromInquiry } from '@maple/ts/domain';
+import { SCHEDULE_TIME_ZONE, studentDraftFromInquiry } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
   InquirySuggestions,
   StudentForm,
-  StudentList,
+  StudentsByDay,
 } from '@maple/react/students';
 import { NeedsAttentionPanel } from '@maple/react/lessons';
+import { useRoles } from '@maple/react/auth';
 import {
+  useAllStudentLessonSchedules,
   useInstructors,
-  useLessonBlocks,
   useLessonInquiries,
   useHopeProducts,
   useLessonBilling,
-  useLessons,
   useNeedsAttention,
   useStudents,
 } from '../../../hooks';
-import {
-  InvoiceLauncher,
-  LessonBillingLauncher,
-  ScheduleLessonLauncher,
-  StandingScheduleLauncher,
-} from './student-launchers';
 
-type HopeFilter = 'all' | 'hope' | 'private';
+/** Today's weekday in the studio, so today's section can be marked. */
+function studioWeekday(now: Date): number {
+  const short = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: SCHEDULE_TIME_ZONE,
+  }).format(now);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(short);
+}
 
 export default function StudentsPage() {
   const {
@@ -51,19 +51,17 @@ export default function StudentsPage() {
     updateStudent,
     deleteStudent: deleteStudentApi,
   } = useStudents();
-  const { attentionState, fetchAttention } = useNeedsAttention();
+  const { attentionState } = useNeedsAttention();
   const { instructorsState } = useInstructors();
-  // All lessons — the table derives each student's recurring day/time slot
-  // from their scheduled lessons. The roster is small, so one unscoped fetch
-  // is fine.
-  const { lessonsState, fetchLessons } = useLessons({});
-  const { lessonBlocksState, fetchLessonBlocks } = useLessonBlocks();
+  // Each student's day comes from their weekly time (#159), not from booked
+  // lessons: lessons are booked a few at a time, so between bookings a
+  // student has none.
+  const { schedulesState } = useAllStudentLessonSchedules();
   // Inquiries power the "Start from an inquiry" suggestions (legacy #819). Same seam
   // as /leads → "Create student…", offered from whichever page you are on.
   const { inquiriesState, updateStatus } = useLessonInquiries();
 
-  // The rules list, so the form can put a student on one (#107). The page is
-  // already fetching several unscoped lists; this is one more small one.
+  // The rules list, so the form can put a student on one (#107).
   const { billingState: studioBillingState } = useLessonBilling();
   const billingRules =
     studioBillingState.status === 'success' ? studioBillingState.data.rules : [];
@@ -72,13 +70,16 @@ export default function StudentsPage() {
   const hopeProducts =
     hopeProductsState.status === 'success' ? hopeProductsState.data : [];
 
-
   const instructors =
     instructorsState.status === 'success' ? instructorsState.data : [];
-  const lessons =
-    lessonsState.status === 'success' ? lessonsState.data : undefined;
-  const blocks =
-    lessonBlocksState.status === 'success' ? lessonBlocksState.data : [];
+
+  // A teacher sees their own students first; other teachers' are one click
+  // away. Only an admin can see other teachers' students at all, and a login
+  // that teaches nobody has no "mine" to start from.
+  const { instructorId, isAdmin } = useRoles();
+  const [showEveryone, setShowEveryone] = useState(false);
+  const canChoose = Boolean(instructorId) && isAdmin;
+  const onlyTeacher = instructorId && !showEveryone ? instructorId : undefined;
 
   // Form dialog state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -91,38 +92,6 @@ export default function StudentsPage() {
   // Delete dialog state
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Row-action launchers — one student at a time.
-  const [scheduleFor, setScheduleFor] = useState<Student | null>(null);
-  const [invoiceFor, setInvoiceFor] = useState<Student | null>(null);
-  const [weeklyFor, setWeeklyFor] = useState<Student | null>(null);
-  const [billingFor, setBillingFor] = useState<{
-    student: Student;
-    scope: 'owed' | 'upcoming';
-  } | null>(null);
-
-  const handleChargePast = useCallback(
-    (student: Student) => setBillingFor({ student, scope: 'owed' }),
-    []
-  );
-  const handlePlanNext = useCallback(
-    (student: Student) => setBillingFor({ student, scope: 'upcoming' }),
-    []
-  );
-
-  // Hope Scholarship filter — client-side since roster is small.
-  const [hopeFilter, setHopeFilter] = useState<HopeFilter>('all');
-
-  const filteredStudentsState = useMemo<RequestState<Student[]>>(() => {
-    if (studentsState.status !== 'success') return studentsState;
-    if (hopeFilter === 'all') return studentsState;
-    const predicate = (s: Student) =>
-      hopeFilter === 'hope' ? s.isHopeScholarship : !s.isHopeScholarship;
-    return {
-      ...studentsState,
-      data: studentsState.data.filter(predicate),
-    };
-  }, [studentsState, hopeFilter]);
 
   const handleOpenForm = useCallback((student?: Student) => {
     setEditingStudent(student);
@@ -257,78 +226,34 @@ export default function StudentsPage() {
         />
       )}
 
-      <Box sx={{ mb: 2 }}>
-        <ToggleButtonGroup
-          exclusive
-          value={hopeFilter}
-          onChange={(_, next) => {
-            if (next) setHopeFilter(next as HopeFilter);
-          }}
-          size="small"
-          aria-label="Filter students by Hope Scholarship"
-        >
-          <ToggleButton value="all">All students</ToggleButton>
-          <ToggleButton value="hope">Hope Scholarship only</ToggleButton>
-          <ToggleButton value="private">Private-pay only</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      {canChoose && (
+        <Box sx={{ mb: 2 }}>
+          <ToggleButtonGroup
+            exclusive
+            value={showEveryone ? 'everyone' : 'mine'}
+            onChange={(_, next) => {
+              if (next) setShowEveryone(next === 'everyone');
+            }}
+            size="small"
+            aria-label="Whose students to show"
+          >
+            <ToggleButton value="mine">My students</ToggleButton>
+            <ToggleButton value="everyone">Everyone’s</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      )}
 
-      <StudentList
-        studentsState={filteredStudentsState}
+      <StudentsByDay
+        studentsState={studentsState}
+        schedulesState={schedulesState}
         instructors={instructors}
-        lessons={lessons}
+        teacherId={onlyTeacher}
+        showTeacher={!onlyTeacher}
+        todayWeekday={studioWeekday(new Date())}
+        hrefFor={(student) => `/students/${student.id}`}
         onEdit={handleOpenForm}
         onDelete={handleOpenDelete}
-        onSetWeeklySchedule={setWeeklyFor}
-        onChargePastLessons={handleChargePast}
-        onPlanNextLessons={handlePlanNext}
-        onScheduleLesson={setScheduleFor}
-        onCreateInvoice={setInvoiceFor}
-        detailHrefBase="/students"
       />
-
-      {scheduleFor && (
-        <ScheduleLessonLauncher
-          student={scheduleFor}
-          instructors={instructors}
-          blocks={blocks}
-          onClose={() => setScheduleFor(null)}
-        />
-      )}
-
-      {weeklyFor && (
-        <StandingScheduleLauncher
-          student={weeklyFor}
-          instructors={instructors}
-          blocks={blocks}
-          onClose={() => setWeeklyFor(null)}
-          // A new slot materialises lessons, which the Day/Time column reads,
-          // and may have made a block, which the next open of the dialog needs.
-          onSaved={() => {
-            fetchLessons();
-            fetchLessonBlocks();
-          }}
-        />
-      )}
-
-      {billingFor && (
-        <LessonBillingLauncher
-          student={billingFor.student}
-          blocks={blocks}
-          instructors={instructors}
-          scope={billingFor.scope}
-          onClose={() => setBillingFor(null)}
-          // Settling a lesson clears its "taught, not paid" attention row.
-          onBilled={() => fetchAttention()}
-        />
-      )}
-
-      {invoiceFor && (
-        <InvoiceLauncher
-          student={invoiceFor}
-          onClose={() => setInvoiceFor(null)}
-        />
-      )}
 
       <StudentForm
         open={isFormOpen}

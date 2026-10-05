@@ -1,7 +1,7 @@
 /**
- * Pure helpers behind the student launchers and the student page: lesson
- * lengths, invoice inputs and block planning. Kept out of the .tsx files so
- * they can be unit tested on their own.
+ * Pure helpers behind the student page: lesson lengths, invoice inputs and
+ * block planning. Kept out of the .tsx files so they can be unit tested on
+ * their own.
  */
 import type {
   BlockStrategy,
@@ -17,13 +17,28 @@ import {
   lessonInvoiceLines,
   planBlockAttribution,
   newInvoiceLineId,
-  splitCentsEvenly,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
-import type {
-  CommitLessonsInvoiceInput,
-  CommitLessonsRecordPaidInput,
-} from '@maple/react/lessons';
+
+/** The lessons a block invoice is for, and what it comes to. */
+export interface BlockInvoiceLessons {
+  lessons: Array<Pick<Lesson, 'id' | 'scheduledAt' | 'durationMinutes'>>;
+  amountCents: number;
+  note?: string;
+}
+
+/** What a standing-schedule dialog submits. */
+export interface StandingScheduleSubmit {
+  teacherId: string;
+  blockId: string;
+  dayOfWeek: number;
+  startMinutes: number;
+  durationMinutes: number;
+  intervalWeeks: number;
+  startsOn: Date;
+  /** How to make room when no block covers the time (legacy #835). */
+  blockStrategy?: BlockStrategy;
+}
 
 /** Duration default from a student's registered lesson length. */
 export function defaultDurationFor(student: Student): 30 | 45 | 60 {
@@ -40,7 +55,7 @@ export function defaultDurationFor(student: Student): 30 | 45 | 60 {
  */
 export function blockInvoiceInput(
   student: Student,
-  { lessons, note }: CommitLessonsInvoiceInput,
+  { lessons, note }: BlockInvoiceLessons,
   rateByLength: LessonRateByLength,
 ): CreateInvoiceInput {
   return {
@@ -107,40 +122,5 @@ export function planFillBlock(
     blocked:
       plan.blocked ??
       'No teaching block can cover these times. Use Other dates to pick different ones.',
-  };
-}
-
-/**
- * The record of lessons the family already paid for outside Square: the same
- * lines as a block invoice, created paid. It never reaches Square, so nobody
- * is emailed a bill, and its lines stop the lessons being charged later.
- */
-export function paidLessonsInvoiceInput(
-  student: Student,
-  input: CommitLessonsRecordPaidInput,
-  rateByLength: LessonRateByLength
-): CreateInvoiceInput {
-  const atRate = blockInvoiceInput(student, input, rateByLength);
-  const rateTotal = atRate.lineItems.reduce((sum, l) => sum + l.subtotalCents, 0);
-  // Recorded at the rate unless Katie typed what was actually paid (often the
-  // case for history); then that total is split across the lessons, so the
-  // record matches the money that changed hands.
-  const lineItems =
-    input.amountCents === rateTotal
-      ? atRate.lineItems
-      : (() => {
-          const parts = splitCentsEvenly(input.amountCents, input.lessons.length);
-          const byId = new Map(input.lessons.map((l, i) => [l.id, parts[i]]));
-          return lessonInvoiceLines(
-            input.lessons,
-            (lesson) => byId.get(lesson.id) ?? 0,
-            newInvoiceLineId
-          );
-        })();
-  return {
-    ...atRate,
-    lineItems,
-    status: 'paid',
-    paidWith: input.paidWith,
   };
 }

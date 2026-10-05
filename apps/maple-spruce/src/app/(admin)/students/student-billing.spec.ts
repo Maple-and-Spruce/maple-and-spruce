@@ -3,7 +3,6 @@ import type { Instructor, LessonBlock, Student } from '@maple/ts/domain';
 import {
   blockInvoiceInput,
   defaultDurationFor,
-  paidLessonsInvoiceInput,
   planFillBlock,
 } from './student-billing';
 
@@ -55,31 +54,6 @@ describe('blockInvoiceInput', () => {
       ['b', 4000],
       ['c', 4000],
     ]);
-  });
-});
-
-describe('paidLessonsInvoiceInput', () => {
-  it('records the lessons paid, at the rate when the total matches', () => {
-    const input = paidLessonsInvoiceInput(
-      student,
-      { lessons, amountCents: 12000, paidWith: 'venmo-manual' },
-      {}
-    );
-
-    expect(input).toMatchObject({ status: 'paid', paidWith: 'venmo-manual' });
-    expect(input.lineItems.map((l) => l.subtotalCents)).toEqual([4000, 4000, 4000]);
-  });
-
-  it('spreads a different total across the lessons, to the cent', () => {
-    const input = paidLessonsInvoiceInput(
-      student,
-      { lessons, amountCents: 10000, paidWith: 'admin-manual' },
-      {}
-    );
-
-    const parts = input.lineItems.map((l) => l.subtotalCents);
-    expect(parts.reduce((a, b) => a + b, 0)).toBe(10000);
-    expect(input.lineItems.map((l) => l.lessonId)).toEqual(['a', 'b', 'c']);
   });
 });
 

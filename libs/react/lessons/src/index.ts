@@ -1,9 +1,4 @@
 export {
-  LessonList,
-  type LessonPendingAction,
-  type LessonRowAction,
-} from './lib/LessonList';
-export {
   LessonInquiryList,
   type LessonInquiryListProps,
 } from './lib/LessonInquiryList';
@@ -43,14 +38,6 @@ export {
   UpcomingChargesCard,
   type UpcomingChargesCardProps,
 } from './lib/UpcomingChargesCard';
-export {
-  CommitLessonsCard,
-  type CommitLessonsCardProps,
-  type CommitLessonsScope,
-  type CommitLessonsChargeInput,
-  type CommitLessonsInvoiceInput,
-  type CommitLessonsRecordPaidInput,
-} from './lib/CommitLessonsCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,
