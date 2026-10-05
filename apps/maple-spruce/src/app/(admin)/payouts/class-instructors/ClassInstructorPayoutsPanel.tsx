@@ -51,7 +51,7 @@ export function ClassInstructorPayoutsPanel() {
 
   return (
     <>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         Contract instructors get their pay rate (usually 80%) of what students paid for each class,
         after discounts and before sales tax. Each session is paid in the month it was held. Pay in
         Square Payroll or Bill Pay, then mark the statement paid here.

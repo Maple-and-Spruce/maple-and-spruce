@@ -1,9 +1,4 @@
 export {
-  LessonList,
-  type LessonPendingAction,
-  type LessonRowAction,
-} from './lib/LessonList';
-export {
   LessonInquiryList,
   type LessonInquiryListProps,
 } from './lib/LessonInquiryList';
@@ -25,6 +20,7 @@ export {
 } from './lib/BlockAttributionChoice';
 export {
   PaymentMethodCard,
+  describeCard,
   type PaymentMethodCardProps,
 } from './lib/PaymentMethodCard';
 export {
@@ -42,12 +38,6 @@ export {
   UpcomingChargesCard,
   type UpcomingChargesCardProps,
 } from './lib/UpcomingChargesCard';
-export {
-  CommitLessonsCard,
-  type CommitLessonsCardProps,
-  type CommitLessonsChargeInput,
-  type CommitLessonsInvoiceInput,
-} from './lib/CommitLessonsCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,
@@ -58,7 +48,16 @@ export {
   StandingScheduleDialog,
   type StandingScheduleDialogProps,
 } from './lib/StandingScheduleDialog';
-export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
+export {
+  HopeStudentBilling,
+  type HopeStudentBillingProps,
+  type HopeOrderRow,
+  type SaveHopeOrderDraft,
+} from './lib/HopeStudentBilling';
+export {
+  HopeProductsCard,
+  type HopeProductsCardProps,
+} from './lib/HopeProductsCard';
 export {
   NeedsAttentionPanel,
   type NeedsAttentionPanelProps,
@@ -67,7 +66,6 @@ export {
   BackfillLessonsDialog,
   type BackfillLessonsDialogProps,
 } from './lib/BackfillLessonsDialog';
-export { HopeRatesTable } from './lib/HopeRatesTable';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';
 export {
@@ -77,3 +75,25 @@ export {
   getHopeMonthlyEquivalentCents,
   formatCents,
 } from './lib/hope-rates';
+export {
+  NextLessonsPanel,
+  type NextLessonsPanelProps,
+} from './lib/NextLessonsPanel';
+export {
+  UpcomingLessonsCard,
+  UPCOMING_LESSONS_SHOWN,
+  type UpcomingLessonsCardProps,
+} from './lib/UpcomingLessonsCard';
+export {
+  LessonActivity,
+  type LessonActivityLabel,
+  type LessonActivityProps,
+} from './lib/LessonActivity';
+export {
+  buildNextLessons,
+  isLessonPaid,
+  newLessonKey,
+  paidThrough,
+  type NextLessonItem,
+  type NextLessonsView,
+} from '@maple/ts/domain';

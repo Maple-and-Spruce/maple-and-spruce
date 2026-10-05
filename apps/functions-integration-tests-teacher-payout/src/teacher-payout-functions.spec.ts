@@ -316,6 +316,14 @@ describe('payouts/getTeacherPayouts integration', () => {
         idToken: adminUser.idToken,
       });
 
+      // A Hope lesson still to come. A past one counts without being marked
+      // (#157), so this has to be genuinely in the future, and the query below
+      // reaches far enough to include it — otherwise "not paid" would be
+      // proved by the date range, not by the rule.
+      const upcomingAt = new Date(NOW.getTime() + 3 * 86_400_000);
+      // 13:00Z, off the 15:00Z hour every other lesson here uses, so it can
+      // never clash with one of them for the room whatever today's date is.
+      upcomingAt.setUTCHours(13, 0, 0, 0);
       const hopeScheduledOnly = await callFunction<
         CreateLessonRequest,
         CreateLessonResponse
@@ -324,14 +332,17 @@ describe('payouts/getTeacherPayouts integration', () => {
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,
-          scheduledAt: dayInCurrentMonth(17),
+          scheduledAt: upcomingAt,
           durationMinutes: 45,
           status: 'scheduled',
-          blockId: blockFor(primaryTeacherId, dayInCurrentMonth(17)),
+          blockId: blockFor(primaryTeacherId, upcomingAt),
         },
         idToken: adminUser.idToken,
       });
       expect(hopeScheduledOnly.status).toBe(200);
+      const queryTo = new Date(
+        Math.max(TO.getTime(), upcomingAt.getTime() + 86_400_000)
+      );
 
       // 5. Query payouts for April.
       const result = await callFunction<
@@ -339,7 +350,7 @@ describe('payouts/getTeacherPayouts integration', () => {
         GetTeacherPayoutsResponse
       >({
         functionName: 'payouts/getTeacherPayouts',
-        data: { from: FROM.toISOString(), to: TO.toISOString() },
+        data: { from: FROM.toISOString(), to: queryTo.toISOString() },
         idToken: adminUser.idToken,
       });
 
@@ -369,7 +380,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       expect(sub!.lines[0].asSubstitute).toBe(true);
       expect(sub!.lines[0].source).toBe('private-paid');
 
-      // Scheduled-but-not-rendered Hope lesson should NOT appear.
+      // A Hope lesson still to come should NOT appear.
       const allLessonIds = [
         ...(primary?.lines ?? []),
         ...(sub?.lines ?? []),

@@ -117,10 +117,12 @@ export function StandingScheduleCard({
           mb: active.length > 0 ? 2 : 0,
         }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{
+          alignItems: 'center'
+        }}>
           <EventRepeatIcon color="action" />
           <Typography variant="h6" component="h2">
-            Standing schedule
+            Weekly schedule
           </Typography>
         </Stack>
         <Button
@@ -129,35 +131,31 @@ export function StandingScheduleCard({
           onClick={onAdd}
           disabled={!loaded}
         >
-          Add a standing slot
+          Set a weekly time
         </Button>
       </Box>
-
       {pending && (
         <Stack
           spacing={0.5}
           sx={{ mt: 2 }}
           aria-busy="true"
-          aria-label="Loading standing schedule"
+          aria-label="Loading weekly schedule"
         >
           <Skeleton variant="text" width="55%" height={28} />
           <Skeleton variant="text" width="30%" />
         </Stack>
       )}
-
       {schedulesState.status === 'error' && (
         <Alert severity="error" sx={{ mt: 2 }}>
-          Could not load the standing schedule: {schedulesState.error}
+          Could not load the weekly schedule: {schedulesState.error}
         </Alert>
       )}
-
       {loaded && active.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
-          No standing schedule. Lessons for this student have to be created one
-          at a time, and nothing keeps them on the books.
+          No weekly time yet. Set one and the next 4 lessons go on the calendar
+          and stay topped up. Without it, lessons have to be added one by one.
         </Alert>
       )}
-
       <Stack spacing={1.5}>
         {active.map((schedule) => {
           const saving = pendingId === schedule.id;
@@ -177,7 +175,7 @@ export function StandingScheduleCard({
                   <strong>{describeSchedule(schedule)}</strong> ·{' '}
                   {schedule.durationMinutes} min · {teacherName(schedule.teacherId)}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="textSecondary">
                   Since {formatDate(schedule.startsOn)}
                   {schedule.endsOn && ` · until ${formatDate(schedule.endsOn)}`}
                   {schedule.room && ` · ${schedule.room}`}
@@ -212,21 +210,19 @@ export function StandingScheduleCard({
           );
         })}
       </Stack>
-
       {active.length > 0 && (
         <Typography
           variant="caption"
-          color="text.secondary"
+          color="textSecondary"
           sx={{ display: 'block', mt: 2 }}
         >
           Changing this applies to lessons from here on. Lessons already on the
           calendar stay where they are — move or cancel those individually.
         </Typography>
       )}
-
       {ended.length > 0 && (
         <Box sx={{ mt: 2 }}>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Previously
           </Typography>
           <Stack spacing={0.5} sx={{ mt: 0.5 }}>
@@ -235,10 +231,12 @@ export function StandingScheduleCard({
                 key={schedule.id}
                 direction="row"
                 spacing={1}
-                alignItems="center"
+                sx={{
+                  alignItems: 'center'
+                }}
               >
                 <Chip size="small" label="ended" variant="outlined" />
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   {describeSchedule(schedule)} · {schedule.durationMinutes} min
                   {schedule.endsOn && ` · through ${formatDate(schedule.endsOn)}`}
                 </Typography>

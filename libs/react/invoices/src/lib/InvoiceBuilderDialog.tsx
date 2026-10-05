@@ -47,6 +47,7 @@ import {
   canStillBillLesson,
   lessonBillingState,
   SCHEDULE_TIME_ZONE,
+  newInvoiceLineId,
 } from '@maple/ts/domain';
 import { invoiceValidation } from '@maple/ts/validation';
 import { formatCents } from '@maple/react/lessons';
@@ -79,21 +80,10 @@ interface InvoiceBuilderDialogProps {
 }
 
 /**
- * Stable client-side id for a line, so an edit can target the right one.
- *
- * Exported because the student page builds a one-line invoice of its own when
- * a taught lesson has not been billed (#101), and two id schemes for the same
- * field is how they drift apart.
+ * Re-exported from the domain, where it now lives so pure modules can use it
+ * without loading this component library (#158).
  */
-export function newInvoiceLineId(): string {
-  const cryptoObj: { randomUUID?: () => string } =
-    (globalThis as unknown as { crypto?: { randomUUID?: () => string } })
-      .crypto ?? {};
-  if (typeof cryptoObj.randomUUID === 'function') {
-    return cryptoObj.randomUUID();
-  }
-  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
+export { newInvoiceLineId };
 
 /**
  * When the lesson was, for a picker row. The shop's timezone, like every other
@@ -315,7 +305,7 @@ export function InvoiceBuilderDialog({
               gap: 1,
             }}
           >
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="overline" color="textSecondary">
               Line items
             </Typography>
             <Stack direction="row" spacing={1}>
@@ -344,7 +334,7 @@ export function InvoiceBuilderDialog({
           )}
 
           {lineItems.value.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               No line items yet. Click &quot;Add line&quot; or &quot;Add from
               lesson&quot; to start.
             </Typography>
@@ -381,7 +371,9 @@ export function InvoiceBuilderDialog({
                         quantity: Number.isFinite(n) ? n : 0,
                       });
                     }}
-                    inputProps={{ min: 0, step: '0.5' }}
+                    slotProps={{
+                      htmlInput: { min: 0, step: '0.5' }
+                    }}
                   />
                   <TextField
                     label="Rate"
@@ -396,18 +388,22 @@ export function InvoiceBuilderDialog({
                           : 0,
                       });
                     }}
-                    inputProps={{ min: 0, step: '0.01' }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">$</InputAdornment>
-                      ),
-                    }}
-                  />
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">$</InputAdornment>
+                        ),
+                      },
+
+                      htmlInput: { min: 0, step: '0.01' }
+                    }} />
                   <TextField
                     label="Subtotal"
                     size="small"
                     value={formatCents(line.subtotalCents)}
-                    InputProps={{ readOnly: true }}
+                    slotProps={{
+                      input: { readOnly: true }
+                    }}
                   />
                   <IconButton
                     size="small"
@@ -427,7 +423,7 @@ export function InvoiceBuilderDialog({
           <Box
             sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}
           >
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="overline" color="textSecondary">
               Total
             </Typography>
             <Typography variant="h6">
@@ -461,7 +457,7 @@ export function InvoiceBuilderDialog({
               Add lessons as lines
             </Typography>
             {eligibleLessons.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 No lessons to choose from.
               </Typography>
             ) : (
@@ -491,7 +487,7 @@ export function InvoiceBuilderDialog({
                           {lesson.status}
                         </Typography>
                         {billedBecause && (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="textSecondary">
                             {billedBecause}
                           </Typography>
                         )}

@@ -10,6 +10,7 @@
  */
 import { throwInvalidArgument } from '@maple/firebase/functions';
 import {
+  HopeProductRepository,
   InstructorRepository,
   InvoiceRepository,
   LessonRepository,
@@ -36,12 +37,10 @@ export async function getTeacherPayouts(
 
   // --- Gather raw data -------------------------------------------------
 
-  // Rendered lessons with scheduledAt in range — Hope-side source.
-  const lessonsInRange = await LessonRepository.findAll({
-    status: 'rendered',
-    from,
-    to,
-  });
+  // Lessons with scheduledAt in range — Hope-side source. Not filtered to
+  // 'rendered': a past lesson nobody removed happened (#157), and the
+  // aggregation decides that per lesson.
+  const lessonsInRange = await LessonRepository.findAll({ from, to });
 
   // All invoices — we filter by paidAt in range below since Firestore
   // doesn't index paidAt and the invoice volume is small.
@@ -73,12 +72,15 @@ export async function getTeacherPayouts(
 
   const students = await StudentRepository.findAll();
   const instructors = await InstructorRepository.findAll();
+  // A Hope lesson earns what EMA pays for the student's product.
+  const hopeProducts = await HopeProductRepository.findAll();
 
   const payouts = aggregateTeacherPayouts({
     lessons: [...lessonsInRange, ...extraLessons],
     paidInvoices,
     students,
     instructors,
+    hopeProducts,
     teacherIdFilter: data.teacherId,
   });
 

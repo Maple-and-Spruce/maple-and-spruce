@@ -86,6 +86,35 @@ export default [
       '@typescript-eslint/no-empty-function': 'warn',
       '@typescript-eslint/no-inferrable-types': 'warn',
       'no-case-declarations': 'warn',
+
+      // Rules that arrived with the ESLint 10 and eslint-plugin-sonarjs 4.2
+      // upgrade (2026-09-29) and flagged ~80 pre-existing spots. Warn for
+      // gradual adoption, same as above, so the dependency bump does not
+      // carry a refactor. `super-linear-regex` is sonarjs's successor to
+      // `slow-regex`, which was already a warning.
+      'preserve-caught-error': 'warn',
+      'no-useless-assignment': 'warn',
+      'sonarjs/super-linear-regex': 'warn',
+      'sonarjs/prefer-specific-assertions': 'warn',
+      'sonarjs/parameterized-tests': 'warn',
+      'sonarjs/no-floating-point-equality': 'warn',
+      'sonarjs/no-skipped-tests': 'warn',
+      'sonarjs/no-clear-text-protocols': 'warn',
+      'sonarjs/assertions-in-tests': 'warn',
+
+      // MUI 9: a component's `color` prop takes a name ('textSecondary',
+      // 'error'), not a palette path. 'text.secondary' / 'error.main' match
+      // nothing and render in the default colour, with no type error. Paths
+      // belong in sx: sx={{ color: 'grey.600' }}.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "JSXAttribute[name.name='color'] Literal[value=/^[a-zA-Z]+\\.[a-zA-Z0-9]+$/]",
+          message:
+            "MUI 9 ignores palette paths in the `color` prop. Use a name ('textSecondary', 'error') or move it to sx.",
+        },
+      ],
     },
   },
   {

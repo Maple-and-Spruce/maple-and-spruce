@@ -45,6 +45,8 @@ export {
 } from './lib/student-lesson-schedule.repository';
 export { LessonInquiryRepository } from './lib/lesson-inquiry.repository';
 export { HopeSubmissionRepository } from './lib/hope-submission.repository';
+export { HopeProductRepository } from './lib/hope-product.repository';
+export { HopeOrderRepository } from './lib/hope-order.repository';
 export {
   InvoiceRepository,
   type InvoiceFilters,

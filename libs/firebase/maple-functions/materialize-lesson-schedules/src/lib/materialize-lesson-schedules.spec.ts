@@ -37,7 +37,10 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-import { runMaterializeLessonSchedules } from './materialize-lesson-schedules';
+import {
+  materializeLessonSchedules,
+  runMaterializeLessonSchedules,
+} from './materialize-lesson-schedules';
 
 const NOW = new Date('2026-06-01T12:00:00Z'); // a Monday
 
@@ -74,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('runMaterializeLessonSchedules', () => {
-  it('fills the horizon with one lesson per week', async () => {
+  it('makes the next lessons, one per week', async () => {
     const result = await runMaterializeLessonSchedules(NOW, 4);
 
     expect(result.created).toBe(4);
@@ -104,14 +107,20 @@ describe('runMaterializeLessonSchedules', () => {
   });
 
   it('creates nothing on a second run', async () => {
-    // The whole scheme rests on this: a collision is the steady state, not an
-    // error. createWithId returns null when the id already exists.
-    mocks.createWithId.mockResolvedValue(null);
+    // The whole scheme rests on this: the lessons the first run made are the
+    // four ahead, so the second run has nothing to add.
+    await runMaterializeLessonSchedules(NOW, 4);
+    const made = mocks.createWithId.mock.calls.map(([id, payload]) => ({
+      id,
+      ...payload,
+    }));
+    mocks.createWithId.mockClear();
+    mocks.findLessons.mockResolvedValue(made);
 
     const result = await runMaterializeLessonSchedules(NOW, 4);
 
     expect(result.created).toBe(0);
-    expect(result.alreadyPresent).toBe(4);
+    expect(mocks.createWithId).not.toHaveBeenCalled();
   });
 
   it('does not refill a week that was cancelled', async () => {
@@ -182,7 +191,99 @@ describe('runMaterializeLessonSchedules', () => {
   });
 });
 
+describe('keeping four lessons ahead', () => {
+  /** A lesson this arrangement already made, `weeks` Tuesdays from NOW. */
+  const made = (weeks: number, status = 'scheduled') => ({
+    id: `made-${weeks}`,
+    studentId: 'student-1',
+    scheduleId: 'sched-1',
+    scheduledAt: new Date(
+      new Date('2026-06-02T20:00:00Z').getTime() + weeks * 7 * 86_400_000
+    ),
+    status,
+  });
+
+  it('keeps four upcoming lessons by default, not twelve weeks of them', async () => {
+    const result = await runMaterializeLessonSchedules(NOW);
+    expect(result.created).toBe(4);
+  });
+
+  it('tops up to four when some are already on the books', async () => {
+    mocks.findLessons.mockResolvedValue([made(0), made(1)]);
+
+    const result = await runMaterializeLessonSchedules(NOW);
+
+    expect(result.created).toBe(2);
+  });
+
+  it('never removes lessons when more than four are already ahead', async () => {
+    // Students scheduled under the old twelve-week horizon keep what they
+    // have; nothing is added until they are down to four.
+    mocks.findLessons.mockResolvedValue(
+      Array.from({ length: 12 }, (_, i) => made(i))
+    );
+
+    const result = await runMaterializeLessonSchedules(NOW);
+
+    expect(result.created).toBe(0);
+    expect(mocks.createWithId).not.toHaveBeenCalled();
+  });
+
+  it('pulls the next date in behind a cancelled week', async () => {
+    // Week 1 was skipped. Four lessons should still be happening, so the
+    // fifth Tuesday is added rather than leaving three.
+    mocks.findLessons.mockResolvedValue([
+      made(0),
+      made(1, 'cancelled'),
+      made(2),
+      made(3),
+    ]);
+
+    const result = await runMaterializeLessonSchedules(NOW);
+
+    expect(result.created).toBe(1);
+    expect(mocks.createWithId.mock.calls[0][0]).toContain('2026-06-30');
+  });
+
+  it('fills only the named arrangement when asked', async () => {
+    mocks.findSchedules.mockResolvedValue([
+      schedule,
+      { ...schedule, id: 'sched-2', studentId: 'student-1', startMinutes: 17 * 60 },
+    ]);
+
+    const result = await runMaterializeLessonSchedules(NOW, 4, 'sched-2');
+
+    expect(result.schedulesConsidered).toBe(1);
+    expect(result.created).toBe(4);
+    expect(
+      mocks.createWithId.mock.calls.every(([id]) => id.startsWith('sched-sched-2-'))
+    ).toBe(true);
+  });
+
+  it('keeps four ahead for a fortnightly student, not two', async () => {
+    mocks.findSchedules.mockResolvedValue([{ ...schedule, intervalWeeks: 2 }]);
+
+    const result = await runMaterializeLessonSchedules(NOW);
+
+    expect(result.created).toBe(4);
+  });
+});
+
 describe('room conflicts (legacy #841)', () => {
+  it('checks an arrangement with no room against Spruce, and books it there', async () => {
+    // The calendar puts a room-less lesson in Spruce, so the check has to look
+    // at Spruce too — or the lesson is written over whatever holds it (#156).
+    await runMaterializeLessonSchedules(NOW, 1);
+
+    expect(mocks.findConflictsForWindow).toHaveBeenCalledWith(
+      expect.objectContaining({ room: 'spruce' })
+    );
+    expect(mocks.createWithId).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ room: 'spruce' })
+    );
+  });
+
   it('skips an occurrence whose room is taken, and counts it', async () => {
     // This job runs unattended. Throwing would abandon every remaining
     // arrangement; writing anyway would double-book the room. So it skips,
@@ -204,5 +305,18 @@ describe('room conflicts (legacy #841)', () => {
 
     expect(result.created).toBe(0);
     expect(result.skippedRoomConflict).toBeGreaterThan(0);
+  });
+});
+
+describe('the daily schedule (#157)', () => {
+  it('books nothing: lessons are booked by hand, not generated', async () => {
+    mocks.findSchedules.mockClear();
+    mocks.createWithId.mockClear();
+
+    // onSchedule is mocked to hand back the handler itself.
+    await (materializeLessonSchedules as unknown as () => Promise<void>)();
+
+    expect(mocks.findSchedules).not.toHaveBeenCalled();
+    expect(mocks.createWithId).not.toHaveBeenCalled();
   });
 });

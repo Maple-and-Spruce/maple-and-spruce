@@ -192,9 +192,11 @@ export function RecordSaleDialog({
             onChange={(e) =>
               (quantitySold.value = parseInt(e.target.value, 10) || 0)
             }
-            inputProps={{ min: 1 }}
             required
             fullWidth
+            slotProps={{
+              htmlInput: { min: 1 }
+            }}
           />
 
           <TextField
@@ -206,14 +208,16 @@ export function RecordSaleDialog({
               overrideDollars.value = v === '' ? '' : parseFloat(v);
             }}
             helperText="Leave blank to use the product's current price."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">$</InputAdornment>
-              ),
-            }}
-            inputProps={{ step: 0.01, min: 0 }}
             fullWidth
-          />
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">$</InputAdornment>
+                ),
+              },
+
+              htmlInput: { step: 0.01, min: 0 }
+            }} />
 
           <TextField
             label="Sale date"
@@ -221,8 +225,10 @@ export function RecordSaleDialog({
             value={soldAtDate.value}
             onChange={(e) => (soldAtDate.value = e.target.value)}
             helperText="Leave blank to use today."
-            InputLabelProps={{ shrink: true }}
             fullWidth
+            slotProps={{
+              inputLabel: { shrink: true }
+            }}
           />
         </Box>
       </DialogContent>

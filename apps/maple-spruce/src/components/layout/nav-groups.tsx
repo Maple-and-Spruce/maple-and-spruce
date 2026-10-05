@@ -130,7 +130,7 @@ function roleNavGroups(
       label: 'Music Lessons',
       items: [
         {
-          label: 'My Day',
+          label: 'My Week',
           href: '/my-day',
           icon: <TodayIcon />,
           roles: ['lesson-teacher'],

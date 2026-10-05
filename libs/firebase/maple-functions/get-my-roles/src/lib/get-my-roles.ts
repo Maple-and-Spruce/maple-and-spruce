@@ -6,8 +6,16 @@
  * authentication but NO role — any logged-in user can ask about
  * themselves. The client uses this to gate navigation; enforcement
  * stays server-side in each function's role check.
+ *
+ * Also returns the instructor the login is linked to (#157), so a teacher's
+ * pages can default to their own students. It is a convenience for what to
+ * show first, never a permission: scoping is still enforced per function.
  */
-import { Functions, getUserRoles } from '@maple/firebase/functions';
+import {
+  Functions,
+  getUserRoles,
+  instructorIdForUser,
+} from '@maple/firebase/functions';
 import type {
   GetMyRolesRequest,
   GetMyRolesResponse,
@@ -21,6 +29,11 @@ export const getMyRoles = Functions.endpoint
       return { roles: [] };
     }
 
-    const roles = await getUserRoles(context.uid);
-    return { roles: roles as UserRole[] };
+    const [roles, instructorId] = await Promise.all([
+      getUserRoles(context.uid),
+      instructorIdForUser(context.uid),
+    ]);
+    return instructorId
+      ? { roles: roles as UserRole[], instructorId }
+      : { roles: roles as UserRole[] };
   });

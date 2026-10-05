@@ -5,6 +5,8 @@ import {
   planPrepayment,
   prepayableLessons,
   describePrepaymentProblem,
+  fillWeeklyLessonDates,
+  planNextLessons,
   unpaidTaughtLessons,
 } from './lesson-prepayment';
 import { planChargesForStudent } from './lesson-billing-rule';
@@ -465,12 +467,13 @@ describe('unpaidTaughtLessons (#128)', () => {
     ]);
   });
 
-  it('will not charge for a past lesson nobody marked taught', () => {
-    // Still `scheduled` a week later: as far as this system knows the teaching
-    // did not happen, and charging would invent the fact that it did.
+  it('owes a past lesson nobody marked taught — past means it happened (#157)', () => {
+    // Nobody marks lessons any more: one that was not removed took place.
     const lessons = [lesson('unmarked', -7, 'scheduled')];
 
-    expect(unpaidTaughtLessons(lessons, [], NOW)).toEqual([]);
+    expect(unpaidTaughtLessons(lessons, [], NOW).map((l) => l.id)).toEqual([
+      'unmarked',
+    ]);
   });
 
   it('leaves a cancelled lesson alone', () => {
@@ -575,12 +578,27 @@ describe('charging for teaching already given (#128)', () => {
     expect(outcome).toEqual({ ok: false, problem: 'already-covered' });
   });
 
-  it('refuses a past lesson nobody marked taught', () => {
+  it('charges for a past lesson nobody marked taught (#157)', () => {
     const outcome = planPrepayment(
       'stu-1',
       [lesson('unmarked', -7, 'scheduled')],
       [],
       { lessonIds: ['unmarked'] },
+      rate,
+      NOW
+    );
+
+    expect(outcome.ok && outcome.plan.lessons.map((l) => l.id)).toEqual([
+      'unmarked',
+    ]);
+  });
+
+  it('still refuses a cancelled past lesson', () => {
+    const outcome = planPrepayment(
+      'stu-1',
+      [lesson('called-off', -7, 'cancelled')],
+      [],
+      { lessonIds: ['called-off'] },
       rate,
       NOW
     );
@@ -605,5 +623,247 @@ describe('charging for teaching already given (#128)', () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     expect(outcome.plan.amountCents).toBe(RATE * 2);
+  });
+});
+
+describe('fillWeeklyLessonDates', () => {
+  // Tue Sep 29 2026, 5:00 PM Eastern (EDT, UTC-4).
+  const sep29 = new Date('2026-09-29T21:00:00Z');
+  const oct13 = new Date('2026-10-13T21:00:00Z');
+  const et = (d: Date) =>
+    d.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+  it('fills the weeks between and after, not the ones already booked', () => {
+    // Two lessons made by hand, a week apart from nothing: the next four
+    // weeks are Sep 29, Oct 6, Oct 13, Oct 20, so Oct 6 and Oct 20 are missing.
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: sep29 },
+      [
+        { scheduledAt: sep29, status: 'scheduled' },
+        { scheduledAt: oct13, status: 'scheduled' },
+      ],
+      2
+    );
+    expect(dates.map(et)).toEqual([
+      'Tue, Oct 6, 5:00 PM',
+      'Tue, Oct 20, 5:00 PM',
+    ]);
+  });
+
+  it('keeps the wall-clock time across the change back from daylight time', () => {
+    // Nov 1 2026 is the fall-back date: 5:00 PM stays 5:00 PM, which is a
+    // different UTC hour.
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: new Date('2026-10-27T21:00:00Z') },
+      [{ scheduledAt: new Date('2026-10-27T21:00:00Z'), status: 'scheduled' }],
+      1
+    );
+    expect(et(dates[0])).toBe('Tue, Nov 3, 5:00 PM');
+    expect(dates[0].toISOString()).toBe('2026-11-03T22:00:00.000Z');
+  });
+
+  it('treats a week with a moved lesson as booked', () => {
+    // The Oct 6 lesson was moved to the Monday; that week is still covered.
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: sep29 },
+      [
+        { scheduledAt: sep29, status: 'scheduled' },
+        { scheduledAt: new Date('2026-10-05T21:00:00Z'), status: 'scheduled' },
+      ],
+      1
+    );
+    expect(et(dates[0])).toBe('Tue, Oct 13, 5:00 PM');
+  });
+
+  it('refills a week whose lesson was cancelled', () => {
+    const dates = fillWeeklyLessonDates(
+      { scheduledAt: sep29 },
+      [
+        { scheduledAt: sep29, status: 'scheduled' },
+        { scheduledAt: new Date('2026-10-06T21:00:00Z'), status: 'cancelled' },
+      ],
+      1
+    );
+    expect(et(dates[0])).toBe('Tue, Oct 6, 5:00 PM');
+  });
+
+  it('asks for nothing when nothing is needed', () => {
+    expect(fillWeeklyLessonDates({ scheduledAt: sep29 }, [], 0)).toEqual([]);
+  });
+});
+
+describe('planNextLessons (#157)', () => {
+  // NOW is Tuesday 10 March 2026, 8:00 AM Eastern (EDT since the 8th).
+  // The weekly time is Tuesdays at 4:00 PM Eastern, i.e. 20:00Z.
+  const weekly = {
+    dayOfWeek: 2,
+    startMinutes: 16 * 60,
+    status: 'active' as const,
+    startsOn: new Date('2026-01-06T05:00:00Z'),
+    endsOn: undefined,
+    intervalWeeks: 1,
+  };
+  const at = (iso: string) => ({
+    id: iso,
+    scheduledAt: new Date(iso),
+    status: 'scheduled' as const,
+  });
+  const iso = (d: Date) => d.toISOString();
+
+  it('proposes the next four weekly dates when nothing is booked', () => {
+    const plan = planNextLessons(weekly, [], [], NOW);
+
+    expect(plan.booked).toEqual([]);
+    expect(plan.noSlot).toBe(false);
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-10T20:00:00.000Z',
+      '2026-03-17T20:00:00.000Z',
+      '2026-03-24T20:00:00.000Z',
+      '2026-03-31T20:00:00.000Z',
+    ]);
+  });
+
+  it('starts after today’s lesson once it has begun', () => {
+    // 4:25 PM, just after today's lesson: the next four start next week.
+    const afterLesson = new Date('2026-03-10T20:25:00Z');
+    const today = at('2026-03-10T20:00:00Z');
+
+    const plan = planNextLessons(
+      weekly,
+      [today],
+      [charge('paid-today', [today.id])],
+      afterLesson
+    );
+
+    expect(plan.booked).toEqual([]);
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-17T20:00:00.000Z',
+      '2026-03-24T20:00:00.000Z',
+      '2026-03-31T20:00:00.000Z',
+      '2026-04-07T20:00:00.000Z',
+    ]);
+  });
+
+  it('counts booked, unpaid lessons toward the four', () => {
+    const booked = [at('2026-03-17T20:00:00Z'), at('2026-03-24T20:00:00Z')];
+
+    const plan = planNextLessons(weekly, booked, [], NOW);
+
+    expect(plan.booked.map((l) => l.id)).toEqual(booked.map((l) => l.id));
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-31T20:00:00.000Z',
+      '2026-04-07T20:00:00.000Z',
+    ]);
+  });
+
+  it('books after lessons already paid for, not in front of them', () => {
+    const paid = [at('2026-03-17T20:00:00Z'), at('2026-03-24T20:00:00Z')];
+
+    const plan = planNextLessons(
+      weekly,
+      paid,
+      [charge('c1', paid.map((l) => l.id))],
+      NOW
+    );
+
+    expect(plan.booked).toEqual([]);
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-31T20:00:00.000Z',
+      '2026-04-07T20:00:00.000Z',
+      '2026-04-14T20:00:00.000Z',
+      '2026-04-21T20:00:00.000Z',
+    ]);
+  });
+
+  it('leaves out a lesson a live invoice already asks for', () => {
+    const invoiced = at('2026-03-17T20:00:00Z');
+
+    const plan = planNextLessons(
+      weekly,
+      [invoiced],
+      [],
+      NOW,
+      new Set([invoiced.id])
+    );
+
+    expect(plan.booked).toEqual([]);
+    expect(plan.toBook[0].toISOString()).toBe('2026-03-24T20:00:00.000Z');
+  });
+
+  it('keeps a biweekly student on their own weeks', () => {
+    const plan = planNextLessons(
+      { ...weekly, intervalWeeks: 2, startsOn: new Date('2026-03-03T05:00:00Z') },
+      [],
+      [],
+      NOW
+    );
+
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-17T20:00:00.000Z',
+      '2026-03-31T20:00:00.000Z',
+      '2026-04-14T20:00:00.000Z',
+      '2026-04-28T20:00:00.000Z',
+    ]);
+  });
+
+  it('stops at the weekly time’s end date', () => {
+    const plan = planNextLessons(
+      { ...weekly, endsOn: new Date('2026-03-25T04:00:00Z') },
+      [],
+      [],
+      NOW
+    );
+
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-10T20:00:00.000Z',
+      '2026-03-17T20:00:00.000Z',
+      '2026-03-24T20:00:00.000Z',
+    ]);
+  });
+
+  it('ignores a cancelled lesson when deciding where to start', () => {
+    const plan = planNextLessons(
+      weekly,
+      [{ ...at('2026-05-05T20:00:00Z'), status: 'cancelled' as const }],
+      [],
+      NOW
+    );
+
+    expect(plan.toBook[0].toISOString()).toBe('2026-03-10T20:00:00.000Z');
+  });
+
+  it('says there is no weekly time rather than inventing dates', () => {
+    const booked = [at('2026-03-17T20:00:00Z')];
+
+    expect(planNextLessons(undefined, booked, [], NOW)).toEqual({
+      booked,
+      toBook: [],
+      noSlot: true,
+    });
+    expect(
+      planNextLessons({ ...weekly, status: 'ended' }, [], [], NOW).noSlot
+    ).toBe(true);
+  });
+
+  it('proposes nothing new when four are already booked and unpaid', () => {
+    const booked = [
+      at('2026-03-17T20:00:00Z'),
+      at('2026-03-24T20:00:00Z'),
+      at('2026-03-31T20:00:00Z'),
+      at('2026-04-07T20:00:00Z'),
+      at('2026-04-14T20:00:00Z'),
+    ];
+
+    const plan = planNextLessons(weekly, booked, [], NOW);
+
+    expect(plan.booked).toHaveLength(4);
+    expect(plan.toBook).toEqual([]);
   });
 });

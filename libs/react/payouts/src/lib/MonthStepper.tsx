@@ -14,7 +14,9 @@ export interface MonthStepperProps {
 /** Step backwards and forwards one month at a time. Statements are monthly. */
 export function MonthStepper({ month, onChange }: MonthStepperProps) {
   return (
-    <Stack direction="row" alignItems="center" spacing={1}>
+    <Stack direction="row" spacing={1} sx={{
+      alignItems: 'center'
+    }}>
       <IconButton aria-label="Previous month" onClick={() => onChange(shiftMonth(month, -1))}>
         <ChevronLeftIcon />
       </IconButton>

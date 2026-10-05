@@ -60,7 +60,7 @@ function ProductCard({
                 by {artistName}
               </Typography>
             )}
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
               {product.squareCache.description || 'No description'}
             </Typography>
             <Typography variant="h5" color="primary" sx={{ mb: 1 }}>

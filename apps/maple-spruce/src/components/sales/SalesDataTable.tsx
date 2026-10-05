@@ -177,7 +177,12 @@ export function SalesDataTable({
         sx={{
           border: 'none',
           backgroundColor: surfaces.paper,
-          '--DataGrid-containerBackground': surfaces.tableHeader,
+          // MUI X 9 sets its theme variables from a later <style> rule with the
+          // same specificity as sx, so a plain sx variable loses. `&.MuiDataGrid-root`
+          // doubles the class and wins.
+          '&.MuiDataGrid-root': {
+            '--DataGrid-t-header-background-base': surfaces.tableHeader,
+          },
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: surfaces.tableHeader,
             borderBottom: `1px solid ${borders.subtle}`,

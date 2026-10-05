@@ -48,6 +48,26 @@ Brand colors for reference (use through MUI theme only):
 - Sage Green `#6B7B5E` - Primary/buttons
 - Warm Gray `#7A7A6E` - Body text
 
+## MUI 9 Gotchas (silent, no type error)
+
+These compile and render, just wrong:
+
+- **Typography `color` takes a name, not a palette path.** Use `color="textSecondary"`,
+  `"textPrimary"`, `"textDisabled"`, `"error"`, `"warning"`, `"success"`, `"primary"`.
+  A path like `"text.secondary"` or `"error.main"` matches nothing and falls back to the
+  default text colour. For any other colour, use `sx={{ color: 'grey.600' }}`.
+- **No system props.** `<Box mt={2}>`, `<Stack alignItems="center">` and
+  `<Typography fontWeight={500}>` are ignored. Put them in `sx`.
+- **Old prop names are ignored**, not rejected: `InputProps` / `inputProps` → `slotProps.input` /
+  `slotProps.htmlInput`, `MenuListProps` → `slotProps.list`, `PaperProps` → `slotProps.paper`,
+  `componentsProps` → `slotProps`.
+- **Data grid colours** come from `palette.DataGrid` (theme) and the
+  `--DataGrid-t-header-background-base` variable. A table that tints its header sets that
+  variable under `'&.MuiDataGrid-root'`, because a plain `sx` variable loses to MUI X's own
+  `<style>` rule.
+- **Date/time fields** are `MuiPickersOutlinedInput`, not `MuiOutlinedInput`, so input
+  styling in the theme has to cover both.
+
 ## Naming Conventions
 
 | Type | Convention | Example |

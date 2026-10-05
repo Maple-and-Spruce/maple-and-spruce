@@ -29,11 +29,11 @@ import {
   Typography,
 } from '@mui/material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
-import { PickersDay, type PickersDayProps } from '@mui/x-date-pickers/PickersDay';
+import { PickerDay, type PickerDayProps } from '@mui/x-date-pickers/PickerDay';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
 import type {
@@ -118,13 +118,13 @@ function isSameDay(a: Date, b: Date): boolean {
 // Custom PickersDay that visually highlights selected dates
 // ---------------------------------------------------------------------------
 function MultiSelectDay(
-  props: PickersDayProps<Date> & { selectedDates: Date[] }
+  props: PickerDayProps & { selectedDates: Date[] }
 ) {
   const { selectedDates, day, ...rest } = props;
   const isSelected = selectedDates.some((d) => isSameDay(d, day));
 
   return (
-    <PickersDay
+    <PickerDay
       {...rest}
       day={day}
       selected={isSelected}
@@ -798,8 +798,10 @@ export function ClassForm({
               onChange={(e) => (shortDescription.value = e.target.value)}
               error={!!getFieldError('shortDescription')}
               helperText={getFieldError('shortDescription') || 'Brief tagline for listings (max 160 chars)'}
-              inputProps={{ maxLength: 160 }}
               fullWidth
+              slotProps={{
+                htmlInput: { maxLength: 160 }
+              }}
             />
 
             {/* Full Description */}
@@ -1025,10 +1027,12 @@ export function ClassForm({
                   onChange={(e) => (durationMinutes.value = parseInt(e.target.value) || 0)}
                   error={!!getFieldError('durationMinutes')}
                   disabled={hasRegistrations}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">min</InputAdornment>,
-                  }}
                   sx={{ width: 130 }}
+                  slotProps={{
+                    input: {
+                      endAdornment: <InputAdornment position="end">min</InputAdornment>,
+                    }
+                  }}
                 />
               )}
               <TextField
@@ -1049,11 +1053,13 @@ export function ClassForm({
                 error={!!getFieldError('priceCents')}
                 helperText={getFieldError('priceCents')}
                 disabled={hasRegistrations}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                }}
                 sx={{ width: 120 }}
                 required
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }
+                }}
               />
             </Box>
 
@@ -1236,7 +1242,7 @@ export function ClassForm({
                 }
                 label="Enable friend referral program"
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+              <Typography variant="caption" color="textSecondary" sx={{ mt: -1 }}>
                 When enabled, every confirmed registration includes a unique
                 single-use code in the confirmation email that the customer
                 can share with a friend.
@@ -1255,14 +1261,16 @@ export function ClassForm({
                     helperText={
                       getFieldError('referralDiscount') ?? '1–100% off'
                     }
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">% off</InputAdornment>
-                      ),
-                    }}
-                    inputProps={{ min: 1, max: 100, step: 1 }}
                     sx={{ width: 200 }}
-                  />
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">% off</InputAdornment>
+                        ),
+                      },
+
+                      htmlInput: { min: 1, max: 100, step: 1 }
+                    }} />
                   <TextField
                     label="Code expires after"
                     type="number"
@@ -1273,14 +1281,16 @@ export function ClassForm({
                     }}
                     error={!!getFieldError('referralDiscount')}
                     helperText="1–365 days"
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">days</InputAdornment>
-                      ),
-                    }}
-                    inputProps={{ min: 1, max: 365, step: 1 }}
                     sx={{ width: 220 }}
-                  />
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">days</InputAdornment>
+                        ),
+                      },
+
+                      htmlInput: { min: 1, max: 365, step: 1 }
+                    }} />
                 </Box>
               )}
             </Box>

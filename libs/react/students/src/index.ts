@@ -1,4 +1,3 @@
-export { StudentList } from './lib/StudentList';
 export { StudentForm } from './lib/StudentForm';
 export { StudentPicker } from './lib/StudentPicker';
 export {
@@ -9,3 +8,5 @@ export {
   INSTRUMENT_LABELS,
   LESSON_LENGTH_LABELS,
 } from './lib/labels';
+export { StudentsByDay, type StudentsByDayProps } from './lib/StudentsByDay';
+export { groupStudentsByDay, type StudentDayGroup } from './lib/students-by-day';

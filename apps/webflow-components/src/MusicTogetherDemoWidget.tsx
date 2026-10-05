@@ -236,7 +236,7 @@ export function MusicTogetherDemoWidget({
         <Typography variant="h5" component="h2" gutterBottom>
           {heading}
         </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
           {intro}
         </Typography>
 
@@ -273,12 +273,12 @@ export function MusicTogetherDemoWidget({
                           <Typography variant="body1">
                             {formatDemoDateTime(demo.dateTime)}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="textSecondary">
                             {demo.location}
                           </Typography>
                           <Typography
                             variant="caption"
-                            color={demo.isFull ? 'warning.main' : 'text.secondary'}
+                            color={demo.isFull ? 'warning' : 'textSecondary'}
                           >
                             {spotsLabel(demo)}
                           </Typography>

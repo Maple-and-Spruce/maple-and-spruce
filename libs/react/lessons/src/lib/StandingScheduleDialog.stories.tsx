@@ -103,7 +103,7 @@ export const ConfirmsThePatternBeforeSaving: Story = {
     const canvas = within(canvasElement.ownerDocument.body);
     expect(
       await canvas.findByText(
-        /lessons will be kept on the books twelve weeks ahead/i,
+        /the next 4 lessons are kept on the calendar/i,
       ),
     ).toBeInTheDocument();
   },

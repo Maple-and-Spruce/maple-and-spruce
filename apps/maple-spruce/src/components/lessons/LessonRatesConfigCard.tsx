@@ -17,10 +17,9 @@ import { LESSON_LENGTH_LABELS } from '@maple/react/students';
 import { useLessonRatesConfig } from '@maple/react/data';
 
 /**
- * Settings card to manage the default private-pay lesson rates by length
- * (legacy #629). Used to auto-invoice a rendered lesson; per-student overrides live
- * on the student record. A blank tier means that length is never
- * auto-invoiced by default.
+ * Settings card for the studio default private-pay lesson rates by length
+ * (legacy #629). The fallback behind each teacher's per-instrument rates
+ * (`Instructor.lessonRates`); per-student overrides live on the student record.
  */
 export function LessonRatesConfigCard() {
   const { configState, saveConfig } = useLessonRatesConfig();
@@ -68,10 +67,11 @@ export function LessonRatesConfigCard() {
         <Typography variant="h6" gutterBottom>
           Lesson Rates (private-pay)
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Default per-lesson price by length. Used to auto-invoice a lesson when
-          it’s marked rendered; a student’s own rate (on their record) overrides
-          this. Leave a length blank to not auto-invoice it by default.
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+          The studio default per-lesson price by length. Each teacher&apos;s
+          own rates, set per instrument on the Instructors page, come first;
+          this fills in any lesson a teacher has not priced. A student&apos;s
+          own rate overrides both.
         </Typography>
 
         {configState.status === 'loading' && (

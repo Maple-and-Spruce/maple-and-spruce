@@ -333,10 +333,11 @@ export function MyWeek({
       <Stack
         direction="row"
         spacing={1}
-        alignItems="center"
-        flexWrap="wrap"
-        sx={{ mb: 2 }}
-      >
+        sx={{
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          mb: 2
+        }}>
         <IconButton aria-label="Previous week" onClick={onPrevWeek} size="small">
           <ChevronLeftIcon />
         </IconButton>
@@ -356,7 +357,7 @@ export function MyWeek({
         </Typography>
       </Stack>
     ) : (
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         Your recurring lessons and classes from the last few weeks, on a generic
         week. One-offs are hidden.
       </Typography>
@@ -403,7 +404,13 @@ export function MyWeek({
   }
 
   const toggles = (
-    <Stack direction="row" flexWrap="wrap" sx={{ mb: 2, gap: 1 }}>
+    <Stack
+      direction="row"
+      sx={{
+        flexWrap: 'wrap',
+        mb: 2,
+        gap: 1
+      }}>
       {CATEGORIES.map((cat) => {
         const on = !hidden.has(cat);
         return (
@@ -471,7 +478,7 @@ export function MyWeek({
                 {mode === 'this' && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
+                    color="textSecondary"
                     sx={{ display: 'block' }}
                   >
                     {date.toLocaleDateString(undefined, {
@@ -499,7 +506,7 @@ export function MyWeek({
               <Typography
                 key={h}
                 variant="caption"
-                color="text.secondary"
+                color="textSecondary"
                 sx={{
                   position: 'absolute',
                   top: (h - gridStart) * PX_PER_MIN - 8,

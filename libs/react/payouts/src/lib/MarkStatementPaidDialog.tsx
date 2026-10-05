@@ -100,7 +100,7 @@ export function MarkStatementPaidDialog({ statement, onClose, onSubmit }: MarkSt
       <DialogTitle>Mark statement paid</DialogTitle>
       <DialogContent>
         {statement && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             {statement.instructorName}, {formatMonth(statement.month)}:{' '}
             <strong>{formatMoney(statement.totalOwedCents)}</strong>. Pay it in Square first; this only
             records that you did.

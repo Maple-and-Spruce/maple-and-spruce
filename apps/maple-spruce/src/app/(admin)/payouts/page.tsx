@@ -83,7 +83,7 @@ function LessonTeacherPayouts() {
   return (
     <>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Combines paid private-pay invoice lines and rendered Hope
           Scholarship lessons. Compensation uses each instructor&apos;s
           configured pay rate. Payments to teachers happen outside of this
@@ -118,7 +118,7 @@ function LessonTeacherPayouts() {
 
       <Typography
         variant="overline"
-        color="text.secondary"
+        color="textSecondary"
         sx={{ display: 'block', mb: 1 }}
       >
         Period: {periodLabel}

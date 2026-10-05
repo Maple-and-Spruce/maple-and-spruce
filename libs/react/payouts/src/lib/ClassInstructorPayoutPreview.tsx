@@ -82,9 +82,10 @@ function PreviewCard({
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
-          alignItems={{ sm: 'center' }}
-          sx={{ mb: 1 }}
-        >
+          sx={{
+            alignItems: { sm: 'center' },
+            mb: 1
+          }}>
           <Typography variant="h6" component="h3" sx={{ flex: 1 }}>
             {preview.instructorName}
           </Typography>
@@ -92,7 +93,9 @@ function PreviewCard({
             <Chip size="small" icon={<WarningAmberIcon />} label="Rate not set" color="warning" variant="outlined" />
           )}
           {preview.existingStatement ? (
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: 'center'
+            }}>
               <Chip
                 size="small"
                 label={`Statement ${preview.existingStatement.status}`}
@@ -114,7 +117,7 @@ function PreviewCard({
         </Stack>
 
         {reason && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
             {reason}
           </Typography>
         )}
@@ -134,7 +137,7 @@ function PreviewCard({
             totalLabel={preview.existingStatement ? 'Not yet on a statement' : 'Total owed'}
           />
         ) : (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Everything this month is on the statement.
           </Typography>
         )}

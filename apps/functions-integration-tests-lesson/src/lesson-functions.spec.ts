@@ -5,6 +5,7 @@ import {
   setFirestoreDoc,
   callFunction,
   TRIGGER_WAIT_TIMEOUT_MS,
+  getFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import {
@@ -38,6 +39,13 @@ import type {
   GetHopeQueueRequest,
   GetHopeQueueResponse,
   RecordHopeSubmissionsRequest,
+  UpdateStudentRequest,
+  SaveHopeProductRequest,
+  SaveHopeOrderRequest,
+  SaveHopeOrderResponse,
+  SaveHopeProductResponse,
+  GetHopeProductsRequest,
+  GetHopeProductsResponse,
   RecordHopeSubmissionsResponse,
   CreateLessonBlockRequest,
   CreateLessonBlockResponse,
@@ -543,11 +551,13 @@ describe('Lesson Functions', () => {
     let seriesLessonIds: string[];
 
     it('creates a series atomically and returns shared seriesId', async () => {
+      // 17:00Z, clear of the ownership suite's 06-01 15:00Z lesson: the room
+      // is checked, and a series with no room is checked as Spruce (#156).
       const scheduledAts = [
-        new Date('2026-06-01T15:00:00Z'),
-        new Date('2026-06-08T15:00:00Z'),
-        new Date('2026-06-15T15:00:00Z'),
-        new Date('2026-06-22T15:00:00Z'),
+        new Date('2026-06-01T17:00:00Z'),
+        new Date('2026-06-08T17:00:00Z'),
+        new Date('2026-06-15T17:00:00Z'),
+        new Date('2026-06-22T17:00:00Z'),
       ];
 
       const result = await callFunction<
@@ -804,8 +814,15 @@ describe('Lesson Functions', () => {
 
   describe('Hope Scholarship submissions (legacy #799)', () => {
     let hopeStudentId: string;
+    // Each Hope lesson gets its own back-to-back slot that day. They all used
+    // to share one instant, which only worked while a lesson with no room
+    // skipped the room check (#156).
+    let hopeSlot = 0;
 
     async function hopeLesson(status: 'rendered' | 'no-show'): Promise<string> {
+      const scheduledAt = new Date(
+        new Date('2026-07-07T19:00:00Z').getTime() + hopeSlot++ * 30 * 60_000
+      );
       const created = await callFunction<
         CreateLessonRequest,
         CreateLessonResponse
@@ -814,10 +831,10 @@ describe('Lesson Functions', () => {
         data: {
           studentId: hopeStudentId,
           teacherId: TEACHER_ID,
-          scheduledAt: new Date('2026-07-07T19:00:00Z'),
+          scheduledAt,
           durationMinutes: 30,
           status: 'scheduled',
-          blockId: blockFor(TEACHER_ID, new Date('2026-07-07T19:00:00Z')),
+          blockId: blockFor(TEACHER_ID, scheduledAt),
         },
         idToken: adminUser.idToken,
       });
@@ -907,6 +924,16 @@ describe('Lesson Functions', () => {
 
     it('records a claim, then marks it paid keeping the claimed rate', async () => {
       const lessonId = await hopeLesson('rendered');
+      // Invoicing is against an EMA order; give this student one with room.
+      await setFirestoreDoc('hopeOrders', 'order-legacy-queue', {
+        studentId: hopeStudentId,
+        productId: 'prod-legacy',
+        priceCents: 4125,
+        lessonCount: 20,
+        orderedOn: new Date('2026-06-01T12:00:00Z'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
       await callFunction<
         RecordHopeSubmissionsRequest,
@@ -1435,6 +1462,299 @@ describe('Lesson Functions', () => {
       });
       expect(deleted.status).toBe(200);
       expect(deleted.data!.success).toBe(true);
+    });
+  });
+
+  describe('EMA products price Hope lessons', () => {
+    let pricedStudentId: string;
+    let productId: string;
+
+    beforeAll(async () => {
+      const res = await callFunction<CreateStudentRequest, CreateStudentResponse>({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'EMA Priced Kid',
+          instrument: 'guitar',
+          primaryContactEmail: 'emapriced@test.com',
+          isHopeScholarship: true,
+          // The old table priced this at $41.25; EMA pays $30.
+          registeredLessonLength: '30-min-full',
+        },
+        idToken: adminUser.idToken,
+      });
+      pricedStudentId = res.data!.student.id;
+    });
+
+    it('saves a product from the portal, and only for admins', async () => {
+      const product = {
+        emaProductId: '137571',
+        name: 'Standard Child Guitar Lesson 30 minutes',
+        priceCents: 3000,
+        active: true,
+      };
+
+      const refused = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: product,
+        idToken: nonAdminUser.idToken,
+      });
+      expect(refused.status).not.toBe(200);
+
+      const saved = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: product,
+        idToken: adminUser.idToken,
+      });
+      expect(saved.status).toBe(200);
+      productId = saved.data!.product.id;
+
+      const listed = await callFunction<GetHopeProductsRequest, GetHopeProductsResponse>({
+        functionName: 'hope/getHopeProducts',
+        data: {},
+        idToken: adminUser.idToken,
+      });
+      expect(listed.data!.products).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: productId, priceCents: 3000 }),
+        ])
+      );
+    });
+
+    it('refuses a product with no price', async () => {
+      const res = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: { emaProductId: '1', name: 'Nothing', priceCents: 0, active: true },
+        idToken: adminUser.idToken,
+      });
+      expect(res.status).not.toBe(200);
+    });
+
+    it("queues, claims and pays out the student's lessons at the product price", async () => {
+      await callFunction<UpdateStudentRequest>({
+        functionName: 'updateStudent',
+        data: { id: pricedStudentId, hopeProductId: productId },
+        idToken: adminUser.idToken,
+      });
+
+      const at = new Date('2026-07-08T19:00:00Z');
+      const created = await callFunction<CreateLessonRequest, CreateLessonResponse>({
+        functionName: 'createLesson',
+        data: {
+          studentId: pricedStudentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: at,
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(TEACHER_ID, at),
+        },
+        idToken: adminUser.idToken,
+      });
+      const lessonId = created.data!.lesson.id;
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: lessonId, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+
+      const queue = await callFunction<GetHopeQueueRequest, GetHopeQueueResponse>({
+        functionName: 'getHopeQueue',
+        data: { studentId: pricedStudentId },
+        idToken: adminUser.idToken,
+      });
+      const entry = queue.data!.entries.find((e) => e.lesson.id === lessonId);
+      expect(entry?.rateCents).toBe(3000);
+      expect(entry?.rateSource).toBe('product');
+
+      // Invoicing is against an EMA order for the product.
+      const ordered = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          studentId: pricedStudentId,
+          productId,
+          lessonCount: 4,
+          orderedOn: new Date('2026-07-01T12:00:00Z'),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(ordered.status).toBe(200);
+
+      const recorded = await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: { lessonIds: [lessonId], status: 'submitted' },
+        idToken: adminUser.idToken,
+      });
+      expect(recorded.data!.recordedLessonIds).toEqual([lessonId]);
+      const claim = await getFirestoreDoc('hopeSubmissions', lessonId);
+      expect(claim?.['rateCents']).toBe(3000);
+    });
+  });
+
+  describe('EMA orders gate Hope invoicing', () => {
+    let studentIdForOrders: string;
+    let productId: string;
+    const taught: string[] = [];
+
+    beforeAll(async () => {
+      const product = await callFunction<SaveHopeProductRequest, SaveHopeProductResponse>({
+        functionName: 'hope/saveHopeProduct',
+        data: {
+          emaProductId: '103772',
+          name: 'Suzuki Violin Lesson - 30 min',
+          priceCents: 3250,
+          active: true,
+        },
+        idToken: adminUser.idToken,
+      });
+      productId = product.data!.product.id;
+
+      const res = await callFunction<CreateStudentRequest, CreateStudentResponse>({
+        functionName: 'createStudent',
+        data: {
+          ...SAMPLE_STUDENT,
+          name: 'EMA Order Kid',
+          primaryContactEmail: 'emaorder@test.com',
+          isHopeScholarship: true,
+          hopeProductId: productId,
+        },
+        idToken: adminUser.idToken,
+      });
+      studentIdForOrders = res.data!.student.id;
+
+      for (const iso of [
+        '2026-07-14T19:00:00Z',
+        '2026-07-21T19:00:00Z',
+        '2026-07-28T19:00:00Z',
+      ]) {
+        const at = new Date(iso);
+        const created = await callFunction<CreateLessonRequest, CreateLessonResponse>({
+          functionName: 'createLesson',
+          data: {
+            studentId: studentIdForOrders,
+            teacherId: TEACHER_ID,
+            scheduledAt: at,
+            durationMinutes: 30,
+            status: 'scheduled',
+            blockId: blockFor(TEACHER_ID, at),
+          },
+          idToken: adminUser.idToken,
+        });
+        const id = created.data!.lesson.id;
+        await callFunction<UpdateLessonRequest>({
+          functionName: 'updateLesson',
+          data: { id, status: 'rendered' },
+          idToken: adminUser.idToken,
+        });
+        taught.push(id);
+      }
+    });
+
+    const queue = () =>
+      callFunction<GetHopeQueueRequest, GetHopeQueueResponse>({
+        functionName: 'getHopeQueue',
+        data: { studentId: studentIdForOrders },
+        idToken: adminUser.idToken,
+      });
+    const stateOf = (res: Awaited<ReturnType<typeof queue>>, id: string) =>
+      res.data!.entries.find((e) => e.lesson.id === id)?.state?.kind;
+
+    it('with no order, taught lessons need one and cannot be invoiced', async () => {
+      const before = await queue();
+      expect(taught.map((id) => stateOf(before, id))).toEqual([
+        'needs-order',
+        'needs-order',
+        'needs-order',
+      ]);
+
+      const refused = await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: { lessonIds: [taught[0]], status: 'submitted' },
+        idToken: adminUser.idToken,
+      });
+      expect(refused.data!.recordedLessonIds).toEqual([]);
+      expect(refused.data!.skipped[0].reason).toMatch(/Record the family’s order first/);
+    });
+
+    it('only admins can record an order', async () => {
+      const res = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          studentId: studentIdForOrders,
+          productId,
+          lessonCount: 2,
+          orderedOn: new Date('2026-07-01T12:00:00Z'),
+        },
+        idToken: nonAdminUser.idToken,
+      });
+      expect(res.status).not.toBe(200);
+    });
+
+    it('an order of two makes the two oldest ready, invoices them, and holds its count', async () => {
+      const saved = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          studentId: studentIdForOrders,
+          productId,
+          lessonCount: 2,
+          emaOrderId: '55501',
+          orderedOn: new Date('2026-07-01T12:00:00Z'),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(saved.status).toBe(200);
+      const order = saved.data!.order;
+      expect(order.priceCents).toBe(3250);
+
+      const after = await queue();
+      expect(taught.map((id) => stateOf(after, id))).toEqual([
+        'ready-to-invoice',
+        'ready-to-invoice',
+        'needs-order',
+      ]);
+      expect(after.data!.orders.find((o) => o.id === order.id)?.remaining).toBe(0);
+
+      const invoiced = await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: {
+          lessonIds: [taught[0], taught[1]],
+          status: 'submitted',
+          emaReference: 'INV-1',
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(invoiced.data!.recordedLessonIds).toEqual([taught[0], taught[1]]);
+      const claim = await getFirestoreDoc('hopeSubmissions', taught[0]);
+      expect(claim?.['orderId']).toBe(order.id);
+      expect(claim?.['rateCents']).toBe(3250);
+      expect(claim?.['emaReference']).toBe('INV-1');
+
+      const done = await queue();
+      expect(stateOf(done, taught[0])).toBe('invoiced');
+      expect(done.data!.totals.invoicedCount).toBe(2);
+      expect(done.data!.totals.needsOrderCount).toBe(1);
+
+      // Two lessons are invoiced against it in the portal; it cannot be for one.
+      const lowered = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          id: order.id,
+          studentId: studentIdForOrders,
+          productId,
+          lessonCount: 1,
+          orderedOn: new Date('2026-07-01T12:00:00Z'),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(lowered.status).not.toBe(200);
     });
   });
 });

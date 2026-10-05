@@ -9,7 +9,7 @@ export default function RoomSchedulePage() {
       <Typography variant="h4" component="h1" sx={{ mb: 1 }}>
         Spruce Room Schedule
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
         Every upcoming use of the Spruce Room — lessons, classes, and ad hoc
         bookings — so you can see when it&apos;s free to plan your own. Pick a
         time range below.

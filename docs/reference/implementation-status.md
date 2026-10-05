@@ -289,7 +289,7 @@ a weekly window a teacher's lessons must fall inside.
 | Week tab — calendar grid + This week / Typical week toggle (legacy #685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
 | **Openings tab — open chunks within blocks, read-only (legacy #687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
 | Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
-| My Day page (Today / Week / Openings tabs) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx` |
+| My Week page (Week / Today / Openings tabs; opens on Week, route stays `/my-day`) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx`, `apps/maple-spruce/src/components/my-day/MyWeekPageView.tsx` |
 | Needs Attention panel placement — collapsed on the dashboard and above the student table, not on My Day | **Complete** | `apps/maple-spruce/src/app/(admin)/page.tsx`, `apps/maple-spruce/src/app/(admin)/students/page.tsx` |
 
 ### Lesson Scheduling (legacy #279, Complete)
@@ -546,6 +546,9 @@ one card at the end of a lesson that carries the whole conversation.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | `LessonScheduledCharge` ledger + rules + daily `runLessonBilling` | **Complete** | Status lease, deterministic id keyed on the first lesson, `coveredLessonIds`; `triggerLessonBilling` is the admin-callable twin |
+| Booked lessons, not generated (#157, epic #156) | **In progress** | The weekly time books nothing; `planNextLessons` proposes "the next 4"; a past lesson nobody removed happened (`lessonHappened`) for past-lesson charging, the Hope queue and payouts — but needs-attention still flags only explicitly marked lessons, because unpaid past lessons are not problems to chase; daily auto-charge and auto-booking paused; `getMyRoles` returns `instructorId`; `tools/remove-unbooked-generated-lessons.ts` one-time cleanup. UI follows in #158–#162 |
+| Student page in three tabs (#158, epic #156) | **Complete** | **Next lessons** (default): one orienting line, the next 4 (`buildNextLessons`, skip/move), one button that books the missing dates then charges the card or, with no card, sends one invoice (`book-and-pay.ts`); Hope students book only. **Settings**: weekly time, at most 5 upcoming lessons to move or delete (a paid one warns), card on file. **Activity**: every lesson newest first, Paid/Invoiced labels, no label on an unpaid past lesson, charge or invoice from its row menu; billing table; Hope EMA billing. No Mark taught / No-show / Cancel anywhere on the page |
+| Students list by day (#159, epic #156) | **Complete** | `StudentsByDay`: one section per weekday from each student's **weekly time** (not booked lessons), earliest first, then "No regular time" and "Inactive"; today marked. Defaults to the signed-in teacher's students (`useRoles().instructorId`), with My students / Everyone's for an admin who teaches. A row opens Next lessons; the row menu is Edit / Delete only. Retired: the MRT `StudentList`, the row-action launchers, `CommitLessonsCard` and `LessonList` (all superseded by the student page tabs) |
 | Pay ahead at the desk (`chargeLessonsNow`) | **Complete** | `planPrepayment` is the one pure planner the screen and the function share |
 | Card charges actually reach Square (#99) | **Complete** | Idempotency key is `lc-` + a 64-bit FNV-1a of the charge id, 19 chars against Square's 45 limit; the mock server now enforces the limit too |
 | One failed charge no longer aborts the run (#100, #102) | **Complete** | `failed` is a covering status, plus a per-student `try/catch` and a `planningFailed` counter |

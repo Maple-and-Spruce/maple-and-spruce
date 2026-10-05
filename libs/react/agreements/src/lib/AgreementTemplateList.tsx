@@ -81,11 +81,13 @@ export function AgreementTemplateList({
           {templates.map((template) => (
             <TableRow key={template.id} hover>
               <TableCell>
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="body2" sx={{
+                  fontWeight: 600
+                }}>
                   {template.name}
                 </Typography>
                 {template.description && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="textSecondary">
                     {template.description}
                   </Typography>
                 )}

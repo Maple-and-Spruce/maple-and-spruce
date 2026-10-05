@@ -1,0 +1,230 @@
+diff --git a/dist/index.esm.js b/dist/index.esm.js
+index 10760aa3735013e87be8c1267b3fb04627522495..7a084d0d848b56f4267f806f63b843fb3506a34b 100644
+--- a/dist/index.esm.js
++++ b/dist/index.esm.js
+@@ -941,12 +941,12 @@ const MRT_RowActionMenu = (_a) => {
+     }, [renderRowActionMenuItems, row, staticRowIndex, table]);
+     if (!menuItems.length)
+         return null;
+-    return (jsx(Menu, Object.assign({ MenuListProps: {
++    return (jsx(Menu, Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: menuItems })));
++        } }, anchorEl: anchorEl, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: menuItems })));
+ };
+ 
+ const commonIconButtonStyles = {
+@@ -1229,11 +1229,11 @@ const MRT_SelectCheckbox = (_a) => {
+     const onSelectAllChange = getMRT_SelectAllHandler({ table });
+     const commonProps = Object.assign(Object.assign({ 'aria-label': selectAll
+             ? localization.toggleSelectAll
+-            : localization.toggleSelectRow, checked: isChecked, disabled: isLoading || (row && !row.getCanSelect()) || (row === null || row === void 0 ? void 0 : row.id) === 'mrt-row-create', inputProps: {
++            : localization.toggleSelectRow, checked: isChecked, disabled: isLoading || (row && !row.getCanSelect()) || (row === null || row === void 0 ? void 0 : row.id) === 'mrt-row-create', slotProps: { input: {
+             'aria-label': selectAll
+                 ? localization.toggleSelectAll
+                 : localization.toggleSelectRow,
+-        }, onChange: (event) => {
++        } }, onChange: (event) => {
+             event.stopPropagation();
+             selectAll ? onSelectAllChange(event) : onSelectionChange(event);
+         }, size: (density === 'compact' ? 'small' : 'medium') }, checkboxProps), { onClick: (e) => {
+@@ -2804,12 +2804,12 @@ const MRT_FilterOptionMenu = (_a) => {
+         onSelect === null || onSelect === void 0 ? void 0 : onSelect();
+     };
+     const filterOption = !!header && columnDef ? columnDef._filterFn : globalFilterFn;
+-    return (jsx(Menu, Object.assign({ MenuListProps: {
++    return (jsx(Menu, Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, anchorOrigin: { horizontal: 'right', vertical: 'center' }, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_e = (header && column && columnDef
++        } }, anchorEl: anchorEl, anchorOrigin: { horizontal: 'right', vertical: 'center' }, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_e = (header && column && columnDef
+             ? ((_d = (_c = columnDef.renderColumnFilterModeMenuItems) === null || _c === void 0 ? void 0 : _c.call(columnDef, {
+                 column: column,
+                 internalFilterOptions,
+@@ -2943,12 +2943,12 @@ const MRT_ColumnActionMenu = (_a) => {
+             ]
+             : []),
+     ].filter(Boolean);
+-    return (jsx(Menu, Object.assign({ MenuListProps: {
++    return (jsx(Menu, Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_l = (_k = (_j = columnDef.renderColumnActionsMenuItems) === null || _j === void 0 ? void 0 : _j.call(columnDef, {
++        } }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_l = (_k = (_j = columnDef.renderColumnActionsMenuItems) === null || _j === void 0 ? void 0 : _j.call(columnDef, {
+             closeMenu: () => setAnchorEl(null),
+             column,
+             internalColumnMenuItems,
+@@ -3837,12 +3837,12 @@ const MRT_CellActionMenu = (_a) => {
+         table,
+     };
+     const menuItems = (_c = (_b = columnDef.renderCellActionMenuItems) === null || _b === void 0 ? void 0 : _b.call(columnDef, renderActionProps)) !== null && _c !== void 0 ? _c : renderCellActionMenuItems === null || renderCellActionMenuItems === void 0 ? void 0 : renderCellActionMenuItems(renderActionProps);
+-    return ((!!(menuItems === null || menuItems === void 0 ? void 0 : menuItems.length) || !!(internalMenuItems === null || internalMenuItems === void 0 ? void 0 : internalMenuItems.length)) && (jsx(Menu, Object.assign({ MenuListProps: {
++    return ((!!(menuItems === null || menuItems === void 0 ? void 0 : menuItems.length) || !!(internalMenuItems === null || internalMenuItems === void 0 ? void 0 : internalMenuItems.length)) && (jsx(Menu, Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: actionCellRef.current, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: handleClose, open: !!cell, transformOrigin: { horizontal: -100, vertical: 8 } }, rest, { children: menuItems !== null && menuItems !== void 0 ? menuItems : internalMenuItems }))));
++        } }, anchorEl: actionCellRef.current, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: handleClose, open: !!cell, transformOrigin: { horizontal: -100, vertical: 8 } }, rest, { children: menuItems !== null && menuItems !== void 0 ? menuItems : internalMenuItems }))));
+ };
+ 
+ const MRT_EditRowModal = (_a) => {
+@@ -4123,7 +4123,7 @@ const MRT_ShowHideColumnsMenuItems = (_a) => {
+                             enableColumnOrdering &&
+                             !isNestedColumns &&
+                             (columnDef.enableColumnOrdering !== false ? (jsx(MRT_GrabHandleButton, { onDragEnd: handleDragEnd, onDragStart: handleDragStart, table: table })) : (jsx(Box, { sx: { width: '28px' } }))), enableColumnPinning &&
+-                            (column.getCanPin() ? (jsx(MRT_ColumnPinningButtons, { column: column, table: table })) : (jsx(Box, { sx: { width: '70px' } }))), enableHiding ? (jsx(FormControlLabel, { checked: switchChecked, componentsProps: {
++                            (column.getCanPin() ? (jsx(MRT_ColumnPinningButtons, { column: column, table: table })) : (jsx(Box, { sx: { width: '70px' } }))), enableHiding ? (jsx(FormControlLabel, { checked: switchChecked, slotProps: {
+                                 typography: {
+                                     sx: {
+                                         mb: 0,
+@@ -4165,12 +4165,12 @@ const MRT_ShowHideColumnsMenu = (_a) => {
+     const hasColumnOrderChanged = useMemo(() => columnOrder.length !== initialState.columnOrder.length ||
+         !columnOrder.every((column, index) => column === initialState.columnOrder[index]), [columnOrder, initialState.columnOrder]);
+     const [hoveredColumn, setHoveredColumn] = useState(null);
+-    return (jsxs(Menu, Object.assign({ MenuListProps: {
++    return (jsxs(Menu, Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: [jsxs(Box, { sx: {
++        } }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: [jsxs(Box, { sx: {
+                     display: 'flex',
+                     justifyContent: 'space-between',
+                     p: '0.5rem',
+@@ -4291,10 +4291,10 @@ const MRT_GlobalFilterTextField = (_a) => {
+         }
+         isMounted.current = true;
+     }, [globalFilter]);
+-    return (jsxs(Collapse, { in: showGlobalFilter, mountOnEnter: true, orientation: "horizontal", unmountOnExit: true, children: [jsx(TextField, Object.assign({ inputProps: Object.assign({ autoComplete: 'off' }, textFieldProps.inputProps), onChange: handleChange, placeholder: localization.search, size: "small", value: searchValue !== null && searchValue !== void 0 ? searchValue : '', variant: "outlined" }, textFieldProps, { InputProps: Object.assign(Object.assign({ endAdornment: (jsx(InputAdornment, { position: "end", children: jsx(Tooltip, { title: (_b = localization.clearSearch) !== null && _b !== void 0 ? _b : '', children: jsx("span", { children: jsx(IconButton, { "aria-label": localization.clearSearch, disabled: !(searchValue === null || searchValue === void 0 ? void 0 : searchValue.length), onClick: handleClear, size: "small", children: jsx(CloseIcon, {}) }) }) }) })), startAdornment: enableGlobalFilterModes ? (jsx(InputAdornment, { position: "start", children: jsx(Tooltip, { title: localization.changeSearchMode, children: jsx(IconButton, { "aria-label": localization.changeSearchMode, onClick: handleGlobalFilterMenuOpen, size: "small", sx: { height: '1.75rem', width: '1.75rem' }, children: jsx(SearchIcon, {}) }) }) })) : (jsx(SearchIcon, { style: { marginRight: '4px' } })) }, textFieldProps.InputProps), { sx: (theme) => {
++    return (jsxs(Collapse, { in: showGlobalFilter, mountOnEnter: true, orientation: "horizontal", unmountOnExit: true, children: [jsx(TextField, Object.assign({ onChange: handleChange, placeholder: localization.search, size: "small", value: searchValue !== null && searchValue !== void 0 ? searchValue : '', variant: "outlined" }, textFieldProps, { slotProps: { htmlInput: Object.assign({ autoComplete: 'off' }, textFieldProps.inputProps), input: Object.assign(Object.assign({ endAdornment: (jsx(InputAdornment, { position: "end", children: jsx(Tooltip, { title: (_b = localization.clearSearch) !== null && _b !== void 0 ? _b : '', children: jsx("span", { children: jsx(IconButton, { "aria-label": localization.clearSearch, disabled: !(searchValue === null || searchValue === void 0 ? void 0 : searchValue.length), onClick: handleClear, size: "small", children: jsx(CloseIcon, {}) }) }) }) })), startAdornment: enableGlobalFilterModes ? (jsx(InputAdornment, { position: "start", children: jsx(Tooltip, { title: localization.changeSearchMode, children: jsx(IconButton, { "aria-label": localization.changeSearchMode, onClick: handleGlobalFilterMenuOpen, size: "small", sx: { height: '1.75rem', width: '1.75rem' }, children: jsx(SearchIcon, {}) }) }) })) : (jsx(SearchIcon, { style: { marginRight: '4px' } })) }, textFieldProps.InputProps), { sx: (theme) => {
+                         var _a;
+                         return (Object.assign({ mb: 0 }, parseFromValuesOrFunc((_a = textFieldProps === null || textFieldProps === void 0 ? void 0 : textFieldProps.InputProps) === null || _a === void 0 ? void 0 : _a.sx, theme)));
+-                    } }), inputRef: (inputRef) => {
++                    } }) }, inputRef: (inputRef) => {
+                     searchInputRef.current = inputRef;
+                     if (textFieldProps === null || textFieldProps === void 0 ? void 0 : textFieldProps.inputRef) {
+                         textFieldProps.inputRef = inputRef;
+diff --git a/dist/index.js b/dist/index.js
+index 323342b2faef97192fcc29ae7e4f27e2931e90a8..15e238c47d433b3b3bb1b18cc694a4a8bf36672a 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1031,12 +1031,12 @@ const MRT_RowActionMenu = (_a) => {
+     }, [renderRowActionMenuItems, row, staticRowIndex, table]);
+     if (!menuItems.length)
+         return null;
+-    return (jsxRuntime.jsx(Menu__default["default"], Object.assign({ MenuListProps: {
++    return (jsxRuntime.jsx(Menu__default["default"], Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: menuItems })));
++        } }, anchorEl: anchorEl, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: menuItems })));
+ };
+ 
+ const commonIconButtonStyles = {
+@@ -1319,11 +1319,11 @@ const MRT_SelectCheckbox = (_a) => {
+     const onSelectAllChange = getMRT_SelectAllHandler({ table });
+     const commonProps = Object.assign(Object.assign({ 'aria-label': selectAll
+             ? localization.toggleSelectAll
+-            : localization.toggleSelectRow, checked: isChecked, disabled: isLoading || (row && !row.getCanSelect()) || (row === null || row === void 0 ? void 0 : row.id) === 'mrt-row-create', inputProps: {
++            : localization.toggleSelectRow, checked: isChecked, disabled: isLoading || (row && !row.getCanSelect()) || (row === null || row === void 0 ? void 0 : row.id) === 'mrt-row-create', slotProps: { input: {
+             'aria-label': selectAll
+                 ? localization.toggleSelectAll
+                 : localization.toggleSelectRow,
+-        }, onChange: (event) => {
++        } }, onChange: (event) => {
+             event.stopPropagation();
+             selectAll ? onSelectAllChange(event) : onSelectionChange(event);
+         }, size: (density === 'compact' ? 'small' : 'medium') }, checkboxProps), { onClick: (e) => {
+@@ -2894,12 +2894,12 @@ const MRT_FilterOptionMenu = (_a) => {
+         onSelect === null || onSelect === void 0 ? void 0 : onSelect();
+     };
+     const filterOption = !!header && columnDef ? columnDef._filterFn : globalFilterFn;
+-    return (jsxRuntime.jsx(Menu__default["default"], Object.assign({ MenuListProps: {
++    return (jsxRuntime.jsx(Menu__default["default"], Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, anchorOrigin: { horizontal: 'right', vertical: 'center' }, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_e = (header && column && columnDef
++        } }, anchorEl: anchorEl, anchorOrigin: { horizontal: 'right', vertical: 'center' }, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_e = (header && column && columnDef
+             ? ((_d = (_c = columnDef.renderColumnFilterModeMenuItems) === null || _c === void 0 ? void 0 : _c.call(columnDef, {
+                 column: column,
+                 internalFilterOptions,
+@@ -3033,12 +3033,12 @@ const MRT_ColumnActionMenu = (_a) => {
+             ]
+             : []),
+     ].filter(Boolean);
+-    return (jsxRuntime.jsx(Menu__default["default"], Object.assign({ MenuListProps: {
++    return (jsxRuntime.jsx(Menu__default["default"], Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_l = (_k = (_j = columnDef.renderColumnActionsMenuItems) === null || _j === void 0 ? void 0 : _j.call(columnDef, {
++        } }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: (_l = (_k = (_j = columnDef.renderColumnActionsMenuItems) === null || _j === void 0 ? void 0 : _j.call(columnDef, {
+             closeMenu: () => setAnchorEl(null),
+             column,
+             internalColumnMenuItems,
+@@ -3927,12 +3927,12 @@ const MRT_CellActionMenu = (_a) => {
+         table,
+     };
+     const menuItems = (_c = (_b = columnDef.renderCellActionMenuItems) === null || _b === void 0 ? void 0 : _b.call(columnDef, renderActionProps)) !== null && _c !== void 0 ? _c : renderCellActionMenuItems === null || renderCellActionMenuItems === void 0 ? void 0 : renderCellActionMenuItems(renderActionProps);
+-    return ((!!(menuItems === null || menuItems === void 0 ? void 0 : menuItems.length) || !!(internalMenuItems === null || internalMenuItems === void 0 ? void 0 : internalMenuItems.length)) && (jsxRuntime.jsx(Menu__default["default"], Object.assign({ MenuListProps: {
++    return ((!!(menuItems === null || menuItems === void 0 ? void 0 : menuItems.length) || !!(internalMenuItems === null || internalMenuItems === void 0 ? void 0 : internalMenuItems.length)) && (jsxRuntime.jsx(Menu__default["default"], Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: actionCellRef.current, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: handleClose, open: !!cell, transformOrigin: { horizontal: -100, vertical: 8 } }, rest, { children: menuItems !== null && menuItems !== void 0 ? menuItems : internalMenuItems }))));
++        } }, anchorEl: actionCellRef.current, disableScrollLock: true, onClick: (event) => event.stopPropagation(), onClose: handleClose, open: !!cell, transformOrigin: { horizontal: -100, vertical: 8 } }, rest, { children: menuItems !== null && menuItems !== void 0 ? menuItems : internalMenuItems }))));
+ };
+ 
+ const MRT_EditRowModal = (_a) => {
+@@ -4213,7 +4213,7 @@ const MRT_ShowHideColumnsMenuItems = (_a) => {
+                             enableColumnOrdering &&
+                             !isNestedColumns &&
+                             (columnDef.enableColumnOrdering !== false ? (jsxRuntime.jsx(MRT_GrabHandleButton, { onDragEnd: handleDragEnd, onDragStart: handleDragStart, table: table })) : (jsxRuntime.jsx(Box__default["default"], { sx: { width: '28px' } }))), enableColumnPinning &&
+-                            (column.getCanPin() ? (jsxRuntime.jsx(MRT_ColumnPinningButtons, { column: column, table: table })) : (jsxRuntime.jsx(Box__default["default"], { sx: { width: '70px' } }))), enableHiding ? (jsxRuntime.jsx(FormControlLabel__default["default"], { checked: switchChecked, componentsProps: {
++                            (column.getCanPin() ? (jsxRuntime.jsx(MRT_ColumnPinningButtons, { column: column, table: table })) : (jsxRuntime.jsx(Box__default["default"], { sx: { width: '70px' } }))), enableHiding ? (jsxRuntime.jsx(FormControlLabel__default["default"], { checked: switchChecked, slotProps: {
+                                 typography: {
+                                     sx: {
+                                         mb: 0,
+@@ -4255,12 +4255,12 @@ const MRT_ShowHideColumnsMenu = (_a) => {
+     const hasColumnOrderChanged = react.useMemo(() => columnOrder.length !== initialState.columnOrder.length ||
+         !columnOrder.every((column, index) => column === initialState.columnOrder[index]), [columnOrder, initialState.columnOrder]);
+     const [hoveredColumn, setHoveredColumn] = react.useState(null);
+-    return (jsxRuntime.jsxs(Menu__default["default"], Object.assign({ MenuListProps: {
++    return (jsxRuntime.jsxs(Menu__default["default"], Object.assign({ slotProps: { list: {
+             dense: density === 'compact',
+             sx: {
+                 backgroundColor: menuBackgroundColor,
+             },
+-        }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: [jsxRuntime.jsxs(Box__default["default"], { sx: {
++        } }, anchorEl: anchorEl, disableScrollLock: true, onClose: () => setAnchorEl(null), open: !!anchorEl }, rest, { children: [jsxRuntime.jsxs(Box__default["default"], { sx: {
+                     display: 'flex',
+                     justifyContent: 'space-between',
+                     p: '0.5rem',
+@@ -4381,10 +4381,10 @@ const MRT_GlobalFilterTextField = (_a) => {
+         }
+         isMounted.current = true;
+     }, [globalFilter]);
+-    return (jsxRuntime.jsxs(Collapse__default["default"], { in: showGlobalFilter, mountOnEnter: true, orientation: "horizontal", unmountOnExit: true, children: [jsxRuntime.jsx(TextField__default["default"], Object.assign({ inputProps: Object.assign({ autoComplete: 'off' }, textFieldProps.inputProps), onChange: handleChange, placeholder: localization.search, size: "small", value: searchValue !== null && searchValue !== void 0 ? searchValue : '', variant: "outlined" }, textFieldProps, { InputProps: Object.assign(Object.assign({ endAdornment: (jsxRuntime.jsx(InputAdornment__default["default"], { position: "end", children: jsxRuntime.jsx(Tooltip__default["default"], { title: (_b = localization.clearSearch) !== null && _b !== void 0 ? _b : '', children: jsxRuntime.jsx("span", { children: jsxRuntime.jsx(IconButton__default["default"], { "aria-label": localization.clearSearch, disabled: !(searchValue === null || searchValue === void 0 ? void 0 : searchValue.length), onClick: handleClear, size: "small", children: jsxRuntime.jsx(CloseIcon, {}) }) }) }) })), startAdornment: enableGlobalFilterModes ? (jsxRuntime.jsx(InputAdornment__default["default"], { position: "start", children: jsxRuntime.jsx(Tooltip__default["default"], { title: localization.changeSearchMode, children: jsxRuntime.jsx(IconButton__default["default"], { "aria-label": localization.changeSearchMode, onClick: handleGlobalFilterMenuOpen, size: "small", sx: { height: '1.75rem', width: '1.75rem' }, children: jsxRuntime.jsx(SearchIcon, {}) }) }) })) : (jsxRuntime.jsx(SearchIcon, { style: { marginRight: '4px' } })) }, textFieldProps.InputProps), { sx: (theme) => {
++    return (jsxRuntime.jsxs(Collapse__default["default"], { in: showGlobalFilter, mountOnEnter: true, orientation: "horizontal", unmountOnExit: true, children: [jsxRuntime.jsx(TextField__default["default"], Object.assign({ onChange: handleChange, placeholder: localization.search, size: "small", value: searchValue !== null && searchValue !== void 0 ? searchValue : '', variant: "outlined" }, textFieldProps, { slotProps: { htmlInput: Object.assign({ autoComplete: 'off' }, textFieldProps.inputProps), input: Object.assign(Object.assign({ endAdornment: (jsxRuntime.jsx(InputAdornment__default["default"], { position: "end", children: jsxRuntime.jsx(Tooltip__default["default"], { title: (_b = localization.clearSearch) !== null && _b !== void 0 ? _b : '', children: jsxRuntime.jsx("span", { children: jsxRuntime.jsx(IconButton__default["default"], { "aria-label": localization.clearSearch, disabled: !(searchValue === null || searchValue === void 0 ? void 0 : searchValue.length), onClick: handleClear, size: "small", children: jsxRuntime.jsx(CloseIcon, {}) }) }) }) })), startAdornment: enableGlobalFilterModes ? (jsxRuntime.jsx(InputAdornment__default["default"], { position: "start", children: jsxRuntime.jsx(Tooltip__default["default"], { title: localization.changeSearchMode, children: jsxRuntime.jsx(IconButton__default["default"], { "aria-label": localization.changeSearchMode, onClick: handleGlobalFilterMenuOpen, size: "small", sx: { height: '1.75rem', width: '1.75rem' }, children: jsxRuntime.jsx(SearchIcon, {}) }) }) })) : (jsxRuntime.jsx(SearchIcon, { style: { marginRight: '4px' } })) }, textFieldProps.InputProps), { sx: (theme) => {
+                         var _a;
+                         return (Object.assign({ mb: 0 }, parseFromValuesOrFunc((_a = textFieldProps === null || textFieldProps === void 0 ? void 0 : textFieldProps.InputProps) === null || _a === void 0 ? void 0 : _a.sx, theme)));
+-                    } }), inputRef: (inputRef) => {
++                    } }) }, inputRef: (inputRef) => {
+                     searchInputRef.current = inputRef;
+                     if (textFieldProps === null || textFieldProps === void 0 ? void 0 : textFieldProps.inputRef) {
+                         textFieldProps.inputRef = inputRef;

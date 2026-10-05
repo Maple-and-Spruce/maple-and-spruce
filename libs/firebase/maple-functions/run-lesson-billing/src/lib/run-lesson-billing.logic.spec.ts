@@ -209,6 +209,35 @@ describe('planCharges', () => {
     expect(createIfAbsent).not.toHaveBeenCalled();
   });
 
+  it("prices from the primary teacher's rate for the student's instrument", async () => {
+    const s1 = student();
+    await planCharges(
+      [s1],
+      deps({
+        teacherRatesById: new Map([
+          [
+            s1.primaryTeacherId,
+            { lessonRates: { [s1.instrument]: { '30-min-full': 4800 } } },
+          ],
+        ]),
+      })
+    );
+    expect(createIfAbsent.mock.calls[0][0].amountCents).toBe(4 * 4800);
+  });
+
+  it("uses the studio rate when the teacher has not priced the student's instrument", async () => {
+    const s1 = student();
+    await planCharges(
+      [s1],
+      deps({
+        teacherRatesById: new Map([
+          [s1.primaryTeacherId, { lessonRates: { harp: { '30-min-full': 9900 } } }],
+        ]),
+      })
+    );
+    expect(createIfAbsent.mock.calls[0][0].amountCents).toBe(4 * 4125);
+  });
+
   it('honours a per-student rate override', async () => {
     await planCharges([student({ lessonRateCents: 5000 })], deps());
     expect(createIfAbsent.mock.calls[0][0].amountCents).toBe(4 * 5000);

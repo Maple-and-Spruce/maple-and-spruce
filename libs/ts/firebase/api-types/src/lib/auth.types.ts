@@ -26,4 +26,10 @@ export type GetMyRolesRequest = Record<string, never>;
 /** Response from getMyRoles */
 export interface GetMyRolesResponse {
   roles: UserRole[];
+  /**
+   * The instructor this login is linked to, if any (#157). Lets a teacher's
+   * pages default to their own students. Absent for a login that teaches
+   * nothing — an admin who is not an instructor, a clerk.
+   */
+  instructorId?: string;
 }

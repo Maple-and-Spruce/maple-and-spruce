@@ -108,11 +108,12 @@ export function DemoFormDialog({
             type="datetime-local"
             value={dateTime}
             onChange={(e) => setDateTime(e.target.value)}
-            InputLabelProps={{ shrink: true }}
             required
             fullWidth
-            inputProps={{ 'aria-label': 'Demo date and time' }}
-          />
+            slotProps={{
+              htmlInput: { 'aria-label': 'Demo date and time' },
+              inputLabel: { shrink: true }
+            }} />
           <TextField
             label="Location"
             value={location}
@@ -120,7 +121,9 @@ export function DemoFormDialog({
             required
             fullWidth
             helperText="Often offsite — e.g. a public library. Shown to families and on the calendar."
-            inputProps={{ 'aria-label': 'Location' }}
+            slotProps={{
+              htmlInput: { 'aria-label': 'Location' }
+            }}
           />
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
@@ -129,7 +132,9 @@ export function DemoFormDialog({
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
               sx={{ flex: 1 }}
-              inputProps={{ 'aria-label': 'Capacity families', min: 1 }}
+              slotProps={{
+                htmlInput: { 'aria-label': 'Capacity families', min: 1 }
+              }}
             />
             <TextField
               label="Duration (minutes)"
@@ -139,7 +144,9 @@ export function DemoFormDialog({
               sx={{ flex: 1 }}
               placeholder={String(MT_CLASS_DURATION_MINUTES)}
               helperText={`Defaults to ${MT_CLASS_DURATION_MINUTES}`}
-              inputProps={{ 'aria-label': 'Duration minutes', min: 1 }}
+              slotProps={{
+                htmlInput: { 'aria-label': 'Duration minutes', min: 1 }
+              }}
             />
           </Box>
           <TextField

@@ -102,7 +102,7 @@ function CopyEmailsButton({ rsvps }: { rsvps: MusicTogetherDemoRsvp[] }) {
 function RsvpTable({ rsvps }: { rsvps: MusicTogetherDemoRsvp[] }) {
   if (rsvps.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ py: 1 }}>
         None yet.
       </Typography>
     );
@@ -243,7 +243,7 @@ export function DemoRsvpsDialog({
           <Alert severity="error">{demoRsvpsState.error}</Alert>
         )}
         {demoRsvpsState.status === 'success' && rendered.length === 0 && (
-          <Typography sx={{ p: 2 }} color="text.secondary">
+          <Typography sx={{ p: 2 }} color="textSecondary">
             No RSVPs yet.
           </Typography>
         )}

@@ -119,7 +119,9 @@ export function ClassInstructorStatementsList({
               </TableCell>
               <TableCell align="right">
                 {s.status === 'pending' && (
-                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                  <Stack direction="row" spacing={1} sx={{
+                    justifyContent: 'flex-end'
+                  }}>
                     <Button size="small" variant="contained" onClick={() => onMarkPaid(s)}>
                       Mark paid
                     </Button>

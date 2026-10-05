@@ -128,7 +128,6 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     expect(result.status).toBe(200);
     expect(result.data?.schedule.blockId).toBeTruthy();
-    expect(result.data?.lessonsCreated).toBeGreaterThan(0);
 
     const blocks = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
     const derived = blocks.find(

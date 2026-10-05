@@ -63,16 +63,21 @@ export function ClassInstructorStatementView({ statementState }: ClassInstructor
           This statement was voided and is kept for the record only.
         </Alert>
       )}
-
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          mb: 2
+        }}>
         <Box>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Maple &amp; Spruce · Instructor statement
           </Typography>
           <Typography variant="h4" component="h1">
             {statement.instructorName}
           </Typography>
-          <Typography variant="h6" component="p" color="text.secondary">
+          <Typography variant="h6" component="p" color="textSecondary">
             Classes held in {formatMonth(statement.month)}
           </Typography>
         </Box>
@@ -80,13 +85,11 @@ export function ClassInstructorStatementView({ statementState }: ClassInstructor
           <Chip label="Paid" color="success" sx={{ fontWeight: 700, fontSize: '1rem', px: 1 }} />
         )}
       </Stack>
-
       <Typography variant="body2" sx={{ mb: 2 }}>
         Your share is {formatRate(statement.payRate)} of what students paid for each class, after
         discounts and before sales tax. A class that runs across months is split evenly by session,
         and each session is paid in the month it was held.
       </Typography>
-
       <StatementLinesTable
         classes={statement.classes}
         adjustments={statement.adjustments}
@@ -94,7 +97,6 @@ export function ClassInstructorStatementView({ statementState }: ClassInstructor
         grossCents={statement.grossCents}
         totalOwedCents={statement.totalOwedCents}
       />
-
       {statement.status === 'paid' && statement.paidOn && (
         <>
           <Divider sx={{ my: 2 }} />
