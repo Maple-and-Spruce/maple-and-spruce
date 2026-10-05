@@ -123,7 +123,7 @@ function Group({
       <Collapse in={open}>
         <Typography
           variant="caption"
-          color="text.secondary"
+          color="textSecondary"
           sx={{ display: 'block', mb: 1 }}
         >
           {group.because}
@@ -143,7 +143,7 @@ function Group({
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="body2">{row.label}</Typography>
                 {row.detail && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="textSecondary">
                     {row.detail}
                   </Typography>
                 )}
@@ -177,12 +177,14 @@ export function NeedsAttentionPanel({
       >
         <Stack
           direction="row"
-          alignItems="baseline"
           spacing={1}
-          sx={{ flex: 1, flexWrap: 'wrap' }}
-        >
+          sx={{
+            alignItems: 'baseline',
+            flex: 1,
+            flexWrap: 'wrap'
+          }}>
           <Typography variant="h6">Needs attention</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             {total} thing{total === 1 ? '' : 's'}
           </Typography>
         </Stack>
@@ -194,7 +196,6 @@ export function NeedsAttentionPanel({
           {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
       </Box>
-
       <Collapse in={expanded}>
         <Box sx={{ mt: 1 }}>
           {scopedToSelf && (

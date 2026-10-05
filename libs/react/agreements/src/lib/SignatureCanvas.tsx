@@ -118,8 +118,14 @@ export const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvas
             }}
           />
         </Box>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 0.5 }}>
-          <Typography variant="caption" color={error ? 'error' : 'text.secondary'}>
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mt: 0.5
+          }}>
+          <Typography variant="caption" color={error ? 'error' : 'textSecondary'}>
             {helperText || 'Draw your signature above'}
           </Typography>
           <Button size="small" onClick={handleClear}>

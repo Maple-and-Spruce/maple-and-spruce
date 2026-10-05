@@ -140,7 +140,7 @@ function OrderDialog({
       <DialogTitle>{initial.id ? 'Edit EMA order' : 'Record an EMA order'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             From Purchases in the EMA portal. Taught lessons are invoiced
             against it oldest first.
           </Typography>
@@ -270,10 +270,13 @@ export function HopeStudentBilling({
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
       <Stack
         direction="row"
-        alignItems="center"
         spacing={1}
-        sx={{ mb: 1.5, flexWrap: 'wrap', rowGap: 1 }}
-      >
+        sx={{
+          alignItems: 'center',
+          mb: 1.5,
+          flexWrap: 'wrap',
+          rowGap: 1
+        }}>
         <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
           {studentName && studentHref ? (
             <Link href={studentHref} style={{ color: 'inherit' }}>
@@ -287,7 +290,6 @@ export function HopeStudentBilling({
           Record an order
         </Button>
       </Stack>
-
       <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
         <Chip
           size="small"
@@ -301,12 +303,13 @@ export function HopeStudentBilling({
         />
         <Chip size="small" variant="outlined" label={`${invoiced.length} invoiced`} />
       </Stack>
-
       {/* The orders, so "why can't I invoice this" answers itself. */}
       {orders.length > 0 ? (
         <Stack spacing={0.25} sx={{ mb: 2 }}>
           {orders.map((order) => (
-            <Stack key={order.id} direction="row" alignItems="center" spacing={1}>
+            <Stack key={order.id} direction="row" spacing={1} sx={{
+              alignItems: 'center'
+            }}>
               <Typography variant="body2" sx={{ flexGrow: 1 }}>
                 {order.emaOrderId ? `Order ${order.emaOrderId}` : 'Order'} ·{' '}
                 {order.lessonCount} lessons · {day(order.orderedOn)} ·{' '}
@@ -333,11 +336,10 @@ export function HopeStudentBilling({
           ))}
         </Stack>
       ) : (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           No EMA orders recorded yet.
         </Typography>
       )}
-
       {needsOrder.length > 0 && (
         <Alert
           severity="warning"
@@ -354,10 +356,14 @@ export function HopeStudentBilling({
           : {needsOrder.map((e) => day(e.lesson.scheduledAt)).join(', ')}.
         </Alert>
       )}
-
       {ready.length > 0 && (
         <Box sx={{ mb: 2 }}>
-          <Stack direction="row" alignItems="center" sx={{ mb: 0.5 }}>
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: 'center',
+              mb: 0.5
+            }}>
             <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
               Ready to invoice in the EMA portal
             </Typography>
@@ -403,9 +409,12 @@ export function HopeStudentBilling({
           <Stack
             direction="row"
             spacing={1}
-            alignItems="center"
-            sx={{ mt: 1, flexWrap: 'wrap', rowGap: 1 }}
-          >
+            sx={{
+              alignItems: 'center',
+              mt: 1,
+              flexWrap: 'wrap',
+              rowGap: 1
+            }}>
             <TextField
               size="small"
               label="EMA invoice # (optional)"
@@ -427,19 +436,16 @@ export function HopeStudentBilling({
           </Stack>
         </Box>
       )}
-
       {entries.length === 0 && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           No taught lessons yet. Marking a lesson taught puts it here.
         </Typography>
       )}
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
       {invoiced.length > 0 && (
         <>
           <Button size="small" onClick={() => setShowInvoiced((v) => !v)}>
@@ -451,7 +457,7 @@ export function HopeStudentBilling({
                 <Typography
                   key={entry.lesson.id}
                   variant="body2"
-                  color="text.secondary"
+                  color="textSecondary"
                 >
                   {day(entry.lesson.scheduledAt)} ·{' '}
                   {formatHopePrice(entry.submission?.rateCents ?? entry.rateCents)}
@@ -463,7 +469,6 @@ export function HopeStudentBilling({
           </Collapse>
         </>
       )}
-
       {editing && (
         <OrderDialog
           initial={editing}

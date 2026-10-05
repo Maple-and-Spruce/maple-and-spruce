@@ -700,7 +700,7 @@ export function ArtistCard({ artist, onClick }: ArtistCardProps) {
           <Avatar>{artist.name[0]}</Avatar>
           <Box>
             <Typography variant="h6">{artist.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {artist.email}
             </Typography>
           </Box>
@@ -791,7 +791,7 @@ export class NotFoundError extends AppError {
 
 import { useEffect } from 'react';
 import { Button, Typography, Box, Paper } from '@mui/material';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 
 export default function Error({
   error,
@@ -816,7 +816,7 @@ export default function Error({
         <Typography variant="h5" gutterBottom>
           Something went wrong
         </Typography>
-        <Typography color="text.secondary" mb={3}>
+        <Typography color="textSecondary" sx={{ mb: 3 }}>
           We're sorry, but something unexpected happened.
         </Typography>
         <Button variant="contained" onClick={reset}>

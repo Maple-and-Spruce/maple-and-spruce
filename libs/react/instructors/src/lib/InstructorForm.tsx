@@ -434,9 +434,9 @@ export function InstructorForm({
             onChange={(_, newValue) => {
               specialties.value = newValue;
             }}
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((option, index) => {
-                const { key, ...props } = getTagProps({ index });
+                const { key, ...props } = getItemProps({ index });
                 return (
                   <Chip
                     key={key}

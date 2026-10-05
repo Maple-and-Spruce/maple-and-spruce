@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { batch, useSignal, useSignals } from '@maple/react/signals';
 
 export interface PeriodPickerProps {
@@ -73,12 +73,14 @@ export function PeriodPicker({ from, to, onChange }: PeriodPickerProps) {
     <Box>
       <Typography
         variant="overline"
-        color="text.secondary"
+        color="textSecondary"
         sx={{ display: 'block', mb: 1 }}
       >
         Period
       </Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-start">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{
+        alignItems: 'flex-start'
+      }}>
         <ButtonGroup size="small" variant="outlined">
           <Button
             onClick={selectPreviousMonth}

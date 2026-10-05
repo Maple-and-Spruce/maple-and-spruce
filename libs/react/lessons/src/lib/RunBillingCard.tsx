@@ -75,32 +75,36 @@ export function RunBillingCard({
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          mb: 1.5
+        }}>
         <PlayArrowIcon fontSize="small" color="action" />
         <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
           Run the billing job
         </Typography>
       </Stack>
-
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         The job runs itself each morning. Preview reports exactly what it would
         do and writes nothing, which is how to check a new rule without finding
         out by charging somebody.
       </Typography>
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
       {!hasRules && (
         <Alert severity="info" sx={{ mb: 2 }}>
           There are no rules yet, so a run would consider nobody.
         </Alert>
       )}
-
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack direction="row" spacing={1} useFlexGap sx={{
+        flexWrap: 'wrap'
+      }}>
         <Button
           variant="contained"
           disabled={busy || !hasRules}
@@ -116,7 +120,6 @@ export function RunBillingCard({
           Run it now
         </Button>
       </Stack>
-
       {result && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -130,13 +133,13 @@ export function RunBillingCard({
                   <Typography
                     variant="body2"
                     sx={{ minWidth: 200 }}
-                    color="text.secondary"
+                    color="textSecondary"
                   >
                     {label}
                   </Typography>
                   <Typography
                     variant="body2"
-                    color={warn && value > 0 ? 'error.main' : 'text.primary'}
+                    color={warn && value > 0 ? 'error' : 'textPrimary'}
                     sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}
                   >
                     {value}
@@ -162,7 +165,6 @@ export function RunBillingCard({
           )}
         </Box>
       )}
-
       <Dialog open={confirming} onClose={() => setConfirming(false)} fullWidth maxWidth="sm">
         <DialogTitle>Run the billing job now?</DialogTitle>
         <DialogContent>

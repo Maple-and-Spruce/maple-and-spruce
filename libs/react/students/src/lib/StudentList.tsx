@@ -211,7 +211,9 @@ function RowActionsMenu({
   ].filter(Boolean);
 
   return (
-    <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+    <Stack direction="row" spacing={0.25} sx={{
+      justifyContent: 'flex-end'
+    }}>
       <Tooltip title="Edit student">
         <IconButton
           size="small"
@@ -368,7 +370,7 @@ export function StudentList({
               <Typography
                 component="span"
                 variant="caption"
-                color="text.secondary"
+                color="textSecondary"
                 noWrap
                 sx={{ display: 'block', lineHeight: 1.35 }}
               >
@@ -376,7 +378,7 @@ export function StudentList({
               </Typography>
             </Box>
           ) : (
-            <Typography component="span" variant="body2" color="text.secondary">
+            <Typography component="span" variant="body2" color="textSecondary">
               —
             </Typography>
           ),
@@ -399,7 +401,7 @@ export function StudentList({
               <Typography
                 component="span"
                 variant="caption"
-                color="text.secondary"
+                color="textSecondary"
                 noWrap
                 sx={{ display: 'block', lineHeight: 1.35 }}
               >
@@ -427,7 +429,7 @@ export function StudentList({
             <Typography
               component="span"
               variant="caption"
-              color="text.secondary"
+              color="textSecondary"
               noWrap
               sx={{ display: 'block', lineHeight: 1.35 }}
             >

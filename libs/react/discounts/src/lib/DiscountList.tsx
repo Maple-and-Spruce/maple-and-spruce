@@ -115,8 +115,10 @@ export function DiscountList({
                   discount.cutoffDate && (
                     <Typography
                       variant="caption"
-                      display="block"
-                      color="text.secondary"
+                      color="textSecondary"
+                      sx={{
+                        display: 'block'
+                      }}
                     >
                       Before {formatDate(discount.cutoffDate)}
                     </Typography>
@@ -124,8 +126,10 @@ export function DiscountList({
                 {discount.expiresAt && (
                   <Typography
                     variant="caption"
-                    display="block"
-                    color="text.secondary"
+                    color="textSecondary"
+                    sx={{
+                      display: 'block'
+                    }}
                   >
                     Expires {formatDate(discount.expiresAt)}
                   </Typography>

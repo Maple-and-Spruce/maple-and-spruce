@@ -67,7 +67,7 @@ export function LessonRatesConfigCard() {
         <Typography variant="h6" gutterBottom>
           Lesson Rates (private-pay)
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           The studio default per-lesson price by length. Each teacher&apos;s
           own rates, set per instrument on the Instructors page, come first;
           this fills in any lesson a teacher has not priced. A student&apos;s

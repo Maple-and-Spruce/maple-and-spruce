@@ -134,9 +134,11 @@ function InquiryRow({
           <Stack
             direction="row"
             spacing={1}
-            alignItems="center"
-            sx={{ flexWrap: 'wrap', gap: 1 }}
-          >
+            sx={{
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 1
+            }}>
             <Typography variant="h6" component="span">
               {inquiry.contactName}
             </Typography>
@@ -160,7 +162,7 @@ function InquiryRow({
             )}
           </Stack>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
             <Link href={`mailto:${inquiry.email}`}>{inquiry.email}</Link>
             {inquiry.phone && (
               <>
@@ -181,7 +183,7 @@ function InquiryRow({
           )}
 
           {inquiry.availability.length > 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
               Available: {inquiry.availability.join(', ')}
             </Typography>
           )}
@@ -190,13 +192,13 @@ function InquiryRow({
             <Typography
               variant="body2"
               sx={{ mt: 0.5, fontStyle: 'italic' }}
-              color="text.secondary"
+              color="textSecondary"
             >
               &ldquo;{inquiry.message}&rdquo;
             </Typography>
           )}
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+          <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
             {inquiry.formName} · {formatSubmitted(inquiry.submittedAt)}
             {waiting > 0 && ` · waiting ${waiting} day${waiting === 1 ? '' : 's'}`}
             {inquiry.attribution.utmSource &&
@@ -210,7 +212,9 @@ function InquiryRow({
           )}
         </Box>
 
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{
+          alignItems: 'center'
+        }}>
           {primary && (
             <Button
               variant="contained"
@@ -310,7 +314,7 @@ export function LessonInquiryList({
       </Tabs>
 
       {visible.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+        <Typography color="textSecondary" sx={{ py: 3, textAlign: 'center' }}>
           {tab === 'open'
             ? 'Nothing waiting. Every inquiry has been dealt with.'
             : 'Nothing here yet.'}

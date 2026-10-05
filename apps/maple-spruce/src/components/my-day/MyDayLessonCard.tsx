@@ -99,7 +99,7 @@ export function MyDayLessonCard({
             <Typography variant="body1" component="span">
               {studentName}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {lesson.durationMinutes}-min lesson
             </Typography>
           </Box>
@@ -114,9 +114,12 @@ export function MyDayLessonCard({
         <Stack
           direction="row"
           spacing={1}
-          sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}
-          alignItems="center"
-        >
+          sx={{
+            alignItems: 'center',
+            mt: 2,
+            flexWrap: 'wrap',
+            gap: 1
+          }}>
           {isScheduled && (
             <Button
               variant="contained"
@@ -169,7 +172,7 @@ export function MyDayLessonCard({
 
           {isUnpaid && invoice && (
             <>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatCents(invoice.totalCents)} due
               </Typography>
               <Button
@@ -206,7 +209,7 @@ export function MyDayLessonCard({
           )}
 
           {!invoice && !isScheduled && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               No invoice yet.
             </Typography>
           )}

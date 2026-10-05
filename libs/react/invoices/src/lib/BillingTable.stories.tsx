@@ -69,9 +69,15 @@ const failedBlock = charge({
 });
 
 const invoices = (data: Invoice[]) =>
-  ({ status: 'success', data }) as RequestState<Invoice[]>;
+  (({
+    status: 'success',
+    data
+  }) as RequestState<Invoice[]>);
 const charges = (data: LessonScheduledCharge[]) =>
-  ({ status: 'success', data }) as RequestState<LessonScheduledCharge[]>;
+  (({
+    status: 'success',
+    data
+  }) as RequestState<LessonScheduledCharge[]>);
 
 const meta = {
   component: BillingTable,

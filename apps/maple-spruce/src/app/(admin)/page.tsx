@@ -189,7 +189,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
           ) : upcomingClasses.length === 0 ? (
             <Card variant="outlined">
               <CardContent>
-                <Typography color="text.secondary">
+                <Typography color="textSecondary">
                   No classes scheduled this week
                 </Typography>
               </CardContent>
@@ -217,7 +217,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
                           <Typography variant="subtitle2">
                             {c.name}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="textSecondary">
                             {c.sessions?.[0] && formatShortDate(
                               c.sessions[0].dateTime instanceof Date
                                 ? c.sessions[0].dateTime
@@ -273,7 +273,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
           ) : recentRegistrations.length === 0 ? (
             <Card variant="outlined">
               <CardContent>
-                <Typography color="text.secondary">
+                <Typography color="textSecondary">
                   No registrations this week
                 </Typography>
               </CardContent>
@@ -298,7 +298,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
                         <Typography variant="subtitle2">
                           {r.customerName}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="textSecondary">
                           {classNameMap.get(r.classId) ?? 'Unknown class'}{' '}
                           &middot; {formatShortDate(r.createdAt)}
                         </Typography>
@@ -340,7 +340,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
           ) : lowStockProducts.length === 0 ? (
             <Card variant="outlined">
               <CardContent>
-                <Typography color="text.secondary">
+                <Typography color="textSecondary">
                   All products well-stocked
                 </Typography>
               </CardContent>
@@ -408,7 +408,7 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
                       {pendingConflicts} sync conflict
                       {pendingConflicts !== 1 ? 's' : ''} pending
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="textSecondary">
                       Review and resolve inventory discrepancies
                     </Typography>
                   </Box>

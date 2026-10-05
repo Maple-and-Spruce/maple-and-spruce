@@ -555,7 +555,7 @@ export function StudentForm({
           <Divider />
 
           {/* Primary contact — section header reflects adult-student flag */}
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             {isAdultStudent.value ? 'Contact' : 'Parent / guardian'}
           </Typography>
           <TextField
@@ -589,7 +589,7 @@ export function StudentForm({
           <Divider />
 
           {/* Secondary contact */}
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Secondary contact (optional)
           </Typography>
           <TextField
@@ -613,7 +613,7 @@ export function StudentForm({
           <Divider />
 
           {/* Payment */}
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Payment (optional)
           </Typography>
           <TextField

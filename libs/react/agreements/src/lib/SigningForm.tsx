@@ -18,7 +18,7 @@ import {
   FormHelperText,
   Switch,
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import {
   useSignal,
   useComputed,
@@ -207,11 +207,11 @@ export function SigningForm({
         <Typography variant="h5" gutterBottom>
           Agreement Signed Successfully
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="textSecondary">
           Thank you, {printedName.value}. Your signed agreement has been recorded.
         </Typography>
         {kioskMode && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
             This form will reset shortly for the next person.
           </Typography>
         )}
@@ -227,11 +227,11 @@ export function SigningForm({
           {templateName}
         </Typography>
         {className && (
-          <Typography variant="subtitle1" color="text.secondary">
+          <Typography variant="subtitle1" color="textSecondary">
             For: {className}
           </Typography>
         )}
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {signerEmail}
         </Typography>
       </Box>

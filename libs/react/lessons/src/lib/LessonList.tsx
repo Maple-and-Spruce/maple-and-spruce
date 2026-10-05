@@ -182,7 +182,7 @@ function LessonRowActions({
         // "Does this bill them?" was the question Katie kept asking. It does
         // not: taught is a record that the lesson happened. `describeChild`
         // keeps the button's name "Mark taught" and adds this as a description.
-        <Tooltip
+        (<Tooltip
           describeChild
           title="Records that the lesson happened. It does not charge or invoice anyone."
         >
@@ -203,7 +203,7 @@ function LessonRowActions({
           >
             {pending === 'mark-rendered' ? 'Marking…' : 'Mark taught'}
           </Button>
-        </Tooltip>
+        </Tooltip>)
       )}
       <Tooltip title="Actions">
         {/* span so the tooltip still works while the button is disabled */}
@@ -370,7 +370,7 @@ export function LessonList({
         size: 220,
         enableSorting: false,
         Cell: ({ row }) => (
-          <Typography variant="body2" color="text.secondary" noWrap>
+          <Typography variant="body2" color="textSecondary" noWrap>
             {row.original.lesson.notes ?? ''}
           </Typography>
         ),
@@ -437,7 +437,7 @@ export function LessonList({
     renderEmptyRowsFallback: () => (
       <Typography
         variant="body2"
-        color="text.secondary"
+        color="textSecondary"
         sx={{ py: 4, textAlign: 'center', width: '100%' }}
       >
         {allRows.length === 0

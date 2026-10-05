@@ -51,10 +51,11 @@ export default function EtsyCallbackPage(): React.ReactNode {
       <Typography variant="h4" gutterBottom>
         Connecting Etsy
       </Typography>
-
       <Card>
         <CardContent>
-          <Stack spacing={2} alignItems="center">
+          <Stack spacing={2} sx={{
+            alignItems: 'center'
+          }}>
             {callbackState.status === 'loading' && (
               <>
                 <CircularProgress />
@@ -67,7 +68,7 @@ export default function EtsyCallbackPage(): React.ReactNode {
                 <CheckCircleIcon color="success" sx={{ fontSize: 48 }} />
                 <Typography variant="h6">Etsy Connected</Typography>
                 {callbackState.data.shopId && (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="textSecondary">
                     Shop ID: {callbackState.data.shopId}
                   </Typography>
                 )}

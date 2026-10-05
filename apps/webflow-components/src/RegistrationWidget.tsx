@@ -17,7 +17,7 @@ import {
   Stack,
   ThemeProvider,
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PrintIcon from '@mui/icons-material/Print';
 import { httpsCallable } from 'firebase/functions';
@@ -216,7 +216,7 @@ function SoldOutPanel({
         banner and repeats none of that copy — just the first-come fine print.
       */}
       <Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           Spots are first-come, first-served — we email everyone on the list.
         </Typography>
 
@@ -231,7 +231,9 @@ function SoldOutPanel({
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1.5}
-              alignItems={{ sm: 'flex-start' }}
+              sx={{
+                alignItems: { sm: 'flex-start' }
+              }}
             >
               <TextField
                 type="email"
@@ -263,7 +265,6 @@ function SoldOutPanel({
           </Box>
         )}
       </Box>
-
     </Box>
   );
 }
@@ -644,7 +645,7 @@ export function RegistrationWidget({
                 ? 'Payment received — you’re all set!'
                 : 'Confirming your payment…'}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {state.timedOut
                 ? 'We’re finalizing your registration. A confirmation email is on its way — no need to pay again.'
                 : 'Just a moment while we confirm your registration.'}
@@ -694,7 +695,9 @@ export function RegistrationWidget({
               color="success"
               sx={{ fontSize: 48, mb: 1 }}
             />
-            <Typography variant="h5" fontWeight={600} gutterBottom>
+            <Typography variant="h5" gutterBottom sx={{
+              fontWeight: 600
+            }}>
               You're Registered!
             </Typography>
 
@@ -702,21 +705,24 @@ export function RegistrationWidget({
 
             {/* Class details */}
             <Box sx={{ textAlign: 'left', mb: 2 }}>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h6" sx={{
+                fontWeight: 600
+              }}>
                 {state.className}
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" color="textSecondary">
                 {formatClassDateTime(state.classDate)}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatDuration(state.classDurationMinutes)} &middot;{' '}
                 {formatSkillLevel(state.skillLevel)}
               </Typography>
               <Typography
                 variant="body1"
-                fontWeight={500}
-                sx={{ mt: 1 }}
-              >
+                sx={{
+                  fontWeight: 500,
+                  mt: 1
+                }}>
                 ${(state.pricePaidCents / 100).toFixed(2)} paid
               </Typography>
             </Box>
@@ -735,14 +741,16 @@ export function RegistrationWidget({
             {/* Confirmation number — de-emphasized */}
             <Typography
               variant="body2"
-              color="text.secondary"
+              color="textSecondary"
               sx={{ mb: 2 }}
             >
               Confirmation:{' '}
               <Typography
                 component="span"
                 variant="body2"
-                fontFamily="monospace"
+                sx={{
+                  fontFamily: 'monospace'
+                }}
               >
                 {state.confirmationNumber}
               </Typography>
@@ -798,28 +806,31 @@ export function RegistrationWidget({
             </Box>
 
             {/* Email confirmation notice */}
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
               A confirmation email has been sent to{' '}
               <Typography
                 component="span"
                 variant="body2"
-                fontWeight={500}
+                sx={{
+                  fontWeight: 500
+                }}
               >
                 {state.customerEmail}
               </Typography>
             </Typography>
 
             {/* Contact info */}
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Questions? Contact us at{' '}
               <Typography
                 component="a"
                 href="mailto:katie@mapleandsprucefolkarts.com"
                 variant="body2"
                 color="primary"
-                fontWeight={500}
-                sx={{ textDecoration: 'none' }}
-              >
+                sx={{
+                  fontWeight: 500,
+                  textDecoration: 'none'
+                }}>
                 katie@mapleandsprucefolkarts.com
               </Typography>
             </Typography>

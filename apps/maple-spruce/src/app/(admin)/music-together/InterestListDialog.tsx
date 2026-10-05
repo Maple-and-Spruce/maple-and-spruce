@@ -71,7 +71,7 @@ function InterestLoadingSkeleton() {
 function NoteCell({ text }: { text?: string }) {
   if (!text?.trim()) {
     return (
-      <Typography variant="body2" color="text.disabled">
+      <Typography variant="body2" color="textDisabled">
         —
       </Typography>
     );
@@ -109,7 +109,7 @@ export function InterestListDialog({ open, onClose, interestState }: Props) {
           <Alert severity="error">{interestState.error}</Alert>
         )}
         {interestState.status === 'success' && entries.length === 0 && (
-          <Typography sx={{ p: 2 }} color="text.secondary">
+          <Typography sx={{ p: 2 }} color="textSecondary">
             No interest submissions yet. Families who join the interest list —
             even before a section fills — show up here.
           </Typography>
@@ -122,7 +122,7 @@ export function InterestListDialog({ open, onClose, interestState }: Props) {
                 Demand by section
               </Typography>
               {demand.length === 0 ? (
-                <Typography color="text.secondary" variant="body2">
+                <Typography color="textSecondary" variant="body2">
                   No section checked yet — see the alternate-time notes below for
                   what times families want.
                 </Typography>
@@ -178,13 +178,13 @@ export function InterestListDialog({ open, onClose, interestState }: Props) {
                     <TableRow key={entry.id}>
                       <TableCell sx={{ maxWidth: 180 }}>
                         <Typography variant="body2">{entry.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="textSecondary">
                           {entry.email}
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ maxWidth: 180 }}>
                         {entry.interestedSectionIds.length === 0 ? (
-                          <Typography variant="body2" color="text.disabled">
+                          <Typography variant="body2" color="textDisabled">
                             —
                           </Typography>
                         ) : (

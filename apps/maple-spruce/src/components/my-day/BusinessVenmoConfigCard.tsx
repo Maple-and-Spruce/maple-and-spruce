@@ -50,7 +50,7 @@ export function BusinessVenmoConfigCard() {
         <Typography variant="h6" gutterBottom>
           Business Venmo
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           Your studio Venmo username. Teachers can show a scannable QR to it on
           the My Week page so a student can pay by Venmo at their lesson.
         </Typography>
@@ -68,7 +68,9 @@ export function BusinessVenmoConfigCard() {
         )}
 
         {configState.status === 'success' && (
-          <Stack direction="row" spacing={1} alignItems="flex-start">
+          <Stack direction="row" spacing={1} sx={{
+            alignItems: 'flex-start'
+          }}>
             <TextField
               size="small"
               label="Venmo username"

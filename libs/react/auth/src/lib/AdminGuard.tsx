@@ -67,7 +67,7 @@ export function AdminGuardView({
           <Typography variant="h6" gutterBottom>
             Something went wrong
           </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
+          <Typography color="textSecondary" sx={{ mb: 3 }}>
             We couldn&apos;t verify your access. Please try again later.
           </Typography>
           <Button variant="outlined" onClick={onSignOut}>
@@ -110,7 +110,7 @@ export function AdminGuardView({
           <Typography variant="h5" gutterBottom>
             Welcome to Maple &amp; Spruce
           </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
+          <Typography color="textSecondary" sx={{ mb: 3 }}>
             Looking forward to onboarding you! You don&apos;t currently have
             access but a manager at Maple &amp; Spruce will onboard you.
           </Typography>

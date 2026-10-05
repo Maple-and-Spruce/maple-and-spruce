@@ -6,6 +6,27 @@
 
 ## Current Status
 
+### MUI 7 → 9, MUI X 7 → 9 (2026-10-04)
+
+Last of the deferred majors from the dependency refresh. Codemods did the bulk
+(slots/slotProps, system props → sx, picker adapter/day renames). The rest:
+
+- **Silent colour loss:** Typography `color` only matches names in v9, so all
+  295 `color="text.secondary"`-style props and 5 computed ones became
+  `textSecondary` / `error` etc. ESLint `no-restricted-syntax` now errors on any
+  dotted path in a JSX `color` prop.
+- **material-react-table** (sticky columns in billing/lessons/students) passes
+  props MUI 9 ignores. `patches/material-react-table@3.2.1.patch` renames them;
+  tracked in #166 (MRT looks unmaintained).
+- **Data grid:** MUI X 8+ paints grids white and reads header colour from a new
+  variable that a later `<style>` rule overrides; theme `palette.DataGrid.bg`
+  plus `&.MuiDataGrid-root` header variable restore the old look exactly.
+- **Date fields** are `MuiPickersOutlinedInput` now; theme styles it like inputs.
+- **Etsy import selection** resolves the grid's new include/exclude model to ids.
+- Verified by pixel-diffing all 678 stories against main: 638 identical; the
+  rest are MUI X's own row/skeleton layout and anti-aliasing. Date-time/time
+  pickers behave as before (OK to confirm) plus a Cancel button.
+
 ### vest 5 → 6 (2026-10-04)
 
 Vest 6 removed `staticSuite` and points to `create(cb).runStatic(...)`, but

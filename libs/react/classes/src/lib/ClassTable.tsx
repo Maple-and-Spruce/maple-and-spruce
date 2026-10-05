@@ -139,7 +139,9 @@ export function ClassTable({
         flex: 1,
         minWidth: 220,
         renderCell: (params: GridRenderCellParams<ClassRow>) => (
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack direction="row" spacing={1.5} sx={{
+            alignItems: 'center'
+          }}>
             <Avatar
               variant="rounded"
               src={params.row.imageUrl}
@@ -187,7 +189,7 @@ export function ClassTable({
               <Typography
                 component="span"
                 variant="caption"
-                color="text.secondary"
+                color="textSecondary"
                 noWrap
                 sx={{ lineHeight: 1.35 }}
               >
@@ -195,7 +197,7 @@ export function ClassTable({
               </Typography>
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               No dates set
             </Typography>
           ),
@@ -222,7 +224,7 @@ export function ClassTable({
               <Typography
                 component="span"
                 variant="caption"
-                color="text.secondary"
+                color="textSecondary"
                 noWrap
                 sx={{ lineHeight: 1.35 }}
               >
@@ -231,7 +233,7 @@ export function ClassTable({
               </Typography>
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               —
             </Typography>
           ),
@@ -253,7 +255,7 @@ export function ClassTable({
           return (
             <Typography
               variant="body2"
-              color={isFull ? 'error.main' : 'text.primary'}
+              color={isFull ? 'error' : 'textPrimary'}
               sx={{ fontWeight: isFull ? 600 : 400 }}
             >
               {filled}/{capacity}
@@ -271,7 +273,7 @@ export function ClassTable({
           const { waitlist } = params.row;
           if (waitlist === 0) {
             return (
-              <Typography variant="body2" color="text.disabled">
+              <Typography variant="body2" color="textDisabled">
                 —
               </Typography>
             );
@@ -419,7 +421,12 @@ export function ClassTable({
         sx={{
           border: 'none',
           backgroundColor: surfaces.paper,
-          '--DataGrid-containerBackground': surfaces.tableHeader,
+          // MUI X 9 sets its theme variables from a later <style> rule with the
+          // same specificity as sx, so a plain sx variable loses. `&.MuiDataGrid-root`
+          // doubles the class and wins.
+          '&.MuiDataGrid-root': {
+            '--DataGrid-t-header-background-base': surfaces.tableHeader,
+          },
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: surfaces.tableHeader,
             borderBottom: `1px solid ${borders.subtle}`,

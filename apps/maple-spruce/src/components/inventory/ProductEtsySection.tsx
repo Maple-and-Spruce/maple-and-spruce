@@ -76,13 +76,18 @@ export function ProductEtsySection({
   return (
     <>
       <Divider textAlign="left">
-        <Typography variant="overline" color="text.secondary">
+        <Typography variant="overline" color="textSecondary">
           Etsy
         </Typography>
       </Divider>
-
       <Box>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'center',
+            mb: 1
+          }}>
           <StoreIcon fontSize="small" color={isListed ? 'success' : 'disabled'} />
           {isListed ? (
             <>
@@ -146,7 +151,7 @@ export function ProductEtsySection({
         {!isListed && (
           <Typography
             variant="caption"
-            color="text.secondary"
+            color="textSecondary"
             sx={{ display: 'block', mt: 1 }}
           >
             Creates a draft listing on your Etsy shop. You can review and

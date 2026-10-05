@@ -227,7 +227,7 @@ export function StandingScheduleDialog({
         {schedule ? 'Change the weekly time' : 'Set a weekly time'}
       </DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           {schedule
             ? 'Applies from here on. Lessons already on the calendar stay where they are.'
             : 'Lessons are kept on the books automatically from this pattern.'}

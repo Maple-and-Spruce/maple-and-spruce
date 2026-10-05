@@ -65,7 +65,7 @@ export default function UsersPage() {
         <Typography variant="h4" component="h1">
           Users
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Everyone with an account on the admin app. Grant admin or a scoped
           role (MT teacher, clerk, lesson teacher) to those who need it.
         </Typography>
