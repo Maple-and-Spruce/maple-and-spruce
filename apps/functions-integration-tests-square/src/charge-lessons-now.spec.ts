@@ -417,7 +417,7 @@ describe('Charging a block of lessons now (legacy #864)', () => {
       expect(result.data?.charge.lessonIds).toHaveLength(2);
     }, 120000);
 
-    it('refuses a past lesson nobody marked taught', async () => {
+    it('charges for a past lesson nobody marked taught — it happened (#157)', async () => {
       await seedStudent('stu-unmarked');
       await seedTaughtLesson(
         'stu-unmarked',
@@ -429,6 +429,24 @@ describe('Charging a block of lessons now (legacy #864)', () => {
       const result = await chargeNow({
         studentId: 'stu-unmarked',
         lessonIds: ['lesson-unmarked'],
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data?.charge.lessonIds).toEqual(['lesson-unmarked']);
+    }, 120000);
+
+    it('refuses a past lesson that was cancelled', async () => {
+      await seedStudent('stu-called-off');
+      await seedTaughtLesson(
+        'stu-called-off',
+        'lesson-called-off',
+        2,
+        'cancelled'
+      );
+
+      const result = await chargeNow({
+        studentId: 'stu-called-off',
+        lessonIds: ['lesson-called-off'],
       });
 
       expect(result.status).toBe(400);
