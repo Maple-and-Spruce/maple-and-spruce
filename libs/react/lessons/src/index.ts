@@ -25,6 +25,7 @@ export {
 } from './lib/BlockAttributionChoice';
 export {
   PaymentMethodCard,
+  describeCard,
   type PaymentMethodCardProps,
 } from './lib/PaymentMethodCard';
 export {
@@ -87,3 +88,25 @@ export {
   getHopeMonthlyEquivalentCents,
   formatCents,
 } from './lib/hope-rates';
+export {
+  NextLessonsPanel,
+  type NextLessonsPanelProps,
+} from './lib/NextLessonsPanel';
+export {
+  UpcomingLessonsCard,
+  UPCOMING_LESSONS_SHOWN,
+  type UpcomingLessonsCardProps,
+} from './lib/UpcomingLessonsCard';
+export {
+  LessonActivity,
+  type LessonActivityLabel,
+  type LessonActivityProps,
+} from './lib/LessonActivity';
+export {
+  buildNextLessons,
+  isLessonPaid,
+  newLessonKey,
+  paidThrough,
+  type NextLessonItem,
+  type NextLessonsView,
+} from '@maple/ts/domain';

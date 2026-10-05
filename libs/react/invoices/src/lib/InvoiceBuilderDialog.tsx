@@ -47,6 +47,7 @@ import {
   canStillBillLesson,
   lessonBillingState,
   SCHEDULE_TIME_ZONE,
+  newInvoiceLineId,
 } from '@maple/ts/domain';
 import { invoiceValidation } from '@maple/ts/validation';
 import { formatCents } from '@maple/react/lessons';
@@ -79,21 +80,10 @@ interface InvoiceBuilderDialogProps {
 }
 
 /**
- * Stable client-side id for a line, so an edit can target the right one.
- *
- * Exported because the student page builds a one-line invoice of its own when
- * a taught lesson has not been billed (#101), and two id schemes for the same
- * field is how they drift apart.
+ * Re-exported from the domain, where it now lives so pure modules can use it
+ * without loading this component library (#158).
  */
-export function newInvoiceLineId(): string {
-  const cryptoObj: { randomUUID?: () => string } =
-    (globalThis as unknown as { crypto?: { randomUUID?: () => string } })
-      .crypto ?? {};
-  if (typeof cryptoObj.randomUUID === 'function') {
-    return cryptoObj.randomUUID();
-  }
-  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
+export { newInvoiceLineId };
 
 /**
  * When the lesson was, for a picker row. The shop's timezone, like every other
