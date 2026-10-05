@@ -197,6 +197,18 @@ function buildSquare(): Square {
  * library directory name (`run-lesson-billing` -> `runLessonBilling`), so a
  * library whose name matches none of its exports fails the deploy outright.
  */
+/**
+ * Automatic charging is paused (#157). Nobody's card is charged unless someone
+ * presses the button: Katie takes payment for the next lessons at the end of a
+ * lesson, and the family sees it happen.
+ *
+ * The schedule stays deployed and does nothing, because deleting the function
+ * would not stop it — CI never prunes a deployed function, so the old revision
+ * would go on charging cards. `triggerLessonBilling` still runs the logic on
+ * demand, and turning automation back on is putting the call back here.
+ */
+export const LESSON_AUTOPAY_PAUSED = true;
+
 export const runLessonBilling = onSchedule(
   {
     schedule: '0 9 * * *',
@@ -205,6 +217,10 @@ export const runLessonBilling = onSchedule(
     secrets: squareSecretParams,
   },
   async () => {
+    if (LESSON_AUTOPAY_PAUSED) {
+      console.log('[lesson-billing] automatic charging is paused (#157)');
+      return;
+    }
     await executeLessonBilling(new Date(), buildSquare());
   }
 );

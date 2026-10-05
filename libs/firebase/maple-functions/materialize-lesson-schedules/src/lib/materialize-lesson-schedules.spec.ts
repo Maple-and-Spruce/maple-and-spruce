@@ -37,7 +37,10 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-import { runMaterializeLessonSchedules } from './materialize-lesson-schedules';
+import {
+  materializeLessonSchedules,
+  runMaterializeLessonSchedules,
+} from './materialize-lesson-schedules';
 
 const NOW = new Date('2026-06-01T12:00:00Z'); // a Monday
 
@@ -302,5 +305,18 @@ describe('room conflicts (legacy #841)', () => {
 
     expect(result.created).toBe(0);
     expect(result.skippedRoomConflict).toBeGreaterThan(0);
+  });
+});
+
+describe('the daily schedule (#157)', () => {
+  it('books nothing: lessons are booked by hand, not generated', async () => {
+    mocks.findSchedules.mockClear();
+    mocks.createWithId.mockClear();
+
+    // onSchedule is mocked to hand back the handler itself.
+    await (materializeLessonSchedules as unknown as () => Promise<void>)();
+
+    expect(mocks.findSchedules).not.toHaveBeenCalled();
+    expect(mocks.createWithId).not.toHaveBeenCalled();
   });
 });

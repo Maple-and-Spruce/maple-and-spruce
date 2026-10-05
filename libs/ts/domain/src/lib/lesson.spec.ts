@@ -7,21 +7,22 @@ import {
   LESSON_STATUSES,
   didConsumeSlot,
   isSubmittableToHope,
+  lessonHappened,
 } from './lesson';
 
-describe('Lesson domain helpers', () => {
-  const makeLesson = (overrides: Partial<Lesson> = {}): Lesson => ({
-    id: 'lesson-1',
-    studentId: 'student-1',
-    scheduledAt: new Date('2026-05-01T15:00:00Z'),
-    durationMinutes: 30,
-    teacherId: 'instructor-1',
-    status: 'scheduled',
-    createdAt: new Date('2026-04-01T10:00:00Z'),
-    updatedAt: new Date('2026-04-01T10:00:00Z'),
-    ...overrides,
-  });
+const makeLesson = (overrides: Partial<Lesson> = {}): Lesson => ({
+  id: 'lesson-1',
+  studentId: 'student-1',
+  scheduledAt: new Date('2026-05-01T15:00:00Z'),
+  durationMinutes: 30,
+  teacherId: 'instructor-1',
+  status: 'scheduled',
+  createdAt: new Date('2026-04-01T10:00:00Z'),
+  updatedAt: new Date('2026-04-01T10:00:00Z'),
+  ...overrides,
+});
 
+describe('Lesson domain helpers', () => {
   describe('isLessonUpcoming', () => {
     it('returns true for a scheduled lesson in the future', () => {
       const lesson = makeLesson({
@@ -163,26 +164,86 @@ describe('no-show status (legacy #796)', () => {
   });
 
   describe('isSubmittableToHope — services rendered only', () => {
+    const NOW = new Date('2026-05-10T12:00:00Z');
+    const past = (status: Lesson['status']) =>
+      makeLesson({ status, scheduledAt: new Date('2026-05-03T15:00:00Z') });
+
     it('allows a rendered lesson', () => {
-      expect(isSubmittableToHope('rendered')).toBe(true);
+      expect(isSubmittableToHope(past('rendered'), NOW)).toBe(true);
     });
 
-    it.each(['no-show', 'scheduled', 'cancelled'] as const)(
-      'refuses %s',
+    it('allows a past lesson nobody marked taught — it happened (#157)', () => {
+      expect(isSubmittableToHope(past('scheduled'), NOW)).toBe(true);
+    });
+
+    it('refuses a lesson still to come', () => {
+      expect(
+        isSubmittableToHope(
+          makeLesson({ scheduledAt: new Date('2026-05-17T15:00:00Z') }),
+          NOW
+        )
+      ).toBe(false);
+    });
+
+    it.each(['no-show', 'cancelled'] as const)('refuses %s', (status) => {
+      expect(isSubmittableToHope(past(status), NOW)).toBe(false);
+    });
+
+    it('never allows anything lessonHappened refuses, and never a no-show', () => {
+      // The whole compliance shape: every lesson Hope will pay for happened,
+      // but not every lesson that happened may be billed to Hope. If these two
+      // ever coincide, a no-show is reaching EMA.
+      const lessons = LESSON_STATUSES.map(past);
+      const submittable = lessons.filter((l) => isSubmittableToHope(l, NOW));
+      const happened = lessons.filter((l) => lessonHappened(l, NOW));
+      expect(happened).toEqual(expect.arrayContaining(submittable));
+      expect(submittable.map((l) => l.status)).not.toContain('no-show');
+      expect(happened.map((l) => l.status)).toContain('no-show');
+    });
+  });
+
+  describe('lessonHappened (#157)', () => {
+    const NOW = new Date('2026-05-10T12:00:00Z');
+
+    it('counts a past scheduled lesson — nothing needs marking', () => {
+      expect(
+        lessonHappened(
+          makeLesson({ scheduledAt: new Date('2026-05-03T15:00:00Z') }),
+          NOW
+        )
+      ).toBe(true);
+    });
+
+    it('counts a lesson from the moment it starts', () => {
+      expect(lessonHappened(makeLesson({ scheduledAt: NOW }), NOW)).toBe(true);
+    });
+
+    it('does not count one still to come', () => {
+      expect(
+        lessonHappened(
+          makeLesson({ scheduledAt: new Date('2026-05-10T12:00:01Z') }),
+          NOW
+        )
+      ).toBe(false);
+    });
+
+    it('never counts a cancelled lesson', () => {
+      expect(
+        lessonHappened(
+          makeLesson({
+            status: 'cancelled',
+            scheduledAt: new Date('2026-05-03T15:00:00Z'),
+          }),
+          NOW
+        )
+      ).toBe(false);
+    });
+
+    it.each(['rendered', 'no-show'] as const)(
+      'keeps honouring %s from the old workflow',
       (status) => {
-        expect(isSubmittableToHope(status)).toBe(false);
+        expect(lessonHappened(makeLesson({ status }), NOW)).toBe(true);
       }
     );
-
-    it('is strictly narrower than didConsumeSlot', () => {
-      // The whole compliance shape in one assertion: every status Hope will
-      // pay for consumed a slot, but not every consumed slot may be billed to
-      // Hope. If these two ever coincide, a no-show is reaching EMA.
-      const submittable = LESSON_STATUSES.filter(isSubmittableToHope);
-      const consumed = LESSON_STATUSES.filter(didConsumeSlot);
-      expect(consumed).toEqual(expect.arrayContaining(submittable));
-      expect(submittable).not.toEqual(consumed);
-      expect(submittable).not.toContain('no-show');
-    });
   });
 });

@@ -1,15 +1,18 @@
 /**
- * Biweekly standing arrangements, end to end (legacy #837).
+ * Weekly times and their cadence, end to end (legacy #837, #157).
  *
- * The case these exist for is Katie's real Tuesday: Marisol and Odette alternate
- * in the 5pm hour. Before cadence support the only way to express that was to
- * hand-create a lesson on every off-week and cancel it — about 26 cancellations
- * a year per student, failing silently the first week she was busy.
+ * The case these exist for is a real Tuesday at the studio: two students
+ * alternate in the 5pm hour. Before cadence support the only way to express that
+ * was to hand-create a lesson on every off-week and cancel it — about 26
+ * cancellations a year per student, failing silently the first week Katie was
+ * busy.
  *
- * So what is proven here is not "does 2 mean 2". It is that two alternating
- * arrangements never land on the same week, which is the failure that would put
- * two families in the room at once and, once #81 charges cards, bill one for
- * the other's lesson.
+ * Since #157 a weekly time books nothing on its own: it is a planning note, and
+ * lessons are booked a few at a time from it (`planNextLessons`) when the family
+ * pays. So what is proven here is that the weekly time is stored with its
+ * cadence, that booking from it lands on the right weeks, and that two
+ * alternating students never land on the same week — the failure that would put
+ * two families in the room at once and bill one for the other's lesson.
  */
 import {
   createTestUser,
@@ -21,13 +24,15 @@ import {
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER } from '@maple/firebase/integration-test-utils';
 import type {
+  CreateLessonSeriesRequest,
+  CreateLessonSeriesResponse,
   CreateStudentLessonScheduleRequest,
   CreateStudentLessonScheduleResponse,
   GetLessonsRequest,
   GetLessonsResponse,
-  UpdateLessonRequest,
-  UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
+import { planNextLessons } from '@maple/ts/domain';
+import type { StudentLessonSchedule } from '@maple/ts/domain';
 
 const TEACHER_ID = 'instructor-cadence';
 const TZ = 'America/New_York';
@@ -109,122 +114,139 @@ describe('Standing arrangement cadence (legacy #837)', () => {
     });
   }, 30000);
 
-  it('materialises every week when no cadence is given', async () => {
-    await seedStudent('cad-weekly', 'Weekly Student');
-    const start = tuesdayFromNow(1);
-
+  /** Save a weekly time for a student, returning what was stored. */
+  async function saveWeeklyTime(
+    studentId: string,
+    startMinutes: number,
+    startsOn: Date,
+    intervalWeeks?: number,
+    durationMinutes = 30
+  ): Promise<StudentLessonSchedule> {
     const res = await callFunction<
       CreateStudentLessonScheduleRequest,
       CreateStudentLessonScheduleResponse
     >({
       functionName: 'createStudentLessonSchedule',
       data: {
-        studentId: 'cad-weekly',
+        studentId,
         teacherId: TEACHER_ID,
         blockId,
         dayOfWeek: 2,
-        startMinutes: 10 * 60,
-        durationMinutes: 30,
-        startsOn: start,
+        startMinutes,
+        durationMinutes,
+        startsOn,
+        ...(intervalWeeks ? { intervalWeeks } : {}),
       } as CreateStudentLessonScheduleRequest,
       idToken: adminUser.idToken,
     });
-
     expect(res.status).toBe(200);
+    const stored = res.data!.schedule;
+    return {
+      ...stored,
+      startsOn: new Date(stored.startsOn as unknown as string),
+      endsOn: stored.endsOn
+        ? new Date(stored.endsOn as unknown as string)
+        : undefined,
+    };
+  }
 
-    const days = await lessonsFor('cad-weekly', adminUser.idToken);
-    // The next four, not twelve weeks of them: Katie works four at a time.
-    expect(days.length).toBe(4);
-    // Consecutive lessons are exactly 7 days apart.
-    for (let i = 1; i < days.length; i++) {
-      const gap =
-        (Date.parse(`${days[i]}T12:00:00Z`) -
-          Date.parse(`${days[i - 1]}T12:00:00Z`)) /
-        86_400_000;
-      expect(gap).toBe(7);
-    }
+  /** Book "the next 4" from a weekly time, the way the student page does. */
+  async function bookNextFour(
+    studentId: string,
+    schedule: StudentLessonSchedule
+  ) {
+    const plan = planNextLessons(schedule, [], [], new Date());
+    return callFunction<CreateLessonSeriesRequest, CreateLessonSeriesResponse>({
+      functionName: 'createLessonSeries',
+      data: {
+        studentId,
+        teacherId: TEACHER_ID,
+        durationMinutes: schedule.durationMinutes,
+        scheduledAts: plan.toBook,
+        blockId,
+        room: schedule.room,
+      } as CreateLessonSeriesRequest,
+      idToken: adminUser.idToken,
+    });
+  }
+
+  const gapsInDays = (days: string[]) =>
+    days
+      .slice(1)
+      .map(
+        (day, i) =>
+          (Date.parse(`${day}T12:00:00Z`) - Date.parse(`${days[i]}T12:00:00Z`)) /
+          86_400_000
+      );
+
+  it('books nothing on its own: the weekly time is a planning note (#157)', async () => {
+    await seedStudent('cad-note', 'Note Student');
+
+    const schedule = await saveWeeklyTime('cad-note', 9 * 60, tuesdayFromNow(1));
+
+    expect(schedule.dayOfWeek).toBe(2);
+    expect(await lessonsFor('cad-note', adminUser.idToken)).toEqual([]);
   }, 60000);
 
-  it('materialises every other week for intervalWeeks 2', async () => {
+  it('books the next four a week apart when no cadence is given', async () => {
+    await seedStudent('cad-weekly', 'Weekly Student');
+    const start = tuesdayFromNow(1);
+    const schedule = await saveWeeklyTime('cad-weekly', 10 * 60, start);
+
+    expect((await bookNextFour('cad-weekly', schedule)).status).toBe(200);
+
+    const days = await lessonsFor('cad-weekly', adminUser.idToken);
+    expect(days).toHaveLength(4);
+    expect(days[0]).toBe(dayKey(start));
+    expect(gapsInDays(days)).toEqual([7, 7, 7]);
+  }, 60000);
+
+  it('books every other week for intervalWeeks 2', async () => {
     await seedStudent('cad-biweekly', 'Biweekly Student');
     const start = tuesdayFromNow(1);
+    const schedule = await saveWeeklyTime('cad-biweekly', 11 * 60, start, 2);
 
-    const res = await callFunction<
-      CreateStudentLessonScheduleRequest,
-      CreateStudentLessonScheduleResponse
-    >({
-      functionName: 'createStudentLessonSchedule',
-      data: {
-        studentId: 'cad-biweekly',
-        teacherId: TEACHER_ID,
-        blockId,
-        dayOfWeek: 2,
-        startMinutes: 11 * 60,
-        durationMinutes: 30,
-        startsOn: start,
-        intervalWeeks: 2,
-      } as CreateStudentLessonScheduleRequest,
-      idToken: adminUser.idToken,
-    });
-
-    expect(res.status).toBe(200);
+    expect(schedule.intervalWeeks).toBe(2);
+    expect((await bookNextFour('cad-biweekly', schedule)).status).toBe(200);
 
     const days = await lessonsFor('cad-biweekly', adminUser.idToken);
-    expect(days.length).toBeGreaterThan(3);
-    for (let i = 1; i < days.length; i++) {
-      const gap =
-        (Date.parse(`${days[i]}T12:00:00Z`) -
-          Date.parse(`${days[i - 1]}T12:00:00Z`)) /
-        86_400_000;
-      expect(gap).toBe(14);
-    }
-    // Half the lessons of a weekly student over the same horizon.
+    expect(days).toHaveLength(4);
     expect(days[0]).toBe(dayKey(start));
+    expect(gapsInDays(days)).toEqual([14, 14, 14]);
   }, 60000);
 
   it('never puts two alternating students in the same hour on one week', async () => {
-    // Marisol and Odette's real arrangement, a week apart in the same slot.
-    await seedStudent('cad-marisol', 'Marisol');
-    await seedStudent('cad-odette', 'Odette');
+    // Two students a week apart in the same hour, as at the studio.
+    await seedStudent('cad-alt-a', 'Alternating A');
+    await seedStudent('cad-alt-b', 'Alternating B');
 
-    for (const [id, weeksOut] of [
-      ['cad-odette', 1],
-      ['cad-marisol', 2],
-    ] as const) {
-      const res = await callFunction<CreateStudentLessonScheduleRequest>({
-        functionName: 'createStudentLessonSchedule',
-        data: {
-          studentId: id,
-          teacherId: TEACHER_ID,
-          blockId,
-          dayOfWeek: 2,
-          startMinutes: 17 * 60,
-          durationMinutes: 60,
-          startsOn: tuesdayFromNow(weeksOut),
-          intervalWeeks: 2,
-        } as CreateStudentLessonScheduleRequest,
-        idToken: adminUser.idToken,
-      });
-      expect(res.status).toBe(200);
-    }
+    const a = await saveWeeklyTime('cad-alt-a', 17 * 60, tuesdayFromNow(1), 2, 60);
+    const b = await saveWeeklyTime('cad-alt-b', 17 * 60, tuesdayFromNow(2), 2, 60);
+    expect((await bookNextFour('cad-alt-a', a)).status).toBe(200);
+    expect((await bookNextFour('cad-alt-b', b)).status).toBe(200);
 
-    const odette = await lessonsFor('cad-odette', adminUser.idToken);
-    const marisol = await lessonsFor('cad-marisol', adminUser.idToken);
+    const daysA = await lessonsFor('cad-alt-a', adminUser.idToken);
+    const daysB = await lessonsFor('cad-alt-b', adminUser.idToken);
 
-    expect(odette.length).toBeGreaterThan(2);
-    expect(marisol.length).toBeGreaterThan(2);
+    expect(daysA).toHaveLength(4);
+    expect(daysB).toHaveLength(4);
     // The assertion this whole feature exists for.
-    expect(odette.filter((d) => marisol.includes(d))).toEqual([]);
-
+    expect(daysA.filter((d) => daysB.includes(d))).toEqual([]);
     // And they genuinely interleave rather than merely differing.
-    const merged = [...odette, ...marisol].sort();
-    for (let i = 1; i < merged.length; i++) {
-      const gap =
-        (Date.parse(`${merged[i]}T12:00:00Z`) -
-          Date.parse(`${merged[i - 1]}T12:00:00Z`)) /
-        86_400_000;
-      expect(gap).toBe(7);
-    }
+    expect(gapsInDays([...daysA, ...daysB].sort())).toEqual([
+      7, 7, 7, 7, 7, 7, 7,
+    ]);
+  }, 60000);
+
+  it('refuses to book one student into the hour another already holds', async () => {
+    // The room check is what keeps a mistaken weekly time from double-booking.
+    await seedStudent('cad-clash', 'Clashing Student');
+    const clash = await saveWeeklyTime('cad-clash', 17 * 60, tuesdayFromNow(1), 2, 60);
+
+    const res = await bookNextFour('cad-clash', clash);
+
+    expect(res.status).not.toBe(200);
+    expect(await lessonsFor('cad-clash', adminUser.idToken)).toEqual([]);
   }, 60000);
 
   it('refuses a cadence that is not a whole number of weeks', async () => {
@@ -357,130 +379,4 @@ describe('getStudentLessonSchedules scope (legacy #838)', () => {
       'sched-theirs',
     ]);
   }, 30000);
-});
-
-/**
- * A moved week must not break the next arrangement (#117).
- *
- * A materialised lesson's id carries the occurrence date it was made for, so
- * moving that lesson to another date leaves the original slot looking unfilled.
- * Re-materialising then collides on the old id — and that collision is meant to
- * be a **no-op**, which is the whole reason exceptions need no exceptions table.
- *
- * When the collision escaped instead, every caller went down with it: creating a
- * standing arrangement for an unrelated student, and the nightly job for the
- * whole studio. Hit in dev for real.
- *
- * This only reproduces on the REST transport, which is what dev and prod use and
- * what the harness now forces (`FIRESTORE_PREFER_REST=1`). On the emulator's
- * default gRPC the old guard caught the collision and this passed regardless —
- * that is why two rounds of integration tests missed it.
- */
-describe('a moved lesson and the arrangements that follow it (#117)', () => {
-  let adminUser: TestUser;
-  const BLOCK_ID = 'blk-moved-tue';
-
-  beforeAll(async () => {
-    await clearAuthEmulator();
-    await clearFirestoreEmulator();
-
-    adminUser = await createTestUser(ADMIN_USER.email, ADMIN_USER.password);
-    await setFirestoreDoc('admins', adminUser.uid, {
-      userId: adminUser.uid,
-      email: adminUser.email,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    await setFirestoreDoc('instructors', TEACHER_ID, {
-      name: 'Cadence Teacher',
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    await setFirestoreDoc('lessonBlocks', BLOCK_ID, {
-      teacherId: TEACHER_ID,
-      dayOfWeek: 2,
-      startMinutes: 9 * 60,
-      endMinutes: 20 * 60,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-  }, 30000);
-
-  async function scheduleFor(
-    studentId: string,
-    startMinutes: number
-  ): Promise<number> {
-    const res = await callFunction<
-      CreateStudentLessonScheduleRequest,
-      CreateStudentLessonScheduleResponse
-    >({
-      functionName: 'createStudentLessonSchedule',
-      data: {
-        studentId,
-        teacherId: TEACHER_ID,
-        blockId: BLOCK_ID,
-        dayOfWeek: 2,
-        startMinutes,
-        durationMinutes: 30,
-        startsOn: tuesdayFromNow(1),
-      } as CreateStudentLessonScheduleRequest,
-      idToken: adminUser.idToken,
-    });
-    expect(res.status).toBe(200);
-    return res.data!.lessonsCreated ?? 0;
-  }
-
-  it('lets the next student be set up, and does not refill the slot', async () => {
-    await seedStudent('moved-first', 'First Student');
-    expect(await scheduleFor('moved-first', 11 * 60)).toBe(4);
-
-    const before = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-      functionName: 'getLessons',
-      data: { studentId: 'moved-first' },
-      idToken: adminUser.idToken,
-    });
-    const materialised = (before.data?.lessons ?? []).filter((l) =>
-      l.id.startsWith('sched-')
-    );
-    expect(materialised).toHaveLength(4);
-
-    // Move the last week to a Tuesday before the arrangement starts — the same
-    // shape as an admin pulling one lesson earlier. No sibling occupies it, and
-    // the schedule generates nothing there, so the only thing left behind is the
-    // original slot's id.
-    const moving = materialised[materialised.length - 1];
-    const earlier = new Date(tuesdayFromNow(1).getTime() - 7 * 86_400_000);
-    earlier.setUTCHours(16, 0, 0, 0);
-
-    const moved = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-      functionName: 'updateLesson',
-      data: { id: moving.id, scheduledAt: earlier },
-      idToken: adminUser.idToken,
-    });
-    expect(moved.status).toBe(200);
-
-    // The failure: this used to come back 400, carrying a REST 409 about the
-    // *first* student's lesson id, for a student that has nothing to do with it.
-    await seedStudent('moved-second', 'Second Student');
-    expect(await scheduleFor('moved-second', 12 * 60)).toBe(4);
-
-    // And the moved week is not quietly refilled behind itself, which is the
-    // property the deterministic id exists to give.
-    const after = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-      functionName: 'getLessons',
-      data: { studentId: 'moved-first' },
-      idToken: adminUser.idToken,
-    });
-    const lessonsAfter = after.data?.lessons ?? [];
-    const ids = lessonsAfter.map((l) => l.id);
-    expect(ids.filter((id) => id === moving.id)).toHaveLength(1);
-    // Nothing new sits in the slot the moved lesson left. (Moving it out of the
-    // upcoming four can add the NEXT date, which is the four-ahead contract;
-    // what must never happen is the vacated date filling up again.)
-    const vacated = new Date(moving.scheduledAt).getTime();
-    expect(
-      lessonsAfter.filter((l) => new Date(l.scheduledAt).getTime() === vacated)
-    ).toHaveLength(0);
-  }, 60000);
 });

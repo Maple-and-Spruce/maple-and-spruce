@@ -1,37 +1,44 @@
 /**
- * A standing arrangement that names no room is recorded as Spruce (#156), so
- * every lesson it materialises is stamped — and room-checked — as Spruce, the
- * room the calendar already puts it in.
+ * A weekly time books nothing (#157), and one that names no room is recorded as
+ * Spruce (#165), the room the calendar already puts its lessons in.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  handler: null as
-    | ((data: unknown, ctx: unknown) => Promise<unknown>)
+  capturedHandler: null as
+    | ((d: unknown, c: unknown) => Promise<unknown>)
     | null,
   findStudent: vi.fn(),
   createSchedule: vi.fn(),
-  materialize: vi.fn(),
+  createLesson: vi.fn(),
+  createLessonWithId: vi.fn(),
+  assertCanManageLesson: vi.fn(),
+  resolveLessonBlock: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
+  class HttpsError extends Error {
+    constructor(public code: string, m: string) {
+      super(m);
+    }
+  }
   const endpoint = {
     requiringRole: vi.fn(() => endpoint),
-    handle: vi.fn((h: typeof mocks.handler) => {
-      mocks.handler = h;
+    handle: vi.fn((h: typeof mocks.capturedHandler) => {
+      mocks.capturedHandler = h;
       return 'mock';
     }),
   };
   return {
     Functions: { endpoint },
     Role: { Admin: 'admin', LessonTeacher: 'lesson-teacher' },
-    assertCanManageLesson: vi.fn(),
-    resolveLessonBlock: vi.fn().mockResolvedValue('blk-1'),
+    assertCanManageLesson: mocks.assertCanManageLesson,
+    resolveLessonBlock: mocks.resolveLessonBlock,
     throwInvalidArgument: (m: string) => {
-      throw new Error(m);
+      throw new HttpsError('invalid-argument', m);
     },
     throwNotFound: (e: string, id: string) => {
-      throw new Error(`${e} ${id} not found`);
+      throw new HttpsError('not-found', `${e} ${id} not found`);
     },
   };
 });
@@ -39,41 +46,75 @@ vi.mock('@maple/firebase/functions', () => {
 vi.mock('@maple/firebase/database', () => ({
   StudentRepository: { findById: mocks.findStudent },
   StudentLessonScheduleRepository: { create: mocks.createSchedule },
-}));
-
-vi.mock('@maple/firebase/maple-functions/materialize-lesson-schedules', () => ({
-  runMaterializeLessonSchedules: mocks.materialize,
+  // Present only so the test can prove nothing touches it.
+  LessonRepository: {
+    create: mocks.createLesson,
+    createWithId: mocks.createLessonWithId,
+  },
 }));
 
 import './create-student-lesson-schedule';
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mocks.findStudent.mockResolvedValue({ id: 'stu-1', primaryTeacherId: 'teacher-1' });
-  mocks.createSchedule.mockImplementation(async (input: object) => ({
-    id: 'sched-1',
-    ...input,
-  }));
-  mocks.materialize.mockResolvedValue({ created: 4 });
-});
+const request = {
+  studentId: 'stu-1',
+  teacherId: 'teacher-1',
+  blockId: 'block-1',
+  dayOfWeek: 2,
+  startMinutes: 16 * 60,
+  durationMinutes: 30,
+  startsOn: '2026-10-06T04:00:00.000Z',
+};
 
-describe('createStudentLessonSchedule room', () => {
-  it('records an arrangement with no room as Spruce', async () => {
-    await mocks.handler!(
-      {
-        studentId: 'stu-1',
-        teacherId: 'teacher-1',
-        dayOfWeek: 2,
-        startMinutes: 16 * 60,
-        durationMinutes: 30,
-        startsOn: '2030-01-01T00:00:00.000Z',
-        blockId: 'blk-1',
-      },
-      {}
+const run = (data: unknown) => mocks.capturedHandler!(data, { uid: 'u' });
+
+describe('createStudentLessonSchedule (#157)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findStudent.mockResolvedValue({ id: 'stu-1', status: 'active' });
+    mocks.resolveLessonBlock.mockResolvedValue('block-1');
+    mocks.createSchedule.mockImplementation(async (input) => ({
+      id: 'sched-1',
+      ...input,
+    }));
+  });
+
+  it('records the weekly time and books no lessons', async () => {
+    const result = (await run(request)) as { schedule: { id: string } };
+
+    expect(result).toEqual({
+      schedule: expect.objectContaining({ id: 'sched-1', dayOfWeek: 2 }),
+    });
+    expect(mocks.createSchedule).toHaveBeenCalledTimes(1);
+    expect(mocks.createLesson).not.toHaveBeenCalled();
+    expect(mocks.createLessonWithId).not.toHaveBeenCalled();
+  });
+
+  it('still checks the weekly time fits a block before saving it', async () => {
+    await run(request);
+
+    expect(mocks.resolveLessonBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ teacherId: 'teacher-1', recurring: true })
     );
+  });
+
+  it('refuses an end date before the start date', async () => {
+    await expect(
+      run({ ...request, endsOn: '2026-10-01T04:00:00.000Z' })
+    ).rejects.toThrow('The end date is before the start date');
+    expect(mocks.createSchedule).not.toHaveBeenCalled();
+  });
+
+  it('records a weekly time with no room as Spruce (#165)', async () => {
+    await run(request);
 
     expect(mocks.createSchedule).toHaveBeenCalledWith(
       expect.objectContaining({ room: 'spruce' })
     );
+  });
+
+  it('refuses an unknown student', async () => {
+    mocks.findStudent.mockResolvedValue(undefined);
+
+    await expect(run(request)).rejects.toThrow('not found');
   });
 });
