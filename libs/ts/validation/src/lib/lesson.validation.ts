@@ -3,7 +3,8 @@
  *
  * Vest validation for music lesson forms (single + series).
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type {
   CreateLessonInput,
   CreateLessonSeriesInput,
@@ -47,7 +48,7 @@ export const lessonValidation = staticSuite(
         data.durationMinutes !== null
       ) {
         enforce(data.durationMinutes).inside(
-          ALLOWED_DURATIONS as readonly number[]
+          [...ALLOWED_DURATIONS] as number[]
         );
       }
     });
@@ -93,7 +94,7 @@ export const lessonSeriesValidation = staticSuite(
         data.durationMinutes !== null
       ) {
         enforce(data.durationMinutes).inside(
-          ALLOWED_DURATIONS as readonly number[]
+          [...ALLOWED_DURATIONS] as number[]
         );
       }
     });

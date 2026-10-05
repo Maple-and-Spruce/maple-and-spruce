@@ -6,6 +6,25 @@
 
 ## Current Status
 
+### vest 5 → 6 (2026-10-04)
+
+Vest 6 removed `staticSuite` and points to `create(cb).runStatic(...)`, but
+`runStatic` is not isolated: a focused run (`only(fields)`) reports stale errors
+for unfocused fields from the previous call. That would break the functions'
+partial-update validation and leak one request's errors into the next in a warm
+container. Five existing partial-update specs caught it.
+
+- `libs/ts/validation/src/lib/static-suite.ts`: local `staticSuite` that builds
+  a fresh suite per call (`create(cb).run(...)`), the Vest 5 behaviour. The 34
+  suites only change their import line; no caller changes.
+  `static-suite.spec.ts` pins isolation (verified to fail on `runStatic`).
+- `enforce(x).inside(list)` now types `list` as a mutable array: six `as const`
+  lists are spread (`[...LIST]`). Type-only.
+- Docs: PATTERNS-AND-PRACTICES Vest section and the functions rule now say to
+  use the local helper, never Vest's `create` / `runStatic`.
+- `require('vest')` ~3ms → ~6ms; negligible for maple-webhooks' cold start.
+- Next deferred major: MUI 9.
+
 ### Square SDK 45 → 46 (2026-10-04)
 
 SDK 46 moves the default `Square-Version` from 2026-08-19 to 2026-09-16. That

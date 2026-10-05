@@ -147,9 +147,11 @@ export interface Lesson {
   scheduleId?: string | null;
   /**
    * Bookable room the lesson occupies. Drives the room's calendar event
-   * (`onLessonWrite`) and thus the /room-schedule. Optional for backwards-
-   * compat with lessons created before this field existed; those fall back
-   * to the Spruce Room in the calendar trigger.
+   * (`onLessonWrite`) and thus the /room-schedule. Every write path now
+   * stamps it (Spruce when the caller names none), but it stays optional
+   * because lessons created before this field existed have none. Read it
+   * through `lessonRoom()`, never directly: the calendar trigger and the
+   * room-conflict check must agree that "no room" means Spruce (#156).
    */
   room?: Room;
   status: LessonStatus;

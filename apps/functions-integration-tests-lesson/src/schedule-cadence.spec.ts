@@ -164,9 +164,7 @@ describe('Standing arrangement cadence (legacy #837)', () => {
         durationMinutes: schedule.durationMinutes,
         scheduledAts: plan.toBook,
         blockId,
-        // Named explicitly: the room check only runs for a named room, while
-        // the calendar mirror files an unnamed one under Spruce anyway.
-        room: schedule.room ?? 'spruce',
+        room: schedule.room,
       } as CreateLessonSeriesRequest,
       idToken: adminUser.idToken,
     });

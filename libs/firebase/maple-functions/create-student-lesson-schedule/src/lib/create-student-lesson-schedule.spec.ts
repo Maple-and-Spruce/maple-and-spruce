@@ -1,3 +1,7 @@
+/**
+ * A weekly time books nothing (#157), and one that names no room is recorded as
+ * Spruce (#165), the room the calendar already puts its lessons in.
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -98,6 +102,14 @@ describe('createStudentLessonSchedule (#157)', () => {
       run({ ...request, endsOn: '2026-10-01T04:00:00.000Z' })
     ).rejects.toThrow('The end date is before the start date');
     expect(mocks.createSchedule).not.toHaveBeenCalled();
+  });
+
+  it('records a weekly time with no room as Spruce (#165)', async () => {
+    await run(request);
+
+    expect(mocks.createSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({ room: 'spruce' })
+    );
   });
 
   it('refuses an unknown student', async () => {
