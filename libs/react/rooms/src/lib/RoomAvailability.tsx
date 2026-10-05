@@ -98,7 +98,7 @@ export function RoomAvailability({
 
   if (roomScheduleState.status === 'error') {
     return (
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="textSecondary">
         Couldn&apos;t check {getRoomLabel(room)} availability.
       </Typography>
     );
@@ -122,7 +122,7 @@ export function RoomAvailability({
         </Alert>
       )}
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="textSecondary">
         {windows.length === 0 ? (
           <>No other {getRoomLabel(room)} bookings that day.</>
         ) : (

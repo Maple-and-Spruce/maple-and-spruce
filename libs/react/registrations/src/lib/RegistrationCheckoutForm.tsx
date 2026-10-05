@@ -19,7 +19,7 @@ import {
   useSignals,
   batch,
 } from '@maple/react/signals';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { fonts } from '@maple/react/theme';
@@ -639,13 +639,11 @@ export function RegistrationCheckoutForm({
           {submitError.value}
         </Alert>
       )}
-
       {isFull.value && (
         <Alert severity="warning">
           This class is full. Registration is not available at this time.
         </Alert>
       )}
-
       {/* Customer Info Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -699,7 +697,6 @@ export function RegistrationCheckoutForm({
           />
         </Box>
       </Box>
-
       {/* Additional Attendees Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -831,7 +828,6 @@ export function RegistrationCheckoutForm({
           </Alert>
         )}
       </Box>
-
       {/* Discount Code Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -846,7 +842,9 @@ export function RegistrationCheckoutForm({
             }
             size="small"
             sx={{ flex: 1 }}
-            inputProps={{ style: { fontFamily: 'monospace' } }}
+            slotProps={{
+              htmlInput: { style: { fontFamily: 'monospace' } }
+            }}
           />
           <Button
             variant="outlined"
@@ -862,12 +860,10 @@ export function RegistrationCheckoutForm({
           </Alert>
         )}
       </Box>
-
       {/* Cost Summary — every number (including quantity and per-item
           price) comes from the server response so the line item and
           totals can't silently disagree. */}
       {costBreakdown.value && <CostSummary cost={costBreakdown.value} />}
-
       {/* Required Agreements Section */}
       {hasRequiredAgreements && (
         <Box>
@@ -949,7 +945,6 @@ export function RegistrationCheckoutForm({
           )}
         </Box>
       )}
-
       {/* Payment Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -1003,7 +998,7 @@ export function RegistrationCheckoutForm({
             cardInitFailed.value && onHostedCheckout ? (
               // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
               // hosted checkout instead of a dead-ended, disabled pay button.
-              <Box>
+              (<Box>
                 <Typography
                   variant="body2"
                   sx={{ mb: 1.5, color: 'text.secondary' }}
@@ -1034,7 +1029,7 @@ export function RegistrationCheckoutForm({
                     ? 'Redirecting…'
                     : `Continue to secure checkout${costBreakdown.value ? ` — $${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''} →`}
                 </button>
-              </Box>
+              </Box>)
             ) : (
               <button
                 type="button"

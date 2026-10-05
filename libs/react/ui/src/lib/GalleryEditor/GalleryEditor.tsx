@@ -132,14 +132,16 @@ function SortableRow({ image, index, onAltChange, onRemove }: SortableRowProps) 
         size="small"
         fullWidth
         required
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <Tooltip title="Accessibility: this description helps blind students and search engines understand the image">
-                <AccessibilityNewIcon fontSize="small" color="primary" />
-              </Tooltip>
-            </InputAdornment>
-          ),
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <Tooltip title="Accessibility: this description helps blind students and search engines understand the image">
+                  <AccessibilityNewIcon fontSize="small" color="primary" />
+                </Tooltip>
+              </InputAdornment>
+            ),
+          }
         }}
       />
       <IconButton
@@ -272,7 +274,7 @@ export function GalleryEditor({
         }}
       >
         <Typography variant="subtitle2">{label}</Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="textSecondary">
           {value.length} / {max} images
         </Typography>
       </Box>
@@ -367,7 +369,7 @@ export function GalleryEditor({
       </Box>
 
       {value.length === 0 && !error && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+        <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
           Add up to {max} images to give students a richer preview of the class.
         </Typography>
       )}

@@ -270,8 +270,10 @@ function CommittedDate({
 }) {
   const when = lessonDate(lesson.scheduledAt);
   return (
-    <Stack direction="row" spacing={1} alignItems="center">
-      <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+    <Stack direction="row" spacing={1} sx={{
+      alignItems: 'center'
+    }}>
+      <Typography variant="body2" color="textSecondary" sx={{ flexGrow: 1 }}>
         {when}
       </Typography>
       {onMove && (
@@ -426,7 +428,7 @@ function LessonPicker({
       */}
       {owed.filter((l) => !unmarked.has(l.id)).length > 0 && (
         <Box sx={{ mb: 1.5 }}>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Already taught, not paid for
           </Typography>
           <Stack>{owed.filter((l) => !unmarked.has(l.id)).map(row)}</Stack>
@@ -440,7 +442,7 @@ function LessonPicker({
       */}
       {unmarked.size > 0 && (
         <Box sx={{ mb: 1.5 }}>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Past, not marked taught
           </Typography>
           <Stack>{owed.filter((l) => unmarked.has(l.id)).map(row)}</Stack>
@@ -449,12 +451,12 @@ function LessonPicker({
 
       <Stack>
         {owed.length > 0 && available.length > 0 && (
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Upcoming
           </Typography>
         )}
         {available.length === 0 && owed.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No lessons are waiting to be paid for.
           </Typography>
         )}
@@ -541,7 +543,7 @@ function ConfirmDialog({
         </Typography>
         <Stack spacing={0.25} sx={{ mb: 2 }}>
           {plan?.lessons.map((lesson) => (
-            <Typography key={lesson.id} variant="body2" color="text.secondary">
+            <Typography key={lesson.id} variant="body2" color="textSecondary">
               {lessonDate(lesson.scheduledAt)}
               {charging ? '' : ` · ${money(priceFor(lesson))}`}
             </Typography>
@@ -920,7 +922,13 @@ export function CommitLessonsCard({
 
   const heading = embedded ? null : (
     <>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          mb: 1.5
+        }}>
         <PaidIcon fontSize="small" color="action" />
         <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
           {copy.title}
@@ -958,7 +966,7 @@ export function CommitLessonsCard({
     return surface(
       <>
         {heading}
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Every lesson taught so far is paid for or on an invoice.
         </Typography>
       </>
@@ -969,12 +977,14 @@ export function CommitLessonsCard({
     return surface(
       <>
         {heading}
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           No upcoming lessons yet. Set a weekly time and the next 4 go on the
           calendar, or add lessons one at a time.
         </Typography>
         {emptyActions && (
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1} useFlexGap sx={{
+            flexWrap: 'wrap'
+          }}>
             {emptyActions}
           </Stack>
         )}
@@ -986,7 +996,7 @@ export function CommitLessonsCard({
     <>
       {heading}
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         {copy.intro}
       </Typography>
 
@@ -998,7 +1008,14 @@ export function CommitLessonsCard({
 
       <Stack spacing={2}>
         {!picking && (
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{
+              alignItems: 'center',
+              flexWrap: 'wrap'
+            }}>
             <TextField
               select
               size="small"
@@ -1144,7 +1161,7 @@ export function CommitLessonsCard({
               Add {listDates(shortfall.dates)}, same teacher and length?
             </Typography>
             {shortfall.block.note && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {shortfall.block.note}
               </Typography>
             )}
@@ -1173,7 +1190,14 @@ export function CommitLessonsCard({
           onChange={(e) => setNote(e.target.value)}
         />
 
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
           <PaymentActions
             hasCard={hasCard}
             amountCents={plan?.amountCents}
@@ -1214,7 +1238,7 @@ export function CommitLessonsCard({
         </Stack>
 
         {!hasCard && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No card is on file, so this can only be invoiced. To charge a card
             instead, save it in the Square app and link it under Payment method.
           </Typography>

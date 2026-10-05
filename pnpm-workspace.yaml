@@ -20,7 +20,6 @@ verifyDepsBeforeRun: false
 shamefullyHoist: true
 strictPeerDependencies: false
 
-
 # Security overrides — keep this list SHORT.
 #
 # Before adding one, check the vulnerable package is not simply stale: delete
@@ -96,3 +95,12 @@ overrides:
   # transfer hosts by default, a security default get-uri does not rely on.
   # Added 2026-10-04.
   basic-ftp@<6.2.1: '>=6.2.2 <7'
+
+# material-react-table 3.2.1 (still latest) passes props MUI 9 removed and now
+# ignores: the table search box would lose its icon and clear button, and its
+# menus their list settings. The patch renames them to MUI 9's slotProps in
+# both dist builds. The inline cell editor is left unpatched because no table
+# here enables editing. Delete the patch when MRT supports MUI 9; pnpm refuses
+# to apply it to any other version, so a bump forces the check. Tracked in #166.
+patchedDependencies:
+  material-react-table@3.2.1: patches/material-react-table@3.2.1.patch

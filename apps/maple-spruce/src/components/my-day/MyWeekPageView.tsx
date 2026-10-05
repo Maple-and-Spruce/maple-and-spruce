@@ -96,7 +96,7 @@ export function MyWeekPageView({
         <Typography variant="h4" component="h1">
           My Week
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="textSecondary">
           {today}
         </Typography>
       </Box>
@@ -125,7 +125,7 @@ export function MyWeekPageView({
         <MyOpenings weekState={weekState} />
       ) : (
         <>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
+          <Typography color="textSecondary" sx={{ mb: 3 }}>
             Your lessons today. Tap “Mark taught” after a lesson to record it;
             this never invoices or charges the student.
           </Typography>
@@ -172,7 +172,7 @@ export function MyWeekPageView({
           {dayState.status === 'success' &&
             !dayState.data.unlinked &&
             dayState.data.lessons.length === 0 && (
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" color="textSecondary">
                 No lessons scheduled today. 🎉
               </Typography>
             )}

@@ -106,15 +106,18 @@ export default function HopePage() {
     <Box>
       <Stack
         direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-        sx={{ mb: 1, gap: 2, flexWrap: 'wrap' }}
-      >
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          mb: 1,
+          gap: 2,
+          flexWrap: 'wrap'
+        }}>
         <Box>
           <Typography variant="h4" gutterBottom>
             Hope Scholarship billing
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Rendered lessons for Hope students, and what has been claimed from
             the EMA portal. Hope pays only for services rendered, so no-shows
             never appear here.
@@ -128,13 +131,11 @@ export default function HopePage() {
           Record past lessons
         </Button>
       </Stack>
-
       {notice && (
         <Alert severity="warning" sx={{ my: 2 }} onClose={() => setNotice(null)}>
           {notice}
         </Alert>
       )}
-
       <Box sx={{ mt: 3 }}>
         {queueState.status === 'loading' && (
           <Skeleton variant="rectangular" height={320} />
@@ -154,33 +155,33 @@ export default function HopePage() {
             <>
               <Stack direction="row" spacing={3} sx={{ mb: 3, flexWrap: 'wrap' }}>
                 <Box>
-                  <Typography variant="overline" color="text.secondary">
+                  <Typography variant="overline" color="textSecondary">
                     Ready to invoice
                   </Typography>
                   <Typography variant="h5">
                     {formatHopePrice(totals.readyCents)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="textSecondary">
                     {totals.readyCount} lessons
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="overline" color="text.secondary">
+                  <Typography variant="overline" color="textSecondary">
                     Need an order
                   </Typography>
                   <Typography variant="h5">{totals.needsOrderCount}</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="textSecondary">
                     taught lessons
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="overline" color="text.secondary">
+                  <Typography variant="overline" color="textSecondary">
                     Invoiced
                   </Typography>
                   <Typography variant="h5">
                     {formatHopePrice(totals.invoicedCents)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="textSecondary">
                     {totals.invoicedCount} lessons
                   </Typography>
                 </Box>
@@ -211,7 +212,6 @@ export default function HopePage() {
           );
         })()}
       </Box>
-
       {/*
         Below the queue: the products are set up once and rarely touched, the
         queue is the daily work. A price change re-prices unclaimed lessons,
@@ -227,7 +227,6 @@ export default function HopePage() {
           }}
         />
       </Box>
-
       <BackfillLessonsDialog
         open={backfillOpen}
         students={students}

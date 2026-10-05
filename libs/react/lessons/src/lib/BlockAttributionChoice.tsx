@@ -102,13 +102,15 @@ export function BlockAttributionChoice({
         checked={chosen(strategy)}
         onChange={() => onChange(strategy)}
         sx={{ p: 0, mt: 0.25 }}
-        inputProps={{ 'aria-label': title }}
+        slotProps={{
+          input: { 'aria-label': title }
+        }}
       />
       <Box>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {title}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {detail}
         </Typography>
       </Box>
@@ -118,7 +120,7 @@ export function BlockAttributionChoice({
   return (
     <Alert severity="info" icon={false} sx={{ '& .MuiAlert-message': { width: '100%' } }}>
       <AlertTitle>No block covers this time</AlertTitle>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5 }}>
         Lessons have to sit inside a teaching block. Pick how to make room, and
         it will be done when you save.
       </Typography>

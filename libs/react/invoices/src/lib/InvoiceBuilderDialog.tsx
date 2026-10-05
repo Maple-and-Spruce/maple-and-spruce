@@ -315,7 +315,7 @@ export function InvoiceBuilderDialog({
               gap: 1,
             }}
           >
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="overline" color="textSecondary">
               Line items
             </Typography>
             <Stack direction="row" spacing={1}>
@@ -344,7 +344,7 @@ export function InvoiceBuilderDialog({
           )}
 
           {lineItems.value.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               No line items yet. Click &quot;Add line&quot; or &quot;Add from
               lesson&quot; to start.
             </Typography>
@@ -381,7 +381,9 @@ export function InvoiceBuilderDialog({
                         quantity: Number.isFinite(n) ? n : 0,
                       });
                     }}
-                    inputProps={{ min: 0, step: '0.5' }}
+                    slotProps={{
+                      htmlInput: { min: 0, step: '0.5' }
+                    }}
                   />
                   <TextField
                     label="Rate"
@@ -396,18 +398,22 @@ export function InvoiceBuilderDialog({
                           : 0,
                       });
                     }}
-                    inputProps={{ min: 0, step: '0.01' }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">$</InputAdornment>
-                      ),
-                    }}
-                  />
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">$</InputAdornment>
+                        ),
+                      },
+
+                      htmlInput: { min: 0, step: '0.01' }
+                    }} />
                   <TextField
                     label="Subtotal"
                     size="small"
                     value={formatCents(line.subtotalCents)}
-                    InputProps={{ readOnly: true }}
+                    slotProps={{
+                      input: { readOnly: true }
+                    }}
                   />
                   <IconButton
                     size="small"
@@ -427,7 +433,7 @@ export function InvoiceBuilderDialog({
           <Box
             sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}
           >
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="overline" color="textSecondary">
               Total
             </Typography>
             <Typography variant="h6">
@@ -461,7 +467,7 @@ export function InvoiceBuilderDialog({
               Add lessons as lines
             </Typography>
             {eligibleLessons.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 No lessons to choose from.
               </Typography>
             ) : (
@@ -491,7 +497,7 @@ export function InvoiceBuilderDialog({
                           {lesson.status}
                         </Typography>
                         {billedBecause && (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="textSecondary">
                             {billedBecause}
                           </Typography>
                         )}

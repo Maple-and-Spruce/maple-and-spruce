@@ -84,7 +84,7 @@ export function UserRolesDialog({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         Manage admin access
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {user.displayName ?? user.email ?? user.uid}
           {user.email && user.displayName ? ` · ${user.email}` : ''}
         </Typography>
@@ -98,7 +98,7 @@ export function UserRolesDialog({
           )}
 
           <Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
               Admins have full access, including these role assignments.
             </Typography>
             {user.isAdmin ? (
@@ -114,7 +114,7 @@ export function UserRolesDialog({
                   Revoke admin
                 </Button>
                 {isSelf && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="textSecondary">
                     You can&apos;t revoke your own admin role. Have another
                     admin do it if needed.
                   </Typography>
@@ -158,7 +158,7 @@ export function UserRolesDialog({
                           </Typography>
                           <Typography
                             variant="caption"
-                            color="text.secondary"
+                            color="textSecondary"
                           >
                             {ROLE_DESCRIPTIONS[role]}
                           </Typography>

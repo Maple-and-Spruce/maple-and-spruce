@@ -45,7 +45,6 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
       <Typography variant="subtitle2" gutterBottom>
         Cost Summary
       </Typography>
-
       <Box
         sx={{
           display: 'flex',
@@ -53,12 +52,11 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
           mb: 0.5,
         }}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {quantity} x {formatCents(pricePerItemCents)}
         </Typography>
         <Typography variant="body2">{formatCents(originalCostCents)}</Typography>
       </Box>
-
       {discountAmountCents > 0 && (
         <Box
           sx={{
@@ -67,15 +65,18 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
             mb: 0.5,
           }}
         >
-          <Typography variant="body2" color="success.main">
+          <Typography variant="body2" sx={{
+            color: 'success.main'
+          }}>
             {discountDescription || 'Discount'}
           </Typography>
-          <Typography variant="body2" color="success.main">
+          <Typography variant="body2" sx={{
+            color: 'success.main'
+          }}>
             -{formatCents(discountAmountCents)}
           </Typography>
         </Box>
       )}
-
       {discountAmountCents > 0 && (
         <Box
           sx={{
@@ -84,7 +85,7 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
             mb: 0.5,
           }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Subtotal
           </Typography>
           <Typography variant="body2">
@@ -92,7 +93,6 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
           </Typography>
         </Box>
       )}
-
       {taxAmountCents > 0 && (
         <Box
           sx={{
@@ -101,7 +101,7 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
             mb: 0.5,
           }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             WV Sales Tax ({taxRatePercent}%)
           </Typography>
           <Typography variant="body2">
@@ -109,19 +109,21 @@ export function CostSummary({ cost }: CostSummaryProps): React.ReactElement {
           </Typography>
         </Box>
       )}
-
       <Divider sx={{ my: 1 }} />
-
       <Box
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
         }}
       >
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           Total
         </Typography>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           {formatCents(totalCents)}
         </Typography>
       </Box>

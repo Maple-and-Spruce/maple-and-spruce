@@ -207,10 +207,12 @@ export function EtsyImportDialog({
               commissionError.value ??
               'Leave blank to use the artist default commission.'
             }
-            inputProps={{ inputMode: 'decimal', 'aria-label': 'Commission override' }}
+            slotProps={{
+              htmlInput: { inputMode: 'decimal', 'aria-label': 'Commission override' }
+            }}
           />
 
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="textSecondary">
             Multi-variant listings are imported with all variants — each
             becomes a Product variant with its own price, quantity, and SKU.
           </Typography>

@@ -77,18 +77,18 @@ function InstructorCard({
             <Typography variant="h6" component="h3">
               {instructor.name}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
               {instructor.email}
             </Typography>
             {instructor.phone && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                 {instructor.phone}
               </Typography>
             )}
             {instructor.bio && (
               <Typography
                 variant="body2"
-                color="text.secondary"
+                color="textSecondary"
                 sx={{
                   mb: 1,
                   display: '-webkit-box',

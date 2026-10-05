@@ -146,20 +146,22 @@ export function UpcomingChargesCard({
             {studentNames[charge.studentId] ?? charge.studentId}
           </Typography>
         )}
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {charge.lessonIds.length} lesson
           {charge.lessonIds.length === 1 ? '' : 's'} · due{' '}
           {dueLabel(charge.dueAt)}
         </Typography>
         {chargeStatusDetail(charge) && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             {chargeStatusDetail(charge)}
           </Typography>
         )}
       </Box>
 
       {canStopCharge(charge) ? (
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{
+          alignItems: 'center'
+        }}>
           {/*
             A failed charge keeps its status chip — the row is still the record
             of a payment that did not happen — and gains all three actions: try
@@ -219,7 +221,7 @@ export function UpcomingChargesCard({
       )}
 
       {nothing && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Nothing is scheduled to be charged. Lessons are only charged
           automatically once a student is on a billing rule and has a card on
           file.
@@ -308,7 +310,7 @@ export function UpcomingChargesCard({
       <Dialog open={!!waiving} onClose={() => setWaiving(null)} fullWidth maxWidth="sm">
         <DialogTitle>Waive this charge</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             The lessons stay on the books and nothing is charged for them. Say
             why, so the comped block still makes sense later.
           </Typography>

@@ -94,23 +94,29 @@ export function PaymentMethodCard({
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          mb: 1.5
+        }}>
         <CreditCardIcon fontSize="small" color="action" />
         <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
           Payment method
         </Typography>
         {isLoading && <CircularProgress size={18} />}
       </Stack>
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
       {student.squareCardId ? (
         <Stack spacing={1}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Stack direction="row" spacing={1.5} sx={{
+            alignItems: 'center'
+          }}>
             <Typography sx={{ fontWeight: 600 }}>
               {describeCard(student.cardBrand, student.cardLast4)}
             </Typography>
@@ -125,14 +131,14 @@ export function PaymentMethodCard({
             <Alert severity="warning">{expiryNote(linkedCard)}</Alert>
           )}
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Lessons are charged to this card. Unlinking stops that; the card
             stays saved in Square either way.
           </Typography>
         </Stack>
       ) : (
         <Stack spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No card on file, so nothing is charged automatically. Save the card
             in the Square app, then link it here.
           </Typography>
@@ -146,11 +152,13 @@ export function PaymentMethodCard({
                   sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}
                 >
                   <Box sx={{ flexGrow: 1 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{
+                      alignItems: 'center'
+                    }}>
                       <Typography sx={{ fontWeight: 600 }}>
                         {describeCard(match.card.cardBrand, match.card.last4)}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="textSecondary">
                         {match.card.cardholderName}
                       </Typography>
                       {match.strength === 'exact' && (
@@ -161,7 +169,7 @@ export function PaymentMethodCard({
                       <Typography
                         key={reason}
                         variant="body2"
-                        color="text.secondary"
+                        color="textSecondary"
                       >
                         {reason}
                       </Typography>
@@ -190,7 +198,7 @@ export function PaymentMethodCard({
           {showAll && (
             <Stack spacing={1}>
               {unclaimed.length === 0 && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   Every card on file is already linked to a student.
                 </Typography>
               )}
@@ -204,7 +212,7 @@ export function PaymentMethodCard({
                     <Typography sx={{ fontWeight: 600 }}>
                       {describeCard(card.cardBrand, card.last4)}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="textSecondary">
                       {card.cardholderName ?? card.customerEmail ?? 'Unnamed'}
                     </Typography>
                   </Box>

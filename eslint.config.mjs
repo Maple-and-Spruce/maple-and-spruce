@@ -101,6 +101,20 @@ export default [
       'sonarjs/no-skipped-tests': 'warn',
       'sonarjs/no-clear-text-protocols': 'warn',
       'sonarjs/assertions-in-tests': 'warn',
+
+      // MUI 9: a component's `color` prop takes a name ('textSecondary',
+      // 'error'), not a palette path. 'text.secondary' / 'error.main' match
+      // nothing and render in the default colour, with no type error. Paths
+      // belong in sx: sx={{ color: 'grey.600' }}.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "JSXAttribute[name.name='color'] Literal[value=/^[a-zA-Z]+\\.[a-zA-Z0-9]+$/]",
+          message:
+            "MUI 9 ignores palette paths in the `color` prop. Use a name ('textSecondary', 'error') or move it to sx.",
+        },
+      ],
     },
   },
   {

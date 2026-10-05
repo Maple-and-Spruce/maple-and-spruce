@@ -694,7 +694,7 @@ export function SquareCardForm({
           }}
         >
           <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Loading payment form...
           </Typography>
         </Box>
@@ -726,7 +726,7 @@ export function SquareCardForm({
           }}
         >
           <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ px: 2 }}>
             Or pay with card
           </Typography>
           <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />

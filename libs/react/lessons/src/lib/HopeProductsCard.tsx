@@ -107,7 +107,7 @@ function ProductDialog({
       <DialogTitle>{draft.id ? 'Edit EMA product' : 'Add an EMA product'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Copy these from Products &amp; Services in the EMA portal, exactly as
             they appear there.
           </Typography>
@@ -173,10 +173,11 @@ export function HopeProductsCard({
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack
         direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 1 }}
-      >
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 1
+        }}>
         <Typography variant="h6" component="h2">
           EMA products
         </Typography>
@@ -189,11 +190,10 @@ export function HopeProductsCard({
           Add product
         </Button>
       </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         What the EMA portal pays per lesson. Each Hope student is billed under
         one of these, set on the student.
       </Typography>
-
       {(productsState.status === 'idle' || productsState.status === 'loading') && (
         <Box aria-busy="true" aria-label="Loading EMA products">
           <Skeleton variant="rectangular" height={120} />
@@ -257,7 +257,6 @@ export function HopeProductsCard({
           </TableBody>
         </Table>
       )}
-
       {editing && (
         <ProductDialog
           draft={editing}

@@ -684,9 +684,8 @@ export default function StudentDetailPage() {
         <Link href="/students" style={{ color: 'inherit' }}>
           Students
         </Link>
-        <Typography color="text.primary">{student.name}</Typography>
+        <Typography color="textPrimary">{student.name}</Typography>
       </Breadcrumbs>
-
       {/*
         The page reads in the order Katie works: who the student is and what
         they pay, their weekly slot, settling lessons already taught, then
@@ -707,14 +706,14 @@ export default function StudentDetailPage() {
           <Typography variant="h4" component="h1">
             {student.name}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="textSecondary">
             {INSTRUMENT_LABELS[student.instrument]}
             {student.registeredLessonLength &&
               ` · ${LESSON_LENGTH_LABELS[student.registeredLessonLength]}`}
             {` · Teacher: ${primaryTeacherName}`}
             {rateLabel && ` · ${rateLabel}`}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
             {student.isAdultStudent ? 'Contact' : 'Parent/guardian'}:{' '}
             {student.primaryContactName} · {student.primaryContactEmail}
           </Typography>
@@ -747,7 +746,6 @@ export default function StudentDetailPage() {
           Edit student
         </Button>
       </Box>
-
       {student.isHopeScholarship && (
         <HopeScholarshipBanner
           hopeProductId={student.hopeProductId}
@@ -756,7 +754,6 @@ export default function StudentDetailPage() {
           onChooseProduct={() => setEditStudentOpen(true)}
         />
       )}
-
       <StandingScheduleCard
         schedulesState={schedulesState}
         instructors={instructors}
@@ -773,7 +770,6 @@ export default function StudentDetailPage() {
         }}
         onEnd={handleEndSchedule}
       />
-
       {/*
         Hope students are billed in the EMA portal, so their "past lessons"
         step is invoicing there against the family's orders, not charging a
@@ -821,7 +817,6 @@ export default function StudentDetailPage() {
           )}
         </>
       )}
-
       <CommitLessonsCard
         scope="owed"
         student={student}
@@ -829,18 +824,19 @@ export default function StudentDetailPage() {
         preselectLessonIds={chargeLessonId ? [chargeLessonId] : undefined}
         {...billingCardProps}
       />
-
       {student.isHopeScholarship ? (
         // The billing card hides itself for Hope, and with it the way to add
         // lessons, so the heading and the button stand on their own here.
-        <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
+        (<Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+          <Stack direction="row" spacing={1} sx={{
+            alignItems: 'center'
+          }}>
             <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
               Next lessons
             </Typography>
             {addLessonsButton}
           </Stack>
-        </Paper>
+        </Paper>)
       ) : (
         <CommitLessonsCard
           scope="upcoming"
@@ -876,17 +872,15 @@ export default function StudentDetailPage() {
           {...billingCardProps}
         />
       )}
-
       <Divider sx={{ my: 4 }} />
       <Typography
         variant="overline"
         component="p"
-        color="text.secondary"
+        color="textSecondary"
         sx={{ mb: 2 }}
       >
         History and settings
       </Typography>
-
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
         Lessons
       </Typography>
@@ -901,7 +895,6 @@ export default function StudentDetailPage() {
         onMarkNoShow={handleMarkNoShow}
         pendingAction={pendingLessonAction}
       />
-
       {/*
         Invoices and card charges, automatic and manual, in one table: they are
         the same question ("is this family paid up?") answered three ways.
@@ -910,7 +903,7 @@ export default function StudentDetailPage() {
         Billing
       </Typography>
       {student.isHopeScholarship ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Hope Scholarship students are invoiced through the EMA portal, so
           nothing is billed here.
         </Typography>
@@ -935,7 +928,6 @@ export default function StudentDetailPage() {
           onRetryCharge={(id) => chargeNow({ studentId, retryChargeId: id })}
         />
       )}
-
       <Box sx={{ mt: 4 }}>
         <PaymentMethodCard
           student={student}
@@ -959,7 +951,6 @@ export default function StudentDetailPage() {
           }}
         />
       </Box>
-
       <StudentForm
         open={editStudentOpen}
         onClose={() => setEditStudentOpen(false)}
@@ -972,7 +963,6 @@ export default function StudentDetailPage() {
         hopeProducts={hopeProducts}
         isSubmitting={isSavingStudent}
       />
-
       <InvoiceBuilderDialog
         open={invoiceDialogOpen}
         onClose={() => {
@@ -990,7 +980,6 @@ export default function StudentDetailPage() {
         onUpdate={handleInvoiceUpdate}
         isSubmitting={isSubmitting}
       />
-
       <StandingScheduleDialog
         open={scheduleDialogOpen}
         schedule={editingSchedule}
@@ -1005,7 +994,6 @@ export default function StudentDetailPage() {
         }}
         onSubmit={handleScheduleSubmit}
       />
-
       <ScheduleLessonDialog
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
@@ -1018,7 +1006,6 @@ export default function StudentDetailPage() {
         onCreateSeries={handleCreateSeries}
         isSubmitting={isSubmitting}
       />
-
       <EditLessonDialog
         open={!!editLesson}
         onClose={() => setEditLesson(undefined)}
@@ -1029,7 +1016,6 @@ export default function StudentDetailPage() {
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
       />
-
       <DeleteConfirmDialog
         open={!!cancelLesson}
         onClose={() => setCancelLesson(null)}
@@ -1062,7 +1048,6 @@ export default function StudentDetailPage() {
           </Alert>
         }
       />
-
       <DeleteConfirmDialog
         open={!!invoiceToVoid}
         onClose={() => setInvoiceToVoid(null)}
@@ -1088,7 +1073,6 @@ export default function StudentDetailPage() {
           </Alert>
         }
       />
-
       <DeleteConfirmDialog
         open={!!invoiceToDelete}
         onClose={() => setInvoiceToDelete(null)}

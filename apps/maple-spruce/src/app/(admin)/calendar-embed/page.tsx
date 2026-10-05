@@ -103,19 +103,21 @@ function AddSourceDialog({
             onChange={(e) => setColor(e.target.value.replace('#', ''))}
             placeholder="5C8A97"
             fullWidth
-            InputProps={{
-              startAdornment: (
-                <Box
-                  sx={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: '4px',
-                    backgroundColor: `#${color}`,
-                    mr: 1,
-                    flexShrink: 0,
-                  }}
-                />
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: '4px',
+                      backgroundColor: `#${color}`,
+                      mr: 1,
+                      flexShrink: 0,
+                    }}
+                  />
+                ),
+              }
             }}
           />
         </Box>

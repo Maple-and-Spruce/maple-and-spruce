@@ -55,11 +55,12 @@ export default function SettingsPage(): React.ReactNode {
       <Typography variant="h4" gutterBottom>
         Settings
       </Typography>
-
       <Card>
         <CardContent>
           <Stack spacing={2}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: 'center'
+            }}>
               <StorefrontIcon color="primary" />
               <Typography variant="h6">Etsy Connection</Typography>
               {connectionState.status === 'success' && (
@@ -93,10 +94,10 @@ export default function SettingsPage(): React.ReactNode {
 
             {connectionState.status === 'success' && isConnected && (
               <Stack spacing={1}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   Shop ID: {storedShopId ?? 'Unknown'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   User ID: {connectionState.data.userId ?? 'Unknown'}
                 </Typography>
                 {!isTokenValid && (
@@ -138,7 +139,7 @@ export default function SettingsPage(): React.ReactNode {
             )}
 
             {connectionState.status === 'success' && !isConnected && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 Connect your Etsy shop to sync product listings.
               </Typography>
             )}
@@ -164,15 +165,12 @@ export default function SettingsPage(): React.ReactNode {
           </Stack>
         </CardContent>
       </Card>
-
       <Box sx={{ mt: 3 }}>
         <PosLessonConfigCard />
       </Box>
-
       <Box sx={{ mt: 3 }}>
         <LessonRatesConfigCard />
       </Box>
-
       <Box sx={{ mt: 3 }}>
         <BusinessVenmoConfigCard />
       </Box>

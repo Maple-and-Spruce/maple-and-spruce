@@ -280,10 +280,12 @@ export function Image2PagesWidget({
                 size="small"
                 label="Printed width (in)"
                 type="number"
-                inputProps={{ min: 0.5, step: 0.5 }}
                 value={targetWidthIn}
                 onChange={(e) => setTargetWidthIn(parseFloat(e.target.value) || 0)}
                 sx={{ minWidth: 160 }}
+                slotProps={{
+                  htmlInput: { min: 0.5, step: 0.5 }
+                }}
               />
             )}
             {sizingMode === 'height' && (
@@ -291,10 +293,12 @@ export function Image2PagesWidget({
                 size="small"
                 label="Printed height (in)"
                 type="number"
-                inputProps={{ min: 0.5, step: 0.5 }}
                 value={targetHeightIn}
                 onChange={(e) => setTargetHeightIn(parseFloat(e.target.value) || 0)}
                 sx={{ minWidth: 160 }}
+                slotProps={{
+                  htmlInput: { min: 0.5, step: 0.5 }
+                }}
               />
             )}
             <Select
@@ -313,10 +317,12 @@ export function Image2PagesWidget({
               size="small"
               label="Margin (in)"
               type="number"
-              inputProps={{ min: 0, step: 0.05 }}
               value={marginIn}
               onChange={(e) => setMarginIn(Math.max(0, parseFloat(e.target.value) || 0))}
               sx={{ minWidth: 130 }}
+              slotProps={{
+                htmlInput: { min: 0, step: 0.05 }
+              }}
             />
           </Stack>
 

@@ -23,7 +23,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import type {
   Instrument,
   InstructorLessonRates,
@@ -106,16 +106,20 @@ export function InstructorLessonRatesEditor({
   return (
     <Box>
       <Typography variant="subtitle2">Lesson rates</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5 }}>
         What a family pays per private lesson with this teacher. Leave a length
         blank to use the studio default. A student&apos;s own rate overrides
         this.
       </Typography>
-
       <Stack spacing={1.5}>
         {rows.map((instrument) => (
           <Box key={instrument}>
-            <Stack direction="row" alignItems="center" sx={{ mb: 0.5 }}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: 'center',
+                mb: 0.5
+              }}>
               <Typography variant="body2" sx={{ fontWeight: 600, flexGrow: 1 }}>
                 {INSTRUMENT_LABELS[instrument]}
               </Typography>
@@ -163,7 +167,7 @@ export function InstructorLessonRatesEditor({
         ))}
 
         {rows.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No rates set. This teacher&apos;s students use the studio default.
           </Typography>
         )}

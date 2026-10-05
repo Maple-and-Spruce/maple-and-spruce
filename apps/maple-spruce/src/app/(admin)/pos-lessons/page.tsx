@@ -59,7 +59,7 @@ export default function PosLessonsPage() {
       <Typography variant="h4" component="h1" gutterBottom>
         POS Lessons
       </Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
+      <Typography color="textSecondary" sx={{ mb: 3 }}>
         In-person Square POS lesson sales. Attribute each to a student to settle
         their matching open invoice or create a paid one. Sales whose customer
         email matched a single student are attributed automatically.
