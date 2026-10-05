@@ -19,6 +19,19 @@ export const HOPE_BILLING_STUDENT_ID = 'e2e-stu-hope-billing';
 const HOPE_PRODUCT_ID = 'e2e-hope-product';
 /** Two past lessons never marked taught: history from before the app. */
 export const HISTORY_STUDENT_ID = 'e2e-stu-history';
+/** A Hope student with a weekly time and nothing booked: book-only (#158). */
+export const HOPE_BOOKING_STUDENT_ID = 'e2e-stu-hope-booking';
+const BLOCK_ID = 'e2e-block-weekly';
+const TZ = 'America/New_York';
+
+/** Weekday (0 = Sunday) of an instant, read in the studio's timezone. */
+function weekdayInStudio(at: Date): number {
+  const short = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: TZ,
+  }).format(at);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(short);
+}
 const TEACHER_ID = 'e2e-teacher';
 const DAY = 86_400_000;
 
@@ -34,6 +47,30 @@ export async function seedStudentManagement(
     status: 'active',
     ...stamps,
   });
+  // The weekly times below sit on the weekday eight days out, at 4:00 PM, so
+  // the first proposed date is never today and never in the past.
+  const slotDay = weekdayInStudio(at(8));
+  await setFirestoreDoc('lessonBlocks', BLOCK_ID, {
+    teacherId: TEACHER_ID,
+    dayOfWeek: slotDay,
+    startMinutes: 9 * 60,
+    endMinutes: 20 * 60,
+    ...stamps,
+  });
+  const weeklyTime = (studentId: string) => ({
+    studentId,
+    teacherId: TEACHER_ID,
+    blockId: BLOCK_ID,
+    dayOfWeek: slotDay,
+    startMinutes: 16 * 60,
+    durationMinutes: 30,
+    intervalWeeks: 1,
+    room: 'spruce',
+    startsOn: at(-30),
+    status: 'active',
+    ...stamps,
+  });
+
   await setFirestoreDoc('students', OWED_STUDENT_ID, {
     name: OWED_STUDENT_NAME,
     instrument: 'cello',
@@ -70,6 +107,12 @@ export async function seedStudentManagement(
     lessonRateCents: 4000,
     ...stamps,
   });
+  // A weekly time, so the two booked lessons are topped up to four (#158).
+  await setFirestoreDoc(
+    'studentLessonSchedules',
+    'e2e-sched-two-ahead',
+    weeklyTime(TWO_AHEAD_STUDENT_ID)
+  );
   // A retry must start from two again, so clear any this spec already added.
   const lessons = await listFirestoreDocs('lessons');
   for (const doc of lessons) {
@@ -163,5 +206,30 @@ export async function seedStudentManagement(
       status: 'scheduled',
       ...stamps,
     });
+  }
+
+  await setFirestoreDoc('students', HOPE_BOOKING_STUDENT_ID, {
+    name: 'Rowen Thistle',
+    instrument: 'violin',
+    isAdultStudent: false,
+    isHopeScholarship: true,
+    hopeProductId: HOPE_PRODUCT_ID,
+    primaryTeacherId: TEACHER_ID,
+    registeredLessonLength: '30-min-full',
+    primaryContactName: 'Test Parent',
+    primaryContactEmail: 'rowen-parent@example.com',
+    status: 'active',
+    ...stamps,
+  });
+  await setFirestoreDoc(
+    'studentLessonSchedules',
+    'e2e-sched-hope-booking',
+    weeklyTime(HOPE_BOOKING_STUDENT_ID)
+  );
+  // A retry starts with nothing booked.
+  for (const doc of await listFirestoreDocs('lessons')) {
+    if (doc.data['studentId'] === HOPE_BOOKING_STUDENT_ID) {
+      await deleteFirestoreDoc('lessons', doc.id);
+    }
   }
 }

@@ -48,7 +48,7 @@ export interface PaymentMethodCardProps {
 }
 
 /** "Visa ••4242", or just the last four when the brand is missing. */
-function describeCard(
+export function describeCard(
   brand: string | undefined,
   last4: string | undefined
 ): string {

@@ -7,20 +7,21 @@ import {
   TWO_AHEAD_STUDENT_ID,
   HISTORY_STUDENT_ID,
   HOPE_BILLING_STUDENT_ID,
+  HOPE_BOOKING_STUDENT_ID,
   seedStudentManagement,
 } from './student-management-seed';
 
 /**
- * Student management in the order Katie works: edit the student, set the
- * weekly slot, charge for past lessons, line up the next ones — reachable from
- * the students table, and the same jobs on the student page.
+ * Student management: the table's row actions, and the student page's three
+ * tabs (#158) — Next lessons, Settings, Activity.
  *
- * Storybook covers each card and the row menu on their own. This proves the
- * assembled wiring: the table's dialogs load one student's real data, and an
- * edit made on the student page reaches the server and back.
+ * Storybook covers each panel on its own. This proves the assembled wiring:
+ * real lessons, weekly times and billing reach the tabs, and what Katie does
+ * there reaches the server and back.
  *
- * Nothing here takes money: the e2e has no Square, so the charge itself is
- * covered by the charge-lessons-now integration suite.
+ * Nothing here takes money: the e2e has no Square. Booking is exercised for
+ * real on a Hope student (book only); the charge and the invoice are covered
+ * by the book-and-pay unit tests and the charge-lessons-now integration suite.
  */
 
 async function openRowAction(page: Page, action: RegExp) {
@@ -69,77 +70,117 @@ test.describe('Student management — task order', () => {
     ).toHaveValue(OWED_STUDENT_NAME);
   });
 
-  test('the student page reads in task order and edits the rate', async ({
+  test('the student page opens on Next lessons, with one line to orient', async ({
     page,
   }) => {
     await page.goto(`/students/${OWED_STUDENT_ID}`);
     await expect(
       page.getByRole('heading', { name: OWED_STUDENT_NAME, level: 1 })
     ).toBeVisible({ timeout: 20_000 });
-
-    const sections = page.getByRole('heading', { level: 2 });
-    await expect(sections.first()).toHaveText('Weekly schedule');
-    const order = await sections.allTextContents();
-    const at = (name: string) => order.indexOf(name);
-    expect(at('Weekly schedule')).toBeLessThan(at('Charge for past lessons'));
-    expect(at('Charge for past lessons')).toBeLessThan(at('Next lessons'));
-    expect(at('Next lessons')).toBeLessThan(at('Lessons'));
-    expect(at('Lessons')).toBeLessThan(at('Payment method'));
-
-    // No lessons ahead and no weekly time: the Next lessons card leads with
-    // setting one up instead of a warning and disabled buttons.
-    await expect(page.getByText(/No upcoming lessons yet/)).toBeVisible();
-    await page.getByRole('button', { name: 'Set a weekly time' }).last().click();
+    await expect(page.getByText('Cello · No weekly time')).toBeVisible();
     await expect(
-      page.getByRole('dialog').getByText('Set a weekly time')
+      page.getByRole('tab', { name: 'Next lessons', selected: true })
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel' }).click();
 
-    // Edit the rate from the page, and see it land in the header and the price.
-    await page.getByRole('button', { name: 'Edit student' }).click();
-    await page.getByLabel(/lesson rate override/i).fill('45');
-    await page.getByRole('button', { name: 'Update' }).click();
-    await expect(page.getByText(/\$45\.00\/lesson \(custom rate\)/)).toBeVisible();
-    await expect(page.getByText(/· \$45\.00$/)).toBeVisible();
+    // Nothing to mark, ever.
+    await expect(
+      page.getByRole('button', { name: /mark taught|no-show/i })
+    ).toHaveCount(0);
+
+    // No weekly time: the tab leads with setting one up, on Settings.
+    await expect(
+      page.getByText('No weekly time is set, so there are no lessons to propose.')
+    ).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Set a weekly time' }).click();
+    await expect(page.getByRole('dialog').getByText('Set a weekly time')).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    // Checked after the dialog closes: an open dialog hides the page behind it.
+    await expect(page.getByRole('tab', { name: 'Settings', selected: true })).toBeVisible();
   });
 
-  test('two lessons made by hand become the next four in one click', async ({
+  test('two booked lessons and a weekly time make the next four, priced as one', async ({
     page,
   }) => {
     await page.goto(`/students/${TWO_AHEAD_STUDENT_ID}`);
-    const next = page.getByText(
-      'Only 2 of the next 4 lessons are on the calendar.'
-    );
-    await expect(next).toBeVisible({ timeout: 20_000 });
+    const list = page.getByRole('list', { name: 'Next lessons' });
+    await expect(list.getByRole('listitem')).toHaveCount(4, { timeout: 20_000 });
+    await expect(list.getByText('Already on the calendar')).toHaveCount(2);
 
-    await page.getByRole('button', { name: 'Add 2 lessons' }).click();
-
-    // The lessons are real: the notice goes, and the plan now covers four.
-    await expect(next).toBeHidden({ timeout: 20_000 });
-    await expect(page.getByText('4 lessons', { exact: true })).toBeVisible();
-    // Priced and ready to take payment for, which is optional.
+    // No card: said plainly, and the one button invoices for all four.
+    await expect(page.getByText('No card on file.')).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Send an invoice for $160.00' })
     ).toBeVisible();
 
-    // And they survive a reload, so the server made them.
-    await page.reload();
-    await expect(page.getByText('4 lessons', { exact: true })).toBeVisible({
+    // Skipping a week keeps it four, with the week after instead.
+    const before = await list.getByRole('listitem').last().textContent();
+    await list.getByRole('button', { name: /^Skip/ }).last().click();
+    await expect(list.getByRole('listitem')).toHaveCount(4);
+    await expect(list.getByRole('listitem').last()).not.toHaveText(before ?? '');
+  });
+
+  test('a Hope student books the next four in one press, and they are real', async ({
+    page,
+  }) => {
+    await page.goto(`/students/${HOPE_BOOKING_STUDENT_ID}`);
+    await page.getByRole('button', { name: 'Book 4 lessons' }).click({
       timeout: 20_000,
     });
+    await expect(page.getByText(/^Booked /)).toBeVisible({ timeout: 20_000 });
+    // Never offered a charge: Hope bills through EMA.
+    await expect(page.getByRole('button', { name: /^Charge/ })).toHaveCount(0);
+
+    // The server made them: they are the upcoming lessons after a reload.
+    await page.goto(`/students/${HOPE_BOOKING_STUDENT_ID}?tab=settings`);
+    await expect(
+      page.getByRole('list', { name: 'Upcoming lessons' }).getByRole('listitem')
+    ).toHaveCount(4, { timeout: 20_000 });
+  });
+
+  test('Settings: delete an upcoming lesson', async ({ page }) => {
+    await page.goto(`/students/${TWO_AHEAD_STUDENT_ID}?tab=settings`);
+    const upcoming = page
+      .getByRole('list', { name: 'Upcoming lessons' })
+      .getByRole('listitem');
+    await expect(upcoming).toHaveCount(2, { timeout: 20_000 });
+
+    await page.getByRole('button', { name: /^Delete/ }).first().click();
+    await page.getByRole('button', { name: 'Delete the lesson' }).click();
+    await expect(upcoming).toHaveCount(1, { timeout: 20_000 });
+
+    await page.reload();
+    await expect(upcoming).toHaveCount(1, { timeout: 20_000 });
+  });
+
+  test('Settings: edit the student', async ({ page }) => {
+    await page.goto(`/students/${OWED_STUDENT_ID}?tab=settings`);
+    await page
+      .getByRole('button', { name: 'Edit student details' })
+      .click({ timeout: 20_000 });
+    await page.getByLabel(/lesson rate override/i).fill('45');
+    await page.getByRole('button', { name: 'Update' }).click();
+    await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 });
+
+    await page.reload();
+    await page
+      .getByRole('button', { name: 'Edit student details' })
+      .click({ timeout: 20_000 });
+    await expect(page.getByLabel(/lesson rate override/i)).toHaveValue('45');
   });
 
   test('a Hope student: record the EMA order, then mark lessons invoiced', async ({
     page,
   }) => {
-    await page.goto(`/students/${HOPE_BILLING_STUDENT_ID}`);
+    // Billed as the product, not the old table's estimate: shown on Settings.
+    await page.goto(`/students/${HOPE_BILLING_STUDENT_ID}?tab=settings`);
+    await expect(
+      page.getByText('Suzuki Violin Lesson - 30 min · $32.50 / lesson')
+    ).toBeVisible({ timeout: 20_000 });
+
+    await page.goto(`/students/${HOPE_BILLING_STUDENT_ID}?tab=activity`);
     await expect(page.getByText('2 need an order', { exact: true })).toBeVisible({
       timeout: 20_000,
     });
-    // Billed as the product, not the old table's estimate.
-    await expect(
-      page.getByText('Suzuki Violin Lesson - 30 min · $32.50 / lesson')
-    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Record an order' }).first().click();
     const dialog = page.getByRole('dialog');
@@ -160,34 +201,24 @@ test.describe('Student management — task order', () => {
     await expect(page.getByText('2 invoiced', { exact: true })).toBeVisible({ timeout: 20_000 });
   });
 
-  test('history: past lessons never marked taught, recorded as paid in Square', async ({
+  test('Activity: past lessons nobody marked are just lessons, settled quietly', async ({
     page,
   }) => {
-    await page.goto(`/students/${HISTORY_STUDENT_ID}`);
-    await expect(page.getByText('Past, not marked taught')).toBeVisible({
-      timeout: 20_000,
-    });
+    await page.goto(`/students/${HISTORY_STUDENT_ID}?tab=activity`);
+    const rows = page
+      .getByRole('list', { name: 'Lesson activity' })
+      .getByRole('listitem');
+    await expect(rows).toHaveCount(2, { timeout: 20_000 });
+    // Not called out: no label of any kind on either.
+    await expect(rows.getByText(/Paid|Invoiced|unpaid|owed/i)).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Tick all 2' }).click();
-    await page
-      .getByRole('button', { name: 'Already paid (cash, Venmo, Square)' })
-      .click();
-    const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Card, in Square').check();
-    await dialog.getByLabel('Total paid').fill('75');
-    await dialog.getByRole('button', { name: 'Record $75.00 paid' }).click();
-
-    // Settled: nothing left owed, and both lessons are now taught.
+    // But one can still be invoiced from its menu, behind a confirmation.
+    await rows.first().getByRole('button', { name: /^More for/ }).click();
+    await expect(page.getByRole('menuitem', { name: 'Charge the card' })).toHaveCount(0);
+    await page.getByRole('menuitem', { name: 'Send an invoice' }).click();
     await expect(
-      page.getByText(/Every lesson taught so far is paid for/)
-    ).toBeVisible({ timeout: 20_000 });
-
-    await page.reload();
-    await expect(
-      page.getByText(/Every lesson taught so far is paid for/)
-    ).toBeVisible({ timeout: 20_000 });
-    await page.getByLabel(/show paid & closed/i).click();
-    const row = page.getByRole('row').filter({ hasText: '$75.00' });
-    await expect(row).toContainText('Paid by card in Square');
+      page.getByRole('dialog').getByText(/Email the family an invoice for \$40\.00/)
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Back' }).click();
   });
 });
