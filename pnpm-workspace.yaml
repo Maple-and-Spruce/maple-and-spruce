@@ -13,7 +13,6 @@ allowBuilds:
   re2: true
   sharp: true
 
-managePackageManagerVersions: false
 minimumReleaseAge: 0
 nodeLinker: hoisted
 verifyDepsBeforeRun: false
@@ -23,7 +22,7 @@ strictPeerDependencies: false
 # Security overrides — keep this list SHORT.
 #
 # Before adding one, check the vulnerable package is not simply stale: delete
-# node_modules AND pnpm-lock.yaml (pnpm 11 keeps a copy of the lockfile in
+# node_modules AND pnpm-lock.yaml (pnpm 11+ keeps a copy of the lockfile in
 # node_modules and will reuse it), `pnpm install`, then `pnpm audit`. On
 # 2026-09-29 that alone cleared ~45 of the 50 overrides this file used to carry
 # — the lockfile was holding old transitive versions long after their parents

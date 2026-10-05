@@ -6,6 +6,21 @@
 
 ## Current Status
 
+### pnpm 11 → 12 (2026-10-05)
+
+- `packageManager` → pnpm 12.9.1. pnpm 12 rejects unknown workspace settings;
+  `managePackageManagerVersions` no longer exists and was removed. Its job
+  (keep the lockfile single-document for Nx) is moot: pnpm 12 always writes a
+  multi-document lockfile and Nx 23.2 parses it (pruned deploy lockfile came
+  out byte-identical). Closes #29.
+- pnpm 12 is a native binary, so its installers need upgrading too:
+  `pnpm/action-setup` v4 → **v6.1.0** in all 27 places (the floating `v6` tag
+  lags behind 6.1.0, so it is pinned), and the Vercel jobs install
+  `corepack@latest` because vercel.json's installCommand runs
+  `corepack enable && pnpm install` and only corepack ≥ 0.35 can run pnpm 12.
+- Firebase function deploys are unaffected: Cloud Build installs them with npm
+  (CI deletes the deploy lockfile; buildpacks only choose pnpm when one exists).
+- Audit wrapper still passes clean and still fails on an un-ignored high.
 ### Webflow code components 1 → 2 (2026-10-05)
 
 `@webflow/react` 1.x only supported React up to 19.0.0, and the refresh moved

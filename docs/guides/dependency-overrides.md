@@ -15,7 +15,7 @@ this repo carried: the fixes had shipped upstream months earlier and nothing had
 re-resolved them. So before adding an override, re-resolve:
 
 ```bash
-rm -rf node_modules pnpm-lock.yaml   # BOTH — pnpm 11 keeps a lockfile copy in
+rm -rf node_modules pnpm-lock.yaml   # BOTH — pnpm 11+ keeps a lockfile copy in
                                      # node_modules and reuses it ("Already up to date")
 pnpm install
 pnpm audit --audit-level=high
