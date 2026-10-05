@@ -9,8 +9,6 @@ import type {
   GetMyDayLessonsResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
-  UpdateLessonRequest,
-  UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -59,30 +57,6 @@ export function useMyDay() {
     }
   }, []);
 
-  const markRendered = useCallback(
-    async (lessonId: string): Promise<void> => {
-      const fn = httpsCallable<UpdateLessonRequest, UpdateLessonResponse>(
-        getMapleFunctions(),
-        'updateLesson'
-      );
-      await fn({ id: lessonId, status: 'rendered' });
-      await fetchDay();
-    },
-    [fetchDay]
-  );
-
-  const markNoShow = useCallback(
-    async (lessonId: string): Promise<void> => {
-      const fn = httpsCallable<UpdateLessonRequest, UpdateLessonResponse>(
-        getMapleFunctions(),
-        'updateLesson'
-      );
-      await fn({ id: lessonId, status: 'no-show' });
-      await fetchDay();
-    },
-    [fetchDay]
-  );
-
   const recordPayment = useCallback(
     async (
       invoiceId: string,
@@ -102,5 +76,5 @@ export function useMyDay() {
     fetchDay();
   }, [fetchDay]);
 
-  return { dayState, fetchDay, markRendered, markNoShow, recordPayment };
+  return { dayState, fetchDay, recordPayment };
 }

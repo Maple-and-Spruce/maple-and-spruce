@@ -25,8 +25,8 @@ import { VenmoQr } from './VenmoQr';
 export type MyWeekTab = 'today' | 'week' | 'openings';
 
 /**
- * The page opens on the week. Teachers plan from the week and dip into Today
- * to mark lessons taught, so the week is what they want first.
+ * The page opens on the week. Teachers plan from the week, and a lesson in it
+ * opens that student's Next lessons (#160), so the week is what they want first.
  */
 export const DEFAULT_MY_WEEK_TAB: MyWeekTab = 'week';
 
@@ -38,8 +38,6 @@ export interface MyWeekPageViewProps {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onThisWeek: () => void;
-  onMarkRendered: (lessonId: string) => void;
-  onMarkNoShow: (lessonId: string) => void;
   onRecordPayment: (
     lessonId: string,
     invoiceId: string,
@@ -49,6 +47,11 @@ export interface MyWeekPageViewProps {
   pending: { lessonId: string; action: MyDayCardAction } | null;
   /** Tab to open on. Defaults to the week. */
   initialTab?: MyWeekTab;
+}
+
+/** A student's Next lessons tab: booking the next four and taking payment. */
+export function studentNextLessonsHref(studentId: string): string {
+  return `/students/${studentId}?tab=next`;
 }
 
 /**
@@ -63,8 +66,6 @@ export function MyWeekPageView({
   onPrevWeek,
   onNextWeek,
   onThisWeek,
-  onMarkRendered,
-  onMarkNoShow,
   onRecordPayment,
   pending,
   initialTab = DEFAULT_MY_WEEK_TAB,
@@ -120,14 +121,15 @@ export function MyWeekPageView({
           onPrevWeek={onPrevWeek}
           onNextWeek={onNextWeek}
           onThisWeek={onThisWeek}
+          studentHref={studentNextLessonsHref}
         />
       ) : tab === 'openings' ? (
         <MyOpenings weekState={weekState} />
       ) : (
         <>
           <Typography color="textSecondary" sx={{ mb: 3 }}>
-            Your lessons today. Tap “Mark taught” after a lesson to record it;
-            this never invoices or charges the student.
+            Your lessons today. Tap a student to book their next lessons and
+            take payment.
           </Typography>
 
           {venmoHandle && (
@@ -184,8 +186,7 @@ export function MyWeekPageView({
                   <MyDayLessonCard
                     key={item.lesson.id}
                     item={item}
-                    onMarkRendered={onMarkRendered}
-                    onMarkNoShow={onMarkNoShow}
+                    studentHref={studentNextLessonsHref(item.lesson.studentId)}
                     onRecordPayment={(invoiceId, source) =>
                       onRecordPayment(item.lesson.id, invoiceId, source)
                     }
