@@ -44,6 +44,12 @@ import type {
 import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
 import { instructorValidation } from '@maple/ts/validation';
 import {
+  InstructorLessonRatesEditor,
+  draftsToRates,
+  ratesToDrafts,
+  type LessonRateDrafts,
+} from './InstructorLessonRatesEditor';
+import {
   useSignal,
   useComputed,
   batch,
@@ -124,6 +130,7 @@ export function InstructorForm({
   const specialties = useSignal<string[]>([]);
   const payRate = useSignal<number | undefined>(undefined);
   const payRateType = useSignal<InstructorPayRateType | undefined>(undefined);
+  const lessonRates = useSignal<LessonRateDrafts>({});
   // Portal login link ('' = not a portal user). Only surfaced when `users`
   // is provided.
   const linkedUid = useSignal('');
@@ -154,6 +161,7 @@ export function InstructorForm({
       specialties: specialties.value.length > 0 ? specialties.value : undefined,
       payRate: payRate.value,
       payRateType: payRateType.value,
+      lessonRates: draftsToRates(lessonRates.value),
     });
   });
 
@@ -187,6 +195,7 @@ export function InstructorForm({
         specialties.value = instructor.specialties ?? [];
         payRate.value = instructor.payRate;
         payRateType.value = instructor.payRateType;
+        lessonRates.value = ratesToDrafts(instructor.lessonRates);
         linkedUid.value = instructor.uid ?? '';
         photoUrl.value = instructor.photoUrl ?? '';
 
@@ -214,6 +223,7 @@ export function InstructorForm({
         specialties.value = [];
         payRate.value = undefined;
         payRateType.value = undefined;
+        lessonRates.value = {};
         linkedUid.value = '';
         photoUrl.value = '';
         imageUploadState.value = { status: 'idle' };
@@ -320,6 +330,9 @@ export function InstructorForm({
         specialties: specialties.value.length > 0 ? specialties.value : undefined,
         payRate: payRate.value,
         payRateType: payRateType.value,
+        // Always sent, even empty: the stored map is replaced whole, which is
+        // how removing an instrument's rates actually removes them.
+        lessonRates: draftsToRates(lessonRates.value),
         photoUrl: currentPhotoUrl || undefined,
         // Only emit uid when the picker is in play. '' => null (unlink /
         // not a portal user); a uid => link. undefined leaves it unchanged.
@@ -421,9 +434,9 @@ export function InstructorForm({
             onChange={(_, newValue) => {
               specialties.value = newValue;
             }}
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((option, index) => {
-                const { key, ...props } = getTagProps({ index });
+                const { key, ...props } = getItemProps({ index });
                 return (
                   <Chip
                     key={key}
@@ -524,6 +537,12 @@ export function InstructorForm({
               <FormHelperText>{getFieldError('status')}</FormHelperText>
             )}
           </FormControl>
+
+          <InstructorLessonRatesEditor
+            value={lessonRates.value}
+            onChange={(next) => (lessonRates.value = next)}
+            error={getFieldError('lessonRates')}
+          />
 
           {/* Portal login — links a user account to this instructor so a
               lesson teacher can manage their own lessons (#49 phase 2). */}

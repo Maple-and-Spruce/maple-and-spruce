@@ -36,7 +36,7 @@ import {
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import type {
   CreateLessonInput,
   CreateLessonSeriesInput,
@@ -424,8 +424,10 @@ export function ScheduleLessonDialog({
                       const n = parseInt(e.target.value, 10);
                       count.value = Number.isFinite(n) ? n : 0;
                     }}
-                    inputProps={{ min: 1, max: 260 }}
                     fullWidth
+                    slotProps={{
+                      htmlInput: { min: 1, max: 260 }
+                    }}
                   />
                 ) : (
                   <DateTimePicker
@@ -563,7 +565,7 @@ export function ScheduleLessonDialog({
                   alignItems: 'center',
                 }}
               >
-                <Typography variant="overline" color="text.secondary">
+                <Typography variant="overline" color="textSecondary">
                   Preview ({keptDates.value.length} of{' '}
                   {previewDates.value.length})
                 </Typography>
@@ -616,8 +618,10 @@ export function ScheduleLessonDialog({
                               [key]: !e.target.checked,
                             };
                           }}
-                          inputProps={{
-                            'aria-label': `Include ${formatPreviewDate(d)}`,
+                          slotProps={{
+                            input: {
+                              'aria-label': `Include ${formatPreviewDate(d)}`,
+                            }
                           }}
                         />
                         <Typography variant="body2">

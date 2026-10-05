@@ -14,7 +14,7 @@ import {
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
 import { lessonSeriesValidation } from '@maple/ts/validation';
-import { isBackfillSeries } from '@maple/ts/domain';
+import { isBackfillSeries, lessonRoom } from '@maple/ts/domain';
 import type {
   CreateLessonSeriesRequest,
   CreateLessonSeriesResponse,
@@ -28,9 +28,12 @@ export const createLessonSeries = createRoleFunction<
     // A lesson teacher may only create a series they teach.
     await assertCanManageLesson(context, data.teacherId);
 
+    // A series that names no room is taught in Spruce, and the calendar
+    // already treats it that way — so stamp it, and check it, as Spruce.
     // Dates arrive as ISO strings over the wire; coerce each one before validation.
     const coerced = {
       ...data,
+      room: lessonRoom(data.room),
       scheduledAts: (data.scheduledAts ?? []).map((d) =>
         d instanceof Date ? d : new Date(d as unknown as string),
       ),

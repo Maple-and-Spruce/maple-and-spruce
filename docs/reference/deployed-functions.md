@@ -48,7 +48,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
 ### Standing lesson schedules (legacy #797)
-- `materializeLessonSchedules` _(scheduled, weekly — keeps concrete lessons on the books to a 12-week horizon for every active arrangement. **This is the fix for "a series silently runs out"**: a series was a finite date list nothing extended, so lessons stopped on some future Tuesday and, because billing hangs off a rendered lesson, so did the revenue.)_
+- `materializeLessonSchedules` _(scheduled, daily — **paused, does nothing since #157**. Lessons are booked a few at a time when the family pays, not generated from the weekly time. It stays deployed as a no-op because CI never prunes a function, so deleting it would leave the old revision generating lessons; retiring it is a follow-up. It used to keep four lessons ahead for every active arrangement.)_
 - `triggerMaterializeLessonSchedules` _(admin callable twin — `onSchedule` is not reachable over HTTP in the emulator)_
 - `getStudentLessonSchedules`, `createStudentLessonSchedule`, `updateStudentLessonSchedule` _(admin + lesson-teacher, self-scoped; create materialises immediately so an arrangement is real straight away, and both create and update re-check block fit)_
 - **Idempotence is structural.** A materialised lesson's id is `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady state — which is also what makes *skipping* a week (cancel that lesson) and *moving* one (edit its time) work with no exceptions table.
@@ -59,6 +59,14 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
 
 ### Hope Scholarship billing (legacy #799)
+- `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
+  `hope/getHopeProducts`, `hope/saveHopeProduct`, `hope/saveHopeOrder` _(admin — the studio's EMA portal
+  products: EMA id, name, price per lesson. A Hope student's `hopeProductId` sets what
+  their lessons are worth in the queue, on the claim and in teacher payouts. `saveHopeOrder`
+  records an EMA order: product, lesson count, EMA order id; price copied from the product;
+  its count cannot drop below lessons already invoiced against it)_. `getHopeQueue` returns
+  each lesson's state (needs an order / ready to invoice / invoiced) and the orders with room
+  left; `recordHopeSubmissions` refuses to invoice a lesson no order has room for.
 - `getHopeQueue` _(admin — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
 - `recordHopeSubmissions` _(admin, bulk — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
 - `createLessonSeries` now accepts `status` — set `rendered` with past dates to **backfill lessons already taught**. Block attribution is waived for that case only (see `isBackfillSeries`); a future-dated series without a block is still refused.
@@ -162,7 +170,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 
 ### Auth
 - `checkAdminStatus` _(returns `{ isAdmin, isEmployee, role }` — `role` is the highest-privilege role)_
-- `getMyRoles` _(auth only — returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating)_
+- `getMyRoles` _(auth only — returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating. Also the caller's linked `instructorId`, if any (#157), so a teacher's pages default to their own students — a convenience, never a permission)_
 
 > **Roles (epic #49, ADR-028):** "admin only" annotations below predate the scoped-roles matrix. Since PR 3, callables are gated by role sets: Music Together mgmt → admin + `mt-teacher`; store inventory/sales/categories + class registrations/rosters/waitlists/refunds + class reads → admin + `clerk`; lesson/student/invoice/instructor **reads** → admin + `lesson-teacher`; calendar events + room schedule → all staff roles. Everything else remains admin-only. The authoritative table is `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
 
@@ -266,7 +274,7 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `adminPauseCraftClubSubscription` / `adminResumeCraftClubSubscription` / `adminCancelCraftClubSubscription` _(admin-only)_ — Square pause/resume/cancel + mirror member status (cancel also emails)
 
 ### Lesson billing (#81, legacy #864)
-- `runLessonBilling` _(scheduled — daily 09:00 ET)_ — plans each eligible student's charges from their billing rule, then takes the ones that are due against the card on file. Daily rather than weekly because a charge anchored "the day before the first lesson" has to land on that day. Hope students are never touched (they bill through the EMA portal). Planning subtracts every lesson an existing charge already covers before blocking, so a prepaid block is not billed again and a cancelled first lesson cannot make a block re-form under a new id and charge twice.
+- `runLessonBilling` _(scheduled — daily 09:00 ET)_ — **paused since #157 (`LESSON_AUTOPAY_PAUSED`)**: it fires and charges nothing, so no card is charged unless someone presses the button. `triggerLessonBilling` still runs the logic on demand. When enabled, it plans each eligible student's charges from their billing rule, then takes the ones that are due against the card on file. Daily rather than weekly because a charge anchored "the day before the first lesson" has to land on that day. Hope students are never touched (they bill through the EMA portal). Planning subtracts every lesson an existing charge already covers before blocking, so a prepaid block is not billed again and a cancelled first lesson cannot make a block re-form under a new id and charge twice.
 - `triggerLessonBilling` _(admin-only, own library `trigger-lesson-billing`)_ — the callable twin: a manual catch-up, a dry run, and the only way integration tests can reach an `onSchedule`. Wraps `executeLessonBilling`, imported from the `run-lesson-billing` library.
 - `chargeLessonsNow` _(admin-only)_ — takes money on the spot for a block of lessons a family is paying ahead for. Produces the same `LessonScheduledCharge` record the scheduled job would, already `paid`, so there is no second ledger. The atomic `create` at the charge's deterministic id **is** the lease, claimed before the payment, so a double click cannot take a second payment. Also retries a `failed` charge, reusing the original idempotency key so an attempt that did reach Square comes back as the same payment.
 - `getLessonBilling` _(admin-only, `maple-core`)_ — rules, charges and the studio rate table in one read, so the screen prices a prepayment from the same numbers the server charges from.

@@ -4,9 +4,13 @@
  * Vest validation for private-pay music lesson invoices. Used both by the
  * admin form and the cloud-function createInvoice/updateInvoice handlers.
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateInvoiceInput } from '@maple/ts/domain';
-import { INVOICE_STATUSES } from '@maple/ts/domain';
+import {
+  INVOICE_STATUSES,
+  MANUAL_INVOICE_PAYMENT_SOURCES,
+} from '@maple/ts/domain';
 
 export const invoiceValidation = staticSuite(
   (data: Partial<CreateInvoiceInput>, field?: string | string[]) => {
@@ -19,6 +23,18 @@ export const invoiceValidation = staticSuite(
     test('status', 'Status must be draft, sent, paid, or void', () => {
       if (data.status !== undefined && data.status !== null) {
         enforce(data.status).inside(INVOICE_STATUSES);
+      }
+    });
+
+    test('paidWith', 'Paid-with applies only to an invoice created paid', () => {
+      if (data.paidWith !== undefined && data.paidWith !== null) {
+        enforce(data.status).equals('paid');
+      }
+    });
+
+    test('paidWith', 'Paid-with must be cash/check or Venmo', () => {
+      if (data.paidWith !== undefined && data.paidWith !== null) {
+        enforce(data.paidWith).inside(MANUAL_INVOICE_PAYMENT_SOURCES);
       }
     });
 

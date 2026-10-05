@@ -143,6 +143,39 @@ describe('summarizeHopeQueue', () => {
       paidCount: 0,
       paidCents: 0,
       rejectedCount: 0,
+      needsOrderCount: 0,
+      needsOrderCents: 0,
+      readyCount: 0,
+      readyCents: 0,
+      invoicedCount: 0,
+      invoicedCents: 0,
+    });
+  });
+
+  it('splits lessons into needs an order, ready to invoice and invoiced', () => {
+    const base = {
+      studentId: 's',
+      studentName: 'Test Student',
+      rateCents: 3250,
+    };
+    const lesson = (id: string) => ({ id } as never);
+    const totals = summarizeHopeQueue([
+      { ...base, lesson: lesson('a'), state: { kind: 'needs-order' } },
+      { ...base, lesson: lesson('b'), state: { kind: 'ready-to-invoice', orderId: 'o' } },
+      {
+        ...base,
+        lesson: lesson('c'),
+        state: { kind: 'invoiced', orderId: 'o' },
+        submission: { status: 'submitted', rateCents: 3000 } as never,
+      },
+    ]);
+    expect(totals).toMatchObject({
+      needsOrderCount: 1,
+      needsOrderCents: 3250,
+      readyCount: 1,
+      readyCents: 3250,
+      invoicedCount: 1,
+      invoicedCents: 3000,
     });
   });
 });

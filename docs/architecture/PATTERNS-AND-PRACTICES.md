@@ -700,7 +700,7 @@ export function ArtistCard({ artist, onClick }: ArtistCardProps) {
           <Avatar>{artist.name[0]}</Avatar>
           <Box>
             <Typography variant="h6">{artist.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {artist.email}
             </Typography>
           </Box>
@@ -791,7 +791,7 @@ export class NotFoundError extends AppError {
 
 import { useEffect } from 'react';
 import { Button, Typography, Box, Paper } from '@mui/material';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 
 export default function Error({
   error,
@@ -816,7 +816,7 @@ export default function Error({
         <Typography variant="h5" gutterBottom>
           Something went wrong
         </Typography>
-        <Typography color="text.secondary" mb={3}>
+        <Typography color="textSecondary" sx={{ mb: 3 }}>
           We're sorry, but something unexpected happened.
         </Typography>
         <Button variant="contained" onClick={reset}>
@@ -838,11 +838,14 @@ export default function Error({
 
 Use [Vest](https://vestjs.dev/) for declarative validation that can be shared between client and server.
 
-**Always use `staticSuite`, never `create`.** Suites declared with `staticSuite` are pure functions: each call returns an independent `SuiteResult` with no retained state. Suites declared with `create` are stateful — results from prior calls can leak into subsequent runs, which breaks reactive computeds in the client and bleeds state across requests in warm cloud function containers. Stateful suites force every callsite to manage `.reset()` defensively; stateless suites just work.
+**Always use the local `staticSuite` (`libs/ts/validation/src/lib/static-suite.ts`), never Vest's `create` or `runStatic`.** A `staticSuite` is a pure function: each call builds a fresh suite and returns an independent result with no retained state. Vest's own suites are stateful, so results from earlier calls leak into later ones. That breaks reactive computeds in the client and bleeds one request's errors into the next in warm cloud function containers.
+
+Vest 6 removed its `staticSuite` and points to `create(cb).runStatic(...)` instead, but `runStatic` is **not** isolated: a focused run (`only(field)`) still reports errors for unfocused fields from the previous call. The local helper keeps the Vest 5 behaviour, and `static-suite.spec.ts` pins it.
 
 ```typescript
 // libs/ts/validation/src/artist.validation.ts
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateArtistInput } from '@maple/ts/domain';
 
 export const artistValidation = staticSuite(
@@ -1452,7 +1455,7 @@ npm install firebase-functions@latest
 ```json
 {
   "dependencies": {
-    "vest": "^5.4.6",
+    "vest": "^6.3.4",
     "@tanstack/react-query": "^5.0.0",
     "@mui/x-data-grid": "^7.0.0",
     "@mui/x-date-pickers": "^7.0.0",
@@ -1472,7 +1475,7 @@ These are the key dependencies from Mountain Sol that inform our choices:
 
 | SOL Dependency | Version | Maple Equivalent |
 |----------------|---------|------------------|
-| `vest` | ^5.4.6 | vest ^5.4.6 |
+| `vest` | ^6.3.4 | vest ^5.4.6 |
 | `@ngrx/component-store` | ^20.x | @tanstack/react-query |
 | `primeng` / `primereact` | ^17.x | MUI components |
 | `firebase` | ^11.x | firebase ^12.x |

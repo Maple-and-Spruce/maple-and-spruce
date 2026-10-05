@@ -20,9 +20,10 @@ import {
  * arguments and the table refetches into the right state afterwards.
  */
 
+/** Billing lives on the Activity tab (#158). */
 async function openStudent(page: Page, id: string, name: string) {
   await signIn(page, ADMIN, 'Students');
-  await page.goto(`/students/${id}`);
+  await page.goto(`/students/${id}?tab=activity`);
   await expect(
     page.getByRole('heading', { name, level: 1 })
   ).toBeVisible({ timeout: 20_000 });
@@ -39,19 +40,18 @@ test.describe('Student page — lessons and billing tables', () => {
     await seedStudentPage();
   });
 
-  test('lessons open on what is coming, with history one switch away', async ({
+  test('activity lists every lesson, and nothing waits to be marked', async ({
     page,
   }) => {
     await openStudent(page, STUDENT_ID, STUDENT_NAME);
 
-    // The overdue lesson still waits on "Mark taught" with the switch off.
     await expect(
-      page.getByRole('button', { name: /mark taught/i })
-    ).toBeVisible();
-    await expect(page.getByText('taught', { exact: true })).toHaveCount(0);
-
-    await page.getByLabel(/show past lessons/i).click();
-    await expect(page.getByText('taught', { exact: true })).toBeVisible();
+      page.getByRole('list', { name: 'Lesson activity' }).getByRole('listitem').first()
+    ).toBeVisible({ timeout: 20_000 });
+    // A lesson is scheduled or deleted, paid or not (#157): no marking.
+    await expect(
+      page.getByRole('button', { name: /mark taught|no-show/i })
+    ).toHaveCount(0);
   });
 
   test('billing shows what needs attention, and history on request', async ({
@@ -137,11 +137,10 @@ test.describe('Student page — lessons and billing tables', () => {
   test('a Hope Scholarship student has no billing table', async ({ page }) => {
     await openStudent(page, HOPE_STUDENT_ID, HOPE_STUDENT_NAME);
 
-    await expect(
-      page.getByText(/invoiced through the EMA portal/i)
-    ).toBeVisible();
+    // The seeded Hope student has no lessons; the record says so, and there
+    // is nothing to charge from.
+    await expect(page.getByText('No lessons yet.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('button', { name: /^More for/ })).toHaveCount(0);
     await expect(page.getByLabel(/show paid & closed/i)).toHaveCount(0);
-    // The lessons table is still there.
-    await expect(page.getByLabel(/show past lessons/i)).toBeVisible();
   });
 });

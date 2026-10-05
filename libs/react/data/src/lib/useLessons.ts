@@ -7,7 +7,6 @@ import type {
   Lesson,
   CreateLessonInput,
   UpdateLessonInput,
-  CreateLessonSeriesInput,
   RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -108,7 +107,9 @@ export function useLessons({
 
   const createLessonSeries = useCallback(
     async (
-      input: CreateLessonSeriesInput
+      // The request, not just the domain input: it may carry a blockStrategy
+      // for lessons that no existing block covers (legacy #835).
+      input: CreateLessonSeriesRequest
     ): Promise<{ lessons: Lesson[]; seriesId: string }> => {
       const functions = getMapleFunctions();
       const create = httpsCallable<

@@ -331,6 +331,55 @@ describe('instructorValidation', () => {
     });
   });
 
+  describe('lessonRates', () => {
+    const base = { name: 'Test Teacher', email: 'teacher@example.com', status: 'active' as const };
+
+    it('accepts positive whole-cent rates', () => {
+      const result = instructorValidation({
+        ...base,
+        lessonRates: { violin: { '30-min-full': 4500, '60-min': 8000 } },
+      });
+      expect(result.hasErrors('lessonRates')).toBe(false);
+    });
+
+    it('accepts no rates at all', () => {
+      expect(instructorValidation(base).hasErrors('lessonRates')).toBe(false);
+    });
+
+    it('rejects a zero or negative rate', () => {
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { violin: { '30-min-full': 0 } },
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+    });
+
+    it('rejects fractional cents', () => {
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { violin: { '30-min-full': 45.5 } },
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+    });
+
+    it('rejects an unknown instrument or length', () => {
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { kazoo: { '30-min-full': 4500 } } as never,
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { violin: { '90-min': 4500 } } as never,
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+    });
+  });
+
   describe('single-field validation', () => {
     it('only validates specified field', () => {
       const invalidData = {

@@ -19,7 +19,7 @@ import {
   Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   MT_DEFAULT_CAPACITY_FAMILIES,
   MT_PRICE_FULL_CENTS,
@@ -230,7 +230,9 @@ export function SectionFormDialog({
             onChange={(e) => setName(e.target.value)}
             required
             fullWidth
-            inputProps={{ 'aria-label': 'Section name' }}
+            slotProps={{
+              htmlInput: { 'aria-label': 'Section name' }
+            }}
           />
           <TextField
             label="Description"
@@ -246,7 +248,9 @@ export function SectionFormDialog({
             onChange={(e) => setSemesterId(e.target.value)}
             fullWidth
             helperText="Which term this section belongs to"
-            inputProps={{ 'aria-label': 'Semester' }}
+            slotProps={{
+              htmlInput: { 'aria-label': 'Semester' }
+            }}
           >
             <MenuItem value="">
               <em>None</em>
@@ -298,17 +302,21 @@ export function SectionFormDialog({
               type="datetime-local"
               value={enrollmentOpensAt}
               onChange={(e) => setEnrollmentOpensAt(e.target.value)}
-              InputLabelProps={{ shrink: true }}
               helperText="Auto-opens at this time when active"
               sx={{ flex: 1 }}
+              slotProps={{
+                inputLabel: { shrink: true }
+              }}
             />
             <TextField
               label="Enrollment closes (optional)"
               type="datetime-local"
               value={enrollmentClosesAt}
               onChange={(e) => setEnrollmentClosesAt(e.target.value)}
-              InputLabelProps={{ shrink: true }}
               sx={{ flex: 1 }}
+              slotProps={{
+                inputLabel: { shrink: true }
+              }}
             />
           </Box>
           <Divider />
@@ -368,7 +376,9 @@ export function SectionFormDialog({
                 value={value}
                 onChange={(e) => setSessionAt(idx, e.target.value)}
                 fullWidth
-                inputProps={{ 'aria-label': `Session ${idx + 1}` }}
+                slotProps={{
+                  htmlInput: { 'aria-label': `Session ${idx + 1}` }
+                }}
               />
               <IconButton
                 aria-label={`Remove session ${idx + 1}`}
@@ -414,7 +424,9 @@ export function SectionFormDialog({
                 value={inst.dueAt}
                 onChange={(e) => patchInstallmentAt(idx, { dueAt: e.target.value })}
                 fullWidth
-                inputProps={{ 'aria-label': `Installment ${idx + 1} due date` }}
+                slotProps={{
+                  htmlInput: { 'aria-label': `Installment ${idx + 1} due date` }
+                }}
               />
               <IconButton
                 aria-label={`Remove installment ${idx + 1}`}

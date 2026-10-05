@@ -1,6 +1,8 @@
 'use client';
 
 import { createTheme, alpha } from '@mui/material/styles';
+import type {} from '@mui/x-data-grid/themeAugmentation';
+import type {} from '@mui/x-date-pickers/themeAugmentation';
 
 // =============================================================================
 // Design Tokens
@@ -173,6 +175,14 @@ export const theme = createTheme({
       hover: surfaces.hover,
       selected: surfaces.selected,
     },
+    // MUI X 8+ paints the data grid with `palette.DataGrid.bg`, falling back to
+    // background.paper (white). Before that the grid was transparent and sat on
+    // the page cream; keep that look. Tables that want a white grid or a
+    // tinted header set `backgroundColor` / `--DataGrid-t-header-background-base`
+    // in their own sx.
+    DataGrid: {
+      bg: surfaces.background,
+    },
   },
   shape: {
     borderRadius: radii.md,
@@ -273,6 +283,16 @@ export const theme = createTheme({
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
+          backgroundColor: surfaces.input,
+        },
+      },
+    },
+    // MUI X 8+ date and time fields render their own input (not
+    // MuiOutlinedInput), so the input styling above has to be repeated here.
+    MuiPickersOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: radii.md,
           backgroundColor: surfaces.input,
         },
       },

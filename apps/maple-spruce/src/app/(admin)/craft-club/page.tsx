@@ -150,7 +150,7 @@ export default function CraftClubPage() {
         <Typography variant="h4" component="h1">
           Craft Club
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Members pay ${monthlyPrice}/month for scheduled studio access.
           Materials are charged separately at the POS.
         </Typography>
@@ -161,7 +161,7 @@ export default function CraftClubPage() {
         <Typography variant="h6" sx={{ mb: 1 }}>
           Pre-approve an email
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           Only approved emails can attach a payment method and subscribe.
         </Typography>
         <Box component="form" onSubmit={handleApprove}>
@@ -254,7 +254,7 @@ export default function CraftClubPage() {
                   <TableCell colSpan={6} align="center">
                     <Typography
                       variant="body2"
-                      color="text.secondary"
+                      color="textSecondary"
                       sx={{ py: 2 }}
                     >
                       No members yet.

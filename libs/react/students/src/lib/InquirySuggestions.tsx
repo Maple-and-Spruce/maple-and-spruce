@@ -97,7 +97,9 @@ export function InquirySuggestions({
           >
             <ListItemText
               primary={
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} sx={{
+                  alignItems: 'center'
+                }}>
                   <span>{inquiry.contactName}</span>
                   {inquiry.interest && (
                     <Chip size="small" label={inquiry.interest} />

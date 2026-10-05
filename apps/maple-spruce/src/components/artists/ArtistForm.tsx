@@ -376,12 +376,14 @@ export function ArtistForm({
               getFieldError('defaultCommissionRate') ||
               `Store keeps ${Math.round(defaultCommissionRate.value * 100)}%, artist gets ${Math.round((1 - defaultCommissionRate.value) * 100)}%`
             }
-            InputProps={{
-              endAdornment: <InputAdornment position="end">%</InputAdornment>,
-              inputProps: { min: 0, max: 100 },
-            }}
             required
             fullWidth
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                inputProps: { min: 0, max: 100 },
+              }
+            }}
           />
 
           {/* Status */}

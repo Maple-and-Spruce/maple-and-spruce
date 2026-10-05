@@ -140,6 +140,9 @@ describe('isLessonUnbilled', () => {
     ).toBe(false);
   });
 
+  // #157: a past lesson nobody marked is not called out, even though it counts
+  // as having happened everywhere else. Past payments were settled outside
+  // the portal; Katie decided they are not problems to chase.
   it.each(['scheduled', 'cancelled'] as const)(
     'does not flag a %s lesson',
     (status) => {
@@ -250,6 +253,10 @@ describe('isHopeUnsubmitted', () => {
 
   it.each(['submitted', 'paid'] as const)('clears once %s', (status) => {
     expect(isHopeUnsubmitted({ status: 'rendered' }, status)).toBe(false);
+  });
+
+  it('does not chase a past Hope lesson nobody marked (#157)', () => {
+    expect(isHopeUnsubmitted({ status: 'scheduled' }, undefined)).toBe(false);
   });
 
   it('never flags a no-show — Hope pays only for services rendered', () => {

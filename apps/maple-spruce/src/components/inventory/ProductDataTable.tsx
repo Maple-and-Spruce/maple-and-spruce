@@ -77,7 +77,7 @@ export function ProductDataTable({
                 justifyContent: 'center',
               }}
             >
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="textSecondary">
                 —
               </Typography>
             </Box>
@@ -94,7 +94,9 @@ export function ProductDataTable({
           const variantCount = params.row.variants?.length ?? 0;
           const showBadge = isMultiVariant(params.row);
           return (
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: 'center'
+            }}>
               <Typography
                 variant="body2"
                 sx={{
@@ -157,7 +159,9 @@ export function ProductDataTable({
             const min = Math.min(...prices);
             const max = Math.max(...prices);
             return (
-              <Typography variant="body2" fontWeight="medium">
+              <Typography variant="body2" sx={{
+                fontWeight: 'medium'
+              }}>
                 {min === max
                   ? formatPrice(min)
                   : `${formatPrice(min)} – ${formatPrice(max)}`}
@@ -165,7 +169,9 @@ export function ProductDataTable({
             );
           }
           return (
-            <Typography variant="body2" fontWeight="medium">
+            <Typography variant="body2" sx={{
+              fontWeight: 'medium'
+            }}>
               {formatPrice(params.value as number)}
             </Typography>
           );
@@ -322,7 +328,12 @@ export function ProductDataTable({
         sx={{
           border: 'none',
           backgroundColor: surfaces.paper,
-          '--DataGrid-containerBackground': surfaces.tableHeader,
+          // MUI X 9 sets its theme variables from a later <style> rule with the
+          // same specificity as sx, so a plain sx variable loses. `&.MuiDataGrid-root`
+          // doubles the class and wins.
+          '&.MuiDataGrid-root': {
+            '--DataGrid-t-header-background-base': surfaces.tableHeader,
+          },
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: surfaces.tableHeader,
             borderBottom: `1px solid ${borders.subtle}`,

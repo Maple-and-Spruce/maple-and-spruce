@@ -93,6 +93,12 @@ export interface Student {
   registeredLessonLength?: LessonLength;
   /** WV Hope Scholarship flag. Hope students are invoiced externally (legacy #282). */
   isHopeScholarship: boolean;
+  /**
+   * The EMA portal product this Hope student's lessons are billed under
+   * (`HopeProduct.id`). Sets what each lesson is worth; unset means the price
+   * shown is only an estimate from the old length table.
+   */
+  hopeProductId?: string;
   /** Parent/guardian for minors; student themselves for adults */
   primaryContactName: string;
   primaryContactEmail: string;

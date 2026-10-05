@@ -54,6 +54,9 @@ export interface InvoiceLineItem {
  *  - `square-pos`      — an in-person Square POS lesson sale was attributed to
  *                        this invoice (auto by customer email, or by a human
  *                        from the review queue). See legacy #628.
+ *  - `square-manual`   — a human recorded a card payment already taken in
+ *                        Square outside the app (dashboard or POS by hand),
+ *                        typically lessons paid for before the app tracked them.
  *
  * Venmo Business Profiles have no API/webhook, so Venmo payments are attested
  * by a human (`venmo-manual`) and later confirmed by CSV import
@@ -64,19 +67,34 @@ export type InvoicePaymentSource =
   | 'square-webhook'
   | 'venmo-manual'
   | 'venmo-import'
-  | 'square-pos';
+  | 'square-pos'
+  | 'square-manual';
 
 /**
  * Payment sources a human can record by hand from the UI. Excludes the
  * server-only `square-webhook` and the reconciliation-tool-only
  * `venmo-import`, so a client can never spoof those attributions.
  */
-export type ManualInvoicePaymentSource = 'admin-manual' | 'venmo-manual';
+export type ManualInvoicePaymentSource =
+  | 'admin-manual'
+  | 'venmo-manual'
+  | 'square-manual';
 
 export const MANUAL_INVOICE_PAYMENT_SOURCES: ManualInvoicePaymentSource[] = [
   'admin-manual',
   'venmo-manual',
+  'square-manual',
 ];
+
+/** How each hand-recorded payment reads to Katie. */
+export const MANUAL_PAYMENT_SOURCE_LABELS: Record<
+  ManualInvoicePaymentSource,
+  string
+> = {
+  'admin-manual': 'Cash or check',
+  'venmo-manual': 'Venmo',
+  'square-manual': 'Card, in Square',
+};
 
 export interface InvoicePaymentRecord {
   source: InvoicePaymentSource;
@@ -129,6 +147,13 @@ export type CreateInvoiceInput = {
   status?: InvoiceStatus; // defaults to 'draft' server-side
   lineItems: InvoiceLineItem[];
   notes?: string;
+  /**
+   * With `status: 'paid'`: the family has already paid, off Square (cash,
+   * check or Venmo), and this is the record of it. Created paid, it never
+   * reaches Square, so nobody is emailed a bill they have already settled.
+   * Defaults to `admin-manual` (cash or check).
+   */
+  paidWith?: ManualInvoicePaymentSource;
 };
 
 /** Input for updating an invoice. Partial everything except id. */
@@ -212,4 +237,16 @@ export function invoicedLessonIds(
     }
   }
   return ids;
+}
+
+/**
+ * Split a total into `count` whole-cent parts that add back up exactly, the
+ * odd cents going to the first parts. For recording what a family actually
+ * paid for several lessons when it was not the per-lesson rate.
+ */
+export function splitCentsEvenly(totalCents: number, count: number): number[] {
+  if (count <= 0) return [];
+  const base = Math.floor(totalCents / count);
+  const extra = totalCents - base * count;
+  return Array.from({ length: count }, (_, i) => base + (i < extra ? 1 : 0));
 }

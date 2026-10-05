@@ -4,7 +4,8 @@
  * Vest validation for class/workshop forms.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import { GALLERY_IMAGE_MAX, ROOMS, type CreateClassInput } from '@maple/ts/domain';
 
 /**

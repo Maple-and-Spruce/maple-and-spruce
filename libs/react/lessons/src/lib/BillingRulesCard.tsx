@@ -104,20 +104,27 @@ export function BillingRulesCard({
       }}
     >
       <Box sx={{ flexGrow: 1, minWidth: 220 }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
           <Typography sx={{ fontWeight: 600 }}>{rule.name}</Typography>
           {rule.isDefault && (
             <Chip size="small" color="primary" label="Studio default" />
           )}
           {rule.archived && <Chip size="small" label="Retired" />}
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {describeBillingRule(rule)}
           {rule.flatAmountCents
             ? ` · a flat ${money(rule.flatAmountCents)}`
             : ' · priced from the lessons'}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {(() => {
             const n = studentsOnRule(rule, students);
             if (n === 0) return 'No students on this rule';
@@ -139,7 +146,13 @@ export function BillingRulesCard({
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          mb: 1.5
+        }}>
         <RuleIcon fontSize="small" color="action" />
         <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
           Billing rules
@@ -153,49 +166,42 @@ export function BillingRulesCard({
           New rule
         </Button>
       </Stack>
-
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         A rule says how often a family is charged and how far from the lesson the
         money moves. Changing one applies to every student on it from the next
         planning run; charges already planned keep the amount and date they were
         given.
       </Typography>
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
       {live.length === 0 && (
         <Alert severity="info">
           No rules yet, so <strong>nothing is charged automatically</strong> for
           anyone. Lessons are billed by hand until a rule exists.
         </Alert>
       )}
-
       {live.length > 0 && !hasDefault && (
         <Alert severity="info" sx={{ mb: 2 }}>
           No rule is the studio default, so a student is only billed
           automatically once they are put on a rule individually.
         </Alert>
       )}
-
       <Stack spacing={1}>{live.map(row)}</Stack>
-
       {archived.length > 0 && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             Retired rules
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
             Kept for the students still on them; they cannot be picked for
             anybody new.
           </Typography>
           <Stack spacing={1}>{archived.map(row)}</Stack>
         </Box>
       )}
-
       <BillingRuleDialog
         open={editing !== null}
         rule={editing === 'new' ? undefined : (editing ?? undefined)}

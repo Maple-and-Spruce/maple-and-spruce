@@ -113,9 +113,11 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
               <Stack
                 direction="row"
                 spacing={2}
-                alignItems="center"
-                sx={{ width: '100%', flexWrap: 'wrap' }}
-              >
+                sx={{
+                  alignItems: 'center',
+                  width: '100%',
+                  flexWrap: 'wrap'
+                }}>
                 <Typography variant="subtitle1" sx={{ flex: 1 }}>
                   {payout.teacherName}
                 </Typography>
@@ -158,7 +160,9 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
                       <TableRow key={line.lessonId}>
                         <TableCell>{formatDate(line.scheduledAt)}</TableCell>
                         <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
+                          <Stack direction="row" spacing={1} sx={{
+                            alignItems: 'center'
+                          }}>
                             <span>{line.studentName}</span>
                             {line.asSubstitute && (
                               <Chip

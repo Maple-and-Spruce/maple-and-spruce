@@ -190,13 +190,57 @@ describe('Room conflicts (legacy #841)', () => {
     expect(JSON.stringify(other.error)).toMatch(/already taken/i);
   }, 60000);
 
-  it('allows a lesson with no room — it claims nothing', async () => {
+  it('refuses a lesson with no room when Spruce is taken', async () => {
+    // A lesson that names no room is mirrored into Spruce by onLessonWrite, so
+    // it occupies Spruce on the calendar. It used to skip the check entirely
+    // and double-book the room (#156).
     const at = tuesdayAt(17);
     expect((await createLesson('room-stu-a', at)).status).toBe(200);
     await waitForTrigger();
 
     const roomless = await createLesson('room-stu-b', at, { room: undefined });
+
+    expect(roomless.status).toBe(400);
+    expect(JSON.stringify(roomless.error)).toMatch(/already taken/i);
+  }, 60000);
+
+  it('stamps a lesson with no room as Spruce', async () => {
+    // The stored lesson says where it is, rather than leaving every reader to
+    // know that "no room" means Spruce.
+    const at = tuesdayAt(18);
+    const roomless = await createLesson('room-stu-a', at, { room: undefined });
+
     expect(roomless.status).toBe(200);
+    expect(roomless.data!.lesson.room).toBe('spruce');
+  }, 60000);
+
+  it('refuses moving a pre-room lesson onto a taken slot', async () => {
+    // Lessons written before the room field existed have none. They are on the
+    // calendar as Spruce, so rescheduling one must be checked as Spruce.
+    const taken = tuesdayAt(16);
+    expect((await createLesson('room-stu-a', taken)).status).toBe(200);
+
+    const legacyAt = tuesdayAt(21);
+    await setFirestoreDoc('lessons', 'lesson-pre-room', {
+      studentId: 'room-stu-b',
+      teacherId: TEACHER_ID,
+      scheduledAt: legacyAt,
+      durationMinutes: 60,
+      blockId: BLOCK_ID,
+      status: 'scheduled',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await waitForTrigger();
+
+    const moved = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
+      functionName: 'updateLesson',
+      data: { id: 'lesson-pre-room', scheduledAt: taken },
+      idToken: adminUser.idToken,
+    });
+
+    expect(moved.status).toBe(400);
+    expect(JSON.stringify(moved.error)).toMatch(/already taken/i);
   }, 60000);
 
   it('lets a lesson be edited without clashing with itself', async () => {

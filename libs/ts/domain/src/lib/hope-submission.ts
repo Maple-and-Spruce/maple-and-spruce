@@ -26,6 +26,8 @@
  * through `isSubmittableToHope`, not by a filter in a UI that could be
  * forgotten or bypassed.
  */
+import type { HopeRateSource } from './hope-product';
+import type { HopeLessonState } from './hope-order';
 import type { Lesson } from './lesson';
 import type { Student } from './student';
 
@@ -64,6 +66,11 @@ export interface HopeSubmission {
   paidAt?: Date;
   /** EMA portal reference, once Katie has one. */
   emaReference?: string;
+  /**
+   * The EMA order this lesson was invoiced against, stamped when the invoice is
+   * recorded. Absent on claims from before orders were tracked.
+   */
+  orderId?: string;
   /** What EMA said, so a resubmission can fix the actual problem. */
   rejectionReason?: string;
   /** Firebase Auth uid of whoever recorded it (server-stamped). */
@@ -89,8 +96,18 @@ export interface HopeQueueEntry {
   registeredLessonLength?: Student['registeredLessonLength'];
   /** The rate this lesson would be claimed at today, in cents. */
   rateCents: number;
+  /**
+   * `product` when the rate is the student's EMA product price; `estimate`
+   * when the student is not on a product yet and the old length table stood
+   * in. Absent on entries built before products existed; treat as estimate.
+   */
+  rateSource?: HopeRateSource;
+  /** The EMA product's name, when the rate came from one. */
+  productName?: string;
   /** Absent until something has been claimed. */
   submission?: HopeSubmission;
+  /** Needs an order, ready to invoice, or invoiced (server-computed). */
+  state?: HopeLessonState;
 }
 
 /**
@@ -124,6 +141,15 @@ export interface HopeQueueTotals {
   paidCents: number;
   /** Claimed and refused — the subset of `awaiting` that needs a human. */
   rejectedCount: number;
+  /** Taught, but no EMA order has room: the family needs to order more. */
+  needsOrderCount: number;
+  needsOrderCents: number;
+  /** Taught, and an order has room: invoice these in the portal. */
+  readyCount: number;
+  readyCents: number;
+  /** Invoice done in the portal (submitted or paid, not rejected). */
+  invoicedCount: number;
+  invoicedCents: number;
 }
 
 /**
@@ -144,9 +170,28 @@ export function summarizeHopeQueue(entries: HopeQueueEntry[]): HopeQueueTotals {
     paidCount: 0,
     paidCents: 0,
     rejectedCount: 0,
+    needsOrderCount: 0,
+    needsOrderCents: 0,
+    readyCount: 0,
+    readyCents: 0,
+    invoicedCount: 0,
+    invoicedCents: 0,
   };
 
   for (const entry of entries) {
+    // The order-aware view. Without a computed state (an older client or
+    // entry), an uninvoiced lesson counts as needing an order.
+    if (entry.submission && entry.submission.status !== 'rejected') {
+      totals.invoicedCount++;
+      totals.invoicedCents += entry.submission.rateCents ?? entry.rateCents;
+    } else if (entry.state?.kind === 'ready-to-invoice') {
+      totals.readyCount++;
+      totals.readyCents += entry.rateCents;
+    } else {
+      totals.needsOrderCount++;
+      totals.needsOrderCents += entry.rateCents;
+    }
+
     const status = entry.submission?.status;
 
     if (status === 'paid') {

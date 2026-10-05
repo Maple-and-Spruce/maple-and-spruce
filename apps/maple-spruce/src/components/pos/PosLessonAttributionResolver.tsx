@@ -92,17 +92,17 @@ export function PosLessonAttributionResolver({
             <Typography variant="h6" component="span">
               {formatCents(attribution.amountPaidCents)}
             </Typography>{' '}
-            <Typography variant="body1" component="span" color="text.secondary">
+            <Typography variant="body1" component="span" color="textSecondary">
               {attribution.itemName} · {formatDate(attribution.occurredAt)}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Paid by: {payer}
             </Typography>
           </Box>
 
           <Divider />
 
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Attribute to a student
           </Typography>
           <StudentPicker

@@ -23,7 +23,9 @@ export function VenmoQr({ handle, size = 200 }: { handle: string; size?: number 
         <QRCodeSVG value={url} size={size} />
       </Box>
       <Typography sx={{ mt: 1, fontFamily: fonts.mono }}>@{handle}</Typography>
-      <Typography variant="caption" color="text.secondary" display="block">
+      <Typography variant="caption" color="textSecondary" sx={{
+        display: 'block'
+      }}>
         Scan to pay via Venmo
       </Typography>
     </Box>

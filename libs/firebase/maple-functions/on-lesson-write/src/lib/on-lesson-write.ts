@@ -24,7 +24,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { CalendarEventRepository } from '@maple/firebase/database';
 import type { Lesson } from '@maple/ts/domain';
-import { DEFAULT_EVENT_LOCATION } from '@maple/ts/domain';
+import { DEFAULT_EVENT_LOCATION, lessonRoom } from '@maple/ts/domain';
 
 function toDateLike(value: unknown): Date | undefined {
   if (!value) return undefined;
@@ -113,8 +113,9 @@ export const onLessonWrite = onDocumentWritten(
         type: 'lesson',
         public: false,
         // Honor the lesson's chosen room; fall back to Spruce for lessons
-        // created before the room field existed (they were all Spruce).
-        room: afterLesson.room ?? 'spruce',
+        // created before the room field existed (they were all Spruce). The
+        // conflict check resolves it through the same helper.
+        room: lessonRoom(afterLesson.room),
         sourceRef: `lessons/${lessonId}`,
         // Owner = the teacher of record, so the lesson shows up on their My
         // Week schedule (#60). Never undefined (teacherId is required).

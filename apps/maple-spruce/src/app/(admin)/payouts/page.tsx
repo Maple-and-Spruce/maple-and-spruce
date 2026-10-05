@@ -53,7 +53,7 @@ export default function PayoutsPage() {
         <Typography variant="h4" component="h1" gutterBottom>
           Teacher payouts
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Combines paid private-pay invoice lines and rendered Hope
           Scholarship lessons. Compensation uses each instructor&apos;s
           configured pay rate. Payments to teachers happen outside of this
@@ -88,7 +88,7 @@ export default function PayoutsPage() {
 
       <Typography
         variant="overline"
-        color="text.secondary"
+        color="textSecondary"
         sx={{ display: 'block', mb: 1 }}
       >
         Period: {periodLabel}

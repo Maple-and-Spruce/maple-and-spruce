@@ -19,6 +19,7 @@ import { Functions, Role } from '@maple/firebase/functions';
 import { throwInvalidArgument, throwNotFound } from '@maple/firebase/functions';
 import { Square, SQUARE_SECRET_NAMES, SQUARE_STRING_NAMES } from '@maple/firebase/square';
 import {
+  InstructorRepository,
   InvoiceRepository,
   LessonRatesConfigRepository,
   LessonRepository,
@@ -28,6 +29,7 @@ import {
 import {
   MANUAL_CHARGE_RULE_ID,
   describePrepaymentProblem,
+  effectiveRateByLength,
   invoicedLessonIds,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
@@ -104,6 +106,18 @@ export const chargeLessonsNow = Functions.endpoint
 
       if (!student) throwNotFound('Student', data.studentId);
 
+      // Priced from the primary teacher's rate for this instrument, the same
+      // table getLessonBilling hands the screen, so the total Katie was shown
+      // is the total the server agrees to charge.
+      const primaryTeacher = student.primaryTeacherId
+        ? await InstructorRepository.findById(student.primaryTeacherId)
+        : undefined;
+      const rateByLength = effectiveRateByLength(
+        student,
+        primaryTeacher,
+        rates.rateByLength
+      );
+
       const square = new Square(secrets, strings);
 
       const outcome = await chargeLessonsNowLogic(
@@ -153,7 +167,7 @@ export const chargeLessonsNow = Functions.endpoint
           },
         },
         (lesson) =>
-          resolvePrivatePayLessonRateCents(lesson, student, rates.rateByLength),
+          resolvePrivatePayLessonRateCents(lesson, student, rateByLength),
         new Date()
       );
 

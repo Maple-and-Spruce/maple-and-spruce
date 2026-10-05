@@ -136,16 +136,22 @@ describe('computeLessonCompensationCents', () => {
 // --- isLessonPayoutEligible -------------------------------------------
 
 describe('isLessonPayoutEligible', () => {
+  const NOW = new Date('2026-04-20T12:00:00Z');
+  const past = (status: Lesson['status']) => makeLesson({ status });
+  const upcoming = makeLesson({ scheduledAt: new Date('2026-04-28T15:00:00Z') });
+
   it('private-paid: any status except cancelled is eligible', () => {
-    expect(isLessonPayoutEligible('scheduled', 'private-paid')).toBe(true);
-    expect(isLessonPayoutEligible('rendered', 'private-paid')).toBe(true);
-    expect(isLessonPayoutEligible('cancelled', 'private-paid')).toBe(false);
+    expect(isLessonPayoutEligible(past('scheduled'), 'private-paid', NOW)).toBe(true);
+    expect(isLessonPayoutEligible(past('rendered'), 'private-paid', NOW)).toBe(true);
+    expect(isLessonPayoutEligible(past('cancelled'), 'private-paid', NOW)).toBe(false);
   });
 
-  it('hope-rendered: only rendered is eligible', () => {
-    expect(isLessonPayoutEligible('rendered', 'hope-rendered')).toBe(true);
-    expect(isLessonPayoutEligible('scheduled', 'hope-rendered')).toBe(false);
-    expect(isLessonPayoutEligible('cancelled', 'hope-rendered')).toBe(false);
+  it('hope-rendered: only a lesson that happened, never a no-show (#157)', () => {
+    expect(isLessonPayoutEligible(past('rendered'), 'hope-rendered', NOW)).toBe(true);
+    expect(isLessonPayoutEligible(past('scheduled'), 'hope-rendered', NOW)).toBe(true);
+    expect(isLessonPayoutEligible(upcoming, 'hope-rendered', NOW)).toBe(false);
+    expect(isLessonPayoutEligible(past('no-show'), 'hope-rendered', NOW)).toBe(false);
+    expect(isLessonPayoutEligible(past('cancelled'), 'hope-rendered', NOW)).toBe(false);
   });
 });
 
@@ -343,8 +349,27 @@ describe('aggregateTeacherPayouts', () => {
       expect(result[0].totalOwedCents).toBe(4950);
     });
 
-    it('skips scheduled-but-not-rendered Hope lessons', () => {
+    it('pays for a past Hope lesson nobody marked taught (#157)', () => {
       const result = aggregateTeacherPayouts({
+        now: new Date('2026-04-20T12:00:00Z'),
+        lessons: [makeLesson({ id: 'l1', status: 'scheduled' })],
+        paidInvoices: [],
+        students: [
+          makeStudent({
+            isHopeScholarship: true,
+            registeredLessonLength: '30-min-full',
+          }),
+        ],
+        instructors: [makeInstructor()],
+      });
+      expect(result.flatMap((p) => p.lines.map((l) => l.lessonId))).toEqual([
+        'l1',
+      ]);
+    });
+
+    it('skips Hope lessons still to come', () => {
+      const result = aggregateTeacherPayouts({
+        now: new Date('2026-04-10T12:00:00Z'),
         lessons: [
           makeLesson({
             id: 'l1',

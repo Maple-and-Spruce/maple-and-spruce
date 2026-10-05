@@ -17,7 +17,7 @@ import {
   Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   MT_SEASONS,
   MT_SEASON_DEFAULT_WEEKS,
@@ -182,7 +182,9 @@ export function SemesterFormDialog({
             required
             fullWidth
             placeholder="Fall 2026"
-            inputProps={{ 'aria-label': 'Semester name' }}
+            slotProps={{
+              htmlInput: { 'aria-label': 'Semester name' }
+            }}
           />
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
@@ -219,7 +221,7 @@ export function SemesterFormDialog({
             <Box
               sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}
             >
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 Status
               </Typography>
               <Chip
@@ -235,29 +237,32 @@ export function SemesterFormDialog({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
               sx={{ flex: 1 }}
-              inputProps={{ 'aria-label': 'Start date' }}
-            />
+              slotProps={{
+                htmlInput: { 'aria-label': 'Start date' },
+                inputLabel: { shrink: true }
+              }} />
             <TextField
               label="End date"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
               sx={{ flex: 1 }}
-              inputProps={{ 'aria-label': 'End date' }}
-            />
+              slotProps={{
+                htmlInput: { 'aria-label': 'End date' },
+                inputLabel: { shrink: true }
+              }} />
           </Box>
           <TextField
             label="Re-enrollment opens"
             type="date"
             value={enrollmentOpensAt}
             onChange={(e) => setEnrollmentOpensAt(e.target.value)}
-            InputLabelProps={{ shrink: true }}
             fullWidth
-            inputProps={{ 'aria-label': 'Re-enrollment opens' }}
-          />
+            slotProps={{
+              htmlInput: { 'aria-label': 'Re-enrollment opens' },
+              inputLabel: { shrink: true }
+            }} />
           <TextField
             label="Notes"
             value={notes}
@@ -289,22 +294,26 @@ export function SemesterFormDialog({
                 value={b.label}
                 onChange={(e) => setBreakAt(idx, { label: e.target.value })}
                 sx={{ flex: 1 }}
-                inputProps={{ 'aria-label': `Break ${idx + 1} label` }}
+                slotProps={{
+                  htmlInput: { 'aria-label': `Break ${idx + 1} label` }
+                }}
               />
               <TextField
                 type="date"
                 value={b.startDate}
                 onChange={(e) => setBreakAt(idx, { startDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ 'aria-label': `Break ${idx + 1} start` }}
-              />
+                slotProps={{
+                  htmlInput: { 'aria-label': `Break ${idx + 1} start` },
+                  inputLabel: { shrink: true }
+                }} />
               <TextField
                 type="date"
                 value={b.endDate}
                 onChange={(e) => setBreakAt(idx, { endDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ 'aria-label': `Break ${idx + 1} end` }}
-              />
+                slotProps={{
+                  htmlInput: { 'aria-label': `Break ${idx + 1} end` },
+                  inputLabel: { shrink: true }
+                }} />
               <IconButton
                 aria-label={`Remove break ${idx + 1}`}
                 onClick={() => removeBreakAt(idx)}
@@ -333,10 +342,11 @@ export function SemesterFormDialog({
                 type="date"
                 value={value}
                 onChange={(e) => setWeatherAt(idx, e.target.value)}
-                InputLabelProps={{ shrink: true }}
                 fullWidth
-                inputProps={{ 'aria-label': `Weather makeup date ${idx + 1}` }}
-              />
+                slotProps={{
+                  htmlInput: { 'aria-label': `Weather makeup date ${idx + 1}` },
+                  inputLabel: { shrink: true }
+                }} />
               <IconButton
                 aria-label={`Remove weather makeup date ${idx + 1}`}
                 onClick={() => removeWeatherAt(idx)}

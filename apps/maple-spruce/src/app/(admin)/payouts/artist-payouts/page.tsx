@@ -239,14 +239,15 @@ export default function ArtistPayoutsPage(): React.ReactNode {
       <Box sx={{ mb: 3 }}>
         <Stack
           direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
+          sx={{
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
           <div>
             <Typography variant="h4" component="h1" gutterBottom>
               Artist Payouts
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Generate and track payouts for consignment artist sales. Each
               payout aggregates unpaid sales for a given period.
             </Typography>
@@ -260,7 +261,6 @@ export default function ArtistPayoutsPage(): React.ReactNode {
           </Button>
         </Stack>
       </Box>
-
       {/* Filters */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
         <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -293,7 +293,6 @@ export default function ArtistPayoutsPage(): React.ReactNode {
           </Select>
         </FormControl>
       </Stack>
-
       {/* Data Grid */}
       {payoutsState.status === 'loading' && (
         <Stack spacing={1}>
@@ -322,7 +321,6 @@ export default function ArtistPayoutsPage(): React.ReactNode {
           }}
         />
       )}
-
       {/* Generate Payout Dialog */}
       <Dialog
         open={generateDialogOpen}
@@ -353,7 +351,7 @@ export default function ArtistPayoutsPage(): React.ReactNode {
               to={genRange.to}
               onChange={setGenRange}
             />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               This will aggregate all unpaid sales for the selected artist
               within the specified period and create a payout record.
             </Typography>
@@ -370,7 +368,6 @@ export default function ArtistPayoutsPage(): React.ReactNode {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Mark as Paid Dialog */}
       <Dialog
         open={markPaidDialogOpen}
@@ -418,7 +415,6 @@ export default function ArtistPayoutsPage(): React.ReactNode {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Snackbar feedback */}
       <Snackbar
         open={snackbar.open}

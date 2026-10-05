@@ -6,6 +6,257 @@
 
 ## Current Status
 
+### pnpm 11 → 12 (2026-10-05)
+
+- `packageManager` → pnpm 12.9.1. pnpm 12 rejects unknown workspace settings;
+  `managePackageManagerVersions` no longer exists and was removed. Its job
+  (keep the lockfile single-document for Nx) is moot: pnpm 12 always writes a
+  multi-document lockfile and Nx 23.2 parses it (pruned deploy lockfile came
+  out byte-identical). Closes #29.
+- pnpm 12 is a native binary, so its installers need upgrading too:
+  `pnpm/action-setup` v4 → **v6.1.0** in all 27 places (the floating `v6` tag
+  lags behind 6.1.0, so it is pinned), and the Vercel jobs install
+  `corepack@latest` because vercel.json's installCommand runs
+  `corepack enable && pnpm install` and only corepack ≥ 0.35 can run pnpm 12.
+- Firebase function deploys are unaffected: Cloud Build installs them with npm
+  (CI deletes the deploy lockfile; buildpacks only choose pnpm when one exists).
+- Audit wrapper still passes clean and still fails on an un-ignored high.
+### Webflow code components 1 → 2 (2026-10-05)
+
+`@webflow/react` 1.x only supported React up to 19.0.0, and the refresh moved
+the app to React 19.3, so the widgets were outside their supported range.
+2.x supports all of React 19 and fixes a React 19 prerender race.
+
+- `@webflow/react`, `data-types`, `emotion-utils` 1.3 → 2.5; `webflow-cli`
+  1.23 → 2.10 (needs Node ≥ 22.13; CI's `node-version: '22'` resolves above it).
+  Our widgets only use `declareComponent`, `props` and the emotion decorator,
+  none of which changed.
+- Merge-time publish: `webflow library share` → `webflow devlink import`
+  (same implementation in the CLI; `library` is deprecated, gone in CLI 3).
+- PR CI now runs `webflow devlink bundle` after the typecheck (~20s). The old
+  comment said bundling was broken upstream; it works with both 1.x and 2.x.
+- Overrides: `koa` and `ws` removed (CLI 2.x no longer pins vulnerable ones);
+  `undici` added (dts-plugin pins 7.24.7). `adm-zip`, `form-data` stay.
+- Same 8 components, same React 19.3; client bundle ~170KB smaller.
+- After merge: publish the Webflow **site** (not just the library) and check
+  the widgets on staging, or the old widget JS keeps serving.
+
+### MUI 7 → 9, MUI X 7 → 9 (2026-10-04)
+
+Last of the deferred majors from the dependency refresh. Codemods did the bulk
+(slots/slotProps, system props → sx, picker adapter/day renames). The rest:
+
+- **Silent colour loss:** Typography `color` only matches names in v9, so all
+  295 `color="text.secondary"`-style props and 5 computed ones became
+  `textSecondary` / `error` etc. ESLint `no-restricted-syntax` now errors on any
+  dotted path in a JSX `color` prop.
+- **material-react-table** (sticky columns in billing/lessons/students) passes
+  props MUI 9 ignores. `patches/material-react-table@3.2.1.patch` renames them;
+  tracked in #166 (MRT looks unmaintained).
+- **Data grid:** MUI X 8+ paints grids white and reads header colour from a new
+  variable that a later `<style>` rule overrides; theme `palette.DataGrid.bg`
+  plus `&.MuiDataGrid-root` header variable restore the old look exactly.
+- **Date fields** are `MuiPickersOutlinedInput` now; theme styles it like inputs.
+- **Etsy import selection** resolves the grid's new include/exclude model to ids.
+- Verified by pixel-diffing all 678 stories against main: 638 identical; the
+  rest are MUI X's own row/skeleton layout and anti-aliasing. Date-time/time
+  pickers behave as before (OK to confirm) plus a Cancel button.
+
+### vest 5 → 6 (2026-10-04)
+
+Vest 6 removed `staticSuite` and points to `create(cb).runStatic(...)`, but
+`runStatic` is not isolated: a focused run (`only(fields)`) reports stale errors
+for unfocused fields from the previous call. That would break the functions'
+partial-update validation and leak one request's errors into the next in a warm
+container. Five existing partial-update specs caught it.
+
+- `libs/ts/validation/src/lib/static-suite.ts`: local `staticSuite` that builds
+  a fresh suite per call (`create(cb).run(...)`), the Vest 5 behaviour. The 34
+  suites only change their import line; no caller changes.
+  `static-suite.spec.ts` pins isolation (verified to fail on `runStatic`).
+- `enforce(x).inside(list)` now types `list` as a mutable array: six `as const`
+  lists are spread (`[...LIST]`). Type-only.
+- Docs: PATTERNS-AND-PRACTICES Vest section and the functions rule now say to
+  use the local helper, never Vest's `create` / `runStatic`.
+- `require('vest')` ~3ms → ~6ms; negligible for maple-webhooks' cold start.
+- Next deferred major: MUI 9.
+
+### Square SDK 45 → 46 (2026-10-04)
+
+SDK 46 moves the default `Square-Version` from 2026-08-19 to 2026-09-16. That
+API version's only change is retiring the Transactions API write endpoints
+(Charge, CreateRefund, CaptureTransaction, VoidTransaction), which nothing here
+calls; all payments go through the Payments/Orders APIs. No type changes across
+any lib (same 334 pre-existing `tsc` errors as main). First of the deferred
+majors from the dependency refresh; next are vest 6, then MUI 9.
+
+### Dependency refresh: 50 overrides down to 9 (2026-09-29, refreshed 2026-10-04)
+
+Security Audit was failing on main (6 high). A fresh resolve (no lockfile, no
+overrides) showed almost every override was covering a *stale lockfile* entry,
+not a missing upstream fix.
+
+- Minor bumps across the board: nx 23.2.1 (+ its migrations), Next 16.3.7,
+  React 19.3, Storybook 10.6.1, Firebase 12.19 / admin 14.5 / functions 7.4,
+  firebase-tools 15.32, vite 8.3, vitest 4.1.11, Playwright 1.63.
+- Majors: ESLint 10 (+ @eslint/js 10), jsdom 30, jscpd 5,
+  jsonc-eslint-parser 3, @vitejs/plugin-react 6, date-fns 4, ical-generator 11.
+- Removed unused deps: @tanstack/react-query, wait-on (it pulled the flagged
+  joi), concurrently, node-ical, http-server, ts-node, @vitest/ui.
+- Overrides: ~50 down to 9, each pinned by a named parent: adm-zip/koa/ws/
+  form-data (@webflow/webflow-cli), smol-toml/axios/brace-expansion 5.x (nx),
+  @grpc/grpc-js (@firebase/firestore ~1.9), basic-ftp (firebase-tools >
+  get-uri ^5). The last four came from advisories published 2026-09-30 to
+  10-01, after the first pass.
+- `auditConfig.ignoreGhsas`: image-size is gone from the tree; one new entry,
+  braces GHSA-vfj7-8cjw-p6xm, which has no patched release and is in no
+  production dependency tree. Audit: 52 findings → 4 (only high is the
+  ignored braces).
+- Storybook on Vite 8 resolves `@maple/*` through Vite's native tsconfig paths,
+  which skips files outside a tsconfig `include` (every story). `.storybook/main.ts`
+  now adds vite-tsconfig-paths on tsconfig.base.json, as the unit config does.
+- New ESLint 10 / sonarjs 4.2 rules set to warn (~80 pre-existing hits).
+- Deferred, each its own PR: Square SDK 46, MUI 9 + MUI X 9, vest 6,
+  @webflow/* 2.x (payments / UI / live registration widget). Blocked upstream:
+  TypeScript 7 and vitest 5 (nx + typescript-eslint), Babel 8 (nx).
+
+### Recording history: past lessons paid outside the app (2026-09-29)
+
+Katie had paid private-pay history (cash, Venmo, cards run in Square by hand)
+with no way to record it: "Paid in cash or Venmo" only appeared once the
+past-lessons card listed something, and it listed only lessons marked taught.
+
+- "Charge for past lessons" now also offers past lessons still `scheduled`
+  ("Past, not marked taught"), uncapped; ticking and acting marks them taught
+  first (`onMarkTaught`), then charges, invoices or records the payment.
+- **Already paid (cash, Venmo, Square)**: new `square-manual` source ("Card, in
+  Square": a payment already taken in Square, nothing charged). Total is
+  prefilled from the rate and editable; `splitCentsEvenly` spreads it across
+  the lesson lines. Also on the billing table's mark-paid menu.
+
+### Hope billing: EMA orders and invoicing (2026-09-29)
+
+Katie's Hope work: record the family's EMA order (a block of lessons), mark
+lessons taught, invoice them in the portal, tick them off. "Invoice completed"
+is the end state (EMA payment is not tracked).
+
+- `HopeOrder` (`hopeOrders`): product, price copied at order time, lesson count,
+  EMA order id, ordered-on. `allocateHopeLessons` draws taught lessons down
+  oldest order first: each is needs-order / ready-to-invoice / invoiced.
+  Pre-order claims stay invoiced and use no order's room.
+- Invoicing (`recordHopeSubmissions` status `submitted`) refuses a lesson no
+  order has room for and stamps `orderId` + the order's price on the claim.
+- `HopeStudentBilling` card: orders with room left, needs-order warning, ready
+  lessons with tick-all + "Mark N invoiced" + optional EMA invoice #, invoiced
+  folded away. On the student page (for Hope, in the past-lessons slot) and once
+  per student on the Hope Billing page, which replaced the flat `HopeQueue`.
+- Follow-up: the Needs Attention "Hope lessons not yet claimed" row does not
+  distinguish needs-order from ready yet.
+
+### Hope lessons priced from EMA products (2026-09-29)
+
+Hope rates were a hardcoded length table (`hope-rates.ts`): a 30-minute guitar
+lesson showed $41.25 while EMA pays $30, and teacher payouts inherited it. The
+website, the EMA products and the table also disagree with each other (see PR).
+
+- `HopeProduct` (EMA id, name, price, active) in `hopeProducts`, managed on the
+  Hope Billing page ("EMA products"); `Student.hopeProductId` set in the form.
+- `resolveHopeLessonRate(student, lesson, productsById)` is the one rate
+  definition: product price, else the old table as an `estimate` (flagged in the
+  queue and the banner). Replaces three copies of the length fallback in
+  getHopeQueue, recordHopeSubmissions and teacher payouts.
+- New `hope` router (function count 239 → 240); the old rates table component
+  is gone; the Hope banner is compact with rules folded away.
+- Next (PR 2): EMA orders (one order covers several lessons, drawn down oldest
+  first), per-lesson needs-order / ready-to-invoice / invoiced, and a Hope card
+  on the student page. "Invoice completed" is the end state.
+
+### "The next 4" fills itself in (2026-09-29)
+
+A student with two lessons made by hand and no weekly time: "the next 4"
+quietly covered two, and getting to four meant the full scheduling form.
+
+- `fillWeeklyLessonDates(like, existing, needed)` (domain, tested across the
+  DST change): the missing weeks, weekly from the first upcoming lesson at its
+  weekday and time, skipping weeks that already have a lesson.
+- "Next lessons" shows "Only 2 of the next 4 lessons are on the calendar. Add
+  <dates>, same teacher and length?" with **Add 2 lessons** / **Other dates**.
+  It calls `createLessonSeries` with those dates.
+- Every lesson needs a block and hand-made ones often have none, so
+  `planFillBlock` uses a fitting recurring block, else derives a new one and
+  the notice says so; widening a block is never done from here.
+- "This covers" now lists the dates even when there is no rate to charge.
+
+### Paid in cash or Venmo, and what "Mark taught" does (2026-09-29)
+
+Katie asked whether "Mark taught" invoices or charges (it does neither; it
+only records the lesson) and for a simple way to record a cash payment.
+
+- `createInvoice` takes `paidWith` (`admin-manual` = cash/check, or
+  `venmo-manual`) with `status: 'paid'`: the invoice is created already paid,
+  stamped with who recorded it. It never reaches Square (sync only acts on
+  sent/void), so no bill is emailed. On that path the server refuses lessons
+  already covered by a charge or a live invoice.
+- "Paid in cash or Venmo" sits beside Charge / Send invoice on both lesson
+  cards (and the table dialogs); the confirm names every date and asks how.
+- "Mark taught" has a tooltip saying it never charges or invoices; the notice
+  after marking one adds a "Paid in cash" action next to "Send invoice".
+- Auto-charging is separate and unchanged: the nightly job charges active,
+  non-Hope students on a billing rule with a linked card, in blocks ahead.
+
+### Four lessons ahead, and a way in for students with no weekly time (2026-09-29)
+
+Katie's feedback: saving a weekly slot put 12 lessons on the calendar and she
+works four at a time; and a student with no weekly time got a warning and two
+disabled buttons in "Next lessons".
+
+- `SCHEDULE_LESSONS_AHEAD = 4`: each active arrangement is topped up to four
+  upcoming lessons of its own (cancelled ones do not count, so a skipped week
+  pulls the next date in). Nothing is deleted; students already holding twelve
+  keep them until they run down. Fortnightly students get four too.
+- `materializeLessonSchedules` now runs **daily** (was weekly), so a weekly
+  student is back to four the morning after a lesson.
+- Creating an arrangement fills only that arrangement (it used to top up every
+  student's and report their lessons as this one's).
+- "Next lessons" with nothing upcoming offers **Set a weekly time** / **Add
+  lessons one at a time**. The student-page card is "Weekly schedule".
+
+### Lesson rates per teacher, per instrument (2026-09-29)
+
+Base lesson prices were one studio-wide table by length, buried in Settings,
+and empty in prod, so every student without an override priced at $0. Rates
+now live on the teacher: `Instructor.lessonRates` is instrument → length →
+cents, edited in the Instructors form ("Lesson rates").
+
+- Price order: the student's own `lessonRateCents` → their **primary
+  teacher's** rate for their instrument and length → the studio default
+  (Settings) → nothing. Primary teacher, not whoever taught, so a substitute
+  week costs the family the same.
+- `effectiveRateByLength(student, teacher, studioRates)` builds the table;
+  `resolvePrivatePayLessonRateCents` is unchanged and takes it.
+- `getLessonBilling({ studentId })` returns that student's effective table, so
+  every screen that prices a student (student page, billing cards, launchers)
+  picked this up with no client change. `chargeLessonsNow` and the nightly
+  `runLessonBilling` price from the same table.
+
+### Student management follows Katie's task order (2026-09-29)
+
+Katie's jobs with a music student, most to least common: add them, edit rate /
+instrument / teacher, set the weekly slot, charge for past lessons, line up the
+next lessons (paying ahead optional). Card links and the lesson/billing history
+are occasional. Both screens now follow that order.
+
+- **Student page**: header with rate in the summary and an **Edit student**
+  button (was table-only) → Standing schedule → **Charge for past lessons** →
+  **Next lessons** (with "Add lessons") → *History and settings*: Lessons,
+  Billing, Payment method.
+- `CommitLessonsCard` takes `scope` (`owed` / `upcoming` / `all`), `embedded`,
+  `isLoading` and `headerAction`, so one card became the two task cards without
+  a second pricing path. A pre-tick outside the scope is never charged.
+- **Students table**: visible edit button per row; the ⋯ menu is in task order
+  and adds Weekly schedule…, Charge for past lessons…, Next lessons…, each a
+  dialog (`students/student-launchers.tsx`), sharing components with the page.
+
 ### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
 
 **Artists is the pilot** (#126, #127). ADR-029 was accepted in August and nothing had been
