@@ -5,7 +5,8 @@
  * an instructor and month, and recording that David paid it.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { ClassInstructorPaymentMethod } from '@maple/ts/domain';
 
 export interface GenerateClassInstructorStatementInput {
