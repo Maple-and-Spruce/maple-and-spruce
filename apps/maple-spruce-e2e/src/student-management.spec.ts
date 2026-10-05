@@ -1,10 +1,11 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { ADMIN } from './fixtures';
 import { signIn } from './sign-in';
 import {
   OWED_STUDENT_ID,
   OWED_STUDENT_NAME,
   TWO_AHEAD_STUDENT_ID,
+  TWO_AHEAD_STUDENT_NAME,
   HISTORY_STUDENT_ID,
   HOPE_BILLING_STUDENT_ID,
   HOPE_BOOKING_STUDENT_ID,
@@ -24,13 +25,6 @@ import {
  * by the book-and-pay unit tests and the charge-lessons-now integration suite.
  */
 
-async function openRowAction(page: Page, action: RegExp) {
-  await page
-    .getByRole('button', { name: `Actions for ${OWED_STUDENT_NAME}` })
-    .click();
-  await page.getByRole('menuitem', { name: action }).click();
-}
-
 test.describe('Student management — task order', () => {
   test.beforeEach(async ({ page }) => {
     await seedStudentManagement();
@@ -41,33 +35,35 @@ test.describe('Student management — task order', () => {
     ).toBeVisible({ timeout: 20_000 });
   });
 
-  test('the table reaches the weekly slot and the past lessons owed', async ({
+  test('the list reads like the week, and a row opens Next lessons', async ({
     page,
   }) => {
-    // No slot yet, so the dialog opens to add one, once it knows that.
-    await openRowAction(page, /weekly schedule/i);
+    // A student with a weekly time sits under that weekday, at that time; a
+    // student with none under "No regular time" (#159).
+    const noTime = page.getByRole('list', { name: 'No regular time' });
+    await expect(noTime.getByRole('link', { name: new RegExp(OWED_STUDENT_NAME) })).toBeVisible();
+    const twoAhead = page.getByRole('link', { name: new RegExp(TWO_AHEAD_STUDENT_NAME) });
+    await expect(twoAhead).toContainText('4:00 PM');
     await expect(
-      page.getByRole('dialog').getByText('Set a weekly time')
-    ).toBeVisible({ timeout: 20_000 });
+      page.getByRole('list', { name: 'No regular time' }).getByText(TWO_AHEAD_STUDENT_NAME)
+    ).toHaveCount(0);
+
+    // The menu holds only edit and delete; the rest lives on the student page.
+    await page
+      .getByRole('button', { name: `Actions for ${OWED_STUDENT_NAME}` })
+      .click();
+    await expect(page.getByRole('menuitem')).toHaveText(['Edit student…', 'Delete']);
+    await page.getByRole('menuitem', { name: 'Edit student…' }).click();
+    await expect(page.getByRole('dialog').getByLabel(/student name/i)).toHaveValue(
+      OWED_STUDENT_NAME
+    );
     await page.getByRole('button', { name: 'Cancel' }).click();
 
-    // The taught, unpaid lesson is offered, and nothing is ticked for Katie.
-    await openRowAction(page, /charge for past lessons/i);
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText('Already taught, not paid for')).toBeVisible({
-      timeout: 20_000,
-    });
-    await expect(dialog.getByRole('checkbox')).toHaveCount(1);
-    await expect(dialog.getByRole('checkbox')).not.toBeChecked();
-    await dialog.getByRole('button', { name: 'Close' }).click();
-
-    // Edit is a button on the row, not only a menu item.
-    await page
-      .getByRole('button', { name: `Edit ${OWED_STUDENT_NAME}`, exact: true })
-      .click();
+    await twoAhead.click();
+    await expect(page).toHaveURL(new RegExp(`/students/${TWO_AHEAD_STUDENT_ID}$`));
     await expect(
-      page.getByRole('dialog').getByLabel(/student name/i)
-    ).toHaveValue(OWED_STUDENT_NAME);
+      page.getByRole('tab', { name: 'Next lessons', selected: true })
+    ).toBeVisible({ timeout: 20_000 });
   });
 
   test('the student page opens on Next lessons, with one line to orient', async ({

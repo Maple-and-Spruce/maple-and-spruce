@@ -95,7 +95,7 @@ import {
   blockInvoiceInput,
   defaultDurationFor,
   type StandingScheduleSubmit,
-} from '../student-launchers';
+} from '../student-billing';
 import { bookAndPay, type PayMethod } from './book-and-pay';
 
 export const STUDENT_TABS = ['next', 'settings', 'activity'] as const;
