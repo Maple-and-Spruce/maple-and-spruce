@@ -1,14 +1,14 @@
 /**
- * Get Teacher Payouts Cloud Function (legacy #283)
+ * Teacher payouts (legacy #283), served by the `payouts` router.
  *
  * Aggregates teacher payouts for a period:
  *   - Paid private-pay invoice lines that reference a lesson
  *   - Rendered Hope-Scholarship lessons (external EMA billing)
  *
- * Admin-only. Small studio, so we fetch + compute in memory rather than
+ * Small studio, so we fetch + compute in memory rather than
  * pre-aggregating a Payout collection.
  */
-import { createAdminFunction } from '@maple/firebase/functions';
+import { throwInvalidArgument } from '@maple/firebase/functions';
 import {
   InstructorRepository,
   InvoiceRepository,
@@ -21,18 +21,17 @@ import type {
   GetTeacherPayoutsResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const getTeacherPayouts = createAdminFunction<
-  GetTeacherPayoutsRequest,
-  GetTeacherPayoutsResponse
->(async (data) => {
+export async function getTeacherPayouts(
+  data: GetTeacherPayoutsRequest
+): Promise<GetTeacherPayoutsResponse> {
   const from = new Date(data.from);
   const to = new Date(data.to);
 
   if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) {
-    throw new Error("Invalid 'from' / 'to' date strings");
+    throwInvalidArgument("Invalid 'from' / 'to' date strings");
   }
   if (from.getTime() > to.getTime()) {
-    throw new Error("'from' must be before 'to'");
+    throwInvalidArgument("'from' must be before 'to'");
   }
 
   // --- Gather raw data -------------------------------------------------
@@ -84,4 +83,4 @@ export const getTeacherPayouts = createAdminFunction<
   });
 
   return { payouts };
-});
+}

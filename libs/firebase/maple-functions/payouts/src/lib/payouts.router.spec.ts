@@ -67,6 +67,8 @@ vi.mock('@maple/firebase/database', () => ({
 }));
 
 import { payouts } from './payouts.router';
+import { generateArtistPayout, getArtistPayouts, markArtistPayoutPaid } from './artist-payouts';
+import { getTeacherPayouts } from './teacher-payouts';
 
 type Route = (data: unknown) => Promise<Record<string, unknown>>;
 const routes = payouts as unknown as Record<string, Route>;
@@ -393,5 +395,13 @@ describe('payouts router', () => {
         'can be voided'
       );
     });
+  });
+
+  // The handlers are tested in artist-payouts.spec.ts and teacher-payouts.spec.ts.
+  it('serves artist payouts and the teacher report from their own handlers', () => {
+    expect(routes['getArtistPayouts']).toBe(getArtistPayouts);
+    expect(routes['generateArtistPayout']).toBe(generateArtistPayout);
+    expect(routes['markArtistPayoutPaid']).toBe(markArtistPayoutPaid);
+    expect(routes['getTeacherPayouts']).toBe(getTeacherPayouts);
   });
 });

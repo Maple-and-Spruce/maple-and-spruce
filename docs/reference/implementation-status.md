@@ -197,7 +197,7 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 | `wasTaughtBySubstitute` domain helper | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
 | Hope rates moved to domain (shared with payout calc) | **Complete** | `libs/ts/domain/src/lib/hope-rates.ts` |
 | `teacher-payout.ts` — aggregator + compensation helpers | **Complete** | `libs/ts/domain/src/lib/teacher-payout.ts` (+ 26 unit tests) |
-| `getTeacherPayouts` cloud function (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/get-teacher-payouts/` |
+| `getTeacherPayouts` route on the `payouts` router (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/payouts/src/lib/teacher-payouts.ts` |
 | Unit test for handler (7) + integration test (end-to-end with mixed sources, substitute flag, teacher filter, empty period) | **Complete** | `apps/functions-integration-tests-teacher-payout/` |
 | `useTeacherPayouts` hook | **Complete** | `libs/react/data/src/lib/useTeacherPayouts.ts` |
 | `PeriodPicker` + `TeacherPayoutsList` (expandable per teacher, Hope/Private/Sub chips, "Rate not set" warning) | **Complete** | `libs/react/payouts/` |

@@ -105,7 +105,6 @@ export { recordInvoicePayment } from '@maple/firebase/maple-functions/record-inv
 export { deleteInvoice } from '@maple/firebase/maple-functions/delete-invoice';
 
 // Teacher payout aggregation (Phase 4, legacy #283)
-export { getTeacherPayouts } from '@maple/firebase/maple-functions/get-teacher-payouts';
 
 // Class functions
 export { getClasses } from '@maple/firebase/maple-functions/get-classes';
@@ -251,11 +250,6 @@ export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-list
 // Phase 5: Sales tracking
 export { recordSale } from '@maple/firebase/maple-functions/record-sale';
 export { getSales } from '@maple/firebase/maple-functions/get-sales';
-
-// Phase 5: Artist payouts (legacy #313)
-export { generatePayout } from '@maple/firebase/maple-functions/generate-payout';
-export { markPayoutPaid } from '@maple/firebase/maple-functions/mark-payout-paid';
-export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';
 
 // User & role administration (admin /users page)
 export { listUsers } from '@maple/firebase/maple-functions/list-users';

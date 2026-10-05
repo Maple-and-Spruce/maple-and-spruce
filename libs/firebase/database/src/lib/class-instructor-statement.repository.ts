@@ -7,7 +7,8 @@
  * statement and all of its entries in one transaction, and the transaction
  * refuses if any entry already exists. So a session can never be paid twice,
  * even when two admins press Generate at the same moment. Artist payouts
- * stamp sales one by one outside any transaction, and can't make that promise.
+ * get the same guarantee differently: a sale is claimed by its `payoutId`
+ * stamp, written in the payout's own transaction (`PayoutRepository.generate`).
  *
  * Voiding a pending statement deletes its entries in the same transaction,
  * which releases them to be claimed again.

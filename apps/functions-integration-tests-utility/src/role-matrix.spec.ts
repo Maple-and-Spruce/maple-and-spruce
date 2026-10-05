@@ -91,7 +91,6 @@ const CASES: MatrixCase[] = [
   },
   { as: 'nathan', functionName: 'createClass', expect: 403 },
   { as: 'nathan', functionName: 'updateClass', expect: 403 },
-  { as: 'nathan', functionName: 'getTeacherPayouts', expect: 403 },
   // Artists moved onto a domain router (ADR-029). The gate is declared per
   // route, so the matrix has to name routes — a router whose dispatch ran
   // before its gates would show up right here.
@@ -118,6 +117,27 @@ const CASES: MatrixCase[] = [
     expect: 403,
   },
   { as: 'nathan', functionName: 'payouts/voidClassInstructorStatement', data: { id: 'irrelevant' }, expect: 403 },
+  // Artist consignment payouts and the lesson-teacher report moved onto the
+  // same router; a lesson teacher must not read what other teachers are owed.
+  { as: 'nathan', functionName: 'payouts/getArtistPayouts', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'payouts/generateArtistPayout',
+    data: { artistId: 'irrelevant', periodStart: '2026-01-01', periodEnd: '2026-01-31' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/markArtistPayoutPaid',
+    data: { payoutId: 'irrelevant', paymentMethod: 'check' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/getTeacherPayouts',
+    data: { from: '2026-01-01T00:00:00Z', to: '2026-01-31T23:59:59Z' },
+    expect: 403,
+  },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the

@@ -17,7 +17,7 @@ Contract instructors now get a **monthly statement** at `/payouts?tab=classes`. 
 
 The app never moves money. David pays in Square Payroll or Bill Pay and records the date, method and reference.
 
-**The double-pay guard is a ledger** (ADR-034). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path has no such guard and could still pay twice under a race.
+**The double-pay guard is a ledger** (ADR-034). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path got the same guarantee in #145 (see below).
 
 **Three things found on the way.**
 - `getNetAmountPaid` took the discount off twice and left the sales tax in. It now returns `subtotalCents`.
@@ -26,7 +26,9 @@ The app never moves money. David pays in Square Payroll or Bill Pay and records 
 
 **Gotcha: `next dev` writes `apps/maple-spruce/AGENTS.md` + `CLAUDE.md`** (Next's agent rules) and rewrites `next-env.d.ts` to `.next/dev/types`. Delete and restore them before committing, or set `agentRules: false` in `next.config`.
 
-**Next:** move `getPayouts`, `generatePayout`, `markPayoutPaid` and `getTeacherPayouts` onto the `payouts` router (net −3 functions), and give lesson teachers the same ledger (#58).
+**Next:** give lesson teachers the same ledger (#58).
+
+**Follow-up landed (#145): the four older payout functions are routes on `payouts` now.** `getPayouts` / `generatePayout` / `markPayoutPaid` became `payouts/getArtistPayouts` / `generateArtistPayout` / `markArtistPayoutPaid` (renamed, since "payouts" alone is ambiguous on a router that also serves instructor statements), and `getTeacherPayouts` kept its name. Function count 240 → 236. `generateArtistPayout` now writes the payout and stamps its sales in one transaction (`PayoutRepository.generate`); before, it stamped them one by one after creating the payout, so two concurrent generates could both pay the same sales. **The four old functions are still deployed** in dev and prod, because CI does not prune: delete them by hand once the router routes are verified in dev (`firebase functions:delete getPayouts generatePayout markPayoutPaid getTeacherPayouts`, dev first).
 
 ### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
 

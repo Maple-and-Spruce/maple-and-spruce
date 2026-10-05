@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { RequestState, Payout, PayoutStatus } from '@maple/ts/domain';
 import type {
   GetPayoutsRequest,
@@ -52,10 +55,9 @@ export function useArtistPayouts({
   const fetchPayouts = useCallback(async () => {
     setPayoutsState({ status: 'loading' });
     try {
-      const functions = getMapleFunctions();
-      const get = httpsCallable<GetPayoutsRequest, GetPayoutsResponse>(
-        functions,
-        'getPayouts'
+      const get = httpsCallableFromURL<GetPayoutsRequest, GetPayoutsResponse>(
+        getMapleFunctions(),
+        routerCallableUrl('payouts', 'getArtistPayouts')
       );
 
       const result = await get({ artistId, status });
@@ -85,11 +87,10 @@ export function useArtistPayouts({
       periodStart: Date,
       periodEnd: Date
     ): Promise<Payout> => {
-      const functions = getMapleFunctions();
-      const generate = httpsCallable<
+      const generate = httpsCallableFromURL<
         GeneratePayoutRequest,
         GeneratePayoutResponse
-      >(functions, 'generatePayout');
+      >(getMapleFunctions(), routerCallableUrl('payouts', 'generateArtistPayout'));
 
       const result = await generate({
         artistId: targetArtistId,
@@ -111,11 +112,10 @@ export function useArtistPayouts({
       paymentMethod: string,
       paymentReference?: string
     ): Promise<Payout> => {
-      const functions = getMapleFunctions();
-      const mark = httpsCallable<
+      const mark = httpsCallableFromURL<
         MarkPayoutPaidRequest,
         MarkPayoutPaidResponse
-      >(functions, 'markPayoutPaid');
+      >(getMapleFunctions(), routerCallableUrl('payouts', 'markArtistPayoutPaid'));
 
       const result = await mark({ payoutId, paymentMethod, paymentReference });
 
