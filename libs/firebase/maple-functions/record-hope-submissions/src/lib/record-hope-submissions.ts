@@ -40,6 +40,18 @@ import type {
   RecordHopeSubmissionsResponse,
 } from '@maple/ts/firebase/api-types';
 
+/** Why a lesson that failed `isSubmittableToHope` cannot be claimed. */
+function whyNotSubmittable(status: string): string {
+  switch (status) {
+    case 'no-show':
+      return 'Hope pays only for services rendered, and this lesson was a no-show';
+    case 'cancelled':
+      return 'Hope can only be billed for a lesson that happened, and this one was cancelled';
+    default:
+      return 'Hope can only be billed for a lesson that has happened, and this one is still to come';
+  }
+}
+
 export const recordHopeSubmissions = Functions.endpoint
   .requiringRole(Role.Admin)
   .handle<RecordHopeSubmissionsRequest, RecordHopeSubmissionsResponse>(
@@ -60,6 +72,8 @@ export const recordHopeSubmissions = Functions.endpoint
         throwInvalidArgument(`Unknown Hope submission status: ${data.status}`);
       }
 
+      const now = new Date();
+
       // Invoicing ('submitted') is against an EMA order: work out, once per
       // student, which of their taught lessons an order has room for.
       const allocations = new Map<
@@ -69,16 +83,18 @@ export const recordHopeSubmissions = Functions.endpoint
       const allocationFor = async (studentId: string) => {
         const cached = allocations.get(studentId);
         if (cached) return cached;
-        const [taught, orders] = await Promise.all([
-          LessonRepository.findAll({ studentId, status: 'rendered' }),
+        const [lessons, orders] = await Promise.all([
+          // All of them: whether a lesson happened is decided below, not by its
+          // status alone (#157).
+          LessonRepository.findAll({ studentId }),
           HopeOrderRepository.findAll({ studentId }),
         ]);
+        const taught = lessons.filter((l) => isSubmittableToHope(l, now));
         const claims = await HopeSubmissionRepository.findByLessonIds(
           taught.map((l) => l.id)
         );
         const allocation = allocateHopeLessons(
           taught
-            .filter((l) => isSubmittableToHope(l.status))
             .map((l) => ({
               lessonId: l.id,
               scheduledAt: l.scheduledAt,
@@ -91,7 +107,6 @@ export const recordHopeSubmissions = Functions.endpoint
         return result;
       };
 
-      const now = new Date();
       const recordedLessonIds: string[] = [];
       const skipped: Array<{ lessonId: string; reason: string }> = [];
 
@@ -102,13 +117,11 @@ export const recordHopeSubmissions = Functions.endpoint
           continue;
         }
 
-        if (!isSubmittableToHope(lesson.status)) {
+        if (!isSubmittableToHope(lesson, now)) {
           // The important one. Hope funds cannot be retained for services not
-          // rendered, so a no-show or a cancellation can never be claimed.
-          skipped.push({
-            lessonId,
-            reason: `Hope can only be billed for a rendered lesson (this one is ${lesson.status})`,
-          });
+          // rendered, so a no-show, a cancellation or a lesson still to come
+          // can never be claimed.
+          skipped.push({ lessonId, reason: whyNotSubmittable(lesson.status) });
           continue;
         }
 

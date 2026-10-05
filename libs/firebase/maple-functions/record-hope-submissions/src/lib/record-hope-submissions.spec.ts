@@ -190,6 +190,36 @@ describe('recordHopeSubmissions', () => {
     expect(result.skipped[0].reason).toMatch(/rendered/i);
   });
 
+  it('claims a past lesson nobody marked taught — it happened (#157)', async () => {
+    mocks.findLesson.mockResolvedValue({
+      ...renderedLesson,
+      status: 'scheduled',
+    });
+
+    const result = await handler(
+      { lessonIds: ['lesson-1'], status: 'paid' },
+      { uid: 'admin-1' }
+    );
+
+    expect(result.recordedLessonIds).toEqual(['lesson-1']);
+  });
+
+  it('refuses to claim a lesson still to come', async () => {
+    mocks.findLesson.mockResolvedValue({
+      ...renderedLesson,
+      status: 'scheduled',
+      scheduledAt: new Date(Date.now() + 7 * 86_400_000),
+    });
+
+    const result = await handler(
+      { lessonIds: ['lesson-1'], status: 'paid' },
+      { uid: 'admin-1' }
+    );
+
+    expect(mocks.record).not.toHaveBeenCalled();
+    expect(result.skipped[0].reason).toMatch(/still to come/);
+  });
+
   it('refuses to claim a cancelled lesson', async () => {
     mocks.findLesson.mockResolvedValue({
       ...renderedLesson,

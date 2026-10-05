@@ -37,7 +37,10 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-import { runMaterializeLessonSchedules } from './materialize-lesson-schedules';
+import {
+  materializeLessonSchedules,
+  runMaterializeLessonSchedules,
+} from './materialize-lesson-schedules';
 
 const NOW = new Date('2026-06-01T12:00:00Z'); // a Monday
 
@@ -267,6 +270,20 @@ describe('keeping four lessons ahead', () => {
 });
 
 describe('room conflicts (legacy #841)', () => {
+  it('checks an arrangement with no room against Spruce, and books it there', async () => {
+    // The calendar puts a room-less lesson in Spruce, so the check has to look
+    // at Spruce too — or the lesson is written over whatever holds it (#156).
+    await runMaterializeLessonSchedules(NOW, 1);
+
+    expect(mocks.findConflictsForWindow).toHaveBeenCalledWith(
+      expect.objectContaining({ room: 'spruce' })
+    );
+    expect(mocks.createWithId).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ room: 'spruce' })
+    );
+  });
+
   it('skips an occurrence whose room is taken, and counts it', async () => {
     // This job runs unattended. Throwing would abandon every remaining
     // arrangement; writing anyway would double-book the room. So it skips,
@@ -288,5 +305,18 @@ describe('room conflicts (legacy #841)', () => {
 
     expect(result.created).toBe(0);
     expect(result.skippedRoomConflict).toBeGreaterThan(0);
+  });
+});
+
+describe('the daily schedule (#157)', () => {
+  it('books nothing: lessons are booked by hand, not generated', async () => {
+    mocks.findSchedules.mockClear();
+    mocks.createWithId.mockClear();
+
+    // onSchedule is mocked to hand back the handler itself.
+    await (materializeLessonSchedules as unknown as () => Promise<void>)();
+
+    expect(mocks.findSchedules).not.toHaveBeenCalled();
+    expect(mocks.createWithId).not.toHaveBeenCalled();
   });
 });

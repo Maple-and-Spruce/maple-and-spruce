@@ -41,6 +41,7 @@ import {
 import {
   MAX_SCHEDULE_INTERVAL_WEEKS,
   SCHEDULE_LESSONS_AHEAD,
+  lessonRoom,
   materializedLessonId,
   scheduleHorizonEnd,
   scheduleOccurrences,
@@ -145,8 +146,9 @@ export async function runMaterializeLessonSchedules(
       //
       // The skip is not silent: the count surfaces in the result and the log,
       // because a slot nobody can teach in needs a human either way.
+      const room = lessonRoom(schedule.room);
       const clashes = await findConflictsForWindow({
-        room: schedule.room,
+        room,
         scheduledAt: occurrence,
         durationMinutes: schedule.durationMinutes,
       });
@@ -169,7 +171,7 @@ export async function runMaterializeLessonSchedules(
         durationMinutes: schedule.durationMinutes,
         blockId: schedule.blockId,
         scheduleId: schedule.id,
-        room: schedule.room,
+        room,
         status: 'scheduled',
         notes: schedule.notes,
       });
@@ -196,11 +198,18 @@ export async function runMaterializeLessonSchedules(
 }
 
 /**
- * Daily, early morning. With only four lessons kept ahead, a weekly student
- * drops to three the day after a lesson; running daily puts the fourth back
- * before Katie next looks, so "the next four" is always there to commit to.
- * A missed run just leaves one fewer lesson ahead until the next.
+ * Lessons are booked, not generated (#157). The weekly time is a planning note;
+ * the calendar and the Spruce Room hold only what Katie has booked, a few at a
+ * time, when the family pays for them. A job that kept four lessons ahead put
+ * unpaid lessons on the calendar for students who had not committed to them.
+ *
+ * The schedule stays deployed and does nothing, because deleting the function
+ * would not stop it — CI never prunes a deployed function, so the old revision
+ * would go on creating lessons. Retiring this library and its trigger twin is a
+ * follow-up once the no-op has shipped.
  */
+export const AUTO_BOOKING_PAUSED = true;
+
 export const materializeLessonSchedules = onSchedule(
   {
     schedule: '15 5 * * *',
@@ -208,6 +217,10 @@ export const materializeLessonSchedules = onSchedule(
     region: 'us-east4',
   },
   async () => {
+    if (AUTO_BOOKING_PAUSED) {
+      console.log('[lesson-schedules] lessons are booked, not generated (#157)');
+      return;
+    }
     await runMaterializeLessonSchedules(new Date());
   }
 );

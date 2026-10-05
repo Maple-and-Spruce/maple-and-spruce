@@ -20,7 +20,7 @@ import {
   calculateInstructorPayment,
 } from './instructor';
 import type { Invoice } from './invoice';
-import type { Lesson, LessonStatus } from './lesson';
+import type { Lesson } from './lesson';
 import { isSubmittableToHope } from './lesson';
 import { wasTaughtBySubstitute } from './lesson';
 import type { Student } from './student';
@@ -77,6 +77,8 @@ export interface AggregateTeacherPayoutsInput {
   hopeProducts?: HopeProduct[];
   /** Optional restriction to a single teacher. */
   teacherIdFilter?: string;
+  /** What "has happened" is measured against (#157). Defaults to the clock. */
+  now?: Date;
 }
 
 /**
@@ -119,18 +121,19 @@ export function computeLessonCompensationCents(
  * and therefore earns nothing.
  */
 export function isLessonPayoutEligible(
-  status: LessonStatus,
-  source: TeacherPayoutLineSource
+  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
+  source: TeacherPayoutLineSource,
+  now: Date
 ): boolean {
   if (source === 'private-paid') {
     // Private-pay eligibility is keyed on the invoice being paid, not
     // the lesson status — we accept any lesson status except cancelled.
-    return status !== 'cancelled';
+    return lesson.status !== 'cancelled';
   }
-  // Hope rendered — the lesson itself must genuinely have been rendered.
-  // Routed through the shared helper so this and the EMA submission queue
-  // (legacy #799) can never disagree about what Hope may be billed for.
-  return isSubmittableToHope(status);
+  // Hope — the lesson itself must genuinely have happened. Routed through the
+  // shared helper so this and the EMA submission queue (legacy #799) can never
+  // disagree about what Hope may be billed for.
+  return isSubmittableToHope(lesson, now);
 }
 
 /**
@@ -143,6 +146,7 @@ export function aggregateTeacherPayouts(
 ): TeacherPayout[] {
   const { lessons, paidInvoices, students, instructors, teacherIdFilter } =
     input;
+  const now = input.now ?? new Date();
 
   const studentsById = new Map(students.map((s) => [s.id, s]));
   const instructorsById = new Map(instructors.map((i) => [i.id, i]));
@@ -161,7 +165,7 @@ export function aggregateTeacherPayouts(
       if (!line.lessonId) continue; // free-form line, not teacher-attributable
       const lesson = lessonsById.get(line.lessonId);
       if (!lesson) continue;
-      if (!isLessonPayoutEligible(lesson.status, 'private-paid')) continue;
+      if (!isLessonPayoutEligible(lesson, 'private-paid', now)) continue;
 
       const student = studentsById.get(lesson.studentId);
       const teacher = instructorsById.get(lesson.teacherId);
@@ -199,7 +203,7 @@ export function aggregateTeacherPayouts(
     (input.hopeProducts ?? []).map((p) => [p.id, p])
   );
   for (const lesson of lessons) {
-    if (!isLessonPayoutEligible(lesson.status, 'hope-rendered')) continue;
+    if (!isLessonPayoutEligible(lesson, 'hope-rendered', now)) continue;
     if (privatePaidLessonIds.has(lesson.id)) continue; // already counted as private-paid
 
     const student = studentsById.get(lesson.studentId);

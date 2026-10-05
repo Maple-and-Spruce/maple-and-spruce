@@ -480,22 +480,22 @@ export const OpeningPreTickedFromElsewhere: Story = {
 };
 
 /**
- * A past lesson nobody marked taught is not offered. It is still `scheduled`,
- * so as far as this system knows the teaching did not happen — charging for it
- * would invent the fact that it did.
+ * A past lesson nobody marked taught is offered like any other (#157). Nothing
+ * gets marked any more: a past lesson nobody removed happened. The count
+ * shortcut still prices only the upcoming four.
  */
-export const APastLessonNobodyMarkedTaughtIsNotOffered: Story = {
+export const APastLessonNobodyMarkedTaughtIsOffered: Story = {
   args: {
     lessons: [lesson(-3, { id: 'unmarked', status: 'scheduled' }), ...lessons],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      await canvas.findByRole('button', { name: /Charge \$165\.00 to the card/ })
-    ).toBeEnabled();
+      await canvas.findByText(/taught and not paid for/)
+    ).toBeInTheDocument();
     await expect(
-      canvas.queryByText(/taught and not paid for/)
-    ).not.toBeInTheDocument();
+      canvas.getByRole('button', { name: /Charge \$165\.00 to the card/ })
+    ).toBeEnabled();
   },
 };
 
@@ -894,14 +894,19 @@ export const SettlingHistoryPaidInSquare: Story = {
   },
 };
 
-/** No way to mark lessons taught here: only taught ones are offered. */
-export const UnmarkedHiddenWithoutAMarkHandler: Story = {
+/**
+ * No way to mark lessons taught here, and none needed (#157): past lessons
+ * nobody marked are offered anyway, because a past lesson nobody removed
+ * happened.
+ */
+export const UnmarkedOfferedWithoutAMarkHandler: Story = {
   args: { scope: 'owed', lessons: [...unmarkedHistory, ...lessons] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(await canvas.findAllByRole('checkbox')).toHaveLength(24);
     await expect(
-      await canvas.findByText(/Every lesson taught so far is paid for/)
-    ).toBeInTheDocument();
+      canvas.queryByText(/Every lesson taught so far is paid for/)
+    ).not.toBeInTheDocument();
   },
 };
 

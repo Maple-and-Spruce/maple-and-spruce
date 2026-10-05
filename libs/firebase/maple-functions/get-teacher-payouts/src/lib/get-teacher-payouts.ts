@@ -38,12 +38,10 @@ export const getTeacherPayouts = createAdminFunction<
 
   // --- Gather raw data -------------------------------------------------
 
-  // Rendered lessons with scheduledAt in range — Hope-side source.
-  const lessonsInRange = await LessonRepository.findAll({
-    status: 'rendered',
-    from,
-    to,
-  });
+  // Lessons with scheduledAt in range — Hope-side source. Not filtered to
+  // 'rendered': a past lesson nobody removed happened (#157), and the
+  // aggregation decides that per lesson.
+  const lessonsInRange = await LessonRepository.findAll({ from, to });
 
   // All invoices — we filter by paidAt in range below since Firestore
   // doesn't index paidAt and the invoice volume is small.

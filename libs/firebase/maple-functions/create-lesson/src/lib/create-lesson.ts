@@ -14,6 +14,7 @@ import {
   resolveLessonBlock,
 } from '@maple/firebase/functions';
 import { LessonRepository, StudentRepository } from '@maple/firebase/database';
+import { lessonRoom } from '@maple/ts/domain';
 import { lessonValidation } from '@maple/ts/validation';
 import type {
   CreateLessonRequest,
@@ -28,9 +29,12 @@ export const createLesson = createRoleFunction<
     // A lesson teacher may only create a lesson assigned to themselves.
     await assertCanManageLesson(context, data.teacherId);
 
+    // A lesson that names no room is taught in Spruce, and the calendar
+    // already treats it that way — so stamp it, and check it, as Spruce.
     // Dates arrive as ISO strings over the wire; coerce before validation.
     const coerced = {
       ...data,
+      room: lessonRoom(data.room),
       scheduledAt:
         data.scheduledAt instanceof Date
           ? data.scheduledAt
