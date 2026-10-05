@@ -267,6 +267,20 @@ describe('keeping four lessons ahead', () => {
 });
 
 describe('room conflicts (legacy #841)', () => {
+  it('checks an arrangement with no room against Spruce, and books it there', async () => {
+    // The calendar puts a room-less lesson in Spruce, so the check has to look
+    // at Spruce too — or the lesson is written over whatever holds it (#156).
+    await runMaterializeLessonSchedules(NOW, 1);
+
+    expect(mocks.findConflictsForWindow).toHaveBeenCalledWith(
+      expect.objectContaining({ room: 'spruce' })
+    );
+    expect(mocks.createWithId).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ room: 'spruce' })
+    );
+  });
+
   it('skips an occurrence whose room is taken, and counts it', async () => {
     // This job runs unattended. Throwing would abandon every remaining
     // arrangement; writing anyway would double-book the room. So it skips,

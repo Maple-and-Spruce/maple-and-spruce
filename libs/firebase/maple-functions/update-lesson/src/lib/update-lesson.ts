@@ -20,7 +20,7 @@ import {
   LessonScheduledChargeRepository,
 } from '@maple/firebase/database';
 import { lessonValidation } from '@maple/ts/validation';
-import { releaseLessonFromCharge } from '@maple/ts/domain';
+import { lessonRoom, releaseLessonFromCharge } from '@maple/ts/domain';
 import type {
   UpdateLessonRequest,
   UpdateLessonResponse,
@@ -132,7 +132,8 @@ export const updateLesson = createRoleFunction<
     if (movesInRoom && merged.status !== 'cancelled') {
       await assertRoomIsFree([
         {
-          room: merged.room,
+          // A lesson saved before rooms existed is on the calendar as Spruce.
+          room: lessonRoom(merged.room),
           scheduledAt: merged.scheduledAt,
           durationMinutes: merged.durationMinutes,
           excludeSourceRef: `lessons/${data.id}`,

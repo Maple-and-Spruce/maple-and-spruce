@@ -41,6 +41,7 @@ import {
 import {
   MAX_SCHEDULE_INTERVAL_WEEKS,
   SCHEDULE_LESSONS_AHEAD,
+  lessonRoom,
   materializedLessonId,
   scheduleHorizonEnd,
   scheduleOccurrences,
@@ -145,8 +146,9 @@ export async function runMaterializeLessonSchedules(
       //
       // The skip is not silent: the count surfaces in the result and the log,
       // because a slot nobody can teach in needs a human either way.
+      const room = lessonRoom(schedule.room);
       const clashes = await findConflictsForWindow({
-        room: schedule.room,
+        room,
         scheduledAt: occurrence,
         durationMinutes: schedule.durationMinutes,
       });
@@ -169,7 +171,7 @@ export async function runMaterializeLessonSchedules(
         durationMinutes: schedule.durationMinutes,
         blockId: schedule.blockId,
         scheduleId: schedule.id,
-        room: schedule.room,
+        room,
         status: 'scheduled',
         notes: schedule.notes,
       });

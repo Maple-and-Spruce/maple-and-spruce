@@ -34,7 +34,7 @@ import type {
   Room,
   UpdateLessonInput,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel, lessonFitsBlock } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel, lessonFitsBlock, lessonRoom } from '@maple/ts/domain';
 import { lessonValidation } from '@maple/ts/validation';
 import {
   batch,
@@ -89,7 +89,7 @@ export function EditLessonDialog({
       durationMinutes.value = lesson.durationMinutes as 30 | 45 | 60;
       teacherId.value = lesson.teacherId;
       blockId.value = lesson.blockId ?? '';
-      room.value = lesson.room ?? 'spruce';
+      room.value = lessonRoom(lesson.room);
       notes.value = lesson.notes ?? '';
       showValidationErrors.value = false;
       submitError.value = null;
