@@ -33,6 +33,7 @@ export {
   type HopeQueueData,
 } from './lib/useHopeQueue';
 export { useHopeProducts } from './lib/useHopeProducts';
+export { useInstruments } from './lib/useInstruments';
 export {
   useStudentLessonSchedules,
   useAllStudentLessonSchedules,

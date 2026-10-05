@@ -12,41 +12,13 @@
  */
 
 /**
- * Instruments offered for music lessons. Suzuki-method leaning with room for
- * common studio instruments. Add to this list as the studio expands.
+ * An instrument, by its key (`violin`, `fiddle`, …).
+ *
+ * The instruments the studio offers are an app setting (#161), not a fixed
+ * list: see `InstrumentsConfig`. A student keeps whatever key they were
+ * recorded with, even after it stops being offered.
  */
-export type Instrument =
-  | 'piano'
-  | 'guitar'
-  | 'violin'
-  | 'viola'
-  | 'cello'
-  | 'bass'
-  | 'voice'
-  | 'ukulele'
-  | 'mandolin'
-  | 'banjo'
-  | 'fiddle'
-  | 'harp'
-  | 'flute'
-  | 'other';
-
-export const INSTRUMENTS: Instrument[] = [
-  'piano',
-  'guitar',
-  'violin',
-  'viola',
-  'cello',
-  'bass',
-  'voice',
-  'ukulele',
-  'mandolin',
-  'banjo',
-  'fiddle',
-  'harp',
-  'flute',
-  'other',
-];
+export type Instrument = string;
 
 /**
  * Lesson length. Values align with Katie's pricing tiers; "initial" is the

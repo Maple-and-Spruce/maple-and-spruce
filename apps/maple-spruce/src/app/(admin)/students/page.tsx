@@ -30,6 +30,7 @@ import {
   useInstructors,
   useLessonInquiries,
   useHopeProducts,
+  useInstruments,
   useLessonBilling,
   useNeedsAttention,
   useStudents,
@@ -67,6 +68,10 @@ export default function StudentsPage() {
     studioBillingState.status === 'success' ? studioBillingState.data.rules : [];
   // EMA products, so the form can put a Hope student on the one they bill under.
   const { productsState: hopeProductsState } = useHopeProducts();
+  // The instruments the studio offers (#161), for the form and the names.
+  const { instrumentsState } = useInstruments();
+  const instruments =
+    instrumentsState.status === 'success' ? instrumentsState.data : undefined;
   const hopeProducts =
     hopeProductsState.status === 'success' ? hopeProductsState.data : [];
 
@@ -247,6 +252,7 @@ export default function StudentsPage() {
         studentsState={studentsState}
         schedulesState={schedulesState}
         instructors={instructors}
+        instruments={instruments}
         teacherId={onlyTeacher}
         showTeacher={!onlyTeacher}
         todayWeekday={studioWeekday(new Date())}
@@ -263,6 +269,7 @@ export default function StudentsPage() {
         instructors={instructors}
         billingRules={billingRules}
         hopeProducts={hopeProducts}
+        instruments={instruments}
         isSubmitting={isSubmitting}
         prefill={
           creatingFromInquiry
