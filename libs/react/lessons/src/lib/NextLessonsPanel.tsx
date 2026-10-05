@@ -33,7 +33,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { SCHEDULE_TIME_ZONE } from '@maple/ts/domain';
 import type { RequestState } from '@maple/ts/domain';
-import type { NextLessonItem, NextLessonsView } from './next-lessons';
+import type { NextLessonItem, NextLessonsView } from '@maple/ts/domain';
 
 export interface NextLessonsPanelProps {
   viewState: RequestState<NextLessonsView>;

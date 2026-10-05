@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  Invoice,
-  Lesson,
-  LessonScheduledCharge,
-  StudentLessonSchedule,
-} from '@maple/ts/domain';
+import type { Invoice } from './invoice';
+import type { Lesson } from './lesson';
+import type { LessonScheduledCharge } from './lesson-scheduled-charge';
+import type { StudentLessonSchedule } from './student-lesson-schedule';
 import {
   buildNextLessons,
   isLessonPaid,

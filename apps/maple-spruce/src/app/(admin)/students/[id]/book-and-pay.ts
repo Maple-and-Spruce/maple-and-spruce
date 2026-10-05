@@ -11,6 +11,7 @@
  */
 import {
   SCHEDULE_TIME_ZONE,
+  newLessonKey,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
 import type {
@@ -21,10 +22,10 @@ import type {
   Lesson,
   LessonBlock,
   LessonRateByLength,
+  NextLessonItem,
   Student,
   StudentLessonSchedule,
 } from '@maple/ts/domain';
-import { newLessonKey, type NextLessonItem } from '@maple/react/lessons';
 import { blockInvoiceInput, planFillBlock } from '../student-billing';
 
 export type PayMethod = 'card' | 'invoice' | 'none';

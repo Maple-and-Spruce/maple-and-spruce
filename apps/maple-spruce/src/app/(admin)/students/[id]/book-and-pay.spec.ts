@@ -6,7 +6,7 @@ import type {
   Student,
   StudentLessonSchedule,
 } from '@maple/ts/domain';
-import { newLessonKey, type NextLessonItem } from '@maple/react/lessons';
+import { newLessonKey, type NextLessonItem } from '@maple/ts/domain';
 import { bookAndPay, formatDateList, type BookAndPayDeps } from './book-and-pay';
 
 const NOW = new Date('2026-10-01T12:00:00Z');

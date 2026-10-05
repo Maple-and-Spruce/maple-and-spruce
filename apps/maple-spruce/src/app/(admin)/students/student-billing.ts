@@ -16,6 +16,7 @@ import {
   WEEKDAY_LONG,
   lessonInvoiceLines,
   planBlockAttribution,
+  newInvoiceLineId,
   splitCentsEvenly,
   resolvePrivatePayLessonRateCents,
 } from '@maple/ts/domain';
@@ -23,7 +24,6 @@ import type {
   CommitLessonsInvoiceInput,
   CommitLessonsRecordPaidInput,
 } from '@maple/react/lessons';
-import { newInvoiceLineId } from '@maple/react/invoices';
 
 /** Duration default from a student's registered lesson length. */
 export function defaultDurationFor(student: Student): 30 | 45 | 60 {

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, expect, userEvent, within, screen } from 'storybook/test';
 import { NextLessonsPanel } from './NextLessonsPanel';
-import type { NextLessonItem } from './next-lessons';
+import type { NextLessonItem } from '@maple/ts/domain';
 
 const at = (iso: string) => new Date(iso);
 

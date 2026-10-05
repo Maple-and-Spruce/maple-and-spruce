@@ -46,6 +46,7 @@ export * from './lib/square-card-match';
 export * from './lib/lesson-charge-view';
 export * from './lib/student-billing-view';
 export * from './lib/lesson-prepayment';
+export * from './lib/next-lessons';
 export * from './lib/invoice';
 export * from './lib/lesson-invoice';
 export * from './lib/hope-rates';

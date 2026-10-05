@@ -109,4 +109,4 @@ export {
   paidThrough,
   type NextLessonItem,
   type NextLessonsView,
-} from './lib/next-lessons';
+} from '@maple/ts/domain';

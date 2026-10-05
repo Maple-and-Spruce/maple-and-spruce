@@ -9,17 +9,12 @@
  *
  * A skipped week is replaced by the next one, so "the next 4" stays four.
  */
-import {
-  DEFAULT_PREPAY_LESSON_COUNT,
-  lessonBillingState,
-  planNextLessons,
-} from '@maple/ts/domain';
-import type {
-  Invoice,
-  Lesson,
-  LessonScheduledCharge,
-  StudentLessonSchedule,
-} from '@maple/ts/domain';
+import { DEFAULT_PREPAY_LESSON_COUNT, planNextLessons } from './lesson-prepayment';
+import { lessonBillingState } from './lesson-billing-state';
+import type { Invoice } from './invoice';
+import type { Lesson } from './lesson';
+import type { LessonScheduledCharge } from './lesson-scheduled-charge';
+import type { StudentLessonSchedule } from './student-lesson-schedule';
 
 export interface NextLessonItem {
   /** Stable across re-plans: the lesson id, or `new-<iso>` for a date to book. */
