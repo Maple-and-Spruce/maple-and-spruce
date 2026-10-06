@@ -23,7 +23,6 @@ import {
   StudentForm,
   StudentsByDay,
 } from '@maple/react/students';
-import { NeedsAttentionPanel } from '@maple/react/lessons';
 import { useRoles } from '@maple/react/auth';
 import {
   useAllStudentLessonSchedules,
@@ -32,7 +31,6 @@ import {
   useHopeProducts,
   useInstruments,
   useLessonBilling,
-  useNeedsAttention,
   useStudents,
 } from '../../../hooks';
 
@@ -52,7 +50,6 @@ export default function StudentsPage() {
     updateStudent,
     deleteStudent: deleteStudentApi,
   } = useStudents();
-  const { attentionState } = useNeedsAttention();
   const { instructorsState } = useInstructors();
   // Each student's day comes from their weekly time (#159), not from booked
   // lessons: lessons are booked a few at a time, so between bookings a
@@ -221,15 +218,6 @@ export default function StudentsPage() {
         </Alert>
       )}
 
-      {/* Collapsed to a one-line count; renders nothing when clear (legacy #807). */}
-      {attentionState.status === 'success' && (
-        <NeedsAttentionPanel
-          groups={attentionState.data.groups}
-          total={attentionState.data.total}
-          scopedToSelf={attentionState.data.scopedToSelf}
-          defaultExpanded={false}
-        />
-      )}
 
       {canChoose && (
         <Box sx={{ mb: 2 }}>
