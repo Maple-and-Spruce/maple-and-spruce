@@ -26,11 +26,17 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `Functions.endpoint` chain, and it takes a base64 image body, so whether it wants its own
   memory limit is worth measuring before it moves.
 
-### Products (read/delete)
-- `getProducts`, `getProduct`, `deleteProduct`
-
-### Categories
-- `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`
+### Products and categories (#68)
+- `products` — **domain router** (ADR-029) for shop inventory in `maple-core`, every route
+  gated `[Admin, Clerk]`: `products/getProducts`, `products/getProduct`,
+  `products/deleteProduct`, `products/getCategories`, `products/createCategory`,
+  `products/updateCategory`, `products/reorderCategories`, `products/deleteCategory`. The
+  product writes that call Square (`createProduct`, `updateProduct`, `uploadProductImage`) stay
+  in `maple-square`; `uploadCategoryGalleryImage` serves class categories and waits for the
+  classes router (#74).
+- The eight per-endpoint originals are **still deployed** so admin tabs loaded before the
+  switch keep working; they are deleted by hand (`firebase functions:delete`), then dropped from
+  the codebase and the count baseline in a follow-up.
 
 ### Instructors
 - `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`

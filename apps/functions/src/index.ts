@@ -36,6 +36,7 @@ export { artists } from '@maple/firebase/maple-functions/artists';
 export { hope } from '@maple/firebase/maple-functions/hope';
 export { settings } from '@maple/firebase/maple-functions/settings';
 export { discounts } from '@maple/firebase/maple-functions/discounts';
+export { products } from '@maple/firebase/maple-functions/products';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions
