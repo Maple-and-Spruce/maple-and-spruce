@@ -310,9 +310,9 @@ export const EditingLessonRates: Story = {
 
     await userEvent.click(canvas.getByLabelText('Add an instrument'));
     await userEvent.click(
-      await canvas.findByRole('option', { name: 'Piano' })
+      await canvas.findByRole('option', { name: 'Harp' })
     );
-    await userEvent.type(canvas.getByLabelText('Piano 60 min rate'), '80');
+    await userEvent.type(canvas.getByLabelText('Harp 60 min rate'), '80');
 
     await userEvent.click(canvas.getByRole('button', { name: /update/i }));
     await waitFor(() => {
@@ -320,7 +320,7 @@ export const EditingLessonRates: Story = {
         expect.objectContaining({
           lessonRates: {
             violin: { '30-min-full': 4800 },
-            piano: { '60-min': 8000 },
+            harp: { '60-min': 8000 },
           },
         })
       );

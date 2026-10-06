@@ -113,6 +113,9 @@
       "@maple/firebase/maple-functions/hope": [
         "libs/firebase/maple-functions/hope/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/settings": [
+        "libs/firebase/maple-functions/settings/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/send-music-together-conversion": [
         "libs/firebase/maple-functions/send-music-together-conversion/src/index.ts"
       ],

@@ -364,11 +364,12 @@ describe('instructorValidation', () => {
       ).toBe(true);
     });
 
-    it('rejects an unknown instrument or length', () => {
+    it('rejects a malformed instrument key or an unknown length', () => {
+      // Whether the instrument is offered is checked on the server (#161).
       expect(
         instructorValidation({
           ...base,
-          lessonRates: { kazoo: { '30-min-full': 4500 } } as never,
+          lessonRates: { 'Kazoo!': { '30-min-full': 4500 } } as never,
         }).hasErrors('lessonRates')
       ).toBe(true);
       expect(

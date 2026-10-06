@@ -40,7 +40,7 @@ const privatePayStudent: CreateStudentRequest = {
 
 const hopeStudent: CreateStudentRequest = {
   name: 'Hope Kid',
-  instrument: 'piano',
+  instrument: 'guitar',
   isAdultStudent: false,
   primaryTeacherId: 'instructor-test',
   isHopeScholarship: true,

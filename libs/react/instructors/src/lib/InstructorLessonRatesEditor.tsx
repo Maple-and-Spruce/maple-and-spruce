@@ -27,10 +27,15 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import type {
   Instrument,
   InstructorLessonRates,
+  InstrumentOption,
   LessonLength,
 } from '@maple/ts/domain';
-import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
-import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from '@maple/react/students';
+import {
+  DEFAULT_INSTRUMENT_OPTIONS,
+  LESSON_LENGTHS,
+  instrumentLabel,
+} from '@maple/ts/domain';
+import { LESSON_LENGTH_LABELS } from '@maple/react/students';
 
 /** Dollars as typed, per instrument and length. */
 export type LessonRateDrafts = Partial<
@@ -84,15 +89,32 @@ export interface InstructorLessonRatesEditorProps {
   value: LessonRateDrafts;
   onChange: (next: LessonRateDrafts) => void;
   error?: string | null;
+  /**
+   * The instruments the studio offers (#161): only these can be added. Rates
+   * already set for one no longer offered still show, so they can be kept or
+   * removed.
+   */
+  instruments?: InstrumentOption[];
 }
 
 export function InstructorLessonRatesEditor({
   value,
   onChange,
   error,
+  instruments = DEFAULT_INSTRUMENT_OPTIONS,
 }: InstructorLessonRatesEditorProps) {
-  const rows = INSTRUMENTS.filter((i) => value[i] !== undefined);
-  const addable = INSTRUMENTS.filter((i) => value[i] === undefined);
+  const label = (instrument: Instrument) => instrumentLabel(instrument, instruments);
+  // Offered instruments first, in the configured order, then any retired one
+  // the teacher still has rates for.
+  const rows = [
+    ...instruments.map((o) => o.key).filter((key) => value[key] !== undefined),
+    ...Object.keys(value).filter(
+      (key) => value[key] !== undefined && !instruments.some((o) => o.key === key)
+    ),
+  ];
+  const addable = instruments
+    .map((o) => o.key)
+    .filter((key) => value[key] === undefined);
 
   const setCell = (instrument: Instrument, length: LessonLength, text: string) =>
     onChange({ ...value, [instrument]: { ...value[instrument], [length]: text } });
@@ -121,12 +143,12 @@ export function InstructorLessonRatesEditor({
                 mb: 0.5
               }}>
               <Typography variant="body2" sx={{ fontWeight: 600, flexGrow: 1 }}>
-                {INSTRUMENT_LABELS[instrument]}
+                {label(instrument)}
               </Typography>
-              <Tooltip title={`Remove ${INSTRUMENT_LABELS[instrument]} rates`}>
+              <Tooltip title={`Remove ${label(instrument)} rates`}>
                 <IconButton
                   size="small"
-                  aria-label={`Remove ${INSTRUMENT_LABELS[instrument]} rates`}
+                  aria-label={`Remove ${label(instrument)} rates`}
                   onClick={() => remove(instrument)}
                 >
                   <DeleteOutlineIcon fontSize="small" />
@@ -157,7 +179,7 @@ export function InstructorLessonRatesEditor({
                     htmlInput: {
                       min: 0,
                       step: '0.01',
-                      'aria-label': `${INSTRUMENT_LABELS[instrument]} ${LESSON_LENGTH_LABELS[length]} rate`,
+                      'aria-label': `${label(instrument)} ${LESSON_LENGTH_LABELS[length]} rate`,
                     },
                   }}
                 />
@@ -185,7 +207,7 @@ export function InstructorLessonRatesEditor({
           >
             {addable.map((instrument) => (
               <MenuItem key={instrument} value={instrument}>
-                {INSTRUMENT_LABELS[instrument]}
+                {label(instrument)}
               </MenuItem>
             ))}
           </TextField>

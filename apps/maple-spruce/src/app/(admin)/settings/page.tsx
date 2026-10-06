@@ -12,8 +12,11 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { useEtsyConnection } from '@maple/react/data';
-import { LessonRatesConfigCard } from '../../../components/lessons';
+import { useEtsyConnection, useInstruments } from '@maple/react/data';
+import {
+  InstrumentsConfigCard,
+  LessonRatesConfigCard,
+} from '../../../components/lessons';
 import { PosLessonConfigCard } from '../../../components/pos';
 import { BusinessVenmoConfigCard } from '../../../components/my-day';
 
@@ -25,6 +28,7 @@ export default function SettingsPage(): React.ReactNode {
     generateAuthUrl,
     refreshShopId,
   } = useEtsyConnection();
+  const { instrumentsState, isSaving, saveInstruments } = useInstruments();
 
   const handleConnectEtsy = useCallback(async () => {
     const result = await generateAuthUrl();
@@ -167,6 +171,13 @@ export default function SettingsPage(): React.ReactNode {
       </Card>
       <Box sx={{ mt: 3 }}>
         <PosLessonConfigCard />
+      </Box>
+      <Box sx={{ mt: 3 }}>
+        <InstrumentsConfigCard
+          instrumentsState={instrumentsState}
+          isSaving={isSaving}
+          onSave={saveInstruments}
+        />
       </Box>
       <Box sx={{ mt: 3 }}>
         <LessonRatesConfigCard />

@@ -58,6 +58,13 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
 
+### Settings (#161)
+- `settings` — **domain router** (ADR-029) for app-level lists edited on Settings. Routes:
+  `settings/getInstruments` _(Admin + LessonTeacher — the instruments the studio teaches, from
+  `appConfig/instruments`, defaulting to violin, fiddle, guitar, harp)_ and
+  `settings/saveInstruments` _(Admin — replaces the list; keys must be unique and well formed.
+  Removing one only stops it being offered: students and instructor rates on it keep it)_.
+
 ### Hope Scholarship billing (legacy #799)
 - `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
   `hope/getHopeProducts`, `hope/saveHopeProduct`, `hope/saveHopeOrder` _(admin — the studio's EMA portal
