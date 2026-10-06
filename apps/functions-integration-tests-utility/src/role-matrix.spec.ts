@@ -72,7 +72,7 @@ const CASES: MatrixCase[] = [
   // Music Together discounts are hers to run (legacy #791) — the function is open to
   // her, and per-program authorization inside it keeps her off class codes
   // (proved in the discount suite).
-  { as: 'stephanie', functionName: 'getDiscounts', expect: 200 },
+  { as: 'stephanie', functionName: 'discounts/getDiscounts', expect: 200 },
 
   // ── Nathan: clerk + lesson-teacher (multi-role union) ─────────────
   { as: 'nathan', functionName: 'getProducts', expect: 200 },
@@ -147,10 +147,10 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the
   // clerk/lesson-teacher union.
-  { as: 'nathan', functionName: 'getDiscounts', expect: 403 },
+  { as: 'nathan', functionName: 'discounts/getDiscounts', expect: 403 },
   {
     as: 'nathan',
-    functionName: 'createDiscount',
+    functionName: 'discounts/createDiscount',
     data: { code: 'NOPE', type: 'percent', percent: 10, program: 'classes' },
     expect: 403,
   },
@@ -175,7 +175,7 @@ const CASES: MatrixCase[] = [
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
   { as: 'noRole', functionName: 'getProducts', expect: 403 },
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
-  { as: 'noRole', functionName: 'getDiscounts', expect: 403 },
+  { as: 'noRole', functionName: 'discounts/getDiscounts', expect: 403 },
   { as: 'noRole', functionName: 'settings/getInstruments', expect: 403 },
   { as: 'noRole', functionName: 'settings/getLessonRatesConfig', expect: 403 },
   {

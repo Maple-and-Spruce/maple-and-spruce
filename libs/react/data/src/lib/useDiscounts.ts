@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Discount,
   CreateDiscountInput,
@@ -36,7 +39,8 @@ export interface UseDiscountsFilters {
 }
 
 /**
- * Hook for managing discount CRUD operations
+ * Hook for managing discount CRUD operations, served by the `discounts`
+ * router (#62).
  */
 export function useDiscounts(filters?: UseDiscountsFilters) {
   const [discountsState, setDiscountsState] = useState<
@@ -50,10 +54,10 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
 
     try {
       const functions = getMapleFunctions();
-      const getDiscounts = httpsCallable<
+      const getDiscounts = httpsCallableFromURL<
         GetDiscountsRequest,
         GetDiscountsResponse
-      >(functions, 'getDiscounts');
+      >(functions, routerCallableUrl('discounts', 'getDiscounts'));
 
       const result = await getDiscounts({
         status: filters?.status,
@@ -78,10 +82,10 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
   const createDiscount = useCallback(
     async (input: CreateDiscountInput): Promise<Discount> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateDiscountRequest,
         CreateDiscountResponse
-      >(functions, 'createDiscount');
+      >(functions, routerCallableUrl('discounts', 'createDiscount'));
 
       const result = await create(input);
 
@@ -101,10 +105,10 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
   const updateDiscount = useCallback(
     async (input: UpdateDiscountInput): Promise<Discount> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateDiscountRequest,
         UpdateDiscountResponse
-      >(functions, 'updateDiscount');
+      >(functions, routerCallableUrl('discounts', 'updateDiscount'));
 
       const result = await update(input);
 
@@ -125,10 +129,10 @@ export function useDiscounts(filters?: UseDiscountsFilters) {
 
   const deleteDiscount = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteDiscountRequest, DeleteDiscountResponse>(
-      functions,
-      'deleteDiscount'
-    );
+    const del = httpsCallableFromURL<
+      DeleteDiscountRequest,
+      DeleteDiscountResponse
+    >(functions, routerCallableUrl('discounts', 'deleteDiscount'));
 
     await del({ id });
 
