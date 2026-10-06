@@ -223,7 +223,6 @@ export default function StudentDetailPage() {
 
   // ---- Next lessons -------------------------------------------------------
 
-  const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [moved, setMoved] = useState<ReadonlyMap<string, Date>>(new Map());
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
@@ -244,7 +243,6 @@ export default function StudentDetailPage() {
         charges,
         invoicedIds: invoicedLessonIds(invoices),
         now: new Date(),
-        skipped,
         moved,
       }),
     };
@@ -257,7 +255,6 @@ export default function StudentDetailPage() {
     lessons,
     charges,
     invoices,
-    skipped,
     moved,
   ]);
 
@@ -310,7 +307,6 @@ export default function StudentDetailPage() {
       await Promise.all([fetchLessons(), fetchInvoices()]);
       if (result.ok) {
         setPayNotice(result.notice);
-        setSkipped(new Set());
         setMoved(new Map());
       } else {
         setPayError(result.error);
@@ -568,7 +564,6 @@ export default function StudentDetailPage() {
           busy={paying}
           error={payError}
           notice={payNotice}
-          onSkip={(item) => setSkipped((prev) => new Set(prev).add(item.key))}
           onMove={handleMoveNext}
           onCharge={() => handlePay('card')}
           onInvoice={() => handlePay('invoice')}

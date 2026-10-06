@@ -39,7 +39,6 @@ const meta: Meta<typeof NextLessonsPanel> = {
     isHope: false,
     cardLabel: 'Visa ••4242',
     busy: false,
-    onSkip: fn(),
     onMove: fn(),
     onCharge: fn(),
     onInvoice: fn(),
@@ -51,7 +50,7 @@ const meta: Meta<typeof NextLessonsPanel> = {
 export default meta;
 type Story = StoryObj<typeof NextLessonsPanel>;
 
-/** The everyday case: four dates, a card, one button. */
+/** The everyday case: four dates, a card, one button, then a confirmation. */
 export const ChargeTheCard: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
@@ -60,11 +59,34 @@ export const ChargeTheCard: Story = {
     await userEvent.click(
       canvas.getByRole('button', { name: 'Charge $180.00 to Visa ••4242' })
     );
+    // Nothing is charged by the first press.
+    await expect(args.onCharge).not.toHaveBeenCalled();
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(
+      dialog.getByText('Charge $180.00 to Visa ••4242?')
+    ).toBeInTheDocument();
+    await expect(
+      dialog.getByText(/For the lessons on Oct 6, Oct 13, Oct 20 and Oct 27\./)
+    ).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('button', { name: 'Charge $180.00' }));
     await expect(args.onCharge).toHaveBeenCalledTimes(1);
     // One way to pay, not a menu of them.
     await expect(
       canvas.queryByRole('button', { name: /invoice/i })
     ).not.toBeInTheDocument();
+  },
+};
+
+/** Backing out of the confirmation charges nothing. */
+export const ChangeOfMind: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Charge $180.00 to Visa ••4242' })
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.click(dialog.getByRole('button', { name: 'Back' }));
+    await expect(args.onCharge).not.toHaveBeenCalled();
   },
 };
 
@@ -80,6 +102,12 @@ export const NoCardOnFile: Story = {
     await userEvent.click(
       canvas.getByRole('button', { name: 'Send an invoice for $180.00' })
     );
+    await expect(args.onInvoice).not.toHaveBeenCalled();
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(
+      dialog.getByText(/Square emails the family an invoice/)
+    ).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('button', { name: 'Send invoice' }));
     await expect(args.onInvoice).toHaveBeenCalledTimes(1);
   },
 };
@@ -103,24 +131,15 @@ export const OneAlreadyBooked: Story = {
   },
 };
 
-/** Skipping a week hands the item back to the page, which proposes the next. */
-export const SkipAWeek: Story = {
+/** Changing a date: pick a time, confirm, and the page gets the new one. */
+export const ChangeADate: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    const skips = canvas.getAllByRole('button', { name: /^Skip/ });
-    await userEvent.click(skips[1]);
-    await expect(args.onSkip).toHaveBeenCalledWith(fourNew[1]);
-  },
-};
-
-/** Moving a date: pick a time, confirm, and the page gets the new one. */
-export const MoveADate: Story = {
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getAllByRole('button', { name: /^Move/ })[0]);
+    await expect(canvas.queryByRole('button', { name: /^Skip/ })).toBeNull();
+    await userEvent.click(canvas.getAllByRole('button', { name: /^Change/ })[0]);
     const dialog = within(await screen.findByRole('dialog'));
-    await expect(dialog.getByText('Move this lesson')).toBeInTheDocument();
-    await userEvent.click(dialog.getByRole('button', { name: 'Move' }));
+    await expect(dialog.getByText('Change this lesson')).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole('button', { name: 'Change' }));
     await expect(args.onMove).toHaveBeenCalledWith(
       fourNew[0],
       fourNew[0].scheduledAt
@@ -202,8 +221,8 @@ export const Paying: Story = {
     await expect(
       canvas.getByRole('button', { name: 'Charge $180.00 to Visa ••4242' })
     ).toBeDisabled();
-    for (const skip of canvas.getAllByRole('button', { name: /^Skip/ })) {
-      await expect(skip).toBeDisabled();
+    for (const change of canvas.getAllByRole('button', { name: /^Change/ })) {
+      await expect(change).toBeDisabled();
     }
   },
 };
