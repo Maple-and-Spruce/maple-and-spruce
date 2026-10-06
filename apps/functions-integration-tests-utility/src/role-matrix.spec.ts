@@ -59,6 +59,11 @@ const CASES: MatrixCase[] = [
   // Student mutations are now [Admin, LessonTeacher] (#49) — mt-teacher denied.
   { as: 'stephanie', functionName: 'createStudent', expect: 403 },
   { as: 'stephanie', functionName: 'settings/getInstruments', expect: 403 },
+  {
+    as: 'stephanie',
+    functionName: 'settings/getBusinessPaymentConfig',
+    expect: 403,
+  },
   { as: 'stephanie', functionName: 'updateStudent', expect: 403 },
   { as: 'stephanie', functionName: 'getLessons', expect: 403 },
   { as: 'stephanie', functionName: 'listUsers', expect: 403 },
@@ -109,6 +114,35 @@ const CASES: MatrixCase[] = [
     data: { instruments: [{ key: 'violin', label: 'Violin' }] },
     expect: 403,
   },
+  // The singleton app-config routes (#156) stay admin-only on the settings
+  // router. Nathan teaches lessons and reads the instruments list next door,
+  // so he is the caller a too-wide gate would let in. Updates carry a valid
+  // payload so a 403 can only come from the gate.
+  { as: 'nathan', functionName: 'settings/getLessonRatesConfig', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'settings/updateLessonRatesConfig',
+    data: { rateByLength: { '30-min-full': 4000 } },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'settings/getBusinessPaymentConfig',
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'settings/updateBusinessPaymentConfig',
+    data: { venmoHandle: 'Test-Studio' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'settings/getPosLessonConfig', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'settings/updatePosLessonConfig',
+    data: { lessonCatalogObjectIds: ['TEST_ITEM'] },
+    expect: 403,
+  },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the
@@ -129,6 +163,13 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
   { as: 'admin', functionName: 'settings/getInstruments', expect: 200 },
+  { as: 'admin', functionName: 'settings/getLessonRatesConfig', expect: 200 },
+  {
+    as: 'admin',
+    functionName: 'settings/getBusinessPaymentConfig',
+    expect: 200,
+  },
+  { as: 'admin', functionName: 'settings/getPosLessonConfig', expect: 200 },
 
   // ── No roles at all: nothing opens ────────────────────────────────
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
@@ -136,6 +177,7 @@ const CASES: MatrixCase[] = [
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'noRole', functionName: 'getDiscounts', expect: 403 },
   { as: 'noRole', functionName: 'settings/getInstruments', expect: 403 },
+  { as: 'noRole', functionName: 'settings/getLessonRatesConfig', expect: 403 },
   {
     as: 'noRole',
     functionName: 'waiveMusicTogetherInstallment',
