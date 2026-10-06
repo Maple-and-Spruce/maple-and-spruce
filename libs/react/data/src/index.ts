@@ -39,10 +39,6 @@ export {
   useAllStudentLessonSchedules,
 } from './lib/useStudentLessonSchedules';
 export {
-  useNeedsAttention,
-  type NeedsAttentionData,
-} from './lib/useNeedsAttention';
-export {
   useLessonInquiries,
   type UseLessonInquiriesOptions,
 } from './lib/useLessonInquiries';
