@@ -34,6 +34,13 @@ function futureCutoff(): Date {
   return d;
 }
 
+// The staff routes on the discounts router (ADR-029, #62). lookupDiscount is
+// public and stays its own function.
+const GET_DISCOUNTS = 'discounts/getDiscounts';
+const CREATE_DISCOUNT = 'discounts/createDiscount';
+const UPDATE_DISCOUNT = 'discounts/updateDiscount';
+const DELETE_DISCOUNT = 'discounts/deleteDiscount';
+
 const PERCENT_DISCOUNT: CreatePercentDiscount = {
   code: 'SAVE20',
   type: 'percent',
@@ -107,7 +114,7 @@ describe('Discount Functions', () => {
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction<CreatePercentDiscount>({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: PERCENT_DISCOUNT,
       });
       expect(result.status).toBe(401);
@@ -115,7 +122,7 @@ describe('Discount Functions', () => {
 
     it('should reject non-admin users', async () => {
       const result = await callFunction<CreatePercentDiscount>({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: PERCENT_DISCOUNT,
         idToken: nonAdminUser.idToken,
       });
@@ -131,7 +138,7 @@ describe('Discount Functions', () => {
         CreatePercentDiscount,
         CreateDiscountResponse
       >({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: PERCENT_DISCOUNT,
         idToken: adminUser.idToken,
       });
@@ -154,7 +161,7 @@ describe('Discount Functions', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         idToken: adminUser.idToken,
       });
 
@@ -168,7 +175,7 @@ describe('Discount Functions', () => {
         UpdateDiscountRequest,
         UpdateDiscountResponse
       >({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: discountId,
           description: '20% off summer classes',
@@ -190,7 +197,7 @@ describe('Discount Functions', () => {
         DeleteDiscountRequest,
         DeleteDiscountResponse
       >({
-        functionName: 'deleteDiscount',
+        functionName: DELETE_DISCOUNT,
         data: { id: discountId },
         idToken: adminUser.idToken,
       });
@@ -208,17 +215,17 @@ describe('Discount Functions', () => {
     beforeAll(async () => {
       const [percentRes, amountRes, earlyBirdRes] = await Promise.all([
         callFunction<CreatePercentDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: { ...PERCENT_DISCOUNT, code: 'PCT-TEST' },
           idToken: adminUser.idToken,
         }),
         callFunction<CreateAmountDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: AMOUNT_DISCOUNT,
           idToken: adminUser.idToken,
         }),
         callFunction<CreateAmountBeforeDateDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: EARLY_BIRD_DISCOUNT,
           idToken: adminUser.idToken,
         }),
@@ -232,17 +239,17 @@ describe('Discount Functions', () => {
     afterAll(async () => {
       await Promise.all([
         callFunction<DeleteDiscountRequest>({
-          functionName: 'deleteDiscount',
+          functionName: DELETE_DISCOUNT,
           data: { id: percentId },
           idToken: adminUser.idToken,
         }),
         callFunction<DeleteDiscountRequest>({
-          functionName: 'deleteDiscount',
+          functionName: DELETE_DISCOUNT,
           data: { id: amountId },
           idToken: adminUser.idToken,
         }),
         callFunction<DeleteDiscountRequest>({
-          functionName: 'deleteDiscount',
+          functionName: DELETE_DISCOUNT,
           data: { id: earlyBirdId },
           idToken: adminUser.idToken,
         }),
@@ -254,7 +261,7 @@ describe('Discount Functions', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         idToken: adminUser.idToken,
       });
 
@@ -273,12 +280,12 @@ describe('Discount Functions', () => {
     beforeAll(async () => {
       const [activeRes, inactiveRes] = await Promise.all([
         callFunction<CreatePercentDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: { ...PERCENT_DISCOUNT, code: 'LOOKUP-ACTIVE' },
           idToken: adminUser.idToken,
         }),
         callFunction<CreatePercentDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: {
             ...PERCENT_DISCOUNT,
             code: 'LOOKUP-INACTIVE',
@@ -295,12 +302,12 @@ describe('Discount Functions', () => {
     afterAll(async () => {
       await Promise.all([
         callFunction<DeleteDiscountRequest>({
-          functionName: 'deleteDiscount',
+          functionName: DELETE_DISCOUNT,
           data: { id: activeDiscountId },
           idToken: adminUser.idToken,
         }),
         callFunction<DeleteDiscountRequest>({
-          functionName: 'deleteDiscount',
+          functionName: DELETE_DISCOUNT,
           data: { id: inactiveDiscountId },
           idToken: adminUser.idToken,
         }),
@@ -354,7 +361,7 @@ describe('Discount Functions', () => {
     afterAll(async () => {
       if (pairId) {
         await callFunction<DeleteDiscountRequest>({
-          functionName: 'deleteDiscount',
+          functionName: DELETE_DISCOUNT,
           data: { id: pairId },
           idToken: adminUser.idToken,
         });
@@ -366,7 +373,7 @@ describe('Discount Functions', () => {
         CreatePercentDiscount,
         CreateDiscountResponse
       >({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: PAIR_DISCOUNT,
         idToken: adminUser.idToken,
       });
@@ -393,7 +400,7 @@ describe('Discount Functions', () => {
 
     it('should reject create with nthSlot < 2 for nth-slot-onward', async () => {
       const result = await callFunction({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: {
           ...PAIR_DISCOUNT,
           code: 'BAD-NTH',
@@ -407,7 +414,7 @@ describe('Discount Functions', () => {
 
     it('should reject create when appliesTo=nth-slot-onward but nthSlot is missing', async () => {
       const result = await callFunction({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: {
           code: 'NTH-MISSING',
           type: 'percent',
@@ -426,7 +433,7 @@ describe('Discount Functions', () => {
   describe('Validation', () => {
     it('should reject discount with missing code', async () => {
       const result = await callFunction({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: {
           type: 'percent',
           description: 'Missing code discount',
@@ -441,7 +448,7 @@ describe('Discount Functions', () => {
 
     it('should reject percent discount with value over 100', async () => {
       const result = await callFunction({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: {
           code: 'BAD-PCT',
           type: 'percent',
@@ -457,7 +464,7 @@ describe('Discount Functions', () => {
 
     it('should reject code with invalid characters', async () => {
       const result = await callFunction({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: {
           code: 'BAD CODE!',
           type: 'percent',
@@ -479,12 +486,12 @@ describe('Discount Functions', () => {
     beforeAll(async () => {
       const [targetRes, collisionRes] = await Promise.all([
         callFunction<CreatePercentDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: { ...PERCENT_DISCOUNT, code: 'UPD-TARGET' },
           idToken: adminUser.idToken,
         }),
         callFunction<CreatePercentDiscount, CreateDiscountResponse>({
-          functionName: 'createDiscount',
+          functionName: CREATE_DISCOUNT,
           data: { ...PERCENT_DISCOUNT, code: 'UPD-TAKEN' },
           idToken: adminUser.idToken,
         }),
@@ -497,7 +504,7 @@ describe('Discount Functions', () => {
     afterAll(async () => {
       const res = await callFunction<GetDiscountsRequest, GetDiscountsResponse>(
         {
-          functionName: 'getDiscounts',
+          functionName: GET_DISCOUNTS,
           idToken: adminUser.idToken,
         }
       );
@@ -507,7 +514,7 @@ describe('Discount Functions', () => {
       await Promise.all(
         toDelete.map((d) =>
           callFunction<DeleteDiscountRequest>({
-            functionName: 'deleteDiscount',
+            functionName: DELETE_DISCOUNT,
             data: { id: d.id },
             idToken: adminUser.idToken,
           })
@@ -520,7 +527,7 @@ describe('Discount Functions', () => {
         UpdateDiscountRequest,
         UpdateDiscountResponse
       >({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: updateTargetId,
           description: 'Updated description via partial payload',
@@ -536,7 +543,7 @@ describe('Discount Functions', () => {
 
     it('should reject update with empty code', async () => {
       const result = await callFunction<UpdateDiscountRequest>({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: updateTargetId,
           code: '',
@@ -557,7 +564,7 @@ describe('Discount Functions', () => {
 
     it('should reject update with out-of-range percent', async () => {
       const result = await callFunction<UpdateDiscountRequest>({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: updateTargetId,
           percent: -5,
@@ -578,7 +585,7 @@ describe('Discount Functions', () => {
 
     it('should reject update with invalid code characters', async () => {
       const result = await callFunction<UpdateDiscountRequest>({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: updateTargetId,
           code: 'BAD CODE!',
@@ -591,7 +598,7 @@ describe('Discount Functions', () => {
 
     it('should still reject code collision (DB-level uniqueness)', async () => {
       const result = await callFunction<UpdateDiscountRequest>({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: updateTargetId,
           code: collisionTargetCode,
@@ -615,7 +622,7 @@ describe('Discount Functions', () => {
         UpdateDiscountRequest,
         UpdateDiscountResponse
       >({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: {
           id: updateTargetId,
           code: 'UPD-RENAMED',
@@ -692,7 +699,7 @@ describe('Discount program scoping', () => {
         CreatePercentDiscount,
         CreateDiscountResponse
       >({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: MT_CODE,
         idToken: mtTeacher.idToken,
       });
@@ -703,7 +710,7 @@ describe('Discount program scoping', () => {
 
     it('THE POINT: an mt-teacher cannot create a class code', async () => {
       const result = await callFunction<CreatePercentDiscount>({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: { ...CLASS_CODE, code: 'SNEAKY' },
         idToken: mtTeacher.idToken,
       });
@@ -715,7 +722,7 @@ describe('Discount program scoping', () => {
       // Seed a class code the mt-teacher must not see, then ask for it
       // explicitly — the server ignores the requested program for non-admins.
       await callFunction<CreatePercentDiscount, CreateDiscountResponse>({
-        functionName: 'createDiscount',
+        functionName: CREATE_DISCOUNT,
         data: CLASS_CODE,
         idToken: admin.idToken,
       });
@@ -724,7 +731,7 @@ describe('Discount program scoping', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         data: { program: 'classes' },
         idToken: mtTeacher.idToken,
       });
@@ -765,7 +772,7 @@ describe('Discount program scoping', () => {
           GetDiscountsRequest,
           GetDiscountsResponse
         >({
-          functionName: 'getDiscounts',
+          functionName: GET_DISCOUNTS,
           data: { program },
           idToken: admin.idToken,
         });
@@ -803,7 +810,7 @@ describe('Discount program scoping', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         data: { program: 'classes' },
         idToken: admin.idToken,
       });
@@ -811,7 +818,7 @@ describe('Discount program scoping', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         data: { program: 'music-together' },
         idToken: admin.idToken,
       });
@@ -829,7 +836,7 @@ describe('Discount program scoping', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         data: { program: 'classes' },
         idToken: admin.idToken,
       });
@@ -848,7 +855,7 @@ describe('Discount program scoping', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         data: { program: 'classes' },
         idToken: admin.idToken,
       });
@@ -858,7 +865,7 @@ describe('Discount program scoping', () => {
       expect(classCode).toBeDefined();
 
       const result = await callFunction<DeleteDiscountRequest>({
-        functionName: 'deleteDiscount',
+        functionName: DELETE_DISCOUNT,
         data: { id: classCode!.id },
         idToken: mtTeacher.idToken,
       });
@@ -871,7 +878,7 @@ describe('Discount program scoping', () => {
         GetDiscountsRequest,
         GetDiscountsResponse
       >({
-        functionName: 'getDiscounts',
+        functionName: GET_DISCOUNTS,
         data: { program: 'classes' },
         idToken: admin.idToken,
       });
@@ -880,7 +887,7 @@ describe('Discount program scoping', () => {
       );
 
       const result = await callFunction<UpdateDiscountRequest>({
-        functionName: 'updateDiscount',
+        functionName: UPDATE_DISCOUNT,
         data: { id: classCode!.id, status: 'inactive' },
         idToken: mtTeacher.idToken,
       });

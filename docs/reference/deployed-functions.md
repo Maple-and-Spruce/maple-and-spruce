@@ -118,7 +118,14 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getClassCategories`, `uploadCategoryGalleryImage`
 
 ### Discounts
-- `getDiscounts`, `createDiscount`, `updateDiscount`, `deleteDiscount`, `lookupDiscount`
+- `discounts` — **domain router** (ADR-029, #62) for the staff side: `discounts/getDiscounts`,
+  `discounts/createDiscount`, `discounts/updateDiscount`, `discounts/deleteDiscount`, each
+  gated `[Admin, MtTeacher]` and narrowed per program inside the route.
+  The four per-endpoint originals are **still deployed** so admin tabs loaded before the switch
+  keep working; they are deleted by hand (`firebase functions:delete`), then dropped from the
+  codebase and the count baseline in a follow-up.
+- `lookupDiscount` — public, called by both checkout widgets. Stays its own function for now:
+  its App Check rollout is in flight and moving it needs a Webflow publish.
 
 **Program scoping (legacy #791).** Every discount carries `program: 'classes' | 'music-together'` and is redeemable at **only** that checkout. The two programs settle to **different Square accounts owned by different businesses**, so an unscoped code let a Music Together promotion take money off a craft class and vice versa. Enforced in four places, all of which must agree:
 

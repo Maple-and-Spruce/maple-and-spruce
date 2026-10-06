@@ -116,6 +116,9 @@
       "@maple/firebase/maple-functions/settings": [
         "libs/firebase/maple-functions/settings/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/discounts": [
+        "libs/firebase/maple-functions/discounts/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/send-music-together-conversion": [
         "libs/firebase/maple-functions/send-music-together-conversion/src/index.ts"
       ],
