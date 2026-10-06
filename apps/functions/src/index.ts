@@ -34,6 +34,7 @@ export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-st
 // replaced were deleted once it was verified in dev.
 export { artists } from '@maple/firebase/maple-functions/artists';
 export { hope } from '@maple/firebase/maple-functions/hope';
+export { settings } from '@maple/firebase/maple-functions/settings';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions

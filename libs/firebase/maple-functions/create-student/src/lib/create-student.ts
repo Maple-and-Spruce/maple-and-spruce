@@ -7,8 +7,13 @@ import {
   createRoleFunction,
   Role,
   assertCanManageStudent,
+  throwInvalidArgument,
 } from '@maple/firebase/functions';
-import { StudentRepository } from '@maple/firebase/database';
+import {
+  InstrumentsConfigRepository,
+  StudentRepository,
+} from '@maple/firebase/database';
+import { instrumentLabel, isAllowedInstrument } from '@maple/ts/domain';
 import { studentValidation } from '@maple/ts/validation';
 import type {
   CreateStudentRequest,
@@ -29,6 +34,14 @@ export const createStudent = createRoleFunction<
       .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
       .join('; ');
     throw new Error(`Validation failed: ${errorMessages}`);
+  }
+
+  // Only an instrument the studio offers (#161).
+  const { instruments } = await InstrumentsConfigRepository.get();
+  if (!isAllowedInstrument(data.instrument, instruments)) {
+    throwInvalidArgument(
+      `${instrumentLabel(data.instrument, instruments)} is not an instrument the studio offers.`
+    );
   }
 
   const student = await StudentRepository.create(data);

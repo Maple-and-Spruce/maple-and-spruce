@@ -125,7 +125,7 @@ export const SuccessfulSubmission: Story = {
       'lee@example.com'
     );
 
-    // Instrument already defaults to piano; pick the primary teacher
+    // Instrument defaults to the first offered (violin); pick the primary teacher
     const teacherSelect = canvas.getByLabelText(/primary teacher/i);
     await userEvent.click(teacherSelect);
     const teacherOption = await waitFor(() =>
@@ -140,7 +140,7 @@ export const SuccessfulSubmission: Story = {
       expect(args.onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Iris Park',
-          instrument: 'piano',
+          instrument: 'violin',
           primaryTeacherId: mockInstructor.id,
           primaryContactName: 'Lee Park',
           primaryContactEmail: 'lee@example.com',

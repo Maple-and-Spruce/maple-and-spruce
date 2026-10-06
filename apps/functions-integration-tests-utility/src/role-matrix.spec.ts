@@ -58,6 +58,7 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'getStudent', expect: 403 },
   // Student mutations are now [Admin, LessonTeacher] (#49) — mt-teacher denied.
   { as: 'stephanie', functionName: 'createStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'settings/getInstruments', expect: 403 },
   { as: 'stephanie', functionName: 'updateStudent', expect: 403 },
   { as: 'stephanie', functionName: 'getLessons', expect: 403 },
   { as: 'stephanie', functionName: 'listUsers', expect: 403 },
@@ -99,6 +100,15 @@ const CASES: MatrixCase[] = [
   // getArtist (singular) was auth-only until legacy #620; now admin-only like getArtists.
   { as: 'nathan', functionName: 'artists/getArtist', expect: 403 },
   { as: 'nathan', functionName: 'artists/deleteArtist', expect: 403 },
+  // The instruments list (#161): a teacher adds students, so reads it; only
+  // an admin changes it.
+  { as: 'nathan', functionName: 'settings/getInstruments', expect: 200 },
+  {
+    as: 'nathan',
+    functionName: 'settings/saveInstruments',
+    data: { instruments: [{ key: 'violin', label: 'Violin' }] },
+    expect: 403,
+  },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the
@@ -118,12 +128,14 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
+  { as: 'admin', functionName: 'settings/getInstruments', expect: 200 },
 
   // ── No roles at all: nothing opens ────────────────────────────────
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
   { as: 'noRole', functionName: 'getProducts', expect: 403 },
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'noRole', functionName: 'getDiscounts', expect: 403 },
+  { as: 'noRole', functionName: 'settings/getInstruments', expect: 403 },
   {
     as: 'noRole',
     functionName: 'waiveMusicTogetherInstallment',
