@@ -11,7 +11,6 @@ export {
   useSquareCardCandidates,
   useLessonBilling,
   useAllStudentLessonSchedules,
-  useNeedsAttention,
   useLessonInquiries,
   useStudents,
   useLessons,
