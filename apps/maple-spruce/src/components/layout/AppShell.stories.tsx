@@ -182,3 +182,20 @@ export const ClerkLessonTeacherNav: Story = {
     await expect(canvas.queryByText('Sections')).not.toBeInTheDocument();
   },
 };
+
+/**
+ * Even an admin sees no Lesson Billing while automatic charging is paused
+ * (ADR-034, #162). The rest of the lessons group is unchanged.
+ */
+export const AdminNavHidesLessonBilling: Story = {
+  args: {
+    children: <SampleContent />,
+    maxWidth: 'lg',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Hope Billing')).toBeInTheDocument();
+    await expect(canvas.getByText('Teacher Payouts')).toBeInTheDocument();
+    await expect(canvas.queryByText('Lesson Billing')).not.toBeInTheDocument();
+  },
+};
