@@ -64,6 +64,18 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `appConfig/instruments`, defaulting to violin, fiddle, guitar, harp)_ and
   `settings/saveInstruments` _(Admin — replaces the list; keys must be unique and well formed.
   Removing one only stops it being offered: students and instructor rates on it keep it)_.
+- The singleton app-config pairs joined the router (#156), each route keeping its old
+  function's name and admin-only gate: `settings/getLessonRatesConfig` /
+  `settings/updateLessonRatesConfig` _(default private-pay rate by lesson length; drops
+  non-positive and non-integer entries)_, `settings/getBusinessPaymentConfig` /
+  `settings/updateBusinessPaymentConfig` _(the studio Venmo handle, stored without its @)_ and
+  `settings/getPosLessonConfig` / `settings/updatePosLessonConfig` _(the Square catalog ids
+  that count as lessons at the POS; trimmed and de-duped)_.
+- The six per-endpoint originals (`getLessonRatesConfig`, `updateLessonRatesConfig`,
+  `getBusinessPaymentConfig`, `updateBusinessPaymentConfig`, `getPosLessonConfig`,
+  `updatePosLessonConfig`) are **still deployed** so admin tabs loaded before the switch keep
+  working. They are deleted by hand (`firebase functions:delete`), then dropped from the
+  codebase and `function-count-baseline.json` in a follow-up — five fewer Cloud Run services.
 
 ### Hope Scholarship billing (legacy #799)
 - `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
