@@ -73,9 +73,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   that count as lessons at the POS; trimmed and de-duped)_.
 - The six per-endpoint originals (`getLessonRatesConfig`, `updateLessonRatesConfig`,
   `getBusinessPaymentConfig`, `updateBusinessPaymentConfig`, `getPosLessonConfig`,
-  `updatePosLessonConfig`) are **still deployed** so admin tabs loaded before the switch keep
-  working. They are deleted by hand (`firebase functions:delete`), then dropped from the
-  codebase and `function-count-baseline.json` in a follow-up — five fewer Cloud Run services.
+  `updatePosLessonConfig`) were deleted by hand once the routes were live, then dropped from
+  the codebase — six Cloud Run services replaced by routes on one that already existed.
 
 ### Hope Scholarship billing (legacy #799)
 - `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
