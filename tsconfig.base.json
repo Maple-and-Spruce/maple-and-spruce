@@ -242,12 +242,6 @@
       "@maple/firebase/maple-functions/resolve-pos-lesson-attribution": [
         "libs/firebase/maple-functions/resolve-pos-lesson-attribution/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-pos-lesson-config": [
-        "libs/firebase/maple-functions/get-pos-lesson-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-pos-lesson-config": [
-        "libs/firebase/maple-functions/update-pos-lesson-config/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-sync-conflict-summary": [
         "libs/firebase/maple-functions/get-sync-conflict-summary/src/index.ts"
       ],
@@ -587,9 +581,6 @@
       "@maple/firebase/maple-functions/on-lesson-write": [
         "libs/firebase/maple-functions/on-lesson-write/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-lesson-rates-config": [
-        "libs/firebase/maple-functions/get-lesson-rates-config/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/run-lesson-billing": [
         "libs/firebase/maple-functions/run-lesson-billing/src/index.ts"
       ],
@@ -613,15 +604,6 @@
       ],
       "@maple/firebase/maple-functions/get-my-week": [
         "libs/firebase/maple-functions/get-my-week/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-business-payment-config": [
-        "libs/firebase/maple-functions/get-business-payment-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-business-payment-config": [
-        "libs/firebase/maple-functions/update-business-payment-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-lesson-rates-config": [
-        "libs/firebase/maple-functions/update-lesson-rates-config/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-room-schedule": [
         "libs/firebase/maple-functions/get-room-schedule/src/index.ts"
