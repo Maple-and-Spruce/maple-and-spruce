@@ -3,7 +3,7 @@
  *
  * A payout aggregates an artist's unpaid sales over a period. Generating one
  * writes it and stamps each sale with its id in a single transaction
- * (`PayoutRepository.generate`), so a sale can't be paid twice (ADR-034).
+ * (`PayoutRepository.generate`), so a sale can't be paid twice (ADR-035).
  */
 import {
   throwFailedPrecondition,

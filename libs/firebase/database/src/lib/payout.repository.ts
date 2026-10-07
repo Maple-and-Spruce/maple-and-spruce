@@ -6,7 +6,7 @@
  *
  * A sale is claimed by stamping its `payoutId`. `generate` does that and
  * writes the payout in one transaction, so a sale can never land on two
- * payouts, even when two admins press Generate at once (ADR-034).
+ * payouts, even when two admins press Generate at once (ADR-035).
  */
 import { db, getDb, toDate } from './utilities/database.config';
 import type { Payout, PayoutStatus } from '@maple/ts/domain';
