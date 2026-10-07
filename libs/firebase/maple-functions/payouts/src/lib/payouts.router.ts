@@ -1,14 +1,16 @@
 /**
  * payouts — what M&S owes the people it pays, as one Cloud Function (ADR-029).
  *
- * Starts with class-instructor statements: contract instructors are paid a
- * monthly statement covering the class sessions they taught (see
- * `class-instructor-payout.ts` in the domain lib for the policy). The app
- * never moves money. It computes the statement, and David records the
- * Square Payroll / Bill Pay payment he made against it.
+ * Three kinds of payee:
+ * - Class instructors are paid a monthly statement covering the class
+ *   sessions they taught (see `class-instructor-payout.ts` in the domain lib
+ *   for the policy).
+ * - Consigning artists are paid for their sales (`artist-payouts.ts`).
+ * - Lesson teachers' earnings are reported, not yet recorded
+ *   (`teacher-payouts.ts`).
  *
- * The legacy artist-payout functions (`getPayouts`, `generatePayout`,
- * `markPayoutPaid`) and `getTeacherPayouts` are the natural next routes here.
+ * The app never moves money. It computes what is owed, and David records the
+ * Square Payroll / Bill Pay payment he made against it.
  *
  * Every route spells out `requiringRole(Role.Admin)` rather than sharing a
  * helper: `tools/check-callable-roles.ts` reads the gate off the AST and
@@ -41,6 +43,14 @@ import {
 } from '@maple/ts/validation';
 import type {
   ClassInstructorPayoutPreview,
+  GeneratePayoutRequest,
+  GeneratePayoutResponse,
+  GetPayoutsRequest,
+  GetPayoutsResponse,
+  GetTeacherPayoutsRequest,
+  GetTeacherPayoutsResponse,
+  MarkPayoutPaidRequest,
+  MarkPayoutPaidResponse,
   GenerateClassInstructorStatementRequest,
   GenerateClassInstructorStatementResponse,
   GetClassInstructorStatementRequest,
@@ -55,6 +65,12 @@ import type {
   VoidClassInstructorStatementResponse,
 } from '@maple/ts/firebase/api-types';
 import { buildDrafts, loadPayoutMonthData } from './class-instructor-payout-data';
+import {
+  generateArtistPayout,
+  getArtistPayouts,
+  markArtistPayoutPaid,
+} from './artist-payouts';
+import { getTeacherPayouts } from './teacher-payouts';
 
 function unwrap(outcome: StatementTransitionOutcome, id: string, verb: string): ClassInstructorStatement {
   if (outcome.kind === 'not-found') throwNotFound('Statement', id);
@@ -229,4 +245,20 @@ export const payouts = Functions.router('payouts', {
         return { statement: unwrap(outcome, data.id, 'voided') };
       }
     ),
+
+  getArtistPayouts: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetPayoutsRequest, GetPayoutsResponse>(getArtistPayouts),
+
+  generateArtistPayout: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GeneratePayoutRequest, GeneratePayoutResponse>(generateArtistPayout),
+
+  markArtistPayoutPaid: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<MarkPayoutPaidRequest, MarkPayoutPaidResponse>(markArtistPayoutPaid),
+
+  getTeacherPayouts: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetTeacherPayoutsRequest, GetTeacherPayoutsResponse>(getTeacherPayouts),
 });

@@ -54,6 +54,11 @@ export {
   useTeacherPayouts,
   type UseTeacherPayoutsOptions,
 } from './lib/useTeacherPayouts';
+export {
+  useClassInstructorPayouts,
+  useClassInstructorStatement,
+  hydrateStatement,
+} from './lib/useClassInstructorPayouts';
 
 // Phase 4.5: Calendar
 export {

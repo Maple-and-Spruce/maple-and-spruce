@@ -108,11 +108,15 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `payouts/previewClassInstructorPayouts`, `payouts/generateClassInstructorStatement`,
   `payouts/getClassInstructorStatements`, `payouts/getClassInstructorStatement`,
   `payouts/markClassInstructorStatementPaid`, `payouts/voidClassInstructorStatement`.
-  It computes and records; it never moves money. The legacy artist-payout functions and
-  `getTeacherPayouts` are the natural next routes here.
-
-### Teacher Payouts
-- `getTeacherPayouts` — aggregates what Katie owes each teacher over a date range from paid private-pay invoice lines + rendered Hope Scholarship lessons
+  It computes and records; it never moves money.
+  - Artist consignment payouts (legacy #313), formerly `getPayouts` / `generatePayout` /
+    `markPayoutPaid`: `payouts/getArtistPayouts` (filters: artistId, status),
+    `payouts/generateArtistPayout` (aggregates an artist's unpaid sales over a date range,
+    then writes the payout and stamps each sale with its id **in one transaction**, so a sale
+    can't land on two payouts), `payouts/markArtistPayoutPaid`.
+  - Teacher payouts (legacy #283), formerly `getTeacherPayouts`: `payouts/getTeacherPayouts`
+    aggregates what Katie owes each teacher over a date range from paid private-pay invoice
+    lines + rendered Hope Scholarship lessons.
 
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `uploadClassGalleryImage`
@@ -193,11 +197,6 @@ Codes are **globally unique across programs** — a customer types a code withou
 ### Sales (Phase 5)
 - `recordSale` — manually record a product sale with automatic commission calculation, inventory movement, and quantity decrement
 - `getSales` — retrieve sales with optional filters (artistId, source, date range)
-
-### Artist Payouts (Phase 5, legacy #313)
-- `generatePayout` — aggregates unpaid sales for an artist over a date range, creates a Payout record, marks each sale with the payoutId
-- `markPayoutPaid` — marks a pending payout as paid with payment method and optional reference
-- `getPayouts` — retrieves artist payouts with optional filters (artistId, status)
 
 ### Agreements & Waivers
 - `getAgreementTemplates`, `getAgreementTemplate`, `createAgreementTemplate`, `updateAgreementTemplate`, `deleteAgreementTemplate`

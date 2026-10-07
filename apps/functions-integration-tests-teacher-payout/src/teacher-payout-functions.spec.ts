@@ -27,7 +27,7 @@ import type {
 /**
  * End-to-end test: seed one private-pay student + one Hope student,
  * schedule lessons, render the Hope one, send + pay the private-pay
- * invoice, then call getTeacherPayouts for the current month. Verify
+ * invoice, then call payouts/getTeacherPayouts for the current month. Verify
  * each teacher's aggregated total, per-line payout math, and substitute
  * attribution using the primaryTeacherAtCreateId snapshot.
  */
@@ -77,7 +77,7 @@ async function seedAllDayBlocks(teacherId: string): Promise<void> {
   }
 }
 
-describe('getTeacherPayouts integration', () => {
+describe('payouts/getTeacherPayouts integration', () => {
   let adminUser: TestUser;
   let nonAdminUser: TestUser;
   let primaryTeacherId: string;
@@ -186,7 +186,7 @@ describe('getTeacherPayouts integration', () => {
   describe('Auth guard', () => {
     it('rejects unauthenticated requests', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: FROM.toISOString(), to: TO.toISOString() },
       });
       expect(result.status).toBe(401);
@@ -194,31 +194,31 @@ describe('getTeacherPayouts integration', () => {
 
     it('rejects non-admin requests', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: FROM.toISOString(), to: TO.toISOString() },
         idToken: nonAdminUser.idToken,
       });
-      expect([403, 500]).toContain(result.status);
+      expect(result.status).toBe(403);
     });
   });
 
   describe('Validation', () => {
     it('rejects invalid date strings', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: 'not-a-date', to: TO.toISOString() },
         idToken: adminUser.idToken,
       });
-      expect(result.status).not.toBe(200);
+      expect(result.status).toBe(400);
     });
 
     it('rejects when from is after to', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: TO.toISOString(), to: FROM.toISOString() },
         idToken: adminUser.idToken,
       });
-      expect(result.status).not.toBe(200);
+      expect(result.status).toBe(400);
     });
   });
 
@@ -349,7 +349,7 @@ describe('getTeacherPayouts integration', () => {
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
       >({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: FROM.toISOString(), to: queryTo.toISOString() },
         idToken: adminUser.idToken,
       });
@@ -393,7 +393,7 @@ describe('getTeacherPayouts integration', () => {
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
       >({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: {
           from: FROM.toISOString(),
           to: TO.toISOString(),
@@ -412,7 +412,7 @@ describe('getTeacherPayouts integration', () => {
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
       >({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: {
           from: new Date('2025-01-01T00:00:00Z').toISOString(),
           to: new Date('2025-01-31T23:59:59Z').toISOString(),

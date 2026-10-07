@@ -33,6 +33,29 @@ automatic charging), so it was reworked in six slices:
 delete the old ones by hand; retire the no-op materializer and auto-charge schedules by hand once
 the studio is sure it won't want them back.
 
+### Class-instructor payouts: monthly statements, marked paid by hand (2026-09-29, PRs #141 → #142 → this)
+
+Contract instructors now get a **monthly statement** at `/payouts?tab=classes`. The policy is David's (2026-09-28/29):
+- The instructor gets 80% (`Instructor.payRate`, percentage) of what the student paid for the class, after discount and before tax.
+- M&S absorbs the card fee.
+- Revenue is split evenly by session, and each session is paid in the month it was held.
+- `confirmed`, `no-show` and unrefunded `cancelled` registrations count.
+- A refund after a statement is paid comes off the next statement.
+
+The app never moves money. David pays in Square Payroll or Bill Pay and records the date, method and reference.
+
+**The double-pay guard is a ledger** (ADR-035). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path got the same guarantee in #145 (see below).
+
+**Three things found on the way.**
+- `getNetAmountPaid` took the discount off twice and left the sales tax in. It now returns `subtotalCents`.
+- Refunds were recorded with no time or amount; the Square refund id was thrown away. `cancelRegistration` now writes `refundedAt`, `refundedAmountCents` and `squareRefundId`.
+- **Refunds made in the Square dashboard never reach the app.** This is not fixed: `squareWebhook` would need a refund handler.
+
+**Gotcha: `next dev` writes `apps/maple-spruce/AGENTS.md` + `CLAUDE.md`** (Next's agent rules) and rewrites `next-env.d.ts` to `.next/dev/types`. Delete and restore them before committing, or set `agentRules: false` in `next.config`.
+
+**Next:** give lesson teachers the same ledger (#58).
+
+**Follow-up landed (#145): the four older payout functions are routes on `payouts` now.** `getPayouts` / `generatePayout` / `markPayoutPaid` became `payouts/getArtistPayouts` / `generateArtistPayout` / `markArtistPayoutPaid` (renamed, since "payouts" alone is ambiguous on a router that also serves instructor statements), and `getTeacherPayouts` kept its name. Function count 240 → 236. `generateArtistPayout` now writes the payout and stamps its sales in one transaction (`PayoutRepository.generate`); before, it stamped them one by one after creating the payout, so two concurrent generates could both pay the same sales. **The four old functions are still deployed** in dev and prod, because CI does not prune: delete them by hand once the router routes are verified in dev (`firebase functions:delete getPayouts generatePayout markPayoutPaid getTeacherPayouts`, dev first).
 ### pnpm 11 → 12 (2026-10-05)
 
 - `packageManager` → pnpm 12.9.1. pnpm 12 rejects unknown workspace settings;

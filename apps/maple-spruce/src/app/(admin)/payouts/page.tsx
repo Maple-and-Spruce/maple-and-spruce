@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
   FormControl,
@@ -8,6 +9,8 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
 import {
@@ -16,8 +19,38 @@ import {
   monthRangeFor,
 } from '@maple/react/payouts';
 import { useInstructors, useTeacherPayouts } from '../../../hooks';
+import { ClassInstructorPayoutsPanel } from './class-instructors/ClassInstructorPayoutsPanel';
+
+type PayoutsTab = 'lessons' | 'classes';
 
 export default function PayoutsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tab: PayoutsTab = searchParams.get('tab') === 'classes' ? 'classes' : 'lessons';
+
+  return (
+    <>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Payouts
+        </Typography>
+        <Tabs
+          value={tab}
+          onChange={(_, next: PayoutsTab) =>
+            router.replace(next === 'classes' ? '/payouts?tab=classes' : '/payouts')
+          }
+          aria-label="Payout type"
+        >
+          <Tab value="lessons" label="Lesson teachers" />
+          <Tab value="classes" label="Class instructors" />
+        </Tabs>
+      </Box>
+      {tab === 'classes' ? <ClassInstructorPayoutsPanel /> : <LessonTeacherPayouts />}
+    </>
+  );
+}
+
+function LessonTeacherPayouts() {
   const [range, setRange] = useState(() => monthRangeFor(new Date()));
   const [teacherId, setTeacherId] = useState<string>('all');
 
@@ -50,9 +83,6 @@ export default function PayoutsPage() {
   return (
     <>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Teacher payouts
-        </Typography>
         <Typography variant="body2" color="textSecondary">
           Combines paid private-pay invoice lines and rendered Hope
           Scholarship lessons. Compensation uses each instructor&apos;s

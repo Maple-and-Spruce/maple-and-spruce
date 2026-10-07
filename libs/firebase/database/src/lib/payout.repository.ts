@@ -3,11 +3,16 @@
  *
  * Handles all Firestore operations for artist payout records.
  * Each payout aggregates sales for a period and tracks payment status.
+ *
+ * A sale is claimed by stamping its `payoutId`. `generate` does that and
+ * writes the payout in one transaction, so a sale can never land on two
+ * payouts, even when two admins press Generate at once (ADR-035).
  */
-import { db, toDate } from './utilities/database.config';
+import { db, getDb, toDate } from './utilities/database.config';
 import type { Payout, PayoutStatus } from '@maple/ts/domain';
 
 const COLLECTION = 'payouts';
+const SALES = 'sales';
 
 function docToPayout(
   doc: FirebaseFirestore.DocumentSnapshot
@@ -47,36 +52,75 @@ export interface PayoutFilters {
 
 export type CreatePayoutInput = Omit<Payout, 'id' | 'createdAt' | 'updatedAt'>;
 
+export type GeneratePayoutOutcome =
+  | { kind: 'created'; payout: Payout }
+  /** Some of the sales were put on another payout (or deleted) since they were read. */
+  | { kind: 'already-claimed'; saleIds: string[] };
+
+function payoutData(input: CreatePayoutInput, now: Date) {
+  return {
+    artistId: input.artistId,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    saleCount: input.saleCount,
+    totalSales: input.totalSales,
+    totalCommission: input.totalCommission,
+    amountOwed: input.amountOwed,
+    status: input.status,
+    paidAt: input.paidAt ?? null,
+    paymentMethod: input.paymentMethod ?? null,
+    paymentReference: input.paymentReference ?? null,
+    notes: input.notes ?? null,
+    saleIds: input.saleIds,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export const PayoutRepository = {
   async create(input: CreatePayoutInput): Promise<Payout> {
     const docRef = db.collection(COLLECTION).doc();
     const now = new Date();
 
-    const data = {
-      artistId: input.artistId,
-      periodStart: input.periodStart,
-      periodEnd: input.periodEnd,
-      saleCount: input.saleCount,
-      totalSales: input.totalSales,
-      totalCommission: input.totalCommission,
-      amountOwed: input.amountOwed,
-      status: input.status,
-      paidAt: input.paidAt ?? null,
-      paymentMethod: input.paymentMethod ?? null,
-      paymentReference: input.paymentReference ?? null,
-      notes: input.notes ?? null,
-      saleIds: input.saleIds,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await docRef.set(data);
+    await docRef.set(payoutData(input, now));
 
     return {
       id: docRef.id,
       ...input,
       createdAt: now,
       updatedAt: now,
+    };
+  },
+
+  /**
+   * Write the payout and stamp its sales with its id, atomically.
+   *
+   * Refuses when any sale already carries a `payoutId`, or no longer exists,
+   * by the time the transaction reads it. The loser of a race sees the
+   * winner's stamps and gets `already-claimed`.
+   */
+  async generate(input: CreatePayoutInput): Promise<GeneratePayoutOutcome> {
+    const database = getDb();
+    const payoutRef = database.collection(COLLECTION).doc();
+    const saleRefs = input.saleIds.map((id) => database.collection(SALES).doc(id));
+    const now = new Date();
+
+    const taken = await database.runTransaction(async (tx) => {
+      const sales = saleRefs.length > 0 ? await tx.getAll(...saleRefs) : [];
+      const claimed = sales
+        .filter((sale) => !sale.exists || sale.data()?.['payoutId'])
+        .map((sale) => sale.id);
+      if (claimed.length > 0) return claimed;
+
+      tx.create(payoutRef, payoutData(input, now));
+      for (const ref of saleRefs) tx.update(ref, { payoutId: payoutRef.id });
+      return [];
+    });
+
+    if (taken.length > 0) return { kind: 'already-claimed', saleIds: taken };
+    return {
+      kind: 'created',
+      payout: { id: payoutRef.id, ...input, createdAt: now, updatedAt: now },
     };
   },
 

@@ -197,14 +197,14 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 | `wasTaughtBySubstitute` domain helper | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
 | Hope rates moved to domain (shared with payout calc) | **Complete** | `libs/ts/domain/src/lib/hope-rates.ts` |
 | `teacher-payout.ts` — aggregator + compensation helpers | **Complete** | `libs/ts/domain/src/lib/teacher-payout.ts` (+ 26 unit tests) |
-| `getTeacherPayouts` cloud function (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/get-teacher-payouts/` |
+| `getTeacherPayouts` route on the `payouts` router (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/payouts/src/lib/teacher-payouts.ts` |
 | Unit test for handler (7) + integration test (end-to-end with mixed sources, substitute flag, teacher filter, empty period) | **Complete** | `apps/functions-integration-tests-teacher-payout/` |
 | `useTeacherPayouts` hook | **Complete** | `libs/react/data/src/lib/useTeacherPayouts.ts` |
 | `PeriodPicker` + `TeacherPayoutsList` (expandable per teacher, Hope/Private/Sub chips, "Rate not set" warning) | **Complete** | `libs/react/payouts/` |
 | Storybook interaction tests (14) | **Complete** | `libs/react/payouts/src/lib/*.stories.tsx` |
 | `/payouts` admin page + Music Lessons nav entry | **Complete** | `apps/maple-spruce/src/app/payouts/page.tsx`, `AppShellWrapper.tsx` |
 
-### Class-Instructor Payouts (In progress, 3 PRs)
+### Class-Instructor Payouts (Complete, 3 PRs)
 
 Contract instructors get `payRate` (0.8) of what the student paid for the class, after discount and before tax. Revenue is split evenly across sessions, and each session is paid in the month it was held. Statements are generated monthly and marked paid by hand; the app never moves money. See the domain module's header for the full policy.
 
@@ -217,7 +217,10 @@ Contract instructors get `payRate` (0.8) of what the student paid for the class,
 | `payouts` router: preview / generate / list / get / mark paid / void, admin-only | **Complete** (PR 2) | `libs/firebase/maple-functions/payouts/` |
 | Vest suites for generate + mark paid | **Complete** (PR 2) | `libs/ts/validation/src/lib/class-instructor-statement.validation.ts` |
 | Integration suite (split across months, double generate, race, void + regenerate, refund after payment, gating) + role matrix | **Complete** (PR 2) | `apps/functions-integration-tests-payouts/` |
-| `/payouts` Class instructors tab, printable statement page | Planned (PR 3) | |
+| `useClassInstructorPayouts` / `useClassInstructorStatement` hooks (router routes, date hydration) | **Complete** (PR 3) | `libs/react/data/src/lib/useClassInstructorPayouts.ts` |
+| `MonthStepper`, `ClassInstructorPayoutPreview`, `ClassInstructorStatementsList`, `MarkStatementPaidDialog`, `ClassInstructorStatementView` (4 loading states each, 41 play tests) | **Complete** (PR 3) | `libs/react/payouts/` |
+| `/payouts` tabs (Lesson teachers / Class instructors, `?tab=classes`) | **Complete** (PR 3) | `apps/maple-spruce/src/app/(admin)/payouts/page.tsx` |
+| Printable statement (Print / Save PDF, admin chrome hidden in print) | **Complete** (PR 3) | `apps/maple-spruce/src/app/(admin)/payouts/instructor-statements/[id]/page.tsx` |
 
 ### Parent Invoice Delivery + Online Payment (legacy #281, Complete)
 
