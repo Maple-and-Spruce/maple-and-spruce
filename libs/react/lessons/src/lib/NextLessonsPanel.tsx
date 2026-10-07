@@ -19,6 +19,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   List,
   ListItem,
@@ -53,7 +54,6 @@ export interface NextLessonsPanelProps {
   notice?: string | null;
   /** Dismiss the notice and propose the next lessons again. */
   onBookMore: () => void;
-  onSkip: (item: NextLessonItem) => void;
   onMove: (item: NextLessonItem, to: Date) => void;
   onCharge: () => void;
   onInvoice: () => void;
@@ -76,6 +76,19 @@ function formatWhen(at: Date): string {
   });
 }
 
+/** "Oct 6, Nov 3 and Nov 17", in the studio's timezone. */
+function dateList(items: NextLessonItem[]): string {
+  const labels = items.map((item) =>
+    item.scheduledAt.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      timeZone: SCHEDULE_TIME_ZONE,
+    })
+  );
+  if (labels.length <= 1) return labels.join('');
+  return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+}
+
 export function NextLessonsPanel({
   viewState,
   priceOf,
@@ -84,7 +97,6 @@ export function NextLessonsPanel({
   busy,
   error,
   notice,
-  onSkip,
   onMove,
   onCharge,
   onInvoice,
@@ -94,6 +106,10 @@ export function NextLessonsPanel({
 }: NextLessonsPanelProps) {
   const [moving, setMoving] = useState<NextLessonItem | null>(null);
   const [moveTo, setMoveTo] = useState<Date | null>(null);
+  /** Money moves only after a second, deliberate press. */
+  const [confirming, setConfirming] = useState<'charge' | 'invoice' | null>(
+    null
+  );
 
   if (viewState.status === 'idle' || viewState.status === 'loading') {
     return (
@@ -171,7 +187,12 @@ export function NextLessonsPanel({
     );
   } else if (cardLabel) {
     actions = (
-      <Button variant="contained" size="large" disabled={busy} onClick={onCharge}>
+      <Button
+        variant="contained"
+        size="large"
+        disabled={busy}
+        onClick={() => setConfirming('charge')}
+      >
         {`Charge ${money(totalCents)} to ${cardLabel}`}
       </Button>
     );
@@ -179,7 +200,12 @@ export function NextLessonsPanel({
     actions = (
       <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
         <Typography>No card on file.</Typography>
-        <Button variant="contained" size="large" disabled={busy} onClick={onInvoice}>
+        <Button
+          variant="contained"
+          size="large"
+          disabled={busy}
+          onClick={() => setConfirming('invoice')}
+        >
           {`Send an invoice for ${money(totalCents)}`}
         </Button>
       </Stack>
@@ -212,21 +238,13 @@ export function NextLessonsPanel({
               <Button
                 size="small"
                 disabled={busy}
-                aria-label={`Move ${formatWhen(item.scheduledAt)}`}
+                aria-label={`Change ${formatWhen(item.scheduledAt)}`}
                 onClick={() => {
                   setMoving(item);
                   setMoveTo(item.scheduledAt);
                 }}
               >
-                Move
-              </Button>
-              <Button
-                size="small"
-                disabled={busy}
-                aria-label={`Skip ${formatWhen(item.scheduledAt)}`}
-                onClick={() => onSkip(item)}
-              >
-                Skip
+                Change
               </Button>
             </Box>
           </ListItem>
@@ -238,7 +256,7 @@ export function NextLessonsPanel({
       {actions}
 
       <Dialog open={moving !== null} onClose={() => setMoving(null)}>
-        <DialogTitle>Move this lesson</DialogTitle>
+        <DialogTitle>Change this lesson</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -260,7 +278,37 @@ export function NextLessonsPanel({
               setMoving(null);
             }}
           >
-            Move
+            Change
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirming !== null} onClose={() => setConfirming(null)}>
+        <DialogTitle>
+          {confirming === 'charge'
+            ? `Charge ${money(totalCents)} to ${cardLabel}?`
+            : `Send an invoice for ${money(totalCents)}?`}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirming === 'charge'
+              ? `For the lessons on ${dateList(items)}.`
+              : `Square emails the family an invoice for the lessons on ${dateList(items)}.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirming(null)}>Back</Button>
+          <Button
+            variant="contained"
+            disabled={busy}
+            onClick={() => {
+              const action = confirming;
+              setConfirming(null);
+              if (action === 'charge') onCharge();
+              if (action === 'invoice') onInvoice();
+            }}
+          >
+            {confirming === 'charge' ? `Charge ${money(totalCents)}` : 'Send invoice'}
           </Button>
         </DialogActions>
       </Dialog>

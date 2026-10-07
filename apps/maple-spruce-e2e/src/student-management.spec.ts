@@ -108,11 +108,11 @@ test.describe('Student management — task order', () => {
       page.getByRole('button', { name: 'Send an invoice for $160.00' })
     ).toBeVisible();
 
-    // Skipping a week keeps it four, with the week after instead.
-    const before = await list.getByRole('listitem').last().textContent();
-    await list.getByRole('button', { name: /^Skip/ }).last().click();
-    await expect(list.getByRole('listitem')).toHaveCount(4);
-    await expect(list.getByRole('listitem').last()).not.toHaveText(before ?? '');
+    // Sending it asks first; backing out sends nothing.
+    await page.getByRole('button', { name: 'Send an invoice for $160.00' }).click();
+    await expect(page.getByRole('dialog').getByText(/Square emails the family/)).toBeVisible();
+    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
   });
 
   test('a Hope student books the next four in one press, and they are real', async ({

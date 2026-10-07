@@ -22,7 +22,7 @@ function startOfWeek(d: Date): Date {
  * working; it opens on the Week tab, with Today and Openings a tap away.
  */
 export default function MyWeekPage() {
-  const { dayState, markRendered, markNoShow, recordPayment } = useMyDay();
+  const { dayState, recordPayment } = useMyDay();
   /**
    * Which action is running, on which lesson. Was a single page-wide boolean,
    * which froze every card in the day while one saved and never said which
@@ -39,24 +39,6 @@ export default function MyWeekPage() {
     [weekOffset],
   );
   const { weekState } = useMyWeek(weekStart);
-
-  const handleMarkRendered = async (lessonId: string) => {
-    setPending({ lessonId, action: 'mark-rendered' });
-    try {
-      await markRendered(lessonId);
-    } finally {
-      setPending(null);
-    }
-  };
-
-  const handleMarkNoShow = async (lessonId: string) => {
-    setPending({ lessonId, action: 'mark-no-show' });
-    try {
-      await markNoShow(lessonId);
-    } finally {
-      setPending(null);
-    }
-  };
 
   const handleRecordPayment = async (
     lessonId: string,
@@ -79,8 +61,6 @@ export default function MyWeekPage() {
       onPrevWeek={() => setWeekOffset((o) => o - 1)}
       onNextWeek={() => setWeekOffset((o) => o + 1)}
       onThisWeek={() => setWeekOffset(0)}
-      onMarkRendered={handleMarkRendered}
-      onMarkNoShow={handleMarkNoShow}
       onRecordPayment={handleRecordPayment}
       pending={pending}
     />

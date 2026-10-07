@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { BusinessPaymentConfig, RequestState } from '@maple/ts/domain';
 import type {
   GetBusinessPaymentConfigRequest,
@@ -14,6 +17,7 @@ import type {
 /**
  * Hook for the business Venmo handle config (legacy #631), shown on the admin
  * Settings page. Used to render the pay-by-Venmo QR on the teacher My Day page.
+ * Served by the `settings` router (#156).
  */
 export function useBusinessPaymentConfig() {
   const [configState, setConfigState] = useState<
@@ -23,10 +27,13 @@ export function useBusinessPaymentConfig() {
   const fetchConfig = useCallback(async () => {
     setConfigState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetBusinessPaymentConfigRequest,
         GetBusinessPaymentConfigResponse
-      >(getMapleFunctions(), 'getBusinessPaymentConfig');
+      >(
+        getMapleFunctions(),
+        routerCallableUrl('settings', 'getBusinessPaymentConfig')
+      );
       const result = await fn({});
       setConfigState({ status: 'success', data: result.data.config });
     } catch (error) {
@@ -40,10 +47,13 @@ export function useBusinessPaymentConfig() {
 
   const saveVenmoHandle = useCallback(
     async (venmoHandle: string): Promise<BusinessPaymentConfig> => {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         UpdateBusinessPaymentConfigRequest,
         UpdateBusinessPaymentConfigResponse
-      >(getMapleFunctions(), 'updateBusinessPaymentConfig');
+      >(
+        getMapleFunctions(),
+        routerCallableUrl('settings', 'updateBusinessPaymentConfig')
+      );
       const result = await fn({ venmoHandle });
       setConfigState({ status: 'success', data: result.data.config });
       return result.data.config;

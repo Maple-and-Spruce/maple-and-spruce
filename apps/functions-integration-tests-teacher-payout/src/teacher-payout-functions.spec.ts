@@ -164,7 +164,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       functionName: 'createStudent',
       data: {
         name: 'Hope Kid',
-        instrument: 'piano',
+        instrument: 'guitar',
         isAdultStudent: false,
         primaryTeacherId,
         isHopeScholarship: true,

@@ -38,12 +38,14 @@ import type {
   StudentStatus,
   CreateStudentInput,
   HopeProduct,
+  InstrumentOption,
   LessonBillingRule,
 } from '@maple/ts/domain';
 import {
-  INSTRUMENTS,
+  DEFAULT_INSTRUMENT_OPTIONS,
   LESSON_LENGTHS,
   formatHopePrice,
+  instrumentChoices,
 } from '@maple/ts/domain';
 import { studentValidation } from '@maple/ts/validation';
 import {
@@ -52,7 +54,7 @@ import {
   batch,
   useSignals,
 } from '@maple/react/signals';
-import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from './labels';
+import { LESSON_LENGTH_LABELS } from './labels';
 
 interface StudentFormProps {
   open: boolean;
@@ -73,6 +75,11 @@ interface StudentFormProps {
    * are billed under. Omit to hide the picker.
    */
   hopeProducts?: HopeProduct[];
+  /**
+   * The instruments the studio offers (#161), from Settings. A student on one
+   * no longer offered keeps it as a choice when edited.
+   */
+  instruments?: InstrumentOption[];
   isSubmitting?: boolean;
   /**
    * Seed values for a NEW student, e.g. everything a lesson inquiry already
@@ -99,6 +106,7 @@ export function StudentForm({
   instructors,
   billingRules = [],
   hopeProducts,
+  instruments = DEFAULT_INSTRUMENT_OPTIONS,
   isSubmitting = false,
   prefill,
   prefillNote,
@@ -109,7 +117,7 @@ export function StudentForm({
   // FORM FIELD SIGNALS
   // ============================================================
   const name = useSignal('');
-  const instrument = useSignal<Instrument>('piano');
+  const instrument = useSignal<Instrument>(instruments[0]?.key ?? '');
   const isAdultStudent = useSignal(false);
   const primaryTeacherId = useSignal('');
   const registeredLessonLength = useSignal<LessonLength | ''>('');
@@ -221,7 +229,7 @@ export function StudentForm({
     } else {
       batch(() => {
         name.value = '';
-        instrument.value = 'piano';
+        instrument.value = instruments[0]?.key ?? '';
         isAdultStudent.value = false;
         primaryTeacherId.value = '';
         registeredLessonLength.value = '';
@@ -243,7 +251,14 @@ export function StudentForm({
         // button can never inherit the last inquiry's values.
         if (prefill) {
           if (prefill.name != null) name.value = prefill.name;
-          if (prefill.instrument != null) instrument.value = prefill.instrument;
+          // An inquiry's instrument only if the studio offers it; otherwise
+          // the default stands and the human picks.
+          if (
+            prefill.instrument != null &&
+            instruments.some((o) => o.key === prefill.instrument)
+          ) {
+            instrument.value = prefill.instrument;
+          }
           if (prefill.isAdultStudent != null) {
             isAdultStudent.value = prefill.isAdultStudent;
           }
@@ -379,9 +394,9 @@ export function StudentForm({
                 (instrument.value = e.target.value as Instrument)
               }
             >
-              {INSTRUMENTS.map((inst) => (
-                <MenuItem key={inst} value={inst}>
-                  {INSTRUMENT_LABELS[inst]}
+              {instrumentChoices(instruments, student?.instrument).map((option) => (
+                <MenuItem key={option.key} value={option.key}>
+                  {option.label}
                 </MenuItem>
               ))}
             </Select>

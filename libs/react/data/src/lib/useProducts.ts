@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import { callDeduped } from './call-deduped';
 import type {
   Product,
@@ -38,7 +41,7 @@ export function useProducts() {
       const result = await callDeduped<
         GetProductsRequest,
         GetProductsResponse
-      >('getProducts', {});
+      >({ router: 'products', route: 'getProducts' }, {});
       setProductsState({
         status: 'success',
         data: result.data.products,
@@ -105,10 +108,10 @@ export function useProducts() {
 
   const deleteProduct = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteProductRequest, DeleteProductResponse>(
-      functions,
-      'deleteProduct'
-    );
+    const del = httpsCallableFromURL<
+      DeleteProductRequest,
+      DeleteProductResponse
+    >(functions, routerCallableUrl('products', 'deleteProduct'));
 
     await del({ id });
 

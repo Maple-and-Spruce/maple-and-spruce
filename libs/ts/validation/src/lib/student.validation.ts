@@ -7,7 +7,7 @@
 import { test, enforce, only } from 'vest';
 import { staticSuite } from './static-suite';
 import type { CreateStudentInput } from '@maple/ts/domain';
-import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
+import { LESSON_LENGTHS, instrumentKeyFromLabel } from '@maple/ts/domain';
 
 export const studentValidation = staticSuite(
   (data: Partial<CreateStudentInput>, field?: string | string[]) => {
@@ -25,9 +25,11 @@ export const studentValidation = staticSuite(
       enforce(data.instrument).isNotBlank();
     });
 
+    // Which instruments are offered is an app setting (#161), checked by the
+    // server against the configured list. Here only the key's shape.
     test('instrument', 'Instrument must be a valid option', () => {
       if (data.instrument) {
-        enforce(data.instrument).inside(INSTRUMENTS);
+        enforce(instrumentKeyFromLabel(data.instrument)).equals(data.instrument);
       }
     });
 

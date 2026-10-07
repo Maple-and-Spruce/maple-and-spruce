@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-settings",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/settings/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

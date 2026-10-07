@@ -35,9 +35,7 @@ import { formatClassPrice } from '@maple/ts/domain';
 import { useRoles } from '@maple/react/auth';
 import { useSyncConflictSummary } from '@maple/react/data';
 import { RoomStatusCard } from '@maple/react/events';
-import { NeedsAttentionPanel } from '@maple/react/lessons';
 import { useClasses, useRegistrations, useProducts,
-  useNeedsAttention,
 } from '../../hooks';
 
 const quickLinks = [
@@ -425,24 +423,12 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
 export default function DashboardPage() {
   const { isAdmin, roles } = useRoles();
   const isClerk = roles.includes('clerk');
-  const { attentionState } = useNeedsAttention();
 
   return (
     <>
       <Typography variant="h4" component="h1" gutterBottom>
         Dashboard
       </Typography>
-
-      {/* Renders nothing when nothing needs attention — see legacy #807. Starts
-          collapsed: a count on the dashboard, the detail one click away. */}
-      {attentionState.status === 'success' && (
-        <NeedsAttentionPanel
-          groups={attentionState.data.groups}
-          total={attentionState.data.total}
-          scopedToSelf={attentionState.data.scopedToSelf}
-          defaultExpanded={false}
-        />
-      )}
 
       <Grid container spacing={3}>
         {/* Spruce Room status — visible to every role */}

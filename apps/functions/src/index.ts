@@ -36,6 +36,9 @@ export { artists } from '@maple/firebase/maple-functions/artists';
 // Payouts domain router: class-instructor statements (ADR-029).
 export { payouts } from '@maple/firebase/maple-functions/payouts';
 export { hope } from '@maple/firebase/maple-functions/hope';
+export { settings } from '@maple/firebase/maple-functions/settings';
+export { discounts } from '@maple/firebase/maple-functions/discounts';
+export { products } from '@maple/firebase/maple-functions/products';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions
@@ -57,8 +60,6 @@ export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync
 export { getPosLessonAttributions } from '@maple/firebase/maple-functions/get-pos-lesson-attributions';
 export { getPosLessonAttributionSummary } from '@maple/firebase/maple-functions/get-pos-lesson-attribution-summary';
 export { resolvePosLessonAttribution } from '@maple/firebase/maple-functions/resolve-pos-lesson-attribution';
-export { getPosLessonConfig } from '@maple/firebase/maple-functions/get-pos-lesson-config';
-export { updatePosLessonConfig } from '@maple/firebase/maple-functions/update-pos-lesson-config';
 
 // Instructor functions
 export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';
@@ -181,13 +182,9 @@ export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-cale
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
-export { getLessonRatesConfig } from '@maple/firebase/maple-functions/get-lesson-rates-config';
 // Teacher My Day + business payment config (legacy #631)
 export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';
 export { getMyWeek } from '@maple/firebase/maple-functions/get-my-week';
-export { getBusinessPaymentConfig } from '@maple/firebase/maple-functions/get-business-payment-config';
-export { updateBusinessPaymentConfig } from '@maple/firebase/maple-functions/update-business-payment-config';
-export { updateLessonRatesConfig } from '@maple/firebase/maple-functions/update-lesson-rates-config';
 export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-music-together-section-write';
 export { onMusicTogetherDemoWrite } from '@maple/firebase/maple-functions/on-music-together-demo-write';
 

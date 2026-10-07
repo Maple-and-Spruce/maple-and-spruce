@@ -6,6 +6,33 @@
 
 ## Current Status
 
+### Lessons the way Katie runs them (2026-10-04 – 10-05, epic #156, ADR-034)
+
+Katie has about five minutes at the end of a lesson, one in four, to book the next four lessons
+and take payment. The lessons UI was built for a different model (generated lessons, mark taught,
+automatic charging), so it was reworked in six slices:
+
+| Slice | PR | What |
+|---|---|---|
+| #157 | #164 | Booked on demand: weekly time books nothing; past-and-not-deleted = happened; auto-booking and auto-charge are logged no-ops; `getMyRoles` returns `instructorId`; prod cleanup removed 39 unpaid generated lessons |
+| #158 | #169 | Student page tabs: **Next lessons** (one button books + charges, or invoices without a card), **Settings**, **Activity** (paid labelled, unpaid past not called out) |
+| #159 | #171 | Students list by weekday from weekly times, mine first |
+| #160 | #173 | My Week names each own lesson and opens Next lessons; Today drops Mark taught / No-show |
+| #161 | #174 | Instruments are a setting (violin, fiddle, guitar, harp) on a new `settings` router |
+| #162 | this | Lesson Billing hidden from the nav; ADR-034 |
+
+**Gotchas worth keeping.**
+- A component barrel imported by a unit-tested module drops merged coverage ~8 points (#169): keep
+  pure logic in `@maple/ts/domain`, not in a component library.
+- CI lints with `eslint .` across the repo; a per-project nx lint run can skip a library (#174).
+- Removing a scheduled function does not stop it: CI never prunes. Make it a no-op first.
+- Unpaid past lessons exist in prod (25 private-pay, 2 Hope at the time) and are deliberately not
+  surfaced — past payments were settled outside the portal.
+
+**Follow-ups:** move the six singleton config functions onto the `settings` router (net −5), then
+delete the old ones by hand; retire the no-op materializer and auto-charge schedules by hand once
+the studio is sure it won't want them back.
+
 ### Class-instructor payouts: monthly statements, marked paid by hand (2026-09-29, PRs #141 → #142 → this)
 
 Contract instructors now get a **monthly statement** at `/payouts?tab=classes`. The policy is David's (2026-09-28/29):
@@ -17,7 +44,7 @@ Contract instructors now get a **monthly statement** at `/payouts?tab=classes`. 
 
 The app never moves money. David pays in Square Payroll or Bill Pay and records the date, method and reference.
 
-**The double-pay guard is a ledger** (ADR-034). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path got the same guarantee in #145 (see below).
+**The double-pay guard is a ledger** (ADR-035). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path got the same guarantee in #145 (see below).
 
 **Three things found on the way.**
 - `getNetAmountPaid` took the discount off twice and left the sales tax in. It now returns `subtotalCents`.

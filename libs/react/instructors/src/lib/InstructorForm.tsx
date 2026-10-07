@@ -36,6 +36,7 @@ import type {
   PayeeStatus,
   InstructorPayRateType,
   AppUser,
+  InstrumentOption,
 } from '@maple/ts/domain';
 import type {
   UploadInstructorImageRequest,
@@ -70,6 +71,8 @@ interface InstructorFormProps {
    * manage their own lessons (#49 phase 2). Omit to hide the picker.
    */
   users?: readonly AppUser[];
+  /** The instruments the studio offers (#161), for the rate editor. */
+  instruments?: InstrumentOption[];
 }
 
 // Common specialties for autocomplete suggestions
@@ -114,6 +117,7 @@ export function InstructorForm({
   instructor,
   isSubmitting = false,
   users,
+  instruments,
 }: InstructorFormProps) {
   // Enable signals tracking in this component
   useSignals();
@@ -542,6 +546,7 @@ export function InstructorForm({
             value={lessonRates.value}
             onChange={(next) => (lessonRates.value = next)}
             error={getFieldError('lessonRates')}
+            instruments={instruments}
           />
 
           {/* Portal login — links a user account to this instructor so a

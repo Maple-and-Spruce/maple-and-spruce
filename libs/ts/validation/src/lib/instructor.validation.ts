@@ -7,7 +7,7 @@
 import { test, enforce, only } from 'vest';
 import { staticSuite } from './static-suite';
 import type { CreateInstructorInput } from '@maple/ts/domain';
-import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
+import { LESSON_LENGTHS, instrumentKeyFromLabel } from '@maple/ts/domain';
 
 /**
  * Validate instructor form data
@@ -107,7 +107,8 @@ export const instructorValidation = staticSuite(
       for (const [instrument, byLength] of Object.entries(
         data.lessonRates ?? {}
       )) {
-        enforce(instrument).inside(INSTRUMENTS);
+        // Offered or not is checked on the server against the setting (#161).
+        enforce(instrumentKeyFromLabel(instrument)).equals(instrument);
         for (const [length, cents] of Object.entries(byLength ?? {})) {
           enforce(length).inside(LESSON_LENGTHS);
           enforce(cents).isNumber().greaterThan(0);
