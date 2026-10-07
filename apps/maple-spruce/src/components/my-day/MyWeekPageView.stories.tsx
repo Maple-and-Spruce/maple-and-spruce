@@ -43,8 +43,6 @@ const meta = {
     onPrevWeek: fn(),
     onNextWeek: fn(),
     onThisWeek: fn(),
-    onMarkRendered: fn(),
-    onMarkNoShow: fn(),
     onRecordPayment: fn(),
     pending: null,
   },
@@ -71,28 +69,33 @@ export const OpensOnWeek: Story = {
     await expect(
       canvas.getByRole('button', { name: /next week/i }),
     ).toBeInTheDocument();
-    await expect(
-      canvas.queryByRole('button', { name: /mark taught/i }),
-    ).not.toBeInTheDocument();
   },
 };
 
-/** Today stays one tap away, and its help text no longer promises an invoice. */
+/** Today stays one tap away; a student opens their Next lessons (#160). */
 export const TodayTabReachable: Story = {
-  play: async ({ args, canvas }) => {
+  play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole('tab', { name: 'Today' }));
     await waitFor(() =>
       expect(canvas.getByText(/Your lessons today/)).toBeInTheDocument(),
     );
     await expect(
-      canvas.getByText(/never invoices or charges the student/),
+      canvas.getByText(/Tap a student to book their next lessons/),
     ).toBeInTheDocument();
     await expect(
-      canvas.queryByText(/invoices the student automatically/),
+      canvas.queryByRole('button', { name: /mark taught|no-show/i }),
     ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole('link', { name: todaysLesson.studentName }),
+    ).toHaveAttribute('href', `/students/${todaysLesson.lesson.studentId}?tab=next`);
+  },
+};
 
-    await userEvent.click(canvas.getByRole('button', { name: /mark taught/i }));
-    await expect(args.onMarkRendered).toHaveBeenCalledWith('les-1');
+/** A lesson in the week reads by name and opens that student (#160). */
+export const WeekLessonOpensTheStudent: Story = {
+  play: async ({ canvas }) => {
+    const lesson = await canvas.findByRole('link', { name: /Test Student A/ });
+    await expect(lesson).toHaveAttribute('href', '/students/stu-a?tab=next');
   },
 };
 

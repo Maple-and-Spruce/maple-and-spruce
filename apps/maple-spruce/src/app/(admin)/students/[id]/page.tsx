@@ -37,6 +37,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import {
   CHARGE_LESSON_PARAM,
+  instrumentLabel,
   SCHEDULE_TIME_ZONE,
   invoicedLessonIds,
   lessonBillingState,
@@ -78,9 +79,10 @@ import {
   type NextLessonsView,
 } from '@maple/react/lessons';
 import { BillingTable, InvoiceBuilderDialog } from '@maple/react/invoices';
-import { INSTRUMENT_LABELS, StudentForm } from '@maple/react/students';
+import { StudentForm } from '@maple/react/students';
 import {
   useHopeProducts,
+  useInstruments,
   useHopeQueue,
   useInstructors,
   useInvoices,
@@ -164,6 +166,9 @@ export default function StudentDetailPage() {
   } = useInvoices({ studentId });
   const { lessonBlocksState } = useLessonBlocks();
   const { productsState: hopeProductsState } = useHopeProducts();
+  const { instrumentsState } = useInstruments();
+  const instruments =
+    instrumentsState.status === 'success' ? instrumentsState.data : undefined;
   const {
     queueState: hopeQueueState,
     fetchQueue: fetchHopeQueue,
@@ -218,7 +223,6 @@ export default function StudentDetailPage() {
 
   // ---- Next lessons -------------------------------------------------------
 
-  const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [moved, setMoved] = useState<ReadonlyMap<string, Date>>(new Map());
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
@@ -239,7 +243,6 @@ export default function StudentDetailPage() {
         charges,
         invoicedIds: invoicedLessonIds(invoices),
         now: new Date(),
-        skipped,
         moved,
       }),
     };
@@ -252,7 +255,6 @@ export default function StudentDetailPage() {
     lessons,
     charges,
     invoices,
-    skipped,
     moved,
   ]);
 
@@ -305,7 +307,6 @@ export default function StudentDetailPage() {
       await Promise.all([fetchLessons(), fetchInvoices()]);
       if (result.ok) {
         setPayNotice(result.notice);
-        setSkipped(new Set());
         setMoved(new Map());
       } else {
         setPayError(result.error);
@@ -510,7 +511,7 @@ export default function StudentDetailPage() {
   // The one line that orients: what they play, when, and how far they are paid.
   const paidUntil = paidThrough(lessons, charges, invoices, new Date());
   const orientation = [
-    INSTRUMENT_LABELS[student.instrument] ?? student.instrument,
+    instrumentLabel(student.instrument, instruments),
     activeSchedule ? describeSchedule(activeSchedule) : 'No weekly time',
     isHope
       ? 'Hope Scholarship'
@@ -563,7 +564,6 @@ export default function StudentDetailPage() {
           busy={paying}
           error={payError}
           notice={payNotice}
-          onSkip={(item) => setSkipped((prev) => new Set(prev).add(item.key))}
           onMove={handleMoveNext}
           onCharge={() => handlePay('card')}
           onInvoice={() => handlePay('invoice')}
@@ -751,6 +751,7 @@ export default function StudentDetailPage() {
         instructors={instructors}
         billingRules={billingState.status === 'success' ? billingState.data.rules : []}
         hopeProducts={hopeProducts}
+        instruments={instruments}
         isSubmitting={isSavingStudent}
       />
       <StandingScheduleDialog

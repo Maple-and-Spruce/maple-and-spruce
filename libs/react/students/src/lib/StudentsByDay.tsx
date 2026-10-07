@@ -31,17 +31,21 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import StarsIcon from '@mui/icons-material/Stars';
 import type {
   Instructor,
+  InstrumentOption,
   RequestState,
   Student,
   StudentLessonSchedule,
 } from '@maple/ts/domain';
-import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from './labels';
+import { instrumentLabel } from '@maple/ts/domain';
+import { LESSON_LENGTH_LABELS } from './labels';
 import { clockLabel, groupStudentsByDay } from './students-by-day';
 
 export interface StudentsByDayProps {
   studentsState: RequestState<Student[]>;
   schedulesState: RequestState<StudentLessonSchedule[]>;
   instructors: Instructor[];
+  /** Configured instruments, for their names (#161). */
+  instruments?: InstrumentOption[];
   /** Only this teacher's students; omit for everyone. */
   teacherId?: string;
   /** Name the teacher on each row — useful when showing everyone's. */
@@ -106,6 +110,7 @@ export function StudentsByDay({
   studentsState,
   schedulesState,
   instructors,
+  instruments,
   teacherId,
   showTeacher,
   todayWeekday,
@@ -183,7 +188,7 @@ export function StudentsByDay({
           <List dense aria-label={group.label}>
             {group.entries.map(({ student, schedule }) => {
               const detail = [
-                INSTRUMENT_LABELS[student.instrument] ?? student.instrument,
+                instrumentLabel(student.instrument, instruments),
                 student.registeredLessonLength
                   ? LESSON_LENGTH_LABELS[student.registeredLessonLength]
                   : null,

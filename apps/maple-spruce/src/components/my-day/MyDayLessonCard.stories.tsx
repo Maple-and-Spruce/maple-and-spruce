@@ -18,20 +18,20 @@ const baseLesson: Lesson = {
 const scheduledNoInvoice: MyDayLesson = {
   lesson: baseLesson,
   studentId: 'stu-1',
-  studentName: 'Juniper Nguyen',
+  studentName: 'Test Student',
 };
 
 const renderedUnpaid: MyDayLesson = {
   lesson: { ...baseLesson, status: 'rendered' },
   studentId: 'stu-1',
-  studentName: 'Juniper Nguyen',
+  studentName: 'Test Student',
   invoice: { id: 'inv-1', status: 'sent', totalCents: 4000 },
 };
 
 const renderedPaid: MyDayLesson = {
   lesson: { ...baseLesson, status: 'rendered' },
   studentId: 'stu-1',
-  studentName: 'Juniper Nguyen',
+  studentName: 'Test Student',
   invoice: {
     id: 'inv-1',
     status: 'paid',
@@ -45,8 +45,7 @@ const meta = {
   title: 'MyDay/MyDayLessonCard',
   parameters: { layout: 'padded' },
   args: {
-    onMarkRendered: fn(),
-    onMarkNoShow: fn(),
+    studentHref: '/students/stu-1?tab=next',
     onRecordPayment: fn(),
     pending: null,
   },
@@ -55,14 +54,23 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof MyDayLessonCard>;
 
-export const ScheduledMarkRendered: Story = {
+/**
+ * Nothing to mark (#160): the student's name opens their Next lessons, where
+ * Katie books the next four and takes payment.
+ */
+export const ScheduledOpensTheStudent: Story = {
   args: { item: scheduledNoInvoice },
-  play: async ({ args, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /mark taught/i }));
-    await waitFor(() => {
-      expect(args.onMarkRendered).toHaveBeenCalledWith('les-1');
-    });
+    await expect(canvas.getByRole('link', { name: 'Test Student' })).toHaveAttribute(
+      'href',
+      '/students/stu-1?tab=next'
+    );
+    await expect(
+      canvas.queryByRole('button', { name: /mark taught|no-show/i })
+    ).toBeNull();
+    // Not called out as unpaid.
+    await expect(canvas.queryByText(/no invoice/i)).toBeNull();
   },
 };
 
@@ -70,10 +78,6 @@ export const UnpaidRecordVenmo: Story = {
   args: { item: renderedUnpaid },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    // No mark-rendered button once rendered.
-    expect(
-      canvas.queryByRole('button', { name: /mark taught/i })
-    ).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: /record venmo/i }));
     await waitFor(() => {
       expect(args.onRecordPayment).toHaveBeenCalledWith('inv-1', 'venmo-manual');
@@ -119,39 +123,5 @@ export const RecordingVenmoPayment: Story = {
     // The other payment action on this card is disabled too — one card, one
     // action at a time — but it is the *pressed* one that shows progress.
     expect(canvas.getByRole('button', { name: /cash \/ check/i })).toBeDisabled();
-  },
-};
-
-/**
- * The other half of the same question. A no-show is charged for a private-pay
- * family (the slot was held) and charged to nobody for a Hope student, so it
- * has to be recordable — not squeezed into "cancelled", which frees the slot
- * and drops the payout credit.
- */
-export const NoShowIsOneTapAway: Story = {
-  args: { item: scheduledNoInvoice },
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const noShow = canvas.getByRole('button', { name: /no-show/i });
-    await userEvent.click(noShow);
-
-    await waitFor(() => {
-      expect(args.onMarkNoShow).toHaveBeenCalledWith(
-        scheduledNoInvoice.lesson.id
-      );
-    });
-  },
-};
-
-export const SavingNoShow: Story = {
-  args: { item: scheduledNoInvoice, pending: 'mark-no-show' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    expect(await canvas.findByRole('button', { name: /saving/i })).toBeDisabled();
-    // Its sibling on the same card disables too — one card, one action.
-    expect(
-      canvas.getByRole('button', { name: /mark taught/i })
-    ).toBeDisabled();
   },
 };

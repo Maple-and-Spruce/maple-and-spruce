@@ -9,11 +9,17 @@ import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER, NON_ADMIN_USER } from '@maple/firebase/integration-test-utils';
 import type {
   CheckAdminStatusResponse,
+  GetBusinessPaymentConfigResponse,
+  GetLessonRatesConfigResponse,
+  GetPosLessonConfigResponse,
   GetMyRolesResponse,
   GrantRoleRequest,
   GrantRoleResponse,
   RevokeRoleRequest,
   RevokeRoleResponse,
+  UpdateBusinessPaymentConfigResponse,
+  UpdateLessonRatesConfigResponse,
+  UpdatePosLessonConfigResponse,
 } from '@maple/ts/firebase/api-types';
 
 describe('Utility Functions', () => {
@@ -331,4 +337,105 @@ describe('Utility Functions', () => {
     });
   });
 
+  /**
+   * The singleton app-config pairs moved onto the settings router (#156,
+   * ADR-029). What an admin saves through a route is what the next read
+   * returns, cleaned the same way the old functions cleaned it.
+   */
+  describe('settings router: app-config routes', () => {
+    it('saves and reads back the lesson rates, dropping bad entries', async () => {
+      const saved = await callFunction<
+        { rateByLength: Record<string, unknown> },
+        UpdateLessonRatesConfigResponse
+      >({
+        functionName: 'settings/updateLessonRatesConfig',
+        idToken: adminUser.idToken,
+        data: { rateByLength: { '30-min-full': 4000, '45-min': -1 } },
+      });
+      expect(saved.status).toBe(200);
+      expect(saved.data?.config.rateByLength).toEqual({ '30-min-full': 4000 });
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetLessonRatesConfigResponse
+      >({
+        functionName: 'settings/getLessonRatesConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.status).toBe(200);
+      expect(read.data?.config.rateByLength).toEqual({ '30-min-full': 4000 });
+      expect(read.data?.config.updatedByUid).toBe(adminUser.uid);
+    });
+
+    it('saves and reads back the Venmo handle without its @', async () => {
+      const saved = await callFunction<
+        { venmoHandle: string },
+        UpdateBusinessPaymentConfigResponse
+      >({
+        functionName: 'settings/updateBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+        data: { venmoHandle: '@Test-Studio' },
+      });
+      expect(saved.status).toBe(200);
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetBusinessPaymentConfigResponse
+      >({
+        functionName: 'settings/getBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.status).toBe(200);
+      expect(read.data?.config.venmoHandle).toBe('Test-Studio');
+    });
+
+    it('refuses a malformed Venmo handle and keeps the stored one', async () => {
+      const refused = await callFunction<{ venmoHandle: string }, unknown>({
+        functionName: 'settings/updateBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+        data: { venmoHandle: 'no' },
+      });
+      expect(refused.status).toBe(400);
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetBusinessPaymentConfigResponse
+      >({
+        functionName: 'settings/getBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.data?.config.venmoHandle).toBe('Test-Studio');
+    });
+
+    it('saves and reads back the POS lesson ids, trimmed and de-duped', async () => {
+      const saved = await callFunction<
+        { lessonCatalogObjectIds: string[] },
+        UpdatePosLessonConfigResponse
+      >({
+        functionName: 'settings/updatePosLessonConfig',
+        idToken: adminUser.idToken,
+        data: { lessonCatalogObjectIds: [' TEST_ITEM_1 ', 'TEST_ITEM_1', ''] },
+      });
+      expect(saved.status).toBe(200);
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetPosLessonConfigResponse
+      >({
+        functionName: 'settings/getPosLessonConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.status).toBe(200);
+      expect(read.data?.config.lessonCatalogObjectIds).toEqual(['TEST_ITEM_1']);
+    });
+
+    it('turns away a signed-in user who is not an admin', async () => {
+      const result = await callFunction({
+        functionName: 'settings/updatePosLessonConfig',
+        idToken: nonAdminUser.idToken,
+        data: { lessonCatalogObjectIds: ['TEST_ITEM_2'] },
+      });
+      expect(result.status).toBe(403);
+    });
+  });
 });

@@ -1617,7 +1617,94 @@ that does appear is reconciled by the next sync instead of persisting indefinite
 
 ---
 
-## ADR-034: Payouts Are Claimed Through a Ledger of Deterministic IDs, in One Transaction
+## ADR-034: Lessons Are Booked and Paid a Few at a Time, Not Generated and Marked
+
+**Status:** Accepted
+**Date:** 2026-10-05
+**Epic:** #156 (slices #157–#162)
+
+### Context
+Music lessons were built around two automations:
+- **Generated lessons.** A standing weekly arrangement materialised concrete lessons ahead of time:
+  12 weeks at first, then a daily top-up to 4 (#148).
+- **Marking.** A lesson counted for billing, the Hope queue, teacher payouts and needs-attention only
+  once someone marked it **taught** (or **no-show**).
+
+Behind both sat automatic charging: billing rules and a daily `runLessonBilling` job.
+
+That is not how the studio runs. Katie has about five minutes at the end of a lesson, roughly one
+lesson in four, to book the student's next four lessons and take payment. Nobody marks lessons taught.
+The result:
+- Every rule keyed on `rendered` saw nothing until someone did.
+- The calendar and the Spruce Room filled with unpaid lessons for students who hadn't committed to them.
+- The student page, built for auditing, buried the one thing she needed among tools she never used.
+
+### Decision
+1. **The weekly time is a planning note.**
+   - It records a student's usual slot, for the Students list (grouped by day) and the Typical week.
+   - **It books nothing.** Saving one creates no lessons. The materialiser's schedule is a logged
+     no-op, kept deployed because CI never prunes a function and deleting it would leave the old
+     revision running.
+2. **Lessons are booked on demand, a few at a time, with payment in the same action.**
+   - The student page opens on **Next lessons**: the upcoming lessons already booked and unpaid,
+     topped up from the weekly time (`planNextLessons`, `buildNextLessons`).
+   - One button books the missing dates, then charges the card. With no card, it sends one invoice.
+   - If payment fails, the lessons stay booked, and the message says so.
+3. **A past lesson that was not deleted happened** (`lessonHappened`).
+   - Past-lesson charging, the Hope queue, Hope submissions and teacher payouts use this rule.
+   - Hope still never takes a no-show.
+   - A lesson that didn't happen is **deleted**. There is no marking, and no cancel or no-show in the UI.
+4. **Unpaid past lessons are not problems to chase.**
+   - Past payments were settled outside the portal.
+   - Needs-attention keeps flagging only lessons someone explicitly marked, which no longer happens.
+   - The Activity tab labels paid lessons and leaves unpaid ones unlabelled. It can still charge or
+     invoice one from a row menu.
+5. **Automatic charging is paused.**
+   - `runLessonBilling` is a logged no-op (`LESSON_AUTOPAY_PAUSED`). `triggerLessonBilling` still runs
+     it by hand.
+   - **Lesson Billing** (`/lesson-billing`) is removed from the nav (#162). The route and its code
+     stay, admin-only by URL.
+
+### Rationale
+- It matches the real workflow: the end of a lesson is when the family commits and pays. Booking and
+  payment belong in one action at that moment, not in a job running at 9 AM.
+- Generated lessons claimed the Spruce Room for students who hadn't committed. Booked lessons claim
+  only what was paid for, or what was deliberately booked.
+- "Past and not deleted means it happened" removes a chore nobody did. The old rule made money and
+  Hope claims invisible until someone remembered to mark.
+
+### Alternatives Considered
+- **Keep the 4-ahead top-up and charge for the next 4 unpaid.** Rejected by the studio. The calendar
+  would show lessons nobody had committed to, and a forgotten student kept holding the room.
+- **Keep marking, but make it easier.** Rejected: no ritual is cheaper than none. Deletion already
+  covers the rare lesson that didn't happen.
+- **A cutover date** ("past means happened" only from merge on). Rejected: it hides real history and
+  leaves a permanent special case. The prod check found 25 private-pay and 2 Hope unmarked past
+  lessons, handled by not calling them out (decision 4).
+- **Delete the paused functions.** Rejected for now: CI doesn't prune, so deleting the code would
+  leave the old revisions live and running. They are no-ops first; retiring them is a hand-run
+  `firebase functions:delete` plus a cleanup PR.
+
+### Consequences
+- **One-time cleanup.** `tools/remove-unbooked-generated-lessons.ts` deleted 39 unpaid generated
+  lessons 4 or more weeks out in prod, and their room events.
+- **The Typical week reads lesson slots from weekly times,** not inferred recurrence, because a student
+  between bookings has no history (#160).
+- **Dead code was removed:** `CommitLessonsCard`, `LessonList`, the student-row launchers and the old
+  table.
+- **To bring automatic charging back:**
+  - set `LESSON_AUTOPAY_PAUSED` to false;
+  - restore the `Lesson Billing` nav entry (see the comment in `nav-groups.tsx`);
+  - assign billing rules to students;
+  - check that rules and the one-button flow agree on what "the next lessons" are. Both use
+    `coveredLessonIds`, so a lesson can't be charged twice.
+- **To bring generated lessons back:** set `AUTO_BOOKING_PAUSED` to false. Booked lessons then mix
+  with generated ones. The planner already counts any upcoming unpaid lesson toward the four, whoever
+  created it.
+
+---
+
+## ADR-035: Payouts Are Claimed Through a Ledger of Deterministic IDs, in One Transaction
 
 **Status:** Accepted
 **Date:** 2026-09-29
@@ -1702,4 +1789,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-09-29 (ADR-034 added for the payout ledger)*
+*Last updated: 2026-10-06 (ADR-035 added for the payout ledger)*

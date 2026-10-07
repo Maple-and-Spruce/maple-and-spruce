@@ -59,10 +59,6 @@ export {
   type HopeProductsCardProps,
 } from './lib/HopeProductsCard';
 export {
-  NeedsAttentionPanel,
-  type NeedsAttentionPanelProps,
-} from './lib/NeedsAttentionPanel';
-export {
   BackfillLessonsDialog,
   type BackfillLessonsDialogProps,
 } from './lib/BackfillLessonsDialog';

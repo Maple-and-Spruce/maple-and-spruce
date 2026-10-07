@@ -39,7 +39,7 @@ const SAMPLE_STUDENT: CreateStudentRequest = {
 
 const HOPE_STUDENT: CreateStudentRequest = {
   name: 'Felix Rivera',
-  instrument: 'piano',
+  instrument: 'guitar',
   isAdultStudent: false,
   primaryTeacherId: 'instructor-sample',
   registeredLessonLength: '45-min',
@@ -456,6 +456,38 @@ describe('Student Functions', () => {
         idToken: adminUser.idToken,
       });
       expect(result.status).not.toBe(200);
+    });
+
+    it('accepts an instrument once the studio offers it (#161)', async () => {
+      const added = { key: 'mountain-dulcimer', label: 'Mountain Dulcimer' };
+      const before = await callFunction<Partial<CreateStudentRequest>>({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, instrument: added.key },
+        idToken: adminUser.idToken,
+      });
+      expect(before.status).not.toBe(200);
+
+      const listed = await callFunction<
+        Record<string, never>,
+        { instruments: { key: string; label: string }[] }
+      >({
+        functionName: 'settings/getInstruments',
+        data: {},
+        idToken: adminUser.idToken,
+      });
+      const saved = await callFunction({
+        functionName: 'settings/saveInstruments',
+        data: { instruments: [...(listed.data?.instruments ?? []), added] },
+        idToken: adminUser.idToken,
+      });
+      expect(saved.status).toBe(200);
+
+      const after = await callFunction<Partial<CreateStudentRequest>>({
+        functionName: 'createStudent',
+        data: { ...SAMPLE_STUDENT, instrument: added.key },
+        idToken: adminUser.idToken,
+      });
+      expect(after.status).toBe(200);
     });
 
     it('rejects student with invalid instrument', async () => {

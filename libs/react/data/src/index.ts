@@ -1,4 +1,5 @@
 export { callDeduped } from './lib/call-deduped';
+export type { CallableTarget, RouterRoute } from './lib/call-deduped';
 export { useProducts } from './lib/useProducts';
 export { useArtists } from './lib/useArtists';
 export { useCategories } from './lib/useCategories';
@@ -33,14 +34,11 @@ export {
   type HopeQueueData,
 } from './lib/useHopeQueue';
 export { useHopeProducts } from './lib/useHopeProducts';
+export { useInstruments } from './lib/useInstruments';
 export {
   useStudentLessonSchedules,
   useAllStudentLessonSchedules,
 } from './lib/useStudentLessonSchedules';
-export {
-  useNeedsAttention,
-  type NeedsAttentionData,
-} from './lib/useNeedsAttention';
 export {
   useLessonInquiries,
   type UseLessonInquiriesOptions,

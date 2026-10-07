@@ -22,6 +22,7 @@ import { LessonInquiryList } from '@maple/react/lessons';
 import { StudentForm } from '@maple/react/students';
 import {
   useInstructors,
+  useInstruments,
   useLessonInquiries,
   useStudents,
   useLessonBilling,
@@ -56,6 +57,8 @@ export default function LeadsPage() {
     billingState.status === 'success' ? billingState.data.rules : [];
 
   const { instructorsState } = useInstructors();
+  // The instruments the studio offers (#161), for the new student's form.
+  const { instrumentsState } = useInstruments();
 
   const [enrolling, setEnrolling] = useState<LessonInquiry | null>(null);
   const [studentId, setStudentId] = useState('');
@@ -160,6 +163,11 @@ export default function LeadsPage() {
         onSubmit={handleCreateStudent}
         instructors={instructors}
         billingRules={billingRules}
+        instruments={
+          instrumentsState.status === 'success'
+            ? instrumentsState.data
+            : undefined
+        }
         isSubmitting={creating}
         prefill={
           creatingFrom ? studentDraftFromInquiry(creatingFrom) : undefined

@@ -26,11 +26,17 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `Functions.endpoint` chain, and it takes a base64 image body, so whether it wants its own
   memory limit is worth measuring before it moves.
 
-### Products (read/delete)
-- `getProducts`, `getProduct`, `deleteProduct`
-
-### Categories
-- `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`
+### Products and categories (#68)
+- `products` — **domain router** (ADR-029) for shop inventory in `maple-core`, every route
+  gated `[Admin, Clerk]`: `products/getProducts`, `products/getProduct`,
+  `products/deleteProduct`, `products/getCategories`, `products/createCategory`,
+  `products/updateCategory`, `products/reorderCategories`, `products/deleteCategory`. The
+  product writes that call Square (`createProduct`, `updateProduct`, `uploadProductImage`) stay
+  in `maple-square`; `uploadCategoryGalleryImage` serves class categories and waits for the
+  classes router (#74).
+- The eight per-endpoint originals are **still deployed** so admin tabs loaded before the
+  switch keep working; they are deleted by hand (`firebase functions:delete`), then dropped from
+  the codebase and the count baseline in a follow-up.
 
 ### Instructors
 - `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`
@@ -58,6 +64,24 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getNeedsAttention` _(admin + lesson-teacher, self-scoped — six states that were already true in the data and invisible: invoices that never reached Square, lessons taught but never invoiced, Hope lessons not yet claimed, invoices unpaid 14+ days, lessons in no block, active students with `autoInvoice` off. Fetches unfiltered and composes in memory, like `getTeacherPayouts`, so it needs **no** new composite index.)_
 - Groups are ordered by cost of ignoring, not by count. Empty groups are dropped, and the panel renders nothing at all when the total is zero.
 
+### Settings (#161)
+- `settings` — **domain router** (ADR-029) for app-level lists edited on Settings. Routes:
+  `settings/getInstruments` _(Admin + LessonTeacher — the instruments the studio teaches, from
+  `appConfig/instruments`, defaulting to violin, fiddle, guitar, harp)_ and
+  `settings/saveInstruments` _(Admin — replaces the list; keys must be unique and well formed.
+  Removing one only stops it being offered: students and instructor rates on it keep it)_.
+- The singleton app-config pairs joined the router (#156), each route keeping its old
+  function's name and admin-only gate: `settings/getLessonRatesConfig` /
+  `settings/updateLessonRatesConfig` _(default private-pay rate by lesson length; drops
+  non-positive and non-integer entries)_, `settings/getBusinessPaymentConfig` /
+  `settings/updateBusinessPaymentConfig` _(the studio Venmo handle, stored without its @)_ and
+  `settings/getPosLessonConfig` / `settings/updatePosLessonConfig` _(the Square catalog ids
+  that count as lessons at the POS; trimmed and de-duped)_.
+- The six per-endpoint originals (`getLessonRatesConfig`, `updateLessonRatesConfig`,
+  `getBusinessPaymentConfig`, `updateBusinessPaymentConfig`, `getPosLessonConfig`,
+  `updatePosLessonConfig`) were deleted by hand once the routes were live, then dropped from
+  the codebase — six Cloud Run services replaced by routes on one that already existed.
+
 ### Hope Scholarship billing (legacy #799)
 - `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
   `hope/getHopeProducts`, `hope/saveHopeProduct`, `hope/saveHopeOrder` _(admin — the studio's EMA portal
@@ -80,7 +104,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Payouts
 - `payouts` — **domain router** (ADR-029), admin-only on every route. Class-instructor
-  statements (ADR-034):
+  statements (ADR-035):
   `payouts/previewClassInstructorPayouts`, `payouts/generateClassInstructorStatement`,
   `payouts/getClassInstructorStatements`, `payouts/getClassInstructorStatement`,
   `payouts/markClassInstructorStatementPaid`, `payouts/voidClassInstructorStatement`.
@@ -108,7 +132,14 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getClassCategories`, `uploadCategoryGalleryImage`
 
 ### Discounts
-- `getDiscounts`, `createDiscount`, `updateDiscount`, `deleteDiscount`, `lookupDiscount`
+- `discounts` — **domain router** (ADR-029, #62) for the staff side: `discounts/getDiscounts`,
+  `discounts/createDiscount`, `discounts/updateDiscount`, `discounts/deleteDiscount`, each
+  gated `[Admin, MtTeacher]` and narrowed per program inside the route.
+  The four per-endpoint originals are **still deployed** so admin tabs loaded before the switch
+  keep working; they are deleted by hand (`firebase functions:delete`), then dropped from the
+  codebase and the count baseline in a follow-up.
+- `lookupDiscount` — public, called by both checkout widgets. Stays its own function for now:
+  its App Check rollout is in flight and moving it needs a Webflow publish.
 
 **Program scoping (legacy #791).** Every discount carries `program: 'classes' | 'music-together'` and is redeemable at **only** that checkout. The two programs settle to **different Square accounts owned by different businesses**, so an unscoped code let a Music Together promotion take money off a craft class and vice versa. Enforced in four places, all of which must agree:
 

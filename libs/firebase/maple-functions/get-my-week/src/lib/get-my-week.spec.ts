@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   findBlocks: vi.fn(),
   findLessons: vi.fn(),
   findInstructors: vi.fn(),
+  findSchedules: vi.fn(),
+  findStudents: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -22,6 +24,8 @@ vi.mock('@maple/firebase/database', () => ({
   LessonBlockRepository: { findAll: mocks.findBlocks },
   LessonRepository: { findAll: mocks.findLessons },
   InstructorRepository: { findAll: mocks.findInstructors },
+  StudentLessonScheduleRepository: { findAll: mocks.findSchedules },
+  StudentRepository: { findAll: mocks.findStudents },
 }));
 
 import {
@@ -30,6 +34,7 @@ import {
   buildOtherBlocks,
   buildStandingSlots,
   startOfWeek,
+  withWeeklyTimes,
 } from './get-my-week';
 
 type Handler = (
@@ -291,6 +296,8 @@ describe('getMyWeek handler', () => {
     mocks.findBlocks.mockResolvedValue([]);
     mocks.findLessons.mockResolvedValue([]);
     mocks.findInstructors.mockResolvedValue([]);
+    mocks.findSchedules.mockResolvedValue([]);
+    mocks.findStudents.mockResolvedValue([]);
   });
 
   it('returns unlinked with no commitments or blocks when the caller has no instructor', async () => {
@@ -423,4 +430,153 @@ describe('getMyWeek handler', () => {
     // lookback = from - 28 days
     expect(fromArg.getTime()).toBe(from.getTime() - 28 * 24 * 60 * 60 * 1000);
   });
+});
+
+describe('students on my lessons (#160)', () => {
+  const me = 'instr-katie';
+  const from = new Date(2026, 6, 19);
+  const to = new Date(2026, 6, 26);
+  const lookback = new Date(2026, 5, 21);
+
+  it('names the student on my own lessons, and only mine', () => {
+    const commitments = buildCommitments(
+      [
+        event({
+          id: 'lesson-a',
+          startDateTime: new Date(2026, 6, 21, 16, 0),
+          ownerInstructorId: me,
+          sourceRef: 'lessons/a',
+        }),
+        event({
+          id: 'lesson-b',
+          startDateTime: new Date(2026, 6, 21, 17, 0),
+          ownerInstructorId: 'instr-sam',
+          sourceRef: 'lessons/b',
+        }),
+      ],
+      from,
+      to,
+      lookback,
+      me,
+      new Set(),
+      new Map([
+        ['lessons/a', { id: 'stu-a', name: 'Student A' }],
+        ['lessons/b', { id: 'stu-b', name: 'Student B' }],
+      ]),
+    );
+
+    expect(commitments[0]).toMatchObject({
+      studentId: 'stu-a',
+      studentName: 'Student A',
+    });
+    expect(commitments[1].studentId).toBeUndefined();
+    expect(commitments[1].studentName).toBeUndefined();
+  });
+
+  describe('withWeeklyTimes', () => {
+    const schedule = (over: Record<string, unknown> = {}) =>
+      ({
+        id: 'sched-1',
+        studentId: 'stu-a',
+        teacherId: me,
+        blockId: 'blk',
+        dayOfWeek: 2,
+        startMinutes: 16 * 60,
+        durationMinutes: 45,
+        startsOn: new Date(),
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...over,
+      }) as never;
+    const names = new Map([['stu-a', 'Student A']]);
+
+    it('puts my weekly times in the typical week, by name', () => {
+      expect(withWeeklyTimes([], [schedule()], me, names)).toEqual([
+        {
+          id: 'schedule-sched-1',
+          weekday: 2,
+          startMinutes: 960,
+          durationMinutes: 45,
+          category: 'lesson',
+          ownership: 'mine',
+          title: 'Student A',
+          studentId: 'stu-a',
+          studentName: 'Student A',
+        },
+      ]);
+    });
+
+    it('replaces my inferred lesson slots, keeping everything else', () => {
+      const inferred = [
+        { id: 'x', weekday: 2, startMinutes: 960, durationMinutes: 30, category: 'lesson', ownership: 'mine', title: 'Music Lesson' },
+        { id: 'y', weekday: 3, startMinutes: 600, durationMinutes: 60, category: 'class', ownership: 'mine', title: 'Pottery' },
+        { id: 'z', weekday: 2, startMinutes: 1020, durationMinutes: 30, category: 'lesson', ownership: 'shared', title: 'Music Lesson' },
+      ] as never[];
+
+      const ids = withWeeklyTimes(inferred, [schedule()], me, names).map((s) => s.id);
+
+      expect(ids).toEqual(['schedule-sched-1', 'z', 'y']);
+    });
+
+    it('ignores ended weekly times and other teachers’', () => {
+      expect(
+        withWeeklyTimes(
+          [],
+          [schedule({ status: 'ended' }), schedule({ id: 's2', teacherId: 'instr-sam' })],
+          me,
+          names,
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  it('the handler names my lesson and builds my typical week from weekly times', async () => {
+    mocks.instructorIdForUser.mockResolvedValue(me);
+    mocks.findBlocks.mockResolvedValue([]);
+    mocks.findInstructors.mockResolvedValue([]);
+    mocks.findLessons.mockResolvedValue([
+      { id: 'les-a', studentId: 'stu-a', teacherId: me, scheduledAt: new Date('2026-07-21T20:00:00Z'), durationMinutes: 30, blockId: null },
+    ]);
+    mocks.findByStartInRange.mockResolvedValue([
+      {
+        id: 'lesson-les-a',
+        title: 'Music Lesson',
+        type: 'lesson',
+        startDateTime: new Date('2026-07-21T20:00:00Z'),
+        endDateTime: new Date('2026-07-21T20:30:00Z'),
+        room: 'spruce',
+        sourceRef: 'lessons/les-a',
+        ownerInstructorId: me,
+      },
+    ]);
+    mocks.findSchedules.mockResolvedValue([schedule2()]);
+    mocks.findStudents.mockResolvedValue([{ id: 'stu-a', name: 'Student A' }]);
+
+    const res = await (getMyWeek as unknown as (d: unknown, c: unknown) => Promise<{
+      commitments: Array<{ studentName?: string }>;
+      standing: Array<{ studentName?: string }>;
+    }>)(
+      { from: '2026-07-19T00:00:00', to: '2026-07-26T00:00:00' },
+      { uid: 'katie-uid' },
+    );
+
+    expect(res.commitments[0].studentName).toBe('Student A');
+    expect(res.standing.map((s) => s.studentName)).toEqual(['Student A']);
+    expect(mocks.findSchedules).toHaveBeenCalledWith({ teacherId: me, status: 'active' });
+  });
+
+  function schedule2() {
+    return {
+      id: 'sched-a',
+      studentId: 'stu-a',
+      teacherId: me,
+      blockId: 'blk',
+      dayOfWeek: 2,
+      startMinutes: 960,
+      durationMinutes: 30,
+      startsOn: new Date(),
+      status: 'active',
+    };
+  }
 });

@@ -637,3 +637,11 @@ export type {
   UpdateStudentSquareCardRequest,
   UpdateStudentSquareCardResponse,
 } from './square-card-link.types';
+
+// Settings router (#161)
+export type {
+  GetInstrumentsRequest,
+  GetInstrumentsResponse,
+  SaveInstrumentsRequest,
+  SaveInstrumentsResponse,
+} from './settings.types';

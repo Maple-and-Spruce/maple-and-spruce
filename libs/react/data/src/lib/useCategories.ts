@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Category,
   CreateCategoryInput,
@@ -39,10 +42,10 @@ export function useCategories() {
 
     try {
       const functions = getMapleFunctions();
-      const getCategories = httpsCallable<
+      const getCategories = httpsCallableFromURL<
         GetCategoriesRequest,
         GetCategoriesResponse
-      >(functions, 'getCategories');
+      >(functions, routerCallableUrl('products', 'getCategories'));
 
       const result = await getCategories({});
       setCategoriesState({
@@ -64,10 +67,10 @@ export function useCategories() {
   const createCategory = useCallback(
     async (input: CreateCategoryInput): Promise<Category> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateCategoryRequest,
         CreateCategoryResponse
-      >(functions, 'createCategory');
+      >(functions, routerCallableUrl('products', 'createCategory'));
 
       const result = await create(input);
 
@@ -91,10 +94,10 @@ export function useCategories() {
   const updateCategory = useCallback(
     async (input: UpdateCategoryInput): Promise<Category> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateCategoryRequest,
         UpdateCategoryResponse
-      >(functions, 'updateCategory');
+      >(functions, routerCallableUrl('products', 'updateCategory'));
 
       const result = await update(input);
 
@@ -119,10 +122,10 @@ export function useCategories() {
 
   const deleteCategory = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteCategoryRequest, DeleteCategoryResponse>(
-      functions,
-      'deleteCategory'
-    );
+    const del = httpsCallableFromURL<
+      DeleteCategoryRequest,
+      DeleteCategoryResponse
+    >(functions, routerCallableUrl('products', 'deleteCategory'));
 
     await del({ id });
 
@@ -143,10 +146,10 @@ export function useCategories() {
   const reorderCategories = useCallback(
     async (categoryIds: string[]): Promise<Category[]> => {
       const functions = getMapleFunctions();
-      const reorder = httpsCallable<
+      const reorder = httpsCallableFromURL<
         ReorderCategoriesRequest,
         ReorderCategoriesResponse
-      >(functions, 'reorderCategories');
+      >(functions, routerCallableUrl('products', 'reorderCategories'));
 
       const result = await reorder({ categoryIds });
 

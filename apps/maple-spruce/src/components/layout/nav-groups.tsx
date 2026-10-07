@@ -15,7 +15,6 @@ import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom';
 import EventNoteIcon from '@mui/icons-material/EventNote';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -157,11 +156,9 @@ function roleNavGroups(
           href: '/lesson-blocks',
           icon: <EventNoteIcon />,
         },
-        {
-          label: 'Lesson Billing',
-          href: '/lesson-billing',
-          icon: <CreditCardIcon />,
-        },
+        // Lesson Billing (/lesson-billing) is hidden while automatic charging
+        // is paused (ADR-034, #162). The route and its code stay, admin-only
+        // by URL; put this entry back when billing rules are switched on.
         {
           label: 'Hope Billing',
           href: '/hope',
