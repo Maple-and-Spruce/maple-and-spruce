@@ -102,6 +102,15 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `syncInvoiceToSquare` _(Firestore trigger on `invoices/{id}` — sends via Square Invoices API on draft → sent, cancels on sent → void)_
 - `squareWebhook` now additionally handles `invoice.payment_made` → flips matching invoice to `paid` with `paymentRecord.source = 'square-webhook'`
 
+### Payouts
+- `payouts` — **domain router** (ADR-029), admin-only on every route. Class-instructor
+  statements (ADR-035):
+  `payouts/previewClassInstructorPayouts`, `payouts/generateClassInstructorStatement`,
+  `payouts/getClassInstructorStatements`, `payouts/getClassInstructorStatement`,
+  `payouts/markClassInstructorStatementPaid`, `payouts/voidClassInstructorStatement`.
+  It computes and records; it never moves money. The legacy artist-payout functions and
+  `getTeacherPayouts` are the natural next routes here.
+
 ### Teacher Payouts
 - `getTeacherPayouts` — aggregates what Katie owes each teacher over a date range from paid private-pay invoice lines + rendered Hope Scholarship lessons
 

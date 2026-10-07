@@ -84,6 +84,13 @@ export {
   type PayoutFilters,
   type CreatePayoutInput,
 } from './lib/payout.repository';
+export {
+  ClassInstructorStatementRepository,
+  PayoutLedgerRepository,
+  type ClassInstructorStatementFilters,
+  type GenerateStatementOutcome,
+  type StatementTransitionOutcome,
+} from './lib/class-instructor-statement.repository';
 
 // Agreements & Waivers
 export {

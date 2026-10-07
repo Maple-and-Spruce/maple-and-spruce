@@ -181,6 +181,7 @@
     "../../libs/firebase/maple-functions/trigger-materialize-lesson-schedules/**/*.ts",
     "../../libs/firebase/maple-functions/trigger-music-together-reminders/**/*.ts",
     "../../libs/firebase/maple-functions/artists/**/*.ts",
+    "../../libs/firebase/maple-functions/payouts/**/*.ts",
     "../../libs/firebase/maple-functions/hope/**/*.ts",
     "../../libs/firebase/maple-functions/settings/**/*.ts",
     "../../libs/firebase/maple-functions/discounts/**/*.ts",

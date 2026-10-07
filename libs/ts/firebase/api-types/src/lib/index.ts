@@ -377,6 +377,23 @@ export type {
   GetTeacherPayoutsResponse,
 } from './teacher-payout.types';
 
+// Class-instructor payouts (payouts router)
+export type {
+  ClassInstructorPayoutPreview,
+  PreviewClassInstructorPayoutsRequest,
+  PreviewClassInstructorPayoutsResponse,
+  GenerateClassInstructorStatementRequest,
+  GenerateClassInstructorStatementResponse,
+  GetClassInstructorStatementsRequest,
+  GetClassInstructorStatementsResponse,
+  GetClassInstructorStatementRequest,
+  GetClassInstructorStatementResponse,
+  MarkClassInstructorStatementPaidRequest,
+  MarkClassInstructorStatementPaidResponse,
+  VoidClassInstructorStatementRequest,
+  VoidClassInstructorStatementResponse,
+} from './class-instructor-payout.types';
+
 // Calendar Embed Config types
 export type {
   GetCalendarEmbedConfigRequest,

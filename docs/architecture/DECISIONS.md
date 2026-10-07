@@ -1704,6 +1704,68 @@ The result:
 
 ---
 
+## ADR-035: Payouts Are Claimed Through a Ledger of Deterministic IDs, in One Transaction
+
+**Status:** Accepted
+**Date:** 2026-09-29
+
+### Context
+Contract instructors are paid a monthly statement for the class sessions they taught (80% of
+what the student paid, after discount and before tax, split evenly across sessions). David pays
+them outside the app and records the payment. The one thing the software must get right is that
+**nothing is ever paid twice**: not by generating a statement twice, not by two admins pressing
+Generate together, and not by voiding a statement and regenerating it.
+
+The existing artist-payout path does not guarantee this. `generatePayout` creates the payout and
+then stamps each sale with `payoutId` in parallel, outside any transaction. Two concurrent
+generates can each read the same unstamped sales. A crash between the two steps leaves a payout
+whose sales were never stamped.
+
+### Decision
+A `payoutLedgerEntries` collection holds one document per payable unit, at an id derived from
+what it pays for:
+
+- `class-session_{registrationId}_{sessionIndex}`: one registration's share of one session
+- `class-refund_{registrationId}`: the clawback when a paid-out registration is later refunded
+
+Generating a statement is one Firestore transaction. It reads the instructor's statements for the
+month and every proposed entry id, then refuses if a live statement exists or if any entry already
+exists. Otherwise it writes the statement and all of its entries. Voiding a pending statement
+deletes its entries in the same kind of transaction, which releases them to be claimed again.
+Statements carry snapshots of their lines, so they read the same forever.
+
+The pure draft builder (`buildClassInstructorStatementDraft`) decides which ids a statement
+would claim. The transaction decides whether it may.
+
+### Rationale
+- A deterministic id makes "already paid?" a point read instead of a query, and it is a
+  question Firestore's transaction contention can answer: the loser of a race sees the winner's
+  entries and gets "refresh and try again".
+- A separate ledger, rather than a `payoutId` stamped on each registration, keeps registrations
+  moving toward immutability (#82). It also gives the lesson-teacher payout-owed ledger (#58) a
+  home, as another `kind`.
+
+### Alternatives Considered
+- **Stamp `payoutStatementId` on registrations (the artist model).** One registration spans
+  several sessions and months, so a single stamp can't say which sessions were paid. It would also
+  mutate a record we want append-only.
+- **One statement per (instructor, month) at a deterministic id.** That prevents duplicate
+  statements, but not a session being claimed by two different months' statements (stragglers
+  make that possible), and a voided statement couldn't be regenerated at the same id.
+
+### Consequences
+- Void is the only path that deletes ledger entries, and only for a pending statement. Paid
+  statements are final; a later refund is a negative `class-refund_` entry on the next one.
+- A statement's writes are bounded by Firestore's 10 MiB transaction size, not a document count.
+  A month is tens to low hundreds of entries.
+- Session keys are indexes into the class's sorted sessions. If sessions are edited after some
+  were paid, the keys can shift. A pending statement reports `sessions-changed` as stale; a paid
+  one is not reconciled.
+- Refunds made directly in the Square dashboard are invisible: only `cancelRegistration` records
+  `refundedAt`.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1727,4 +1789,4 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-10-05 (ADR-034 added for booked, not generated, lessons)*
+*Last updated: 2026-10-06 (ADR-035 added for the payout ledger)*

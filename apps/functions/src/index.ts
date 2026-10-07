@@ -33,6 +33,8 @@ export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-st
 // updateArtist / deleteArtist (ADR-029). The five single-purpose functions it
 // replaced were deleted once it was verified in dev.
 export { artists } from '@maple/firebase/maple-functions/artists';
+// Payouts domain router: class-instructor statements (ADR-029).
+export { payouts } from '@maple/firebase/maple-functions/payouts';
 export { hope } from '@maple/firebase/maple-functions/hope';
 export { settings } from '@maple/firebase/maple-functions/settings';
 export { discounts } from '@maple/firebase/maple-functions/discounts';

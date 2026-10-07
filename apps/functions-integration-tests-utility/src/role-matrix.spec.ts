@@ -143,6 +143,25 @@ const CASES: MatrixCase[] = [
     data: { lessonCatalogObjectIds: ['TEST_ITEM'] },
     expect: 403,
   },
+  // Class-instructor statements are finance: admin-only on every route. The
+  // clerk/lesson-teacher union must not reach instructor pay, and a lesson
+  // teacher must not read another instructor's statement.
+  { as: 'nathan', functionName: 'payouts/previewClassInstructorPayouts', data: { month: '2026-10' }, expect: 403 },
+  { as: 'nathan', functionName: 'payouts/getClassInstructorStatements', expect: 403 },
+  { as: 'nathan', functionName: 'payouts/getClassInstructorStatement', data: { id: 'irrelevant' }, expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'payouts/generateClassInstructorStatement',
+    data: { instructorId: 'irrelevant', month: '2026-01' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/markClassInstructorStatementPaid',
+    data: { id: 'irrelevant', paidOn: '2026-01-05', paymentMethod: 'payroll' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'payouts/voidClassInstructorStatement', data: { id: 'irrelevant' }, expect: 403 },
   { as: 'nathan', functionName: 'listUsers', expect: 403 },
   { as: 'nathan', functionName: 'grantRole', expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the
@@ -170,6 +189,7 @@ const CASES: MatrixCase[] = [
     expect: 200,
   },
   { as: 'admin', functionName: 'settings/getPosLessonConfig', expect: 200 },
+  { as: 'admin', functionName: 'payouts/getClassInstructorStatements', expect: 200 },
 
   // ── No roles at all: nothing opens ────────────────────────────────
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
@@ -178,6 +198,8 @@ const CASES: MatrixCase[] = [
   { as: 'noRole', functionName: 'discounts/getDiscounts', expect: 403 },
   { as: 'noRole', functionName: 'settings/getInstruments', expect: 403 },
   { as: 'noRole', functionName: 'settings/getLessonRatesConfig', expect: 403 },
+  { as: 'noRole', functionName: 'payouts/getClassInstructorStatements', expect: 403 },
+  { as: 'stephanie', functionName: 'payouts/getClassInstructorStatements', expect: 403 },
   {
     as: 'noRole',
     functionName: 'waiveMusicTogetherInstallment',
