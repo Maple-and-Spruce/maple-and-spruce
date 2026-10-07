@@ -1,4 +1,5 @@
 export { callDeduped } from './lib/call-deduped';
+export type { CallableTarget, RouterRoute } from './lib/call-deduped';
 export { useProducts } from './lib/useProducts';
 export { useArtists } from './lib/useArtists';
 export { useCategories } from './lib/useCategories';

@@ -50,7 +50,7 @@ const CASES: MatrixCase[] = [
     data: ROOM_SCHEDULE_REQ,
     expect: 200,
   },
-  { as: 'stephanie', functionName: 'getProducts', expect: 403 },
+  { as: 'stephanie', functionName: 'products/getProducts', expect: 403 },
   { as: 'stephanie', functionName: 'getClasses', expect: 403 },
   { as: 'stephanie', functionName: 'getRegistrations', expect: 403 },
   { as: 'stephanie', functionName: 'getStudents', expect: 403 },
@@ -75,8 +75,8 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'discounts/getDiscounts', expect: 200 },
 
   // ── Nathan: clerk + lesson-teacher (multi-role union) ─────────────
-  { as: 'nathan', functionName: 'getProducts', expect: 200 },
-  { as: 'nathan', functionName: 'getCategories', expect: 200 },
+  { as: 'nathan', functionName: 'products/getProducts', expect: 200 },
+  { as: 'nathan', functionName: 'products/getCategories', expect: 200 },
   { as: 'nathan', functionName: 'getSales', expect: 200 },
   { as: 'nathan', functionName: 'getClasses', expect: 200 },
   { as: 'nathan', functionName: 'getRegistrations', expect: 200 },
@@ -157,7 +157,7 @@ const CASES: MatrixCase[] = [
 
   // ── Admin: unchanged, everything passes (spot checks per group) ───
   { as: 'admin', functionName: 'getMusicTogetherSections', expect: 200 },
-  { as: 'admin', functionName: 'getProducts', expect: 200 },
+  { as: 'admin', functionName: 'products/getProducts', expect: 200 },
   { as: 'admin', functionName: 'getLessons', expect: 200 },
   { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'listUsers', expect: 200 },
@@ -173,7 +173,7 @@ const CASES: MatrixCase[] = [
 
   // ── No roles at all: nothing opens ────────────────────────────────
   { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
-  { as: 'noRole', functionName: 'getProducts', expect: 403 },
+  { as: 'noRole', functionName: 'products/getProducts', expect: 403 },
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'noRole', functionName: 'discounts/getDiscounts', expect: 403 },
   { as: 'noRole', functionName: 'settings/getInstruments', expect: 403 },
