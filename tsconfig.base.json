@@ -404,18 +404,6 @@
       "@maple/firebase/maple-functions/reorder-class-categories": [
         "libs/firebase/maple-functions/reorder-class-categories/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-discounts": [
-        "libs/firebase/maple-functions/get-discounts/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-discount": [
-        "libs/firebase/maple-functions/create-discount/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-discount": [
-        "libs/firebase/maple-functions/update-discount/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-discount": [
-        "libs/firebase/maple-functions/delete-discount/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/lookup-discount": [
         "libs/firebase/maple-functions/lookup-discount/src/index.ts"
       ],
