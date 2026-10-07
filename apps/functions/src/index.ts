@@ -164,10 +164,6 @@ export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-
 export { uploadCategoryGalleryImage } from '@maple/firebase/maple-functions/upload-category-gallery-image';
 
 // Discount functions
-export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';
-export { createDiscount } from '@maple/firebase/maple-functions/create-discount';
-export { updateDiscount } from '@maple/firebase/maple-functions/update-discount';
-export { deleteDiscount } from '@maple/firebase/maple-functions/delete-discount';
 export { lookupDiscount } from '@maple/firebase/maple-functions/lookup-discount';
 
 // Calendar Event functions

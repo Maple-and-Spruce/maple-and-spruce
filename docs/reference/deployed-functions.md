@@ -139,9 +139,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `discounts` — **domain router** (ADR-029, #62) for the staff side: `discounts/getDiscounts`,
   `discounts/createDiscount`, `discounts/updateDiscount`, `discounts/deleteDiscount`, each
   gated `[Admin, MtTeacher]` and narrowed per program inside the route.
-  The four per-endpoint originals are **still deployed** so admin tabs loaded before the switch
-  keep working; they are deleted by hand (`firebase functions:delete`), then dropped from the
-  codebase and the count baseline in a follow-up.
+  The four per-endpoint originals (`getDiscounts`, `createDiscount`, `updateDiscount`,
+  `deleteDiscount`) are gone from the codebase. CI does not prune, so they are deleted from
+  each project by hand (`firebase functions:delete`).
 - `lookupDiscount` — public, called by both checkout widgets. Stays its own function for now:
   its App Check rollout is in flight and moving it needs a Webflow publish.
 
@@ -160,7 +160,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 
 **Legacy back-fill:** a document with no stored `program` reads as `classes`. That is a statement of fact, not a guess — MT had no discount support before legacy #791, so every pre-existing code was authored for class checkout. Defaulting the other way would silently expose Stephanie's account.
 
-**Roles.** `getDiscounts` / `createDiscount` / `updateDiscount` / `deleteDiscount` are gated `[Admin, MtTeacher]` (they were admin-only) so Stephanie can run Music Together promotions from `/music-together/discounts`. The role gate alone would also hand her Maple & Spruce class pricing, so each function narrows it:
+**Roles.** The four `discounts/*` routes are gated `[Admin, MtTeacher]` (they were admin-only) so Stephanie can run Music Together promotions from `/music-together/discounts`. The role gate alone would also hand her Maple & Spruce class pricing, so each route narrows it:
 
 - reads — `discountProgramScopeForUser` **forces** a non-admin to `music-together` regardless of the requested `program`; the client's filter is never an authorization input
 - create — `assertCanManageDiscountProgram` on the program being written
