@@ -42,7 +42,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`
 
 ### Music Lesson Students
-- `getStudents`, `getStudent`, `createStudent`, `updateStudent`, `deleteStudent`
+- `people/getStudents`, `people/getStudent`, `people/createStudent`, `people/updateStudent`,
+  `people/deleteStudent` — routes on the **`people` router** (ADR-029, #65), gated
+  `[Admin, LessonTeacher]`; a lesson teacher is narrowed to their own students inside each route.
 
 ### Music Lessons
 - `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`
@@ -215,16 +217,19 @@ Codes are **globally unique across programs** — a customer types a code withou
 
 ### Auth
 - `checkAdminStatus` _(returns `{ isAdmin, isEmployee, role }` — `role` is the highest-privilege role)_
-- `getMyRoles` _(auth only — returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating. Also the caller's linked `instructorId`, if any (#157), so a teacher's pages default to their own students — a convenience, never a permission)_
+- `getMyRoles` _(auth only, **deliberately its own function** — it gates every admin page on first paint, so it is kept off the `people` router. Returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating. Also the caller's linked `instructorId`, if any (#157), so a teacher's pages default to their own students — a convenience, never a permission)_
 
 > **Roles (epic #49, ADR-028):** "admin only" annotations below predate the scoped-roles matrix. Since PR 3, callables are gated by role sets: Music Together mgmt → admin + `mt-teacher`; store inventory/sales/categories + class registrations/rosters/waitlists/refunds + class reads → admin + `clerk`; lesson/student/invoice/instructor **reads** → admin + `lesson-teacher`; calendar events + room schedule → all staff roles. Everything else remains admin-only. The authoritative table is `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.
 
 ### User & role administration
-- `listUsers` _(admin only — Firebase Auth users joined with admin records + scoped roles from `userRoles/{uid}`; powers `/users` page; capped at 1000 per call)_
-- `grantAdminRole` _(admin only — promotes another user to admin)_
-- `revokeAdminRole` _(admin only — demotes another admin; self-protection: cannot revoke your own admin)_
-- `grantRole` _(admin only — grants a scoped role: `mt-teacher`, `clerk`, `lesson-teacher`; writes `userRoles/{uid}.roles`; rejects `admin`)_
-- `revokeRole` _(admin only — revokes a scoped role; rejects `admin`)_
+Routes on the **`people` router** (ADR-029, #65), all admin-only. The ten per-endpoint
+originals (these five and the five student functions) were removed from the code in #65 but
+stay **deployed** until checked on dev and deleted by hand; CI does not prune.
+- `people/listUsers` _(admin only — Firebase Auth users joined with admin records + scoped roles from `userRoles/{uid}`; powers `/users` page; capped at 1000 per call)_
+- `people/grantAdminRole` _(admin only — promotes another user to admin)_
+- `people/revokeAdminRole` _(admin only — demotes another admin; self-protection: cannot revoke your own admin)_
+- `people/grantRole` _(admin only — grants a scoped role: `mt-teacher`, `clerk`, `lesson-teacher`; writes `userRoles/{uid}.roles`; rejects `admin`)_
+- `people/revokeRole` _(admin only — revokes a scoped role; rejects `admin`)_
 
 ### Infrastructure
 - `healthCheck` _(public liveness probe; also served at `/healthCheck` via a hosting rewrite)_

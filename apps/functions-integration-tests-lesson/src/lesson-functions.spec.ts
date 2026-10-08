@@ -142,7 +142,7 @@ describe('Lesson Functions', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: SAMPLE_STUDENT,
       idToken: adminUser.idToken,
     });
@@ -852,7 +852,7 @@ describe('Lesson Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'Hope Queue Kid',
@@ -1099,7 +1099,7 @@ describe('Lesson Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'Attention Hope Student',
@@ -1124,7 +1124,7 @@ describe('Lesson Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'Attention Unbilled',
@@ -1173,7 +1173,7 @@ describe('Lesson Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'Attention Carded',
@@ -1244,7 +1244,7 @@ describe('Lesson Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'Attention Voided',
@@ -1496,7 +1496,7 @@ describe('Lesson Functions', () => {
 
     beforeAll(async () => {
       const res = await callFunction<CreateStudentRequest, CreateStudentResponse>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'EMA Priced Kid',
@@ -1557,7 +1557,7 @@ describe('Lesson Functions', () => {
 
     it("queues, claims and pays out the student's lessons at the product price", async () => {
       await callFunction<UpdateStudentRequest>({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: { id: pricedStudentId, hopeProductId: productId },
         idToken: adminUser.idToken,
       });
@@ -1637,7 +1637,7 @@ describe('Lesson Functions', () => {
       productId = product.data!.product.id;
 
       const res = await callFunction<CreateStudentRequest, CreateStudentResponse>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           name: 'EMA Order Kid',

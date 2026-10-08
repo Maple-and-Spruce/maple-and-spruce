@@ -101,13 +101,13 @@ describe('Student Functions', () => {
 
       // One student taught by the teacher, one by someone else (admin-created).
       const own = await callFunction<CreateStudentRequest, CreateStudentResponse>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: { ...SAMPLE_STUDENT, name: 'My Student', primaryTeacherId: OWN },
         idToken: adminUser.idToken,
       });
       ownStudentId = own.data!.student.id;
       const other = await callFunction<CreateStudentRequest, CreateStudentResponse>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: { ...SAMPLE_STUDENT, name: 'Their Student', primaryTeacherId: OTHER },
         idToken: adminUser.idToken,
       });
@@ -116,7 +116,7 @@ describe('Student Functions', () => {
 
     it('getStudents returns only the teacher’s own students', async () => {
       const result = await callFunction<GetStudentsRequest, GetStudentsResponse>({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         idToken: teacher.idToken,
       });
       expect(result.status).toBe(200);
@@ -127,7 +127,7 @@ describe('Student Functions', () => {
 
     it('getStudents returns nothing for an unlinked lesson teacher', async () => {
       const result = await callFunction<GetStudentsRequest, GetStudentsResponse>({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         idToken: unlinked.idToken,
       });
       expect(result.status).toBe(200);
@@ -136,7 +136,7 @@ describe('Student Functions', () => {
 
     it('admin still sees all students', async () => {
       const result = await callFunction<GetStudentsRequest, GetStudentsResponse>({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         idToken: adminUser.idToken,
       });
       const ids = result.data!.students.map((s) => s.id);
@@ -145,13 +145,13 @@ describe('Student Functions', () => {
 
     it('getStudent: own allowed, other denied', async () => {
       const own = await callFunction({
-        functionName: 'getStudent',
+        functionName: 'people/getStudent',
         data: { id: ownStudentId },
         idToken: teacher.idToken,
       });
       expect(own.status).toBe(200);
       const other = await callFunction({
-        functionName: 'getStudent',
+        functionName: 'people/getStudent',
         data: { id: othersStudentId },
         idToken: teacher.idToken,
       });
@@ -160,13 +160,13 @@ describe('Student Functions', () => {
 
     it('createStudent: only for themselves', async () => {
       const mine = await callFunction<CreateStudentRequest>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: { ...SAMPLE_STUDENT, name: 'New Mine', primaryTeacherId: OWN },
         idToken: teacher.idToken,
       });
       expect(mine.status).toBe(200);
       const theirs = await callFunction<CreateStudentRequest>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: { ...SAMPLE_STUDENT, name: 'New Theirs', primaryTeacherId: OTHER },
         idToken: teacher.idToken,
       });
@@ -175,13 +175,13 @@ describe('Student Functions', () => {
 
     it('updateStudent: own allowed, other denied', async () => {
       const own = await callFunction<UpdateStudentRequest>({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: { id: ownStudentId, notes: 'progressing' },
         idToken: teacher.idToken,
       });
       expect(own.status).toBe(200);
       const other = await callFunction<UpdateStudentRequest>({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: { id: othersStudentId, notes: 'nope' },
         idToken: teacher.idToken,
       });
@@ -190,7 +190,7 @@ describe('Student Functions', () => {
 
     it('deleteStudent: another teacher’s student is denied', async () => {
       const result = await callFunction({
-        functionName: 'deleteStudent',
+        functionName: 'people/deleteStudent',
         data: { id: othersStudentId },
         idToken: teacher.idToken,
       });
@@ -201,7 +201,7 @@ describe('Student Functions', () => {
   describe('Auth guard', () => {
     it('rejects unauthenticated requests', async () => {
       const result = await callFunction<CreateStudentRequest>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: SAMPLE_STUDENT,
       });
       expect(result.status).toBe(401);
@@ -209,7 +209,7 @@ describe('Student Functions', () => {
 
     it('rejects non-admin users for create', async () => {
       const result = await callFunction<CreateStudentRequest>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: SAMPLE_STUDENT,
         idToken: nonAdminUser.idToken,
       });
@@ -218,7 +218,7 @@ describe('Student Functions', () => {
 
     it('rejects non-admin users for update', async () => {
       const result = await callFunction<UpdateStudentRequest>({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: { id: 'any', name: 'Nope' },
         idToken: nonAdminUser.idToken,
       });
@@ -227,7 +227,7 @@ describe('Student Functions', () => {
 
     it('rejects non-admin users for delete', async () => {
       const result = await callFunction<DeleteStudentRequest>({
-        functionName: 'deleteStudent',
+        functionName: 'people/deleteStudent',
         data: { id: 'any' },
         idToken: nonAdminUser.idToken,
       });
@@ -243,7 +243,7 @@ describe('Student Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: SAMPLE_STUDENT,
         idToken: adminUser.idToken,
       });
@@ -273,7 +273,7 @@ describe('Student Functions', () => {
         GetStudentsRequest,
         GetStudentsResponse
       >({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         idToken: adminUser.idToken,
       });
 
@@ -283,7 +283,7 @@ describe('Student Functions', () => {
 
     it('gets a student by id', async () => {
       const result = await callFunction<GetStudentRequest, GetStudentResponse>({
-        functionName: 'getStudent',
+        functionName: 'people/getStudent',
         data: { id: studentId },
         idToken: adminUser.idToken,
       });
@@ -298,7 +298,7 @@ describe('Student Functions', () => {
         UpdateStudentRequest,
         UpdateStudentResponse
       >({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: {
           id: studentId,
           registeredLessonLength: '45-min',
@@ -324,7 +324,7 @@ describe('Student Functions', () => {
         DeleteStudentRequest,
         DeleteStudentResponse
       >({
-        functionName: 'deleteStudent',
+        functionName: 'people/deleteStudent',
         data: { id: studentId },
         idToken: adminUser.idToken,
       });
@@ -335,7 +335,7 @@ describe('Student Functions', () => {
 
     it('returns not-found for a deleted student', async () => {
       const result = await callFunction<GetStudentRequest>({
-        functionName: 'getStudent',
+        functionName: 'people/getStudent',
         data: { id: studentId },
         idToken: adminUser.idToken,
       });
@@ -345,7 +345,7 @@ describe('Student Functions', () => {
 
     it('returns not-found when updating a missing student', async () => {
       const result = await callFunction<UpdateStudentRequest>({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: { id: 'nonexistent-id', name: 'Ghost' },
         idToken: adminUser.idToken,
       });
@@ -354,7 +354,7 @@ describe('Student Functions', () => {
 
     it('returns not-found when deleting a missing student', async () => {
       const result = await callFunction<DeleteStudentRequest>({
-        functionName: 'deleteStudent',
+        functionName: 'people/deleteStudent',
         data: { id: 'nonexistent-id' },
         idToken: adminUser.idToken,
       });
@@ -371,7 +371,7 @@ describe('Student Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: SAMPLE_STUDENT,
         idToken: adminUser.idToken,
       });
@@ -381,7 +381,7 @@ describe('Student Functions', () => {
         CreateStudentRequest,
         CreateStudentResponse
       >({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: HOPE_STUDENT,
         idToken: adminUser.idToken,
       });
@@ -393,7 +393,7 @@ describe('Student Functions', () => {
         GetStudentsRequest,
         GetStudentsResponse
       >({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         data: { isHopeScholarship: true },
         idToken: adminUser.idToken,
       });
@@ -406,7 +406,7 @@ describe('Student Functions', () => {
 
     it('filters by status', async () => {
       await callFunction<UpdateStudentRequest>({
-        functionName: 'updateStudent',
+        functionName: 'people/updateStudent',
         data: { id: privateId, status: 'inactive' },
         idToken: adminUser.idToken,
       });
@@ -415,7 +415,7 @@ describe('Student Functions', () => {
         GetStudentsRequest,
         GetStudentsResponse
       >({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         data: { status: 'active' },
         idToken: adminUser.idToken,
       });
@@ -430,7 +430,7 @@ describe('Student Functions', () => {
         GetStudentsRequest,
         GetStudentsResponse
       >({
-        functionName: 'getStudents',
+        functionName: 'people/getStudents',
         data: { primaryTeacherId: 'instructor-sample' },
         idToken: adminUser.idToken,
       });
@@ -443,7 +443,7 @@ describe('Student Functions', () => {
   describe('Validation', () => {
     it('rejects student with missing name', async () => {
       const result = await callFunction<Partial<CreateStudentRequest>>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           instrument: 'violin',
           isAdultStudent: false,
@@ -461,7 +461,7 @@ describe('Student Functions', () => {
     it('accepts an instrument once the studio offers it (#161)', async () => {
       const added = { key: 'mountain-dulcimer', label: 'Mountain Dulcimer' };
       const before = await callFunction<Partial<CreateStudentRequest>>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: { ...SAMPLE_STUDENT, instrument: added.key },
         idToken: adminUser.idToken,
       });
@@ -483,7 +483,7 @@ describe('Student Functions', () => {
       expect(saved.status).toBe(200);
 
       const after = await callFunction<Partial<CreateStudentRequest>>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: { ...SAMPLE_STUDENT, instrument: added.key },
         idToken: adminUser.idToken,
       });
@@ -492,7 +492,7 @@ describe('Student Functions', () => {
 
     it('rejects student with invalid instrument', async () => {
       const result = await callFunction<Partial<CreateStudentRequest>>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           instrument: 'harpsichord' as 'violin',
@@ -504,7 +504,7 @@ describe('Student Functions', () => {
 
     it('rejects student with malformed primaryContactEmail', async () => {
       const result = await callFunction<Partial<CreateStudentRequest>>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           primaryContactEmail: 'not-an-email',
@@ -516,7 +516,7 @@ describe('Student Functions', () => {
 
     it('rejects student with missing primaryTeacherId', async () => {
       const result = await callFunction<Partial<CreateStudentRequest>>({
-        functionName: 'createStudent',
+        functionName: 'people/createStudent',
         data: {
           ...SAMPLE_STUDENT,
           primaryTeacherId: '',

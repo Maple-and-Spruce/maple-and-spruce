@@ -193,7 +193,7 @@ describe('Utility Functions', () => {
 
     it('grantRole is admin-only (403 for non-admin caller)', async () => {
       const result = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: scopedUser.idToken,
         data: { uid: scopedUser.uid, role: 'mt-teacher' },
       });
@@ -203,7 +203,7 @@ describe('Utility Functions', () => {
 
     it('grantRole rejects the admin role (admins/{uid} stays authoritative)', async () => {
       const result = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'admin' },
       });
@@ -213,7 +213,7 @@ describe('Utility Functions', () => {
 
     it('admin grants a scoped role; it shows in getMyRoles but not admin status', async () => {
       const grant = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'mt-teacher' },
       });
@@ -243,7 +243,7 @@ describe('Utility Functions', () => {
     it('a scoped role does not open admin-only functions (any-of not wildcard)', async () => {
       // scopedUser now holds mt-teacher; grantRole itself requires admin
       const result = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: scopedUser.idToken,
         data: { uid: scopedUser.uid, role: 'clerk' },
       });
@@ -253,12 +253,12 @@ describe('Utility Functions', () => {
 
     it('users can hold multiple roles at once', async () => {
       await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'clerk' },
       });
       await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'lesson-teacher' },
       });
@@ -282,7 +282,7 @@ describe('Utility Functions', () => {
         RevokeRoleRequest,
         RevokeRoleResponse
       >({
-        functionName: 'revokeRole',
+        functionName: 'people/revokeRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'mt-teacher' },
       });
@@ -309,7 +309,7 @@ describe('Utility Functions', () => {
         Record<string, never>,
         { users: Array<{ uid: string; isAdmin: boolean; roles: string[] }> }
       >({
-        functionName: 'listUsers',
+        functionName: 'people/listUsers',
         idToken: adminUser.idToken,
       });
 
@@ -328,7 +328,7 @@ describe('Utility Functions', () => {
         RevokeRoleRequest,
         RevokeRoleResponse
       >({
-        functionName: 'revokeRole',
+        functionName: 'people/revokeRole',
         idToken: scopedUser.idToken,
         data: { uid: scopedUser.uid, role: 'clerk' },
       });

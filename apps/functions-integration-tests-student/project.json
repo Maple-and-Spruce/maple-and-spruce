@@ -5,11 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
-    "firebase-maple-functions-create-student",
-    "firebase-maple-functions-get-students",
-    "firebase-maple-functions-get-student",
-    "firebase-maple-functions-update-student",
-    "firebase-maple-functions-delete-student",
+    "firebase-maple-functions-people",
     "firebase-integration-test-utils"
   ],
   "targets": {

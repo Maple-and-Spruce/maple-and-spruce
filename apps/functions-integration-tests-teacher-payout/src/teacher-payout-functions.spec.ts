@@ -144,7 +144,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: {
         name: 'Private Kid',
         instrument: 'violin',
@@ -176,7 +176,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: {
         name: 'Hope Kid',
         instrument: 'guitar',
@@ -198,7 +198,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: {
         name: 'Unpriced Hope Kid',
         instrument: 'violin',

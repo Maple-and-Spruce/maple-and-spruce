@@ -8,7 +8,7 @@
     "firebase-maple-functions-payouts",
     "firebase-maple-functions-create-invoice",
     "firebase-maple-functions-update-invoice",
-    "firebase-maple-functions-create-student",
+    "firebase-maple-functions-people",
     "firebase-maple-functions-create-instructor",
     "firebase-maple-functions-create-lesson",
     "firebase-maple-functions-update-lesson",

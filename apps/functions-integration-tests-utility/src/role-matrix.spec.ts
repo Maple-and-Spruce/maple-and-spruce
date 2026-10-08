@@ -53,20 +53,20 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'products/getProducts', expect: 403 },
   { as: 'stephanie', functionName: 'getClasses', expect: 403 },
   { as: 'stephanie', functionName: 'getRegistrations', expect: 403 },
-  { as: 'stephanie', functionName: 'getStudents', expect: 403 },
+  { as: 'stephanie', functionName: 'people/getStudents', expect: 403 },
   // getStudent (singular) was auth-only until legacy #620; now admin + lesson-teacher.
-  { as: 'stephanie', functionName: 'getStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'people/getStudent', expect: 403 },
   // Student mutations are now [Admin, LessonTeacher] (#49) — mt-teacher denied.
-  { as: 'stephanie', functionName: 'createStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'people/createStudent', expect: 403 },
   { as: 'stephanie', functionName: 'settings/getInstruments', expect: 403 },
   {
     as: 'stephanie',
     functionName: 'settings/getBusinessPaymentConfig',
     expect: 403,
   },
-  { as: 'stephanie', functionName: 'updateStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'people/updateStudent', expect: 403 },
   { as: 'stephanie', functionName: 'getLessons', expect: 403 },
-  { as: 'stephanie', functionName: 'listUsers', expect: 403 },
+  { as: 'stephanie', functionName: 'people/listUsers', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },
   { as: 'stephanie', functionName: 'getSyncConflictSummary', expect: 403 },
   // Music Together discounts are hers to run (legacy #791) — the function is open to
@@ -82,7 +82,7 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'getRegistrations', expect: 200 },
   { as: 'nathan', functionName: 'getClassWaitlistCounts', expect: 200 },
   { as: 'nathan', functionName: 'getLessons', expect: 200 },
-  { as: 'nathan', functionName: 'getStudents', expect: 200 },
+  { as: 'nathan', functionName: 'people/getStudents', expect: 200 },
   { as: 'nathan', functionName: 'getInvoices', expect: 200 },
   { as: 'nathan', functionName: 'getCalendarEvents', expect: 200 },
   { as: 'nathan', functionName: 'getMusicTogetherSections', expect: 403 },
@@ -193,8 +193,21 @@ const CASES: MatrixCase[] = [
     data: { from: '2026-01-01T00:00:00Z', to: '2026-01-31T23:59:59Z' },
     expect: 403,
   },
-  { as: 'nathan', functionName: 'listUsers', expect: 403 },
-  { as: 'nathan', functionName: 'grantRole', expect: 403 },
+  { as: 'nathan', functionName: 'people/listUsers', expect: 403 },
+  { as: 'nathan', functionName: 'people/grantRole', expect: 403 },
+  // Promoting or demoting an admin had no integration coverage before the
+  // people router (#65). Nathan holds two scoped roles and is the caller a
+  // too-wide gate would let in; the payloads are valid, so a 403 can only
+  // come from the gate.
+  { as: 'nathan', functionName: 'people/grantAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
+  { as: 'nathan', functionName: 'people/revokeAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'people/revokeRole',
+    data: { uid: 'irrelevant', role: 'clerk' },
+    expect: 403,
+  },
+  { as: 'stephanie', functionName: 'people/grantAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
   // Widening getDiscounts to mt-teacher must not leak it to the
   // clerk/lesson-teacher union.
   { as: 'nathan', functionName: 'discounts/getDiscounts', expect: 403 },
@@ -211,7 +224,7 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'agreements/getAgreementTemplates', expect: 200 },
   { as: 'admin', functionName: 'getLessons', expect: 200 },
   { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
-  { as: 'admin', functionName: 'listUsers', expect: 200 },
+  { as: 'admin', functionName: 'people/listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
   { as: 'admin', functionName: 'settings/getInstruments', expect: 200 },
   { as: 'admin', functionName: 'settings/getLessonRatesConfig', expect: 200 },
