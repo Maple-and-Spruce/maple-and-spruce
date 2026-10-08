@@ -7,9 +7,12 @@
  *      generates a payout line for whichever teacher actually taught
  *      that lesson (substitute-aware via `wasTaughtBySubstitute`).
  *   2. Rendered Hope-Scholarship lessons: Hope students are invoiced
- *      externally through EMA, so the lesson itself is the signal; we
- *      resolve the base revenue from the Hope rate table by the
- *      student's registered lesson-length tier.
+ *      externally through EMA, so the lesson itself is the signal; the
+ *      base revenue is the price of the student's EMA product. A Hope
+ *      student on no product has no price, so their lessons are listed
+ *      as unpriced (#83). A flat or hourly teacher is still paid for
+ *      them, since that pay never depended on the price; a percentage
+ *      teacher's share waits, out of the total, until a product is set.
  *
  * Excluded: scheduled-but-unpaid private-pay, scheduled-but-not-yet-
  * rendered Hope, cancelled lessons, voided invoices, non-Hope rendered
@@ -41,12 +44,19 @@ export interface TeacherPayoutLine {
   source: TeacherPayoutLineSource;
   /**
    * What Katie owes the teacher for this lesson. Undefined when the
-   * teacher's `payRate` / `payRateType` are not configured; the UI
-   * surfaces that as "Rate not set" rather than silently dropping.
+   * teacher's `payRate` / `payRateType` are not configured (the UI
+   * surfaces that as "Rate not set" rather than silently dropping), or
+   * when a percentage share has no price to be a share of (an unpriced
+   * Hope lesson).
    */
   compensationCents: number | undefined;
-  /** Base revenue the compensation derives from (invoice-line subtotal or Hope rate). */
-  baseRevenueCents: number;
+  /**
+   * Base revenue the compensation derives from: the invoice-line subtotal, or
+   * the Hope student's EMA product price. Undefined for a Hope lesson whose
+   * student is on no EMA product: it has no price, never a guess. Flat and
+   * hourly pay is still computed for it; a percentage share is not.
+   */
+  baseRevenueCents: number | undefined;
   asSubstitute: boolean;
 }
 
@@ -60,6 +70,19 @@ export interface TeacherPayout {
    * "Configure instructor pay rate" nudge.
    */
   missingRateConfig: boolean;
+  /**
+   * Hope lessons this teacher taught whose student is on no EMA product.
+   * All of them need a product before EMA can be billed, so the UI asks
+   * for one; whether the teacher is paid for them is
+   * `unpricedHopePayPendingCount`.
+   */
+  unpricedHopeLessonCount: number;
+  /**
+   * The subset of `unpricedHopeLessonCount` whose pay is waiting on a price
+   * (a percentage teacher): no compensation, not in `totalOwedCents`. Zero
+   * for a flat or hourly teacher, who is paid for them as usual.
+   */
+  unpricedHopePayPendingCount: number;
   lines: TeacherPayoutLine[];
 }
 
@@ -72,25 +95,13 @@ export interface AggregateTeacherPayoutsInput {
   instructors: Instructor[];
   /**
    * EMA products, so a Hope lesson's base revenue is what EMA pays for the
-   * student's product. Omitted or unmatched, the old length table stands in.
+   * student's product. Omitted or unmatched, the lesson is unpriced.
    */
   hopeProducts?: HopeProduct[];
   /** Optional restriction to a single teacher. */
   teacherIdFilter?: string;
   /** What "has happened" is measured against (#157). Defaults to the clock. */
   now?: Date;
-}
-
-/**
- * Resolve the base revenue (in cents) for a Hope rendered lesson: the
- * student's EMA product price, else the old length table as an estimate.
- */
-export function hopeLessonBaseRevenueCents(
-  lesson: Pick<Lesson, 'durationMinutes'>,
-  student: Pick<Student, 'registeredLessonLength' | 'hopeProductId'>,
-  productsById: ReadonlyMap<string, HopeProduct> = new Map()
-): number {
-  return resolveHopeLessonRate(student, lesson, productsById).rateCents;
 }
 
 /**
@@ -108,6 +119,16 @@ export function computeLessonCompensationCents(
     lesson.durationMinutes,
     baseRevenueCents
   );
+}
+
+/**
+ * Whether this teacher's pay is a share of the lesson's price. Only then does
+ * a lesson with no price leave the teacher's pay unknown.
+ */
+export function payDependsOnPrice(
+  instructor: Pick<Instructor, 'payRateType'>
+): boolean {
+  return instructor.payRateType === 'percentage';
 }
 
 /**
@@ -213,16 +234,19 @@ export function aggregateTeacherPayouts(
     if (!teacher) continue;
     if (teacherIdFilter && teacher.id !== teacherIdFilter) continue;
 
-    const baseRevenueCents = hopeLessonBaseRevenueCents(
-      lesson,
+    // No EMA product, no price. Flat and hourly pay never depended on the
+    // price, so it is owed as usual; a percentage share of no price waits
+    // until Katie puts the student on a product. Never a guessed base.
+    const baseRevenueCents = resolveHopeLessonRate(
       student,
       hopeProductsById
-    );
-    const compensationCents = computeLessonCompensationCents(
-      teacher,
-      lesson,
-      baseRevenueCents
-    );
+    ).rateCents;
+    const compensationCents =
+      baseRevenueCents !== undefined
+        ? computeLessonCompensationCents(teacher, lesson, baseRevenueCents)
+        : payDependsOnPrice(teacher)
+          ? undefined
+          : computeLessonCompensationCents(teacher, lesson, 0);
 
     const lineEntry: TeacherPayoutLine = {
       lessonId: lesson.id,
@@ -256,15 +280,25 @@ export function aggregateTeacherPayouts(
       (sum, line) => sum + (line.compensationCents ?? 0),
       0
     );
-    const missingRateConfig = sortedLines.every(
-      (l) => l.compensationCents === undefined
-    );
+    // From the teacher, not the lines: an unpriced Hope line has no
+    // compensation either, and must not read as a missing pay rate.
+    const missingRateConfig =
+      computeLessonCompensationCents(teacher, { durationMinutes: 0 }, 0) ===
+      undefined;
+    const unpriced = sortedLines.filter((l) => l.baseRevenueCents === undefined);
+    const unpricedHopeLessonCount = unpriced.length;
+    // Waiting on a price, as opposed to waiting on a pay rate.
+    const unpricedHopePayPendingCount = missingRateConfig
+      ? 0
+      : unpriced.filter((l) => l.compensationCents === undefined).length;
 
     payouts.push({
       teacherId,
       teacherName: teacher.name,
       totalOwedCents,
       missingRateConfig,
+      unpricedHopeLessonCount,
+      unpricedHopePayPendingCount,
       lines: sortedLines,
     });
   }

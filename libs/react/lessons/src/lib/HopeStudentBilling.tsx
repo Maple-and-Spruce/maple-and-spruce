@@ -13,6 +13,10 @@
  *
  * The same card sits on the student's page and, once per student, on the Hope
  * Billing page, so there is one way to do this rather than two.
+ *
+ * Prices come only from EMA products and orders. A student on no product has
+ * taught lessons with no price, and the card says so rather than showing a
+ * figure (#83).
  */
 import { useState } from 'react';
 import Link from 'next/link';
@@ -238,7 +242,12 @@ export function HopeStudentBilling({
   const pickedReady = picked.filter((id) => ready.some((e) => e.lesson.id === id));
   const pickedCents = ready
     .filter((e) => pickedReady.includes(e.lesson.id))
-    .reduce((sum, e) => sum + e.rateCents, 0);
+    .reduce((sum, e) => sum + (e.rateCents ?? 0), 0);
+  // Taught, not invoiced, and nothing prices them: the student is on no EMA
+  // product. Invoiced lessons always carry the price their claim was made at.
+  const unpriced = [...ready, ...needsOrder].filter(
+    (e) => e.rateCents === undefined && e.submission?.rateCents === undefined
+  );
   const busy = recording.size > 0;
 
   const newOrder = () =>
@@ -340,6 +349,15 @@ export function HopeStudentBilling({
           No EMA orders recorded yet.
         </Typography>
       )}
+      {unpriced.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <strong>No EMA product set.</strong>{' '}
+          {unpriced.length === 1
+            ? '1 taught lesson has no price'
+            : `${unpriced.length} taught lessons have no price`}{' '}
+          until this student is put on the EMA product they are billed under.
+        </Alert>
+      )}
       {needsOrder.length > 0 && (
         <Alert
           severity="warning"
@@ -397,7 +415,9 @@ export function HopeStudentBilling({
                 label={
                   <Typography variant="body2">
                     {day(entry.lesson.scheduledAt)} ·{' '}
-                    {formatHopePrice(entry.rateCents)}
+                    {entry.rateCents === undefined
+                      ? 'no price'
+                      : formatHopePrice(entry.rateCents)}
                     {entry.state?.kind === 'ready-to-invoice' &&
                       orderLabel(entry.state.orderId) &&
                       ` · ${orderLabel(entry.state.orderId)}`}
@@ -460,7 +480,9 @@ export function HopeStudentBilling({
                   color="textSecondary"
                 >
                   {day(entry.lesson.scheduledAt)} ·{' '}
-                  {formatHopePrice(entry.submission?.rateCents ?? entry.rateCents)}
+                  {formatHopePrice(
+                    entry.submission?.rateCents ?? entry.rateCents ?? 0
+                  )}
                   {entry.submission?.emaReference &&
                     ` · invoice ${entry.submission.emaReference}`}
                 </Typography>

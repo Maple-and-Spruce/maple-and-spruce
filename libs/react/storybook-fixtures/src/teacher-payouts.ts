@@ -9,6 +9,8 @@ export const mockPayoutPrimary: TeacherPayout = {
   teacherName: 'Sarah Miller',
   totalOwedCents: 15000,
   missingRateConfig: false,
+  unpricedHopeLessonCount: 0,
+  unpricedHopePayPendingCount: 0,
   lines: [
     {
       lessonId: 'lesson-001',
@@ -42,7 +44,7 @@ export const mockPayoutPrimary: TeacherPayout = {
       durationMinutes: 45,
       source: 'hope-rendered',
       compensationCents: 5000,
-      baseRevenueCents: 5875,
+      baseRevenueCents: 5500,
       asSubstitute: false,
     },
   ],
@@ -53,6 +55,8 @@ export const mockPayoutSubstitute: TeacherPayout = {
   teacherName: 'James Wilson',
   totalOwedCents: 2400,
   missingRateConfig: false,
+  unpricedHopeLessonCount: 0,
+  unpricedHopePayPendingCount: 0,
   lines: [
     {
       lessonId: 'lesson-sub',
@@ -74,6 +78,8 @@ export const mockPayoutMissingRate: TeacherPayout = {
   teacherName: 'Maria Santos',
   totalOwedCents: 0,
   missingRateConfig: true,
+  unpricedHopeLessonCount: 0,
+  unpricedHopePayPendingCount: 0,
   lines: [
     {
       lessonId: 'lesson-nr',
@@ -89,8 +95,75 @@ export const mockPayoutMissingRate: TeacherPayout = {
   ],
 };
 
+/**
+ * A percentage teacher with one priced Hope lesson and one whose student is on
+ * no EMA product (#83): the unpriced one is listed with no price, and the
+ * teacher's share of it is left out of the total until a product is set.
+ */
+export const mockPayoutUnpricedHope: TeacherPayout = {
+  teacherId: 'instructor-004',
+  teacherName: 'Dana Brooks',
+  totalOwedCents: 1800,
+  missingRateConfig: false,
+  unpricedHopeLessonCount: 1,
+  unpricedHopePayPendingCount: 1,
+  lines: [
+    {
+      lessonId: 'lesson-hope-priced',
+      studentId: 'student-hope-3',
+      studentName: 'Wren Lowell',
+      scheduledAt: new Date('2026-04-16T15:00:00Z'),
+      durationMinutes: 30,
+      source: 'hope-rendered',
+      compensationCents: 1800,
+      baseRevenueCents: 3000,
+      asSubstitute: false,
+    },
+    {
+      lessonId: 'lesson-hope-unpriced',
+      studentId: 'student-hope-4',
+      studentName: 'Test Student',
+      scheduledAt: new Date('2026-04-09T15:00:00Z'),
+      durationMinutes: 30,
+      source: 'hope-rendered',
+      compensationCents: undefined,
+      baseRevenueCents: undefined,
+      asSubstitute: false,
+    },
+  ],
+};
+
+/**
+ * A flat-rate teacher with an unpriced Hope lesson (#83): flat pay does not
+ * depend on the price, so it is owed and in the total; the lesson is still
+ * flagged because EMA cannot be billed without a product.
+ */
+export const mockPayoutUnpricedHopeFlat: TeacherPayout = {
+  teacherId: 'instructor-005',
+  teacherName: 'Ari Chen',
+  totalOwedCents: 2500,
+  missingRateConfig: false,
+  unpricedHopeLessonCount: 1,
+  unpricedHopePayPendingCount: 0,
+  lines: [
+    {
+      lessonId: 'lesson-hope-unpriced-flat',
+      studentId: 'student-hope-5',
+      studentName: 'Test Student',
+      scheduledAt: new Date('2026-04-08T15:00:00Z'),
+      durationMinutes: 30,
+      source: 'hope-rendered',
+      compensationCents: 2500,
+      baseRevenueCents: undefined,
+      asSubstitute: false,
+    },
+  ],
+};
+
 export const mockTeacherPayouts: TeacherPayout[] = [
   mockPayoutPrimary,
   mockPayoutSubstitute,
   mockPayoutMissingRate,
+  mockPayoutUnpricedHope,
+  mockPayoutUnpricedHopeFlat,
 ];

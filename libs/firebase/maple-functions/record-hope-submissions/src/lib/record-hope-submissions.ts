@@ -14,7 +14,10 @@
  * batch of forty must not lose the other thirty-nine.
  *
  * The rate is stamped at record time. A later rate change must not retroactively
- * restate what EMA was actually told.
+ * restate what EMA was actually told. It comes only from data Katie edits: the
+ * EMA order the lesson is invoiced against, else the rate already on the claim,
+ * else the student's EMA product. A lesson none of those prices is skipped,
+ * never stamped with a guess (#83).
  */
 import {
   Functions,
@@ -163,19 +166,28 @@ export const recordHopeSubmissions = Functions.endpoint
           }
         }
 
+        // Keep the rate the claim was originally made at; only stamp a new
+        // one when there was nothing claimed before.
+        const rateCents =
+          orderPriceCents ??
+          existing?.rateCents ??
+          resolveHopeLessonRate(student, await productsById()).rateCents;
+        if (rateCents === undefined) {
+          skipped.push({
+            lessonId,
+            reason:
+              'This lesson has no price. Put the student on an EMA product first.',
+          });
+          continue;
+        }
+
         await HopeSubmissionRepository.record({
           lessonId,
           studentId: lesson.studentId,
           teacherId: lesson.teacherId,
           lessonDate: lesson.scheduledAt,
           status: data.status,
-          // Keep the rate the claim was originally made at; only stamp a new
-          // one when there was nothing claimed before.
-          rateCents:
-            orderPriceCents ??
-            existing?.rateCents ??
-            resolveHopeLessonRate(student, lesson, await productsById())
-              .rateCents,
+          rateCents,
           orderId,
           submittedAt: existing?.submittedAt ?? now,
           paidAt: data.status === 'paid' ? now : existing?.paidAt,

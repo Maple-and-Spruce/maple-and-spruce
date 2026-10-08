@@ -582,7 +582,6 @@ export default function StudentDetailPage() {
             <HopeScholarshipBanner
               hopeProductId={student.hopeProductId}
               products={hopeProducts}
-              registeredLessonLength={student.registeredLessonLength}
               onChooseProduct={() => setEditStudentOpen(true)}
             />
           )}

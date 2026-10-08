@@ -68,8 +68,8 @@ export interface Student {
   isHopeScholarship: boolean;
   /**
    * The EMA portal product this Hope student's lessons are billed under
-   * (`HopeProduct.id`). Sets what each lesson is worth; unset means the price
-   * shown is only an estimate from the old length table.
+   * (`HopeProduct.id`). Sets what each lesson is worth; unset means the
+   * lessons have no price until one is chosen (nothing in code stands in).
    */
   hopeProductId?: string;
   /** Parent/guardian for minors; student themselves for adults */

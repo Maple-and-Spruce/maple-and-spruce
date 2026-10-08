@@ -77,6 +77,17 @@ const hopeStudent = {
   name: 'Rowan',
   isHopeScholarship: true,
   registeredLessonLength: '30-min-full',
+  hopeProductId: 'prod-1',
+};
+
+// The student's EMA product. Prices come only from data like this, edited on
+// the Hope Billing page, never from a table in code.
+const violin30 = {
+  id: 'prod-1',
+  emaProductId: '103772',
+  name: 'Suzuki Violin Lesson - 30 min',
+  priceCents: 3250,
+  active: true,
 };
 
 beforeEach(() => {
@@ -97,12 +108,13 @@ beforeEach(() => {
     },
   ]);
   mocks.findStudent.mockResolvedValue(hopeStudent);
+  mocks.findProducts.mockResolvedValue([violin30]);
   mocks.findSubmission.mockResolvedValue(undefined);
   mocks.record.mockResolvedValue(undefined);
 });
 
 describe('recordHopeSubmissions', () => {
-  it('records a claim for a rendered Hope lesson at the tier rate', async () => {
+  it("records a claim for a rendered Hope lesson at its order's price", async () => {
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'submitted' },
       { uid: 'admin-1' }
@@ -114,7 +126,7 @@ describe('recordHopeSubmissions', () => {
     expect(payload).toMatchObject({
       lessonId: 'lesson-1',
       status: 'submitted',
-      rateCents: 4125, // 30-min-full
+      rateCents: 4125, // order-1's price
       recordedByUid: 'admin-1',
     });
   });
@@ -172,6 +184,103 @@ describe('recordHopeSubmissions', () => {
 
     const [payload] = mocks.record.mock.calls[0];
     expect(payload.rateCents).toBe(3000);
+  });
+
+  describe('a student on no EMA product (#83)', () => {
+    beforeEach(() => {
+      mocks.findStudent.mockResolvedValue({
+        ...hopeStudent,
+        hopeProductId: undefined,
+      });
+    });
+
+    it('skips the claim rather than stamping a guessed price', async () => {
+      // Marking paid with no order and no product: nothing prices the lesson.
+      // Before, the length table stamped $41.25 here.
+      mocks.findOrders.mockResolvedValue([]);
+
+      const result = await handler(
+        { lessonIds: ['lesson-1'], status: 'paid' },
+        { uid: 'admin-1' }
+      );
+
+      expect(mocks.record).not.toHaveBeenCalled();
+      expect(result.recordedLessonIds).toEqual([]);
+      expect(result.skipped).toEqual([
+        {
+          lessonId: 'lesson-1',
+          reason:
+            'This lesson has no price. Put the student on an EMA product first.',
+        },
+      ]);
+    });
+
+    it('treats a product id that no longer resolves as no product', async () => {
+      mocks.findOrders.mockResolvedValue([]);
+      mocks.findStudent.mockResolvedValue({
+        ...hopeStudent,
+        hopeProductId: 'deleted-product',
+      });
+
+      const result = await handler(
+        { lessonIds: ['lesson-1'], status: 'rejected' },
+        { uid: 'admin-1' }
+      );
+
+      expect(mocks.record).not.toHaveBeenCalled();
+      expect(result.skipped[0].reason).toMatch(/EMA product first/);
+    });
+
+    it('still invoices against an order, which carries its own price', async () => {
+      const result = await handler(
+        { lessonIds: ['lesson-1'], status: 'submitted' },
+        { uid: 'admin-1' }
+      );
+
+      expect(result.recordedLessonIds).toEqual(['lesson-1']);
+      expect(mocks.record.mock.calls[0][0].rateCents).toBe(4125);
+    });
+
+    it('still updates an existing claim at the rate it was stamped at', async () => {
+      mocks.findOrders.mockResolvedValue([]);
+      mocks.findSubmission.mockResolvedValue({
+        lessonId: 'lesson-1',
+        rateCents: 3250,
+        submittedAt: new Date('2026-08-05T00:00:00Z'),
+        status: 'submitted',
+      });
+
+      const result = await handler(
+        { lessonIds: ['lesson-1'], status: 'paid' },
+        { uid: 'admin-1' }
+      );
+
+      expect(result.recordedLessonIds).toEqual(['lesson-1']);
+      expect(mocks.record.mock.calls[0][0].rateCents).toBe(3250);
+    });
+
+    it('skips only the unpriced lessons in a batch', async () => {
+      mocks.findOrders.mockResolvedValue([]);
+      mocks.findLesson.mockImplementation(async (id: string) => ({
+        ...renderedLesson,
+        id,
+        studentId: id === 'lesson-priced' ? 'student-2' : 'student-1',
+      }));
+      mocks.findStudent.mockImplementation(async (id: string) =>
+        id === 'student-2'
+          ? { ...hopeStudent, id }
+          : { ...hopeStudent, hopeProductId: undefined }
+      );
+
+      const result = await handler(
+        { lessonIds: ['lesson-priced', 'lesson-unpriced'], status: 'paid' },
+        { uid: 'admin-1' }
+      );
+
+      expect(result.recordedLessonIds).toEqual(['lesson-priced']);
+      expect(result.skipped.map((s) => s.lessonId)).toEqual(['lesson-unpriced']);
+      expect(mocks.record.mock.calls[0][0].rateCents).toBe(3250);
+    });
   });
 
   it('refuses to claim a no-show — Hope pays only for services rendered', async () => {

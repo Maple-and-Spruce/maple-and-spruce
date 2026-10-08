@@ -11,8 +11,7 @@
  * Katie keeps this list in step with the portal from the Hope Billing page, and
  * each Hope student is put on the product their award is billed under.
  */
-import type { LessonLength, Student } from './student';
-import { HOPE_PER_LESSON_RATE_CENTS } from './hope-rates';
+import type { Student } from './student';
 
 export interface HopeProduct {
   id: string;
@@ -37,38 +36,38 @@ export type SaveHopeProductInput = Omit<
 };
 
 /**
- * Where a Hope lesson's price came from. `estimate` means the student is not on
- * a product yet, so the old length table stood in; screens say so rather than
- * presenting a guess as what EMA will pay.
+ * Where a Hope lesson's price came from. `unpriced` means the student is on no
+ * EMA product (or on one that no longer exists), so the lesson has no price at
+ * all. There is deliberately no fallback: a guessed number shown as a price is
+ * how a $30 lesson came to be shown, claimed and paid out as $41.25.
  */
-export type HopeRateSource = 'product' | 'estimate';
+export type HopeRateSource = 'product' | 'unpriced';
 
-export interface HopeLessonRate {
-  rateCents: number;
-  source: HopeRateSource;
-  /** The product the rate came from, when it came from one. */
-  product?: HopeProduct;
-}
-
-/** The legacy tier for a lesson with no registered length. */
-function tierForDuration(durationMinutes: number): LessonLength {
-  if (durationMinutes >= 60) return '60-min';
-  if (durationMinutes >= 45) return '45-min';
-  return '30-min-full';
-}
+export type HopeLessonRate =
+  | {
+      source: 'product';
+      rateCents: number;
+      /** The product the rate came from. */
+      product: HopeProduct;
+    }
+  | {
+      source: 'unpriced';
+      rateCents?: undefined;
+      product?: undefined;
+    };
 
 /**
  * What one of this student's Hope lessons is worth.
  *
  * The student's EMA product when they have one (active or not: a retired
- * product still describes what past lessons were billed at). Otherwise the old
- * length table, marked as an estimate. One definition, used by the queue, the
- * claim stamp and teacher payouts, which each had their own copy of the
- * length fallback.
+ * product still describes what past lessons were billed at). Otherwise the
+ * lesson is `unpriced`, and every caller (the queue, the claim stamp, teacher
+ * payouts) says so instead of inventing a number. Prices live only in data
+ * Katie can edit: the products on the Hope Billing page and the price stamped
+ * on each EMA order.
  */
 export function resolveHopeLessonRate(
-  student: Pick<Student, 'hopeProductId' | 'registeredLessonLength'>,
-  lesson: { durationMinutes: number },
+  student: Pick<Student, 'hopeProductId'>,
   productsById: ReadonlyMap<string, HopeProduct>
 ): HopeLessonRate {
   const product = student.hopeProductId
@@ -77,9 +76,7 @@ export function resolveHopeLessonRate(
   if (product) {
     return { rateCents: product.priceCents, source: 'product', product };
   }
-  const tier =
-    student.registeredLessonLength ?? tierForDuration(lesson.durationMinutes);
-  return { rateCents: HOPE_PER_LESSON_RATE_CENTS[tier], source: 'estimate' };
+  return { source: 'unpriced' };
 }
 
 /** "$32.50", for product prices. */

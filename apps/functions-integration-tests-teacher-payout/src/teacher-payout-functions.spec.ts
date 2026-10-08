@@ -40,6 +40,8 @@ import type {
 // Lessons scheduledAt below are computed from this same `now` for the
 // same reason.
 const NOW = new Date();
+const HOPE_PRODUCT_ID = 'prod-test-guitar-45';
+const HOPE_PRODUCT_PRICE_CENTS = 5500;
 const FROM = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
 const TO = new Date(
   Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() + 1, 0, 23, 59, 59, 999),
@@ -84,6 +86,7 @@ describe('payouts/getTeacherPayouts integration', () => {
   let substituteTeacherId: string;
   let privateStudentId: string;
   let hopeStudentId: string;
+  let unpricedHopeStudentId: string;
 
   beforeAll(async () => {
     await clearAuthEmulator();
@@ -156,7 +159,19 @@ describe('payouts/getTeacherPayouts integration', () => {
     });
     privateStudentId = priv.data!.student.id;
 
-    // Hope student — 45-min tier
+    // The EMA product the Hope student is billed under. Hope prices come only
+    // from products like this (edited on the Hope Billing page), never from a
+    // table in code (#83).
+    await setFirestoreDoc('hopeProducts', HOPE_PRODUCT_ID, {
+      emaProductId: '900001',
+      name: 'Test Guitar Lesson - 45 min',
+      priceCents: HOPE_PRODUCT_PRICE_CENTS,
+      active: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Hope student on that product
     const hope = await callFunction<
       CreateStudentRequest,
       CreateStudentResponse
@@ -169,6 +184,7 @@ describe('payouts/getTeacherPayouts integration', () => {
         primaryTeacherId,
         isHopeScholarship: true,
         registeredLessonLength: '45-min',
+        hopeProductId: HOPE_PRODUCT_ID,
         primaryContactName: 'Hope Parent',
         primaryContactEmail: 'hope@test.com',
         status: 'active',
@@ -176,6 +192,27 @@ describe('payouts/getTeacherPayouts integration', () => {
       idToken: adminUser.idToken,
     });
     hopeStudentId = hope.data!.student.id;
+
+    // Hope student on NO product: their lessons have no price at all.
+    const unpriced = await callFunction<
+      CreateStudentRequest,
+      CreateStudentResponse
+    >({
+      functionName: 'createStudent',
+      data: {
+        name: 'Unpriced Hope Kid',
+        instrument: 'violin',
+        isAdultStudent: false,
+        primaryTeacherId,
+        isHopeScholarship: true,
+        registeredLessonLength: '30-min-full',
+        primaryContactName: 'Unpriced Parent',
+        primaryContactEmail: 'unpriced@test.com',
+        status: 'active',
+      },
+      idToken: adminUser.idToken,
+    });
+    unpricedHopeStudentId = unpriced.data!.student.id;
   });
 
   afterAll(async () => {
@@ -316,6 +353,29 @@ describe('payouts/getTeacherPayouts integration', () => {
         idToken: adminUser.idToken,
       });
 
+      // A taught lesson for the Hope student on no product.
+      const unpricedLesson = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'createLesson',
+        data: {
+          studentId: unpricedHopeStudentId,
+          teacherId: primaryTeacherId,
+          scheduledAt: dayInCurrentMonth(12),
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(primaryTeacherId, dayInCurrentMonth(12)),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(unpricedLesson.status).toBe(200);
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'updateLesson',
+        data: { id: unpricedLesson.data!.lesson.id, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+
       // A Hope lesson still to come. A past one counts without being marked
       // (#157), so this has to be genuinely in the future, and the query below
       // reaches far enough to include it — otherwise "not paid" would be
@@ -360,17 +420,32 @@ describe('payouts/getTeacherPayouts integration', () => {
       const primary = payouts.find((p) => p.teacherId === primaryTeacherId);
       const sub = payouts.find((p) => p.teacherId === substituteTeacherId);
 
-      // Primary: 2 private-paid (flat $50 each = $100) + 1 Hope rendered
-      //   (45-min tier = $58.75, percentage N/A for flat rate).
+      // Primary: 2 private-paid (flat $50 each = $100) + 1 priced Hope
+      //   rendered (the student's EMA product, $55; percentage N/A for flat).
       //   Primary is FLAT — $50 per lesson regardless of base revenue.
-      //   So total: 2 private @ $50 + 1 Hope @ $50 = $150 = 15000c
+      //   The unpriced Hope lesson has no price, but flat pay never depended
+      //   on one, so it is owed too (flagged as needing a product).
+      //   So total: 2 private @ $50 + 2 Hope @ $50 = $200 = 20000c
       expect(primary).toBeDefined();
-      expect(primary!.totalOwedCents).toBe(15000);
-      expect(primary!.lines).toHaveLength(3);
+      expect(primary!.totalOwedCents).toBe(20000);
+      expect(primary!.lines).toHaveLength(4);
       // Hope-rendered should NOT be flagged asSubstitute (same teacher as primary).
-      expect(
-        primary!.lines.filter((l) => l.source === 'hope-rendered'),
-      ).toHaveLength(1);
+      const hopeLines = primary!.lines.filter(
+        (l) => l.source === 'hope-rendered',
+      );
+      expect(hopeLines).toHaveLength(2);
+      const pricedHope = hopeLines.find((l) => l.studentId === hopeStudentId);
+      expect(pricedHope?.baseRevenueCents).toBe(HOPE_PRODUCT_PRICE_CENTS);
+      expect(pricedHope?.compensationCents).toBe(5000);
+      // No product, no price: not $41.25 from a length table, not anything.
+      const unpricedHope = hopeLines.find(
+        (l) => l.studentId === unpricedHopeStudentId,
+      );
+      expect(unpricedHope?.baseRevenueCents).toBeUndefined();
+      expect(unpricedHope?.compensationCents).toBe(5000);
+      expect(primary!.unpricedHopeLessonCount).toBe(1);
+      expect(primary!.unpricedHopePayPendingCount).toBe(0);
+      expect(primary!.missingRateConfig).toBe(false);
 
       // Substitute: 1 private-paid line @ 60% × $40 = $24 = 2400c
       //   flagged asSubstitute because teacherId !== snapshot primaryTeacherId.

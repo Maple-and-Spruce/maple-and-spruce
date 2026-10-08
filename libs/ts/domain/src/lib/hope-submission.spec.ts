@@ -49,6 +49,7 @@ function entry(
     studentName: 'Rowan',
     registeredLessonLength: '30-min-full',
     rateCents: 4125,
+    rateSource: 'product',
     ...overrides,
   };
 }
@@ -149,7 +150,46 @@ describe('summarizeHopeQueue', () => {
       readyCents: 0,
       invoicedCount: 0,
       invoicedCents: 0,
+      unpricedCount: 0,
     });
+  });
+
+  it('counts a lesson with no EMA product but adds nothing to any total', () => {
+    // No product means no price. It is still a lesson Hope owes for, so it is
+    // counted, but a made-up figure must never reach the money on screen.
+    const unpriced = entry({ rateCents: undefined, rateSource: 'unpriced' });
+    const totals = summarizeHopeQueue([unpriced, entry({ rateCents: 3000 })]);
+
+    expect(totals.unpricedCount).toBe(1);
+    expect(totals.awaitingCount).toBe(2);
+    expect(totals.awaitingCents).toBe(3000);
+    expect(totals.needsOrderCount).toBe(2);
+    expect(totals.needsOrderCents).toBe(3000);
+  });
+
+  it('values a rejected claim at its stamped rate when the student has no product now', () => {
+    const totals = summarizeHopeQueue([
+      entry({
+        rateCents: undefined,
+        rateSource: 'unpriced',
+        submission: submission('rejected', 3250),
+      }),
+    ]);
+    expect(totals.unpricedCount).toBe(0);
+    expect(totals.awaitingCents).toBe(3250);
+  });
+
+  it('never counts an invoiced lesson as unpriced: its claim carries the price', () => {
+    const totals = summarizeHopeQueue([
+      entry({
+        rateCents: undefined,
+        rateSource: 'unpriced',
+        submission: submission('paid', 3250),
+      }),
+    ]);
+    expect(totals.unpricedCount).toBe(0);
+    expect(totals.paidCents).toBe(3250);
+    expect(totals.invoicedCents).toBe(3250);
   });
 
   it('splits lessons into needs an order, ready to invoice and invoiced', () => {
@@ -157,6 +197,7 @@ describe('summarizeHopeQueue', () => {
       studentId: 's',
       studentName: 'Test Student',
       rateCents: 3250,
+      rateSource: 'product' as const,
     };
     const lesson = (id: string) => ({ id } as never);
     const totals = summarizeHopeQueue([

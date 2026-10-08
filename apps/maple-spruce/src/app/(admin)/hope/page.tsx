@@ -186,6 +186,18 @@ export default function HopePage() {
                   </Typography>
                 </Box>
               </Stack>
+              {totals.unpricedCount > 0 && (
+                // Prices come only from EMA products; a student on none has
+                // lessons with no price, which none of the totals above count.
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                  {totals.unpricedCount === 1
+                    ? '1 taught lesson has no price'
+                    : `${totals.unpricedCount} taught lessons have no price`}{' '}
+                  because the student is on no EMA product. Unpriced lessons are
+                  left out of the totals above; set the product on the
+                  student&apos;s page.
+                </Alert>
+              )}
               {withWork.length === 0 && (
                 <Alert severity="info">
                   No taught Hope lessons or EMA orders yet.

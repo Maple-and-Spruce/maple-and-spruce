@@ -6,6 +6,27 @@
 
 ## Current Status
 
+### Hope prices come only from EMA products (2026-10-08, #83 part 3)
+
+The hardcoded length table (`HOPE_PER_LESSON_RATE_CENTS` / `HOPE_MONTHLY_EQUIVALENT_CENTS`)
+is gone. `resolveHopeLessonRate(student, productsById)` returns the product price or
+`{ source: 'unpriced' }`; nothing in code stands in. A Hope student on no product (or a
+product id that no longer resolves):
+- **Hope queue**: entry has no `rateCents`, `rateSource: 'unpriced'`; counted in the lesson
+  counts but in no cents total; `totals.unpricedCount` drives a warning on the Hope Billing page
+  and in `HopeStudentBilling`. Ready-to-invoice lessons are still priced from their order.
+- **recordHopeSubmissions**: rate is order price ?? existing claim rate ?? product price; if none,
+  the lesson is skipped ("Put the student on an EMA product first"), never stamped.
+- **Teacher payouts**: the line is listed with `baseRevenueCents` undefined and counted in
+  `unpricedHopeLessonCount`. Flat and hourly teachers are still paid for it (their pay never
+  depended on the price); a percentage teacher's share stays undefined, out of `totalOwedCents`,
+  and is counted in `unpricedHopePayPendingCount`. `TeacherPayoutsList` shows "N Hope lessons
+  unpriced", "Needs EMA product", and a warning worded for whether pay is held.
+  `missingRateConfig` now comes from the teacher, not the lines.
+- **HopeScholarshipBanner**: warning, no dollar figure. `registeredLessonLength` prop removed.
+- `formatCents` moved to `libs/react/lessons/src/lib/format-cents.ts`.
+
+
 ### Lessons the way Katie runs them (2026-10-04 – 10-05, epic #156, ADR-034)
 
 Katie has about five minutes at the end of a lesson, one in four, to book the next four lessons
@@ -213,7 +234,8 @@ website, the EMA products and the table also disagree with each other (see PR).
   Hope Billing page ("EMA products"); `Student.hopeProductId` set in the form.
 - `resolveHopeLessonRate(student, lesson, productsById)` is the one rate
   definition: product price, else the old table as an `estimate` (flagged in the
-  queue and the banner). Replaces three copies of the length fallback in
+  queue and the banner). (Superseded 2026-10-08: the table is gone and the
+  fallback is `unpriced`.) Replaces three copies of the length fallback in
   getHopeQueue, recordHopeSubmissions and teacher payouts.
 - New `hope` router (function count 239 → 240); the old rates table component
   is gone; the Hope banner is compact with rules folded away.

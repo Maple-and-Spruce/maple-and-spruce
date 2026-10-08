@@ -865,7 +865,9 @@ describe('Lesson Functions', () => {
       hopeStudentId = res.data!.student.id;
     });
 
-    it('lists a rendered Hope lesson as awaiting submission, priced at the tier rate', async () => {
+    // This student is on no EMA product. Before #83 part 3 the lesson was
+    // priced at $41.25 from a length table in code; now it has no price.
+    it('lists a rendered Hope lesson as awaiting submission, with no price until a product is set', async () => {
       const lessonId = await hopeLesson('rendered');
 
       const queue = await callFunction<
@@ -880,9 +882,32 @@ describe('Lesson Functions', () => {
       expect(queue.status).toBe(200);
       const found = queue.data!.entries.find((e) => e.lesson.id === lessonId);
       expect(found).toBeTruthy();
-      expect(found?.rateCents).toBe(4125);
+      expect(found?.rateCents).toBeUndefined();
+      expect(found?.rateSource).toBe('unpriced');
       expect(found?.submission).toBeUndefined();
       expect(queue.data!.totals.awaitingCount).toBeGreaterThan(0);
+      expect(queue.data!.totals.unpricedCount).toBeGreaterThan(0);
+      // Counted, never valued: nothing in this queue has a price yet.
+      expect(queue.data!.totals.awaitingCents).toBe(0);
+    });
+
+    it('will not stamp a made-up price on a claim for a student on no product', async () => {
+      const lessonId = await hopeLesson('rendered');
+
+      // Marking paid needs no order, so only a product could price it.
+      const result = await callFunction<
+        RecordHopeSubmissionsRequest,
+        RecordHopeSubmissionsResponse
+      >({
+        functionName: 'recordHopeSubmissions',
+        data: { lessonIds: [lessonId], status: 'paid' },
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.data!.recordedLessonIds).toEqual([]);
+      expect(result.data!.skipped[0].reason).toMatch(/EMA product first/);
+      expect(await getFirestoreDoc('hopeSubmissions', lessonId)).toBeFalsy();
     });
 
     it('never lists a no-show — Hope pays only for services rendered', async () => {

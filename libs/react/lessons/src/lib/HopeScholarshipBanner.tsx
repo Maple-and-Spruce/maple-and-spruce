@@ -8,9 +8,9 @@
  * fixed (ESP Handbook, legacy #282) and read once, so they fold away instead of
  * taking up the top of every Hope student's page.
  *
- * With no product set the price shown is only the old length-table estimate,
- * and the banner says so plainly, because an estimate that looks like a fact
- * is how a $30 lesson came to be shown as $41.25.
+ * With no product set there is no price at all, and the banner says so
+ * plainly instead of showing a figure: an estimate that looked like a fact is
+ * how a $30 lesson came to be shown as $41.25 (#83).
  */
 import { useState } from 'react';
 import {
@@ -25,7 +25,7 @@ import {
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StarsIcon from '@mui/icons-material/Stars';
-import type { HopeProduct, LessonLength } from '@maple/ts/domain';
+import type { HopeProduct } from '@maple/ts/domain';
 import { formatHopePrice, resolveHopeLessonRate } from '@maple/ts/domain';
 
 export interface HopeScholarshipBannerProps {
@@ -33,8 +33,6 @@ export interface HopeScholarshipBannerProps {
   hopeProductId?: string;
   /** Every EMA product, to look the student's up. */
   products?: HopeProduct[];
-  /** Used only for the estimate when no product is set. */
-  registeredLessonLength?: LessonLength;
   /** Open the student form to choose a product. */
   onChooseProduct?: () => void;
   /** Default expanded state for the billing rules. Defaults to collapsed. */
@@ -44,14 +42,12 @@ export interface HopeScholarshipBannerProps {
 export function HopeScholarshipBanner({
   hopeProductId,
   products = [],
-  registeredLessonLength,
   onChooseProduct,
   defaultRulesExpanded = false,
 }: HopeScholarshipBannerProps) {
   const [rulesOpen, setRulesOpen] = useState(defaultRulesExpanded);
   const rate = resolveHopeLessonRate(
-    { hopeProductId, registeredLessonLength },
-    { durationMinutes: 30 },
+    { hopeProductId },
     new Map(products.map((p) => [p.id, p]))
   );
 
@@ -67,7 +63,7 @@ export function HopeScholarshipBanner({
         No-shows are never billed.
       </Typography>
 
-      {rate.product ? (
+      {rate.source === 'product' ? (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
           <Chip
             size="small"
@@ -83,10 +79,9 @@ export function HopeScholarshipBanner({
       ) : (
         <Box sx={{ mb: 1 }}>
           <Typography variant="body2">
-            <strong>No EMA product set.</strong>{' '}
-            {formatHopePrice(rate.rateCents)} / lesson is only an estimate; set
-            the product this student is billed under so lessons are priced at
-            what EMA pays.
+            <strong>No EMA product set.</strong> This student&apos;s lessons
+            have no price until you choose the product they are billed under,
+            and teacher pay leaves them out until then.
           </Typography>
           {onChooseProduct && (
             <Button size="small" onClick={onChooseProduct} sx={{ mt: 0.5 }}>

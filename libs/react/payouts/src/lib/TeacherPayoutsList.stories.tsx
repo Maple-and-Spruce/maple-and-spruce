@@ -6,6 +6,8 @@ import {
   mockPayoutPrimary,
   mockPayoutSubstitute,
   mockPayoutMissingRate,
+  mockPayoutUnpricedHope,
+  mockPayoutUnpricedHopeFlat,
 } from '@maple/react/storybook-fixtures';
 import type { RequestState, TeacherPayout } from '@maple/ts/domain';
 
@@ -134,6 +136,87 @@ export const MissingRateConfigBadge: Story = {
     await waitFor(() => {
       expect(canvas.getByText(/rate not set/i)).toBeInTheDocument();
     });
+  },
+};
+
+/**
+ * A Hope student on no EMA product (#83), percentage teacher: the lesson is
+ * listed, marked as needing a product, and the share is left out of the total
+ * rather than guessed at.
+ */
+export const UnpricedHopeLessonFlagged: Story = {
+  args: {
+    payoutsState: {
+      status: 'success',
+      data: [mockPayoutUnpricedHope],
+    } as RequestState<TeacherPayout[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const summary = canvas.getByRole('button', {
+      name: new RegExp(mockPayoutUnpricedHope.teacherName),
+    });
+    // The flag is on the summary, so it shows without expanding.
+    await expect(
+      within(summary).getByText('1 Hope lesson unpriced')
+    ).toBeInTheDocument();
+    // Only the priced lesson is in the total: $18.00, not $36.00.
+    await expect(within(summary).getByText('$18.00')).toBeInTheDocument();
+    await expect(canvas.queryByText('$36.00')).toBeNull();
+    // A pay-rate problem is a different thing and is not claimed here.
+    await expect(canvas.queryByText(/rate not set/i)).toBeNull();
+
+    await userEvent.click(summary);
+    await waitFor(() => {
+      expect(canvas.getByText(/1 Hope lesson has no price/)).toBeInTheDocument();
+    });
+    await expect(canvas.getByText(/share is not in the total yet/)).toBeInTheDocument();
+    const rows = canvas.getAllByRole('row');
+    const unpricedRow = rows.find((r) => within(r).queryByText('Test Student'));
+    await expect(unpricedRow).toBeDefined();
+    await expect(
+      within(unpricedRow as HTMLElement).getByText('Needs EMA product')
+    ).toBeInTheDocument();
+    await expect(within(unpricedRow as HTMLElement).getByText('—')).toBeInTheDocument();
+    // The priced line still shows its product price.
+    await expect(canvas.getByText('$30.00')).toBeInTheDocument();
+  },
+};
+
+/**
+ * Flat-rate teacher, unpriced Hope lesson (#83): pay is owed and in the total,
+ * and the lesson is still flagged as needing a product. The warning must not
+ * say pay is held back, because it isn't.
+ */
+export const UnpricedHopeLessonFlatRatePaid: Story = {
+  args: {
+    payoutsState: {
+      status: 'success',
+      data: [mockPayoutUnpricedHopeFlat],
+    } as RequestState<TeacherPayout[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const summary = canvas.getByRole('button', {
+      name: new RegExp(mockPayoutUnpricedHopeFlat.teacherName),
+    });
+    await expect(
+      within(summary).getByText('1 Hope lesson unpriced')
+    ).toBeInTheDocument();
+    await expect(within(summary).getByText('$25.00')).toBeInTheDocument();
+
+    await userEvent.click(summary);
+    await waitFor(() => {
+      expect(canvas.getByText(/Pay for it is included/)).toBeInTheDocument();
+    });
+    await expect(canvas.queryByText(/not in the total/)).toBeNull();
+    const row = canvas
+      .getAllByRole('row')
+      .find((r) => within(r).queryByText('Test Student'));
+    await expect(
+      within(row as HTMLElement).getByText('Needs EMA product')
+    ).toBeInTheDocument();
+    await expect(within(row as HTMLElement).getByText('$25.00')).toBeInTheDocument();
   },
 };
 

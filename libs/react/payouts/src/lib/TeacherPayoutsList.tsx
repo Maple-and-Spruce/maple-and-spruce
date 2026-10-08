@@ -65,6 +65,36 @@ function SourceChip({ source }: { source: TeacherPayout['lines'][number]['source
   );
 }
 
+function lessons(n: number): string {
+  return n === 1 ? '1 Hope lesson' : `${n} Hope lessons`;
+}
+
+/** Says what an unpriced Hope lesson means for this teacher's pay, exactly. */
+function unpricedHopeMessage(
+  payout: Pick<
+    TeacherPayout,
+    'unpricedHopeLessonCount' | 'unpricedHopePayPendingCount'
+  >
+): string {
+  const total = payout.unpricedHopeLessonCount;
+  const pending = payout.unpricedHopePayPendingCount;
+  const has = total === 1 ? 'has' : 'have';
+  const fix = 'Set the student’s EMA product';
+  if (pending === 0) {
+    return `${lessons(total)} ${has} no price because the student is on no EMA product. Pay for ${
+      total === 1 ? 'it is' : 'them is'
+    } included (it does not depend on the price), but EMA cannot be billed until a product is set. ${fix}.`;
+  }
+  if (pending === total) {
+    return `${lessons(total)} ${has} no price because the student is on no EMA product, so the teacher’s share is not in the total yet. ${fix} to include ${
+      total === 1 ? 'it' : 'them'
+    }.`;
+  }
+  return `${lessons(total)} ${has} no price because the student is on no EMA product. Pay for ${lessons(
+    pending
+  )} is not in the total yet. ${fix} to include ${pending === 1 ? 'it' : 'them'}.`;
+}
+
 export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -140,9 +170,28 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
                     variant="outlined"
                   />
                 )}
+                {payout.unpricedHopeLessonCount > 0 && (
+                  <Chip
+                    size="small"
+                    icon={<WarningAmberIcon />}
+                    label={`${payout.unpricedHopeLessonCount} Hope lesson${
+                      payout.unpricedHopeLessonCount === 1 ? '' : 's'
+                    } unpriced`}
+                    color="warning"
+                    variant="outlined"
+                  />
+                )}
               </Stack>
             </AccordionSummary>
             <AccordionDetails>
+              {payout.unpricedHopeLessonCount > 0 && (
+                // Listed, never guessed at. Whether pay waits depends on the
+                // teacher: a percentage share of no price is unknown, flat
+                // and hourly pay is owed as usual.
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  {unpricedHopeMessage(payout)}
+                </Alert>
+              )}
               <TableContainer>
                 <Table size="small" aria-label={`${payout.teacherName} payout lines`}>
                   <TableHead>
@@ -179,7 +228,16 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
                           <SourceChip source={line.source} />
                         </TableCell>
                         <TableCell align="right">
-                          {formatCents(line.baseRevenueCents)}
+                          {line.baseRevenueCents === undefined ? (
+                            <Chip
+                              size="small"
+                              label="Needs EMA product"
+                              color="warning"
+                              variant="outlined"
+                            />
+                          ) : (
+                            formatCents(line.baseRevenueCents)
+                          )}
                         </TableCell>
                         <TableCell align="right">
                           {line.compensationCents === undefined
