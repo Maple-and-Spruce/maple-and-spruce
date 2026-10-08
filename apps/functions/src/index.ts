@@ -38,6 +38,8 @@ export { payouts } from '@maple/firebase/maple-functions/payouts';
 export { hope } from '@maple/firebase/maple-functions/hope';
 export { settings } from '@maple/firebase/maple-functions/settings';
 export { discounts } from '@maple/firebase/maple-functions/discounts';
+// Agreements domain router: templates, requests, signed agreements (ADR-029, #66).
+export { agreements } from '@maple/firebase/maple-functions/agreements';
 export { products } from '@maple/firebase/maple-functions/products';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 

@@ -17,6 +17,7 @@
     "never breaks the matrix — it just packs a little less well until measured."
   ],
   "weights": {
+    "agreements": 3,
     "artist": 13,
     "calendar": 26,
     "category": 18,
