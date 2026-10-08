@@ -164,6 +164,17 @@ const CASES: MatrixCase[] = [
   // Artist consignment payouts and the lesson-teacher report moved onto the
   // same router; a lesson teacher must not read what other teachers are owed.
   { as: 'nathan', functionName: 'payouts/getArtistPayouts', expect: 403 },
+  // Agreements moved onto a router (#66), admin-only on every route. Signed
+  // agreements hold signatures and guardian details, so the clerk/teacher
+  // union must not read them.
+  { as: 'nathan', functionName: 'agreements/getAgreementTemplates', expect: 403 },
+  { as: 'nathan', functionName: 'agreements/getSignedAgreements', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'agreements/sendAgreementRequest',
+    data: { templateId: 'irrelevant', signerEmail: 'a@example.com', signerName: 'A' },
+    expect: 403,
+  },
   {
     as: 'nathan',
     functionName: 'payouts/generateArtistPayout',
@@ -197,6 +208,7 @@ const CASES: MatrixCase[] = [
   // ── Admin: unchanged, everything passes (spot checks per group) ───
   { as: 'admin', functionName: 'getMusicTogetherSections', expect: 200 },
   { as: 'admin', functionName: 'products/getProducts', expect: 200 },
+  { as: 'admin', functionName: 'agreements/getAgreementTemplates', expect: 200 },
   { as: 'admin', functionName: 'getLessons', expect: 200 },
   { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'listUsers', expect: 200 },

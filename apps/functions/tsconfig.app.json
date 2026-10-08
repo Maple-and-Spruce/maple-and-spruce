@@ -169,6 +169,7 @@
     "../../libs/firebase/maple-functions/hope/**/*.ts",
     "../../libs/firebase/maple-functions/settings/**/*.ts",
     "../../libs/firebase/maple-functions/discounts/**/*.ts",
+    "../../libs/firebase/maple-functions/agreements/**/*.ts",
     "../../libs/firebase/maple-functions/products/**/*.ts",
     "../../libs/firebase/database/src/**/*.ts",
     "../../libs/firebase/functions/src/**/*.ts",

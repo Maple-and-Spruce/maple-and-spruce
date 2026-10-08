@@ -199,13 +199,19 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `getSales` — retrieve sales with optional filters (artistId, source, date range)
 
 ### Agreements & Waivers
-- `getAgreementTemplates`, `getAgreementTemplate`, `createAgreementTemplate`, `updateAgreementTemplate`, `deleteAgreementTemplate`
-- `getAgreementRequests`, `sendAgreementRequest`, `resendAgreementRequest`
-- `getSignedAgreements`, `getSignedAgreement`
-- `getAgreementForSigning` _(public, token-based)_
-- `submitSignedAgreement` _(public, token-based, 120s timeout)_
-- `getRequiredAgreementsForClass` _(public — returns required-at-checkout templates for a class)_
-- `expireAgreementRequests` _(scheduled — marks expired requests)_
+- `agreements` — **domain router** (ADR-029, #66), admin-only on every route:
+  `agreements/getAgreementTemplates`, `getAgreementTemplate`, `createAgreementTemplate`,
+  `updateAgreementTemplate`, `deleteAgreementTemplate` (archives), `getAgreementRequests`,
+  `sendAgreementRequest`, `resendAgreementRequest`, `getSignedAgreements`, `getSignedAgreement`.
+  The ten per-endpoint originals are **still deployed** until this has been checked on dev;
+  then they are deleted by hand and dropped from the codebase in a follow-up.
+- These four stay their own functions on purpose (see the router's header comment):
+  - `getAgreementForSigning` _(public, token-based; the `/sign/[token]` page)_
+  - `submitSignedAgreement` _(public, token-based, 120s timeout; takes the signature upload)_
+  - `getRequiredAgreementsForClass` _(public — required-at-checkout templates for a class; called
+    by the Webflow registration widget, which swallows its errors, so moving it needs a Webflow
+    publish and care)_
+  - `expireAgreementRequests` _(scheduled — marks expired requests; a schedule can't be a route)_
 
 ### Auth
 - `checkAdminStatus` _(returns `{ isAdmin, isEmployee, role }` — `role` is the highest-privilege role)_

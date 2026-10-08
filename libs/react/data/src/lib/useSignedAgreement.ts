@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { SignedAgreement, RequestState } from '@maple/ts/domain';
 import type {
   GetSignedAgreementRequest,
@@ -24,10 +27,10 @@ export function useSignedAgreement() {
     setDetailState({ status: 'loading' });
     try {
       const functions = getMapleFunctions();
-      const getAgreement = httpsCallable<
+      const getAgreement = httpsCallableFromURL<
         GetSignedAgreementRequest,
         GetSignedAgreementResponse
-      >(functions, 'getSignedAgreement');
+      >(functions, routerCallableUrl('agreements', 'getSignedAgreement'));
       const result = await getAgreement({ id });
       setDetailState({ status: 'success', data: result.data });
     } catch (error) {

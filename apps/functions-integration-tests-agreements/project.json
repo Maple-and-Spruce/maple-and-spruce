@@ -1,0 +1,19 @@
+{
+  "name": "functions-integration-tests-agreements",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-agreements/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-agreements",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "options": {
+        "config": "apps/functions-integration-tests-agreements/vitest.config.ts"
+      }
+    }
+  }
+}
