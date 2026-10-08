@@ -44,16 +44,8 @@
       "public": "public",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
-        { "source": "/getArtists", "function": "getArtists" },
-        { "source": "/getArtist", "function": "getArtist" },
-        { "source": "/createArtist", "function": "createArtist" },
-        { "source": "/updateArtist", "function": "updateArtist" },
-        { "source": "/deleteArtist", "function": "deleteArtist" },
-        { "source": "/getProducts", "function": "getProducts" },
-        { "source": "/getProduct", "function": "getProduct" },
         { "source": "/createProduct", "function": "createProduct" },
         { "source": "/updateProduct", "function": "updateProduct" },
-        { "source": "/deleteProduct", "function": "deleteProduct" },
         { "source": "/uploadArtistImage", "function": "uploadArtistImage" },
         { "source": "/healthCheck", "function": "healthCheck" },
         {

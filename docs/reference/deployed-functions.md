@@ -34,9 +34,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   product writes that call Square (`createProduct`, `updateProduct`, `uploadProductImage`) stay
   in `maple-square`; `uploadCategoryGalleryImage` serves class categories and waits for the
   classes router (#74).
-- The eight per-endpoint originals are **still deployed** so admin tabs loaded before the
-  switch keep working; they are deleted by hand (`firebase functions:delete`), then dropped from
-  the codebase and the count baseline in a follow-up.
+- The eight per-endpoint originals are gone: deleted from dev and prod by hand on 2026-10-08,
+  then removed from the codebase. Their Hosting rewrites in `firebase.json` went with them,
+  along with the five that had pointed at the retired artist functions since #127.
 
 ### Instructors
 - `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`

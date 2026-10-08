@@ -44,8 +44,8 @@
 |---------|--------|-------|----------|
 | Artist CRUD | Complete | legacy #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
 | Square integration | Complete | legacy #69 | `libs/firebase/square/` |
-| Product management | Complete | legacy #3 | `libs/firebase/maple-functions/get-products/`, etc. |
-| Category management | Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
+| Product management | Complete | legacy #3 | `libs/firebase/maple-functions/products/` (router); Square-backed writes in `create-product/`, `update-product/` |
+| Category management | Complete | - | `libs/firebase/maple-functions/products/` (router) |
 
 ## Phase 2 Features (COMPLETE)
 
@@ -440,7 +440,7 @@ Square foundation is complete. Ready for Product Management integration.
 | Category API types | Complete | `libs/ts/firebase/api-types/src/lib/category.types.ts` |
 | Category validation | Complete | `libs/ts/validation/src/lib/category.validation.ts` |
 | CategoryRepository | Complete | `libs/firebase/database/src/lib/category.repository.ts` |
-| Cloud Functions (4) | Complete | getCategories, createCategory, updateCategory, deleteCategory |
+| Cloud Functions | Complete | `products/*` routes: getCategories, createCategory, updateCategory, reorderCategories, deleteCategory |
 | useCategories hook | Complete | `apps/maple-spruce/src/hooks/useCategories.ts` |
 | Categories page | Complete | `/categories` with full CRUD UI |
 | ProductForm dropdown | Complete | Category selection in product form |
