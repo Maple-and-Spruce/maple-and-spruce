@@ -6,6 +6,34 @@
 
 ## Current Status
 
+### Dependency refresh 1/5: patches, fresh lockfile (2026-10-08)
+
+The first of five dependency PRs. The rest: Functions on Node 24, vitest 5, firebase JS SDK 13,
+Next 16.4. TypeScript 7 waits: typescript-eslint and the Nx TypeScript plugin still need the
+compiler API, which 7.0 doesn't ship.
+
+- **next 16.3.7 → 16.3.8** clears a high advisory (GHSA-cjq9-62q9-8jv4) that failed the audit
+  gate. `apps/maple-spruce/package.json` carries its own `next` pin (Vercel installs from it), so
+  bump both, or `pnpm audit` keeps reporting the old one.
+- nx/@nx 23.3.0. The only migrations in 23.3 are the Cypress 16 set (not used) and the
+  optional vitest 5 bundle, which was declined. vitest 5 gets its own PR.
+- nx 23.3 stopped pinning vulnerable smol-toml, axios and brace-expansion, so those three
+  overrides are gone.
+- **`@firebase/app` is pinned exactly to what `firebase` pins (0.16.2).** The root dep exists
+  only as the Functions peer-dep shim. On a fresh lockfile its caret range drifted to 0.16.3,
+  the web bundle loaded two copies, and every `getFunctions()` threw "Service functions is not
+  available". Unit tests, typecheck and build all stayed green; only the Storybook play tests
+  (18 failures) caught it. Bump the two together. The reason is next to the shim in
+  `global-runtime-options.ts`.
+- Patch and minor bumps: MUI X 9.15, Playwright 1.64, @webflow/* 2.6, webflow-cli 2.11,
+  firebase-tools 15.33, vite 8.3.4, typescript-eslint 8.71.1, swc 1.16.13. `@swc/cli` was removed
+  because nothing used it.
+- The `npx firebase-tools@latest` deploy steps now use the `FIREBASE_TOOLS_VERSION` workflow env
+  var (15.33.0). Keep it in step with package.json.
+- Not removed: `@babel/*` (the `.babelrc` files in `libs/react/*` name `@nx/react/babel`, and
+  it is in the tree transitively anyway; babel 8 is a separate question) and `nyc` (CI merges coverage with it). `nyc` is why `sprintf-js` shows a moderate
+  advisory with no fix.
+
 ### Hope prices come only from EMA products (2026-10-08, #83 part 3)
 
 The hardcoded length table (`HOPE_PER_LESSON_RATE_CENTS` / `HOPE_MONTHLY_EQUIVALENT_CENTS`)
