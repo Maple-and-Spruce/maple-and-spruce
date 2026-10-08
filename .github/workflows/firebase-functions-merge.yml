@@ -53,6 +53,10 @@ on:
 
 env:
   NX_DAEMON: 'false'
+  # The steps that run firebase-tools through npx (rather than the repo's own
+  # install) use this version, not @latest, so a firebase-tools release can't
+  # change a deploy without a PR. Keep it in step with package.json.
+  FIREBASE_TOOLS_VERSION: '15.33.0'
 
 # Serialize merge-pipeline runs. Two back-to-back merges otherwise race
 # on the shared dev project (B's dev deploy overwrites A's mid-E2E),
@@ -527,7 +531,7 @@ jobs:
         # `|| true` swallows the non-zero exit. Stable site name so the
         # Playwright config can hard-code the URL.
         run: |
-          npx -y firebase-tools@latest hosting:sites:create \
+          npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} hosting:sites:create \
             maple-spruce-registration-test \
             --project maple-and-spruce-dev \
             --token "${{ steps.auth.outputs.access_token }}" \
@@ -1019,7 +1023,7 @@ jobs:
           # twice, or hit any non-409 error.
           prev_err=""
           for attempt in $(seq 1 12); do
-            npx -y firebase-tools@latest deploy --only firestore:indexes \
+            npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only firestore:indexes \
               --project maple-and-spruce-dev \
               --token "${{ steps.auth.outputs.access_token }}" \
               < /dev/null 2>&1 | tee "$OUTPUT"
@@ -1127,7 +1131,7 @@ jobs:
 
           prev_err=""
           for attempt in $(seq 1 12); do
-            npx -y firebase-tools@latest deploy --only firestore:indexes \
+            npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only firestore:indexes \
               --project maple-and-spruce \
               --token "${{ steps.auth.outputs.access_token }}" \
               < /dev/null 2>&1 | tee "$OUTPUT"
@@ -1207,7 +1211,7 @@ jobs:
         if: steps.changed.outputs.changed == 'true'
         timeout-minutes: 10
         run: |
-          npx -y firebase-tools@latest deploy --only firestore:rules,storage \
+          npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only firestore:rules,storage \
             --project ${{ matrix.project }} \
             --token "${{ steps.auth.outputs.access_token }}" \
             --non-interactive < /dev/null
@@ -1295,7 +1299,7 @@ jobs:
         run: |
           set -o pipefail
           for attempt in $(seq 1 3); do
-            npx -y firebase-tools@latest deploy --only hosting:api \
+            npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only hosting:api \
               --project maple-and-spruce \
               --force \
               --token "${{ steps.auth.outputs.access_token }}" \

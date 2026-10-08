@@ -72,19 +72,6 @@ overrides:
   adm-zip@<0.6.1: '>=0.6.1 <0.7'
   undici@>=7.0.0 <7.29.1: '>=7.29.1 <8'
   form-data@>=4.0.0 <4.0.6: '>=4.0.6 <5'
-  # nx@23.2.1 pins smol-toml 1.6.1 exactly. GHSA-7w5x-hrqm-74c2 (DoS on
-  # malformed TOML), fixed in 1.7.1. nx only parses TOML files from this repo.
-  smol-toml@<1.7.1: '>=1.7.1 <2'
-  # nx@23.2.1 (latest) pins axios 1.18.1 exactly. GHSA-3pq3-5fj3-cg6v,
-  # GHSA-542g-h47m-68v8, GHSA-mghh-pgcx-3jjj, GHSA-x97p-jq2g-jp4f,
-  # GHSA-m8m8-qj5v-23w3, GHSA-c29m-xwm3-cm6r, GHSA-r4gj-5m52-g5wh, all
-  # fixed in 1.20.0. Added 2026-10-04.
-  axios@<1.20.0: '>=1.20.0 <2'
-  # nx@23.2.1 pins brace-expansion 5.0.9 exactly. GHSA-6j4f-fj2g-mc7p (5.0.10)
-  # and GHSA-qhr7-859c-m2p7 (5.0.11). Scoped to the 5.x line: the 1.x/2.x
-  # lines are unaffected, and 5.x cannot replace them (its CJS entry exports an
-  # object, not the expand function). Added 2026-10-04.
-  brace-expansion@>=5.0.0 <5.0.11: '>=5.0.11 <6'
   # @firebase/firestore depends on @grpc/grpc-js ~1.9.0. GHSA-m9gg-hp2v-232j
   # (getAuthContext can report unauthorized certificates as authorized), fixed
   # in 1.13.6 / 1.14.5. main overrode the 1.9 line onto 1.14 before this

@@ -79,6 +79,12 @@
  * of every codebase and Cloud Build installs it. `@firebase/app` is also a
  * direct dependency in the root `package.json`. We never use Realtime
  * Database — this only needs to resolve at load; it is never called.
+ *
+ * The root `@firebase/app` is pinned EXACTLY to the version the `firebase`
+ * package pins. A caret range drifts ahead on a fresh lockfile, the web app
+ * then loads two `@firebase/app` copies with separate component registries,
+ * and every `getFunctions()` throws "Service functions is not available".
+ * Bump the two together.
  */
 import '@firebase/app';
 import { setGlobalOptions } from 'firebase-functions/v2';
