@@ -137,35 +137,11 @@
       "@maple/firebase/maple-functions/upload-instructor-image": [
         "libs/firebase/maple-functions/upload-instructor-image/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-categories": [
-        "libs/firebase/maple-functions/get-categories/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-category": [
-        "libs/firebase/maple-functions/create-category/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-category": [
-        "libs/firebase/maple-functions/update-category/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-category": [
-        "libs/firebase/maple-functions/delete-category/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/reorder-categories": [
-        "libs/firebase/maple-functions/reorder-categories/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-products": [
-        "libs/firebase/maple-functions/get-products/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-product": [
-        "libs/firebase/maple-functions/get-product/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/create-product": [
         "libs/firebase/maple-functions/create-product/src/index.ts"
       ],
       "@maple/firebase/maple-functions/update-product": [
         "libs/firebase/maple-functions/update-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-product": [
-        "libs/firebase/maple-functions/delete-product/src/index.ts"
       ],
       "@maple/firebase/maple-functions/upload-product-image": [
         "libs/firebase/maple-functions/upload-product-image/src/index.ts"

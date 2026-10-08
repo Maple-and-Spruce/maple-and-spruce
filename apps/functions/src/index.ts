@@ -42,16 +42,8 @@ export { products } from '@maple/firebase/maple-functions/products';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions
-export { getCategories } from '@maple/firebase/maple-functions/get-categories';
-export { createCategory } from '@maple/firebase/maple-functions/create-category';
-export { updateCategory } from '@maple/firebase/maple-functions/update-category';
-export { deleteCategory } from '@maple/firebase/maple-functions/delete-category';
-export { reorderCategories } from '@maple/firebase/maple-functions/reorder-categories';
 
 // Product functions (read/delete only — writes are in maple-square codebase)
-export { getProducts } from '@maple/firebase/maple-functions/get-products';
-export { getProduct } from '@maple/firebase/maple-functions/get-product';
-export { deleteProduct } from '@maple/firebase/maple-functions/delete-product';
 
 // Sync conflict functions (read-only — resolution is in maple-square codebase)
 export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
