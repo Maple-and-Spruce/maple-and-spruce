@@ -203,8 +203,8 @@ Codes are **globally unique across programs** — a customer types a code withou
   `agreements/getAgreementTemplates`, `getAgreementTemplate`, `createAgreementTemplate`,
   `updateAgreementTemplate`, `deleteAgreementTemplate` (archives), `getAgreementRequests`,
   `sendAgreementRequest`, `resendAgreementRequest`, `getSignedAgreements`, `getSignedAgreement`.
-  The ten per-endpoint originals are **still deployed** until this has been checked on dev;
-  then they are deleted by hand and dropped from the codebase in a follow-up.
+  Checked on dev on 2026-10-08. The ten per-endpoint originals are removed from the code;
+  CI does not prune, so they are deleted from each project by hand.
 - These four stay their own functions on purpose (see the router's header comment):
   - `getAgreementForSigning` _(public, token-based; the `/sign/[token]` page)_
   - `submitSignedAgreement` _(public, token-based, 120s timeout; takes the signature upload)_
