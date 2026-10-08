@@ -65,6 +65,36 @@ function SourceChip({ source }: { source: TeacherPayout['lines'][number]['source
   );
 }
 
+function lessons(n: number): string {
+  return n === 1 ? '1 Hope lesson' : `${n} Hope lessons`;
+}
+
+/** Says what an unpriced Hope lesson means for this teacher's pay, exactly. */
+function unpricedHopeMessage(
+  payout: Pick<
+    TeacherPayout,
+    'unpricedHopeLessonCount' | 'unpricedHopePayPendingCount'
+  >
+): string {
+  const total = payout.unpricedHopeLessonCount;
+  const pending = payout.unpricedHopePayPendingCount;
+  const has = total === 1 ? 'has' : 'have';
+  const fix = 'Set the student’s EMA product';
+  if (pending === 0) {
+    return `${lessons(total)} ${has} no price because the student is on no EMA product. Pay for ${
+      total === 1 ? 'it is' : 'them is'
+    } included (it does not depend on the price), but EMA cannot be billed until a product is set. ${fix}.`;
+  }
+  if (pending === total) {
+    return `${lessons(total)} ${has} no price because the student is on no EMA product, so the teacher’s share is not in the total yet. ${fix} to include ${
+      total === 1 ? 'it' : 'them'
+    }.`;
+  }
+  return `${lessons(total)} ${has} no price because the student is on no EMA product. Pay for ${lessons(
+    pending
+  )} is not in the total yet. ${fix} to include ${pending === 1 ? 'it' : 'them'}.`;
+}
+
 export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -155,16 +185,11 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
             </AccordionSummary>
             <AccordionDetails>
               {payout.unpricedHopeLessonCount > 0 && (
-                // Listed, not dropped, and not guessed at: the total above
-                // leaves these out until the student has an EMA product.
+                // Listed, never guessed at. Whether pay waits depends on the
+                // teacher: a percentage share of no price is unknown, flat
+                // and hourly pay is owed as usual.
                 <Alert severity="warning" sx={{ mb: 2 }}>
-                  {payout.unpricedHopeLessonCount === 1
-                    ? '1 Hope lesson has no price'
-                    : `${payout.unpricedHopeLessonCount} Hope lessons have no price`}{' '}
-                  because the student is on no EMA product, so the total leaves
-                  {payout.unpricedHopeLessonCount === 1 ? ' it' : ' them'} out.
-                  Set the student&apos;s EMA product to include
-                  {payout.unpricedHopeLessonCount === 1 ? ' it' : ' them'}.
+                  {unpricedHopeMessage(payout)}
                 </Alert>
               )}
               <TableContainer>

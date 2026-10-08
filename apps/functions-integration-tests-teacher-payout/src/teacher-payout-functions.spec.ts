@@ -423,11 +423,11 @@ describe('payouts/getTeacherPayouts integration', () => {
       // Primary: 2 private-paid (flat $50 each = $100) + 1 priced Hope
       //   rendered (the student's EMA product, $55; percentage N/A for flat).
       //   Primary is FLAT — $50 per lesson regardless of base revenue.
-      //   The unpriced Hope lesson is listed but earns nothing until the
-      //   student has a product.
-      //   So total: 2 private @ $50 + 1 Hope @ $50 = $150 = 15000c
+      //   The unpriced Hope lesson has no price, but flat pay never depended
+      //   on one, so it is owed too (flagged as needing a product).
+      //   So total: 2 private @ $50 + 2 Hope @ $50 = $200 = 20000c
       expect(primary).toBeDefined();
-      expect(primary!.totalOwedCents).toBe(15000);
+      expect(primary!.totalOwedCents).toBe(20000);
       expect(primary!.lines).toHaveLength(4);
       // Hope-rendered should NOT be flagged asSubstitute (same teacher as primary).
       const hopeLines = primary!.lines.filter(
@@ -442,8 +442,9 @@ describe('payouts/getTeacherPayouts integration', () => {
         (l) => l.studentId === unpricedHopeStudentId,
       );
       expect(unpricedHope?.baseRevenueCents).toBeUndefined();
-      expect(unpricedHope?.compensationCents).toBeUndefined();
+      expect(unpricedHope?.compensationCents).toBe(5000);
       expect(primary!.unpricedHopeLessonCount).toBe(1);
+      expect(primary!.unpricedHopePayPendingCount).toBe(0);
       expect(primary!.missingRateConfig).toBe(false);
 
       // Substitute: 1 private-paid line @ 60% × $40 = $24 = 2400c

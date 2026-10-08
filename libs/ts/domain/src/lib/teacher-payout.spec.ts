@@ -3,6 +3,7 @@ import {
   aggregateTeacherPayouts,
   computeLessonCompensationCents,
   isLessonPayoutEligible,
+  payDependsOnPrice,
 } from './teacher-payout';
 import type { HopeProduct } from './hope-product';
 import type { Instructor } from './instructor';
@@ -103,6 +104,15 @@ describe('computeLessonCompensationCents', () => {
       payRateType: undefined,
     });
     expect(computeLessonCompensationCents(instructor, { durationMinutes: 30 }, 5000)).toBeUndefined();
+  });
+});
+
+describe('payDependsOnPrice', () => {
+  it('is true only for a percentage share', () => {
+    expect(payDependsOnPrice({ payRateType: 'percentage' })).toBe(true);
+    expect(payDependsOnPrice({ payRateType: 'flat' })).toBe(false);
+    expect(payDependsOnPrice({ payRateType: 'hourly' })).toBe(false);
+    expect(payDependsOnPrice({ payRateType: undefined })).toBe(false);
   });
 });
 
@@ -413,23 +423,55 @@ describe('aggregateTeacherPayouts', () => {
       });
       expect(result[0].totalOwedCents).toBe(0);
       expect(result[0].unpricedHopeLessonCount).toBe(1);
+      expect(result[0].unpricedHopePayPendingCount).toBe(1);
       // The teacher's pay rate is fine; the student's product is what is missing.
       expect(result[0].missingRateConfig).toBe(false);
     });
 
-    it('does not pay a flat rate on an unpriced Hope lesson either', () => {
-      // Flat pay does not depend on the price, but the lesson still cannot be
-      // billed to EMA until a product is set, so it waits with the rest.
-      const result = aggregateTeacherPayouts({
-        lessons: [makeLesson({ id: 'l1', status: 'rendered' })],
+    // The three pay types, for a Hope lesson with no price. Flat and hourly
+    // pay never depended on the price, so it is owed; a percentage share of
+    // no price is unknown, so it waits for a product.
+    const unpricedFor = (instructor: Instructor) =>
+      aggregateTeacherPayouts({
+        lessons: [
+          makeLesson({ id: 'l1', status: 'rendered', durationMinutes: 45 }),
+        ],
         paidInvoices: [],
         students: [makeStudent({ isHopeScholarship: true })],
-        instructors: [makeInstructor({ payRate: 5000, payRateType: 'flat' })],
-      });
+        instructors: [instructor],
+      })[0];
 
-      expect(result[0].totalOwedCents).toBe(0);
-      expect(result[0].lines[0].compensationCents).toBeUndefined();
-      expect(result[0].unpricedHopeLessonCount).toBe(1);
+    it('pays a flat rate on an unpriced Hope lesson, and still flags it', () => {
+      const payout = unpricedFor(
+        makeInstructor({ payRate: 5000, payRateType: 'flat' })
+      );
+      expect(payout.lines[0].baseRevenueCents).toBeUndefined();
+      expect(payout.lines[0].compensationCents).toBe(5000);
+      expect(payout.totalOwedCents).toBe(5000);
+      expect(payout.unpricedHopeLessonCount).toBe(1);
+      expect(payout.unpricedHopePayPendingCount).toBe(0);
+    });
+
+    it('pays an hourly rate on an unpriced Hope lesson, and still flags it', () => {
+      const payout = unpricedFor(
+        makeInstructor({ payRate: 6000, payRateType: 'hourly' })
+      );
+      // 45 min × $60/hr = $45
+      expect(payout.lines[0].compensationCents).toBe(4500);
+      expect(payout.totalOwedCents).toBe(4500);
+      expect(payout.unpricedHopeLessonCount).toBe(1);
+      expect(payout.unpricedHopePayPendingCount).toBe(0);
+    });
+
+    it('holds a percentage share of an unpriced Hope lesson until a product is set', () => {
+      const payout = unpricedFor(
+        makeInstructor({ payRate: 0.6, payRateType: 'percentage' })
+      );
+      expect(payout.lines[0].compensationCents).toBeUndefined();
+      expect(payout.totalOwedCents).toBe(0);
+      expect(payout.unpricedHopeLessonCount).toBe(1);
+      expect(payout.unpricedHopePayPendingCount).toBe(1);
+      expect(payout.missingRateConfig).toBe(false);
     });
 
     it('treats a product id that no longer resolves as no product', () => {
@@ -590,6 +632,8 @@ describe('aggregateTeacherPayouts', () => {
 
       expect(result[0].missingRateConfig).toBe(true);
       expect(result[0].unpricedHopeLessonCount).toBe(1);
+      // Waiting on a pay rate, not on a price: not reported as pending pay.
+      expect(result[0].unpricedHopePayPendingCount).toBe(0);
     });
   });
 

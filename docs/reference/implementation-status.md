@@ -195,7 +195,7 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 |---------|--------|----------|
 | `Lesson.primaryTeacherAtCreateId` snapshot + stamped on create | **Complete** | `libs/ts/domain/src/lib/lesson.ts` + `create-lesson*/src/lib/*.ts` |
 | `wasTaughtBySubstitute` domain helper | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
-| Hope lessons priced from EMA products only (the length table `hope-rates.ts` was removed in #83 part 3; a Hope student on no product is unpriced: listed, flagged "N Hope lessons unpriced", left out of `totalOwedCents`) | **Complete** | `libs/ts/domain/src/lib/hope-product.ts`, `teacher-payout.ts` |
+| Hope lessons priced from EMA products only (the length table `hope-rates.ts` was removed in #83 part 3; a Hope student on no product is unpriced: listed and flagged "N Hope lessons unpriced"; flat/hourly pay still owed, a percentage share left out of `totalOwedCents`) | **Complete** | `libs/ts/domain/src/lib/hope-product.ts`, `teacher-payout.ts` |
 | `teacher-payout.ts` — aggregator + compensation helpers | **Complete** | `libs/ts/domain/src/lib/teacher-payout.ts` (+ 26 unit tests) |
 | `getTeacherPayouts` route on the `payouts` router (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/payouts/src/lib/teacher-payouts.ts` |
 | Unit test for handler (7) + integration test (end-to-end with mixed sources, substitute flag, teacher filter, empty period) | **Complete** | `apps/functions-integration-tests-teacher-payout/` |

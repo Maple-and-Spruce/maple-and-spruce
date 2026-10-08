@@ -17,10 +17,12 @@ product id that no longer resolves):
   and in `HopeStudentBilling`. Ready-to-invoice lessons are still priced from their order.
 - **recordHopeSubmissions**: rate is order price ?? existing claim rate ?? product price; if none,
   the lesson is skipped ("Put the student on an EMA product first"), never stamped.
-- **Teacher payouts**: the line is listed with `baseRevenueCents` and `compensationCents`
-  undefined, left out of `totalOwedCents` (even for flat/hourly teachers), and counted in
-  `unpricedHopeLessonCount`; `TeacherPayoutsList` shows "N Hope lessons unpriced" and
-  "Needs EMA product". `missingRateConfig` now comes from the teacher, not the lines.
+- **Teacher payouts**: the line is listed with `baseRevenueCents` undefined and counted in
+  `unpricedHopeLessonCount`. Flat and hourly teachers are still paid for it (their pay never
+  depended on the price); a percentage teacher's share stays undefined, out of `totalOwedCents`,
+  and is counted in `unpricedHopePayPendingCount`. `TeacherPayoutsList` shows "N Hope lessons
+  unpriced", "Needs EMA product", and a warning worded for whether pay is held.
+  `missingRateConfig` now comes from the teacher, not the lines.
 - **HopeScholarshipBanner**: warning, no dollar figure. `registeredLessonLength` prop removed.
 - `formatCents` moved to `libs/react/lessons/src/lib/format-cents.ts`.
 
