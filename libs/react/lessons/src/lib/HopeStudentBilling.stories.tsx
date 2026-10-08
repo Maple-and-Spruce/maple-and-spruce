@@ -184,3 +184,42 @@ export const NothingTaughtYet: Story = {
     await expect(canvas.getByText(/4 left/)).toBeInTheDocument();
   },
 };
+
+/**
+ * A student on no EMA product (#83): their taught lessons have no price, so
+ * the card says so and shows no dollar figure for them.
+ */
+export const StudentOnNoProduct: Story = {
+  args: {
+    entries: [
+      entry('u1', '2026-08-05T16:00:00Z', {
+        rateCents: undefined,
+        rateSource: 'unpriced',
+        state: { kind: 'needs-order' },
+      }),
+      entry('u2', '2026-08-12T16:00:00Z', {
+        rateCents: undefined,
+        rateSource: 'unpriced',
+        state: { kind: 'needs-order' },
+      }),
+    ],
+    orders: [],
+    defaultProductId: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByText(/2 taught lessons have no price/)
+    ).toBeInTheDocument();
+    await expect(canvas.getByText('No EMA product set.')).toBeInTheDocument();
+    await expect(canvas.queryByText(/\$\d/)).toBeNull();
+  },
+};
+
+/** On a product, nothing is unpriced, so no such warning. */
+export const OnAProductNoUnpricedWarning: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByText(/have no price|has no price/)).toBeNull();
+  },
+};

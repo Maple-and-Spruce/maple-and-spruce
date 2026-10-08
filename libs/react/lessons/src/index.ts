@@ -64,13 +64,7 @@ export {
 } from './lib/BackfillLessonsDialog';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';
-export {
-  HOPE_PER_LESSON_RATE_CENTS,
-  HOPE_MONTHLY_EQUIVALENT_CENTS,
-  getHopePerLessonRateCents,
-  getHopeMonthlyEquivalentCents,
-  formatCents,
-} from './lib/hope-rates';
+export { formatCents } from './lib/format-cents';
 export {
   NextLessonsPanel,
   type NextLessonsPanelProps,

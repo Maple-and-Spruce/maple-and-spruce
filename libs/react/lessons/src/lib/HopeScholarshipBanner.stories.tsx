@@ -29,7 +29,7 @@ type Story = StoryObj<typeof HopeScholarshipBanner>;
  * Not the old length table's $41.25 for a 30-minute lesson.
  */
 export const OnAnEmaProduct: Story = {
-  args: { hopeProductId: 'prod-guitar-30', registeredLessonLength: '30-min-full' },
+  args: { hopeProductId: 'prod-guitar-30' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
@@ -41,15 +41,30 @@ export const OnAnEmaProduct: Story = {
   },
 };
 
-/** No product: the price is labelled an estimate, with a way to fix it. */
-export const NoProductIsAnEstimate: Story = {
-  args: { registeredLessonLength: '30-min-full' },
+/**
+ * No product: no price at all. No dollar figure is shown (not even an
+ * estimate), just a warning and a way to fix it.
+ */
+export const NoProductHasNoPrice: Story = {
+  args: {},
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByRole('alert')).toHaveClass('MuiAlert-colorWarning');
     await expect(canvas.getByText('No EMA product set.')).toBeInTheDocument();
-    await expect(canvas.getByText(/\$41\.25 \/ lesson is only an estimate/)).toBeInTheDocument();
+    await expect(canvas.getByText(/have no price until you choose/)).toBeInTheDocument();
+    await expect(canvas.queryByText(/\$\d/)).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: 'Choose EMA product' }));
     await expect(args.onChooseProduct).toHaveBeenCalled();
+  },
+};
+
+/** A product id that no longer exists is treated the same as no product. */
+export const DeletedProductHasNoPrice: Story = {
+  args: { hopeProductId: 'prod-deleted' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('No EMA product set.')).toBeInTheDocument();
+    await expect(canvas.queryByText(/\$\d/)).toBeNull();
   },
 };
 

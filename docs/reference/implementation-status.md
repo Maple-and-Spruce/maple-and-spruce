@@ -195,7 +195,7 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 |---------|--------|----------|
 | `Lesson.primaryTeacherAtCreateId` snapshot + stamped on create | **Complete** | `libs/ts/domain/src/lib/lesson.ts` + `create-lesson*/src/lib/*.ts` |
 | `wasTaughtBySubstitute` domain helper | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
-| Hope rates moved to domain (shared with payout calc) | **Complete** | `libs/ts/domain/src/lib/hope-rates.ts` |
+| Hope lessons priced from EMA products only (the length table `hope-rates.ts` was removed in #83 part 3; a Hope student on no product is unpriced: listed, flagged "N Hope lessons unpriced", left out of `totalOwedCents`) | **Complete** | `libs/ts/domain/src/lib/hope-product.ts`, `teacher-payout.ts` |
 | `teacher-payout.ts` — aggregator + compensation helpers | **Complete** | `libs/ts/domain/src/lib/teacher-payout.ts` (+ 26 unit tests) |
 | `getTeacherPayouts` route on the `payouts` router (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/payouts/src/lib/teacher-payouts.ts` |
 | Unit test for handler (7) + integration test (end-to-end with mixed sources, substitute flag, teacher filter, empty period) | **Complete** | `apps/functions-integration-tests-teacher-payout/` |
@@ -265,7 +265,7 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Feature | Status | Location |
 |---------|--------|----------|
 | Hope flag on Student (set/unset by Katie) | **Complete** | shipped in legacy #278 |
-| Hope per-lesson rate constants + helpers | **Complete** | `libs/react/lessons/src/lib/hope-rates.ts` (+ 7 unit tests) |
+| Hope per-lesson rate constants + helpers | **Removed (#83 part 3)** | prices come only from `HopeProduct` records and `HopeOrder` price stamps; `resolveHopeLessonRate` returns `{ source: 'unpriced' }` with no product |
 | `HopeRatesTable` (4-tier, highlight current) | **Complete** | `libs/react/lessons/src/lib/HopeRatesTable.tsx` |
 | `HopeScholarshipBanner` on student detail | **Complete** | `libs/react/lessons/src/lib/HopeScholarshipBanner.tsx` |
 | Mark-lesson-rendered action (past scheduled lessons) | **Complete** | `LessonList.tsx` + `/students/[id]/page.tsx` |

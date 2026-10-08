@@ -6,6 +6,7 @@ import {
   mockPayoutPrimary,
   mockPayoutSubstitute,
   mockPayoutMissingRate,
+  mockPayoutUnpricedHope,
 } from '@maple/react/storybook-fixtures';
 import type { RequestState, TeacherPayout } from '@maple/ts/domain';
 
@@ -134,6 +135,48 @@ export const MissingRateConfigBadge: Story = {
     await waitFor(() => {
       expect(canvas.getByText(/rate not set/i)).toBeInTheDocument();
     });
+  },
+};
+
+/**
+ * A Hope student on no EMA product (#83): the lesson is listed, marked as
+ * needing a product, and left out of the total rather than guessed at.
+ */
+export const UnpricedHopeLessonFlagged: Story = {
+  args: {
+    payoutsState: {
+      status: 'success',
+      data: [mockPayoutUnpricedHope],
+    } as RequestState<TeacherPayout[]>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const summary = canvas.getByRole('button', {
+      name: new RegExp(mockPayoutUnpricedHope.teacherName),
+    });
+    // The flag is on the summary, so it shows without expanding.
+    await expect(
+      within(summary).getByText('1 Hope lesson unpriced')
+    ).toBeInTheDocument();
+    // Only the priced lesson is in the total: $18.00, not $36.00.
+    await expect(within(summary).getByText('$18.00')).toBeInTheDocument();
+    await expect(canvas.queryByText('$36.00')).toBeNull();
+    // A pay-rate problem is a different thing and is not claimed here.
+    await expect(canvas.queryByText(/rate not set/i)).toBeNull();
+
+    await userEvent.click(summary);
+    await waitFor(() => {
+      expect(canvas.getByText(/1 Hope lesson has no price/)).toBeInTheDocument();
+    });
+    const rows = canvas.getAllByRole('row');
+    const unpricedRow = rows.find((r) => within(r).queryByText('Test Student'));
+    await expect(unpricedRow).toBeDefined();
+    await expect(
+      within(unpricedRow as HTMLElement).getByText('Needs EMA product')
+    ).toBeInTheDocument();
+    await expect(within(unpricedRow as HTMLElement).getByText('—')).toBeInTheDocument();
+    // The priced line still shows its product price.
+    await expect(canvas.getByText('$30.00')).toBeInTheDocument();
   },
 };
 

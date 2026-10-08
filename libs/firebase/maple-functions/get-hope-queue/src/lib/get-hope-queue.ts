@@ -65,9 +65,9 @@ export const getHopeQueue = Functions.endpoint
         if (from && lesson.scheduledAt < from) continue;
         if (to && lesson.scheduledAt > to) continue;
 
-        // What EMA pays for this student's product; an estimate, flagged as
-        // one, until the student is put on a product.
-        const rate = resolveHopeLessonRate(student, lesson, productsById);
+        // What EMA pays for this student's product. With no product the
+        // lesson is unpriced: no number, and the UI asks for a product.
+        const rate = resolveHopeLessonRate(student, productsById);
         entries.push({
           lesson,
           studentId: student.id,

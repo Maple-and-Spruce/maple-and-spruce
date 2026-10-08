@@ -140,9 +140,33 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
                     variant="outlined"
                   />
                 )}
+                {payout.unpricedHopeLessonCount > 0 && (
+                  <Chip
+                    size="small"
+                    icon={<WarningAmberIcon />}
+                    label={`${payout.unpricedHopeLessonCount} Hope lesson${
+                      payout.unpricedHopeLessonCount === 1 ? '' : 's'
+                    } unpriced`}
+                    color="warning"
+                    variant="outlined"
+                  />
+                )}
               </Stack>
             </AccordionSummary>
             <AccordionDetails>
+              {payout.unpricedHopeLessonCount > 0 && (
+                // Listed, not dropped, and not guessed at: the total above
+                // leaves these out until the student has an EMA product.
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  {payout.unpricedHopeLessonCount === 1
+                    ? '1 Hope lesson has no price'
+                    : `${payout.unpricedHopeLessonCount} Hope lessons have no price`}{' '}
+                  because the student is on no EMA product, so the total leaves
+                  {payout.unpricedHopeLessonCount === 1 ? ' it' : ' them'} out.
+                  Set the student&apos;s EMA product to include
+                  {payout.unpricedHopeLessonCount === 1 ? ' it' : ' them'}.
+                </Alert>
+              )}
               <TableContainer>
                 <Table size="small" aria-label={`${payout.teacherName} payout lines`}>
                   <TableHead>
@@ -179,7 +203,16 @@ export function TeacherPayoutsList({ payoutsState }: TeacherPayoutsListProps) {
                           <SourceChip source={line.source} />
                         </TableCell>
                         <TableCell align="right">
-                          {formatCents(line.baseRevenueCents)}
+                          {line.baseRevenueCents === undefined ? (
+                            <Chip
+                              size="small"
+                              label="Needs EMA product"
+                              color="warning"
+                              variant="outlined"
+                            />
+                          ) : (
+                            formatCents(line.baseRevenueCents)
+                          )}
                         </TableCell>
                         <TableCell align="right">
                           {line.compensationCents === undefined

@@ -50,7 +50,6 @@ export * from './lib/next-lessons';
 export * from './lib/instruments-config';
 export * from './lib/invoice';
 export * from './lib/lesson-invoice';
-export * from './lib/hope-rates';
 export * from './lib/hope-product';
 export * from './lib/hope-order';
 export * from './lib/lesson-rates-config';
