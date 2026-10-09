@@ -90,5 +90,12 @@ overrides:
 # both dist builds. The inline cell editor is left unpatched because no table
 # here enables editing. Delete the patch when MRT supports MUI 9; pnpm refuses
 # to apply it to any other version, so a bump forces the check. Tracked in #166.
+#
+# @storybook/nextjs-vite 10.6.1 mocks the App Router's LayoutRouterContext with
+# `parentCacheNode` only; Next 16.4's useRouter reads `parentRenderTree.data`,
+# so every story rendering a component that calls useRouter crashed. The patch
+# adds the field, mirroring the upstream fix (storybookjs/storybook#36588). Delete
+# it when a Storybook release includes that fix; a version bump forces the check.
 patchedDependencies:
+  '@storybook/nextjs-vite@10.6.1': patches/@storybook__nextjs-vite@10.6.1.patch
   material-react-table@3.2.1: patches/material-react-table@3.2.1.patch

@@ -1,0 +1,15 @@
+diff --git a/dist/_browser-chunks/chunk-342N7CWU.js b/dist/_browser-chunks/chunk-342N7CWU.js
+index 342f9b9b78c04e71bef8f43a5b6d1a00d14a45c1..eba16d9677e92dc7a4e2c24f1b15abfcd1d93e01 100644
+--- a/dist/_browser-chunks/chunk-342N7CWU.js
++++ b/dist/_browser-chunks/chunk-342N7CWU.js
+@@ -118,6 +118,10 @@ var getParallelRoutes = (segmentsList) => {
+           // @ts-ignore Only available in Next.js >= v15.1.1
+           parentCacheNode: newLazyCacheNode,
+           // END
++          // START Next.js 16.4 support: 16.4 reads parentRenderTree.data.bfcacheId
++          // in useRouter (mirrors storybookjs/storybook#36588)
++          parentRenderTree: { data: { bfcacheId: 0 } },
++          // END
+           url: pathname,
+           loading: null
+         }
