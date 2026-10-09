@@ -68,8 +68,6 @@ export { uploadInstructorImage } from '@maple/firebase/maple-functions/upload-in
 export { people } from '@maple/firebase/maple-functions/people';
 
 // Music lesson functions (Phase 4)
-export { materializeLessonSchedules } from '@maple/firebase/maple-functions/materialize-lesson-schedules';
-export { triggerMaterializeLessonSchedules } from '@maple/firebase/maple-functions/trigger-materialize-lesson-schedules';
 export { getNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
 export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
