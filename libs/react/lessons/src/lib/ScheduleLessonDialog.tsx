@@ -356,9 +356,11 @@ export function ScheduleLessonDialog({
                     },
                   }}
                 />
-                {/* Lessons occupy the Spruce Room — surface that day's
-                    availability and warn (non-blocking) on overlaps. */}
+                {/* Lessons occupy the Spruce Room: surface that day's
+                    availability, and say an overlap won't save (the
+                    server refuses it). */}
                 <RoomAvailability
+                  overlapRefused
                   room={room.value}
                   start={scheduledAt.value}
                   end={

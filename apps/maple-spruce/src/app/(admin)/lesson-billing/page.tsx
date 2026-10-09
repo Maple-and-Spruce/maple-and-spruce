@@ -40,8 +40,9 @@ export default function LessonBillingPage() {
         Lesson Billing
       </Typography>
       <Typography color="textSecondary" sx={{ mb: 3 }}>
-        Charges are planned ahead of the lessons they pay for and taken by a job
-        that runs each morning. Anything still scheduled can be stopped here.
+        Charges are planned ahead of the lessons they pay for. Automatic charging
+        is paused, so the morning job takes nothing; a charge is only taken when
+        someone presses Run it now. Anything still scheduled can be stopped here.
       </Typography>
 
       <UpcomingChargesCard
