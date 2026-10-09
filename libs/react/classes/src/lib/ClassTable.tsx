@@ -414,7 +414,7 @@ export function ClassTable({
         pageSizeOptions={[10, 25, 50, 100]}
         initialState={{
           pagination: { paginationModel: { pageSize: 25 } },
-          sorting: { sortModel: [{ field: 'weekdaySortKey', sort: 'asc' }] },
+          sorting: { sortModel: [{ field: 'dateSortKey', sort: 'asc' }] },
         }}
         disableRowSelectionOnClick
         autoHeight
