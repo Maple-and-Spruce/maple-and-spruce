@@ -74,7 +74,7 @@ export async function updateProduct(
     hasLegacyInventoryUpdate;
 
   if (needsSquare) {
-    if (!existing.squareItemId || existing.squareCatalogVersion === undefined) {
+    if (!existing.squareItemId) {
       throw new Error(
         'Product missing Square IDs. Cannot update catalog fields.',
       );
@@ -118,13 +118,13 @@ export async function updateProduct(
 
       const catalogResult = await square.catalogService.updateItem({
         squareItemId: existing.squareItemId,
-        squareCatalogVersion: existing.squareCatalogVersion,
         name: data.name,
         description: data.description,
         variations: variationUpdates,
       });
 
-      // Update listing-level cache
+      // Update listing-level cache. The version is whatever Square just
+      // wrote, so the record catches up even if it had fallen behind.
       await ProductRepository.updateSquareCache(
         data.id,
         {

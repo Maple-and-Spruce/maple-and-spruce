@@ -235,7 +235,6 @@ export const syncClassToSquare = onDocumentWritten(
         });
         const updated = await square.catalogService.updateItem({
           squareItemId: after.squareCatalogItemId,
-          squareCatalogVersion: after.squareCatalogVersion ?? 0,
           name: nameChanged ? after.name : undefined,
           description: descriptionChanged ? after.description : undefined,
           variations: priceChanged
