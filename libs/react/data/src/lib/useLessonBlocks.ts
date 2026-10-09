@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   LessonBlock,
   CreateLessonBlockInput,
@@ -56,10 +59,10 @@ export function useLessonBlocks(options: UseLessonBlocksOptions = {}) {
     setLessonBlocksState({ status: 'loading' });
     try {
       const functions = getMapleFunctions();
-      const getBlocks = httpsCallable<
+      const getBlocks = httpsCallableFromURL<
         GetLessonBlocksRequest,
         GetLessonBlocksResponse
-      >(functions, 'getLessonBlocks');
+      >(functions, routerCallableUrl('lessons', 'getLessonBlocks'));
 
       const result = await getBlocks({ teacherId });
       setLessonBlocksState({
@@ -81,10 +84,10 @@ export function useLessonBlocks(options: UseLessonBlocksOptions = {}) {
   const createLessonBlock = useCallback(
     async (input: CreateLessonBlockInput): Promise<LessonBlock> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateLessonBlockRequest,
         CreateLessonBlockResponse
-      >(functions, 'createLessonBlock');
+      >(functions, routerCallableUrl('lessons', 'createLessonBlock'));
 
       const result = await create(input);
       const block = hydrateBlock(result.data.block);
@@ -105,10 +108,10 @@ export function useLessonBlocks(options: UseLessonBlocksOptions = {}) {
   const updateLessonBlock = useCallback(
     async (input: UpdateLessonBlockInput): Promise<LessonBlock> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateLessonBlockRequest,
         UpdateLessonBlockResponse
-      >(functions, 'updateLessonBlock');
+      >(functions, routerCallableUrl('lessons', 'updateLessonBlock'));
 
       const result = await update(input);
       const block = hydrateBlock(result.data.block);
@@ -130,10 +133,10 @@ export function useLessonBlocks(options: UseLessonBlocksOptions = {}) {
 
   const deleteLessonBlock = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<
+    const del = httpsCallableFromURL<
       DeleteLessonBlockRequest,
       DeleteLessonBlockResponse
-    >(functions, 'deleteLessonBlock');
+    >(functions, routerCallableUrl('lessons', 'deleteLessonBlock'));
 
     await del({ id });
 

@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   PosLessonAttribution,
   PosLessonAttributionSummary,
@@ -33,10 +36,10 @@ export function usePosLessonAttributions() {
   const fetchAttributions = useCallback(async () => {
     setAttributionsState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetPosLessonAttributionsRequest,
         GetPosLessonAttributionsResponse
-      >(getMapleFunctions(), 'getPosLessonAttributions');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getPosLessonAttributions'));
       const result = await fn({});
       setAttributionsState({
         status: 'success',
@@ -55,10 +58,10 @@ export function usePosLessonAttributions() {
   const fetchSummary = useCallback(async () => {
     setSummaryState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetPosLessonAttributionSummaryRequest,
         GetPosLessonAttributionSummaryResponse
-      >(getMapleFunctions(), 'getPosLessonAttributionSummary');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getPosLessonAttributionSummary'));
       const result = await fn({});
       setSummaryState({ status: 'success', data: result.data.summary });
     } catch (error) {
@@ -76,10 +79,10 @@ export function usePosLessonAttributions() {
       action: PosLessonResolution,
       opts?: { studentId?: string; notes?: string }
     ): Promise<PosLessonAttribution> => {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
-      >(getMapleFunctions(), 'resolvePosLessonAttribution');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'resolvePosLessonAttribution'));
       const result = await fn({
         attributionId,
         action,

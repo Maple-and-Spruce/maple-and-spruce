@@ -8,6 +8,7 @@
     "firebase-maple-functions-check-admin-status",
     "firebase-maple-functions-artists",
     "firebase-maple-functions-people",
+    "firebase-maple-functions-lessons",
     "firebase-integration-test-utils"
   ],
   "targets": {}

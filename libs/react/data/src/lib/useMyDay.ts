@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { ManualInvoicePaymentSource, RequestState } from '@maple/ts/domain';
 import type {
   GetMyDayLessonsRequest,
@@ -42,10 +45,10 @@ export function useMyDay() {
         999
       ).toISOString();
 
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetMyDayLessonsRequest,
         GetMyDayLessonsResponse
-      >(getMapleFunctions(), 'getMyDayLessons');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getMyDayLessons'));
       const result = await fn({ from, to });
       setDayState({ status: 'success', data: result.data });
     } catch (error) {

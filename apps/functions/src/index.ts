@@ -51,9 +51,8 @@ export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist
 export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
 export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
 // POS lesson attribution review queue + config (legacy #628)
-export { getPosLessonAttributions } from '@maple/firebase/maple-functions/get-pos-lesson-attributions';
-export { getPosLessonAttributionSummary } from '@maple/firebase/maple-functions/get-pos-lesson-attribution-summary';
-export { resolvePosLessonAttribution } from '@maple/firebase/maple-functions/resolve-pos-lesson-attribution';
+// Lessons domain router (ADR-029, #67).
+export { lessons } from '@maple/firebase/maple-functions/lessons';
 
 // Instructor functions
 export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';
@@ -69,27 +68,13 @@ export { uploadInstructorImage } from '@maple/firebase/maple-functions/upload-in
 export { people } from '@maple/firebase/maple-functions/people';
 
 // Music lesson functions (Phase 4)
-export { getLessons } from '@maple/firebase/maple-functions/get-lessons';
-export { createLesson } from '@maple/firebase/maple-functions/create-lesson';
-export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesson-series';
-export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
-export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
-export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
 export { materializeLessonSchedules } from '@maple/firebase/maple-functions/materialize-lesson-schedules';
 export { triggerMaterializeLessonSchedules } from '@maple/firebase/maple-functions/trigger-materialize-lesson-schedules';
-export { getStudentLessonSchedules } from '@maple/firebase/maple-functions/get-student-lesson-schedules';
-export { createStudentLessonSchedule } from '@maple/firebase/maple-functions/create-student-lesson-schedule';
-export { updateStudentLessonSchedule } from '@maple/firebase/maple-functions/update-student-lesson-schedule';
 export { getNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
 export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
 export { syncLessonInquiries } from '@maple/firebase/maple-functions/sync-lesson-inquiries';
 export { triggerLessonInquirySync } from '@maple/firebase/maple-functions/trigger-lesson-inquiry-sync';
-export { getLessonInquiries } from '@maple/firebase/maple-functions/get-lesson-inquiries';
-export { updateLessonInquiryStatus } from '@maple/firebase/maple-functions/update-lesson-inquiry-status';
-export { createLessonBlock } from '@maple/firebase/maple-functions/create-lesson-block';
-export { updateLessonBlock } from '@maple/firebase/maple-functions/update-lesson-block';
-export { deleteLessonBlock } from '@maple/firebase/maple-functions/delete-lesson-block';
 
 // Music lesson invoice functions (Phase 4)
 export { getInvoices } from '@maple/firebase/maple-functions/get-invoices';
@@ -171,8 +156,6 @@ export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-cale
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
 // Teacher My Day + business payment config (legacy #631)
-export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';
-export { getMyWeek } from '@maple/firebase/maple-functions/get-my-week';
 export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-music-together-section-write';
 export { onMusicTogetherDemoWrite } from '@maple/firebase/maple-functions/on-music-together-demo-write';
 
@@ -256,6 +239,3 @@ export { startMusicTogetherManageSession } from '@maple/firebase/maple-functions
 // before" rules Katie and Nathan attach to students, plus a read of what is
 // going to be charged. Plain Firestore; the job that moves money needs the
 // Square SDK and lives in the maple-square codebase.
-export { getLessonBilling } from '@maple/firebase/maple-functions/get-lesson-billing';
-export { saveLessonBillingRule } from '@maple/firebase/maple-functions/save-lesson-billing-rule';
-export { updateLessonScheduledCharge } from '@maple/firebase/maple-functions/update-lesson-scheduled-charge';

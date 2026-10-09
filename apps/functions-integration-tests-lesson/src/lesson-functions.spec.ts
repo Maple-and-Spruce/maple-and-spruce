@@ -157,7 +157,7 @@ describe('Lesson Functions', () => {
   describe('Auth guard', () => {
     it('rejects unauthenticated requests to createLesson', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -171,7 +171,7 @@ describe('Lesson Functions', () => {
 
     it('rejects non-admin createLessonSeries', async () => {
       const result = await callFunction<CreateLessonSeriesRequest>({
-        functionName: 'createLessonSeries',
+        functionName: 'lessons/createLessonSeries',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -185,14 +185,14 @@ describe('Lesson Functions', () => {
 
     it('rejects non-admin updateLesson and deleteLesson', async () => {
       const upd = await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: 'any', notes: 'sub' },
         idToken: nonAdminUser.idToken,
       });
       expect([403, 500]).toContain(upd.status);
 
       const del = await callFunction<DeleteLessonRequest>({
-        functionName: 'deleteLesson',
+        functionName: 'lessons/deleteLesson',
         data: { id: 'any' },
         idToken: nonAdminUser.idToken,
       });
@@ -241,7 +241,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -261,7 +261,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: OWN_INSTRUCTOR_ID,
@@ -327,7 +327,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: OWN_INSTRUCTOR_ID,
@@ -347,7 +347,7 @@ describe('Lesson Functions', () => {
 
     it('denies creating a lesson assigned to a different teacher', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -365,7 +365,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: ownLessonId, notes: 'practiced scales' },
         idToken: teacherUser.idToken,
       });
@@ -375,7 +375,7 @@ describe('Lesson Functions', () => {
 
     it("denies updating another teacher's lesson", async () => {
       const result = await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: othersLessonId, notes: 'not mine' },
         idToken: teacherUser.idToken,
       });
@@ -384,7 +384,7 @@ describe('Lesson Functions', () => {
 
     it("denies deleting another teacher's lesson", async () => {
       const result = await callFunction<DeleteLessonRequest>({
-        functionName: 'deleteLesson',
+        functionName: 'lessons/deleteLesson',
         data: { id: othersLessonId },
         idToken: teacherUser.idToken,
       });
@@ -393,7 +393,7 @@ describe('Lesson Functions', () => {
 
     it('denies an unlinked lesson teacher (no instructor record) entirely', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: OWN_INSTRUCTOR_ID,
@@ -411,7 +411,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: ownLessonId, notes: 'admin override' },
         idToken: adminUser.idToken,
       });
@@ -427,7 +427,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -454,7 +454,7 @@ describe('Lesson Functions', () => {
 
     it('rejects createLesson for a non-existent student', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: 'nonexistent',
           teacherId: TEACHER_ID,
@@ -473,7 +473,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: {
           id: lessonId,
           scheduledAt: new Date('2026-05-02T16:00:00Z'),
@@ -495,7 +495,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: lessonId, teacherId: SUBSTITUTE_ID },
         idToken: adminUser.idToken,
       });
@@ -509,7 +509,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: lessonId, status: 'cancelled' },
         idToken: adminUser.idToken,
       });
@@ -521,7 +521,7 @@ describe('Lesson Functions', () => {
     it('hard-deletes a lesson', async () => {
       const del = await callFunction<DeleteLessonRequest, DeleteLessonResponse>(
         {
-          functionName: 'deleteLesson',
+          functionName: 'lessons/deleteLesson',
           data: { id: lessonId },
           idToken: adminUser.idToken,
         },
@@ -532,7 +532,7 @@ describe('Lesson Functions', () => {
 
     it('rejects validation with an invalid duration', async () => {
       const result = await callFunction<Partial<CreateLessonRequest>>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -564,7 +564,7 @@ describe('Lesson Functions', () => {
         CreateLessonSeriesRequest,
         CreateLessonSeriesResponse
       >({
-        functionName: 'createLessonSeries',
+        functionName: 'lessons/createLessonSeries',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -591,7 +591,7 @@ describe('Lesson Functions', () => {
 
     it('filters getLessons by seriesId', async () => {
       const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-        functionName: 'getLessons',
+        functionName: 'lessons/getLessons',
         data: { seriesId },
         idToken: adminUser.idToken,
       });
@@ -608,14 +608,14 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: seriesLessonIds[1], status: 'cancelled' },
         idToken: adminUser.idToken,
       });
       expect(cancelled.status).toBe(200);
 
       const list = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-        functionName: 'getLessons',
+        functionName: 'lessons/getLessons',
         data: { seriesId },
         idToken: adminUser.idToken,
       });
@@ -632,7 +632,7 @@ describe('Lesson Functions', () => {
 
     it('rejects a series with an empty scheduledAts list', async () => {
       const result = await callFunction<Partial<CreateLessonSeriesRequest>>({
-        functionName: 'createLessonSeries',
+        functionName: 'lessons/createLessonSeries',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -648,7 +648,7 @@ describe('Lesson Functions', () => {
   describe('Filters', () => {
     it('filters by studentId', async () => {
       const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-        functionName: 'getLessons',
+        functionName: 'lessons/getLessons',
         data: { studentId },
         idToken: adminUser.idToken,
       });
@@ -661,7 +661,7 @@ describe('Lesson Functions', () => {
 
     it('filters by status', async () => {
       const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-        functionName: 'getLessons',
+        functionName: 'lessons/getLessons',
         data: { status: 'cancelled' },
         idToken: adminUser.idToken,
       });
@@ -674,7 +674,7 @@ describe('Lesson Functions', () => {
 
     it('filters by date range', async () => {
       const result = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-        functionName: 'getLessons',
+        functionName: 'lessons/getLessons',
         data: {
           from: new Date('2026-06-05T00:00:00Z').toISOString(),
           to: new Date('2026-06-20T23:59:59Z').toISOString(),
@@ -719,7 +719,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -773,7 +773,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: roomLessonId, scheduledAt: newTime },
         idToken: adminUser.idToken,
       });
@@ -797,7 +797,7 @@ describe('Lesson Functions', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: roomLessonId, status: 'cancelled' },
         idToken: adminUser.idToken,
       });
@@ -827,7 +827,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: hopeStudentId,
           teacherId: TEACHER_ID,
@@ -840,7 +840,7 @@ describe('Lesson Functions', () => {
       });
       const id = created.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id, status },
         idToken: adminUser.idToken,
       });
@@ -1010,7 +1010,7 @@ describe('Lesson Functions', () => {
         CreateLessonSeriesRequest,
         CreateLessonSeriesResponse
       >({
-        functionName: 'createLessonSeries',
+        functionName: 'lessons/createLessonSeries',
         data: {
           studentId: hopeStudentId,
           teacherId: TEACHER_ID,
@@ -1051,7 +1051,7 @@ describe('Lesson Functions', () => {
         CreateLessonSeriesRequest,
         CreateLessonSeriesResponse
       >({
-        functionName: 'createLessonSeries',
+        functionName: 'lessons/createLessonSeries',
         data: {
           studentId: hopeStudentId,
           teacherId: TEACHER_ID,
@@ -1138,7 +1138,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: sid,
           teacherId: TEACHER_ID,
@@ -1151,7 +1151,7 @@ describe('Lesson Functions', () => {
       });
       const lessonId = lesson.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: lessonId, status: 'rendered' },
         idToken: adminUser.idToken,
       });
@@ -1188,7 +1188,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: sid,
           teacherId: TEACHER_ID,
@@ -1201,7 +1201,7 @@ describe('Lesson Functions', () => {
       });
       const lessonId = lesson.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: lessonId, status: 'rendered' },
         idToken: adminUser.idToken,
       });
@@ -1259,7 +1259,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: sid,
           teacherId: TEACHER_ID,
@@ -1272,7 +1272,7 @@ describe('Lesson Functions', () => {
       });
       const lessonId = lesson.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: lessonId, status: 'rendered' },
         idToken: adminUser.idToken,
       });
@@ -1337,7 +1337,7 @@ describe('Lesson Functions', () => {
 
     it('lets an admin create a block, denies a lesson-teacher', async () => {
       const denied = await callFunction<CreateLessonBlockRequest>({
-        functionName: 'createLessonBlock',
+        functionName: 'lessons/createLessonBlock',
         data: {
           teacherId: BLOCK_TEACHER_ID,
           dayOfWeek: 2,
@@ -1352,7 +1352,7 @@ describe('Lesson Functions', () => {
         CreateLessonBlockRequest,
         CreateLessonBlockResponse
       >({
-        functionName: 'createLessonBlock',
+        functionName: 'lessons/createLessonBlock',
         data: {
           teacherId: BLOCK_TEACHER_ID,
           dayOfWeek: 2,
@@ -1370,7 +1370,7 @@ describe('Lesson Functions', () => {
 
     it('rejects an invalid block (end before start)', async () => {
       const result = await callFunction<CreateLessonBlockRequest>({
-        functionName: 'createLessonBlock',
+        functionName: 'lessons/createLessonBlock',
         data: {
           teacherId: BLOCK_TEACHER_ID,
           dayOfWeek: 2,
@@ -1387,7 +1387,7 @@ describe('Lesson Functions', () => {
         GetLessonBlocksRequest,
         GetLessonBlocksResponse
       >({
-        functionName: 'getLessonBlocks',
+        functionName: 'lessons/getLessonBlocks',
         data: { teacherId: BLOCK_TEACHER_ID },
         idToken: adminUser.idToken,
       });
@@ -1400,7 +1400,7 @@ describe('Lesson Functions', () => {
 
     it('rejects a lesson with no block', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: BLOCK_TEACHER_ID,
@@ -1415,7 +1415,7 @@ describe('Lesson Functions', () => {
 
     it('rejects a lesson outside the block window', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: BLOCK_TEACHER_ID,
@@ -1431,7 +1431,7 @@ describe('Lesson Functions', () => {
 
     it('rejects a lesson attributed to another teacher’s block', async () => {
       const result = await callFunction<CreateLessonRequest>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID, // block belongs to BLOCK_TEACHER_ID
@@ -1450,7 +1450,7 @@ describe('Lesson Functions', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: BLOCK_TEACHER_ID,
@@ -1470,7 +1470,7 @@ describe('Lesson Functions', () => {
         UpdateLessonBlockRequest,
         UpdateLessonBlockResponse
       >({
-        functionName: 'updateLessonBlock',
+        functionName: 'lessons/updateLessonBlock',
         data: { id: blockId, label: 'Tue mornings (updated)' },
         idToken: adminUser.idToken,
       });
@@ -1481,7 +1481,7 @@ describe('Lesson Functions', () => {
         DeleteLessonBlockRequest,
         DeleteLessonBlockResponse
       >({
-        functionName: 'deleteLessonBlock',
+        functionName: 'lessons/deleteLessonBlock',
         data: { id: blockId },
         idToken: adminUser.idToken,
       });
@@ -1564,7 +1564,7 @@ describe('Lesson Functions', () => {
 
       const at = new Date('2026-07-08T19:00:00Z');
       const created = await callFunction<CreateLessonRequest, CreateLessonResponse>({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: pricedStudentId,
           teacherId: TEACHER_ID,
@@ -1577,7 +1577,7 @@ describe('Lesson Functions', () => {
       });
       const lessonId = created.data!.lesson.id;
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: lessonId, status: 'rendered' },
         idToken: adminUser.idToken,
       });
@@ -1656,7 +1656,7 @@ describe('Lesson Functions', () => {
       ]) {
         const at = new Date(iso);
         const created = await callFunction<CreateLessonRequest, CreateLessonResponse>({
-          functionName: 'createLesson',
+          functionName: 'lessons/createLesson',
           data: {
             studentId: studentIdForOrders,
             teacherId: TEACHER_ID,
@@ -1669,7 +1669,7 @@ describe('Lesson Functions', () => {
         });
         const id = created.data!.lesson.id;
         await callFunction<UpdateLessonRequest>({
-          functionName: 'updateLesson',
+          functionName: 'lessons/updateLesson',
           data: { id, status: 'rendered' },
           idToken: adminUser.idToken,
         });

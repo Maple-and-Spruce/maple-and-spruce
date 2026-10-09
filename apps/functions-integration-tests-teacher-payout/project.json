@@ -10,8 +10,7 @@
     "firebase-maple-functions-update-invoice",
     "firebase-maple-functions-people",
     "firebase-maple-functions-create-instructor",
-    "firebase-maple-functions-create-lesson",
-    "firebase-maple-functions-update-lesson",
+    "firebase-maple-functions-lessons",
     "firebase-integration-test-utils"
   ],
   "targets": {}
