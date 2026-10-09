@@ -7,7 +7,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "../../libs/firebase/maple-functions/check-admin-status/**/*.ts",
     "../../libs/firebase/maple-functions/get-my-roles/**/*.ts",
     "../../libs/firebase/maple-functions/upload-artist-image/**/*.ts",
     "../../libs/firebase/maple-functions/get-sync-conflicts/**/*.ts",
@@ -64,8 +63,6 @@
     "../../libs/firebase/maple-functions/get-sales/**/*.ts",
     "../../libs/firebase/maple-functions/migrate-class-sessions/**/*.ts",
     "../../libs/firebase/maple-functions/get-needs-attention/**/*.ts",
-    "../../libs/firebase/maple-functions/get-hope-queue/**/*.ts",
-    "../../libs/firebase/maple-functions/record-hope-submissions/**/*.ts",
     "../../libs/firebase/maple-functions/sync-lesson-inquiries/**/*.ts",
     "../../libs/firebase/maple-functions/create-invoice/**/*.ts",
     "../../libs/firebase/maple-functions/delete-invoice/**/*.ts",

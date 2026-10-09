@@ -245,12 +245,6 @@
       "@maple/firebase/maple-functions/get-needs-attention": [
         "libs/firebase/maple-functions/get-needs-attention/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-hope-queue": [
-        "libs/firebase/maple-functions/get-hope-queue/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/record-hope-submissions": [
-        "libs/firebase/maple-functions/record-hope-submissions/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/sync-lesson-inquiries": [
         "libs/firebase/maple-functions/sync-lesson-inquiries/src/index.ts"
       ],
@@ -415,9 +409,6 @@
       ],
       "@maple/firebase/maple-functions/get-music-together-interest": [
         "libs/firebase/maple-functions/get-music-together-interest/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/check-admin-status": [
-        "libs/firebase/maple-functions/check-admin-status/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-my-roles": [
         "libs/firebase/maple-functions/get-my-roles/src/index.ts"

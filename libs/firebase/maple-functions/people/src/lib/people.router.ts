@@ -11,7 +11,6 @@
  *   with, the student and user routes.
  * - `getSquareCardCandidates` / `updateStudentSquareCard` live in the
  *   `maple-square` codebase with Square secrets; a router is per codebase.
- * - `checkAdminStatus` is only called by the deprecated `AdminGuard`.
  *
  * Each route spells its gate out in full: `tools/check-callable-roles.ts` reads
  * `requiringRole` off the AST and cannot see through a helper.

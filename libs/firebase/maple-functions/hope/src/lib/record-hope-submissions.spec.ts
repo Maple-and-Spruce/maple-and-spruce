@@ -55,7 +55,7 @@ import { recordHopeSubmissions } from './record-hope-submissions';
 
 type Handler = (
   data: unknown,
-  context?: unknown
+  context?: unknown,
 ) => Promise<{
   recordedLessonIds: string[];
   skipped: Array<{ lessonId: string; reason: string }>;
@@ -117,7 +117,7 @@ describe('recordHopeSubmissions', () => {
   it("records a claim for a rendered Hope lesson at its order's price", async () => {
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'submitted' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(result.recordedLessonIds).toEqual(['lesson-1']);
@@ -136,7 +136,7 @@ describe('recordHopeSubmissions', () => {
 
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'submitted' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(result.recordedLessonIds).toEqual([]);
@@ -156,7 +156,10 @@ describe('recordHopeSubmissions', () => {
       },
     ]);
 
-    await handler({ lessonIds: ['lesson-1'], status: 'submitted' }, { uid: 'admin-1' });
+    await handler(
+      { lessonIds: ['lesson-1'], status: 'submitted' },
+      { uid: 'admin-1' },
+    );
 
     const [payload] = mocks.record.mock.calls[0];
     expect(payload).toMatchObject({ orderId: 'order-9', rateCents: 3250 });
@@ -180,7 +183,10 @@ describe('recordHopeSubmissions', () => {
       },
     ]);
 
-    await handler({ lessonIds: ['lesson-1'], status: 'paid' }, { uid: 'admin-1' });
+    await handler(
+      { lessonIds: ['lesson-1'], status: 'paid' },
+      { uid: 'admin-1' },
+    );
 
     const [payload] = mocks.record.mock.calls[0];
     expect(payload.rateCents).toBe(3000);
@@ -201,7 +207,7 @@ describe('recordHopeSubmissions', () => {
 
       const result = await handler(
         { lessonIds: ['lesson-1'], status: 'paid' },
-        { uid: 'admin-1' }
+        { uid: 'admin-1' },
       );
 
       expect(mocks.record).not.toHaveBeenCalled();
@@ -224,7 +230,7 @@ describe('recordHopeSubmissions', () => {
 
       const result = await handler(
         { lessonIds: ['lesson-1'], status: 'rejected' },
-        { uid: 'admin-1' }
+        { uid: 'admin-1' },
       );
 
       expect(mocks.record).not.toHaveBeenCalled();
@@ -234,7 +240,7 @@ describe('recordHopeSubmissions', () => {
     it('still invoices against an order, which carries its own price', async () => {
       const result = await handler(
         { lessonIds: ['lesson-1'], status: 'submitted' },
-        { uid: 'admin-1' }
+        { uid: 'admin-1' },
       );
 
       expect(result.recordedLessonIds).toEqual(['lesson-1']);
@@ -252,7 +258,7 @@ describe('recordHopeSubmissions', () => {
 
       const result = await handler(
         { lessonIds: ['lesson-1'], status: 'paid' },
-        { uid: 'admin-1' }
+        { uid: 'admin-1' },
       );
 
       expect(result.recordedLessonIds).toEqual(['lesson-1']);
@@ -269,16 +275,18 @@ describe('recordHopeSubmissions', () => {
       mocks.findStudent.mockImplementation(async (id: string) =>
         id === 'student-2'
           ? { ...hopeStudent, id }
-          : { ...hopeStudent, hopeProductId: undefined }
+          : { ...hopeStudent, hopeProductId: undefined },
       );
 
       const result = await handler(
         { lessonIds: ['lesson-priced', 'lesson-unpriced'], status: 'paid' },
-        { uid: 'admin-1' }
+        { uid: 'admin-1' },
       );
 
       expect(result.recordedLessonIds).toEqual(['lesson-priced']);
-      expect(result.skipped.map((s) => s.lessonId)).toEqual(['lesson-unpriced']);
+      expect(result.skipped.map((s) => s.lessonId)).toEqual([
+        'lesson-unpriced',
+      ]);
       expect(mocks.record.mock.calls[0][0].rateCents).toBe(3250);
     });
   });
@@ -291,7 +299,7 @@ describe('recordHopeSubmissions', () => {
 
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'submitted' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(mocks.record).not.toHaveBeenCalled();
@@ -307,7 +315,7 @@ describe('recordHopeSubmissions', () => {
 
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'paid' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(result.recordedLessonIds).toEqual(['lesson-1']);
@@ -322,7 +330,7 @@ describe('recordHopeSubmissions', () => {
 
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'paid' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(mocks.record).not.toHaveBeenCalled();
@@ -337,7 +345,7 @@ describe('recordHopeSubmissions', () => {
 
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'submitted' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(mocks.record).not.toHaveBeenCalled();
@@ -352,7 +360,7 @@ describe('recordHopeSubmissions', () => {
 
     const result = await handler(
       { lessonIds: ['lesson-1'], status: 'submitted' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(mocks.record).not.toHaveBeenCalled();
@@ -363,7 +371,7 @@ describe('recordHopeSubmissions', () => {
     // Katie submits a term at a time. One stale id must not cost her the
     // other thirty-nine claims.
     mocks.findLesson.mockImplementation(async (id: string) =>
-      id === 'lesson-bad' ? undefined : { ...renderedLesson, id }
+      id === 'lesson-bad' ? undefined : { ...renderedLesson, id },
     );
 
     const result = await handler(
@@ -371,7 +379,7 @@ describe('recordHopeSubmissions', () => {
         lessonIds: ['lesson-1', 'lesson-bad', 'lesson-2'],
         status: 'submitted',
       },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     expect(result.recordedLessonIds).toEqual(['lesson-1', 'lesson-2']);
@@ -391,7 +399,7 @@ describe('recordHopeSubmissions', () => {
 
     await handler(
       { lessonIds: ['lesson-1'], status: 'paid' },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     const [payload] = mocks.record.mock.calls[0];
@@ -407,13 +415,13 @@ describe('recordHopeSubmissions', () => {
         status: 'rejected',
         rejectionReason: 'Provider not yet approved for guitar',
       },
-      { uid: 'admin-1' }
+      { uid: 'admin-1' },
     );
 
     const [payload] = mocks.record.mock.calls[0];
     expect(payload.status).toBe('rejected');
     expect(payload.rejectionReason).toBe(
-      'Provider not yet approved for guitar'
+      'Provider not yet approved for guitar',
     );
   });
 });

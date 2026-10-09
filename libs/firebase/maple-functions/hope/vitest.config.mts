@@ -3,10 +3,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir:
-    '../../../../node_modules/.vite/libs/firebase/maple-functions/record-hope-submissions',
+    '../../../../node_modules/.vite/libs/firebase/maple-functions/hope',
   resolve: { tsconfigPaths: true },
   test: {
-    name: 'firebase-maple-functions-record-hope-submissions',
+    name: 'firebase-maple-functions-hope',
     watch: false,
     globals: true,
     environment: 'node',
@@ -14,7 +14,7 @@ export default defineConfig(() => ({
     reporters: ['default'],
     coverage: {
       reportsDirectory:
-        '../../../../coverage/libs/firebase/maple-functions/record-hope-submissions',
+        '../../../../coverage/libs/firebase/maple-functions/hope',
       provider: 'istanbul' as const, // same provider as CI's merged run
     },
   },

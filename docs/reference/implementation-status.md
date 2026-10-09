@@ -12,7 +12,7 @@
 | Firebase admin SDK | Complete | `libs/firebase/database/` |
 | MUI theme | Complete | `libs/react/theme/` |
 | React UI components | Complete | `libs/react/ui/` (ImageUpload, DeleteConfirmDialog) |
-| React auth library | Complete | `libs/react/auth/` (AuthGuard, AdminGuard, UserMenu, useAuth, useAdminStatus) |
+| React auth library | Complete | `libs/react/auth/` (AuthGuard, RoleGuard, RolesProvider, UserMenu, useAuth, useMyRoles) |
 | React layout library | Complete | `libs/react/layout/` (AppShell) |
 | React data hooks | Complete | `libs/react/data/` (useProducts, useArtists, useCategories) |
 | Domain types library | Complete | `libs/ts/domain/` |
@@ -21,7 +21,7 @@
 | Functions core library | Complete | `libs/firebase/functions/` |
 | Functions app | Complete | `apps/functions/` |
 | Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
-| Admin authorization (UI) | Complete | `AdminGuard` + `useAdminStatus` + `checkAdminStatus` Cloud Function |
+| Admin authorization (UI) | Complete | `RoleGuard` + `RolesProvider` + `getMyRoles` Cloud Function (the binary `AdminGuard` / `checkAdminStatus` were retired in #65) |
 | Scoped roles framework (PR 1 of epic #49) | Complete | `Role` enum (admin, mt-teacher, clerk, lesson-teacher) + `userRoles/{uid}` + any-of `requiringRole([...])` + `getMyRoles`/`grantRole`/`revokeRole`; behavior-neutral — client plumbing legacy #614, re-scoping legacy #615 |
 | Scoped roles client plumbing (PR 2 of epic #49) | Complete | `RolesProvider`/`useRoles`/`RoleGuard` (ADR-028), role-filtered nav (`nav-groups.tsx`), `/users` scoped-role toggles, `listUsers` roles join — enforcement re-scoping is legacy #615 |
 | Scoped roles enforcement (PR 3 of epic #49) | Complete | 46 fns re-scoped to role sets (MT→mt-teacher, store/registrations→clerk, lesson reads→lesson-teacher, calendar→all staff); auth-only reads tightened; `PathRoleGuard` route gating; role-gated dashboard; matrix integration spec (`role-matrix.spec.ts`). Phase 2 ownership = #616, analyzer = #620 |

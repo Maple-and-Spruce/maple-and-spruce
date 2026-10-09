@@ -874,7 +874,7 @@ describe('Lesson Functions', () => {
         GetHopeQueueRequest,
         GetHopeQueueResponse
       >({
-        functionName: 'getHopeQueue',
+        functionName: 'hope/getHopeQueue',
         data: { studentId: hopeStudentId },
         idToken: adminUser.idToken,
       });
@@ -899,7 +899,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: { lessonIds: [lessonId], status: 'paid' },
         idToken: adminUser.idToken,
       });
@@ -917,7 +917,7 @@ describe('Lesson Functions', () => {
         GetHopeQueueRequest,
         GetHopeQueueResponse
       >({
-        functionName: 'getHopeQueue',
+        functionName: 'hope/getHopeQueue',
         data: { studentId: hopeStudentId },
         idToken: adminUser.idToken,
       });
@@ -937,7 +937,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: { lessonIds: [lessonId], status: 'submitted' },
         idToken: adminUser.idToken,
       });
@@ -964,7 +964,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: {
           lessonIds: [lessonId],
           status: 'submitted',
@@ -977,7 +977,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: { lessonIds: [lessonId], status: 'paid' },
         idToken: adminUser.idToken,
       });
@@ -986,7 +986,7 @@ describe('Lesson Functions', () => {
         GetHopeQueueRequest,
         GetHopeQueueResponse
       >({
-        functionName: 'getHopeQueue',
+        functionName: 'hope/getHopeQueue',
         data: { studentId: hopeStudentId },
         idToken: adminUser.idToken,
       });
@@ -1032,7 +1032,7 @@ describe('Lesson Functions', () => {
         GetHopeQueueRequest,
         GetHopeQueueResponse
       >({
-        functionName: 'getHopeQueue',
+        functionName: 'hope/getHopeQueue',
         data: { studentId: hopeStudentId },
         idToken: adminUser.idToken,
       });
@@ -1583,7 +1583,7 @@ describe('Lesson Functions', () => {
       });
 
       const queue = await callFunction<GetHopeQueueRequest, GetHopeQueueResponse>({
-        functionName: 'getHopeQueue',
+        functionName: 'hope/getHopeQueue',
         data: { studentId: pricedStudentId },
         idToken: adminUser.idToken,
       });
@@ -1608,7 +1608,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: { lessonIds: [lessonId], status: 'submitted' },
         idToken: adminUser.idToken,
       });
@@ -1679,7 +1679,7 @@ describe('Lesson Functions', () => {
 
     const queue = () =>
       callFunction<GetHopeQueueRequest, GetHopeQueueResponse>({
-        functionName: 'getHopeQueue',
+        functionName: 'hope/getHopeQueue',
         data: { studentId: studentIdForOrders },
         idToken: adminUser.idToken,
       });
@@ -1698,7 +1698,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: { lessonIds: [taught[0]], status: 'submitted' },
         idToken: adminUser.idToken,
       });
@@ -1748,7 +1748,7 @@ describe('Lesson Functions', () => {
         RecordHopeSubmissionsRequest,
         RecordHopeSubmissionsResponse
       >({
-        functionName: 'recordHopeSubmissions',
+        functionName: 'hope/recordHopeSubmissions',
         data: {
           lessonIds: [taught[0], taught[1]],
           status: 'submitted',

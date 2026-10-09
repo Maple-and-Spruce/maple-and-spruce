@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
+import { httpsCallableFromURL } from 'firebase/functions';
 import {
   getMapleFunctions,
   routerCallableUrl,
@@ -86,9 +86,9 @@ export function useHopeQueue(options: UseHopeQueueOptions = {}) {
   const fetchQueue = useCallback(async () => {
     setQueueState({ status: 'loading' });
     try {
-      const fn = httpsCallable<GetHopeQueueRequest, GetHopeQueueResponse>(
+      const fn = httpsCallableFromURL<GetHopeQueueRequest, GetHopeQueueResponse>(
         getMapleFunctions(),
-        'getHopeQueue'
+        routerCallableUrl('hope', 'getHopeQueue')
       );
       const result = await fn(studentId ? { studentId } : {});
       setQueueState({
@@ -118,10 +118,10 @@ export function useHopeQueue(options: UseHopeQueueOptions = {}) {
     ): Promise<RecordHopeSubmissionsResponse> => {
       setRecording(new Set(lessonIds));
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           RecordHopeSubmissionsRequest,
           RecordHopeSubmissionsResponse
-        >(getMapleFunctions(), 'recordHopeSubmissions');
+        >(getMapleFunctions(), routerCallableUrl('hope', 'recordHopeSubmissions'));
         const result = await fn({ lessonIds, status, ...extra });
         await fetchQueue();
         return result.data;

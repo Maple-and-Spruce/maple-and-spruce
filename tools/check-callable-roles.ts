@@ -119,8 +119,7 @@ const PUBLIC_ALLOWLIST = new Set<string>([
  * (any authenticated user may call). Keep this list tiny.
  */
 const AUTH_ONLY_ALLOWLIST = new Set<string>([
-  // The client uses these to discover its own access before any role exists.
-  'checkAdminStatus',
+  // The client uses this to discover its own access before any role exists.
   'getMyRoles',
 ]);
 

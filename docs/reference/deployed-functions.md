@@ -97,15 +97,15 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 
 ### Hope Scholarship billing (legacy #799)
 - `hope` — **domain router** (ADR-029) for the WV Hope Scholarship. Routes:
-  `hope/getHopeProducts`, `hope/saveHopeProduct`, `hope/saveHopeOrder` _(admin — the studio's EMA portal
+  `hope/getHopeProducts`, `hope/saveHopeProduct`, `hope/saveHopeOrder`, `hope/getHopeQueue`, `hope/recordHopeSubmissions` _(admin — the studio's EMA portal
   products: EMA id, name, price per lesson. A Hope student's `hopeProductId` sets what
   their lessons are worth in the queue, on the claim and in teacher payouts. `saveHopeOrder`
   records an EMA order: product, lesson count, EMA order id; price copied from the product;
   its count cannot drop below lessons already invoiced against it)_. `getHopeQueue` returns
   each lesson's state (needs an order / ready to invoice / invoiced) and the orders with room
   left; `recordHopeSubmissions` refuses to invoice a lesson no order has room for.
-- `getHopeQueue` _(admin — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
-- `recordHopeSubmissions` _(admin, bulk — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
+- `hope/getHopeQueue` _(admin; a route since #67, formerly its own function — rendered lessons for Hope students plus what has been claimed from EMA. Starts from Hope students and fans out to lessons, since Hope-ness lives on the Student. No-shows are excluded structurally via `isSubmittableToHope`, never by a UI filter.)_
+- `hope/recordHopeSubmissions` _(admin, bulk; a route since #67 — records `submitted` / `paid` / `rejected`. Re-checks every lesson server-side; a refused lesson is skipped and reported so one bad id can't lose a whole batch. The claimed rate is stamped once and never restated by a later rate change.)_
 - `createLessonSeries` now accepts `status` — set `rendered` with past dates to **backfill lessons already taught**. Block attribution is waived for that case only (see `isBackfillSeries`); a future-dated series without a block is still refused.
 - Claims live in `hopeSubmissions`, keyed by lesson id — one lesson, one claim. `Invoice` remains closed to Hope students.
 
@@ -227,7 +227,6 @@ Codes are **globally unique across programs** — a customer types a code withou
   - `expireAgreementRequests` _(scheduled — marks expired requests; a schedule can't be a route)_
 
 ### Auth
-- `checkAdminStatus` _(returns `{ isAdmin, isEmployee, role }` — `role` is the highest-privilege role)_
 - `getMyRoles` _(auth only, **deliberately its own function** — it gates every admin page on first paint, so it is kept off the `people` router. Returns every role the caller holds: admin from `admins/{uid}` + scoped roles from `userRoles/{uid}`; client nav gating. Also the caller's linked `instructorId`, if any (#157), so a teacher's pages default to their own students — a convenience, never a permission)_
 
 > **Roles (epic #49, ADR-028):** "admin only" annotations below predate the scoped-roles matrix. Since PR 3, callables are gated by role sets: Music Together mgmt → admin + `mt-teacher`; store inventory/sales/categories + class registrations/rosters/waitlists/refunds + class reads → admin + `clerk`; lesson/student/invoice/instructor **reads** → admin + `lesson-teacher`; calendar events + room schedule → all staff roles. Everything else remains admin-only. The authoritative table is `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.

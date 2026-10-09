@@ -8,7 +8,6 @@ import {
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER, NON_ADMIN_USER } from '@maple/firebase/integration-test-utils';
 import type {
-  CheckAdminStatusResponse,
   GetBusinessPaymentConfigResponse,
   GetLessonRatesConfigResponse,
   GetPosLessonConfigResponse,
@@ -82,14 +81,14 @@ describe('Utility Functions', () => {
     });
 
     it('bypasses required auth — no idToken needed', async () => {
-      // checkAdminStatus normally returns 401 without an idToken (see test
-      // below). With the warmup sentinel it must short-circuit BEFORE the
-      // auth check and return 200 even anonymously.
+      // getMyRoles requires sign-in and returns 401 without an idToken. With
+      // the warmup sentinel it must short-circuit BEFORE the auth check and
+      // return 200 even anonymously.
       const result = await callFunction<
         { __warmup: true },
         { warm: boolean }
       >({
-        functionName: 'checkAdminStatus',
+        functionName: 'getMyRoles',
         data: { __warmup: true },
       });
 
@@ -111,41 +110,6 @@ describe('Utility Functions', () => {
       expect(result.status).toBe(200);
       expect(result.data?.status).toBe('ok');
       expect(result.data?.timestamp).toBeDefined();
-    });
-  });
-
-  describe('checkAdminStatus', () => {
-    it('should reject unauthenticated requests', async () => {
-      const result = await callFunction({
-        functionName: 'checkAdminStatus',
-      });
-      expect(result.status).toBe(401);
-    });
-
-    it('should return true for admin user', async () => {
-      const result = await callFunction<
-        Record<string, never>,
-        CheckAdminStatusResponse
-      >({
-        functionName: 'checkAdminStatus',
-        idToken: adminUser.idToken,
-      });
-
-      expect(result.status).toBe(200);
-      expect(result.data?.isAdmin).toBe(true);
-    });
-
-    it('should return false for non-admin user', async () => {
-      const result = await callFunction<
-        Record<string, never>,
-        CheckAdminStatusResponse
-      >({
-        functionName: 'checkAdminStatus',
-        idToken: nonAdminUser.idToken,
-      });
-
-      expect(result.status).toBe(200);
-      expect(result.data?.isAdmin).toBe(false);
     });
   });
 
@@ -227,17 +191,9 @@ describe('Utility Functions', () => {
         functionName: 'getMyRoles',
         idToken: scopedUser.idToken,
       });
+      // A scoped role must NOT confer admin: the roles list holds only the
+      // scoped role, and the next test proves admin-only functions refuse it.
       expect(roles.data?.roles).toEqual(['mt-teacher']);
-
-      // A scoped role must NOT confer admin (back-compat contract)
-      const adminStatus = await callFunction<
-        Record<string, never>,
-        CheckAdminStatusResponse
-      >({
-        functionName: 'checkAdminStatus',
-        idToken: scopedUser.idToken,
-      });
-      expect(adminStatus.data?.isAdmin).toBe(false);
     });
 
     it('a scoped role does not open admin-only functions (any-of not wildcard)', async () => {
