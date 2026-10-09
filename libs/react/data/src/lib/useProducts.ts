@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
+import { httpsCallableFromURL } from 'firebase/functions';
 import {
   getMapleFunctions,
   routerCallableUrl,
@@ -59,10 +59,10 @@ export function useProducts() {
   const createProduct = useCallback(
     async (input: CreateProductInput): Promise<Product> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<CreateProductRequest, CreateProductResponse>(
-        functions,
-        'createProduct'
-      );
+      const create = httpsCallableFromURL<
+        CreateProductRequest,
+        CreateProductResponse
+      >(functions, routerCallableUrl('productCatalog', 'createProduct'));
 
       const result = await create(input);
 
@@ -83,10 +83,10 @@ export function useProducts() {
   const updateProduct = useCallback(
     async (input: UpdateProductInput): Promise<Product> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<UpdateProductRequest, UpdateProductResponse>(
-        functions,
-        'updateProduct'
-      );
+      const update = httpsCallableFromURL<
+        UpdateProductRequest,
+        UpdateProductResponse
+      >(functions, routerCallableUrl('productCatalog', 'updateProduct'));
 
       const result = await update(input);
 

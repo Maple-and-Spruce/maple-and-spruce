@@ -15,10 +15,9 @@ if (getApps().length === 0) {
   initializeApp();
 }
 
-// Product write operations (Square catalog sync)
-export { createProduct } from '@maple/firebase/maple-functions/create-product';
-export { updateProduct } from '@maple/firebase/maple-functions/update-product';
-export { uploadProductImage } from '@maple/firebase/maple-functions/upload-product-image';
+// Product catalog domain router: the product writes that go through Square
+// (ADR-029, #68). Reads, deletes and categories are on `products` in maple-core.
+export { productCatalog } from '@maple/firebase/maple-functions/product-catalog';
 
 // Square webhook: moved to the maple-square-webhook codebase
 // (apps/functions-square-webhook). Square's delivery deadline is 10s and this

@@ -1,7 +1,7 @@
 {
-  "name": "firebase-maple-functions-update-product",
+  "name": "firebase-maple-functions-product-catalog",
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/firebase/maple-functions/update-product/src",
+  "sourceRoot": "libs/firebase/maple-functions/product-catalog/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:feature"],
   "targets": {}

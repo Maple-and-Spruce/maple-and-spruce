@@ -4,7 +4,7 @@
  *
  * Every route is gated `[Admin, Clerk]`: the clerk runs the shop floor. The
  * product writes that call Square (`createProduct`, `updateProduct`,
- * `uploadProductImage`) live in the `maple-square` codebase and are not here —
+ * `uploadProductImage`) are on the `productCatalog` router in `maple-square` —
  * a router is per (domain × codebase). `uploadCategoryGalleryImage` serves
  * *class* categories, so it belongs with classes (#74), not here.
  *
