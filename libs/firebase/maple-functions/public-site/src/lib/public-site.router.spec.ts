@@ -148,7 +148,7 @@ describe('publicSite router', () => {
   it('verifies App Check and throttles per IP on lookupDiscount only', () => {
     for (const [name, route] of Object.entries(router.routes)) {
       if (name === 'lookupDiscount') {
-        expect(route.appCheck, name).toBe('monitor');
+        expect(route.appCheck, name).toBe('enforce');
         expect(route.throttle, name).toEqual({
           scope: 'lookupDiscount',
           rules: ['per-ip'],

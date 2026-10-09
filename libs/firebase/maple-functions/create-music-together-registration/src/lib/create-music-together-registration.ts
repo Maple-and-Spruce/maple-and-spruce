@@ -201,7 +201,7 @@ async function resolveDiscount<Item extends { amountCents: number; dueAt: Date }
 }
 
 export const createMusicTogetherRegistration = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('createMusicTogetherRegistration', paymentThrottles('email'))
   .usingSecrets(...MT_SQUARE_SECRET_NAMES)
   .usingStrings(...MT_SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
