@@ -6,6 +6,27 @@
 
 ## Current Status
 
+### Dependency refresh 5/5: Next 16.4 (2026-10-09)
+
+- `next` 16.3.8 → 16.4.0 (released 2026-10-06), in both `package.json` and
+  `apps/maple-spruce/package.json`.
+- **`next build --webpack` stays.** The adapter-only `next-server.js.nft.json` problem from 16.3
+  is still open upstream, and 16.4's notes don't mention it.
+- **Storybook needed a patch.** 16.4's `useRouter` reads `LayoutRouterContext.parentRenderTree.data`
+  (16.3 read `parentCacheNode`). `@storybook/nextjs-vite` 10.6.1 mocks only the old field, so 12
+  stories (AppShell, AuthGuard, LoginPage) crashed with "Cannot read properties of undefined
+  (reading 'data')". `patches/@storybook__nextjs-vite@10.6.1.patch` adds the field, mirroring the
+  upstream fix storybookjs/storybook#36588, which hasn't been released. Delete the patch when a
+  Storybook release includes it. Real pages were never affected.
+- How it was checked:
+  - **`vercel build` run locally** with CLI 63.1.0 (the version CI uses) and local-only project
+    settings, no `vercel pull`. It produced the same output as main: 68 functions and 140 static
+    files.
+  - **Screenshot sweep** of 42 routes × desktop/phone against `next start`. Main vs the branch
+    differs by 0.00%, the same as a main-vs-main control. Signed out, it only covers the login
+    gate, the public pages and the 404s; the signed-in flows are the Portal E2E in CI.
+  - **Test results and coverage** are identical to main.
+
 ### Dependency refresh 4/5: firebase JS SDK 13 (2026-10-09)
 
 - `firebase` 12.19 → 13.0.0 (released 2026-10-07). Its breaking changes are all in AI Logic,
