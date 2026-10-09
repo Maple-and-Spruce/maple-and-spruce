@@ -88,9 +88,9 @@ export function RunBillingCard({
         </Typography>
       </Stack>
       <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-        The job runs itself each morning. Preview reports exactly what it would
-        do and writes nothing, which is how to check a new rule without finding
-        out by charging somebody.
+        Automatic charging is paused, so the morning job takes nothing. Preview
+        reports exactly what a run would do and writes nothing, which is how to
+        check a new rule without finding out by charging somebody.
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

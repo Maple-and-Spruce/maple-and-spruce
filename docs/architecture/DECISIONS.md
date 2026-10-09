@@ -1695,6 +1695,7 @@ The result:
 - **To bring automatic charging back:**
   - set `LESSON_AUTOPAY_PAUSED` to false;
   - restore the `Lesson Billing` nav entry (see the comment in `nav-groups.tsx`);
+  - change the paused-charging wording on `/lesson-billing` and in `RunBillingCard`, which say the morning job takes nothing;
   - assign billing rules to students;
   - check that rules and the one-button flow agree on what "the next lessons" are. Both use
     `coveredLessonIds`, so a lesson can't be charged twice.
