@@ -143,14 +143,8 @@
       "@maple/firebase/maple-functions/upload-instructor-image": [
         "libs/firebase/maple-functions/upload-instructor-image/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/create-product": [
-        "libs/firebase/maple-functions/create-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-product": [
-        "libs/firebase/maple-functions/update-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/upload-product-image": [
-        "libs/firebase/maple-functions/upload-product-image/src/index.ts"
+      "@maple/firebase/maple-functions/product-catalog": [
+        "libs/firebase/maple-functions/product-catalog/src/index.ts"
       ],
       "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
       "@maple/ts/firebase/api-types": [

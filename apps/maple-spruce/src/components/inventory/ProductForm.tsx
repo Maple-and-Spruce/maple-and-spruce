@@ -34,8 +34,11 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Product,
   CreateProductInput,
@@ -326,10 +329,10 @@ export function ProductForm({
    */
   const uploadImage = async (file: File, productId: string): Promise<string> => {
     const functions = getMapleFunctions();
-    const upload = httpsCallable<
+    const upload = httpsCallableFromURL<
       UploadProductImageRequest,
       UploadProductImageResponse
-    >(functions, 'uploadProductImage');
+    >(functions, routerCallableUrl('productCatalog', 'uploadProductImage'));
 
     const imageBase64 = await readFileAsBase64(file);
 

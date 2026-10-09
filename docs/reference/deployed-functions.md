@@ -31,8 +31,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   gated `[Admin, Clerk]`: `products/getProducts`, `products/getProduct`,
   `products/deleteProduct`, `products/getCategories`, `products/createCategory`,
   `products/updateCategory`, `products/reorderCategories`, `products/deleteCategory`. The
-  product writes that call Square (`createProduct`, `updateProduct`, `uploadProductImage`) stay
-  in `maple-square`; `uploadCategoryGalleryImage` serves class categories and waits for the
+  product writes that call Square are on the `productCatalog` router in `maple-square`; `uploadCategoryGalleryImage` serves class categories and waits for the
   classes router (#74).
 - The eight per-endpoint originals are gone: deleted from dev and prod by hand on 2026-10-08,
   then removed from the codebase. Their Hosting rewrites in `firebase.json` went with them,
@@ -315,8 +314,13 @@ ICS feed generation. Isolates `ical-generator` and `@touch4it/ical-timezones`.
 
 Square SDK integration for payments, catalog management, and sync conflict resolution.
 
-### Product writes (Square catalog sync)
-- `createProduct`, `updateProduct`, `uploadProductImage`
+### Product writes (Square catalog sync, #68)
+- `productCatalog` — **domain router** in `maple-square` (ADR-029), every route gated
+  `[Admin, Clerk]` like `products`, each holding the Square access token and strings (which
+  every route already held as its own function, so nothing widened):
+  `productCatalog/createProduct`, `productCatalog/updateProduct`,
+  `productCatalog/uploadProductImage`. The three per-endpoint originals were removed from the
+  code in #68 and are deleted from each project by hand.
 
 ### Square webhook
 - `squareWebhook` — HTTP endpoint _(memory: 512MiB, concurrency: 10)_. For `catalog.version.updated` events, the handler just bumps the singleton `catalogSyncRequests/pending` doc and acks 200 within Square's 10-second delivery timeout; the actual catalog re-sync runs in `processCatalogSyncRequest`. For `payment.created` / `payment.updated` events with a `COMPLETED` payment, it enqueues a `posSaleRequests/{paymentId}` doc (stays lean — no Square SDK) and returns; `processPosSale` does the work. Inventory and invoice events run inline (fast).
