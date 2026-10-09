@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('./utilities/database.config', () => ({
   db: {
     collection: vi.fn(),
+    runTransaction: vi.fn(),
   },
   toDate: (value: unknown, fallback: Date = new Date()): Date => {
     if (value === null || value === undefined) return fallback;
@@ -549,6 +550,93 @@ describe('ClassRepository', () => {
       expect(result!.registrationClosesAt!.toISOString()).toBe(
         '2026-05-10T00:00:00.000Z'
       );
+    });
+  });
+
+  describe('minimum enrollment fields', () => {
+    async function readBack(overrides: Record<string, unknown>) {
+      const doc = fakeDoc('class-1', rawClassData(overrides));
+      const mockGet = vi.fn().mockResolvedValue(doc);
+      const mockDocFn = vi.fn().mockReturnValue({ get: mockGet });
+      vi.mocked(db.collection).mockReturnValue({ doc: mockDocFn } as never);
+      return (await ClassRepository.findById('class-1'))!;
+    }
+
+    it('reads back minimumEnrollment and the alert marker', async () => {
+      const sentAt = new Date('2026-05-08T12:00:00.000Z');
+      const result = await readBack({
+        minimumEnrollment: 4,
+        underMinimumAlertSentAt: ts(sentAt),
+      });
+      expect(result.minimumEnrollment).toBe(4);
+      expect(result.underMinimumAlertSentAt).toEqual(sentAt);
+    });
+
+    it('reads a cleared (null) minimum and marker as unset', async () => {
+      const result = await readBack({
+        minimumEnrollment: null,
+        underMinimumAlertSentAt: null,
+      });
+      expect(result.minimumEnrollment).toBeUndefined();
+      expect(result.underMinimumAlertSentAt).toBeUndefined();
+    });
+  });
+
+  describe('claimUnderMinimumAlert', () => {
+    function stubTransaction(snap: { exists: boolean; data: () => unknown }) {
+      const docRef = { id: 'class-1' };
+      vi.mocked(db.collection).mockReturnValue({
+        doc: vi.fn().mockReturnValue(docRef),
+      } as never);
+      const tx = { get: vi.fn().mockResolvedValue(snap), update: vi.fn() };
+      vi.mocked(db.runTransaction).mockImplementation(
+        async (fn: (t: never) => Promise<unknown>) => fn(tx as never)
+      );
+      return { tx, docRef };
+    }
+
+    it('stamps the marker and returns true the first time', async () => {
+      const at = new Date('2026-05-08T12:00:00.000Z');
+      const { tx, docRef } = stubTransaction({
+        exists: true,
+        data: () => rawClassData(),
+      });
+
+      await expect(ClassRepository.claimUnderMinimumAlert('class-1', at)).resolves.toBe(true);
+      // No updatedAt: a bare marker write must not look like an edit.
+      expect(tx.update).toHaveBeenCalledWith(docRef, { underMinimumAlertSentAt: at });
+    });
+
+    it('returns false without writing when already alerted', async () => {
+      const { tx } = stubTransaction({
+        exists: true,
+        data: () => rawClassData({ underMinimumAlertSentAt: ts(new Date()) }),
+      });
+
+      await expect(
+        ClassRepository.claimUnderMinimumAlert('class-1', new Date())
+      ).resolves.toBe(false);
+      expect(tx.update).not.toHaveBeenCalled();
+    });
+
+    it('returns false when the class is gone', async () => {
+      const { tx } = stubTransaction({ exists: false, data: () => undefined });
+      await expect(
+        ClassRepository.claimUnderMinimumAlert('class-1', new Date())
+      ).resolves.toBe(false);
+      expect(tx.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('releaseUnderMinimumAlert', () => {
+    it('clears only the marker', async () => {
+      const mockUpdate = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(db.collection).mockReturnValue({
+        doc: vi.fn().mockReturnValue({ update: mockUpdate }),
+      } as never);
+
+      await ClassRepository.releaseUnderMinimumAlert('class-1');
+      expect(mockUpdate).toHaveBeenCalledWith({ underMinimumAlertSentAt: null });
     });
   });
 

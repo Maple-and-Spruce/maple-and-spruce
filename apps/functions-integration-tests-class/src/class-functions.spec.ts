@@ -364,4 +364,76 @@ describe('Class Functions', () => {
       expect(result.status).not.toBe(200);
     });
   });
+
+  describe('Minimum enrollment', () => {
+    it('stores, reads back and clears the minimum, and keeps it off the public class', async () => {
+      const created = await callFunction<CreateClassRequest, CreateClassResponse>({
+        functionName: 'createClass',
+        data: {
+          ...SAMPLE_CLASS,
+          name: 'Minimum Enrollment Class',
+          status: 'published',
+          instructorId,
+          minimumEnrollment: 4,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(created.status).toBe(200);
+      const id = created.data!.class.id;
+
+      // Read side goes through the repository mapper.
+      const fetched = await callFunction<GetClassRequest, GetClassResponse>({
+        functionName: 'getClass',
+        data: { id },
+        idToken: adminUser.idToken,
+      });
+      expect(fetched.data?.class.minimumEnrollment).toBe(4);
+
+      // Admin-only: never on the public class.
+      const publicClass = await callFunction<
+        GetPublicClassRequest,
+        GetPublicClassResponse
+      >({ functionName: 'getPublicClass', data: { id } });
+      expect(publicClass.status).toBe(200);
+      expect(publicClass.data?.class).not.toHaveProperty('minimumEnrollment');
+
+      const changed = await callFunction<UpdateClassRequest, UpdateClassResponse>({
+        functionName: 'updateClass',
+        data: { id, minimumEnrollment: 6 },
+        idToken: adminUser.idToken,
+      });
+      expect(changed.data?.class.minimumEnrollment).toBe(6);
+
+      // Clearing sends null, which must remove it rather than be ignored.
+      const cleared = await callFunction<UpdateClassRequest, UpdateClassResponse>({
+        functionName: 'updateClass',
+        data: { id, minimumEnrollment: null },
+        idToken: adminUser.idToken,
+      });
+      expect(cleared.status).toBe(200);
+      expect(cleared.data?.class.minimumEnrollment).toBeUndefined();
+    });
+
+    it('rejects a minimum above capacity on create and update', async () => {
+      const tooHigh = await callFunction<Partial<CreateClassRequest>>({
+        functionName: 'createClass',
+        data: { ...SAMPLE_CLASS, name: 'Unreachable Minimum', minimumEnrollment: 11 },
+        idToken: adminUser.idToken,
+      });
+      expect(tooHigh.status).not.toBe(200);
+
+      const created = await callFunction<CreateClassRequest, CreateClassResponse>({
+        functionName: 'createClass',
+        data: { ...SAMPLE_CLASS, name: 'Capacity Ten Class' },
+        idToken: adminUser.idToken,
+      });
+      const id = created.data!.class.id;
+      const update = await callFunction<UpdateClassRequest, UpdateClassResponse>({
+        functionName: 'updateClass',
+        data: { id, minimumEnrollment: 11 },
+        idToken: adminUser.idToken,
+      });
+      expect(update.status).not.toBe(200);
+    });
+  });
 });

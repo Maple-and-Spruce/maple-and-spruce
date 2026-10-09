@@ -37,6 +37,12 @@ interface SendClassRemindersResult {
   skippedAlreadySent: number;
   skippedNotPaid: number;
   classesWithSessionToday: number;
+  underMinimum: {
+    classesChecked: number;
+    alertsSent: number;
+    skippedMinimumMet: number;
+    skippedAlreadyAlerted: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +111,8 @@ function buildClass(overrides: {
   status?: string;
   instructorId?: string;
   location?: string;
+  capacity?: number;
+  minimumEnrollment?: number;
 }): Record<string, unknown> {
   const sessions = overrides.sessions
     .slice()
@@ -115,7 +123,10 @@ function buildClass(overrides: {
     sessions: sessions.map((s) => ({ dateTime: s.toISOString() })),
     firstSessionAt: sessions[0].toISOString(),
     durationMinutes: 90,
-    capacity: 12,
+    capacity: overrides.capacity ?? 12,
+    ...(overrides.minimumEnrollment !== undefined
+      ? { minimumEnrollment: overrides.minimumEnrollment }
+      : {}),
     priceCents: 4500,
     skillLevel: 'beginner',
     status: overrides.status ?? 'published',
@@ -131,13 +142,14 @@ function buildRegistration(overrides: {
   email: string;
   name: string;
   status?: string;
+  quantity?: number;
   reminderSentForSessions?: Record<string, string>;
 }): Record<string, unknown> {
   return {
     classId: overrides.classId,
     customerEmail: overrides.email,
     customerName: overrides.name,
-    quantity: 1,
+    quantity: overrides.quantity ?? 1,
     pricePaidCents: 4770,
     subtotalCents: 4500,
     taxAmountCents: 270,
@@ -692,6 +704,150 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
       expect(await listFirestoreDocs('mail')).toHaveLength(0);
+    });
+  });
+
+  describe('Under-minimum staff alert (class a week out)', () => {
+    // The emulator loads .env.dev, where ADMIN_ALERT_EMAIL is the +dev alias.
+    const STAFF_ALERT_INBOX = 'katie+dev@mapleandsprucefolkarts.com';
+
+    async function staffAlerts(): Promise<
+      Array<{ to: string; message: { subject: string; text: string } }>
+    > {
+      const docs = await listFirestoreDocs('mail');
+      return docs
+        .map((d) => d.data as { to: string; message?: { subject: string; text: string } })
+        .filter((m): m is { to: string; message: { subject: string; text: string } } =>
+          Boolean(m.message)
+        );
+    }
+
+    async function seedWeekOutClass(opts: {
+      classId: string;
+      minimumEnrollment?: number;
+      status?: string;
+      daysOut?: number;
+      confirmedSeats: number[];
+      otherStatuses?: string[];
+    }): Promise<void> {
+      await setFirestoreDoc(
+        'classes',
+        opts.classId,
+        buildClass({
+          name: 'Beginner Block Printing',
+          sessions: [timeAtOffsetDays(opts.daysOut ?? 7, 14)],
+          status: opts.status,
+          capacity: 10,
+          minimumEnrollment: opts.minimumEnrollment,
+        })
+      );
+      for (const [i, quantity] of opts.confirmedSeats.entries()) {
+        await setFirestoreDoc(
+          'registrations',
+          `${opts.classId}-reg-${i}`,
+          buildRegistration({
+            classId: opts.classId,
+            email: `seat${i}@example.com`,
+            name: `Seat ${i}`,
+            quantity,
+          })
+        );
+      }
+      for (const [i, status] of (opts.otherStatuses ?? []).entries()) {
+        await setFirestoreDoc(
+          'registrations',
+          `${opts.classId}-other-${i}`,
+          buildRegistration({
+            classId: opts.classId,
+            email: `other${i}@example.com`,
+            name: `Other ${i}`,
+            status,
+          })
+        );
+      }
+    }
+
+    it('emails staff once, with the class, count, minimum and portal link', async () => {
+      // 2 confirmed docs holding 3 seats; pending and cancelled don't count.
+      await seedWeekOutClass({
+        classId: 'class-under-min',
+        minimumEnrollment: 4,
+        confirmedSeats: [1, 2],
+        otherStatuses: ['pending', 'cancelled'],
+      });
+
+      const first = await callTriggerAsAdmin(adminUser.idToken);
+      expect(first.status).toBe(200);
+      expect(first.data?.underMinimum).toEqual({
+        classesChecked: 1,
+        alertsSent: 1,
+        skippedMinimumMet: 0,
+        skippedAlreadyAlerted: 0,
+      });
+
+      const alerts = await staffAlerts();
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0].to).toBe(STAFF_ALERT_INBOX);
+      expect(alerts[0].message.subject).toBe(
+        'Below minimum: Beginner Block Printing, 3 of 4 confirmed'
+      );
+      expect(alerts[0].message.text).toContain(
+        'https://business-dev.mapleandsprucefolkarts.com/classes/class-under-min/roster'
+      );
+
+      const cls = await getFirestoreDoc('classes', 'class-under-min');
+      expect(cls?.['underMinimumAlertSentAt']).toBeTruthy();
+
+      // A rerun (schedule or admin trigger) never resends.
+      const second = await callTriggerAsAdmin(adminUser.idToken);
+      expect(second.data?.underMinimum.alertsSent).toBe(0);
+      expect(second.data?.underMinimum.skippedAlreadyAlerted).toBe(1);
+      expect(await staffAlerts()).toHaveLength(1);
+
+      // Nothing was emailed to students.
+      const mail = await listFirestoreDocs('mail');
+      expect(mail).toHaveLength(1);
+    });
+
+    it('does not alert when confirmed seats meet the minimum', async () => {
+      await seedWeekOutClass({
+        classId: 'class-at-min',
+        minimumEnrollment: 4,
+        confirmedSeats: [2, 2],
+      });
+
+      const result = await callTriggerAsAdmin(adminUser.idToken);
+      expect(result.data?.underMinimum.skippedMinimumMet).toBe(1);
+      expect(await staffAlerts()).toHaveLength(0);
+      const cls = await getFirestoreDoc('classes', 'class-at-min');
+      expect(cls?.['underMinimumAlertSentAt']).toBeFalsy();
+    });
+
+    it('ignores classes with no minimum, cancelled classes and other days', async () => {
+      await seedWeekOutClass({ classId: 'class-no-min', confirmedSeats: [] });
+      await seedWeekOutClass({
+        classId: 'class-cancelled-min',
+        minimumEnrollment: 4,
+        status: 'cancelled',
+        confirmedSeats: [],
+      });
+      await seedWeekOutClass({
+        classId: 'class-six-days',
+        minimumEnrollment: 4,
+        daysOut: 6,
+        confirmedSeats: [],
+      });
+      await seedWeekOutClass({
+        classId: 'class-eight-days',
+        minimumEnrollment: 4,
+        daysOut: 8,
+        confirmedSeats: [],
+      });
+
+      const result = await callTriggerAsAdmin(adminUser.idToken);
+      expect(result.status).toBe(200);
+      expect(result.data?.underMinimum.classesChecked).toBe(0);
+      expect(await staffAlerts()).toHaveLength(0);
     });
   });
 });

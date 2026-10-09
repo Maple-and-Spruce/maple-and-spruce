@@ -190,7 +190,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 
 ### Registrations (read/update)
 - `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`
-- `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_
+- `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`. Also emails staff (`ADMIN_ALERT_EMAIL`) once per class whose first session is 7 days out and whose confirmed seats are below `minimumEnrollment`, stamped by `underMinimumAlertSentAt`. Admin twin: `triggerClassReminders`)_
 
 ### Calendar Events
 - `getCalendarEvents`, `getCalendarEvent`, `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent`
