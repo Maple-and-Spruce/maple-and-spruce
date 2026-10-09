@@ -129,7 +129,7 @@ describe('onClassWrite Trigger', () => {
         Record<string, never>,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         idToken: adminUser.idToken,
       });
 
@@ -185,7 +185,7 @@ describe('onClassWrite Trigger', () => {
         Record<string, never>,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         idToken: adminUser.idToken,
       });
 
@@ -256,7 +256,7 @@ describe('onClassWrite Trigger', () => {
         Record<string, never>,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         idToken: adminUser.idToken,
       });
 
@@ -301,7 +301,7 @@ describe('onClassWrite Trigger', () => {
         Record<string, never>,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         idToken: adminUser.idToken,
       });
 
@@ -324,7 +324,7 @@ describe('onClassWrite Trigger', () => {
         Record<string, never>,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         idToken: adminUser.idToken,
       });
 

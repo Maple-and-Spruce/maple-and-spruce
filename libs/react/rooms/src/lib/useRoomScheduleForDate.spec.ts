@@ -3,11 +3,16 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 
 const callable = vi.fn();
+const urls: string[] = [];
 vi.mock('firebase/functions', () => ({
-  httpsCallable: () => callable,
+  httpsCallableFromURL: (_functions: unknown, url: string) => {
+    urls.push(url);
+    return callable;
+  },
 }));
 vi.mock('@maple/ts/firebase/firebase-config', () => ({
   getMapleFunctions: () => ({}),
+  routerCallableUrl: (router: string, route: string) => `${router}/${route}`,
 }));
 
 import { useRoomScheduleForDate } from './useRoomScheduleForDate';
@@ -47,11 +52,11 @@ describe('useRoomScheduleForDate', () => {
     });
 
     const { result } = renderHook(() =>
-      useRoomScheduleForDate('spruce', new Date('2026-06-21T15:00:00Z'))
+      useRoomScheduleForDate('spruce', new Date('2026-06-21T15:00:00Z')),
     );
 
     await waitFor(() =>
-      expect(result.current.roomScheduleState.status).toBe('success')
+      expect(result.current.roomScheduleState.status).toBe('success'),
     );
     const state = result.current.roomScheduleState;
     if (state.status !== 'success') throw new Error('expected success');
@@ -67,10 +72,20 @@ describe('useRoomScheduleForDate', () => {
   it('surfaces an error state when the callable rejects', async () => {
     callable.mockRejectedValue(new Error('boom'));
     const { result } = renderHook(() =>
-      useRoomScheduleForDate('spruce', new Date('2026-06-21T15:00:00Z'))
+      useRoomScheduleForDate('spruce', new Date('2026-06-21T15:00:00Z')),
     );
     await waitFor(() =>
-      expect(result.current.roomScheduleState.status).toBe('error')
+      expect(result.current.roomScheduleState.status).toBe('error'),
     );
+  });
+
+  it('reads the room schedule from the calendar router', async () => {
+    callable.mockResolvedValue({ data: { windows: [] } });
+    urls.length = 0;
+    renderHook(() =>
+      useRoomScheduleForDate('spruce', new Date('2026-06-21T16:00:00Z')),
+    );
+    await waitFor(() => expect(callable).toHaveBeenCalled());
+    expect(urls).toContain('calendar/getRoomSchedule');
   });
 });

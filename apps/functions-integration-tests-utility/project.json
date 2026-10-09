@@ -5,6 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
+    "firebase-maple-functions-calendar",
     "firebase-maple-functions-artists",
     "firebase-maple-functions-people",
     "firebase-maple-functions-lessons",

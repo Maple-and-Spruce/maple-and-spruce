@@ -25,7 +25,7 @@ export const DASHBOARD_WARMUP_FUNCTIONS: readonly CallableTarget[] = [
   'getClasses',
   'getRegistrations',
   { router: 'products', route: 'getProducts' },
-  'getRoomSchedule',
+  { router: 'calendar', route: 'getRoomSchedule' },
 ];
 
 /**

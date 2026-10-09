@@ -45,14 +45,14 @@ describe('Calendar Embed Config Functions', () => {
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction({
-        functionName: 'getCalendarEmbedConfig',
+        functionName: 'calendar/getCalendarEmbedConfig',
       });
       expect(result.status).toBe(401);
     });
 
     it('should reject non-admin users', async () => {
       const result = await callFunction({
-        functionName: 'getCalendarEmbedConfig',
+        functionName: 'calendar/getCalendarEmbedConfig',
         idToken: nonAdminUser.idToken,
       });
       expect([403, 500]).toContain(result.status);
@@ -65,7 +65,7 @@ describe('Calendar Embed Config Functions', () => {
         Record<string, never>,
         GetCalendarEmbedConfigResponse
       >({
-        functionName: 'getCalendarEmbedConfig',
+        functionName: 'calendar/getCalendarEmbedConfig',
         idToken: adminUser.idToken,
       });
 
@@ -81,7 +81,7 @@ describe('Calendar Embed Config Functions', () => {
         UpdateCalendarEmbedConfigRequest,
         UpdateCalendarEmbedConfigResponse
       >({
-        functionName: 'updateCalendarEmbedConfig',
+        functionName: 'calendar/updateCalendarEmbedConfig',
         data: {
           title: 'Test Calendar',
           defaultTab: 'week',
@@ -101,7 +101,7 @@ describe('Calendar Embed Config Functions', () => {
         AddCalendarEmbedSourceRequest,
         AddCalendarEmbedSourceResponse
       >({
-        functionName: 'addCalendarEmbedSource',
+        functionName: 'calendar/addCalendarEmbedSource',
         data: {
           label: 'Test Feed',
           url: 'https://example.com/test.ics',
@@ -127,7 +127,7 @@ describe('Calendar Embed Config Functions', () => {
         Record<string, never>,
         GetCalendarEmbedConfigResponse
       >({
-        functionName: 'getCalendarEmbedConfig',
+        functionName: 'calendar/getCalendarEmbedConfig',
         idToken: adminUser.idToken,
       });
 
@@ -140,7 +140,7 @@ describe('Calendar Embed Config Functions', () => {
         RemoveCalendarEmbedSourceRequest,
         RemoveCalendarEmbedSourceResponse
       >({
-        functionName: 'removeCalendarEmbedSource',
+        functionName: 'calendar/removeCalendarEmbedSource',
         data: { sourceId: customSource!.id },
         idToken: adminUser.idToken,
       });
@@ -156,7 +156,7 @@ describe('Calendar Embed Config Functions', () => {
   describe('Validation', () => {
     it('should reject source with missing label', async () => {
       const result = await callFunction({
-        functionName: 'addCalendarEmbedSource',
+        functionName: 'calendar/addCalendarEmbedSource',
         data: {
           url: 'https://example.com/test.ics',
           color: 'FF5733',
@@ -170,7 +170,7 @@ describe('Calendar Embed Config Functions', () => {
 
     it('should reject source with missing url', async () => {
       const result = await callFunction({
-        functionName: 'addCalendarEmbedSource',
+        functionName: 'calendar/addCalendarEmbedSource',
         data: {
           label: 'Missing URL Feed',
           color: 'FF5733',
