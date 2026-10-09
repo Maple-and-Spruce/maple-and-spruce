@@ -59,15 +59,16 @@ const MAPLE_FUNCTIONS_PREFIX = '@maple/firebase/maple-functions/';
 const PUBLIC_ALLOWLIST = new Set<string>([
   // Health / infra
   'healthCheck',
-  // Public customer-facing reads (Webflow widgets)
-  'getPublicClass',
-  'getPublicMusicTogetherSection',
-  'getPublicMusicTogetherSections',
-  'getPublicMusicTogetherDemos',
-  'getRegistrationStatus',
-  'getRequiredAgreementsForClass',
-  'calculateRegistrationCost',
-  'lookupDiscount',
+  // Public customer-facing reads (Webflow widgets), on one warm router. Every
+  // route on `publicSite` must be safe for anyone to call: reads only.
+  'publicSite/getPublicClass',
+  'publicSite/getRequiredAgreementsForClass',
+  'publicSite/calculateRegistrationCost',
+  'publicSite/getRegistrationStatus',
+  'publicSite/lookupDiscount',
+  'publicSite/getPublicMusicTogetherSection',
+  'publicSite/getPublicMusicTogetherSections',
+  'publicSite/getPublicMusicTogetherDemos',
   // Public customer-facing writes (checkout / interest / waitlist).
   // NOTE: cancelRegistration / cancelMusicTogetherRegistration are role-gated
   // (admin/clerk), NOT public — so they are intentionally absent here.

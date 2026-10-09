@@ -130,9 +130,26 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
     aggregates what Katie owes each teacher over a date range from paid private-pay invoice
     lines + rendered Hope Scholarship lessons.
 
+### Public widget reads
+- `publicSite` — **domain router** in `maple-core` (ADR-029) for the public reads the Webflow
+  widgets make, every route public by design (allowlisted per route in
+  `tools/check-callable-roles.ts`). **The one warm function**: `minInstances: 1` in prod, 0 in
+  dev, `concurrency: 80`. Five of these reads used to keep an instance warm each, at about $8 a
+  month apiece, which was nearly the whole Cloud Run bill; one router keeps one warm for all
+  eight. Reads only: a public write belongs with its domain.
+  - Classes (RegistrationWidget): `publicSite/getPublicClass`,
+    `publicSite/getRequiredAgreementsForClass`, `publicSite/calculateRegistrationCost`,
+    `publicSite/getRegistrationStatus`
+  - Both checkouts: `publicSite/lookupDiscount`
+  - Music Together widgets: `publicSite/getPublicMusicTogetherSection`,
+    `publicSite/getPublicMusicTogetherSections`, `publicSite/getPublicMusicTogetherDemos`
+- The widget calls these with `routeCallable` from `apps/webflow-components/src/firebase-init.ts`,
+  so moving them needed a Webflow publish. The eight per-endpoint originals keep serving the
+  old widget bundle until that publish, then are deleted by hand.
+
 ### Classes
 - `getClasses`, `getClass`, `createClass`, `updateClass`, `deleteClass`, `uploadClassImage`, `uploadClassGalleryImage`
-- `getPublicClass` _(minInstances: 1 in prod / 0 in dev, concurrency: 80)_
+- `publicSite/getPublicClass` — see "Public widget reads" above
 - `addToClassWaitlist` _(public; idempotent email signup stored under `classes/{id}/waitlist/{emailKey}`)_
 - `getClassWaitlist` _(admin; returns a class's waitlist entries ordered earliest-signup-first plus a count; powers the portal roster's Waitlist section)_
 - `getClassWaitlistCounts` _(admin; `classId -> count` map for every class via a `waitlist` collection-group scan, filtered to `classes` parents; powers the classes-list Waitlist column)_
@@ -140,7 +157,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - `classCatalogFeed` _(public RSS 2.0 feed at `/catalog/classes.xml`; consumed by Meta Commerce Manager + Google Merchant Center; 15-min cache)_
 
 ### Music Together — cross-section interest list (legacy #602)
-- `getPublicMusicTogetherSections` _(public; customer-safe list of visible section options — id, name, first-session, location, derived status — drives the interest form's checkboxes)_
+- `publicSite/getPublicMusicTogetherSections` _(public, on the `publicSite` router; customer-safe list of visible section options — id, name, first-session, location, derived status — drives the interest form's checkboxes)_
 - `addMusicTogetherInterest` _(public; idempotent-per-email upsert to `musicTogetherInterest/{emailKey}` capturing `interestedSectionIds[]` + preference/alternate-time/notes; validates + verifies referenced sections before writing. Broader than the per-section `addToMusicTogetherWaitlist` — works even when nothing is full. Also persists Meta attribution and sends a server-side `Lead` — see "Top-of-funnel attribution" below)_
 - `getMusicTogetherInterest` _(admin; returns all interest entries, a per-section demand tally (highest first), and a section-id→name map; powers the MT admin "Interest list" dialog)_
 
@@ -154,8 +171,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   The four per-endpoint originals (`getDiscounts`, `createDiscount`, `updateDiscount`,
   `deleteDiscount`) are gone from the codebase. CI does not prune, so they are deleted from
   each project by hand (`firebase functions:delete`).
-- `lookupDiscount` — public, called by both checkout widgets. Stays its own function for now:
-  its App Check rollout is in flight and moving it needs a Webflow publish.
+- `publicSite/lookupDiscount` — public, called by both checkout widgets; on the warm
+  `publicSite` router (see "Public widget reads" above).
 
 **Program scoping (legacy #791).** Every discount carries `program: 'classes' | 'music-together'` and is redeemable at **only** that checkout. The two programs settle to **different Square accounts owned by different businesses**, so an unscoped code let a Music Together promotion take money off a craft class and vice versa. Enforced in four places, all of which must agree:
 
@@ -188,7 +205,8 @@ Codes are **globally unique across programs** — a customer types a code withou
   Refuses a charge that is already `charging`/`paid`/`failed`/`cancelled`, and refuses any charge on a cancelled or refunded registration — money has moved or the family is gone, and the fix there is a refund, not a status rewrite. Lives in `maple-core`, not `maple-square`: waiving takes no payment and needs no MT Square credentials._
 
 ### Registrations (read/update)
-- `getRegistrations`, `getRegistration`, `updateRegistration`, `calculateRegistrationCost`
+- `getRegistrations`, `getRegistration`, `updateRegistration` (the public price preview,
+  `calculateRegistrationCost`, is on `publicSite`)
 - `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_
 
 ### Calendar Events
@@ -224,12 +242,12 @@ Codes are **globally unique across programs** — a customer types a code withou
   `sendAgreementRequest`, `resendAgreementRequest`, `getSignedAgreements`, `getSignedAgreement`.
   Checked on dev on 2026-10-08. The ten per-endpoint originals are removed from the code;
   CI does not prune, so they are deleted from each project by hand.
-- These four stay their own functions on purpose (see the router's header comment):
+- These stay off the `agreements` router on purpose (see the router's header comment):
   - `getAgreementForSigning` _(public, token-based; the `/sign/[token]` page)_
   - `submitSignedAgreement` _(public, token-based, 120s timeout; takes the signature upload)_
-  - `getRequiredAgreementsForClass` _(public — required-at-checkout templates for a class; called
-    by the Webflow registration widget, which swallows its errors, so moving it needs a Webflow
-    publish and care)_
+  - `publicSite/getRequiredAgreementsForClass` _(public — required-at-checkout templates for a
+    class; called by the Webflow registration widget, which swallows its errors. On the warm
+    `publicSite` router with the widget's other reads)_
   - `expireAgreementRequests` _(scheduled — marks expired requests; a schedule can't be a route)_
 
 ### Auth

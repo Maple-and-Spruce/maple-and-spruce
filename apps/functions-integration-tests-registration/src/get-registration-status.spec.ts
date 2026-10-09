@@ -51,7 +51,7 @@ describe('getRegistrationStatus', () => {
       GetRegistrationStatusRequest,
       GetRegistrationStatusResponse
     >({
-      functionName: 'getRegistrationStatus',
+      functionName: 'publicSite/getRegistrationStatus',
       data: { registrationId: 'reg-confirmed' },
     });
 
@@ -74,7 +74,7 @@ describe('getRegistrationStatus', () => {
       GetRegistrationStatusRequest,
       GetRegistrationStatusResponse
     >({
-      functionName: 'getRegistrationStatus',
+      functionName: 'publicSite/getRegistrationStatus',
       data: { registrationId: 'reg-pending' },
     });
 
@@ -88,7 +88,7 @@ describe('getRegistrationStatus', () => {
       GetRegistrationStatusRequest,
       GetRegistrationStatusResponse
     >({
-      functionName: 'getRegistrationStatus',
+      functionName: 'publicSite/getRegistrationStatus',
       data: { registrationId: 'does-not-exist' },
     });
 

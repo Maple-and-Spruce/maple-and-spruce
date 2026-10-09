@@ -91,15 +91,14 @@ export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-i
 export { uploadClassGalleryImage } from '@maple/firebase/maple-functions/upload-class-gallery-image';
 export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-class-sessions';
 
+// Public reads for the Webflow widgets, on one warm router (ADR-029). The
+// public writes below stay with their domains.
+export { publicSite } from '@maple/firebase/maple-functions/public-site';
+
 // Public class API (no auth required - for Webflow integration)
-export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
-export { getRegistrationStatus } from '@maple/firebase/maple-functions/get-registration-status';
-export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/get-public-music-together-section';
 export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
 export { addMusicTogetherDemoRsvp } from '@maple/firebase/maple-functions/add-music-together-demo-rsvp';
 export { getMusicTogetherDemoRsvps } from '@maple/firebase/maple-functions/get-music-together-demo-rsvps';
-export { getPublicMusicTogetherDemos } from '@maple/firebase/maple-functions/get-public-music-together-demos';
-export { getPublicMusicTogetherSections } from '@maple/firebase/maple-functions/get-public-music-together-sections';
 export { addMusicTogetherInterest } from '@maple/firebase/maple-functions/add-music-together-interest';
 export { getMusicTogetherInterest } from '@maple/firebase/maple-functions/get-music-together-interest';
 
@@ -135,9 +134,6 @@ export { deleteClassCategory } from '@maple/firebase/maple-functions/delete-clas
 export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-class-categories';
 export { uploadCategoryGalleryImage } from '@maple/firebase/maple-functions/upload-category-gallery-image';
 
-// Discount functions
-export { lookupDiscount } from '@maple/firebase/maple-functions/lookup-discount';
-
 // Calendar Event functions
 // Calendar domain router: events, room schedule, embed config (ADR-029, #73).
 export { calendar } from '@maple/firebase/maple-functions/calendar';
@@ -160,13 +156,11 @@ export { calendarEmbed } from '@maple/firebase/maple-functions/calendar-embed';
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';
 export { updateRegistration } from '@maple/firebase/maple-functions/update-registration';
-export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calculate-registration-cost';
 
-// Agreements kept off the `agreements` router: the public signing page, the
-// Webflow widget's required-agreements lookup, and the expiry schedule.
+// Agreements kept off the `agreements` router: the public signing page and the
+// expiry schedule. The widget's required-agreements lookup is on `publicSite`.
 export { getAgreementForSigning } from '@maple/firebase/maple-functions/get-agreement-for-signing';
 export { submitSignedAgreement } from '@maple/firebase/maple-functions/submit-signed-agreement';
-export { getRequiredAgreementsForClass } from '@maple/firebase/maple-functions/get-required-agreements-for-class';
 
 // Agreement scheduled functions
 export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-agreement-requests';

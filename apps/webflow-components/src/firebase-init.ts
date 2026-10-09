@@ -5,7 +5,12 @@
  * Environment is passed explicitly as a prop from the Webflow component.
  */
 import { initializeApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import {
+  getFunctions,
+  connectFunctionsEmulator,
+  httpsCallableFromURL,
+  type Functions,
+} from 'firebase/functions';
 
 const prodConfig: FirebaseOptions = {
   apiKey: 'AIzaSyCPcBR2xmErLQKo-fipRbM6pnOSbLMgi2U',
@@ -69,4 +74,43 @@ export function getWidgetFunctions(env: string) {
   }
 
   return functions;
+}
+
+/**
+ * A callable for one route on a domain router (ADR-029), such as the
+ * `publicSite` reads the widgets make on mount.
+ *
+ * A router is one Cloud Function serving many endpoints, so the endpoint is in
+ * the URL path and `httpsCallable(functions, name)` cannot address it. The URL
+ * is built from the same `functions` instance the widget already holds, so the
+ * project and emulator choice made in `getWidgetFunctions` carry over.
+ */
+export function routeCallable<TRequest, TResponse>(
+  functions: Functions,
+  router: string,
+  route: string
+) {
+  return httpsCallableFromURL<TRequest, TResponse>(
+    functions,
+    routeUrl(functions, router, route)
+  );
+}
+
+/**
+ * The URL of one router route. The emulator's shape differs from production's,
+ * and getting it wrong is a 404 on every call, so both are spelled out:
+ *   emulator  http://127.0.0.1:<port>/<projectId>/<region>/<router>/<route>
+ *   deployed  https://<region>-<projectId>.cloudfunctions.net/<router>/<route>
+ */
+export function routeUrl(
+  functions: Functions,
+  router: string,
+  route: string
+): string {
+  const projectId = functions.app.options.projectId;
+  if (emulatorConnected) {
+    const { host, port } = getEmulatorEndpoint();
+    return `http://${host}:${port}/${projectId}/${FUNCTIONS_REGION}/${router}/${route}`;
+  }
+  return `https://${FUNCTIONS_REGION}-${projectId}.cloudfunctions.net/${router}/${route}`;
 }

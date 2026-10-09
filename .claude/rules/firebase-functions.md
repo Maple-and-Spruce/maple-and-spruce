@@ -259,9 +259,12 @@ Each codebase has its own entry point:
 Use `Functions.endpoint.withOptions()` for per-function runtime config:
 ```typescript
 Functions.endpoint
-  .withOptions({ minInstances: 1, concurrency: 80, memory: '512MiB' })
+  .withOptions({ concurrency: 80, memory: '512MiB' })
   .handle<Req, Res>(async (data) => { ... });
 ```
+
+`minInstances` is the exception: only the `publicSite` router may set it, and CI enforces that
+(`npx tsx tools/check-warm-instances.ts`, in the `callable-roles` job). See "Warmup" below.
 
 ### Global `maxInstances` cap (every function, every codebase)
 
@@ -298,10 +301,12 @@ The intercept lives in `functions.utility.ts` and short-circuits before auth, va
 import { warmup } from '../lib/warmup';
 
 // Fire-and-forget on widget mount for downstream calls the user will trigger soon
-warmup(functions, 'calculateRegistrationCost', 'createRegistration');
+warmup(functions, 'createRegistration', 'createRegistrationCheckoutLink');
 ```
 
-**When to warm**: downstream functions that aren't called on first paint — e.g. functions invoked after the user types in a form or clicks a button. For first-paint functions (called immediately on mount), warmup is too late; use env-gated `minInstances: 1` instead.
+**When to warm**: downstream functions that aren't called on first paint — e.g. functions invoked after the user types in a form or clicks a button. For first-paint functions (called immediately on mount), warmup is too late: add the read as a route on the **`publicSite` router**, which is kept warm in prod.
+
+**Don't give a function its own `minInstances: 1`.** An idle warm instance bills its CPU and memory all month — about $8 per 1 vCPU / 256MiB function. Five public reads each doing that were nearly the whole Cloud Run bill (~$40/month) until they moved onto `publicSite`, which keeps **one** instance warm for all of them. A public read the widgets need on mount goes there; a route on it must be safe for anyone to call, so writes stay with their domain.
 
 **Don't**: schedule a recurring Cloud Scheduler ping to keep functions warm 24/7. That bills idle time when no users are visiting. Warmup should be driven by user presence on the page.
 

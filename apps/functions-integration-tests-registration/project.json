@@ -5,7 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
-    "firebase-maple-functions-calculate-registration-cost",
+    "firebase-maple-functions-public-site",
     "firebase-maple-functions-sync-registration-count",
     "firebase-maple-functions-update-registration",
     "firebase-maple-functions-send-class-reminders",

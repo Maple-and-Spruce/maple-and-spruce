@@ -36,7 +36,7 @@ import type {
   AddMusicTogetherInterestRequest,
   AddMusicTogetherInterestResponse,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import { warmup } from './lib/warmup';
 import { readMetaAttribution } from './lib/meta-attribution';
 import {
@@ -111,10 +111,10 @@ export function MusicTogetherInterestWidget({
     let cancelled = false;
     (async () => {
       try {
-        const call = httpsCallable<
+        const call = routeCallable<
           GetPublicMusicTogetherSectionsRequest,
           GetPublicMusicTogetherSectionsResponse
-        >(functions, 'getPublicMusicTogetherSections');
+        >(functions, 'publicSite', 'getPublicMusicTogetherSections');
         const result = await call({});
         if (!cancelled) {
           setLoadState({ status: 'ready', sections: result.data.sections });
