@@ -64,11 +64,9 @@ export { deleteInstructor } from '@maple/firebase/maple-functions/delete-instruc
 export { uploadInstructorImage } from '@maple/firebase/maple-functions/upload-instructor-image';
 
 // Music lesson student functions (Phase 4)
-export { getStudents } from '@maple/firebase/maple-functions/get-students';
-export { getStudent } from '@maple/firebase/maple-functions/get-student';
-export { createStudent } from '@maple/firebase/maple-functions/create-student';
-export { updateStudent } from '@maple/firebase/maple-functions/update-student';
-export { deleteStudent } from '@maple/firebase/maple-functions/delete-student';
+// People domain router: students, users and roles (ADR-029, #65). getMyRoles stays
+// its own function: it gates every admin page on first paint.
+export { people } from '@maple/firebase/maple-functions/people';
 
 // Music lesson functions (Phase 4)
 export { getLessons } from '@maple/firebase/maple-functions/get-lessons';
@@ -225,12 +223,7 @@ export { recordSale } from '@maple/firebase/maple-functions/record-sale';
 export { getSales } from '@maple/firebase/maple-functions/get-sales';
 
 // User & role administration (admin /users page)
-export { listUsers } from '@maple/firebase/maple-functions/list-users';
-export { grantAdminRole } from '@maple/firebase/maple-functions/grant-admin-role';
-export { revokeAdminRole } from '@maple/firebase/maple-functions/revoke-admin-role';
 export { getMyRoles } from '@maple/firebase/maple-functions/get-my-roles';
-export { grantRole } from '@maple/firebase/maple-functions/grant-role';
-export { revokeRole } from '@maple/firebase/maple-functions/revoke-role';
 
 // Lead attribution: tallyLeadWebhook now lives in the maple-webhooks codebase
 // (apps/functions-webhooks). Tally hangs up at 10s and this bundle takes ~14s

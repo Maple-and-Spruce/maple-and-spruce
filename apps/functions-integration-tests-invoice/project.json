@@ -9,7 +9,7 @@
     "firebase-maple-functions-get-invoices",
     "firebase-maple-functions-update-invoice",
     "firebase-maple-functions-delete-invoice",
-    "firebase-maple-functions-create-student",
+    "firebase-maple-functions-people",
     "firebase-integration-test-utils"
   ],
   "targets": {

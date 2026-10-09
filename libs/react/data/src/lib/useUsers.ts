@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   AppUser,
   RequestState,
@@ -86,9 +89,9 @@ export function useUsers() {
   const fetchUsers = useCallback(async () => {
     setUsersState({ status: 'loading' });
     try {
-      const fn = httpsCallable<GetUsersRequest, GetUsersResponse>(
+      const fn = httpsCallableFromURL<GetUsersRequest, GetUsersResponse>(
         getMapleFunctions(),
-        'listUsers'
+        routerCallableUrl('people', 'listUsers')
       );
       const result = await fn({});
       setUsersState({
@@ -106,9 +109,9 @@ export function useUsers() {
   }, []);
 
   const grantAdmin = useCallback(async (uid: string): Promise<void> => {
-    const fn = httpsCallable<GrantAdminRoleRequest, GrantAdminRoleResponse>(
+    const fn = httpsCallableFromURL<GrantAdminRoleRequest, GrantAdminRoleResponse>(
       getMapleFunctions(),
-      'grantAdminRole'
+      routerCallableUrl('people', 'grantAdminRole')
     );
     await fn({ uid });
     setUsersState((prev) =>
@@ -124,10 +127,10 @@ export function useUsers() {
   }, []);
 
   const revokeAdmin = useCallback(async (uid: string): Promise<void> => {
-    const fn = httpsCallable<
+    const fn = httpsCallableFromURL<
       RevokeAdminRoleRequest,
       RevokeAdminRoleResponse
-    >(getMapleFunctions(), 'revokeAdminRole');
+    >(getMapleFunctions(), routerCallableUrl('people', 'revokeAdminRole'));
     await fn({ uid });
     setUsersState((prev) =>
       prev.status === 'success'
@@ -143,9 +146,9 @@ export function useUsers() {
 
   const grantRole = useCallback(
     async (uid: string, role: ScopedUserRole): Promise<void> => {
-      const fn = httpsCallable<GrantRoleRequest, GrantRoleResponse>(
+      const fn = httpsCallableFromURL<GrantRoleRequest, GrantRoleResponse>(
         getMapleFunctions(),
-        'grantRole'
+        routerCallableUrl('people', 'grantRole')
       );
       await fn({ uid, role });
       setUsersState((prev) =>
@@ -159,9 +162,9 @@ export function useUsers() {
 
   const revokeRole = useCallback(
     async (uid: string, role: ScopedUserRole): Promise<void> => {
-      const fn = httpsCallable<RevokeRoleRequest, RevokeRoleResponse>(
+      const fn = httpsCallableFromURL<RevokeRoleRequest, RevokeRoleResponse>(
         getMapleFunctions(),
-        'revokeRole'
+        routerCallableUrl('people', 'revokeRole')
       );
       await fn({ uid, role });
       setUsersState((prev) =>

@@ -74,7 +74,7 @@ describe('Invoice Functions', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: privatePayStudent,
       idToken: adminUser.idToken,
     });
@@ -84,7 +84,7 @@ describe('Invoice Functions', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: hopeStudent,
       idToken: adminUser.idToken,
     });
