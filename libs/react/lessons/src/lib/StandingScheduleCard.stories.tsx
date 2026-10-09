@@ -77,16 +77,18 @@ export const ChangeIsOneAction: Story = {
 };
 
 /**
- * A student with no arrangement is the state that used to be invisible — and
- * the one whose lessons quietly run out.
+ * A student with no arrangement is the state that used to be invisible. The
+ * card must not promise that a weekly time books lessons: since the
+ * booked-lessons model (ADR-034) it is a planning note, and lessons are
+ * booked from Next lessons.
  */
 export const NoStandingSchedule: Story = {
   args: { schedulesState: loaded([]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    expect(
-      await canvas.findByText(/no weekly time yet/i),
-    ).toBeInTheDocument();
+    const note = await canvas.findByText(/no weekly time yet/i);
+    expect(note).toHaveTextContent(/books nothing on its own/i);
+    expect(note).not.toHaveTextContent(/topped up/i);
   },
 };
 
@@ -188,8 +190,8 @@ export const SavingOneSlot: Story = {
 };
 
 /**
- * The card says that changing the pattern does not move lessons already on the
- * calendar. Otherwise "I changed the day and next week didn't move" is a
+ * The card says that changing the pattern does not move lessons already
+ * booked. Otherwise "I changed the day and next week didn't move" is a
  * mystery rather than a documented rule.
  */
 export const ExplainsThatExistingLessonsStay: Story = {
@@ -197,7 +199,7 @@ export const ExplainsThatExistingLessonsStay: Story = {
     const canvas = within(canvasElement);
     expect(
       await canvas.findByText(
-        /lessons already on the calendar stay where they are/i,
+        /lessons already booked stay where they are/i,
       ),
     ).toBeInTheDocument();
   },
