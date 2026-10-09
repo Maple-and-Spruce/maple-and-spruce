@@ -6,6 +6,23 @@
 
 ## Current Status
 
+### Dependency refresh 2/5: Functions and CI on Node 24 (2026-10-08)
+
+- All six codebases run on `nodejs24` (`firebase.json`). The esbuild `target` in each
+  `apps/functions*/project.json` moved from `node20`, which had never been updated, to `node24`.
+- CI runs on Node 24 everywhere. The two dev-Firestore seed jobs (`e2e_dev` and the job after it)
+  were pinned to `22.22.3` because of the node-fetch@2 "Premature close" regression
+  (nodejs/node#63989). They now ask for `^24.18.0`: the fix (nodejs/node#64004) shipped in
+  22.23.1 and 24.18.0. The runner image currently caches 24.21.0.
+- `@types/node` 22 → 24.19.1. Its old `RelativeIndexable` global had been quietly adding
+  `Array.prototype.at` for the Functions apps, whose tsconfigs still said `es2020`. Without it, `nx
+  build` failed (TS2550) while `nx typecheck` passed. The six `apps/functions*/tsconfig.json` now
+  target and use the lib for `es2024`, which matches the runtime.
+- The admin app's Vercel projects were already on Node 24.x (project setting). Only the CI
+  `vercel build` step was still on 22.
+- firebase-tools has supported `nodejs24` since 14.26. Every Functions dependency accepts 24
+  (firebase-admin 14 needs ≥ 22).
+
 ### Dependency refresh 1/5: patches, fresh lockfile (2026-10-08)
 
 The first of five dependency PRs. The rest: Functions on Node 24, vitest 5, firebase JS SDK 13,

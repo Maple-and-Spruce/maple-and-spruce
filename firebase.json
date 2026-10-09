@@ -9,32 +9,32 @@
   "functions": [
     {
       "source": "dist/apps/functions",
-      "runtime": "nodejs22",
+      "runtime": "nodejs24",
       "codebase": "maple-core"
     },
     {
       "source": "dist/apps/functions-calendar",
-      "runtime": "nodejs22",
+      "runtime": "nodejs24",
       "codebase": "maple-calendar"
     },
     {
       "source": "dist/apps/functions-square",
-      "runtime": "nodejs22",
+      "runtime": "nodejs24",
       "codebase": "maple-square"
     },
     {
       "source": "dist/apps/functions-sync",
-      "runtime": "nodejs22",
+      "runtime": "nodejs24",
       "codebase": "maple-sync"
     },
     {
       "source": "dist/apps/functions-webhooks",
-      "runtime": "nodejs22",
+      "runtime": "nodejs24",
       "codebase": "maple-webhooks"
     },
     {
       "source": "dist/apps/functions-square-webhook",
-      "runtime": "nodejs22",
+      "runtime": "nodejs24",
       "codebase": "maple-square-webhook"
     }
   ],

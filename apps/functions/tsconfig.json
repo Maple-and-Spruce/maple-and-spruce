@@ -3,8 +3,8 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
-    "target": "es2020",
-    "lib": ["es2020"],
+    "target": "es2024",
+    "lib": ["es2024"],
     "types": ["node"],
     "outDir": "../../dist/out-tsc",
     "declaration": true,
