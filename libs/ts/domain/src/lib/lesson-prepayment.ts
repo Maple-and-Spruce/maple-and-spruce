@@ -193,6 +193,16 @@ function startOfDay(now: Date): Date {
 }
 
 /**
+ * Midnight at the start of tomorrow, in the studio's timezone.
+ *
+ * Thirty hours past today's midnight always lands in tomorrow, whether today
+ * is 23, 24 or 25 hours long, so DST needs no special case here either.
+ */
+function startOfNextDay(now: Date): Date {
+  return startOfDay(new Date(startOfDay(now).getTime() + 30 * 60 * 60 * 1000));
+}
+
+/**
  * Turn a selection into the charge to take, or the reason there isn't one.
  *
  * `rateResolver` prices one lesson, passed in for the same reason it is on
@@ -385,6 +395,12 @@ export interface NextLessonsPlan<T> {
  * cadence and its start and end dates are respected, so a biweekly student
  * gets every other week.
  *
+ * **"Next" starts tomorrow.** Katie plans the next four while she is at
+ * today's lesson, so today's lesson is the current one, not the first of the
+ * next four — even before it has started, and even if it is unpaid. It stays
+ * chargeable on its own (`prepayableLessons` still includes today); it just is
+ * not proposed here.
+ *
  * Pure; the caller creates the lessons and takes the payment.
  */
 export function planNextLessons<
@@ -408,10 +424,10 @@ export function planNextLessons<
   count: number = DEFAULT_PREPAY_LESSON_COUNT,
   timeZone: string = SCHEDULE_TIME_ZONE
 ): NextLessonsPlan<T> {
-  const booked = prepayableLessons(lessons, charges, now, alreadyInvoiced).slice(
-    0,
-    count
-  );
+  const tomorrow = startOfNextDay(now);
+  const booked = prepayableLessons(lessons, charges, now, alreadyInvoiced)
+    .filter((lesson) => lesson.scheduledAt.getTime() >= tomorrow.getTime())
+    .slice(0, count);
   const needed = count - booked.length;
   const noSlot = !schedule || schedule.status !== 'active';
   if (needed <= 0 || !schedule || noSlot) {
@@ -421,7 +437,7 @@ export function planNextLessons<
   const lastBooked = lessons
     .filter((l) => l.status !== 'cancelled')
     .reduce((latest, l) => Math.max(latest, l.scheduledAt.getTime()), 0);
-  const from = new Date(Math.max(now.getTime(), lastBooked + 1));
+  const from = new Date(Math.max(tomorrow.getTime(), lastBooked + 1));
 
   const interval =
     schedule.intervalWeeks && schedule.intervalWeeks > 1

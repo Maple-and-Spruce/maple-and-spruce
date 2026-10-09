@@ -65,6 +65,20 @@ export const ReadsLikeASentence: Story = {
   },
 };
 
+/**
+ * One weekly time per student. Next lessons plans from a single one, so once it
+ * exists the card offers Change and End, never a second "Set a weekly time".
+ */
+export const NoSecondWeeklyTime: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/Tuesdays at 4:00 PM/i);
+    expect(
+      canvas.queryByRole('button', { name: /set a weekly time/i })
+    ).not.toBeInTheDocument();
+  },
+};
+
 /** Moving a student is one edit — the card offers exactly that. */
 export const ChangeIsOneAction: Story = {
   play: async ({ args, canvasElement }) => {
