@@ -98,12 +98,6 @@
       "@maple/firebase/maple-functions/trigger-music-together-installments": [
         "libs/firebase/maple-functions/trigger-music-together-installments/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/trigger-lesson-billing": [
-        "libs/firebase/maple-functions/trigger-lesson-billing/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/charge-lessons-now": [
-        "libs/firebase/maple-functions/charge-lessons-now/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/artists": [
         "libs/firebase/maple-functions/artists/src/index.ts"
       ],
@@ -121,6 +115,9 @@
       ],
       "@maple/firebase/maple-functions/lessons": [
         "libs/firebase/maple-functions/lessons/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/lesson-payments": [
+        "libs/firebase/maple-functions/lesson-payments/src/index.ts"
       ],
       "@maple/firebase/maple-functions/discounts": [
         "libs/firebase/maple-functions/discounts/src/index.ts"
@@ -481,12 +478,6 @@
       ],
       "@maple/firebase/maple-functions/run-lesson-billing": [
         "libs/firebase/maple-functions/run-lesson-billing/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-square-card-candidates": [
-        "libs/firebase/maple-functions/get-square-card-candidates/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-student-square-card": [
-        "libs/firebase/maple-functions/update-student-square-card/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-room-schedule": [
         "libs/firebase/maple-functions/get-room-schedule/src/index.ts"

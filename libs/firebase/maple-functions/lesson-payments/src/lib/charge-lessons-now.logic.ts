@@ -74,7 +74,11 @@ export interface ChargeNowDeps {
 export type ChargeNowOutcome =
   | { ok: true; chargeId: string; squarePaymentId: string; amountCents: number }
   | { ok: false; refusal: ChargeNowRefusal }
-  | { ok: false; refusal: { kind: 'payment-failed'; message: string }; chargeId: string };
+  | {
+      ok: false;
+      refusal: { kind: 'payment-failed'; message: string };
+      chargeId: string;
+    };
 
 /** What Square shows on the family's statement. */
 function squareNote(lessonCount: number, note?: string): string {
@@ -105,7 +109,7 @@ export async function chargeLessonsNowLogic(
   },
   deps: ChargeNowDeps,
   rateResolver: (lesson: Pick<Lesson, 'durationMinutes'>) => number,
-  now: Date
+  now: Date,
 ): Promise<ChargeNowOutcome> {
   const { student } = input;
 
@@ -149,7 +153,7 @@ export async function chargeLessonsNowLogic(
       { lessonIds: input.lessonIds, lessonCount: input.lessonCount },
       rateResolver,
       now,
-      input.alreadyInvoiced
+      input.alreadyInvoiced,
     );
     if (!outcome.ok) {
       return { ok: false, refusal: { kind: 'plan', problem: outcome.problem } };

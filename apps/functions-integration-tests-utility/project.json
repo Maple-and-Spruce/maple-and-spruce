@@ -9,6 +9,7 @@
     "firebase-maple-functions-artists",
     "firebase-maple-functions-people",
     "firebase-maple-functions-lessons",
+    "firebase-maple-functions-lesson-payments",
     "firebase-integration-test-utils"
   ],
   "targets": {}
