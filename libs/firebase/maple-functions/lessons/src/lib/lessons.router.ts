@@ -11,9 +11,8 @@
  *   linking live in `maple-square` with Square secrets; a router is per
  *   codebase, and a route's secrets are granted to every route on it.
  * - `triggerLessonInquirySync` holds the Tally API key, for the same reason.
- * - Schedules and triggers (`materializeLessonSchedules`,
- *   `syncLessonInquiries`, `runLessonBilling`, `onLessonWrite`) can't be
- *   routes.
+ * - Schedules and triggers (`syncLessonInquiries`, `runLessonBilling`,
+ *   `onLessonWrite`) can't be routes.
  * - Invoices (#72) and the room schedule (#73) belong to other domains.
  *
  * Each route spells its gate out in full: `tools/check-callable-roles.ts` reads

@@ -68,10 +68,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
 ### Standing lesson schedules (legacy #797)
-- `materializeLessonSchedules` _(scheduled, daily — **paused, does nothing since #157**. Lessons are booked a few at a time when the family pays, not generated from the weekly time. It stays deployed as a no-op because CI never prunes a function, so deleting it would leave the old revision generating lessons; retiring it is a follow-up. It used to keep four lessons ahead for every active arrangement.)_
-- `triggerMaterializeLessonSchedules` _(admin callable twin — `onSchedule` is not reachable over HTTP in the emulator)_
+- `materializeLessonSchedules` and its admin twin `triggerMaterializeLessonSchedules` are **retired** (2026-10-09, ADR-034). Since #157 lessons are booked a few at a time when the family pays, not generated from the weekly time; the schedule had been a logged no-op, and the twin bypassed the pause. Both were removed from the code and deleted from each project by hand.
 - `lessons/getStudentLessonSchedules`, `lessons/createStudentLessonSchedule`, `lessons/updateStudentLessonSchedule` _(admin + lesson-teacher, self-scoped; both create and update re-check block fit. Since #157 a weekly time books nothing: create no longer materialises lessons)_
-- **Idempotence is structural.** A materialised lesson's id is `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady state — which is also what makes *skipping* a week (cancel that lesson) and *moving* one (edit its time) work with no exceptions table.
+- **Idempotence was structural** (historical: lessons generated before #157 still carry these ids). A materialised lesson's id was `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady state — which is also what makes *skipping* a week (cancel that lesson) and *moving* one (edit its time) work with no exceptions table.
 - `tools/backfill-lesson-schedules.ts` infers arrangements from existing `seriesId` lessons. Dry-run by default; `--apply` to write. Each inferred schedule starts the day **after** its series' last lesson, because pre-schedule lessons lack the deterministic id and would otherwise be duplicated.
 
 ### Needs Attention (legacy #807)

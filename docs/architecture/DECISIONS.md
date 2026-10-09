@@ -1698,9 +1698,16 @@ The result:
   - assign billing rules to students;
   - check that rules and the one-button flow agree on what "the next lessons" are. Both use
     `coveredLessonIds`, so a lesson can't be charged twice.
-- **To bring generated lessons back:** set `AUTO_BOOKING_PAUSED` to false. Booked lessons then mix
-  with generated ones. The planner already counts any upcoming unpaid lesson toward the four, whoever
-  created it.
+- **Generated lessons are retired (2026-10-09).** The studio confirmed it won't want them back, so
+  `materializeLessonSchedules` and its admin twin `triggerMaterializeLessonSchedules` were removed from
+  the code and deleted from both projects. The twin was also a hazard while it existed: it called the
+  materialiser directly, past `AUTO_BOOKING_PAUSED`, so any admin request could still generate lessons.
+  Bringing generation back now means restoring those two libraries from git history. Booked lessons
+  would then mix with generated ones; the planner already counts any upcoming unpaid lesson toward the
+  four, whoever created it.
+- **`triggerLessonBilling` deliberately ignores `LESSON_AUTOPAY_PAUSED`.** It is the manual "run
+  billing" button on `/lesson-billing` (off the nav, admin-only), and the studio wants it to stay a
+  manual override that charges when pressed. Only the daily `runLessonBilling` schedule is paused.
 
 ---
 
