@@ -71,7 +71,7 @@ describe('Public callable protection', () => {
 
     it('still serves a call that carries no token', async () => {
       const result = await callFunction<{ code: string }, { discount?: unknown }>({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PROTECT10' },
         headers: fromIp('192.0.2.10'),
       });
@@ -82,7 +82,7 @@ describe('Public callable protection', () => {
 
     it('still serves a call whose token does not verify', async () => {
       const result = await callFunction<{ code: string }, { discount?: unknown }>({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PROTECT10' },
         headers: {
           ...fromIp('192.0.2.11'),
@@ -100,7 +100,7 @@ describe('Public callable protection', () => {
       const limit = 30;
       for (let i = 0; i < limit; i++) {
         const ok = await callFunction({
-          functionName: 'lookupDiscount',
+          functionName: 'publicSite/lookupDiscount',
           data: { code: `NOPE${i}` },
           headers: fromIp('198.51.100.20'),
         });
@@ -108,7 +108,7 @@ describe('Public callable protection', () => {
       }
 
       const refused = await callFunction({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PROTECT10' },
         headers: fromIp('198.51.100.20'),
       });
@@ -116,7 +116,7 @@ describe('Public callable protection', () => {
       expect(errorStatus(refused.raw)).toBe('RESOURCE_EXHAUSTED');
 
       const otherIp = await callFunction({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PROTECT10' },
         headers: fromIp('198.51.100.21'),
       });
@@ -127,13 +127,13 @@ describe('Public callable protection', () => {
       // Varying the left-most entry must not dodge the count.
       for (let i = 0; i < 30; i++) {
         await callFunction({
-          functionName: 'lookupDiscount',
+          functionName: 'publicSite/lookupDiscount',
           data: { code: 'NOPE' },
           headers: fromIp(`10.0.0.${i}, 198.51.100.30`),
         });
       }
       const refused = await callFunction({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'NOPE' },
         headers: fromIp('10.0.1.1, 198.51.100.30'),
       });

@@ -447,8 +447,9 @@ are occasional. Both screens now follow that order.
 ADR-037, #136. Ten public callables used by the Webflow widgets now declare `.withAppCheck('monitor')`
 and `.throttling(scope, rules)` on `Functions.endpoint`. The pipeline order is warmup → App Check
 → auth → role → throttle → validation → handler. `APP_CHECK_MODE=monitor` in both env files caps
-every endpoint. `lookupDiscount` and `requestCraftClubAccess` moved off `createPublicFunction`
-so they could chain.
+every endpoint. `requestCraftClubAccess` moved off `createPublicFunction` so it could chain.
+`lookupDiscount` is a route on the warm `publicSite` router (#205), so it declares both on the
+route; the checks run in the pipeline routes share.
 
 The widgets start App Check with reCAPTCHA Enterprise in `firebase-init.ts`, in the browser only
 and only once a site key is filled in. `RECAPTCHA_ENTERPRISE_SITE_KEY` ships empty.

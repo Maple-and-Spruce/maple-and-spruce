@@ -86,6 +86,7 @@ describe('getWidgetFunctions → App Check', () => {
 
   it('skips App Check while the key is empty', async () => {
     const mod = await load();
+    mod.RECAPTCHA_ENTERPRISE_SITE_KEY.prod = '';
 
     mod.getWidgetFunctions('prod');
 
@@ -154,7 +155,7 @@ describe('router URLs from the widget', () => {
     const functions = getWidgetFunctions('prod');
 
     expect(routeUrl(functions, 'publicSite', 'getPublicClass')).toBe(
-      'https://us-east4-maple-and-spruce.cloudfunctions.net/publicSite/getPublicClass'
+      'https://us-east4-maple-and-spruce.cloudfunctions.net/publicSite/getPublicClass',
     );
   });
 
@@ -163,7 +164,7 @@ describe('router URLs from the widget', () => {
     const functions = getWidgetFunctions('dev');
 
     expect(routeUrl(functions, 'publicSite', 'lookupDiscount')).toBe(
-      'https://us-east4-maple-and-spruce-dev.cloudfunctions.net/publicSite/lookupDiscount'
+      'https://us-east4-maple-and-spruce-dev.cloudfunctions.net/publicSite/lookupDiscount',
     );
   });
 
@@ -174,12 +175,12 @@ describe('router URLs from the widget', () => {
     expect(mocks.connectFunctionsEmulator).toHaveBeenCalledWith(
       functions,
       '127.0.0.1',
-      5001
+      5001,
     );
     expect(
-      routeUrl(functions, 'publicSite', 'getPublicMusicTogetherDemos')
+      routeUrl(functions, 'publicSite', 'getPublicMusicTogetherDemos'),
     ).toBe(
-      'http://127.0.0.1:5001/maple-and-spruce-dev/us-east4/publicSite/getPublicMusicTogetherDemos'
+      'http://127.0.0.1:5001/maple-and-spruce-dev/us-east4/publicSite/getPublicMusicTogetherDemos',
     );
   });
 
@@ -191,7 +192,7 @@ describe('router URLs from the widget', () => {
 
     expect(mocks.httpsCallableFromURL).toHaveBeenCalledWith(
       functions,
-      'https://us-east4-maple-and-spruce.cloudfunctions.net/publicSite/getRegistrationStatus'
+      'https://us-east4-maple-and-spruce.cloudfunctions.net/publicSite/getRegistrationStatus',
     );
   });
 });

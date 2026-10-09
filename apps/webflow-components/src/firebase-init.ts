@@ -50,8 +50,12 @@ const FUNCTIONS_REGION = 'us-east4';
  * without a token, which the functions accept in `monitor` mode.
  */
 export const RECAPTCHA_ENTERPRISE_SITE_KEY: Record<'prod' | 'dev', string> = {
-  prod: '',
-  dev: '',
+  // "Webflow widgets App Check (prod)" in maple-and-spruce: the Webflow site's
+  // domains only.
+  prod: '6LeWQuctAAAAAOsL88xUrOMhEyLqH2XuHQt2qf5U',
+  // "Webflow widgets App Check (dev)" in maple-and-spruce-dev: the same
+  // domains plus localhost and the registration test site.
+  dev: '6Ld6UOctAAAAAIpBnMt-FssLGTI-IHlRJ2mDAB7M',
 };
 
 let cachedEnv: string | null = null;

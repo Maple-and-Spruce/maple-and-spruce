@@ -14,6 +14,8 @@ vi.mock('@maple/firebase/functions', () => {
       roles: undefined as unknown,
       secrets: [] as string[],
       strings: [] as string[],
+      appCheck: undefined as string | undefined,
+      throttle: undefined as unknown,
     };
     const chain = {
       requiringRole: (roles: unknown) => {
@@ -26,6 +28,14 @@ vi.mock('@maple/firebase/functions', () => {
       },
       usingStrings: (...names: string[]) => {
         route.strings.push(...names);
+        return chain;
+      },
+      withAppCheck: (mode: string) => {
+        route.appCheck = mode;
+        return chain;
+      },
+      throttling: (scope: string, rules: unknown) => {
+        route.throttle = { scope, rules };
         return chain;
       },
       asRoute: (handler: unknown) => ({ ...route, handler }),
@@ -43,6 +53,7 @@ vi.mock('@maple/firebase/functions', () => {
         runtime,
       }),
     },
+    codeLookupThrottles: () => ['per-ip'],
   };
 });
 
@@ -85,6 +96,8 @@ type Route = {
   roles: unknown;
   secrets: string[];
   strings: string[];
+  appCheck?: string;
+  throttle?: unknown;
   handler: unknown;
 };
 type Router = {
@@ -129,6 +142,21 @@ describe('publicSite router', () => {
           ? ['SQUARE_LOCATION_ID', 'SQUARE_ENVIRONMENT']
           : [],
       );
+    }
+  });
+
+  it('verifies App Check and throttles per IP on lookupDiscount only', () => {
+    for (const [name, route] of Object.entries(router.routes)) {
+      if (name === 'lookupDiscount') {
+        expect(route.appCheck, name).toBe('monitor');
+        expect(route.throttle, name).toEqual({
+          scope: 'lookupDiscount',
+          rules: ['per-ip'],
+        });
+      } else {
+        expect(route.appCheck, name).toBeUndefined();
+        expect(route.throttle, name).toBeUndefined();
+      }
     }
   });
 

@@ -49,9 +49,7 @@ describe('lookupDiscount', () => {
   });
 
   it('hides a code scoped to the other program', async () => {
-    mocks.findByCode.mockResolvedValue(
-      discount({ program: 'music-together' })
-    );
+    mocks.findByCode.mockResolvedValue(discount({ program: 'music-together' }));
     expect(await handler({ code: 'SPRING', program: 'classes' })).toEqual({
       discount: undefined,
     });

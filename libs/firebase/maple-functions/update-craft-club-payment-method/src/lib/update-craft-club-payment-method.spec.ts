@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Functions } from '@maple/firebase/functions';
 
 const mocks = vi.hoisted(() => ({
   capturedHandler: null as
@@ -148,7 +149,6 @@ describe('updateCraftClubPaymentMethod', () => {
 
 describe('updateCraftClubPaymentMethod declaration', () => {
   it('opts into App Check and per-IP and per-account throttling', async () => {
-    const { Functions } = await import('@maple/firebase/functions');
     const endpoint = Functions.endpoint as unknown as Record<string, unknown>;
     expect(endpoint['appCheckMode']).toBe('monitor');
     expect(endpoint['throttle']).toEqual({

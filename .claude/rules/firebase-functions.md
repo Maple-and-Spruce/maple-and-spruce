@@ -335,6 +335,9 @@ export const createRegistration = Functions.endpoint
 - The IP rule counts the **right-most** `x-forwarded-for` entry (`extractTrustedClientIp`).
   `context.ip` stays the left-most entry and is for attribution only.
 - Warmup is answered before both steps, so warmup pings neither need a token nor count.
+- **On a router route** the chain is the same, ending in `.asRoute()`: the checks run in the
+  pipeline every route shares, so `publicSite/lookupDiscount` declares them on its route. The
+  router answers CORS once, and its allow-list already includes `X-Firebase-AppCheck`.
 - Specs that hand-roll a `Functions.endpoint` mock need `withAppCheck` and `throttling` on it.
 
 ## Role Gating (callable-roles analyzer)

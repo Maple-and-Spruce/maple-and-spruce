@@ -12,7 +12,7 @@
 > **Public callables used by the widgets** declare `.withAppCheck()` and `.throttling()`
 > (ADR-037): `createRegistration`, `createRegistrationCheckoutLink`,
 > `createMusicTogetherRegistration`, `createCraftClubSubscription`,
-> `updateCraftClubPaymentMethod`, `updateMusicTogetherPaymentMethod`, `lookupDiscount`,
+> `updateCraftClubPaymentMethod`, `updateMusicTogetherPaymentMethod`, `publicSite/lookupDiscount`,
 > `requestCraftClubAccess`, `requestCraftClubManageLink`, `requestMusicTogetherManageLink`.
 > Over a limit they answer 429 `RESOURCE_EXHAUSTED`. App Check currently runs in `monitor`.
 

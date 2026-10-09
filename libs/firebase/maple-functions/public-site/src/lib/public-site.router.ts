@@ -22,7 +22,7 @@
  * Warm in prod only: dev, the emulator and CI run cold, since nobody is
  * waiting on them.
  */
-import { Functions } from '@maple/firebase/functions';
+import { Functions, codeLookupThrottles } from '@maple/firebase/functions';
 import { SQUARE_STRING_NAMES } from '@maple/firebase/square';
 import type {
   CalculateRegistrationCostRequest,
@@ -86,11 +86,15 @@ export const publicSite = Functions.router(
       GetRegistrationStatusResponse
     >(getRegistrationStatus),
 
-    /** A discount code, only if it is valid for the asking program. */
-    lookupDiscount: Functions.endpoint.asRoute<
-      LookupDiscountRequest,
-      LookupDiscountResponse
-    >(lookupDiscount),
+    /**
+     * A discount code, only if it is valid for the asking program. The one
+     * route here that guesses can probe, so it carries App Check and a
+     * per-IP throttle (ADR-037).
+     */
+    lookupDiscount: Functions.endpoint
+      .withAppCheck('monitor')
+      .throttling('lookupDiscount', codeLookupThrottles())
+      .asRoute<LookupDiscountRequest, LookupDiscountResponse>(lookupDiscount),
 
     // ── Music Together widgets ────────────────────────────────────────────
 
