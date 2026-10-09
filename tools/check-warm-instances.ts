@@ -16,7 +16,7 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import ts from 'typescript';
+import * as ts from 'typescript';
 
 const REPO_ROOT = resolve(__dirname, '..');
 const SCAN_ROOTS = ['libs/firebase/maple-functions', 'apps'];

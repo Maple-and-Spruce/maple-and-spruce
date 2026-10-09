@@ -264,7 +264,7 @@ Functions.endpoint
 ```
 
 `minInstances` is the exception: only the `publicSite` router may set it, and CI enforces that
-(`npx tsx tools/check-warm-instances.ts`, in the `function-count` job). See "Warmup" below.
+(`npx tsx tools/check-warm-instances.ts`, in the `callable-roles` job). See "Warmup" below.
 
 ### Global `maxInstances` cap (every function, every codebase)
 

@@ -156,12 +156,6 @@ jobs:
       - name: Check Cloud Function count ratchet
         run: npx tsx tools/check-function-count.ts
 
-      # An idle warm instance bills ~$8/month per function, and five of them
-      # were nearly the whole Cloud Run bill. Only the publicSite router keeps
-      # one warm; a first-paint public read goes there as a route.
-      - name: Check only publicSite keeps an instance warm
-        run: npx tsx tools/check-warm-instances.ts
-
   callable-roles:
     name: Callable Roles
     needs: [install]
@@ -202,6 +196,14 @@ jobs:
       # are simply never created — no failure, no warning (legacy #872).
       - name: Check one function per library
         run: npx tsx tools/check-function-library-names.ts
+
+      # An idle warm instance bills ~$8/month per function, and five of them
+      # were nearly the whole Cloud Run bill. Only the publicSite router keeps
+      # one warm; a first-paint public read goes there as a route. Lives here
+      # rather than in function-count because it parses with typescript, which
+      # needs the restored node_modules.
+      - name: Check only publicSite keeps an instance warm
+        run: npx tsx tools/check-warm-instances.ts
 
   repository-mappers:
     name: Repository Mappers
