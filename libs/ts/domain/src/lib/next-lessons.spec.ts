@@ -10,8 +10,9 @@ import {
   paidThrough,
 } from './next-lessons';
 
-// Tuesday 10 March 2026, 8:00 AM Eastern. Weekly time: Tuesdays 4:00 PM (20:00Z).
-const NOW = new Date('2026-03-10T12:00:00Z');
+// Monday 9 March 2026, 8:00 AM Eastern. Weekly time: Tuesdays 4:00 PM (20:00Z),
+// so tomorrow's slot is the first of the next four.
+const NOW = new Date('2026-03-09T12:00:00Z');
 const schedule: StudentLessonSchedule = {
   id: 'sched-1',
   studentId: 'stu-1',

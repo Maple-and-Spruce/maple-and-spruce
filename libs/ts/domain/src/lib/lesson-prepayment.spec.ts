@@ -718,7 +718,10 @@ describe('planNextLessons (#157)', () => {
   const iso = (d: Date) => d.toISOString();
 
   it('proposes the next four weekly dates when nothing is booked', () => {
-    const plan = planNextLessons(weekly, [], [], NOW);
+    // Monday: tomorrow's slot is the first of the four.
+    const monday = new Date('2026-03-09T12:00:00Z');
+
+    const plan = planNextLessons(weekly, [], [], monday);
 
     expect(plan.booked).toEqual([]);
     expect(plan.noSlot).toBe(false);
@@ -728,6 +731,43 @@ describe('planNextLessons (#157)', () => {
       '2026-03-24T20:00:00.000Z',
       '2026-03-31T20:00:00.000Z',
     ]);
+  });
+
+  it('leaves today’s slot out, even before it starts', () => {
+    // 8:00 AM on lesson day. Katie plans at today's lesson, so the next four
+    // are the ones after it.
+    const plan = planNextLessons(weekly, [], [], NOW);
+
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-17T20:00:00.000Z',
+      '2026-03-24T20:00:00.000Z',
+      '2026-03-31T20:00:00.000Z',
+      '2026-04-07T20:00:00.000Z',
+    ]);
+  });
+
+  it('leaves out today’s booked lesson even when it is unpaid', () => {
+    const today = at('2026-03-10T20:00:00Z');
+    const next = at('2026-03-17T20:00:00Z');
+
+    const plan = planNextLessons(weekly, [today, next], [], NOW);
+
+    expect(plan.booked.map((l) => l.id)).toEqual([next.id]);
+    expect(plan.toBook.map(iso)).toEqual([
+      '2026-03-24T20:00:00.000Z',
+      '2026-03-31T20:00:00.000Z',
+      '2026-04-07T20:00:00.000Z',
+    ]);
+  });
+
+  it('rolls over at midnight in the studio, not in UTC', () => {
+    // 9:30 PM Monday Eastern is already Tuesday in UTC; Tuesday is still
+    // tomorrow, so its slot is proposed.
+    const mondayNight = new Date('2026-03-10T01:30:00Z');
+
+    const plan = planNextLessons(weekly, [], [], mondayNight);
+
+    expect(plan.toBook[0].toISOString()).toBe('2026-03-10T20:00:00.000Z');
   });
 
   it('starts after today’s lesson once it has begun', () => {
@@ -822,7 +862,6 @@ describe('planNextLessons (#157)', () => {
     );
 
     expect(plan.toBook.map(iso)).toEqual([
-      '2026-03-10T20:00:00.000Z',
       '2026-03-17T20:00:00.000Z',
       '2026-03-24T20:00:00.000Z',
     ]);
@@ -836,7 +875,7 @@ describe('planNextLessons (#157)', () => {
       NOW
     );
 
-    expect(plan.toBook[0].toISOString()).toBe('2026-03-10T20:00:00.000Z');
+    expect(plan.toBook[0].toISOString()).toBe('2026-03-17T20:00:00.000Z');
   });
 
   it('says there is no weekly time rather than inventing dates', () => {

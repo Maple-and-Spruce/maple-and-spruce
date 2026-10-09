@@ -125,14 +125,19 @@ export function StandingScheduleCard({
             Weekly schedule
           </Typography>
         </Stack>
-        <Button
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={onAdd}
-          disabled={!loaded}
-        >
-          Set a weekly time
-        </Button>
+        {/* One weekly time per student: Next lessons plans from the first
+            active one, so a second would be silently ignored. Once one exists
+            it is changed or ended, not added to. */}
+        {active.length === 0 && (
+          <Button
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={onAdd}
+            disabled={!loaded}
+          >
+            Set a weekly time
+          </Button>
+        )}
       </Box>
       {pending && (
         <Stack
