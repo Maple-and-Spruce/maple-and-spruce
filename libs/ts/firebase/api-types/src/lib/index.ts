@@ -222,8 +222,6 @@ export type {
 
 // Auth types
 export type {
-  CheckAdminStatusRequest,
-  CheckAdminStatusResponse,
   UserRole,
   GetMyRolesRequest,
   GetMyRolesResponse,

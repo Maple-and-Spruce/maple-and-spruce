@@ -30,11 +30,17 @@ import {
 import type {
   GetHopeProductsRequest,
   GetHopeProductsResponse,
+  GetHopeQueueRequest,
+  GetHopeQueueResponse,
+  RecordHopeSubmissionsRequest,
+  RecordHopeSubmissionsResponse,
   SaveHopeOrderRequest,
   SaveHopeOrderResponse,
   SaveHopeProductRequest,
   SaveHopeProductResponse,
 } from '@maple/ts/firebase/api-types';
+import { getHopeQueue } from './get-hope-queue';
+import { recordHopeSubmissions } from './record-hope-submissions';
 
 export const hope = Functions.router('hope', {
   getHopeProducts: Functions.endpoint
@@ -90,7 +96,7 @@ export const hope = Functions.router('hope', {
         ).filter((s) => isHopeInvoiced(s)).length;
         if (data.lessonCount < invoiced) {
           throwInvalidArgument(
-            `${invoiced} lessons are already invoiced against this order, so it cannot be for fewer.`
+            `${invoiced} lessons are already invoiced against this order, so it cannot be for fewer.`,
           );
         }
       }
@@ -107,4 +113,16 @@ export const hope = Functions.router('hope', {
       });
       return { order };
     }),
+
+  /** Rendered Hope lessons and where each stands in the claim process. */
+  getHopeQueue: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetHopeQueueRequest, GetHopeQueueResponse>(getHopeQueue),
+
+  /** Mark lessons submitted to the Hope portal, or paid. */
+  recordHopeSubmissions: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<RecordHopeSubmissionsRequest, RecordHopeSubmissionsResponse>(
+      recordHopeSubmissions,
+    ),
 });

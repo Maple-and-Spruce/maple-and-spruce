@@ -26,7 +26,6 @@ if (getApps().length === 0) {
 export { healthCheck } from '@maple/firebase/maple-functions/health-check';
 
 // Auth functions
-export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-status';
 
 // Artist functions
 // One domain router serving getArtists / getArtist / createArtist /
@@ -69,8 +68,6 @@ export { people } from '@maple/firebase/maple-functions/people';
 
 // Music lesson functions (Phase 4)
 export { getNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
-export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
-export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
 export { syncLessonInquiries } from '@maple/firebase/maple-functions/sync-lesson-inquiries';
 export { triggerLessonInquirySync } from '@maple/firebase/maple-functions/trigger-lesson-inquiry-sync';
 

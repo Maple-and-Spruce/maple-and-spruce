@@ -5,6 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
+    "firebase-maple-functions-hope",
     "firebase-maple-functions-lesson-payments",
     "firebase-maple-functions-lessons",
     "firebase-maple-functions-people",
