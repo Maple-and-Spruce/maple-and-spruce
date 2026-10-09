@@ -8,8 +8,9 @@
  *
  * Deliberately not here:
  * - Charging (`chargeLessonsNow`, `triggerLessonBilling`) and Square card
- *   linking live in `maple-square` with Square secrets; a router is per
- *   codebase, and a route's secrets are granted to every route on it.
+ *   linking are on the `lessonPayments` router in `maple-square`: they need
+ *   Square secrets, a router is per codebase, and a route's secrets are
+ *   granted to every route on it.
  * - `triggerLessonInquirySync` holds the Tally API key, for the same reason.
  * - Schedules and triggers (`syncLessonInquiries`, `runLessonBilling`,
  *   `onLessonWrite`) can't be routes.

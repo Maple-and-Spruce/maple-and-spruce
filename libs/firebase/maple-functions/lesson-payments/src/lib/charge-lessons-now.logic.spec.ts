@@ -6,11 +6,7 @@ import {
   MAX_SQUARE_IDEMPOTENCY_KEY_LENGTH,
   lessonChargeIdempotencyKey,
 } from '@maple/ts/domain';
-import type {
-  Lesson,
-  LessonScheduledCharge,
-  Student,
-} from '@maple/ts/domain';
+import type { Lesson, LessonScheduledCharge, Student } from '@maple/ts/domain';
 
 const NOW = new Date('2026-03-10T12:00:00Z');
 const RATE = 4125;
@@ -66,7 +62,9 @@ describe('chargeLessonsNowLogic', () => {
     [K in keyof ChargeNowDeps]: MockedFunction<ChargeNowDeps[K]>;
   };
 
-  const lessons = Array.from({ length: 6 }, (_, i) => lesson(`lesson-${i + 1}`, i + 1));
+  const lessons = Array.from({ length: 6 }, (_, i) =>
+    lesson(`lesson-${i + 1}`, i + 1),
+  );
 
   beforeEach(() => {
     deps = {
@@ -90,7 +88,7 @@ describe('chargeLessonsNowLogic', () => {
       } as never,
       deps as never,
       rate,
-      NOW
+      NOW,
     );
 
   it('charges the next four lessons by default and records the payment', async () => {
@@ -108,11 +106,11 @@ describe('chargeLessonsNowLogic', () => {
         cardId: 'sq-card-1',
         customerId: 'sq-cust-1',
         idempotencyKey: lessonChargeIdempotencyKey('chg-student-1-lesson-1'),
-      })
+      }),
     );
     expect(deps.markPaid).toHaveBeenCalledWith(
       'chg-student-1-lesson-1',
-      'sq-payment-1'
+      'sq-payment-1',
     );
   });
 
@@ -156,13 +154,15 @@ describe('chargeLessonsNowLogic', () => {
     });
     expect(deps.markFailed).toHaveBeenCalledWith(
       'chg-student-1-lesson-1',
-      'CARD_DECLINED'
+      'CARD_DECLINED',
     );
     expect(deps.markPaid).not.toHaveBeenCalled();
   });
 
   it('refuses a Hope student outright — they bill through the EMA portal', async () => {
-    const outcome = await run({ student: student({ isHopeScholarship: true }) });
+    const outcome = await run({
+      student: student({ isHopeScholarship: true }),
+    });
 
     expect(outcome).toEqual({ ok: false, refusal: { kind: 'not-chargeable' } });
     expect(deps.claimByCreate).not.toHaveBeenCalled();
@@ -177,7 +177,9 @@ describe('chargeLessonsNowLogic', () => {
   });
 
   it('refuses when there is no card on file', async () => {
-    const outcome = await run({ student: student({ squareCardId: undefined }) });
+    const outcome = await run({
+      student: student({ squareCardId: undefined }),
+    });
 
     expect(outcome).toEqual({ ok: false, refusal: { kind: 'no-card' } });
     expect(deps.charge).not.toHaveBeenCalled();
@@ -207,7 +209,7 @@ describe('chargeLessonsNowLogic', () => {
         id: 'chg-student-1-lesson-3',
         lessonIds: ['lesson-3', 'lesson-4'],
         chargedByUid: 'admin-1',
-      })
+      }),
     );
   });
 
@@ -240,7 +242,7 @@ describe('chargeLessonsNowLogic', () => {
         expect.objectContaining({
           idempotencyKey: 'lesson-chg-student-1-lesson-1',
           amountCents: 2 * RATE,
-        })
+        }),
       );
     });
 
@@ -260,7 +262,7 @@ describe('chargeLessonsNowLogic', () => {
       const sent = deps.charge.mock.calls[0][0].idempotencyKey;
       expect(sent).not.toBe(legacyKey);
       expect(sent.length).toBeLessThanOrEqual(
-        MAX_SQUARE_IDEMPOTENCY_KEY_LENGTH
+        MAX_SQUARE_IDEMPOTENCY_KEY_LENGTH,
       );
       expect(deps.claimByCreate).not.toHaveBeenCalled();
     });
@@ -273,7 +275,10 @@ describe('chargeLessonsNowLogic', () => {
 
       const outcome = await run({ retryChargeId: 'chg-student-1-lesson-1' });
 
-      expect(outcome).toEqual({ ok: false, refusal: { kind: 'not-retryable' } });
+      expect(outcome).toEqual({
+        ok: false,
+        refusal: { kind: 'not-retryable' },
+      });
       expect(deps.charge).not.toHaveBeenCalled();
     });
 
@@ -283,7 +288,10 @@ describe('chargeLessonsNowLogic', () => {
 
       const outcome = await run({ retryChargeId: 'chg-student-1-lesson-1' });
 
-      expect(outcome).toEqual({ ok: false, refusal: { kind: 'already-claimed' } });
+      expect(outcome).toEqual({
+        ok: false,
+        refusal: { kind: 'already-claimed' },
+      });
       expect(deps.charge).not.toHaveBeenCalled();
     });
   });

@@ -12,11 +12,11 @@
  * deployed (legacy #872). The billing logic itself stays put; this is a thin wrapper
  * over `executeLessonBilling`.
  */
-import { Functions, Role } from '@maple/firebase/functions';
+import { type FunctionContext } from '@maple/firebase/functions';
 import {
   Square,
-  SQUARE_SECRET_NAMES,
-  SQUARE_STRING_NAMES,
+  type SquareSecrets,
+  type SquareStrings,
 } from '@maple/firebase/square';
 import { executeLessonBilling } from '@maple/firebase/maple-functions/run-lesson-billing';
 import type {
@@ -24,15 +24,14 @@ import type {
   RunLessonBillingResult,
 } from '@maple/ts/firebase/api-types';
 
-export const triggerLessonBilling = Functions.endpoint
-  .requiringRole(Role.Admin)
-  .usingSecrets(...SQUARE_SECRET_NAMES)
-  .usingStrings(...SQUARE_STRING_NAMES)
-  .handle<RunLessonBillingRequest, RunLessonBillingResult>(
-    async (data, _context, secrets, strings) => {
-      const square = new Square(secrets, strings);
-      return executeLessonBilling(new Date(), square, {
-        dryRun: data?.dryRun === true,
-      });
-    }
-  );
+export async function triggerLessonBilling(
+  data: RunLessonBillingRequest,
+  _context: FunctionContext,
+  secrets: SquareSecrets,
+  strings: SquareStrings,
+): Promise<RunLessonBillingResult> {
+  const square = new Square(secrets, strings);
+  return executeLessonBilling(new Date(), square, {
+    dryRun: data?.dryRun === true,
+  });
+}

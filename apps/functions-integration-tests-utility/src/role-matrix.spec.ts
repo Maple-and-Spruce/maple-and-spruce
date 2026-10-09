@@ -208,6 +208,29 @@ const CASES: MatrixCase[] = [
     expect: 403,
   },
   { as: 'stephanie', functionName: 'people/grantAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
+  // Taking lesson payments moved onto the lessonPayments router (#67). Two of
+  // these routes move money, and Nathan (lesson teacher + clerk) is exactly the
+  // caller a too-wide gate would let in. Payloads are valid, and the billing run
+  // is a dry run, so a 403 can only come from the gate and nothing is charged.
+  {
+    as: 'nathan',
+    functionName: 'lessonPayments/chargeLessonsNow',
+    data: { studentId: 'irrelevant', lessonCount: 1 },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'lessonPayments/triggerLessonBilling',
+    data: { dryRun: true },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'lessonPayments/getSquareCardCandidates', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'lessonPayments/updateStudentSquareCard',
+    data: { studentId: 'irrelevant', squareCardId: 'irrelevant' },
+    expect: 403,
+  },
   // Widening getDiscounts to mt-teacher must not leak it to the
   // clerk/lesson-teacher union.
   { as: 'nathan', functionName: 'discounts/getDiscounts', expect: 403 },

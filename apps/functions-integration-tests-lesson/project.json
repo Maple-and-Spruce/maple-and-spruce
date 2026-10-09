@@ -5,6 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
+    "firebase-maple-functions-lesson-payments",
     "firebase-maple-functions-lessons",
     "firebase-maple-functions-people",
     "firebase-integration-test-utils"

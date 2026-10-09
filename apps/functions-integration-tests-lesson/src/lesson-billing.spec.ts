@@ -102,7 +102,7 @@ function runBilling(
   dryRun = false
 ): Promise<{ status: number; data?: RunLessonBillingResult }> {
   return callFunction<RunLessonBillingRequest, RunLessonBillingResult>({
-    functionName: 'triggerLessonBilling',
+    functionName: 'lessonPayments/triggerLessonBilling',
     data: { dryRun },
     idToken,
   });

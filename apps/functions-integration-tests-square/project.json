@@ -5,6 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
+    "firebase-maple-functions-lesson-payments",
     "firebase-maple-functions-create-registration",
     "firebase-maple-functions-cancel-registration",
     "firebase-maple-functions-sync-class-to-webflow",

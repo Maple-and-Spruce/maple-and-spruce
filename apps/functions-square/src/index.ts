@@ -93,16 +93,14 @@ export { syncClassInventoryToSquare } from '@maple/firebase/maple-functions/sync
 // plus an admin-callable twin for a dry run or a manual catch-up. M&S Square
 // account, not MT's.
 export { runLessonBilling } from '@maple/firebase/maple-functions/run-lesson-billing';
-export { triggerLessonBilling } from '@maple/firebase/maple-functions/trigger-lesson-billing';
+// Lesson payments router: charging and Square card linking (ADR-029, #67).
+export { lessonPayments } from '@maple/firebase/maple-functions/lesson-payments';
 
 // Paying ahead for a block of lessons (legacy #864). Produces the same charge record
 // the scheduled job would, already paid, so nothing downstream has to know
 // which way the money was taken. Its own library because one library deploys
 // exactly one function — co-locating it with runLessonBilling is precisely how
 // it shipped undeployed (legacy #872).
-export { chargeLessonsNow } from '@maple/firebase/maple-functions/charge-lessons-now';
 
 // Linking a card Katie already saved in the Square app to a student (#81).
 // The read needs the Square SDK, so both live here rather than in maple-core.
-export { getSquareCardCandidates } from '@maple/firebase/maple-functions/get-square-card-candidates';
-export { updateStudentSquareCard } from '@maple/firebase/maple-functions/update-student-square-card';

@@ -159,13 +159,13 @@ describe('Linking a Square card to a student (#81)', () => {
 
   const candidates = () =>
     callFunction<GetSquareCardCandidatesRequest, GetSquareCardCandidatesResponse>(
-      { functionName: 'getSquareCardCandidates', data: {}, idToken: adminUser.idToken }
+      { functionName: 'lessonPayments/getSquareCardCandidates', data: {}, idToken: adminUser.idToken }
     );
 
   const link = (studentId: string, squareCardId: string | null) =>
     callFunction<UpdateStudentSquareCardRequest, UpdateStudentSquareCardResponse>(
       {
-        functionName: 'updateStudentSquareCard',
+        functionName: 'lessonPayments/updateStudentSquareCard',
         data: { studentId, squareCardId },
         idToken: adminUser.idToken,
       }
@@ -257,7 +257,7 @@ describe('Linking a Square card to a student (#81)', () => {
 
   it('rejects an unauthenticated caller', async () => {
     const result = await callFunction({
-      functionName: 'getSquareCardCandidates',
+      functionName: 'lessonPayments/getSquareCardCandidates',
     });
     expect(result.status).toBe(401);
   }, 30000);

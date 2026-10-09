@@ -139,7 +139,7 @@ describe('Charging a block of lessons now (legacy #864)', () => {
 
   const chargeNow = (data: ChargeLessonsNowRequest) =>
     callFunction<ChargeLessonsNowRequest, ChargeLessonsNowResponse>({
-      functionName: 'chargeLessonsNow',
+      functionName: 'lessonPayments/chargeLessonsNow',
       data,
       idToken: adminUser.idToken,
     });

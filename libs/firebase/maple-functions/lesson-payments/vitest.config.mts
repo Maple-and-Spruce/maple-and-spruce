@@ -3,10 +3,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir:
-    '../../../../node_modules/.vite/libs/firebase/maple-functions/charge-lessons-now',
+    '../../../../node_modules/.vite/libs/firebase/maple-functions/lesson-payments',
   resolve: { tsconfigPaths: true },
   test: {
-    name: 'firebase-maple-functions-charge-lessons-now',
+    name: 'firebase-maple-functions-lesson-payments',
     watch: false,
     globals: true,
     environment: 'node',
@@ -14,7 +14,7 @@ export default defineConfig(() => ({
     reporters: ['default'],
     coverage: {
       reportsDirectory:
-        '../../../../coverage/libs/firebase/maple-functions/charge-lessons-now',
+        '../../../../coverage/libs/firebase/maple-functions/lesson-payments',
       provider: 'istanbul' as const, // same provider as CI's merged run
     },
   },

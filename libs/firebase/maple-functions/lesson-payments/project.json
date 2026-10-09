@@ -1,7 +1,7 @@
 {
-  "name": "firebase-maple-functions-get-square-card-candidates",
+  "name": "firebase-maple-functions-lesson-payments",
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/firebase/maple-functions/get-square-card-candidates/src",
+  "sourceRoot": "libs/firebase/maple-functions/lesson-payments/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:feature"],
   "targets": {}
