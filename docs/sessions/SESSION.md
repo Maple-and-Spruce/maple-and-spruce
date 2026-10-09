@@ -22,6 +22,25 @@
 - **Merging redeploys every function**: it touches `nx.json` and nearly every lib, and the merge
   workflow deploys what `nx show projects --affected` reports. No runtime code changed.
 
+### Dependency refresh 3/5: vitest 5 (2026-10-08)
+
+- `vitest`, `@vitest/coverage-istanbul`, `@vitest/coverage-v8` and `@vitest/browser-playwright`
+  4.1.11 → 5.0.3. Storybook's addon-vitest and Nx 23.3 already accept 5. Nothing in the repo used
+  a removed entry point, `.sequential`, `toThrow('')`, `expect.poll` or a worker id, and no
+  `vi.mock` call sat inside a block.
+- **Storybook coverage now excludes `**/*.stories.tsx`.** Vitest 5 changed coverage include and
+  exclude matching and started counting the 34 story files. That padded lines and functions in
+  the merged report and lowered branches. With the exclude, the Storybook coverage file set and
+  every per-file number match vitest 4 exactly.
+- How the upgrade was checked: every test's name and status, plus per-file coverage, captured on
+  vitest 4 and diffed against vitest 5. Unit: the same 4077 tests with the same statuses and
+  identical coverage. 28 tests have new names because vitest 5 no longer quotes `$` values in
+  `test.each` titles. Storybook: the same 659 tests.
+- `.vitest/` is gitignored; vitest 5 writes its reports and attachments there.
+- **Pre-existing, not fixed here:** `nx run-many -t test`, and so `pnpm test`, fails on main for
+  about 30 non-integration projects ("Unable to load test config"). The failing set is identical
+  on vitest 4 and 5. CI never uses it; it runs the root `vitest run`. (Fixed by ADR-036, above.)
+
 ### Dependency refresh 2/5: Functions and CI on Node 24 (2026-10-08)
 
 - All six codebases run on `nodejs24` (`firebase.json`). The esbuild `target` in each

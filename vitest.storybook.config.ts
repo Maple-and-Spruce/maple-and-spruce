@@ -80,6 +80,10 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['json'],
       reportsDirectory: path.join(dirname, 'coverage/storybook'),
+      // The stories are the tests, not the code under test. Vitest 4 left
+      // them out of coverage by default; Vitest 5 counts them, which pads
+      // lines/functions in the merged report and drags branches down.
+      exclude: ['**/*.stories.tsx'],
     },
   },
 });
