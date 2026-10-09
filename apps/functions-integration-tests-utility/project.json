@@ -10,6 +10,7 @@
     "firebase-maple-functions-people",
     "firebase-maple-functions-lessons",
     "firebase-maple-functions-lesson-payments",
+    "firebase-maple-functions-public-site",
     "firebase-integration-test-utils"
   ],
   "targets": {}

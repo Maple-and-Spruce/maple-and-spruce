@@ -310,6 +310,36 @@ warmup(functions, 'createRegistration', 'createRegistrationCheckoutLink');
 
 **Don't**: schedule a recurring Cloud Scheduler ping to keep functions warm 24/7. That bills idle time when no users are visiting. Warmup should be driven by user presence on the page.
 
+## App Check and request throttling on public callables (ADR-037)
+
+A public callable that the Webflow widgets call opts in on the builder chain:
+
+```typescript
+export const createRegistration = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('createRegistration', paymentThrottles('customerEmail'))
+  .usingSecrets(...SQUARE_SECRET_NAMES)
+  .handle<Req, Res>(async (data, context, secrets) => { ... });
+```
+
+- **App Check** verifies the `X-Firebase-AppCheck` header that `httpsCallable` sends once the
+  widget has initialized App Check (`apps/webflow-components/src/firebase-init.ts`). Mode
+  `monitor` logs `{"event":"app_check",…}` and never rejects. Mode `enforce` answers 401. The
+  `APP_CHECK_MODE` value in `.env.dev` / `.env.prod` caps every endpoint's mode.
+- **Throttling** answers 429 `RESOURCE_EXHAUSTED` before validation. Counters are in
+  `requestThrottles`, keyed by `scope` + a hash of the value, so **`scope` must be unique per
+  endpoint** (use the function name). Every access is a doc-id read, so no index is needed. It
+  fails open if Firestore errors.
+- Use the presets (`paymentThrottles`, `emailLinkThrottles`, `codeLookupThrottles`) and the
+  limits in `THROTTLE_LIMITS`; don't invent per-endpoint numbers.
+- The IP rule counts the **right-most** `x-forwarded-for` entry (`extractTrustedClientIp`).
+  `context.ip` stays the left-most entry and is for attribution only.
+- Warmup is answered before both steps, so warmup pings neither need a token nor count.
+- **On a router route** the chain is the same, ending in `.asRoute()`: the checks run in the
+  pipeline every route shares, so `publicSite/lookupDiscount` declares them on its route. The
+  router answers CORS once, and its allow-list already includes `X-Firebase-AppCheck`.
+- Specs that hand-roll a `Functions.endpoint` mock need `withAppCheck` and `throttling` on it.
+
 ## Role Gating (callable-roles analyzer)
 
 Every function exported from a codebase entry point **MUST** either declare a role (`.requiringRole([...])`, `createAdminFunction`, or `createRoleFunction`), be a Firestore/scheduled trigger, or be explicitly allowlisted as public/auth-only in `tools/check-callable-roles.ts`. This prevents a new callable shipping reachable without a role check (how the singular `getArtist`/`getStudent` were left auth-only until legacy #620). Scoped-roles matrix: epic #49; authoritative access table: `apps/functions-integration-tests-utility/src/role-matrix.spec.ts`.

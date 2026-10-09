@@ -24,6 +24,12 @@ import type { Response } from 'express';
 import { Role, hasAnyRole } from './auth.utility';
 import { routeNameFromPath } from './function-route-path';
 import { throwAlreadyExists, throwValidationError } from './errors.utility';
+import {
+  resolveAppCheckMode,
+  verifyAppCheckToken,
+  type AppCheckMode,
+} from './app-check.utility';
+import { checkThrottles, type ThrottleRule } from './throttle.utility';
 import { getAuth } from 'firebase-admin/auth';
 import { getApps, initializeApp } from 'firebase-admin/app';
 
@@ -128,7 +134,16 @@ export interface FunctionOptions {
   validator?: ValidatorFn;
   /** Run these uniqueness checks before invoking the handler */
   uniquenessChecks?: ReadonlyArray<UniquenessCheck>;
+  /** Verify the App Check token in this mode (capped by `APP_CHECK_MODE`) */
+  appCheck?: AppCheckMode;
+  /** Count requests against these rules before running checks + handler */
+  throttle?: { scope: string; rules: readonly ThrottleRule[] };
 }
+
+const THROTTLED_MESSAGE =
+  'Too many attempts. Please wait a few minutes and try again.';
+const APP_CHECK_REJECTED_MESSAGE =
+  'We could not verify this request. Please refresh the page and try again.';
 
 /**
  * Throw a validation error if the result is invalid.
@@ -265,7 +280,7 @@ function createCorsMiddleware(allowedOriginsParam: StringParam) {
       );
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Authorization,Content-Type'
+        'Authorization,Content-Type,X-Firebase-AppCheck'
       );
       res.setHeader('Access-Control-Allow-Credentials', 'true');
 
@@ -297,6 +312,29 @@ function extractClientIp(req: Request): string | undefined {
   const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
   const first = raw?.split(',')[0]?.trim();
   if (first) return first;
+  return typeof req.ip === 'string' && req.ip ? req.ip : undefined;
+}
+
+/**
+ * Client IP for request throttling.
+ *
+ * Google's front end *appends* the address it received the connection from to
+ * `x-forwarded-for`, so the right-most entry is the one it vouches for; entries
+ * to its left arrived with the request. `extractClientIp` keeps the left-most
+ * entry because attribution wants the original client; counting wants the
+ * entry the front end wrote.
+ */
+export function extractTrustedClientIp(req: {
+  headers: Record<string, string | string[] | undefined>;
+  ip?: unknown;
+}): string | undefined {
+  const forwarded = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(forwarded) ? forwarded.join(',') : forwarded;
+  const entries = (raw ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (entries.length > 0) return entries[entries.length - 1];
   return typeof req.ip === 'string' && req.ip ? req.ip : undefined;
 }
 
@@ -488,6 +526,45 @@ class FunctionBuilder<
   }
 
   /**
+   * Verify the caller's App Check token (ADR-037).
+   *
+   * `monitor` verifies and logs but never rejects; `enforce` answers 401 to a
+   * request without a valid token. The `APP_CHECK_MODE` env value caps the
+   * mode, so it can be turned down without touching endpoints. Warmup pings
+   * are answered before this runs.
+   */
+  withAppCheck(
+    mode: AppCheckMode = 'monitor'
+  ): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      appCheck: mode,
+    });
+  }
+
+  /**
+   * Limit how often one caller can reach this endpoint (ADR-037).
+   *
+   * `scope` names the counters and must be unique per endpoint — use the
+   * function name. A request over any rule's limit gets 429
+   * RESOURCE_EXHAUSTED before validation or the handler run.
+   *
+   * @example
+   * Functions.endpoint
+   *   .throttling('createRegistration', paymentThrottles('customerEmail'))
+   *   .handle(...)
+   */
+  throttling(
+    scope: string,
+    rules: readonly ThrottleRule[]
+  ): FunctionBuilder<SecretNames, StringNames> {
+    return new FunctionBuilder(this.secrets, this.strings, {
+      ...this.options,
+      throttle: { scope, rules },
+    });
+  }
+
+  /**
    * Describe this endpoint as a **route** on a domain router, rather than as its
    * own Cloud Function (ADR-029).
    *
@@ -560,7 +637,8 @@ class FunctionBuilder<
               handler: handler as PipelineHandler,
             },
             req,
-            res
+            res,
+            endpointLabel()
           );
         });
       }
@@ -591,6 +669,16 @@ type PipelineHandler = (
 ) => Promise<unknown>;
 
 /**
+ * Which endpoint a log line is about. Gen-2 sets `FUNCTION_TARGET` to the
+ * exported name; `K_SERVICE` is the Cloud Run service as a fallback.
+ */
+function endpointLabel(): string {
+  return (
+    process.env['FUNCTION_TARGET'] ?? process.env['K_SERVICE'] ?? 'unknown'
+  );
+}
+
+/**
  * Auth → role → secrets → validation → handler → envelope, for one request.
  *
  * Lifted verbatim out of `handle()` so `Functions.router` can run it per route.
@@ -600,7 +688,8 @@ type PipelineHandler = (
 async function runRequestPipeline(
   route: FunctionRoute,
   req: Request,
-  res: Response
+  res: Response,
+  label: string
 ): Promise<void> {
   const { options, secrets, strings, handler } = route;
   try {
@@ -613,6 +702,32 @@ async function runRequestPipeline(
     if (rawBody && rawBody.__warmup === true) {
       res.status(200).json({ data: { warm: true } });
       return;
+    }
+
+    if (options.appCheck) {
+      const mode = resolveAppCheckMode(
+        options.appCheck,
+        process.env['APP_CHECK_MODE']
+      );
+      if (mode !== 'off') {
+        const { result, appId } = await verifyAppCheckToken(
+          req.headers,
+          ensureAdminInitialized
+        );
+        // One structured line per call; the log-based metric reads these.
+        console.log(
+          JSON.stringify({ event: 'app_check', fn: label, mode, result, appId })
+        );
+        if (mode === 'enforce' && result !== 'valid') {
+          res.status(401).json({
+            error: {
+              message: APP_CHECK_REJECTED_MESSAGE,
+              status: 'UNAUTHENTICATED',
+            },
+          });
+          return;
+        }
+      }
     }
 
     const auth = await verifyAuthToken(req);
@@ -656,6 +771,30 @@ async function runRequestPipeline(
     );
 
     const data = req.body?.data ?? req.body ?? {};
+
+    if (options.throttle) {
+      const decision = await checkThrottles(
+        options.throttle.scope,
+        options.throttle.rules,
+        data,
+        { clientIp: extractTrustedClientIp(req) }
+      );
+      if (!decision.allowed) {
+        console.warn(
+          JSON.stringify({
+            event: 'throttled',
+            fn: label,
+            scope: options.throttle.scope,
+            rule: decision.rule,
+          })
+        );
+        res.status(429).json({
+          error: { message: THROTTLED_MESSAGE, status: 'RESOURCE_EXHAUSTED' },
+        });
+        return;
+      }
+    }
+
     await runChecks(data, options);
 
     const result = await handler(data, context, secretValues, stringValues);
@@ -774,7 +913,7 @@ export class Functions {
           // Per-route observability: the function name is the domain now, so
           // without this a log line cannot say which endpoint produced it.
           console.log(`[${name}] ${routeName}`);
-          await runRequestPipeline(route, req, res);
+          await runRequestPipeline(route, req, res, `${name}/${routeName}`);
         });
       }
     );

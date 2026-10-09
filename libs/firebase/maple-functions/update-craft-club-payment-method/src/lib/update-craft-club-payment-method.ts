@@ -9,6 +9,7 @@
  */
 import {
   Functions,
+  paymentThrottles,
   throwInvalidArgument,
   throwFailedPrecondition,
 } from '@maple/firebase/functions';
@@ -24,6 +25,8 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const updateCraftClubPaymentMethod = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('updateCraftClubPaymentMethod', paymentThrottles('sessionToken'))
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES)
   .handle<

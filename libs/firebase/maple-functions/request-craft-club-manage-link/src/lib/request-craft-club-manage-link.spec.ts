@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Functions } from '@maple/firebase/functions';
 
 const mocks = vi.hoisted(() => ({
   capturedHandler: null as
@@ -10,7 +11,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => {
-  const endpoint = {
+  const endpoint: Record<string, unknown> = {
+    withAppCheck: (mode: string) => {
+      endpoint['appCheckMode'] = mode;
+      return endpoint;
+    },
+    throttling: (scope: string, rules: unknown) => {
+      endpoint['throttle'] = { scope, rules };
+      return endpoint;
+    },
     usingStrings: vi.fn(() => endpoint),
     handle: vi.fn((h: typeof mocks.capturedHandler) => {
       mocks.capturedHandler = h;
@@ -19,6 +28,7 @@ vi.mock('@maple/firebase/functions', () => {
   };
   return {
     Functions: { endpoint },
+    emailLinkThrottles: () => ['ip', 'email'],
     throwInvalidArgument: (m: string) => {
       throw new Error(m);
     },
@@ -73,5 +83,16 @@ describe('requestCraftClubManageLink', () => {
 
   it('rejects a missing email', async () => {
     await expect(run({})).rejects.toThrow(/Email is required/);
+  });
+});
+
+describe('requestCraftClubManageLink declaration', () => {
+  it('opts into App Check and per-IP and per-address throttling', async () => {
+    const endpoint = Functions.endpoint as unknown as Record<string, unknown>;
+    expect(endpoint['appCheckMode']).toBe('monitor');
+    expect(endpoint['throttle']).toEqual({
+      scope: 'requestCraftClubManageLink',
+      rules: ['ip', 'email'],
+    });
   });
 });
