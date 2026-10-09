@@ -66,6 +66,43 @@ describe('ClassTable', () => {
     expect(screen.getByText('No dates set')).toBeInTheDocument();
   });
 
+  it('sorts by first session date by default, undated classes last', () => {
+    // Weekday order would put the Wednesday class first; date order must not.
+    const laterWednesday: Class = {
+      ...baseClass,
+      id: 'class-wed',
+      name: 'Later Wednesday Class',
+      sessions: [{ dateTime: new Date('2099-12-02T18:00:00Z') }],
+    };
+    const soonerSaturday: Class = {
+      ...baseClass,
+      id: 'class-sat',
+      name: 'Sooner Saturday Class',
+      sessions: [{ dateTime: new Date('2099-06-13T16:00:00Z') }],
+    };
+    const undated: Class = {
+      ...baseClass,
+      id: 'class-undated',
+      name: 'Undated Class',
+      sessions: [],
+    };
+    render(
+      <ClassTable
+        classesState={asState([undated, laterWednesday, soonerSaturday])}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    const names = screen
+      .getAllByText(/^(Later Wednesday|Sooner Saturday|Undated) Class$/)
+      .map((el) => el.textContent);
+    expect(names).toEqual([
+      'Sooner Saturday Class',
+      'Later Wednesday Class',
+      'Undated Class',
+    ]);
+  });
+
   it('shows the empty-state message when filters cull every class', () => {
     render(
       <ClassTable

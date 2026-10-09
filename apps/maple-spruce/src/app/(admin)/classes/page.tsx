@@ -23,10 +23,10 @@ import {
 export default function ClassesPage() {
   const router = useRouter();
 
-  // Default to the view Katie cares about: future classes that still have spots.
+  // Default to upcoming classes, full ones included, so a sold-out class is
+  // still visible at a glance.
   const [filters, setFilters] = useState<ClassFilters>({
     upcoming: true,
-    hideFull: true,
   });
 
   // The server-side `useClasses` hook only knows about the upcoming/status/etc
