@@ -10,7 +10,8 @@
  *  - **Activity**: the record of lessons and billing, rarely opened. The only
  *    place a past lesson can be charged for, and it never calls an unpaid
  *    past lesson out as a problem: past payments were settled outside the
- *    portal.
+ *    portal. Any lesson can be added, marked cancelled (kept on the record)
+ *    or deleted from here.
  *
  * Nothing here marks lessons taught or missed. A lesson is scheduled or
  * deleted, paid or not (#157).
@@ -418,6 +419,7 @@ export default function StudentDetailPage() {
     method: 'card' | 'invoice';
   } | null>(null);
   const [settleError, setSettleError] = useState<string | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | undefined>();
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
@@ -467,6 +469,23 @@ export default function StudentDetailPage() {
       setSettleError(err instanceof Error ? err.message : 'Could not do that');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const setLessonStatus = async (
+    lesson: Lesson,
+    status: 'cancelled' | 'scheduled'
+  ) => {
+    setPendingLessonId(lesson.id);
+    setActivityError(null);
+    try {
+      await updateLesson({ id: lesson.id, status });
+    } catch (err) {
+      setActivityError(
+        err instanceof Error ? err.message : 'Could not update the lesson'
+      );
+    } finally {
+      setPendingLessonId(null);
     }
   };
 
@@ -692,8 +711,12 @@ export default function StudentDetailPage() {
             labelOf={activityLabel}
             isHope={isHope}
             hasCard={Boolean(cardLabel)}
+            instructors={instructors}
             highlightLessonId={chargeLessonId}
-            busy={isSubmitting || chargePendingId !== null}
+            busy={
+              isSubmitting || chargePendingId !== null || pendingLessonId !== null
+            }
+            error={activityError}
             onCharge={(lesson) => {
               setSettleError(null);
               setSettling({ lesson, method: 'card' });
@@ -702,6 +725,12 @@ export default function StudentDetailPage() {
               setSettleError(null);
               setSettling({ lesson, method: 'invoice' });
             }}
+            onCancel={(lesson) => setLessonStatus(lesson, 'cancelled')}
+            onRestore={(lesson) => setLessonStatus(lesson, 'scheduled')}
+            onDelete={(lesson) => setDeletingLesson(lesson)}
+            onAdd={
+              instructors.length > 0 ? () => setAddLessonOpen(true) : undefined
+            }
           />
           {!isHope && (
             <>

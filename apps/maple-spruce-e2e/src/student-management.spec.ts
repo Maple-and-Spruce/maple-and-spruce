@@ -201,9 +201,11 @@ test.describe('Student management — task order', () => {
     page,
   }) => {
     await page.goto(`/students/${HISTORY_STUDENT_ID}?tab=activity`);
+    // Every lesson row has a menu; the header and empty-state rows do not.
     const rows = page
-      .getByRole('list', { name: 'Lesson activity' })
-      .getByRole('listitem');
+      .getByRole('region', { name: 'Lesson activity' })
+      .getByRole('row')
+      .filter({ has: page.getByRole('button', { name: /^More for/ }) });
     await expect(rows).toHaveCount(2, { timeout: 20_000 });
     // Not called out: no label of any kind on either.
     await expect(rows.getByText(/Paid|Invoiced|unpaid|owed/i)).toHaveCount(0);

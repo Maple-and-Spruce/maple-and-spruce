@@ -46,7 +46,11 @@ test.describe('Student page — lessons and billing tables', () => {
     await openStudent(page, STUDENT_ID, STUDENT_NAME);
 
     await expect(
-      page.getByRole('list', { name: 'Lesson activity' }).getByRole('listitem').first()
+      page
+        .getByRole('region', { name: 'Lesson activity' })
+        .getByRole('row')
+        .filter({ has: page.getByRole('button', { name: /^More for/ }) })
+        .first()
     ).toBeVisible({ timeout: 20_000 });
     // A lesson is scheduled or deleted, paid or not (#157): no marking.
     await expect(
