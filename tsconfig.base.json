@@ -119,6 +119,9 @@
       "@maple/firebase/maple-functions/lesson-payments": [
         "libs/firebase/maple-functions/lesson-payments/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/calendar": [
+        "libs/firebase/maple-functions/calendar/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/discounts": [
         "libs/firebase/maple-functions/discounts/src/index.ts"
       ],
@@ -413,21 +416,6 @@
       "@maple/firebase/maple-functions/get-my-roles": [
         "libs/firebase/maple-functions/get-my-roles/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-calendar-events": [
-        "libs/firebase/maple-functions/get-calendar-events/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-calendar-event": [
-        "libs/firebase/maple-functions/get-calendar-event/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-calendar-event": [
-        "libs/firebase/maple-functions/create-calendar-event/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-calendar-event": [
-        "libs/firebase/maple-functions/update-calendar-event/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-calendar-event": [
-        "libs/firebase/maple-functions/delete-calendar-event/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/calendar-classes-feed": [
         "libs/firebase/maple-functions/calendar-classes-feed/src/index.ts"
       ],
@@ -470,9 +458,6 @@
       "@maple/firebase/maple-functions/run-lesson-billing": [
         "libs/firebase/maple-functions/run-lesson-billing/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-room-schedule": [
-        "libs/firebase/maple-functions/get-room-schedule/src/index.ts"
-      ],
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
       "@maple/react/students": ["libs/react/students/src/index.ts"],
       "@maple/react/lessons": ["libs/react/lessons/src/index.ts"],
@@ -484,18 +469,6 @@
       "@maple/react/agreements": ["libs/react/agreements/src/index.ts"],
       "@maple/react/events": ["libs/react/events/src/index.ts"],
       "@maple/react/rooms": ["libs/react/rooms/src/index.ts"],
-      "@maple/firebase/maple-functions/get-calendar-embed-config": [
-        "libs/firebase/maple-functions/get-calendar-embed-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-calendar-embed-config": [
-        "libs/firebase/maple-functions/update-calendar-embed-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/add-calendar-embed-source": [
-        "libs/firebase/maple-functions/add-calendar-embed-source/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/remove-calendar-embed-source": [
-        "libs/firebase/maple-functions/remove-calendar-embed-source/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/calendar-embed": [
         "libs/firebase/maple-functions/calendar-embed/src/index.ts"
       ],

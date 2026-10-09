@@ -85,7 +85,7 @@ describe('Calendar Event Functions', () => {
         CreateCalendarEventRequest,
         CreateCalendarEventResponse
       >({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: SAMPLE_EVENT,
         idToken: adminUser.idToken,
       });
@@ -94,7 +94,7 @@ describe('Calendar Event Functions', () => {
 
     it('denies creating an arbitrary (non-room) event', async () => {
       const result = await callFunction<CreateCalendarEventRequest>({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: SAMPLE_EVENT, // type 'jam', no room
         idToken: teacher.idToken,
       });
@@ -106,7 +106,7 @@ describe('Calendar Event Functions', () => {
         CreateCalendarEventRequest,
         CreateCalendarEventResponse
       >({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: {
           ...SAMPLE_EVENT,
           title: 'Spruce Room booking',
@@ -121,14 +121,14 @@ describe('Calendar Event Functions', () => {
 
     it('denies updating and deleting any event', async () => {
       const upd = await callFunction<UpdateCalendarEventRequest>({
-        functionName: 'updateCalendarEvent',
+        functionName: 'calendar/updateCalendarEvent',
         data: { id: eventId, title: 'hijacked' },
         idToken: teacher.idToken,
       });
       expect(upd.status).toBe(403);
 
       const del = await callFunction<DeleteCalendarEventRequest>({
-        functionName: 'deleteCalendarEvent',
+        functionName: 'calendar/deleteCalendarEvent',
         data: { id: eventId },
         idToken: teacher.idToken,
       });
@@ -139,7 +139,7 @@ describe('Calendar Event Functions', () => {
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction<CreateCalendarEventRequest>({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: SAMPLE_EVENT,
       });
       expect(result.status).toBe(401);
@@ -147,7 +147,7 @@ describe('Calendar Event Functions', () => {
 
     it('should reject non-admin users', async () => {
       const result = await callFunction<CreateCalendarEventRequest>({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: SAMPLE_EVENT,
         idToken: nonAdminUser.idToken,
       });
@@ -163,7 +163,7 @@ describe('Calendar Event Functions', () => {
         CreateCalendarEventRequest,
         CreateCalendarEventResponse
       >({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: { ...SAMPLE_EVENT, createdBy: adminUser.uid },
         idToken: adminUser.idToken,
       });
@@ -187,7 +187,7 @@ describe('Calendar Event Functions', () => {
         GetCalendarEventsRequest,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         idToken: adminUser.idToken,
       });
 
@@ -201,7 +201,7 @@ describe('Calendar Event Functions', () => {
         GetCalendarEventRequest,
         GetCalendarEventResponse
       >({
-        functionName: 'getCalendarEvent',
+        functionName: 'calendar/getCalendarEvent',
         data: { id: eventId },
         idToken: adminUser.idToken,
       });
@@ -216,7 +216,7 @@ describe('Calendar Event Functions', () => {
         UpdateCalendarEventRequest,
         UpdateCalendarEventResponse
       >({
-        functionName: 'updateCalendarEvent',
+        functionName: 'calendar/updateCalendarEvent',
         data: {
           id: eventId,
           title: 'Updated Jam Session',
@@ -240,7 +240,7 @@ describe('Calendar Event Functions', () => {
         DeleteCalendarEventRequest,
         DeleteCalendarEventResponse
       >({
-        functionName: 'deleteCalendarEvent',
+        functionName: 'calendar/deleteCalendarEvent',
         data: { id: eventId },
         idToken: adminUser.idToken,
       });
@@ -251,7 +251,7 @@ describe('Calendar Event Functions', () => {
 
     it('should return not-found for deleted event', async () => {
       const result = await callFunction<GetCalendarEventRequest>({
-        functionName: 'getCalendarEvent',
+        functionName: 'calendar/getCalendarEvent',
         data: { id: eventId },
         idToken: adminUser.idToken,
       });
@@ -267,7 +267,7 @@ describe('Calendar Event Functions', () => {
     beforeAll(async () => {
       const [jamRes, hoursRes] = await Promise.all([
         callFunction<CreateCalendarEventRequest, CreateCalendarEventResponse>({
-          functionName: 'createCalendarEvent',
+          functionName: 'calendar/createCalendarEvent',
           data: {
             ...SAMPLE_EVENT,
             title: 'Filter Test Jam',
@@ -277,7 +277,7 @@ describe('Calendar Event Functions', () => {
           idToken: adminUser.idToken,
         }),
         callFunction<CreateCalendarEventRequest, CreateCalendarEventResponse>({
-          functionName: 'createCalendarEvent',
+          functionName: 'calendar/createCalendarEvent',
           data: {
             ...SAMPLE_EVENT,
             title: 'Filter Test Hours',
@@ -295,12 +295,12 @@ describe('Calendar Event Functions', () => {
     afterAll(async () => {
       await Promise.all([
         callFunction<DeleteCalendarEventRequest>({
-          functionName: 'deleteCalendarEvent',
+          functionName: 'calendar/deleteCalendarEvent',
           data: { id: jamEventId },
           idToken: adminUser.idToken,
         }),
         callFunction<DeleteCalendarEventRequest>({
-          functionName: 'deleteCalendarEvent',
+          functionName: 'calendar/deleteCalendarEvent',
           data: { id: hoursEventId },
           idToken: adminUser.idToken,
         }),
@@ -312,7 +312,7 @@ describe('Calendar Event Functions', () => {
         GetCalendarEventsRequest,
         GetCalendarEventsResponse
       >({
-        functionName: 'getCalendarEvents',
+        functionName: 'calendar/getCalendarEvents',
         data: { type: 'jam' },
         idToken: adminUser.idToken,
       });
@@ -327,7 +327,7 @@ describe('Calendar Event Functions', () => {
   describe('Validation', () => {
     it('should reject event with missing title', async () => {
       const result = await callFunction({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: {
           description: 'No title event',
           startDateTime: futureStart(),
@@ -347,7 +347,7 @@ describe('Calendar Event Functions', () => {
 
     it('should reject event with end before start', async () => {
       const result = await callFunction({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: {
           title: 'Backwards Time Event',
           description: 'End is before start',
@@ -368,7 +368,7 @@ describe('Calendar Event Functions', () => {
 
     it('should reject event with title too short', async () => {
       const result = await callFunction({
-        functionName: 'createCalendarEvent',
+        functionName: 'calendar/createCalendarEvent',
         data: {
           title: 'Hi',
           description: 'Short title',

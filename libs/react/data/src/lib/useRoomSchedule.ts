@@ -36,7 +36,7 @@ export function useRoomSchedule(room: Room) {
         GetRoomScheduleRequest,
         GetRoomScheduleResponse
       >(
-        'getRoomSchedule',
+        { router: 'calendar', route: 'getRoomSchedule' },
         {
           room,
           start: now.toISOString(),

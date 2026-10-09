@@ -5,6 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
+    "firebase-maple-functions-calendar",
     "firebase-maple-functions-create-class",
     "firebase-maple-functions-get-classes",
     "firebase-maple-functions-get-class",

@@ -706,7 +706,7 @@ describe('Lesson Functions', () => {
         GetRoomScheduleRequest,
         GetRoomScheduleResponse
       >({
-        functionName: 'getRoomSchedule',
+        functionName: 'calendar/getRoomSchedule',
         data: { room: 'spruce', start: DAY_START, end: DAY_END },
         idToken: adminUser.idToken,
       });
@@ -753,14 +753,14 @@ describe('Lesson Functions', () => {
 
     it('rejects getRoomSchedule for non-admins and unknown rooms', async () => {
       const nonAdmin = await callFunction<GetRoomScheduleRequest>({
-        functionName: 'getRoomSchedule',
+        functionName: 'calendar/getRoomSchedule',
         data: { room: 'spruce', start: DAY_START, end: DAY_END },
         idToken: nonAdminUser.idToken,
       });
       expect([403, 500]).toContain(nonAdmin.status);
 
       const badRoom = await callFunction<Partial<GetRoomScheduleRequest>>({
-        functionName: 'getRoomSchedule',
+        functionName: 'calendar/getRoomSchedule',
         data: { room: 'attic' as never, start: DAY_START, end: DAY_END },
         idToken: adminUser.idToken,
       });

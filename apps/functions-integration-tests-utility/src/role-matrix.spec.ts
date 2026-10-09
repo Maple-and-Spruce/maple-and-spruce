@@ -43,10 +43,10 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'getMusicTogetherSections', expect: 200 },
   { as: 'stephanie', functionName: 'getMusicTogetherSemesters', expect: 200 },
   { as: 'stephanie', functionName: 'getMusicTogetherInterest', expect: 200 },
-  { as: 'stephanie', functionName: 'getCalendarEvents', expect: 200 },
+  { as: 'stephanie', functionName: 'calendar/getCalendarEvents', expect: 200 },
   {
     as: 'stephanie',
-    functionName: 'getRoomSchedule',
+    functionName: 'calendar/getRoomSchedule',
     data: ROOM_SCHEDULE_REQ,
     expect: 200,
   },
@@ -84,7 +84,7 @@ const CASES: MatrixCase[] = [
   { as: 'nathan', functionName: 'lessons/getLessons', expect: 200 },
   { as: 'nathan', functionName: 'people/getStudents', expect: 200 },
   { as: 'nathan', functionName: 'getInvoices', expect: 200 },
-  { as: 'nathan', functionName: 'getCalendarEvents', expect: 200 },
+  { as: 'nathan', functionName: 'calendar/getCalendarEvents', expect: 200 },
   { as: 'nathan', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'nathan', functionName: 'getMusicTogetherRoster', expect: 403 },
   // Waiving an installment forgives money on Stephanie's Square account —
@@ -246,7 +246,7 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'products/getProducts', expect: 200 },
   { as: 'admin', functionName: 'agreements/getAgreementTemplates', expect: 200 },
   { as: 'admin', functionName: 'lessons/getLessons', expect: 200 },
-  { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
+  { as: 'admin', functionName: 'calendar/getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'people/listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
   { as: 'admin', functionName: 'settings/getInstruments', expect: 200 },
@@ -260,7 +260,7 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'payouts/getClassInstructorStatements', expect: 200 },
 
   // ── No roles at all: nothing opens ────────────────────────────────
-  { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
+  { as: 'noRole', functionName: 'calendar/getCalendarEvents', expect: 403 },
   { as: 'noRole', functionName: 'products/getProducts', expect: 403 },
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'noRole', functionName: 'discounts/getDiscounts', expect: 403 },

@@ -193,7 +193,14 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_
 
 ### Calendar Events
-- `getCalendarEvents`, `getCalendarEvent`, `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent`
+- `calendar` — **domain router** in `maple-core` (ADR-029, #73) for the staff side of the calendar:
+  events, the room schedule, and the embed configuration. Every route keeps its old gate.
+- `calendar/getCalendarEvents`, `calendar/getCalendarEvent`, `calendar/createCalendarEvent`
+  _(every staff role; a lesson teacher may only book a room)_, `calendar/updateCalendarEvent`,
+  `calendar/deleteCalendarEvent` _(admin, MT teacher, clerk)_
+- The public calendar URLs are **not** on the router and never move: `calendarEmbed` and the nine
+  `.ics` feeds are raw HTTP handlers behind `/calendar/*` Hosting rewrites that families, Google
+  Calendar and Webflow subscribe to.
 
 ### Calendar Triggers
 - `onClassWrite` — Firestore trigger: auto-generates CalendarEvents from published classes
@@ -201,10 +208,10 @@ Codes are **globally unique across programs** — a customer types a code withou
 - `onMusicTogetherSectionWrite` — Firestore trigger: auto-generates a public `musictogether` CalendarEvent per session of a `visible` MT section; reconciles on edit and removes when the section is hidden or deleted
 
 ### Room Availability (#39)
-- `getRoomSchedule` — admin-only: busy windows for a room over a time range (powers the dashboard "Spruce Room" widget and booking conflict checks)
+- `calendar/getRoomSchedule` — every staff role: busy windows for a room over a time range (powers the dashboard "Spruce Room" widget and booking conflict checks)
 
 ### Calendar Embed Config
-- `getCalendarEmbedConfig`, `updateCalendarEmbedConfig`, `addCalendarEmbedSource`, `removeCalendarEmbedSource`
+- `calendar/getCalendarEmbedConfig`, `calendar/updateCalendarEmbedConfig`, `calendar/addCalendarEmbedSource`, `calendar/removeCalendarEmbedSource` _(admin)_
 - `calendarEmbed` — HTTP: `/calendar/embed`
 
 ### Sales (Phase 5)

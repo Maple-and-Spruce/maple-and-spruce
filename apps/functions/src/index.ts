@@ -139,11 +139,8 @@ export { uploadCategoryGalleryImage } from '@maple/firebase/maple-functions/uplo
 export { lookupDiscount } from '@maple/firebase/maple-functions/lookup-discount';
 
 // Calendar Event functions
-export { getCalendarEvents } from '@maple/firebase/maple-functions/get-calendar-events';
-export { getCalendarEvent } from '@maple/firebase/maple-functions/get-calendar-event';
-export { createCalendarEvent } from '@maple/firebase/maple-functions/create-calendar-event';
-export { updateCalendarEvent } from '@maple/firebase/maple-functions/update-calendar-event';
-export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-calendar-event';
+// Calendar domain router: events, room schedule, embed config (ADR-029, #73).
+export { calendar } from '@maple/firebase/maple-functions/calendar';
 
 // Calendar ICS feeds are in the maple-calendar codebase
 
@@ -155,13 +152,8 @@ export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-
 export { onMusicTogetherDemoWrite } from '@maple/firebase/maple-functions/on-music-together-demo-write';
 
 // Room availability
-export { getRoomSchedule } from '@maple/firebase/maple-functions/get-room-schedule';
 
 // Calendar embed config
-export { getCalendarEmbedConfig } from '@maple/firebase/maple-functions/get-calendar-embed-config';
-export { updateCalendarEmbedConfig } from '@maple/firebase/maple-functions/update-calendar-embed-config';
-export { addCalendarEmbedSource } from '@maple/firebase/maple-functions/add-calendar-embed-source';
-export { removeCalendarEmbedSource } from '@maple/firebase/maple-functions/remove-calendar-embed-source';
 export { calendarEmbed } from '@maple/firebase/maple-functions/calendar-embed';
 
 // Registration functions (read/update only — create/cancel are in maple-square codebase)
