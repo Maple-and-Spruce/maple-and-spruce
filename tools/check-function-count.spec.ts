@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { evaluate, countFunctionLibs } from './check-function-count';
@@ -75,9 +81,9 @@ describe('the committed baseline', () => {
   it('matches the real function-library count in this repo', () => {
     // The guard is worthless if the checked-in baseline has drifted from
     // reality — this spec fails the moment they diverge.
-    const baseline = require('../function-count-baseline.json') as {
-      maxFunctions: number;
-    };
+    const baseline = JSON.parse(
+      readFileSync(join(__dirname, '../function-count-baseline.json'), 'utf8'),
+    ) as { maxFunctions: number };
 
     expect(countFunctionLibs()).toBe(baseline.maxFunctions);
   });

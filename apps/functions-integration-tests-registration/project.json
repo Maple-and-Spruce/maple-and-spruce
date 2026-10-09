@@ -11,12 +11,5 @@
     "firebase-maple-functions-send-class-reminders",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-registration/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

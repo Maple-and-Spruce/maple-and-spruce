@@ -14,12 +14,5 @@
     "firebase-maple-functions-on-class-write",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-class/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

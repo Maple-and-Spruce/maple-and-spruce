@@ -5,13 +5,13 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "targets": {
-    "test": {
+    "e2e": {
       "executor": "nx:run-commands",
       "options": {
         "command": "node tools/run-integration-test-suites.js"
       }
     },
-    "test-with-emulators": {
+    "e2e-with-emulators": {
       "executor": "nx:run-commands",
       "options": {
         "command": "./tools/run-integration-tests.sh"

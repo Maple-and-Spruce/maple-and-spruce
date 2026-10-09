@@ -14,12 +14,5 @@
     "firebase-maple-functions-update-lesson",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-teacher-payout/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

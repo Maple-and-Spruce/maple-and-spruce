@@ -9,12 +9,5 @@
     "firebase-maple-functions-lookup-discount",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-discount/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

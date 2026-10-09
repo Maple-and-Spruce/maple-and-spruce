@@ -8,8 +8,8 @@
     "dev": "nx dev maple-spruce",
     "dev:functions": "nx run functions:serve",
     "storybook": "nx run maple-spruce:storybook",
-    "test": "nx run-many --target=test --all",
-    "test:coverage": "nx run-many --target=test --all --coverage",
+    "test": "nx run-many -t test",
+    "test:coverage": "vitest run --coverage",
     "dup:check": "jscpd apps libs"
   },
   "private": true,

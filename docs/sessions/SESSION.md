@@ -6,6 +6,22 @@
 
 ## Current Status
 
+### Unit tests run per Nx project (2026-10-08, ADR-036)
+
+- `pnpm test` (`nx run-many -t test`) failed on main for ~30 projects, and its targets covered
+  only 161 of 328 unit specs. CI used a separate root run.
+- Now every project with specs (138 + a new `tools` project) has a generated `vitest.config.mts`.
+  The `@nx/vitest` plugin infers `test`, so `nx test`, `nx affected -t test` and caching work.
+- The root `vitest.config.mts` globs those configs into `test.projects`, and CI's
+  `vitest run --coverage` uses the same configs. Per-file coverage is identical for all 329
+  pre-existing files.
+- Integration suites and pos-sandbox-e2e moved to an `e2e` target; `functions-integration-tests:test`
+  is now `:e2e`.
+- `tools/check-vitest-projects.ts` (CI) fails on a spec no project runs.
+- Ten function libs with specs had no `tsconfig.json`; they now have the standard pair.
+- **Merging redeploys every function**: it touches `nx.json` and nearly every lib, and the merge
+  workflow deploys what `nx show projects --affected` reports. No runtime code changed.
+
 ### Dependency refresh 3/5: vitest 5 (2026-10-08)
 
 - `vitest`, `@vitest/coverage-istanbul`, `@vitest/coverage-v8` and `@vitest/browser-playwright`
@@ -23,7 +39,7 @@
 - `.vitest/` is gitignored; vitest 5 writes its reports and attachments there.
 - **Pre-existing, not fixed here:** `nx run-many -t test`, and so `pnpm test`, fails on main for
   about 30 non-integration projects ("Unable to load test config"). The failing set is identical
-  on vitest 4 and 5. CI never uses it; it runs the root `vitest run`.
+  on vitest 4 and 5. CI never uses it; it runs the root `vitest run`. (Fixed by ADR-036, above.)
 
 ### Dependency refresh 2/5: Functions and CI on Node 24 (2026-10-08)
 

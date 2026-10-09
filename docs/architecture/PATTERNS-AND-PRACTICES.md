@@ -1092,9 +1092,10 @@ libs/ts/domain/src/lib/
 
 **Run tests before creating PRs:**
 ```bash
-npm test                    # Run all tests
-npx nx run domain:test      # Run specific library tests
-npx nx run validation:test  # Run validation tests
+pnpm test                       # nx run-many -t test (every project, cached)
+pnpm exec nx affected -t test   # only projects affected by your change
+pnpm exec nx test domain        # one library
+pnpm exec nx test validation    # validation suites
 ```
 
 **CI runs tests automatically** - PRs with failing tests won't be merged.

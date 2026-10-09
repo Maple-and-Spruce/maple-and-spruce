@@ -12,12 +12,5 @@
     "firebase-maple-functions-reorder-class-categories",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-class-category/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

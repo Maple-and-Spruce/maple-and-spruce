@@ -4,12 +4,5 @@
   "sourceRoot": "libs/firebase/maple-functions/process-pos-sale/src",
   "projectType": "library",
   "tags": [],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "libs/firebase/maple-functions/process-pos-sale/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }
