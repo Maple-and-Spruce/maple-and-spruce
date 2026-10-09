@@ -57,8 +57,12 @@ pnpm exec nx run maple-spruce:build-storybook
 ## Running Unit Tests
 
 ```bash
-pnpm test
+pnpm test                               # every unit spec: the root `vitest run`, same as CI
+pnpm test:coverage                      # with coverage (CI's numbers)
+pnpm exec vitest run libs/ts/domain     # one library, filtered by path
 ```
+
+Libraries have no per-project `test` target, so don't use `nx run-many -t test`.
 
 ## Running Integration Tests (user runs this)
 

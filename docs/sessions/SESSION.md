@@ -6,6 +6,17 @@
 
 ## Current Status
 
+### `pnpm test` runs the root vitest run (2026-10-08)
+
+- `pnpm test` was `nx run-many -t test`, which failed on main for ~30 unit projects: the
+  deprecated `@nx/vitest:test` executor couldn't load several lib configs ("config file
+  undefined"). CI never used those targets; it runs the root `vitest run --coverage`.
+- `test` is now `vitest run`; `test:coverage` is `vitest run --coverage`, the CI command.
+- The 25 non-integration `test` targets and 38 lib/app vitest configs are gone. Integration
+  suites and pos-sandbox-e2e keep theirs; they always run with an explicit `--config`.
+- One library on its own: `pnpm exec vitest run libs/ts/domain`.
+- Per-file coverage summary before vs after: identical (329 files).
+
 ### Dependency refresh 2/5: Functions and CI on Node 24 (2026-10-08)
 
 - All six codebases run on `nodejs24` (`firebase.json`). The esbuild `target` in each

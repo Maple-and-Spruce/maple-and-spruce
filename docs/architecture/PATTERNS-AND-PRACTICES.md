@@ -1092,9 +1092,9 @@ libs/ts/domain/src/lib/
 
 **Run tests before creating PRs:**
 ```bash
-npm test                    # Run all tests
-npx nx run domain:test      # Run specific library tests
-npx nx run validation:test  # Run validation tests
+pnpm test                                  # All unit specs (the same root run CI uses)
+pnpm exec vitest run libs/ts/domain        # One library: filter the root run by path
+pnpm exec vitest run libs/ts/validation    # Validation suites
 ```
 
 **CI runs tests automatically** - PRs with failing tests won't be merged.

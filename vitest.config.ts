@@ -12,10 +12,15 @@ import tsconfigPaths from 'vite-tsconfig-paths';
  *
  * Do NOT reintroduce `test.projects` here. The Nx 23 migration converted the
  * (dead) `vitest.workspace.ts` into a 21-entry `projects` list, which silently
- * dropped ~90 spec files from the run and cratered merged coverage. The libs'
- * own `vitest.config.ts` files are unused by this run.
+ * dropped ~90 spec files from the run and cratered merged coverage.
  *
- * Run with: npx vitest run --coverage
+ * Libraries and apps have no vitest config or Nx `test` target of their own:
+ * this run is the only unit-test entry point, and `pnpm test` invokes it. The
+ * only per-project vitest configs left are the emulator-backed integration
+ * suites and pos-sandbox-e2e, which are always run with an explicit `--config`.
+ * To run one library's specs, filter by path: `pnpm exec vitest run libs/ts/domain`.
+ *
+ * Run with: pnpm test  (or `pnpm test:coverage`, which CI runs)
  */
 export default defineConfig({
   plugins: [

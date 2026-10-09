@@ -4,12 +4,5 @@
   "sourceRoot": "libs/firebase/maple-functions/process-catalog-sync-request/src",
   "projectType": "library",
   "tags": [],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "libs/firebase/maple-functions/process-catalog-sync-request/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }
