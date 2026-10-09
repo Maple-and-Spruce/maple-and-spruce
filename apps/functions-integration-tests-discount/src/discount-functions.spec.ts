@@ -319,7 +319,7 @@ describe('Discount Functions', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'LOOKUP-ACTIVE' },
       });
 
@@ -333,7 +333,7 @@ describe('Discount Functions', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'LOOKUP-INACTIVE' },
       });
 
@@ -346,7 +346,7 @@ describe('Discount Functions', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'DOESNT-EXIST' },
       });
 
@@ -389,7 +389,7 @@ describe('Discount Functions', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PAIR-CRUD' },
       });
 
@@ -902,7 +902,7 @@ describe('Discount program scoping', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PILOTCLASS', program: 'music-together' },
       });
 
@@ -917,14 +917,14 @@ describe('Discount program scoping', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'PILOTCLASS', program: 'classes' },
       });
       const unknown = await callFunction<
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'NO-SUCH-CODE', program: 'classes' },
       });
 
@@ -938,7 +938,7 @@ describe('Discount program scoping', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'CLASSONLY' },
       });
 
@@ -976,14 +976,14 @@ describe('Discount program scoping', () => {
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'LEGACY', program: 'classes' },
       });
       const asMt = await callFunction<
         LookupDiscountRequest,
         LookupDiscountResponse
       >({
-        functionName: 'lookupDiscount',
+        functionName: 'publicSite/lookupDiscount',
         data: { code: 'LEGACY', program: 'music-together' },
       });
 

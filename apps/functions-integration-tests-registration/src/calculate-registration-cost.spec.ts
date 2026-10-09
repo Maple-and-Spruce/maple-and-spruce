@@ -98,7 +98,7 @@ describe('calculateRegistrationCost', () => {
       const result = await callFunction<
         Partial<CalculateRegistrationCostRequest>
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { quantity: 1 },
       });
 
@@ -107,7 +107,7 @@ describe('calculateRegistrationCost', () => {
 
     it('AC-2: should return error when quantity is zero', async () => {
       const result = await callFunction<CalculateRegistrationCostRequest>({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity: 0 },
       });
 
@@ -116,7 +116,7 @@ describe('calculateRegistrationCost', () => {
 
     it('AC-2: should return error when quantity is negative', async () => {
       const result = await callFunction<CalculateRegistrationCostRequest>({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity: -1 },
       });
 
@@ -131,7 +131,7 @@ describe('calculateRegistrationCost', () => {
   describe('Class eligibility', () => {
     it('AC-3: should return error when class does not exist', async () => {
       const result = await callFunction<CalculateRegistrationCostRequest>({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: 'nonexistent-class-id', quantity: 1 },
       });
 
@@ -140,7 +140,7 @@ describe('calculateRegistrationCost', () => {
 
     it('AC-4: should return error when class is in draft status', async () => {
       const result = await callFunction<CalculateRegistrationCostRequest>({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.draft, quantity: 1 },
       });
 
@@ -149,7 +149,7 @@ describe('calculateRegistrationCost', () => {
 
     it('AC-5: should return error when class is cancelled', async () => {
       const result = await callFunction<CalculateRegistrationCostRequest>({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.cancelled, quantity: 1 },
       });
 
@@ -158,7 +158,7 @@ describe('calculateRegistrationCost', () => {
 
     it('AC-6: should return error when class dateTime is in the past', async () => {
       const result = await callFunction<CalculateRegistrationCostRequest>({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.past, quantity: 1 },
       });
 
@@ -176,7 +176,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity: 1 },
       });
 
@@ -192,7 +192,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity },
       });
 
@@ -213,7 +213,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity: 1 },
       });
 
@@ -227,7 +227,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity: 1 },
       });
 
@@ -249,7 +249,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -272,7 +272,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -291,7 +291,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity,
@@ -323,7 +323,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -345,7 +345,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -363,7 +363,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -391,7 +391,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -415,7 +415,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -435,7 +435,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -460,7 +460,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -479,7 +479,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -499,7 +499,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -517,7 +517,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -536,7 +536,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -561,7 +561,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -581,7 +581,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 2,
@@ -606,7 +606,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 3,
@@ -630,7 +630,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 2,
@@ -649,7 +649,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 2,
@@ -666,7 +666,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 3,
@@ -686,7 +686,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 4,
@@ -708,7 +708,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 2,
@@ -733,7 +733,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: { classId: CLASS_IDS.published, quantity: 1 },
       });
 
@@ -753,7 +753,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,
@@ -774,7 +774,7 @@ describe('calculateRegistrationCost', () => {
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
       >({
-        functionName: 'calculateRegistrationCost',
+        functionName: 'publicSite/calculateRegistrationCost',
         data: {
           classId: CLASS_IDS.published,
           quantity: 1,

@@ -75,7 +75,7 @@ describe('Music Together interest list', () => {
     const result = await callFunction<
       Record<string, never>,
       GetPublicMusicTogetherSectionsResponse
-    >({ functionName: 'getPublicMusicTogetherSections', data: {} });
+    >({ functionName: 'publicSite/getPublicMusicTogetherSections', data: {} });
 
     expect(result.status).toBe(200);
     const ids = result.data!.sections.map((s) => s.id).sort();

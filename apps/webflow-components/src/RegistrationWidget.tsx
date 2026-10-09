@@ -42,7 +42,7 @@ import type {
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import {
   trackAddClassToCart,
   trackPurchaseClass,
@@ -358,16 +358,12 @@ export function RegistrationWidget({
       return;
     }
 
-    // Pre-warm downstream callables the user will hit shortly (discount
-    // recalc + Pay submit). The page-mount fetches above can't benefit
-    // from warmup — they fire too early — but these typically run 5–60s
-    // later, by which point the warmup ping has spun their container up.
-    warmup(
-      functions,
-      'calculateRegistrationCost',
-      'createRegistration',
-      'createRegistrationCheckoutLink'
-    );
+    // Pre-warm the checkout callables the user will hit shortly (Pay
+    // submit). The page-mount fetches can't benefit from warmup — they fire
+    // too early — but these typically run 5–60s later, by which point the
+    // warmup ping has spun their container up. The discount recalc needs no
+    // ping: it is on `publicSite`, which the mount fetch has already woken.
+    warmup(functions, 'createRegistration', 'createRegistrationCheckoutLink');
 
     // Poll getRegistrationStatus for a returning hosted-checkout buyer. Returns
     // true if it took over the UI (confirmed or a "confirming payment" state),
@@ -377,10 +373,10 @@ export function RegistrationWidget({
       registrationId: string,
       publicClass: PublicClass
     ): Promise<boolean> => {
-      const getRegistrationStatus = httpsCallable<
+      const getRegistrationStatus = routeCallable<
         GetRegistrationStatusRequest,
         GetRegistrationStatusResponse
-      >(functions, 'getRegistrationStatus');
+      >(functions, 'publicSite', 'getRegistrationStatus');
 
       const MAX_POLLS = 6;
       const POLL_MS = 3000;
@@ -426,15 +422,15 @@ export function RegistrationWidget({
     const fetchClass = async () => {
       setState({ status: 'loading' });
       try {
-        const getPublicClass = httpsCallable<
+        const getPublicClass = routeCallable<
           GetPublicClassRequest,
           GetPublicClassResponse
-        >(functions, 'getPublicClass');
+        >(functions, 'publicSite', 'getPublicClass');
 
-        const getRequiredAgreements = httpsCallable<
+        const getRequiredAgreements = routeCallable<
           GetRequiredAgreementsForClassRequest,
           GetRequiredAgreementsForClassResponse
-        >(functions, 'getRequiredAgreementsForClass');
+        >(functions, 'publicSite', 'getRequiredAgreementsForClass');
 
         // Fetch class and required agreements in parallel
         const [classResult, agreementsResult] = await Promise.all([
@@ -490,10 +486,10 @@ export function RegistrationWidget({
       quantity: number,
       discountCode?: string
     ): Promise<CalculateRegistrationCostResponse> => {
-      const calculateCost = httpsCallable<
+      const calculateCost = routeCallable<
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
-      >(functions, 'calculateRegistrationCost');
+      >(functions, 'publicSite', 'calculateRegistrationCost');
 
       const result = await calculateCost({
         classId: calcClassId,

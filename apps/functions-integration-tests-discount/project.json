@@ -6,7 +6,7 @@
   "tags": ["type:e2e"],
   "implicitDependencies": [
     "firebase-maple-functions-discounts",
-    "firebase-maple-functions-lookup-discount",
+    "firebase-maple-functions-public-site",
     "firebase-integration-test-utils"
   ],
   "targets": {}

@@ -11,7 +11,7 @@
     "firebase-maple-functions-get-class",
     "firebase-maple-functions-update-class",
     "firebase-maple-functions-delete-class",
-    "firebase-maple-functions-get-public-class",
+    "firebase-maple-functions-public-site",
     "firebase-maple-functions-on-class-write",
     "firebase-integration-test-utils"
   ],

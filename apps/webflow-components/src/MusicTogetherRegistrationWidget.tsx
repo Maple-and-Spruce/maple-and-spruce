@@ -57,7 +57,7 @@ import type {
   LookupDiscountRequest,
   LookupDiscountResponse,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import { warmup } from './lib/warmup';
 import { readMetaAttribution } from './lib/meta-attribution';
 import {
@@ -415,13 +415,12 @@ export function MusicTogetherRegistrationWidget({
     // out the form, by which point the container is up.
     // Warm both downstream mutations: the checkout create, and the waitlist
     // capture (fired both when a section is full and in coming-soon mode).
+    // The discount lookup needs no ping: it is on `publicSite`, which the
+    // section fetch on mount has already woken.
     warmup(
       functions,
       'createMusicTogetherRegistration',
-      'addToMusicTogetherWaitlist',
-      // Typing a code is a mid-form action, so a cold lookup would stall the
-      // family right before they commit.
-      'lookupDiscount'
+      'addToMusicTogetherWaitlist'
     );
 
     // Init the MT pixel + its PageView. The site-wide GTM tag only loads the
@@ -432,10 +431,10 @@ export function MusicTogetherRegistrationWidget({
     const load = async () => {
       setState({ status: 'loading' });
       try {
-        const call = httpsCallable<
+        const call = routeCallable<
           GetPublicMusicTogetherSectionRequest,
           GetPublicMusicTogetherSectionResponse
-        >(functions, 'getPublicMusicTogetherSection');
+        >(functions, 'publicSite', 'getPublicMusicTogetherSection');
         const result = await call({ sectionId });
         setState({ status: 'ready', section: result.data.section });
         // ViewContent keyed to the section doc id — upper-funnel signal and the
@@ -579,8 +578,9 @@ export function MusicTogetherRegistrationWidget({
     setCheckingDiscount(true);
     setDiscountError(null);
     try {
-      const call = httpsCallable<LookupDiscountRequest, LookupDiscountResponse>(
+      const call = routeCallable<LookupDiscountRequest, LookupDiscountResponse>(
         functions,
+        'publicSite',
         'lookupDiscount'
       );
       const result = await call({ code, program: 'music-together' });

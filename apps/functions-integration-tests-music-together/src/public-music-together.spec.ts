@@ -88,7 +88,7 @@ describe('getPublicMusicTogetherSection', () => {
       GetPublicMusicTogetherSectionRequest,
       GetPublicMusicTogetherSectionResponse
     >({
-      functionName: 'getPublicMusicTogetherSection',
+      functionName: 'publicSite/getPublicMusicTogetherSection',
       data: { sectionId: 'sec-pub' },
     });
 
@@ -103,7 +103,7 @@ describe('getPublicMusicTogetherSection', () => {
 
   it('hides draft sections', async () => {
     const result = await callFunction<GetPublicMusicTogetherSectionRequest>({
-      functionName: 'getPublicMusicTogetherSection',
+      functionName: 'publicSite/getPublicMusicTogetherSection',
       data: { sectionId: 'sec-pub-draft' },
     });
     expect(result.status).not.toBe(200);
@@ -111,7 +111,7 @@ describe('getPublicMusicTogetherSection', () => {
 
   it('404s an unknown section', async () => {
     const result = await callFunction<GetPublicMusicTogetherSectionRequest>({
-      functionName: 'getPublicMusicTogetherSection',
+      functionName: 'publicSite/getPublicMusicTogetherSection',
       data: { sectionId: 'nope' },
     });
     expect(result.status).not.toBe(200);

@@ -119,6 +119,9 @@
       "@maple/firebase/maple-functions/lesson-payments": [
         "libs/firebase/maple-functions/lesson-payments/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/public-site": [
+        "libs/firebase/maple-functions/public-site/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/calendar": [
         "libs/firebase/maple-functions/calendar/src/index.ts"
       ],
@@ -305,9 +308,6 @@
       "@maple/firebase/maple-functions/reorder-class-categories": [
         "libs/firebase/maple-functions/reorder-class-categories/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/lookup-discount": [
-        "libs/firebase/maple-functions/lookup-discount/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-registrations": [
         "libs/firebase/maple-functions/get-registrations/src/index.ts"
       ],
@@ -323,9 +323,6 @@
       "@maple/firebase/maple-functions/update-registration": [
         "libs/firebase/maple-functions/update-registration/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/calculate-registration-cost": [
-        "libs/firebase/maple-functions/calculate-registration-cost/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/create-registration": [
         "libs/firebase/maple-functions/create-registration/src/index.ts"
       ],
@@ -337,15 +334,6 @@
       ],
       "@maple/firebase/maple-functions/cancel-registration": [
         "libs/firebase/maple-functions/cancel-registration/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-class": [
-        "libs/firebase/maple-functions/get-public-class/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-registration-status": [
-        "libs/firebase/maple-functions/get-registration-status/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-music-together-section": [
-        "libs/firebase/maple-functions/get-public-music-together-section/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-music-together-semesters": [
         "libs/firebase/maple-functions/get-music-together-semesters/src/index.ts"
@@ -392,14 +380,8 @@
       "@maple/firebase/maple-functions/delete-music-together-demo": [
         "libs/firebase/maple-functions/delete-music-together-demo/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-public-music-together-demos": [
-        "libs/firebase/maple-functions/get-public-music-together-demos/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/on-music-together-demo-write": [
         "libs/firebase/maple-functions/on-music-together-demo-write/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-music-together-sections": [
-        "libs/firebase/maple-functions/get-public-music-together-sections/src/index.ts"
       ],
       "@maple/firebase/maple-functions/add-music-together-interest": [
         "libs/firebase/maple-functions/add-music-together-interest/src/index.ts"
@@ -540,9 +522,6 @@
       ],
       "@maple/firebase/maple-functions/submit-signed-agreement": [
         "libs/firebase/maple-functions/submit-signed-agreement/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-required-agreements-for-class": [
-        "libs/firebase/maple-functions/get-required-agreements-for-class/src/index.ts"
       ],
       "@maple/firebase/square-test-mock-server": [
         "libs/firebase/square-test-mock-server/src/index.ts"

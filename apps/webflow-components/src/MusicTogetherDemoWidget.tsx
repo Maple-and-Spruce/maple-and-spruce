@@ -38,7 +38,7 @@ import type {
   GetPublicMusicTogetherDemosResponse,
   PublicMusicTogetherDemo,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import { warmup } from './lib/warmup';
 import { readMetaAttribution } from './lib/meta-attribution';
 import {
@@ -125,10 +125,10 @@ export function MusicTogetherDemoWidget({
     const load = async () => {
       setDemosState({ status: 'loading' });
       try {
-        const call = httpsCallable<
+        const call = routeCallable<
           GetPublicMusicTogetherDemosRequest,
           GetPublicMusicTogetherDemosResponse
-        >(functions, 'getPublicMusicTogetherDemos');
+        >(functions, 'publicSite', 'getPublicMusicTogetherDemos');
         const result = await call({});
         if (cancelled) return;
         const demos = result.data.demos;
