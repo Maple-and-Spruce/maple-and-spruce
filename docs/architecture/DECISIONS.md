@@ -1794,3 +1794,39 @@ What becomes easier or harder as a result?
 ---
 
 *Last updated: 2026-10-06 (ADR-035 added for the payout ledger)*
+
+---
+
+## ADR-036: Unit Tests Run Per Nx Project, Merged by a Root `test.projects` Glob
+
+**Status:** Accepted
+**Date:** 2026-10-08
+
+### Context
+`pnpm test` ran `nx run-many -t test` and failed on main for ~30 projects. Those targets used the
+deprecated `@nx/vitest:test` executor, which could not load several hand-written lib configs, and
+they covered only 161 of the 328 unit specs. CI never used them: it ran one root `vitest run`
+over a flat glob, so the per-project targets were dead weight that drifted.
+
+### Decision
+Use the conventional Nx + Vitest layout:
+
+- Every project with unit specs owns a `vitest.config.mts`, written by
+  `nx g @nx/vitest:configuration`. The `@nx/vitest` plugin infers its `test` target, so
+  `nx test <project>`, `nx affected -t test` and `pnpm test` (`nx run-many -t test`) are cached
+  per project. Workspace tool specs are the `tools` project.
+- The root `vitest.config.mts` lists those configs in `test.projects` **by glob**, and holds the
+  root-only coverage options. CI runs it (`vitest run --coverage`) for the merged coverage gate.
+- Emulator-backed integration suites and `pos-sandbox-e2e` get an inferred `e2e` target from a
+  second plugin instance, so `nx run-many -t test` never needs emulators.
+- Configs use Vite's native `resolve.tsconfigPaths`, not the Nx 23-deprecated `nxViteTsPaths()`.
+  The default environment is `node`; a spec that needs a DOM says so in a
+  `// @vitest-environment jsdom` docblock, as before.
+- `tools/check-vitest-projects.ts` (CI) fails when a tracked spec belongs to no project.
+
+### Consequences
+- A new library with specs needs a config. The CI guard says so and prints the generator command.
+- About 140 small config files. They are generated, and each one is the project's own definition
+  of how its tests run, which is what makes per-project caching and `affected` possible.
+- An explicit `test.projects` list is how the Nx 23 migration once dropped ~90 specs from CI.
+  The glob and the guard together close that gap.

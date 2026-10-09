@@ -9,12 +9,5 @@
     "firebase-tally-test-mock-server",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-lesson-inquiries/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

@@ -479,6 +479,13 @@ jobs:
           path: node_modules
           key: ${{ needs.install.outputs.cache_key }}
 
+      # A spec outside every project's vitest.config.mts is silently never run.
+      - name: Check every spec belongs to a Vitest project
+        run: npx tsx tools/check-vitest-projects.ts
+
+      # Root config globs each project's vitest.config.mts (test.projects),
+      # so this is the same per-project configs as `nx test`, merged into one
+      # coverage report.
       - name: Run unit tests with coverage
         run: pnpm exec vitest run --coverage
 

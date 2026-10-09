@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
 
 const require_ = createRequire(import.meta.url);
 const { packByWeight, weightFor, loadWeights, DEFAULT_WEIGHT_SECONDS } =
-  require_(join(process.cwd(), 'tools/ci-integration-test-matrix.js'));
+  require_('./ci-integration-test-matrix.js');
 
 const p = (name: string) => `functions-integration-tests-${name}`;
 

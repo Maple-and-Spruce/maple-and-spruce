@@ -10,7 +10,8 @@
       "!{projectRoot}/.storybook/**/*",
       "!{projectRoot}/tsconfig.storybook.json",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
-      "!{projectRoot}/tsconfig.spec.json"
+      "!{projectRoot}/tsconfig.spec.json",
+      "!{projectRoot}/vitest.config.mts"
     ],
     "sharedGlobals": []
   },
@@ -55,10 +56,25 @@
     },
     {
       "plugin": "@nx/vitest",
+      "exclude": [
+        "apps/functions-integration-tests-*/**",
+        "apps/pos-sandbox-e2e/**"
+      ],
       "options": {
-        "testTargetName": "vitest:test",
+        "testTargetName": "test",
         "ciTargetName": "test-ci",
-        "testMode": "watch"
+        "testMode": "run"
+      }
+    },
+    {
+      "plugin": "@nx/vitest",
+      "include": [
+        "apps/functions-integration-tests-*/**",
+        "apps/pos-sandbox-e2e/**"
+      ],
+      "options": {
+        "testTargetName": "e2e",
+        "testMode": "run"
       }
     }
   ],

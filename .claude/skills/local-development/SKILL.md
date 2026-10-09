@@ -56,13 +56,20 @@ pnpm exec nx run maple-spruce:build-storybook
 
 ## Running Unit Tests
 
+Each project owns a `vitest.config.mts`; the `@nx/vitest` plugin infers its `test` target.
+
 ```bash
-pnpm test                               # every unit spec: the root `vitest run`, same as CI
-pnpm test:coverage                      # with coverage (CI's numbers)
-pnpm exec vitest run libs/ts/domain     # one library, filtered by path
+pnpm test                                   # nx run-many -t test: every project, cached
+pnpm exec nx affected -t test               # only projects your change can affect
+pnpm exec nx test domain                    # one project
+pnpm exec nx test domain -- src/lib/artist.spec.ts   # one file
+pnpm test:coverage                          # root run of all project configs + merged coverage (what CI gates on)
 ```
 
-Libraries have no per-project `test` target, so don't use `nx run-many -t test`.
+New library with specs? Give it a config, or `tools/check-vitest-projects.ts` fails CI:
+`pnpm exec nx g @nx/vitest:configuration --project=<name> --testEnvironment=node`.
+Its generated config uses the deprecated `nxViteTsPaths()`/`nxCopyAssetsPlugin()`; swap them for
+`tsconfigPaths()` from `vite-tsconfig-paths` like every other config here.
 
 ## Running Integration Tests (user runs this)
 
@@ -70,7 +77,7 @@ Integration tests run Cloud Functions against real Firebase emulators. Requires 
 
 **All-in-one** (builds functions, copies .env, starts emulators, runs tests, shuts down):
 ```bash
-pnpm exec nx run functions-integration-tests:test-with-emulators
+pnpm exec nx run functions-integration-tests:e2e-with-emulators
 ```
 
 **Manual** (useful when iterating on tests — keep emulators running):
@@ -81,7 +88,7 @@ cp .env.dev dist/apps/functions/.env
 firebase emulators:start --project=dev --only auth,firestore,functions
 
 # Terminal 2: Run tests (repeat as needed)
-pnpm exec nx run functions-integration-tests:test
+pnpm exec nx run functions-integration-tests:e2e
 ```
 
 Emulator ports: Auth (9099), Firestore (8080), Functions (5001), UI (4000)

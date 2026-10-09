@@ -8,7 +8,7 @@
     "dev": "nx dev maple-spruce",
     "dev:functions": "nx run functions:serve",
     "storybook": "nx run maple-spruce:storybook",
-    "test": "vitest run",
+    "test": "nx run-many -t test",
     "test:coverage": "vitest run --coverage",
     "dup:check": "jscpd apps libs"
   },
