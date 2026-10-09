@@ -152,8 +152,9 @@ export function StandingScheduleCard({
       )}
       {loaded && active.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
-          No weekly time yet. Set one and the next 4 lessons go on the calendar
-          and stay topped up. Without it, lessons have to be added one by one.
+          No weekly time yet. It's the student's usual slot: it places them on
+          the Students list, and Next lessons proposes dates from it. It books
+          nothing on its own. Without it, lessons are added one by one.
         </Alert>
       )}
       <Stack spacing={1.5}>
@@ -216,8 +217,8 @@ export function StandingScheduleCard({
           color="textSecondary"
           sx={{ display: 'block', mt: 2 }}
         >
-          Changing this applies to lessons from here on. Lessons already on the
-          calendar stay where they are — move or cancel those individually.
+          Changing this changes the dates Next lessons proposes. Lessons already
+          booked stay where they are; move or remove those individually.
         </Typography>
       )}
       {ended.length > 0 && (
