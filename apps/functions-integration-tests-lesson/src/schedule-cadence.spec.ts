@@ -71,7 +71,7 @@ async function seedStudent(id: string, name: string): Promise<void> {
 
 async function lessonsFor(studentId: string, idToken: string) {
   const res = await callFunction<GetLessonsRequest, GetLessonsResponse>({
-    functionName: 'getLessons',
+    functionName: 'lessons/getLessons',
     data: { studentId },
     idToken,
   });
@@ -126,7 +126,7 @@ describe('Standing arrangement cadence (legacy #837)', () => {
       CreateStudentLessonScheduleRequest,
       CreateStudentLessonScheduleResponse
     >({
-      functionName: 'createStudentLessonSchedule',
+      functionName: 'lessons/createStudentLessonSchedule',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -157,7 +157,7 @@ describe('Standing arrangement cadence (legacy #837)', () => {
   ) {
     const plan = planNextLessons(schedule, [], [], new Date());
     return callFunction<CreateLessonSeriesRequest, CreateLessonSeriesResponse>({
-      functionName: 'createLessonSeries',
+      functionName: 'lessons/createLessonSeries',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -252,7 +252,7 @@ describe('Standing arrangement cadence (legacy #837)', () => {
   it('refuses a cadence that is not a whole number of weeks', async () => {
     await seedStudent('cad-bad', 'Bad Cadence');
     const res = await callFunction<CreateStudentLessonScheduleRequest>({
-      functionName: 'createStudentLessonSchedule',
+      functionName: 'lessons/createStudentLessonSchedule',
       data: {
         studentId: 'cad-bad',
         teacherId: TEACHER_ID,
@@ -273,7 +273,7 @@ describe('Standing arrangement cadence (legacy #837)', () => {
   it('refuses a cadence so long the arrangement would rarely produce a lesson', async () => {
     await seedStudent('cad-long', 'Long Cadence');
     const res = await callFunction<CreateStudentLessonScheduleRequest>({
-      functionName: 'createStudentLessonSchedule',
+      functionName: 'lessons/createStudentLessonSchedule',
       data: {
         studentId: 'cad-long',
         teacherId: TEACHER_ID,
@@ -355,7 +355,7 @@ describe('getStudentLessonSchedules scope (legacy #838)', () => {
       Record<string, never>,
       { schedules: { id: string; teacherId: string }[] }
     >({
-      functionName: 'getStudentLessonSchedules',
+      functionName: 'lessons/getStudentLessonSchedules',
       data: {},
       idToken: adminUser.idToken,
     });
@@ -370,7 +370,7 @@ describe('getStudentLessonSchedules scope (legacy #838)', () => {
       { teacherId: string },
       { schedules: { id: string }[] }
     >({
-      functionName: 'getStudentLessonSchedules',
+      functionName: 'lessons/getStudentLessonSchedules',
       data: { teacherId: OTHER_TEACHER },
       idToken: adminUser.idToken,
     });

@@ -91,7 +91,7 @@ function billing(
   studentId?: string
 ): Promise<{ status: number; data?: GetLessonBillingResponse }> {
   return callFunction<GetLessonBillingRequest, GetLessonBillingResponse>({
-    functionName: 'getLessonBilling',
+    functionName: 'lessons/getLessonBilling',
     data: studentId ? { studentId } : {},
     idToken,
   });
@@ -136,7 +136,7 @@ describe('Lesson billing (#81)', () => {
         SaveLessonBillingRuleRequest,
         SaveLessonBillingRuleResponse
       >({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           name: 'Standard 4-lesson block',
           cadence: 'every-n-lessons',
@@ -155,7 +155,7 @@ describe('Lesson billing (#81)', () => {
         SaveLessonBillingRuleRequest,
         SaveLessonBillingRuleResponse
       >({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           id: created.data?.rule.id,
           name: 'Standard 4-lesson block (edited)',
@@ -171,7 +171,7 @@ describe('Lesson billing (#81)', () => {
 
     it('refuses a rule that would charge months away from the teaching', async () => {
       const result = await callFunction<SaveLessonBillingRuleRequest>({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           name: 'Way off',
           cadence: 'every-n-lessons',
@@ -188,7 +188,7 @@ describe('Lesson billing (#81)', () => {
 
     it('refuses a rule that charges for zero lessons', async () => {
       const result = await callFunction<SaveLessonBillingRuleRequest>({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           name: 'Zero',
           cadence: 'every-n-lessons',
@@ -204,7 +204,7 @@ describe('Lesson billing (#81)', () => {
     }, 30000);
 
     it('rejects an unauthenticated caller', async () => {
-      const result = await callFunction({ functionName: 'getLessonBilling' });
+      const result = await callFunction({ functionName: 'lessons/getLessonBilling' });
       expect(result.status).toBe(401);
     }, 30000);
   });
@@ -272,7 +272,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonScheduledChargeRequest,
         UpdateLessonScheduledChargeResponse
       >({
-        functionName: 'updateLessonScheduledCharge',
+        functionName: 'lessons/updateLessonScheduledCharge',
         data: {
           id: charges?.[0].id ?? '',
           status: 'waived',
@@ -304,7 +304,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonScheduledChargeRequest,
         UpdateLessonScheduledChargeResponse
       >({
-        functionName: 'updateLessonScheduledCharge',
+        functionName: 'lessons/updateLessonScheduledCharge',
         data: {
           id: planned?.[0].id ?? '',
           status: 'waived',
@@ -386,7 +386,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonScheduledChargeRequest,
         UpdateLessonScheduledChargeResponse
       >({
-        functionName: 'updateLessonScheduledCharge',
+        functionName: 'lessons/updateLessonScheduledCharge',
         data: {
           id: failed?.id ?? '',
           status: 'waived',
@@ -421,7 +421,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: `${STUDENT}-lesson-1`, status: 'cancelled' },
         idToken: adminUser.idToken,
       });
@@ -449,7 +449,7 @@ describe('Lesson billing (#81)', () => {
 
       for (let i = 1; i <= 4; i++) {
         await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-          functionName: 'updateLesson',
+          functionName: 'lessons/updateLesson',
           data: { id: `${SOLO}-lesson-${i}`, status: 'cancelled' },
           idToken: adminUser.idToken,
         });

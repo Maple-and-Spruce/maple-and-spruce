@@ -666,7 +666,7 @@ describe('Invoice Functions', () => {
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
       >({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: {
           attributionId: 'PAYA__VAR_LESSON',
           action: 'attribute',
@@ -693,7 +693,7 @@ describe('Invoice Functions', () => {
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
       >({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: {
           attributionId: 'PAYB__VAR_LESSON',
           action: 'attribute',
@@ -718,7 +718,7 @@ describe('Invoice Functions', () => {
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
       >({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: {
           attributionId: 'PAYC__VAR_LESSON',
           action: 'dismiss',
@@ -732,7 +732,7 @@ describe('Invoice Functions', () => {
 
     it('rejects re-resolving an already-resolved attribution', async () => {
       const res = await callFunction<ResolvePosLessonAttributionRequest>({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: { attributionId: 'PAYC__VAR_LESSON', action: 'dismiss' },
         idToken: adminUser.idToken,
       });
@@ -742,13 +742,13 @@ describe('Invoice Functions', () => {
     it('rejects unauthenticated + non-admin callers', async () => {
       await seedPending('PAYD__VAR_LESSON', 4000);
       const unauth = await callFunction<ResolvePosLessonAttributionRequest>({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: { attributionId: 'PAYD__VAR_LESSON', action: 'dismiss' },
       });
       expect(unauth.status).toBe(401);
 
       const nonAdmin = await callFunction<ResolvePosLessonAttributionRequest>({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: { attributionId: 'PAYD__VAR_LESSON', action: 'dismiss' },
         idToken: nonAdminUser.idToken,
       });

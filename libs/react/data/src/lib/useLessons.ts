@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Lesson,
   CreateLessonInput,
@@ -61,9 +64,9 @@ export function useLessons({
 
     try {
       const functions = getMapleFunctions();
-      const getLessons = httpsCallable<GetLessonsRequest, GetLessonsResponse>(
+      const getLessons = httpsCallableFromURL<GetLessonsRequest, GetLessonsResponse>(
         functions,
-        'getLessons'
+        routerCallableUrl('lessons', 'getLessons')
       );
 
       const result = await getLessons({ studentId });
@@ -84,10 +87,10 @@ export function useLessons({
   const createLesson = useCallback(
     async (input: CreateLessonInput): Promise<Lesson> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateLessonRequest,
         CreateLessonResponse
-      >(functions, 'createLesson');
+      >(functions, routerCallableUrl('lessons', 'createLesson'));
 
       const result = await create(input);
       const lesson = hydrateLesson(result.data.lesson);
@@ -112,10 +115,10 @@ export function useLessons({
       input: CreateLessonSeriesRequest
     ): Promise<{ lessons: Lesson[]; seriesId: string }> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateLessonSeriesRequest,
         CreateLessonSeriesResponse
-      >(functions, 'createLessonSeries');
+      >(functions, routerCallableUrl('lessons', 'createLessonSeries'));
 
       const result = await create(input);
       const lessons = result.data.lessons.map(hydrateLesson);
@@ -136,10 +139,10 @@ export function useLessons({
   const updateLesson = useCallback(
     async (input: UpdateLessonInput): Promise<Lesson> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateLessonRequest,
         UpdateLessonResponse
-      >(functions, 'updateLesson');
+      >(functions, routerCallableUrl('lessons', 'updateLesson'));
 
       const result = await update(input);
       const lesson = hydrateLesson(result.data.lesson);
@@ -159,9 +162,9 @@ export function useLessons({
 
   const deleteLesson = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteLessonRequest, DeleteLessonResponse>(
+    const del = httpsCallableFromURL<DeleteLessonRequest, DeleteLessonResponse>(
       functions,
-      'deleteLesson'
+      routerCallableUrl('lessons', 'deleteLesson')
     );
 
     await del({ id });

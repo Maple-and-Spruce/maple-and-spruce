@@ -26,7 +26,7 @@ export function usePosLessonAttributionSummary(enabled = true) {
       const result = await callDeduped<
         GetPosLessonAttributionSummaryRequest,
         GetPosLessonAttributionSummaryResponse
-      >('getPosLessonAttributionSummary', {});
+      >({ router: 'lessons', route: 'getPosLessonAttributionSummary' }, {});
       setSummaryState({ status: 'success', data: result.data.summary });
     } catch (error) {
       console.error('Failed to fetch POS lesson summary:', error);

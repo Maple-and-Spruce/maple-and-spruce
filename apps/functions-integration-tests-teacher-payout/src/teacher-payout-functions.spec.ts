@@ -274,7 +274,7 @@ describe('payouts/getTeacherPayouts integration', () => {
           CreateLessonRequest,
           CreateLessonResponse
         >({
-          functionName: 'createLesson',
+          functionName: 'lessons/createLesson',
           data: {
             studentId: privateStudentId,
             teacherId: primaryTeacherId,
@@ -291,7 +291,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       // 2. Schedule ONE of the private-pay lessons to be taught by substitute.
       //    This exercises asSubstitute flag.
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: {
           id: privateLessonIds[2],
           teacherId: substituteTeacherId,
@@ -336,7 +336,7 @@ describe('payouts/getTeacherPayouts integration', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,
@@ -348,7 +348,7 @@ describe('payouts/getTeacherPayouts integration', () => {
         idToken: adminUser.idToken,
       });
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: hopeRendered.data!.lesson.id, status: 'rendered' },
         idToken: adminUser.idToken,
       });
@@ -358,7 +358,7 @@ describe('payouts/getTeacherPayouts integration', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: unpricedHopeStudentId,
           teacherId: primaryTeacherId,
@@ -371,7 +371,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       });
       expect(unpricedLesson.status).toBe(200);
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: unpricedLesson.data!.lesson.id, status: 'rendered' },
         idToken: adminUser.idToken,
       });
@@ -388,7 +388,7 @@ describe('payouts/getTeacherPayouts integration', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,

@@ -42,7 +42,7 @@ function nextTuesday(hour: number, weeksOut = 1): Date {
 
 function blocksFor(idToken: string) {
   return callFunction<GetLessonBlocksRequest, GetLessonBlocksResponse>({
-    functionName: 'getLessonBlocks',
+    functionName: 'lessons/getLessonBlocks',
     data: { teacherId: TEACHER_ID },
     idToken,
   });
@@ -90,7 +90,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
     // The legacy #686 guardrail is intact — nothing here loosens it. Deriving a block
     // is something the caller asks for, never something that happens quietly.
     const result = await callFunction<CreateLessonRequest>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -112,7 +112,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
       CreateStudentLessonScheduleRequest,
       CreateStudentLessonScheduleResponse
     >({
-      functionName: 'createStudentLessonSchedule',
+      functionName: 'lessons/createStudentLessonSchedule',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -151,7 +151,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     const result = await callFunction<CreateLessonRequest, CreateLessonResponse>(
       {
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -182,7 +182,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
     const nextWeek = new Date(when.getTime() + 7 * 86_400_000);
 
     const result = await callFunction<CreateLessonRequest>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -211,7 +211,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     const result = await callFunction<CreateLessonRequest, CreateLessonResponse>(
       {
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -246,7 +246,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     const result = await callFunction<CreateLessonRequest, CreateLessonResponse>(
       {
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -282,7 +282,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
     // 9pm — hours past the block. Without the window this would stretch it
     // across an evening nobody teaches.
     const result = await callFunction<CreateLessonRequest>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -332,7 +332,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
         CreateStudentLessonScheduleRequest,
         CreateStudentLessonScheduleResponse
       >({
-        functionName: 'createStudentLessonSchedule',
+        functionName: 'lessons/createStudentLessonSchedule',
         data: {
           studentId: scheduleStudentId,
           teacherId: TEACHER_ID,
@@ -372,7 +372,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
         UpdateStudentLessonScheduleRequest,
         UpdateStudentLessonScheduleResponse
       >({
-        functionName: 'updateStudentLessonSchedule',
+        functionName: 'lessons/updateStudentLessonSchedule',
         data: {
           id: scheduleId,
           blockId: '',
@@ -404,7 +404,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
       const weekly = before.find((b) => !b.onDate && b.dayOfWeek === 2);
 
       const result = await callFunction<UpdateStudentLessonScheduleRequest>({
-        functionName: 'updateStudentLessonSchedule',
+        functionName: 'lessons/updateStudentLessonSchedule',
         data: { id: scheduleId, startMinutes: weekly!.endMinutes },
         idToken: adminUser.idToken,
       });

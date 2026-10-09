@@ -47,18 +47,30 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `[Admin, LessonTeacher]`; a lesson teacher is narrowed to their own students inside each route.
 
 ### Music Lessons
-- `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`
+- `lessons` — **domain router** (ADR-029, #67), 22 routes, each keeping the gate it had as its
+  own function:
+  - `[Admin, LessonTeacher]`, a lesson teacher narrowed to their own inside each route:
+    `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`,
+    `getLessonBlocks`, `getStudentLessonSchedules`, `createStudentLessonSchedule`,
+    `updateStudentLessonSchedule`, `getMyDayLessons`, `getMyWeek`.
+  - Admin-only: `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
+    `getLessonInquiries`, `updateLessonInquiryStatus`, `getLessonBilling`, `saveLessonBillingRule`,
+    `updateLessonScheduledCharge`, `getPosLessonAttributions`, `getPosLessonAttributionSummary`,
+    `resolvePosLessonAttribution`.
+  - Not on it: charging and Square card linking (`maple-square`, Square secrets), the Tally-keyed
+    `triggerLessonInquirySync`, and the schedules and triggers below. The 22 per-endpoint originals
+    were removed from the code in #67 and are deleted from each project by hand; CI does not prune.
 
 ### Lesson Inquiries (legacy #795)
 - `syncLessonInquiries` _(scheduled, every 15 min — pulls submissions from the Tally API for the Suzuki form `QKQb6k` and the shared music form `dWPQOr` into `lessonInquiries`. Doc id = Tally submission id, written with `create()`, so a re-poll is a skip and never overwrites a status Katie has advanced. Deliberately NOT persisted from `tallyLeadWebhook`: that path is one-shot and unretryable, lives in the tiny `maple-webhooks` bundle, and cannot backfill history.)_
 - `triggerLessonInquirySync` _(admin callable twin — `onSchedule` triggers are not reachable over HTTP in the emulator)_
-- `getLessonInquiries`, `updateLessonInquiryStatus` _(admin; the `/leads` queue)_
+- `lessons/getLessonInquiries`, `lessons/updateLessonInquiryStatus` _(admin; the `/leads` queue)_
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
 
 ### Standing lesson schedules (legacy #797)
 - `materializeLessonSchedules` _(scheduled, daily — **paused, does nothing since #157**. Lessons are booked a few at a time when the family pays, not generated from the weekly time. It stays deployed as a no-op because CI never prunes a function, so deleting it would leave the old revision generating lessons; retiring it is a follow-up. It used to keep four lessons ahead for every active arrangement.)_
 - `triggerMaterializeLessonSchedules` _(admin callable twin — `onSchedule` is not reachable over HTTP in the emulator)_
-- `getStudentLessonSchedules`, `createStudentLessonSchedule`, `updateStudentLessonSchedule` _(admin + lesson-teacher, self-scoped; create materialises immediately so an arrangement is real straight away, and both create and update re-check block fit)_
+- `lessons/getStudentLessonSchedules`, `lessons/createStudentLessonSchedule`, `lessons/updateStudentLessonSchedule` _(admin + lesson-teacher, self-scoped; both create and update re-check block fit. Since #157 a weekly time books nothing: create no longer materialises lessons)_
 - **Idempotence is structural.** A materialised lesson's id is `sched-{scheduleId}-{YYYY-MM-DD}` in shop time, written with `create()`. A collision is the steady state — which is also what makes *skipping* a week (cancel that lesson) and *moving* one (edit its time) work with no exceptions table.
 - `tools/backfill-lesson-schedules.ts` infers arrangements from existing `seriesId` lessons. Dry-run by default; `--apply` to write. Each inferred schedule starts the day **after** its series' last lesson, because pre-schedule lessons lack the deterministic id and would otherwise be duplicated.
 
@@ -327,7 +339,7 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 - `runLessonBilling` _(scheduled — daily 09:00 ET)_ — **paused since #157 (`LESSON_AUTOPAY_PAUSED`)**: it fires and charges nothing, so no card is charged unless someone presses the button. `triggerLessonBilling` still runs the logic on demand. When enabled, it plans each eligible student's charges from their billing rule, then takes the ones that are due against the card on file. Daily rather than weekly because a charge anchored "the day before the first lesson" has to land on that day. Hope students are never touched (they bill through the EMA portal). Planning subtracts every lesson an existing charge already covers before blocking, so a prepaid block is not billed again and a cancelled first lesson cannot make a block re-form under a new id and charge twice.
 - `triggerLessonBilling` _(admin-only, own library `trigger-lesson-billing`)_ — the callable twin: a manual catch-up, a dry run, and the only way integration tests can reach an `onSchedule`. Wraps `executeLessonBilling`, imported from the `run-lesson-billing` library.
 - `chargeLessonsNow` _(admin-only)_ — takes money on the spot for a block of lessons a family is paying ahead for. Produces the same `LessonScheduledCharge` record the scheduled job would, already `paid`, so there is no second ledger. The atomic `create` at the charge's deterministic id **is** the lease, claimed before the payment, so a double click cannot take a second payment. Also retries a `failed` charge, reusing the original idempotency key so an attempt that did reach Square comes back as the same payment.
-- `getLessonBilling` _(admin-only, `maple-core`)_ — rules, charges and the studio rate table in one read, so the screen prices a prepayment from the same numbers the server charges from.
+- `lessons/getLessonBilling` _(admin-only, `maple-core`)_ — rules, charges and the studio rate table in one read, so the screen prices a prepayment from the same numbers the server charges from.
 - `getSquareCardCandidates` / `updateStudentSquareCard` _(admin-only)_ — find the card Katie already saved in the Square app and attach it to the right student. The read needs the Square SDK, which is why both live here.
 - `createCraftClubSubscription` also emails a welcome on success.
 

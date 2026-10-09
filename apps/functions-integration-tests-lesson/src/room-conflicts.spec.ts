@@ -70,7 +70,7 @@ describe('Room conflicts (legacy #841)', () => {
     over: Partial<CreateLessonRequest> = {}
   ) =>
     callFunction<CreateLessonRequest, CreateLessonResponse>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -234,7 +234,7 @@ describe('Room conflicts (legacy #841)', () => {
     await waitForTrigger();
 
     const moved = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-      functionName: 'updateLesson',
+      functionName: 'lessons/updateLesson',
       data: { id: 'lesson-pre-room', scheduledAt: taken },
       idToken: adminUser.idToken,
     });
@@ -252,7 +252,7 @@ describe('Room conflicts (legacy #841)', () => {
     await waitForTrigger();
 
     const edited = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-      functionName: 'updateLesson',
+      functionName: 'lessons/updateLesson',
       data: { id: created.data!.lesson.id, notes: 'ran long' },
       idToken: adminUser.idToken,
     });
@@ -269,7 +269,7 @@ describe('Room conflicts (legacy #841)', () => {
     await waitForTrigger();
 
     const cancelled = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-      functionName: 'updateLesson',
+      functionName: 'lessons/updateLesson',
       data: { id: created.data!.lesson.id, status: 'cancelled' },
       idToken: adminUser.idToken,
     });

@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import { Alert, Box, Button, Skeleton, Stack, Typography } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   CreateLessonSeriesRequest,
   CreateLessonSeriesResponse,
@@ -84,10 +87,10 @@ export default function HopePage() {
   }) => {
     setIsBackfilling(true);
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         CreateLessonSeriesRequest,
         CreateLessonSeriesResponse
-      >(getMapleFunctions(), 'createLessonSeries');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'createLessonSeries'));
       await fn({
         ...input,
         // Already taught. This is what makes the lessons claimable, and what

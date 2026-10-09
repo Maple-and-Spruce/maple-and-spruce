@@ -5,6 +5,7 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
+    "firebase-maple-functions-lessons",
     "firebase-maple-functions-create-invoice",
     "firebase-maple-functions-get-invoices",
     "firebase-maple-functions-update-invoice",

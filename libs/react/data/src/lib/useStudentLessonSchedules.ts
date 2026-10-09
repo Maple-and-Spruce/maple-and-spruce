@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   CreateStudentLessonScheduleInput,
   RequestState,
@@ -44,10 +47,10 @@ export function useStudentLessonSchedules(studentId?: string) {
     if (!studentId) return;
     setSchedulesState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetStudentLessonSchedulesRequest,
         GetStudentLessonSchedulesResponse
-      >(getMapleFunctions(), 'getStudentLessonSchedules');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getStudentLessonSchedules'));
       const result = await fn({ studentId });
       setSchedulesState({
         status: 'success',
@@ -70,10 +73,10 @@ export function useStudentLessonSchedules(studentId?: string) {
     ): Promise<void> => {
       setPendingId('new');
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           CreateStudentLessonScheduleRequest,
           CreateStudentLessonScheduleResponse
-        >(getMapleFunctions(), 'createStudentLessonSchedule');
+        >(getMapleFunctions(), routerCallableUrl('lessons', 'createStudentLessonSchedule'));
         await fn(input);
         await fetchSchedules();
       } finally {
@@ -87,10 +90,10 @@ export function useStudentLessonSchedules(studentId?: string) {
     async (input: UpdateStudentLessonScheduleRequest): Promise<void> => {
       setPendingId(input.id);
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           UpdateStudentLessonScheduleRequest,
           UpdateStudentLessonScheduleResponse
-        >(getMapleFunctions(), 'updateStudentLessonSchedule');
+        >(getMapleFunctions(), routerCallableUrl('lessons', 'updateStudentLessonSchedule'));
         await fn(input);
         await fetchSchedules();
       } finally {
@@ -129,10 +132,10 @@ export function useAllStudentLessonSchedules(teacherId?: string) {
   const fetchSchedules = useCallback(async () => {
     setSchedulesState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetStudentLessonSchedulesRequest,
         GetStudentLessonSchedulesResponse
-      >(getMapleFunctions(), 'getStudentLessonSchedules');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getStudentLessonSchedules'));
       const result = await fn(teacherId ? { teacherId } : {});
       setSchedulesState({
         status: 'success',
