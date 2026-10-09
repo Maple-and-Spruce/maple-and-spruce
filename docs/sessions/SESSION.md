@@ -6,6 +6,18 @@
 
 ## Current Status
 
+### Dependency refresh 4/5: firebase JS SDK 13 (2026-10-09)
+
+- `firebase` 12.19 → 13.0.0 (released 2026-10-07). Its breaking changes are all in AI Logic,
+  which the repo doesn't use. For what the client does use, the sub-packages barely move:
+  `@firebase/functions` 0.14.0 and `@firebase/app-check` are unchanged; auth, app,
+  remote-config and storage are patch bumps.
+- **Root `@firebase/app` 0.16.2 → 0.16.3, in step with `firebase`** (see 1/5). The lockfile
+  holds one copy. The Functions bundles' only dependency change is that same bump;
+  `@firebase/database-compat` accepts `0.x`.
+- Checked against a firebase 12 capture: the same 4083 unit and 659 Storybook tests with the
+  same statuses and identical per-file coverage.
+
 ### Unit tests run per Nx project (2026-10-08, ADR-036)
 
 - `pnpm test` (`nx run-many -t test`) failed on main for ~30 projects, and its targets covered
