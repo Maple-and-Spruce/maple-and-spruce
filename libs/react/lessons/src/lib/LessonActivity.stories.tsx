@@ -76,6 +76,12 @@ export const Record: Story = {
     }
     const rows = bodyRows(canvasElement);
     await expect(rows).toHaveLength(5);
+    // How the E2E specs find lesson rows: rows in the region that have a menu.
+    const region = canvas.getByRole('region', { name: 'Lesson activity' });
+    const withMenu = within(region)
+      .getAllByRole('row')
+      .filter((r) => within(r).queryByRole('button', { name: /^More for/ }));
+    await expect(withMenu).toHaveLength(5);
     await expect(rows[0]).toHaveTextContent('Oct 13');
     await expect(rows[0]).toHaveTextContent('45 min');
     await expect(rows[0]).toHaveTextContent('Test Teacher');
