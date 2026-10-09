@@ -284,7 +284,6 @@ describe('CatalogService.updateItem', () => {
 
     const result = await service.updateItem({
       squareItemId: 'SQ-ITEM-1',
-      squareCatalogVersion: 5,
       squareVariationId: 'SQ-VAR-1',
       priceCents: 3000,
     });
@@ -308,7 +307,6 @@ describe('CatalogService.updateItem', () => {
 
     const result = await service.updateItem({
       squareItemId: 'SQ-ITEM-1',
-      squareCatalogVersion: 5,
       name: 'Updated Bowl',
       variations: [
         { squareVariationId: 'SQ-VAR-SM', priceCents: 2200 },
@@ -335,7 +333,6 @@ describe('CatalogService.updateItem', () => {
 
     const result = await service.updateItem({
       squareItemId: 'SQ-ITEM-1',
-      squareCatalogVersion: 5,
       name: 'New Name',
       description: 'New Desc',
     });
@@ -346,27 +343,64 @@ describe('CatalogService.updateItem', () => {
     const itemData = batchCall.batches[0].objects[0].itemData;
     expect(itemData.name).toBe('New Name');
     expect(itemData.description).toBe('New Desc');
-    // No variation updates when none specified
-    expect(itemData.variations).toHaveLength(0);
+    // Square deletes a variation left out of an item upsert, so a name-only
+    // edit still sends the existing variation back, untouched.
+    expect(itemData.variations).toHaveLength(1);
+    expect(itemData.variations[0].id).toBe('SQ-VAR-1');
+    expect(itemData.variations[0].itemVariationData.priceMoney.amount).toBe(
+      2500n
+    );
   });
 
-  it('throws on version mismatch', async () => {
-    client.catalog.object.get.mockResolvedValue({
-      object: {
-        type: 'ITEM',
-        id: 'SQ-ITEM-1',
-        version: 10n,
-        itemData: { variations: [] },
-      },
+  it('keeps the variations it is not changing', async () => {
+    mockCurrentItem([
+      { id: 'SQ-VAR-SM', sku: 'prd_sm', price: 2000 },
+      { id: 'SQ-VAR-LG', sku: 'prd_lg', price: 3500 },
+    ]);
+
+    await service.updateItem({
+      squareItemId: 'SQ-ITEM-1',
+      variations: [{ squareVariationId: 'SQ-VAR-LG', priceCents: 3800 }],
+    });
+
+    const itemData =
+      client.catalog.batchUpsert.mock.calls[0][0].batches[0].objects[0]
+        .itemData;
+    expect(itemData.variations.map((v: { id: string }) => v.id)).toEqual([
+      'SQ-VAR-SM',
+      'SQ-VAR-LG',
+    ]);
+    expect(itemData.variations[0].itemVariationData.priceMoney.amount).toBe(
+      2000n
+    );
+    expect(itemData.variations[1].itemVariationData.priceMoney.amount).toBe(
+      3800n
+    );
+  });
+
+  it('writes on the version Square just returned, however far it has moved', async () => {
+    // Square moves an item's version without us writing to it, so the copy
+    // cached on our record is not a usable lock. The upsert carries the
+    // version from the read, and Square's own lock covers read-to-write.
+    mockCurrentItem([{ id: 'SQ-VAR-1', sku: 'prd_abc', price: 2500 }]);
+
+    await service.updateItem({ squareItemId: 'SQ-ITEM-1', name: 'Renamed' });
+
+    const sentItem =
+      client.catalog.batchUpsert.mock.calls[0][0].batches[0].objects[0];
+    expect(sentItem.version).toBe(5n);
+    expect(sentItem.itemData.variations[0].version).toBe(1n);
+  });
+
+  it('throws when Square rejects the upsert', async () => {
+    mockCurrentItem([{ id: 'SQ-VAR-1', sku: 'prd_abc', price: 2500 }]);
+    client.catalog.batchUpsert.mockResolvedValue({
+      errors: [{ code: 'VERSION_MISMATCH', detail: 'Object version does not match' }],
     });
 
     await expect(
-      service.updateItem({
-        squareItemId: 'SQ-ITEM-1',
-        squareCatalogVersion: 5,
-        name: 'Conflict',
-      })
-    ).rejects.toThrow(/version mismatch/);
+      service.updateItem({ squareItemId: 'SQ-ITEM-1', name: 'Renamed' })
+    ).rejects.toThrow(/Square API error: Object version does not match/);
   });
 
   it('throws when variation not found', async () => {
@@ -375,7 +409,6 @@ describe('CatalogService.updateItem', () => {
     await expect(
       service.updateItem({
         squareItemId: 'SQ-ITEM-1',
-        squareCatalogVersion: 5,
         variations: [
           { squareVariationId: 'SQ-VAR-MISSING', priceCents: 999 },
         ],
@@ -413,7 +446,6 @@ describe('CatalogService.updateItem', () => {
 
     const result = await service.updateItem({
       squareItemId: 'SQ-ITEM-1',
-      squareCatalogVersion: 5,
       squareVariationId: 'SQ-VAR-REL',
       priceCents: 1200,
     });
