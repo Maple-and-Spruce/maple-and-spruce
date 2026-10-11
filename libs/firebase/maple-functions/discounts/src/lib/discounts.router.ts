@@ -7,9 +7,9 @@
  * narrow a non-admin to `music-together` codes, never Maple & Spruce class
  * codes, which bill to a different business.
  *
- * `lookupDiscount` is deliberately not here. It is the public checkout
- * endpoint both Webflow widgets call, its App Check rollout is in flight, and
- * moving it means a Webflow publish — so it stays its own function for now.
+ * `lookupDiscount` is not here: it is the public checkout lookup both Webflow
+ * widgets call, so it is a route on the warm `publicSite` router, with App
+ * Check and a per-IP throttle.
  *
  * Each route spells its gate out in full: `tools/check-callable-roles.ts` reads
  * `requiringRole` off the AST and cannot see through a helper.

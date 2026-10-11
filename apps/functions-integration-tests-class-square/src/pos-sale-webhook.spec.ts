@@ -24,6 +24,12 @@
  * secret `mock-key` (tools/run-integration-tests.sh writes
  * SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key).
  *
+ * Test D runs the hosted-checkout fallback end to end the same way: the
+ * widget's `createRegistrationCheckoutLink` call holds the spot, Square's
+ * `payment.updated` for that link's order confirms it, and the buyer's return
+ * page reads `publicSite/getRegistrationStatus`. Only Square's hosted page is
+ * stood in for, by the mock's stored payment-link order.
+ *
  * NOTE: requires the maple-square codebase built + loaded in the emulator and
  * the Square mock running on 9997(+offset). The harness
  * (`tools/run-integration-tests.sh class-square`) sets all of this up.
@@ -31,13 +37,21 @@
 import { createHmac } from 'crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+  callFunction,
   clearFirestoreEmulator,
+  getFirestoreDoc,
   setFirestoreDoc,
   listFirestoreDocs,
   EMULATOR_CONFIG,
   PUBLISHED_CLASS,
   TRIGGER_WAIT_TIMEOUT_MS,
 } from '@maple/firebase/integration-test-utils';
+import type {
+  CreateRegistrationCheckoutLinkRequest,
+  CreateRegistrationCheckoutLinkResponse,
+  GetRegistrationStatusRequest,
+  GetRegistrationStatusResponse,
+} from '@maple/ts/firebase/api-types';
 
 const squareMockUrl = EMULATOR_CONFIG.squareMockServerUrl;
 
@@ -66,7 +80,7 @@ function signWebhook(body: unknown, secret: string): string {
 
 /** POST a signed Square webhook to the emulator endpoint. */
 async function postWebhook(
-  body: unknown
+  body: unknown,
 ): Promise<{ status: number; body: unknown }> {
   const raw = JSON.stringify(body);
   const response = await fetch(WEBHOOK_URL, {
@@ -151,7 +165,7 @@ function waitForTrigger(ms = 7000): Promise<void> {
  */
 async function pollUntil<T>(
   read: () => Promise<T>,
-  done: (value: T) => boolean
+  done: (value: T) => boolean,
 ): Promise<T> {
   const deadline = Date.now() + TRIGGER_WAIT_TIMEOUT_MS;
   let value = await read();
@@ -164,10 +178,11 @@ async function pollUntil<T>(
 
 /** POS-sourced registrations, once at least `count` exist (or the wait ends). */
 async function waitForPosRegistrations(
-  count = 1
+  count = 1,
 ): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
-  const all = await pollUntil(listRegistrations, (regs) =>
-    regs.filter((r) => r.data['source'] === 'pos').length >= count
+  const all = await pollUntil(
+    listRegistrations,
+    (regs) => regs.filter((r) => r.data['source'] === 'pos').length >= count,
   );
   return all.filter((r) => r.data['source'] === 'pos');
 }
@@ -348,7 +363,7 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
     // The alert is written after the registration, so it gets its own wait.
     const alerts = await pollUntil(
       listNoEmailAlerts,
-      (found) => found.length >= 1
+      (found) => found.length >= 1,
     );
     expect(alerts).toHaveLength(1);
     expect(alerts[0].data['to']).toBe(ADMIN_EMAIL);
@@ -414,15 +429,101 @@ describe('POS class sale (squareWebhook → processPosSale, emulator + Square mo
 
     // No NEW pos registration was created — the web order was deduped.
     const posRegs = (await listRegistrations()).filter(
-      (r) => r.data['source'] === 'pos'
+      (r) => r.data['source'] === 'pos',
     );
     expect(posRegs).toHaveLength(0);
 
     // The pre-existing web registration is untouched.
     const webRegs = (await listRegistrations()).filter(
-      (r) => r.data['source'] === 'web'
+      (r) => r.data['source'] === 'web',
     );
     expect(webRegs).toHaveLength(1);
     expect(await listNoEmailAlerts()).toHaveLength(0);
+  });
+
+  it('D: hosted checkout — a paid payment link confirms the held spot, and the return page sees it', async () => {
+    const classId = 'pos-class-d';
+    const paymentId = 'pos-pay-D';
+    // After a mock reset, the first payment link's order is always this one,
+    // stored with the order's reference_id (the held registration's id).
+    const orderId = 'mock-order-link-1';
+
+    await seedClass(classId);
+
+    // 1. The widget's fallback call: hold the spot and get Square's URL.
+    const link = await callFunction<
+      CreateRegistrationCheckoutLinkRequest,
+      CreateRegistrationCheckoutLinkResponse
+    >({
+      functionName: 'createRegistrationCheckoutLink',
+      data: {
+        classId,
+        customerEmail: 'hosted-buyer@example.com',
+        customerName: 'Robin Ashfield',
+        quantity: 1,
+        returnUrl: 'https://mapleandsprucefolkarts.com/classes/pos-class-d',
+      },
+    });
+    expect(link.status).toBe(200);
+    expect(link.data?.checkoutUrl).toBeTruthy();
+    const registrationId = link.data?.registrationId as string;
+    expect(registrationId).toBeTruthy();
+
+    const held = await getFirestoreDoc('registrations', registrationId);
+    expect(held?.status).toBe('pending');
+
+    // The return page before Square reports payment: status only, no details.
+    const before = await callFunction<
+      GetRegistrationStatusRequest,
+      GetRegistrationStatusResponse
+    >({
+      functionName: 'publicSite/getRegistrationStatus',
+      data: { registrationId },
+    });
+    expect(before.data?.status).toBe('pending');
+
+    // 2. The buyer pays on Square's page; Square reports the payment.
+    await seedPosFixture({
+      payments: {
+        [paymentId]: {
+          id: paymentId,
+          status: 'COMPLETED',
+          order_id: orderId,
+          receipt_url: 'https://squareupsandbox.com/receipt/pos/D',
+          total_money: { amount: 4770, currency: 'USD' },
+        },
+      },
+    });
+    const res = await postWebhook(paymentUpdatedEvent(paymentId, orderId));
+    expect(res.status).toBe(200);
+
+    // 3. processPosSale confirms the held registration in place.
+    const confirmed = await pollUntil(
+      () => getFirestoreDoc('registrations', registrationId),
+      (reg) => reg?.status === 'confirmed',
+    );
+    expect(confirmed?.status).toBe('confirmed');
+    expect(confirmed?.squarePaymentId).toBe(paymentId);
+    expect(confirmed?.squareOrderId).toBe(orderId);
+
+    // No second, POS-sourced registration for the same sale.
+    const posRegs = (await listRegistrations()).filter(
+      (r) => r.data['source'] === 'pos',
+    );
+    expect(posRegs).toHaveLength(0);
+
+    // 4. The return page (`?reg=<id>`) now shows the confirmation.
+    const after = await callFunction<
+      GetRegistrationStatusRequest,
+      GetRegistrationStatusResponse
+    >({
+      functionName: 'publicSite/getRegistrationStatus',
+      data: { registrationId },
+    });
+    expect(after.status).toBe(200);
+    expect(after.data?.status).toBe('confirmed');
+    expect(after.data?.confirmation?.confirmationNumber).toBe(
+      link.data?.confirmationNumber,
+    );
   });
 });
