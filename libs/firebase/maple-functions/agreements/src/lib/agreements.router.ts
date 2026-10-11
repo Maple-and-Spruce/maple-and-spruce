@@ -3,15 +3,15 @@
  * (ADR-029, #66): templates, the signing requests sent from them, and the
  * agreements people have signed. Every route is admin-only.
  *
- * Four agreement functions deliberately stay their own:
+ * Three agreement functions are not here:
  * - `getAgreementForSigning` and `submitSignedAgreement` are the public
  *   `/sign/[token]` page. Public routes would share an instance with these
  *   admin ones, and the submit takes a signature upload with a 120s timeout.
- * - `getRequiredAgreementsForClass` is called by the Webflow registration
- *   widget (moving it needs a Webflow publish), keeps a warm instance in prod,
- *   and the widget swallows its errors, so a broken call would silently drop
- *   required waivers from checkout.
  * - `expireAgreementRequests` is a scheduled job, which a route cannot be.
+ *
+ * `getRequiredAgreementsForClass`, which the Webflow registration widget calls
+ * at checkout, is a route on the warm `publicSite` router with the widgets'
+ * other public reads.
  *
  * Each route spells its gate out in full: `tools/check-callable-roles.ts` reads
  * `requiringRole` off the AST and cannot see through a helper.
