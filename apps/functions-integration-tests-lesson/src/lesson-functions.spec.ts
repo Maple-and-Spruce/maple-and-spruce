@@ -1781,5 +1781,57 @@ describe('Lesson Functions', () => {
       });
       expect(lowered.status).not.toBe(200);
     });
+
+    it("an edit changes the order's EMA order ID, and clearing it removes it (#213)", async () => {
+      const orderedOn = new Date('2026-07-20T12:00:00Z');
+      const created = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          studentId: studentIdForOrders,
+          productId,
+          lessonCount: 1,
+          emaOrderId: '55510',
+          orderedOn,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(created.status).toBe(200);
+      const orderId = created.data!.order.id;
+
+      const edited = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          id: orderId,
+          studentId: studentIdForOrders,
+          productId,
+          lessonCount: 1,
+          emaOrderId: '55519',
+          orderedOn,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(edited.status).toBe(200);
+      expect(edited.data!.order).toMatchObject({ id: orderId, emaOrderId: '55519' });
+      expect((await getFirestoreDoc('hopeOrders', orderId))?.['emaOrderId']).toBe('55519');
+      // What the Hope page reads back after the save.
+      const listed = (await queue()).data!.orders.find((o) => o.id === orderId);
+      expect(listed?.emaOrderId).toBe('55519');
+
+      // The dialog sends no emaOrderId for a blank field.
+      const cleared = await callFunction<SaveHopeOrderRequest, SaveHopeOrderResponse>({
+        functionName: 'hope/saveHopeOrder',
+        data: {
+          id: orderId,
+          studentId: studentIdForOrders,
+          productId,
+          lessonCount: 1,
+          orderedOn,
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(cleared.status).toBe(200);
+      expect(cleared.data!.order.emaOrderId).toBeUndefined();
+      expect((await getFirestoreDoc('hopeOrders', orderId))?.['emaOrderId']).toBeNull();
+    });
   });
 });
