@@ -8,6 +8,7 @@ export {
   CancelLessonDialog,
   type CancelLessonDialogProps,
   type CancelLessonChoice,
+  type CancelLessonVariant,
   type ReschedulePlan,
 } from './lib/CancelLessonDialog';
 export {

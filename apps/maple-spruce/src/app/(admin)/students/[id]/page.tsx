@@ -400,6 +400,10 @@ export default function StudentDetailPage() {
   // ---- Cancel, or cancel and reschedule with a credit (#209) -------------
 
   const [cancellingLesson, setCancellingLesson] = useState<Lesson | null>(null);
+  /** The weather dialog (#210) is the same dialog, offering reschedule or online. */
+  const [cancelVariant, setCancelVariant] = useState<'cancel' | 'weather'>(
+    'cancel'
+  );
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   /** Each cancelled lesson's replacement, by the cancelled lesson's id. */
@@ -413,7 +417,32 @@ export default function StudentDetailPage() {
 
   const openCancel = (lesson: Lesson) => {
     setCancelError(null);
+    setCancelVariant('cancel');
     setCancellingLesson(lesson);
+  };
+
+  const openWeather = (lesson: Lesson) => {
+    setCancelError(null);
+    setCancelVariant('weather');
+    setCancellingLesson(lesson);
+  };
+
+  /** Online keeps the time and payment and frees the room; back again needs it free. */
+  const setVirtual = async (lesson: Lesson, virtual: boolean) => {
+    setPendingLessonId(lesson.id);
+    setCancelError(null);
+    setActivityError(null);
+    try {
+      await updateLesson({ id: lesson.id, virtual });
+      setCancellingLesson(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not update the lesson';
+      if (virtual) setCancelError(message);
+      else setActivityError(message);
+    } finally {
+      setPendingLessonId(null);
+    }
   };
 
   const handleCancelOnly = async (lesson: Lesson) => {
@@ -442,6 +471,7 @@ export default function StudentDetailPage() {
         lessonId: lesson.id,
         scheduledAt,
         blockStrategy: plan.blockStrategy,
+        ...(cancelVariant === 'weather' ? { reason: 'weather' as const } : {}),
       });
       setCancellingLesson(null);
       // The payment moved to the new lesson, so the charges and invoices the
@@ -675,12 +705,23 @@ export default function StudentDetailPage() {
             onEdit={(schedule) => openScheduleDialog(schedule)}
             onEnd={handleEndSchedule}
           />
+          {activityError && (
+            <Alert
+              severity="error"
+              sx={{ mb: 2 }}
+              onClose={() => setActivityError(null)}
+            >
+              {activityError}
+            </Alert>
+          )}
           <UpcomingLessonsCard
             lessonsState={upcomingState}
             paidLessonIds={paidLessonIds}
             pendingLessonId={pendingLessonId}
             onMove={(lesson) => setEditLesson(lesson)}
             onCancel={openCancel}
+            onWeather={openWeather}
+            onInPerson={(lesson) => setVirtual(lesson, false)}
             onDelete={(lesson) => setDeletingLesson(lesson)}
           />
           <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
@@ -792,6 +833,8 @@ export default function StudentDetailPage() {
             onCancel={openCancel}
             onRestore={(lesson) => setLessonStatus(lesson, 'scheduled')}
             onReschedule={openCancel}
+            onWeather={openWeather}
+            onInPerson={(lesson) => setVirtual(lesson, false)}
             replacementOf={(lesson) => replacements.get(lesson.id)}
             onDelete={(lesson) => setDeletingLesson(lesson)}
             onAdd={
@@ -880,6 +923,7 @@ export default function StudentDetailPage() {
       />
       <CancelLessonDialog
         lesson={cancellingLesson}
+        variant={cancelVariant}
         paidFor={
           cancellingLesson !== null &&
           lessonBillingState(cancellingLesson.id, charges, invoices).kind !==
@@ -895,6 +939,7 @@ export default function StudentDetailPage() {
         onClose={() => setCancellingLesson(null)}
         onCancel={handleCancelOnly}
         onReschedule={handleReschedule}
+        onGoVirtual={(lesson) => setVirtual(lesson, true)}
       />
       <EditLessonDialog
         open={!!editLesson}

@@ -324,6 +324,8 @@ lesson's payment (the charge or invoice line that named it) onto the new lesson.
 | `CancelLessonDialog` (Cancel / Cancel and reschedule with a credit) | **Complete** | `libs/react/lessons/src/lib/CancelLessonDialog.tsx` |
 | Cancel on Upcoming lessons, "Credit" chip; Activity links cancelled ↔ replacement | **Complete** | `UpcomingLessonsCard.tsx`, `LessonActivity.tsx`, `/students/[id]/page.tsx` |
 | Unit + integration + Storybook play tests | **Complete** | `reschedule-lesson-with-credit.spec.ts`, `apps/functions-integration-tests-lesson/src/lesson-credit.spec.ts`, `CancelLessonDialog.stories.tsx` |
+| Weather (#210): reschedule with a credit (`cancelledFor: 'weather'`) or hold online (`Lesson.virtual`) | **Complete** | `CancelLessonDialog` weather variant, Weather / In person on Upcoming + Activity |
+| Online lessons keep their calendar event (teacher's week) with no room (`lessonOccupiedRoom`) | **Complete** | `libs/ts/domain/src/lib/lesson.ts`, `on-lesson-write.ts`, `update-lesson.ts` |
 
 ### Student Records (legacy #278, Complete)
 

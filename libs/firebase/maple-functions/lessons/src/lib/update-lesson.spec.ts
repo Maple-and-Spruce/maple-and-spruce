@@ -80,3 +80,36 @@ describe('updateLesson room', () => {
     expect(mocks.assertRoomIsFree).not.toHaveBeenCalled();
   });
 });
+
+describe('updateLesson held online (#210)', () => {
+  it('does not check the room when an online lesson moves', async () => {
+    mocks.findById.mockResolvedValue({ ...preRoomLesson, virtual: true });
+
+    await handler({ id: 'lesson-old', scheduledAt: '2026-11-03T22:00:00.000Z' }, {});
+
+    expect(mocks.assertRoomIsFree).not.toHaveBeenCalled();
+  });
+
+  it('does not check the room when a lesson goes online', async () => {
+    await handler({ id: 'lesson-old', virtual: true }, {});
+
+    expect(mocks.assertRoomIsFree).not.toHaveBeenCalled();
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'lesson-old', virtual: true });
+  });
+
+  it('checks the room when an online lesson comes back in person', async () => {
+    mocks.findById.mockResolvedValue({ ...preRoomLesson, virtual: true });
+
+    await handler({ id: 'lesson-old', virtual: false }, {});
+
+    expect(mocks.assertRoomIsFree).toHaveBeenCalledWith([
+      expect.objectContaining({ room: 'spruce', excludeSourceRef: 'lessons/lesson-old' }),
+    ]);
+  });
+
+  it('ignores an attempt to set why the studio cancelled', async () => {
+    await handler({ id: 'lesson-old', notes: 'x', cancelledFor: 'weather' }, {});
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'lesson-old', notes: 'x' });
+  });
+});

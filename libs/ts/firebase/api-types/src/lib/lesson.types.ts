@@ -10,6 +10,7 @@ import type {
   CreateLessonInput,
   UpdateLessonInput,
   CreateLessonSeriesInput,
+  LessonCancelReason,
   LessonStatus,
 } from '@maple/ts/domain';
 
@@ -118,6 +119,8 @@ export interface RescheduleLessonWithCreditRequest {
   room?: Lesson['room'];
   /** How to attribute the replacement to a block when the new time fits none. */
   blockStrategy?: BlockStrategy;
+  /** Set when the studio cancelled for this reason (#210); labels the original. */
+  reason?: LessonCancelReason;
 }
 
 /**

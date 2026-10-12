@@ -35,6 +35,7 @@ export async function createLesson(
   const coerced = {
     ...data,
     creditForLessonId: null,
+    cancelledFor: null,
     room: lessonRoom(data.room),
     scheduledAt:
       data.scheduledAt instanceof Date

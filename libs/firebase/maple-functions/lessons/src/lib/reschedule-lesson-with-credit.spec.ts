@@ -125,7 +125,11 @@ describe('rescheduleLessonWithCredit', () => {
       creditForLessonId: 'les-1',
     });
     expect(result.replacement.id).toBe('les-1-credit');
-    expect(mocks.update).toHaveBeenCalledWith({ id: 'les-1', status: 'cancelled' });
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: 'les-1',
+      status: 'cancelled',
+      cancelledFor: null,
+    });
     expect(result.cancelled.status).toBe('cancelled');
   });
 
@@ -214,6 +218,31 @@ describe('rescheduleLessonWithCredit', () => {
 
     expect(mocks.update).not.toHaveBeenCalled();
     expect(result.replacement.creditForLessonId).toBe('les-1');
+  });
+
+  it('records a weather cancellation on the original (#210)', async () => {
+    await rescheduleLessonWithCredit(
+      { lessonId: 'les-1', scheduledAt: newTime, reason: 'weather' },
+      ctx,
+    );
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: 'les-1',
+      status: 'cancelled',
+      cancelledFor: 'weather',
+    });
+  });
+
+  it('labels a lesson cancelled earlier as weather when rescheduled for it', async () => {
+    mocks.lessons.set('les-1', lesson({ status: 'cancelled' }));
+    await rescheduleLessonWithCredit(
+      { lessonId: 'les-1', scheduledAt: newTime, reason: 'weather' },
+      ctx,
+    );
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: 'les-1',
+      status: 'cancelled',
+      cancelledFor: 'weather',
+    });
   });
 
   it('refuses to credit a replacement — move it instead', async () => {

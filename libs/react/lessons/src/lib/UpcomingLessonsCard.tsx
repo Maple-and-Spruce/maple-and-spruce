@@ -6,7 +6,9 @@
  * Katie plans by the weekly time and books a few concrete lessons at a time,
  * so this shows at most five — never a long series — each of which can be
  * moved, cancelled (optionally rescheduled with a credit, #209) or deleted.
- * A lesson rescheduled with a credit says **Credit**.
+ * A lesson rescheduled with a credit says **Credit**. **Weather** (#210)
+ * reschedules a lesson with a credit or holds it online; a lesson held online
+ * says **Online** and offers to bring it back **In person**.
  */
 import {
   Alert,
@@ -34,6 +36,10 @@ export interface UpcomingLessonsCardProps {
   onMove: (lesson: Lesson) => void;
   /** Opens the cancel dialog, where Katie can also reschedule with a credit. */
   onCancel: (lesson: Lesson) => void;
+  /** Opens the weather dialog: reschedule with a credit, or hold it online. */
+  onWeather?: (lesson: Lesson) => void;
+  /** Brings a lesson held online back into the room. */
+  onInPerson?: (lesson: Lesson) => void;
   onDelete: (lesson: Lesson) => void;
 }
 
@@ -54,6 +60,8 @@ export function UpcomingLessonsCard({
   pendingLessonId,
   onMove,
   onCancel,
+  onWeather,
+  onInPerson,
   onDelete,
 }: UpcomingLessonsCardProps) {
   return (
@@ -103,6 +111,9 @@ export function UpcomingLessonsCard({
                       {lesson.creditForLessonId && (
                         <Chip label="Credit" size="small" color="info" variant="outlined" />
                       )}
+                      {lesson.virtual && (
+                        <Chip label="Online" size="small" variant="outlined" />
+                      )}
                     </Box>
                   }
                 />
@@ -123,6 +134,27 @@ export function UpcomingLessonsCard({
                   >
                     Cancel
                   </Button>
+                  {lesson.virtual
+                    ? onInPerson && (
+                        <Button
+                          size="small"
+                          disabled={busy}
+                          aria-label={`In person ${when}`}
+                          onClick={() => onInPerson(lesson)}
+                        >
+                          In person
+                        </Button>
+                      )
+                    : onWeather && (
+                        <Button
+                          size="small"
+                          disabled={busy}
+                          aria-label={`Weather ${when}`}
+                          onClick={() => onWeather(lesson)}
+                        >
+                          Weather
+                        </Button>
+                      )}
                   <Button
                     size="small"
                     color="error"
