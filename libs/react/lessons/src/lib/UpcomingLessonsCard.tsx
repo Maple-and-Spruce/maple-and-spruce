@@ -5,8 +5,8 @@
  *
  * Katie plans by the weekly time and books a few concrete lessons at a time,
  * so this shows at most five — never a long series — each of which can be
- * moved or deleted. A lesson is scheduled or deleted, paid or not: there is
- * nothing to mark.
+ * moved, cancelled (optionally rescheduled with a credit, #209) or deleted.
+ * A lesson rescheduled with a credit says **Credit**.
  */
 import {
   Alert,
@@ -32,6 +32,8 @@ export interface UpcomingLessonsCardProps {
   /** The lesson whose change is being saved. */
   pendingLessonId?: string | null;
   onMove: (lesson: Lesson) => void;
+  /** Opens the cancel dialog, where Katie can also reschedule with a credit. */
+  onCancel: (lesson: Lesson) => void;
   onDelete: (lesson: Lesson) => void;
 }
 
@@ -51,6 +53,7 @@ export function UpcomingLessonsCard({
   paidLessonIds,
   pendingLessonId,
   onMove,
+  onCancel,
   onDelete,
 }: UpcomingLessonsCardProps) {
   return (
@@ -97,6 +100,9 @@ export function UpcomingLessonsCard({
                       {paidLessonIds.has(lesson.id) && (
                         <Chip label="Paid" size="small" color="success" variant="outlined" />
                       )}
+                      {lesson.creditForLessonId && (
+                        <Chip label="Credit" size="small" color="info" variant="outlined" />
+                      )}
                     </Box>
                   }
                 />
@@ -108,6 +114,14 @@ export function UpcomingLessonsCard({
                     onClick={() => onMove(lesson)}
                   >
                     Move
+                  </Button>
+                  <Button
+                    size="small"
+                    disabled={busy}
+                    aria-label={`Cancel ${when}`}
+                    onClick={() => onCancel(lesson)}
+                  >
+                    Cancel
                   </Button>
                   <Button
                     size="small"

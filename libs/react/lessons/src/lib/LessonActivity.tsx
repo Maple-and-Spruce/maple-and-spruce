@@ -12,9 +12,10 @@
  * can be charged for, and a quiet one.
  *
  * Every row's menu can also, at any time:
- *  - **Mark cancelled** (or undo it): the lesson stays on the record, labelled,
- *    for the audit trail. Cancelling also takes it out of any charge not yet
- *    taken (server side).
+ *  - **Cancel…**: the cancel dialog, which can also reschedule the lesson with
+ *    a credit (#209). A cancelled lesson can be undone, or rescheduled with a
+ *    credit later; once it has been, its row says where to, and the new
+ *    lesson's row says which lesson it is a credit for.
  *  - **Delete**: it is gone, as if it was never booked.
  *
  * "Add a lesson" sits on the table too, so a lesson that happened but never
@@ -62,10 +63,17 @@ export interface LessonActivityProps {
   now?: Date;
   onCharge: (lesson: Lesson) => void;
   onInvoice: (lesson: Lesson) => void;
-  /** Marks the lesson cancelled, kept on the record. */
+  /** Opens the cancel dialog for a lesson that is not cancelled. */
   onCancel: (lesson: Lesson) => void;
   /** Takes a cancelled lesson back to scheduled. */
   onRestore: (lesson: Lesson) => void;
+  /** Reschedules an already-cancelled lesson with a credit. */
+  onReschedule?: (lesson: Lesson) => void;
+  /**
+   * The lesson that replaced a cancelled one, if any (#209). A replaced lesson
+   * cannot be restored or credited again, and its row says where it went.
+   */
+  replacementOf?: (lesson: Lesson) => Lesson | undefined;
   onDelete: (lesson: Lesson) => void;
   /** Offers "Add a lesson" on the table. */
   onAdd?: () => void;
@@ -116,6 +124,17 @@ interface ActivityRow {
   label: LessonActivityLabel;
   teacher: string;
   canSettle: boolean;
+  /** "Rescheduled to …" or "Credit for …", for lessons a credit links. */
+  note?: string;
+  replaced: boolean;
+}
+
+function shortDate(at: Date): string {
+  return at.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: SCHEDULE_TIME_ZONE,
+  });
 }
 
 export function LessonActivity(props: LessonActivityProps) {
@@ -154,6 +173,8 @@ function ActivityTable({
   onInvoice,
   onCancel,
   onRestore,
+  onReschedule,
+  replacementOf,
   onDelete,
   onAdd,
 }: LessonActivityProps & { lessons: Lesson[] }) {
@@ -164,10 +185,23 @@ function ActivityTable({
 
   const rows = useMemo<ActivityRow[]>(() => {
     const names = new Map((instructors ?? []).map((i) => [i.id, i.name]));
+    const byId = new Map(lessons.map((l) => [l.id, l]));
     return [...lessons]
       .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())
       .map((lesson) => {
         const label = labelOf(lesson);
+        const replacement = replacementOf?.(lesson);
+        const original = lesson.creditForLessonId
+          ? byId.get(lesson.creditForLessonId)
+          : undefined;
+        let note: string | undefined;
+        if (replacement) {
+          note = `Rescheduled to ${shortDate(replacement.scheduledAt)}`;
+        } else if (lesson.creditForLessonId) {
+          note = original
+            ? `Credit for ${shortDate(original.scheduledAt)}`
+            : 'Credit';
+        }
         return {
           lesson,
           atMs: lesson.scheduledAt.getTime(),
@@ -175,9 +209,11 @@ function ActivityTable({
           teacher: names.get(lesson.teacherId) ?? '',
           canSettle:
             !isHope && label === 'none' && lesson.scheduledAt.getTime() <= nowMs,
+          note,
+          replaced: Boolean(replacement),
         };
       });
-  }, [lessons, labelOf, instructors, isHope, nowMs]);
+  }, [lessons, labelOf, replacementOf, instructors, isHope, nowMs]);
 
   const columns = useMemo<MRT_ColumnDef<ActivityRow>[]>(
     () => [
@@ -207,16 +243,25 @@ function ActivityTable({
       {
         accessorKey: 'label',
         header: 'Status',
-        size: 130,
+        size: 220,
         Cell: ({ row }) => {
-          const { label } = row.original;
-          return label === 'none' ? null : (
-            <Chip
-              label={LABELS[label].text}
-              size="small"
-              color={LABELS[label].color}
-              variant="outlined"
-            />
+          const { label, note } = row.original;
+          return (
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              {label !== 'none' && (
+                <Chip
+                  label={LABELS[label].text}
+                  size="small"
+                  color={LABELS[label].color}
+                  variant="outlined"
+                />
+              )}
+              {note && (
+                <Typography variant="body2" color="textSecondary" component="span">
+                  {note}
+                </Typography>
+              )}
+            </Box>
           );
         },
       },
@@ -311,6 +356,7 @@ function ActivityTable({
           onInvoice,
           onCancel,
           onRestore,
+          onReschedule,
           onDelete,
         }).map((item) => (
           <MenuItem
@@ -335,13 +381,22 @@ interface RowMenuItem {
   danger?: boolean;
 }
 
-/** What a row's menu offers. Cancel/undo and delete are always there. */
+/**
+ * What a row's menu offers. Delete is always there; a lesson is cancelled, or
+ * a cancelled one restored or credited, unless a credit has already replaced
+ * it — undoing that would leave the payment on the replacement.
+ */
 function rowMenuItems(
   row: ActivityRow,
   hasCard: boolean,
   handlers: Pick<
     LessonActivityProps,
-    'onCharge' | 'onInvoice' | 'onCancel' | 'onRestore' | 'onDelete'
+    | 'onCharge'
+    | 'onInvoice'
+    | 'onCancel'
+    | 'onRestore'
+    | 'onReschedule'
+    | 'onDelete'
   >
 ): RowMenuItem[] {
   const { lesson } = row;
@@ -352,11 +407,18 @@ function rowMenuItems(
   if (row.canSettle) {
     items.push({ text: 'Send an invoice', run: () => handlers.onInvoice(lesson) });
   }
-  items.push(
-    lesson.status === 'cancelled'
-      ? { text: 'Undo cancel', run: () => handlers.onRestore(lesson) }
-      : { text: 'Mark cancelled', run: () => handlers.onCancel(lesson) }
-  );
+  if (lesson.status !== 'cancelled') {
+    items.push({ text: 'Cancel…', run: () => handlers.onCancel(lesson) });
+  } else if (!row.replaced) {
+    const { onReschedule } = handlers;
+    if (onReschedule) {
+      items.push({
+        text: 'Reschedule with a credit…',
+        run: () => onReschedule(lesson),
+      });
+    }
+    items.push({ text: 'Undo cancel', run: () => handlers.onRestore(lesson) });
+  }
   items.push({ text: 'Delete', run: () => handlers.onDelete(lesson), danger: true });
   return items;
 }

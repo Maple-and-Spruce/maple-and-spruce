@@ -30,8 +30,11 @@ export async function createLesson(
   // A lesson that names no room is taught in Spruce, and the calendar
   // already treats it that way — so stamp it, and check it, as Spruce.
   // Dates arrive as ISO strings over the wire; coerce before validation.
+  // `creditForLessonId` is only ever set by rescheduleLessonWithCredit (#209):
+  // it says a payment was moved onto this lesson, which a plain create never does.
   const coerced = {
     ...data,
+    creditForLessonId: null,
     room: lessonRoom(data.room),
     scheduledAt:
       data.scheduledAt instanceof Date

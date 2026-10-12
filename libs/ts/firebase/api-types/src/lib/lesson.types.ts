@@ -97,3 +97,38 @@ export interface DeleteLessonRequest {
 export interface DeleteLessonResponse {
   success: boolean;
 }
+
+// ============================================================================
+// Reschedule Lesson With Credit (#209)
+// ============================================================================
+
+/**
+ * Cancel a lesson and book its replacement, carrying the cancelled lesson's
+ * payment over to the new one.
+ *
+ * The replacement keeps the original's student, teacher, length and room
+ * unless the caller names others.
+ */
+export interface RescheduleLessonWithCreditRequest {
+  /** The lesson being cancelled. */
+  lessonId: string;
+  /** When the replacement is. */
+  scheduledAt: Date;
+  durationMinutes?: number;
+  room?: Lesson['room'];
+  /** How to attribute the replacement to a block when the new time fits none. */
+  blockStrategy?: BlockStrategy;
+}
+
+/**
+ * What paid for the cancelled lesson, and so now pays for the replacement.
+ * `none` when nothing had billed it yet: the replacement is then billed like
+ * any other lesson.
+ */
+export type CarriedLessonCoverage = 'charge' | 'invoice' | 'none';
+
+export interface RescheduleLessonWithCreditResponse {
+  cancelled: Lesson;
+  replacement: Lesson;
+  coverage: CarriedLessonCoverage;
+}

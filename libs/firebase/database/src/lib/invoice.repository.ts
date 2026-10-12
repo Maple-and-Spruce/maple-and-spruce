@@ -494,4 +494,30 @@ export const InvoiceRepository = {
   async delete(id: string): Promise<void> {
     await db.collection(COLLECTION).doc(id).delete();
   },
+
+  /**
+   * Point this invoice's line for lesson `from` at lesson `to` instead (#209).
+   *
+   * A reschedule with credit: whatever the family paid, or was asked to pay,
+   * for the cancelled lesson now covers its replacement. Amounts, status and
+   * the line's wording are untouched — the invoice is still the document the
+   * family received — so `syncInvoiceToSquare` has nothing to do.
+   *
+   * Returns false when no line names `from`, which makes a retry a no-op.
+   */
+  async moveLineLesson(id: string, from: string, to: string): Promise<boolean> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const lineItems = (snap.data()?.['lineItems'] ?? []) as InvoiceLineItem[];
+      if (!lineItems.some((line) => line.lessonId === from)) return false;
+      tx.update(docRef, {
+        lineItems: lineItems.map((line) =>
+          line.lessonId === from ? { ...line, lessonId: to } : line
+        ),
+        updatedAt: new Date(),
+      });
+      return true;
+    });
+  },
 };

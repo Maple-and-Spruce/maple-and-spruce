@@ -60,6 +60,7 @@ const meta: Meta<typeof LessonActivity> = {
     onInvoice: fn(),
     onCancel: fn(),
     onRestore: fn(),
+    onReschedule: fn(),
     onDelete: fn(),
     onAdd: fn(),
   },
@@ -107,7 +108,7 @@ export const EveryRowCanBeCancelledOrDeleted: Story = {
     await userEvent.click(menus[0]);
     await expect(screen.queryByRole('menuitem', { name: 'Charge the card' })).not.toBeInTheDocument();
     await expect(screen.queryByRole('menuitem', { name: 'Send an invoice' })).not.toBeInTheDocument();
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Mark cancelled' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Cancel…' }));
     await expect(args.onCancel).toHaveBeenCalledWith(lessons[4]);
 
     // A paid past lesson can still be deleted.
@@ -117,14 +118,60 @@ export const EveryRowCanBeCancelledOrDeleted: Story = {
   },
 };
 
-/** A cancelled lesson offers to undo it rather than cancel again. */
+/** A cancelled lesson offers to undo it, or to reschedule it with a credit. */
 export const UndoACancel: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Sep 15/ }));
-    await expect(screen.queryByRole('menuitem', { name: 'Mark cancelled' })).not.toBeInTheDocument();
+    await expect(screen.queryByRole('menuitem', { name: 'Cancel…' })).not.toBeInTheDocument();
+    await expect(
+      await screen.findByRole('menuitem', { name: 'Reschedule with a credit…' })
+    ).toBeInTheDocument();
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Undo cancel' }));
     await expect(args.onRestore).toHaveBeenCalledWith(lessons[3]);
+  },
+};
+
+const replacement: Lesson = {
+  ...lesson('called-off-credit', '2026-09-22T20:00:00Z'),
+  creditForLessonId: 'called-off',
+};
+const withCredit = [...lessons, replacement];
+
+/**
+ * A credit links two rows (#209): the cancelled lesson says where it went, the
+ * replacement says what it is a credit for, and the cancelled one can be
+ * neither restored nor credited again.
+ */
+export const RescheduledWithCredit: Story = {
+  args: {
+    lessonsState: { status: 'success', data: withCredit },
+    replacementOf: (l: Lesson) =>
+      withCredit.find((x) => x.creditForLessonId === l.id),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Rescheduled to Sep 22')).toBeInTheDocument();
+    await expect(canvas.getByText('Credit for Sep 15')).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Sep 15/ }));
+    await expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+    await expect(screen.queryByRole('menuitem', { name: 'Undo cancel' })).not.toBeInTheDocument();
+    await expect(
+      screen.queryByRole('menuitem', { name: 'Reschedule with a credit…' })
+    ).not.toBeInTheDocument();
+  },
+};
+
+/** Rescheduling a lesson cancelled earlier hands it to the page. */
+export const RescheduleACancelledLesson: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Sep 15/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Reschedule with a credit…' })
+    );
+    await expect(args.onReschedule).toHaveBeenCalledWith(lessons[3]);
   },
 };
 

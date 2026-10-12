@@ -11,6 +11,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { db, getDb, toDate } from './utilities/database.config';
 import {
   lessonChargeIdempotencyKey,
+  replaceCoveredLesson,
   type CreateLessonScheduledChargeInput,
   type LessonChargeStatus,
   type LessonScheduledCharge,
@@ -263,5 +264,39 @@ export const LessonScheduledChargeRepository = {
 
   async tryCancel(id: string): Promise<LessonScheduledCharge | undefined> {
     return tryTerminate(id, 'cancelled');
+  },
+
+  /**
+   * Make this charge pay for `to` instead of `from` (#209).
+   *
+   * A reschedule with credit: the family's money now covers the replacement
+   * lesson. Unlike `tryReleaseLesson` this applies in **every** status — a paid
+   * charge is exactly the case it exists for — because nothing about the money
+   * changes: same amount, same idempotency key, same number of lessons. Only
+   * the teaching it names moves.
+   *
+   * Returns false when the charge does not name `from` (already moved, or
+   * never did), which makes a retry a no-op.
+   */
+  async moveCoveredLesson(
+    id: string,
+    from: string,
+    to: string
+  ): Promise<boolean> {
+    const database = getDb();
+    const docRef = database.collection(COLLECTION).doc(id);
+    return database.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const data = snap.data();
+      if (!snap.exists || !data) return false;
+      const next = replaceCoveredLesson(
+        (data['lessonIds'] ?? []) as string[],
+        from,
+        to
+      );
+      if (!next) return false;
+      tx.update(docRef, { lessonIds: next, updatedAt: new Date() });
+      return true;
+    });
   },
 };

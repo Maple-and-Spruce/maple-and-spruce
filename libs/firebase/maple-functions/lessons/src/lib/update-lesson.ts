@@ -78,7 +78,9 @@ export async function updateLesson(
   // the update payload when it was actually provided — spreading
   // `scheduledAt: undefined` into `merged` below would wipe the
   // existing value during the merge-for-validation step.
+  // `creditForLessonId` is not editable (#209); see rescheduleLessonWithCredit.
   const coercedUpdates: UpdateLessonRequest = { ...data };
+  delete (coercedUpdates as { creditForLessonId?: unknown }).creditForLessonId;
   if (data.scheduledAt !== undefined) {
     coercedUpdates.scheduledAt =
       data.scheduledAt instanceof Date

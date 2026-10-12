@@ -31,6 +31,7 @@ const meta: Meta<typeof UpcomingLessonsCard> = {
     lessonsState: { status: 'success', data: eight.slice(0, 3) },
     paidLessonIds: new Set(['lesson-0', 'lesson-1']),
     onMove: fn(),
+    onCancel: fn(),
     onDelete: fn(),
   },
 };
@@ -42,9 +43,9 @@ export const PaidAndUnpaid: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByRole('listitem')).toHaveLength(3);
     await expect(canvas.getAllByText('Paid')).toHaveLength(2);
-    // Nothing to mark: a lesson is scheduled or deleted, paid or not.
+    // Nothing to mark: no taught or no-show buttons.
     await expect(
-      canvas.queryByRole('button', { name: /taught|no-show|cancel/i })
+      canvas.queryByRole('button', { name: /taught|no-show/i })
     ).not.toBeInTheDocument();
   },
 };
@@ -65,6 +66,33 @@ export const MoveAndDelete: Story = {
     await expect(args.onMove).toHaveBeenCalledWith(eight[0]);
     await userEvent.click(canvas.getAllByRole('button', { name: /^Delete/ })[2]);
     await expect(args.onDelete).toHaveBeenCalledWith(eight[2]);
+  },
+};
+
+/** Cancel opens the cancel dialog, where Katie can also reschedule with a credit. */
+export const Cancel: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getAllByRole('button', { name: /^Cancel/ })[1]);
+    await expect(args.onCancel).toHaveBeenCalledWith(eight[1]);
+  },
+};
+
+/** A lesson rescheduled with a credit says so (#209). */
+export const CreditedLesson: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [{ ...eight[0], id: 'lesson-x-credit', creditForLessonId: 'lesson-x' }, eight[1]],
+    },
+    paidLessonIds: new Set(['lesson-x-credit']),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const items = canvas.getAllByRole('listitem');
+    await expect(within(items[0]).getByText('Credit')).toBeInTheDocument();
+    await expect(within(items[0]).getByText('Paid')).toBeInTheDocument();
+    await expect(within(items[1]).queryByText('Credit')).not.toBeInTheDocument();
   },
 };
 

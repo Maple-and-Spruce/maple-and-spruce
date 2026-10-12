@@ -6,6 +6,23 @@
 
 ## Current Status
 
+### Lesson cancel and reschedule with a credit (2026-10-12, #209)
+
+- New lesson policy: a family that cancels is still charged, and Katie may give a credit
+  toward a later lesson, at her judgement. Planned with David: no credit balance, no reason or
+  notice tracking, no one-in-four enforcement.
+- **A credit is a moved payment.** `lessons/rescheduleLessonWithCredit` books the replacement at
+  `{id}-credit`, rewrites the charge (or invoice line) that named the cancelled lesson to name
+  the replacement, then cancels the original. Amount, status and idempotency key never change.
+  Every billing reader already treats the replacement as paid. If nothing billed the original,
+  the replacement is billed normally.
+- UI: **Cancel** on Upcoming lessons and in the Activity menu opens `CancelLessonDialog`
+  (Cancel / Cancel and reschedule with a credit). A cancelled lesson can be credited later.
+  Activity shows "Rescheduled to …" / "Credit for …"; Upcoming shows a **Credit** chip.
+- Plain cancel still goes through `updateLesson`, which releases the lesson from an *unpaid
+  scheduled* autopay charge (#105). Autopay is paused, so in practice that never fires.
+- Next: #210 (weather: reschedule with credit, or go virtual).
+
 ### Dependency refresh 5/5: Next 16.4 (2026-10-09)
 
 - `next` 16.3.8 → 16.4.0 (released 2026-10-06), in both `package.json` and

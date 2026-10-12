@@ -23,6 +23,8 @@ import type {
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  RescheduleLessonWithCreditRequest,
+  RescheduleLessonWithCreditResponse,
 } from '@maple/ts/firebase/api-types';
 
 export interface UseLessonsOptions {
@@ -175,6 +177,38 @@ export function useLessons({
     });
   }, []);
 
+  /**
+   * Cancel a lesson and book its replacement, moving its payment over (#209).
+   * Charges and invoices change too, so the caller refetches those.
+   */
+  const rescheduleLessonWithCredit = useCallback(
+    async (
+      input: RescheduleLessonWithCreditRequest
+    ): Promise<RescheduleLessonWithCreditResponse> => {
+      const functions = getMapleFunctions();
+      const reschedule = httpsCallableFromURL<
+        RescheduleLessonWithCreditRequest,
+        RescheduleLessonWithCreditResponse
+      >(functions, routerCallableUrl('lessons', 'rescheduleLessonWithCredit'));
+      const result = await reschedule(input);
+      const cancelled = hydrateLesson(result.data.cancelled);
+      const replacement = hydrateLesson(result.data.replacement);
+      setLessonsState((prev) => {
+        if (prev.status !== 'success') return prev;
+        const newData = [
+          ...prev.data.filter(
+            (l) => l.id !== cancelled.id && l.id !== replacement.id
+          ),
+          cancelled,
+          replacement,
+        ].sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+        return { ...prev, data: newData };
+      });
+      return { ...result.data, cancelled, replacement };
+    },
+    []
+  );
+
   useEffect(() => {
     if (autoFetch) {
       fetchLessons();
@@ -188,5 +222,6 @@ export function useLessons({
     createLessonSeries,
     updateLesson,
     deleteLesson,
+    rescheduleLessonWithCredit,
   };
 }

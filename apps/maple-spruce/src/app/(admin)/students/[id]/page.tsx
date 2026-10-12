@@ -60,6 +60,7 @@ import type {
 } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import {
+  CancelLessonDialog,
   EditLessonDialog,
   HopeScholarshipBanner,
   HopeStudentBilling,
@@ -97,6 +98,7 @@ import {
 import {
   blockInvoiceInput,
   defaultDurationFor,
+  planFillBlock,
   type StandingScheduleSubmit,
 } from '../student-billing';
 import { bookAndPay, type PayMethod } from './book-and-pay';
@@ -148,6 +150,7 @@ export default function StudentDetailPage() {
     actionError: chargeError,
     stopCharge,
     chargeNow,
+    refetch: refetchBilling,
   } = useLessonBilling(studentId);
   const {
     lessonsState,
@@ -156,6 +159,7 @@ export default function StudentDetailPage() {
     createLessonSeries,
     updateLesson,
     deleteLesson,
+    rescheduleLessonWithCredit,
   } = useLessons({ studentId });
   const {
     invoicesState,
@@ -393,6 +397,65 @@ export default function StudentDetailPage() {
     }
   };
 
+  // ---- Cancel, or cancel and reschedule with a credit (#209) -------------
+
+  const [cancellingLesson, setCancellingLesson] = useState<Lesson | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  /** Each cancelled lesson's replacement, by the cancelled lesson's id. */
+  const replacements = useMemo(() => {
+    const byOriginal = new Map<string, Lesson>();
+    for (const lesson of lessons) {
+      if (lesson.creditForLessonId) byOriginal.set(lesson.creditForLessonId, lesson);
+    }
+    return byOriginal;
+  }, [lessons]);
+
+  const openCancel = (lesson: Lesson) => {
+    setCancelError(null);
+    setCancellingLesson(lesson);
+  };
+
+  const handleCancelOnly = async (lesson: Lesson) => {
+    setPendingLessonId(lesson.id);
+    setCancelError(null);
+    try {
+      await updateLesson({ id: lesson.id, status: 'cancelled' });
+      setCancellingLesson(null);
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : 'Could not cancel the lesson');
+    } finally {
+      setPendingLessonId(null);
+    }
+  };
+
+  const handleReschedule = async (lesson: Lesson, scheduledAt: Date) => {
+    const plan = planFillBlock(blocks, instructors, lesson, [scheduledAt]);
+    if (plan.blocked) {
+      setCancelError(plan.blocked);
+      return;
+    }
+    setPendingLessonId(lesson.id);
+    setCancelError(null);
+    try {
+      await rescheduleLessonWithCredit({
+        lessonId: lesson.id,
+        scheduledAt,
+        blockStrategy: plan.blockStrategy,
+      });
+      setCancellingLesson(null);
+      // The payment moved to the new lesson, so the charges and invoices the
+      // page holds no longer say who they cover.
+      await Promise.all([refetchBilling(), fetchInvoices()]);
+    } catch (err) {
+      setCancelError(
+        err instanceof Error ? err.message : 'Could not reschedule the lesson'
+      );
+    } finally {
+      setPendingLessonId(null);
+    }
+  };
+
   const handleEditSubmit = async (input: UpdateLessonInput) => {
     setIsSubmitting(true);
     try {
@@ -617,6 +680,7 @@ export default function StudentDetailPage() {
             paidLessonIds={paidLessonIds}
             pendingLessonId={pendingLessonId}
             onMove={(lesson) => setEditLesson(lesson)}
+            onCancel={openCancel}
             onDelete={(lesson) => setDeletingLesson(lesson)}
           />
           <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
@@ -725,8 +789,10 @@ export default function StudentDetailPage() {
               setSettleError(null);
               setSettling({ lesson, method: 'invoice' });
             }}
-            onCancel={(lesson) => setLessonStatus(lesson, 'cancelled')}
+            onCancel={openCancel}
             onRestore={(lesson) => setLessonStatus(lesson, 'scheduled')}
+            onReschedule={openCancel}
+            replacementOf={(lesson) => replacements.get(lesson.id)}
             onDelete={(lesson) => setDeletingLesson(lesson)}
             onAdd={
               instructors.length > 0 ? () => setAddLessonOpen(true) : undefined
@@ -811,6 +877,24 @@ export default function StudentDetailPage() {
           await createLessonSeries(input);
         }}
         isSubmitting={isSubmitting}
+      />
+      <CancelLessonDialog
+        lesson={cancellingLesson}
+        paidFor={
+          cancellingLesson !== null &&
+          lessonBillingState(cancellingLesson.id, charges, invoices).kind !==
+            'unbilled'
+        }
+        planFor={(scheduledAt) =>
+          cancellingLesson
+            ? planFillBlock(blocks, instructors, cancellingLesson, [scheduledAt])
+            : {}
+        }
+        busy={pendingLessonId !== null}
+        error={cancelError}
+        onClose={() => setCancellingLesson(null)}
+        onCancel={handleCancelOnly}
+        onReschedule={handleReschedule}
       />
       <EditLessonDialog
         open={!!editLesson}

@@ -53,11 +53,12 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `[Admin, LessonTeacher]`; a lesson teacher is narrowed to their own students inside each route.
 
 ### Music Lessons
-- `lessons` — **domain router** (ADR-029, #67), 22 routes, each keeping the gate it had as its
+- `lessons` — **domain router** (ADR-029, #67), 23 routes, each keeping the gate it had as its
   own function:
   - `[Admin, LessonTeacher]`, a lesson teacher narrowed to their own inside each route:
     `getLessons`, `createLesson`, `createLessonSeries`, `updateLesson`, `deleteLesson`,
-    `getLessonBlocks`, `getStudentLessonSchedules`, `createStudentLessonSchedule`,
+    `rescheduleLessonWithCredit` (#209: cancel a lesson, book its replacement, move its payment
+    over), `getLessonBlocks`, `getStudentLessonSchedules`, `createStudentLessonSchedule`,
     `updateStudentLessonSchedule`, `getMyDayLessons`, `getMyWeek`.
   - Admin-only: `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
     `getLessonInquiries`, `updateLessonInquiryStatus`, `getLessonBilling`, `saveLessonBillingRule`,
