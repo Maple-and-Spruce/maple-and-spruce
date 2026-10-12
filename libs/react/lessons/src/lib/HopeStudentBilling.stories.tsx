@@ -1,7 +1,20 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, fn, screen, userEvent, within } from 'storybook/test';
+import {
+  expect,
+  fn,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 import type { HopeProduct, HopeQueueEntry, Lesson } from '@maple/ts/domain';
-import { HopeStudentBilling, type HopeOrderRow } from './HopeStudentBilling';
+import {
+  HopeStudentBilling,
+  type HopeOrderRow,
+  type HopeStudentBillingProps,
+  type SaveHopeOrderDraft,
+} from './HopeStudentBilling';
 
 const NOW = new Date('2026-09-01T12:00:00Z');
 const violin30: HopeProduct = {
@@ -146,6 +159,98 @@ export const RecordingAnOrder: Story = {
         emaOrderId: '55502',
       })
     );
+  },
+};
+
+/**
+ * Correcting an existing order's EMA order ID sends the new ID, and only that
+ * change, with the order's id (#213).
+ */
+export const EditingAnOrdersEmaOrderId: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Edit the order of/ })
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await expect(dialog.getByText('Edit EMA order')).toBeInTheDocument();
+    const orderId = dialog.getByLabelText('EMA order ID (optional)');
+    await expect(orderId).toHaveValue('55501');
+    await userEvent.clear(orderId);
+    await userEvent.type(orderId, '55509');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save order' }));
+    await expect(args.onSaveOrder).toHaveBeenCalledTimes(1);
+    await expect(args.onSaveOrder).toHaveBeenCalledWith({
+      id: 'order-1',
+      productId: 'prod-violin-30',
+      lessonCount: 4,
+      emaOrderId: '55509',
+      orderedOn: expect.any(Date),
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  },
+};
+
+/**
+ * The card as the Hope page drives it: the save refetches, and the card
+ * re-renders from the orders that come back (#213).
+ */
+function RefetchingCard(props: HopeStudentBillingProps) {
+  const [orders, setOrders] = useState(props.orders);
+  const save = async (input: SaveHopeOrderDraft) => {
+    await props.onSaveOrder(input);
+    setOrders((current) =>
+      current.map((o) =>
+        o.id === input.id
+          ? { ...o, emaOrderId: input.emaOrderId, lessonCount: input.lessonCount }
+          : o
+      )
+    );
+  };
+  return <HopeStudentBilling {...props} orders={orders} onSaveOrder={save} />;
+}
+
+export const EditedOrderIdShowsOnTheCard: Story = {
+  render: (args) => <RefetchingCard {...args} />,
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Edit the order of/ })
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    const orderId = dialog.getByLabelText('EMA order ID (optional)');
+    await userEvent.clear(orderId);
+    await userEvent.type(orderId, '55509');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save order' }));
+    await expect(args.onSaveOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'order-1', emaOrderId: '55509' })
+    );
+    await waitFor(() =>
+      expect(canvas.getByText(/Order 55509 · 4 lessons/)).toBeInTheDocument()
+    );
+    await expect(canvas.queryByText(/Order 55501/)).toBeNull();
+  },
+};
+
+/** A failed save keeps the dialog open and says why, rather than closing. */
+export const EditingAnOrderErrorShown: Story = {
+  args: {
+    onSaveOrder: fn(async () => {
+      throw new Error('Could not reach the server.');
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Edit the order of/ })
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.type(dialog.getByLabelText('EMA order ID (optional)'), '9');
+    await userEvent.click(dialog.getByRole('button', { name: 'Save order' }));
+    await expect(
+      await dialog.findByText('Could not reach the server.')
+    ).toBeInTheDocument();
+    await expect(screen.getByRole('dialog')).toBeInTheDocument();
   },
 };
 
