@@ -123,6 +123,8 @@ interface WeekItem {
   oneOff: boolean;
   /** Set on the caller's own lessons, so the block can open the student. */
   studentId?: string;
+  /** The caller's own lesson, held online (#210). */
+  online?: boolean;
 }
 
 function startMinutesOf(iso: string): number {
@@ -148,6 +150,7 @@ function commitmentToItem(c: MyWeekCommitment): WeekItem {
     unattributed: c.unattributed,
     oneOff: c.cadence === 'one-off',
     studentId: c.studentId,
+    online: c.online,
   };
 }
 
@@ -694,10 +697,10 @@ function DayColumn({
               ? {
                   component: Link,
                   href,
-                  'aria-label': `${formatMinutes(item.startMin)} ${item.title}`,
+                  'aria-label': `${formatMinutes(item.startMin)} ${item.title}${item.online ? ', online' : ''}`,
                 }
               : {})}
-            title={`${formatMinutes(item.startMin)} ${item.title}`}
+            title={`${formatMinutes(item.startMin)} ${item.title}${item.online ? ' · Online' : ''}`}
             sx={{
               position: 'absolute',
               top,
@@ -732,6 +735,11 @@ function DayColumn({
               {item.unattributed ? '⚠ ' : ''}
               {item.title}
             </Box>
+            {item.online && (
+              <Box component="span" sx={{ fontStyle: 'italic' }}>
+                {' · Online'}
+              </Box>
+            )}
           </Box>
         );
       })}

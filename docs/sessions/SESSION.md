@@ -17,6 +17,8 @@
   event holds no room (`lessonOccupiedRoom`). Moving an online lesson skips the room check;
   **In person** brings it back only if the room is still free.
 - Also used when a teacher cancels: the policy treats teacher and studio cancellations alike.
+- Follow-up: My Week labels the caller's own online lessons "· Online" (`MyWeekCommitment.online`,
+  from the lessons `getMyWeek` already reads), and the Today card says "30-min lesson · Online".
 
 ### Lesson cancel and reschedule with a credit (2026-10-12, #209)
 

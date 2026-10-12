@@ -44,6 +44,44 @@ export const ShowsOtherTeacherBlock: Story = {
   },
 };
 
+/** A lesson held online says so on the week (#210). */
+export const OnlineLesson: Story = {
+  args: {
+    studentHref: (id: string) => `/students/${id}?tab=next`,
+    weekState: {
+      status: 'success',
+      data: {
+        ...mockMyWeekResponse,
+        commitments: mockMyWeekResponse.commitments.map((c) =>
+          c.studentName ? { ...c, online: true } : c,
+        ),
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    const online = await waitFor(() => {
+      const found = canvas.getAllByText(/· Online/);
+      expect(found.length).toBeGreaterThan(0);
+      return found;
+    });
+    await expect(online[0]).toBeVisible();
+    await expect(
+      canvas.getAllByRole('link', { name: /Test Student A, online/ }).length,
+    ).toBeGreaterThan(0);
+  },
+};
+
+/** An in-person week carries no online label. */
+export const NoOnlineLabelInPerson: Story = {
+  args: { weekState: { status: 'success', data: mockMyWeekResponse } },
+  play: async ({ canvas }) => {
+    await waitFor(() =>
+      expect(canvas.getByText(/Sam · room taken/)).toBeInTheDocument(),
+    );
+    await expect(canvas.queryByText(/· Online/)).not.toBeInTheDocument();
+  },
+};
+
 export const Loading: Story = {
   args: { weekState: { status: 'loading' } },
 };
