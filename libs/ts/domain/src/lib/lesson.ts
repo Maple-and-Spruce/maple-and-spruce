@@ -156,6 +156,16 @@ export interface Lesson {
   room?: Room;
   status: LessonStatus;
   notes?: string;
+  /**
+   * The cancelled lesson this one replaces, when Katie cancelled a lesson and
+   * rescheduled it with a credit (#209).
+   *
+   * Rescheduling moves the cancelled lesson's payment — the charge or invoice
+   * line that named it — onto this lesson, so it reads as paid for everywhere
+   * without any reader knowing about credits. This field is the record of why,
+   * for the Activity tab. Set only by `rescheduleLessonWithCredit`.
+   */
+  creditForLessonId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,7 +183,10 @@ export type CreateLessonInput = Omit<
 >;
 
 export type UpdateLessonInput = Partial<
-  Omit<Lesson, 'id' | 'studentId' | 'seriesId' | 'createdAt' | 'updatedAt'>
+  Omit<
+    Lesson,
+    'id' | 'studentId' | 'seriesId' | 'creditForLessonId' | 'createdAt' | 'updatedAt'
+  >
 > & {
   id: string;
 };
@@ -264,4 +277,32 @@ export function wasTaughtBySubstitute(
     return false;
   }
   return lesson.teacherId !== baseline;
+}
+
+/**
+ * The document id of the lesson that replaces `lessonId` on a reschedule with
+ * credit (#209).
+ *
+ * Deterministic, so one cancelled lesson can carry at most one credit and a
+ * retried request finds the replacement it already made instead of booking a
+ * second one.
+ */
+export function creditLessonId(lessonId: string): string {
+  return `${lessonId}-credit`;
+}
+
+/**
+ * `lessonIds` with `from` replaced by `to`, or null when `from` is not there.
+ *
+ * How a reschedule with credit moves a payment from the cancelled lesson to
+ * its replacement (#209): the charge keeps its amount and its idempotency key,
+ * and simply names the teaching it now pays for.
+ */
+export function replaceCoveredLesson(
+  lessonIds: readonly string[],
+  from: string,
+  to: string
+): string[] | null {
+  if (!lessonIds.includes(from)) return null;
+  return lessonIds.map((id) => (id === from ? to : id));
 }

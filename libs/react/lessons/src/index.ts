@@ -5,6 +5,12 @@ export {
 export { ScheduleLessonDialog } from './lib/ScheduleLessonDialog';
 export { EditLessonDialog } from './lib/EditLessonDialog';
 export {
+  CancelLessonDialog,
+  type CancelLessonDialogProps,
+  type CancelLessonChoice,
+  type ReschedulePlan,
+} from './lib/CancelLessonDialog';
+export {
   LessonBlockForm,
   type LessonBlockFormProps,
 } from './lib/LessonBlockForm';

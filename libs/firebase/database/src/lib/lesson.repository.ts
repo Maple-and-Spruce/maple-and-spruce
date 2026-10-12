@@ -36,6 +36,7 @@ function docToLesson(
     room: data.room,
     status: data.status,
     notes: data.notes,
+    creditForLessonId: data.creditForLessonId ?? null,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

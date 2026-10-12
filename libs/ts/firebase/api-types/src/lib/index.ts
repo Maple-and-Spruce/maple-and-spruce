@@ -307,6 +307,9 @@ export type {
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  RescheduleLessonWithCreditRequest,
+  RescheduleLessonWithCreditResponse,
+  CarriedLessonCoverage,
 } from './lesson.types';
 
 // Phase 4: Music Lessons - Lesson blocks (legacy #686)

@@ -52,6 +52,8 @@ import type {
   GetPosLessonAttributionsResponse,
   GetStudentLessonSchedulesRequest,
   GetStudentLessonSchedulesResponse,
+  RescheduleLessonWithCreditRequest,
+  RescheduleLessonWithCreditResponse,
   ResolvePosLessonAttributionRequest,
   ResolvePosLessonAttributionResponse,
   SaveLessonBillingRuleRequest,
@@ -72,6 +74,7 @@ import { createLesson } from './create-lesson';
 import { createLessonSeries } from './create-lesson-series';
 import { updateLesson } from './update-lesson';
 import { deleteLesson } from './delete-lesson';
+import { rescheduleLessonWithCredit } from './reschedule-lesson-with-credit';
 import { getLessonBlocks } from './get-lesson-blocks';
 import { createLessonBlock } from './create-lesson-block';
 import { updateLessonBlock } from './update-lesson-block';
@@ -113,6 +116,14 @@ export const lessons = Functions.router('lessons', {
   deleteLesson: Functions.endpoint
     .requiringRole([Role.Admin, Role.LessonTeacher])
     .asRoute<DeleteLessonRequest, DeleteLessonResponse>(deleteLesson),
+
+  // Cancel a lesson and book its replacement, moving its payment over (#209)
+  rescheduleLessonWithCredit: Functions.endpoint
+    .requiringRole([Role.Admin, Role.LessonTeacher])
+    .asRoute<
+      RescheduleLessonWithCreditRequest,
+      RescheduleLessonWithCreditResponse
+    >(rescheduleLessonWithCredit),
 
   // Lesson blocks: the teaching windows lessons must fall inside
   getLessonBlocks: Functions.endpoint

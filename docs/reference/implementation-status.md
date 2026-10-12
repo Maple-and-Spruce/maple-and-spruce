@@ -310,6 +310,21 @@ a weekly window a teacher's lessons must fall inside.
 | Student detail page `/students/[id]` | **Complete** | `apps/maple-spruce/src/app/students/[id]/page.tsx` |
 | Student list row links to detail page | **Complete** | `StudentList.tsx` + `/students/page.tsx` |
 
+### Lesson cancellation and credits (#209, Complete)
+
+Studio policy: a family that cancels is still charged, and Katie may give a credit toward a
+later lesson. There is no credit balance: rescheduling with a credit moves the cancelled
+lesson's payment (the charge or invoice line that named it) onto the new lesson.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| `Lesson.creditForLessonId` + `creditLessonId` / `replaceCoveredLesson` | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
+| `lessons/rescheduleLessonWithCredit` route (book replacement → move payment → cancel original; retry-safe) | **Complete** | `libs/firebase/maple-functions/lessons/src/lib/reschedule-lesson-with-credit.ts` |
+| `moveCoveredLesson` (charge) / `moveLineLesson` (invoice) | **Complete** | `libs/firebase/database/src/lib/{lesson-scheduled-charge,invoice}.repository.ts` |
+| `CancelLessonDialog` (Cancel / Cancel and reschedule with a credit) | **Complete** | `libs/react/lessons/src/lib/CancelLessonDialog.tsx` |
+| Cancel on Upcoming lessons, "Credit" chip; Activity links cancelled ↔ replacement | **Complete** | `UpcomingLessonsCard.tsx`, `LessonActivity.tsx`, `/students/[id]/page.tsx` |
+| Unit + integration + Storybook play tests | **Complete** | `reschedule-lesson-with-credit.spec.ts`, `apps/functions-integration-tests-lesson/src/lesson-credit.spec.ts`, `CancelLessonDialog.stories.tsx` |
+
 ### Student Records (legacy #278, Complete)
 
 | Feature | Status | Location |

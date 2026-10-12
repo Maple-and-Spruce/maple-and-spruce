@@ -8,6 +8,8 @@ import {
   didConsumeSlot,
   isSubmittableToHope,
   lessonHappened,
+  replaceCoveredLesson,
+  creditLessonId,
 } from './lesson';
 
 const makeLesson = (overrides: Partial<Lesson> = {}): Lesson => ({
@@ -245,5 +247,25 @@ describe('no-show status (legacy #796)', () => {
         expect(lessonHappened(makeLesson({ status }), NOW)).toBe(true);
       }
     );
+  });
+});
+
+describe('replaceCoveredLesson (#209)', () => {
+  it('swaps the cancelled lesson for its replacement in place', () => {
+    expect(replaceCoveredLesson(['a', 'b', 'c'], 'b', 'b-credit')).toEqual([
+      'a',
+      'b-credit',
+      'c',
+    ]);
+  });
+
+  it('returns null when the lesson is not there', () => {
+    expect(replaceCoveredLesson(['a'], 'b', 'b-credit')).toBeNull();
+  });
+});
+
+describe('creditLessonId (#209)', () => {
+  it('derives one replacement id per cancelled lesson', () => {
+    expect(creditLessonId('les-1')).toBe('les-1-credit');
   });
 });
