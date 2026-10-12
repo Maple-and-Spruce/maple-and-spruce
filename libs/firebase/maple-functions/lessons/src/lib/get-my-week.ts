@@ -101,6 +101,8 @@ export function buildCommitments(
    * Only the caller's own: another teacher's lesson stays "Music Lesson".
    */
   studentByRef: Map<string, { id: string; name: string }> = new Map(),
+  /** sourceRefs of the caller's lessons held online (#210). */
+  onlineRefs: Set<string> = new Set(),
 ): MyWeekCommitment[] {
   // key -> set of distinct week indices it occurred in
   const weeksByKey = new Map<string, Set<number>>();
@@ -143,6 +145,9 @@ export function buildCommitments(
           unattributedRefs.has(e.sourceRef),
         ...(student
           ? { studentId: student.id, studentName: student.name }
+          : {}),
+        ...(mine && e.sourceRef && onlineRefs.has(e.sourceRef)
+          ? { online: true }
           : {}),
       };
     });
@@ -374,6 +379,11 @@ export async function getMyWeek(
     myInstructorId,
     unattributedRefs,
     studentByRef,
+    new Set(
+      lessons
+        .filter((lesson) => lesson.virtual)
+        .map((lesson) => `lessons/${lesson.id}`),
+    ),
   );
 
   return {

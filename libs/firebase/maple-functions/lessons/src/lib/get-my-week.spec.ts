@@ -150,6 +150,45 @@ describe('buildCommitments', () => {
     expect(result[0].ownership).toBe('shared');
   });
 
+  it("labels the caller's own lessons held online, and only theirs (#210)", () => {
+    const events = [
+      event({
+        id: 'mine-online',
+        startDateTime: new Date(2026, 6, 21, 16, 0),
+        ownerInstructorId: me,
+        sourceRef: 'lessons/a',
+      }),
+      event({
+        id: 'mine-in-room',
+        startDateTime: new Date(2026, 6, 22, 16, 0),
+        ownerInstructorId: me,
+        sourceRef: 'lessons/b',
+      }),
+      event({
+        id: 'theirs-online',
+        startDateTime: new Date(2026, 6, 23, 16, 0),
+        ownerInstructorId: 'instr-nathan',
+        sourceRef: 'lessons/c',
+      }),
+    ];
+    const result = buildCommitments(
+      events,
+      from,
+      to,
+      lookbackStart,
+      me,
+      new Set(),
+      new Map(),
+      new Set(['lessons/a', 'lessons/c']),
+    );
+    const online = Object.fromEntries(result.map((c) => [c.id, c.online]));
+    expect(online).toEqual({
+      'mine-online': true,
+      'mine-in-room': undefined,
+      'theirs-online': undefined,
+    });
+  });
+
   it('does not count two occurrences in the same week as recurring', () => {
     const events = [
       event({

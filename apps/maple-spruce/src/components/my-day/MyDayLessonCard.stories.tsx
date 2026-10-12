@@ -125,3 +125,21 @@ export const RecordingVenmoPayment: Story = {
     expect(canvas.getByRole('button', { name: /cash \/ check/i })).toBeDisabled();
   },
 };
+
+/** A lesson held online says so on the Today tab (#210). */
+export const Online: Story = {
+  args: { item: { ...scheduledNoInvoice, lesson: { ...baseLesson, virtual: true } } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('30-min lesson · Online')).toBeInTheDocument();
+  },
+};
+
+export const InPerson: Story = {
+  args: { item: scheduledNoInvoice },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('30-min lesson')).toBeInTheDocument();
+    await expect(canvas.queryByText(/Online/)).not.toBeInTheDocument();
+  },
+};

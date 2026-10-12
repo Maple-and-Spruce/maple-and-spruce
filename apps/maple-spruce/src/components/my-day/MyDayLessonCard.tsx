@@ -90,6 +90,7 @@ export function MyDayLessonCard({
             )}
             <Typography variant="body2" color="textSecondary">
               {lesson.durationMinutes}-min lesson
+              {lesson.virtual ? ' · Online' : ''}
             </Typography>
           </Box>
         </Box>

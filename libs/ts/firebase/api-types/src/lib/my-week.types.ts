@@ -71,6 +71,11 @@ export interface MyWeekCommitment {
    * classes, shared events, and block-attributed lessons.
    */
   unattributed: boolean;
+  /**
+   * Held online rather than in the room (#210), on the caller's own lessons
+   * only. Its `room` is null either way; this says why.
+   */
+  online?: boolean;
 }
 
 /**
