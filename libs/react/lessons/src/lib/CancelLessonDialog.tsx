@@ -12,6 +12,10 @@
  * one. The dialog says which, because it decides whether the family will be
  * asked for money for the new date.
  *
+ * The **weather** variant (#210) is the studio cancelling, so it offers what
+ * the policy does: reschedule with a credit (always, since the studio is not
+ * charging for that week), or hold the lesson online instead.
+ *
  * Presentational: the page plans the block and does the writes.
  */
 import { useEffect, useState } from 'react';
@@ -34,7 +38,10 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { SCHEDULE_TIME_ZONE } from '@maple/ts/domain';
 import type { Lesson } from '@maple/ts/domain';
 
-export type CancelLessonChoice = 'cancel' | 'reschedule';
+export type CancelLessonChoice = 'cancel' | 'reschedule' | 'virtual';
+
+/** `cancel` is Katie cancelling one lesson; `weather` is the studio closing. */
+export type CancelLessonVariant = 'cancel' | 'weather';
 
 /** What booking the new time involves, from `planFillBlock`. */
 export interface ReschedulePlan {
@@ -47,6 +54,7 @@ export interface ReschedulePlan {
 export interface CancelLessonDialogProps {
   /** The lesson being cancelled; the dialog is open while this is set. */
   lesson: Lesson | null;
+  variant?: CancelLessonVariant;
   /** Which choice to start on. A cancelled lesson can only be rescheduled. */
   initialChoice?: CancelLessonChoice;
   /** Whether a payment already covers this lesson, and so the new one. */
@@ -58,13 +66,39 @@ export interface CancelLessonDialogProps {
   onClose: () => void;
   onCancel: (lesson: Lesson) => void;
   onReschedule: (lesson: Lesson, scheduledAt: Date) => void;
+  /** Weather only: hold the lesson online instead. */
+  onGoVirtual?: (lesson: Lesson) => void;
 }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function submitLabel(choice: CancelLessonChoice, alreadyCancelled: boolean): string {
   if (choice === 'cancel') return 'Cancel lesson';
+  if (choice === 'virtual') return 'Hold it online';
   return alreadyCancelled ? 'Reschedule' : 'Cancel and reschedule';
+}
+
+const CHOICES: Record<
+  CancelLessonVariant,
+  Array<{ value: CancelLessonChoice; label: string }>
+> = {
+  cancel: [
+    { value: 'cancel', label: 'Cancel it' },
+    { value: 'reschedule', label: 'Cancel and reschedule with a credit' },
+  ],
+  weather: [
+    { value: 'reschedule', label: 'Reschedule with a credit' },
+    { value: 'virtual', label: 'Hold it online' },
+  ],
+};
+
+function titleFor(
+  variant: CancelLessonVariant,
+  alreadyCancelled: boolean,
+  when: string
+): string {
+  if (variant === 'weather') return `Weather: ${when}`;
+  return alreadyCancelled ? `Reschedule ${when}` : `Cancel ${when}?`;
 }
 
 function formatWhen(at: Date): string {
@@ -80,7 +114,8 @@ function formatWhen(at: Date): string {
 
 export function CancelLessonDialog({
   lesson,
-  initialChoice = 'cancel',
+  variant = 'cancel',
+  initialChoice,
   paidFor,
   planFor,
   busy,
@@ -88,17 +123,19 @@ export function CancelLessonDialog({
   onClose,
   onCancel,
   onReschedule,
+  onGoVirtual,
 }: CancelLessonDialogProps) {
   const alreadyCancelled = lesson?.status === 'cancelled';
-  const [choice, setChoice] = useState<CancelLessonChoice>(initialChoice);
+  const firstChoice = initialChoice ?? CHOICES[variant][0].value;
+  const [choice, setChoice] = useState<CancelLessonChoice>(firstChoice);
   const [newTime, setNewTime] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!lesson) return;
-    setChoice(alreadyCancelled ? 'reschedule' : initialChoice);
+    setChoice(alreadyCancelled ? 'reschedule' : firstChoice);
     // Same time next week: the usual answer, and an easy one to adjust.
     setNewTime(new Date(lesson.scheduledAt.getTime() + WEEK_MS));
-  }, [lesson, alreadyCancelled, initialChoice]);
+  }, [lesson, alreadyCancelled, firstChoice]);
 
   if (!lesson) return null;
 
@@ -106,12 +143,13 @@ export function CancelLessonDialog({
   const validTime = newTime !== null && !Number.isNaN(newTime.getTime());
   const plan = choice === 'reschedule' && validTime ? planFor(newTime) : {};
   const canSubmit =
-    !busy && (choice === 'cancel' || (validTime && !plan.blocked));
+    !busy && (choice !== 'reschedule' || (validTime && !plan.blocked));
+  const showChoices = !alreadyCancelled;
 
   return (
     <Dialog open onClose={busy ? undefined : onClose} maxWidth="xs" fullWidth>
       <DialogTitle>
-        {alreadyCancelled ? `Reschedule ${when}` : `Cancel ${when}?`}
+        {titleFor(variant, alreadyCancelled, when)}
       </DialogTitle>
       <DialogContent>
         {error && (
@@ -119,23 +157,27 @@ export function CancelLessonDialog({
             {error}
           </Alert>
         )}
-        {!alreadyCancelled && (
+        {showChoices && (
           <RadioGroup
             aria-label="What to do"
             value={choice}
             onChange={(e) => setChoice(e.target.value as CancelLessonChoice)}
           >
-            <FormControlLabel
-              value="cancel"
-              control={<Radio />}
-              label="Cancel it"
-            />
-            <FormControlLabel
-              value="reschedule"
-              control={<Radio />}
-              label="Cancel and reschedule with a credit"
-            />
+            {CHOICES[variant].map((option) => (
+              <FormControlLabel
+                key={option.value}
+                value={option.value}
+                control={<Radio />}
+                label={option.label}
+              />
+            ))}
           </RadioGroup>
+        )}
+
+        {choice === 'virtual' && (
+          <Typography color="textSecondary" sx={{ mt: 1 }}>
+            It keeps its time and its payment, and the room is freed.
+          </Typography>
         )}
 
         {choice === 'cancel' && (
@@ -183,6 +225,7 @@ export function CancelLessonDialog({
           disabled={!canSubmit}
           onClick={() => {
             if (choice === 'cancel') onCancel(lesson);
+            else if (choice === 'virtual') onGoVirtual?.(lesson);
             else if (newTime) onReschedule(lesson, newTime);
           }}
         >

@@ -32,6 +32,8 @@ const meta: Meta<typeof UpcomingLessonsCard> = {
     paidLessonIds: new Set(['lesson-0', 'lesson-1']),
     onMove: fn(),
     onCancel: fn(),
+    onWeather: fn(),
+    onInPerson: fn(),
     onDelete: fn(),
   },
 };
@@ -93,6 +95,30 @@ export const CreditedLesson: Story = {
     await expect(within(items[0]).getByText('Credit')).toBeInTheDocument();
     await expect(within(items[0]).getByText('Paid')).toBeInTheDocument();
     await expect(within(items[1]).queryByText('Credit')).not.toBeInTheDocument();
+  },
+};
+
+/** Weather (#210) on an in-person lesson; In person on one held online. */
+export const WeatherAndOnline: Story = {
+  args: {
+    lessonsState: {
+      status: 'success',
+      data: [eight[0], { ...eight[1], virtual: true }],
+    },
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const items = canvas.getAllByRole('listitem');
+    await expect(within(items[1]).getByText('Online')).toBeInTheDocument();
+    await expect(within(items[0]).queryByText('Online')).not.toBeInTheDocument();
+    await expect(
+      within(items[1]).queryByRole('button', { name: /^Weather/ })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(within(items[0]).getByRole('button', { name: /^Weather/ }));
+    await expect(args.onWeather).toHaveBeenCalledWith(eight[0]);
+    await userEvent.click(within(items[1]).getByRole('button', { name: /^In person/ }));
+    await expect(args.onInPerson).toHaveBeenCalledWith({ ...eight[1], virtual: true });
   },
 };
 

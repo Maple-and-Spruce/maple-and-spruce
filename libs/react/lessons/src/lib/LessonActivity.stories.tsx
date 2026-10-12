@@ -61,6 +61,8 @@ const meta: Meta<typeof LessonActivity> = {
     onCancel: fn(),
     onRestore: fn(),
     onReschedule: fn(),
+    onWeather: fn(),
+    onInPerson: fn(),
     onDelete: fn(),
     onAdd: fn(),
   },
@@ -251,5 +253,40 @@ export const LoadFailed: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Could not load lessons: network down')).toBeInTheDocument();
     await expect(canvas.queryByText('No lessons yet.')).not.toBeInTheDocument();
+  },
+};
+
+const weatherCancelled: Lesson = { ...lessons[3], cancelledFor: 'weather' };
+const online: Lesson = { ...lessons[4], virtual: true };
+const withWeather = [lessons[0], lessons[1], lessons[2], weatherCancelled, online, replacement];
+
+/** A weather cancellation and a lesson held online say so (#210). */
+export const WeatherAndOnline: Story = {
+  args: {
+    lessonsState: { status: 'success', data: withWeather },
+    replacementOf: (l: Lesson) =>
+      withWeather.find((x) => x.creditForLessonId === l.id),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Weather · Rescheduled to Sep 22')).toBeInTheDocument();
+    await expect(canvas.getByText('Online')).toBeInTheDocument();
+
+    // Held online: bring it back, not another weather call.
+    await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Oct 13/ }));
+    await expect(screen.queryByRole('menuitem', { name: 'Weather…' })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'In person' }));
+    await expect(args.onInPerson).toHaveBeenCalledWith(online);
+  },
+};
+
+/** An in-person lesson offers Weather. */
+export const Weather: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /^More for Tue, Oct 13/ }));
+    await expect(screen.queryByRole('menuitem', { name: 'In person' })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Weather…' }));
+    await expect(args.onWeather).toHaveBeenCalledWith(lessons[4]);
   },
 };

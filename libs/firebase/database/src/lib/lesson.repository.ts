@@ -37,6 +37,8 @@ function docToLesson(
     status: data.status,
     notes: data.notes,
     creditForLessonId: data.creditForLessonId ?? null,
+    cancelledFor: data.cancelledFor ?? null,
+    virtual: data.virtual === true,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -193,7 +195,13 @@ export const LessonRepository = {
     return { lessons, seriesId };
   },
 
-  async update(input: UpdateLessonInput): Promise<Lesson> {
+  /**
+   * `cancelledFor` is not part of `UpdateLessonInput` because callers may not
+   * edit it; the server sets it when it cancels a lesson for the studio (#210).
+   */
+  async update(
+    input: UpdateLessonInput & Pick<Partial<Lesson>, 'cancelledFor'>,
+  ): Promise<Lesson> {
     const { id, ...updates } = input;
     const docRef = db.collection(COLLECTION).doc(id);
 

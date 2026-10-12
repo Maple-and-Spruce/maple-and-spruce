@@ -26,6 +26,7 @@ const meta: Meta<typeof CancelLessonDialog> = {
     onClose: fn(),
     onCancel: fn(),
     onReschedule: fn(),
+    onGoVirtual: fn(),
   },
 };
 export default meta;
@@ -111,5 +112,37 @@ export const Failed: Story = {
   args: { error: 'That room is booked then.' },
   play: async () => {
     await expect(await screen.findByText('That room is booked then.')).toBeInTheDocument();
+  },
+};
+
+/** Weather (#210): the studio closing, so reschedule with a credit is first. */
+export const WeatherReschedule: Story = {
+  args: { variant: 'weather' },
+  play: async ({ args }) => {
+    await expect(await screen.findByText(/Weather: Thu, Nov 5/)).toBeInTheDocument();
+    await expect(screen.queryByRole('radio', { name: 'Cancel it' })).not.toBeInTheDocument();
+    await expect(
+      screen.getByRole('radio', { name: 'Reschedule with a credit' })
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel and reschedule' }));
+    await expect(args.onReschedule).toHaveBeenCalledWith(
+      lesson,
+      new Date('2026-11-12T21:00:00Z')
+    );
+  },
+};
+
+/** Weather, held online: keeps its time and payment, frees the room. */
+export const WeatherOnline: Story = {
+  args: { variant: 'weather' },
+  play: async ({ args }) => {
+    await userEvent.click(await screen.findByRole('radio', { name: 'Hold it online' }));
+    await expect(
+      screen.getByText('It keeps its time and its payment, and the room is freed.')
+    ).toBeInTheDocument();
+    await expect(screen.queryByLabelText('New date & time')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Hold it online' }));
+    await expect(args.onGoVirtual).toHaveBeenCalledWith(lesson);
+    await expect(args.onReschedule).not.toHaveBeenCalled();
   },
 };

@@ -19,7 +19,7 @@ import {
   LessonScheduledChargeRepository,
 } from '@maple/firebase/database';
 import { lessonValidation } from '@maple/ts/validation';
-import { lessonRoom, releaseLessonFromCharge } from '@maple/ts/domain';
+import { lessonOccupiedRoom, releaseLessonFromCharge } from '@maple/ts/domain';
 import type {
   UpdateLessonRequest,
   UpdateLessonResponse,
@@ -78,9 +78,15 @@ export async function updateLesson(
   // the update payload when it was actually provided — spreading
   // `scheduledAt: undefined` into `merged` below would wipe the
   // existing value during the merge-for-validation step.
-  // `creditForLessonId` is not editable (#209); see rescheduleLessonWithCredit.
+  // `creditForLessonId` (#209) and `cancelledFor` (#210) are not editable;
+  // see rescheduleLessonWithCredit.
   const coercedUpdates: UpdateLessonRequest = { ...data };
-  delete (coercedUpdates as { creditForLessonId?: unknown }).creditForLessonId;
+  const readOnly = coercedUpdates as {
+    creditForLessonId?: unknown;
+    cancelledFor?: unknown;
+  };
+  delete readOnly.creditForLessonId;
+  delete readOnly.cancelledFor;
   if (data.scheduledAt !== undefined) {
     coercedUpdates.scheduledAt =
       data.scheduledAt instanceof Date
@@ -130,13 +136,17 @@ export async function updateLesson(
   const movesInRoom =
     coercedUpdates.scheduledAt !== undefined ||
     data.durationMinutes !== undefined ||
-    data.room !== undefined;
+    data.room !== undefined ||
+    // Coming back in person from online (#210) takes the room again.
+    (data.virtual === false && existing.virtual === true);
+  // A lesson held online holds no room, so it cannot clash with anything.
+  const occupiedRoom = lessonOccupiedRoom(merged);
 
-  if (movesInRoom && merged.status !== 'cancelled') {
+  if (movesInRoom && occupiedRoom && merged.status !== 'cancelled') {
     await assertRoomIsFree([
       {
         // A lesson saved before rooms existed is on the calendar as Spruce.
-        room: lessonRoom(merged.room),
+        room: occupiedRoom,
         scheduledAt: merged.scheduledAt,
         durationMinutes: merged.durationMinutes,
         excludeSourceRef: `lessons/${data.id}`,

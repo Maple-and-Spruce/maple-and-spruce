@@ -23,6 +23,8 @@ import type {
   CreateLessonResponse,
   CreateStudentRequest,
   CreateStudentResponse,
+  UpdateLessonRequest,
+  UpdateLessonResponse,
   RescheduleLessonWithCreditRequest,
   RescheduleLessonWithCreditResponse,
 } from '@maple/ts/firebase/api-types';
@@ -53,6 +55,9 @@ function etWeekday(d: Date): number {
 /** The fields these tests read back, decoded from the emulator. */
 interface StoredDoc {
   status?: string;
+  cancelledFor?: string | null;
+  virtual?: boolean;
+  room?: string | null;
   creditForLessonId?: string;
   lessonIds?: string[];
   amountCents?: number;
@@ -91,7 +96,7 @@ describe('Reschedule a lesson with credit (#209)', () => {
     return result.data!.lesson.id;
   }
 
-  function reschedule(lessonId: string) {
+  function reschedule(lessonId: string, reason?: 'weather') {
     const at = new Date(Date.UTC(2027, 2, 9, hour++, 0));
     return callFunction<
       RescheduleLessonWithCreditRequest,
@@ -102,6 +107,7 @@ describe('Reschedule a lesson with credit (#209)', () => {
         lessonId,
         scheduledAt: at,
         blockStrategy: { mode: 'existing', blockId: blockFor(at) },
+        reason,
       },
       idToken: admin.idToken,
     });
@@ -237,5 +243,67 @@ describe('Reschedule a lesson with credit (#209)', () => {
     const again = await reschedule(`${lessonId}-credit`);
 
     expect(again.status).not.toBe(200);
+  });
+
+  it('a weather reschedule says so on the cancelled lesson (#210)', async () => {
+    const lessonId = await bookLesson();
+
+    const result = await reschedule(lessonId, 'weather');
+
+    expect(result.status).toBe(200);
+    expect((await readDoc('lessons', lessonId))?.cancelledFor).toBe('weather');
+    expect((await readDoc('lessons', `${lessonId}-credit`))?.cancelledFor ?? null).toBeNull();
+  });
+
+  describe('held online (#210)', () => {
+    const at = new Date(Date.UTC(2027, 2, 16, 15, 0));
+
+    function book(): Promise<{ status: number; data?: CreateLessonResponse }> {
+      return callFunction<CreateLessonRequest, CreateLessonResponse>({
+        functionName: 'lessons/createLesson',
+        data: {
+          studentId,
+          teacherId: TEACHER_ID,
+          scheduledAt: at,
+          durationMinutes: 30,
+          status: 'scheduled',
+          room: 'spruce',
+          blockId: blockFor(at),
+        },
+        idToken: admin.idToken,
+      });
+    }
+
+    function setVirtual(id: string, virtual: boolean) {
+      return callFunction<UpdateLessonRequest, UpdateLessonResponse>({
+        functionName: 'lessons/updateLesson',
+        data: { id, virtual },
+        idToken: admin.idToken,
+      });
+    }
+
+    it('frees the room, keeps the lesson on the calendar, and takes the room back only if it is free', async () => {
+      const first = await book();
+      expect(first.status).toBe(200);
+      const onlineId = first.data!.lesson.id;
+
+      // The room is taken, so a second lesson at that time is refused.
+      expect((await book()).status).not.toBe(200);
+
+      expect((await setVirtual(onlineId, true)).status).toBe(200);
+      // The trigger keeps the event (the teacher's week) but drops the room.
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const event = await readDoc('calendarEvents', `lesson-${onlineId}`);
+      expect(event).not.toBeNull();
+      expect(event?.room ?? null).toBeNull();
+      expect((await readDoc('lessons', onlineId))?.virtual).toBe(true);
+
+      // Now the room is free for someone else...
+      const second = await book();
+      expect(second.status).toBe(200);
+
+      // ...so the online lesson cannot come back into it.
+      expect((await setVirtual(onlineId, false)).status).not.toBe(200);
+    });
   });
 });

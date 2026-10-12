@@ -100,6 +100,27 @@ describe('onLessonWrite', () => {
     expect(input.room).toBe('maple');
   });
 
+  it('keeps a lesson held online on the calendar, holding no room (#210)', async () => {
+    await handler({
+      params: { lessonId: 'abc' },
+      data: {
+        before: makeSnapshot(true, scheduledLessonData),
+        after: makeSnapshot(true, {
+          ...scheduledLessonData,
+          room: 'maple',
+          virtual: true,
+        }),
+      },
+    });
+
+    expect(mocks.delete).not.toHaveBeenCalled();
+    const [id, input] = mocks.upsertWithId.mock.calls[0];
+    expect(id).toBe('lesson-abc');
+    // Still the teacher's, so it stays on their week.
+    expect(input.ownerInstructorId).toBe('teacher-1');
+    expect(input.room).toBeNull();
+  });
+
   it('keeps derived events off public feeds and free of student details', async () => {
     await handler({
       params: { lessonId: 'abc' },

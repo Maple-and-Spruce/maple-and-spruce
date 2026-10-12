@@ -31,6 +31,7 @@
  * lessons recorded under the old workflow.
  */
 
+import { lessonRoom } from './room';
 import type { Room } from './room';
 
 export type LessonStatus =
@@ -109,6 +110,19 @@ export function isSubmittableToHope(
   return lessonHappened(lesson, now);
 }
 
+/** Why the studio, rather than the family, cancelled a lesson (#210). */
+export type LessonCancelReason = 'weather';
+
+/**
+ * The room a lesson holds on the calendar: none when it is held online.
+ * Read this rather than `lessonRoom` wherever occupancy is the question.
+ */
+export function lessonOccupiedRoom(
+  lesson: Pick<Lesson, 'room' | 'virtual'>
+): Room | null {
+  return lesson.virtual ? null : lessonRoom(lesson.room);
+}
+
 export interface Lesson {
   id: string;
   studentId: string;
@@ -166,6 +180,19 @@ export interface Lesson {
    * for the Activity tab. Set only by `rescheduleLessonWithCredit`.
    */
   creditForLessonId?: string | null;
+  /**
+   * Why the studio cancelled this lesson, when it was the studio (#210). Only
+   * `weather` today: the Activity tab labels it. A family's cancellation leaves
+   * this unset. Set only by `rescheduleLessonWithCredit`.
+   */
+  cancelledFor?: LessonCancelReason | null;
+  /**
+   * Held online instead of in the room (#210) — the policy's alternative to
+   * cancelling for weather. The lesson keeps its time and its payment; its
+   * calendar event stays (so it is still on the teacher's week) but claims no
+   * room, so the room is free for someone else.
+   */
+  virtual?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -185,7 +212,13 @@ export type CreateLessonInput = Omit<
 export type UpdateLessonInput = Partial<
   Omit<
     Lesson,
-    'id' | 'studentId' | 'seriesId' | 'creditForLessonId' | 'createdAt' | 'updatedAt'
+    | 'id'
+    | 'studentId'
+    | 'seriesId'
+    | 'creditForLessonId'
+    | 'cancelledFor'
+    | 'createdAt'
+    | 'updatedAt'
   >
 > & {
   id: string;

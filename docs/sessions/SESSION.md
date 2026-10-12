@@ -6,6 +6,18 @@
 
 ## Current Status
 
+### Weather: reschedule with a credit, or hold online (2026-10-12, #210)
+
+- **Weather** on a lesson (Upcoming lessons, Activity menu), one student at a time. It opens the
+  cancel dialog's weather variant with two choices:
+  - **Reschedule with a credit**: the #209 flow, with the original labelled Weather
+    (`Lesson.cancelledFor`).
+  - **Hold it online**: `Lesson.virtual`. The lesson keeps its time and payment.
+- **An online lesson keeps its calendar event**, so it stays on the teacher's My Week, but the
+  event holds no room (`lessonOccupiedRoom`). Moving an online lesson skips the room check;
+  **In person** brings it back only if the room is still free.
+- Also used when a teacher cancels: the policy treats teacher and studio cancellations alike.
+
 ### Lesson cancel and reschedule with a credit (2026-10-12, #209)
 
 - New lesson policy: a family that cancels is still charged, and Katie may give a credit

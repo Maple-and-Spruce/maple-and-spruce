@@ -16,6 +16,8 @@
  *    a credit (#209). A cancelled lesson can be undone, or rescheduled with a
  *    credit later; once it has been, its row says where to, and the new
  *    lesson's row says which lesson it is a credit for.
+ *  - **Weather…** (#210): reschedule with a credit or hold it online. A lesson
+ *    held online says so, and can be brought back **In person**.
  *  - **Delete**: it is gone, as if it was never booked.
  *
  * "Add a lesson" sits on the table too, so a lesson that happened but never
@@ -69,6 +71,10 @@ export interface LessonActivityProps {
   onRestore: (lesson: Lesson) => void;
   /** Reschedules an already-cancelled lesson with a credit. */
   onReschedule?: (lesson: Lesson) => void;
+  /** Opens the weather dialog for a lesson not yet cancelled (#210). */
+  onWeather?: (lesson: Lesson) => void;
+  /** Brings a lesson held online back into the room (#210). */
+  onInPerson?: (lesson: Lesson) => void;
   /**
    * The lesson that replaced a cancelled one, if any (#209). A replaced lesson
    * cannot be restored or credited again, and its row says where it went.
@@ -174,6 +180,8 @@ function ActivityTable({
   onCancel,
   onRestore,
   onReschedule,
+  onWeather,
+  onInPerson,
   replacementOf,
   onDelete,
   onAdd,
@@ -194,14 +202,17 @@ function ActivityTable({
         const original = lesson.creditForLessonId
           ? byId.get(lesson.creditForLessonId)
           : undefined;
-        let note: string | undefined;
+        const notes: string[] = [];
+        if (lesson.cancelledFor === 'weather') notes.push('Weather');
         if (replacement) {
-          note = `Rescheduled to ${shortDate(replacement.scheduledAt)}`;
+          notes.push(`Rescheduled to ${shortDate(replacement.scheduledAt)}`);
         } else if (lesson.creditForLessonId) {
-          note = original
-            ? `Credit for ${shortDate(original.scheduledAt)}`
-            : 'Credit';
+          notes.push(
+            original ? `Credit for ${shortDate(original.scheduledAt)}` : 'Credit'
+          );
         }
+        if (lesson.virtual && lesson.status !== 'cancelled') notes.push('Online');
+        const note = notes.length > 0 ? notes.join(' · ') : undefined;
         return {
           lesson,
           atMs: lesson.scheduledAt.getTime(),
@@ -357,6 +368,8 @@ function ActivityTable({
           onCancel,
           onRestore,
           onReschedule,
+          onWeather,
+          onInPerson,
           onDelete,
         }).map((item) => (
           <MenuItem
@@ -396,6 +409,8 @@ function rowMenuItems(
     | 'onCancel'
     | 'onRestore'
     | 'onReschedule'
+    | 'onWeather'
+    | 'onInPerson'
     | 'onDelete'
   >
 ): RowMenuItem[] {
@@ -409,6 +424,12 @@ function rowMenuItems(
   }
   if (lesson.status !== 'cancelled') {
     items.push({ text: 'Cancel…', run: () => handlers.onCancel(lesson) });
+    const { onWeather, onInPerson } = handlers;
+    if (lesson.virtual && onInPerson) {
+      items.push({ text: 'In person', run: () => onInPerson(lesson) });
+    } else if (!lesson.virtual && onWeather) {
+      items.push({ text: 'Weather…', run: () => onWeather(lesson) });
+    }
   } else if (!row.replaced) {
     const { onReschedule } = handlers;
     if (onReschedule) {

@@ -10,6 +10,7 @@ import {
   lessonHappened,
   replaceCoveredLesson,
   creditLessonId,
+  lessonOccupiedRoom,
 } from './lesson';
 
 const makeLesson = (overrides: Partial<Lesson> = {}): Lesson => ({
@@ -267,5 +268,16 @@ describe('replaceCoveredLesson (#209)', () => {
 describe('creditLessonId (#209)', () => {
   it('derives one replacement id per cancelled lesson', () => {
     expect(creditLessonId('les-1')).toBe('les-1-credit');
+  });
+});
+
+describe('lessonOccupiedRoom (#210)', () => {
+  it('is the lesson room, Spruce when it names none', () => {
+    expect(lessonOccupiedRoom({ room: 'spruce' })).toBe('spruce');
+    expect(lessonOccupiedRoom({})).toBe('spruce');
+  });
+
+  it('is no room for a lesson held online', () => {
+    expect(lessonOccupiedRoom({ room: 'spruce', virtual: true })).toBeNull();
   });
 });

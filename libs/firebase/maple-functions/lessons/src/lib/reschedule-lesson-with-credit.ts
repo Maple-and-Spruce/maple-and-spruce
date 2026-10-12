@@ -85,10 +85,16 @@ export async function rescheduleLessonWithCredit(
 
   const coverage = await movePayment(original, replacement.id);
 
+  const cancelledFor = data.reason ?? original.cancelledFor ?? null;
   const cancelled =
-    original.status === 'cancelled'
+    original.status === 'cancelled' &&
+    (original.cancelledFor ?? null) === cancelledFor
       ? original
-      : await LessonRepository.update({ id: original.id, status: 'cancelled' });
+      : await LessonRepository.update({
+          id: original.id,
+          status: 'cancelled',
+          cancelledFor,
+        });
 
   return { cancelled, replacement, coverage };
 }
