@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const reportSyncFailureMock = vi.hoisted(() => vi.fn());
+vi.mock('@maple/firebase/sync-alerts', () => ({
+  reportSyncFailure: reportSyncFailureMock,
+}));
 import type { Class } from '@maple/ts/domain';
 
 /**

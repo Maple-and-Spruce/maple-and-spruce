@@ -828,6 +828,38 @@ export default function Error({
 }
 ```
 
+### Failed background syncs email the studio
+
+Firestore-triggered syncs to Webflow and Square catch their errors instead of
+throwing, because a thrown error makes Cloud Functions retry the trigger and a
+flapping API turns that into a loop. A swallowed error is invisible, though, so
+every such catch block also calls `reportSyncFailure` from
+`@maple/firebase/sync-alerts`:
+
+```typescript
+} catch (error) {
+  console.error('Webflow sync error:', error);
+  await reportSyncFailure({
+    source: 'syncClassToWebflow',
+    destination: 'Webflow',
+    entityType: 'class',
+    entityId: event.params.classId,
+    entityLabel: (afterClass ?? beforeClass)?.name,
+    error,
+  });
+}
+```
+
+It writes a plain-text email to the `mail` collection, addressed to
+`ADMIN_ALERT_EMAIL` (Katie in prod, `katie+dev@` in dev). It sends at most one
+email per sync per record every 6 hours, counting the repeats in
+`syncFailureAlerts`, and it never throws. Keep `entityLabel` to class, section
+or category names; never put a customer's name in it (lesson invoices pass no
+label for that reason).
+
+A new sync trigger should do the same. Its spec mocks
+`@maple/firebase/sync-alerts` and asserts the call on its error path.
+
 ---
 
 ## Validation Patterns

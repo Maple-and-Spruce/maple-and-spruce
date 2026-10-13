@@ -30,6 +30,7 @@ import {
   InvoiceRepository,
   StudentRepository,
 } from '@maple/firebase/database';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) => defineSecret(name));
 const squareStringParams = SQUARE_STRING_NAMES.map((name) => defineString(name));
@@ -223,6 +224,13 @@ export const syncInvoiceToSquare = onDocumentWritten(
         const message =
           error instanceof Error ? error.message : 'Unknown Square sync error';
         console.error(`[sync-invoice] ${invoiceId} send failed:`, message);
+        await reportSyncFailure({
+          source: 'syncInvoiceToSquare',
+          destination: 'Square',
+          entityType: 'lesson invoice (send)',
+          entityId: invoiceId,
+          error,
+        });
         await tolerateMidSyncDelete(invoiceId, 'send-error writeback', () =>
           InvoiceRepository.recordSquareSyncError({
             id: invoiceId,
@@ -249,6 +257,13 @@ export const syncInvoiceToSquare = onDocumentWritten(
         const message =
           error instanceof Error ? error.message : 'Unknown Square sync error';
         console.error(`[sync-invoice] ${invoiceId} cancel failed:`, message);
+        await reportSyncFailure({
+          source: 'syncInvoiceToSquare',
+          destination: 'Square',
+          entityType: 'lesson invoice (cancel)',
+          entityId: invoiceId,
+          error,
+        });
         await tolerateMidSyncDelete(invoiceId, 'cancel-error writeback', () =>
           InvoiceRepository.recordSquareSyncError({
             id: invoiceId,

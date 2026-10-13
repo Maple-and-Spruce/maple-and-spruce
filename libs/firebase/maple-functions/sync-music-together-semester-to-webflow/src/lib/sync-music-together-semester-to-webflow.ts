@@ -30,6 +30,7 @@ import {
 } from '@maple/firebase/webflow';
 import { MusicTogetherSemesterRepository } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 // Define secrets INLINE to avoid cold start delays
 const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
@@ -210,6 +211,14 @@ export const syncMusicTogetherSemesterToWebflow = onDocumentWritten(
       }
     } catch (error) {
       console.error('Webflow MT semester sync error:', error);
+      await reportSyncFailure({
+        source: 'syncMusicTogetherSemesterToWebflow',
+        destination: 'Webflow',
+        entityType: 'Music Together semester',
+        entityId: event.params.semesterId,
+        entityLabel: (afterSemester ?? beforeSemester)?.name,
+        error,
+      });
       // Don't throw — prevent retry loops for Webflow API errors.
     }
   }

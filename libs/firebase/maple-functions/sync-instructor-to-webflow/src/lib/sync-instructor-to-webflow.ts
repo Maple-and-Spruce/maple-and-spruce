@@ -28,6 +28,7 @@ import {
 } from '@maple/firebase/webflow';
 import { InstructorRepository } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 // Define secrets INLINE - NOT at module level to avoid cold start delays
 const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) => defineSecret(name));
@@ -170,6 +171,14 @@ export const syncInstructorToWebflow = onDocumentWritten(
       }
     } catch (error) {
       console.error('Webflow sync error:', error);
+      await reportSyncFailure({
+        source: 'syncInstructorToWebflow',
+        destination: 'Webflow',
+        entityType: 'instructor',
+        entityId: event.params.instructorId,
+        entityLabel: (afterInstructor ?? beforeInstructor)?.name,
+        error,
+      });
       // Don't throw - we don't want to trigger retries for Webflow API errors
       // In production, we'd want to send these to a dead letter queue
     }

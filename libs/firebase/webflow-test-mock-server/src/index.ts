@@ -10,4 +10,5 @@ export {
   getWebflowDeleteLog,
   failNextWebflowLookups,
   clearWebflowLookupFailures,
+  failNextWebflowWrites,
 } from './lib/routes/webflow';
