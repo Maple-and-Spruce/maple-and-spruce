@@ -96,6 +96,7 @@ jobs:
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
     outputs:
       matrix: ${{ steps.get_affected.outputs.matrix }}
+      dev_matrix: ${{ steps.get_affected.outputs.dev_matrix }}
       has_changes: ${{ steps.get_affected.outputs.has_changes }}
       cache_key: ${{ steps.set_cache_key.outputs.key }}
       affected_codebases: ${{ steps.get_affected.outputs.affected_codebases }}
@@ -203,7 +204,20 @@ jobs:
 
           # Build arrays of function names with their codebases
           declare -A CODEBASE_FUNCTIONS
+          declare -A DEV_CODEBASE_FUNCTIONS
           AFFECTED_CODEBASES_SET=()
+
+          # Scheduled functions deploy to PROD ONLY. Each one owns a Cloud
+          # Scheduler job, billed whether or not it runs, and dev had no use
+          # for them. `schedule` is a string, not a param, so the only way to
+          # keep the job out of dev is to keep the function out of the dev
+          # filter. Derived from source (any library importing the scheduler),
+          # so a new scheduled job is prod-only without anyone remembering.
+          # In dev, run a job by hand through its admin-callable twin — see
+          # docs/reference/deployed-functions.md "Scheduled functions".
+          PROD_ONLY_LIBS=$(npx -y tsx tools/list-prod-only-functions.ts)
+          echo "Prod-only (scheduled) libraries, left out of the dev deploy:"
+          echo "$PROD_ONLY_LIBS"
 
           while IFS= read -r lib; do
             # Skip empty lines
@@ -232,12 +246,29 @@ jobs:
             else
               CODEBASE_FUNCTIONS[$CODEBASE]="${CODEBASE_FUNCTIONS[$CODEBASE]},functions:${CODEBASE}:${FUNC_NAME}"
             fi
+
+            # Same, minus the prod-only libraries, for the dev deploy.
+            if ! grep -qxF "$lib" <<< "$PROD_ONLY_LIBS"; then
+              DEV_CODEBASE_FUNCTIONS[$CODEBASE]="${DEV_CODEBASE_FUNCTIONS[$CODEBASE]:+${DEV_CODEBASE_FUNCTIONS[$CODEBASE]},}functions:${CODEBASE}:${FUNC_NAME}"
+            fi
           done <<< "$AFFECTED_LIBS"
+
+          # The dev matrix: one entry per codebase with anything left to
+          # deploy. Can be empty when only scheduled functions changed;
+          # deploy_functions_dev then skips, which e2e_dev treats as a pass.
+          DEV_MATRIX=$(
+            for CODEBASE in "${!DEV_CODEBASE_FUNCTIONS[@]}"; do
+              jq -nc --arg f "${DEV_CODEBASE_FUNCTIONS[$CODEBASE]}" '{functions: $f}'
+            done | jq -sc '{include: .}'
+          )
+          echo "dev_matrix=$DEV_MATRIX" >> $GITHUB_OUTPUT
+          echo "Dev matrix: $DEV_MATRIX"
 
           if [ ${#CODEBASE_FUNCTIONS[@]} -eq 0 ]; then
             echo "No functions were affected"
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            echo "dev_matrix={\"include\":[]}" >> $GITHUB_OUTPUT
             echo "affected_codebases=[]" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -345,10 +376,12 @@ jobs:
 
   deploy_functions_dev:
     needs: prepare_and_build
+    # dev_matrix, not matrix: scheduled functions are prod-only (see
+    # tools/list-prod-only-functions.ts), so dev has no Cloud Scheduler jobs.
     if: >-
       needs.prepare_and_build.outputs.has_changes == 'true' &&
-      needs.prepare_and_build.outputs.matrix != '' &&
-      toJson(fromJson(needs.prepare_and_build.outputs.matrix).include) != '[]'
+      needs.prepare_and_build.outputs.dev_matrix != '' &&
+      toJson(fromJson(needs.prepare_and_build.outputs.dev_matrix).include) != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -366,7 +399,7 @@ jobs:
       max-parallel: 1
       # One codebase failing shouldn't cancel the others mid-deploy.
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare_and_build.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare_and_build.outputs.dev_matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
