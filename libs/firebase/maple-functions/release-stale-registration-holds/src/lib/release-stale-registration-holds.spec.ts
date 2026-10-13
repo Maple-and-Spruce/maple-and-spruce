@@ -54,7 +54,11 @@ vi.mock('@maple/firebase/database', () => ({
   },
 }));
 
-import { releaseStaleRegistrationHolds } from './release-stale-registration-holds';
+import { getDb } from '@maple/firebase/database';
+import {
+  releaseStaleHolds,
+  releaseStaleRegistrationHolds,
+} from './release-stale-registration-holds';
 
 const handler = releaseStaleRegistrationHolds as unknown as () => Promise<void>;
 
@@ -129,5 +133,32 @@ describe('releaseStaleRegistrationHolds', () => {
     await handler();
 
     expect(mocks.txnUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('releaseStaleHolds (the hand-run path, used in dev)', () => {
+  it('reports what it found and released, so the tool can say so', async () => {
+    mocks.get.mockResolvedValue({
+      empty: false,
+      size: 2,
+      docs: [queryDoc('reg-stale'), queryDoc('reg-paid')],
+    });
+    mocks.freshData.set('reg-stale', { status: 'pending' });
+    mocks.freshData.set('reg-paid', { status: 'pending', squarePaymentId: 'PAY-2' });
+
+    const result = await releaseStaleHolds(getDb(), new Date('2026-10-13T12:00:00Z'));
+
+    expect(result).toEqual({ found: 2, released: 1 });
+    expect(mocks.txnUpdate).toHaveBeenCalledTimes(1);
+    expect(mocks.txnUpdate).toHaveBeenCalledWith(
+      { id: 'reg-stale' },
+      expect.objectContaining({ status: 'cancelled' })
+    );
+  });
+
+  it('reports zero when nothing is stale', async () => {
+    mocks.get.mockResolvedValue({ empty: true, size: 0, docs: [] });
+
+    await expect(releaseStaleHolds(getDb())).resolves.toEqual({ found: 0, released: 0 });
   });
 });
