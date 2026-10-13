@@ -43,6 +43,26 @@ function takeLookupFailure(): number | null {
   return status;
 }
 
+/**
+ * When set, the next `remaining` write requests (create + update) answer with
+ * `status` instead of succeeding. Lookups recover from a failure by scanning,
+ * so they cannot make a sync fail outright; a write failure can. This is what
+ * exercises the failed-sync alert path.
+ */
+let failNextWrites: { status: number; remaining: number } | null = null;
+
+function takeWriteFailure(): number | null {
+  if (!failNextWrites) return null;
+  const { status } = failNextWrites;
+  failNextWrites.remaining -= 1;
+  if (failNextWrites.remaining <= 0) failNextWrites = null;
+  return status;
+}
+
+function writeFailureResponse(status: number) {
+  return { status, body: { code: status, msg: 'Mock write failure' } };
+}
+
 function getCollection(
   collectionId: string
 ): Map<string, Record<string, unknown>> {
@@ -53,6 +73,26 @@ function getCollection(
 }
 
 export function registerWebflowRoutes(server: WebflowMockServer): void {
+  // Test controls, for emulator-backed suites that run this mock in a
+  // separate process and so cannot call the exported helpers directly.
+  server.post('/_mock/fail-next-lookups', (req) => {
+    const body = (req.body ?? {}) as { status?: number; count?: number };
+    failNextWebflowLookups(body.status ?? 500, body.count ?? 1);
+    return { status: 200, body: { armed: true } };
+  });
+
+  server.post('/_mock/fail-next-writes', (req) => {
+    const body = (req.body ?? {}) as { status?: number; count?: number };
+    failNextWebflowWrites(body.status ?? 500, body.count ?? 1);
+    return { status: 200, body: { armed: true } };
+  });
+
+  server.post('/_mock/clear-failures', () => {
+    failNextLookups = null;
+    failNextWrites = null;
+    return { status: 200, body: { cleared: true } };
+  });
+
   // List collection items
   server.get('/collections/:collectionId/items', (req) => {
     const failure = takeLookupFailure();
@@ -111,6 +151,8 @@ export function registerWebflowRoutes(server: WebflowMockServer): void {
 
   // Create collection item
   server.post('/collections/:collectionId/items', (req) => {
+    const writeFailure = takeWriteFailure();
+    if (writeFailure) return writeFailureResponse(writeFailure);
     const collectionId = req.params['collectionId'];
     const body = req.body as Record<string, unknown>;
     itemCounter++;
@@ -135,6 +177,8 @@ export function registerWebflowRoutes(server: WebflowMockServer): void {
 
   // Update collection item
   server.patch('/collections/:collectionId/items/:itemId', (req) => {
+    const writeFailure = takeWriteFailure();
+    if (writeFailure) return writeFailureResponse(writeFailure);
     const collectionId = req.params['collectionId'];
     const itemId = req.params['itemId'];
     const body = req.body as Record<string, unknown>;
@@ -225,6 +269,7 @@ export function resetWebflowState(): void {
   collections.clear();
   deleteLog.length = 0;
   failNextLookups = null;
+  failNextWrites = null;
 }
 
 /**
@@ -232,7 +277,7 @@ export function resetWebflowState(): void {
  *
  * For in-process suites. Emulator-backed suites run the mock in a separate
  * `tsx` process, where this module's state is unreachable — those arm it over
- * HTTP with `POST /_mock/fail-next-lookups`.
+ * HTTP with `POST /_mock/fail-next-lookups` (and `POST /_mock/clear-failures`).
  */
 export function failNextWebflowLookups(status = 500, count = 1): void {
   failNextLookups = { status, remaining: count };
@@ -249,6 +294,15 @@ export function failNextWebflowLookups(status = 500, count = 1): void {
  */
 export function clearWebflowLookupFailures(): void {
   failNextLookups = null;
+}
+
+/**
+ * Arm the next `count` write requests (create + update) to fail with
+ * `status`. Use a 4xx: the Webflow SDK retries 5xx and 429 internally.
+ * Emulator-backed suites use `POST /_mock/fail-next-writes`.
+ */
+export function failNextWebflowWrites(status = 400, count = 1): void {
+  failNextWrites = { status, remaining: count };
 }
 
 /**

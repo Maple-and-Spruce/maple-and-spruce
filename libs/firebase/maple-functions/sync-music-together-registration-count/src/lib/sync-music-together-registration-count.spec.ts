@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const reportSyncFailureMock = vi.hoisted(() => vi.fn());
+vi.mock('@maple/firebase/sync-alerts', () => ({
+  reportSyncFailure: reportSyncFailureMock,
+}));
 import type { MusicTogetherSection } from '@maple/ts/domain';
 import type { DocumentSnapshot } from 'firebase-functions/v2/firestore';
 
@@ -481,6 +486,9 @@ describe('Sync Music Together Registration Count', () => {
           },
         })
       ).resolves.toBeUndefined();
+      expect(reportSyncFailureMock).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'syncMusicTogetherRegistrationCount' })
+      );
     });
   });
 });

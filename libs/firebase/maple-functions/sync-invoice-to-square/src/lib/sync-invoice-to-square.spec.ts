@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const reportSyncFailureMock = vi.hoisted(() => vi.fn());
+vi.mock('@maple/firebase/sync-alerts', () => ({
+  reportSyncFailure: reportSyncFailureMock,
+}));
+
 /**
  * Unit tests for the sync-invoice-to-square Firestore trigger.
  *

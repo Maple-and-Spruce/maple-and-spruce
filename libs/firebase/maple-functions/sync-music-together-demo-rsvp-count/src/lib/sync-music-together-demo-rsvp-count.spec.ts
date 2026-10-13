@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const reportSyncFailureMock = vi.hoisted(() => vi.fn());
+vi.mock('@maple/firebase/sync-alerts', () => ({
+  reportSyncFailure: reportSyncFailureMock,
+}));
 import type { MusicTogetherDemo } from '@maple/ts/domain';
 import type { DocumentSnapshot } from 'firebase-functions/v2/firestore';
 
@@ -304,6 +309,12 @@ describe('Sync Music Together Demo RSVP Count', () => {
       ).resolves.toBeUndefined();
 
       expect(errorSpy).toHaveBeenCalled();
+      expect(reportSyncFailureMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'syncMusicTogetherDemoRsvpCount',
+          entityId: 'demo-001',
+        })
+      );
       expect(mocks.updateWebflowItemId).not.toHaveBeenCalled();
       errorSpy.mockRestore();
     });

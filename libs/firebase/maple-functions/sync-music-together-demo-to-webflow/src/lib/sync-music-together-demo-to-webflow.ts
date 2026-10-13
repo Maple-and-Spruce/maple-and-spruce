@@ -35,6 +35,7 @@ import {
   MusicTogetherDemoRsvpRepository,
 } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 // Define secrets INLINE to avoid cold start delays
 const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
@@ -216,6 +217,14 @@ export const syncMusicTogetherDemoToWebflow = onDocumentWritten(
       }
     } catch (error) {
       console.error('Webflow MT demo sync error:', error);
+      await reportSyncFailure({
+        source: 'syncMusicTogetherDemoToWebflow',
+        destination: 'Webflow',
+        entityType: 'Music Together demo',
+        entityId: event.params.demoId,
+        entityLabel: (afterDemo ?? beforeDemo)?.location,
+        error,
+      });
       // Don't throw — prevent retry loops for Webflow API errors.
     }
   }

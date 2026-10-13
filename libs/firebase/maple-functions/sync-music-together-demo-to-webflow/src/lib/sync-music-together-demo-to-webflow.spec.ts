@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const reportSyncFailureMock = vi.hoisted(() => vi.fn());
+vi.mock('@maple/firebase/sync-alerts', () => ({
+  reportSyncFailure: reportSyncFailureMock,
+}));
+
 /**
  * Tests for sync-music-together-demo-to-webflow.ts
  *
@@ -240,5 +245,8 @@ describe('syncMusicTogetherDemoToWebflow', () => {
         },
       })
     ).resolves.toBeUndefined();
+    expect(reportSyncFailureMock).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'syncMusicTogetherDemoToWebflow' })
+    );
   });
 });

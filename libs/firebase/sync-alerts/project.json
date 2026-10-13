@@ -1,0 +1,12 @@
+{
+  "name": "firebase-sync-alerts",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/sync-alerts/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:util"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}
