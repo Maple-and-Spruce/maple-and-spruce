@@ -11,6 +11,38 @@
 
 **No more `_PROD` suffix** - the project itself determines the environment.
 
+### Destroy the old version after rotating a secret
+
+Secret Manager bills every version that is not **destroyed**, at $0.06 per version per
+month (6 free per billing account). Disabling a version does not stop the charge. Each
+`firebase functions:secrets:set` adds a version and leaves the old one enabled, so
+rotations pile up: by 2026-10 the two projects held 41 versions, 19 of them unused.
+
+A deployed function pins the version that was current at deploy time, so destroy the
+old version only **after** the deploy carrying the new one has landed in that project.
+Check what the services reference, without reading any value:
+
+```bash
+gcloud run services list --project <project> --region us-east4 --format=json \
+  | jq -r '.[] | (.spec.template.metadata.annotations["run.googleapis.com/secrets"] // "")
+      | split(",")[] | select(. != "")' | sort -u            # alias:projects/…/secrets/NAME
+gcloud run services describe <service> --project <project> --region us-east4 \
+  --format='yaml(spec.template.spec.containers[0].env)'      # secretKeyRef.key = version
+```
+
+The email extension (`ext-firestore-send-email-processqueue`) runs in **us-central1** in
+dev and pins its own `firestore-send-email-SMTP_PASSWORD` version, so check it too.
+Then destroy each unused version (permanent):
+
+```bash
+gcloud secrets versions destroy <version> --secret=<NAME> --project <project>
+```
+
+Do not rely on `firebase functions:secrets:prune` here. It only looks at secrets labelled
+`firebase-managed=true`, and ours carry `firebase-managed=functions`, so it reports
+nothing to prune. It also confirms with a default of **yes**, so under
+`--non-interactive` it destroys whatever it found without asking.
+
 ## Environment Detection
 
 The web app selects Firebase config in this order:
