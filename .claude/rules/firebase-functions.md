@@ -105,6 +105,20 @@ npx tsx tools/check-function-library-names.ts --report   # every export + its li
 
 CI runs this on every PR (`build-check.yml` → `callable-roles` job).
 
+## Scheduled functions deploy to prod only
+
+An `onSchedule` function is left out of the **dev** deploy, so dev has no Cloud Scheduler
+jobs (each one bills whether or not it runs). `schedule` is a string, not a param, so this
+cannot be done in code: the merge workflow's `dev_matrix` drops every library that
+`tools/list-prod-only-functions.ts` reports, which is any library whose source imports the
+scheduler provider. Nothing to register when adding one — it is prod-only automatically.
+
+So every scheduled job needs a way to run it **by hand in dev**: an admin-callable twin in its
+own library (see "one library, one function" above), or a `tools/` script for logic that has
+no reason to be a callable (`tools/release-stale-registration-holds.ts`). Do not deploy a
+schedule to dev to test it. The table of jobs and their dev paths is in
+`docs/reference/deployed-functions.md` → "Scheduled functions are prod-only".
+
 ## Writing a domain router (ADR-029)
 
 A router is one deployed function serving many routes. `Functions.router(name, routes)` takes the

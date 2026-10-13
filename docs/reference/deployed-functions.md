@@ -17,6 +17,51 @@
 > Over a limit they answer 429 `RESOURCE_EXHAUSTED`. App Check is enforced in prod (401 without
 > a valid token), except `createRegistrationCheckoutLink`, which stays in `monitor`.
 
+## Scheduled functions are prod-only
+
+Every `onSchedule` function deploys to **prod only**. Dev (`maple-and-spruce-dev`) has no
+Cloud Scheduler jobs: each job bills about $0.10/month whether or not it runs (beyond three
+free per billing account), and in dev they only did pointless work.
+
+`schedule` is a plain string in firebase-functions, so a function cannot be scheduled in one
+project and not the other from code. Instead the merge workflow leaves scheduled libraries out
+of the dev deploy filter (`dev_matrix` in `firebase-functions-merge.yml`). The list is derived
+from source by `tools/list-prod-only-functions.ts` (any library that imports the scheduler
+provider), so a new scheduled job is prod-only without anyone adding it to a list. Every CI
+deploy goes through that filter, so a full redeploy cannot bring a dev job back. Never deploy
+one to dev by hand.
+
+The emulator and the integration suites are unaffected: the emulator loads every export and
+never fires schedules, and the suites drive the logic through the twins below.
+
+**Running a job by hand in dev:**
+
+| Scheduled (prod) | In dev |
+|---|---|
+| `sendClassReminders` | `triggerClassReminders` (admin callable) |
+| `sendMusicTogetherReminders` | `triggerMusicTogetherReminders` (admin callable) |
+| `chargeMusicTogetherInstallments` | `triggerMusicTogetherInstallments` (admin callable, `maple-square`) |
+| `syncLessonInquiries` | `triggerLessonInquirySync` (admin callable) |
+| `runLessonBilling` | `lessonPayments/triggerLessonBilling`: the **Run the billing job** card on `/lesson-billing` |
+| `releaseStaleRegistrationHolds` | `npx tsx tools/release-stale-registration-holds.ts` (dry run), then `--execute` |
+| `expireAgreementRequests` | none; dev agreement requests just stay open past expiry |
+| `expirePastClassPages` | none; it was already a no-op in dev |
+
+An admin callable without a UI button can be called with an admin's ID token. Sign in to the
+dev admin app, copy the `Authorization: Bearer …` value from any callable request in the
+browser's Network tab, then:
+
+```bash
+curl -X POST https://us-east4-maple-and-spruce-dev.cloudfunctions.net/triggerClassReminders \
+  -H "Authorization: Bearer $ID_TOKEN" -H 'Content-Type: application/json' -d '{"data":{}}'
+```
+
+**Stale registration holds in dev.** Abandoning a hosted checkout leaves a `pending`
+registration holding its class spot, and nothing releases it on a timer in dev. The registration
+E2E suites delete their own registrations in teardown, so they do not depend on it. When manual
+hosted-checkout testing leaves a class short a spot, run the hold tool above (it needs
+`gcloud auth application-default login`).
+
 ## Codebase: `maple-core` (`apps/functions/`)
 
 Core CRUD operations, auth, triggers, and admin functions. No heavy third-party dependencies.
@@ -84,7 +129,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
     were removed from the code in #67 and are deleted from each project by hand; CI does not prune.
 
 ### Lesson Inquiries (legacy #795)
-- `syncLessonInquiries` _(scheduled, every 15 min — pulls submissions from the Tally API for the Suzuki form `QKQb6k` and the shared music form `dWPQOr` into `lessonInquiries`. Doc id = Tally submission id, written with `create()`, so a re-poll is a skip and never overwrites a status Katie has advanced. Deliberately NOT persisted from `tallyLeadWebhook`: that path is one-shot and unretryable, lives in the tiny `maple-webhooks` bundle, and cannot backfill history.)_
+- `syncLessonInquiries` _(scheduled, prod only, every 15 min — pulls submissions from the Tally API for the Suzuki form `QKQb6k` and the shared music form `dWPQOr` into `lessonInquiries`. Doc id = Tally submission id, written with `create()`, so a re-poll is a skip and never overwrites a status Katie has advanced. Deliberately NOT persisted from `tallyLeadWebhook`: that path is one-shot and unretryable, lives in the tiny `maple-webhooks` bundle, and cannot backfill history.)_
 - `triggerLessonInquirySync` _(admin callable twin — `onSchedule` triggers are not reachable over HTTP in the emulator)_
 - `lessons/getLessonInquiries`, `lessons/updateLessonInquiryStatus` _(admin; the `/leads` queue)_
 - Requires the **`TALLY_API_KEY`** secret in each project's Secret Manager.
@@ -230,7 +275,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 ### Registrations (read/update)
 - `getRegistrations`, `getRegistration`, `updateRegistration` (the public price preview,
   `calculateRegistrationCost`, is on `publicSite`)
-- `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`. Also emails staff (`ADMIN_ALERT_EMAIL`) once per class whose first session is 7 days out and whose confirmed seats are below `minimumEnrollment`, stamped by `underMinimumAlertSentAt`. Admin twin: `triggerClassReminders`)_
+- `sendClassReminders` _(scheduled, prod only — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_
 
 ### Calendar Events
 - `calendar` — **domain router** in `maple-core` (ADR-029, #73) for the staff side of the calendar:
