@@ -206,6 +206,9 @@
       "@maple/firebase/maple-functions/sync-registration-count": [
         "libs/firebase/maple-functions/sync-registration-count/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-music-together-demo-rsvp-count": [
+        "libs/firebase/maple-functions/sync-music-together-demo-rsvp-count/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-music-together-registration-count": [
         "libs/firebase/maple-functions/sync-music-together-registration-count/src/index.ts"
       ],

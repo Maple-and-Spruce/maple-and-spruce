@@ -6,6 +6,19 @@
 
 ## Current Status
 
+### Merge-day Cloud Run CPU: skip codebases whose bundle didn't change (2026-10-13)
+
+- Measured: the "CPU (Request-based billing)" spike is Cloud Run booting one instance of every
+  new revision at 2 vCPU on deploy, about 22 vCPU-s per function per project, even with no
+  traffic. On 10-09, 25 merges made 2,598 prod revisions (17.5 vCPU-h vs ~1.1 on a quiet day),
+  and dev used about the same again. Deploy boots were ~78% of the Oct 1-12 bill.
+- 43% of those revisions redeployed identical code (same `firebase-functions-hash`).
+  `prepare_and_build` now drops a codebase whose bundle matches the last green merge
+  (`tools/unchanged-function-codebases.sh`). See `docs/architecture/ci-cd.md`.
+- Left as recommendations: keep consolidating (#61; deploy cost scales with function count),
+  trim maple-core's boot (~8s of 2 vCPU per revision), batch merge trains, put the calendar
+  feeds behind a CDN cache (~27 vCPU-s per `classCatalogFeed` request, all cold starts).
+
 ### Weather: reschedule with a credit, or hold online (2026-10-12, #210)
 
 - **Weather** on a lesson (Upcoming lessons, Activity menu), one student at a time. It opens the

@@ -114,8 +114,17 @@ and `tools/check-callable-roles.ts` also carry hardcoded codebase lists.
 1. **Affected detection**: `nx show projects --affected` finds changed function libraries (`firebase-maple-functions-*`)
 2. **Codebase mapping**: `function-codebases.json` maps each library to its codebase. Functions not in the mapping default to `maple-core`.
 3. **Build**: Only affected codebases are built via `nx run {project}:build`
-4. **Lockfile cleanup**: Nx-generated `pnpm-lock.yaml` files are deleted from `dist/` — they can miss aliased transitive deps (e.g. `square-legacy`). Firebase Cloud Build does a fresh `pnpm install` instead.
-5. **Deploy matrix**: Functions are batched into groups of 5 and deployed in parallel per codebase.
+4. **Skip unchanged codebases**: `tools/unchanged-function-codebases.sh` rebuilds each affected codebase at the last commit whose merge run fully succeeded, and drops any codebase whose bundle is byte-identical (ignoring `*.d.ts` and the generated lockfile). It skips nothing if a deploy input outside the bundle changed (`.env.*`, `firebase.json`, `package.json`, the lockfile, the deploy workflow), or if anything about the comparison is in doubt. A manual `deploy_all` run bypasses it.
+5. **Lockfile cleanup**: Nx-generated `pnpm-lock.yaml` files are deleted from `dist/` — they can miss aliased transitive deps (e.g. `square-legacy`). Firebase Cloud Build does a fresh `pnpm install` instead.
+6. **Deploy matrix**: one entry per codebase, deployed one codebase at a time (`max-parallel: 1`), with `tools/deploy-functions-batched.sh` splitting each into batches of 30.
+
+#### Why unchanged codebases are skipped
+
+Every function deploy makes a new Cloud Run revision, and Cloud Run boots one instance of each new revision at 2 vCPU (startup CPU boost) whether or not anything calls it: about 22 vCPU-seconds per function per project. That boot is what the "Cloud Run functions CPU (Request-based billing)" spike on merge days pays for. On 2026-10-09, 25 merges made 2,598 prod revisions and used 17.5 vCPU-hours, against about 1.1 on a day with no deploys. Dev doubled it.
+
+43% of the revisions from 1 to 12 Oct (prod and dev alike) carried the same `firebase-functions-hash` label as the revision they replaced, so they redeployed identical code. nx marks every importer of a changed lib as affected, but each codebase is one bundle, and a type-only or UI-only change leaves it byte-identical. firebase-tools has its own skip for unchanged functions, but it never runs here: it only applies to functions **not** named by `--only` (`targetedByOnly` in `release/planner.js`), and CI always names them.
+
+After rotating a secret, run the workflow by hand with `deploy_all`. A deploy pins the secret version it resolved, and this check can't see a new one.
 
 ## Functions Build Pattern
 
