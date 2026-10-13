@@ -276,6 +276,71 @@ interface RegistrationWidgetProps {
   env: string;
   applePayCheckoutUrl?: string;
   showDigitalWallets?: string;
+  /**
+   * Where first paint comes from. `live` (the default) waits on
+   * `publicSite/getPublicClass` as the widget always has. `cms` renders at
+   * once from the three props below, which the class template page binds to
+   * the class's CMS fields, then refreshes from the live read in the
+   * background. A Designer switch, so it can be flipped back without a deploy.
+   */
+  dataSource?: string;
+  /** CMS `name`. Used only when `dataSource` is `cms`. */
+  cmsClassName?: string;
+  /** CMS `price-cents`. Negative means unbound. */
+  cmsPriceCents?: number;
+  /** CMS `spots-remaining`. */
+  cmsSpotsRemaining?: number;
+}
+
+/** The fields the checkout needs to render, before the full class is known. */
+export type CheckoutClass = Pick<
+  PublicClass,
+  'id' | 'name' | 'priceCents' | 'spotsRemaining'
+>;
+
+/**
+ * The class from CMS-bound props, or `null` when the widget should fall back
+ * to the live read: `cms` mode is off, or the props aren't bound (an unbound
+ * name is empty and an unbound price is the negative default). The fallback
+ * is what makes a half-finished Designer setup harmless.
+ */
+export function classFromCmsProps(props: {
+  classId: string;
+  dataSource?: string;
+  cmsClassName?: string;
+  cmsPriceCents?: number | null;
+  cmsSpotsRemaining?: number | null;
+}): CheckoutClass | null {
+  if (props.dataSource !== 'cms') return null;
+  // An empty CMS number can arrive as null, and Number(null) is 0: a free
+  // class, or a full one. Treat it as unbound instead.
+  if (props.cmsPriceCents == null || props.cmsSpotsRemaining == null) {
+    return null;
+  }
+  const name = props.cmsClassName?.trim();
+  const priceCents = Number(props.cmsPriceCents);
+  const spotsRemaining = Number(props.cmsSpotsRemaining);
+  if (
+    !props.classId ||
+    !name ||
+    !Number.isFinite(priceCents) ||
+    priceCents < 0 ||
+    !Number.isFinite(spotsRemaining)
+  ) {
+    return null;
+  }
+  return { id: props.classId, name, priceCents, spotsRemaining };
+}
+
+/** `?reg=<registrationId>` on a return from Square's hosted checkout. */
+function hostedCheckoutReturnId(): string | null {
+  return typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('reg')
+    : null;
+}
+
+function hasHostedCheckoutReturn(): boolean {
+  return hostedCheckoutReturnId() !== null;
 }
 
 interface ConfirmedState {
@@ -286,10 +351,15 @@ interface ConfirmedState {
   className: string;
   pricePaidCents: number;
   quantity: number;
-  classDate: string;
-  classEndDate: string;
-  classDurationMinutes: number;
-  skillLevel: string;
+  /**
+   * Schedule details, from the full class. Absent only if the live read
+   * never succeeded in `cms` mode; the confirmation then omits the date and
+   * the calendar button rather than showing a wrong one.
+   */
+  classDate?: string;
+  classEndDate?: string;
+  classDurationMinutes?: number;
+  skillLevel?: string;
   location?: string;
   agreementsSigned?: boolean;
 }
@@ -297,7 +367,15 @@ interface ConfirmedState {
 type WidgetState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; publicClass: PublicClass; requiredAgreements: RequiredAgreementTemplate[] }
+  | {
+      status: 'ready';
+      /** What the checkout renders from: CMS props at first, then live. */
+      checkoutClass: CheckoutClass;
+      /** The full class, once the live read lands. */
+      publicClass?: PublicClass;
+      /** `undefined` while still loading; Pay stays disabled until known. */
+      requiredAgreements?: RequiredAgreementTemplate[];
+    }
   // Buyer returned from Square's hosted checkout (?reg=<id>); we're polling for
   // the webhook to confirm. `timedOut` = still pending after the poll window.
   | { status: 'confirming'; customerEmail?: string; timedOut: boolean }
@@ -308,7 +386,8 @@ type WidgetState =
  * the inline-payment success path and the hosted-checkout return path.
  */
 function buildConfirmedState(
-  pc: PublicClass,
+  checkoutClass: CheckoutClass,
+  pc: PublicClass | undefined,
   details: {
     confirmationNumber: string;
     customerName: string;
@@ -318,23 +397,38 @@ function buildConfirmedState(
     agreementsSigned?: boolean;
   }
 ): ConfirmedState {
-  const firstSessionIso = pc.sessions?.[0]?.dateTime ?? '';
-  const startDate = new Date(firstSessionIso);
-  const endDate = new Date(startDate.getTime() + pc.durationMinutes * 60 * 1000);
-  return {
+  const base: ConfirmedState = {
     status: 'confirmed',
     confirmationNumber: details.confirmationNumber,
     customerName: details.customerName,
     customerEmail: details.customerEmail,
-    className: pc.name,
+    className: checkoutClass.name,
     pricePaidCents: details.pricePaidCents,
     quantity: details.quantity,
+    agreementsSigned: details.agreementsSigned,
+  };
+  const firstSessionIso = pc?.sessions?.[0]?.dateTime;
+  if (!pc || !firstSessionIso) return base;
+
+  const startDate = new Date(firstSessionIso);
+  const endDate = new Date(startDate.getTime() + pc.durationMinutes * 60 * 1000);
+  return {
+    ...base,
     classDate: firstSessionIso,
     classEndDate: endDate.toISOString(),
     classDurationMinutes: pc.durationMinutes,
     skillLevel: pc.skillLevel,
     location: pc.location,
-    agreementsSigned: details.agreementsSigned,
+  };
+}
+
+/** The checkout fields of a full class. */
+function toCheckoutClass(pc: PublicClass): CheckoutClass {
+  return {
+    id: pc.id,
+    name: pc.name,
+    priceCents: pc.priceCents,
+    spotsRemaining: pc.spotsRemaining,
   };
 }
 
@@ -345,9 +439,29 @@ export function RegistrationWidget({
   env,
   applePayCheckoutUrl,
   showDigitalWallets,
+  dataSource,
+  cmsClassName,
+  cmsPriceCents,
+  cmsSpotsRemaining,
 }: RegistrationWidgetProps) {
   const digitalWalletsEnabled = showDigitalWallets === 'show';
-  const [state, setState] = useState<WidgetState>({ status: 'loading' });
+  const cmsClass = useMemo(
+    () =>
+      classFromCmsProps({
+        classId,
+        dataSource,
+        cmsClassName,
+        cmsPriceCents,
+        cmsSpotsRemaining,
+      }),
+    [classId, dataSource, cmsClassName, cmsPriceCents, cmsSpotsRemaining]
+  );
+  // With CMS props there is nothing to wait for: the first render is the form.
+  const [state, setState] = useState<WidgetState>(() =>
+    cmsClass && !hasHostedCheckoutReturn()
+      ? { status: 'ready', checkoutClass: cmsClass }
+      : { status: 'loading' }
+  );
 
   const functions = useMemo(() => getWidgetFunctions(env), [env]);
 
@@ -390,7 +504,7 @@ export function RegistrationWidget({
 
         if (res.status === 'confirmed' && res.confirmation) {
           setState(
-            buildConfirmedState(publicClass, {
+            buildConfirmedState(toCheckoutClass(publicClass), publicClass, {
               confirmationNumber: res.confirmation.confirmationNumber ?? '',
               customerName: res.confirmation.customerName,
               customerEmail: res.confirmation.customerEmail,
@@ -419,26 +533,78 @@ export function RegistrationWidget({
       return true;
     };
 
+    const getPublicClass = routeCallable<
+      GetPublicClassRequest,
+      GetPublicClassResponse
+    >(functions, 'publicSite', 'getPublicClass');
+
+    const getRequiredAgreements = routeCallable<
+      GetRequiredAgreementsForClassRequest,
+      GetRequiredAgreementsForClassResponse
+    >(functions, 'publicSite', 'getRequiredAgreementsForClass');
+
+    // A failed agreements lookup has always meant "none required"; the
+    // server does its own check at registration.
+    const fetchAgreements = () =>
+      getRequiredAgreements({ classId })
+        .then((r) => r.data.agreements)
+        .catch(
+          () => [] as GetRequiredAgreementsForClassResponse['agreements']
+        );
+
+    const trackView = (c: CheckoutClass) =>
+      trackViewClass(typeof window !== 'undefined' ? window : null, {
+        classId: c.id,
+        className: c.name,
+        priceCents: c.priceCents,
+      });
+
+    let cancelled = false;
+
+    // CMS first paint: the form is already on screen (initial state). Fill in
+    // the agreements and the live class in the background. The live read
+    // replaces the CMS numbers, so a lagging or failed sync can't leave a
+    // stale spot count up for long. Server-side capacity checks are what
+    // prevent overbooking either way.
+    const refreshInBackground = (fallback: CheckoutClass) => {
+      trackView(fallback);
+      fetchAgreements().then((agreements) => {
+        if (cancelled) return;
+        setState((prev) =>
+          prev.status === 'ready'
+            ? { ...prev, requiredAgreements: agreements }
+            : prev
+        );
+      });
+      getPublicClass({ id: classId })
+        .then((r) => {
+          if (cancelled) return;
+          const publicClass = r.data.class;
+          setState((prev) =>
+            prev.status === 'ready'
+              ? {
+                  ...prev,
+                  publicClass,
+                  checkoutClass: toCheckoutClass(publicClass),
+                }
+              : prev
+          );
+        })
+        .catch((err) => {
+          // Keep the CMS copy; checkout re-validates on the server.
+          console.warn('Live class refresh failed; showing CMS data:', err);
+        });
+    };
+
     const fetchClass = async () => {
       setState({ status: 'loading' });
       try {
-        const getPublicClass = routeCallable<
-          GetPublicClassRequest,
-          GetPublicClassResponse
-        >(functions, 'publicSite', 'getPublicClass');
-
-        const getRequiredAgreements = routeCallable<
-          GetRequiredAgreementsForClassRequest,
-          GetRequiredAgreementsForClassResponse
-        >(functions, 'publicSite', 'getRequiredAgreementsForClass');
-
         // Fetch class and required agreements in parallel
-        const [classResult, agreementsResult] = await Promise.all([
+        const [classResult, requiredAgreements] = await Promise.all([
           getPublicClass({ id: classId }),
-          getRequiredAgreements({ classId }).catch(() => ({
-            data: { agreements: [] as GetRequiredAgreementsForClassResponse['agreements'] },
-          })),
+          fetchAgreements(),
         ]);
+        if (cancelled) return;
 
         const publicClass = classResult.data.class;
 
@@ -446,10 +612,7 @@ export function RegistrationWidget({
         // after paying. Verify the payment landed (the webhook is the source of
         // truth — never trust the param) and show a real confirmation instead
         // of a blank form, so a buyer who paid doesn't pay again.
-        const regId =
-          typeof window !== 'undefined'
-            ? new URLSearchParams(window.location.search).get('reg')
-            : null;
+        const regId = hostedCheckoutReturnId();
         if (regId) {
           const shown = await showHostedCheckoutReturn(regId, publicClass);
           if (shown) return; // confirmed or confirming — don't render the form
@@ -457,17 +620,11 @@ export function RegistrationWidget({
 
         setState({
           status: 'ready',
+          checkoutClass: toCheckoutClass(publicClass),
           publicClass,
-          requiredAgreements: agreementsResult.data.agreements,
+          requiredAgreements,
         });
-        trackViewClass(
-          typeof window !== 'undefined' ? window : null,
-          {
-            classId: publicClass.id,
-            className: publicClass.name,
-            priceCents: publicClass.priceCents,
-          }
-        );
+        trackView(publicClass);
       } catch (err) {
         console.error('Failed to fetch class:', err);
         setState({
@@ -477,8 +634,18 @@ export function RegistrationWidget({
       }
     };
 
-    fetchClass();
-  }, [classId, functions]);
+    // A hosted-checkout return always takes the live path: the buyer has to
+    // see a verified confirmation, not a form.
+    if (cmsClass && !hostedCheckoutReturnId()) {
+      refreshInBackground(cmsClass);
+    } else {
+      fetchClass();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, functions, cmsClass]);
 
   const handleCalculateCost = useCallback(
     async (
@@ -522,9 +689,9 @@ export function RegistrationWidget({
         trackAddClassToCart(
           typeof window !== 'undefined' ? window : null,
           {
-            classId: state.publicClass.id,
-            className: state.publicClass.name,
-            priceCents: state.publicClass.priceCents,
+            classId: state.checkoutClass.id,
+            className: state.checkoutClass.name,
+            priceCents: state.checkoutClass.priceCents,
             quantity: data.quantity,
           }
         );
@@ -593,7 +760,7 @@ export function RegistrationWidget({
     }) => {
       if (state.status !== 'ready') return;
 
-      const pc = state.publicClass;
+      const pc = state.checkoutClass;
 
       trackPurchaseClass(
         typeof window !== 'undefined' ? window : null,
@@ -606,7 +773,7 @@ export function RegistrationWidget({
         }
       );
 
-      setState(buildConfirmedState(pc, details));
+      setState(buildConfirmedState(pc, state.publicClass, details));
     },
     [state]
   );
@@ -652,9 +819,9 @@ export function RegistrationWidget({
         {state.status === 'ready' && (
           <>
             {/* Registration Form */}
-            {state.publicClass.spotsRemaining <= 0 ? (
+            {state.checkoutClass.spotsRemaining <= 0 ? (
               <SoldOutPanel
-                classId={state.publicClass.id}
+                classId={state.checkoutClass.id}
                 functions={functions}
               />
             ) : !squareAppId ? (
@@ -665,12 +832,13 @@ export function RegistrationWidget({
             ) : (
               <Box>
                 <RegistrationCheckoutForm
-                  publicClass={state.publicClass}
+                  publicClass={state.checkoutClass}
                   squareApplicationId={squareAppId}
                   squareLocationId={squareLocationId}
                   applePayCheckoutUrl={digitalWalletsEnabled ? applePayCheckoutUrl : undefined}
                   showDigitalWallets={digitalWalletsEnabled}
                   requiredAgreements={state.requiredAgreements}
+                  agreementsLoading={state.requiredAgreements === undefined}
                   onCalculateCost={handleCalculateCost}
                   onSubmit={handleSubmit}
                   onHostedCheckout={handleHostedCheckout}
@@ -706,13 +874,17 @@ export function RegistrationWidget({
               }}>
                 {state.className}
               </Typography>
-              <Typography variant="body1" color="textSecondary">
-                {formatClassDateTime(state.classDate)}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                {formatDuration(state.classDurationMinutes)} &middot;{' '}
-                {formatSkillLevel(state.skillLevel)}
-              </Typography>
+              {state.classDate && (
+                <Typography variant="body1" color="textSecondary">
+                  {formatClassDateTime(state.classDate)}
+                </Typography>
+              )}
+              {state.classDurationMinutes !== undefined && state.skillLevel && (
+                <Typography variant="body2" color="textSecondary">
+                  {formatDuration(state.classDurationMinutes)} &middot;{' '}
+                  {formatSkillLevel(state.skillLevel)}
+                </Typography>
+              )}
               <Typography
                 variant="body1"
                 sx={{
@@ -763,11 +935,13 @@ export function RegistrationWidget({
                 mb: 3,
               }}
             >
+              {state.classDate && state.classEndDate && (
               <Button
                 variant="outlined"
                 color="primary"
                 startIcon={<CalendarTodayIcon />}
                 onClick={() => {
+                  if (!state.classDate || !state.classEndDate) return;
                   const icsContent = generateIcsFile({
                     startDate: state.classDate,
                     endDate: state.classEndDate,
@@ -791,6 +965,7 @@ export function RegistrationWidget({
               >
                 Add to Calendar
               </Button>
+              )}
               <Button
                 variant="outlined"
                 color="primary"

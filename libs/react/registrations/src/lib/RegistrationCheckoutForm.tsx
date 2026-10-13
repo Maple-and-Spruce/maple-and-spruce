@@ -12,6 +12,7 @@ import {
   FormControlLabel,
   IconButton,
   Link,
+  Skeleton,
 } from '@mui/material';
 import {
   useSignal,
@@ -101,8 +102,16 @@ function extractErrorMessage(error: unknown): string {
   return fallback;
 }
 
+/** Stable default, so the prop-to-signal sync below doesn't see a new array every render. */
+const NO_AGREEMENTS: RequiredAgreementTemplate[] = [];
+
 interface RegistrationCheckoutFormProps {
-  publicClass: PublicClass;
+  /**
+   * The class being booked. Only these fields are read, so a caller that
+   * renders before the full `PublicClass` has loaded (the Webflow widget
+   * reading CMS-bound props) can pass just these.
+   */
+  publicClass: Pick<PublicClass, 'id' | 'name' | 'spotsRemaining'>;
   squareApplicationId: string;
   squareLocationId: string;
   /**
@@ -117,6 +126,12 @@ interface RegistrationCheckoutFormProps {
   showDigitalWallets?: boolean;
   /** Required agreements that must be signed before checkout */
   requiredAgreements?: RequiredAgreementTemplate[];
+  /**
+   * True while `requiredAgreements` is still being fetched. The waiver section
+   * shows a placeholder and payment stays disabled, so nobody can pay before
+   * knowing whether there is something to sign.
+   */
+  agreementsLoading?: boolean;
   onCalculateCost: (
     classId: string,
     quantity: number,
@@ -167,7 +182,8 @@ export function RegistrationCheckoutForm({
   squareLocationId,
   applePayCheckoutUrl,
   showDigitalWallets = false,
-  requiredAgreements = [],
+  requiredAgreements = NO_AGREEMENTS,
+  agreementsLoading = false,
   onCalculateCost,
   onSubmit,
   onHostedCheckout,
@@ -215,18 +231,42 @@ export function RegistrationCheckoutForm({
   );
   const currentAgreementIndex = useSignal(0);
   const hasRequiredAgreements = requiredAgreements.length > 0;
+
+  // Props that can change after mount (agreements arriving late, a live spot
+  // count replacing the CMS one) are mirrored into signals. A computed signal
+  // only re-runs when a signal it reads changes, so one that read the props
+  // directly would keep the first render's value: agreements that arrived
+  // after mount would never be required, and Pay would unlock unsigned.
+  const requiredAgreementsSignal = useSignal(requiredAgreements);
+  const agreementsLoadingSignal = useSignal(agreementsLoading);
+  const spotsRemainingSignal = useSignal(publicClass.spotsRemaining);
+  useEffect(() => {
+    batch(() => {
+      requiredAgreementsSignal.value = requiredAgreements;
+      agreementsLoadingSignal.value = agreementsLoading;
+      spotsRemainingSignal.value = publicClass.spotsRemaining;
+    });
+  }, [
+    requiredAgreements,
+    agreementsLoading,
+    publicClass.spotsRemaining,
+    requiredAgreementsSignal,
+    agreementsLoadingSignal,
+    spotsRemainingSignal,
+  ]);
+
   const allAgreementsSigned = useComputed(
     () =>
-      !hasRequiredAgreements ||
-      requiredAgreements.every((a) =>
+      !agreementsLoadingSignal.value &&
+      requiredAgreementsSignal.value.every((a) =>
         signedAgreements.value.has(a.templateId)
       )
   );
 
   // Derived state — guaranteed in sync with its inputs.
-  const isFull = useComputed(() => publicClass.spotsRemaining <= 0);
+  const isFull = useComputed(() => spotsRemainingSignal.value <= 0);
   const maxQuantity = useComputed(() =>
-    Math.min(10, publicClass.spotsRemaining)
+    Math.min(10, spotsRemainingSignal.value)
   );
   const discountApplied = useComputed(
     () => (costBreakdown.value?.discountAmountCents ?? 0) > 0
@@ -865,7 +905,13 @@ export function RegistrationCheckoutForm({
           totals can't silently disagree. */}
       {costBreakdown.value && <CostSummary cost={costBreakdown.value} />}
       {/* Required Agreements Section */}
-      {hasRequiredAgreements && (
+      {agreementsLoading && (
+        <Box aria-busy="true" data-testid="agreements-loading">
+          <Skeleton variant="text" width="40%" height={36} />
+          <Skeleton variant="rounded" height={96} />
+        </Box>
+      )}
+      {!agreementsLoading && hasRequiredAgreements && (
         <Box>
           <Typography variant="h6" gutterBottom>
             {requiredAgreements.length === 1
