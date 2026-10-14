@@ -9,6 +9,7 @@
  * - Firebase `name` -> Webflow `name` (title field)
  * - Firebase `sessions[0].dateTime` -> Webflow `date-time`
  * - Firebase `priceCents` -> Webflow `price-cents`
+ * - Firebase `sessions.length` -> Webflow `session-count`
  * - Enriched `instructorName` / `categoryName` -> denormalized text fields
  *
  * @see docs/decisions/ADR-016-webflow-integration-strategy.md
@@ -189,6 +190,11 @@ export function mapClassToFieldData(
     'is-dev-environment': options.isDev,
     'date-time': dateTimeIso,
     'duration-minutes': classEntity.durationMinutes,
+    // Number of scheduled sessions. The /upcoming-classes listing uses it to
+    // tell single-session "Try It" classes (1) from multi-session series such
+    // as the Studio Series (> 1). Always written, so a class that drops to one
+    // session stops reading as a series.
+    'session-count': classEntity.sessions.length,
     'price-cents': classEntity.priceCents,
     capacity: classEntity.capacity,
     'spots-remaining': spotsRemaining,
