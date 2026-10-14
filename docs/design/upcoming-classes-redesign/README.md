@@ -11,6 +11,7 @@ built natively in Webflow (see [Implementation](#implementation)).
 | `Main.dc.html` | Desktop artboard: the date-first class listing |
 | `Phone.dc.html` | iPhone 16 artboard (393 x 852): photo rows, featured Studio Series card, bottom-sheet date picker, sticky next-class bar |
 | `webflow-embed.html` | The CSS + script live on the Webflow page (see [Webflow implementation](#webflow-implementation)) |
+| `webflow-sections-embed.html` | Page-scoped CSS for the header, self-care and Policies sections |
 
 Both are Design-canvas artboard sources, copied verbatim. Images are referenced as
 `/_blob/<id>` URLs, which resolve **only inside the canvas artifact**. Opened on their
@@ -77,11 +78,21 @@ The redesign is built on the live /upcoming-classes page (Webflow page
   phones.
 - **Book a private class:** a native `cls-cta-container` card linking to
   /private-events.
+- **Other sections:** a second HtmlEmbed (`515555fd-21ec-4453-5c30-abf25dd7bd19`,
+  inside the hero section) holds the page-scoped CSS in `webflow-sections-embed.html`
+  for the header, "Crafting for self-care" and "Policies" sections, aligning them to
+  the 960px class-list column. Those sections are targeted by `data-msx` attributes
+  (`hero`, `about-head`, `about`, `policies`), so shared site classes (`section`,
+  `container-13`, `paragraph3`, ...) are untouched. The self-care section gained
+  native 4-step path cards (classes `msx-path` / `msx-step*`: Open Studio Social, Try
+  It, Studio Series, Craft Club), and its "tight budget" paragraph was shortened into
+  a lead-in for them. **Prices in those cards are hard-coded** ($40 to $60, $240,
+  $30/month) and must be updated by hand when prices change.
 - The Designer canvas still shows the old card grid, because the restyle is runtime
   CSS/JS. Check changes on the staging or live site.
 
-**Editing the embed means editing it in Webflow and keeping `webflow-embed.html` in
-sync.** This file is the source of truth the embed points to.
+**Editing either embed means editing it in Webflow and keeping its file here in
+sync.** These files are the source of truth the embeds point to.
 
 ## Open items
 
