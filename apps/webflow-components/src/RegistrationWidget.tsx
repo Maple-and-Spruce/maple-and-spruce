@@ -49,6 +49,7 @@ import {
   trackViewClass,
 } from './lib/class-analytics';
 import { readMetaAttribution } from './lib/meta-attribution';
+import { readGaAttribution } from './lib/ga-attribution';
 import { warmup } from './lib/warmup';
 
 
@@ -530,11 +531,15 @@ export function RegistrationWidget({
         );
       }
 
-      // Snapshot _fbp/_fbc at submit time so the server-side CAPI `Purchase`
-      // can link this sale to the ad click it came from.
+      // Snapshot _fbp/_fbc and the GA4 ids at submit time so the server-side
+      // Meta CAPI and GA4 `purchase` events can credit this sale to the ad
+      // click / session it came from.
       const result = await createRegistration({
         ...data,
         metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
+        gaAttribution: readGaAttribution(
           typeof window !== 'undefined' ? window : null
         ),
       });
@@ -574,6 +579,11 @@ export function RegistrationWidget({
         // `Purchase` ever fires on this path — the server event carrying these
         // cookies is the ONLY conversion signal Meta gets.
         metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
+        // Same for GA4: the server-side `purchase` is the only one this path
+        // produces, and these ids are what credit it to the buyer's session.
+        gaAttribution: readGaAttribution(
           typeof window !== 'undefined' ? window : null
         ),
       });
