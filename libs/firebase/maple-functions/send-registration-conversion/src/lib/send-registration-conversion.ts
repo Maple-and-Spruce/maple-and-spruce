@@ -1,8 +1,9 @@
 /**
  * Send Registration Conversion Cloud Function
  *
- * Firestore trigger that fires a Meta Conversions API `Purchase` when a class
- * registration becomes `confirmed`.
+ * Firestore trigger that fires a Meta Conversions API `Purchase` and a GA4
+ * Measurement Protocol `purchase` when a class registration becomes
+ * `confirmed`.
  *
  * Why this exists: the browser Pixel's `Purchase` (fired inline by the
  * registration widget) is silently dropped by iOS/Safari ITP and ad blockers,
@@ -11,12 +12,18 @@
  * `registrations/{id}` doc flipping `status: pending -> confirmed`, so a single
  * trigger on that transition recovers every confirmed purchase server-side.
  *
- * Dedup: the server event carries `event_id = confirmationNumber`, the same id
+ * Dedup: the Meta event carries `event_id = confirmationNumber`, the same id
  * the inline Pixel sends as `eventID`, so a purchase tracked both ways counts
  * once.
  *
- * Best-effort by design: a CAPI failure is logged and swallowed — a dropped
- * conversion must never retry-loop or affect the registration itself.
+ * GA4: this server event is the ONLY GA4 `purchase`. The widget also pushes a
+ * `purchase` to the dataLayer, but GTM must not forward that one to GA4 or
+ * every sale would count twice (see #27). The browser's `_ga` client id and
+ * session id ride along on the registration so GA4 credits the sale to the
+ * session, and channel, the buyer arrived in.
+ *
+ * Best-effort by design: a failure on either beacon is logged and swallowed —
+ * a dropped conversion must never retry-loop or affect the registration itself.
  */
 import {
   onDocumentWritten,
@@ -31,9 +38,16 @@ import {
   type MetaCapiEvent,
 } from '@maple/firebase/meta-capi';
 
-// Reuses the same secret + string params as `tallyLeadWebhook` (also
-// maple-core), so no new Secret Manager value or .env entry is required.
+// Reuses the same secret + string params as `tallyLeadWebhook`, so no new
+// Secret Manager value or .env entry is required.
 const metaCapiToken = defineSecret('META_CAPI_TOKEN');
+const ga4ApiSecret = defineSecret('GA4_API_SECRET');
+const ga4MeasurementId = defineString('GA4_MEASUREMENT_ID', {
+  default: 'G-TY0E9X31V6',
+});
+const ga4BaseUrl = defineString('GA4_BASE_URL', {
+  default: 'https://www.google-analytics.com',
+});
 const metaPixelId = defineString('META_PIXEL_ID', {
   default: '1625932185289127',
 });
@@ -67,6 +81,9 @@ export interface RegistrationConversionData {
    */
   clientIp?: string | null;
   clientUserAgent?: string | null;
+  /** GA4 `_ga` client id and current session id, captured by the widget. */
+  gaClientId?: string | null;
+  gaSessionId?: string | null;
 }
 
 // `splitName` now lives in @maple/firebase/meta-capi; re-exported so existing
@@ -168,11 +185,119 @@ export async function emitPurchaseIfConfirmed(
   }
 }
 
+/** GA4 Measurement Protocol settings for the `purchase` beacon. */
+export interface Ga4Config {
+  baseUrl: string;
+  measurementId: string;
+  apiSecret: string;
+}
+
+/** Request body for GA4's `/mp/collect` endpoint. */
+export interface Ga4PurchasePayload {
+  client_id: string;
+  events: Array<{ name: 'purchase'; params: Record<string, unknown> }>;
+}
+
+/**
+ * GA4 `fetch` ceiling. `fetch` has no default timeout, and a hung connection
+ * would hold the trigger open for its whole timeout for a beacon we were going
+ * to swallow anyway.
+ */
+export const GA4_TIMEOUT_MS = 4_000;
+
+/** Build the GA4 Measurement Protocol `purchase` for a confirmed registration. */
+export function buildGa4PurchasePayload(
+  data: RegistrationConversionData
+): Ga4PurchasePayload {
+  const value = Math.round(data.pricePaidCents ?? 0) / 100;
+  const quantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
+  const params: Record<string, unknown> = {
+    // The confirmation number: what staff and buyers already use to refer to
+    // a registration, and the same id the browser dataLayer event carries.
+    transaction_id: data.confirmationNumber,
+    currency: 'USD',
+    value,
+    items: [
+      {
+        // Firestore class id, matching the browser view_item / add_to_cart
+        // events so the item reports line up.
+        item_id: data.classId,
+        price: Math.round((value / quantity) * 100) / 100,
+        quantity,
+      },
+    ],
+    // Required for GA4 to treat the event as part of an engaged session.
+    engagement_time_msec: 1,
+  };
+  // With the browser's session id GA4 attributes the purchase to that
+  // session's source/medium; without it the sale lands unattributed.
+  const sessionId = Number(data.gaSessionId);
+  if (data.gaSessionId && Number.isFinite(sessionId)) {
+    params['session_id'] = sessionId;
+  }
+  if (data.eventSourceUrl) params['page_location'] = data.eventSourceUrl;
+
+  return {
+    // GA4 requires a client id. Prefer the buyer's real one; otherwise derive a
+    // stable server-side one from the confirmation number, so a trigger retry
+    // reports the same "user" rather than inventing a new one each time.
+    client_id: data.gaClientId || `server.${data.confirmationNumber}`,
+    events: [{ name: 'purchase', params }],
+  };
+}
+
+/** POST one payload to GA4. Throws on a non-2xx so the caller can log it. */
+export async function sendGa4Payload(
+  config: Ga4Config,
+  payload: Ga4PurchasePayload
+): Promise<void> {
+  const url = `${config.baseUrl}/mp/collect?measurement_id=${encodeURIComponent(
+    config.measurementId
+  )}&api_secret=${encodeURIComponent(config.apiSecret)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`GA4 ${response.status}: ${text}`);
+  }
+}
+
+/**
+ * GA4 twin of {@link emitPurchaseIfConfirmed}: same transition rule, never
+ * throws. Returns whether a `purchase` was sent.
+ */
+export async function emitGa4PurchaseIfConfirmed(
+  before: RegistrationConversionData | undefined,
+  after: RegistrationConversionData | undefined,
+  send: (payload: Ga4PurchasePayload) => Promise<void>,
+  logger: Pick<Console, 'log' | 'error'> = console
+): Promise<boolean> {
+  if (!shouldEmitPurchase(before, after)) return false;
+  const data = after as RegistrationConversionData;
+  try {
+    await send(buildGa4PurchasePayload(data));
+    logger.log('Sent GA4 purchase for confirmed registration', {
+      confirmationNumber: data.confirmationNumber,
+      valueCents: data.pricePaidCents,
+      hasClientId: Boolean(data.gaClientId),
+      hasSessionId: Boolean(data.gaSessionId),
+    });
+    return true;
+  } catch (err) {
+    logger.error('GA4 purchase send failed', err);
+    return false;
+  }
+}
+
 export const sendRegistrationConversion = onDocumentWritten(
   {
     document: 'registrations/{registrationId}',
     region: 'us-east4',
-    secrets: [metaCapiToken],
+    secrets: [metaCapiToken, ga4ApiSecret],
   },
   async (event) => {
     const change = event.data as Change<DocumentSnapshot> | undefined;
@@ -192,8 +317,21 @@ export const sendRegistrationConversion = onDocumentWritten(
       accessToken: metaCapiToken.value(),
     };
 
-    await emitPurchaseIfConfirmed(before, after, async (evt) => {
-      await trySendMetaCapiEvents(config, [evt]);
-    });
+    const ga4Config: Ga4Config = {
+      baseUrl: ga4BaseUrl.value(),
+      measurementId: ga4MeasurementId.value(),
+      apiSecret: ga4ApiSecret.value(),
+    };
+
+    // Independent beacons: neither throws, and one being down must not hold
+    // up or suppress the other.
+    await Promise.all([
+      emitPurchaseIfConfirmed(before, after, async (evt) => {
+        await trySendMetaCapiEvents(config, [evt]);
+      }),
+      emitGa4PurchaseIfConfirmed(before, after, (payload) =>
+        sendGa4Payload(ga4Config, payload)
+      ),
+    ]);
   }
 );

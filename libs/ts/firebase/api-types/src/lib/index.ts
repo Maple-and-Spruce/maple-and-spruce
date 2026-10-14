@@ -261,6 +261,9 @@ export type {
 // Meta ad-attribution payload (shared by class + Music Together checkout)
 export type { MetaAttributionPayload } from './meta-attribution.types';
 
+// Google Analytics ids for the server-side GA4 `purchase` (class checkout)
+export type { GaAttributionPayload } from './ga-attribution.types';
+
 // Phase 3c: Registration types
 export type {
   GetRegistrationsRequest,

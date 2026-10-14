@@ -344,6 +344,10 @@ export async function reserveClassRegistration(
       fbp: data.metaAttribution?.fbp || null,
       fbc: data.metaAttribution?.fbc || null,
       eventSourceUrl: data.metaAttribution?.eventSourceUrl || null,
+      // GA4 ids, so the server-side GA4 `purchase` joins the buyer's session
+      // and is credited to the channel they arrived from.
+      gaClientId: data.gaAttribution?.clientId || null,
+      gaSessionId: data.gaAttribution?.sessionId || null,
       clientIp: clientContext.ip || null,
       clientUserAgent: clientContext.userAgent || null,
       createdAt: now,

@@ -373,6 +373,7 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | Mock Graph server for integration tests | Complete | `libs/firebase/meta-capi-test-mock-server/` |
 | Tally newsletter `Lead` (routed by form id to the owning pixel) | Complete | `tally-lead-webhook/` |
 | Craft-class `Purchase` (Firestore trigger) | Complete | `send-registration-conversion/` |
+| Craft-class GA4 `purchase` (server-side, same trigger) | Complete | `send-registration-conversion/`, `webflow-components/src/lib/ga-attribution.ts` |
 | Music Together `Purchase` (Firestore trigger) | Complete | `send-music-together-conversion/` |
 | **MT demo RSVP `Schedule` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-demo-rsvp/` + `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts` |
 | **MT interest signup `Lead` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-interest/` |
