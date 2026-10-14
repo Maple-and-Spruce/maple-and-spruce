@@ -67,6 +67,7 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'people/updateStudent', expect: 403 },
   { as: 'stephanie', functionName: 'lessons/getLessons', expect: 403 },
   { as: 'stephanie', functionName: 'lessons/getStudioDay', expect: 403 },
+  { as: 'stephanie', functionName: 'lessons/getInbox', expect: 403 },
   { as: 'stephanie', functionName: 'people/listUsers', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },
   { as: 'stephanie', functionName: 'getSyncConflictSummary', expect: 403 },
@@ -86,6 +87,14 @@ const CASES: MatrixCase[] = [
   // Every teacher's day (#235) is the studio's view: a lesson teacher who is
   // also a clerk still sees only their own (getMyDayLessons).
   { as: 'nathan', functionName: 'lessons/getStudioDay', expect: 403 },
+  // The Home inbox (#235) is studio-wide money and leads: admin only.
+  { as: 'nathan', functionName: 'lessons/getInbox', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'lessons/dismissInboxItem',
+    data: { key: 'lesson-inquiry:role-matrix' },
+    expect: 403,
+  },
   { as: 'nathan', functionName: 'people/getStudents', expect: 200 },
   { as: 'nathan', functionName: 'getInvoices', expect: 200 },
   { as: 'nathan', functionName: 'calendar/getCalendarEvents', expect: 200 },
@@ -251,6 +260,13 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'agreements/getAgreementTemplates', expect: 200 },
   { as: 'admin', functionName: 'lessons/getLessons', expect: 200 },
   { as: 'admin', functionName: 'lessons/getStudioDay', expect: 200 },
+  { as: 'admin', functionName: 'lessons/getInbox', expect: 200 },
+  {
+    as: 'admin',
+    functionName: 'lessons/dismissInboxItem',
+    data: { key: 'lesson-inquiry:role-matrix' },
+    expect: 200,
+  },
   { as: 'admin', functionName: 'calendar/getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'people/listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },

@@ -365,6 +365,14 @@ export type {
   GetStudioDayResponse,
 } from './studio-day.types';
 
+// Admin Home dashboard: the studio-wide inbox and "Mark done" (#235)
+export type {
+  GetInboxRequest,
+  GetInboxResponse,
+  DismissInboxItemRequest,
+  DismissInboxItemResponse,
+} from './inbox.types';
+
 // Phase 4: Music Lessons - Teacher My Week schedule (#60/#684)
 export type {
   MyWeekOwnership,

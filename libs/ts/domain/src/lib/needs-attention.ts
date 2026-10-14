@@ -58,6 +58,12 @@ export interface NeedsAttentionRow {
   amountCents?: number;
   /** Which teacher's work this concerns, for self-scoping. */
   teacherId?: string;
+  /**
+   * ISO: the date the row is about — the lesson's date, or when the invoice
+   * was sent or last changed. The Home inbox (#235) ages rows by it and keys
+   * dismissals on it.
+   */
+  occurredAt?: string;
 }
 
 export interface NeedsAttentionGroup {

@@ -61,7 +61,9 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
     over), `getLessonBlocks`, `getStudentLessonSchedules`, `createStudentLessonSchedule`,
     `updateStudentLessonSchedule`, `getMyDayLessons`, `getMyWeek`.
   - Admin-only: `getStudioDay` (#235: every teacher's lessons for a day, with payment state, for
-    the Home dashboard), `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
+    the Home dashboard), `getInbox` (#235: the Home dashboard's studio-wide to-do list, built in
+    one call, dismissed items removed), `dismissInboxItem` (#235: "Mark done", validated, stored in
+    `inboxDismissals` for everyone), `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
     `getLessonInquiries`, `updateLessonInquiryStatus`, `getLessonBilling`, `saveLessonBillingRule`,
     `updateLessonScheduledCharge`, `getPosLessonAttributions`, `getPosLessonAttributionSummary`,
     `resolvePosLessonAttribution`.
