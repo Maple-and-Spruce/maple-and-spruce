@@ -28,7 +28,7 @@ import {
 test.describe('Student management — task order', () => {
   test.beforeEach(async ({ page }) => {
     await seedStudentManagement();
-    await signIn(page, ADMIN, 'Students');
+    await signIn(page, ADMIN, 'Lessons');
     await page.goto('/students');
     await expect(
       page.getByRole('button', { name: `Actions for ${OWED_STUDENT_NAME}` })

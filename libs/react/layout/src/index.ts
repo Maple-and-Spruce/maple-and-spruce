@@ -1,6 +1,16 @@
+export { AppShell, type AppShellProps } from './lib/AppShell';
 export {
-  AppShell,
-  type NavItem,
+  FLAT_NAV_MAX_ITEMS,
+  findActiveHref,
+  groupBadge,
+  groupOfHref,
+  navItemCount,
+  navModeFor,
+  searchNav,
+  type NavAction,
+  type NavBadgeColor,
   type NavGroup,
-  type AppShellProps,
-} from './lib/AppShell';
+  type NavItem,
+  type NavMode,
+  type NavSearchResult,
+} from './lib/nav-model';
