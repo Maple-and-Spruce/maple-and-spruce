@@ -75,6 +75,7 @@
 | Instructor Cloud Functions (5) | Complete | legacy #9 | `libs/firebase/maple-functions/get-instructors/`, etc. |
 | Class Cloud Functions (7) | Complete | legacy #9 | `libs/firebase/maple-functions/get-classes/`, etc. |
 | ClassCategory Cloud Functions (1) | Complete | legacy #9 | `libs/firebase/maple-functions/get-class-categories/` |
+| Category material defaults | Complete | - | `ClassCategory.defaultMaterialsIncluded` / `defaultWhatToBring`: edited on the category form, pre-fill a blank class field in `ClassForm`, and back the Webflow `materials-included` / `what-to-bring` fields when a class leaves its own blank (`mapClassToFieldData`). Existing classes pick up a new default on their next sync |
 | **Phase 3b: Admin UI** | | | |
 | Instructor components | Complete | legacy #9 | `libs/react/instructors/` |
 | Class components | Complete | legacy #9 | `libs/react/classes/` |

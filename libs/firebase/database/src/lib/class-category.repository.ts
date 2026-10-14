@@ -31,6 +31,8 @@ function docToClassCategory(
     order: data.order,
     icon: data.icon,
     galleryImages: data.galleryImages,
+    defaultMaterialsIncluded: data.defaultMaterialsIncluded,
+    defaultWhatToBring: data.defaultWhatToBring,
     webflowItemId: data.webflowItemId,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),

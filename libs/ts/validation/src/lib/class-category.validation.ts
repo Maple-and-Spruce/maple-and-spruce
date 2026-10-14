@@ -57,6 +57,26 @@ export const classCategoryValidation = staticSuite(
     });
 
     test(
+      'defaultMaterialsIncluded',
+      'Default materials included must be less than 500 characters',
+      () => {
+        if (data.defaultMaterialsIncluded) {
+          enforce(data.defaultMaterialsIncluded).shorterThanOrEquals(500);
+        }
+      }
+    );
+
+    test(
+      'defaultWhatToBring',
+      'Default what to bring must be less than 500 characters',
+      () => {
+        if (data.defaultWhatToBring) {
+          enforce(data.defaultWhatToBring).shorterThanOrEquals(500);
+        }
+      }
+    );
+
+    test(
       'galleryImages',
       `Gallery pool is limited to ${GALLERY_IMAGE_MAX} images`,
       () => {

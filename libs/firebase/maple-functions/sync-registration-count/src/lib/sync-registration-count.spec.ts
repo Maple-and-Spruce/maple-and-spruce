@@ -335,6 +335,49 @@ describe('Sync Registration Count', () => {
     });
   });
 
+  describe('handler — category material defaults', () => {
+    it("carries the category's defaults so a registration doesn't blank the fallback", async () => {
+      mocks.classFindById.mockResolvedValue(
+        createMockClass({ categoryId: 'cat-1' })
+      );
+      mocks.categoryfindById.mockResolvedValue({
+        id: 'cat-1',
+        name: 'Test Ceramics',
+        order: 0,
+        webflowItemId: 'wf-cat-1',
+        defaultMaterialsIncluded: 'Clay and glazes',
+        defaultWhatToBring: 'An apron',
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      });
+      mocks.registrationCountByClassId.mockResolvedValue(1);
+      mocks.syncClass.mockResolvedValue({
+        success: true,
+        webflowItemId: 'wf-1',
+        isNew: false,
+      });
+
+      await handler({
+        params: { registrationId: 'reg-defaults' },
+        data: {
+          after: makeSnapshot(true, {
+            classId: 'class-001',
+            status: 'confirmed',
+            quantity: 1,
+          }),
+          before: makeSnapshot(false),
+        },
+      });
+
+      expect(mocks.syncClass).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoryDefaultMaterialsIncluded: 'Clay and glazes',
+          categoryDefaultWhatToBring: 'An apron',
+        })
+      );
+    });
+  });
+
   describe('handler — classId extraction from snapshots', () => {
     it('uses after snapshot classId for create', async () => {
       const classEntity = createMockClass();

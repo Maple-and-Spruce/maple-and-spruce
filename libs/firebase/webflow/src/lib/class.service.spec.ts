@@ -304,8 +304,9 @@ describe('mapClassToFieldData', () => {
     expect(result['short-description']).toBeUndefined();
     expect(result['class-image']).toBeUndefined();
     expect(result.location).toBeUndefined();
-    expect(result['materials-included']).toBeUndefined();
-    expect(result['what-to-bring']).toBeUndefined();
+    // Always written: '' is what clears a card the public page then hides.
+    expect(result['materials-included']).toBe('');
+    expect(result['what-to-bring']).toBe('');
     expect(result['minimum-age']).toBeUndefined();
     expect(result['instructor-name']).toBeUndefined();
     expect(result['instructor-bio']).toBeUndefined();
@@ -350,6 +351,57 @@ describe('mapClassToFieldData', () => {
     );
 
     expect(result['class-gallery']).toBeUndefined();
+  });
+
+  describe('materials and what-to-bring category fallback', () => {
+    const categoryDefaults = {
+      categoryDefaultMaterialsIncluded: 'Category materials',
+      categoryDefaultWhatToBring: 'Category bring list',
+    };
+
+    it("keeps the class's own text over the category default", () => {
+      const result = mapClassToFieldData(mockClass, {
+        isDev: false,
+        ...categoryDefaults,
+      });
+
+      expect(result['materials-included']).toBe('Clay, glazes, tools');
+      expect(result['what-to-bring']).toBe('Apron, towel');
+    });
+
+    it('falls back to the category default when the class is blank', () => {
+      const result = mapClassToFieldData(
+        { ...mockClass, materialsIncluded: undefined, whatToBring: '   ' },
+        { isDev: false, ...categoryDefaults }
+      );
+
+      expect(result['materials-included']).toBe('Category materials');
+      expect(result['what-to-bring']).toBe('Category bring list');
+    });
+
+    it('falls back per field independently', () => {
+      const result = mapClassToFieldData(
+        { ...mockClass, whatToBring: '' },
+        { isDev: false, ...categoryDefaults }
+      );
+
+      expect(result['materials-included']).toBe('Clay, glazes, tools');
+      expect(result['what-to-bring']).toBe('Category bring list');
+    });
+
+    it('writes empty strings when the class and category are both blank', () => {
+      const result = mapClassToFieldData(
+        { ...mockClass, materialsIncluded: '', whatToBring: undefined },
+        {
+          isDev: false,
+          categoryDefaultMaterialsIncluded: '',
+          categoryDefaultWhatToBring: undefined,
+        }
+      );
+
+      expect(result['materials-included']).toBe('');
+      expect(result['what-to-bring']).toBe('');
+    });
   });
 });
 

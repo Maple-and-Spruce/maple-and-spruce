@@ -205,6 +205,11 @@ export const syncRegistrationCount = onDocumentWritten(
         // leaves the existing reference alone rather than clearing it. The
         // class sync (legacy #776) is what establishes the link on demand.
         categoryWebflowItemId: category?.webflowItemId,
+        // Carried on every re-sync, not just the class sync: the mapper always
+        // writes these fields, so omitting the defaults here would blank a
+        // class's fallback text whenever someone registers.
+        categoryDefaultMaterialsIncluded: category?.defaultMaterialsIncluded,
+        categoryDefaultWhatToBring: category?.defaultWhatToBring,
         registrationCount,
         existingWebflowItemId: publishable.webflowItemId,
       });
