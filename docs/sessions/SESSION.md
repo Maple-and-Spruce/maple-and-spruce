@@ -24,6 +24,13 @@
   (`useCreateIntent`; see PATTERNS-AND-PRACTICES → "Opening a Create Form From a Link").
 - Active-page matching is now longest-prefix (`findActiveHref`), so `/students/<id>` keeps
   Lessons open with Students marked, which the old exact match didn't.
+- **Pinned external links** (stacked PR on the nav rework): Square, Wave and Tally as tiles under
+  the header, the other ten behind an 18px sliver that opens a "More links" panel beside the
+  sidebar (MUI Popover: outside click / Esc close, focus returns to the sliver). Admin only, as
+  before. The list moved from the Home page's Quick Links grid to
+  `components/layout/quick-links.ts`, and Home no longer shows it. Pins are a static
+  `pinned: true` flag (the seam for per-user pins). Tiles use the old MUI icons, white on a
+  darkened brand colour; real logos would need assets the repo doesn't have yet.
 - Pure nav logic is in `libs/react/layout/src/lib/nav-model.ts`; that lib now has a vitest
   project. The portal E2E signs admins in on an area link and covers Create → New class.
 
