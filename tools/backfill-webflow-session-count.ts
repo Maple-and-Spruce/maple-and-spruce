@@ -77,24 +77,36 @@ interface Row {
   webflowItemId: string;
   desired: number;
   live: number | undefined;
+  /** True when the Webflow item is an unpublished draft (past or test classes). */
+  isDraft: boolean;
 }
 
-async function fetchLive(itemId: string): Promise<number | undefined> {
+interface LiveItem {
+  count: number | undefined;
+  isDraft: boolean;
+}
+
+async function fetchLive(itemId: string): Promise<LiveItem> {
   try {
     const item = await webflow.collections.items.getItem(collectionId, itemId);
     const fieldData = item?.fieldData as
       | { 'session-count'?: unknown }
       | undefined;
-    return typeof fieldData?.['session-count'] === 'number'
-      ? (fieldData['session-count'] as number)
-      : undefined;
+    return {
+      count:
+        typeof fieldData?.['session-count'] === 'number'
+          ? (fieldData['session-count'] as number)
+          : undefined,
+      isDraft: item?.isDraft === true,
+    };
   } catch (error) {
     console.warn(
       `  ! getItem failed for ${itemId}: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
-    return undefined;
+    // Unknown state: treat as a draft so it is never republished blindly.
+    return { count: undefined, isDraft: true };
   }
 }
 
@@ -110,16 +122,23 @@ async function main(): Promise<void> {
   const rows: Row[] = [];
   for (const c of candidates) {
     const webflowItemId = c.data['webflowItemId'] as string;
+    const live = await fetchLive(webflowItemId);
     rows.push({
       id: c.id,
       name: (c.data['name'] as string) ?? '(unnamed)',
       webflowItemId,
       desired: sessionCountFor(c.data),
-      live: await fetchLive(webflowItemId),
+      live: live.count,
+      isDraft: live.isDraft,
     });
   }
 
-  const toUpdate = rows.filter((r) => r.live !== r.desired);
+  // Drafts are unpublished on purpose (past classes, test classes). Updating
+  // one would mean flipping it to non-draft and publishing it, which puts the
+  // page back on the live site, so leave them alone. They pick the field up
+  // if they are ever re-synced.
+  const skippedDrafts = rows.filter((r) => r.isDraft && r.live !== r.desired);
+  const toUpdate = rows.filter((r) => !r.isDraft && r.live !== r.desired);
 
   console.log('');
   for (const r of toUpdate) {
@@ -127,8 +146,10 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `\n${toUpdate.length} class(es) need a session-count update; ${
-      rows.length - toUpdate.length
+    `\n${toUpdate.length} published class(es) need a session-count update; ${
+      skippedDrafts.length
+    } draft(s) skipped; ${
+      rows.length - toUpdate.length - skippedDrafts.length
     } already correct.`
   );
 
