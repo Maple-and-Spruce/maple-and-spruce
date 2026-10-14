@@ -396,7 +396,8 @@ The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Ro
 | `room` field on CalendarEvent + Class | **Complete** (PR 1, legacy #468) | flows through `onClassWrite` |
 | `onLessonWrite` trigger (lessons → private room events) | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/on-lesson-write/` |
 | `getRoomSchedule` Cloud Function | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/get-room-schedule/` |
-| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` |
+| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` — now shown only to roles without admin/clerk (teachers); the admin/clerk Home is the #235 card grid |
+| Home dashboard redesign, PR 1: date header + card grid (Today timeline, Recent registrations, Classes this week) | **Complete** (PR 1 of #235) | `apps/maple-spruce/src/components/dashboard/`, `lessons/getStudioDay` route, `lessonPaymentState` (`libs/ts/domain`), `useStudioDay`. Low Stock widget removed. PR 2 (Inbox card) and PR 3 (Sales card) remaining |
 | Ad hoc room booking form | Planned (PR 2, legacy #469) | — |
 | Day strip + conflict warnings in scheduling flows | Planned (PR 2, legacy #469) | — |
 
