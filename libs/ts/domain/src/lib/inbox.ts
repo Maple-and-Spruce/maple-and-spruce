@@ -44,20 +44,25 @@ export type InboxItemKind =
   | 'sync-conflicts'
   | NeedsAttentionKind;
 
-/** The eyebrow over each row, and the kind in a row's accessible name. */
+/**
+ * The eyebrow over each row, and the kind in a row's accessible name. Kept to a
+ * word or two: the eyebrow shares one line with the age, and at the two-column
+ * width a longer label was cut to "INVOICE OVERD…". The title and detail carry
+ * the rest.
+ */
 export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
-  'lesson-inquiry': 'Lesson inquiry',
-  'lesson-inquiries-older': 'Lesson inquiries',
+  'lesson-inquiry': 'Inquiry',
+  'lesson-inquiries-older': 'Inquiries',
   'charge-failed': 'Charge failed',
-  'craft-club-past-due': 'Craft Club payment',
-  'craft-club-requested': 'Craft Club request',
-  'agreement-unsigned': 'Agreement unsigned',
-  'sync-conflicts': 'Inventory sync',
+  'craft-club-past-due': 'Craft Club',
+  'craft-club-requested': 'Craft Club',
+  'agreement-unsigned': 'Unsigned',
+  'sync-conflicts': 'Sync',
   'lesson-unbilled': 'Not billed',
-  'invoice-overdue': 'Invoice overdue',
-  'invoice-sync-failed': 'Invoice not sent',
+  'invoice-overdue': 'Overdue',
+  'invoice-sync-failed': 'Not sent',
   'hope-unsubmitted': 'Hope claim',
-  'lesson-unattributed': 'No lesson block',
+  'lesson-unattributed': 'No block',
 };
 
 export interface InboxItem {

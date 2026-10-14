@@ -56,7 +56,7 @@ describe('row text', () => {
   });
 
   it('labels kinds and names the check button for a screen reader', () => {
-    expect(inboxKindLabel('agreement-unsigned')).toBe('Agreement unsigned');
+    expect(inboxKindLabel('agreement-unsigned')).toBe('Unsigned');
     expect(inboxDoneLabel(fixtureInboxItems[0])).toBe(
       'Mark done: Charge failed, Iris Calloway · $35'
     );
