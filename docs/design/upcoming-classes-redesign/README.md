@@ -10,6 +10,7 @@ built natively in Webflow (see [Implementation](#implementation)).
 |------|------------|
 | `Main.dc.html` | Desktop artboard: the date-first class listing |
 | `Phone.dc.html` | iPhone 16 artboard (393 x 852): photo rows, featured Studio Series card, bottom-sheet date picker, sticky next-class bar |
+| `webflow-embed.html` | The CSS + script live on the Webflow page (see [Webflow implementation](#webflow-implementation)) |
 
 Both are Design-canvas artboard sources, copied verbatim. Images are referenced as
 `/_blob/<id>` URLs, which resolve **only inside the canvas artifact**. Opened on their
@@ -54,6 +55,33 @@ code component, so it stays crawlable for SEO and editable by Katie in the Desig
 Supporting CMS data: the `session-count` Number field on the Classes collection tells
 single-session "Try It" classes (1) from multi-session series such as the Studio
 Series (more than 1). It is written by the class sync.
+
+## Webflow implementation
+
+The redesign is built on the live /upcoming-classes page (Webflow page
+`69d1284b1476685827c82d33`).
+
+- **Listing:** a native Classes Collection List, sorted by `date-time` ascending and
+  filtered to `is-dev-environment` off and `date-time` on or after today. Each item
+  (DynamoItem) carries CMS-bound data attributes: `data-date`, `data-category`,
+  `data-sessions`, `data-spots`, `data-time`, `data-duration`.
+- **Restyle:** the HtmlEmbed `669fad2a-29f5-7aac-40a7-5c949c2d33d5` inside the class
+  list section holds the CSS and script in `webflow-embed.html`. At runtime it turns the
+  list into date-first rows under month headers, adds the filter chips (craft inferred
+  from category/name keywords), promotes the Studio Series to a featured card
+  (`session-count` > 1, falling back to duration text containing "each"), labels the
+  first row "Next up", and adds the sticky next-class bar below 992px.
+- **Made in the studio:** a separate small HtmlEmbed with the Instagram profile embed
+  copied from /gallery. It tags its section `.msx-made` and sets `position: relative` +
+  `overflow: hidden`, so a blocked Instagram frame cannot cause sideways scroll on
+  phones.
+- **Book a private class:** a native `cls-cta-container` card linking to
+  /private-events.
+- The Designer canvas still shows the old card grid, because the restyle is runtime
+  CSS/JS. Check changes on the staging or live site.
+
+**Editing the embed means editing it in Webflow and keeping `webflow-embed.html` in
+sync.** This file is the source of truth the embed points to.
 
 ## Open items
 
