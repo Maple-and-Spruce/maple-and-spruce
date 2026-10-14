@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   generateClassSlug,
   mapClassToFieldData,
@@ -399,10 +399,22 @@ describe('ClassService', () => {
     updatedAt: new Date('2026-01-01'),
   };
 
+  // Pin the clock before mockClass's session (2026-05-15T14:00Z, 2h) so the
+  // class is upcoming. Without this the suite's meaning would change the day
+  // the fixture date passed: an ended class is never published.
+  const BEFORE_CLASS = new Date('2026-05-01T12:00:00.000Z');
+  const AFTER_CLASS = new Date('2026-05-15T16:01:00.000Z');
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(BEFORE_CLASS);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     service = new ClassService(mockClient as any, COLLECTION_ID);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('syncClass', () => {
@@ -561,6 +573,124 @@ describe('ClassService', () => {
       // The field data should have isDev = false
       const createCall = mockClient.collections.items.createItem.mock.calls[0];
       expect(createCall[1].fieldData['is-dev-environment']).toBe(false);
+    });
+
+    describe('a class that has ended', () => {
+      beforeEach(() => {
+        vi.setSystemTime(AFTER_CLASS);
+      });
+
+      it('keeps an existing prod item a draft and does not publish it', async () => {
+        mockClient.collections.items.getItem.mockResolvedValue({
+          id: 'wf-past',
+          isDraft: true,
+          fieldData: { 'firebase-id': 'class-abc' },
+        });
+        mockClient.collections.items.updateItem.mockResolvedValue({
+          fieldData: { slug: 'pottery-101' },
+        });
+
+        const result = await service.syncClass({
+          classEntity: mockClass,
+          publish: true,
+          isDev: false,
+          registrationCount: 4,
+          existingWebflowItemId: 'wf-past',
+        });
+
+        expect(result.success).toBe(true);
+        expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
+          COLLECTION_ID,
+          'wf-past',
+          expect.objectContaining({
+            isDraft: true,
+            // The data still updates, so the item is right if it is ever
+            // rescheduled and republished.
+            fieldData: expect.objectContaining({ 'spots-remaining': 6 }),
+          })
+        );
+        expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
+      });
+
+      it('creates a missing prod item as a draft and does not publish it', async () => {
+        mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+        mockClient.collections.items.createItem.mockResolvedValue({
+          id: 'wf-past-new',
+        });
+
+        await service.syncClass({
+          classEntity: mockClass,
+          publish: true,
+          isDev: false,
+        });
+
+        expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
+          COLLECTION_ID,
+          expect.objectContaining({ isDraft: true })
+        );
+        expect(mockClient.collections.items.publishItem).not.toHaveBeenCalled();
+      });
+
+      it('stays live through the last session of a series', async () => {
+        const series: PublishableClass = {
+          ...mockClass,
+          sessions: [
+            { dateTime: new Date('2026-05-15T14:00:00.000Z') },
+            { dateTime: new Date('2026-05-22T14:00:00.000Z') },
+          ],
+        };
+        mockClient.collections.items.listItems.mockResolvedValue({ items: [] });
+        mockClient.collections.items.createItem.mockResolvedValue({
+          id: 'wf-series',
+        });
+
+        await service.syncClass({
+          classEntity: series,
+          publish: true,
+          isDev: false,
+        });
+
+        expect(mockClient.collections.items.createItem).toHaveBeenCalledWith(
+          COLLECTION_ID,
+          expect.objectContaining({ isDraft: false })
+        );
+        expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+          COLLECTION_ID,
+          { itemIds: ['wf-series'] }
+        );
+      });
+
+      it('republishes once the class is rescheduled into the future', async () => {
+        const rescheduled: PublishableClass = {
+          ...mockClass,
+          sessions: [{ dateTime: new Date('2026-06-15T14:00:00.000Z') }],
+        };
+        mockClient.collections.items.getItem.mockResolvedValue({
+          id: 'wf-past',
+          isDraft: true,
+          fieldData: { 'firebase-id': 'class-abc' },
+        });
+        mockClient.collections.items.updateItem.mockResolvedValue({
+          fieldData: { slug: 'pottery-101' },
+        });
+
+        await service.syncClass({
+          classEntity: rescheduled,
+          publish: true,
+          isDev: false,
+          existingWebflowItemId: 'wf-past',
+        });
+
+        expect(mockClient.collections.items.updateItem).toHaveBeenCalledWith(
+          COLLECTION_ID,
+          'wf-past',
+          expect.objectContaining({ isDraft: false })
+        );
+        expect(mockClient.collections.items.publishItem).toHaveBeenCalledWith(
+          COLLECTION_ID,
+          { itemIds: ['wf-past'] }
+        );
+      });
     });
 
     it('passes instructorBio and instructorImage through to field data', async () => {

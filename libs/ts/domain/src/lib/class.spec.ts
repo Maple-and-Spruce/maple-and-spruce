@@ -9,6 +9,7 @@ import {
   getFirstSession,
   getSortedSessions,
   getRegistrationCutoff,
+  hasClassEnded,
   formatSessions,
   type Class,
   type ClassSession,
@@ -84,6 +85,43 @@ describe('Class domain helpers', () => {
       const before = multiSessionClass.sessions[0].dateTime.toISOString();
       getSortedSessions(multiSessionClass);
       expect(multiSessionClass.sessions[0].dateTime.toISOString()).toBe(before);
+    });
+  });
+
+  describe('hasClassEnded', () => {
+    // multiSessionClass's last session starts 2030-06-29T14:00Z and runs 2h.
+    it('is false before the last session has finished', () => {
+      expect(
+        hasClassEnded(multiSessionClass, new Date('2030-06-29T15:59:00Z'))
+      ).toBe(false);
+    });
+
+    it('is false between sessions of a series', () => {
+      expect(
+        hasClassEnded(multiSessionClass, new Date('2030-06-20T00:00:00Z'))
+      ).toBe(false);
+    });
+
+    it('is true once the last session has finished', () => {
+      expect(
+        hasClassEnded(multiSessionClass, new Date('2030-06-29T16:01:00Z'))
+      ).toBe(true);
+    });
+
+    it('accepts string dateTimes from JSON serialization', () => {
+      const serialized = {
+        ...baseClass,
+        sessions: [{ dateTime: '2030-06-15T14:00:00Z' as unknown as Date }],
+      };
+      expect(hasClassEnded(serialized, new Date('2030-07-01T00:00:00Z'))).toBe(
+        true
+      );
+    });
+
+    it('is never true for a class with no sessions', () => {
+      expect(
+        hasClassEnded({ ...baseClass, sessions: [] }, new Date('2099-01-01'))
+      ).toBe(false);
     });
   });
 

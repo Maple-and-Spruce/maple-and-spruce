@@ -43,6 +43,10 @@ function toTime(session: ClassSession): number {
  *
  * Classes with no sessions are never expired here; they are drafts that the
  * regular sync already keeps out of Webflow.
+ *
+ * Must agree with `hasClassEnded` in `@maple/ts/domain`, which the Webflow
+ * class sync uses to keep these pages unpublished after this sweep runs.
+ * Duplicated rather than imported to keep this module barrel-free (above).
  */
 export function isClassPast(classEntity: Class, now: Date): boolean {
   if (classEntity.sessions.length === 0) return false;
