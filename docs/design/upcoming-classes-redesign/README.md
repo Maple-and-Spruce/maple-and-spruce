@@ -77,7 +77,10 @@ The redesign is built on the live /upcoming-classes page (Webflow page
   next-class bar below 992px. The filter bar also has an "Open seats" toggle (after a
   divider) that combines with the craft/format chips to hide full classes; it only
   appears when at least one listed class is full. On phones the chips wrap onto rows
-  instead of scrolling sideways, and the divider is hidden. It classifies multi-session classes:
+  instead of scrolling sideways, and the divider is hidden. The Reserve / Join waitlist /
+  Save my seat buttons and the phone next-class bar link to the class page's `#register`
+  anchor (the registration box); clicking the rest of a row opens the class page at the
+  top. It classifies multi-session classes:
   - **Studio Series:** name or category contains "Studio Series", or `session-count`
     is 3 or more. Only these get the featured photo card.
   - **Workshop:** 2 sessions, "workshop" in the name or category, or duration text

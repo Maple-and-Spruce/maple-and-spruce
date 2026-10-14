@@ -206,7 +206,15 @@
           if (spotsEl) priceWrap.appendChild(el('span', 'msx-status', spotsEl.textContent));
         }
         footer.insertBefore(priceWrap, footer.firstChild);
-        footer.appendChild(el('span', 'msx-cta', r.full ? 'Join waitlist' : r.series ? 'Save my seat' : 'Reserve'));
+        var cta = el('span', 'msx-cta', r.full ? 'Join waitlist' : r.series ? 'Save my seat' : 'Reserve');
+        cta.addEventListener('click', function (e) {
+          var href = link.getAttribute('href');
+          if (!href) return;
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = href.split('#')[0] + '#register';
+        });
+        footer.appendChild(cta);
       }
     });
 
@@ -288,7 +296,7 @@
       t.appendChild(el('small', null, 'Next class · ' + part(next.date, { weekday: 'short', month: 'short', day: 'numeric' }) + seats));
       t.appendChild(el('span', null, next.name));
       var a = el('a', null, 'Reserve');
-      a.href = link ? link.getAttribute('href') : '#';
+      a.href = link ? link.getAttribute('href').split('#')[0] + '#register' : '#';
       a.setAttribute('aria-label', 'Reserve ' + next.name);
       nb.appendChild(t);
       nb.appendChild(a);
