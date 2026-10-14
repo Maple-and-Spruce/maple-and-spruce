@@ -74,7 +74,9 @@ The redesign is built on the live /upcoming-classes page (Webflow page
   list section holds the CSS and script in `webflow-embed.html`. At runtime it turns the
   list into date-first rows under month headers, adds the filter chips (craft inferred
   from category/name keywords), labels the first row "Next up", and adds the sticky
-  next-class bar below 992px. It classifies multi-session classes:
+  next-class bar below 992px. The filter bar also has an "Open seats" toggle (after a
+  divider) that combines with the craft/format chips to hide full classes; it only
+  appears when at least one listed class is full. It classifies multi-session classes:
   - **Studio Series:** name or category contains "Studio Series", or `session-count`
     is 3 or more. Only these get the featured photo card.
   - **Workshop:** 2 sessions, "workshop" in the name or category, or duration text
