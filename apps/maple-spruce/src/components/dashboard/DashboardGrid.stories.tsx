@@ -4,10 +4,12 @@ import { DashboardGrid } from './DashboardGrid';
 import { TodayCard } from './TodayCard';
 import { RecentRegistrationsCard } from './RecentRegistrationsCard';
 import { ClassesThisWeekCard } from './ClassesThisWeekCard';
+import { InboxCard } from './InboxCard';
 import { DASHBOARD_CARD_HEIGHT } from './DashboardCard';
 import {
   FIXTURE_NOW,
   fixtureClasses,
+  fixtureInboxItems,
   fixtureRegistrations,
   fixtureStudioDay,
 } from './dashboard-fixtures';
@@ -34,6 +36,11 @@ const meta = {
           classesState={classesState}
           now={FIXTURE_NOW}
         />
+        <InboxCard
+          inboxState={{ status: 'success', data: fixtureInboxItems }}
+          now={FIXTURE_NOW}
+          onDismiss={() => undefined}
+        />
         <ClassesThisWeekCard
           classesState={classesState}
           registrationsState={registrationsState}
@@ -54,6 +61,7 @@ export const Admin: Story = {
     await expect(headings.map((h) => h.textContent)).toEqual([
       'Today',
       'Recent registrations',
+      'Inbox',
       'Classes this week',
     ]);
     // Every card is the same fixed height.
