@@ -132,6 +132,26 @@ describe('mapClassToFieldData', () => {
     );
   });
 
+  it('writes session-count for a single-session class', () => {
+    const fieldData = mapClassToFieldData(mockClass, { isDev: false });
+    expect(fieldData['session-count']).toBe(1);
+  });
+
+  it('writes session-count for a multi-session series', () => {
+    const series: PublishableClass = {
+      ...mockClass,
+      sessions: [
+        { dateTime: new Date('2026-05-31T17:00:00.000Z') },
+        { dateTime: new Date('2026-06-07T17:00:00.000Z') },
+        { dateTime: new Date('2026-06-14T17:00:00.000Z') },
+        { dateTime: new Date('2026-06-21T17:00:00.000Z') },
+        { dateTime: new Date('2026-06-28T17:00:00.000Z') },
+        { dateTime: new Date('2026-07-05T17:00:00.000Z') },
+      ] satisfies [ClassSession, ...ClassSession[]],
+    };
+    expect(mapClassToFieldData(series, { isDev: false })['session-count']).toBe(6);
+  });
+
   it('formats spots display correctly', () => {
     expect(
       mapClassToFieldData(mockClass, { isDev: false, registrationCount: 9 })['spots-display']
