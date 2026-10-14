@@ -1,0 +1,81 @@
+name: Webflow public pages E2E
+
+# Read-only Playwright smoke suite against the published Webflow site
+# (apps/webflow-public-e2e). Webflow publishes don't come from repo PRs, so a
+# PR check would test nothing the PR changed — this runs daily against staging
+# instead, and on demand against staging or prod. No secrets: it only loads
+# public pages, clicks filter chips and follows links.
+
+on:
+  schedule:
+    # 11:00 UTC = 7am Eastern (6am in winter), before the shop opens.
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Site to test
+        type: choice
+        options:
+          - staging
+          - prod
+        default: staging
+      expect_class_redesign:
+        description: Fail (instead of skip) when a class page lacks the redesign
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.target || 'staging' }}
+  cancel-in-progress: true
+
+env:
+  NX_DAEMON: 'false'
+
+jobs:
+  webflow-public-e2e:
+    name: Webflow public pages E2E (${{ inputs.target || 'staging' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Restore node_modules cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright against the live site
+        env:
+          WEBFLOW_BASE_URL: ${{ inputs.target == 'prod' && 'https://mapleandsprucefolkarts.com' || 'https://maple-spruce-folk-arts-collective.webflow.io' }}
+          WEBFLOW_EXPECT_CLASS_REDESIGN: ${{ inputs.expect_class_redesign && '1' || '' }}
+        run: pnpm exec nx run webflow-public-e2e:e2e
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-webflow-public-e2e
+          path: |
+            apps/webflow-public-e2e/playwright-report/
+            apps/webflow-public-e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
