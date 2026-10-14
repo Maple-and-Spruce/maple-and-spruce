@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Upcoming Classes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F4EE;font-family:Georgia,Times,"Times New Roman",serif;color:#4A3728}
+a{color:#4A3728}a:hover{color:#2E2219}
+button,input{font:inherit}
+img{display:block}
+</style>
+</helmet>
+<div style="background: #F6F4EE; color: #4A3728; font-family: Georgia, Times, 'Times New Roman', serif; min-height: 100vh">
+
+  <header style="background: #FBFAF6; border-bottom: 1px solid #E4E1D6">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 18px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+      <a href="#" style="font-size: 24px; font-weight: 700; text-decoration: none">Maple &amp; Spruce</a>
+      <nav aria-label="Main" style="display: flex; flex-wrap: wrap; gap: 28px; font-family: Archivo, system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: 500">
+        <a href="#" style="text-decoration: none">Home</a>
+        <a href="#" style="text-decoration: none">Music</a>
+        <a href="#" style="text-decoration: none; border-bottom: 2px solid #6B7B5E; padding-bottom: 2px">Craft</a>
+        <a href="#" style="text-decoration: none">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Compact intro: gets to the dates fast -->
+  <section style="max-width: 1120px; margin: 0 auto; padding: 48px 24px 8px; display: flex; flex-direction: column; gap: 14px">
+    <h1 style="margin: 0; font-size: 46px; line-height: 1.1; font-weight: 400">Upcoming classes</h1>
+    <p style="margin: 0; font-size: 18px; line-height: 1.55; color: #55524A; max-width: 640px">Small, hands-on classes in stained glass and jewelry. All tools and materials are included, no experience needed, and you take home what you make.</p>
+  </section>
+
+  <!-- Date-first listing -->
+  <section id="classes" style="max-width: 1120px; margin: 0 auto; padding: 16px 24px 40px; display: flex; flex-direction: column; gap: 8px">
+    <div role="group" aria-label="Filter classes" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0 8px">
+      <sc-for list="{{chips}}" as="chip" hint-placeholder-count="4">
+        <button type="button" aria-pressed="{{chip.pressed}}" onClick="{{chip.pick}}" style="{{chip.style}}">{{chip.label}}</button>
+      </sc-for>
+    </div>
+
+    <sc-for list="{{months}}" as="m" hint-placeholder-count="2">
+      <div style="display: flex; flex-direction: column">
+        <h2 style="margin: 28px 0 8px; font-size: 26px; font-weight: 400; padding-bottom: 10px; border-bottom: 1.5px solid #4A3728">{{m.label}}</h2>
+        <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+          <sc-for list="{{m.rows}}" as="r" hint-placeholder-count="3">
+            <li style="border-bottom: 1px solid #E4E1D6">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding: 18px 0">
+                <div aria-hidden="true" style="{{r.dateStyle}}">
+                  <span style="font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.08em">{{r.dow}}</span>
+                  <span style="font-size: 30px; line-height: 1">{{r.day}}</span>
+                  <span style="font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 600">{{r.mon}}</span>
+                </div>
+                <img src="{{r.img}}" alt="" style="width: 112px; height: 84px; object-fit: cover; border-radius: 10px">
+                <div style="flex: 999 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+                    <span style="{{r.tagStyle}}">{{r.tag}}</span>
+                    <span style="font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 600; color: #6E6A60">{{r.craft}}</span>
+                  </div>
+                  <h3 style="margin: 0; font-size: 22px; font-weight: 400; line-height: 1.25">{{r.title}}</h3>
+                  <div style="font-family: Archivo, system-ui, sans-serif; font-size: 14px; color: #55524A">{{r.facts}}</div>
+                </div>
+                <div style="flex: 1 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 20px">
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+                    <span style="font-size: 24px; line-height: 1">{{r.price}}</span>
+                    <span style="{{r.statusStyle}}">{{r.status}}</span>
+                  </div>
+                  <a href="#" style="{{r.ctaStyle}}">{{r.cta}}</a>
+                  <button type="button" aria-expanded="{{r.expanded}}" aria-label="{{r.detailsLabel}}" onClick="{{r.toggle}}" style="width: 44px; height: 44px; border-radius: 999px; border: 1.5px solid #D3CFC2; background: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A3728" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{{r.chevronStyle}}"><path d="m6 9 6 6 6-6"></path></svg>
+                  </button>
+                </div>
+              </div>
+              <sc-if value="{{r.isOpen}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 0 0 24px 88px">
+                  <img src="{{r.img}}" alt="{{r.alt}}" style="width: 280px; max-width: 100%; height: 210px; object-fit: cover; border-radius: 14px">
+                  <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+                    <div style="font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #56664A">What you'll make</div>
+                    <p style="margin: 0; font-size: 17px; line-height: 1.55">{{r.make}}</p>
+                    <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #55524A">{{r.blurb}}</p>
+                    <sc-if value="{{r.hasOthers}}" hint-placeholder-val="{{ false }}">
+                      <p style="margin: 0; font-family: Archivo, system-ui, sans-serif; font-size: 14px; color: #55524A">{{r.others}}</p>
+                    </sc-if>
+                    <sc-if value="{{r.isFull}}" hint-placeholder-val="{{ false }}">
+                      <p style="margin: 0; font-family: Archivo, system-ui, sans-serif; font-size: 14px; color: #55524A">Full right now. Join the waitlist and we'll email you if a seat opens.</p>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </li>
+          </sc-for>
+        </ol>
+      </div>
+    </sc-for>
+
+    <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+      <p style="margin: 24px 0; font-size: 18px">Nothing on the calendar for that yet. <button type="button" onClick="{{reset}}" style="border: none; background: none; padding: 0; text-decoration: underline; color: #4A3728; cursor: pointer">Show all classes</button></p>
+    </sc-if>
+
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-top: 20px; font-family: Archivo, system-ui, sans-serif; font-size: 15px; font-weight: 600">
+      <a href="#">View as calendar</a>
+      <a href="#alerts">Get new class alerts</a>
+    </div>
+  </section>
+
+  <!-- Made here -->
+  <section style="max-width: 1120px; margin: 0 auto; padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-size: 30px; font-weight: 400">Made in the studio</h2>
+      <a href="#" style="font-family: Archivo, system-ui, sans-serif; font-size: 15px; font-weight: 600">More on Instagram</a>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px">
+      <img src="/_blob/d3ebe88583a9367d6f3fc8e07b4debf2" alt="Stained glass pumpkin" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px">
+      <img src="/_blob/84dbd07457275b6fae5265538a036a79" alt="Stained glass panel in progress" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px">
+      <img src="/_blob/1c04cff51d20a7c3ad97b60a5b7bb0c3" alt="Hammered copper earrings" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px">
+      <img src="/_blob/f4278ab37829c45dc1f3d69ea9425972" alt="Micro macramé bracelets" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px">
+      <img src="/_blob/9b637ce350f12d5c4fb1f20ef244270a" alt="Beginner stained glass piece" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px">
+    </div>
+  </section>
+
+  <!-- Path -->
+  <section style="background: #D5D6C8">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 48px 24px; display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-size: 30px; font-weight: 400">New here? Learn at your own pace</h2>
+        <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #4A4740">Start free, try one session, then go deeper. Repeat any class as often as you like.</p>
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px">
+        <li style="background: #FBFAF6; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; justify-content: space-between; gap: 8px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700"><span style="color: #56664A">1 · Free</span></div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 400">Open Studio Social</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #55524A">Drop in and try a craft before you commit.</p>
+        </li>
+        <li style="background: #FFFFFF; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 0 0 2px #6B7B5E">
+          <div style="display: flex; justify-content: space-between; gap: 8px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700"><span style="color: #56664A">2 · $40 to $60</span><span>Start here</span></div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 400">Try It class</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #55524A">One session. Leave with something you made.</p>
+        </li>
+        <li style="background: #FBFAF6; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; justify-content: space-between; gap: 8px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700"><span style="color: #56664A">3 · $240</span></div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 400">Studio Series</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #55524A">Six sessions to build real skill. $40 a session.</p>
+        </li>
+        <li style="background: #FBFAF6; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; justify-content: space-between; gap: 8px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700"><span style="color: #56664A">4 · $30 / month</span></div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 400">Craft Club</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #55524A">Keep making with our studio, tools and materials.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Good to know -->
+  <section style="max-width: 1120px; margin: 0 auto; padding: 48px 24px 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 400">The price you see is the price</h3>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #55524A">Tools, materials and safety gear are included.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 400">No experience needed</h3>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #55524A">Repeat any class as often as you like and learn at your own speed.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 400">Flexible if plans change</h3>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #55524A">Full refund up to two weeks out, 50% up to three days out. <a href="#">Policy</a></p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 400">Find us</h3>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #55524A">688 Beulah Rd, Morgantown. Sign a short waiver at check-in.</p>
+    </div>
+  </section>
+
+  <!-- Gift / private / alerts -->
+  <section style="max-width: 1120px; margin: 0 auto; padding: 16px 24px 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+    <div style="background: #E9E4D6; border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 24px; font-weight: 400">Give a class</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #4A4740">A seat in a class, the Studio Series, or Craft Club makes a gift people remember.</p>
+      <a href="#" style="margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; background: #4A3728; color: #FFFFFF; text-decoration: none; font-family: Archivo, system-ui, sans-serif; font-size: 15px; font-weight: 600">Gift a class</a>
+    </div>
+    <div style="background: #FBFAF6; border: 1px solid #E4E1D6; border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 24px; font-weight: 400">Book a private class</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #4A4740">Birthdays, team outings, friends' nights. Tell us your group size and dates.</p>
+      <a href="#" style="margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; border: 1.5px solid #4A3728; color: #4A3728; text-decoration: none; font-family: Archivo, system-ui, sans-serif; font-size: 15px; font-weight: 600">Request a date</a>
+    </div>
+    <form id="alerts" style="background: #4A3728; color: #FBFAF6; border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 24px; font-weight: 400; color: #FBFAF6">New class alerts</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #E9E6DC">Classes fill fast. Hear about new dates before they're posted.</p>
+      <label for="alert-email" style="font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #E9E6DC">Email</label>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <input id="alert-email" type="email" placeholder="you@example.com" style="flex: 1 1 160px; min-width: 0; min-height: 44px; padding: 0 14px; border-radius: 10px; border: none; font-family: Archivo, system-ui, sans-serif; font-size: 15px">
+        <button type="button" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: none; background: #D5D6C8; color: #4A3728; font-family: Archivo, system-ui, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer">Notify me</button>
+      </div>
+    </form>
+  </section>
+
+  <footer style="background: #3B2C20; color: #E9E6DC">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 32px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; font-family: Archivo, system-ui, sans-serif; font-size: 14px">
+      <span>Maple &amp; Spruce Folk Arts Collective</span>
+      <span>Open Wed &amp; Sat, 12 to 6pm</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filter: 'all', open: null };
+  }
+
+  renderVals() {
+    const self = this;
+    const st = this.state || {};
+    const filter = st.filter || 'all';
+    const open = st.open;
+    const ARCHIVO = 'Archivo, system-ui, -apple-system, sans-serif';
+    const IMG = {
+      copper: '/_blob/1c04cff51d20a7c3ad97b60a5b7bb0c3',
+      glass: '/_blob/9b637ce350f12d5c4fb1f20ef244270a',
+      macrame: '/_blob/f4278ab37829c45dc1f3d69ea9425972',
+      pumpkins: '/_blob/d3ebe88583a9367d6f3fc8e07b4debf2',
+      series: '/_blob/84dbd07457275b6fae5265538a036a79',
+    };
+    const GLASS_TRY = {
+      title: 'Stained Glass: Try It', craft: 'Stained glass', kind: 'try', price: '$60',
+      facts: '3 hours · Beginner · materials included', img: IMG.glass, alt: 'A finished beginner stained glass piece',
+      make: 'Your first stained glass piece, start to finish.',
+      blurb: 'Learn to cut, fit and finish glass in a single session.',
+    };
+    const S = [
+      { id: 'mac-1015', month: 'October', dow: 'THU', day: '15', mon: 'Oct', spots: 1,
+        title: 'Micro Macramé Bracelets', craft: 'Jewelry', kind: 'try', price: '$40',
+        facts: '1.5 hours · Beginner · materials included', img: IMG.macrame, alt: 'Micro macramé bracelets on a knotting board',
+        make: 'A micro macramé bracelet you leave wearing.', blurb: 'Learn the core knots and finish a bracelet in one sitting.' },
+      { id: 'glass-1021', month: 'October', dow: 'WED', day: '21', mon: 'Oct', spots: 0, ...GLASS_TRY, others: 'Also on Wed, Nov 4 and Fri, Nov 20' },
+      { id: 'pump-1023', month: 'October', dow: 'FRI', day: '23', mon: 'Oct', spots: 3,
+        title: 'Stained Glass Pumpkins', craft: 'Stained glass', kind: 'seasonal', price: '$60',
+        facts: '3 hours · All levels · materials included', img: IMG.pumpkins, alt: 'Orange stained glass pumpkins',
+        make: 'A stained glass pumpkin to bring home for the season.', blurb: 'A one-session fall project, open to every level.' },
+      { id: 'glass-1104', month: 'November', dow: 'WED', day: '4', mon: 'Nov', spots: 0, ...GLASS_TRY, others: 'Also on Wed, Oct 21 and Fri, Nov 20' },
+      { id: 'series-1105', month: 'November', dow: 'THU', day: '5', mon: 'Nov', spots: 4,
+        title: 'Stained Glass Studio Series', craft: 'Stained glass', kind: 'series', price: '$240',
+        facts: '6 Thursdays, Nov 5 to Dec 17 · 3 hours each · All levels', img: IMG.series, alt: 'Stained glass panel made in the Studio Series',
+        make: 'Bigger pieces, planned and finished over six weeks.', blurb: 'Sessions on Nov 5, 12, 19 and Dec 3, 10, 17. That is $40 a session, materials included.' },
+      { id: 'copper-1111', month: 'November', dow: 'WED', day: '11', mon: 'Nov', spots: 8,
+        title: 'Hammered Copper Jewelry', craft: 'Jewelry', kind: 'try', price: '$45',
+        facts: '1.5 hours · All levels · materials included', img: IMG.copper, alt: 'Hammered copper earrings and hoops',
+        make: 'A piece of hammered copper jewelry to take home the same day.', blurb: 'Shape, texture and finish copper with hand tools.' },
+      { id: 'glass-1120', month: 'November', dow: 'FRI', day: '20', mon: 'Nov', spots: 1, ...GLASS_TRY, others: 'Also on Wed, Oct 21 and Wed, Nov 4 (both full)' },
+    ];
+
+    const pass = (s) => filter === 'all'
+      || (filter === 'glass' && s.craft === 'Stained glass')
+      || (filter === 'jewelry' && s.craft === 'Jewelry')
+      || (filter === 'series' && s.kind === 'series');
+
+    const chipStyle = (on) =>
+      'min-height: 44px; padding: 0 18px; border-radius: 999px; cursor: pointer; font-family: ' + ARCHIVO +
+      '; font-size: 14px; font-weight: 600; border: 1.5px solid ' + (on ? '#4A3728' : '#D3CFC2') +
+      '; background: ' + (on ? '#4A3728' : '#FFFFFF') + '; color: ' + (on ? '#FFFFFF' : '#4A3728');
+    const chips = [
+      { id: 'all', label: 'All' }, { id: 'glass', label: 'Stained glass' },
+      { id: 'jewelry', label: 'Jewelry' }, { id: 'series', label: '6-week series' },
+    ].map((c) => ({ label: c.label, pressed: filter === c.id ? 'true' : 'false', style: chipStyle(filter === c.id),
+      pick: () => self.setState({ filter: c.id, open: null }) }));
+
+    const KIND = {
+      try: { tag: 'Try It', style: 'background: #E6EADF; color: #3F5A30' },
+      seasonal: { tag: 'Seasonal', style: 'background: #F6E3D3; color: #8A4316' },
+      series: { tag: 'Studio Series', style: 'background: #4A3728; color: #FFFFFF' },
+    };
+
+    const row = (s) => {
+      const full = s.spots === 0;
+      const few = !full && s.spots <= 3;
+      const isOpen = open === s.id;
+      const k = KIND[s.kind];
+      return {
+        ...s,
+        tag: k.tag,
+        tagStyle: 'font-family: ' + ARCHIVO + '; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; ' + k.style,
+        dateStyle: 'width: 64px; flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0; border-radius: 12px; ' +
+          (full ? 'background: #EEEBE2; color: #6E6A60' : 'background: #FFFFFF; color: #4A3728; box-shadow: inset 0 0 0 1.5px #D3CFC2'),
+        status: full ? 'Full' : few ? (s.spots === 1 ? 'Only 1 seat left' : s.spots + ' seats left') : s.spots + ' seats open',
+        statusStyle: 'font-family: ' + ARCHIVO + '; font-size: 13px; font-weight: 700; color: ' + (full ? '#6E6A60' : few ? '#9A4F1E' : '#3F5A30'),
+        cta: full ? 'Join waitlist' : 'Reserve',
+        ctaStyle: 'display: inline-flex; align-items: center; justify-content: center; min-width: 120px; min-height: 44px; padding: 0 18px; border-radius: 999px; text-decoration: none; font-family: ' + ARCHIVO +
+          '; font-size: 15px; font-weight: 600; ' + (full ? 'border: 1.5px solid #4A3728; color: #4A3728' : 'background: #56664A; color: #FFFFFF; border: 1.5px solid #56664A'),
+        isOpen, isFull: full, hasOthers: !!s.others,
+        expanded: isOpen ? 'true' : 'false',
+        detailsLabel: (isOpen ? 'Hide details for ' : 'Show details for ') + s.title,
+        chevronStyle: isOpen ? 'transform: rotate(180deg)' : '',
+        toggle: () => self.setState({ open: isOpen ? null : s.id }),
+      };
+    };
+
+    const list = S.filter(pass);
+    const months = ['October', 'November'].map((m) => ({
+      label: m + ' 2026', rows: list.filter((s) => s.month === m).map(row),
+    })).filter((m) => m.rows.length > 0);
+
+    return {
+      chips, months, isEmpty: months.length === 0,
+      reset: () => self.setState({ filter: 'all', open: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>
