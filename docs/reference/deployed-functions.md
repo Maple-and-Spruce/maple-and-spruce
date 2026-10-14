@@ -60,7 +60,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
     `rescheduleLessonWithCredit` (#209: cancel a lesson, book its replacement, move its payment
     over), `getLessonBlocks`, `getStudentLessonSchedules`, `createStudentLessonSchedule`,
     `updateStudentLessonSchedule`, `getMyDayLessons`, `getMyWeek`.
-  - Admin-only: `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
+  - Admin-only: `getStudioDay` (#235: every teacher's lessons for a day, with payment state, for
+    the Home dashboard), `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
     `getLessonInquiries`, `updateLessonInquiryStatus`, `getLessonBilling`, `saveLessonBillingRule`,
     `updateLessonScheduledCharge`, `getPosLessonAttributions`, `getPosLessonAttributionSummary`,
     `resolvePosLessonAttribution`.

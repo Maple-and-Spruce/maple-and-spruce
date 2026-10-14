@@ -47,6 +47,7 @@ vi.mock('./update-student-lesson-schedule', () => ({
 }));
 vi.mock('./get-my-day-lessons', () => ({ getMyDayLessons: vi.fn() }));
 vi.mock('./get-my-week', () => ({ getMyWeek: vi.fn() }));
+vi.mock('./get-studio-day', () => ({ getStudioDay: vi.fn() }));
 vi.mock('./create-lesson-block', () => ({ createLessonBlock: vi.fn() }));
 vi.mock('./update-lesson-block', () => ({ updateLessonBlock: vi.fn() }));
 vi.mock('./delete-lesson-block', () => ({ deleteLessonBlock: vi.fn() }));
@@ -84,6 +85,7 @@ import { createStudentLessonSchedule } from './create-student-lesson-schedule';
 import { updateStudentLessonSchedule } from './update-student-lesson-schedule';
 import { getMyDayLessons } from './get-my-day-lessons';
 import { getMyWeek } from './get-my-week';
+import { getStudioDay } from './get-studio-day';
 import { createLessonBlock } from './create-lesson-block';
 import { updateLessonBlock } from './update-lesson-block';
 import { deleteLessonBlock } from './delete-lesson-block';
@@ -112,6 +114,7 @@ const handlers: Record<string, unknown> = {
   updateStudentLessonSchedule,
   getMyDayLessons,
   getMyWeek,
+  getStudioDay,
   createLessonBlock,
   updateLessonBlock,
   deleteLessonBlock,
@@ -143,6 +146,7 @@ const ADMIN_OR_LESSON_TEACHER = [
 
 /** Blocks, inquiries, billing and POS attribution are run by the studio. */
 const ADMIN_ONLY = [
+  'getStudioDay',
   'createLessonBlock',
   'updateLessonBlock',
   'deleteLessonBlock',

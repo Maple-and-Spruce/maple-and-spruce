@@ -52,6 +52,8 @@ import type {
   GetPosLessonAttributionsResponse,
   GetStudentLessonSchedulesRequest,
   GetStudentLessonSchedulesResponse,
+  GetStudioDayRequest,
+  GetStudioDayResponse,
   RescheduleLessonWithCreditRequest,
   RescheduleLessonWithCreditResponse,
   ResolvePosLessonAttributionRequest,
@@ -84,6 +86,7 @@ import { createStudentLessonSchedule } from './create-student-lesson-schedule';
 import { updateStudentLessonSchedule } from './update-student-lesson-schedule';
 import { getMyDayLessons } from './get-my-day-lessons';
 import { getMyWeek } from './get-my-week';
+import { getStudioDay } from './get-studio-day';
 import { getLessonInquiries } from './get-lesson-inquiries';
 import { updateLessonInquiryStatus } from './update-lesson-inquiry-status';
 import { getLessonBilling } from './get-lesson-billing';
@@ -179,6 +182,11 @@ export const lessons = Functions.router('lessons', {
   getMyWeek: Functions.endpoint
     .requiringRole([Role.Admin, Role.LessonTeacher])
     .asRoute<GetMyWeekRequest, GetMyWeekResponse>(getMyWeek),
+
+  // The whole studio's day, every teacher, for the admin Home dashboard (#235)
+  getStudioDay: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetStudioDayRequest, GetStudioDayResponse>(getStudioDay),
 
   // Lesson inquiries (leads from the Tally form)
   getLessonInquiries: Functions.endpoint
