@@ -354,6 +354,14 @@ export type {
   GetMyDayLessonsResponse,
 } from './my-day.types';
 
+// Admin Home dashboard: every teacher's lessons for a day (#235)
+export type {
+  StudioDayPayment,
+  StudioDayLesson,
+  GetStudioDayRequest,
+  GetStudioDayResponse,
+} from './studio-day.types';
+
 // Phase 4: Music Lessons - Teacher My Week schedule (#60/#684)
 export type {
   MyWeekOwnership,
