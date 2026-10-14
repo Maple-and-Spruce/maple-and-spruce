@@ -30,7 +30,7 @@
 | Lesson-teacher manage-own (phase 2 of epic #49, legacy #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
 | Portal role-scoping E2E (legacy #625) | Complete | First browser-level e2e (`apps/maple-spruce-e2e`): seeds admin + mt-teacher, signs in via login UI, asserts role-filtered nav + `/users` gate. `connectAuthEmulator` opt-in wiring; `tools/run-portal-e2e.sh` + `portal-e2e` CI job |
 | Lesson-teacher student + calendar scoping (epic #49) | Complete | `getStudents` reads-own (filter by `primaryTeacherId`); `getStudent`/create/update/delete-student → `[Admin, LessonTeacher]` + ownership; calendar events: lesson-teacher dropped from update/delete + create requires a `room` (book-room only) + Events nav hidden. `instructorScopeForUser`/`assertCanManageStudent`/`assertOwnsAsInstructor` helpers |
-| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
+| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel). Square-style areas: accordion, page search (⌘K), pinned Create menu with `?new=1` create intents; flat list for roles with ≤10 pages |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
 | Chromatic CI | Removed (2026-09) | Snapshot quota kept running out; Storybook play tests cover it |

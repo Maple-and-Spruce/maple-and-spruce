@@ -22,7 +22,7 @@ import {
 
 /** Billing lives on the Activity tab (#158). */
 async function openStudent(page: Page, id: string, name: string) {
-  await signIn(page, ADMIN, 'Students');
+  await signIn(page, ADMIN, 'Lessons');
   await page.goto(`/students/${id}?tab=activity`);
   await expect(
     page.getByRole('heading', { name, level: 1 })

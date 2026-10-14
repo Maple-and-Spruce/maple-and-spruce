@@ -69,6 +69,18 @@ const config: StorybookConfig = {
           'qrcode.react',
           // Student page tables (#84) + pay-ahead card (legacy #864). Keep in step with
           // vitest.storybook.config.ts.
+          '@mui/icons-material/Search',
+          '@mui/icons-material/ExpandMore',
+          '@mui/icons-material/Palette',
+          '@mui/icons-material/Storefront',
+          '@mui/icons-material/Payments',
+          '@mui/icons-material/Settings',
+          '@mui/icons-material/Home',
+          '@mui/icons-material/MusicNote',
+          '@mui/material/Collapse',
+          '@mui/material/InputAdornment',
+          '@mui/material/Menu',
+          '@mui/material/MenuItem',
           '@mui/icons-material/Add',
           '@mui/icons-material/Block',
           '@mui/icons-material/Cancel',

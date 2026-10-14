@@ -7,7 +7,7 @@ import {
   useSyncConflictSummary,
 } from '@maple/react/data';
 import { useRoles } from '@maple/react/auth';
-import { buildNavGroups } from './nav-groups';
+import { buildCreateActions, buildNavGroups } from './nav-groups';
 
 interface AppShellWrapperProps {
   children: ReactNode;
@@ -16,7 +16,7 @@ interface AppShellWrapperProps {
 
 /**
  * App-specific wrapper around the library's AppShell component.
- * Provides the grouped navigation configuration for the admin app,
+ * Provides the nav areas and Create menu for the admin app,
  * filtered to the current user's roles (from RolesProvider — see
  * `nav-groups.tsx` for the role map). This filtering is UX only;
  * enforcement is server-side in each function's `requiringRole` check.
@@ -47,8 +47,14 @@ export function AppShellWrapper({
     [roles, pendingConflicts, pendingPosLessons]
   );
 
+  const createActions = useMemo(() => buildCreateActions(roles), [roles]);
+
   return (
-    <AppShell navGroups={navGroups} maxWidth={maxWidth}>
+    <AppShell
+      navGroups={navGroups}
+      createActions={createActions}
+      maxWidth={maxWidth}
+    >
       {children}
     </AppShell>
   );

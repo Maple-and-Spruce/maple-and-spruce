@@ -23,7 +23,7 @@ export interface RoleAnnotated {
 export function allowedRolesForPath<
   Item extends RoleAnnotated & { href: string },
 >(
-  groups: ReadonlyArray<{ label: string; items: Item[] }>,
+  groups: ReadonlyArray<{ label: string; items: readonly Item[] }>,
   pathname: string
 ): readonly UserRole[] {
   let best: { href: string; roles: readonly UserRole[] } | undefined;
@@ -41,21 +41,40 @@ export function allowedRolesForPath<
   return best?.roles ?? [];
 }
 
-export function filterNavGroupsByRoles<Item extends RoleAnnotated>(
-  groups: ReadonlyArray<{ label: string; items: Item[] }>,
+/**
+ * The items a user's roles may see, with the `roles` annotation stripped.
+ * Admins see everything; unresolved roles (empty) see nothing.
+ */
+export function filterItemsByRoles<Item extends RoleAnnotated>(
+  items: readonly Item[],
   roles: readonly UserRole[]
-): Array<{ label: string; items: Array<Omit<Item, 'roles'>> }> {
+): Array<Omit<Item, 'roles'>> {
   const isAdmin = roles.includes('admin');
+  return items
+    .filter(
+      (item) => isAdmin || item.roles?.some((role) => roles.includes(role))
+    )
+    .map(({ roles: _roles, ...item }) => item);
+}
 
+/**
+ * Filter each group's items by role, dropping groups left empty. Every
+ * other group field (an area's icon, say) passes through unchanged.
+ */
+export function filterNavGroupsByRoles<
+  Group extends { label: string; items: readonly RoleAnnotated[] },
+>(
+  groups: readonly Group[],
+  roles: readonly UserRole[]
+): Array<
+  Omit<Group, 'items'> & {
+    items: Array<Omit<Group['items'][number], 'roles'>>;
+  }
+> {
   return groups
     .map((group) => ({
-      label: group.label,
-      items: group.items
-        .filter(
-          (item) =>
-            isAdmin || item.roles?.some((role) => roles.includes(role))
-        )
-        .map(({ roles: _roles, ...item }) => item),
+      ...group,
+      items: filterItemsByRoles(group.items, roles),
     }))
     .filter((group) => group.items.length > 0);
 }
