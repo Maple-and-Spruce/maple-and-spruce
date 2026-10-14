@@ -140,9 +140,11 @@
       var spotsAttr = item.getAttribute('data-spots');
       var spots = spotsAttr === '' || spotsAttr == null ? null : parseInt(spotsAttr, 10);
       var sessions = parseInt(item.getAttribute('data-sessions') || '', 10);
-      var series = sessions > 1 || /each/i.test(item.getAttribute('data-duration') || '');
+      var text = cat + ' ' + name;
+      var series = /studio series/i.test(text) || sessions >= 3;
+      var workshop = !series && (sessions === 2 || /workshop/i.test(text) || /each/i.test(item.getAttribute('data-duration') || ''));
       var craft = CRAFTS.filter(function (c) { return c.re.test(cat + ' ' + name); })[0];
-      return { item: item, name: name.trim(), date: d, spots: spots, series: series,
+      return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
         craft: craft ? craft.id : 'other', full: spots != null && spots <= 0,
         time: item.getAttribute('data-time') || '' };
     });
@@ -170,7 +172,7 @@
 
       var tags = el('div', 'msx-tags');
       if (r === next) tags.appendChild(el('span', 'msx-tag is-next', 'Next up'));
-      tags.appendChild(el('span', 'msx-tag' + (r.series ? ' is-series' : ''), r.series ? 'Studio Series' : 'Try It'));
+      tags.appendChild(el('span', 'msx-tag' + (r.series ? ' is-series' : ''), r.series ? 'Studio Series' : r.workshop ? 'Workshop' : 'Try It'));
       var badge = body.querySelector('.cls-card-badge');
       if (badge) tags.appendChild(badge);
       body.insertBefore(tags, body.firstChild);
@@ -178,6 +180,8 @@
       var meta = body.querySelector('.cls-card-meta');
       if (meta && !r.series) {
         if (r.time) meta.appendChild(el('span', 'msx-facts', r.time));
+        var wd = r.workshop && meta.querySelector('.cls-card-date');
+        if (wd && wd.textContent.trim()) meta.appendChild(el('span', 'msx-facts', 'Sessions: ' + wd.textContent.trim()));
         meta.appendChild(el('span', 'msx-facts is-materials', 'Materials included'));
       }
       if (r.series && meta) {
@@ -224,6 +228,7 @@
     CRAFTS.concat([{ id: 'other', label: 'Other' }]).forEach(function (c) {
       if (rows.some(function (r) { return r.craft === c.id; })) chips.push(c);
     });
+    if (rows.some(function (r) { return r.workshop; })) chips.push({ id: 'workshop', label: 'Workshops' });
     if (rows.some(function (r) { return r.series; })) chips.push({ id: 'series', label: 'Studio Series' });
     if (chips.length > 2) {
       var bar = el('div', 'msx-filters');
@@ -235,7 +240,7 @@
         Array.prototype.forEach.call(bar.children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === id)); });
         var shown = 0;
         rows.forEach(function (r) {
-          var ok = id === 'all' || (id === 'series' ? r.series : r.craft === id);
+          var ok = id === 'all' || (id === 'series' ? r.series : id === 'workshop' ? r.workshop : r.craft === id);
           r.item.style.display = ok ? '' : 'none';
           if (ok) shown++;
         });

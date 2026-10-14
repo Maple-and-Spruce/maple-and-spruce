@@ -13,9 +13,13 @@ built natively in Webflow (see [Implementation](#implementation)).
 | `webflow-embed.html` | The CSS + script live on the Webflow page (see [Webflow implementation](#webflow-implementation)) |
 | `webflow-sections-embed.html` | Page-scoped CSS for the header, self-care and Policies sections |
 
-Both are Design-canvas artboard sources, copied verbatim. Images are referenced as
-`/_blob/<id>` URLs, which resolve **only inside the canvas artifact**. Opened on their
-own, the files render without photos.
+The two `.dc.html` files are Design-canvas artboard sources, copied verbatim. Images
+are referenced as `/_blob/<id>` URLs, which resolve **only inside the canvas
+artifact**. Opened on their own, the files render without photos.
+
+The artboards are historical: they predate Katie's correction that the studio does not
+run Open Studio Socials and that Workshops sit between Try It and the Studio Series
+(see [Webflow implementation](#webflow-implementation) for the current path).
 
 The live canvas, with images, is the private Design canvas artifact
 <https://claude.ai/artifact/9t5zPASCa4j8cSr1gc3vCv> (owner-only).
@@ -53,9 +57,9 @@ five classes a month they would be noise at best and dishonest at worst.
 The page will be a **native Webflow Collection List** bound to the Classes CMS, not a
 code component, so it stays crawlable for SEO and editable by Katie in the Designer.
 
-Supporting CMS data: the `session-count` Number field on the Classes collection tells
-single-session "Try It" classes (1) from multi-session series such as the Studio
-Series (more than 1). It is written by the class sync.
+Supporting CMS data: the `session-count` Number field on the Classes collection, written
+by the class sync, tells single-session "Try It" classes from multi-session Workshops
+and Studio Series (see the rules below).
 
 ## Webflow implementation
 
@@ -69,9 +73,13 @@ The redesign is built on the live /upcoming-classes page (Webflow page
 - **Restyle:** the HtmlEmbed `669fad2a-29f5-7aac-40a7-5c949c2d33d5` inside the class
   list section holds the CSS and script in `webflow-embed.html`. At runtime it turns the
   list into date-first rows under month headers, adds the filter chips (craft inferred
-  from category/name keywords), promotes the Studio Series to a featured card
-  (`session-count` > 1, falling back to duration text containing "each"), labels the
-  first row "Next up", and adds the sticky next-class bar below 992px.
+  from category/name keywords), labels the first row "Next up", and adds the sticky
+  next-class bar below 992px. It classifies multi-session classes:
+  - **Studio Series:** name or category contains "Studio Series", or `session-count`
+    is 3 or more. Only these get the featured photo card.
+  - **Workshop:** 2 sessions, "workshop" in the name or category, or duration text
+    containing "each". Workshops get their own tag, a "Sessions: ..." fact and a
+    "Workshops" filter chip, and stay in the normal rows.
 - **Made in the studio:** a separate small HtmlEmbed with the Instagram profile embed
   copied from /gallery. It tags its section `.msx-made` and sets `position: relative` +
   `overflow: hidden`, so a blocked Instagram frame cannot cause sideways scroll on
@@ -84,10 +92,15 @@ The redesign is built on the live /upcoming-classes page (Webflow page
   the 960px class-list column. Those sections are targeted by `data-msx` attributes
   (`hero`, `about-head`, `about`, `policies`), so shared site classes (`section`,
   `container-13`, `paragraph3`, ...) are untouched. The self-care section gained
-  native 4-step path cards (classes `msx-path` / `msx-step*`: Open Studio Social, Try
-  It, Studio Series, Craft Club), and its "tight budget" paragraph was shortened into
-  a lead-in for them. **Prices in those cards are hard-coded** ($40 to $60, $240,
-  $30/month) and must be updated by hand when prices change.
+  native 4-step learning-path cards (classes `msx-path` / `msx-step*`):
+  1. **Try It** ($40 to $60)
+  2. **Workshop** (2 sessions, price not shown)
+  3. **Studio Series** ($240, 6 weeks)
+  4. **Craft Club** ($30/month, open only after finishing a Studio Series)
+
+  Its lead-in paragraph was rewritten to describe that path. The studio does not run
+  Open Studio Socials. **Prices in those cards are hard-coded** and must be updated by
+  hand when prices change.
 - The Designer canvas still shows the old card grid, because the restyle is runtime
   CSS/JS. Check changes on the staging or live site.
 
