@@ -201,6 +201,21 @@ describe('Instructor Functions', () => {
       expect(result.status).not.toBe(200);
     });
 
+    it('should create instructors without an email', async () => {
+      // Two in a row: a missing email must not count as a duplicate.
+      for (const name of ['No Email One', 'No Email Two']) {
+        const result = await callFunction<CreateInstructorRequest, CreateInstructorResponse>({
+          functionName: 'createInstructor',
+          data: { name, status: 'active' },
+          idToken: adminUser.idToken,
+        });
+
+        expect(result.status).toBe(200);
+        expect(result.data?.instructor.name).toBe(name);
+        expect(result.data?.instructor.email).toBeUndefined();
+      }
+    });
+
     it('should reject instructor with invalid email', async () => {
       const result = await callFunction<Partial<CreateInstructorRequest>>({
         functionName: 'createInstructor',

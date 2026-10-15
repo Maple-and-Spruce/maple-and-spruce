@@ -20,7 +20,12 @@ export type InstructorPayRateType = 'flat' | 'hourly' | 'percentage';
 /**
  * Instructor entity - implements Payee interface
  */
-export interface Instructor extends Payee {
+export interface Instructor extends Omit<Payee, 'email'> {
+  /**
+   * Optional: some instructors keep their email private, and the studio
+   * should not have to ask for it just to list them.
+   */
+  email?: string;
   /**
    * Firebase Auth UID of the portal user who IS this instructor, when they
    * have a login. Set only for lesson teachers who manage their own lessons

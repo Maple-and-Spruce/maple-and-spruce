@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   handler: null as null | ((d: unknown) => Promise<unknown>),
+  uniqueEmail: null as null | { when?: (d: { email?: string }) => boolean },
   create: vi.fn(),
   getInstruments: vi.fn(),
 }));
@@ -10,7 +11,10 @@ vi.mock('@maple/firebase/functions', () => {
   const endpoint = {
     requiringRole: () => endpoint,
     validating: () => endpoint,
-    ensuringUnique: () => endpoint,
+    ensuringUnique: (check: { when?: (d: { email?: string }) => boolean }) => {
+      mocks.uniqueEmail = check;
+      return endpoint;
+    },
     handle: (h: (d: unknown) => Promise<unknown>) => {
       mocks.handler = h;
       return 'mock';
@@ -57,5 +61,16 @@ describe('createInstructor lesson rates (#161)', () => {
       mocks.handler!({ name: 'Test', lessonRates: { harp: { '30-min-full': 4500 } } })
     ).rejects.toThrow('The studio does not offer Harp.');
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('createInstructor email uniqueness', () => {
+  it('checks a given email', () => {
+    expect(mocks.uniqueEmail!.when!({ email: 'teacher@example.com' })).toBe(true);
+  });
+
+  it('skips the check when there is no email, so many can be added without one', () => {
+    expect(mocks.uniqueEmail!.when!({})).toBe(false);
+    expect(mocks.uniqueEmail!.when!({ email: '' })).toBe(false);
   });
 });

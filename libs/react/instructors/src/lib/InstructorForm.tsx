@@ -27,6 +27,7 @@ import {
   Alert,
   Chip,
   Autocomplete,
+  Typography,
 } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
@@ -191,7 +192,7 @@ export function InstructorForm({
     if (instructor) {
       batch(() => {
         name.value = instructor.name;
-        email.value = instructor.email;
+        email.value = instructor.email ?? '';
         phone.value = instructor.phone ?? '';
         status.value = instructor.status;
         notes.value = instructor.notes ?? '';
@@ -326,7 +327,8 @@ export function InstructorForm({
 
       const input: Omit<CreateInstructorInput, 'uid'> & { uid?: string | null } = {
         name: name.value,
-        email: email.value,
+        // Optional. Omitted on create; '' on edit clears a stored one.
+        email: email.value.trim() || (isEdit ? '' : undefined),
         phone: phone.value || undefined,
         status: status.value,
         notes: notes.value || undefined,
@@ -358,7 +360,7 @@ export function InstructorForm({
       }
       submitError.value = message;
     }
-  }, [onSubmit, onClose, instructor?.id]);
+  }, [onSubmit, onClose, instructor?.id, isEdit]);
 
   // ============================================================
   // RENDER
@@ -402,8 +404,7 @@ export function InstructorForm({
             value={email.value}
             onChange={(e) => (email.value = e.target.value)}
             error={!!getFieldError('email')}
-            helperText={getFieldError('email')}
-            required
+            helperText={getFieldError('email') ?? 'Optional'}
             fullWidth
           />
 
@@ -457,7 +458,11 @@ export function InstructorForm({
                 {...params}
                 label="Specialties"
                 placeholder="Add specialty..."
-                helperText="Press Enter to add custom specialties"
+                error={!!getFieldError('specialties')}
+                helperText={
+                  getFieldError('specialties') ??
+                  'Press Enter to add custom specialties'
+                }
               />
             )}
           />
@@ -498,7 +503,7 @@ export function InstructorForm({
               value={
                 payRateType.value === 'percentage'
                   ? payRate.value !== undefined
-                    ? payRate.value
+                    ? Math.round(payRate.value * 10000) / 100
                     : ''
                   : payRate.value !== undefined
                     ? payRate.value / 100
@@ -509,18 +514,21 @@ export function InstructorForm({
                 if (isNaN(val)) {
                   payRate.value = undefined;
                 } else if (payRateType.value === 'percentage') {
-                  payRate.value = val;
+                  // Typed as a percent (70), stored as a decimal (0.7).
+                  payRate.value = val / 100;
                 } else {
                   // Convert dollars to cents for flat/hourly
                   payRate.value = Math.round(val * 100);
                 }
               }}
+              error={!!getFieldError('payRate')}
               helperText={
-                payRateType.value === 'flat'
+                getFieldError('payRate') ??
+                (payRateType.value === 'flat'
                   ? 'Amount paid per class'
                   : payRateType.value === 'hourly'
                     ? 'Amount paid per hour'
-                    : 'Percentage of class revenue'
+                    : 'Percentage of class revenue')
               }
               fullWidth
             />
@@ -590,6 +598,16 @@ export function InstructorForm({
         </Box>
       </DialogContent>
       <DialogActions>
+        {Object.keys(errors.value).length > 0 && (
+          <Typography
+            variant="body2"
+            color="error"
+            role="alert"
+            sx={{ mr: 'auto', pl: 2 }}
+          >
+            Fix the highlighted fields to save.
+          </Typography>
+        )}
         <Button onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>
