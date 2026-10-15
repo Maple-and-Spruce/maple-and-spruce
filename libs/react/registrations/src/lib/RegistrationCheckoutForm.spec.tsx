@@ -50,6 +50,7 @@ vi.mock('@maple/react/agreements', () => ({
 // Google Pay / Apple Pay token events from outside the component.
 let capturedDigitalWalletTokenCallback: ((token: string) => void) | undefined;
 let capturedInitErrorCallback: (() => void) | undefined;
+let capturedBeforeDigitalWallet: (() => boolean) | undefined;
 
 // Allow individual tests to override how the mocked tokenize function
 // behaves (e.g. to keep the promise pending and simulate Square's SDK
@@ -69,6 +70,7 @@ vi.mock('./SquareCardForm', () => ({
     onInitError,
     onTokenizeRef,
     onDigitalWalletToken,
+    beforeDigitalWallet,
     afterCardContent,
   }: {
     onReady?: () => void;
@@ -77,8 +79,10 @@ vi.mock('./SquareCardForm', () => ({
       fn: () => Promise<{ nonce: string; verificationToken?: string }>
     ) => void;
     onDigitalWalletToken?: (token: string) => void;
+    beforeDigitalWallet?: () => boolean;
     afterCardContent?: React.ReactNode;
   }) => {
+    capturedBeforeDigitalWallet = beforeDigitalWallet;
     useEffect(() => {
       onTokenizeRef(() => mockTokenizeImpl());
       onReady?.();
@@ -487,6 +491,9 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
 
     await fillCustomerInfo();
 
+    // The Google Pay sheet must not open while the agreement is unsigned
+    expect(capturedBeforeDigitalWallet?.()).toBe(false);
+
     // Simulate Google Pay returning a token while agreement is unsigned
     await act(async () => {
       capturedDigitalWalletTokenCallback!('google-pay-nonce');
@@ -513,7 +520,8 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
       expect(screen.getByText(/Class Waiver — Signed/)).toBeInTheDocument();
     });
 
-    // Now the digital wallet token should go through
+    // Now the Google Pay sheet may open and the token should go through
+    expect(capturedBeforeDigitalWallet?.()).toBe(true);
     await act(async () => {
       capturedDigitalWalletTokenCallback!('google-pay-nonce');
     });

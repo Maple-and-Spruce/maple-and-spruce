@@ -57,6 +57,28 @@ See `libs/firebase/functions/src/lib/environment.utility.ts` for full documentat
 | Production | `https://us-east4-maple-and-spruce.cloudfunctions.net/squareWebhook` |
 | Development | `https://us-east4-maple-and-spruce-dev.cloudfunctions.net/squareWebhook` |
 
+## Apple Pay and Google Pay Domains
+
+The class registration widget offers Google Pay inline and Apple Pay in a popup.
+The popup lives on the admin app, because Square only offers Apple Pay on a domain
+registered for it, and Webflow cannot host Apple's verification file.
+
+| Environment | Register in Square Developer Console (Apple Pay) | Webflow `Apple Pay Checkout URL` |
+|-------------|---------------------------------------------------|----------------------------------|
+| Production | `business.mapleandsprucefolkarts.com` (Production → Add Domain) | `https://business.mapleandsprucefolkarts.com/apple-pay-checkout` |
+| Development | `business-dev.mapleandsprucefolkarts.com` (Sandbox → Add Sandbox Domain) | `https://business-dev.mapleandsprucefolkarts.com/apple-pay-checkout` |
+
+- The verification file is served by a route handler at
+  `apps/maple-spruce/src/app/.well-known/apple-developer-merchantid-domain-association/`,
+  not from `public/`: the Vercel build does not ship this app's `public/` directory.
+  Check it with `curl -s https://<domain>/.well-known/apple-developer-merchantid-domain-association | head -c 20`
+  before registering.
+- Until a domain is registered, the popup says "Your website's domain is not registered
+  for use with Apple Pay". That message comes from Square.
+- Google Pay needs no registration. Both wallets need HTTPS, and both need a real card in
+  the wallet, even in sandbox (where it is not charged).
+- Wallets are off per widget until the Webflow `Digital Wallets` setting is `show`.
+
 ## Firebase Emulators (Integration Tests)
 
 Integration tests run against the Firebase local emulator suite. Emulator ports are configured in `firebase.json`:
