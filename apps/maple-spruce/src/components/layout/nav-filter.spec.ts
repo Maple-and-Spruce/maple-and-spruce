@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { allowedRolesForPath, filterNavGroupsByRoles } from './nav-filter';
+import {
+  allowedRolesForPath,
+  filterItemsByRoles,
+  filterNavGroupsByRoles,
+} from './nav-filter';
 
 // Icon-free fixture mirroring the real nav's role semantics: an
 // admin-only item, a clerk item, an all-roles item, and a group that
@@ -80,6 +84,43 @@ describe('filterNavGroupsByRoles', () => {
       badge: 7,
       badgeColor: 'warning',
     });
+  });
+});
+
+describe('filterNavGroupsByRoles group fields', () => {
+  it('passes extra group fields (an area icon) through untouched', () => {
+    const groups = [
+      { label: 'Money', icon: 'money-icon', items: [{ label: 'Hope Billing' }] },
+    ];
+    expect(filterNavGroupsByRoles(groups, ['admin'])).toEqual([
+      { label: 'Money', icon: 'money-icon', items: [{ label: 'Hope Billing' }] },
+    ]);
+  });
+});
+
+describe('filterItemsByRoles', () => {
+  const ACTIONS = [
+    { label: 'New class' }, // admin only
+    { label: 'New event', roles: ['mt-teacher', 'clerk'] as const },
+    { label: 'Book the Spruce Room', roles: ['mt-teacher', 'clerk', 'lesson-teacher'] as const },
+  ];
+
+  it('admin gets every entry', () => {
+    expect(filterItemsByRoles(ACTIONS, ['admin']).map((a) => a.label)).toEqual([
+      'New class',
+      'New event',
+      'Book the Spruce Room',
+    ]);
+  });
+
+  it('a scoped role gets only entries listing it, roles stripped', () => {
+    expect(filterItemsByRoles(ACTIONS, ['lesson-teacher'])).toEqual([
+      { label: 'Book the Spruce Room' },
+    ]);
+  });
+
+  it('unresolved roles get nothing', () => {
+    expect(filterItemsByRoles(ACTIONS, [])).toEqual([]);
   });
 });
 

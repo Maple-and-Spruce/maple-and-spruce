@@ -4,6 +4,10 @@
 .msx-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 4px}
 .msx-chip{font-family:Archivo,sans-serif;font-size:14px;font-weight:600;min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid #D3CFC2;background:#fff;color:#4A3728;cursor:pointer;line-height:1}
 .msx-chip[aria-pressed="true"]{background:#4A3728;border-color:#4A3728;color:#fff}
+.msx-sep{flex:0 0 1px;align-self:stretch;background:#D3CFC2;margin:6px 4px}
+.msx-toggle{display:inline-flex;align-items:center;gap:8px}
+.msx-toggle::before{content:"";flex:0 0 16px;width:16px;height:16px;border-radius:4px;border:1.5px solid currentColor;box-sizing:border-box}
+.msx-toggle[aria-pressed="true"]::before{background:#fff;box-shadow:inset 0 0 0 3px #4A3728}
 .cls-card-grid.msx{display:flex!important;flex-direction:column;gap:0!important;grid-template-columns:none!important}
 .msx-month{font-family:Georgia,Times,"Times New Roman",serif;font-size:26px;font-weight:400;color:#4A3728;margin:28px 0 0;padding-bottom:10px;border-bottom:1.5px solid #4A3728;line-height:1.2}
 .msx .cls-card{background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;border-bottom:1px solid #E4E1D6!important;overflow:visible!important;transform:none!important;margin:0!important;padding:0!important;height:auto!important}
@@ -67,8 +71,9 @@
  body.msx-has-bar{padding-bottom:84px}
 }
 @media (max-width:767px){
- .msx-filters{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 4px}
- .msx-chip{flex:0 0 auto;white-space:nowrap}
+ .msx-filters{flex-wrap:wrap;gap:8px}
+ .msx-chip{flex:0 0 auto;white-space:nowrap;padding:0 14px}
+ .msx-sep{display:none}
  .msx-month{font-size:20px;margin-top:20px}
  .msx .cls-card-link{grid-template-columns:92px minmax(0,1fr);gap:14px;padding:12px 0!important}
  .msx .cls-card-image{grid-column:1;width:92px!important;height:92px!important;border-radius:14px!important}
@@ -230,17 +235,22 @@
     });
     if (rows.some(function (r) { return r.workshop; })) chips.push({ id: 'workshop', label: 'Workshops' });
     if (rows.some(function (r) { return r.series; })) chips.push({ id: 'series', label: 'Studio Series' });
-    if (chips.length > 2) {
+    var hasFull = rows.some(function (r) { return r.full; });
+    if (chips.length > 2 || hasFull) {
       var bar = el('div', 'msx-filters');
       bar.setAttribute('role', 'group');
       bar.setAttribute('aria-label', 'Filter classes');
       var empty = el('p', 'msx-empty-filter', 'Nothing on the calendar for that yet.');
       empty.hidden = true;
-      var apply = function (id) {
-        Array.prototype.forEach.call(bar.children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === id)); });
+      var state = { id: 'all', open: false };
+      var toggle = null;
+      var apply = function () {
+        var id = state.id;
+        Array.prototype.forEach.call(bar.querySelectorAll('.msx-chip[data-id]'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === id)); });
+        if (toggle) toggle.setAttribute('aria-pressed', String(state.open));
         var shown = 0;
         rows.forEach(function (r) {
-          var ok = id === 'all' || (id === 'series' ? r.series : id === 'workshop' ? r.workshop : r.craft === id);
+          var ok = (id === 'all' || (id === 'series' ? r.series : id === 'workshop' ? r.workshop : r.craft === id)) && !(state.open && r.full);
           r.item.style.display = ok ? '' : 'none';
           if (ok) shown++;
         });
@@ -249,17 +259,24 @@
         });
         empty.hidden = shown > 0;
       };
-      chips.forEach(function (c) {
+      if (chips.length > 2) chips.forEach(function (c) {
         var b = el('button', 'msx-chip', c.label);
         b.type = 'button';
         b.dataset.id = c.id;
-        b.addEventListener('click', function () { apply(c.id); });
+        b.addEventListener('click', function () { state.id = c.id; apply(); });
         bar.appendChild(b);
       });
+      if (hasFull) {
+        if (chips.length > 2) bar.appendChild(el('span', 'msx-sep'));
+        toggle = el('button', 'msx-chip msx-toggle', 'Open seats');
+        toggle.type = 'button';
+        toggle.addEventListener('click', function () { state.open = !state.open; apply(); });
+        bar.appendChild(toggle);
+      }
       var list = grid.closest('.w-dyn-list') || grid;
       list.parentNode.insertBefore(bar, list);
       list.parentNode.insertBefore(empty, list.nextSibling);
-      apply('all');
+      apply();
     }
 
     // Sticky next-class bar (CSS shows it on phone + tablet only)

@@ -26,9 +26,16 @@ import HowToRegIcon from '@mui/icons-material/HowToReg';
 import GavelIcon from '@mui/icons-material/Gavel';
 import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
-import type { NavGroup, NavItem } from '@maple/react/layout';
+import PaletteIcon from '@mui/icons-material/Palette';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import { createIntentHref } from './create-intent';
+import type { NavAction, NavGroup, NavItem } from '@maple/react/layout';
 import type { UserRole } from '@maple/ts/domain';
-import { allowedRolesForPath, filterNavGroupsByRoles } from './nav-filter';
+import {
+  allowedRolesForPath,
+  filterItemsByRoles,
+  filterNavGroupsByRoles,
+} from './nav-filter';
 
 /**
  * A nav item annotated with the roles that may see it. Omitted = admin
@@ -39,63 +46,41 @@ import { allowedRolesForPath, filterNavGroupsByRoles } from './nav-filter';
  * Keep this map in sync with the access matrix on the epic.
  */
 type RoleNavItem = NavItem & { roles?: readonly UserRole[] };
-type RoleNavGroup = { label: string; items: RoleNavItem[] };
+type RoleNavGroup = Omit<NavGroup, 'items'> & { items: RoleNavItem[] };
+type RoleNavAction = NavAction & { roles?: readonly UserRole[] };
 
 /** Every non-admin role — for items any portal user should see. */
 const ALL_ROLES = ['mt-teacher', 'clerk', 'lesson-teacher'] as const;
 
+/**
+ * The nav's top-level areas, Square Dashboard style: a short list of
+ * areas, the current one open (AppShell's accordion). An area's first
+ * visible item is where clicking the area lands.
+ */
 function roleNavGroups(
   pendingConflicts: number,
   pendingPosLessons: number,
 ): RoleNavGroup[] {
   return [
     {
-      label: 'Store',
+      label: 'Home',
+      icon: <HomeIcon />,
       items: [
         // Home stays visible to every role: it's the landing route, and a
         // nav with no '/' entry strands non-admin users on sign-in.
         { label: 'Home', href: '/', icon: <HomeIcon />, roles: ALL_ROLES },
-        {
-          label: 'Inventory',
-          href: '/inventory',
-          icon: <InventoryIcon />,
-          roles: ['clerk'],
-        },
-        {
-          label: 'Sales',
-          href: '/sales',
-          icon: <PointOfSaleIcon />,
-          roles: ['clerk'],
-        },
-        {
-          label: 'Categories',
-          href: '/categories',
-          icon: <CategoryIcon />,
-          roles: ['clerk'],
-        },
-        { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
-        {
-          label: 'Artist Payouts',
-          href: '/payouts/artist-payouts',
-          icon: <AccountBalanceWalletIcon />,
-        },
-        {
-          label: 'Sync',
-          href: '/sync-conflicts',
-          icon: <SyncProblemIcon />,
-          badge: pendingConflicts,
-          badgeColor: 'warning',
-        },
       ],
     },
     {
       label: 'Classes',
+      icon: <PaletteIcon />,
       items: [
         { label: 'Classes', href: '/classes', icon: <EventIcon /> },
         {
-          label: 'Class Categories',
-          href: '/class-categories',
-          icon: <CategoryIcon />,
+          label: 'Registrations',
+          href: '/registrations',
+          icon: <HowToRegIcon />,
+          roles: ['clerk'],
         },
         {
           label: 'Instructors',
@@ -103,15 +88,14 @@ function roleNavGroups(
           icon: <SchoolIcon />,
         },
         {
+          label: 'Class Categories',
+          href: '/class-categories',
+          icon: <CategoryIcon />,
+        },
+        {
           label: 'Discounts',
           href: '/discounts',
           icon: <LocalOfferIcon />,
-        },
-        {
-          label: 'Registrations',
-          href: '/registrations',
-          icon: <HowToRegIcon />,
-          roles: ['clerk'],
         },
         {
           label: 'Agreements',
@@ -126,7 +110,8 @@ function roleNavGroups(
       ],
     },
     {
-      label: 'Music Lessons',
+      label: 'Lessons',
+      icon: <MusicNoteIcon />,
       items: [
         {
           label: 'My Week',
@@ -158,28 +143,13 @@ function roleNavGroups(
         },
         // Lesson Billing (/lesson-billing) is hidden while automatic charging
         // is paused (ADR-034, #162). The route and its code stay, admin-only
-        // by URL; put this entry back when billing rules are switched on.
-        {
-          label: 'Hope Billing',
-          href: '/hope',
-          icon: <StarsIcon />,
-        },
-        {
-          label: 'Teacher Payouts',
-          href: '/payouts',
-          icon: <PaymentsIcon />,
-        },
-        {
-          label: 'POS Lessons',
-          href: '/pos-lessons',
-          icon: <ReceiptLongIcon />,
-          badge: pendingPosLessons,
-          badgeColor: 'warning',
-        },
+        // by URL; put this entry back (under Money) when billing rules are
+        // switched on.
       ],
     },
     {
       label: 'Music Together',
+      icon: <ChildCareIcon />,
       items: [
         {
           label: 'Sections',
@@ -196,7 +166,40 @@ function roleNavGroups(
       ],
     },
     {
+      label: 'Shop',
+      icon: <StorefrontIcon />,
+      items: [
+        {
+          label: 'Inventory',
+          href: '/inventory',
+          icon: <InventoryIcon />,
+          roles: ['clerk'],
+        },
+        {
+          label: 'Sales',
+          href: '/sales',
+          icon: <PointOfSaleIcon />,
+          roles: ['clerk'],
+        },
+        {
+          label: 'Categories',
+          href: '/categories',
+          icon: <CategoryIcon />,
+          roles: ['clerk'],
+        },
+        { label: 'Artists', href: '/artists', icon: <PeopleIcon /> },
+        {
+          label: 'Sync',
+          href: '/sync-conflicts',
+          icon: <SyncProblemIcon />,
+          badge: pendingConflicts,
+          badgeColor: 'warning',
+        },
+      ],
+    },
+    {
       label: 'Calendar',
+      icon: <CalendarMonthIcon />,
       items: [
         {
           label: 'Events',
@@ -218,6 +221,52 @@ function roleNavGroups(
           icon: <MeetingRoomIcon />,
           roles: ALL_ROLES,
         },
+      ],
+    },
+    {
+      // Money in and out: what families pay, and what teachers and artists
+      // are owed.
+      label: 'Money',
+      icon: <PaymentsIcon />,
+      items: [
+        {
+          label: 'Hope Billing',
+          href: '/hope',
+          icon: <StarsIcon />,
+        },
+        {
+          label: 'POS Lessons',
+          href: '/pos-lessons',
+          icon: <ReceiptLongIcon />,
+          badge: pendingPosLessons,
+          badgeColor: 'warning',
+        },
+        {
+          label: 'Teacher Payouts',
+          href: '/payouts',
+          icon: <PaymentsIcon />,
+        },
+        {
+          label: 'Artist Payouts',
+          href: '/payouts/artist-payouts',
+          icon: <AccountBalanceWalletIcon />,
+        },
+      ],
+    },
+    {
+      label: 'Settings',
+      icon: <SettingsIcon />,
+      items: [
+        {
+          label: 'Settings',
+          href: '/settings',
+          icon: <SettingsIcon />,
+        },
+        {
+          label: 'Users',
+          href: '/users',
+          icon: <ManageAccountsIcon />,
+        },
         {
           label: 'Embed Settings',
           href: '/calendar-embed',
@@ -230,22 +279,52 @@ function roleNavGroups(
         },
       ],
     },
-    {
-      label: 'Admin',
-      items: [
-        {
-          label: 'Users',
-          href: '/users',
-          icon: <ManageAccountsIcon />,
-        },
-        {
-          label: 'Settings',
-          href: '/settings',
-          icon: <SettingsIcon />,
-        },
-      ],
-    },
   ];
+}
+
+/**
+ * The pinned Create menu. Each entry opens its page with the create form
+ * already open (`?new=1`, see create-intent.ts). Roles mirror both the
+ * page's nav roles (so the link isn't a dead end at PathRoleGuard) and
+ * the create function's `requiringRole` (so the form can save).
+ */
+const CREATE_ACTIONS: RoleNavAction[] = [
+  {
+    label: 'New class',
+    href: createIntentHref('/classes'),
+    icon: <EventIcon fontSize="small" />,
+  },
+  {
+    label: 'New event',
+    href: createIntentHref('/events'),
+    icon: <CalendarMonthIcon fontSize="small" />,
+    roles: ['mt-teacher', 'clerk'],
+  },
+  {
+    label: 'Add student',
+    href: createIntentHref('/students'),
+    icon: <MusicNoteIcon fontSize="small" />,
+    roles: ['lesson-teacher'],
+  },
+  {
+    label: 'Book the Spruce Room',
+    href: '/book-room',
+    icon: <MeetingRoomIcon fontSize="small" />,
+    roles: ALL_ROLES,
+  },
+];
+
+/** The Create menu entries a user's roles may use. */
+export function buildCreateActions(roles: readonly UserRole[]): NavAction[] {
+  return filterItemsByRoles(CREATE_ACTIONS, roles);
+}
+
+/** Every create action with its roles, for the spec's drift check. */
+export function createActionRoles(): ReadonlyArray<{
+  href: string;
+  roles: readonly UserRole[];
+}> {
+  return CREATE_ACTIONS.map((a) => ({ href: a.href, roles: a.roles ?? [] }));
 }
 
 /**

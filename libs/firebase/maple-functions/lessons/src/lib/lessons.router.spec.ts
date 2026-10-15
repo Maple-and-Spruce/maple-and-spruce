@@ -25,6 +25,7 @@ vi.mock('@maple/firebase/functions', () => {
 
 vi.mock('@maple/ts/validation', () => ({
   lessonBlockValidation: 'lessonBlockValidation',
+  inboxDismissalValidation: 'inboxDismissalValidation',
 }));
 
 vi.mock('./get-lessons', () => ({ getLessons: vi.fn() }));
@@ -47,6 +48,9 @@ vi.mock('./update-student-lesson-schedule', () => ({
 }));
 vi.mock('./get-my-day-lessons', () => ({ getMyDayLessons: vi.fn() }));
 vi.mock('./get-my-week', () => ({ getMyWeek: vi.fn() }));
+vi.mock('./get-studio-day', () => ({ getStudioDay: vi.fn() }));
+vi.mock('./get-inbox', () => ({ getInbox: vi.fn() }));
+vi.mock('./dismiss-inbox-item', () => ({ dismissInboxItem: vi.fn() }));
 vi.mock('./create-lesson-block', () => ({ createLessonBlock: vi.fn() }));
 vi.mock('./update-lesson-block', () => ({ updateLessonBlock: vi.fn() }));
 vi.mock('./delete-lesson-block', () => ({ deleteLessonBlock: vi.fn() }));
@@ -84,6 +88,9 @@ import { createStudentLessonSchedule } from './create-student-lesson-schedule';
 import { updateStudentLessonSchedule } from './update-student-lesson-schedule';
 import { getMyDayLessons } from './get-my-day-lessons';
 import { getMyWeek } from './get-my-week';
+import { getStudioDay } from './get-studio-day';
+import { getInbox } from './get-inbox';
+import { dismissInboxItem } from './dismiss-inbox-item';
 import { createLessonBlock } from './create-lesson-block';
 import { updateLessonBlock } from './update-lesson-block';
 import { deleteLessonBlock } from './delete-lesson-block';
@@ -112,6 +119,9 @@ const handlers: Record<string, unknown> = {
   updateStudentLessonSchedule,
   getMyDayLessons,
   getMyWeek,
+  getStudioDay,
+  getInbox,
+  dismissInboxItem,
   createLessonBlock,
   updateLessonBlock,
   deleteLessonBlock,
@@ -143,6 +153,9 @@ const ADMIN_OR_LESSON_TEACHER = [
 
 /** Blocks, inquiries, billing and POS attribution are run by the studio. */
 const ADMIN_ONLY = [
+  'getStudioDay',
+  'getInbox',
+  'dismissInboxItem',
   'createLessonBlock',
   'updateLessonBlock',
   'deleteLessonBlock',
@@ -173,8 +186,18 @@ describe('lessons router', () => {
 
   it('validates a new lesson block before it is created', () => {
     expect(routes['createLessonBlock'].validator).toBe('lessonBlockValidation');
+  });
+
+  it('validates an inbox key before it is stored', () => {
+    expect(routes['dismissInboxItem'].validator).toBe('inboxDismissalValidation');
+  });
+
+  it('validates nothing else at the router', () => {
     const validated = Object.entries(routes).filter(([, r]) => r.validator);
-    expect(validated.map(([name]) => name)).toEqual(['createLessonBlock']);
+    expect(validated.map(([name]) => name).sort()).toEqual([
+      'createLessonBlock',
+      'dismissInboxItem',
+    ]);
   });
 
   it('serves each route from its own handler', () => {

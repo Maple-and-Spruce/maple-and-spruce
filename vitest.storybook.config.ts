@@ -44,6 +44,18 @@ export default defineConfig({
       // The student page tables (#84) and pay-ahead card (legacy #864). Paid is the one
       // that tripped a mid-run re-optimize; the rest are listed so the next
       // story to reach one first does not trip it again.
+      '@mui/icons-material/Search',
+      '@mui/icons-material/ExpandMore',
+      '@mui/icons-material/Palette',
+      '@mui/icons-material/Storefront',
+      '@mui/icons-material/Payments',
+      '@mui/icons-material/Settings',
+      '@mui/icons-material/Home',
+      '@mui/icons-material/MusicNote',
+      '@mui/material/Collapse',
+      '@mui/material/InputAdornment',
+      '@mui/material/Menu',
+      '@mui/material/MenuItem',
       '@mui/icons-material/Add',
       '@mui/icons-material/Block',
       '@mui/icons-material/Cancel',

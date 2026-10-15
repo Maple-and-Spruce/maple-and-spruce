@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildGa4PurchasePayload,
   buildPurchaseEvent,
+  emitGa4PurchaseIfConfirmed,
   emitPurchaseIfConfirmed,
+  sendGa4Payload,
   shouldEmitPurchase,
   splitName,
   type RegistrationConversionData,
@@ -179,6 +182,138 @@ describe('emitPurchaseIfConfirmed', () => {
       error,
     });
 
+    expect(sent).toBe(false);
+    expect(error).toHaveBeenCalledOnce();
+  });
+});
+
+describe('buildGa4PurchasePayload', () => {
+  it('maps a confirmed registration to a GA4 purchase in dollars', () => {
+    const payload = buildGa4PurchasePayload({
+      ...confirmed,
+      gaClientId: '111.222',
+      gaSessionId: '1700000000',
+      eventSourceUrl: 'https://mapleandsprucefolkarts.com/classes/x',
+    });
+
+    expect(payload.client_id).toBe('111.222');
+    expect(payload.events).toHaveLength(1);
+    expect(payload.events[0].name).toBe('purchase');
+    expect(payload.events[0].params).toEqual({
+      transaction_id: 'MS-ABC123',
+      currency: 'USD',
+      value: 106,
+      items: [{ item_id: 'cls_1', price: 53, quantity: 2 }],
+      engagement_time_msec: 1,
+      session_id: 1700000000, // a number, as GA4 expects
+      page_location: 'https://mapleandsprucefolkarts.com/classes/x',
+    });
+  });
+
+  it('falls back to a stable server client id and omits session_id', () => {
+    const payload = buildGa4PurchasePayload(confirmed);
+    expect(payload.client_id).toBe('server.MS-ABC123');
+    expect(payload.events[0].params).not.toHaveProperty('session_id');
+    expect(payload.events[0].params).not.toHaveProperty('page_location');
+  });
+
+  it('drops a non-numeric session id rather than sending NaN', () => {
+    const payload = buildGa4PurchasePayload({
+      ...confirmed,
+      gaSessionId: 'not-a-number',
+    });
+    expect(payload.events[0].params).not.toHaveProperty('session_id');
+  });
+
+  it('treats a missing quantity as one item at the full price', () => {
+    const payload = buildGa4PurchasePayload({
+      ...confirmed,
+      quantity: undefined,
+    });
+    expect(payload.events[0].params['items']).toEqual([
+      { item_id: 'cls_1', price: 106, quantity: 1 },
+    ]);
+  });
+});
+
+describe('sendGa4Payload', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const config = {
+    baseUrl: 'https://ga.example.com',
+    measurementId: 'G-TEST',
+    apiSecret: 'sec ret',
+  };
+
+  it('POSTs the payload to /mp/collect with the encoded credentials', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payload = buildGa4PurchasePayload(confirmed);
+    await sendGa4Payload(config, payload);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      'https://ga.example.com/mp/collect?measurement_id=G-TEST&api_secret=sec%20ret'
+    );
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual(payload);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('throws on a non-2xx so the caller logs it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('bad', { status: 500 }))
+    );
+    await expect(
+      sendGa4Payload(config, buildGa4PurchasePayload(confirmed))
+    ).rejects.toThrow('GA4 500: bad');
+  });
+});
+
+describe('emitGa4PurchaseIfConfirmed', () => {
+  it('sends the purchase on a fresh confirmation', async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    const sent = await emitGa4PurchaseIfConfirmed(
+      { ...confirmed, status: 'pending' },
+      confirmed,
+      send,
+      silentLogger
+    );
+    expect(sent).toBe(true);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ client_id: 'server.MS-ABC123' })
+    );
+  });
+
+  it('follows the same rule as Meta: no re-fire, no POS', async () => {
+    const send = vi.fn();
+    expect(
+      await emitGa4PurchaseIfConfirmed(confirmed, confirmed, send, silentLogger)
+    ).toBe(false);
+    expect(
+      await emitGa4PurchaseIfConfirmed(
+        undefined,
+        { ...confirmed, source: 'pos' },
+        send,
+        silentLogger
+      )
+    ).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('swallows send failures and reports not-sent', async () => {
+    const error = vi.fn();
+    const sent = await emitGa4PurchaseIfConfirmed(
+      undefined,
+      confirmed,
+      vi.fn().mockRejectedValue(new Error('GA4 500')),
+      { log: () => undefined, error }
+    );
     expect(sent).toBe(false);
     expect(error).toHaveBeenCalledOnce();
   });
