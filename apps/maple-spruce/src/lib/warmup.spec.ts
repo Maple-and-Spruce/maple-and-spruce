@@ -40,7 +40,7 @@ describe('warmupDashboard', () => {
     expect(mocks.httpsCallable).toHaveBeenCalledWith('functions', 'getClasses');
     expect(mocks.httpsCallableFromURL).toHaveBeenCalledWith(
       'functions',
-      'https://fn.test/products/getProducts'
+      'https://fn.test/lessons/getStudioDay'
     );
   });
 

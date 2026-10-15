@@ -261,6 +261,9 @@ export type {
 // Meta ad-attribution payload (shared by class + Music Together checkout)
 export type { MetaAttributionPayload } from './meta-attribution.types';
 
+// Google Analytics ids for the server-side GA4 `purchase` (class checkout)
+export type { GaAttributionPayload } from './ga-attribution.types';
+
 // Phase 3c: Registration types
 export type {
   GetRegistrationsRequest,
@@ -353,6 +356,22 @@ export type {
   GetMyDayLessonsRequest,
   GetMyDayLessonsResponse,
 } from './my-day.types';
+
+// Admin Home dashboard: every teacher's lessons for a day (#235)
+export type {
+  StudioDayPayment,
+  StudioDayLesson,
+  GetStudioDayRequest,
+  GetStudioDayResponse,
+} from './studio-day.types';
+
+// Admin Home dashboard: the studio-wide inbox and "Mark done" (#235)
+export type {
+  GetInboxRequest,
+  GetInboxResponse,
+  DismissInboxItemRequest,
+  DismissInboxItemResponse,
+} from './inbox.types';
 
 // Phase 4: Music Lessons - Teacher My Week schedule (#60/#684)
 export type {

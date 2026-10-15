@@ -60,27 +60,54 @@ test.describe('Admin portal — role scoping', () => {
     );
   });
 
-  test('admin sees the full nav including the Admin group', async ({ page }) => {
-    await signIn(page, ADMIN, 'Users');
+  test('admin sees every area, opens one, and reaches its pages', async ({
+    page,
+  }) => {
+    // Admins get the accordion: one row per area, the current one open.
+    await signIn(page, ADMIN, 'Settings');
 
-    await expect(
-      page.getByRole('link', { name: 'Users', exact: true })
-    ).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: 'Inventory', exact: true })
-    ).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: 'Sections', exact: true })
-    ).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: 'Students', exact: true })
-    ).toBeVisible();
+    for (const area of ['Classes', 'Lessons', 'Music Together', 'Calendar', 'Settings']) {
+      await expect(
+        page.getByRole('link', { name: area, exact: true })
+      ).toBeVisible();
+    }
+    // Areas that can carry a pending-count badge.
+    await expect(page.getByRole('link', { name: /^Shop/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Money/ })).toBeVisible();
+    // Pages inside closed areas stay out of the way until opened.
+    await expectNoNavLink(page, 'Users');
 
-    // The Users page loads for an admin.
-    await page.getByRole('link', { name: 'Users', exact: true }).click();
+    // Opening Settings lands on its first page and shows the rest.
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+    const settings = page.getByRole('list', { name: 'Settings pages' });
+    await settings.getByRole('link', { name: 'Users', exact: true }).click();
     await expect(page).toHaveURL(/\/users$/);
     await expect(
       page.getByRole('heading', { name: 'Users', level: 1 })
     ).toBeVisible();
+
+    // Search reaches a page in a closed area.
+    await page.getByRole('textbox', { name: 'Search pages' }).fill('sections');
+    await page
+      .getByRole('list', { name: 'Search results' })
+      .getByRole('link', { name: /Sections/ })
+      .click();
+    await expect(page).toHaveURL(/\/music-together$/);
+  });
+
+  test('Create → New class opens the class form on the Classes page', async ({
+    page,
+  }) => {
+    await signIn(page, ADMIN, 'Classes');
+
+    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('menuitem', { name: 'New class' }).click();
+
+    await expect(
+      page.getByRole('dialog').getByText('Add Class', { exact: true })
+    ).toBeVisible();
+    // The intent is consumed, so a refresh doesn't reopen the form.
+    await expect(page).toHaveURL(/\/classes$/);
   });
 });

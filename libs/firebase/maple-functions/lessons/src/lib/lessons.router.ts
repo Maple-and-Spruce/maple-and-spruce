@@ -3,8 +3,9 @@
  *
  * Every route keeps the gate it had as a standalone function. Lesson routes
  * are `[Admin, LessonTeacher]`, with a lesson teacher narrowed to their own
- * lessons and students inside each handler; blocks, inquiries, billing and
- * POS attribution are admin-only.
+ * lessons and students inside each handler; blocks, inquiries, billing,
+ * POS attribution and the Home dashboard's studio day and inbox are
+ * admin-only.
  *
  * Deliberately not here:
  * - Charging (`chargeLessonsNow`, `triggerLessonBilling`) and Square card
@@ -20,7 +21,10 @@
  * `requiringRole` off the AST and cannot see through a helper.
  */
 import { Functions, Role } from '@maple/firebase/functions';
-import { lessonBlockValidation } from '@maple/ts/validation';
+import {
+  inboxDismissalValidation,
+  lessonBlockValidation,
+} from '@maple/ts/validation';
 import type {
   CreateLessonBlockRequest,
   CreateLessonBlockResponse,
@@ -30,10 +34,14 @@ import type {
   CreateLessonSeriesResponse,
   CreateStudentLessonScheduleRequest,
   CreateStudentLessonScheduleResponse,
+  DismissInboxItemRequest,
+  DismissInboxItemResponse,
   DeleteLessonBlockRequest,
   DeleteLessonBlockResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  GetInboxRequest,
+  GetInboxResponse,
   GetLessonBillingRequest,
   GetLessonBillingResponse,
   GetLessonBlocksRequest,
@@ -52,6 +60,8 @@ import type {
   GetPosLessonAttributionsResponse,
   GetStudentLessonSchedulesRequest,
   GetStudentLessonSchedulesResponse,
+  GetStudioDayRequest,
+  GetStudioDayResponse,
   RescheduleLessonWithCreditRequest,
   RescheduleLessonWithCreditResponse,
   ResolvePosLessonAttributionRequest,
@@ -84,6 +94,9 @@ import { createStudentLessonSchedule } from './create-student-lesson-schedule';
 import { updateStudentLessonSchedule } from './update-student-lesson-schedule';
 import { getMyDayLessons } from './get-my-day-lessons';
 import { getMyWeek } from './get-my-week';
+import { getStudioDay } from './get-studio-day';
+import { getInbox } from './get-inbox';
+import { dismissInboxItem } from './dismiss-inbox-item';
 import { getLessonInquiries } from './get-lesson-inquiries';
 import { updateLessonInquiryStatus } from './update-lesson-inquiry-status';
 import { getLessonBilling } from './get-lesson-billing';
@@ -179,6 +192,25 @@ export const lessons = Functions.router('lessons', {
   getMyWeek: Functions.endpoint
     .requiringRole([Role.Admin, Role.LessonTeacher])
     .asRoute<GetMyWeekRequest, GetMyWeekResponse>(getMyWeek),
+
+  // The whole studio's day, every teacher, for the admin Home dashboard (#235)
+  getStudioDay: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetStudioDayRequest, GetStudioDayResponse>(getStudioDay),
+
+  // The studio-wide inbox on the admin Home, and "Mark done" (#235). Here
+  // rather than its own function: the Home page already calls getStudioDay,
+  // so the inbox lands on the same warm instance.
+  getInbox: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .asRoute<GetInboxRequest, GetInboxResponse>(getInbox),
+
+  dismissInboxItem: Functions.endpoint
+    .requiringRole(Role.Admin)
+    .validating(inboxDismissalValidation)
+    .asRoute<DismissInboxItemRequest, DismissInboxItemResponse>(
+      dismissInboxItem,
+    ),
 
   // Lesson inquiries (leads from the Tally form)
   getLessonInquiries: Functions.endpoint

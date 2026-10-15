@@ -26,6 +26,7 @@ import type {
   UpdateLessonRequest,
   UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
+import { easternToUtc } from './eastern-time';
 
 const TEACHER_ID = 'instructor-room-guard';
 const OTHER_TEACHER = 'instructor-room-guard-2';
@@ -50,14 +51,12 @@ function tuesdayAt(hour: number, minute = 0): Date {
   const delta = ((2 - day.getUTCDay() + 7) % 7) || 7;
   day.setUTCDate(day.getUTCDate() + delta + 21);
 
-  return new Date(
-    Date.UTC(
-      day.getUTCFullYear(),
-      day.getUTCMonth(),
-      day.getUTCDate(),
-      hour + 4, // ET -> UTC; may exceed 24 and roll, which is correct here
-      minute
-    )
+  return easternToUtc(
+    day.getUTCFullYear(),
+    day.getUTCMonth(),
+    day.getUTCDate(),
+    hour,
+    minute
   );
 }
 

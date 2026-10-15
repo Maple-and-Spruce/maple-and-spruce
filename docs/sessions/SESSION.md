@@ -6,6 +6,27 @@
 
 ## Current Status
 
+### Admin sidebar: areas, search and Create, Square-style (2026-10-14)
+
+- The sidebar's 35 always-open links became **8 areas**: Home, Classes, Lessons, Music
+  Together, Shop, Calendar, Money, Settings. Approved from a Design canvas prototype; Katie's
+  picks were the **accordion** (the current area opens in place, the rest stay one row) over
+  Square's drill-in, and a new **Money** area holding Hope Billing and POS Lessons with the
+  payouts. Embed Settings and Calendar Links moved from Calendar to Settings.
+- **Every page keeps its URL and its roles.** `nav-groups.spec.ts` pins the full page → roles map
+  that `PathRoleGuard` reads, so a regroup can't drop a page or widen access.
+- **Search** at the top (⌘K / Ctrl+K, Enter opens the best match) finds any page the user can
+  see, including ones in closed areas. A closed area shows the sum of its items' badges.
+- **Roles with 10 or fewer pages get the plain grouped list** (`FLAT_NAV_MAX_ITEMS`): clerk (8),
+  MT teacher (6), lesson teacher (6). A clerk + lesson teacher (11) gets the accordion.
+- **Create** is pinned at the bottom: New class, New event, Add student, Book the Spruce Room,
+  filtered by role. The first three open the page's create form via `?new=1`
+  (`useCreateIntent`; see PATTERNS-AND-PRACTICES → "Opening a Create Form From a Link").
+- Active-page matching is now longest-prefix (`findActiveHref`), so `/students/<id>` keeps
+  Lessons open with Students marked, which the old exact match didn't.
+- Pure nav logic is in `libs/react/layout/src/lib/nav-model.ts`; that lib now has a vitest
+  project. The portal E2E signs admins in on an area link and covers Create → New class.
+
 ### Merge-day Cloud Run CPU: skip codebases whose bundle didn't change (2026-10-13)
 
 - Measured: the "CPU (Request-based billing)" spike is Cloud Run booting one instance of every

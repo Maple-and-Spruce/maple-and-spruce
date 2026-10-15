@@ -139,6 +139,10 @@ describe('createRegistration', () => {
             fbc: 'fb.1.1700000000000.IwARtestclick',
             eventSourceUrl: 'https://example.com/classes/pottery',
           },
+          gaAttribution: {
+            clientId: '1234567890.1700000000',
+            sessionId: '1700000000',
+          },
         },
         headers: {
           'x-forwarded-for': '203.0.113.42, 198.51.100.4',
@@ -157,6 +161,9 @@ describe('createRegistration', () => {
         // Left-most x-forwarded-for entry is the real client.
         clientIp: '203.0.113.42',
         clientUserAgent: 'IntegrationTestAgent/1.0',
+        // GA4 ids, read by the same trigger for the server-side GA4 purchase.
+        gaClientId: '1234567890.1700000000',
+        gaSessionId: '1700000000',
       });
     });
 
@@ -184,6 +191,8 @@ describe('createRegistration', () => {
         fbp: null,
         fbc: null,
         eventSourceUrl: null,
+        gaClientId: null,
+        gaSessionId: null,
       });
     });
 

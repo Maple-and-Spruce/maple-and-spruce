@@ -30,7 +30,7 @@
 | Lesson-teacher manage-own (phase 2 of epic #49, legacy #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
 | Portal role-scoping E2E (legacy #625) | Complete | First browser-level e2e (`apps/maple-spruce-e2e`): seeds admin + mt-teacher, signs in via login UI, asserts role-filtered nav + `/users` gate. `connectAuthEmulator` opt-in wiring; `tools/run-portal-e2e.sh` + `portal-e2e` CI job |
 | Lesson-teacher student + calendar scoping (epic #49) | Complete | `getStudents` reads-own (filter by `primaryTeacherId`); `getStudent`/create/update/delete-student → `[Admin, LessonTeacher]` + ownership; calendar events: lesson-teacher dropped from update/delete + create requires a `room` (book-room only) + Events nav hidden. `instructorScopeForUser`/`assertCanManageStudent`/`assertOwnsAsInstructor` helpers |
-| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
+| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel). Square-style areas: accordion, page search (⌘K), pinned Create menu with `?new=1` create intents; flat list for roles with ≤10 pages |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
 | Chromatic CI | Removed (2026-09) | Snapshot quota kept running out; Storybook play tests cover it |
@@ -373,6 +373,7 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | Mock Graph server for integration tests | Complete | `libs/firebase/meta-capi-test-mock-server/` |
 | Tally newsletter `Lead` (routed by form id to the owning pixel) | Complete | `tally-lead-webhook/` |
 | Craft-class `Purchase` (Firestore trigger) | Complete | `send-registration-conversion/` |
+| Craft-class GA4 `purchase` (server-side, same trigger) | Complete | `send-registration-conversion/`, `webflow-components/src/lib/ga-attribution.ts` |
 | Music Together `Purchase` (Firestore trigger) | Complete | `send-music-together-conversion/` |
 | **MT demo RSVP `Schedule` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-demo-rsvp/` + `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts` |
 | **MT interest signup `Lead` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-interest/` |
@@ -396,7 +397,9 @@ The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Ro
 | `room` field on CalendarEvent + Class | **Complete** (PR 1, legacy #468) | flows through `onClassWrite` |
 | `onLessonWrite` trigger (lessons → private room events) | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/on-lesson-write/` |
 | `getRoomSchedule` Cloud Function | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/get-room-schedule/` |
-| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` |
+| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` — now shown only to roles without admin/clerk (teachers); the admin/clerk Home is the #235 card grid |
+| Home dashboard redesign, PR 1: date header + card grid (Today timeline, Recent registrations, Classes this week) | **Complete** (PR 1 of #235) | `apps/maple-spruce/src/components/dashboard/`, `lessons/getStudioDay` route, `lessonPaymentState` (`libs/ts/domain`), `useStudioDay`. Low Stock widget removed. PR 3 (Sales card) remaining |
+| Home dashboard redesign, PR 2: Inbox card | **Complete** (PR 2 of #235) | `InboxCard` in `apps/maple-spruce/src/components/dashboard/`; `lessons/getInbox` + `lessons/dismissInboxItem` routes; `buildInboxItems` freshness rules (`libs/ts/domain/src/lib/inbox.ts`); `InboxDismissalRepository` (`inboxDismissals`); `useInbox` with optimistic Mark done. Pending sync conflicts moved from their own card into the Inbox. Nav badge and a full inbox page not built |
 | Ad hoc room booking form | Planned (PR 2, legacy #469) | — |
 | Day strip + conflict warnings in scheduling flows | Planned (PR 2, legacy #469) | — |
 

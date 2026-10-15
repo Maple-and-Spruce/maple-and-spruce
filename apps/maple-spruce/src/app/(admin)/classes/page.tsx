@@ -19,6 +19,7 @@ import {
   useRegistrations,
   useClassWaitlistCounts,
 } from '../../../hooks';
+import { useCreateIntent } from '../../../components/layout';
 
 export default function ClassesPage() {
   const router = useRouter();
@@ -128,6 +129,9 @@ export default function ClassesPage() {
     setEditingClass(classItem);
     setIsFormOpen(true);
   }, []);
+
+  // The sidebar's Create → New class lands here with ?new=1.
+  useCreateIntent(() => handleOpenForm());
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
