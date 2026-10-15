@@ -175,3 +175,11 @@ The same Playwright suite runs in two places, picked by `E2E_TARGET`:
 - Sets `shouldPublish = false` — the item exists in the Webflow CMS but is **never published to the live site**
 
 Since the seed uses deterministic IDs, repeated runs update the same CMS item rather than accumulating new ones.
+
+## Webflow Public Pages E2E
+
+`apps/webflow-public-e2e` is a **read-only** Playwright smoke suite against the published Webflow site itself (not the registration harness). It checks that the page-level redesign scripts on `/upcoming-classes` and the class template ran: list layout, filter chips, the "Open seats" toggle, CTAs to `#register`, the class-page hero/facts/phone bar, and that the registration widget mounts (waited for, never filled). Class URLs are discovered from the listing each run.
+
+It runs from `.github/workflows/webflow-public-e2e.yml`: daily at 11:00 UTC against staging, and on `workflow_dispatch` against staging or prod. It is **not** a PR check, because Webflow publishes don't come from repo PRs. No secrets. Desktop Chrome and a 393×852 phone viewport.
+
+The class-page redesign assertions skip on a site whose class page lacks `body.cpx` unless it is staging or `WEBFLOW_EXPECT_CLASS_REDESIGN=1` (the dispatch input `expect_class_redesign`), since the redesign is published to staging before prod. See the app README.

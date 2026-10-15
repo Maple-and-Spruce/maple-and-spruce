@@ -13,6 +13,7 @@ import type {
 } from '@maple/ts/domain';
 import type { InlineAgreementSigningData } from './agreement.types';
 import type { MetaAttributionPayload } from './meta-attribution.types';
+import type { GaAttributionPayload } from './ga-attribution.types';
 
 // ============================================================================
 // Get Registrations (Admin)
@@ -135,6 +136,11 @@ export interface CreateRegistrationRequest {
    * CAPI `Purchase` event by `sendRegistrationConversion`.
    */
   metaAttribution?: MetaAttributionPayload;
+  /**
+   * Browser-captured GA4 client + session ids. Advisory only — persisted on the
+   * registration so the server-side GA4 `purchase` joins the buyer's session.
+   */
+  gaAttribution?: GaAttributionPayload;
 }
 
 export interface CreateRegistrationResponse {
@@ -181,6 +187,8 @@ export interface CreateRegistrationCheckoutLinkRequest {
    * `Purchase` ever fires and the server event is the only signal.
    */
   metaAttribution?: MetaAttributionPayload;
+  /** Browser-captured GA4 client + session ids (see CreateRegistrationRequest). */
+  gaAttribution?: GaAttributionPayload;
 }
 
 export interface CreateRegistrationCheckoutLinkResponse {

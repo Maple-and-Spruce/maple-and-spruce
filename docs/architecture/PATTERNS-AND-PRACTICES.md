@@ -1069,6 +1069,27 @@ Some validations can only happen on the backend (e.g., uniqueness checks, refere
 - "Instructor not found"
 - "Category is in use and cannot be deleted"
 
+### Opening a Create Form From a Link (`?new=1`)
+
+The admin sidebar's **Create** menu links to a page with its create form already open:
+`/classes?new=1`, `/events?new=1`, `/students?new=1`. A page that supports it calls
+`useCreateIntent` from `apps/maple-spruce/src/components/layout`:
+
+```typescript
+const handleOpenForm = useCallback((item?: Thing) => { ... }, []);
+useCreateIntent(() => handleOpenForm());
+```
+
+The hook runs the handler once and then `router.replace`s the param away, so a refresh or
+Back doesn't reopen the form. Pass `ready` when the page must load something before it knows
+whether creating is allowed (Students waits for instructors; with none, it drops the intent
+instead of opening a form that can't save).
+
+To add a Create entry: add it to `CREATE_ACTIONS` in `nav-groups.tsx` with `createIntentHref`,
+call the hook on the page, and give it roles that both the page (nav role map) and the create
+function (`requiringRole`) allow. `nav-groups.spec.ts` fails if an action's roles can't open
+its page.
+
 ### Form State Machine
 
 Use discriminated unions for form submission state:

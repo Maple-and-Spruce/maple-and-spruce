@@ -33,6 +33,7 @@ import {
   useLessonBilling,
   useStudents,
 } from '../../../hooks';
+import { useCreateIntent } from '../../../components/layout';
 
 /** Today's weekday in the studio, so today's section can be marked. */
 function studioWeekday(now: Date): number {
@@ -99,6 +100,17 @@ export default function StudentsPage() {
     setEditingStudent(student);
     setIsFormOpen(true);
   }, []);
+
+  // The sidebar's Create → Add student lands here with ?new=1. Wait for the
+  // instructors: with none, Add Student is disabled and the info alert
+  // explains why, so the intent is dropped rather than opening the form.
+  useCreateIntent(
+    () => {
+      if (instructors.length > 0) handleOpenForm();
+    },
+    instructorsState.status === 'success' ||
+      instructorsState.status === 'error',
+  );
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);

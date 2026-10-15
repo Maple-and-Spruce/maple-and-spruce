@@ -27,17 +27,22 @@ import type {
   UpdateStudentLessonScheduleResponse,
 } from '@maple/ts/firebase/api-types';
 
+import { easternToUtc } from './eastern-time';
+
 const TEACHER_ID = 'instructor-derive-blocks';
 
 /** The next Tuesday strictly after today, at `hour` ET. */
 function nextTuesday(hour: number, weeksOut = 1): Date {
-  const now = new Date();
-  const d = new Date(now.getTime());
-  d.setUTCHours(hour + 4, 0, 0, 0); // ET -> UTC (EDT); tests run mid-year
-  const day = d.getUTCDay();
-  const delta = ((2 - day + 7) % 7) || 7;
-  d.setUTCDate(d.getUTCDate() + delta + (weeksOut - 1) * 7);
-  return d;
+  const day = new Date();
+  day.setUTCHours(12, 0, 0, 0);
+  const delta = ((2 - day.getUTCDay() + 7) % 7) || 7;
+  day.setUTCDate(day.getUTCDate() + delta + (weeksOut - 1) * 7);
+  return easternToUtc(
+    day.getUTCFullYear(),
+    day.getUTCMonth(),
+    day.getUTCDate(),
+    hour
+  );
 }
 
 function blocksFor(idToken: string) {

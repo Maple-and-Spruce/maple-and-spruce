@@ -1,5 +1,7 @@
 /**
- * Integration tests for the Meta Conversions API `Purchase` triggers.
+ * Integration tests for the Meta Conversions API `Purchase` triggers, and the
+ * GA4 Measurement Protocol `purchase` that `sendRegistrationConversion` sends
+ * alongside it.
  *
  * Covers BOTH revenue lines:
  *   - `sendRegistrationConversion`  — `registrations/{id}` (craft classes)
@@ -29,6 +31,7 @@ import {
 } from '@maple/firebase/integration-test-utils';
 
 const META_MOCK_URL = EMULATOR_CONFIG.metaCapiMockServerUrl;
+const GA4_MOCK_URL = EMULATOR_CONFIG.ga4MockServerUrl;
 // Must match what tools/run-integration-tests.sh writes to dist/apps/functions/.env
 const META_PIXEL_ID = 'test-pixel-id';
 // Music Together advertises from its own Meta ad account, so its conversions
@@ -119,6 +122,58 @@ async function purchaseRequestsFor(
         (e.custom_data?.['content_ids'] as unknown[]).includes(contentId)
     )
   );
+}
+
+interface Ga4Body {
+  client_id: string;
+  events: Array<{ name: string; params: Record<string, unknown> }>;
+}
+
+interface Ga4Request {
+  path: string;
+  query: Record<string, string>;
+  body?: Ga4Body;
+}
+
+/**
+ * Poll the GA4 mock for `purchase` requests for `classId`. Filtering by item id
+ * keeps this independent of sibling specs (and the Tally suite) that share the
+ * same mock server.
+ */
+async function waitForGa4Purchases(
+  classId: string,
+  count = 1,
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
+): Promise<Ga4Request[]> {
+  const deadline = Date.now() + timeoutMs;
+  let matches: Ga4Request[] = [];
+  do {
+    const res = await fetch(`${GA4_MOCK_URL}/_mock/requests`);
+    const { requests } = (await res.json()) as { requests: Ga4Request[] };
+    matches = requests.filter(
+      (r) =>
+        r.path.startsWith('/mp/collect') &&
+        (r.body?.events ?? []).some(
+          (e) =>
+            e.name === 'purchase' &&
+            Array.isArray(e.params['items']) &&
+            (e.params['items'] as Array<{ item_id?: string }>).some(
+              (i) => i.item_id === classId
+            )
+        )
+    );
+    if (matches.length >= count) return matches;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  } while (Date.now() < deadline);
+  return matches;
+}
+
+async function setGa4Failure(status: number | null): Promise<void> {
+  await fetch(`${GA4_MOCK_URL}/_mock/failure-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
 }
 
 /** Give the trigger time to (not) fire, for negative assertions. */
@@ -346,6 +401,124 @@ describe('Meta CAPI Purchase triggers', () => {
         squarePaymentId: 'sqpay-fail',
         confirmationNumber: 'MS-CONV01',
       });
+    });
+  });
+
+  describe('sendRegistrationConversion → GA4 purchase', () => {
+    it('sends one GA4 purchase in dollars, joined to the buyer’s session', async () => {
+      const id = `conv-ga4-${Date.now()}`;
+      const classId = `conv-class-ga4-${Date.now()}`;
+      const doc = classRegistration({
+        classId,
+        confirmationNumber: 'MS-GA4OK1',
+        gaClientId: '1234567890.1700000000',
+        gaSessionId: '1700000000',
+      });
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      const requests = await waitForGa4Purchases(classId);
+      expect(requests).toHaveLength(1);
+      const [request] = requests;
+      // Same measurement id + secret the harness gives tallyLeadWebhook.
+      expect(request.query['measurement_id']).toBe('G-TEST-MOCK');
+      expect(request.query['api_secret']).toBe('test-ga4-secret');
+
+      const body = request.body as Ga4Body;
+      // The browser's own client id, so GA4 credits the session's channel.
+      expect(body.client_id).toBe('1234567890.1700000000');
+      expect(body.events[0].params).toMatchObject({
+        transaction_id: 'MS-GA4OK1',
+        currency: 'USD',
+        value: 95.4, // dollars, not 9540
+        session_id: 1700000000,
+        items: [{ item_id: classId, quantity: 2, price: 47.7 }],
+      });
+      // GA4 gets no customer PII at all.
+      // (page_location is the class page URL, which is fine.)
+      expect(JSON.stringify(body)).not.toMatch(/buyer@|Jane|Doe|5550199/i);
+    });
+
+    it('still sends without browser ids, under a stable server client id', async () => {
+      const id = `conv-ga4-anon-${Date.now()}`;
+      const classId = `conv-class-ga4-anon-${Date.now()}`;
+      const doc = classRegistration({
+        classId,
+        confirmationNumber: 'MS-GA4AN1',
+      });
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      const [request] = await waitForGa4Purchases(classId);
+      expect(request.body?.client_id).toBe('server.MS-GA4AN1');
+      expect(request.body?.events[0].params).not.toHaveProperty('session_id');
+    });
+
+    it('does not re-fire on later edits, or for POS sales', async () => {
+      const stamp = Date.now();
+      const classId = `conv-class-ga4-once-${stamp}`;
+      const posClassId = `conv-class-ga4-pos-${stamp}`;
+      const id = `conv-ga4-once-${stamp}`;
+      const doc = classRegistration({ classId });
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+      expect(await waitForGa4Purchases(classId)).toHaveLength(1);
+
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+        reminderSentAt: new Date().toISOString(),
+      });
+      await setFirestoreDoc(
+        'registrations',
+        `conv-ga4-pos-${stamp}`,
+        classRegistration({
+          classId: posClassId,
+          status: 'confirmed',
+          source: 'pos',
+        })
+      );
+      await settle();
+
+      expect(await waitForGa4Purchases(classId, 2, 1000)).toHaveLength(1);
+      expect(await waitForGa4Purchases(posClassId, 1, 1000)).toHaveLength(0);
+    });
+
+    // The two beacons are independent: GA4 being down must neither block the
+    // Meta Purchase nor touch the registration.
+    it('still sends the Meta Purchase and keeps the registration when GA4 returns 500', async () => {
+      await setGa4Failure(500);
+      try {
+        const id = `conv-ga4-fail-${Date.now()}`;
+        const classId = `conv-class-ga4-fail-${Date.now()}`;
+        const doc = classRegistration({ classId });
+        await setFirestoreDoc('registrations', id, doc);
+        await setFirestoreDoc('registrations', id, {
+          ...doc,
+          status: 'confirmed',
+          squarePaymentId: 'sqpay-ga4-fail',
+        });
+
+        expect(await waitForPurchases(classId)).toHaveLength(1);
+        expect((await waitForGa4Purchases(classId)).length).toBeGreaterThan(0);
+
+        await settle();
+        expect(await getFirestoreDoc('registrations', id)).toMatchObject({
+          status: 'confirmed',
+          squarePaymentId: 'sqpay-ga4-fail',
+        });
+      } finally {
+        await setGa4Failure(null);
+      }
     });
   });
 

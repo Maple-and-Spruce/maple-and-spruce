@@ -16,15 +16,15 @@ import type { CallableTarget } from '@maple/react/data';
  * Keep this in sync with the functions the shell + dashboard call on mount:
  * - RolesProvider        -> getMyRoles
  * - AppShell             -> getSyncConflictSummary
- * - DashboardPage        -> getClasses / getRegistrations / products/getProducts
- * - room schedule widget -> getRoomSchedule
+ * - DashboardPage        -> getClasses / getRegistrations / lessons/getStudioDay
+ * - room schedule widget -> getRoomSchedule (teachers' Home)
  */
 export const DASHBOARD_WARMUP_FUNCTIONS: readonly CallableTarget[] = [
   'getMyRoles',
   'getSyncConflictSummary',
   'getClasses',
   'getRegistrations',
-  { router: 'products', route: 'getProducts' },
+  { router: 'lessons', route: 'getStudioDay' },
   { router: 'calendar', route: 'getRoomSchedule' },
 ];
 

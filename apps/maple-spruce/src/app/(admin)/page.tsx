@@ -1,27 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
-import Link from 'next/link';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CardActionArea,
-  Skeleton,
-  Alert,
-  Chip,
-  Stack,
-} from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { Box, Typography, Card, CardActionArea } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BusinessIcon from '@mui/icons-material/Business';
 import CampaignIcon from '@mui/icons-material/Campaign';
-import EventIcon from '@mui/icons-material/Event';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
-import HowToRegIcon from '@mui/icons-material/HowToReg';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import LanguageIcon from '@mui/icons-material/Language';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -30,13 +16,24 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import SchoolIcon from '@mui/icons-material/School';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import StorefrontIcon from '@mui/icons-material/Storefront';
-import SyncProblemIcon from '@mui/icons-material/SyncProblem';
-import { formatClassPrice } from '@maple/ts/domain';
+import { RequestStateUtil, type RequestState } from '@maple/ts/domain';
+import type { StudioDayLesson } from '@maple/ts/firebase/api-types';
+import { fonts, text } from '@maple/react/theme';
 import { useRoles } from '@maple/react/auth';
-import { useSyncConflictSummary } from '@maple/react/data';
+import { useInbox, useStudioDay } from '@maple/react/data';
 import { RoomStatusCard } from '@maple/react/events';
-import { useClasses, useRegistrations, useProducts,
-} from '../../hooks';
+import { useClasses, useRegistrations } from '../../hooks';
+import {
+  ClassesThisWeekCard,
+  DashboardGrid,
+  InboxCard,
+  RecentRegistrationsCard,
+  TodayCard,
+  formatLongDate,
+  inboxSummarySuffix,
+  todayCounts,
+  todaySummaryText,
+} from '../../components/dashboard';
 
 const quickLinks = [
   { label: 'Wave', href: 'https://my.waveapps.com', icon: AccountBalanceIcon, color: '#1c6dd0' },
@@ -54,367 +51,114 @@ const quickLinks = [
   { label: 'Apple Business', href: 'https://business.apple.com/main/home', icon: BusinessIcon, color: '#555555' },
 ];
 
-/** Format a date as "Mon, Mar 23" */
-function formatShortDate(date: Date): string {
-  return new Date(date).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+/** The current time, ticking each minute so the NOW line and "ended" drift right. */
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
 }
 
-/** Format time as "2:00 PM" */
-function formatTime(date: Date): string {
-  return new Date(date).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+/** "Wednesday, October 14", with an optional one-line summary on the right. */
+function DashboardHeader({ now, summary }: { now: Date; summary?: string }) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        columnGap: 2,
+        rowGap: 0.5,
+        mb: 2.5,
+      }}
+    >
+      <Typography
+        component="h1"
+        sx={{
+          fontFamily: fonts.heading,
+          fontSize: 32,
+          lineHeight: 1.2,
+          color: text.primary,
+        }}
+      >
+        {formatLongDate(now)}
+      </Typography>
+      {summary && (
+        <Typography color="textSecondary" sx={{ fontSize: 15 }}>
+          {summary}
+        </Typography>
+      )}
+    </Box>
+  );
 }
 
 /**
- * Business widgets (classes / registrations / low stock / sync) — mounted
- * only for roles whose server-side access matches what they fetch
- * (admin + clerk; the sync card is admin-only). Hooks live inside so the
- * calls never fire for roles that would just get 403s.
+ * The business dashboard (#235) — admin + clerk only, so its role-gated
+ * fetches never fire for roles that would just get 403s. A clerk sees
+ * classes and registrations; the studio-wide lesson day and the Inbox are
+ * admin-only, and their hooks stay disabled for a clerk. Pending sync
+ * conflicts are an Inbox row now, not a card of their own.
  */
-function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
+function StaffDashboard({ isAdmin, now }: { isAdmin: boolean; now: Date }) {
   const { classesState } = useClasses();
   const { registrationsState } = useRegistrations();
-  const { productsState } = useProducts();
-  const { summaryState } = useSyncConflictSummary(showSync);
+  const { dayState } = useStudioDay(isAdmin);
+  const { inboxState, dismiss, dismissError, clearDismissError } =
+    useInbox(isAdmin);
 
-  // Upcoming published classes in the next 7 days
-  const upcomingClasses = useMemo(() => {
-    if (classesState.status !== 'success') return [];
-    const now = new Date();
-    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return classesState.data
-      .filter((c) => {
-        const firstDt = c.sessions?.[0]?.dateTime;
-        if (!firstDt) return false;
-        const dt = firstDt instanceof Date ? firstDt : new Date(firstDt);
-        return c.status === 'published' && dt >= now && dt <= weekFromNow;
-      })
-      .sort((a, b) => {
-        const aFirst = a.sessions?.[0]?.dateTime;
-        const bFirst = b.sessions?.[0]?.dateTime;
-        return (
-          (aFirst instanceof Date ? aFirst : new Date(aFirst)).getTime() -
-          (bFirst instanceof Date ? bFirst : new Date(bFirst)).getTime()
-        );
-      });
-  }, [classesState]);
+  const lessonsState = useMemo<RequestState<StudioDayLesson[]> | null>(
+    () => (isAdmin ? RequestStateUtil.map(dayState, (d) => d.lessons) : null),
+    [isAdmin, dayState]
+  );
 
-  // Registration counts per class
-  const registrationsByClass = useMemo(() => {
-    if (registrationsState.status !== 'success') return new Map<string, number>();
-    const map = new Map<string, number>();
-    for (const reg of registrationsState.data) {
-      if (reg.status === 'confirmed' || reg.status === 'pending') {
-        map.set(reg.classId, (map.get(reg.classId) ?? 0) + reg.quantity);
-      }
-    }
-    return map;
-  }, [registrationsState]);
-
-  // Recent registrations (last 7 days)
-  const recentRegistrations = useMemo(() => {
-    if (registrationsState.status !== 'success') return [];
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    return registrationsState.data
-      .filter(
-        (r) =>
-          new Date(r.createdAt) >= weekAgo &&
-          (r.status === 'confirmed' || r.status === 'pending')
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, 5);
-  }, [registrationsState]);
-
-  // Class name lookup
-  const classNameMap = useMemo(() => {
-    if (classesState.status !== 'success') return new Map<string, string>();
-    const map = new Map<string, string>();
-    for (const c of classesState.data) {
-      map.set(c.id, c.name);
-    }
-    return map;
-  }, [classesState]);
-
-  // Low stock products (quantity <= 2, active only)
-  const lowStockProducts = useMemo(() => {
-    if (productsState.status !== 'success') return [];
-    return productsState.data
-      .filter((p) => p.status === 'active' && (p.squareCache.quantity ?? 0) <= 2)
-      .sort((a, b) => (a.squareCache.quantity ?? 0) - (b.squareCache.quantity ?? 0))
-      .slice(0, 5);
-  }, [productsState]);
-
-  // Sync conflicts count
-  const pendingConflicts = useMemo(() => {
-    if (summaryState.status !== 'success') return 0;
-    return summaryState.data.pending;
-  }, [summaryState]);
-
-  const isLoading =
-    classesState.status === 'loading' ||
-    classesState.status === 'idle' ||
-    registrationsState.status === 'loading' ||
-    registrationsState.status === 'idle';
+  const summary = useMemo(() => {
+    if (classesState.status !== 'success') return undefined;
+    if (lessonsState && lessonsState.status !== 'success') return undefined;
+    const counts = todayCounts(
+      lessonsState?.status === 'success' ? lessonsState.data : null,
+      classesState.data,
+      now
+    );
+    const inbox =
+      isAdmin && inboxState.status === 'success'
+        ? inboxSummarySuffix(inboxState.data.length)
+        : '';
+    return todaySummaryText(counts.lessons, counts.classes) + inbox;
+  }, [classesState, lessonsState, inboxState, isAdmin, now]);
 
   return (
     <>
-      {/* Upcoming Classes */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography variant="h6" gutterBottom>
-            <EventIcon
-              fontSize="small"
-              sx={{ verticalAlign: 'middle', mr: 0.5 }}
-            />
-            Upcoming Classes (7 days)
-          </Typography>
-
-          {isLoading ? (
-            <Stack spacing={1}>
-              <Skeleton variant="rounded" height={72} />
-              <Skeleton variant="rounded" height={72} />
-            </Stack>
-          ) : classesState.status === 'error' ? (
-            <Alert severity="error">{classesState.error}</Alert>
-          ) : upcomingClasses.length === 0 ? (
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary">
-                  No classes scheduled this week
-                </Typography>
-              </CardContent>
-            </Card>
-          ) : (
-            <Stack spacing={1}>
-              {upcomingClasses.map((c) => {
-                const regCount = registrationsByClass.get(c.id) ?? 0;
-                const spotsLeft = c.capacity - regCount;
-                return (
-                  <Card key={c.id} variant="outlined">
-                    <CardActionArea
-                      component={Link}
-                      href="/classes"
-                      sx={{ px: 2, py: 1.5 }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="subtitle2">
-                            {c.name}
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            {c.sessions?.[0] && formatShortDate(
-                              c.sessions[0].dateTime instanceof Date
-                                ? c.sessions[0].dateTime
-                                : new Date(c.sessions[0].dateTime)
-                            )} at{' '}
-                            {c.sessions?.[0] && formatTime(
-                              c.sessions[0].dateTime instanceof Date
-                                ? c.sessions[0].dateTime
-                                : new Date(c.sessions[0].dateTime)
-                            )}{c.sessions.length > 1 ? ` (+${c.sessions.length - 1})` : ''} &middot;{' '}
-                            {formatClassPrice(c.priceCents)}
-                          </Typography>
-                        </Box>
-                        <Chip
-                          label={`${regCount}/${c.capacity}`}
-                          size="small"
-                          color={
-                            spotsLeft === 0
-                              ? 'error'
-                              : spotsLeft <= 3
-                                ? 'warning'
-                                : 'default'
-                          }
-                          variant={spotsLeft === 0 ? 'filled' : 'outlined'}
-                        />
-                      </Box>
-                    </CardActionArea>
-                  </Card>
-                );
-              })}
-            </Stack>
-          )}
-        </Grid>
-
-        {/* Recent Registrations */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography variant="h6" gutterBottom>
-            <HowToRegIcon
-              fontSize="small"
-              sx={{ verticalAlign: 'middle', mr: 0.5 }}
-            />
-            Recent Registrations
-          </Typography>
-
-          {registrationsState.status === 'loading' ||
-          registrationsState.status === 'idle' ? (
-            <Stack spacing={1}>
-              <Skeleton variant="rounded" height={56} />
-              <Skeleton variant="rounded" height={56} />
-            </Stack>
-          ) : registrationsState.status === 'error' ? (
-            <Alert severity="error">{registrationsState.error}</Alert>
-          ) : recentRegistrations.length === 0 ? (
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary">
-                  No registrations this week
-                </Typography>
-              </CardContent>
-            </Card>
-          ) : (
-            <Stack spacing={1}>
-              {recentRegistrations.map((r) => (
-                <Card key={r.id} variant="outlined">
-                  <CardActionArea
-                    component={Link}
-                    href="/registrations"
-                    sx={{ px: 2, py: 1.5 }}
-                  >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="subtitle2">
-                          {r.customerName}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {classNameMap.get(r.classId) ?? 'Unknown class'}{' '}
-                          &middot; {formatShortDate(r.createdAt)}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        label={r.status}
-                        size="small"
-                        color={
-                          r.status === 'confirmed' ? 'success' : 'warning'
-                        }
-                        variant="outlined"
-                      />
-                    </Box>
-                  </CardActionArea>
-                </Card>
-              ))}
-            </Stack>
-          )}
-        </Grid>
-
-        {/* Low Stock */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography variant="h6" gutterBottom>
-            <InventoryIcon
-              fontSize="small"
-              sx={{ verticalAlign: 'middle', mr: 0.5 }}
-            />
-            Low Stock
-          </Typography>
-
-          {productsState.status === 'loading' ||
-          productsState.status === 'idle' ? (
-            <Stack spacing={1}>
-              <Skeleton variant="rounded" height={56} />
-              <Skeleton variant="rounded" height={56} />
-            </Stack>
-          ) : productsState.status === 'error' ? (
-            <Alert severity="error">{productsState.error}</Alert>
-          ) : lowStockProducts.length === 0 ? (
-            <Card variant="outlined">
-              <CardContent>
-                <Typography color="textSecondary">
-                  All products well-stocked
-                </Typography>
-              </CardContent>
-            </Card>
-          ) : (
-            <Stack spacing={1}>
-              {lowStockProducts.map((p) => (
-                <Card key={p.id} variant="outlined">
-                  <CardActionArea
-                    component={Link}
-                    href="/inventory"
-                    sx={{ px: 2, py: 1.5 }}
-                  >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Typography variant="subtitle2">
-                        {p.squareCache.name}
-                      </Typography>
-                      <Chip
-                        label={
-                          p.squareCache.quantity === 0
-                            ? 'Out of stock'
-                            : `${p.squareCache.quantity} left`
-                        }
-                        size="small"
-                        color={
-                          p.squareCache.quantity === 0 ? 'error' : 'warning'
-                        }
-                        variant={
-                          p.squareCache.quantity === 0 ? 'filled' : 'outlined'
-                        }
-                      />
-                    </Box>
-                  </CardActionArea>
-                </Card>
-              ))}
-            </Stack>
-          )}
-        </Grid>
-
-        {/* Sync Conflicts */}
-        {pendingConflicts > 0 && (
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card variant="outlined">
-              <CardActionArea
-                component={Link}
-                href="/sync-conflicts"
-                sx={{ px: 2, py: 2 }}
-              >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                  }}
-                >
-                  <SyncProblemIcon color="warning" />
-                  <Box>
-                    <Typography variant="subtitle2">
-                      {pendingConflicts} sync conflict
-                      {pendingConflicts !== 1 ? 's' : ''} pending
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Review and resolve inventory discrepancies
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardActionArea>
-            </Card>
-          </Grid>
+      <DashboardHeader now={now} summary={summary} />
+      <DashboardGrid>
+        <TodayCard
+          lessonsState={lessonsState}
+          classesState={classesState}
+          registrationsState={registrationsState}
+          now={now}
+        />
+        <RecentRegistrationsCard
+          registrationsState={registrationsState}
+          classesState={classesState}
+          now={now}
+        />
+        {isAdmin && (
+          <InboxCard
+            inboxState={inboxState}
+            now={now}
+            onDismiss={dismiss}
+            dismissError={dismissError}
+            onClearDismissError={clearDismissError}
+          />
         )}
+        <ClassesThisWeekCard
+          classesState={classesState}
+          registrationsState={registrationsState}
+          now={now}
+        />
+      </DashboardGrid>
 
     </>
   );
@@ -423,27 +167,27 @@ function StoreOverviewWidgets({ showSync }: { showSync: boolean }) {
 export default function DashboardPage() {
   const { isAdmin, roles } = useRoles();
   const isClerk = roles.includes('clerk');
+  const now = useNow();
+
+  // Teachers and other roles keep the Spruce Room status they had before.
+  if (!isAdmin && !isClerk) {
+    return (
+      <>
+        <DashboardHeader now={now} />
+        <RoomStatusCard
+          room="spruce"
+          bookHref="/book-room"
+          scheduleHref="/room-schedule"
+        />
+      </>
+    );
+  }
 
   return (
     <>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
+      <StaffDashboard isAdmin={isAdmin} now={now} />
 
-      <Grid container spacing={3}>
-        {/* Spruce Room status — visible to every role */}
-        <Grid size={12}>
-          <RoomStatusCard
-            room="spruce"
-            bookHref="/book-room"
-            scheduleHref="/room-schedule"
-          />
-        </Grid>
-
-        {/* Business widgets — admin + clerk only; their hooks call
-            role-gated functions, so don't mount them for other roles */}
-        {(isAdmin || isClerk) && <StoreOverviewWidgets showSync={isAdmin} />}
-
+      <Grid container spacing={3} sx={{ mt: 1 }}>
         {/* Quick Links — external business accounts, admin only */}
         {isAdmin && (
         <Grid size={12}>
