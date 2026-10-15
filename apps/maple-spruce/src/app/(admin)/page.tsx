@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { Box, Typography, Card, CardActionArea } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -17,20 +16,21 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import SchoolIcon from '@mui/icons-material/School';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import StorefrontIcon from '@mui/icons-material/Storefront';
-import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { RequestStateUtil, type RequestState } from '@maple/ts/domain';
 import type { StudioDayLesson } from '@maple/ts/firebase/api-types';
 import { fonts, text } from '@maple/react/theme';
 import { useRoles } from '@maple/react/auth';
-import { useStudioDay, useSyncConflictSummary } from '@maple/react/data';
+import { useInbox, useStudioDay } from '@maple/react/data';
 import { RoomStatusCard } from '@maple/react/events';
 import { useClasses, useRegistrations } from '../../hooks';
 import {
   ClassesThisWeekCard,
   DashboardGrid,
+  InboxCard,
   RecentRegistrationsCard,
   TodayCard,
   formatLongDate,
+  inboxSummarySuffix,
   todayCounts,
   todaySummaryText,
 } from '../../components/dashboard';
@@ -98,14 +98,16 @@ function DashboardHeader({ now, summary }: { now: Date; summary?: string }) {
 /**
  * The business dashboard (#235) — admin + clerk only, so its role-gated
  * fetches never fire for roles that would just get 403s. A clerk sees
- * classes and registrations; the studio-wide lesson day and the sync card
- * are admin-only, and their hooks stay disabled for a clerk.
+ * classes and registrations; the studio-wide lesson day and the Inbox are
+ * admin-only, and their hooks stay disabled for a clerk. Pending sync
+ * conflicts are an Inbox row now, not a card of their own.
  */
 function StaffDashboard({ isAdmin, now }: { isAdmin: boolean; now: Date }) {
   const { classesState } = useClasses();
   const { registrationsState } = useRegistrations();
   const { dayState } = useStudioDay(isAdmin);
-  const { summaryState } = useSyncConflictSummary(isAdmin);
+  const { inboxState, dismiss, dismissError, clearDismissError } =
+    useInbox(isAdmin);
 
   const lessonsState = useMemo<RequestState<StudioDayLesson[]> | null>(
     () => (isAdmin ? RequestStateUtil.map(dayState, (d) => d.lessons) : null),
@@ -120,11 +122,12 @@ function StaffDashboard({ isAdmin, now }: { isAdmin: boolean; now: Date }) {
       classesState.data,
       now
     );
-    return todaySummaryText(counts.lessons, counts.classes);
-  }, [classesState, lessonsState, now]);
-
-  const pendingConflicts =
-    summaryState.status === 'success' ? summaryState.data.pending : 0;
+    const inbox =
+      isAdmin && inboxState.status === 'success'
+        ? inboxSummarySuffix(inboxState.data.length)
+        : '';
+    return todaySummaryText(counts.lessons, counts.classes) + inbox;
+  }, [classesState, lessonsState, inboxState, isAdmin, now]);
 
   return (
     <>
@@ -141,6 +144,15 @@ function StaffDashboard({ isAdmin, now }: { isAdmin: boolean; now: Date }) {
           classesState={classesState}
           now={now}
         />
+        {isAdmin && (
+          <InboxCard
+            inboxState={inboxState}
+            now={now}
+            onDismiss={dismiss}
+            dismissError={dismissError}
+            onClearDismissError={clearDismissError}
+          />
+        )}
         <ClassesThisWeekCard
           classesState={classesState}
           registrationsState={registrationsState}
@@ -148,29 +160,6 @@ function StaffDashboard({ isAdmin, now }: { isAdmin: boolean; now: Date }) {
         />
       </DashboardGrid>
 
-      {/* Sync Conflicts — admin only */}
-      {pendingConflicts > 0 && (
-        <Card variant="outlined" sx={{ mt: 3, maxWidth: 560 }}>
-          <CardActionArea
-            component={Link}
-            href="/sync-conflicts"
-            sx={{ px: 2, py: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <SyncProblemIcon color="warning" />
-              <Box>
-                <Typography variant="subtitle2">
-                  {pendingConflicts} sync conflict
-                  {pendingConflicts !== 1 ? 's' : ''} pending
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Review and resolve inventory discrepancies
-                </Typography>
-              </Box>
-            </Box>
-          </CardActionArea>
-        </Card>
-      )}
     </>
   );
 }

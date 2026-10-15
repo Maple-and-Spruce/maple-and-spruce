@@ -3,7 +3,7 @@
  * Every person here is made up. Dates are built from local wall-clock parts so
  * the fixtures read the same in any timezone.
  */
-import type { Class, Registration } from '@maple/ts/domain';
+import type { Class, InboxItem, Registration } from '@maple/ts/domain';
 import type {
   StudioDayLesson,
   StudioDayPayment,
@@ -134,4 +134,85 @@ export const fixtureRegistrations: Registration[] = [
   // Outside the week, and not holding a seat: neither counts as recent.
   registration('reg-8', 'cls-wheel', 'Ivy Old', at(1, 12), 9500),
   registration('reg-9', 'cls-weave', 'Cal Cancelled', at(14, 8), 4000, { status: 'cancelled' }),
+];
+
+// ---------------------------------------------------------------------------
+// Inbox (#235)
+// ---------------------------------------------------------------------------
+
+const iso = (d: Date) => d.toISOString();
+
+/** Seven inbox items, already in the server's order. All invented. */
+export const fixtureInboxItems: InboxItem[] = [
+  {
+    key: 'charge-failed:chg-iris:1760400000000',
+    kind: 'charge-failed',
+    title: 'Iris Calloway · $35',
+    detail: 'Card declined · lesson today at 3:30 PM',
+    href: '/students/stu-iris',
+    actionLabel: 'Retry charge',
+    occurredAt: iso(at(13, 9)),
+    urgent: true,
+  },
+  {
+    key: 'agreement-unsigned:cls-glass:1760479200000:1760300000000',
+    kind: 'agreement-unsigned',
+    title: '2 for tonight’s Stained Glass',
+    detail: 'Wed, Oct 14 · 6:00 PM',
+    href: '/agreements',
+    actionLabel: 'Send reminder',
+    occurredAt: iso(at(12, 10)),
+    dueAt: iso(at(14, 18)),
+    urgent: true,
+  },
+  {
+    key: 'lesson-inquiry:inq-priya',
+    kind: 'lesson-inquiry',
+    title: 'Priya Okafor',
+    detail: 'Cello · age 9 · Lessons form',
+    href: '/leads',
+    actionLabel: 'Reply',
+    occurredAt: iso(at(10, 11)),
+    urgent: true,
+  },
+  {
+    key: 'lesson-inquiry:inq-mara',
+    kind: 'lesson-inquiry',
+    title: 'Mara Linden',
+    detail: 'Violin · age 6 · Suzuki form',
+    href: '/leads',
+    actionLabel: 'Reply',
+    occurredAt: iso(at(14, 13, 10)),
+    urgent: false,
+  },
+  {
+    key: 'craft-club-requested:mem-wren',
+    kind: 'craft-club-requested',
+    title: 'Wren Abernathy',
+    detail: 'Wants to join Craft Club',
+    href: '/craft-club',
+    actionLabel: 'Review',
+    occurredAt: iso(at(12, 16)),
+    urgent: false,
+  },
+  {
+    key: 'lesson-unbilled:les-theo:1760140800000',
+    kind: 'lesson-unbilled',
+    title: 'Theo Marsh',
+    detail: 'Taught Oct 9, 2026, never invoiced',
+    href: '/students/stu-theo?chargeLesson=les-theo',
+    actionLabel: 'Bill',
+    occurredAt: iso(at(9, 16)),
+    urgent: false,
+  },
+  {
+    key: 'sync-conflicts:2:1760450000000',
+    kind: 'sync-conflicts',
+    title: '2 inventory sync conflicts',
+    detail: 'Square or Etsy disagrees with the portal',
+    href: '/sync-conflicts',
+    actionLabel: 'Review',
+    occurredAt: iso(at(14, 9)),
+    urgent: false,
+  },
 ];

@@ -26,6 +26,13 @@ export const dashboardColors = {
   clay: '#A4502F',
   /** Under-filled classes. */
   amber: '#B7791F',
+  /** Inbox: the ink on a failed-money eyebrow. */
+  clayInk: '#7A3A20',
+  /** Inbox: an unsigned agreement's dot and ink. */
+  ochre: '#C9893F',
+  ochreInk: '#6B4A12',
+  /** Inbox: the dot on a row with nothing pressing about it. */
+  quietDot: '#A9AA9C',
   /** "Paid". */
   green: '#3F7A4A',
 } as const;
@@ -37,6 +44,8 @@ export interface DashboardCardProps {
   title: string;
   /** The small link on the right of the header. */
   link?: { label: string; href: string };
+  /** Plain text on the right of the header, when there is no link ("3 to do"). */
+  aside?: string;
   /** Footer row content; omitted means no footer. */
   footer?: ReactNode;
   /** Grid columns to span (PR 3's Sales card spans 2). */
@@ -51,6 +60,7 @@ export interface DashboardCardProps {
 export function DashboardCard({
   title,
   link,
+  aside,
   footer,
   span = 1,
   children,
@@ -112,6 +122,20 @@ export function DashboardCard({
           >
             {link.label}
           </Link>
+        )}
+        {!link && aside && (
+          <Typography
+            component="span"
+            color="textSecondary"
+            sx={{
+              fontFamily: fonts.button,
+              fontSize: 13,
+              flexShrink: 0,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {aside}
+          </Typography>
         )}
       </Box>
       <Box
