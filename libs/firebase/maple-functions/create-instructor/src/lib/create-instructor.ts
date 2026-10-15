@@ -20,8 +20,10 @@ export const createInstructor = Functions.endpoint
   .ensuringUnique<CreateInstructorRequest>({
     entity: 'Instructor',
     field: 'email',
+    // Email is optional; two instructors without one are not duplicates.
+    when: (data) => !!data.email,
     exists: async (email) =>
-      (await InstructorRepository.findByEmail(email)) !== undefined,
+      !!email && (await InstructorRepository.findByEmail(email)) !== undefined,
   })
   .handle<CreateInstructorRequest, CreateInstructorResponse>(async (data) => {
     // Rates only for instruments the studio offers (#161).

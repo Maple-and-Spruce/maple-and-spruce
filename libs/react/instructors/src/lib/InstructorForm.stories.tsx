@@ -135,9 +135,9 @@ export const ValidationErrorsOnEmptySubmit: Story = {
       expect(nameInput).toHaveAttribute('aria-invalid', 'true');
     });
 
-    // Email field should show error
+    // Email is optional, so it is not flagged
     const emailInput = canvas.getByLabelText(/email/i);
-    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(emailInput).toHaveAttribute('aria-invalid', 'false');
 
     // onSubmit should not have been called
     await expect(args.onSubmit).not.toHaveBeenCalled();
@@ -184,6 +184,99 @@ export const SuccessfulSubmission: Story = {
         })
       );
     });
+  },
+};
+
+/**
+ * An instructor can be added without an email
+ */
+export const SubmitsWithoutEmail: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: /name/i }),
+      'Olive Thompson'
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    });
+    const submitted = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0][0];
+    expect(submitted.name).toBe('Olive Thompson');
+    expect(submitted.email).toBeUndefined();
+  },
+};
+
+/**
+ * A percentage is typed as a percent and saved as a decimal
+ */
+export const PercentagePayRate: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const body = within(document.body);
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: /name/i }),
+      'Olive Thompson'
+    );
+    await userEvent.click(canvas.getByRole('combobox', { name: /pay rate type/i }));
+    await userEvent.click(
+      await body.findByRole('option', { name: /percentage of class revenue/i })
+    );
+    await userEvent.type(canvas.getByLabelText(/percentage \(%\)/i), '70');
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ payRateType: 'percentage', payRate: 0.7 })
+      );
+    });
+  },
+};
+
+/**
+ * A blocked save says so beside the button
+ */
+export const BlockedSaveSaysWhy: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: /name/i }),
+      'Olive Thompson'
+    );
+    await userEvent.click(canvas.getByRole('combobox', { name: /pay rate type/i }));
+    await userEvent.click(
+      await within(document.body).findByRole('option', { name: /flat rate/i })
+    );
+    // Pay rate left blank
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(
+        canvas.getByText('Fix the highlighted fields to save.')
+      ).toBeInTheDocument();
+    });
+    expect(
+      canvas.getByText('Pay rate is required when pay rate type is set')
+    ).toBeInTheDocument();
+    await expect(args.onSubmit).not.toHaveBeenCalled();
   },
 };
 

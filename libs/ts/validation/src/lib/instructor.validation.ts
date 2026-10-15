@@ -34,12 +34,11 @@ export const instructorValidation = staticSuite(
       enforce(data.name).longerThanOrEquals(2);
     });
 
-    test('email', 'Email is required', () => {
-      enforce(data.email).isNotBlank();
-    });
-
-    test('email', 'Email must be valid', () => {
-      enforce(data.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    // Optional: not every instructor shares an email.
+    test('email', 'Email must be valid if provided', () => {
+      if (data.email) {
+        enforce(data.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+      }
     });
 
     test('phone', 'Phone must be valid if provided', () => {

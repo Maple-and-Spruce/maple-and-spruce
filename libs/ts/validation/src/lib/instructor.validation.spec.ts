@@ -73,13 +73,18 @@ describe('instructorValidation', () => {
   });
 
   describe('email field', () => {
-    it('fails when email is missing', () => {
+    it('passes when email is blank (some instructors keep it private)', () => {
       const result = instructorValidation({
         ...validInstructor,
         email: '',
       });
-      expect(result.isValid()).toBe(false);
-      expect(result.getErrors('email')).toContain('Email is required');
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes when email is absent', () => {
+      const { email: _email, ...withoutEmail } = validInstructor;
+      const result = instructorValidation(withoutEmail);
+      expect(result.isValid()).toBe(true);
     });
 
     it('fails when email format is invalid', () => {
@@ -88,7 +93,7 @@ describe('instructorValidation', () => {
         email: 'not-an-email',
       });
       expect(result.isValid()).toBe(false);
-      expect(result.getErrors('email')).toContain('Email must be valid');
+      expect(result.getErrors('email')).toContain('Email must be valid if provided');
     });
 
     it('passes with valid email', () => {
