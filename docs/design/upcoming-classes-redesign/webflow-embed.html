@@ -93,6 +93,7 @@
  .msx .msx-series .cls-card-body{padding:16px!important}
  .msx .msx-series .cls-card-name{font-size:21px!important}
  .msx .msx-series .msx-cta{display:inline-flex}
+ .msx .msx-series .cls-card-footer{gap:20px;flex-wrap:wrap}
 }
 /* Private-class card beside the existing "Can't find" card */
 .cls-cta-section.msx-two{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:stretch;padding-left:max(16px,calc((100% - 1120px)/2))!important;padding-right:max(16px,calc((100% - 1120px)/2))!important}
@@ -206,7 +207,15 @@
           if (spotsEl) priceWrap.appendChild(el('span', 'msx-status', spotsEl.textContent));
         }
         footer.insertBefore(priceWrap, footer.firstChild);
-        footer.appendChild(el('span', 'msx-cta', r.full ? 'Join waitlist' : r.series ? 'Save my seat' : 'Reserve'));
+        var cta = el('span', 'msx-cta', r.full ? 'Join waitlist' : r.series ? 'Save my seat' : 'Reserve');
+        cta.addEventListener('click', function (e) {
+          var href = link.getAttribute('href');
+          if (!href) return;
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = href.split('#')[0] + '#register';
+        });
+        footer.appendChild(cta);
       }
     });
 
@@ -288,7 +297,7 @@
       t.appendChild(el('small', null, 'Next class · ' + part(next.date, { weekday: 'short', month: 'short', day: 'numeric' }) + seats));
       t.appendChild(el('span', null, next.name));
       var a = el('a', null, 'Reserve');
-      a.href = link ? link.getAttribute('href') : '#';
+      a.href = link ? link.getAttribute('href').split('#')[0] + '#register' : '#';
       a.setAttribute('aria-label', 'Reserve ' + next.name);
       nb.appendChild(t);
       nb.appendChild(a);
