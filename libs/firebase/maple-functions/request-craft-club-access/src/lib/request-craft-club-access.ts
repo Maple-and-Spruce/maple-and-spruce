@@ -25,7 +25,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const requestCraftClubAccess = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('requestCraftClubAccess', emailLinkThrottles())
   .handle<RequestCraftClubAccessRequest, RequestCraftClubAccessResponse>(
     async (data) => {

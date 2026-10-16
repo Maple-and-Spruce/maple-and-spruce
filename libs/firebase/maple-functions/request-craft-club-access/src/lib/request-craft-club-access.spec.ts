@@ -73,7 +73,7 @@ describe('requestCraftClubAccess declaration', () => {
     expect(
       (requestCraftClubAccess as unknown as { declared: unknown }).declared
     ).toEqual({
-      mode: 'monitor',
+      mode: 'enforce',
       scope: 'requestCraftClubAccess',
       rules: ['ip', 'email'],
     });

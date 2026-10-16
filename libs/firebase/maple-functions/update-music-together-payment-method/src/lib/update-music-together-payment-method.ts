@@ -40,7 +40,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const updateMusicTogetherPaymentMethod = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('updateMusicTogetherPaymentMethod', paymentThrottles('sessionToken'))
   .usingSecrets(...MT_SQUARE_SECRET_NAMES)
   .usingStrings(...MT_SQUARE_STRING_NAMES)

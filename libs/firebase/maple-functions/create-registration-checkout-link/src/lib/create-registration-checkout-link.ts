@@ -89,6 +89,10 @@ async function releaseHold(
 }
 
 export const createRegistrationCheckoutLink = Functions.endpoint
+  // Stays `monitor` under enforcement: this is the hosted-checkout path the
+  // widget falls back to when the in-page card form cannot start, so it must
+  // keep working in a browser that also could not obtain an App Check token.
+  // It takes no card; payment happens on Square's hosted page. (ADR-034)
   .withAppCheck('monitor')
   .throttling('createRegistrationCheckoutLink', paymentThrottles('customerEmail'))
   .usingSecrets(...SQUARE_SECRET_NAMES)

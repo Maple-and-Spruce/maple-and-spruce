@@ -32,7 +32,7 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const createCraftClubSubscription = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('createCraftClubSubscription', paymentThrottles('email'))
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'CRAFT_CLUB_PLAN_VARIATION_ID')

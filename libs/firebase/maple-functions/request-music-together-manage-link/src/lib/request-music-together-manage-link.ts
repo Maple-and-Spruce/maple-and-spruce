@@ -44,7 +44,7 @@ function isManageable(reg: MusicTogetherRegistration): boolean {
 }
 
 export const requestMusicTogetherManageLink = Functions.endpoint
-  .withAppCheck('monitor')
+  .withAppCheck('enforce')
   .throttling('requestMusicTogetherManageLink', emailLinkThrottles())
   .usingStrings('MUSIC_TOGETHER_MANAGE_URL')
   .handle<
