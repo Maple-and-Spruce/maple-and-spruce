@@ -5,7 +5,7 @@
  * Reuses RegistrationCheckoutForm and related components from the existing library.
  * No Next.js dependencies — all routing/navigation is handled inline.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -51,6 +51,7 @@ import {
 import { readMetaAttribution } from './lib/meta-attribution';
 import { readGaAttribution } from './lib/ga-attribution';
 import { warmup } from './lib/warmup';
+import { scrollToConfirmation } from './lib/scroll-to-confirmation';
 
 
 /**
@@ -592,6 +593,16 @@ export function RegistrationWidget({
     [functions]
   );
 
+  // Bring the confirmation into view once payment completes. On a phone the
+  // pay button sits far below the top of the widget, and when the buyer comes
+  // back from the Apple Pay tab they were left staring at the page footer.
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  const isConfirmed = state.status === 'confirmed';
+  useEffect(() => {
+    if (!isConfirmed) return;
+    scrollToConfirmation(confirmationRef.current);
+  }, [isConfirmed]);
+
   const handleSuccess = useCallback(
     (details: {
       confirmationNumber: string;
@@ -693,6 +704,7 @@ export function RegistrationWidget({
 
         {state.status === 'confirmed' && (
           <Box
+            ref={confirmationRef}
             className="registration-confirmation"
             sx={{ p: 4, textAlign: 'center' }}
           >
