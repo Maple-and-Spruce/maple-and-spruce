@@ -559,6 +559,111 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
 });
 
 // ============================================================
+// Agreements that arrive after mount
+//
+// The Webflow widget can render the form from CMS data before the agreements
+// lookup returns. The form's gates are computed signals, which only re-run on
+// signal changes; reading the props directly kept the first render's empty
+// list, so agreements arriving later were never required and Pay unlocked
+// unsigned. These lock in that late props are honoured.
+// ============================================================
+describe('RegistrationCheckoutForm — agreements arriving after mount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  function renderLoading() {
+    const onCalculateCost = vi.fn().mockResolvedValue(mockCostResponse);
+    const props = {
+      publicClass: mockPublicClass,
+      squareApplicationId: 'test-app',
+      squareLocationId: 'test-loc',
+      onCalculateCost,
+      onSubmit: vi.fn().mockResolvedValue(mockRegistrationResponse),
+      onSuccess: vi.fn(),
+    };
+    const view = render(
+      <RegistrationCheckoutForm {...props} agreementsLoading />
+    );
+    return { ...view, props };
+  }
+
+  it('shows a placeholder and keeps Pay disabled while agreements load', async () => {
+    renderLoading();
+
+    expect(screen.getByTestId('agreements-loading')).toBeInTheDocument();
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    // The card form is ready, so loading agreements is the only gate.
+    await waitFor(() => expect(registerButton).toBeDisabled());
+  });
+
+  it('requires agreements that arrive after mount', async () => {
+    const { rerender, props } = renderLoading();
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+
+    rerender(
+      <RegistrationCheckoutForm
+        {...props}
+        requiredAgreements={[mockAgreement]}
+        agreementsLoading={false}
+      />
+    );
+
+    await screen.findByTestId('sign-agreement-Class Waiver');
+    expect(screen.queryByTestId('agreements-loading')).toBeNull();
+    await waitFor(() => expect(registerButton).toBeDisabled());
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sign-agreement-Class Waiver'));
+    });
+    await waitFor(() => expect(registerButton).toBeEnabled());
+  });
+
+  it('enables Pay once agreements load and none are required', async () => {
+    const { rerender, props } = renderLoading();
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeDisabled());
+
+    rerender(
+      <RegistrationCheckoutForm
+        {...props}
+        requiredAgreements={[]}
+        agreementsLoading={false}
+      />
+    );
+
+    await waitFor(() => expect(registerButton).toBeEnabled());
+  });
+
+  it('follows a spot count that drops to full after mount', async () => {
+    const { rerender, props } = renderLoading();
+    rerender(
+      <RegistrationCheckoutForm
+        {...props}
+        publicClass={{ ...mockPublicClass, spotsRemaining: 0 }}
+        requiredAgreements={[]}
+        agreementsLoading={false}
+      />
+    );
+
+    const registerButton = await screen.findByRole('button', {
+      name: /Register & Pay/,
+    });
+    await waitFor(() => expect(registerButton).toBeDisabled());
+  });
+});
+
+// ============================================================
 // Quantity recalculation when attendees are added / removed
 //
 // Regression: legacy PR #417 introduced a multi-attendee flow that called
