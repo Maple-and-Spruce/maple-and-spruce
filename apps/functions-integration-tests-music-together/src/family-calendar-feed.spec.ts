@@ -15,7 +15,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   getFirestoreDoc,
-  listFirestoreDocs,
+  listMail,
   callFunction,
   getFunctionUrl,
 } from '@maple/firebase/integration-test-utils';
@@ -208,7 +208,7 @@ describe('calendarFamilyMusicTogetherFeed', () => {
     expect(typeof token).toBe('string');
     expect(token && token.length).toBeGreaterThan(20);
 
-    const mail = await listFirestoreDocs('mail');
+    const mail = await listMail();
     const robinMail = mail.find(
       (m) => (m.data as { to?: string }).to === 'robin@test.com'
     );

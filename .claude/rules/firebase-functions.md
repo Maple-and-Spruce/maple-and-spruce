@@ -539,6 +539,7 @@ Prefer declaring the index over ignoring; the cost of an unused index is small, 
 - Test suites: `apps/functions-integration-tests-{artist,class,instructor,category,discount,calendar,registration,utility,square,lesson-inquiries}/`
 - Mock servers: `libs/firebase/{square,webflow,etsy,ga4,meta-capi,tally}-test-mock-server/` — per-service mock HTTP servers intercepting calls via `SQUARE_BASE_URL` / `WEBFLOW_BASE_URL` / `ETSY_API_BASE` / `GA4_BASE_URL` / `META_CAPI_BASE_URL` / `TALLY_API_BASE_URL` env vars
 - Test utilities: `libs/firebase/integration-test-utils/` (auth-helper, firestore-helper, http-client, fixtures)
+- Read the `mail` collection with `listMail()`, never `listFirestoreDocs('mail')`. A sync trigger still running when `beforeEach` wipes Firestore fails its write-back and queues a "sync failed" alert into the freshly cleared `mail`, so raw counts are off by one depending on timing. `listMail()` leaves those alerts out; `{ includeSyncAlerts: true }` is only for specs asserting on the alerts.
 - For verbose output on a failing suite: `npx vitest run --config apps/functions-integration-tests-<suite>/vitest.config.ts --reporter=verbose` (while emulators + mock server are running)
 
 ### Emulator environment setup
