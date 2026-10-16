@@ -27,13 +27,20 @@
  *   npx tsx tools/backfill-webflow-session-count.ts --execute         # write, dev
  *   npx tsx tools/backfill-webflow-session-count.ts --prod --execute  # write, prod
  *
- * On --prod --execute each updated item is published; on dev, items are left
- * as drafts (as the sync does), so nothing reaches the shared live site.
+ * Only items that are already live are written. Drafts (past, test and pilot
+ * classes, and every dev item) are skipped so they stay unpublished; see
+ * `webflow-backfill-drafts.ts`. On --prod --execute each updated item is
+ * republished; a dev run never publishes to the shared site.
  */
 
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { WebflowClient } from 'webflow-api';
+import {
+  readItemState,
+  splitOutDrafts,
+  updatePublishedItem,
+} from './webflow-backfill-drafts';
 
 const isProd = process.argv.includes('--prod');
 const isExecute = process.argv.includes('--execute');
@@ -81,33 +88,16 @@ interface Row {
   isDraft: boolean;
 }
 
-interface LiveItem {
-  count: number | undefined;
-  isDraft: boolean;
-}
-
-async function fetchLive(itemId: string): Promise<LiveItem> {
-  try {
-    const item = await webflow.collections.items.getItem(collectionId, itemId);
-    const fieldData = item?.fieldData as
-      | { 'session-count'?: unknown }
-      | undefined;
-    return {
-      count:
-        typeof fieldData?.['session-count'] === 'number'
-          ? (fieldData['session-count'] as number)
-          : undefined,
-      isDraft: item?.isDraft === true,
-    };
-  } catch (error) {
-    console.warn(
-      `  ! getItem failed for ${itemId}: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    // Unknown state: treat as a draft so it is never republished blindly.
-    return { count: undefined, isDraft: true };
-  }
+async function fetchLive(
+  itemId: string
+): Promise<{ count: number | undefined; isDraft: boolean }> {
+  const { isDraft, fieldData } = await readItemState(
+    webflow.collections.items,
+    collectionId,
+    itemId
+  );
+  const count = fieldData['session-count'];
+  return { count: typeof count === 'number' ? count : undefined, isDraft };
 }
 
 async function main(): Promise<void> {
@@ -133,12 +123,10 @@ async function main(): Promise<void> {
     });
   }
 
-  // Drafts are unpublished on purpose (past classes, test classes). Updating
-  // one would mean flipping it to non-draft and publishing it, which puts the
-  // page back on the live site, so leave them alone. They pick the field up
-  // if they are ever re-synced.
-  const skippedDrafts = rows.filter((r) => r.isDraft && r.live !== r.desired);
-  const toUpdate = rows.filter((r) => !r.isDraft && r.live !== r.desired);
+  // Drafts are unpublished on purpose; see webflow-backfill-drafts.ts.
+  const { published: toUpdate, drafts: skippedDrafts } = splitOutDrafts(
+    rows.filter((r) => r.live !== r.desired)
+  );
 
   console.log('');
   for (const r of toUpdate) {
@@ -161,18 +149,13 @@ async function main(): Promise<void> {
   let written = 0;
   for (const r of toUpdate) {
     try {
-      await webflow.collections.items.updateItem(collectionId, r.webflowItemId, {
-        // Same draft rule as ClassService: dev items stay drafts so a
-        // full-site publish never puts them on the shared live site.
-        isArchived: false,
-        isDraft: !isProd,
-        fieldData: { 'session-count': r.desired },
-      });
-      if (isProd) {
-        await webflow.collections.items.publishItem(collectionId, {
-          itemIds: [r.webflowItemId],
-        });
-      }
+      await updatePublishedItem(
+        webflow.collections.items,
+        collectionId,
+        r.webflowItemId,
+        { 'session-count': r.desired },
+        { publish: isProd }
+      );
       written++;
     } catch (error) {
       console.warn(
@@ -183,7 +166,9 @@ async function main(): Promise<void> {
     }
   }
   console.log(
-    `\nUpdated ${written} Webflow item(s)${isProd ? ' and published them' : ' (dev: left as drafts)'}.`
+    `\nUpdated ${written} live Webflow item(s)${
+      isProd ? ' and republished them' : ' (dev: not published)'
+    }.`
   );
 }
 

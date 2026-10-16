@@ -8,9 +8,11 @@
  * keeps showing the old string on the public listing indefinitely, because a
  * full class rarely gets another registration event to trigger a re-sync.
  *
- * This script recomputes spots for every synced class and PATCHes + publishes
- * the Webflow item wherever the live values drift from what the current count
- * implies. It duplicates the tiny `spots-display` string logic from
+ * This script recomputes spots for every synced class and PATCHes the Webflow
+ * item wherever the live values drift from what the current count implies.
+ * Only items that are already live are written (and, on --prod, republished).
+ * Drafts (past, test and pilot classes, and every dev item) are skipped so
+ * they stay unpublished; see `webflow-backfill-drafts.ts`. It duplicates the tiny `spots-display` string logic from
  * `class.service.ts` rather than importing `mapClassToFieldData`, because that
  * mapper expects `Date` sessions and Firestore hands back `Timestamp`s.
  *
@@ -33,6 +35,11 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { WebflowClient } from 'webflow-api';
+import {
+  readItemState,
+  splitOutDrafts,
+  updatePublishedItem,
+} from './webflow-backfill-drafts';
 
 const isProd = process.argv.includes('--prod');
 const isExecute = process.argv.includes('--execute');
@@ -89,34 +96,27 @@ interface Row {
   desiredRemaining: number;
   liveDisplay: string | undefined;
   liveRemaining: number | undefined;
+  /** True when the Webflow item is an unpublished draft (past or test classes). */
+  isDraft: boolean;
 }
 
-async function fetchLive(
-  itemId: string
-): Promise<{ display: string | undefined; remaining: number | undefined }> {
-  try {
-    const item = await webflow.collections.items.getItem(collectionId!, itemId);
-    const fieldData = item?.fieldData as
-      | { 'spots-display'?: unknown; 'spots-remaining'?: unknown }
-      | undefined;
-    return {
-      display:
-        typeof fieldData?.['spots-display'] === 'string'
-          ? (fieldData['spots-display'] as string)
-          : undefined,
-      remaining:
-        typeof fieldData?.['spots-remaining'] === 'number'
-          ? (fieldData['spots-remaining'] as number)
-          : undefined,
-    };
-  } catch (error) {
-    console.warn(
-      `  ! getItem failed for ${itemId}: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    return { display: undefined, remaining: undefined };
-  }
+async function fetchLive(itemId: string): Promise<{
+  display: string | undefined;
+  remaining: number | undefined;
+  isDraft: boolean;
+}> {
+  const { isDraft, fieldData } = await readItemState(
+    webflow.collections.items,
+    collectionId!,
+    itemId
+  );
+  const display = fieldData['spots-display'];
+  const remaining = fieldData['spots-remaining'];
+  return {
+    display: typeof display === 'string' ? display : undefined,
+    remaining: typeof remaining === 'number' ? remaining : undefined,
+    isDraft,
+  };
 }
 
 async function main(): Promise<void> {
@@ -149,12 +149,17 @@ async function main(): Promise<void> {
       desiredRemaining,
       liveDisplay: live.display,
       liveRemaining: live.remaining,
+      isDraft: live.isDraft,
     });
   }
 
-  const toUpdate = rows.filter(
-    (r) =>
-      r.liveDisplay !== r.desiredDisplay || r.liveRemaining !== r.desiredRemaining
+  // Drafts are unpublished on purpose; see webflow-backfill-drafts.ts.
+  const { published: toUpdate, drafts: skippedDrafts } = splitOutDrafts(
+    rows.filter(
+      (r) =>
+        r.liveDisplay !== r.desiredDisplay ||
+        r.liveRemaining !== r.desiredRemaining
+    )
   );
 
   console.log('');
@@ -167,8 +172,10 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `\n${toUpdate.length} class(es) need a spots update; ${
-      rows.length - toUpdate.length
+    `\n${toUpdate.length} published class(es) need a spots update; ${
+      skippedDrafts.length
+    } draft(s) skipped; ${
+      rows.length - toUpdate.length - skippedDrafts.length
     } already correct.`
   );
 
@@ -180,17 +187,17 @@ async function main(): Promise<void> {
   let written = 0;
   for (const r of toUpdate) {
     try {
-      await webflow.collections.items.updateItem(collectionId!, r.webflowItemId, {
-        isArchived: false,
-        isDraft: false,
-        fieldData: {
+      await updatePublishedItem(
+        webflow.collections.items,
+        collectionId!,
+        r.webflowItemId,
+        {
           'spots-display': r.desiredDisplay,
           'spots-remaining': r.desiredRemaining,
         },
-      });
-      await webflow.collections.items.publishItem(collectionId!, {
-        itemIds: [r.webflowItemId],
-      });
+        // Dev and prod share one Webflow site: a dev run never publishes.
+        { publish: isProd }
+      );
       written++;
     } catch (error) {
       console.warn(
@@ -200,7 +207,11 @@ async function main(): Promise<void> {
       );
     }
   }
-  console.log(`\nUpdated + published ${written} Webflow item(s).`);
+  console.log(
+    `\nUpdated ${written} live Webflow item(s)${
+      isProd ? ' and republished them' : ' (dev: not published)'
+    }.`
+  );
 }
 
 main()
