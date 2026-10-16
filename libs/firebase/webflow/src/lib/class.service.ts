@@ -53,6 +53,16 @@ export interface SyncClassInput {
    * class's category" without a Cloud Function call (legacy #776).
    */
   categoryWebflowItemId?: string;
+  /**
+   * The category's `defaultMaterialsIncluded`. Written to
+   * `materials-included` when the class leaves its own value blank.
+   */
+  categoryDefaultMaterialsIncluded?: string;
+  /**
+   * The category's `defaultWhatToBring`. Written to `what-to-bring` when the
+   * class leaves its own value blank.
+   */
+  categoryDefaultWhatToBring?: string;
   /** Current registration count for spots remaining calculation */
   registrationCount?: number;
   /**
@@ -132,7 +142,22 @@ export interface MapClassOptions {
   instructorImage?: string;
   categoryName?: string;
   categoryWebflowItemId?: string;
+  categoryDefaultMaterialsIncluded?: string;
+  categoryDefaultWhatToBring?: string;
   registrationCount?: number;
+}
+
+/**
+ * A class's own text when it has any, else the category default, else ''.
+ * Whitespace-only counts as blank so a stray space can't hide the default.
+ */
+function withFallback(
+  classValue: string | undefined,
+  categoryDefault: string | undefined
+): string {
+  if (classValue?.trim()) return classValue;
+  if (categoryDefault?.trim()) return categoryDefault;
+  return '';
 }
 
 /**
@@ -241,13 +266,18 @@ export function mapClassToFieldData(
     fieldData['location'] = classEntity.location;
   }
 
-  if (classEntity.materialsIncluded) {
-    fieldData['materials-included'] = classEntity.materialsIncluded;
-  }
-
-  if (classEntity.whatToBring) {
-    fieldData['what-to-bring'] = classEntity.whatToBring;
-  }
+  // The class's own text wins; a blank class value falls back to its
+  // category's default. Always written, even as '', because the public class
+  // page hides an empty card and a class that clears its text (or whose
+  // category default is removed) has to clear the CMS field too.
+  fieldData['materials-included'] = withFallback(
+    classEntity.materialsIncluded,
+    options.categoryDefaultMaterialsIncluded
+  );
+  fieldData['what-to-bring'] = withFallback(
+    classEntity.whatToBring,
+    options.categoryDefaultWhatToBring
+  );
 
   if (classEntity.minimumAge !== undefined) {
     fieldData['minimum-age'] = classEntity.minimumAge;
@@ -343,6 +373,8 @@ export class ClassService {
       instructorImage,
       categoryName,
       categoryWebflowItemId,
+      categoryDefaultMaterialsIncluded,
+      categoryDefaultWhatToBring,
       registrationCount,
       existingWebflowItemId,
     } = input;
@@ -363,6 +395,8 @@ export class ClassService {
       instructorImage,
       categoryName,
       categoryWebflowItemId,
+      categoryDefaultMaterialsIncluded,
+      categoryDefaultWhatToBring,
       registrationCount,
     });
 

@@ -9,6 +9,7 @@ import {
   mockClassWithGallery,
   mockClassWithReferral,
   mockClassCategoriesWithPool,
+  mockClassCategoriesWithDefaults,
 } from '@maple/react/storybook-fixtures';
 import {
   mockActiveInstructors,
@@ -591,5 +592,50 @@ export const WithCategoryPoolPicker: Story = {
     );
     expect(allCheckboxes.length).toBeGreaterThanOrEqual(5);
     expect(enabled.length).toBe(2);
+  },
+};
+
+// ============================================================
+// CATEGORY MATERIAL DEFAULTS
+// ============================================================
+
+/**
+ * Picking a category with defaults pre-fills the blank "Materials Included"
+ * and "What to Bring" fields, but leaves text the user already typed alone.
+ * Blank fields carry a warning hint, not a validation error.
+ */
+export const CategoryDefaultsPrefill: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    categories: mockClassCategoriesWithDefaults,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+
+    const materials = canvas.getByRole('textbox', {
+      name: /materials included/i,
+    });
+    const bring = canvas.getByRole('textbox', { name: /what to bring/i });
+
+    // Both start blank, each with the non-blocking hint.
+    expect(
+      canvas.getAllByText('Shown on the class page. Leave blank to hide it.')
+    ).toHaveLength(2);
+
+    await userEvent.type(bring, 'My own list');
+
+    await userEvent.click(canvas.getByRole('combobox', { name: /category/i }));
+    await userEvent.click(
+      canvas.getByRole('option', { name: 'Pottery & Ceramics' })
+    );
+
+    await waitFor(() =>
+      expect(materials).toHaveValue('Clay, glazes, and two firings')
+    );
+    expect(bring).toHaveValue('My own list');
+    expect(
+      canvas.queryByText('Shown on the class page. Leave blank to hide it.')
+    ).not.toBeInTheDocument();
   },
 };

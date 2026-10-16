@@ -65,6 +65,8 @@ export function ClassCategoryForm({
   const name = useSignal('');
   const description = useSignal('');
   const galleryImages = useSignal<GalleryImage[]>([]);
+  const defaultMaterialsIncluded = useSignal('');
+  const defaultWhatToBring = useSignal('');
 
   const showValidationErrors = useSignal(false);
   const submitError = useSignal<string | null>(null);
@@ -75,6 +77,8 @@ export function ClassCategoryForm({
     return classCategoryValidation({
       name: name.value,
       description: description.value || undefined,
+      defaultMaterialsIncluded: defaultMaterialsIncluded.value || undefined,
+      defaultWhatToBring: defaultWhatToBring.value || undefined,
       order: isEdit ? category.order : nextOrder,
       galleryImages:
         galleryImages.value.length > 0 ? galleryImages.value : undefined,
@@ -125,6 +129,8 @@ export function ClassCategoryForm({
       batch(() => {
         name.value = category.name;
         description.value = category.description ?? '';
+        defaultMaterialsIncluded.value = category.defaultMaterialsIncluded ?? '';
+        defaultWhatToBring.value = category.defaultWhatToBring ?? '';
         galleryImages.value = category.galleryImages
           ? category.galleryImages.map((img) => ({ ...img }))
           : [];
@@ -135,6 +141,8 @@ export function ClassCategoryForm({
       batch(() => {
         name.value = '';
         description.value = '';
+        defaultMaterialsIncluded.value = '';
+        defaultWhatToBring.value = '';
         galleryImages.value = [];
         showValidationErrors.value = false;
         submitError.value = null;
@@ -156,6 +164,12 @@ export function ClassCategoryForm({
       const input: CreateClassCategoryInput = {
         name: name.value.trim(),
         description: description.value.trim() || undefined,
+        // On edit a cleared default is sent as '' so it actually clears:
+        // undefined is dropped by Firestore's ignoreUndefinedProperties.
+        defaultMaterialsIncluded:
+          defaultMaterialsIncluded.value.trim() || (isEdit ? '' : undefined),
+        defaultWhatToBring:
+          defaultWhatToBring.value.trim() || (isEdit ? '' : undefined),
         order: isEdit ? category.order : nextOrder,
         galleryImages:
           galleryImages.value.length > 0
@@ -214,6 +228,34 @@ export function ClassCategoryForm({
             onChange={(e) => (description.value = e.target.value)}
             error={!!getFieldError('description')}
             helperText={getFieldError('description') || 'Optional'}
+            multiline
+            rows={2}
+            fullWidth
+          />
+
+          <TextField
+            label="Default materials included"
+            value={defaultMaterialsIncluded.value}
+            onChange={(e) => (defaultMaterialsIncluded.value = e.target.value)}
+            error={!!getFieldError('defaultMaterialsIncluded')}
+            helperText={
+              getFieldError('defaultMaterialsIncluded') ||
+              'Pre-fills new classes in this category, and shows on the class page of any class that leaves it blank'
+            }
+            multiline
+            rows={2}
+            fullWidth
+          />
+
+          <TextField
+            label="Default what to bring"
+            value={defaultWhatToBring.value}
+            onChange={(e) => (defaultWhatToBring.value = e.target.value)}
+            error={!!getFieldError('defaultWhatToBring')}
+            helperText={
+              getFieldError('defaultWhatToBring') ||
+              'Pre-fills new classes in this category, and shows on the class page of any class that leaves it blank'
+            }
             multiline
             rows={2}
             fullWidth

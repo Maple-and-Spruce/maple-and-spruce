@@ -352,6 +352,8 @@ export const syncClassToWebflow = onDocumentWritten(
         instructorImage: instructor?.photoUrl,
         categoryName: category?.name,
         categoryWebflowItemId,
+        categoryDefaultMaterialsIncluded: category?.defaultMaterialsIncluded,
+        categoryDefaultWhatToBring: category?.defaultWhatToBring,
         registrationCount,
         existingWebflowItemId: publishable.webflowItemId,
       });

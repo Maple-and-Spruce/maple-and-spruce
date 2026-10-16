@@ -541,6 +541,88 @@ export function ClassForm({
    */
   const isSaving = useSignal(false);
 
+  // ============================================================
+  // CATEGORY MATERIAL DEFAULTS
+  // ============================================================
+
+  /**
+   * Select a category and pre-fill "Materials included" / "What to bring"
+   * from its defaults. A field is only filled when it is blank, or still
+   * holds the previous category's default untouched (so switching category
+   * swaps one default for the other). Anything the user typed, or that the
+   * class already had, is left alone.
+   */
+  const handleCategoryChange = (nextCategoryId: string): void => {
+    const previous = categories.find((c) => c.id === categoryId.value);
+    const next = categories.find((c) => c.id === nextCategoryId);
+
+    const prefill = (
+      current: string,
+      previousDefault: string | undefined,
+      nextDefault: string | undefined
+    ): string => {
+      const isBlank = current.trim() === '';
+      const isPreviousDefault =
+        !!previousDefault?.trim() && current === previousDefault;
+      if (!isBlank && !isPreviousDefault) return current;
+      if (nextDefault?.trim()) return nextDefault;
+      // A stale default from the previous category goes; a blank stays blank.
+      return isPreviousDefault ? '' : current;
+    };
+
+    batch(() => {
+      categoryId.value = nextCategoryId;
+      materialsIncluded.value = prefill(
+        materialsIncluded.value,
+        previous?.defaultMaterialsIncluded,
+        next?.defaultMaterialsIncluded
+      );
+      whatToBring.value = prefill(
+        whatToBring.value,
+        previous?.defaultWhatToBring,
+        next?.defaultWhatToBring
+      );
+    });
+  };
+
+  const selectedCategoryForDefaults = categories.find(
+    (c) => c.id === categoryId.value
+  );
+
+  /**
+   * Helper text for the two class-page cards. A blank field is not an error
+   * (some classes genuinely need nothing), so it gets a warning-coloured hint
+   * saying what the public page will do, never a validation failure.
+   */
+  const pageCardHint = (
+    value: string,
+    categoryDefault: string | undefined,
+    filledHelp: string
+  ): { text: string; isWarning: boolean } => {
+    if (value.trim()) return { text: filledHelp, isWarning: false };
+    if (categoryDefault?.trim()) {
+      return {
+        text: `Blank, so the class page shows the ${selectedCategoryForDefaults?.name ?? 'category'} default`,
+        isWarning: false,
+      };
+    }
+    return {
+      text: 'Shown on the class page. Leave blank to hide it.',
+      isWarning: true,
+    };
+  };
+
+  const materialsHint = pageCardHint(
+    materialsIncluded.value,
+    selectedCategoryForDefaults?.defaultMaterialsIncluded,
+    'What materials are included in the price'
+  );
+  const whatToBringHint = pageCardHint(
+    whatToBring.value,
+    selectedCategoryForDefaults?.defaultWhatToBring,
+    'What students should bring'
+  );
+
   const handleSubmit = useCallback(async () => {
     // Synchronous re-entrancy guard. The `isSubmitting` PROP is React state
     // owned by the parent page and set with `setIsSubmitting(true)` after the
@@ -1098,7 +1180,7 @@ export function ClassForm({
                     id="category-select"
                     value={categoryId.value}
                     label="Category"
-                    onChange={(e) => (categoryId.value = e.target.value)}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                   >
                     <MenuItem value="">
                       <em>None</em>
@@ -1201,7 +1283,14 @@ export function ClassForm({
               label="Materials Included"
               value={materialsIncluded.value}
               onChange={(e) => (materialsIncluded.value = e.target.value)}
-              helperText="What materials are included in the price"
+              helperText={materialsHint.text}
+              slotProps={{
+                formHelperText: {
+                  sx: materialsHint.isWarning
+                    ? { color: 'warning.main' }
+                    : undefined,
+                },
+              }}
               multiline
               rows={2}
               fullWidth
@@ -1212,7 +1301,14 @@ export function ClassForm({
               label="What to Bring"
               value={whatToBring.value}
               onChange={(e) => (whatToBring.value = e.target.value)}
-              helperText="What students should bring"
+              helperText={whatToBringHint.text}
+              slotProps={{
+                formHelperText: {
+                  sx: whatToBringHint.isWarning
+                    ? { color: 'warning.main' }
+                    : undefined,
+                },
+              }}
               multiline
               rows={2}
               fullWidth

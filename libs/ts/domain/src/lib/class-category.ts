@@ -29,6 +29,17 @@ export interface ClassCategory {
    */
   galleryImages?: GalleryImage[];
   /**
+   * Default "Materials included" text for classes in this category. The
+   * class form pre-fills an empty class field from it, and the Webflow sync
+   * falls back to it when a class leaves its own `materialsIncluded` blank.
+   */
+  defaultMaterialsIncluded?: string;
+  /**
+   * Default "What to bring" text for classes in this category. Same
+   * pre-fill and sync fallback as `defaultMaterialsIncluded`.
+   */
+  defaultWhatToBring?: string;
+  /**
    * Webflow CMS item ID from the last sync. Lets the sync update the item
    * directly instead of scanning the collection by `firebase-id`, and is
    * what the class sync writes into each class item's `category` reference

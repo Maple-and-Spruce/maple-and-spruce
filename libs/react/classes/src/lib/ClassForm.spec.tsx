@@ -44,7 +44,7 @@ vi.mock('@maple/react/ui', () => ({
 }));
 
 import { ClassForm } from './ClassForm';
-import type { Class } from '@maple/ts/domain';
+import type { Class, ClassCategory } from '@maple/ts/domain';
 
 // A future date that won't expire during tests
 const futureDate = new Date('2099-06-15T14:00:00');
@@ -529,6 +529,163 @@ describe('ClassForm', { timeout: 30_000 }, () => {
       expect(
         screen.getByRole('textbox', { name: /Location/ })
       ).not.toBeDisabled();
+    });
+  });
+
+  describe('category material defaults', () => {
+    const now = new Date('2026-01-01');
+    const withDefaults: ClassCategory = {
+      id: 'cat-defaults',
+      name: 'Test Weaving',
+      order: 0,
+      defaultMaterialsIncluded: 'Loom and yarn',
+      defaultWhatToBring: 'Scissors',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const otherDefaults: ClassCategory = {
+      id: 'cat-other',
+      name: 'Test Pottery',
+      order: 10,
+      defaultMaterialsIncluded: 'Clay and glazes',
+      defaultWhatToBring: 'An apron',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const noDefaults: ClassCategory = {
+      id: 'cat-none',
+      name: 'Test Dyeing',
+      order: 20,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const categories = [withDefaults, otherDefaults, noDefaults];
+
+    async function pickCategory(name: string): Promise<void> {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('combobox', { name: /Category/ }));
+      await user.click(screen.getByRole('option', { name }));
+    }
+
+    const materialsField = (): HTMLElement =>
+      screen.getByRole('textbox', { name: /Materials Included/ });
+    const bringField = (): HTMLElement =>
+      screen.getByRole('textbox', { name: /What to Bring/ });
+
+    it('pre-fills both fields from the category when they are empty', async () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      await pickCategory('Test Weaving');
+
+      expect(materialsField()).toHaveValue('Loom and yarn');
+      expect(bringField()).toHaveValue('Scissors');
+    });
+
+    it('never overwrites text the user typed', async () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      setInputValue(materialsField(), 'My own materials');
+      await pickCategory('Test Weaving');
+
+      expect(materialsField()).toHaveValue('My own materials');
+      // The untouched field still gets the default.
+      expect(bringField()).toHaveValue('Scissors');
+    });
+
+    it("never overwrites the class's existing text when editing", async () => {
+      const existing = {
+        id: 'class-002',
+        name: 'Existing Class',
+        description: 'An existing class with its own materials text.',
+        sessions: [{ dateTime: futureDate }],
+        durationMinutes: 120,
+        capacity: 10,
+        priceCents: 4500,
+        skillLevel: 'beginner',
+        status: 'draft',
+        materialsIncluded: 'Saved materials',
+        whatToBring: 'Saved bring list',
+        createdAt: now,
+        updatedAt: now,
+      } as Class;
+      render(
+        <ClassForm
+          {...defaultProps}
+          classItem={existing}
+          categories={categories}
+        />
+      );
+
+      await pickCategory('Test Weaving');
+
+      expect(materialsField()).toHaveValue('Saved materials');
+      expect(bringField()).toHaveValue('Saved bring list');
+    });
+
+    it('swaps an untouched default when the category changes', async () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      await pickCategory('Test Weaving');
+      await pickCategory('Test Pottery');
+
+      expect(materialsField()).toHaveValue('Clay and glazes');
+      expect(bringField()).toHaveValue('An apron');
+    });
+
+    it('keeps an edited default when the category changes', async () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      await pickCategory('Test Weaving');
+      setInputValue(materialsField(), 'Loom and yarn, plus beads');
+      await pickCategory('Test Pottery');
+
+      expect(materialsField()).toHaveValue('Loom and yarn, plus beads');
+      expect(bringField()).toHaveValue('An apron');
+    });
+
+    it('leaves the fields blank for a category with no defaults', async () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      await pickCategory('Test Dyeing');
+
+      expect(materialsField()).toHaveValue('');
+      expect(bringField()).toHaveValue('');
+    });
+
+    it('shows a non-blocking hint under each empty field', () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      expect(
+        screen.getAllByText('Shown on the class page. Leave blank to hide it.')
+      ).toHaveLength(2);
+      expect(materialsField()).not.toHaveAttribute('aria-invalid', 'true');
+      expect(bringField()).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('drops the hint once the field has text', () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      setInputValue(materialsField(), 'Some materials');
+
+      expect(
+        screen.getAllByText('Shown on the class page. Leave blank to hide it.')
+      ).toHaveLength(1);
+      expect(
+        screen.getByText('What materials are included in the price')
+      ).toBeInTheDocument();
+    });
+
+    it('says the category default will show when a blank field has one', async () => {
+      render(<ClassForm {...defaultProps} categories={categories} />);
+
+      await pickCategory('Test Weaving');
+      setInputValue(materialsField(), '');
+
+      expect(
+        screen.getByText(
+          'Blank, so the class page shows the Test Weaving default'
+        )
+      ).toBeInTheDocument();
     });
   });
 });

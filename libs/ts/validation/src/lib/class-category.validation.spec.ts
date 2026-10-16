@@ -205,6 +205,45 @@ describe('classCategoryValidation', () => {
     });
   });
 
+  describe('material defaults', () => {
+    it('passes with both defaults set', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        defaultMaterialsIncluded: 'Loom and yarn',
+        defaultWhatToBring: 'Scissors',
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes with both defaults empty', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        defaultMaterialsIncluded: '',
+        defaultWhatToBring: '',
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('allows 500 characters, matching the class fields', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        defaultMaterialsIncluded: 'a'.repeat(500),
+        defaultWhatToBring: 'a'.repeat(500),
+      });
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('fails over 500 characters', () => {
+      const result = classCategoryValidation({
+        ...validCategory,
+        defaultMaterialsIncluded: 'a'.repeat(501),
+        defaultWhatToBring: 'a'.repeat(501),
+      });
+      expect(result.hasErrors('defaultMaterialsIncluded')).toBe(true);
+      expect(result.hasErrors('defaultWhatToBring')).toBe(true);
+    });
+  });
+
   describe('single-field validation', () => {
     it('only validates specified field', () => {
       const invalidData = {
