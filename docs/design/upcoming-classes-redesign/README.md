@@ -12,8 +12,11 @@ built natively in Webflow (see [Implementation](#implementation)).
 | `Phone.dc.html` | iPhone 16 artboard (393 x 852): photo rows, featured Studio Series card, bottom-sheet date picker, sticky next-class bar |
 | `webflow-embed.html` | The CSS + script live on the Webflow page (see [Webflow implementation](#webflow-implementation)) |
 | `webflow-sections-embed.html` | Page-scoped CSS for the header, self-care and Policies sections |
+| `ClassPage.dc.html` | Desktop artboard for the individual class page (see [Class page](#class-page)) |
+| `ClassPhone.dc.html` | Phone artboard for the individual class page |
+| `webflow-class-page-embed.html` | The CSS + script live on the Classes template page |
 
-The two `.dc.html` files are Design-canvas artboard sources, copied verbatim. Images
+The `.dc.html` files are Design-canvas artboard sources, copied verbatim. Images
 are referenced as `/_blob/<id>` URLs, which resolve **only inside the canvas
 artifact**. Opened on their own, the files render without photos.
 
@@ -109,6 +112,44 @@ The redesign is built on the live /upcoming-classes page (Webflow page
 
 **Editing either embed means editing it in Webflow and keeping its file here in
 sync.** These files are the source of truth the embeds point to.
+
+## Class page
+
+The individual class page (Classes CMS template page `69d0fb7572d9e153c22ce48f`) got a
+book-first redesign. Artboards: `ClassPage.dc.html` / `ClassPhone.dc.html`.
+
+**Layout**
+
+- **Hero:** photos on the left; on the right, tags (Try It / Workshop / Studio Series,
+  plus level), title, short description and a facts list with icons (dates, time,
+  instructor, location).
+- **Buy block:** price, with a per-session note for a series; seat count as **text only**
+  (no fill bar); CTA "Save my seat" (series), "Reserve my seat", or "Join the waitlist"
+  when full, all linking to `#register`; plus a "Questions? Email Katie" link.
+- **Details band:** Schedule (multi-session classes only), About, "What's included" and
+  "What to bring" cards (each hidden when its CMS field is empty), a Craft Club card for
+  Studio Series, and the instructor moved into the main column.
+- **Registration:** the widget in `#register` is untouched, only wrapped in a styled card.
+- **Phone booking bar** (<992px): price, seats and CTA pinned to the bottom; hides while
+  `#register` or the footer is on screen.
+
+**Implementation**
+
+- CMS fields are bound as `data-*` attributes on `.cls-hero-content`: `capacity`,
+  `spots`, `sessions`, `materials`, `bring`, `dates`, `time`, `minutes`, `category`,
+  `level`, `instructor`, `location`, `price`, `name`.
+- The HtmlEmbed `394a4c75-d78a-bced-106f-25cc8e9e83af` holds
+  `webflow-class-page-embed.html`. At runtime it rearranges the existing CMS-bound
+  elements; it adds no content of its own beyond labels and derived text.
+- **Header-aware scroll to `#register`:** measures the sticky nav + banner height live,
+  lands 16px below it, and runs in the window capture phase so it beats Webflow's own
+  anchor-scroll handler. Arriving with `#register` in the URL re-aligns a few times as
+  the widget renders, until the user scrolls.
+- Related: the e2e smoke suite for the public pages is PR #231
+  (`apps/webflow-public-e2e`); category defaults for materials / what to bring are
+  PR #230.
+
+As with the listing embeds, edit the embed in Webflow and keep this file in sync.
 
 ## Open items
 
