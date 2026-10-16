@@ -7,17 +7,18 @@ import { useSearchParams } from 'next/navigation';
 /* ---------- Square SDK types (local, no external imports) ---------- */
 
 interface SquareTokenizeResult {
-  status: 'OK' | 'ERROR';
+  status: string;
   token?: string;
   errors?: Array<{ message: string }>;
 }
 
+/**
+ * Square's ApplePay has no `attach()` and emits no token event: the page draws
+ * its own button and calls `tokenize()` from the click handler. Apple requires
+ * that call to happen inside the click, with no await before it.
+ */
 interface SquareApplePay {
-  attach: (selectorOrElement: string | HTMLElement) => Promise<void>;
-  addEventListener: (
-    event: string,
-    cb: (result: SquareTokenizeResult) => void
-  ) => void;
+  tokenize: () => Promise<SquareTokenizeResult>;
 }
 
 interface SquarePaymentsInstance {
@@ -63,12 +64,7 @@ const styles = {
     color: '#111111',
     marginBottom: '24px',
   },
-  buttonContainer: {
-    width: '100%',
-    maxWidth: '400px',
-    minHeight: '48px',
-    marginBottom: '16px',
-  },
+
   cancel: {
     fontSize: '14px',
     color: '#666666',
@@ -96,6 +92,24 @@ const styles = {
   },
 };
 
+// Apple's own button, drawn by WebKit. React's inline styles cannot set the
+// `-apple-pay-button-*` properties, so it is a class. Only Safari renders it,
+// which is also the only browser that can reach the `ready` state.
+const APPLE_PAY_BUTTON_CSS = `
+.apple-pay-button {
+  -webkit-appearance: -apple-pay-button;
+  -apple-pay-button-type: pay;
+  -apple-pay-button-style: black;
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: 48px;
+  margin-bottom: 16px;
+  border: none;
+  cursor: pointer;
+}
+`;
+
 /* ---------- Inner component (uses useSearchParams) ---------- */
 
 function ApplePayCheckoutInner(): React.ReactElement {
@@ -112,7 +126,7 @@ function ApplePayCheckoutInner(): React.ReactElement {
   >('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const sdkLoaded = useRef(false);
-  const applePayButtonRef = useRef<HTMLDivElement>(null);
+  const applePayRef = useRef<SquareApplePay | null>(null);
 
   const handleClose = useCallback((): void => {
     window.close();
@@ -127,6 +141,9 @@ function ApplePayCheckoutInner(): React.ReactElement {
           allowedOrigin
         );
         setTimeout(() => window.close(), 1500);
+      } else if (tokenResult.status === 'Cancel') {
+        // The buyer closed the Apple Pay sheet; let them try again.
+        setStatus('ready');
       } else {
         setStatus('error');
         const messages =
@@ -144,10 +161,6 @@ function ApplePayCheckoutInner(): React.ReactElement {
       throw new Error('Square SDK failed to load.');
     }
 
-    if (!applePayButtonRef.current) {
-      throw new Error('Apple Pay button container not found.');
-    }
-
     const payments = await square.payments(applicationId, locationId);
     const paymentRequest = payments.paymentRequest({
       countryCode: 'US',
@@ -155,11 +168,24 @@ function ApplePayCheckoutInner(): React.ReactElement {
       total: { amount: (amountCents / 100).toFixed(2), label },
     });
 
-    const applePay = await payments.applePay(paymentRequest);
-    await applePay.attach(applePayButtonRef.current);
+    applePayRef.current = await payments.applePay(paymentRequest);
     setStatus('ready');
-    applePay.addEventListener('token', handleToken);
-  }, [applicationId, locationId, amountCents, label, handleToken]);
+  }, [applicationId, locationId, amountCents, label]);
+
+  const handleApplePayClick = useCallback((): void => {
+    const applePay = applePayRef.current;
+    if (!applePay) return;
+    setStatus('processing');
+    applePay
+      .tokenize()
+      .then(handleToken)
+      .catch((err: unknown) => {
+        setStatus('error');
+        setErrorMessage(
+          err instanceof Error ? err.message : 'Payment authorization failed.'
+        );
+      });
+  }, [handleToken]);
 
   useEffect(() => {
     if (sdkLoaded.current) return;
@@ -217,6 +243,7 @@ function ApplePayCheckoutInner(): React.ReactElement {
 
   return (
     <div style={styles.container}>
+      <style>{APPLE_PAY_BUTTON_CSS}</style>
       {status !== 'success' && (
         <>
           <p style={styles.label}>{label}</p>
@@ -228,19 +255,18 @@ function ApplePayCheckoutInner(): React.ReactElement {
         <p style={styles.status}>Initializing Apple Pay...</p>
       )}
 
-      {/* Always in DOM so Square SDK can attach to it */}
-      <div
-        ref={applePayButtonRef}
-        style={{
-          ...styles.buttonContainer,
-          display: status === 'ready' ? 'block' : 'none',
-        }}
-      />
-
       {status === 'ready' && (
-        <button type="button" onClick={handleClose} style={styles.cancel}>
-          Cancel
-        </button>
+        <>
+          <button
+            type="button"
+            aria-label="Pay with Apple Pay"
+            onClick={handleApplePayClick}
+            className="apple-pay-button"
+          />
+          <button type="button" onClick={handleClose} style={styles.cancel}>
+            Cancel
+          </button>
+        </>
       )}
 
       {status === 'processing' && (

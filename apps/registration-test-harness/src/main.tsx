@@ -10,6 +10,12 @@
  * Selecting which class to load:
  *   ?classId=<id>       — required (seeded ahead of time)
  *
+ * Digital wallets (off unless asked for, as on Webflow):
+ *   ?wallets=show               — Google Pay inline + the Apple Pay popup button
+ *   ?applePayCheckoutUrl=<url>  — where the Apple Pay popup opens (default:
+ *                                 business-dev). Apple Pay itself only runs on
+ *                                 a domain registered with Square, over HTTPS.
+ *
  * Selecting which backend to call:
  *   VITE_TARGET_ENV=emulator (default) — 127.0.0.1 functions emulator
  *   VITE_TARGET_ENV=dev               — deployed maple-and-spruce-dev
@@ -117,6 +123,10 @@ function App() {
   const params = new URLSearchParams(window.location.search);
   const mtSectionId = params.get('mtSectionId') ?? '';
   const classId = params.get('classId') ?? '';
+  const showDigitalWallets = params.get('wallets') === 'show' ? 'show' : 'hide';
+  const applePayCheckoutUrl =
+    params.get('applePayCheckoutUrl') ??
+    'https://business-dev.mapleandsprucefolkarts.com/apple-pay-checkout';
 
   // Music Together enrollment flow takes precedence when its param is present.
   if (mtSectionId) {
@@ -174,7 +184,8 @@ function App() {
         squareAppId={squareApplicationId}
         squareLocationId={squareLocationId}
         env={targetEnv}
-        showDigitalWallets="hide"
+        showDigitalWallets={showDigitalWallets}
+        applePayCheckoutUrl={applePayCheckoutUrl}
       />
     </>
   );

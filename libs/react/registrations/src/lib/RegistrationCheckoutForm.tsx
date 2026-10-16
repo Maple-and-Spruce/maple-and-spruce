@@ -450,6 +450,13 @@ export function RegistrationCheckoutForm({
     ]
   );
 
+  // Check the form before the Google Pay sheet opens, so nobody approves a
+  // payment the form then refuses to submit.
+  const canStartDigitalWallet = useCallback((): boolean => {
+    showValidationErrors.value = true;
+    return isValid.value && allAgreementsSigned.value;
+  }, [showValidationErrors, isValid, allAgreementsSigned]);
+
   const handleDigitalWalletToken = useCallback(
     (token: string) => {
       // Validate before submitting — if invalid, show errors and surface
@@ -994,6 +1001,7 @@ export function RegistrationCheckoutForm({
             tokenizeRef.current = fn;
           }}
           onDigitalWalletToken={handleDigitalWalletToken}
+          beforeDigitalWallet={canStartDigitalWallet}
           afterCardContent={
             cardInitFailed.value && onHostedCheckout ? (
               // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
