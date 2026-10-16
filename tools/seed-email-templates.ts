@@ -177,8 +177,9 @@ const registrationConfirmationHtml = `<!DOCTYPE html>
       or visit our <a href="https://mapleandsprucefolkarts.com/contact" style="color: #6B7B5E;">contact page</a>.</p>
 
     <p style="font-size: 14px; color: #999;">
-      Need to cancel? Please contact us at least 48 hours before the class date.
-      Refunds are processed within 5–10 business days.
+      Need to cancel? Contact us at least two weeks before the class date for a full refund.
+      Refunds are processed within 5–10 business days. See our
+      <a href="https://mapleandsprucefolkarts.com/cancellation-policy" style="color: #999;">cancellation policy</a>.
     </p>
   </div>
   <div class="footer">
