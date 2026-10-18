@@ -32,6 +32,7 @@ function docToAgreementRequest(
     registrationId: data.registrationId,
     classId: data.classId,
     studentId: data.studentId,
+    instructorId: data.instructorId,
     signingToken: data.signingToken,
     expiresAt: toDate(data.expiresAt),
     status: data.status as AgreementRequestStatus,
@@ -47,6 +48,7 @@ export interface AgreementRequestFilters {
   signerEmail?: string;
   classId?: string;
   registrationId?: string;
+  instructorId?: string;
 }
 
 export const AgreementRequestRepository = {
@@ -69,6 +71,10 @@ export const AgreementRequestRepository = {
 
     if (filters?.registrationId) {
       query = query.where('registrationId', '==', filters.registrationId);
+    }
+
+    if (filters?.instructorId) {
+      query = query.where('instructorId', '==', filters.instructorId);
     }
 
     query = query.orderBy('createdAt', 'desc');

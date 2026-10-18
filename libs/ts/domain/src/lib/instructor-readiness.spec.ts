@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  contractorAgreementSignedOnline,
   describeMissingReadiness,
   instructorReadiness,
   toPublicInstructor,
@@ -95,5 +96,30 @@ describe('toPublicInstructor', () => {
     expect(result).not.toHaveProperty('isContractor');
     expect(result).not.toHaveProperty('readiness');
     expect(JSON.stringify(result)).not.toContain('2026-09');
+  });
+});
+
+describe('contractorAgreementSignedOnline', () => {
+  it('dates the signature by the studio day, not the UTC day', () => {
+    // 9pm Oct 14 in New York is Oct 15 in UTC.
+    expect(
+      contractorAgreementSignedOnline(new Date('2026-10-15T01:00:00Z'), 'sa-1')
+    ).toEqual({
+      signedOn: '2026-10-14',
+      reference: 'Signed online, agreement sa-1',
+    });
+  });
+
+  it('clears the agreement item of readiness', () => {
+    const contractorAgreement = contractorAgreementSignedOnline(
+      new Date('2026-10-14T15:00:00Z'),
+      'sa-1'
+    );
+    expect(
+      instructorReadiness({
+        isContractor: true,
+        readiness: { ...allDone, contractorAgreement },
+      })
+    ).toEqual({ kind: 'ready' });
   });
 });

@@ -54,6 +54,11 @@ export interface AgreementRequest {
   classId?: string;
   /** Link to student if relevant (music lessons) */
   studentId?: string;
+  /**
+   * Link to an instructor when this is their contractor agreement. Signing it
+   * records the agreement step of the instructor's readiness to teach.
+   */
+  instructorId?: string;
   /** Cryptographic token for public signing URL (32-byte hex) */
   signingToken: string;
   /** When the signing link expires */
@@ -82,4 +87,44 @@ export function isAgreementRequestSignable(
   return (
     request.status === 'pending' && new Date() < request.expiresAt
   );
+}
+
+/**
+ * Where an instructor's contractor agreement stands, from the requests sent to
+ * them. The newest request decides, except that a signature is never undone by
+ * a later request (a resend after signing is still signed).
+ */
+export type InstructorAgreementState =
+  | { kind: 'not-sent' }
+  | { kind: 'pending'; request: AgreementRequest }
+  | { kind: 'expired'; request: AgreementRequest }
+  | { kind: 'signed'; request: AgreementRequest };
+
+export function instructorAgreementState(
+  requests: readonly AgreementRequest[],
+  now: Date = new Date()
+): InstructorAgreementState {
+  const newestFirst = [...requests].sort(
+    (a, b) => toTime(b.createdAt) - toTime(a.createdAt)
+  );
+
+  const signed = newestFirst.find((r) => r.status === 'signed');
+  if (signed) return { kind: 'signed', request: signed };
+
+  const latest = newestFirst.find((r) => r.status !== 'cancelled');
+  if (!latest) return { kind: 'not-sent' };
+
+  if (latest.status === 'pending' && now < toDate(latest.expiresAt)) {
+    return { kind: 'pending', request: latest };
+  }
+  return { kind: 'expired', request: latest };
+}
+
+/** Dates cross the callable wire as strings; accept either. */
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
+}
+
+function toTime(value: Date | string): number {
+  return toDate(value).getTime();
 }

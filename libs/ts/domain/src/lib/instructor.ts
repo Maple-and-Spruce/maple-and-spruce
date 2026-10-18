@@ -12,6 +12,7 @@
 import type { Payee } from './payee';
 import type { Class } from './class';
 import type { InstructorLessonRates } from './lesson-rates-config';
+import { zonedDateKey } from './schedule-format';
 
 /**
  * How an instructor is paid for teaching
@@ -187,6 +188,23 @@ export function withoutContractorReadiness(instructor: Instructor): Instructor {
 }
 
 /** "contractor agreement and background check" — the missing items, as prose. */
+/**
+ * The readiness record for a contractor agreement signed online through the
+ * portal: the studio-local day it was signed, and which signed agreement it is.
+ */
+export function contractorAgreementSignedOnline(
+  signedAt: Date,
+  signedAgreementId: string
+): NonNullable<InstructorReadiness['contractorAgreement']> {
+  return {
+    signedOn: zonedDateKey(signedAt),
+    reference: `${SIGNED_ONLINE_REFERENCE_PREFIX}${signedAgreementId}`,
+  };
+}
+
+/** Prefix of the readiness `reference` for an agreement signed in the portal. */
+export const SIGNED_ONLINE_REFERENCE_PREFIX = 'Signed online, agreement ';
+
 export function describeMissingReadiness(
   missing: readonly InstructorReadinessItem[]
 ): string {

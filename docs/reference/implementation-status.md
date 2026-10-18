@@ -80,6 +80,7 @@
 | Class components | Complete | legacy #9 | `libs/react/classes/` |
 | Instructors page | Complete | legacy #9 | `/instructors` admin page |
 | Contract instructor readiness | Complete | — | `Instructor.isContractor` + `readiness` (agreement signed, background check cleared, payment setup via Square Payroll or W-9), dates as `YYYY-MM-DD`; "ready" derived by `instructorReadiness()`, never stored. Admin-only: stripped from `getInstructor(s)` for non-admins, never in `toPublicInstructor`/Webflow. Form section, list "Not ready" chip, class-form warning (warns, never blocks), `instructor-not-ready` Home inbox row (`lessons/getInbox`, admin-only) while their next class is within 14 days, urgent inside 7, linking to `/instructors?edit=<id>`. No insurance tracking (venue-carried coverage) |
+| Contractor agreement sent from the instructor page | Complete | — | "Cleared to teach" sends the agreement to sign online (`AgreementRequest.instructorId`) and shows not sent / sent / expired / signed. Signing records `readiness.contractorAgreement` (studio-local day, `Signed online, agreement <id>`) in `submitSignedAgreement`, keeping other items and never overwriting a recorded date. The live template is "Class Instructor Agreement (1099)" (Agreements, manual-only) |
 | Classes page | Complete | legacy #9 | `/classes` admin page |
 | useInstructors hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
 | useClasses hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |

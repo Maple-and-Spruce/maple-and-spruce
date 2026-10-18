@@ -6,6 +6,7 @@ import {
   mockInstructorPercentage,
   mockInstructorMinimal,
   mockContractorNotReady,
+  mockContractorNothingRecorded,
 } from '@maple/react/storybook-fixtures';
 
 const meta = {
@@ -571,5 +572,78 @@ export const HalfFilledPaymentSetupIsReported: Story = {
       await canvas.findByText('Date completed must be a valid date')
     ).toBeInTheDocument();
     await expect(args.onSubmit).not.toHaveBeenCalled();
+  },
+};
+
+/**
+ * Stand-in for the agreement panel the instructors page supplies: a button
+ * that reports a signature, the way the panel does when one lands while the
+ * form is open.
+ */
+const agreementActions = fn(
+  (_instructor, form: { recordSigned: (a: { signedOn: string; reference?: string }) => void }) => (
+    <button
+      type="button"
+      onClick={() =>
+        form.recordSigned({
+          signedOn: '2026-10-12',
+          reference: 'Signed online, agreement sa-1',
+        })
+      }
+    >
+      Simulate signature
+    </button>
+  )
+);
+
+/**
+ * A signature that lands while the form is open is filled into the form, so
+ * saving does not clear it (the update replaces the whole readiness record).
+ */
+export const SignatureWhileOpenIsKept: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructor: mockContractorNothingRecorded,
+    onSubmit: fn().mockResolvedValue(undefined),
+    renderAgreementActions: agreementActions,
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(canvas.getByRole('button', { name: /simulate signature/i }));
+
+    await expect(canvas.getByLabelText(/date signed/i)).toHaveValue('2026-10-12');
+
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          readiness: {
+            contractorAgreement: {
+              signedOn: '2026-10-12',
+              reference: 'Signed online, agreement sa-1',
+            },
+          },
+        })
+      );
+    });
+  },
+};
+
+/** A new instructor has no record to send an agreement against yet. */
+export const CreateNewHasNoAgreementActions: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    renderAgreementActions: agreementActions,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(
+      canvas.getByRole('heading', { name: /^contractor agreement$/i })
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: /simulate signature/i })
+    ).not.toBeInTheDocument();
   },
 };

@@ -12,9 +12,13 @@ import { Functions } from '@maple/firebase/functions';
 import {
   AgreementRequestRepository,
   AgreementTemplateRepository,
+  InstructorRepository,
   SignedAgreementRepository,
 } from '@maple/firebase/database';
-import { isAgreementRequestSignable } from '@maple/ts/domain';
+import {
+  contractorAgreementSignedOnline,
+  isAgreementRequestSignable,
+} from '@maple/ts/domain';
 import { agreementSigningValidation } from '@maple/ts/validation';
 import { getStorage } from 'firebase-admin/storage';
 import type {
@@ -72,6 +76,48 @@ async function uploadSignature(
   });
 
   return filePath;
+}
+
+/**
+ * A contractor agreement sent from an instructor's page clears that step of
+ * their readiness to teach. A date already on record (a paper copy, or an
+ * earlier signature) is left alone.
+ *
+ * Never fails the signing: by now the signature is stored and the request is
+ * marked signed, and staff can still record the date by hand.
+ */
+export async function recordInstructorAgreement(
+  instructorId: string,
+  signedAt: Date,
+  signedAgreementId: string
+): Promise<void> {
+  try {
+    const instructor = await InstructorRepository.findById(instructorId);
+    if (!instructor) {
+      console.warn(
+        `[submitSignedAgreement] instructor ${instructorId} not found; agreement ${signedAgreementId} not recorded on readiness`
+      );
+      return;
+    }
+    if (instructor.readiness?.contractorAgreement?.signedOn) return;
+
+    // The update replaces the whole readiness map, so carry the other items.
+    await InstructorRepository.update({
+      id: instructorId,
+      readiness: {
+        ...instructor.readiness,
+        contractorAgreement: contractorAgreementSignedOnline(
+          signedAt,
+          signedAgreementId
+        ),
+      },
+    });
+  } catch (error) {
+    console.error(
+      `[submitSignedAgreement] failed to record agreement ${signedAgreementId} on instructor ${instructorId}:`,
+      error
+    );
+  }
 }
 
 export const submitSignedAgreement = Functions.endpoint
@@ -177,6 +223,14 @@ export const submitSignedAgreement = Functions.endpoint
         request.id,
         signedAgreement.id
       );
+
+      if (request.instructorId) {
+        await recordInstructorAgreement(
+          request.instructorId,
+          signedAgreement.signedAt,
+          signedAgreement.id
+        );
+      }
 
       return {
         signedAgreement: {

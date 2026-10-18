@@ -1,5 +1,5 @@
 export { InstructorList } from './lib/InstructorList';
-export { InstructorForm } from './lib/InstructorForm';
+export { InstructorForm, type AgreementFormContext } from './lib/InstructorForm';
 export { InstructorReadinessSection } from './lib/InstructorReadinessSection';
 export { InstructorReadinessChip } from './lib/InstructorReadinessChip';
 export {
