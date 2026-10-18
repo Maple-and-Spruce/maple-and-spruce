@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('./utilities/database.config', () => ({
   db: {
     collection: vi.fn(),
+    runTransaction: vi.fn(),
   },
   toDate: (value: unknown, fallback: Date = new Date()): Date => {
     if (value === null || value === undefined) return fallback;
@@ -658,5 +659,152 @@ describe('RegistrationRepository', () => {
       expect(ref).toBe(mockAutoRef);
       expect(mockDocFn).toHaveBeenCalledWith();
     });
+  });
+
+  // ── Square refunds (#144) ────────────────────────────────────────────
+
+  describe('findBySquarePaymentId', () => {
+    function setupQuery(docs: Array<{ id: string; data: Record<string, unknown> }>) {
+      const mockGet = vi
+        .fn()
+        .mockResolvedValue({ docs: docs.map((d) => mockDocSnapshot(d.id, d.data)) });
+      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+      vi.mocked(db.collection).mockReturnValue({
+        where: mockWhere,
+      } as unknown as ReturnType<typeof db.collection>);
+      return { mockWhere, mockLimit };
+    }
+
+    it('matches one registration on squarePaymentId', async () => {
+      const { mockWhere, mockLimit } = setupQuery([
+        { id: 'reg-1', data: firestoreRegData() },
+      ]);
+      const result = await RegistrationRepository.findBySquarePaymentId('sq-pay-1');
+      expect(mockWhere).toHaveBeenCalledWith('squarePaymentId', '==', 'sq-pay-1');
+      expect(mockLimit).toHaveBeenCalledWith(1);
+      expect(result?.id).toBe('reg-1');
+    });
+
+    it('returns undefined with no match', async () => {
+      setupQuery([]);
+      expect(await RegistrationRepository.findBySquarePaymentId('nope')).toBeUndefined();
+    });
+  });
+
+  describe('findWithRefunds', () => {
+    it('reads every registration with money refunded', async () => {
+      const mockGet = vi.fn().mockResolvedValue({
+        docs: [
+          mockDocSnapshot('reg-1', firestoreRegData({ refundedAmountCents: 2000 })),
+          mockDocSnapshot('reg-gone', null),
+        ],
+      });
+      const mockWhere = vi.fn().mockReturnValue({ get: mockGet });
+      vi.mocked(db.collection).mockReturnValue({
+        where: mockWhere,
+      } as unknown as ReturnType<typeof db.collection>);
+
+      const result = await RegistrationRepository.findWithRefunds();
+      expect(mockWhere).toHaveBeenCalledWith('refundedAmountCents', '>', 0);
+      expect(result.map((r) => r.id)).toEqual(['reg-1']);
+      expect(result[0].refundedAmountCents).toBe(2000);
+    });
+  });
+
+  describe('applySquareRefund', () => {
+    const at = new Date('2026-10-15T15:00:00Z');
+
+    function setupTransaction(data: Record<string, unknown> | null) {
+      const docRef = { id: 'reg-1' };
+      const txGet = vi.fn().mockResolvedValue(mockDocSnapshot('reg-1', data));
+      const txUpdate = vi.fn();
+      vi.mocked(db.collection).mockReturnValue({
+        doc: vi.fn().mockReturnValue(docRef),
+      } as unknown as ReturnType<typeof db.collection>);
+      vi.mocked(db.runTransaction).mockImplementation((async (
+        fn: (tx: unknown) => Promise<unknown>
+      ) => fn({ get: txGet, update: txUpdate })) as unknown as typeof db.runTransaction);
+      return { docRef, txGet, txUpdate };
+    }
+
+    it('marks a full refund refunded inside the transaction', async () => {
+      const { docRef, txGet, txUpdate } = setupTransaction(firestoreRegData());
+      const result = await RegistrationRepository.applySquareRefund('reg-1', {
+        refundId: 'rf-1',
+        amountCents: 5300,
+        at,
+      });
+      expect(txGet).toHaveBeenCalledWith(docRef);
+      expect(txUpdate).toHaveBeenCalledWith(
+        docRef,
+        expect.objectContaining({
+          status: 'refunded',
+          refundedAt: at,
+          refundedAmountCents: 5300,
+          squareRefundId: 'rf-1',
+          squareRefundIds: ['rf-1'],
+          lastRefundAt: at,
+          updatedAt: expect.any(Date),
+        })
+      );
+      expect(result?.outcome).toBe('full');
+      expect(result?.registration.status).toBe('refunded');
+    });
+
+    it('records a partial refund without changing the status', async () => {
+      const { txUpdate } = setupTransaction(firestoreRegData());
+      const result = await RegistrationRepository.applySquareRefund('reg-1', {
+        refundId: 'rf-1',
+        amountCents: 2000,
+        at,
+      });
+      const written = txUpdate.mock.calls[0][1];
+      expect(written).not.toHaveProperty('status');
+      expect(written).toMatchObject({ refundedAmountCents: 2000, squareRefundIds: ['rf-1'] });
+      expect(result?.outcome).toBe('partial');
+      expect(result?.registration.status).toBe('confirmed');
+    });
+
+    it('reads squareRefundIds back and writes nothing for a refund already counted', async () => {
+      const { txUpdate } = setupTransaction(
+        firestoreRegData({ refundedAmountCents: 2000, squareRefundIds: ['rf-1', 42] })
+      );
+      const result = await RegistrationRepository.applySquareRefund('reg-1', {
+        refundId: 'rf-1',
+        amountCents: 2000,
+        at,
+      });
+      expect(txUpdate).not.toHaveBeenCalled();
+      expect(result?.outcome).toBe('duplicate');
+      expect(result?.registration.squareRefundIds).toEqual(['rf-1']);
+    });
+
+    it('returns undefined when the registration is gone', async () => {
+      const { txUpdate } = setupTransaction(null);
+      const result = await RegistrationRepository.applySquareRefund('reg-1', {
+        refundId: 'rf-1',
+        amountCents: 2000,
+        at,
+      });
+      expect(result).toBeUndefined();
+      expect(txUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  it('maps lastRefundAt and treats an empty squareRefundIds as absent', async () => {
+    const lastRefundAt = new Date('2026-10-15T15:00:00Z');
+    vi.mocked(db.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi
+          .fn()
+          .mockResolvedValue(
+            mockDocSnapshot('reg-1', firestoreRegData({ lastRefundAt, squareRefundIds: [] }))
+          ),
+      }),
+    } as unknown as ReturnType<typeof db.collection>);
+    const reg = await RegistrationRepository.findById('reg-1');
+    expect(reg?.lastRefundAt).toEqual(lastRefundAt);
+    expect(reg?.squareRefundIds).toBeUndefined();
   });
 });

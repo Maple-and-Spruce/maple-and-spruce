@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   INBOX_KIND_LABELS,
+  INBOX_REFUND_LOOKBACK_DAYS,
   buildInboxItems,
   inboxKindOfKey,
   inboxRank,
@@ -31,6 +32,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     classes: [],
     needsAttention: [],
     syncConflicts: [],
+    refundedRegistrations: [],
     timeZone: 'America/New_York',
     ...overrides,
   };
@@ -483,6 +485,89 @@ describe('sync conflicts', () => {
     ]);
     const one = buildInboxItems(sources({ syncConflicts: [{ detectedAt: ago(HOUR) }] }));
     expect(one[0].title).toBe('1 inventory sync conflict');
+  });
+});
+
+describe('partial refunds (#144)', () => {
+  type Refunded = InboxSources['refundedRegistrations'][number];
+  const refunded = (overrides: Partial<Refunded> = {}): Refunded => ({
+    id: 'reg-1',
+    classId: 'cls-1',
+    customerName: 'Olive Thompson',
+    status: 'confirmed',
+    pricePaidCents: 6360,
+    refundedAmountCents: 2000,
+    lastRefundAt: ago(3 * HOUR),
+    updatedAt: ago(3 * HOUR),
+    ...overrides,
+  });
+  const pottery = { id: 'cls-1', name: 'Wheel Pottery', sessions: [] };
+
+  it('lists an enrolled registration refunded in part, linking to its roster', () => {
+    const items = buildInboxItems(
+      sources({ refundedRegistrations: [refunded()], classes: [pottery] })
+    );
+    expect(items).toEqual([
+      {
+        key: 'refund-partial:reg-1:2000',
+        kind: 'refund-partial',
+        title: 'Wheel Pottery',
+        detail: '$20.00 of $63.60 refunded in Square · Olive Thompson',
+        href: '/classes/cls-1/roster',
+        actionLabel: 'Review',
+        occurredAt: ago(3 * HOUR).toISOString(),
+        urgent: false,
+      },
+    ]);
+    expect(INBOX_KIND_LABELS['refund-partial']).toBe('Part refund');
+  });
+
+  it('a further refund is a new key, so a dismissed row comes back', () => {
+    const [first] = buildInboxItems(sources({ refundedRegistrations: [refunded()] }));
+    const [second] = buildInboxItems(
+      sources({ refundedRegistrations: [refunded({ refundedAmountCents: 3000 })] })
+    );
+    expect(first.key).not.toBe(second.key);
+    expect(second.key).toBe('refund-partial:reg-1:3000');
+  });
+
+  it('leaves out full refunds, cancellations and registrations with nothing refunded', () => {
+    const items = buildInboxItems(
+      sources({
+        refundedRegistrations: [
+          refunded({ id: 'full', status: 'refunded', refundedAmountCents: 6360 }),
+          refunded({ id: 'cancelled', status: 'cancelled' }),
+          refunded({ id: 'none', refundedAmountCents: 0 }),
+          refunded({ id: 'unset', refundedAmountCents: undefined }),
+        ],
+      })
+    );
+    expect(items).toEqual([]);
+  });
+
+  it(`stops chasing a partial refund after ${INBOX_REFUND_LOOKBACK_DAYS} days`, () => {
+    const items = buildInboxItems(
+      sources({
+        refundedRegistrations: [
+          refunded({ id: 'old', lastRefundAt: ago((INBOX_REFUND_LOOKBACK_DAYS + 1) * DAY) }),
+          refunded({ id: 'recent', lastRefundAt: ago((INBOX_REFUND_LOOKBACK_DAYS - 1) * DAY) }),
+        ],
+      })
+    );
+    expect(keys(items)).toEqual(['refund-partial:recent:2000']);
+  });
+
+  it('falls back to updatedAt, a generic title and no name when those are missing', () => {
+    const [item] = buildInboxItems(
+      sources({
+        refundedRegistrations: [
+          refunded({ lastRefundAt: undefined, updatedAt: ago(DAY), customerName: '  ' }),
+        ],
+      })
+    );
+    expect(item.occurredAt).toBe(ago(DAY).toISOString());
+    expect(item.title).toBe('Class registration');
+    expect(item.detail).toBe('$20.00 of $63.60 refunded in Square');
   });
 });
 

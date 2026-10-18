@@ -101,8 +101,11 @@ describe('cancelRegistration', () => {
       status: 'refunded',
       refundedAmountCents: 5300,
       squareRefundId: 'refund-1',
+      // So the Square webhook's echo of this refund is a no-op (#144).
+      squareRefundIds: ['refund-1'],
     });
     expect(written.refundedAt).toBeInstanceOf(Date);
+    expect(written.lastRefundAt).toEqual(written.refundedAt);
     expect(written.refundedAt.getTime()).toBeGreaterThanOrEqual(before);
     expect(result).toMatchObject({ refundId: 'refund-1' });
   });

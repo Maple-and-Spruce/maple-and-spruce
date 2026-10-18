@@ -384,6 +384,8 @@ Square SDK integration for payments, catalog management, and sync conflict resol
 
 `squareWebhook` additionally handles `subscription.created` / `subscription.updated` — reconciles the member's status (ACTIVE/PAUSED/CANCELED/DEACTIVATED) and paid-through date from Square; idempotent on no-change.
 
+`squareWebhook` (now in its own `maple-square-webhook` codebase) also handles `refund.created` / `refund.updated` (#144). A `COMPLETED` refund made in the Square dashboard is matched to its class registration by `squarePaymentId`, falling back to `squareOrderId`, and folded in with `RegistrationRepository.applySquareRefund` (one transaction). Refunds are cumulative: once they cover `pricePaidCents` the registration becomes `refunded` (so payouts, spots, Square inventory and the waitlist follow through the `registrations/{id}` triggers). A partial refund only records the amount, keeps the student enrolled and shows on the Home Inbox as "Part refund". Refund ids are kept in `squareRefundIds`, so a redelivery, or the echo of a refund `cancelRegistration` made, is a no-op. Unmatched refunds (Music Together, lessons, shop sales) are skipped. **Requires `refund.created` + `refund.updated` on the Square webhook subscription, sandbox and prod.** Music Together's separate Square account has no webhook, so its refunds are out of scope.
+
 ---
 
 ## Codebase: `maple-webhooks` (`apps/functions-webhooks/`)

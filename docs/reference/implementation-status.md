@@ -214,6 +214,7 @@ Contract instructors get `payRate` (0.8) of what the student paid for the class,
 | Domain: statement builder, per-session proration, cumulative share rounding, refund adjustments, stale check, year total | **Complete** (PR 1) | `libs/ts/domain/src/lib/class-instructor-payout.ts` |
 | `getNetAmountPaid` fixed: returns `subtotalCents` (it had subtracted the discount twice and included tax) | **Complete** (PR 1) | `libs/ts/domain/src/lib/registration.ts` |
 | Refunds record `refundedAt` / `refundedAmountCents` / `squareRefundId` | **Complete** (PR 1) | `cancel-registration`, `registration.repository.ts` |
+| Refunds made in the Square dashboard reach the registration (`squareWebhook` `refund.*`; cumulative + idempotent via `squareRefundIds`; partial refunds stay enrolled and surface on the Home Inbox as `refund-partial`) | **Complete** (#144) | `square-webhook.ts`, `RegistrationRepository.applySquareRefund`, `applySquareRefundToRegistration` + `inbox.ts` in `libs/ts/domain` |
 | Ledger + statement repositories (transactional generate / mark paid / void, ADR-035) | **Complete** (PR 2) | `libs/firebase/database/src/lib/class-instructor-statement.repository.ts` |
 | `payouts` router: preview / generate / list / get / mark paid / void, admin-only | **Complete** (PR 2) | `libs/firebase/maple-functions/payouts/` |
 | Vest suites for generate + mark paid | **Complete** (PR 2) | `libs/ts/validation/src/lib/class-instructor-statement.validation.ts` |

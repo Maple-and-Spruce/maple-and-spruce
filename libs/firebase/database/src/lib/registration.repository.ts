@@ -13,7 +13,10 @@ import type {
   RegistrationStatus,
   RegistrationSource,
   Attendee,
+  SquareRefundInput,
+  SquareRefundOutcome,
 } from '@maple/ts/domain';
+import { applySquareRefundToRegistration } from '@maple/ts/domain';
 
 const COLLECTION = 'registrations';
 
@@ -49,6 +52,8 @@ function docToRegistration(
     refundedAt: data.refundedAt ? toDate(data.refundedAt) : undefined,
     refundedAmountCents: data.refundedAmountCents ?? undefined,
     squareRefundId: data.squareRefundId ?? undefined,
+    squareRefundIds: parseStringArray(data.squareRefundIds),
+    lastRefundAt: data.lastRefundAt ? toDate(data.lastRefundAt) : undefined,
     confirmationNumber: data.confirmationNumber,
     // Default to 'web' so registrations created before the source field
     // existed (all of which were web checkouts) read back with a usable value.
@@ -66,6 +71,13 @@ function docToRegistration(
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
+}
+
+/** A persisted array of ids, or undefined when absent or empty. */
+function parseStringArray(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const ids = raw.filter((v): v is string => typeof v === 'string');
+  return ids.length > 0 ? ids : undefined;
 }
 
 /**
@@ -208,6 +220,72 @@ export const RegistrationRepository = {
 
     const doc = snapshot.docs[0];
     return doc ? docToRegistration(doc) : undefined;
+  },
+
+  /**
+   * Find a registration by its Square payment id.
+   *
+   * Used by the Square webhook to match a refund made in the Square dashboard
+   * to the registration it paid for. Single-field equality → automatic index.
+   */
+  async findBySquarePaymentId(
+    squarePaymentId: string
+  ): Promise<Registration | undefined> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('squarePaymentId', '==', squarePaymentId)
+      .limit(1)
+      .get();
+
+    const doc = snapshot.docs[0];
+    return doc ? docToRegistration(doc) : undefined;
+  },
+
+  /**
+   * Every registration with any money refunded, full or partial. Refunds are
+   * rare, so this stays small; callers narrow it further in memory. A single
+   * range filter → automatic single-field index.
+   */
+  async findWithRefunds(): Promise<Registration[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('refundedAmountCents', '>', 0)
+      .get();
+    return snapshot.docs
+      .map((doc) => docToRegistration(doc))
+      .filter((r): r is Registration => r !== undefined);
+  },
+
+  /**
+   * Fold a completed Square refund into a registration, in a transaction so
+   * two deliveries of the same event (Square retries, and sends both
+   * `refund.created` and `refund.updated`) cannot both count it.
+   *
+   * See `applySquareRefundToRegistration` for the rule. Returns what happened,
+   * or `undefined` when the registration does not exist.
+   */
+  async applySquareRefund(
+    id: string,
+    refund: SquareRefundInput
+  ): Promise<{ outcome: SquareRefundOutcome; registration: Registration } | undefined> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const current = docToRegistration(snap);
+      if (!current) return undefined;
+
+      const result = applySquareRefundToRegistration(current, refund);
+      if (result.outcome === 'duplicate') {
+        return { outcome: result.outcome, registration: current };
+      }
+
+      const updatedAt = new Date();
+      tx.update(docRef, { ...result.updates, updatedAt });
+      return {
+        outcome: result.outcome,
+        registration: { ...current, ...result.updates, updatedAt },
+      };
+    });
   },
 
   /**

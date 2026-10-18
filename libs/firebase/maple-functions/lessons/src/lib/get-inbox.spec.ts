@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   findPendingConflicts: vi.fn(),
   findClass: vi.fn(),
   findDismissals: vi.fn(),
+  findWithRefunds: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -23,6 +24,7 @@ vi.mock('@maple/firebase/database', () => ({
   SyncConflictRepository: { findPending: mocks.findPendingConflicts },
   ClassRepository: { findById: mocks.findClass },
   InboxDismissalRepository: { findByKeys: mocks.findDismissals },
+  RegistrationRepository: { findWithRefunds: mocks.findWithRefunds },
 }));
 
 vi.mock('@maple/firebase/maple-functions/get-needs-attention', () => ({
@@ -115,6 +117,7 @@ beforeEach(() => {
   );
   mocks.findPendingConflicts.mockResolvedValue([]);
   mocks.findDismissals.mockResolvedValue([]);
+  mocks.findWithRefunds.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -174,6 +177,44 @@ describe('getInbox', () => {
     ]);
     const { items } = await getInbox();
     expect(items.filter((i) => i.kind === 'sync-conflicts')).toHaveLength(1);
+  });
+
+  it('lists an open partial refund with its class name, and reads only that class', async () => {
+    mocks.findAgreements.mockResolvedValue([]);
+    mocks.findWithRefunds.mockResolvedValue([
+      {
+        id: 'reg-part',
+        classId: 'cls-pottery',
+        customerName: 'Test Student',
+        status: 'confirmed',
+        pricePaidCents: 6360,
+        refundedAmountCents: 2000,
+        lastRefundAt: new Date(NOW.getTime() - HOUR),
+        updatedAt: new Date(NOW.getTime() - HOUR),
+      },
+      {
+        id: 'reg-full',
+        classId: 'cls-other',
+        status: 'refunded',
+        pricePaidCents: 6360,
+        refundedAmountCents: 6360,
+        updatedAt: new Date(NOW.getTime() - HOUR),
+      },
+    ]);
+    mocks.findClass.mockImplementation(async (id: string) =>
+      id === 'cls-pottery' ? { id, name: 'Wheel Pottery', sessions: [] } : undefined
+    );
+
+    const { items } = await getInbox();
+
+    // A full refund is done: its class is not even read.
+    expect(mocks.findClass.mock.calls.map(([id]) => id)).toEqual(['cls-pottery']);
+    expect(items.find((i) => i.kind === 'refund-partial')).toMatchObject({
+      key: 'refund-partial:reg-part:2000',
+      title: 'Wheel Pottery',
+      detail: '$20.00 of $63.60 refunded in Square · Test Student',
+      href: '/classes/cls-pottery/roster',
+    });
   });
 
   it('is empty when nothing needs doing', async () => {

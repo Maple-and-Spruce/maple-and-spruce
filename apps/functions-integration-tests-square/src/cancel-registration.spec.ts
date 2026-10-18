@@ -197,6 +197,8 @@ describe('cancelRegistration', () => {
       expect(result.data?.registration.refundedAt).toBeDefined();
       expect(result.data?.registration.refundedAmountCents).toBeGreaterThan(0);
       expect(result.data?.registration.squareRefundId).toBe(result.data?.refundId);
+      // Recorded as counted, so Square's refund webhook for it is a no-op (#144).
+      expect(result.data?.registration.squareRefundIds).toEqual([result.data?.refundId]);
     });
 
     it('should cancel without refund when refund=true but no squarePaymentId', async () => {

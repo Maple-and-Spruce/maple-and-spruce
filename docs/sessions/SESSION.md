@@ -6,6 +6,20 @@
 
 ## Current Status
 
+### Square dashboard refunds reach the registration (#144, 2026-10-17)
+
+- `squareWebhook` handles `refund.created` / `refund.updated`. A COMPLETED refund is matched by
+  payment id (then order id) and folded in by `RegistrationRepository.applySquareRefund` in one
+  transaction. Cumulative: refunds that cover the price make it `refunded`, which is what
+  contract-instructor payouts read. No new function; the webhook bundle has no Square SDK.
+- Partial refunds record `refundedAmountCents` only; the student stays enrolled and the
+  instructor keeps their share until David decides. They show on the Home Inbox as
+  "Part refund" (key includes the amount, so a further refund resurfaces it).
+- `squareRefundIds` makes it idempotent; `cancelRegistration` now writes its refund id there
+  too, so the webhook echo of an in-app refund is a no-op.
+- **Manual step:** subscribe the Square webhook to `refund.created` + `refund.updated` in the
+  Square Developer dashboard, sandbox and production. MT-account refunds stay out of scope.
+
 ### Admin sidebar: areas, search and Create, Square-style (2026-10-14)
 
 - The sidebar's 35 always-open links became **8 areas**: Home, Classes, Lessons, Music

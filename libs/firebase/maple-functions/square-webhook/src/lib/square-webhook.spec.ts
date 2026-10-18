@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  applySquareRefundToRegistration,
+  type Registration,
+  type SquareRefundInput,
+} from '@maple/ts/domain';
 
 /**
  * Tests for square-webhook.ts inventory handling
@@ -21,6 +26,9 @@ const mocks = vi.hoisted(() => {
     findBySubscriptionId: vi.fn(),
     craftClubUpdate: vi.fn(),
     posEnqueue: vi.fn(),
+    findBySquarePaymentId: vi.fn(),
+    findBySquareOrderId: vi.fn(),
+    applySquareRefund: vi.fn(),
   };
 });
 
@@ -46,6 +54,11 @@ vi.mock('@maple/firebase/database', () => ({
   },
   PosSaleRequestRepository: {
     enqueue: mocks.posEnqueue,
+  },
+  RegistrationRepository: {
+    findBySquarePaymentId: mocks.findBySquarePaymentId,
+    findBySquareOrderId: mocks.findBySquareOrderId,
+    applySquareRefund: mocks.applySquareRefund,
   },
 }));
 
@@ -864,3 +877,282 @@ describe('handleSubscriptionEvent', () => {
     expect(mocks.craftClubUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe('handleRefundEvent (#144)', () => {
+  /**
+   * A stand-in for the Firestore transaction that runs the real domain rule
+   * over an in-memory registration, so cumulative and duplicate refunds are
+   * exercised end to end through the handler.
+   */
+  let stored: Registration;
+
+  function confirmedRegistration(overrides: Partial<Registration> = {}): Registration {
+    return {
+      id: 'reg-1',
+      classId: 'class-1',
+      customerEmail: 'robin@example.com',
+      customerName: 'Robin Ashfield',
+      quantity: 1,
+      pricePaidCents: 6360,
+      subtotalCents: 6000,
+      taxAmountCents: 360,
+      taxRatePercent: 6,
+      squarePaymentId: 'pay-1',
+      squareOrderId: 'ord-1',
+      status: 'confirmed',
+      source: 'web',
+      createdAt: new Date('2026-10-01T00:00:00Z'),
+      updatedAt: new Date('2026-10-01T00:00:00Z'),
+      ...overrides,
+    };
+  }
+
+  function refundEvent(
+    refund: Record<string, unknown>,
+    type: 'refund.created' | 'refund.updated' = 'refund.updated'
+  ) {
+    return {
+      merchant_id: 'ML1',
+      type,
+      event_id: `evt-${String(refund.id)}`,
+      created_at: '2026-10-15T15:00:00Z',
+      data: { type: 'refund', id: String(refund.id), object: { refund } },
+    } as unknown as Parameters<typeof handleRefundEvent>[0];
+  }
+
+  function completed(id: string, amount: number, extra: Record<string, unknown> = {}) {
+    return refundEvent({
+      id,
+      payment_id: 'pay-1',
+      order_id: 'ord-1',
+      amount_money: { amount, currency: 'USD' },
+      status: 'COMPLETED',
+      updated_at: '2026-10-15T15:00:00Z',
+      ...extra,
+    });
+  }
+
+  let handleRefundEvent: typeof import('./square-webhook').handleRefundEvent;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    ({ handleRefundEvent } = await import('./square-webhook'));
+    stored = confirmedRegistration();
+    mocks.findBySquarePaymentId.mockImplementation(async (id: string) =>
+      id === stored.squarePaymentId ? stored : undefined
+    );
+    mocks.findBySquareOrderId.mockImplementation(async (id: string) =>
+      id === stored.squareOrderId ? stored : undefined
+    );
+    mocks.applySquareRefund.mockImplementation(
+      async (_id: string, refund: SquareRefundInput) => {
+        const result = applySquareRefundToRegistration(stored, refund);
+        if (result.outcome !== 'duplicate') {
+          stored = { ...stored, ...result.updates };
+        }
+        return { outcome: result.outcome, registration: stored };
+      }
+    );
+  });
+
+  it('a full refund marks the registration refunded', async () => {
+    const result = await handleRefundEvent(completed('rf-1', 6360));
+
+    expect(mocks.findBySquarePaymentId).toHaveBeenCalledWith('pay-1');
+    expect(mocks.applySquareRefund).toHaveBeenCalledWith('reg-1', {
+      refundId: 'rf-1',
+      amountCents: 6360,
+      at: new Date('2026-10-15T15:00:00Z'),
+    });
+    expect(result.action).toBe('refunded');
+    expect(stored).toMatchObject({
+      status: 'refunded',
+      refundedAmountCents: 6360,
+      squareRefundId: 'rf-1',
+      squareRefundIds: ['rf-1'],
+      refundedAt: new Date('2026-10-15T15:00:00Z'),
+    });
+  });
+
+  it('a partial refund records the amount and keeps the student enrolled', async () => {
+    const result = await handleRefundEvent(completed('rf-1', 2000));
+
+    expect(result.action).toBe('partially-refunded');
+    expect(result.details).toContain('2000 of 6360');
+    expect(stored.status).toBe('confirmed');
+    expect(stored.refundedAmountCents).toBe(2000);
+    expect(stored.refundedAt).toBeUndefined();
+  });
+
+  it('two partial refunds that add up to the price make it refunded', async () => {
+    await handleRefundEvent(completed('rf-1', 2000));
+    const second = await handleRefundEvent(completed('rf-2', 4360));
+
+    expect(second.action).toBe('refunded');
+    expect(stored).toMatchObject({
+      status: 'refunded',
+      refundedAmountCents: 6360,
+      squareRefundIds: ['rf-1', 'rf-2'],
+      squareRefundId: 'rf-2',
+    });
+  });
+
+  it('a redelivered event is counted once', async () => {
+    await handleRefundEvent(completed('rf-1', 2000));
+    const replay = await handleRefundEvent(completed('rf-1', 2000));
+
+    expect(replay.action).toBe('skipped');
+    expect(replay.details).toContain('already counted');
+    expect(stored.refundedAmountCents).toBe(2000);
+  });
+
+  it('is a no-op for the echo of a refund cancelRegistration already recorded', async () => {
+    stored = confirmedRegistration({
+      status: 'refunded',
+      refundedAt: new Date('2026-10-14T00:00:00Z'),
+      refundedAmountCents: 6360,
+      squareRefundId: 'rf-app',
+    });
+    const before = { ...stored };
+
+    const result = await handleRefundEvent(completed('rf-app', 6360));
+
+    expect(result.action).toBe('skipped');
+    expect(stored).toEqual(before);
+  });
+
+  it('skips a refund that matches no class registration', async () => {
+    const result = await handleRefundEvent(
+      completed('rf-1', 2000, { payment_id: 'pay-mt', order_id: 'ord-mt' })
+    );
+
+    expect(result.action).toBe('skipped');
+    expect(result.details).toContain('no class registration');
+    expect(mocks.applySquareRefund).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the order id when no registration has the payment id', async () => {
+    stored = confirmedRegistration({ squarePaymentId: undefined });
+    const result = await handleRefundEvent(completed('rf-1', 6360));
+
+    expect(mocks.findBySquarePaymentId).toHaveBeenCalledWith('pay-1');
+    expect(mocks.findBySquareOrderId).toHaveBeenCalledWith('ord-1');
+    expect(result.action).toBe('refunded');
+  });
+
+  it('matches by order id when the refund carries no payment id', async () => {
+    const result = await handleRefundEvent(
+      completed('rf-1', 6360, { payment_id: undefined })
+    );
+    expect(mocks.findBySquarePaymentId).not.toHaveBeenCalled();
+    expect(result.action).toBe('refunded');
+  });
+
+  it.each(['PENDING', 'FAILED', 'REJECTED', undefined])(
+    'skips a refund whose status is %s',
+    async (status) => {
+      const result = await handleRefundEvent(
+        refundEvent(
+          {
+            id: 'rf-1',
+            payment_id: 'pay-1',
+            amount_money: { amount: 6360, currency: 'USD' },
+            status,
+          },
+          'refund.created'
+        )
+      );
+      expect(result.action).toBe('skipped');
+      expect(mocks.findBySquarePaymentId).not.toHaveBeenCalled();
+    }
+  );
+
+  it('skips a refund with no id or no amount', async () => {
+    const noId = {
+      merchant_id: 'ML1',
+      type: 'refund.updated',
+      event_id: 'evt-x',
+      created_at: '2026-10-15T15:00:00Z',
+      data: { type: 'refund', id: '', object: {} },
+    } as unknown as Parameters<typeof handleRefundEvent>[0];
+    expect((await handleRefundEvent(noId)).details).toBe('No refund id in payload');
+
+    const noAmount = await handleRefundEvent(
+      refundEvent({ id: 'rf-1', payment_id: 'pay-1', status: 'COMPLETED' })
+    );
+    expect(noAmount.details).toContain('no amount');
+    expect(mocks.applySquareRefund).not.toHaveBeenCalled();
+  });
+
+  it('uses now when updated_at is missing or unreadable', async () => {
+    const before = Date.now();
+    await handleRefundEvent(completed('rf-1', 2000, { updated_at: 'not-a-date' }));
+    const at: Date = mocks.applySquareRefund.mock.calls[0][1].at;
+    expect(at.getTime()).toBeGreaterThanOrEqual(before);
+  });
+
+  it('skips when the registration disappears before the transaction', async () => {
+    mocks.applySquareRefund.mockResolvedValue(undefined);
+    const result = await handleRefundEvent(completed('rf-1', 2000));
+    expect(result).toMatchObject({ action: 'skipped' });
+    expect(result.details).toContain('vanished');
+  });
+
+  it('is dispatched from the endpoint for refund.created and refund.updated', async () => {
+    const { createHmac } = await import('crypto');
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (req: unknown, res: unknown) => Promise<void>;
+
+    for (const type of ['refund.created', 'refund.updated'] as const) {
+      stored = confirmedRegistration();
+      const body = {
+        ...refundEvent(
+          {
+            id: `rf-${type}`,
+            payment_id: 'pay-1',
+            amount_money: { amount: 6360, currency: 'USD' },
+            status: 'COMPLETED',
+          },
+          type
+        ),
+      } as unknown as Record<string, unknown>;
+      const signature = createHmac('sha256', 'mock-secret')
+        .update('https://mock-url.com/squareWebhook' + JSON.stringify(body))
+        .digest('base64');
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        json: vi.fn().mockReturnThis(),
+      };
+
+      await fn(
+        { method: 'POST', body, headers: { 'x-square-hmacsha256-signature': signature } },
+        res
+      );
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'refunded' })
+      );
+    }
+  });
+
+  it('returns 500 so Square retries when the write fails', async () => {
+    const { createHmac } = await import('crypto');
+    const { squareWebhook } = await import('./square-webhook');
+    const fn = squareWebhook as unknown as (req: unknown, res: unknown) => Promise<void>;
+    mocks.applySquareRefund.mockRejectedValue(new Error('contention'));
+    const body = completed('rf-1', 2000) as unknown as Record<string, unknown>;
+    const signature = createHmac('sha256', 'mock-secret')
+      .update('https://mock-url.com/squareWebhook' + JSON.stringify(body))
+      .digest('base64');
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+    };
+    await fn({ method: 'POST', body, headers: { 'x-square-hmacsha256-signature': signature } }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+

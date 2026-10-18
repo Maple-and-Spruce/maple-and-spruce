@@ -85,16 +85,22 @@ export const cancelRegistration = Functions.endpoint
 
       // Update registration status. The refund's time and amount are kept so
       // instructor payouts can tell a refund before a statement was paid from
-      // one after.
+      // one after. The id also goes in `squareRefundIds`, so Square's
+      // `refund.*` webhook for this same refund is recognised as already
+      // counted rather than added a second time.
       const refunded = Boolean(data.refund && refundId);
+      const refundedAt = new Date();
       const updated = await RegistrationRepository.update({
         id: data.id,
         status: refunded ? 'refunded' : 'cancelled',
-        ...(refunded && {
-          refundedAt: new Date(),
-          refundedAmountCents,
-          squareRefundId: refundId,
-        }),
+        ...(refunded &&
+          refundId && {
+            refundedAt,
+            lastRefundAt: refundedAt,
+            refundedAmountCents,
+            squareRefundId: refundId,
+            squareRefundIds: [...(registration.squareRefundIds ?? []), refundId],
+          }),
       });
 
       return {

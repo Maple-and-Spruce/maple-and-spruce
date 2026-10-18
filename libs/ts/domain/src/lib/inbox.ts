@@ -16,6 +16,8 @@
  *  - needs-attention rows, with taught-but-unbilled and blockless lessons
  *    limited to the last `INBOX_LESSON_LOOKBACK_DAYS`
  *  - pending inventory sync conflicts, as one row
+ *  - a class registration refunded in part (in the Square dashboard) while
+ *    the student stays enrolled, for `INBOX_REFUND_LOOKBACK_DAYS`
  *
  * "Mark done" hides an item for everyone. It is keyed on the item's `key`,
  * which starts with the kind and names the record **and** the state that made
@@ -32,6 +34,8 @@ import type { LessonInquiry } from './lesson-inquiry';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 import { DEFAULT_LESSON_TIME_ZONE } from './lesson-block';
 import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention';
+import { hasOpenPartialRefund } from './registration';
+import type { Registration } from './registration';
 import { zonedDateKey } from './schedule-format';
 
 export type InboxItemKind =
@@ -42,6 +46,7 @@ export type InboxItemKind =
   | 'craft-club-requested'
   | 'agreement-unsigned'
   | 'sync-conflicts'
+  | 'refund-partial'
   | NeedsAttentionKind;
 
 /**
@@ -58,6 +63,7 @@ export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
   'craft-club-requested': 'Craft Club',
   'agreement-unsigned': 'Unsigned',
   'sync-conflicts': 'Sync',
+  'refund-partial': 'Part refund',
   'lesson-unbilled': 'Not billed',
   'invoice-overdue': 'Overdue',
   'invoice-sync-failed': 'Not sent',
@@ -94,6 +100,8 @@ export const INBOX_AGREEMENT_WINDOW_DAYS = 7;
 export const INBOX_AGREEMENT_URGENT_HOURS = 48;
 /** Unbilled and blockless lessons older than this are not chased here. */
 export const INBOX_LESSON_LOOKBACK_DAYS = 14;
+/** A partial refund older than this is not chased here. */
+export const INBOX_REFUND_LOOKBACK_DAYS = 90;
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -150,6 +158,23 @@ export interface InboxSources {
   needsAttention: ReadonlyArray<NeedsAttentionGroup>;
   /** Pending sync conflicts. */
   syncConflicts: ReadonlyArray<{ detectedAt: Date }>;
+  /**
+   * Registrations with any money refunded; only open partial refunds are
+   * used. Their class names come from `classes`.
+   */
+  refundedRegistrations: ReadonlyArray<
+    Pick<
+      Registration,
+      | 'id'
+      | 'classId'
+      | 'customerName'
+      | 'status'
+      | 'pricePaidCents'
+      | 'refundedAmountCents'
+      | 'lastRefundAt'
+      | 'updatedAt'
+    >
+  >;
   /** Shop timezone for day words and clock times. */
   timeZone?: string;
 }
@@ -420,6 +445,42 @@ function syncConflictItems(sources: InboxSources): InboxItem[] {
   ];
 }
 
+/** Always two decimals: "$20.00 of $63.60". */
+function dollars(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function partialRefundItems(sources: InboxSources): InboxItem[] {
+  const lookback = ms(sources.now) - INBOX_REFUND_LOOKBACK_DAYS * DAY_MS;
+  const classNames = new Map(sources.classes.map((c) => [c.id, c.name]));
+  const items: InboxItem[] = [];
+  for (const registration of sources.refundedRegistrations) {
+    if (!hasOpenPartialRefund(registration)) continue;
+    const at = registration.lastRefundAt ?? registration.updatedAt;
+    if (ms(at) < lookback) continue;
+    const refunded = registration.refundedAmountCents ?? 0;
+    const who = registration.customerName?.trim();
+    items.push({
+      // The amount is in the key, so a further partial refund comes back.
+      key: `refund-partial:${registration.id}:${refunded}`,
+      kind: 'refund-partial',
+      title: classNames.get(registration.classId) ?? 'Class registration',
+      // Amount first: on a narrow card the end of the line is clipped.
+      detail: [
+        `${dollars(refunded)} of ${dollars(registration.pricePaidCents)} refunded in Square`,
+        who,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      href: `/classes/${registration.classId}/roster`,
+      actionLabel: 'Review',
+      occurredAt: at.toISOString(),
+      urgent: false,
+    });
+  }
+  return items;
+}
+
 /**
  * Sort rank: failed charges, then agreements for a class within 48 hours,
  * then stale inquiries, then new inquiries, then everything else.
@@ -454,6 +515,7 @@ export function buildInboxItems(sources: InboxSources): InboxItem[] {
     ...craftClubItems(sources),
     ...needsAttentionItems(sources),
     ...syncConflictItems(sources),
+    ...partialRefundItems(sources),
   ]);
 }
 

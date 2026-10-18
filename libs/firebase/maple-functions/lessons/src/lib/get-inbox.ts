@@ -21,11 +21,13 @@ import {
   CraftClubMemberRepository,
   InboxDismissalRepository,
   LessonInquiryRepository,
+  RegistrationRepository,
   SyncConflictRepository,
 } from '@maple/firebase/database';
 import { collectNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 import {
   buildInboxItems,
+  hasOpenPartialRefund,
   withoutDismissed,
   type InboxClass,
 } from '@maple/ts/domain';
@@ -51,22 +53,33 @@ function nextLessonByStudent(
 export async function getInbox(): Promise<GetInboxResponse> {
   const now = new Date();
 
-  const [scan, inquiries, craftClubMembers, pendingAgreements, syncConflicts] =
-    await Promise.all([
+  const [
+    scan,
+    inquiries,
+    craftClubMembers,
+    pendingAgreements,
+    syncConflicts,
+    refundedRegistrations,
+  ] = await Promise.all([
       // The whole studio: the inbox is admin-only.
       collectNeedsAttention(undefined, now),
       LessonInquiryRepository.findAll({ status: 'new' }),
       CraftClubMemberRepository.findAll(),
       AgreementRequestRepository.findAll({ status: 'pending' }),
       SyncConflictRepository.findPending(),
+      // Refunds are rare, so every registration with one is a small read;
+      // the builder keeps the open partial ones from the last 90 days.
+      RegistrationRepository.findWithRefunds(),
     ]);
+  const partialRefunds = refundedRegistrations.filter(hasOpenPartialRefund);
 
-  // Only the classes a pending request names; the rest are not needed.
+  // Only the classes a pending request or a partial refund names.
   const classIds = [
     ...new Set(
-      pendingAgreements
-        .map((r) => r.classId)
-        .filter((id): id is string => Boolean(id))
+      [
+        ...pendingAgreements.map((r) => r.classId),
+        ...partialRefunds.map((r) => r.classId),
+      ].filter((id): id is string => Boolean(id))
     ),
   ];
   const classes: InboxClass[] = (
@@ -84,6 +97,7 @@ export async function getInbox(): Promise<GetInboxResponse> {
     classes,
     needsAttention: scan.groups,
     syncConflicts,
+    refundedRegistrations: partialRefunds,
   });
 
   const dismissals = await InboxDismissalRepository.findByKeys(
