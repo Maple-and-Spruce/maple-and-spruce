@@ -13,6 +13,8 @@ function instructor(id: string, overrides: Partial<Instructor> = {}): Instructor
     email: `${id}@example.com`,
     status: 'active',
     isContractor: true,
+    payRate: 0.8,
+    payRateType: 'percentage',
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides,

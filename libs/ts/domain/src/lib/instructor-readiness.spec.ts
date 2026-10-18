@@ -13,6 +13,8 @@ const allDone: InstructorReadiness = {
   backgroundCheck: { clearedOn: '2026-09-10' },
   paymentSetup: { completedOn: '2026-09-12', method: 'square-payroll' },
 };
+/** A pay rate, the fourth readiness item. */
+const rated = { payRate: 0.8, payRateType: 'percentage' as const };
 
 describe('instructorReadiness', () => {
   it('is not applicable when the instructor is not a contractor', () => {
@@ -25,12 +27,12 @@ describe('instructorReadiness', () => {
   it('lists every item as missing for a contractor with no record', () => {
     expect(instructorReadiness({ isContractor: true })).toEqual({
       kind: 'not-ready',
-      missing: ['contractor-agreement', 'background-check', 'payment-setup'],
+      missing: ['contractor-agreement', 'background-check', 'payment-setup', 'pay-rate'],
     });
   });
 
-  it('is ready once all three items are recorded', () => {
-    expect(instructorReadiness({ isContractor: true, readiness: allDone })).toEqual({
+  it('is ready once all three items are recorded and a pay rate is set', () => {
+    expect(instructorReadiness({ isContractor: true, readiness: allDone, ...rated })).toEqual({
       kind: 'ready',
     });
   });
@@ -40,14 +42,14 @@ describe('instructorReadiness', () => {
       ...allDone,
       contractorAgreement: { signedOn: '2026-09-01' },
     };
-    expect(instructorReadiness({ isContractor: true, readiness }).kind).toBe('ready');
+    expect(instructorReadiness({ isContractor: true, readiness, ...rated }).kind).toBe('ready');
   });
 
   it('lists only what is outstanding, in checklist order', () => {
     const readiness: InstructorReadiness = {
       backgroundCheck: { clearedOn: '2026-09-10' },
     };
-    expect(instructorReadiness({ isContractor: true, readiness })).toEqual({
+    expect(instructorReadiness({ isContractor: true, readiness, ...rated })).toEqual({
       kind: 'not-ready',
       missing: ['contractor-agreement', 'payment-setup'],
     });
@@ -58,10 +60,32 @@ describe('instructorReadiness', () => {
       ...allDone,
       backgroundCheck: { clearedOn: '' },
     };
-    expect(instructorReadiness({ isContractor: true, readiness })).toEqual({
+    expect(instructorReadiness({ isContractor: true, readiness, ...rated })).toEqual({
       kind: 'not-ready',
       missing: ['background-check'],
     });
+  });
+
+  it('needs a pay rate even when the paperwork is done', () => {
+    expect(instructorReadiness({ isContractor: true, readiness: allDone })).toEqual({
+      kind: 'not-ready',
+      missing: ['pay-rate'],
+    });
+  });
+
+  it('counts a rate only with a type and a positive amount', () => {
+    const check = (rate: Partial<Pick<Instructor, 'payRate' | 'payRateType'>>) =>
+      instructorReadiness({ isContractor: true, readiness: allDone, ...rate }).kind;
+    expect(check({ payRate: 0.8 })).toBe('not-ready');
+    expect(check({ payRateType: 'percentage' })).toBe('not-ready');
+    expect(check({ payRate: 0, payRateType: 'percentage' })).toBe('not-ready');
+    // Any kind of rate clears readiness; class payouts flag a non-percentage separately.
+    expect(check({ payRate: 5000, payRateType: 'flat' })).toBe('ready');
+    expect(check({ payRate: 2500, payRateType: 'hourly' })).toBe('ready');
+  });
+
+  it('never asks a non-contractor for a pay rate', () => {
+    expect(instructorReadiness({ isContractor: false })).toEqual({ kind: 'not-applicable' });
   });
 });
 
@@ -75,6 +99,9 @@ describe('describeMissingReadiness', () => {
     expect(
       describeMissingReadiness(['contractor-agreement', 'background-check', 'payment-setup'])
     ).toBe('contractor agreement, background check and payment setup');
+    expect(describeMissingReadiness(['payment-setup', 'pay-rate'])).toBe(
+      'payment setup and pay rate'
+    );
   });
 });
 
@@ -119,6 +146,7 @@ describe('contractorAgreementSignedOnline', () => {
       instructorReadiness({
         isContractor: true,
         readiness: { ...allDone, contractorAgreement },
+        ...rated,
       })
     ).toEqual({ kind: 'ready' });
   });

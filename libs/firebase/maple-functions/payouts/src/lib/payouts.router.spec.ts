@@ -163,6 +163,39 @@ describe('payouts router', () => {
       expect(previews[0]).not.toHaveProperty('entries');
     });
 
+    it('says what an uncleared contractor is missing, without blocking anything', async () => {
+      mocks.instructorFindAll.mockResolvedValue([
+        { ...instructor, isContractor: true, readiness: { backgroundCheck: { clearedOn: '2026-09-02' } } },
+      ]);
+      const result = await routes.previewClassInstructorPayouts({ month: '2026-10' });
+      const [preview] = result['previews'] as Record<string, unknown>[];
+      expect(preview['readinessMissing']).toEqual(['contractor-agreement', 'payment-setup']);
+      expect(preview['totalOwedCents']).toBe(4000);
+    });
+
+    it('says nothing about readiness for a cleared contractor or a non-contractor', async () => {
+      const [plain] = (await routes.previewClassInstructorPayouts({ month: '2026-10' }))[
+        'previews'
+      ] as Record<string, unknown>[];
+      expect(plain).not.toHaveProperty('readinessMissing');
+
+      mocks.instructorFindAll.mockResolvedValue([
+        {
+          ...instructor,
+          isContractor: true,
+          readiness: {
+            contractorAgreement: { signedOn: '2026-09-01' },
+            backgroundCheck: { clearedOn: '2026-09-02' },
+            paymentSetup: { completedOn: '2026-09-03', method: 'square-payroll' },
+          },
+        },
+      ]);
+      const [cleared] = (await routes.previewClassInstructorPayouts({ month: '2026-10' }))[
+        'previews'
+      ] as Record<string, unknown>[];
+      expect(cleared).not.toHaveProperty('readinessMissing');
+    });
+
     it('ignores classes outside the window and classes with no instructor', async () => {
       mocks.classFindAll.mockResolvedValue([
         { ...octoberClass, id: 'aug', sessions: [{ dateTime: new Date('2026-08-10T18:00:00Z') }] },

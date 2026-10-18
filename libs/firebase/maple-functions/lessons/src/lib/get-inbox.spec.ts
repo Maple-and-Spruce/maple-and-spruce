@@ -189,6 +189,8 @@ describe('getInbox', () => {
         name: 'Robin Ashfield',
         status: 'active',
         isContractor: true,
+        payRate: 0.8,
+        payRateType: 'percentage',
         readiness: { contractorAgreement: { signedOn: '2026-10-01' } },
       },
       // Cleared: no row.
@@ -197,6 +199,8 @@ describe('getInbox', () => {
         name: 'Olive Thompson',
         status: 'active',
         isContractor: true,
+        payRate: 0.8,
+        payRateType: 'percentage',
         readiness: {
           contractorAgreement: { signedOn: '2026-10-01' },
           backgroundCheck: { clearedOn: '2026-10-02' },

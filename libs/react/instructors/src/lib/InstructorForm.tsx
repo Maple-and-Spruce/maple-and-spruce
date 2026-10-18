@@ -623,6 +623,8 @@ export function InstructorForm({
               (readinessValues.value = { ...readinessValues.value, ...patch })
             }
             getFieldError={getFieldError}
+            payRate={payRate.value}
+            payRateType={payRateType.value}
             agreementActions={
               instructor && renderAgreementActions
                 ? renderAgreementActions(instructor, {

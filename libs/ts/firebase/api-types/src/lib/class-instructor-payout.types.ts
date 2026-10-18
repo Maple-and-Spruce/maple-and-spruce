@@ -4,6 +4,7 @@
  * Dates travel as ISO strings and are rehydrated by the client hook.
  */
 import type {
+  InstructorReadinessItem,
   ClassInstructorPaymentMethod,
   ClassInstructorStatement,
   ClassInstructorStatementDraft,
@@ -16,6 +17,11 @@ export interface ClassInstructorPayoutPreview
   extends Omit<ClassInstructorStatementDraft, 'entries'> {
   /** The live (pending or paid) statement already generated for this month, if any. */
   existingStatement?: Pick<ClassInstructorStatement, 'id' | 'status' | 'totalOwedCents'>;
+  /**
+   * What a contract instructor is still missing to be cleared to teach, if
+   * anything. A warning only: it never stops a statement being generated.
+   */
+  readinessMissing?: InstructorReadinessItem[];
 }
 
 export interface PreviewClassInstructorPayoutsRequest {
