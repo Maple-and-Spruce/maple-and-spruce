@@ -6,6 +6,18 @@
 
 ## Current Status
 
+### Dev has no scheduled jobs (2026-10-13)
+
+- Scheduled functions now deploy to **prod only**: the merge workflow's dev deploy uses a
+  `dev_matrix` that drops every library `tools/list-prod-only-functions.ts` reports (any library
+  importing the scheduler). Cuts dev's 8 Cloud Scheduler jobs; a new schedule is prod-only by
+  construction.
+- In dev, run a job through its admin-callable twin; holds are released by hand with
+  `tools/release-stale-registration-holds.ts`. Table in `deployed-functions.md`.
+- **Follow-up, needs the owner's OK:** the 8 existing dev functions (and their jobs) stay until
+  deleted by hand, since CI never prunes:
+  `firebase functions:delete <name> --region us-east4 --project maple-and-spruce-dev`.
+
 ### App Check enforced on public callables (2026-10-18, #136, ADR-037)
 
 The first week in monitor mode (Oct 10–18) showed every real widget checkout carrying a valid token,
