@@ -393,7 +393,7 @@ describe('Class Functions', () => {
       const publicClass = await callFunction<
         GetPublicClassRequest,
         GetPublicClassResponse
-      >({ functionName: 'getPublicClass', data: { id } });
+      >({ functionName: 'publicSite/getPublicClass', data: { id } });
       expect(publicClass.status).toBe(200);
       expect(publicClass.data?.class).not.toHaveProperty('minimumEnrollment');
 
