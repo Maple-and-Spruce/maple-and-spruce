@@ -6,6 +6,29 @@
 
 ## Current Status
 
+### Contract-instructor workflow finished (2026-10-18, #250, #253)
+
+These close the gaps found by walking the whole instructor flow end to end, from onboarding to
+class, payout and the January 1099:
+
+- **Under-minimum Inbox row (#250, closes #245).** It goes with the one-time staff email from
+  #138. A published class still short of its minimum shows on the Home inbox as
+  `class-under-minimum` ("2 of 5 needed") while its first session is within 7 days, and is urgent
+  inside 3. It clears itself once enough seats are confirmed or the class is unpublished.
+- **Pay rate as the fourth readiness item (#253, closes #246).** A contractor isn't ready until a
+  rate is set, of any type with a positive amount (derived, never stored). The class-payouts
+  preview card shows a "Not cleared" chip as a warning only: Generate is unaffected. The pay
+  rate itself is left to "Rate not set", which also covers a non-percentage rate.
+  **Existing contractors with no rate now show as not ready. Set their rate.**
+
+**Still with David, outside the code:**
+- Subscribe the Square webhook to `refund.created` + `refund.updated` (sandbox and production),
+  or #248's dashboard refunds never arrive.
+- Flip on "Paid contractor (1099)" and set pay rates for existing contract instructors.
+- Ask the CPA how class revenue posts in Wave: gross, or net with "Due to Instructors".
+- Deploys are serialized and were backed up on 2026-10-18, so #248/#250/#253 reached prod only
+  after the queue drained.
+
 ### App Check enforced on public callables (2026-10-18, #136, ADR-037)
 
 The first week in monitor mode (Oct 10–18) showed every real widget checkout carrying a valid token,
