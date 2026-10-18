@@ -97,7 +97,7 @@
 | Public registration flow | Complete | legacy #9 | Webflow embed via `apps/webflow-components/src/RegistrationWidget.tsx` (admin-app POC `/register` pages removed) |
 | useDiscounts + useRegistrations hooks | Complete | legacy #9 | `libs/react/data/src/lib/` |
 | Storybook fixtures | Complete | legacy #9 | `apps/maple-spruce/.storybook/fixtures/` |
-| Class minimum enrollment + staff alert | Complete | - | Admin-only `Class.minimumEnrollment` (form field, validation ≤ capacity). The daily `sendClassReminders` job emails `ADMIN_ALERT_EMAIL` once per class when confirmed seats are below the minimum on the ET day 7 days before the first session (`underMinimumAlertSentAt` marker). Alert only: nothing is cancelled, refunded or sent to students. `libs/firebase/maple-functions/send-class-reminders/src/lib/under-minimum-alert.ts` |
+| Class minimum enrollment + staff alert | Complete | - | Admin-only `Class.minimumEnrollment` (form field, validation ≤ capacity). The daily `sendClassReminders` job emails `ADMIN_ALERT_EMAIL` once per class when confirmed seats are below the minimum on the ET day 7 days before the first session (`underMinimumAlertSentAt` marker). Alert only: nothing is cancelled, refunded or sent to students. The Home Inbox also shows a `class-under-minimum` row while the first session is within 7 days (urgent inside 3), which clears itself once enough seats are confirmed or the class is unpublished. `libs/firebase/maple-functions/send-class-reminders/src/lib/under-minimum-alert.ts`, `libs/ts/domain/src/lib/inbox.ts` |
 
 ## Webflow Go-Live (COMPLETE)
 
