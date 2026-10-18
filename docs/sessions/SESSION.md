@@ -6,6 +6,15 @@
 
 ## Current Status
 
+### App Check enforced on public callables (2026-10-18, #136, ADR-037)
+
+The first week in monitor mode (Oct 10–18) showed every real widget checkout carrying a valid token,
+most of them from iPhones, so ITP is not a blocker. Every call without a token came from automated
+clients, not the widgets. No throttles fired. This PR sets
+`.env.prod` to `enforce`. Nine endpoints declare `enforce`; `createRegistrationCheckoutLink` stays
+in `monitor` as the hosted-checkout fallback. Dev stays in `monitor`. Rollback: set `.env.prod`
+back to `monitor` and merge.
+
 ### Square dashboard refunds reach the registration (#144, 2026-10-17)
 
 - `squareWebhook` handles `refund.created` / `refund.updated`. A COMPLETED refund is matched by
