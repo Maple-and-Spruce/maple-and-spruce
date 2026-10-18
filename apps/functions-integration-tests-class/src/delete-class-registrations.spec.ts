@@ -71,7 +71,7 @@ describe('deleteClass — registrations must never be orphaned', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Test Instructor',
         email: 'instructor@test.com',

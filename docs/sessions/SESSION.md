@@ -6,6 +6,17 @@
 
 ## Current Status
 
+### Instructors domain router (2026-10-17, #64, stacked on #139)
+
+The six instructor functions are now routes on one `instructors` router in `maple-core`
+(function count 158 → 153). Handlers were moved, not rewritten, into `instructors.ts` and
+`upload-instructor-image.ts`, with their specs. Clients call `routerCallableUrl('instructors', …)`.
+`uploadInstructorImage` went onto the router, unlike `uploadArtistImage` in the artists pilot: it
+set no runtime options of its own, so the router's defaults are the ones it already ran with.
+**Still to do by hand after merge:** delete the six old deployed functions (dev, then prod); the
+command is in `docs/reference/deployed-functions.md`. Two integration projects declared
+`implicitDependencies` on the deleted libraries; nx refuses to build the graph until those go.
+
 ### Contract instructor readiness (2026-10-17, PR #139)
 
 Contract instructors (1099) carry an admin-only readiness record: contractor agreement signed,

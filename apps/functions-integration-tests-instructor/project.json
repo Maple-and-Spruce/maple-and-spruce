@@ -3,13 +3,12 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/functions-integration-tests-instructor/src",
   "projectType": "application",
-  "tags": ["type:e2e"],
+  "tags": [
+    "type:e2e"
+  ],
   "implicitDependencies": [
-    "firebase-maple-functions-create-instructor",
-    "firebase-maple-functions-get-instructors",
-    "firebase-maple-functions-get-instructor",
-    "firebase-maple-functions-update-instructor",
-    "firebase-maple-functions-delete-instructor",
+    "firebase-maple-functions-instructors",
+    "firebase-maple-functions-lessons",
     "firebase-integration-test-utils"
   ],
   "targets": {}

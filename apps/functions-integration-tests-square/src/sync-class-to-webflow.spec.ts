@@ -142,7 +142,7 @@ describe('syncClassToWebflow Trigger', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Webflow Sync Test Instructor',
         email: 'webflow-instructor@test.com',

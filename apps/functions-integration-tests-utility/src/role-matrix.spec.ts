@@ -69,6 +69,7 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'lessons/getStudioDay', expect: 403 },
   { as: 'stephanie', functionName: 'lessons/getInbox', expect: 403 },
   { as: 'stephanie', functionName: 'people/listUsers', expect: 403 },
+  { as: 'stephanie', functionName: 'instructors/getInstructors', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },
   { as: 'stephanie', functionName: 'getSyncConflictSummary', expect: 403 },
   // Music Together discounts are hers to run (legacy #791) — the function is open to
@@ -117,6 +118,23 @@ const CASES: MatrixCase[] = [
   // getArtist (singular) was auth-only until legacy #620; now admin-only like getArtists.
   { as: 'nathan', functionName: 'artists/getArtist', expect: 403 },
   { as: 'nathan', functionName: 'artists/deleteArtist', expect: 403 },
+  // Instructors moved onto a domain router too (#64). A lesson teacher reads
+  // colleagues (contractor readiness stripped) but changes nothing.
+  { as: 'nathan', functionName: 'instructors/getInstructors', expect: 200 },
+  { as: 'nathan', functionName: 'instructors/createInstructor', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'instructors/updateInstructor',
+    data: { id: 'irrelevant' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'instructors/deleteInstructor',
+    data: { id: 'irrelevant' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'instructors/uploadInstructorImage', expect: 403 },
   // The instruments list (#161): a teacher adds students, so reads it; only
   // an admin changes it.
   { as: 'nathan', functionName: 'settings/getInstruments', expect: 200 },
@@ -270,6 +288,7 @@ const CASES: MatrixCase[] = [
   { as: 'admin', functionName: 'calendar/getCalendarEvents', expect: 200 },
   { as: 'admin', functionName: 'people/listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
+  { as: 'admin', functionName: 'instructors/getInstructors', expect: 200 },
   { as: 'admin', functionName: 'settings/getInstruments', expect: 200 },
   { as: 'admin', functionName: 'settings/getLessonRatesConfig', expect: 200 },
   {

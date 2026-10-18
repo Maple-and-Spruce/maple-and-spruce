@@ -3,10 +3,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir:
-    '../../../../node_modules/.vite/libs/firebase/maple-functions/get-instructor',
+    '../../../../node_modules/.vite/libs/firebase/maple-functions/instructors',
   resolve: { tsconfigPaths: true },
   test: {
-    name: 'firebase-maple-functions-get-instructor',
+    name: 'firebase-maple-functions-instructors',
     watch: false,
     globals: true,
     environment: 'node',
@@ -14,7 +14,7 @@ export default defineConfig(() => ({
     reporters: ['default'],
     coverage: {
       reportsDirectory:
-        '../../../../coverage/libs/firebase/maple-functions/get-instructor',
+        '../../../../coverage/libs/firebase/maple-functions/instructors',
       provider: 'istanbul' as const, // same provider as CI's merged run
     },
   },

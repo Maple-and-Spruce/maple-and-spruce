@@ -89,7 +89,7 @@ describe('duplicateClass', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Duplicate Test Instructor',
         email: 'duplicate-instructor@test.com',

@@ -29,8 +29,11 @@ import {
   Autocomplete,
   Typography,
 } from '@mui/material';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Instructor,
   CreateInstructorInput,
@@ -271,10 +274,10 @@ export function InstructorForm({
     existingInstructorId?: string
   ): Promise<string> => {
     const functions = getMapleFunctions();
-    const upload = httpsCallable<
+    const upload = httpsCallableFromURL<
       UploadInstructorImageRequest,
       UploadInstructorImageResponse
-    >(functions, 'uploadInstructorImage');
+    >(functions, routerCallableUrl('instructors', 'uploadInstructorImage'));
 
     const imageBase64 = await readFileAsBase64(file);
 

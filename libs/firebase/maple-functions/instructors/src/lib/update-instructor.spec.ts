@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
-  createAdminFunction: (handler: unknown) => handler,
+  Role: { Admin: 'admin', LessonTeacher: 'lesson-teacher' },
+  hasRole: vi.fn(),
   throwNotFound: (e: string, id: string) => {
     throw new Error(`${e} ${id} not found`);
   },
@@ -35,7 +36,7 @@ vi.mock('@maple/firebase/database', () => ({
   InstrumentsConfigRepository: { get: mocks.getInstruments },
 }));
 
-import { updateInstructor } from './update-instructor';
+import { updateInstructor } from './instructors';
 
 const run = updateInstructor as unknown as (d: unknown, c: unknown) => Promise<unknown>;
 
