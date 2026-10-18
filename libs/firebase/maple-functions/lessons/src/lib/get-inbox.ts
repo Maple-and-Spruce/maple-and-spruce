@@ -22,11 +22,13 @@ import {
   InboxDismissalRepository,
   InstructorRepository,
   LessonInquiryRepository,
+  RegistrationRepository,
   SyncConflictRepository,
 } from '@maple/firebase/database';
 import { collectNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 import {
   buildInboxItems,
+  classesForMinimumCheck,
   instructorsNotReadyToTeach,
   withoutDismissed,
   type InboxClass,
@@ -85,6 +87,17 @@ export async function getInbox(): Promise<GetInboxResponse> {
     await Promise.all(classIds.map((id) => ClassRepository.findById(id)))
   ).filter((c): c is NonNullable<typeof c> => c !== undefined);
 
+  // Seats only for the few classes inside the under-minimum window.
+  const minimumClasses = classesForMinimumCheck(upcomingClasses, now);
+  const seatCounts = await Promise.all(
+    minimumClasses.map((c) =>
+      RegistrationRepository.countByClassId(c.id, ['confirmed'])
+    )
+  );
+  const confirmedSeats = new Map(
+    minimumClasses.map((c, i) => [c.id, seatCounts[i]])
+  );
+
   const items = buildInboxItems({
     now,
     inquiries,
@@ -101,6 +114,8 @@ export async function getInbox(): Promise<GetInboxResponse> {
       upcomingClasses,
       now
     ),
+    minimumClasses,
+    confirmedSeats,
   });
 
   const dismissals = await InboxDismissalRepository.findByKeys(

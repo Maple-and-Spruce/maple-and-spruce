@@ -875,5 +875,78 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.underMinimum.classesChecked).toBe(0);
       expect(await staffAlerts()).toHaveLength(0);
     });
+
+    describe('Home inbox row', () => {
+      async function underMinimumRow(classId: string) {
+        const res = await callFunction<Record<string, never>, {
+          items: Array<{ kind: string; href: string; title: string; detail?: string; urgent: boolean }>;
+        }>({
+          functionName: 'lessons/getInbox',
+          data: {},
+          idToken: adminUser.idToken,
+        });
+        expect(res.status).toBe(200);
+        return res.data!.items.find(
+          (i) => i.kind === 'class-under-minimum' && i.href === `/classes/${classId}/roster`
+        );
+      }
+
+      it('lists a class short of its minimum, counting confirmed seats only', async () => {
+        await seedWeekOutClass({
+          classId: 'inbox-under-min',
+          minimumEnrollment: 4,
+          daysOut: 3,
+          confirmedSeats: [1, 1],
+          otherStatuses: ['pending', 'cancelled'],
+        });
+
+        const row = await underMinimumRow('inbox-under-min');
+        expect(row).toBeDefined();
+        expect(row?.title).toMatch(/Beginner Block Printing$/);
+        expect(row?.detail).toMatch(/^2 of 4 needed · /);
+      });
+
+      it('drops the row once the minimum is met', async () => {
+        await seedWeekOutClass({
+          classId: 'inbox-filled',
+          minimumEnrollment: 2,
+          daysOut: 3,
+          confirmedSeats: [1],
+        });
+        expect(await underMinimumRow('inbox-filled')).toBeDefined();
+
+        await setFirestoreDoc(
+          'registrations',
+          'inbox-filled-late',
+          buildRegistration({
+            classId: 'inbox-filled',
+            email: 'late@example.com',
+            name: 'Late Seat',
+          })
+        );
+        expect(await underMinimumRow('inbox-filled')).toBeUndefined();
+      });
+
+      it('drops the row when the class is cancelled', async () => {
+        await seedWeekOutClass({
+          classId: 'inbox-cancelled',
+          minimumEnrollment: 4,
+          daysOut: 3,
+          confirmedSeats: [1],
+          status: 'cancelled',
+        });
+        expect(await underMinimumRow('inbox-cancelled')).toBeUndefined();
+      });
+
+      it('waits until the class is within a week', async () => {
+        await seedWeekOutClass({
+          classId: 'inbox-later',
+          minimumEnrollment: 4,
+          daysOut: 9,
+          confirmedSeats: [1],
+        });
+        expect(await underMinimumRow('inbox-later')).toBeUndefined();
+      });
+    });
   });
 });

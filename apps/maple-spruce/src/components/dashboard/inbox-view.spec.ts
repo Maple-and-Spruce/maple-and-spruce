@@ -69,6 +69,7 @@ describe('row text', () => {
     expect(inboxTone('invoice-sync-failed')).toBe('failure');
     expect(inboxTone('craft-club-past-due')).toBe('failure');
     expect(inboxTone('agreement-unsigned')).toBe('deadline');
+    expect(inboxTone('class-under-minimum')).toBe('deadline');
     expect(inboxTone('craft-club-requested')).toBe('quiet');
     expect(inboxTone('sync-conflicts')).toBe('quiet');
   });

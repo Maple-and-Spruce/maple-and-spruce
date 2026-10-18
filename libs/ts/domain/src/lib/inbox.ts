@@ -18,6 +18,9 @@
  *  - pending inventory sync conflicts, as one row
  *  - a contract instructor not cleared to teach, only while their next class
  *    meets within `INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS`
+ *  - a published class below its minimum enrollment, only while its first
+ *    session is within `INBOX_UNDER_MINIMUM_WINDOW_DAYS`; it leaves once
+ *    enough seats are confirmed or the class stops being published
  *
  * "Mark done" hides an item for everyone. It is keyed on the item's `key`,
  * which starts with the kind and names the record **and** the state that made
@@ -50,6 +53,7 @@ export type InboxItemKind =
   | 'agreement-unsigned'
   | 'sync-conflicts'
   | 'instructor-not-ready'
+  | 'class-under-minimum'
   | NeedsAttentionKind;
 
 /**
@@ -67,6 +71,7 @@ export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
   'agreement-unsigned': 'Unsigned',
   'sync-conflicts': 'Sync',
   'instructor-not-ready': 'Not cleared',
+  'class-under-minimum': 'Under minimum',
   'lesson-unbilled': 'Not billed',
   'invoice-overdue': 'Overdue',
   'invoice-sync-failed': 'Not sent',
@@ -109,6 +114,13 @@ export const INBOX_AGREEMENT_URGENT_HOURS = 48;
 export const INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS = 14;
 /** …and is urgent inside this many days. */
 export const INBOX_INSTRUCTOR_READINESS_URGENT_DAYS = 7;
+/**
+ * A published class under its minimum enrollment surfaces once its first
+ * session is this close: the same week's notice as the email to staff.
+ */
+export const INBOX_UNDER_MINIMUM_WINDOW_DAYS = 7;
+/** …and is urgent inside this many days. */
+export const INBOX_UNDER_MINIMUM_URGENT_DAYS = 3;
 /** Unbilled and blockless lessons older than this are not chased here. */
 export const INBOX_LESSON_LOOKBACK_DAYS = 14;
 
@@ -119,6 +131,12 @@ export interface InboxClass {
   id: string;
   name: string;
   sessions: ReadonlyArray<{ dateTime: Date }>;
+}
+
+/** A class the under-minimum check reads. */
+export interface InboxMinimumClass extends InboxClass {
+  status: string;
+  minimumEnrollment?: number | null;
 }
 
 export interface InboxSources {
@@ -169,6 +187,12 @@ export interface InboxSources {
   syncConflicts: ReadonlyArray<{ detectedAt: Date }>;
   /** Contract instructors not cleared to teach who have a class coming up. */
   instructorsNotReady: ReadonlyArray<InstructorNotReadyToTeach>;
+  /**
+   * Classes that may be under their minimum (see `classesForMinimumCheck`),
+   * with the confirmed seats each has, summed by quantity.
+   */
+  minimumClasses: ReadonlyArray<InboxMinimumClass>;
+  confirmedSeats: ReadonlyMap<string, number>;
   /** Shop timezone for day words and clock times. */
   timeZone?: string;
 }
@@ -449,6 +473,65 @@ function instructorReadinessItems(sources: InboxSources, tz: string): InboxItem[
   return items;
 }
 
+/** A class's earliest session, whether or not it has passed. */
+function firstSessionAt(cls: Pick<InboxClass, 'sessions'>): Date | undefined {
+  let first: Date | undefined;
+  for (const s of cls.sessions) {
+    const at = new Date(s.dateTime);
+    if (!first || ms(at) < ms(first)) first = at;
+  }
+  return first;
+}
+
+/**
+ * The classes worth counting seats for: published, with a minimum, and whose
+ * FIRST session is still ahead and within the window. A class that has
+ * already started is running, minimum or not.
+ */
+export function classesForMinimumCheck<T extends InboxMinimumClass>(
+  classes: ReadonlyArray<T>,
+  now: Date
+): T[] {
+  return classes.filter((cls) => {
+    if (cls.status !== 'published') return false;
+    if (typeof cls.minimumEnrollment !== 'number' || cls.minimumEnrollment < 1) {
+      return false;
+    }
+    const first = firstSessionAt(cls);
+    if (!first) return false;
+    const until = ms(first) - ms(now);
+    return until > 0 && until <= INBOX_UNDER_MINIMUM_WINDOW_DAYS * DAY_MS;
+  });
+}
+
+function underMinimumItems(sources: InboxSources, tz: string): InboxItem[] {
+  const { now } = sources;
+  const items: InboxItem[] = [];
+  for (const cls of classesForMinimumCheck(sources.minimumClasses, now)) {
+    const minimum = cls.minimumEnrollment as number;
+    const confirmed = sources.confirmedSeats.get(cls.id) ?? 0;
+    if (confirmed >= minimum) continue;
+    const first = firstSessionAt(cls) as Date;
+    const until = ms(first) - ms(now);
+    items.push({
+      // Keyed on the first session, so a rescheduled class comes back.
+      key: `class-under-minimum:${cls.id}:${ms(first)}`,
+      kind: 'class-under-minimum',
+      title: `${possessiveDay(first, now, tz)} ${cls.name}`,
+      detail: `${confirmed} of ${minimum} needed · ${shortDate(first, tz)} · ${clock(first, tz)}`,
+      href: `/classes/${cls.id}/roster`,
+      actionLabel: 'Review',
+      // It became something to do when the class came inside the window.
+      occurredAt: new Date(
+        ms(first) - INBOX_UNDER_MINIMUM_WINDOW_DAYS * DAY_MS
+      ).toISOString(),
+      dueAt: first.toISOString(),
+      urgent: until <= INBOX_UNDER_MINIMUM_URGENT_DAYS * DAY_MS,
+    });
+  }
+  return items;
+}
+
 function syncConflictItems(sources: InboxSources): InboxItem[] {
   const pending = sources.syncConflicts;
   if (pending.length === 0) return [];
@@ -468,14 +551,16 @@ function syncConflictItems(sources: InboxSources): InboxItem[] {
 }
 
 /**
- * Sort rank: failed charges, then agreements for a class within 48 hours and
- * uncleared instructors teaching within a week, then stale inquiries, then
+ * Sort rank: failed charges, then agreements for a class within 48 hours,
+ * uncleared instructors teaching within a week and classes under their
+ * minimum within three days, then stale inquiries, then
  * new inquiries, then everything else.
  */
 export function inboxRank(item: Pick<InboxItem, 'kind' | 'urgent'>): number {
   if (item.kind === 'charge-failed') return 0;
   if (item.kind === 'agreement-unsigned' && item.urgent) return 1;
   if (item.kind === 'instructor-not-ready' && item.urgent) return 1;
+  if (item.kind === 'class-under-minimum' && item.urgent) return 1;
   if (item.kind === 'lesson-inquiry') return item.urgent ? 2 : 3;
   return 4;
 }
@@ -500,6 +585,7 @@ export function buildInboxItems(sources: InboxSources): InboxItem[] {
     ...chargeItems(sources, tz),
     ...agreementItems(sources, tz),
     ...instructorReadinessItems(sources, tz),
+    ...underMinimumItems(sources, tz),
     ...inquiryItems(sources, tz),
     ...craftClubItems(sources),
     ...needsAttentionItems(sources),

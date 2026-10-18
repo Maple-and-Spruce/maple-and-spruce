@@ -214,3 +214,39 @@ export const InstructorNotCleared: Story = {
     ).toHaveAttribute('href', '/instructors?edit=ins-olive');
   },
 };
+
+/**
+ * A published class still short of its minimum a few days out: a deadline row
+ * that opens the roster, where Katie decides whether it runs.
+ */
+export const ClassUnderMinimum: Story = {
+  args: {
+    inboxState: {
+      status: 'success',
+      data: [
+        {
+          key: 'class-under-minimum:cls-print:1760792400000',
+          kind: 'class-under-minimum',
+          title: 'Saturday’s Block Printing',
+          detail: '2 of 5 needed · Sat, Oct 17 · 10:00 AM',
+          href: '/classes/cls-print/roster',
+          actionLabel: 'Review',
+          occurredAt: new Date(2026, 9, 10, 10).toISOString(),
+          dueAt: new Date(2026, 9, 17, 10).toISOString(),
+          urgent: true,
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [row] = canvas.getAllByRole('listitem');
+    await expect(row).toHaveTextContent('Saturday’s Block Printing');
+    await expect(row).toHaveTextContent('2 of 5 needed');
+    await expect(row).toHaveTextContent(/Under minimum/i);
+    await expect(row).toHaveTextContent('Class in 3 days');
+    await expect(
+      within(row).getByRole('link', { name: /review/i })
+    ).toHaveAttribute('href', '/classes/cls-print/roster');
+  },
+};

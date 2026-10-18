@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   findDismissals: vi.fn(),
   findInstructors: vi.fn(),
   findUpcomingClasses: vi.fn(),
+  countSeats: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -26,6 +27,7 @@ vi.mock('@maple/firebase/database', () => ({
   ClassRepository: { findById: mocks.findClass, findAll: mocks.findUpcomingClasses },
   InstructorRepository: { findAll: mocks.findInstructors },
   InboxDismissalRepository: { findByKeys: mocks.findDismissals },
+  RegistrationRepository: { countByClassId: mocks.countSeats },
 }));
 
 vi.mock('@maple/firebase/maple-functions/get-needs-attention', () => ({
@@ -223,6 +225,37 @@ describe('getInbox', () => {
       href: '/instructors?edit=ins-1',
       urgent: true,
     });
+  });
+
+  it('counts confirmed seats only for classes in the minimum window', async () => {
+    const DAY = 24 * HOUR;
+    const at = (msAhead: number) => [{ dateTime: new Date(NOW.getTime() + msAhead) }];
+    mocks.findUpcomingClasses.mockResolvedValue([
+      // In the window and short: listed.
+      { id: 'cls-short', name: 'Block Printing', status: 'published', minimumEnrollment: 4, sessions: at(2 * DAY) },
+      // In the window and full enough: counted, not listed.
+      { id: 'cls-full', name: 'Weaving', status: 'published', minimumEnrollment: 2, sessions: at(5 * DAY) },
+      // Outside the window, no minimum, or a draft: never counted.
+      { id: 'cls-later', name: 'Basketry', status: 'published', minimumEnrollment: 4, sessions: at(9 * DAY) },
+      { id: 'cls-nomin', name: 'Clay', status: 'published', sessions: at(2 * DAY) },
+      { id: 'cls-draft', name: 'Wreaths', status: 'draft', minimumEnrollment: 4, sessions: at(2 * DAY) },
+    ]);
+    mocks.countSeats.mockImplementation(async (id: string) => (id === 'cls-short' ? 1 : 3));
+
+    const { items } = await getInbox();
+
+    expect(mocks.countSeats.mock.calls).toEqual([
+      ['cls-short', ['confirmed']],
+      ['cls-full', ['confirmed']],
+    ]);
+    const rows = items.filter((i) => i.kind === 'class-under-minimum');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      title: 'Friday’s Block Printing',
+      href: '/classes/cls-short/roster',
+      urgent: true,
+    });
+    expect(rows[0].detail).toMatch(/^1 of 4 needed · /);
   });
 
   it('includes pending sync conflicts as one row', async () => {
