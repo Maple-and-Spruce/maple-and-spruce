@@ -8,11 +8,14 @@ import {
   mockClassCategories,
   mockClassWithGallery,
   mockClassWithReferral,
+  mockClassWithMinimum,
   mockClassCategoriesWithPool,
 } from '@maple/react/storybook-fixtures';
 import {
   mockActiveInstructors,
   mockInstructor,
+  mockContractorNotReady,
+  mockContractorReady,
 } from '@maple/react/storybook-fixtures';
 
 /** Static default date so the story renders the same every time */
@@ -300,6 +303,77 @@ export const EditWithReferralProgram: Story = {
     });
     expect(canvas.getByLabelText(/friend gets/i)).toHaveValue(50);
     expect(canvas.getByLabelText(/code expires after/i)).toHaveValue(60);
+  },
+};
+
+/**
+ * Minimum enrollment: pre-populated on edit, rejected above capacity, and
+ * submitted as a number once valid.
+ */
+export const EditMinimumEnrollment: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassWithMinimum,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const input = await waitFor(() => {
+      const el = canvas.getByLabelText(/minimum enrollment/i);
+      expect(el).toHaveValue(4);
+      return el;
+    });
+
+    // Above capacity (10) is refused and never submitted.
+    await userEvent.clear(input);
+    await userEvent.type(input, '12');
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(
+        canvas.getAllByText(/minimum enrollment cannot exceed capacity/i).length
+      ).toBeGreaterThan(0);
+    });
+    expect(args.onSubmit).not.toHaveBeenCalled();
+
+    // A valid minimum submits.
+    await userEvent.clear(input);
+    await userEvent.type(input, '6');
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ minimumEnrollment: 6 })
+      );
+    });
+  },
+};
+
+/**
+ * Clearing the minimum submits `null`, so the stored value is removed
+ * rather than silently kept.
+ */
+export const ClearMinimumEnrollment: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassWithMinimum,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const input = await waitFor(() => {
+      const el = canvas.getByLabelText(/minimum enrollment/i);
+      expect(el).toHaveValue(4);
+      return el;
+    });
+
+    await userEvent.clear(input);
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ minimumEnrollment: null })
+      );
+    });
   },
 };
 
@@ -591,5 +665,101 @@ export const WithCategoryPoolPicker: Story = {
     );
     expect(allCheckboxes.length).toBeGreaterThanOrEqual(5);
     expect(enabled.length).toBe(2);
+  },
+};
+
+// ============================================================
+// INSTRUCTOR READINESS
+// ============================================================
+
+const classWithNotReadyInstructor = {
+  ...mockClass,
+  instructorId: mockContractorNotReady.id,
+};
+
+const readinessInstructors = [
+  mockInstructor,
+  mockContractorReady,
+  mockContractorNotReady,
+];
+
+/**
+ * Editing a class whose contract instructor is not cleared to teach: a
+ * warning names what is missing, and saving still goes through.
+ */
+export const InstructorNotReadyWarns: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: classWithNotReadyInstructor,
+    instructors: readinessInstructors,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    const alert = await canvas.findByTestId('instructor-not-ready-alert');
+    await expect(alert).toHaveTextContent(
+      "Olive Thompson isn't cleared to teach yet: missing background check and payment setup. You can still save this class."
+    );
+
+    const save = canvas.getByRole('button', { name: /^update$/i });
+    await expect(save).toBeEnabled();
+    await userEvent.click(save);
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ instructorId: mockContractorNotReady.id })
+      );
+    });
+  },
+};
+
+/**
+ * Picking a not-ready instructor raises the warning; switching to a cleared
+ * one clears it.
+ */
+export const SelectingInstructorTogglesWarning: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    instructors: readinessInstructors,
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByLabelText(/^instructor$/i));
+    await userEvent.click(canvas.getByRole('option', { name: mockContractorNotReady.name }));
+    await expect(
+      await canvas.findByTestId('instructor-not-ready-alert')
+    ).toHaveTextContent(/missing background check and payment setup/);
+    // The menu animates out; wait for it before reopening.
+    await waitFor(() => {
+      expect(canvas.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(canvas.getByLabelText(/^instructor$/i));
+    await userEvent.click(canvas.getByRole('option', { name: mockContractorReady.name }));
+    await waitFor(() => {
+      expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
+    });
+  },
+};
+
+/**
+ * Instructors still loading: the class names an instructor we cannot see
+ * yet. Unknown is not "not ready", so no warning is drawn.
+ */
+export const InstructorsLoadingShowsNoWarning: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: classWithNotReadyInstructor,
+    instructors: [],
+  },
+  play: async () => {
+    const canvas = await waitForDialog();
+    await expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/isn't cleared to teach/i)).not.toBeInTheDocument();
   },
 };

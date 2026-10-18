@@ -93,6 +93,13 @@ function docToClass(
     materialsIncluded: data.materialsIncluded,
     whatToBring: data.whatToBring,
     minimumAge: data.minimumAge,
+    minimumEnrollment:
+      typeof data.minimumEnrollment === 'number'
+        ? data.minimumEnrollment
+        : undefined,
+    underMinimumAlertSentAt: data.underMinimumAlertSentAt
+      ? toDate(data.underMinimumAlertSentAt)
+      : undefined,
     webflowItemId: data.webflowItemId,
     webflowSlug: data.webflowSlug,
     squareCatalogItemId: data.squareCatalogItemId,
@@ -394,6 +401,40 @@ export const ClassRepository = {
     return classes
       .map((c) => c.squareCatalogItemId)
       .filter((itemId): itemId is string => Boolean(itemId));
+  },
+
+  /**
+   * Claim the one-time "below minimum enrollment" alert for a class.
+   *
+   * Transactional so the schedule and its admin-callable twin can't both
+   * send: returns `true` if this caller stamped `underMinimumAlertSentAt`
+   * and should send, `false` if the class was already alerted (or is gone).
+   *
+   * Bare update with NO `updatedAt` bump, like the other sync back-references:
+   * every class write fires the Webflow/Square/calendar triggers, and the
+   * marker is not a field any of them sync.
+   */
+  async claimUnderMinimumAlert(id: string, at: Date): Promise<boolean> {
+    const docRef = db.collection(COLLECTION).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists || snap.data()?.underMinimumAlertSentAt) {
+        return false;
+      }
+      tx.update(docRef, { underMinimumAlertSentAt: at });
+      return true;
+    });
+  },
+
+  /**
+   * Undo `claimUnderMinimumAlert` when queuing the alert failed, so the next
+   * run retries instead of the alert being silently lost.
+   */
+  async releaseUnderMinimumAlert(id: string): Promise<void> {
+    await db
+      .collection(COLLECTION)
+      .doc(id)
+      .update({ underMinimumAlertSentAt: null });
   },
 
   /**

@@ -63,6 +63,7 @@ export function inboxTone(kind: InboxItemKind): InboxTone {
     case 'craft-club-past-due':
       return 'failure';
     case 'agreement-unsigned':
+    case 'instructor-not-ready':
       return 'deadline';
     default:
       return 'quiet';

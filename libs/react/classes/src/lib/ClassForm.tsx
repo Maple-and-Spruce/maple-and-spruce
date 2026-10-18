@@ -47,7 +47,12 @@ import type {
   GalleryImage,
   Room,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel } from '@maple/ts/domain';
+import {
+  ROOMS,
+  describeMissingReadiness,
+  getRoomLabel,
+  instructorReadiness,
+} from '@maple/ts/domain';
 import { RoomAvailability } from '@maple/react/rooms';
 import type {
   UploadClassImageRequest,
@@ -98,6 +103,25 @@ function readFileAsBase64(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Warn, don't block, when the chosen instructor is a contractor who has not
+ * been cleared to teach. A class is often scheduled while the paperwork is
+ * still coming back. Only drawn for an instructor we actually have: while the
+ * list is loading the instructor is unknown, which is not "not ready".
+ */
+function InstructorNotReadyAlert({ instructor }: { instructor?: Instructor }) {
+  if (!instructor) return null;
+  const status = instructorReadiness(instructor);
+  if (status.kind !== 'not-ready') return null;
+  return (
+    <Alert severity="warning" data-testid="instructor-not-ready-alert">
+      {instructor.name} isn&apos;t cleared to teach yet: missing{' '}
+      {describeMissingReadiness(status.missing)}. You can still save this
+      class.
+    </Alert>
+  );
 }
 
 /**
@@ -180,6 +204,9 @@ export function ClassForm({
 
   const durationMinutes = useSignal(60);
   const capacity = useSignal(8);
+  // Instructor's minimum headcount; staff get an email a week out if
+  // confirmed seats are below it. Admin-only, never shown publicly.
+  const minimumEnrollment = useSignal<number | null>(null);
   const priceCents = useSignal(0);
   const priceDisplay = useSignal('0.00');
   const imageUrl = useSignal('');
@@ -253,6 +280,7 @@ export function ClassForm({
       registrationClosesAt: registrationClosesAt.value ?? undefined,
       durationMinutes: durationMinutes.value,
       capacity: capacity.value,
+      minimumEnrollment: minimumEnrollment.value,
       priceCents: priceCents.value,
       categoryId: categoryId.value || undefined,
       skillLevel: skillLevel.value,
@@ -294,6 +322,7 @@ export function ClassForm({
     registrationClosesAt: 'Registration Close',
     durationMinutes: 'Duration',
     capacity: 'Capacity',
+    minimumEnrollment: 'Minimum Enrollment',
     priceCents: 'Price',
     skillLevel: 'Skill Level',
     status: 'Status',
@@ -349,6 +378,7 @@ export function ClassForm({
           : null;
         durationMinutes.value = classItem.durationMinutes;
         capacity.value = classItem.capacity;
+        minimumEnrollment.value = classItem.minimumEnrollment ?? null;
         priceCents.value = classItem.priceCents;
         priceDisplay.value = (classItem.priceCents / 100).toFixed(2);
         imageUrl.value = classItem.imageUrl ?? '';
@@ -409,6 +439,7 @@ export function ClassForm({
         durationMinutes.value = 120;
         durationMode.value = 'preset';
         capacity.value = 8;
+        minimumEnrollment.value = null;
         priceCents.value = 4500;
         priceDisplay.value = '45.00';
         imageUrl.value = '';
@@ -608,6 +639,9 @@ export function ClassForm({
         registrationClosesAt: registrationClosesAt.value ?? undefined,
         durationMinutes: durationMinutes.value,
         capacity: capacity.value,
+        // null (not undefined) so clearing the field on edit removes the
+        // stored minimum instead of being dropped from the update.
+        minimumEnrollment: minimumEnrollment.value,
         priceCents: priceCents.value,
         imageUrl: currentImageUrl || undefined,
         galleryImages:
@@ -1075,6 +1109,22 @@ export function ClassForm({
                 sx={{ width: 120 }}
                 required
               />
+              <TextField
+                label="Minimum Enrollment"
+                type="number"
+                value={minimumEnrollment.value ?? ''}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  minimumEnrollment.value = isNaN(val) ? null : val;
+                }}
+                error={!!getFieldError('minimumEnrollment')}
+                helperText={
+                  getFieldError('minimumEnrollment') ||
+                  'Optional. Staff get an email a week out if below this'
+                }
+                slotProps={{ htmlInput: { min: 1, step: 1 } }}
+                sx={{ width: 220 }}
+              />
               <FormControl sx={{ minWidth: 140 }}>
                 <InputLabel id="skill-level-label">Skill Level</InputLabel>
                 <Select
@@ -1138,6 +1188,9 @@ export function ClassForm({
                 </FormHelperText>
               </FormControl>
             )}
+            <InstructorNotReadyAlert
+              instructor={instructors.find((i) => i.id === instructorId.value)}
+            />
 
             {/* Location */}
             <TextField

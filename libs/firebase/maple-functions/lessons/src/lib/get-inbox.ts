@@ -20,6 +20,7 @@ import {
   ClassRepository,
   CraftClubMemberRepository,
   InboxDismissalRepository,
+  InstructorRepository,
   LessonInquiryRepository,
   RegistrationRepository,
   SyncConflictRepository,
@@ -30,6 +31,7 @@ import {
   hasOpenPartialRefund,
   hasOpenRefundReview,
   INBOX_REFUND_LOOKBACK_DAYS,
+  instructorsNotReadyToTeach,
   withoutDismissed,
   type InboxClass,
 } from '@maple/ts/domain';
@@ -61,23 +63,28 @@ export async function getInbox(): Promise<GetInboxResponse> {
     craftClubMembers,
     pendingAgreements,
     syncConflicts,
+    activeInstructors,
+    upcomingClasses,
     refundedRegistrations,
     flaggedRefunds,
   ] = await Promise.all([
-      // The whole studio: the inbox is admin-only.
-      collectNeedsAttention(undefined, now),
-      LessonInquiryRepository.findAll({ status: 'new' }),
-      CraftClubMemberRepository.findAll(),
-      AgreementRequestRepository.findAll({ status: 'pending' }),
-      SyncConflictRepository.findPending(),
-      // Refunds are rare, so every registration with one is a small read;
-      // the builder keeps the open partial ones from the last 90 days.
-      RegistrationRepository.findWithRefunds(),
-      // Square refunds on a shared (POS) sale, flagged for someone to check.
-      RegistrationRepository.findWithRefundReviewSince(
-        new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
-      ),
-    ]);
+    // The whole studio: the inbox is admin-only.
+    collectNeedsAttention(undefined, now),
+    LessonInquiryRepository.findAll({ status: 'new' }),
+    CraftClubMemberRepository.findAll(),
+    AgreementRequestRepository.findAll({ status: 'pending' }),
+    SyncConflictRepository.findPending(),
+    // Contractor readiness is admin-only, which the inbox is.
+    InstructorRepository.findAll({ status: 'active' }),
+    ClassRepository.findAll({ upcoming: true }),
+    // Refunds are rare, so every registration with one is a small read;
+    // the builder keeps the open partial ones from the last 90 days.
+    RegistrationRepository.findWithRefunds(),
+    // Square refunds on a shared (POS) sale, flagged for someone to check.
+    RegistrationRepository.findWithRefundReviewSince(
+      new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
+    ),
+  ]);
   const partialRefunds = refundedRegistrations.filter(hasOpenPartialRefund);
   const refundReviews = flaggedRefunds.filter(hasOpenRefundReview);
 
@@ -108,6 +115,11 @@ export async function getInbox(): Promise<GetInboxResponse> {
     syncConflicts,
     refundedRegistrations: partialRefunds,
     refundReviews,
+    instructorsNotReady: instructorsNotReadyToTeach(
+      activeInstructors,
+      upcomingClasses,
+      now
+    ),
   });
 
   const dismissals = await InboxDismissalRepository.findByKeys(

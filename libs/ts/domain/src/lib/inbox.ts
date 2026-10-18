@@ -20,6 +20,8 @@
  *    the student stays enrolled, for `INBOX_REFUND_LOOKBACK_DAYS`
  *  - a Square refund on a sale that included a class but could not be pinned
  *    on it (a POS sale), for `INBOX_REFUND_LOOKBACK_DAYS`
+ *  - a contract instructor not cleared to teach, only while their next class
+ *    meets within `INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS`
  *
  * "Mark done" hides an item for everyone. It is keyed on the item's `key`,
  * which starts with the kind and names the record **and** the state that made
@@ -39,6 +41,11 @@ import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention'
 import { hasOpenPartialRefund, hasOpenRefundReview } from './registration';
 import type { Registration } from './registration';
 import { zonedDateKey } from './schedule-format';
+import {
+  describeMissingReadiness,
+  instructorEditHref,
+  type InstructorNotReadyToTeach,
+} from './instructor';
 
 export type InboxItemKind =
   | 'lesson-inquiry'
@@ -50,6 +57,7 @@ export type InboxItemKind =
   | 'sync-conflicts'
   | 'refund-partial'
   | 'refund-review'
+  | 'instructor-not-ready'
   | NeedsAttentionKind;
 
 /**
@@ -68,6 +76,7 @@ export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
   'sync-conflicts': 'Sync',
   'refund-partial': 'Part refund',
   'refund-review': 'Check refund',
+  'instructor-not-ready': 'Not cleared',
   'lesson-unbilled': 'Not billed',
   'invoice-overdue': 'Overdue',
   'invoice-sync-failed': 'Not sent',
@@ -102,6 +111,14 @@ export const INBOX_INQUIRY_MAX_AGE_DAYS = 30;
 export const INBOX_AGREEMENT_WINDOW_DAYS = 7;
 /** …and are urgent when the class is within this many hours. */
 export const INBOX_AGREEMENT_URGENT_HOURS = 48;
+/**
+ * An uncleared contract instructor surfaces once their next class is this
+ * close. Wider than the agreement window: a background check or payroll
+ * onboarding takes days, so a week's notice is already late.
+ */
+export const INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS = 14;
+/** …and is urgent inside this many days. */
+export const INBOX_INSTRUCTOR_READINESS_URGENT_DAYS = 7;
 /** Unbilled and blockless lessons older than this are not chased here. */
 export const INBOX_LESSON_LOOKBACK_DAYS = 14;
 /** A partial refund older than this is not chased here. */
@@ -195,6 +212,8 @@ export interface InboxSources {
       | 'refundReviewId'
     >
   >;
+  /** Contract instructors not cleared to teach who have a class coming up. */
+  instructorsNotReady: ReadonlyArray<InstructorNotReadyToTeach>;
   /** Shop timezone for day words and clock times. */
   timeZone?: string;
 }
@@ -447,6 +466,34 @@ function needsAttentionItems(sources: InboxSources): InboxItem[] {
   return items;
 }
 
+function instructorReadinessItems(sources: InboxSources, tz: string): InboxItem[] {
+  const { now } = sources;
+  const items: InboxItem[] = [];
+  for (const entry of sources.instructorsNotReady) {
+    const until = ms(entry.nextSessionAt) - ms(now);
+    if (until <= 0 || until > INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS * DAY_MS) {
+      continue;
+    }
+    items.push({
+      // Keyed on the session it is about: "Mark done" holds until the
+      // instructor's next class is a different one.
+      key: `instructor-not-ready:${entry.instructor.id}:${ms(entry.nextSessionAt)}`,
+      kind: 'instructor-not-ready',
+      title: `${entry.instructor.name} for ${possessiveDay(entry.nextSessionAt, now, tz)} ${entry.nextClass.name}`,
+      detail: `Missing ${describeMissingReadiness(entry.missing)}`,
+      href: instructorEditHref(entry.instructor.id),
+      actionLabel: 'Update',
+      // It became something to do when the class came inside the window.
+      occurredAt: new Date(
+        ms(entry.nextSessionAt) - INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS * DAY_MS
+      ).toISOString(),
+      dueAt: entry.nextSessionAt.toISOString(),
+      urgent: until <= INBOX_INSTRUCTOR_READINESS_URGENT_DAYS * DAY_MS,
+    });
+  }
+  return items;
+}
+
 function syncConflictItems(sources: InboxSources): InboxItem[] {
   const pending = sources.syncConflicts;
   if (pending.length === 0) return [];
@@ -532,12 +579,14 @@ function refundReviewItems(sources: InboxSources): InboxItem[] {
 }
 
 /**
- * Sort rank: failed charges, then agreements for a class within 48 hours,
- * then stale inquiries, then new inquiries, then everything else.
+ * Sort rank: failed charges, then agreements for a class within 48 hours and
+ * uncleared instructors teaching within a week, then stale inquiries, then
+ * new inquiries, then everything else.
  */
 export function inboxRank(item: Pick<InboxItem, 'kind' | 'urgent'>): number {
   if (item.kind === 'charge-failed') return 0;
   if (item.kind === 'agreement-unsigned' && item.urgent) return 1;
+  if (item.kind === 'instructor-not-ready' && item.urgent) return 1;
   if (item.kind === 'lesson-inquiry') return item.urgent ? 2 : 3;
   return 4;
 }
@@ -561,6 +610,7 @@ export function buildInboxItems(sources: InboxSources): InboxItem[] {
   return sortInboxItems([
     ...chargeItems(sources, tz),
     ...agreementItems(sources, tz),
+    ...instructorReadinessItems(sources, tz),
     ...inquiryItems(sources, tz),
     ...craftClubItems(sources),
     ...needsAttentionItems(sources),

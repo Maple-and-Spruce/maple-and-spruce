@@ -79,6 +79,7 @@
 | Instructor components | Complete | legacy #9 | `libs/react/instructors/` |
 | Class components | Complete | legacy #9 | `libs/react/classes/` |
 | Instructors page | Complete | legacy #9 | `/instructors` admin page |
+| Contract instructor readiness | Complete | — | `Instructor.isContractor` + `readiness` (agreement signed, background check cleared, payment setup via Square Payroll or W-9), dates as `YYYY-MM-DD`; "ready" derived by `instructorReadiness()`, never stored. Admin-only: stripped from `getInstructor(s)` for non-admins, never in `toPublicInstructor`/Webflow. Form section, list "Not ready" chip, class-form warning (warns, never blocks), `instructor-not-ready` Home inbox row (`lessons/getInbox`, admin-only) while their next class is within 14 days, urgent inside 7, linking to `/instructors?edit=<id>`. No insurance tracking (venue-carried coverage) |
 | Classes page | Complete | legacy #9 | `/classes` admin page |
 | useInstructors hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useInstructors.ts` |
 | useClasses hook | Complete | legacy #9 | `apps/maple-spruce/src/hooks/useClasses.ts` |
@@ -96,6 +97,7 @@
 | Public registration flow | Complete | legacy #9 | Webflow embed via `apps/webflow-components/src/RegistrationWidget.tsx` (admin-app POC `/register` pages removed) |
 | useDiscounts + useRegistrations hooks | Complete | legacy #9 | `libs/react/data/src/lib/` |
 | Storybook fixtures | Complete | legacy #9 | `apps/maple-spruce/.storybook/fixtures/` |
+| Class minimum enrollment + staff alert | Complete | - | Admin-only `Class.minimumEnrollment` (form field, validation ≤ capacity). The daily `sendClassReminders` job emails `ADMIN_ALERT_EMAIL` once per class when confirmed seats are below the minimum on the ET day 7 days before the first session (`underMinimumAlertSentAt` marker). Alert only: nothing is cancelled, refunded or sent to students. `libs/firebase/maple-functions/send-class-reminders/src/lib/under-minimum-alert.ts` |
 
 ## Webflow Go-Live (COMPLETE)
 

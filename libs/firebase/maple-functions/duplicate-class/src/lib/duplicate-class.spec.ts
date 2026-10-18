@@ -60,6 +60,8 @@ const sourceClass: Class = {
   materialsIncluded: 'Clay, glazes, firing',
   whatToBring: 'Apron and a curious mind',
   minimumAge: 12,
+  minimumEnrollment: 4,
+  underMinimumAlertSentAt: new Date('2026-04-02T12:00:00Z'),
   webflowItemId: 'webflow-original-id',
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-04-01T00:00:00Z'),
@@ -119,6 +121,9 @@ describe('duplicateClass', () => {
     expect(created.materialsIncluded).toBe(sourceClass.materialsIncluded);
     expect(created.whatToBring).toBe(sourceClass.whatToBring);
     expect(created.minimumAge).toBe(sourceClass.minimumAge);
+    expect(created.minimumEnrollment).toBe(sourceClass.minimumEnrollment);
+    // The copy is a new run of the class and gets its own alert.
+    expect(created).not.toHaveProperty('underMinimumAlertSentAt');
 
     // Gallery URLs are deep-copied (not aliased) so future edits to the
     // copy don't mutate the source's array, but the URL strings themselves
