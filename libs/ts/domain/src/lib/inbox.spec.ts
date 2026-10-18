@@ -33,6 +33,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     needsAttention: [],
     syncConflicts: [],
     refundedRegistrations: [],
+    refundReviews: [],
     timeZone: 'America/New_York',
     ...overrides,
   };
@@ -568,6 +569,74 @@ describe('partial refunds (#144)', () => {
     expect(item.occurredAt).toBe(ago(DAY).toISOString());
     expect(item.title).toBe('Class registration');
     expect(item.detail).toBe('$20.00 of $63.60 refunded in Square');
+  });
+});
+
+describe('refunds to check (#144)', () => {
+  type Review = InboxSources['refundReviews'][number];
+  const review = (overrides: Partial<Review> = {}): Review => ({
+    id: 'reg-1',
+    classId: 'cls-1',
+    customerName: 'Olive Thompson',
+    status: 'confirmed',
+    refundReviewAt: ago(2 * HOUR),
+    refundReviewAmountCents: 10000,
+    refundReviewId: 'rf-1',
+    ...overrides,
+  });
+  const pottery = { id: 'cls-1', name: 'Wheel Pottery', sessions: [] };
+
+  it('asks whether a refund on a shared sale was for the class', () => {
+    const items = buildInboxItems(sources({ refundReviews: [review()], classes: [pottery] }));
+    expect(items).toEqual([
+      {
+        key: 'refund-review:reg-1:rf-1',
+        kind: 'refund-review',
+        title: 'Wheel Pottery',
+        detail:
+          '$100.00 refunded in Square on a sale that included this class. Was it the class? · Olive Thompson',
+        href: '/classes/cls-1/roster',
+        actionLabel: 'Review',
+        occurredAt: ago(2 * HOUR).toISOString(),
+        urgent: false,
+      },
+    ]);
+    expect(INBOX_KIND_LABELS['refund-review']).toBe('Check refund');
+  });
+
+  it('a second flagged refund is a new key', () => {
+    const [a] = buildInboxItems(sources({ refundReviews: [review()] }));
+    const [b] = buildInboxItems(sources({ refundReviews: [review({ refundReviewId: 'rf-2' })] }));
+    expect(a.key).not.toBe(b.key);
+  });
+
+  it('leaves out settled, unflagged and old reviews', () => {
+    const items = buildInboxItems(
+      sources({
+        refundReviews: [
+          review({ id: 'refunded', status: 'refunded' }),
+          review({ id: 'cancelled', status: 'cancelled' }),
+          review({ id: 'none', refundReviewAt: undefined }),
+          review({ id: 'old', refundReviewAt: ago((INBOX_REFUND_LOOKBACK_DAYS + 1) * DAY) }),
+        ],
+      })
+    );
+    expect(items).toEqual([]);
+  });
+
+  it('falls back to a generic title, the time in the key and no name', () => {
+    const [item] = buildInboxItems(
+      sources({
+        refundReviews: [
+          review({ customerName: '', refundReviewId: undefined, refundReviewAmountCents: undefined }),
+        ],
+      })
+    );
+    expect(item.title).toBe('Class registration');
+    expect(item.key).toBe(`refund-review:reg-1:${ago(2 * HOUR).getTime()}`);
+    expect(item.detail).toBe(
+      '$0.00 refunded in Square on a sale that included this class. Was it the class?'
+    );
   });
 });
 

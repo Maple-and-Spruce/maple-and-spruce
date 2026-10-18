@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   applySquareRefundToRegistration,
+  flagSquareRefundForReview,
   type Registration,
   type SquareRefundInput,
 } from '@maple/ts/domain';
@@ -26,9 +27,10 @@ const mocks = vi.hoisted(() => {
     findBySubscriptionId: vi.fn(),
     craftClubUpdate: vi.fn(),
     posEnqueue: vi.fn(),
-    findBySquarePaymentId: vi.fn(),
-    findBySquareOrderId: vi.fn(),
+    findAllBySquarePaymentId: vi.fn(),
+    findAllBySquareOrderId: vi.fn(),
     applySquareRefund: vi.fn(),
+    flagSquareRefundForReview: vi.fn(),
   };
 });
 
@@ -56,9 +58,10 @@ vi.mock('@maple/firebase/database', () => ({
     enqueue: mocks.posEnqueue,
   },
   RegistrationRepository: {
-    findBySquarePaymentId: mocks.findBySquarePaymentId,
-    findBySquareOrderId: mocks.findBySquareOrderId,
+    findAllBySquarePaymentId: mocks.findAllBySquarePaymentId,
+    findAllBySquareOrderId: mocks.findAllBySquareOrderId,
     applySquareRefund: mocks.applySquareRefund,
+    flagSquareRefundForReview: mocks.flagSquareRefundForReview,
   },
 }));
 
@@ -885,6 +888,8 @@ describe('handleRefundEvent (#144)', () => {
    * exercised end to end through the handler.
    */
   let stored: Registration;
+  /** Other registrations on the same payment (a POS sale). */
+  let siblings: Registration[];
 
   function confirmedRegistration(overrides: Partial<Registration> = {}): Registration {
     return {
@@ -938,11 +943,22 @@ describe('handleRefundEvent (#144)', () => {
     vi.clearAllMocks();
     ({ handleRefundEvent } = await import('./square-webhook'));
     stored = confirmedRegistration();
-    mocks.findBySquarePaymentId.mockImplementation(async (id: string) =>
-      id === stored.squarePaymentId ? stored : undefined
+    siblings = [];
+    const all = () => [stored, ...siblings];
+    mocks.findAllBySquarePaymentId.mockImplementation(async (id: string) =>
+      all().filter((r) => r.squarePaymentId === id)
     );
-    mocks.findBySquareOrderId.mockImplementation(async (id: string) =>
-      id === stored.squareOrderId ? stored : undefined
+    mocks.findAllBySquareOrderId.mockImplementation(async (id: string) =>
+      all().filter((r) => r.squareOrderId === id)
+    );
+    mocks.flagSquareRefundForReview.mockImplementation(
+      async (id: string, refund: SquareRefundInput) => {
+        const reg = all().find((r) => r.id === id);
+        if (!reg) return undefined;
+        const result = flagSquareRefundForReview(reg, refund);
+        if (result.outcome === 'flagged') Object.assign(reg, result.updates);
+        return { outcome: result.outcome };
+      }
     );
     mocks.applySquareRefund.mockImplementation(
       async (_id: string, refund: SquareRefundInput) => {
@@ -958,7 +974,7 @@ describe('handleRefundEvent (#144)', () => {
   it('a full refund marks the registration refunded', async () => {
     const result = await handleRefundEvent(completed('rf-1', 6360));
 
-    expect(mocks.findBySquarePaymentId).toHaveBeenCalledWith('pay-1');
+    expect(mocks.findAllBySquarePaymentId).toHaveBeenCalledWith('pay-1');
     expect(mocks.applySquareRefund).toHaveBeenCalledWith('reg-1', {
       refundId: 'rf-1',
       amountCents: 6360,
@@ -1002,8 +1018,15 @@ describe('handleRefundEvent (#144)', () => {
     const replay = await handleRefundEvent(completed('rf-1', 2000));
 
     expect(replay.action).toBe('skipped');
-    expect(replay.details).toContain('already counted');
+    expect(replay.details).toContain('already recorded');
     expect(stored.refundedAmountCents).toBe(2000);
+  });
+
+  it('a concurrent delivery that loses inside the transaction is a no-op', async () => {
+    mocks.applySquareRefund.mockResolvedValue({ outcome: 'duplicate', registration: stored });
+    const result = await handleRefundEvent(completed('rf-1', 2000));
+    expect(result.action).toBe('skipped');
+    expect(result.details).toContain('already counted');
   });
 
   it('is a no-op for the echo of a refund cancelRegistration already recorded', async () => {
@@ -1035,8 +1058,8 @@ describe('handleRefundEvent (#144)', () => {
     stored = confirmedRegistration({ squarePaymentId: undefined });
     const result = await handleRefundEvent(completed('rf-1', 6360));
 
-    expect(mocks.findBySquarePaymentId).toHaveBeenCalledWith('pay-1');
-    expect(mocks.findBySquareOrderId).toHaveBeenCalledWith('ord-1');
+    expect(mocks.findAllBySquarePaymentId).toHaveBeenCalledWith('pay-1');
+    expect(mocks.findAllBySquareOrderId).toHaveBeenCalledWith('ord-1');
     expect(result.action).toBe('refunded');
   });
 
@@ -1044,7 +1067,7 @@ describe('handleRefundEvent (#144)', () => {
     const result = await handleRefundEvent(
       completed('rf-1', 6360, { payment_id: undefined })
     );
-    expect(mocks.findBySquarePaymentId).not.toHaveBeenCalled();
+    expect(mocks.findAllBySquarePaymentId).not.toHaveBeenCalled();
     expect(result.action).toBe('refunded');
   });
 
@@ -1063,7 +1086,7 @@ describe('handleRefundEvent (#144)', () => {
         )
       );
       expect(result.action).toBe('skipped');
-      expect(mocks.findBySquarePaymentId).not.toHaveBeenCalled();
+      expect(mocks.findAllBySquarePaymentId).not.toHaveBeenCalled();
     }
   );
 
@@ -1096,6 +1119,71 @@ describe('handleRefundEvent (#144)', () => {
     const result = await handleRefundEvent(completed('rf-1', 2000));
     expect(result).toMatchObject({ action: 'skipped' });
     expect(result.details).toContain('vanished');
+  });
+
+  it('flags a single POS registration instead of applying the refund', async () => {
+    stored = confirmedRegistration({ source: 'pos' });
+    const result = await handleRefundEvent(completed('rf-1', 6360));
+
+    expect(result.action).toBe('flagged');
+    expect(mocks.applySquareRefund).not.toHaveBeenCalled();
+    expect(stored).toMatchObject({
+      status: 'confirmed',
+      refundReviewAmountCents: 6360,
+      refundReviewId: 'rf-1',
+      squareRefundIds: ['rf-1'],
+    });
+    expect(stored.refundedAmountCents).toBeUndefined();
+    expect(stored.refundReviewAt).toEqual(new Date('2026-10-15T15:00:00Z'));
+  });
+
+  it('flags every registration when two share the payment, even web ones', async () => {
+    siblings = [confirmedRegistration({ id: 'reg-2' })];
+    const result = await handleRefundEvent(completed('rf-1', 10000));
+
+    expect(result.action).toBe('flagged');
+    expect(result.details).toContain('reg-1, reg-2');
+    expect(mocks.applySquareRefund).not.toHaveBeenCalled();
+    for (const reg of [stored, siblings[0]]) {
+      expect(reg.status).toBe('confirmed');
+      expect(reg.refundedAmountCents).toBeUndefined();
+      expect(reg.refundReviewAmountCents).toBe(10000);
+    }
+  });
+
+  it('a redelivered flag is a no-op', async () => {
+    stored = confirmedRegistration({ source: 'pos' });
+    await handleRefundEvent(completed('rf-1', 6360));
+    mocks.flagSquareRefundForReview.mockClear();
+
+    const replay = await handleRefundEvent(completed('rf-1', 6360));
+    expect(replay.action).toBe('skipped');
+    expect(mocks.flagSquareRefundForReview).not.toHaveBeenCalled();
+  });
+
+  it('reports skipped when every flag turns out to be a duplicate', async () => {
+    stored = confirmedRegistration({ source: 'pos' });
+    mocks.flagSquareRefundForReview.mockResolvedValue({ outcome: 'duplicate' });
+    const result = await handleRefundEvent(completed('rf-1', 6360));
+    expect(result).toMatchObject({ action: 'skipped' });
+    expect(result.details).toContain('already flagged');
+  });
+
+  it('an in-app refund of one POS class does not flag its siblings', async () => {
+    stored = confirmedRegistration({
+      source: 'pos',
+      status: 'refunded',
+      refundedAmountCents: 6360,
+      squareRefundId: 'rf-app',
+      squareRefundIds: ['rf-app'],
+    });
+    siblings = [confirmedRegistration({ id: 'reg-2', source: 'pos' })];
+
+    const result = await handleRefundEvent(completed('rf-app', 6360));
+
+    expect(result.action).toBe('skipped');
+    expect(mocks.flagSquareRefundForReview).not.toHaveBeenCalled();
+    expect(siblings[0].refundReviewAt).toBeUndefined();
   });
 
   it('is dispatched from the endpoint for refund.created and refund.updated', async () => {

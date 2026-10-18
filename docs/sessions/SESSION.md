@@ -17,6 +17,13 @@
   "Part refund" (key includes the amount, so a further refund resurfaces it).
 - `squareRefundIds` makes it idempotent; `cancelRegistration` now writes its refund id there
   too, so the webhook echo of an in-app refund is a no-op.
+- Only an unambiguous refund is applied: exactly one registration on the payment, and not POS.
+  A POS sale writes one registration per class line on one payment and can include shop items,
+  and Square's refund has no itemization, so every match is flagged instead (`refundReviewAt` /
+  `refundReviewAmountCents` / `refundReviewId`, status untouched) and shows on the Inbox as
+  "Check refund". If it was the class, cancel it as "Already refunded in Square"
+  (`cancelRegistration({ refundedInSquare: true })`, no Square call). That also backfills
+  dashboard refunds from before the webhook subscription.
 - **Manual step:** subscribe the Square webhook to `refund.created` + `refund.updated` in the
   Square Developer dashboard, sandbox and production. MT-account refunds stay out of scope.
 

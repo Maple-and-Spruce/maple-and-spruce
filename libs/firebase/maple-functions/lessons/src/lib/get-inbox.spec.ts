@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   findClass: vi.fn(),
   findDismissals: vi.fn(),
   findWithRefunds: vi.fn(),
+  findWithRefundReviewSince: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -24,7 +25,10 @@ vi.mock('@maple/firebase/database', () => ({
   SyncConflictRepository: { findPending: mocks.findPendingConflicts },
   ClassRepository: { findById: mocks.findClass },
   InboxDismissalRepository: { findByKeys: mocks.findDismissals },
-  RegistrationRepository: { findWithRefunds: mocks.findWithRefunds },
+  RegistrationRepository: {
+    findWithRefunds: mocks.findWithRefunds,
+    findWithRefundReviewSince: mocks.findWithRefundReviewSince,
+  },
 }));
 
 vi.mock('@maple/firebase/maple-functions/get-needs-attention', () => ({
@@ -118,6 +122,7 @@ beforeEach(() => {
   mocks.findPendingConflicts.mockResolvedValue([]);
   mocks.findDismissals.mockResolvedValue([]);
   mocks.findWithRefunds.mockResolvedValue([]);
+  mocks.findWithRefundReviewSince.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -213,6 +218,42 @@ describe('getInbox', () => {
       key: 'refund-partial:reg-part:2000',
       title: 'Wheel Pottery',
       detail: '$20.00 of $63.60 refunded in Square · Test Student',
+      href: '/classes/cls-pottery/roster',
+    });
+  });
+
+  it('asks about refunds flagged in the last 90 days that are still open', async () => {
+    mocks.findAgreements.mockResolvedValue([]);
+    mocks.findWithRefundReviewSince.mockResolvedValue([
+      {
+        id: 'reg-pos',
+        classId: 'cls-pottery',
+        customerName: 'Test Student',
+        status: 'confirmed',
+        refundReviewAt: new Date(NOW.getTime() - HOUR),
+        refundReviewAmountCents: 10000,
+        refundReviewId: 'rf-1',
+      },
+      {
+        id: 'reg-settled',
+        classId: 'cls-other',
+        status: 'refunded',
+        refundReviewAt: new Date(NOW.getTime() - HOUR),
+      },
+    ]);
+    mocks.findClass.mockImplementation(async (id: string) =>
+      id === 'cls-pottery' ? { id, name: 'Wheel Pottery', sessions: [] } : undefined
+    );
+
+    const { items } = await getInbox();
+
+    expect(mocks.findWithRefundReviewSince).toHaveBeenCalledWith(
+      new Date(NOW.getTime() - 90 * 86_400_000)
+    );
+    expect(mocks.findClass.mock.calls.map(([id]) => id)).toEqual(['cls-pottery']);
+    expect(items.find((i) => i.kind === 'refund-review')).toMatchObject({
+      key: 'refund-review:reg-pos:rf-1',
+      title: 'Wheel Pottery',
       href: '/classes/cls-pottery/roster',
     });
   });

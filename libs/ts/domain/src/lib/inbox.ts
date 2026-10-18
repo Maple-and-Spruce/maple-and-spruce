@@ -18,6 +18,8 @@
  *  - pending inventory sync conflicts, as one row
  *  - a class registration refunded in part (in the Square dashboard) while
  *    the student stays enrolled, for `INBOX_REFUND_LOOKBACK_DAYS`
+ *  - a Square refund on a sale that included a class but could not be pinned
+ *    on it (a POS sale), for `INBOX_REFUND_LOOKBACK_DAYS`
  *
  * "Mark done" hides an item for everyone. It is keyed on the item's `key`,
  * which starts with the kind and names the record **and** the state that made
@@ -34,7 +36,7 @@ import type { LessonInquiry } from './lesson-inquiry';
 import type { LessonScheduledCharge } from './lesson-scheduled-charge';
 import { DEFAULT_LESSON_TIME_ZONE } from './lesson-block';
 import type { NeedsAttentionGroup, NeedsAttentionKind } from './needs-attention';
-import { hasOpenPartialRefund } from './registration';
+import { hasOpenPartialRefund, hasOpenRefundReview } from './registration';
 import type { Registration } from './registration';
 import { zonedDateKey } from './schedule-format';
 
@@ -47,6 +49,7 @@ export type InboxItemKind =
   | 'agreement-unsigned'
   | 'sync-conflicts'
   | 'refund-partial'
+  | 'refund-review'
   | NeedsAttentionKind;
 
 /**
@@ -64,6 +67,7 @@ export const INBOX_KIND_LABELS: Record<InboxItemKind, string> = {
   'agreement-unsigned': 'Unsigned',
   'sync-conflicts': 'Sync',
   'refund-partial': 'Part refund',
+  'refund-review': 'Check refund',
   'lesson-unbilled': 'Not billed',
   'invoice-overdue': 'Overdue',
   'invoice-sync-failed': 'Not sent',
@@ -173,6 +177,22 @@ export interface InboxSources {
       | 'refundedAmountCents'
       | 'lastRefundAt'
       | 'updatedAt'
+    >
+  >;
+  /**
+   * Registrations with a Square refund flagged for review; only open ones
+   * (still enrolled, flagged within the lookback) are used.
+   */
+  refundReviews: ReadonlyArray<
+    Pick<
+      Registration,
+      | 'id'
+      | 'classId'
+      | 'customerName'
+      | 'status'
+      | 'refundReviewAt'
+      | 'refundReviewAmountCents'
+      | 'refundReviewId'
     >
   >;
   /** Shop timezone for day words and clock times. */
@@ -481,6 +501,36 @@ function partialRefundItems(sources: InboxSources): InboxItem[] {
   return items;
 }
 
+function refundReviewItems(sources: InboxSources): InboxItem[] {
+  const lookback = ms(sources.now) - INBOX_REFUND_LOOKBACK_DAYS * DAY_MS;
+  const classNames = new Map(sources.classes.map((c) => [c.id, c.name]));
+  const items: InboxItem[] = [];
+  for (const registration of sources.refundReviews) {
+    if (!hasOpenRefundReview(registration) || !registration.refundReviewAt) continue;
+    const at = registration.refundReviewAt;
+    if (ms(at) < lookback) continue;
+    const who = registration.customerName?.trim();
+    items.push({
+      // Per refund: a second flagged refund on the same registration is new.
+      key: `refund-review:${registration.id}:${registration.refundReviewId ?? ms(at)}`,
+      kind: 'refund-review',
+      title: classNames.get(registration.classId) ?? 'Class registration',
+      // Amount and question first: on a narrow card the end is clipped.
+      detail: [
+        `${dollars(registration.refundReviewAmountCents ?? 0)} refunded in Square on a sale that included this class. Was it the class?`,
+        who,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      href: `/classes/${registration.classId}/roster`,
+      actionLabel: 'Review',
+      occurredAt: at.toISOString(),
+      urgent: false,
+    });
+  }
+  return items;
+}
+
 /**
  * Sort rank: failed charges, then agreements for a class within 48 hours,
  * then stale inquiries, then new inquiries, then everything else.
@@ -516,6 +566,7 @@ export function buildInboxItems(sources: InboxSources): InboxItem[] {
     ...needsAttentionItems(sources),
     ...syncConflictItems(sources),
     ...partialRefundItems(sources),
+    ...refundReviewItems(sources),
   ]);
 }
 

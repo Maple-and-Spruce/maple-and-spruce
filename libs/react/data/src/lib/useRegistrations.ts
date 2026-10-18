@@ -104,7 +104,8 @@ export function useRegistrations(filters?: UseRegistrationsFilters) {
   const cancelRegistration = useCallback(
     async (
       id: string,
-      refund: boolean
+      refund: boolean,
+      refundedInSquare = false
     ): Promise<{ registration: Registration; refundId?: string }> => {
       const functions = getMapleFunctions();
       const cancel = httpsCallable<
@@ -112,7 +113,11 @@ export function useRegistrations(filters?: UseRegistrationsFilters) {
         CancelRegistrationResponse
       >(functions, 'cancelRegistration');
 
-      const result = await cancel({ id, refund });
+      const result = await cancel({
+        id,
+        refund,
+        ...(refundedInSquare && { refundedInSquare }),
+      });
 
       setRegistrationsState((prev) => {
         if (prev.status !== 'success') return prev;

@@ -37,6 +37,16 @@ export const cancelRegistration = Functions.endpoint
       if (!data.id) {
         throwInvalidArgument('Registration ID is required');
       }
+      for (const flag of ['refund', 'refundedInSquare'] as const) {
+        if (data[flag] !== undefined && typeof data[flag] !== 'boolean') {
+          throwInvalidArgument(`${flag} must be true or false`);
+        }
+      }
+      if (data.refund && data.refundedInSquare) {
+        throwInvalidArgument(
+          'Choose either a refund or already refunded in Square, not both'
+        );
+      }
 
       // Look up the registration
       const registration = await RegistrationRepository.findById(data.id);
@@ -52,6 +62,14 @@ export const cancelRegistration = Functions.endpoint
         throwFailedPrecondition(
           `Registration is already ${registration.status}`
         );
+      }
+
+      // Already refunded in the Square dashboard: record it, no Square call.
+      if (data.refundedInSquare) {
+        const updated = await RegistrationRepository.markRefundedInSquare(
+          registration
+        );
+        return { registration: updated };
       }
 
       let refundId: string | undefined;

@@ -5,6 +5,11 @@ import {
   getNetAmountPaid,
   applySquareRefundToRegistration,
   hasOpenPartialRefund,
+  isSquareRefundUnambiguous,
+  isSquareRefundRecorded,
+  flagSquareRefundForReview,
+  hasOpenRefundReview,
+  refundedInSquareAmountCents,
 } from './registration';
 import type { Registration } from './registration';
 
@@ -190,5 +195,81 @@ describe('hasOpenPartialRefund', () => {
     expect(hasOpenPartialRefund({ status: 'confirmed', refundedAmountCents: 0 })).toBe(false);
     expect(hasOpenPartialRefund({ status: 'refunded', refundedAmountCents: 5300 })).toBe(false);
     expect(hasOpenPartialRefund({ status: 'cancelled', refundedAmountCents: 2000 })).toBe(false);
+  });
+});
+
+describe('isSquareRefundUnambiguous', () => {
+  it('is true only for one web registration', () => {
+    expect(isSquareRefundUnambiguous([{ source: 'web' }])).toBe(true);
+  });
+
+  it('is false for a POS sale, or more than one registration on the payment', () => {
+    expect(isSquareRefundUnambiguous([{ source: 'pos' }])).toBe(false);
+    expect(isSquareRefundUnambiguous([{ source: 'web' }, { source: 'web' }])).toBe(false);
+    expect(isSquareRefundUnambiguous([])).toBe(false);
+  });
+});
+
+describe('isSquareRefundRecorded', () => {
+  it('finds the id in squareRefundIds or the legacy squareRefundId of any match', () => {
+    expect(isSquareRefundRecorded([{}, { squareRefundIds: ['rf-1'] }], 'rf-1')).toBe(true);
+    expect(isSquareRefundRecorded([{ squareRefundId: 'rf-1' }], 'rf-1')).toBe(true);
+    expect(isSquareRefundRecorded([{ squareRefundIds: ['rf-2'] }, {}], 'rf-1')).toBe(false);
+  });
+});
+
+describe('flagSquareRefundForReview', () => {
+  const at = new Date('2026-10-15T15:00:00Z');
+
+  it('notes the refund without touching status or the refunded amount', () => {
+    const result = flagSquareRefundForReview(
+      { squareRefundIds: ['rf-0'] },
+      { refundId: 'rf-1', amountCents: 10000, at }
+    );
+    expect(result).toEqual({
+      outcome: 'flagged',
+      updates: {
+        squareRefundIds: ['rf-0', 'rf-1'],
+        lastRefundAt: at,
+        refundReviewAt: at,
+        refundReviewAmountCents: 10000,
+        refundReviewId: 'rf-1',
+      },
+    });
+  });
+
+  it('is a duplicate for a refund already noted', () => {
+    expect(
+      flagSquareRefundForReview({ squareRefundIds: ['rf-1'] }, { refundId: 'rf-1', amountCents: 1, at })
+    ).toEqual({ outcome: 'duplicate' });
+  });
+
+  it('never stores a negative amount', () => {
+    const result = flagSquareRefundForReview({}, { refundId: 'rf-1', amountCents: -5, at });
+    if (result.outcome !== 'flagged') throw new Error('unexpected');
+    expect(result.updates.refundReviewAmountCents).toBe(0);
+  });
+});
+
+describe('hasOpenRefundReview', () => {
+  const at = new Date('2026-10-15T15:00:00Z');
+  it('is open while flagged and still enrolled', () => {
+    expect(hasOpenRefundReview({ status: 'confirmed', refundReviewAt: at })).toBe(true);
+    expect(hasOpenRefundReview({ status: 'confirmed' })).toBe(false);
+    expect(hasOpenRefundReview({ status: 'refunded', refundReviewAt: at })).toBe(false);
+    expect(hasOpenRefundReview({ status: 'cancelled', refundReviewAt: at })).toBe(false);
+  });
+});
+
+describe('refundedInSquareAmountCents', () => {
+  it('uses the flagged amount when it fits the price', () => {
+    expect(refundedInSquareAmountCents({ pricePaidCents: 6360, refundReviewAmountCents: 2000 })).toBe(2000);
+    expect(refundedInSquareAmountCents({ pricePaidCents: 6360, refundReviewAmountCents: 6360 })).toBe(6360);
+  });
+
+  it('falls back to the price when nothing was flagged or the refund was bigger', () => {
+    expect(refundedInSquareAmountCents({ pricePaidCents: 6360 })).toBe(6360);
+    expect(refundedInSquareAmountCents({ pricePaidCents: 6360, refundReviewAmountCents: 10000 })).toBe(6360);
+    expect(refundedInSquareAmountCents({ pricePaidCents: 6360, refundReviewAmountCents: 0 })).toBe(6360);
   });
 });

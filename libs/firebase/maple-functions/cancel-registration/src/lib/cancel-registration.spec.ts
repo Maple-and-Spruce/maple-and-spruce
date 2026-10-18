@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   update: vi.fn(),
   refundPayment: vi.fn(),
+  markRefundedInSquare: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -33,7 +34,11 @@ vi.mock('@maple/firebase/functions', () => {
 });
 
 vi.mock('@maple/firebase/database', () => ({
-  RegistrationRepository: { findById: mocks.findById, update: mocks.update },
+  RegistrationRepository: {
+    findById: mocks.findById,
+    update: mocks.update,
+    markRefundedInSquare: mocks.markRefundedInSquare,
+  },
 }));
 
 vi.mock('@maple/firebase/square', () => ({
@@ -126,5 +131,41 @@ describe('cancelRegistration', () => {
   it('refuses to refund a registration whose status cannot be refunded', async () => {
     mocks.findById.mockResolvedValue({ ...registration, status: 'pending' });
     await expect(call({ id: 'reg-1', refund: true })).rejects.toThrow("status 'pending'");
+  });
+
+  describe('refundedInSquare (#144)', () => {
+    it('marks it refunded without calling Square', async () => {
+      const flagged = { ...registration, source: 'pos', refundReviewAmountCents: 2000 };
+      mocks.findById.mockResolvedValue(flagged);
+      mocks.markRefundedInSquare.mockResolvedValue({ ...flagged, status: 'refunded' });
+
+      const result = await call({ id: 'reg-1', refundedInSquare: true });
+
+      expect(mocks.refundPayment).not.toHaveBeenCalled();
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(mocks.markRefundedInSquare).toHaveBeenCalledWith(flagged);
+      expect(result).toEqual({ registration: { ...flagged, status: 'refunded' } });
+    });
+
+    it('rejects asking for a refund and already refunded together', async () => {
+      await expect(
+        call({ id: 'reg-1', refund: true, refundedInSquare: true })
+      ).rejects.toThrow('not both');
+      expect(mocks.findById).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-boolean flag', async () => {
+      await expect(call({ id: 'reg-1', refundedInSquare: 'yes' })).rejects.toThrow(
+        'refundedInSquare must be true or false'
+      );
+    });
+
+    it('still refuses a registration that is already refunded', async () => {
+      mocks.findById.mockResolvedValue({ ...registration, status: 'refunded' });
+      await expect(call({ id: 'reg-1', refundedInSquare: true })).rejects.toThrow(
+        'already refunded'
+      );
+      expect(mocks.markRefundedInSquare).not.toHaveBeenCalled();
+    });
   });
 });

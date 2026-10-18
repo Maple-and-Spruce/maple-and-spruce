@@ -163,7 +163,8 @@ async function seedClassAndSettle(): Promise<void> {
 /** A paid, confirmed registration carrying its Square payment id. */
 async function seedConfirmedRegistration(
   id: string,
-  paymentId: string
+  paymentId: string,
+  source: 'web' | 'pos' = 'web'
 ): Promise<void> {
   const now = new Date().toISOString();
   await setFirestoreDoc('registrations', id, {
@@ -173,7 +174,7 @@ async function seedConfirmedRegistration(
     customerName: 'Robin Ashfield',
     quantity: 1,
     status: 'confirmed',
-    source: 'web',
+    source,
     pricePaidCents: PRICE_CENTS,
     subtotalCents: 6000,
     taxAmountCents: 360,
@@ -329,4 +330,45 @@ describe('Square dashboard refunds (squareWebhook refund.*, emulator)', () => {
     expect(res.body['action']).toBe('refunded');
     expect((await readRegistration('reg-order'))['status']).toBe('refunded');
   });
+
+  it('flags both classes on a shared POS sale instead of refunding either; a replay is a no-op', async () => {
+    // processPosSale writes one registration per class line, all on the
+    // sale's payment, and the same sale may include shop items. Square's
+    // refund does not say which item it was for.
+    await seedConfirmedRegistration('reg-pos-a', 'pay-pos', 'pos');
+    await seedConfirmedRegistration('reg-pos-b', 'pay-pos', 'pos');
+
+    const event = refundEvent({
+      id: 'rf-pos',
+      paymentId: 'pay-pos',
+      amountCents: 10000,
+      status: 'COMPLETED',
+    });
+    const res = await postWebhook(event);
+    expect(res.status).toBe(200);
+    expect(res.body['action']).toBe('flagged');
+
+    for (const id of ['reg-pos-a', 'reg-pos-b']) {
+      const reg = await pollUntil(
+        () => readRegistration(id),
+        (r) => r['refundReviewId'] === 'rf-pos'
+      );
+      expect(reg['status']).toBe('confirmed');
+      expect(reg['refundedAmountCents']).toBeUndefined();
+      expect(reg['refundedAt']).toBeUndefined();
+      expect(reg['refundReviewAmountCents']).toBe(10000);
+      expect(reg['refundReviewAt']).toBeDefined();
+      expect(reg['squareRefundIds']).toEqual(['rf-pos']);
+    }
+
+    const replay = await postWebhook(event);
+    expect(replay.status).toBe(200);
+    expect(replay.body['action']).toBe('skipped');
+    for (const id of ['reg-pos-a', 'reg-pos-b']) {
+      const reg = await readRegistration(id);
+      expect(reg['squareRefundIds']).toEqual(['rf-pos']);
+      expect(reg['status']).toBe('confirmed');
+    }
+  });
 });
+

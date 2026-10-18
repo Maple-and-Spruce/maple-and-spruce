@@ -101,6 +101,19 @@ export interface Registration {
   squareRefundIds?: string[];
   /** When the most recent refund (full or partial) was recorded. */
   lastRefundAt?: Date;
+  /**
+   * A Square refund that could not be pinned on this registration: it was
+   * made against a payment this registration shares (a POS sale with other
+   * classes or shop items on it), and Square does not say which items were
+   * refunded. Nothing about the registration changes until someone decides;
+   * it shows on the Home Inbox as `refund-review`. Cleared when the
+   * registration is cancelled as already refunded in Square.
+   */
+  refundReviewAt?: Date;
+  /** The amount of that refund, in cents (tax-inclusive). */
+  refundReviewAmountCents?: number;
+  /** The Square id of that refund. */
+  refundReviewId?: string;
   /** Human-readable confirmation number (e.g. MS-XXXXXX) shown to the buyer. */
   confirmationNumber?: string;
   /**
@@ -147,6 +160,9 @@ export type CreateRegistrationInput = Omit<
   | 'squareRefundId'
   | 'squareRefundIds'
   | 'lastRefundAt'
+  | 'refundReviewAt'
+  | 'refundReviewAmountCents'
+  | 'refundReviewId'
 >;
 
 /**
@@ -271,4 +287,100 @@ export function hasOpenPartialRefund(
     registration.status !== 'refunded' &&
     registration.status !== 'cancelled'
   );
+}
+
+/**
+ * Whether a Square refund can be applied to the registrations its payment
+ * matched without a person deciding.
+ *
+ * Square's refund event carries an amount but no itemization. A web checkout
+ * is one payment for one class registration, so the refund can only be for
+ * that. A POS sale is not: `processPosSale` writes one registration per class
+ * line, all on the sale's payment, and the same sale can include shop items.
+ * A $100 refund on such a sale may be for a pot, not the class, so applying it
+ * would take away a seat and the instructor's pay. Those are flagged instead.
+ */
+export function isSquareRefundUnambiguous(
+  matches: ReadonlyArray<Pick<Registration, 'source'>>
+): boolean {
+  return matches.length === 1 && matches[0].source !== 'pos';
+}
+
+/**
+ * Whether any of the registrations already accounts for this refund: the app
+ * made it (`cancelRegistration` records its id), or an earlier delivery of the
+ * same event was applied or flagged.
+ */
+export function isSquareRefundRecorded(
+  matches: ReadonlyArray<Pick<Registration, 'squareRefundId' | 'squareRefundIds'>>,
+  refundId: string
+): boolean {
+  return matches.some(
+    (r) =>
+      r.squareRefundId === refundId ||
+      (r.squareRefundIds ?? []).includes(refundId)
+  );
+}
+
+export type SquareRefundReviewUpdates = Required<
+  Pick<
+    Registration,
+    | 'squareRefundIds'
+    | 'lastRefundAt'
+    | 'refundReviewAt'
+    | 'refundReviewAmountCents'
+    | 'refundReviewId'
+  >
+>;
+
+/**
+ * Flag a refund for review on one registration it might belong to. Status and
+ * `refundedAmountCents` are left alone; only the refund is noted, and its id
+ * is remembered so a redelivery is a no-op.
+ */
+export function flagSquareRefundForReview(
+  registration: Pick<Registration, 'squareRefundId' | 'squareRefundIds'>,
+  refund: SquareRefundInput
+):
+  | { outcome: 'duplicate' }
+  | { outcome: 'flagged'; updates: SquareRefundReviewUpdates } {
+  if (isSquareRefundRecorded([registration], refund.refundId)) {
+    return { outcome: 'duplicate' };
+  }
+  return {
+    outcome: 'flagged',
+    updates: {
+      squareRefundIds: [...(registration.squareRefundIds ?? []), refund.refundId],
+      lastRefundAt: refund.at,
+      refundReviewAt: refund.at,
+      refundReviewAmountCents: Math.max(0, refund.amountCents),
+      refundReviewId: refund.refundId,
+    },
+  };
+}
+
+/** A flagged refund someone still has to look at. */
+export function hasOpenRefundReview(
+  registration: Pick<Registration, 'status' | 'refundReviewAt'>
+): boolean {
+  return (
+    registration.refundReviewAt !== undefined &&
+    registration.status !== 'refunded' &&
+    registration.status !== 'cancelled'
+  );
+}
+
+/**
+ * What to record as refunded when a registration is cancelled as "already
+ * refunded in Square": the flagged refund's amount when there is one and it
+ * fits the price, otherwise the whole price (a dashboard refund from before
+ * the webhook was subscribed, which nothing recorded).
+ */
+export function refundedInSquareAmountCents(
+  registration: Pick<Registration, 'pricePaidCents' | 'refundReviewAmountCents'>
+): number {
+  const flagged = registration.refundReviewAmountCents;
+  return flagged !== undefined && flagged > 0 && flagged <= registration.pricePaidCents
+    ? flagged
+    : registration.pricePaidCents;
 }
