@@ -47,6 +47,18 @@ set no runtime options of its own, so the router's defaults are the ones it alre
 command is in `docs/reference/deployed-functions.md`. Two integration projects declared
 `implicitDependencies` on the deleted libraries; nx refuses to build the graph until those go.
 
+### Contractor agreement sent from the instructor page (2026-10-18, PRs #251, #254)
+
+The agreement itself is a portal template, **"Class Instructor Agreement (1099)"** (Agreements,
+manual-only, plain language; David decided against attorney review). In an instructor's form,
+**Cleared to teach → Contractor agreement** sends it to sign online and shows not sent / sent /
+expired / signed. The request carries `instructorId`; when it is signed, `submitSignedAgreement`
+writes `readiness.contractorAgreement` (studio-local day, `Signed online, agreement <id>`), keeps
+the other readiness items, and never overwrites a date already recorded (paper copies are still
+entered by hand). A signature landing while the form is open is mirrored into the form so saving
+doesn't clear it. #254 turned on the Storage emulator for integration runs so signing is tested
+end to end in the `agreements` suite.
+
 ### Contract instructor readiness (2026-10-17, PR #139)
 
 Contract instructors (1099) carry an admin-only readiness record: contractor agreement signed,
