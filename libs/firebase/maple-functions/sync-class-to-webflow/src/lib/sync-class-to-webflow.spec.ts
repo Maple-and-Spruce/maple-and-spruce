@@ -196,3 +196,46 @@ describe('syncClassToWebflow — relevant-change guard', () => {
     expect(mocks.syncClass).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('syncClassToWebflow — category material defaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isDev = false;
+    mocks.instructorFindById.mockResolvedValue(null);
+    mocks.registrationCountByClassId.mockResolvedValue(0);
+    mocks.syncClass.mockResolvedValue({
+      success: true,
+      webflowItemId: 'wf-item-1',
+      webflowSlug: 'pottery-101',
+      isNew: false,
+    });
+  });
+
+  it("passes the category's defaults to the mapper for its fallback", async () => {
+    mocks.categoryFindById.mockResolvedValue({
+      id: 'cat-1',
+      name: 'Test Ceramics',
+      order: 0,
+      webflowItemId: 'wf-cat-1',
+      defaultMaterialsIncluded: 'Clay and glazes',
+      defaultWhatToBring: 'An apron',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    });
+
+    await handler(
+      makeEvent(
+        makeSnapshot(false),
+        makeSnapshot(true, makeClassData({ categoryId: 'cat-1' }))
+      )
+    );
+
+    expect(mocks.syncClass).toHaveBeenCalledWith(
+      expect.objectContaining({
+        categoryWebflowItemId: 'wf-cat-1',
+        categoryDefaultMaterialsIncluded: 'Clay and glazes',
+        categoryDefaultWhatToBring: 'An apron',
+      })
+    );
+  });
+});

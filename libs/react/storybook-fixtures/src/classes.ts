@@ -301,3 +301,20 @@ export const mockClassCategoriesWithPool: ClassCategory[] = [
   mockClassCategory2,
   mockClassCategory3,
 ];
+
+/**
+ * Class category with "Materials included" / "What to bring" defaults, for
+ * the class form's pre-fill and the category form's default fields.
+ */
+export const mockClassCategoryWithDefaults: ClassCategory = {
+  ...mockClassCategory2,
+  defaultMaterialsIncluded: 'Clay, glazes, and two firings',
+  defaultWhatToBring: 'Clothes that can get muddy',
+};
+
+/** Categories list with the pottery category swapped for the defaults variant. */
+export const mockClassCategoriesWithDefaults: ClassCategory[] = [
+  mockClassCategory,
+  mockClassCategoryWithDefaults,
+  mockClassCategory3,
+];
