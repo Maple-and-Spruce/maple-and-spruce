@@ -185,7 +185,7 @@ describe('rule presets', () => {
   });
 
   it('limits leave room for a family retrying a declined card', () => {
-    expect(THROTTLE_LIMITS.payment.perAccount.limit).toBeGreaterThanOrEqual(5);
+    expect(THROTTLE_LIMITS.payment.perAccount.limit).toBeGreaterThanOrEqual(10);
     expect(THROTTLE_LIMITS.emailLink.perAccount.limit).toBeGreaterThanOrEqual(3);
   });
 });

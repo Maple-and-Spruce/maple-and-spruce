@@ -144,7 +144,7 @@ describe('Public callable protection', () => {
       // An incomplete body fails validation, which runs after throttling, so
       // no Square call is needed to exercise the count.
       const email = 'protect-reg@example.com';
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 12; i++) {
         const invalid = await callFunction({
           functionName: 'createRegistration',
           data: { customerEmail: email },

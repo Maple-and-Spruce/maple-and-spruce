@@ -125,7 +125,9 @@ export const THROTTLE_LIMITS = {
   /** Endpoints that take a card. */
   payment: {
     perIp: { limit: 20, windowSeconds: HOUR },
-    perAccount: { limit: 8, windowSeconds: HOUR },
+    // A family can go through several declined cards before one works; 8
+    // left too little headroom over what real checkouts showed.
+    perAccount: { limit: 12, windowSeconds: HOUR },
   },
   /** Endpoints that send an email. */
   emailLink: {
