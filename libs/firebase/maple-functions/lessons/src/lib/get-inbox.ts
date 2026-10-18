@@ -20,12 +20,14 @@ import {
   ClassRepository,
   CraftClubMemberRepository,
   InboxDismissalRepository,
+  InstructorRepository,
   LessonInquiryRepository,
   SyncConflictRepository,
 } from '@maple/firebase/database';
 import { collectNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 import {
   buildInboxItems,
+  instructorsNotReadyToTeach,
   withoutDismissed,
   type InboxClass,
 } from '@maple/ts/domain';
@@ -51,15 +53,25 @@ function nextLessonByStudent(
 export async function getInbox(): Promise<GetInboxResponse> {
   const now = new Date();
 
-  const [scan, inquiries, craftClubMembers, pendingAgreements, syncConflicts] =
-    await Promise.all([
-      // The whole studio: the inbox is admin-only.
-      collectNeedsAttention(undefined, now),
-      LessonInquiryRepository.findAll({ status: 'new' }),
-      CraftClubMemberRepository.findAll(),
-      AgreementRequestRepository.findAll({ status: 'pending' }),
-      SyncConflictRepository.findPending(),
-    ]);
+  const [
+    scan,
+    inquiries,
+    craftClubMembers,
+    pendingAgreements,
+    syncConflicts,
+    activeInstructors,
+    upcomingClasses,
+  ] = await Promise.all([
+    // The whole studio: the inbox is admin-only.
+    collectNeedsAttention(undefined, now),
+    LessonInquiryRepository.findAll({ status: 'new' }),
+    CraftClubMemberRepository.findAll(),
+    AgreementRequestRepository.findAll({ status: 'pending' }),
+    SyncConflictRepository.findPending(),
+    // Contractor readiness is admin-only, which the inbox is.
+    InstructorRepository.findAll({ status: 'active' }),
+    ClassRepository.findAll({ upcoming: true }),
+  ]);
 
   // Only the classes a pending request names; the rest are not needed.
   const classIds = [
@@ -84,6 +96,11 @@ export async function getInbox(): Promise<GetInboxResponse> {
     classes,
     needsAttention: scan.groups,
     syncConflicts,
+    instructorsNotReady: instructorsNotReadyToTeach(
+      activeInstructors,
+      upcomingClasses,
+      now
+    ),
   });
 
   const dismissals = await InboxDismissalRepository.findByKeys(

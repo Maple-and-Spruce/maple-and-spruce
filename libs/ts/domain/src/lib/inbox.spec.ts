@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS,
   INBOX_KIND_LABELS,
   buildInboxItems,
   inboxKindOfKey,
@@ -31,6 +32,7 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     classes: [],
     needsAttention: [],
     syncConflicts: [],
+    instructorsNotReady: [],
     timeZone: 'America/New_York',
     ...overrides,
   };
@@ -575,5 +577,64 @@ describe('dismissals', () => {
     for (const label of Object.values(INBOX_KIND_LABELS)) {
       expect(label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('uncleared contract instructors', () => {
+  const entry = (id: string, at: Date) => ({
+    instructor: { id, name: 'Robin Ashfield' },
+    missing: ['background-check' as const, 'payment-setup' as const],
+    nextSessionAt: at,
+    nextClass: { id: `class-${id}`, name: 'Stained Glass Basics' },
+  });
+
+  it('lists one inside the window, linking to their form', () => {
+    const at = ahead(10 * DAY);
+    const [item] = buildInboxItems(sources({ instructorsNotReady: [entry('i1', at)] }));
+
+    expect(item).toMatchObject({
+      key: `instructor-not-ready:i1:${at.getTime()}`,
+      kind: 'instructor-not-ready',
+      detail: 'Missing background check and payment setup',
+      href: '/instructors?edit=i1',
+      actionLabel: 'Update',
+      dueAt: at.toISOString(),
+      urgent: false,
+    });
+    expect(item.title).toMatch(/^Robin Ashfield for .+’s Stained Glass Basics$/);
+  });
+
+  it('leaves out a class further off than the window, or already started', () => {
+    expect(
+      buildInboxItems(
+        sources({
+          instructorsNotReady: [
+            entry('far', ahead((INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS + 1) * DAY)),
+            entry('past', ago(HOUR)),
+          ],
+        })
+      )
+    ).toEqual([]);
+  });
+
+  it('is urgent inside a week and ranks with urgent agreements, above inquiries', () => {
+    const items = buildInboxItems(
+      sources({
+        inquiries: [inquiry('q1', ago(HOUR))],
+        instructorsNotReady: [entry('soon', ahead(3 * DAY))],
+      })
+    );
+
+    expect(items.map((i) => i.kind)).toEqual(['instructor-not-ready', 'lesson-inquiry']);
+    expect(items[0].urgent).toBe(true);
+    expect(inboxRank(items[0])).toBe(1);
+  });
+
+  it('builds a key the dismissal route accepts', () => {
+    const [item] = buildInboxItems(
+      sources({ instructorsNotReady: [entry('i1', ahead(2 * DAY))] })
+    );
+    expect(isWellFormedInboxKey(item.key)).toBe(true);
+    expect(inboxKindOfKey(item.key)).toBe('instructor-not-ready');
   });
 });

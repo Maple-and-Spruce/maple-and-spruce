@@ -90,6 +90,66 @@ export const mockInstructorMinimal: Instructor = {
   updatedAt: new Date('2024-10-01T10:00:00Z'),
 };
 
+/**
+ * A contract instructor who has been cleared to teach: every readiness item
+ * recorded.
+ */
+export const mockContractorReady: Instructor = {
+  id: 'instructor-007',
+  name: 'Robin Ashfield',
+  email: 'robin@example.com',
+  phone: '304-555-0142',
+  status: 'active',
+  bio: 'Stained glass artist teaching copper-foil suncatchers and small panels.',
+  specialties: ['stained glass'],
+  payRate: 6000,
+  payRateType: 'flat',
+  isContractor: true,
+  readiness: {
+    contractorAgreement: {
+      signedOn: '2026-09-01',
+      reference: 'https://example.com/agreements/robin-ashfield.pdf',
+    },
+    backgroundCheck: { clearedOn: '2026-09-08' },
+    paymentSetup: { completedOn: '2026-09-10', method: 'square-payroll' },
+  },
+  createdAt: new Date('2026-08-20T10:00:00Z'),
+  updatedAt: new Date('2026-09-10T10:00:00Z'),
+};
+
+/**
+ * A contract instructor partway through onboarding: agreement signed, still
+ * waiting on the background check and payment setup.
+ */
+export const mockContractorNotReady: Instructor = {
+  id: 'instructor-008',
+  name: 'Olive Thompson',
+  email: 'olive@example.com',
+  phone: '304-555-0143',
+  status: 'active',
+  bio: 'Block printer and bookbinder, new to teaching at the studio.',
+  specialties: ['block printing', 'bookbinding'],
+  payRate: 0.6,
+  payRateType: 'percentage',
+  isContractor: true,
+  readiness: {
+    contractorAgreement: { signedOn: '2026-09-20' },
+  },
+  createdAt: new Date('2026-09-15T10:00:00Z'),
+  updatedAt: new Date('2026-09-20T10:00:00Z'),
+};
+
+/** A contract instructor with nothing recorded yet. */
+export const mockContractorNothingRecorded: Instructor = {
+  id: 'instructor-009',
+  name: 'Test Contractor',
+  email: 'test.contractor@example.com',
+  status: 'active',
+  isContractor: true,
+  createdAt: new Date('2026-09-25T10:00:00Z'),
+  updatedAt: new Date('2026-09-25T10:00:00Z'),
+};
+
 export const mockInstructors: Instructor[] = [
   mockInstructor,
   mockInstructor2,

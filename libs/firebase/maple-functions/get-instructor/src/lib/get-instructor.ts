@@ -5,10 +5,12 @@
  */
 import {
   createRoleFunction,
+  hasRole,
   throwNotFound,
   Role,
 } from '@maple/firebase/functions';
 import { InstructorRepository } from '@maple/firebase/database';
+import { withoutContractorReadiness } from '@maple/ts/domain';
 import type {
   GetInstructorRequest,
   GetInstructorResponse,
@@ -17,12 +19,18 @@ import type {
 export const getInstructor = createRoleFunction<
   GetInstructorRequest,
   GetInstructorResponse
->(async (data) => {
-  const instructor = await InstructorRepository.findById(data.id);
+>(async (data, context) => {
+  const [instructor, isAdmin] = await Promise.all([
+    InstructorRepository.findById(data.id),
+    context.uid ? hasRole(context.uid, Role.Admin) : Promise.resolve(false),
+  ]);
 
   if (!instructor) {
     throwNotFound('Instructor', data.id);
   }
 
-  return { instructor };
+  // Contractor onboarding is admin-only (see getInstructors).
+  return {
+    instructor: isAdmin ? instructor : withoutContractorReadiness(instructor),
+  };
 }, [Role.Admin, Role.LessonTeacher]);
