@@ -3,13 +3,15 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/functions-integration-tests-teacher-payout/src",
   "projectType": "application",
-  "tags": ["type:e2e"],
+  "tags": [
+    "type:e2e"
+  ],
   "implicitDependencies": [
     "firebase-maple-functions-payouts",
     "firebase-maple-functions-create-invoice",
     "firebase-maple-functions-update-invoice",
     "firebase-maple-functions-people",
-    "firebase-maple-functions-create-instructor",
+    "firebase-maple-functions-instructors",
     "firebase-maple-functions-lessons",
     "firebase-integration-test-utils"
   ],

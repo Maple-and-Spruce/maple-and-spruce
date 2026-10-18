@@ -101,6 +101,9 @@
       "@maple/firebase/maple-functions/artists": [
         "libs/firebase/maple-functions/artists/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/instructors": [
+        "libs/firebase/maple-functions/instructors/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/payouts": [
         "libs/firebase/maple-functions/payouts/src/index.ts"
       ],
@@ -142,9 +145,6 @@
       ],
       "@maple/firebase/maple-functions/upload-artist-image": [
         "libs/firebase/maple-functions/upload-artist-image/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/upload-instructor-image": [
-        "libs/firebase/maple-functions/upload-instructor-image/src/index.ts"
       ],
       "@maple/firebase/maple-functions/product-catalog": [
         "libs/firebase/maple-functions/product-catalog/src/index.ts"
@@ -229,21 +229,6 @@
       ],
       "@maple/firebase/maple-functions/detect-sync-conflicts": [
         "libs/firebase/maple-functions/detect-sync-conflicts/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-instructors": [
-        "libs/firebase/maple-functions/get-instructors/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-instructor": [
-        "libs/firebase/maple-functions/get-instructor/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-instructor": [
-        "libs/firebase/maple-functions/create-instructor/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-instructor": [
-        "libs/firebase/maple-functions/update-instructor/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-instructor": [
-        "libs/firebase/maple-functions/delete-instructor/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-needs-attention": [
         "libs/firebase/maple-functions/get-needs-attention/src/index.ts"

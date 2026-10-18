@@ -65,7 +65,7 @@ describe('onClassWrite Trigger', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Trigger Test Instructor',
         email: 'trigger-instructor@test.com',

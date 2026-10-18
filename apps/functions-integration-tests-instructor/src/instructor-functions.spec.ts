@@ -60,7 +60,7 @@ describe('Instructor Functions', () => {
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction<CreateInstructorRequest>({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: SAMPLE_INSTRUCTOR,
       });
       expect(result.status).toBe(401);
@@ -68,7 +68,7 @@ describe('Instructor Functions', () => {
 
     it('should reject non-admin users', async () => {
       const result = await callFunction<CreateInstructorRequest>({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: SAMPLE_INSTRUCTOR,
         idToken: nonAdminUser.idToken,
       });
@@ -84,7 +84,7 @@ describe('Instructor Functions', () => {
         CreateInstructorRequest,
         CreateInstructorResponse
       >({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: SAMPLE_INSTRUCTOR,
         idToken: adminUser.idToken,
       });
@@ -111,7 +111,7 @@ describe('Instructor Functions', () => {
         GetInstructorsRequest,
         GetInstructorsResponse
       >({
-        functionName: 'getInstructors',
+        functionName: 'instructors/getInstructors',
         idToken: adminUser.idToken,
       });
 
@@ -125,7 +125,7 @@ describe('Instructor Functions', () => {
         GetInstructorRequest,
         GetInstructorResponse
       >({
-        functionName: 'getInstructor',
+        functionName: 'instructors/getInstructor',
         data: { id: instructorId },
         idToken: adminUser.idToken,
       });
@@ -141,7 +141,7 @@ describe('Instructor Functions', () => {
         UpdateInstructorRequest,
         UpdateInstructorResponse
       >({
-        functionName: 'updateInstructor',
+        functionName: 'instructors/updateInstructor',
         data: {
           id: instructorId,
           name: 'Jane Master Weaver',
@@ -169,7 +169,7 @@ describe('Instructor Functions', () => {
         DeleteInstructorRequest,
         DeleteInstructorResponse
       >({
-        functionName: 'deleteInstructor',
+        functionName: 'instructors/deleteInstructor',
         data: { id: instructorId },
         idToken: adminUser.idToken,
       });
@@ -180,7 +180,7 @@ describe('Instructor Functions', () => {
 
     it('should return not-found for deleted instructor', async () => {
       const result = await callFunction<GetInstructorRequest>({
-        functionName: 'getInstructor',
+        functionName: 'instructors/getInstructor',
         data: { id: instructorId },
         idToken: adminUser.idToken,
       });
@@ -189,10 +189,23 @@ describe('Instructor Functions', () => {
     });
   });
 
+  describe('Router', () => {
+    it('names an unknown route in its 404', async () => {
+      const result = await callFunction<Record<string, never>>({
+        functionName: 'instructors/getInstructorz',
+        data: {},
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(404);
+      expect(JSON.stringify(result)).toContain('getInstructorz');
+    });
+  });
+
   describe('Validation', () => {
     it('should reject instructor with missing name', async () => {
       const result = await callFunction<Partial<CreateInstructorRequest>>({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: {
           email: 'no-name@test.com',
           status: 'active',
@@ -207,7 +220,7 @@ describe('Instructor Functions', () => {
       // Two in a row: a missing email must not count as a duplicate.
       for (const name of ['No Email One', 'No Email Two']) {
         const result = await callFunction<CreateInstructorRequest, CreateInstructorResponse>({
-          functionName: 'createInstructor',
+          functionName: 'instructors/createInstructor',
           data: { name, status: 'active' },
           idToken: adminUser.idToken,
         });
@@ -220,7 +233,7 @@ describe('Instructor Functions', () => {
 
     it('should reject instructor with invalid email', async () => {
       const result = await callFunction<Partial<CreateInstructorRequest>>({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: {
           name: 'Bad Email Instructor',
           email: 'not-an-email',
@@ -234,7 +247,7 @@ describe('Instructor Functions', () => {
 
     it('should reject percentage pay rate over 1', async () => {
       const result = await callFunction<Partial<CreateInstructorRequest>>({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: {
           name: 'Bad Rate Instructor',
           email: 'bad-rate@test.com',
@@ -271,7 +284,7 @@ describe('Instructor Functions', () => {
         CreateInstructorRequest,
         CreateInstructorResponse
       >({
-        functionName: 'createInstructor',
+        functionName: 'instructors/createInstructor',
         data: {
           name: 'Robin Ashfield',
           email: 'robin.readiness@example.com',
@@ -295,14 +308,14 @@ describe('Instructor Functions', () => {
         UpdateInstructorRequest,
         UpdateInstructorResponse
       >({
-        functionName: 'updateInstructor',
+        functionName: 'instructors/updateInstructor',
         data: { id: contractorId, readiness: allDone },
         idToken: adminUser.idToken,
       });
       expect(update.status).toBe(200);
 
       const read = await callFunction<GetInstructorRequest, GetInstructorResponse>({
-        functionName: 'getInstructor',
+        functionName: 'instructors/getInstructor',
         data: { id: contractorId },
         idToken: adminUser.idToken,
       });
@@ -319,7 +332,7 @@ describe('Instructor Functions', () => {
         UpdateInstructorRequest,
         UpdateInstructorResponse
       >({
-        functionName: 'updateInstructor',
+        functionName: 'instructors/updateInstructor',
         data: { id: contractorId, readiness: withoutAgreement },
         idToken: adminUser.idToken,
       });
@@ -333,7 +346,7 @@ describe('Instructor Functions', () => {
         UpdateInstructorRequest,
         UpdateInstructorResponse
       >({
-        functionName: 'updateInstructor',
+        functionName: 'instructors/updateInstructor',
         data: { id: contractorId, bio: 'Teaches stained glass.' },
         idToken: adminUser.idToken,
       });
@@ -346,7 +359,7 @@ describe('Instructor Functions', () => {
 
     it('rejects an invalid date with invalid-argument', async () => {
       const result = await callFunction<UpdateInstructorRequest>({
-        functionName: 'updateInstructor',
+        functionName: 'instructors/updateInstructor',
         data: {
           id: contractorId,
           readiness: { backgroundCheck: { clearedOn: '09/10/2026' } },
@@ -406,7 +419,7 @@ describe('Instructor Functions', () => {
 
       it('drops the row once every item is recorded', async () => {
         const update = await callFunction<UpdateInstructorRequest>({
-          functionName: 'updateInstructor',
+          functionName: 'instructors/updateInstructor',
           data: { id: contractorId, readiness: allDone },
           idToken: adminUser.idToken,
         });
@@ -419,7 +432,7 @@ describe('Instructor Functions', () => {
 
     it('hides readiness from a lesson teacher listing instructors', async () => {
       const list = await callFunction<GetInstructorsRequest, GetInstructorsResponse>({
-        functionName: 'getInstructors',
+        functionName: 'instructors/getInstructors',
         idToken: teacherUser.idToken,
       });
 
@@ -430,7 +443,7 @@ describe('Instructor Functions', () => {
       expect(contractor).not.toHaveProperty('isContractor');
 
       const single = await callFunction<GetInstructorRequest, GetInstructorResponse>({
-        functionName: 'getInstructor',
+        functionName: 'instructors/getInstructor',
         data: { id: contractorId },
         idToken: teacherUser.idToken,
       });
