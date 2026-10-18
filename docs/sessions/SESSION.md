@@ -6,6 +6,19 @@
 
 ## Current Status
 
+### Contract instructor readiness (2026-10-17, PR #139)
+
+Contract instructors (1099) carry an admin-only readiness record: contractor agreement signed,
+background check cleared, payment setup (Square Payroll, or W-9 + Bill Pay). An explicit
+`isContractor` flag opts an instructor in (not `payRate`: staff can have a rate); "ready" is
+derived, never stored. The class form **warns, never blocks**. Uncleared contractors whose next
+class is within 14 days appear in the Home inbox (`instructor-not-ready`, urgent inside 7 days),
+linking to `/instructors?edit=<id>`. First written 2026-09-29 against the old Needs Attention
+panel; replayed onto the rewritten main and moved to the inbox after the panel was removed (#178).
+Insurance is deliberately not tracked (venue-carried coverage). Existing instructors are
+unflagged, so nothing warns until Katie or David opens each contractor and ticks the switch.
+The instructors router (#64) was waiting on this.
+
 ### Admin sidebar: areas, search and Create, Square-style (2026-10-14)
 
 - The sidebar's 35 always-open links became **8 areas**: Home, Classes, Lessons, Music

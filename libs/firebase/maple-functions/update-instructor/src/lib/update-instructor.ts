@@ -8,6 +8,7 @@ import {
   throwNotFound,
   throwFailedPrecondition,
   throwInvalidArgument,
+  throwValidationError,
 } from '@maple/firebase/functions';
 import {
   InstructorRepository,
@@ -35,13 +36,11 @@ export const updateInstructor = createAdminFunction<
   // it out of the validation merge so its type doesn't leak in.
   const { uid: _uid, ...dataForValidation } = data;
   const merged = { ...existing, ...dataForValidation };
+  // `readiness` replaces the stored record wholesale, so validating the merge
+  // validates exactly what will be written.
   const validationResult = instructorValidation(merged);
-  if (!validationResult.isValid()) {
-    const errors = validationResult.getErrors();
-    const errorMessages = Object.entries(errors)
-      .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
-      .join('; ');
-    throw new Error(`Validation failed: ${errorMessages}`);
+  if (validationResult.hasErrors()) {
+    throwValidationError(validationResult.getErrors());
   }
 
   // Rates only for instruments the studio offers (#161), though rates the

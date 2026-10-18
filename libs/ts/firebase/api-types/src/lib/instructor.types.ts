@@ -59,6 +59,8 @@ export interface UpdateInstructorRequest
    * `null` unlinks; omit to leave unchanged.
    */
   uid?: string | null;
+  // `readiness`, when sent, REPLACES the stored record: an item left out is
+  // cleared. Send `{}` to clear every item; omit to leave it unchanged.
 }
 
 export interface UpdateInstructorResponse {

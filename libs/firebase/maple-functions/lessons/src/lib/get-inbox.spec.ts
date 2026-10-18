@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   findPendingConflicts: vi.fn(),
   findClass: vi.fn(),
   findDismissals: vi.fn(),
+  findInstructors: vi.fn(),
+  findUpcomingClasses: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/database', () => ({
@@ -21,7 +23,8 @@ vi.mock('@maple/firebase/database', () => ({
   CraftClubMemberRepository: { findAll: mocks.findMembers },
   AgreementRequestRepository: { findAll: mocks.findAgreements },
   SyncConflictRepository: { findPending: mocks.findPendingConflicts },
-  ClassRepository: { findById: mocks.findClass },
+  ClassRepository: { findById: mocks.findClass, findAll: mocks.findUpcomingClasses },
+  InstructorRepository: { findAll: mocks.findInstructors },
   InboxDismissalRepository: { findByKeys: mocks.findDismissals },
 }));
 
@@ -115,6 +118,8 @@ beforeEach(() => {
   );
   mocks.findPendingConflicts.mockResolvedValue([]);
   mocks.findDismissals.mockResolvedValue([]);
+  mocks.findInstructors.mockResolvedValue([]);
+  mocks.findUpcomingClasses.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -165,6 +170,59 @@ describe('getInbox', () => {
       'agreement-unsigned',
       'lesson-unbilled',
     ]);
+  });
+
+  it('includes an uncleared contract instructor teaching soon', async () => {
+    mocks.findInstructors.mockResolvedValue([
+      {
+        id: 'ins-1',
+        name: 'Robin Ashfield',
+        status: 'active',
+        isContractor: true,
+        readiness: { contractorAgreement: { signedOn: '2026-10-01' } },
+      },
+      // Cleared: no row.
+      {
+        id: 'ins-2',
+        name: 'Olive Thompson',
+        status: 'active',
+        isContractor: true,
+        readiness: {
+          contractorAgreement: { signedOn: '2026-10-01' },
+          backgroundCheck: { clearedOn: '2026-10-02' },
+          paymentSetup: { completedOn: '2026-10-03', method: 'w9-on-file' },
+        },
+      },
+    ]);
+    mocks.findUpcomingClasses.mockResolvedValue([
+      {
+        id: 'cls-9',
+        name: 'Block Printing',
+        instructorId: 'ins-1',
+        status: 'published',
+        sessions: [{ dateTime: new Date('2026-10-17T14:00:00Z') }],
+      },
+      {
+        id: 'cls-10',
+        name: 'Bookbinding',
+        instructorId: 'ins-2',
+        status: 'published',
+        sessions: [{ dateTime: new Date('2026-10-17T14:00:00Z') }],
+      },
+    ]);
+
+    const { items } = await getInbox();
+
+    expect(mocks.findInstructors).toHaveBeenCalledWith({ status: 'active' });
+    expect(mocks.findUpcomingClasses).toHaveBeenCalledWith({ upcoming: true });
+    const rows = items.filter((i) => i.kind === 'instructor-not-ready');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      title: 'Robin Ashfield for Saturday’s Block Printing',
+      detail: 'Missing background check and payment setup',
+      href: '/instructors?edit=ins-1',
+      urgent: true,
+    });
   });
 
   it('includes pending sync conflicts as one row', async () => {

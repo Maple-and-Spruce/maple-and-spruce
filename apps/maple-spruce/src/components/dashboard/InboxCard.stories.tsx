@@ -178,3 +178,39 @@ export const DismissFailed: Story = {
     await expect(args.onClearDismissError).toHaveBeenCalled();
   },
 };
+
+/**
+ * A contract instructor teaching Saturday without being cleared: a deadline
+ * row, counted down to the class, that opens their form.
+ */
+export const InstructorNotCleared: Story = {
+  args: {
+    inboxState: {
+      status: 'success',
+      data: [
+        {
+          key: 'instructor-not-ready:ins-olive:1760792400000',
+          kind: 'instructor-not-ready',
+          title: 'Olive Thompson for Saturday’s Block Printing',
+          detail: 'Missing background check and payment setup',
+          href: '/instructors?edit=ins-olive',
+          actionLabel: 'Update',
+          occurredAt: new Date(2026, 9, 4, 10).toISOString(),
+          dueAt: new Date(2026, 9, 17, 10).toISOString(),
+          urgent: true,
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [row] = canvas.getAllByRole('listitem');
+    await expect(row).toHaveTextContent('Olive Thompson for Saturday’s Block Printing');
+    await expect(row).toHaveTextContent('Missing background check and payment setup');
+    await expect(row).toHaveTextContent(/Not cleared/i);
+    await expect(row).toHaveTextContent('Class in 3 days');
+    await expect(
+      within(row).getByRole('link', { name: /update/i })
+    ).toHaveAttribute('href', '/instructors?edit=ins-olive');
+  },
+};

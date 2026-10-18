@@ -45,7 +45,7 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   along with the five that had pointed at the retired artist functions since #127.
 
 ### Instructors
-- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor`
+- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor` _(contractor `readiness` is admin-only: `getInstructor(s)` strip it for lesson teachers)_
 
 ### Music Lesson Students
 - `people/getStudents`, `people/getStudent`, `people/createStudent`, `people/updateStudent`,
@@ -62,7 +62,8 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
     `updateStudentLessonSchedule`, `getMyDayLessons`, `getMyWeek`.
   - Admin-only: `getStudioDay` (#235: every teacher's lessons for a day, with payment state, for
     the Home dashboard), `getInbox` (#235: the Home dashboard's studio-wide to-do list, built in
-    one call, dismissed items removed), `dismissInboxItem` (#235: "Mark done", validated, stored in
+    one call, dismissed items removed; also reads active instructors and upcoming classes for
+    contract instructors not cleared to teach), `dismissInboxItem` (#235: "Mark done", validated, stored in
     `inboxDismissals` for everyone), `createLessonBlock` (validated), `updateLessonBlock`, `deleteLessonBlock`,
     `getLessonInquiries`, `updateLessonInquiryStatus`, `getLessonBilling`, `saveLessonBillingRule`,
     `updateLessonScheduledCharge`, `getPosLessonAttributions`, `getPosLessonAttributionSummary`,
