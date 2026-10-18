@@ -1899,7 +1899,8 @@ Safari included.
   Firestore problem must not turn into families being unable to register.
 - **Hashed keys.** Counter ids hold a truncated SHA-256 of the email, token or IP, never the raw
   value.
-- **Generous limits.** Payment: 20 per IP and 8 per account per hour. Email links: 10 per IP and
+- **Generous limits.** Payment: 20 per IP and 12 per account per hour (raised from 8 after the first week
+  of real checkouts showed a family needing seven attempts). Email links: 10 per IP and
   3 per address per hour. Code lookups: 30 per IP per 10 minutes. A family retrying a declined
   card should never reach them.
 
