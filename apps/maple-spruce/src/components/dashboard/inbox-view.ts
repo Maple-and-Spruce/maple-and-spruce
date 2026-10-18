@@ -64,6 +64,7 @@ export function inboxTone(kind: InboxItemKind): InboxTone {
       return 'failure';
     case 'agreement-unsigned':
     case 'instructor-not-ready':
+    case 'class-under-minimum':
       return 'deadline';
     default:
       return 'quiet';

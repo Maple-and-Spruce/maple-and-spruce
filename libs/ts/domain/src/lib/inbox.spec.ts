@@ -3,7 +3,9 @@ import {
   INBOX_INSTRUCTOR_READINESS_WINDOW_DAYS,
   INBOX_KIND_LABELS,
   INBOX_REFUND_LOOKBACK_DAYS,
+  INBOX_UNDER_MINIMUM_WINDOW_DAYS,
   buildInboxItems,
+  classesForMinimumCheck,
   inboxKindOfKey,
   inboxRank,
   isWellFormedInboxKey,
@@ -11,7 +13,7 @@ import {
   sortInboxItems,
   withoutDismissed,
 } from './inbox';
-import type { InboxItem, InboxSources } from './inbox';
+import type { InboxItem, InboxMinimumClass, InboxSources } from './inbox';
 import type { NeedsAttentionGroup } from './needs-attention';
 
 /** Wednesday Oct 14 2026, 3:10 PM in New York. All people are invented. */
@@ -36,6 +38,8 @@ function sources(overrides: Partial<InboxSources> = {}): InboxSources {
     refundedRegistrations: [],
     refundReviews: [],
     instructorsNotReady: [],
+    minimumClasses: [],
+    confirmedSeats: new Map(),
     timeZone: 'America/New_York',
     ...overrides,
   };
@@ -790,5 +794,97 @@ describe('uncleared contract instructors', () => {
     );
     expect(isWellFormedInboxKey(item.key)).toBe(true);
     expect(inboxKindOfKey(item.key)).toBe('instructor-not-ready');
+  });
+});
+
+describe('classes under their minimum', () => {
+  const cls = (
+    overrides: Partial<InboxMinimumClass> & { firstIn?: number } = {}
+  ): InboxMinimumClass => {
+    const { firstIn = 2 * DAY, ...rest } = overrides;
+    return {
+      id: 'cls-1',
+      name: 'Block Printing',
+      status: 'published',
+      minimumEnrollment: 4,
+      sessions: [{ dateTime: ahead(firstIn) }, { dateTime: ahead(firstIn + 7 * DAY) }],
+      ...rest,
+    };
+  };
+  const build = (classes: InboxMinimumClass[], seats: Record<string, number> = {}) =>
+    buildInboxItems(
+      sources({ minimumClasses: classes, confirmedSeats: new Map(Object.entries(seats)) })
+    ).filter((i) => i.kind === 'class-under-minimum');
+
+  it('lists a published class short of its minimum within the window', () => {
+    const [item] = build([cls()], { 'cls-1': 1 });
+    expect(item).toEqual({
+      key: `class-under-minimum:cls-1:${ahead(2 * DAY).getTime()}`,
+      kind: 'class-under-minimum',
+      title: 'Friday’s Block Printing',
+      detail: '1 of 4 needed · Fri, Oct 16 · 3:10 PM',
+      href: '/classes/cls-1/roster',
+      actionLabel: 'Review',
+      occurredAt: new Date(ahead(2 * DAY).getTime() - INBOX_UNDER_MINIMUM_WINDOW_DAYS * DAY).toISOString(),
+      dueAt: ahead(2 * DAY).toISOString(),
+      urgent: true,
+    });
+    expect(INBOX_KIND_LABELS['class-under-minimum']).toBe('Under minimum');
+  });
+
+  it('counts a class with no confirmed seats as zero', () => {
+    expect(build([cls()])[0].detail).toMatch(/^0 of 4 needed/);
+  });
+
+  it('leaves once the minimum is met', () => {
+    expect(build([cls()], { 'cls-1': 4 })).toEqual([]);
+    expect(build([cls()], { 'cls-1': 6 })).toEqual([]);
+  });
+
+  it('is not urgent until three days out', () => {
+    expect(build([cls({ firstIn: 3 * DAY })])[0].urgent).toBe(true);
+    expect(build([cls({ firstIn: 3 * DAY + HOUR })])[0].urgent).toBe(false);
+  });
+
+  it('only covers the week before the first session', () => {
+    expect(build([cls({ firstIn: 7 * DAY })])).toHaveLength(1);
+    expect(build([cls({ firstIn: 7 * DAY + HOUR })])).toEqual([]);
+    // Started already: a series under its minimum is running anyway.
+    expect(build([cls({ firstIn: -HOUR })])).toEqual([]);
+  });
+
+  it('ignores drafts, cancelled classes and classes with no minimum', () => {
+    expect(build([cls({ status: 'draft' })])).toEqual([]);
+    expect(build([cls({ status: 'cancelled' })])).toEqual([]);
+    expect(build([cls({ minimumEnrollment: undefined })])).toEqual([]);
+    expect(build([cls({ minimumEnrollment: null })])).toEqual([]);
+    expect(build([cls({ minimumEnrollment: 0 })])).toEqual([]);
+    expect(build([cls({ sessions: [] })])).toEqual([]);
+  });
+
+  it('keys on the first session, so a rescheduled class comes back after Mark done', () => {
+    const [before] = build([cls({ firstIn: 2 * DAY })]);
+    const [after] = build([cls({ firstIn: 4 * DAY })]);
+    expect(before.key).not.toBe(after.key);
+  });
+
+  it('uses the earliest session even when they are out of order', () => {
+    const [item] = build([
+      cls({ sessions: [{ dateTime: ahead(9 * DAY) }, { dateTime: ahead(2 * DAY) }] }),
+    ]);
+    expect(item.dueAt).toBe(ahead(2 * DAY).toISOString());
+  });
+
+  it('ranks urgent rows with the other near deadlines', () => {
+    expect(inboxRank({ kind: 'class-under-minimum', urgent: true })).toBe(1);
+    expect(inboxRank({ kind: 'class-under-minimum', urgent: false })).toBe(4);
+  });
+
+  it('selects only the classes worth counting seats for', () => {
+    const picked = classesForMinimumCheck(
+      [cls({ id: 'a' }), cls({ id: 'b', status: 'draft' }), cls({ id: 'c', firstIn: 10 * DAY })],
+      NOW
+    );
+    expect(picked.map((c) => c.id)).toEqual(['a']);
   });
 });
