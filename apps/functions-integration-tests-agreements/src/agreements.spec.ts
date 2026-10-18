@@ -19,6 +19,7 @@ import type {
   GetSignedAgreementsResponse,
   ResendAgreementRequestResponse,
   SendAgreementRequestResponse,
+  SubmitSignedAgreementResponse,
   UpdateAgreementTemplateResponse,
 } from '@maple/ts/firebase/api-types';
 
@@ -30,6 +31,10 @@ import type {
  * gate on every route, template CRUD with archive-not-delete, and that sending
  * a request stores it and queues a signing email whose link opens the signing
  * page with the request's own token.
+ *
+ * Signing runs end to end too (`submitSignedAgreement`, with the Storage
+ * emulator holding the signature image): an agreement sent to an instructor
+ * records the agreement step of their readiness when it is signed.
  *
  * `getSignedAgreement` mints Cloud Storage signed URLs, which the emulator
  * cannot sign, so only its gate and not-found path are covered here; the URL
@@ -43,6 +48,20 @@ function message(result: { error?: unknown }): string {
 }
 
 const created = new Date('2026-01-01T12:00:00Z');
+
+/** A valid 1x1 PNG, standing in for a drawn signature. */
+const ONE_PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+/** Today as the studio sees it, `YYYY-MM-DD`: the day a signature is dated. */
+function studioToday(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
 
 const waiver: CreateAgreementTemplateRequest = {
   name: 'Test Studio Waiver',
@@ -218,6 +237,78 @@ describe('agreements router', () => {
     expect(send.status).toBe(400);
     expect(message(send)).toMatch(/Instructor with ID inst-gone not found/);
     expect(await listFirestoreDocs('mail')).toHaveLength(before);
+  });
+
+  /**
+   * The public signing page, through submitSignedAgreement, for an agreement
+   * sent to an instructor. Needs the Storage emulator: the signature image is
+   * uploaded and then moved under the signed agreement's id.
+   */
+  async function sendAndSign(instructorId: string) {
+    const sent = await call<unknown, SendAgreementRequestResponse>('sendAgreementRequest', {
+      templateId,
+      signerEmail: 'robin@example.com',
+      signerName: 'Robin Ashfield',
+      instructorId,
+    });
+    expect(sent.status).toBe(200);
+
+    const signed = await callFunction<unknown, SubmitSignedAgreementResponse>({
+      functionName: 'submitSignedAgreement',
+      data: {
+        token: sent.data!.request.signingToken,
+        printedName: 'Robin Ashfield',
+        signatureData: `data:image/png;base64,${ONE_PIXEL_PNG}`,
+      },
+    });
+    expect(signed.status).toBe(200);
+    return { request: sent.data!.request, signedAgreement: signed.data!.signedAgreement };
+  }
+
+  it("signing an instructor's agreement records it on their readiness, keeping the other items", async () => {
+    await setFirestoreDoc('instructors', 'inst-sign', {
+      name: 'Robin Ashfield',
+      email: 'robin@example.com',
+      status: 'active',
+      isContractor: true,
+      readiness: { backgroundCheck: { clearedOn: '2026-10-01' } },
+      createdAt: created,
+      updatedAt: created,
+    });
+
+    const { request, signedAgreement } = await sendAndSign('inst-sign');
+
+    expect((await getFirestoreDoc('agreementRequests', request.id))?.['status']).toBe('signed');
+    expect(signedAgreement.signatureImagePath).toBe(`agreements/${signedAgreement.id}/signature.png`);
+    expect(await getFirestoreDoc('signedAgreements', signedAgreement.id)).toBeTruthy();
+
+    const instructor = await getFirestoreDoc('instructors', 'inst-sign');
+    expect(instructor?.['readiness']).toEqual({
+      backgroundCheck: { clearedOn: '2026-10-01' },
+      contractorAgreement: {
+        signedOn: studioToday(),
+        reference: `Signed online, agreement ${signedAgreement.id}`,
+      },
+    });
+  });
+
+  it('signing leaves an agreement date already on record alone', async () => {
+    const paper = { signedOn: '2026-09-01', reference: 'paper, office binder' };
+    await setFirestoreDoc('instructors', 'inst-paper', {
+      name: 'Robin Ashfield',
+      email: 'robin@example.com',
+      status: 'active',
+      isContractor: true,
+      readiness: { contractorAgreement: paper },
+      createdAt: created,
+      updatedAt: created,
+    });
+
+    const { request } = await sendAndSign('inst-paper');
+
+    expect((await getFirestoreDoc('agreementRequests', request.id))?.['status']).toBe('signed');
+    const instructor = await getFirestoreDoc('instructors', 'inst-paper');
+    expect(instructor?.['readiness']).toEqual({ contractorAgreement: paper });
   });
 
   it('refuses to resend a request that is no longer pending', async () => {

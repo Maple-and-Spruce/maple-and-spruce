@@ -705,7 +705,7 @@ jobs:
           EXIT_CODE=0
           for suite in $(echo "${{ matrix.group.suites }}" | tr ',' ' '); do
             echo "::group::emulator session: $suite"
-            npx firebase emulators:exec --project=dev --only auth,firestore,functions \
+            npx firebase emulators:exec --project=dev --only auth,firestore,functions,storage \
               "node tools/run-integration-test-suites.js $suite" || EXIT_CODE=1
             echo "::endgroup::"
           done

@@ -533,7 +533,7 @@ Prefer declaring the index over ignoring; the cost of an unused index is small, 
 
 **Unit tests**: Use `vi.mock()` to mock repositories and external services. See ADR-017 for patterns.
 
-**Integration tests**: Test functions against real Firebase emulators (auth, firestore, functions) with a mock HTTP server for Square/Webflow APIs. See ADR-027.
+**Integration tests**: Test functions against real Firebase emulators (auth, firestore, functions, storage) with a mock HTTP server for Square/Webflow APIs. See ADR-027.
 
 - Run locally: `./tools/run-integration-tests.sh` (all suites) or `./tools/run-integration-tests.sh square` (one suite)
 - Test suites: `apps/functions-integration-tests-{artist,class,instructor,category,discount,calendar,registration,utility,square,lesson-inquiries}/`

@@ -25,6 +25,7 @@ OFFSET="${EMULATOR_PORT_OFFSET:-0}"
 FUNCTIONS_PORT=$((5001 + OFFSET))
 FIRESTORE_PORT=$((8080 + OFFSET))
 AUTH_PORT=$((9099 + OFFSET))
+STORAGE_PORT=$((9199 + OFFSET))
 UI_PORT=$((4000 + OFFSET))
 SQUARE_MOCK_SERVER_PORT=$((9997 + OFFSET))
 WEBFLOW_MOCK_SERVER_PORT=$((9996 + OFFSET))
@@ -34,13 +35,13 @@ META_CAPI_MOCK_SERVER_PORT=$((9994 + OFFSET))
 TALLY_MOCK_SERVER_PORT=$((9993 + OFFSET))
 
 if [ "$OFFSET" != "0" ]; then
-  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT, tally-mock:$TALLY_MOCK_SERVER_PORT"
+  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, storage:$STORAGE_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT, tally-mock:$TALLY_MOCK_SERVER_PORT"
 fi
 
 # ---------------------------------------------------------------------------
 # 1. Kill stale processes on OUR ports only (leave other worktrees alone)
 # ---------------------------------------------------------------------------
-for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$TALLY_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$UI_PORT"; do
+for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$TALLY_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$STORAGE_PORT" "$UI_PORT"; do
   lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 1
@@ -163,6 +164,7 @@ if [ "$OFFSET" != "0" ]; then
     cfg.emulators.functions.port = $FUNCTIONS_PORT;
     cfg.emulators.firestore.port = $FIRESTORE_PORT;
     cfg.emulators.auth.port = $AUTH_PORT;
+    cfg.emulators.storage.port = $STORAGE_PORT;
     cfg.emulators.ui.port = $UI_PORT;
     fs.writeFileSync('firebase.worktree.json', JSON.stringify(cfg, null, 2));
   "
@@ -189,7 +191,7 @@ echo "Running: $TEST_CMD"
 EXIT_CODE=0
 EMULATOR_PORT_OFFSET="$OFFSET" npx firebase --config "$FIREBASE_CONFIG_FILE" emulators:exec \
   --project=dev \
-  --only auth,firestore,functions \
+  --only auth,firestore,functions,storage \
   "$TEST_CMD" || EXIT_CODE=$?
 
 # ---------------------------------------------------------------------------
