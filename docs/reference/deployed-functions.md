@@ -98,10 +98,10 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   `instructors/deleteInstructor`, `instructors/uploadInstructorImage` (all admin-only).
   None of the six originals set runtime options, so sharing them changes nothing; the image
   upload kept the defaults it already had.
-- **The six per-endpoint originals are still deployed** (`getInstructors`, `getInstructor`,
-  `createInstructor`, `updateInstructor`, `deleteInstructor`, `uploadInstructorImage`): CI does
-  not prune. Their code is gone, so delete them by hand once the router is verified in dev:
-  `firebase functions:delete getInstructors getInstructor createInstructor updateInstructor deleteInstructor uploadInstructorImage --region us-east4`, dev first, then prod.
+- The six per-endpoint originals (`getInstructors`, `getInstructor`, `createInstructor`,
+  `updateInstructor`, `deleteInstructor`, `uploadInstructorImage`) are gone: deleted from dev and
+  prod by hand on 2026-10-18, after the router was verified in each. Every call to them in the
+  previous 30 days came from the admin app.
 
 ### Music Lesson Students
 - `people/getStudents`, `people/getStudent`, `people/createStudent`, `people/updateStudent`,
