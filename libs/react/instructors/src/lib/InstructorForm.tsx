@@ -10,7 +10,7 @@
  * 4. Always-current derived state - validation auto-updates
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, type ReactNode } from 'react';
 import {
   Box,
   Button,
@@ -80,6 +80,22 @@ interface InstructorFormProps {
   users?: readonly AppUser[];
   /** The instruments the studio offers (#161), for the rate editor. */
   instruments?: InstrumentOption[];
+  /**
+   * Sending a saved instructor their contractor agreement to sign online.
+   * Called only when editing. `recordSigned` fills the agreement date in the
+   * form, so saving the form doesn't clear a signature that landed while it
+   * was open (the update replaces the whole readiness record).
+   */
+  renderAgreementActions?: (
+    instructor: Instructor,
+    form: AgreementFormContext
+  ) => ReactNode;
+}
+
+export interface AgreementFormContext {
+  /** The agreement date currently in the form, or '' when none. */
+  agreementSignedOn: string;
+  recordSigned: (agreement: { signedOn: string; reference?: string }) => void;
 }
 
 // Common specialties for autocomplete suggestions
@@ -125,6 +141,7 @@ export function InstructorForm({
   isSubmitting = false,
   users,
   instruments,
+  renderAgreementActions,
 }: InstructorFormProps) {
   // Enable signals tracking in this component
   useSignals();
@@ -603,6 +620,19 @@ export function InstructorForm({
               (readinessValues.value = { ...readinessValues.value, ...patch })
             }
             getFieldError={getFieldError}
+            agreementActions={
+              instructor && renderAgreementActions
+                ? renderAgreementActions(instructor, {
+                    agreementSignedOn: readinessValues.value.agreementSignedOn,
+                    recordSigned: ({ signedOn, reference }) =>
+                      (readinessValues.value = {
+                        ...readinessValues.value,
+                        agreementSignedOn: signedOn,
+                        agreementReference: reference ?? '',
+                      }),
+                  })
+                : undefined
+            }
           />
 
           {/* Notes */}

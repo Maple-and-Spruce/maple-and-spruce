@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   mailAdd: vi.fn(),
   getSignedUrl: vi.fn(),
   validation: vi.fn(),
+  instructorFindById: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => {
@@ -67,6 +68,7 @@ vi.mock('@maple/firebase/database', () => ({
     findAll: mocks.signedFindAll,
     findById: mocks.signedFindById,
   },
+  InstructorRepository: { findById: mocks.instructorFindById },
   getDb: () => ({ collection: () => ({ add: mocks.mailAdd }) }),
 }));
 
@@ -264,6 +266,7 @@ describe('requests', () => {
       signerEmail: 'signer@example.com',
       classId: 'class-1',
       registrationId: 'reg-1',
+      instructorId: 'inst-1',
     };
     await expect(call('getAgreementRequests', filters)).resolves.toEqual({
       requests: [pending],
@@ -331,6 +334,51 @@ describe('requests', () => {
       error,
     );
     expect(mocks.requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("links a request to the instructor whose contractor agreement it is", async () => {
+    mocks.templateFindById.mockResolvedValue(template);
+    mocks.instructorFindById.mockResolvedValue({ id: 'inst-1' });
+    mocks.requestCreate.mockImplementation(async (input) => ({
+      id: 'req-9',
+      ...input,
+    }));
+
+    await call(
+      'sendAgreementRequest',
+      {
+        templateId: 'tpl-1',
+        signerEmail: 'robin@example.com',
+        signerName: 'Robin Ashfield',
+        instructorId: 'inst-1',
+      },
+      ORIGINS,
+    );
+
+    expect(mocks.instructorFindById).toHaveBeenCalledWith('inst-1');
+    expect(mocks.requestCreate.mock.calls[0][0]).toMatchObject({
+      instructorId: 'inst-1',
+    });
+  });
+
+  it('refuses to send for an instructor that does not exist', async () => {
+    mocks.templateFindById.mockResolvedValue(template);
+    mocks.instructorFindById.mockResolvedValue(undefined);
+
+    await expect(
+      call(
+        'sendAgreementRequest',
+        {
+          templateId: 'tpl-1',
+          signerEmail: 'a@example.com',
+          signerName: 'A',
+          instructorId: 'inst-gone',
+        },
+        ORIGINS,
+      ),
+    ).rejects.toThrow(/Instructor inst-gone not found/);
+    expect(mocks.requestCreate).not.toHaveBeenCalled();
+    expect(mocks.mailAdd).not.toHaveBeenCalled();
   });
 
   it('refuses to send from an archived template', async () => {

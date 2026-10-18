@@ -174,6 +174,52 @@ describe('agreements router', () => {
     expect(await listFirestoreDocs('mail')).toHaveLength(2);
   });
 
+  it("links a request to an instructor and lists the instructor's requests", async () => {
+    await setFirestoreDoc('instructors', 'inst-1', {
+      name: 'Robin Ashfield',
+      email: 'robin@example.com',
+      status: 'active',
+      isContractor: true,
+      createdAt: created,
+      updatedAt: created,
+    });
+
+    const sent = await call<unknown, SendAgreementRequestResponse>('sendAgreementRequest', {
+      templateId,
+      signerEmail: 'robin@example.com',
+      signerName: 'Robin Ashfield',
+      instructorId: 'inst-1',
+    });
+    expect(sent.status).toBe(200);
+    const request = sent.data!.request;
+    expect(request.instructorId).toBe('inst-1');
+    expect((await getFirestoreDoc('agreementRequests', request.id))?.['instructorId']).toBe('inst-1');
+
+    const forInstructor = await call<unknown, GetAgreementRequestsResponse>('getAgreementRequests', {
+      instructorId: 'inst-1',
+    });
+    expect(forInstructor.status).toBe(200);
+    expect(forInstructor.data!.requests.map((r) => r.id)).toEqual([request.id]);
+
+    const forSomeoneElse = await call<unknown, GetAgreementRequestsResponse>('getAgreementRequests', {
+      instructorId: 'inst-other',
+    });
+    expect(forSomeoneElse.data!.requests).toEqual([]);
+  });
+
+  it('refuses to send for an instructor that does not exist', async () => {
+    const before = (await listFirestoreDocs('mail')).length;
+    const send = await call('sendAgreementRequest', {
+      templateId,
+      signerEmail: 'robin@example.com',
+      signerName: 'Robin Ashfield',
+      instructorId: 'inst-gone',
+    });
+    expect(send.status).toBe(400);
+    expect(message(send)).toMatch(/Instructor with ID inst-gone not found/);
+    expect(await listFirestoreDocs('mail')).toHaveLength(before);
+  });
+
   it('refuses to resend a request that is no longer pending', async () => {
     await setFirestoreDoc('agreementRequests', 'req-signed', {
       templateId,

@@ -83,6 +83,7 @@ export interface GetAgreementRequestsRequest {
   signerEmail?: string;
   classId?: string;
   registrationId?: string;
+  instructorId?: string;
 }
 
 export interface GetAgreementRequestsResponse {
@@ -98,6 +99,8 @@ export interface SendAgreementRequestRequest {
   /** Optional context links */
   classId?: string;
   studentId?: string;
+  /** The instructor whose contractor agreement this is. */
+  instructorId?: string;
 }
 
 export interface SendAgreementRequestResponse {

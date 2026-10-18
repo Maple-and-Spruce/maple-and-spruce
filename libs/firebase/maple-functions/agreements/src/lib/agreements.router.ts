@@ -28,6 +28,7 @@ import {
 import {
   AgreementRequestRepository,
   AgreementTemplateRepository,
+  InstructorRepository,
   SignedAgreementRepository,
   getDb,
 } from '@maple/firebase/database';
@@ -180,6 +181,7 @@ export const agreements = Functions.router('agreements', {
           signerEmail: data.signerEmail,
           classId: data.classId,
           registrationId: data.registrationId,
+          instructorId: data.instructorId,
         });
         return { requests };
       },
@@ -205,6 +207,10 @@ export const agreements = Functions.router('agreements', {
         if (template.status !== 'active') {
           throwInvalidArgument('Cannot send requests for archived templates');
         }
+        if (data.instructorId) {
+          const instructor = await InstructorRepository.findById(data.instructorId);
+          if (!instructor) throwNotFound('Instructor', data.instructorId);
+        }
 
         const signingToken = randomBytes(32).toString('hex');
         const expiresAt = new Date();
@@ -220,6 +226,7 @@ export const agreements = Functions.router('agreements', {
             'email') as AgreementDeliveryMethod,
           classId: data.classId,
           studentId: data.studentId,
+          instructorId: data.instructorId,
           signingToken,
           expiresAt,
           status: 'pending',

@@ -24,6 +24,8 @@ import type { AgreementDeliveryMethod } from '@maple/ts/domain';
 export interface UseAgreementRequestsFilters {
   status?: AgreementRequestStatus;
   signerEmail?: string;
+  /** Only the requests sent to this instructor (their contractor agreement). */
+  instructorId?: string;
 }
 
 export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
@@ -42,6 +44,7 @@ export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
       const result = await getRequests({
         status: filters?.status,
         signerEmail: filters?.signerEmail,
+        instructorId: filters?.instructorId,
       });
       setRequestsState({ status: 'success', data: result.data.requests });
     } catch (error) {
@@ -52,7 +55,7 @@ export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
           error instanceof Error ? error.message : 'Failed to fetch requests',
       });
     }
-  }, [filters?.status, filters?.signerEmail]);
+  }, [filters?.status, filters?.signerEmail, filters?.instructorId]);
 
   const sendRequest = useCallback(
     async (input: {
@@ -63,6 +66,7 @@ export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
       deliveryMethod: AgreementDeliveryMethod;
       classId?: string;
       studentId?: string;
+      instructorId?: string;
     }): Promise<AgreementRequest> => {
       const functions = getMapleFunctions();
       const send = httpsCallableFromURL<

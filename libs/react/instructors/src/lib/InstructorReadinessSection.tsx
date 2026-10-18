@@ -5,6 +5,7 @@
  * teach. Admin-only. Nothing here blocks saving — an instructor can be added
  * before their paperwork is back, and the class form warns instead.
  */
+import type { ReactNode } from 'react';
 import {
   Alert,
   Box,
@@ -35,6 +36,12 @@ export interface InstructorReadinessSectionProps {
   onChange: (patch: Partial<ReadinessFormValues>) => void;
   /** First validation message for a field, keyed by the Vest field name. */
   getFieldError?: (field: string) => string | null;
+  /**
+   * Shown under "Contractor agreement", above the date fields: sending the
+   * agreement to sign online, and where it stands. Omitted for an instructor
+   * who has not been saved yet.
+   */
+  agreementActions?: ReactNode;
 }
 
 function ItemHeading({ children }: { children: string }) {
@@ -49,6 +56,7 @@ export function InstructorReadinessSection({
   values,
   onChange,
   getFieldError = () => null,
+  agreementActions,
 }: InstructorReadinessSectionProps) {
   const status = instructorReadiness(readinessFromFormValues(values));
 
@@ -97,6 +105,7 @@ export function InstructorReadinessSection({
           ) : null}
 
           <ItemHeading>Contractor agreement</ItemHeading>
+          {agreementActions}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
               label="Date signed"

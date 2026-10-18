@@ -12,6 +12,7 @@ import {
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { InstructorList, InstructorForm } from '@maple/react/instructors';
 import { useInstructors, useInstruments, useUsers } from '../../../hooks';
+import { InstructorAgreementActions } from './instructor-agreement-actions';
 
 export default function InstructorsPage() {
   // useSearchParams needs a Suspense boundary on a statically rendered route.
@@ -159,6 +160,9 @@ function InstructorsPageContent() {
             ? instrumentsState.data
             : undefined
         }
+        renderAgreementActions={(instructor, form) => (
+          <InstructorAgreementActions instructor={instructor} form={form} />
+        )}
       />
 
       <DeleteConfirmDialog
