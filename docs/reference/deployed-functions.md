@@ -44,8 +44,18 @@ Core CRUD operations, auth, triggers, and admin functions. No heavy third-party 
   then removed from the codebase. Their Hosting rewrites in `firebase.json` went with them,
   along with the five that had pointed at the retired artist functions since #127.
 
-### Instructors
-- `getInstructors`, `getInstructor`, `createInstructor`, `updateInstructor`, `deleteInstructor` _(contractor `readiness` is admin-only: `getInstructor(s)` strip it for lesson teachers)_
+### Instructors (#64)
+- `instructors` — **domain router** (ADR-029). One function serving six routes:
+  `instructors/getInstructors`, `instructors/getInstructor` (both `[Admin, LessonTeacher]`;
+  contractor `readiness` is stripped for anyone not an admin), `instructors/createInstructor`
+  (validated, email unique when given), `instructors/updateInstructor`,
+  `instructors/deleteInstructor`, `instructors/uploadInstructorImage` (all admin-only).
+  None of the six originals set runtime options, so sharing them changes nothing; the image
+  upload kept the defaults it already had.
+- **The six per-endpoint originals are still deployed** (`getInstructors`, `getInstructor`,
+  `createInstructor`, `updateInstructor`, `deleteInstructor`, `uploadInstructorImage`): CI does
+  not prune. Their code is gone, so delete them by hand once the router is verified in dev:
+  `firebase functions:delete getInstructors getInstructor createInstructor updateInstructor deleteInstructor uploadInstructorImage --region us-east4`, dev first, then prod.
 
 ### Music Lesson Students
 - `people/getStudents`, `people/getStudent`, `people/createStudent`, `people/updateStudent`,

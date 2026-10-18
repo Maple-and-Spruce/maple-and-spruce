@@ -32,6 +32,7 @@ export { healthCheck } from '@maple/firebase/maple-functions/health-check';
 // updateArtist / deleteArtist (ADR-029). The five single-purpose functions it
 // replaced were deleted once it was verified in dev.
 export { artists } from '@maple/firebase/maple-functions/artists';
+export { instructors } from '@maple/firebase/maple-functions/instructors';
 // Payouts domain router: class-instructor statements (ADR-029).
 export { payouts } from '@maple/firebase/maple-functions/payouts';
 export { hope } from '@maple/firebase/maple-functions/hope';
@@ -54,12 +55,6 @@ export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync
 export { lessons } from '@maple/firebase/maple-functions/lessons';
 
 // Instructor functions
-export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';
-export { getInstructor } from '@maple/firebase/maple-functions/get-instructor';
-export { createInstructor } from '@maple/firebase/maple-functions/create-instructor';
-export { updateInstructor } from '@maple/firebase/maple-functions/update-instructor';
-export { deleteInstructor } from '@maple/firebase/maple-functions/delete-instructor';
-export { uploadInstructorImage } from '@maple/firebase/maple-functions/upload-instructor-image';
 
 // Music lesson student functions (Phase 4)
 // People domain router: students, users and roles (ADR-029, #65). getMyRoles stays

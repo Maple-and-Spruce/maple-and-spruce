@@ -1,15 +1,11 @@
 /**
- * Upload Instructor Image Cloud Function
+ * Upload an instructor photo, served by the `instructors` router (admin only).
  *
- * Uploads an instructor photo to Firebase Storage (admin only).
- * Images are stored in Firebase Storage and made publicly accessible.
- * The returned URL can be stored in the instructor's photoUrl field.
+ * Moved from the `uploadInstructorImage` function unchanged. Images go to
+ * Firebase Storage and are publicly readable; the returned URL is stored in
+ * the instructor's `photoUrl`.
  */
-import {
-  createAdminFunction,
-  FirebaseProject,
-  throwValidationError,
-} from '@maple/firebase/functions';
+import { FirebaseProject, throwValidationError } from '@maple/firebase/functions';
 import { imageUploadValidation } from '@maple/ts/validation';
 import { getStorage } from 'firebase-admin/storage';
 import type {
@@ -17,10 +13,9 @@ import type {
   UploadInstructorImageResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const uploadInstructorImage = createAdminFunction<
-  UploadInstructorImageRequest,
-  UploadInstructorImageResponse
->(async (data) => {
+export async function uploadInstructorImage(
+  data: UploadInstructorImageRequest
+): Promise<UploadInstructorImageResponse> {
   const { instructorId, imageBase64, contentType } = data;
 
   const validation = imageUploadValidation({ imageBase64, contentType });
@@ -56,4 +51,4 @@ export const uploadInstructorImage = createAdminFunction<
     success: true,
     url: publicUrl,
   };
-});
+}

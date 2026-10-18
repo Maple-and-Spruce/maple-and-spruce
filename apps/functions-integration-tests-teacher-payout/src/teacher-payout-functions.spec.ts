@@ -107,7 +107,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Primary Teacher',
         email: 'primary@test.com',
@@ -123,7 +123,7 @@ describe('payouts/getTeacherPayouts integration', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Substitute Teacher',
         email: 'sub@test.com',

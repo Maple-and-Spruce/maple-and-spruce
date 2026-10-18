@@ -67,7 +67,7 @@ describe('Class Functions', () => {
       CreateInstructorRequest,
       CreateInstructorResponse
     >({
-      functionName: 'createInstructor',
+      functionName: 'instructors/createInstructor',
       data: {
         name: 'Test Instructor',
         email: 'instructor@test.com',

@@ -1,28 +1,44 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Instructor } from '@maple/ts/domain';
 
-type Handler = (data: unknown, context: { uid?: string }) => Promise<unknown>;
-
 const mocks = vi.hoisted(() => ({
-  handler: null as Handler | null,
   findAll: vi.fn(),
   hasRole: vi.fn(),
 }));
 
-vi.mock('@maple/firebase/functions', () => ({
-  Role: { Admin: 'admin', LessonTeacher: 'lesson-teacher' },
-  hasRole: mocks.hasRole,
-  createRoleFunction: vi.fn((h: Handler) => {
-    mocks.handler = h;
-    return 'mock-fn';
-  }),
-}));
+vi.mock('@maple/firebase/functions', () => {
+  class HttpsError extends Error {
+    constructor(public code: string, message: string) {
+      super(message);
+    }
+  }
+  return {
+    Role: { Admin: 'admin', LessonTeacher: 'lesson-teacher' },
+    hasRole: mocks.hasRole,
+    throwNotFound: (entity: string, id: string) => {
+      throw new HttpsError('not-found', `${entity} ${id} not found`);
+    },
+    throwFailedPrecondition: (msg: string) => {
+      throw new HttpsError('failed-precondition', msg);
+    },
+    throwInvalidArgument: (msg: string) => {
+      throw new HttpsError('invalid-argument', msg);
+    },
+    throwValidationError: (errs: Record<string, string[]>) => {
+      throw new HttpsError(
+        'invalid-argument',
+        `Validation failed: ${Object.keys(errs).join(',')}`
+      );
+    },
+  };
+});
 
 vi.mock('@maple/firebase/database', () => ({
   InstructorRepository: { findAll: mocks.findAll },
+  InstrumentsConfigRepository: { get: vi.fn() },
 }));
 
-import './get-instructors';
+import { getInstructors } from './instructors';
 
 const contractor: Instructor = {
   id: 'instructor-1',
@@ -46,7 +62,7 @@ describe('getInstructors', () => {
   it('gives an admin the contractor readiness record', async () => {
     mocks.hasRole.mockResolvedValue(true);
 
-    const result = (await mocks.handler!({}, { uid: 'admin-uid' })) as {
+    const result = (await getInstructors({}, { uid: 'admin-uid' })) as {
       instructors: Instructor[];
     };
 
@@ -58,7 +74,7 @@ describe('getInstructors', () => {
   it('strips readiness for a lesson teacher, keeping everything else', async () => {
     mocks.hasRole.mockResolvedValue(false);
 
-    const result = (await mocks.handler!({}, { uid: 'teacher-uid' })) as {
+    const result = (await getInstructors({}, { uid: 'teacher-uid' })) as {
       instructors: Instructor[];
     };
 
@@ -70,7 +86,7 @@ describe('getInstructors', () => {
   it('passes the status filter through', async () => {
     mocks.hasRole.mockResolvedValue(true);
 
-    await mocks.handler!({ status: 'active' }, { uid: 'admin-uid' });
+    await getInstructors({ status: 'active' }, { uid: 'admin-uid' });
 
     expect(mocks.findAll).toHaveBeenCalledWith({ status: 'active' });
   });

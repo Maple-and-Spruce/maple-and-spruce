@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Instructor,
   CreateInstructorInput,
@@ -36,10 +39,10 @@ export function useInstructors() {
 
     try {
       const functions = getMapleFunctions();
-      const getInstructors = httpsCallable<
+      const getInstructors = httpsCallableFromURL<
         GetInstructorsRequest,
         GetInstructorsResponse
-      >(functions, 'getInstructors');
+      >(functions, routerCallableUrl('instructors', 'getInstructors'));
 
       const result = await getInstructors({});
       setInstructorsState({
@@ -61,10 +64,10 @@ export function useInstructors() {
   const createInstructor = useCallback(
     async (input: CreateInstructorInput): Promise<Instructor> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateInstructorRequest,
         CreateInstructorResponse
-      >(functions, 'createInstructor');
+      >(functions, routerCallableUrl('instructors', 'createInstructor'));
 
       const result = await create(input);
 
@@ -91,10 +94,10 @@ export function useInstructors() {
     // unlink a portal login (#49 phase 2).
     async (input: UpdateInstructorRequest): Promise<Instructor> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateInstructorRequest,
         UpdateInstructorResponse
-      >(functions, 'updateInstructor');
+      >(functions, routerCallableUrl('instructors', 'updateInstructor'));
 
       const result = await update(input);
 
@@ -119,9 +122,9 @@ export function useInstructors() {
 
   const deleteInstructor = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteInstructorRequest, DeleteInstructorResponse>(
+    const del = httpsCallableFromURL<DeleteInstructorRequest, DeleteInstructorResponse>(
       functions,
-      'deleteInstructor'
+      routerCallableUrl('instructors', 'deleteInstructor')
     );
 
     await del({ id });

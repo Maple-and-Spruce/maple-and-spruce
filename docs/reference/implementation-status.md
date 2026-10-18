@@ -72,7 +72,7 @@
 | InstructorRepository | Complete | legacy #9 | `libs/firebase/database/src/lib/instructor.repository.ts` |
 | ClassRepository | Complete | legacy #9 | `libs/firebase/database/src/lib/class.repository.ts` |
 | ClassCategoryRepository | Complete | legacy #9 | `libs/firebase/database/src/lib/class-category.repository.ts` |
-| Instructor Cloud Functions (5) | Complete | legacy #9 | `libs/firebase/maple-functions/get-instructors/`, etc. |
+| Instructor Cloud Functions | Complete | legacy #9, #64 | `instructors` domain router (`libs/firebase/maple-functions/instructors/`), six routes replacing six functions |
 | Class Cloud Functions (7) | Complete | legacy #9 | `libs/firebase/maple-functions/get-classes/`, etc. |
 | ClassCategory Cloud Functions (1) | Complete | legacy #9 | `libs/firebase/maple-functions/get-class-categories/` |
 | **Phase 3b: Admin UI** | | | |
