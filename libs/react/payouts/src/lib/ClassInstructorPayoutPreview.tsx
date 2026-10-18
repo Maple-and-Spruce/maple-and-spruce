@@ -11,10 +11,11 @@ import {
   Link,
   Skeleton,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import type { RequestState } from '@maple/ts/domain';
+import { describeMissingReadiness, type RequestState } from '@maple/ts/domain';
 import type {
   ClassInstructorPayoutPreview as Preview,
   PreviewClassInstructorPayoutsResponse,
@@ -36,6 +37,30 @@ function blockedReason(preview: Preview, monthIsOver: boolean): string | undefin
   if (preview.missingRateConfig) return 'Set a percentage pay rate on this instructor first.';
   if (preview.totalOwedCents <= 0) return 'Refunds cancel out this month; they carry to the next statement.';
   return undefined;
+}
+
+/**
+ * A contract instructor who isn't cleared to teach. The pay rate is left out
+ * when "Rate not set" already says so. A warning only: Generate is unaffected.
+ */
+function NotClearedChip({ preview }: { preview: Preview }) {
+  const missing = (preview.readinessMissing ?? []).filter(
+    (item) => !(item === 'pay-rate' && preview.missingRateConfig)
+  );
+  if (missing.length === 0) return null;
+  const text = describeMissingReadiness(missing);
+  return (
+    <Tooltip title={`Not cleared to teach: missing ${text}`}>
+      <Chip
+        size="small"
+        icon={<WarningAmberIcon />}
+        label="Not cleared"
+        color="warning"
+        variant="outlined"
+        aria-label={`Not cleared to teach: missing ${text}`}
+      />
+    </Tooltip>
+  );
 }
 
 function LoadingSkeleton() {
@@ -92,6 +117,7 @@ function PreviewCard({
           {preview.missingRateConfig && (
             <Chip size="small" icon={<WarningAmberIcon />} label="Rate not set" color="warning" variant="outlined" />
           )}
+          <NotClearedChip preview={preview} />
           {preview.existingStatement ? (
             <Stack direction="row" spacing={1} sx={{
               alignItems: 'center'

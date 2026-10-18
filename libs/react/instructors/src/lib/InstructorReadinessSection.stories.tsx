@@ -6,6 +6,7 @@ import {
   mockContractorReady,
   mockInstructorMinimal,
 } from '@maple/react/storybook-fixtures';
+import type { InstructorPayRateType } from '@maple/ts/domain';
 import { InstructorReadinessSection } from './InstructorReadinessSection';
 import { readinessFormValuesFrom, type ReadinessFormValues } from './readiness-form';
 
@@ -16,9 +17,13 @@ import { readinessFormValuesFrom, type ReadinessFormValues } from './readiness-f
 function Harness({
   initial,
   onChange,
+  payRate,
+  payRateType,
 }: {
   initial: ReadinessFormValues;
   onChange?: (patch: Partial<ReadinessFormValues>) => void;
+  payRate?: number;
+  payRateType?: InstructorPayRateType;
 }) {
   const [values, setValues] = useState(initial);
   return (
@@ -29,6 +34,8 @@ function Harness({
           onChange?.(patch);
           setValues((v) => ({ ...v, ...patch }));
         }}
+        payRate={payRate}
+        payRateType={payRateType}
       />
     </div>
   );
@@ -38,22 +45,24 @@ const meta = {
   title: 'Instructors/InstructorReadinessSection',
   component: Harness,
   parameters: { layout: 'centered' },
-  args: { onChange: fn() },
+  // The pay rate lives in its own form field; most stories have one set.
+  args: { onChange: fn(), payRate: 0.8, payRateType: 'percentage' },
 } satisfies Meta<typeof Harness>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A contractor with nothing recorded: every item is listed as missing. */
+/** A contractor with nothing recorded and no rate: every item is missing. */
 export const NothingRecorded: Story = {
-  args: { initial: readinessFormValuesFrom() },
+  args: { initial: readinessFormValuesFrom(), payRate: undefined, payRateType: undefined },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
       canvas.getByText(
-        /missing contractor agreement, background check and payment setup/i
+        /missing contractor agreement, background check, payment setup and pay rate/i
       )
     ).toBeInTheDocument();
+    await expect(canvas.getByTestId('readiness-pay-rate')).toHaveTextContent(/not set/i);
     await expect(canvas.getByRole('switch', { name: /paid contractor/i })).toBeChecked();
   },
 };
@@ -77,6 +86,39 @@ export const Ready: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/ready to teach/i)).toBeInTheDocument();
     await expect(canvas.queryByText(/not ready/i)).not.toBeInTheDocument();
+    await expect(canvas.getByTestId('readiness-pay-rate')).toHaveTextContent(
+      '80% of what students pay'
+    );
+  },
+};
+
+/** Paperwork done, but no rate: still not ready, because they can't be paid. */
+export const PaperworkDoneNoRate: Story = {
+  args: {
+    initial: readinessFormValuesFrom(mockContractorReady),
+    payRate: undefined,
+    payRateType: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/missing pay rate/i)).toBeInTheDocument();
+    await expect(canvas.getByTestId('readiness-pay-rate')).toHaveTextContent(
+      /not set\. set it under pay rate/i
+    );
+  },
+};
+
+/** A flat rate counts too: lesson contractors may be paid per lesson. */
+export const FlatRate: Story = {
+  args: {
+    initial: readinessFormValuesFrom(mockContractorReady),
+    payRate: 6000,
+    payRateType: 'flat',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/ready to teach/i)).toBeInTheDocument();
+    await expect(canvas.getByTestId('readiness-pay-rate')).toHaveTextContent('$60.00 a class');
   },
 };
 

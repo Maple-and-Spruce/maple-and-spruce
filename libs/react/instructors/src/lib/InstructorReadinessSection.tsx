@@ -23,7 +23,9 @@ import {
   INSTRUCTOR_PAYMENT_SETUP_METHODS,
   INSTRUCTOR_PAYMENT_SETUP_METHOD_LABELS,
   describeMissingReadiness,
+  hasPayRate,
   instructorReadiness,
+  type InstructorPayRateType,
   type InstructorPaymentSetupMethod,
 } from '@maple/ts/domain';
 import {
@@ -42,6 +44,20 @@ export interface InstructorReadinessSectionProps {
    * who has not been saved yet.
    */
   agreementActions?: ReactNode;
+  /**
+   * The pay rate as set elsewhere in the form. It is part of readiness (a
+   * contractor with no rate cannot be paid) but is edited in its own field.
+   */
+  payRate?: number;
+  payRateType?: InstructorPayRateType;
+}
+
+function payRateText(payRate: number, payRateType: InstructorPayRateType): string {
+  if (payRateType === 'percentage') {
+    return `${Math.round(payRate * 1000) / 10}% of what students pay`;
+  }
+  const dollars = `$${(payRate / 100).toFixed(2)}`;
+  return payRateType === 'hourly' ? `${dollars} an hour` : `${dollars} a class`;
 }
 
 function ItemHeading({ children }: { children: string }) {
@@ -57,8 +73,15 @@ export function InstructorReadinessSection({
   onChange,
   getFieldError = () => null,
   agreementActions,
+  payRate,
+  payRateType,
 }: InstructorReadinessSectionProps) {
-  const status = instructorReadiness(readinessFromFormValues(values));
+  const status = instructorReadiness({
+    ...readinessFromFormValues(values),
+    payRate,
+    payRateType,
+  });
+  const rateSet = hasPayRate({ payRate, payRateType });
 
   return (
     <Box
@@ -88,8 +111,8 @@ export function InstructorReadinessSection({
         label="Paid contractor (1099)"
       />
       <FormHelperText sx={{ mt: -1 }}>
-        Contract instructors need a signed agreement, a background check and
-        payment setup before teaching. Leave off for staff and unpaid
+        Contract instructors need a signed agreement, a background check,
+        payment setup and a pay rate before teaching. Leave off for staff and unpaid
         instructors.
       </FormHelperText>
 
@@ -184,6 +207,17 @@ export function InstructorReadinessSection({
               )}
             </FormControl>
           </Box>
+
+          <ItemHeading>Pay rate</ItemHeading>
+          <Typography
+            variant="body2"
+            color={rateSet ? 'textSecondary' : 'warning'}
+            data-testid="readiness-pay-rate"
+          >
+            {rateSet && payRate !== undefined && payRateType
+              ? `${payRateText(payRate, payRateType)}. Change it under Pay rate.`
+              : 'Not set. Set it under Pay rate (a percentage for class instructors).'}
+          </Typography>
         </>
       )}
     </Box>

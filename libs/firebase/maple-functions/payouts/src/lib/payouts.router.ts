@@ -30,6 +30,7 @@ import {
   type StatementTransitionOutcome,
 } from '@maple/firebase/database';
 import {
+  instructorReadiness,
   isPayoutMonth,
   isPayoutMonthOver,
   paidTotalForYear,
@@ -102,20 +103,28 @@ export const payouts = Functions.router('payouts', {
           existing.filter((s) => s.status !== 'void').map((s) => [s.instructorId, s])
         );
 
+        const instructorById = new Map(monthData.instructors.map((i) => [i.id, i]));
+
         const previews: ClassInstructorPayoutPreview[] = drafts
           .filter((d) => d.entries.length > 0 || live.has(d.instructorId))
           .map(({ entries: _entries, ...draft }) => {
             const statement = live.get(draft.instructorId);
-            return statement
-              ? {
-                  ...draft,
-                  existingStatement: {
-                    id: statement.id,
-                    status: statement.status,
-                    totalOwedCents: statement.totalOwedCents,
-                  },
-                }
-              : draft;
+            const instructor = instructorById.get(draft.instructorId);
+            const readiness = instructor ? instructorReadiness(instructor) : undefined;
+            return {
+              ...draft,
+              ...(statement && {
+                existingStatement: {
+                  id: statement.id,
+                  status: statement.status,
+                  totalOwedCents: statement.totalOwedCents,
+                },
+              }),
+              // A warning only: generating a statement is unaffected.
+              ...(readiness?.kind === 'not-ready' && {
+                readinessMissing: readiness.missing,
+              }),
+            };
           })
           .sort((a, b) => a.instructorName.localeCompare(b.instructorName));
 

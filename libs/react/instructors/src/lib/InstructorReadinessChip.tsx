@@ -15,7 +15,7 @@ import {
 export function InstructorReadinessChip({
   instructor,
 }: {
-  instructor: Pick<Instructor, 'isContractor' | 'readiness'>;
+  instructor: Pick<Instructor, 'isContractor' | 'readiness' | 'payRate' | 'payRateType'>;
 }) {
   const status = instructorReadiness(instructor);
   if (status.kind !== 'not-ready') return null;

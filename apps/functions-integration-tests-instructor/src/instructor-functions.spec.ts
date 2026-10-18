@@ -413,14 +413,29 @@ describe('Instructor Functions', () => {
         expect(row).toBeDefined();
         expect(row!.title).toContain('Robin Ashfield for');
         expect(row!.title).toContain('Readiness Upcoming Class');
-        expect(row!.detail).toBe('Missing contractor agreement');
+        // No pay rate yet either: a contractor with no rate cannot be paid.
+        expect(row!.detail).toBe('Missing contractor agreement and pay rate');
         expect(row!.urgent).toBe(true);
       });
 
-      it('drops the row once every item is recorded', async () => {
+      it('keeps the row while only the pay rate is missing', async () => {
         const update = await callFunction<UpdateInstructorRequest>({
           functionName: 'instructors/updateInstructor',
           data: { id: contractorId, readiness: allDone },
+          idToken: adminUser.idToken,
+        });
+        expect(update.status).toBe(200);
+
+        const row = (await inboxRows()).find(
+          (r) => r.href === `/instructors?edit=${contractorId}`
+        );
+        expect(row?.detail).toBe('Missing pay rate');
+      });
+
+      it('drops the row once every item is recorded and a rate is set', async () => {
+        const update = await callFunction<UpdateInstructorRequest>({
+          functionName: 'instructors/updateInstructor',
+          data: { id: contractorId, payRate: 0.8, payRateType: 'percentage' },
           idToken: adminUser.idToken,
         });
         expect(update.status).toBe(200);

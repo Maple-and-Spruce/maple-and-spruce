@@ -72,12 +72,14 @@ export interface InstructorReadiness {
 export type InstructorReadinessItem =
   | 'contractor-agreement'
   | 'background-check'
-  | 'payment-setup';
+  | 'payment-setup'
+  | 'pay-rate';
 
 export const INSTRUCTOR_READINESS_ITEMS: readonly InstructorReadinessItem[] = [
   'contractor-agreement',
   'background-check',
   'payment-setup',
+  'pay-rate',
 ];
 
 export const INSTRUCTOR_READINESS_ITEM_LABELS: Record<
@@ -87,13 +89,17 @@ export const INSTRUCTOR_READINESS_ITEM_LABELS: Record<
   'contractor-agreement': 'Contractor agreement',
   'background-check': 'Background check',
   'payment-setup': 'Payment setup',
+  'pay-rate': 'Pay rate',
 };
 
 /**
  * Whether an instructor is cleared to teach.
  *
  * - `not-applicable`: not a paid contractor, so nothing is tracked.
- * - `ready`: all three items are recorded.
+ * - `ready`: all four items are done: the three recorded steps, and a pay
+ *   rate on the instructor (without one, nothing can be worked out to pay).
+ *   Class payouts need that rate to be a percentage and say so separately,
+ *   as "Rate not set", because a lesson contractor may be paid another way.
  * - `not-ready`: `missing` lists what is still outstanding, in checklist order.
  */
 export type InstructorReadinessStatus =
@@ -160,7 +166,7 @@ export interface Instructor extends Omit<Payee, 'email'> {
  * stored.
  */
 export function instructorReadiness(
-  instructor: Pick<Instructor, 'isContractor' | 'readiness'>
+  instructor: Pick<Instructor, 'isContractor' | 'readiness' | 'payRate' | 'payRateType'>
 ): InstructorReadinessStatus {
   if (!instructor.isContractor) {
     return { kind: 'not-applicable' };
@@ -171,10 +177,22 @@ export function instructorReadiness(
     'contractor-agreement': !!r.contractorAgreement?.signedOn,
     'background-check': !!r.backgroundCheck?.clearedOn,
     'payment-setup': !!r.paymentSetup?.completedOn && !!r.paymentSetup.method,
+    'pay-rate': hasPayRate(instructor),
   };
   const missing = INSTRUCTOR_READINESS_ITEMS.filter((item) => !done[item]);
 
   return missing.length === 0 ? { kind: 'ready' } : { kind: 'not-ready', missing };
+}
+
+/** Whether a pay rate is set: a type and a positive amount. */
+export function hasPayRate(
+  instructor: Pick<Instructor, 'payRate' | 'payRateType'>
+): boolean {
+  return (
+    !!instructor.payRateType &&
+    typeof instructor.payRate === 'number' &&
+    instructor.payRate > 0
+  );
 }
 
 /**
@@ -317,7 +335,10 @@ export interface InstructorNotReadyToTeach {
  */
 export function instructorsNotReadyToTeach(
   instructors: ReadonlyArray<
-    Pick<Instructor, 'id' | 'name' | 'status' | 'isContractor' | 'readiness'>
+    Pick<
+      Instructor,
+      'id' | 'name' | 'status' | 'isContractor' | 'readiness' | 'payRate' | 'payRateType'
+    >
   >,
   classes: ReadonlyArray<
     Pick<Class, 'id' | 'name' | 'instructorId' | 'status'> & {

@@ -148,3 +148,31 @@ export const AlreadyOnAStatement: Story = {
     expect(canvas.getByText('Everything this month is on the statement.')).toBeInTheDocument();
   },
 };
+
+export const NotCleared: Story = {
+  args: {
+    previewState: success([
+      { ...mockPreviewJuniper, readinessMissing: ['background-check', 'payment-setup'] },
+    ]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      canvas.getByLabelText('Not cleared to teach: missing background check and payment setup')
+    ).toBeInTheDocument();
+    // A warning only: the statement can still be generated.
+    expect(canvas.getByRole('button', { name: /Generate statement/ })).toBeEnabled();
+  },
+};
+
+export const NotClearedRateOnlyIsNotRepeated: Story = {
+  args: {
+    previewState: success([{ ...mockPreviewMissingRate, readinessMissing: ['pay-rate'] }]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // "Rate not set" already says it; no second chip for the same gap.
+    expect(canvas.getByText('Rate not set')).toBeInTheDocument();
+    expect(canvas.queryByText('Not cleared')).toBeNull();
+  },
+};
