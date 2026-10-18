@@ -10,6 +10,8 @@
  * - inventory.count.updated: targeted per-variation update; fast
  *   enough to run inline.
  * - invoice.payment_made: single-record status flip; inline.
+ * - refund.created / refund.updated: a refund made in the Square dashboard
+ *   reaches the class registration it paid for; one transaction, inline.
  *
  * With separate Firebase projects, each project has its own webhook signature key:
  * - maple-and-spruce-dev: sandbox webhook signature key
@@ -26,11 +28,14 @@ import {
   InvoiceRepository,
   PosSaleRequestRepository,
   ProductRepository,
+  RegistrationRepository,
 } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
-import type {
-  CraftClubMemberStatus,
-  UpdateCraftClubMemberInput,
+import {
+  isSquareRefundRecorded,
+  isSquareRefundUnambiguous,
+  type CraftClubMemberStatus,
+  type UpdateCraftClubMemberInput,
 } from '@maple/ts/domain';
 
 // Webhook event types we handle
@@ -40,6 +45,8 @@ type WebhookEventType =
   | 'invoice.payment_made'
   | 'payment.created'
   | 'payment.updated'
+  | 'refund.created'
+  | 'refund.updated'
   | 'subscription.created'
   | 'subscription.updated';
 
@@ -293,6 +300,155 @@ export async function handlePaymentUpsert(
 }
 
 /**
+ * Handle refund.created / refund.updated webhooks (#144).
+ *
+ * A refund issued straight from the Square dashboard never passes through
+ * `cancelRegistration`, so without this the registration it paid for keeps
+ * reading as paid, and instructor payouts count a seat nobody paid for.
+ *
+ * Only a COMPLETED refund counts: Square sends `refund.created` while it is
+ * PENDING and a `refund.updated` when it completes. Registrations are found by
+ * payment id, falling back to order id. No match is normal: Music Together,
+ * lesson and shop sales refund through here too, and they are not class
+ * registrations.
+ *
+ * Square's refund carries an amount and no itemization, so it is applied only
+ * when it can be for one thing (`isSquareRefundUnambiguous`): a single web
+ * registration. `applySquareRefund` is then idempotent and cumulative (see
+ * `applySquareRefundToRegistration`); a partial refund is recorded and leaves
+ * the student enrolled, surfacing on the Home Inbox. The `refunded` status's
+ * side effects (spots, Square inventory, waitlist) are the Firestore triggers
+ * on `registrations/{id}`.
+ *
+ * A POS sale is ambiguous: it writes one registration per class line on the
+ * same payment and may include shop items, so a refund on it may not be for
+ * the class at all. Every matched registration is flagged for review instead
+ * (`refund-review` on the Inbox) and nothing else changes; if it was the
+ * class, the registration is cancelled as "already refunded in Square".
+ *
+ * A refund any match already records (made by `cancelRegistration`, or an
+ * earlier delivery) changes nothing.
+ *
+ * Payload shape:
+ *   data.object.refund.{ id, payment_id, order_id?, amount_money: { amount,
+ *   currency }, status, updated_at? }
+ */
+export async function handleRefundEvent(
+  event: WebhookEvent
+): Promise<{ action: string; details: string }> {
+  const refund = (
+    event.data.object as
+      | {
+          refund?: {
+            id?: string;
+            payment_id?: string;
+            order_id?: string;
+            amount_money?: { amount?: number; currency?: string };
+            status?: string;
+            updated_at?: string;
+          };
+        }
+      | undefined
+  )?.refund;
+
+  const refundId = refund?.id ?? event.data.id;
+  if (!refundId) {
+    return { action: 'skipped', details: 'No refund id in payload' };
+  }
+
+  if (refund?.status !== 'COMPLETED') {
+    return {
+      action: 'skipped',
+      details: `refund ${refundId} not completed (status=${refund?.status ?? 'unknown'})`,
+    };
+  }
+
+  const amountCents = Number(refund.amount_money?.amount ?? 0);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    return { action: 'skipped', details: `refund ${refundId} has no amount` };
+  }
+
+  const byPayment = refund.payment_id
+    ? await RegistrationRepository.findAllBySquarePaymentId(refund.payment_id)
+    : [];
+  const matches =
+    byPayment.length > 0 || !refund.order_id
+      ? byPayment
+      : await RegistrationRepository.findAllBySquareOrderId(refund.order_id);
+
+  if (matches.length === 0) {
+    return {
+      action: 'skipped',
+      details: `refund ${refundId}: no class registration for payment ${refund.payment_id ?? 'none'} / order ${refund.order_id ?? 'none'}`,
+    };
+  }
+
+  // Made in the app (cancelRegistration records its id) or already handled:
+  // checked across every match, so an in-app refund of one POS class does not
+  // flag its siblings on the same sale.
+  if (isSquareRefundRecorded(matches, refundId)) {
+    return {
+      action: 'skipped',
+      details: `refund ${refundId} already recorded on ${matches.map((r) => r.id).join(', ')} (idempotent)`,
+    };
+  }
+
+  const parsedAt = refund.updated_at ? new Date(refund.updated_at) : new Date();
+  const input = {
+    refundId,
+    amountCents,
+    at: Number.isNaN(parsedAt.getTime()) ? new Date() : parsedAt,
+  };
+
+  if (!isSquareRefundUnambiguous(matches)) {
+    const flagged: string[] = [];
+    for (const registration of matches) {
+      const result = await RegistrationRepository.flagSquareRefundForReview(
+        registration.id,
+        input
+      );
+      if (result?.outcome === 'flagged') flagged.push(registration.id);
+    }
+    if (flagged.length === 0) {
+      return {
+        action: 'skipped',
+        details: `refund ${refundId} already flagged (idempotent)`,
+      };
+    }
+    return {
+      action: 'flagged',
+      details: `refund ${refundId} of ${amountCents} cents on a payment with ${matches.length} registration(s) (${matches.map((r) => r.source).join(', ')}); flagged for review: ${flagged.join(', ')}`,
+    };
+  }
+
+  const [registration] = matches;
+  const result = await RegistrationRepository.applySquareRefund(
+    registration.id,
+    input
+  );
+
+  if (!result) {
+    return {
+      action: 'skipped',
+      details: `refund ${refundId}: registration ${registration.id} vanished`,
+    };
+  }
+
+  const { outcome, registration: updated } = result;
+  if (outcome === 'duplicate') {
+    return {
+      action: 'skipped',
+      details: `refund ${refundId} already counted on ${registration.id} (idempotent)`,
+    };
+  }
+
+  return {
+    action: outcome === 'full' ? 'refunded' : 'partially-refunded',
+    details: `${registration.id}: ${updated.refundedAmountCents ?? 0} of ${updated.pricePaidCents} cents refunded (refund ${refundId})`,
+  };
+}
+
+/**
  * Map a Square subscription status to our member status. Square statuses that
  * end billing (CANCELED/DEACTIVATED) collapse to `cancelled`.
  */
@@ -459,6 +615,11 @@ export const squareWebhook = onRequest(
         case 'payment.created':
         case 'payment.updated':
           result = await handlePaymentUpsert(event);
+          break;
+
+        case 'refund.created':
+        case 'refund.updated':
+          result = await handleRefundEvent(event);
           break;
 
         case 'subscription.created':

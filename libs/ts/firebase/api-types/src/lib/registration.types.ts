@@ -64,6 +64,13 @@ export interface CancelRegistrationRequest {
   id: string;
   /** Issue a refund via Square */
   refund?: boolean;
+  /**
+   * The money already went back in the Square dashboard: mark the
+   * registration refunded without calling Square. Settles a refund flagged
+   * for review, and records dashboard refunds nothing else saw. Cannot be
+   * combined with `refund`.
+   */
+  refundedInSquare?: boolean;
 }
 
 export interface CancelRegistrationResponse {

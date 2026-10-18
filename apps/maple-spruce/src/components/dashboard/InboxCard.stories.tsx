@@ -125,6 +125,38 @@ export const FewItems: Story = {
   },
 };
 
+/** A class registration refunded in part in the Square dashboard (#144). */
+export const PartRefund: Story = {
+  args: {
+    inboxState: {
+      status: 'success',
+      data: [
+        {
+          key: 'refund-partial:reg-wren:2000',
+          kind: 'refund-partial',
+          title: 'Wheel Pottery',
+          detail: '$20.00 of $63.60 refunded in Square · Wren Abernathy',
+          href: '/classes/cls-pottery/roster',
+          actionLabel: 'Review',
+          occurredAt: FIXTURE_NOW.toISOString(),
+          urgent: false,
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Part refund')).toBeInTheDocument();
+    await expect(
+      canvas.getByText('$20.00 of $63.60 refunded in Square · Wren Abernathy')
+    ).toBeInTheDocument();
+    await expect(canvas.getByRole('link', { name: 'Review' })).toHaveAttribute(
+      'href',
+      '/classes/cls-pottery/roster'
+    );
+  },
+};
+
 export const Empty: Story = {
   args: { inboxState: { status: 'success', data: [] } },
   play: async ({ canvasElement }) => {

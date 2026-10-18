@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -13,24 +13,44 @@ import {
   Divider,
   Alert,
   FormControlLabel,
-  Checkbox,
+  Radio,
+  RadioGroup,
 } from '@mui/material';
-import type { Registration } from '@maple/ts/domain';
+import {
+  hasOpenRefundReview,
+  refundedInSquareAmountCents,
+  type Registration,
+} from '@maple/ts/domain';
 
 interface RegistrationDetailDialogProps {
   open: boolean;
   onClose: () => void;
   registration: Registration | null;
   className?: string;
+  /**
+   * `refundedInSquare`: the money already went back in the Square dashboard,
+   * so record the refund without refunding again.
+   */
   onCancel: (
     id: string,
-    refund: boolean
+    refund: boolean,
+    refundedInSquare?: boolean
   ) => Promise<{ registration: Registration; refundId?: string }>;
   onUpdateNotes: (id: string, notes: string) => Promise<void>;
 }
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+/** What cancelling does about the money. */
+type RefundChoice = 'refund' | 'refunded-in-square' | 'none';
+
+/** A flagged Square refund means the money probably already went back. */
+function defaultRefundChoice(registration: Registration | null): RefundChoice {
+  return registration && hasOpenRefundReview(registration)
+    ? 'refunded-in-square'
+    : 'refund';
 }
 
 function formatDate(date: Date | string): string {
@@ -71,26 +91,43 @@ export function RegistrationDetailDialog({
   onUpdateNotes,
 }: RegistrationDetailDialogProps) {
   const [isCancelling, setIsCancelling] = useState(false);
-  const [issueRefund, setIssueRefund] = useState(true);
+  const [refundChoice, setRefundChoice] = useState<RefundChoice>(
+    defaultRefundChoice(registration)
+  );
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
+
+  // A different registration opened in the same dialog starts from its own
+  // default, not the last one's choice.
+  useEffect(() => {
+    setRefundChoice(defaultRefundChoice(registration));
+  }, [registration?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!registration) return null;
 
   const canCancel =
     registration.status === 'confirmed' || registration.status === 'pending';
   const hasPayment = !!registration.squarePaymentId;
+  const reviewPending = hasOpenRefundReview(registration);
 
   const handleCancel = async () => {
     setIsCancelling(true);
     setCancelError(null);
 
     try {
-      const result = await onCancel(registration.id, issueRefund && hasPayment);
-      const message = result.refundId
-        ? `Registration cancelled and refund issued (${result.refundId})`
-        : 'Registration cancelled';
+      const alreadyRefunded = hasPayment && refundChoice === 'refunded-in-square';
+      const result = await onCancel(
+        registration.id,
+        hasPayment && refundChoice === 'refund',
+        alreadyRefunded
+      );
+      let message = 'Registration cancelled';
+      if (result.refundId) {
+        message = `Registration cancelled and refund issued (${result.refundId})`;
+      } else if (alreadyRefunded) {
+        message = 'Registration cancelled and recorded as refunded in Square';
+      }
       setCancelSuccess(message);
       setShowCancelConfirm(false);
     } catch (error) {
@@ -114,6 +151,14 @@ export function RegistrationDetailDialog({
           )}
           {cancelSuccess && (
             <Alert severity="success">{cancelSuccess}</Alert>
+          )}
+          {reviewPending && !cancelSuccess && (
+            <Alert severity="warning">
+              Square refunded{' '}
+              {formatCents(registration.refundReviewAmountCents ?? 0)} on a sale
+              that included this class. If it was for this class, cancel it as
+              already refunded in Square.
+            </Alert>
           )}
 
           {/* Status + Source */}
@@ -273,15 +318,29 @@ export function RegistrationDetailDialog({
                     Are you sure you want to cancel this registration?
                   </Typography>
                   {hasPayment && (
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={issueRefund}
-                          onChange={(e) => setIssueRefund(e.target.checked)}
-                        />
+                    <RadioGroup
+                      aria-label="Refund"
+                      value={refundChoice}
+                      onChange={(e) =>
+                        setRefundChoice(e.target.value as RefundChoice)
                       }
-                      label={`Issue refund of ${formatCents(registration.pricePaidCents)}`}
-                    />
+                    >
+                      <FormControlLabel
+                        value="refund"
+                        control={<Radio size="small" />}
+                        label={`Issue refund of ${formatCents(registration.pricePaidCents)}`}
+                      />
+                      <FormControlLabel
+                        value="refunded-in-square"
+                        control={<Radio size="small" />}
+                        label={`Already refunded in Square (don't refund again): record ${formatCents(refundedInSquareAmountCents(registration))}`}
+                      />
+                      <FormControlLabel
+                        value="none"
+                        control={<Radio size="small" />}
+                        label="Cancel without a refund"
+                      />
+                    </RadioGroup>
                   )}
                   <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                     <Button

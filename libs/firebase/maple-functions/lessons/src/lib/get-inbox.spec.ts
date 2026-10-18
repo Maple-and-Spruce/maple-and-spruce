@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   findPendingConflicts: vi.fn(),
   findClass: vi.fn(),
   findDismissals: vi.fn(),
+  findWithRefunds: vi.fn(),
+  findWithRefundReviewSince: vi.fn(),
   findInstructors: vi.fn(),
   findUpcomingClasses: vi.fn(),
   countSeats: vi.fn(),
@@ -27,7 +29,11 @@ vi.mock('@maple/firebase/database', () => ({
   ClassRepository: { findById: mocks.findClass, findAll: mocks.findUpcomingClasses },
   InstructorRepository: { findAll: mocks.findInstructors },
   InboxDismissalRepository: { findByKeys: mocks.findDismissals },
-  RegistrationRepository: { countByClassId: mocks.countSeats },
+  RegistrationRepository: {
+    findWithRefunds: mocks.findWithRefunds,
+    findWithRefundReviewSince: mocks.findWithRefundReviewSince,
+    countByClassId: mocks.countSeats,
+  },
 }));
 
 vi.mock('@maple/firebase/maple-functions/get-needs-attention', () => ({
@@ -120,6 +126,8 @@ beforeEach(() => {
   );
   mocks.findPendingConflicts.mockResolvedValue([]);
   mocks.findDismissals.mockResolvedValue([]);
+  mocks.findWithRefunds.mockResolvedValue([]);
+  mocks.findWithRefundReviewSince.mockResolvedValue([]);
   mocks.findInstructors.mockResolvedValue([]);
   mocks.findUpcomingClasses.mockResolvedValue([]);
 });
@@ -265,6 +273,80 @@ describe('getInbox', () => {
     ]);
     const { items } = await getInbox();
     expect(items.filter((i) => i.kind === 'sync-conflicts')).toHaveLength(1);
+  });
+
+  it('lists an open partial refund with its class name, and reads only that class', async () => {
+    mocks.findAgreements.mockResolvedValue([]);
+    mocks.findWithRefunds.mockResolvedValue([
+      {
+        id: 'reg-part',
+        classId: 'cls-pottery',
+        customerName: 'Test Student',
+        status: 'confirmed',
+        pricePaidCents: 6360,
+        refundedAmountCents: 2000,
+        lastRefundAt: new Date(NOW.getTime() - HOUR),
+        updatedAt: new Date(NOW.getTime() - HOUR),
+      },
+      {
+        id: 'reg-full',
+        classId: 'cls-other',
+        status: 'refunded',
+        pricePaidCents: 6360,
+        refundedAmountCents: 6360,
+        updatedAt: new Date(NOW.getTime() - HOUR),
+      },
+    ]);
+    mocks.findClass.mockImplementation(async (id: string) =>
+      id === 'cls-pottery' ? { id, name: 'Wheel Pottery', sessions: [] } : undefined
+    );
+
+    const { items } = await getInbox();
+
+    // A full refund is done: its class is not even read.
+    expect(mocks.findClass.mock.calls.map(([id]) => id)).toEqual(['cls-pottery']);
+    expect(items.find((i) => i.kind === 'refund-partial')).toMatchObject({
+      key: 'refund-partial:reg-part:2000',
+      title: 'Wheel Pottery',
+      detail: '$20.00 of $63.60 refunded in Square · Test Student',
+      href: '/classes/cls-pottery/roster',
+    });
+  });
+
+  it('asks about refunds flagged in the last 90 days that are still open', async () => {
+    mocks.findAgreements.mockResolvedValue([]);
+    mocks.findWithRefundReviewSince.mockResolvedValue([
+      {
+        id: 'reg-pos',
+        classId: 'cls-pottery',
+        customerName: 'Test Student',
+        status: 'confirmed',
+        refundReviewAt: new Date(NOW.getTime() - HOUR),
+        refundReviewAmountCents: 10000,
+        refundReviewId: 'rf-1',
+      },
+      {
+        id: 'reg-settled',
+        classId: 'cls-other',
+        status: 'refunded',
+        refundReviewAt: new Date(NOW.getTime() - HOUR),
+      },
+    ]);
+    mocks.findClass.mockImplementation(async (id: string) =>
+      id === 'cls-pottery' ? { id, name: 'Wheel Pottery', sessions: [] } : undefined
+    );
+
+    const { items } = await getInbox();
+
+    expect(mocks.findWithRefundReviewSince).toHaveBeenCalledWith(
+      new Date(NOW.getTime() - 90 * 86_400_000)
+    );
+    expect(mocks.findClass.mock.calls.map(([id]) => id)).toEqual(['cls-pottery']);
+    expect(items.find((i) => i.kind === 'refund-review')).toMatchObject({
+      key: 'refund-review:reg-pos:rf-1',
+      title: 'Wheel Pottery',
+      href: '/classes/cls-pottery/roster',
+    });
   });
 
   it('is empty when nothing needs doing', async () => {

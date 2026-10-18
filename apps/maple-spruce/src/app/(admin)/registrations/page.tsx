@@ -49,8 +49,8 @@ export default function RegistrationsPage() {
   }, []);
 
   const handleCancel = useCallback(
-    async (id: string, refund: boolean) => {
-      return cancelRegistration(id, refund);
+    async (id: string, refund: boolean, refundedInSquare?: boolean) => {
+      return cancelRegistration(id, refund, refundedInSquare);
     },
     [cancelRegistration]
   );

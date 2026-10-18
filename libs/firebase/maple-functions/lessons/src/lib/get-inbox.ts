@@ -28,6 +28,9 @@ import {
 import { collectNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
 import {
   buildInboxItems,
+  hasOpenPartialRefund,
+  hasOpenRefundReview,
+  INBOX_REFUND_LOOKBACK_DAYS,
   classesForMinimumCheck,
   instructorsNotReadyToTeach,
   withoutDismissed,
@@ -63,6 +66,8 @@ export async function getInbox(): Promise<GetInboxResponse> {
     syncConflicts,
     activeInstructors,
     upcomingClasses,
+    refundedRegistrations,
+    flaggedRefunds,
   ] = await Promise.all([
     // The whole studio: the inbox is admin-only.
     collectNeedsAttention(undefined, now),
@@ -73,14 +78,25 @@ export async function getInbox(): Promise<GetInboxResponse> {
     // Contractor readiness is admin-only, which the inbox is.
     InstructorRepository.findAll({ status: 'active' }),
     ClassRepository.findAll({ upcoming: true }),
+    // Refunds are rare, so every registration with one is a small read;
+    // the builder keeps the open partial ones from the last 90 days.
+    RegistrationRepository.findWithRefunds(),
+    // Square refunds on a shared (POS) sale, flagged for someone to check.
+    RegistrationRepository.findWithRefundReviewSince(
+      new Date(now.getTime() - INBOX_REFUND_LOOKBACK_DAYS * 86_400_000)
+    ),
   ]);
+  const partialRefunds = refundedRegistrations.filter(hasOpenPartialRefund);
+  const refundReviews = flaggedRefunds.filter(hasOpenRefundReview);
 
-  // Only the classes a pending request names; the rest are not needed.
+  // Only the classes a pending request or a partial refund names.
   const classIds = [
     ...new Set(
-      pendingAgreements
-        .map((r) => r.classId)
-        .filter((id): id is string => Boolean(id))
+      [
+        ...pendingAgreements.map((r) => r.classId),
+        ...partialRefunds.map((r) => r.classId),
+        ...refundReviews.map((r) => r.classId),
+      ].filter((id): id is string => Boolean(id))
     ),
   ];
   const classes: InboxClass[] = (
@@ -109,6 +125,8 @@ export async function getInbox(): Promise<GetInboxResponse> {
     classes,
     needsAttention: scan.groups,
     syncConflicts,
+    refundedRegistrations: partialRefunds,
+    refundReviews,
     instructorsNotReady: instructorsNotReadyToTeach(
       activeInstructors,
       upcomingClasses,

@@ -37,6 +37,16 @@ export const cancelRegistration = Functions.endpoint
       if (!data.id) {
         throwInvalidArgument('Registration ID is required');
       }
+      for (const flag of ['refund', 'refundedInSquare'] as const) {
+        if (data[flag] !== undefined && typeof data[flag] !== 'boolean') {
+          throwInvalidArgument(`${flag} must be true or false`);
+        }
+      }
+      if (data.refund && data.refundedInSquare) {
+        throwInvalidArgument(
+          'Choose either a refund or already refunded in Square, not both'
+        );
+      }
 
       // Look up the registration
       const registration = await RegistrationRepository.findById(data.id);
@@ -52,6 +62,14 @@ export const cancelRegistration = Functions.endpoint
         throwFailedPrecondition(
           `Registration is already ${registration.status}`
         );
+      }
+
+      // Already refunded in the Square dashboard: record it, no Square call.
+      if (data.refundedInSquare) {
+        const updated = await RegistrationRepository.markRefundedInSquare(
+          registration
+        );
+        return { registration: updated };
       }
 
       let refundId: string | undefined;
@@ -85,16 +103,22 @@ export const cancelRegistration = Functions.endpoint
 
       // Update registration status. The refund's time and amount are kept so
       // instructor payouts can tell a refund before a statement was paid from
-      // one after.
+      // one after. The id also goes in `squareRefundIds`, so Square's
+      // `refund.*` webhook for this same refund is recognised as already
+      // counted rather than added a second time.
       const refunded = Boolean(data.refund && refundId);
+      const refundedAt = new Date();
       const updated = await RegistrationRepository.update({
         id: data.id,
         status: refunded ? 'refunded' : 'cancelled',
-        ...(refunded && {
-          refundedAt: new Date(),
-          refundedAmountCents,
-          squareRefundId: refundId,
-        }),
+        ...(refunded &&
+          refundId && {
+            refundedAt,
+            lastRefundAt: refundedAt,
+            refundedAmountCents,
+            squareRefundId: refundId,
+            squareRefundIds: [...(registration.squareRefundIds ?? []), refundId],
+          }),
       });
 
       return {

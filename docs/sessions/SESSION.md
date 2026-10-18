@@ -6,6 +6,27 @@
 
 ## Current Status
 
+### Square dashboard refunds reach the registration (#144, 2026-10-17)
+
+- `squareWebhook` handles `refund.created` / `refund.updated`. A COMPLETED refund is matched by
+  payment id (then order id) and folded in by `RegistrationRepository.applySquareRefund` in one
+  transaction. Cumulative: refunds that cover the price make it `refunded`, which is what
+  contract-instructor payouts read. No new function; the webhook bundle has no Square SDK.
+- Partial refunds record `refundedAmountCents` only; the student stays enrolled and the
+  instructor keeps their share until David decides. They show on the Home Inbox as
+  "Part refund" (key includes the amount, so a further refund resurfaces it).
+- `squareRefundIds` makes it idempotent; `cancelRegistration` now writes its refund id there
+  too, so the webhook echo of an in-app refund is a no-op.
+- Only an unambiguous refund is applied: exactly one registration on the payment, and not POS.
+  A POS sale writes one registration per class line on one payment and can include shop items,
+  and Square's refund has no itemization, so every match is flagged instead (`refundReviewAt` /
+  `refundReviewAmountCents` / `refundReviewId`, status untouched) and shows on the Inbox as
+  "Check refund". If it was the class, cancel it as "Already refunded in Square"
+  (`cancelRegistration({ refundedInSquare: true })`, no Square call). That also backfills
+  dashboard refunds from before the webhook subscription.
+- **Manual step:** subscribe the Square webhook to `refund.created` + `refund.updated` in the
+  Square Developer dashboard, sandbox and production. MT-account refunds stay out of scope.
+
 ### Instructors domain router (2026-10-17, #64, stacked on #139)
 
 The six instructor functions are now routes on one `instructors` router in `maple-core`
