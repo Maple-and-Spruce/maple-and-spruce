@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   LessonInquiry,
   LessonInquiryStatus,
@@ -53,10 +56,10 @@ export function useLessonInquiries(options: UseLessonInquiriesOptions = {}) {
     setInquiriesState({ status: 'loading' });
     try {
       const functions = getMapleFunctions();
-      const get = httpsCallable<
+      const get = httpsCallableFromURL<
         GetLessonInquiriesRequest,
         GetLessonInquiriesResponse
-      >(functions, 'getLessonInquiries');
+      >(functions, routerCallableUrl('lessons', 'getLessonInquiries'));
 
       const result = await get(status ? { status } : {});
       setInquiriesState({
@@ -83,10 +86,10 @@ export function useLessonInquiries(options: UseLessonInquiriesOptions = {}) {
       setUpdatingId(id);
       try {
         const functions = getMapleFunctions();
-        const update = httpsCallable<
+        const update = httpsCallableFromURL<
           UpdateLessonInquiryStatusRequest,
           UpdateLessonInquiryStatusResponse
-        >(functions, 'updateLessonInquiryStatus');
+        >(functions, routerCallableUrl('lessons', 'updateLessonInquiryStatus'));
 
         const result = await update({ id, status: nextStatus, ...extra });
         const inquiry = hydrate(result.data.inquiry);

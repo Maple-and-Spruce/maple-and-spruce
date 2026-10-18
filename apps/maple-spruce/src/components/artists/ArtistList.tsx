@@ -84,11 +84,11 @@ function ArtistCard({
             <Typography variant="h6" component="h3">
               {artist.name}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
               {artist.email}
             </Typography>
             {artist.phone && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                 {artist.phone}
               </Typography>
             )}
@@ -98,7 +98,7 @@ function ArtistCard({
             {artist.notes && (
               <Typography
                 variant="body2"
-                color="text.secondary"
+                color="textSecondary"
                 sx={{ mb: 1, fontStyle: 'italic' }}
               >
                 {artist.notes}

@@ -6,6 +6,537 @@
 
 ## Current Status
 
+### Admin sidebar: areas, search and Create, Square-style (2026-10-14)
+
+- The sidebar's 35 always-open links became **8 areas**: Home, Classes, Lessons, Music
+  Together, Shop, Calendar, Money, Settings. Approved from a Design canvas prototype; Katie's
+  picks were the **accordion** (the current area opens in place, the rest stay one row) over
+  Square's drill-in, and a new **Money** area holding Hope Billing and POS Lessons with the
+  payouts. Embed Settings and Calendar Links moved from Calendar to Settings.
+- **Every page keeps its URL and its roles.** `nav-groups.spec.ts` pins the full page → roles map
+  that `PathRoleGuard` reads, so a regroup can't drop a page or widen access.
+- **Search** at the top (⌘K / Ctrl+K, Enter opens the best match) finds any page the user can
+  see, including ones in closed areas. A closed area shows the sum of its items' badges.
+- **Roles with 10 or fewer pages get the plain grouped list** (`FLAT_NAV_MAX_ITEMS`): clerk (8),
+  MT teacher (6), lesson teacher (6). A clerk + lesson teacher (11) gets the accordion.
+- **Create** is pinned at the bottom: New class, New event, Add student, Book the Spruce Room,
+  filtered by role. The first three open the page's create form via `?new=1`
+  (`useCreateIntent`; see PATTERNS-AND-PRACTICES → "Opening a Create Form From a Link").
+- Active-page matching is now longest-prefix (`findActiveHref`), so `/students/<id>` keeps
+  Lessons open with Students marked, which the old exact match didn't.
+- Pure nav logic is in `libs/react/layout/src/lib/nav-model.ts`; that lib now has a vitest
+  project. The portal E2E signs admins in on an area link and covers Create → New class.
+
+### Merge-day Cloud Run CPU: skip codebases whose bundle didn't change (2026-10-13)
+
+- Measured: the "CPU (Request-based billing)" spike is Cloud Run booting one instance of every
+  new revision at 2 vCPU on deploy, about 22 vCPU-s per function per project, even with no
+  traffic. On 10-09, 25 merges made 2,598 prod revisions (17.5 vCPU-h vs ~1.1 on a quiet day),
+  and dev used about the same again. Deploy boots were ~78% of the Oct 1-12 bill.
+- 43% of those revisions redeployed identical code (same `firebase-functions-hash`).
+  `prepare_and_build` now drops a codebase whose bundle matches the last green merge
+  (`tools/unchanged-function-codebases.sh`). See `docs/architecture/ci-cd.md`.
+- Left as recommendations: keep consolidating (#61; deploy cost scales with function count),
+  trim maple-core's boot (~8s of 2 vCPU per revision), batch merge trains, put the calendar
+  feeds behind a CDN cache (~27 vCPU-s per `classCatalogFeed` request, all cold starts).
+
+### Weather: reschedule with a credit, or hold online (2026-10-12, #210)
+
+- **Weather** on a lesson (Upcoming lessons, Activity menu), one student at a time. It opens the
+  cancel dialog's weather variant with two choices:
+  - **Reschedule with a credit**: the #209 flow, with the original labelled Weather
+    (`Lesson.cancelledFor`).
+  - **Hold it online**: `Lesson.virtual`. The lesson keeps its time and payment.
+- **An online lesson keeps its calendar event**, so it stays on the teacher's My Week, but the
+  event holds no room (`lessonOccupiedRoom`). Moving an online lesson skips the room check;
+  **In person** brings it back only if the room is still free.
+- Also used when a teacher cancels: the policy treats teacher and studio cancellations alike.
+- Follow-up: My Week labels the caller's own online lessons "· Online" (`MyWeekCommitment.online`,
+  from the lessons `getMyWeek` already reads), and the Today card says "30-min lesson · Online".
+
+### Lesson cancel and reschedule with a credit (2026-10-12, #209)
+
+- New lesson policy: a family that cancels is still charged, and Katie may give a credit
+  toward a later lesson, at her judgement. Planned with David: no credit balance, no reason or
+  notice tracking, no one-in-four enforcement.
+- **A credit is a moved payment.** `lessons/rescheduleLessonWithCredit` books the replacement at
+  `{id}-credit`, rewrites the charge (or invoice line) that named the cancelled lesson to name
+  the replacement, then cancels the original. Amount, status and idempotency key never change.
+  Every billing reader already treats the replacement as paid. If nothing billed the original,
+  the replacement is billed normally.
+- UI: **Cancel** on Upcoming lessons and in the Activity menu opens `CancelLessonDialog`
+  (Cancel / Cancel and reschedule with a credit). A cancelled lesson can be credited later.
+  Activity shows "Rescheduled to …" / "Credit for …"; Upcoming shows a **Credit** chip.
+- Plain cancel still goes through `updateLesson`, which releases the lesson from an *unpaid
+  scheduled* autopay charge (#105). Autopay is paused, so in practice that never fires.
+- Next: #210 (weather: reschedule with credit, or go virtual).
+
+### Dependency refresh 5/5: Next 16.4 (2026-10-09)
+
+- `next` 16.3.8 → 16.4.0 (released 2026-10-06), in both `package.json` and
+  `apps/maple-spruce/package.json`.
+- **`next build --webpack` stays.** The adapter-only `next-server.js.nft.json` problem from 16.3
+  is still open upstream, and 16.4's notes don't mention it.
+- **Storybook needed a patch.** 16.4's `useRouter` reads `LayoutRouterContext.parentRenderTree.data`
+  (16.3 read `parentCacheNode`). `@storybook/nextjs-vite` 10.6.1 mocks only the old field, so 12
+  stories (AppShell, AuthGuard, LoginPage) crashed with "Cannot read properties of undefined
+  (reading 'data')". `patches/@storybook__nextjs-vite@10.6.1.patch` adds the field, mirroring the
+  upstream fix storybookjs/storybook#36588, which hasn't been released. Delete the patch when a
+  Storybook release includes it. Real pages were never affected.
+- How it was checked:
+  - **`vercel build` run locally** with CLI 63.1.0 (the version CI uses) and local-only project
+    settings, no `vercel pull`. It produced the same output as main: 68 functions and 140 static
+    files.
+  - **Screenshot sweep** of 42 routes × desktop/phone against `next start`. Main vs the branch
+    differs by 0.00%, the same as a main-vs-main control. Signed out, it only covers the login
+    gate, the public pages and the 404s; the signed-in flows are the Portal E2E in CI.
+  - **Test results and coverage** are identical to main.
+
+### Dependency refresh 4/5: firebase JS SDK 13 (2026-10-09)
+
+- `firebase` 12.19 → 13.0.0 (released 2026-10-07). Its breaking changes are all in AI Logic,
+  which the repo doesn't use. For what the client does use, the sub-packages barely move:
+  `@firebase/functions` 0.14.0 and `@firebase/app-check` are unchanged; auth, app,
+  remote-config and storage are patch bumps.
+- **Root `@firebase/app` 0.16.2 → 0.16.3, in step with `firebase`** (see 1/5). The lockfile
+  holds one copy. The Functions bundles' only dependency change is that same bump;
+  `@firebase/database-compat` accepts `0.x`.
+- Checked against a firebase 12 capture: the same 4083 unit and 659 Storybook tests with the
+  same statuses and identical per-file coverage.
+
+### Unit tests run per Nx project (2026-10-08, ADR-036)
+
+- `pnpm test` (`nx run-many -t test`) failed on main for ~30 projects, and its targets covered
+  only 161 of 328 unit specs. CI used a separate root run.
+- Now every project with specs (138 + a new `tools` project) has a generated `vitest.config.mts`.
+  The `@nx/vitest` plugin infers `test`, so `nx test`, `nx affected -t test` and caching work.
+- The root `vitest.config.mts` globs those configs into `test.projects`, and CI's
+  `vitest run --coverage` uses the same configs. Per-file coverage is identical for all 329
+  pre-existing files.
+- Integration suites and pos-sandbox-e2e moved to an `e2e` target; `functions-integration-tests:test`
+  is now `:e2e`.
+- `tools/check-vitest-projects.ts` (CI) fails on a spec no project runs.
+- Ten function libs with specs had no `tsconfig.json`; they now have the standard pair.
+- **Merging redeploys every function**: it touches `nx.json` and nearly every lib, and the merge
+  workflow deploys what `nx show projects --affected` reports. No runtime code changed.
+
+### Dependency refresh 3/5: vitest 5 (2026-10-08)
+
+- `vitest`, `@vitest/coverage-istanbul`, `@vitest/coverage-v8` and `@vitest/browser-playwright`
+  4.1.11 → 5.0.3. Storybook's addon-vitest and Nx 23.3 already accept 5. Nothing in the repo used
+  a removed entry point, `.sequential`, `toThrow('')`, `expect.poll` or a worker id, and no
+  `vi.mock` call sat inside a block.
+- **Storybook coverage now excludes `**/*.stories.tsx`.** Vitest 5 changed coverage include and
+  exclude matching and started counting the 34 story files. That padded lines and functions in
+  the merged report and lowered branches. With the exclude, the Storybook coverage file set and
+  every per-file number match vitest 4 exactly.
+- How the upgrade was checked: every test's name and status, plus per-file coverage, captured on
+  vitest 4 and diffed against vitest 5. Unit: the same 4077 tests with the same statuses and
+  identical coverage. 28 tests have new names because vitest 5 no longer quotes `$` values in
+  `test.each` titles. Storybook: the same 659 tests.
+- `.vitest/` is gitignored; vitest 5 writes its reports and attachments there.
+- **Pre-existing, not fixed here:** `nx run-many -t test`, and so `pnpm test`, fails on main for
+  about 30 non-integration projects ("Unable to load test config"). The failing set is identical
+  on vitest 4 and 5. CI never uses it; it runs the root `vitest run`. (Fixed by ADR-036, above.)
+
+### Dependency refresh 2/5: Functions and CI on Node 24 (2026-10-08)
+
+- All six codebases run on `nodejs24` (`firebase.json`). The esbuild `target` in each
+  `apps/functions*/project.json` moved from `node20`, which had never been updated, to `node24`.
+- CI runs on Node 24 everywhere. The two dev-Firestore seed jobs (`e2e_dev` and the job after it)
+  were pinned to `22.22.3` because of the node-fetch@2 "Premature close" regression
+  (nodejs/node#63989). They now ask for `^24.18.0`: the fix (nodejs/node#64004) shipped in
+  22.23.1 and 24.18.0. The runner image currently caches 24.21.0.
+- `@types/node` 22 → 24.19.1. Its old `RelativeIndexable` global had been quietly adding
+  `Array.prototype.at` for the Functions apps, whose tsconfigs still said `es2020`. Without it, `nx
+  build` failed (TS2550) while `nx typecheck` passed. The six `apps/functions*/tsconfig.json` now
+  target and use the lib for `es2024`, which matches the runtime.
+- The admin app's Vercel projects were already on Node 24.x (project setting). Only the CI
+  `vercel build` step was still on 22.
+- firebase-tools has supported `nodejs24` since 14.26. Every Functions dependency accepts 24
+  (firebase-admin 14 needs ≥ 22).
+
+### Dependency refresh 1/5: patches, fresh lockfile (2026-10-08)
+
+The first of five dependency PRs. The rest: Functions on Node 24, vitest 5, firebase JS SDK 13,
+Next 16.4. TypeScript 7 waits: typescript-eslint and the Nx TypeScript plugin still need the
+compiler API, which 7.0 doesn't ship.
+
+- **next 16.3.7 → 16.3.8** clears a high advisory (GHSA-cjq9-62q9-8jv4) that failed the audit
+  gate. `apps/maple-spruce/package.json` carries its own `next` pin (Vercel installs from it), so
+  bump both, or `pnpm audit` keeps reporting the old one.
+- nx/@nx 23.3.0. The only migrations in 23.3 are the Cypress 16 set (not used) and the
+  optional vitest 5 bundle, which was declined. vitest 5 gets its own PR.
+- nx 23.3 stopped pinning vulnerable smol-toml, axios and brace-expansion, so those three
+  overrides are gone.
+- **`@firebase/app` is pinned exactly to what `firebase` pins (0.16.2).** The root dep exists
+  only as the Functions peer-dep shim. On a fresh lockfile its caret range drifted to 0.16.3,
+  the web bundle loaded two copies, and every `getFunctions()` threw "Service functions is not
+  available". Unit tests, typecheck and build all stayed green; only the Storybook play tests
+  (18 failures) caught it. Bump the two together. The reason is next to the shim in
+  `global-runtime-options.ts`.
+- Patch and minor bumps: MUI X 9.15, Playwright 1.64, @webflow/* 2.6, webflow-cli 2.11,
+  firebase-tools 15.33, vite 8.3.4, typescript-eslint 8.71.1, swc 1.16.13. `@swc/cli` was removed
+  because nothing used it.
+- The `npx firebase-tools@latest` deploy steps now use the `FIREBASE_TOOLS_VERSION` workflow env
+  var (15.33.0). Keep it in step with package.json.
+- Not removed: `@babel/*` (the `.babelrc` files in `libs/react/*` name `@nx/react/babel`, and
+  it is in the tree transitively anyway; babel 8 is a separate question) and `nyc` (CI merges coverage with it). `nyc` is why `sprintf-js` shows a moderate
+  advisory with no fix.
+
+### Hope prices come only from EMA products (2026-10-08, #83 part 3)
+
+The hardcoded length table (`HOPE_PER_LESSON_RATE_CENTS` / `HOPE_MONTHLY_EQUIVALENT_CENTS`)
+is gone. `resolveHopeLessonRate(student, productsById)` returns the product price or
+`{ source: 'unpriced' }`; nothing in code stands in. A Hope student on no product (or a
+product id that no longer resolves):
+- **Hope queue**: entry has no `rateCents`, `rateSource: 'unpriced'`; counted in the lesson
+  counts but in no cents total; `totals.unpricedCount` drives a warning on the Hope Billing page
+  and in `HopeStudentBilling`. Ready-to-invoice lessons are still priced from their order.
+- **recordHopeSubmissions**: rate is order price ?? existing claim rate ?? product price; if none,
+  the lesson is skipped ("Put the student on an EMA product first"), never stamped.
+- **Teacher payouts**: the line is listed with `baseRevenueCents` undefined and counted in
+  `unpricedHopeLessonCount`. Flat and hourly teachers are still paid for it (their pay never
+  depended on the price); a percentage teacher's share stays undefined, out of `totalOwedCents`,
+  and is counted in `unpricedHopePayPendingCount`. `TeacherPayoutsList` shows "N Hope lessons
+  unpriced", "Needs EMA product", and a warning worded for whether pay is held.
+  `missingRateConfig` now comes from the teacher, not the lines.
+- **HopeScholarshipBanner**: warning, no dollar figure. `registeredLessonLength` prop removed.
+- `formatCents` moved to `libs/react/lessons/src/lib/format-cents.ts`.
+
+
+### Lessons the way Katie runs them (2026-10-04 – 10-05, epic #156, ADR-034)
+
+Katie has about five minutes at the end of a lesson, one in four, to book the next four lessons
+and take payment. The lessons UI was built for a different model (generated lessons, mark taught,
+automatic charging), so it was reworked in six slices:
+
+| Slice | PR | What |
+|---|---|---|
+| #157 | #164 | Booked on demand: weekly time books nothing; past-and-not-deleted = happened; auto-booking and auto-charge are logged no-ops; `getMyRoles` returns `instructorId`; prod cleanup removed 39 unpaid generated lessons |
+| #158 | #169 | Student page tabs: **Next lessons** (one button books + charges, or invoices without a card), **Settings**, **Activity** (paid labelled, unpaid past not called out) |
+| #159 | #171 | Students list by weekday from weekly times, mine first |
+| #160 | #173 | My Week names each own lesson and opens Next lessons; Today drops Mark taught / No-show |
+| #161 | #174 | Instruments are a setting (violin, fiddle, guitar, harp) on a new `settings` router |
+| #162 | this | Lesson Billing hidden from the nav; ADR-034 |
+
+**Gotchas worth keeping.**
+- A component barrel imported by a unit-tested module drops merged coverage ~8 points (#169): keep
+  pure logic in `@maple/ts/domain`, not in a component library.
+- CI lints with `eslint .` across the repo; a per-project nx lint run can skip a library (#174).
+- Removing a scheduled function does not stop it: CI never prunes. Make it a no-op first.
+- Unpaid past lessons exist in prod (25 private-pay, 2 Hope at the time) and are deliberately not
+  surfaced — past payments were settled outside the portal.
+
+**Follow-ups:** move the six singleton config functions onto the `settings` router (net −5), then
+delete the old ones by hand; retire the no-op materializer and auto-charge schedules by hand once
+the studio is sure it won't want them back.
+
+### Class-instructor payouts: monthly statements, marked paid by hand (2026-09-29, PRs #141 → #142 → this)
+
+Contract instructors now get a **monthly statement** at `/payouts?tab=classes`. The policy is David's (2026-09-28/29):
+- The instructor gets 80% (`Instructor.payRate`, percentage) of what the student paid for the class, after discount and before tax.
+- M&S absorbs the card fee.
+- Revenue is split evenly by session, and each session is paid in the month it was held.
+- `confirmed`, `no-show` and unrefunded `cancelled` registrations count.
+- A refund after a statement is paid comes off the next statement.
+
+The app never moves money. David pays in Square Payroll or Bill Pay and records the date, method and reference.
+
+**The double-pay guard is a ledger** (ADR-035). `payoutLedgerEntries` gives every payable unit a deterministic id (`class-session_{reg}_{i}`, `class-refund_{reg}`), and generate writes the statement and its entries in one transaction that refuses when any entry already exists. Void (pending only) releases them. The artist-payout path got the same guarantee in #145 (see below).
+
+**Three things found on the way.**
+- `getNetAmountPaid` took the discount off twice and left the sales tax in. It now returns `subtotalCents`.
+- Refunds were recorded with no time or amount; the Square refund id was thrown away. `cancelRegistration` now writes `refundedAt`, `refundedAmountCents` and `squareRefundId`.
+- **Refunds made in the Square dashboard never reach the app.** This is not fixed: `squareWebhook` would need a refund handler.
+
+**Gotcha: `next dev` writes `apps/maple-spruce/AGENTS.md` + `CLAUDE.md`** (Next's agent rules) and rewrites `next-env.d.ts` to `.next/dev/types`. Delete and restore them before committing, or set `agentRules: false` in `next.config`.
+
+**Next:** give lesson teachers the same ledger (#58).
+
+**Follow-up landed (#145): the four older payout functions are routes on `payouts` now.** `getPayouts` / `generatePayout` / `markPayoutPaid` became `payouts/getArtistPayouts` / `generateArtistPayout` / `markArtistPayoutPaid` (renamed, since "payouts" alone is ambiguous on a router that also serves instructor statements), and `getTeacherPayouts` kept its name. Function count 240 → 236. `generateArtistPayout` now writes the payout and stamps its sales in one transaction (`PayoutRepository.generate`); before, it stamped them one by one after creating the payout, so two concurrent generates could both pay the same sales. **The four old functions are still deployed** in dev and prod, because CI does not prune: delete them by hand once the router routes are verified in dev (`firebase functions:delete getPayouts generatePayout markPayoutPaid getTeacherPayouts`, dev first).
+### pnpm 11 → 12 (2026-10-05)
+
+- `packageManager` → pnpm 12.9.1. pnpm 12 rejects unknown workspace settings;
+  `managePackageManagerVersions` no longer exists and was removed. Its job
+  (keep the lockfile single-document for Nx) is moot: pnpm 12 always writes a
+  multi-document lockfile and Nx 23.2 parses it (pruned deploy lockfile came
+  out byte-identical). Closes #29.
+- pnpm 12 is a native binary, so its installers need upgrading too:
+  `pnpm/action-setup` v4 → **v6.1.0** in all 27 places (the floating `v6` tag
+  lags behind 6.1.0, so it is pinned), and the Vercel jobs install
+  `corepack@latest` because vercel.json's installCommand runs
+  `corepack enable && pnpm install` and only corepack ≥ 0.35 can run pnpm 12.
+- Firebase function deploys are unaffected: Cloud Build installs them with npm
+  (CI deletes the deploy lockfile; buildpacks only choose pnpm when one exists).
+- Audit wrapper still passes clean and still fails on an un-ignored high.
+### Webflow code components 1 → 2 (2026-10-05)
+
+`@webflow/react` 1.x only supported React up to 19.0.0, and the refresh moved
+the app to React 19.3, so the widgets were outside their supported range.
+2.x supports all of React 19 and fixes a React 19 prerender race.
+
+- `@webflow/react`, `data-types`, `emotion-utils` 1.3 → 2.5; `webflow-cli`
+  1.23 → 2.10 (needs Node ≥ 22.13; CI's `node-version: '22'` resolves above it).
+  Our widgets only use `declareComponent`, `props` and the emotion decorator,
+  none of which changed.
+- Merge-time publish: `webflow library share` → `webflow devlink import`
+  (same implementation in the CLI; `library` is deprecated, gone in CLI 3).
+- PR CI now runs `webflow devlink bundle` after the typecheck (~20s). The old
+  comment said bundling was broken upstream; it works with both 1.x and 2.x.
+- Overrides: `koa` and `ws` removed (CLI 2.x no longer pins vulnerable ones);
+  `undici` added (dts-plugin pins 7.24.7). `adm-zip`, `form-data` stay.
+- Same 8 components, same React 19.3; client bundle ~170KB smaller.
+- After merge: publish the Webflow **site** (not just the library) and check
+  the widgets on staging, or the old widget JS keeps serving.
+
+### MUI 7 → 9, MUI X 7 → 9 (2026-10-04)
+
+Last of the deferred majors from the dependency refresh. Codemods did the bulk
+(slots/slotProps, system props → sx, picker adapter/day renames). The rest:
+
+- **Silent colour loss:** Typography `color` only matches names in v9, so all
+  295 `color="text.secondary"`-style props and 5 computed ones became
+  `textSecondary` / `error` etc. ESLint `no-restricted-syntax` now errors on any
+  dotted path in a JSX `color` prop.
+- **material-react-table** (sticky columns in billing/lessons/students) passes
+  props MUI 9 ignores. `patches/material-react-table@3.2.1.patch` renames them;
+  tracked in #166 (MRT looks unmaintained).
+- **Data grid:** MUI X 8+ paints grids white and reads header colour from a new
+  variable that a later `<style>` rule overrides; theme `palette.DataGrid.bg`
+  plus `&.MuiDataGrid-root` header variable restore the old look exactly.
+- **Date fields** are `MuiPickersOutlinedInput` now; theme styles it like inputs.
+- **Etsy import selection** resolves the grid's new include/exclude model to ids.
+- Verified by pixel-diffing all 678 stories against main: 638 identical; the
+  rest are MUI X's own row/skeleton layout and anti-aliasing. Date-time/time
+  pickers behave as before (OK to confirm) plus a Cancel button.
+
+### vest 5 → 6 (2026-10-04)
+
+Vest 6 removed `staticSuite` and points to `create(cb).runStatic(...)`, but
+`runStatic` is not isolated: a focused run (`only(fields)`) reports stale errors
+for unfocused fields from the previous call. That would break the functions'
+partial-update validation and leak one request's errors into the next in a warm
+container. Five existing partial-update specs caught it.
+
+- `libs/ts/validation/src/lib/static-suite.ts`: local `staticSuite` that builds
+  a fresh suite per call (`create(cb).run(...)`), the Vest 5 behaviour. The 34
+  suites only change their import line; no caller changes.
+  `static-suite.spec.ts` pins isolation (verified to fail on `runStatic`).
+- `enforce(x).inside(list)` now types `list` as a mutable array: six `as const`
+  lists are spread (`[...LIST]`). Type-only.
+- Docs: PATTERNS-AND-PRACTICES Vest section and the functions rule now say to
+  use the local helper, never Vest's `create` / `runStatic`.
+- `require('vest')` ~3ms → ~6ms; negligible for maple-webhooks' cold start.
+- Next deferred major: MUI 9.
+
+### Square SDK 45 → 46 (2026-10-04)
+
+SDK 46 moves the default `Square-Version` from 2026-08-19 to 2026-09-16. That
+API version's only change is retiring the Transactions API write endpoints
+(Charge, CreateRefund, CaptureTransaction, VoidTransaction), which nothing here
+calls; all payments go through the Payments/Orders APIs. No type changes across
+any lib (same 334 pre-existing `tsc` errors as main). First of the deferred
+majors from the dependency refresh; next are vest 6, then MUI 9.
+
+### Dependency refresh: 50 overrides down to 9 (2026-09-29, refreshed 2026-10-04)
+
+Security Audit was failing on main (6 high). A fresh resolve (no lockfile, no
+overrides) showed almost every override was covering a *stale lockfile* entry,
+not a missing upstream fix.
+
+- Minor bumps across the board: nx 23.2.1 (+ its migrations), Next 16.3.7,
+  React 19.3, Storybook 10.6.1, Firebase 12.19 / admin 14.5 / functions 7.4,
+  firebase-tools 15.32, vite 8.3, vitest 4.1.11, Playwright 1.63.
+- Majors: ESLint 10 (+ @eslint/js 10), jsdom 30, jscpd 5,
+  jsonc-eslint-parser 3, @vitejs/plugin-react 6, date-fns 4, ical-generator 11.
+- Removed unused deps: @tanstack/react-query, wait-on (it pulled the flagged
+  joi), concurrently, node-ical, http-server, ts-node, @vitest/ui.
+- Overrides: ~50 down to 9, each pinned by a named parent: adm-zip/koa/ws/
+  form-data (@webflow/webflow-cli), smol-toml/axios/brace-expansion 5.x (nx),
+  @grpc/grpc-js (@firebase/firestore ~1.9), basic-ftp (firebase-tools >
+  get-uri ^5). The last four came from advisories published 2026-09-30 to
+  10-01, after the first pass.
+- `auditConfig.ignoreGhsas`: image-size is gone from the tree; one new entry,
+  braces GHSA-vfj7-8cjw-p6xm, which has no patched release and is in no
+  production dependency tree. Audit: 52 findings → 4 (only high is the
+  ignored braces).
+- Storybook on Vite 8 resolves `@maple/*` through Vite's native tsconfig paths,
+  which skips files outside a tsconfig `include` (every story). `.storybook/main.ts`
+  now adds vite-tsconfig-paths on tsconfig.base.json, as the unit config does.
+- New ESLint 10 / sonarjs 4.2 rules set to warn (~80 pre-existing hits).
+- Deferred, each its own PR: Square SDK 46, MUI 9 + MUI X 9, vest 6,
+  @webflow/* 2.x (payments / UI / live registration widget). Blocked upstream:
+  TypeScript 7 and vitest 5 (nx + typescript-eslint), Babel 8 (nx).
+
+### Recording history: past lessons paid outside the app (2026-09-29)
+
+Katie had paid private-pay history (cash, Venmo, cards run in Square by hand)
+with no way to record it: "Paid in cash or Venmo" only appeared once the
+past-lessons card listed something, and it listed only lessons marked taught.
+
+- "Charge for past lessons" now also offers past lessons still `scheduled`
+  ("Past, not marked taught"), uncapped; ticking and acting marks them taught
+  first (`onMarkTaught`), then charges, invoices or records the payment.
+- **Already paid (cash, Venmo, Square)**: new `square-manual` source ("Card, in
+  Square": a payment already taken in Square, nothing charged). Total is
+  prefilled from the rate and editable; `splitCentsEvenly` spreads it across
+  the lesson lines. Also on the billing table's mark-paid menu.
+
+### Hope billing: EMA orders and invoicing (2026-09-29)
+
+Katie's Hope work: record the family's EMA order (a block of lessons), mark
+lessons taught, invoice them in the portal, tick them off. "Invoice completed"
+is the end state (EMA payment is not tracked).
+
+- `HopeOrder` (`hopeOrders`): product, price copied at order time, lesson count,
+  EMA order id, ordered-on. `allocateHopeLessons` draws taught lessons down
+  oldest order first: each is needs-order / ready-to-invoice / invoiced.
+  Pre-order claims stay invoiced and use no order's room.
+- Invoicing (`recordHopeSubmissions` status `submitted`) refuses a lesson no
+  order has room for and stamps `orderId` + the order's price on the claim.
+- `HopeStudentBilling` card: orders with room left, needs-order warning, ready
+  lessons with tick-all + "Mark N invoiced" + optional EMA invoice #, invoiced
+  folded away. On the student page (for Hope, in the past-lessons slot) and once
+  per student on the Hope Billing page, which replaced the flat `HopeQueue`.
+- Follow-up: the Needs Attention "Hope lessons not yet claimed" row does not
+  distinguish needs-order from ready yet.
+
+### Hope lessons priced from EMA products (2026-09-29)
+
+Hope rates were a hardcoded length table (`hope-rates.ts`): a 30-minute guitar
+lesson showed $41.25 while EMA pays $30, and teacher payouts inherited it. The
+website, the EMA products and the table also disagree with each other (see PR).
+
+- `HopeProduct` (EMA id, name, price, active) in `hopeProducts`, managed on the
+  Hope Billing page ("EMA products"); `Student.hopeProductId` set in the form.
+- `resolveHopeLessonRate(student, lesson, productsById)` is the one rate
+  definition: product price, else the old table as an `estimate` (flagged in the
+  queue and the banner). (Superseded 2026-10-08: the table is gone and the
+  fallback is `unpriced`.) Replaces three copies of the length fallback in
+  getHopeQueue, recordHopeSubmissions and teacher payouts.
+- New `hope` router (function count 239 → 240); the old rates table component
+  is gone; the Hope banner is compact with rules folded away.
+- Next (PR 2): EMA orders (one order covers several lessons, drawn down oldest
+  first), per-lesson needs-order / ready-to-invoice / invoiced, and a Hope card
+  on the student page. "Invoice completed" is the end state.
+
+### "The next 4" fills itself in (2026-09-29)
+
+A student with two lessons made by hand and no weekly time: "the next 4"
+quietly covered two, and getting to four meant the full scheduling form.
+
+- `fillWeeklyLessonDates(like, existing, needed)` (domain, tested across the
+  DST change): the missing weeks, weekly from the first upcoming lesson at its
+  weekday and time, skipping weeks that already have a lesson.
+- "Next lessons" shows "Only 2 of the next 4 lessons are on the calendar. Add
+  <dates>, same teacher and length?" with **Add 2 lessons** / **Other dates**.
+  It calls `createLessonSeries` with those dates.
+- Every lesson needs a block and hand-made ones often have none, so
+  `planFillBlock` uses a fitting recurring block, else derives a new one and
+  the notice says so; widening a block is never done from here.
+- "This covers" now lists the dates even when there is no rate to charge.
+
+### Paid in cash or Venmo, and what "Mark taught" does (2026-09-29)
+
+Katie asked whether "Mark taught" invoices or charges (it does neither; it
+only records the lesson) and for a simple way to record a cash payment.
+
+- `createInvoice` takes `paidWith` (`admin-manual` = cash/check, or
+  `venmo-manual`) with `status: 'paid'`: the invoice is created already paid,
+  stamped with who recorded it. It never reaches Square (sync only acts on
+  sent/void), so no bill is emailed. On that path the server refuses lessons
+  already covered by a charge or a live invoice.
+- "Paid in cash or Venmo" sits beside Charge / Send invoice on both lesson
+  cards (and the table dialogs); the confirm names every date and asks how.
+- "Mark taught" has a tooltip saying it never charges or invoices; the notice
+  after marking one adds a "Paid in cash" action next to "Send invoice".
+- Auto-charging is separate and unchanged: the nightly job charges active,
+  non-Hope students on a billing rule with a linked card, in blocks ahead.
+
+### Four lessons ahead, and a way in for students with no weekly time (2026-09-29)
+
+Katie's feedback: saving a weekly slot put 12 lessons on the calendar and she
+works four at a time; and a student with no weekly time got a warning and two
+disabled buttons in "Next lessons".
+
+- `SCHEDULE_LESSONS_AHEAD = 4`: each active arrangement is topped up to four
+  upcoming lessons of its own (cancelled ones do not count, so a skipped week
+  pulls the next date in). Nothing is deleted; students already holding twelve
+  keep them until they run down. Fortnightly students get four too.
+- `materializeLessonSchedules` now runs **daily** (was weekly), so a weekly
+  student is back to four the morning after a lesson.
+- Creating an arrangement fills only that arrangement (it used to top up every
+  student's and report their lessons as this one's).
+- "Next lessons" with nothing upcoming offers **Set a weekly time** / **Add
+  lessons one at a time**. The student-page card is "Weekly schedule".
+
+### Lesson rates per teacher, per instrument (2026-09-29)
+
+Base lesson prices were one studio-wide table by length, buried in Settings,
+and empty in prod, so every student without an override priced at $0. Rates
+now live on the teacher: `Instructor.lessonRates` is instrument → length →
+cents, edited in the Instructors form ("Lesson rates").
+
+- Price order: the student's own `lessonRateCents` → their **primary
+  teacher's** rate for their instrument and length → the studio default
+  (Settings) → nothing. Primary teacher, not whoever taught, so a substitute
+  week costs the family the same.
+- `effectiveRateByLength(student, teacher, studioRates)` builds the table;
+  `resolvePrivatePayLessonRateCents` is unchanged and takes it.
+- `getLessonBilling({ studentId })` returns that student's effective table, so
+  every screen that prices a student (student page, billing cards, launchers)
+  picked this up with no client change. `chargeLessonsNow` and the nightly
+  `runLessonBilling` price from the same table.
+
+### Student management follows Katie's task order (2026-09-29)
+
+Katie's jobs with a music student, most to least common: add them, edit rate /
+instrument / teacher, set the weekly slot, charge for past lessons, line up the
+next lessons (paying ahead optional). Card links and the lesson/billing history
+are occasional. Both screens now follow that order.
+
+- **Student page**: header with rate in the summary and an **Edit student**
+  button (was table-only) → Standing schedule → **Charge for past lessons** →
+  **Next lessons** (with "Add lessons") → *History and settings*: Lessons,
+  Billing, Payment method.
+- `CommitLessonsCard` takes `scope` (`owed` / `upcoming` / `all`), `embedded`,
+  `isLoading` and `headerAction`, so one card became the two task cards without
+  a second pricing path. A pre-tick outside the scope is never charged.
+- **Students table**: visible edit button per row; the ⋯ menu is in task order
+  and adds Weekly schedule…, Charge for past lessons…, Next lessons…, each a
+  dialog (`students/student-launchers.tsx`), sharing components with the page.
+
+### App Check + request throttling on public callables, monitor phase (2026-09-29)
+
+ADR-037, #136. Ten public callables used by the Webflow widgets now declare `.withAppCheck('monitor')`
+and `.throttling(scope, rules)` on `Functions.endpoint`. The pipeline order is warmup → App Check
+→ auth → role → throttle → validation → handler. `APP_CHECK_MODE=monitor` in both env files caps
+every endpoint. `requestCraftClubAccess` moved off `createPublicFunction` so it could chain.
+`lookupDiscount` is a route on the warm `publicSite` router (#205), so it declares both on the
+route; the checks run in the pipeline routes share.
+
+The widgets start App Check with reCAPTCHA Enterprise in `firebase-init.ts`, in the browser only
+and only once a site key is filled in. `RECAPTCHA_ENTERPRISE_SITE_KEY` ships empty.
+
+**Outstanding before this does anything in prod:**
+- enable the App Check and reCAPTCHA Enterprise APIs on both projects
+- create the site keys and register them in the App Check console
+- paste the keys into `firebase-init.ts`
+- publish the Webflow site
+- enable the TTL policy on `requestThrottles.expiresAt`
+- create a log-based metric on `jsonPayload.event="app_check"`
+
+**Then:** watch the `app_check` results per endpoint and browser for about a week, and open the
+enforce PR.
+
+**Gotchas.**
+- The CORS allow-list had to gain `X-Firebase-AppCheck`, or the browser's preflight rejects every
+  call the moment a token is attached. The SDK reports that as `permission-denied`.
+- Per-function specs hand-roll the builder mock, so every new chain method must be added there.
+- `context.ip` (left-most XFF, for attribution) and `extractTrustedClientIp` (right-most, for
+  counting) deliberately disagree.
+
 ### ADR-029's first router, and the function count finally telling the truth (2026-09-23 → 09-29)
 
 **Artists is the pilot** (#126, #127). ADR-029 was accepted in August and nothing had been

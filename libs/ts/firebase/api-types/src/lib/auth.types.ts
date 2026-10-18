@@ -4,14 +4,6 @@
  * Request and response types for auth-related Cloud Functions.
  */
 
-/** Request for checkAdminStatus - no data needed, uses auth context */
-export type CheckAdminStatusRequest = Record<string, never>;
-
-/** Response from checkAdminStatus */
-export interface CheckAdminStatusResponse {
-  isAdmin: boolean;
-}
-
 /**
  * Roles a portal user can hold. Canonical definition lives in
  * `@maple/ts/domain` (app-user.ts); re-exported here so API consumers can
@@ -26,4 +18,10 @@ export type GetMyRolesRequest = Record<string, never>;
 /** Response from getMyRoles */
 export interface GetMyRolesResponse {
   roles: UserRole[];
+  /**
+   * The instructor this login is linked to, if any (#157). Lets a teacher's
+   * pages default to their own students. Absent for a login that teaches
+   * nothing — an admin who is not an instructor, a clerk.
+   */
+  instructorId?: string;
 }

@@ -185,7 +185,7 @@ export default function ClassRosterPage() {
     if (waitlistEntries.length === 0) {
       return (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No one is on the waitlist for this class.
           </Typography>
         </Paper>
@@ -228,7 +228,6 @@ export default function ClassRosterPage() {
       >
         Back to Classes
       </Button>
-
       {/* Class Header */}
       {classesState.status === 'loading' ? (
         <Skeleton variant="rectangular" height={120} sx={{ mb: 3, borderRadius: 2 }} />
@@ -247,7 +246,7 @@ export default function ClassRosterPage() {
               <Typography variant="h4" component="h1" gutterBottom>
                 {currentClass.name}
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" color="textSecondary">
                 {(() => {
                   const first = currentClass.sessions?.[0];
                   if (!first) return '';
@@ -256,19 +255,21 @@ export default function ClassRosterPage() {
                 {currentClass.durationMinutes} min
               </Typography>
               {currentClass.location && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   {currentClass.location}
                 </Typography>
               )}
             </Box>
             <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="h5" fontWeight={700}>
+              <Typography variant="h5" sx={{
+                fontWeight: 700
+              }}>
                 {spotsFilled} / {currentClass.capacity}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 spots filled
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
                 {formatPrice(currentClass.priceCents)} per spot
               </Typography>
             </Box>
@@ -279,7 +280,6 @@ export default function ClassRosterPage() {
           Class not found
         </Alert>
       )}
-
       {/* Actions Bar */}
       <Box
         sx={{
@@ -331,14 +331,12 @@ export default function ClassRosterPage() {
           </Button>
         </Box>
       </Box>
-
       {/* Registrations Table */}
       <RegistrationList
         registrationsState={registrationsState}
         classes={classes}
         onViewDetail={handleViewDetail}
       />
-
       {/* Waitlist */}
       <Box
         sx={{
@@ -371,9 +369,7 @@ export default function ClassRosterPage() {
           Copy Emails ({waitlistEntries.length})
         </Button>
       </Box>
-
       {renderWaitlistBody()}
-
       {/* Detail Dialog */}
       <RegistrationDetailDialog
         open={!!selectedRegistration}
@@ -387,7 +383,6 @@ export default function ClassRosterPage() {
         onCancel={handleCancel}
         onUpdateNotes={handleUpdateNotes}
       />
-
       {/* Copy success toast */}
       <Snackbar
         open={copySuccess}

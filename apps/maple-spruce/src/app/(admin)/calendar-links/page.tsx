@@ -10,7 +10,7 @@ export default function CalendarLinksPage(): React.ReactNode {
       <Typography variant="h4" component="h1" gutterBottom>
         Calendar Links
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
         Subscribe to or share the studio&apos;s public calendar feeds. Use the{' '}
         <strong>Subscribe</strong> link to add a feed to a calendar app
         (Apple&nbsp;Calendar, Google&nbsp;Calendar, Outlook), or the{' '}

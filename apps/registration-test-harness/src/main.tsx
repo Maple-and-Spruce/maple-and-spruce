@@ -10,6 +10,19 @@
  * Selecting which class to load:
  *   ?classId=<id>       — required (seeded ahead of time)
  *
+ * Digital wallets (off unless asked for, as on Webflow):
+ *   ?wallets=show               — Google Pay inline + the Apple Pay popup button
+ *   ?applePayCheckoutUrl=<url>  — where the Apple Pay popup opens (default:
+ *                                 business-dev). Apple Pay itself only runs on
+ *                                 a domain registered with Square, over HTTPS.
+ *
+ * Rendering like Webflow does:
+ *   ?shadow=1        — mount the widget inside a shadow root, as Webflow code
+ *                      components are. SquareCardForm takes a different path
+ *                      there (its payment fields live outside the shadow root).
+ *   ?width=<px>      — cap the widget's width, e.g. 290 for the class page's
+ *                      sidebar column.
+ *
  * Selecting which backend to call:
  *   VITE_TARGET_ENV=emulator (default) — 127.0.0.1 functions emulator
  *   VITE_TARGET_ENV=dev               — deployed maple-and-spruce-dev
@@ -21,8 +34,12 @@
  * vite.config.ts's `define` block (see build-check.yml +
  * firebase-functions-merge.yml).
  */
-import { StrictMode } from 'react';
+import { StrictMode, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import createCache from '@emotion/cache';
+import { CacheProvider } from '@emotion/react';
 // Import directly from the module path (not via Webflow component shim)
 // to avoid pulling in @webflow/react. The boundary rule is skipped in
 // CI (no cached Nx project graph there) but trips local lint, so it's
@@ -59,6 +76,42 @@ const squareLocationId = import.meta.env['VITE_SQUARE_LOCATION_ID'];
 // the music-together-e2e spec).
 const mtSquareApplicationId = import.meta.env['VITE_MT_SQUARE_APPLICATION_ID'];
 const mtSquareLocationId = import.meta.env['VITE_MT_SQUARE_LOCATION_ID'];
+
+/**
+ * Renders children inside a shadow root with emotion styles injected there,
+ * the way Webflow's emotionShadowDomDecorator mounts a code component.
+ */
+function ShadowMount({
+  width,
+  children,
+}: {
+  width?: number;
+  children: ReactNode;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [target, setTarget] = useState<{
+    root: ShadowRoot;
+    cache: ReturnType<typeof createCache>;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || target) return;
+    const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
+    setTarget({ root, cache: createCache({ key: 'harness', container: root }) });
+  }, [target]);
+
+  return (
+    <div style={{ maxWidth: width, margin: width ? '24px auto' : undefined }}>
+      <div ref={hostRef} />
+      {target &&
+        createPortal(
+          <CacheProvider value={target.cache}>{children}</CacheProvider>,
+          target.root
+        )}
+    </div>
+  );
+}
 
 function HarnessBanner({ label }: { label: string }) {
   // Small banner so a human visiting the deployed harness can tell which
@@ -117,6 +170,12 @@ function App() {
   const params = new URLSearchParams(window.location.search);
   const mtSectionId = params.get('mtSectionId') ?? '';
   const classId = params.get('classId') ?? '';
+  const showDigitalWallets = params.get('wallets') === 'show' ? 'show' : 'hide';
+  const applePayCheckoutUrl =
+    params.get('applePayCheckoutUrl') ??
+    'https://business-dev.mapleandsprucefolkarts.com/apple-pay-checkout';
+  const shadow = params.get('shadow') === '1';
+  const width = Number(params.get('width')) || undefined;
 
   // Music Together enrollment flow takes precedence when its param is present.
   if (mtSectionId) {
@@ -152,6 +211,17 @@ function App() {
     );
   }
 
+  const widget = (
+    <RegistrationWidget
+      classId={classId}
+      squareAppId={squareApplicationId}
+      squareLocationId={squareLocationId}
+      env={targetEnv}
+      showDigitalWallets={showDigitalWallets}
+      applePayCheckoutUrl={applePayCheckoutUrl}
+    />
+  );
+
   return (
     <>
       {/* Small banner so a human visiting the deployed harness can tell
@@ -169,13 +239,13 @@ function App() {
       >
         Registration test harness — backend: <strong>{targetEnv}</strong>
       </div>
-      <RegistrationWidget
-        classId={classId}
-        squareAppId={squareApplicationId}
-        squareLocationId={squareLocationId}
-        env={targetEnv}
-        showDigitalWallets="hide"
-      />
+      {shadow ? (
+        <ShadowMount width={width}>{widget}</ShadowMount>
+      ) : (
+        <div style={{ maxWidth: width, margin: width ? '24px auto' : undefined }}>
+          {widget}
+        </div>
+      )}
     </>
   );
 }

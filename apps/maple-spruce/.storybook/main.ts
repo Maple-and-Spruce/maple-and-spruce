@@ -27,7 +27,21 @@ const config: StorybookConfig = {
   // Storybook (vitest) tests — see RosterDialog's Download icon.
   async viteFinal(viteConfig) {
     const { mergeConfig } = await import('vite');
+    const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
     return mergeConfig(viteConfig, {
+      // On Vite 8, @storybook/nextjs-vite resolves `@maple/*` through Vite's
+      // native `resolve.tsconfigPaths`, which only applies a tsconfig's paths
+      // to files that tsconfig `include`s. Stories and `.storybook/preview.tsx`
+      // sit outside every include (the libs' tsconfig.lib.json excludes
+      // stories), so every story failed to resolve its imports. Resolve from
+      // tsconfig.base.json instead, the same way the unit-test config does.
+      plugins: [
+        tsconfigPaths({
+          projects: [
+            fileURLToPath(new URL('../../../tsconfig.base.json', import.meta.url)),
+          ],
+        }),
+      ],
       optimizeDeps: {
         include: [
           '@mui/icons-material/Download',
@@ -55,6 +69,18 @@ const config: StorybookConfig = {
           'qrcode.react',
           // Student page tables (#84) + pay-ahead card (legacy #864). Keep in step with
           // vitest.storybook.config.ts.
+          '@mui/icons-material/Search',
+          '@mui/icons-material/ExpandMore',
+          '@mui/icons-material/Palette',
+          '@mui/icons-material/Storefront',
+          '@mui/icons-material/Payments',
+          '@mui/icons-material/Settings',
+          '@mui/icons-material/Home',
+          '@mui/icons-material/MusicNote',
+          '@mui/material/Collapse',
+          '@mui/material/InputAdornment',
+          '@mui/material/Menu',
+          '@mui/material/MenuItem',
           '@mui/icons-material/Add',
           '@mui/icons-material/Block',
           '@mui/icons-material/Cancel',
@@ -66,7 +92,7 @@ const config: StorybookConfig = {
           '@mui/icons-material/MoreVert',
           '@mui/icons-material/Paid',
           '@mui/icons-material/PersonOff',
-          '@mui/icons-material/PersonOutline',
+          '@mui/icons-material/PersonOutlined',
           '@mui/icons-material/ReceiptLong',
           '@mui/icons-material/Send',
           '@mui/icons-material/Stars',

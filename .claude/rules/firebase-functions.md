@@ -259,9 +259,12 @@ Each codebase has its own entry point:
 Use `Functions.endpoint.withOptions()` for per-function runtime config:
 ```typescript
 Functions.endpoint
-  .withOptions({ minInstances: 1, concurrency: 80, memory: '512MiB' })
+  .withOptions({ concurrency: 80, memory: '512MiB' })
   .handle<Req, Res>(async (data) => { ... });
 ```
+
+`minInstances` is the exception: only the `publicSite` router may set it, and CI enforces that
+(`npx tsx tools/check-warm-instances.ts`, in the `callable-roles` job). See "Warmup" below.
 
 ### Global `maxInstances` cap (every function, every codebase)
 
@@ -298,12 +301,44 @@ The intercept lives in `functions.utility.ts` and short-circuits before auth, va
 import { warmup } from '../lib/warmup';
 
 // Fire-and-forget on widget mount for downstream calls the user will trigger soon
-warmup(functions, 'calculateRegistrationCost', 'createRegistration');
+warmup(functions, 'createRegistration', 'createRegistrationCheckoutLink');
 ```
 
-**When to warm**: downstream functions that aren't called on first paint — e.g. functions invoked after the user types in a form or clicks a button. For first-paint functions (called immediately on mount), warmup is too late; use env-gated `minInstances: 1` instead.
+**When to warm**: downstream functions that aren't called on first paint — e.g. functions invoked after the user types in a form or clicks a button. For first-paint functions (called immediately on mount), warmup is too late: add the read as a route on the **`publicSite` router**, which is kept warm in prod.
+
+**Don't give a function its own `minInstances: 1`.** An idle warm instance bills its CPU and memory all month — about $8 per 1 vCPU / 256MiB function. Five public reads each doing that were nearly the whole Cloud Run bill (~$40/month) until they moved onto `publicSite`, which keeps **one** instance warm for all of them. A public read the widgets need on mount goes there; a route on it must be safe for anyone to call, so writes stay with their domain.
 
 **Don't**: schedule a recurring Cloud Scheduler ping to keep functions warm 24/7. That bills idle time when no users are visiting. Warmup should be driven by user presence on the page.
+
+## App Check and request throttling on public callables (ADR-037)
+
+A public callable that the Webflow widgets call opts in on the builder chain:
+
+```typescript
+export const createRegistration = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('createRegistration', paymentThrottles('customerEmail'))
+  .usingSecrets(...SQUARE_SECRET_NAMES)
+  .handle<Req, Res>(async (data, context, secrets) => { ... });
+```
+
+- **App Check** verifies the `X-Firebase-AppCheck` header that `httpsCallable` sends once the
+  widget has initialized App Check (`apps/webflow-components/src/firebase-init.ts`). Mode
+  `monitor` logs `{"event":"app_check",…}` and never rejects. Mode `enforce` answers 401. The
+  `APP_CHECK_MODE` value in `.env.dev` / `.env.prod` caps every endpoint's mode.
+- **Throttling** answers 429 `RESOURCE_EXHAUSTED` before validation. Counters are in
+  `requestThrottles`, keyed by `scope` + a hash of the value, so **`scope` must be unique per
+  endpoint** (use the function name). Every access is a doc-id read, so no index is needed. It
+  fails open if Firestore errors.
+- Use the presets (`paymentThrottles`, `emailLinkThrottles`, `codeLookupThrottles`) and the
+  limits in `THROTTLE_LIMITS`; don't invent per-endpoint numbers.
+- The IP rule counts the **right-most** `x-forwarded-for` entry (`extractTrustedClientIp`).
+  `context.ip` stays the left-most entry and is for attribution only.
+- Warmup is answered before both steps, so warmup pings neither need a token nor count.
+- **On a router route** the chain is the same, ending in `.asRoute()`: the checks run in the
+  pipeline every route shares, so `publicSite/lookupDiscount` declares them on its route. The
+  router answers CORS once, and its allow-list already includes `X-Firebase-AppCheck`.
+- Specs that hand-roll a `Functions.endpoint` mock need `withAppCheck` and `throttling` on it.
 
 ## Role Gating (callable-roles analyzer)
 
@@ -318,7 +353,7 @@ CI runs this on every PR (`build-check.yml` → `callable-roles` job). To add an
 
 ## Input Validation
 
-Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with `staticSuite` (never `create`) so they're pure functions — no retained state across invocations, safe to call from warm cloud function containers without `.reset()`.
+Cloud functions that mutate entities **MUST** validate input using the shared Vest suites from `@maple/ts/validation`. Suites are declared with the local `staticSuite` from `libs/ts/validation/src/lib/static-suite.ts` (never Vest's `create` or `runStatic`), so they're pure functions: no retained state across invocations, safe to call from warm cloud function containers without `.reset()`. Vest 6's `runStatic` is **not** isolated, because a focused `only(fields)` run reports stale errors from the previous call; see the comment in `static-suite.ts`.
 
 **Create pattern** — validate the full payload:
 
@@ -576,6 +611,7 @@ from the docs will agree with whatever the code already assumes.
 ## CI/CD Notes
 
 - CI deletes Nx-generated `pnpm-lock.yaml` files from `dist/` before upload. Nx's `generatePackageJson` creates subset lockfiles that miss aliased transitive deps (e.g. `square-legacy`). Removing them lets Firebase Cloud Build do a fresh `pnpm install` with proper resolution.
+- **A merge redeploys a codebase only if its bundle changed.** `tools/unchanged-function-codebases.sh` (in `prepare_and_build`) compares each affected codebase's build with the build at the last green merge, and drops identical ones from the matrix. Each needless redeploy boots a 2 vCPU revision of every function in it, and in Oct 2026 that was 43% of revisions and most of the merge-day Cloud Run CPU bill (see `docs/architecture/ci-cd.md`). Don't drop `--only` to get firebase's own hash skip back: a bare `firebase deploy --force` deploys every codebase and deletes any deployed function that is missing from source. To force a redeploy (e.g. after rotating a secret), run the workflow with `deploy_all`.
 - Run `./tools/validate-function-tsconfigs.sh` to check that tsconfig includes and `function-codebases.json` mappings are consistent with entry point exports.
 - Integration tests run in a separate CI job with Java 21 (required by Firestore emulator). The job builds all 4 codebases, copies `.env.dev` to each, starts per-service mock servers (Square, Webflow, Etsy), and runs `firebase emulators:exec`.
 - **Suites are sharded by measured runtime, not by count** (`tools/ci-integration-suite-weights.json`, legacy #868). Every suite in a shard shares **one** emulator, so an overloaded shard starves it and the suite that happens to run *last* there starts failing with `The operation was aborted due to timeout` from google-gax — a green-looking test that never got a chance. Packing by count once put the four heaviest suites together (~333s) next to a shard doing ~159s. When you add a suite, it gets a default weight and packing degrades gracefully; measure it and add it to the weights file when it settles.

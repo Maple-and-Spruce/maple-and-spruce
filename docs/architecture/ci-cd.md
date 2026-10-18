@@ -4,7 +4,7 @@
 
 This project uses **pnpm** (v9.x) via Corepack. The version is pinned in `package.json` under `packageManager`.
 
-All CI workflows use `pnpm/action-setup@v4` which reads the version from `package.json` automatically.
+All CI workflows use `pnpm/action-setup@v6.1.0` (the first release that can install pnpm 12; the floating `v6` tag lagged behind it), which reads the version from `package.json` automatically.
 
 ## PR Build Check
 
@@ -114,8 +114,17 @@ and `tools/check-callable-roles.ts` also carry hardcoded codebase lists.
 1. **Affected detection**: `nx show projects --affected` finds changed function libraries (`firebase-maple-functions-*`)
 2. **Codebase mapping**: `function-codebases.json` maps each library to its codebase. Functions not in the mapping default to `maple-core`.
 3. **Build**: Only affected codebases are built via `nx run {project}:build`
-4. **Lockfile cleanup**: Nx-generated `pnpm-lock.yaml` files are deleted from `dist/` — they can miss aliased transitive deps (e.g. `square-legacy`). Firebase Cloud Build does a fresh `pnpm install` instead.
-5. **Deploy matrix**: Functions are batched into groups of 5 and deployed in parallel per codebase.
+4. **Skip unchanged codebases**: `tools/unchanged-function-codebases.sh` rebuilds each affected codebase at the last commit whose merge run fully succeeded, and drops any codebase whose bundle is byte-identical (ignoring `*.d.ts` and the generated lockfile). It skips nothing if a deploy input outside the bundle changed (`.env.*`, `firebase.json`, `package.json`, the lockfile, the deploy workflow), or if anything about the comparison is in doubt. A manual `deploy_all` run bypasses it.
+5. **Lockfile cleanup**: Nx-generated `pnpm-lock.yaml` files are deleted from `dist/` — they can miss aliased transitive deps (e.g. `square-legacy`). Firebase Cloud Build does a fresh `pnpm install` instead.
+6. **Deploy matrix**: one entry per codebase, deployed one codebase at a time (`max-parallel: 1`), with `tools/deploy-functions-batched.sh` splitting each into batches of 30.
+
+#### Why unchanged codebases are skipped
+
+Every function deploy makes a new Cloud Run revision, and Cloud Run boots one instance of each new revision at 2 vCPU (startup CPU boost) whether or not anything calls it: about 22 vCPU-seconds per function per project. That boot is what the "Cloud Run functions CPU (Request-based billing)" spike on merge days pays for. On 2026-10-09, 25 merges made 2,598 prod revisions and used 17.5 vCPU-hours, against about 1.1 on a day with no deploys. Dev doubled it.
+
+43% of the revisions from 1 to 12 Oct (prod and dev alike) carried the same `firebase-functions-hash` label as the revision they replaced, so they redeployed identical code. nx marks every importer of a changed lib as affected, but each codebase is one bundle, and a type-only or UI-only change leaves it byte-identical. firebase-tools has its own skip for unchanged functions, but it never runs here: it only applies to functions **not** named by `--only` (`targetedByOnly` in `release/planner.js`), and CI always names them.
+
+After rotating a secret, run the workflow by hand with `deploy_all`. A deploy pins the secret version it resolved, and this check can't see a new one.
 
 ## Functions Build Pattern
 
@@ -166,3 +175,11 @@ The same Playwright suite runs in two places, picked by `E2E_TARGET`:
 - Sets `shouldPublish = false` — the item exists in the Webflow CMS but is **never published to the live site**
 
 Since the seed uses deterministic IDs, repeated runs update the same CMS item rather than accumulating new ones.
+
+## Webflow Public Pages E2E
+
+`apps/webflow-public-e2e` is a **read-only** Playwright smoke suite against the published Webflow site itself (not the registration harness). It checks that the page-level redesign scripts on `/upcoming-classes` and the class template ran: list layout, filter chips, the "Open seats" toggle, CTAs to `#register`, the class-page hero/facts/phone bar, and that the registration widget mounts (waited for, never filled). Class URLs are discovered from the listing each run.
+
+It runs from `.github/workflows/webflow-public-e2e.yml`: daily at 11:00 UTC against staging, and on `workflow_dispatch` against staging or prod. It is **not** a PR check, because Webflow publishes don't come from repo PRs. No secrets. Desktop Chrome and a 393×852 phone viewport.
+
+The class-page redesign assertions skip on a site whose class page lacks `body.cpx` unless it is staging or `WEBFLOW_EXPECT_CLASS_REDESIGN=1` (the dispatch input `expect_class_redesign`), since the redesign is published to staging before prod. See the app README.

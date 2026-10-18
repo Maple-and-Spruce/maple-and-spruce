@@ -17,12 +17,5 @@
     "firebase-integration-test-utils",
     "firebase-etsy-test-mock-server"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-etsy/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

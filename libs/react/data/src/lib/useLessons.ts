@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Lesson,
   CreateLessonInput,
   UpdateLessonInput,
-  CreateLessonSeriesInput,
   RequestState,
 } from '@maple/ts/domain';
 import type {
@@ -21,6 +23,8 @@ import type {
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  RescheduleLessonWithCreditRequest,
+  RescheduleLessonWithCreditResponse,
 } from '@maple/ts/firebase/api-types';
 
 export interface UseLessonsOptions {
@@ -62,9 +66,9 @@ export function useLessons({
 
     try {
       const functions = getMapleFunctions();
-      const getLessons = httpsCallable<GetLessonsRequest, GetLessonsResponse>(
+      const getLessons = httpsCallableFromURL<GetLessonsRequest, GetLessonsResponse>(
         functions,
-        'getLessons'
+        routerCallableUrl('lessons', 'getLessons')
       );
 
       const result = await getLessons({ studentId });
@@ -85,10 +89,10 @@ export function useLessons({
   const createLesson = useCallback(
     async (input: CreateLessonInput): Promise<Lesson> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateLessonRequest,
         CreateLessonResponse
-      >(functions, 'createLesson');
+      >(functions, routerCallableUrl('lessons', 'createLesson'));
 
       const result = await create(input);
       const lesson = hydrateLesson(result.data.lesson);
@@ -108,13 +112,15 @@ export function useLessons({
 
   const createLessonSeries = useCallback(
     async (
-      input: CreateLessonSeriesInput
+      // The request, not just the domain input: it may carry a blockStrategy
+      // for lessons that no existing block covers (legacy #835).
+      input: CreateLessonSeriesRequest
     ): Promise<{ lessons: Lesson[]; seriesId: string }> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateLessonSeriesRequest,
         CreateLessonSeriesResponse
-      >(functions, 'createLessonSeries');
+      >(functions, routerCallableUrl('lessons', 'createLessonSeries'));
 
       const result = await create(input);
       const lessons = result.data.lessons.map(hydrateLesson);
@@ -135,10 +141,10 @@ export function useLessons({
   const updateLesson = useCallback(
     async (input: UpdateLessonInput): Promise<Lesson> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateLessonRequest,
         UpdateLessonResponse
-      >(functions, 'updateLesson');
+      >(functions, routerCallableUrl('lessons', 'updateLesson'));
 
       const result = await update(input);
       const lesson = hydrateLesson(result.data.lesson);
@@ -158,9 +164,9 @@ export function useLessons({
 
   const deleteLesson = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteLessonRequest, DeleteLessonResponse>(
+    const del = httpsCallableFromURL<DeleteLessonRequest, DeleteLessonResponse>(
       functions,
-      'deleteLesson'
+      routerCallableUrl('lessons', 'deleteLesson')
     );
 
     await del({ id });
@@ -170,6 +176,38 @@ export function useLessons({
       return { ...prev, data: prev.data.filter((l) => l.id !== id) };
     });
   }, []);
+
+  /**
+   * Cancel a lesson and book its replacement, moving its payment over (#209).
+   * Charges and invoices change too, so the caller refetches those.
+   */
+  const rescheduleLessonWithCredit = useCallback(
+    async (
+      input: RescheduleLessonWithCreditRequest
+    ): Promise<RescheduleLessonWithCreditResponse> => {
+      const functions = getMapleFunctions();
+      const reschedule = httpsCallableFromURL<
+        RescheduleLessonWithCreditRequest,
+        RescheduleLessonWithCreditResponse
+      >(functions, routerCallableUrl('lessons', 'rescheduleLessonWithCredit'));
+      const result = await reschedule(input);
+      const cancelled = hydrateLesson(result.data.cancelled);
+      const replacement = hydrateLesson(result.data.replacement);
+      setLessonsState((prev) => {
+        if (prev.status !== 'success') return prev;
+        const newData = [
+          ...prev.data.filter(
+            (l) => l.id !== cancelled.id && l.id !== replacement.id
+          ),
+          cancelled,
+          replacement,
+        ].sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+        return { ...prev, data: newData };
+      });
+      return { ...result.data, cancelled, replacement };
+    },
+    []
+  );
 
   useEffect(() => {
     if (autoFetch) {
@@ -184,5 +222,6 @@ export function useLessons({
     createLessonSeries,
     updateLesson,
     deleteLesson,
+    rescheduleLessonWithCredit,
   };
 }

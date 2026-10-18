@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   AgreementRequest,
   AgreementRequestStatus,
@@ -23,9 +26,7 @@ export interface UseAgreementRequestsFilters {
   signerEmail?: string;
 }
 
-export function useAgreementRequests(
-  filters?: UseAgreementRequestsFilters
-) {
+export function useAgreementRequests(filters?: UseAgreementRequestsFilters) {
   const [requestsState, setRequestsState] = useState<
     RequestState<AgreementRequest[]>
   >({ status: 'idle' });
@@ -34,10 +35,10 @@ export function useAgreementRequests(
     setRequestsState({ status: 'loading' });
     try {
       const functions = getMapleFunctions();
-      const getRequests = httpsCallable<
+      const getRequests = httpsCallableFromURL<
         GetAgreementRequestsRequest,
         GetAgreementRequestsResponse
-      >(functions, 'getAgreementRequests');
+      >(functions, routerCallableUrl('agreements', 'getAgreementRequests'));
       const result = await getRequests({
         status: filters?.status,
         signerEmail: filters?.signerEmail,
@@ -48,9 +49,7 @@ export function useAgreementRequests(
       setRequestsState({
         status: 'error',
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch requests',
+          error instanceof Error ? error.message : 'Failed to fetch requests',
       });
     }
   }, [filters?.status, filters?.signerEmail]);
@@ -66,10 +65,10 @@ export function useAgreementRequests(
       studentId?: string;
     }): Promise<AgreementRequest> => {
       const functions = getMapleFunctions();
-      const send = httpsCallable<
+      const send = httpsCallableFromURL<
         SendAgreementRequestRequest,
         SendAgreementRequestResponse
-      >(functions, 'sendAgreementRequest');
+      >(functions, routerCallableUrl('agreements', 'sendAgreementRequest'));
       const result = await send(input);
       setRequestsState((prev) => {
         if (prev.status !== 'success') return prev;
@@ -77,29 +76,24 @@ export function useAgreementRequests(
       });
       return result.data.request;
     },
-    []
+    [],
   );
 
-  const resendRequest = useCallback(
-    async (id: string): Promise<void> => {
-      const functions = getMapleFunctions();
-      const resend = httpsCallable<
-        ResendAgreementRequestRequest,
-        ResendAgreementRequestResponse
-      >(functions, 'resendAgreementRequest');
-      const result = await resend({ id });
-      setRequestsState((prev) => {
-        if (prev.status !== 'success') return prev;
-        return {
-          ...prev,
-          data: prev.data.map((r) =>
-            r.id === id ? result.data.request : r
-          ),
-        };
-      });
-    },
-    []
-  );
+  const resendRequest = useCallback(async (id: string): Promise<void> => {
+    const functions = getMapleFunctions();
+    const resend = httpsCallableFromURL<
+      ResendAgreementRequestRequest,
+      ResendAgreementRequestResponse
+    >(functions, routerCallableUrl('agreements', 'resendAgreementRequest'));
+    const result = await resend({ id });
+    setRequestsState((prev) => {
+      if (prev.status !== 'success') return prev;
+      return {
+        ...prev,
+        data: prev.data.map((r) => (r.id === id ? result.data.request : r)),
+      };
+    });
+  }, []);
 
   useEffect(() => {
     fetchRequests();

@@ -7,8 +7,11 @@
  * produced it — that is why `getLessonBilling` returns them together.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   LessonBillingRule,
   LessonRateByLength,
@@ -55,10 +58,10 @@ export function useLessonBilling(studentId?: string) {
   const fetchBilling = useCallback(async () => {
     setBillingState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetLessonBillingRequest,
         GetLessonBillingResponse
-      >(getMapleFunctions(), 'getLessonBilling');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getLessonBilling'));
       const result = await fn(studentId ? { studentId } : {});
       setBillingState({
         status: 'success',
@@ -92,10 +95,10 @@ export function useLessonBilling(studentId?: string) {
       setPendingId(id);
       setActionError(null);
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           UpdateLessonScheduledChargeRequest,
           UpdateLessonScheduledChargeResponse
-        >(getMapleFunctions(), 'updateLessonScheduledCharge');
+        >(getMapleFunctions(), routerCallableUrl('lessons', 'updateLessonScheduledCharge'));
         await fn({ id, status, waivedReason });
         await fetchBilling();
       } catch (error) {
@@ -132,10 +135,10 @@ export function useLessonBilling(studentId?: string) {
       setPendingId(input.retryChargeId ?? input.studentId);
       setActionError(null);
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           ChargeLessonsNowRequest,
           ChargeLessonsNowResponse
-        >(getMapleFunctions(), 'chargeLessonsNow');
+        >(getMapleFunctions(), routerCallableUrl('lessonPayments', 'chargeLessonsNow'));
         await fn({
           studentId: input.studentId,
           lessonIds: input.lessonIds,
@@ -170,10 +173,10 @@ export function useLessonBilling(studentId?: string) {
       setPendingId(input.id ?? 'new-rule');
       setActionError(null);
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           SaveLessonBillingRuleRequest,
           SaveLessonBillingRuleResponse
-        >(getMapleFunctions(), 'saveLessonBillingRule');
+        >(getMapleFunctions(), routerCallableUrl('lessons', 'saveLessonBillingRule'));
         await fn(input);
         await fetchBilling();
         return null;
@@ -201,10 +204,10 @@ export function useLessonBilling(studentId?: string) {
       setPendingId(opts.dryRun ? 'preview-run' : 'billing-run');
       setActionError(null);
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           RunLessonBillingRequest,
           RunLessonBillingResult
-        >(getMapleFunctions(), 'triggerLessonBilling');
+        >(getMapleFunctions(), routerCallableUrl('lessonPayments', 'triggerLessonBilling'));
         const result = await fn({ dryRun: opts.dryRun });
         // A real run plans and takes charges, so the screen behind it is stale.
         if (!opts.dryRun) await fetchBilling();

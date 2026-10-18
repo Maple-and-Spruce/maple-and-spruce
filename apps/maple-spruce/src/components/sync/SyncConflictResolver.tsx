@@ -90,26 +90,32 @@ function StateDisplay({
         backgroundColor: highlight ? 'primary.50' : 'background.paper',
       }}
     >
-      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
         {title}
       </Typography>
-      <Typography variant="body1" fontWeight="medium">
+      <Typography variant="body1" sx={{
+        fontWeight: 'medium'
+      }}>
         {state.name}
       </Typography>
       <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="textSecondary">
             Quantity
           </Typography>
-          <Typography variant="body1" fontWeight="medium">
+          <Typography variant="body1" sx={{
+            fontWeight: 'medium'
+          }}>
             {state.quantity}
           </Typography>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="textSecondary">
             Price
           </Typography>
-          <Typography variant="body1" fontWeight="medium">
+          <Typography variant="body1" sx={{
+            fontWeight: 'medium'
+          }}>
             {formatPrice(state.price)}
           </Typography>
         </Box>
@@ -235,10 +241,12 @@ export function SyncConflictResolver({
               }}
             >
               {option.icon}
-              <Typography variant="body2" fontWeight="medium">
+              <Typography variant="body2" sx={{
+                fontWeight: 'medium'
+              }}>
                 {option.label}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="textSecondary">
                 {option.description}
               </Typography>
             </ToggleButton>

@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from 'vitest';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 // Hoisted mocks for firebase-functions internals so we can intercept
@@ -11,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   hasAnyRole: vi.fn(),
   initializeApp: vi.fn(),
   apps: [] as unknown[],
+  verifyAppCheckToken: vi.fn(),
+  throttleHit: vi.fn(),
 }));
 
 vi.mock('firebase-functions/v2/https', async () => {
@@ -50,6 +60,14 @@ vi.mock('firebase-admin/app', () => ({
   initializeApp: mocks.initializeApp,
 }));
 
+vi.mock('firebase-admin/app-check', () => ({
+  getAppCheck: () => ({ verifyToken: mocks.verifyAppCheckToken }),
+}));
+
+vi.mock('@maple/firebase/database', () => ({
+  RequestThrottleRepository: { hit: mocks.throttleHit },
+}));
+
 vi.mock('./auth.utility', () => ({
   Role: {
     Admin: 'admin',
@@ -69,7 +87,9 @@ import {
   createAdminFunction,
   createRoleFunction,
   isOriginAllowed,
+  extractTrustedClientIp,
 } from './functions.utility';
+import { Throttle } from './throttle.utility';
 import {
   throwNotFound,
   throwInvalidArgument,
@@ -1064,5 +1084,282 @@ describe('Functions.router', () => {
 
     const [opts] = mocks.onRequest.mock.calls.at(-1) ?? [];
     expect(opts).toMatchObject({ memory: '512MiB', timeoutSeconds: 120 });
+  });
+});
+
+describe('App Check (ADR-037)', () => {
+  const originalMode = process.env['APP_CHECK_MODE'];
+  let logSpy: MockInstance<typeof console.log>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.verifyAppCheckToken.mockReset();
+    mocks.apps.length = 0;
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    if (originalMode === undefined) delete process.env['APP_CHECK_MODE'];
+    else process.env['APP_CHECK_MODE'] = originalMode;
+  });
+
+  function appCheckLogs(): Array<Record<string, unknown>> {
+    return logSpy.mock.calls
+      .map((call: unknown[]) => call[0])
+      .filter((line: unknown): line is string => typeof line === 'string')
+      .filter((line: string) => line.includes('"app_check"'))
+      .map((line: string) => JSON.parse(line) as Record<string, unknown>);
+  }
+
+  it('CORS preflight allows the App Check header', async () => {
+    const endpoint = Functions.endpoint.withAppCheck().handle(vi.fn());
+    const res = await invoke(endpoint, makeReq({ method: 'OPTIONS' }));
+    expect(res.statusCode).toBe(204);
+    expect(res.headers['Access-Control-Allow-Headers']).toContain(
+      'X-Firebase-AppCheck'
+    );
+  });
+
+  it('monitor: runs the handler without a token and logs "missing"', async () => {
+    process.env['APP_CHECK_MODE'] = 'monitor';
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint.withAppCheck('monitor').handle(handler);
+
+    const res = await invoke(endpoint, makeReq({ body: { data: {} } }));
+
+    expect(res.statusCode).toBe(200);
+    expect(handler).toHaveBeenCalledOnce();
+    expect(mocks.verifyAppCheckToken).not.toHaveBeenCalled();
+    expect(appCheckLogs()).toEqual([
+      expect.objectContaining({ mode: 'monitor', result: 'missing' }),
+    ]);
+  });
+
+  it('monitor: runs the handler with an invalid token and logs "invalid"', async () => {
+    process.env['APP_CHECK_MODE'] = 'monitor';
+    mocks.verifyAppCheckToken.mockRejectedValue(new Error('bad'));
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint.withAppCheck('monitor').handle(handler);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ headers: { 'x-firebase-appcheck': 'garbage' } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(appCheckLogs()[0]).toMatchObject({ result: 'invalid' });
+  });
+
+  it('enforce: answers 401 UNAUTHENTICATED without a valid token', async () => {
+    process.env['APP_CHECK_MODE'] = 'enforce';
+    const handler = vi.fn();
+    const endpoint = Functions.endpoint.withAppCheck('enforce').handle(handler);
+
+    const res = await invoke(endpoint, makeReq({ body: { data: {} } }));
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toMatchObject({ error: { status: 'UNAUTHENTICATED' } });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('enforce: runs the handler with a valid token', async () => {
+    process.env['APP_CHECK_MODE'] = 'enforce';
+    mocks.verifyAppCheckToken.mockResolvedValue({ appId: 'web-app' });
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint.withAppCheck('enforce').handle(handler);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ headers: { 'x-firebase-appcheck': 'good' } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(mocks.verifyAppCheckToken).toHaveBeenCalledWith('good');
+    expect(appCheckLogs()[0]).toMatchObject({
+      mode: 'enforce',
+      result: 'valid',
+      appId: 'web-app',
+    });
+  });
+
+  it('an enforce endpoint only monitors while the env ceiling is monitor', async () => {
+    process.env['APP_CHECK_MODE'] = 'monitor';
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint.withAppCheck('enforce').handle(handler);
+
+    const res = await invoke(endpoint, makeReq());
+
+    expect(res.statusCode).toBe(200);
+    expect(appCheckLogs()[0]).toMatchObject({ mode: 'monitor' });
+  });
+
+  it('does nothing when APP_CHECK_MODE is unset', async () => {
+    delete process.env['APP_CHECK_MODE'];
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint.withAppCheck('enforce').handle(handler);
+
+    const res = await invoke(endpoint, makeReq());
+
+    expect(res.statusCode).toBe(200);
+    expect(appCheckLogs()).toEqual([]);
+  });
+
+  it('does nothing for an endpoint that did not opt in', async () => {
+    process.env['APP_CHECK_MODE'] = 'enforce';
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint.handle(handler);
+
+    const res = await invoke(endpoint, makeReq());
+
+    expect(res.statusCode).toBe(200);
+    expect(appCheckLogs()).toEqual([]);
+  });
+
+  it('warmup is answered before App Check, so untokened pings still warm', async () => {
+    process.env['APP_CHECK_MODE'] = 'enforce';
+    const endpoint = Functions.endpoint.withAppCheck('enforce').handle(vi.fn());
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ body: { data: { __warmup: true } } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ data: { warm: true } });
+  });
+
+  it('labels router routes by router/route', async () => {
+    process.env['APP_CHECK_MODE'] = 'monitor';
+    const router = Functions.router('things', {
+      getThing: Functions.endpoint
+        .withAppCheck()
+        .asRoute(async () => ({ ok: true })),
+    });
+
+    await invoke(router, makeReq({ path: '/things/getThing' }));
+
+    expect(appCheckLogs()[0]).toMatchObject({ fn: 'things/getThing' });
+  });
+});
+
+describe('request throttling (ADR-037)', () => {
+  let warnSpy: MockInstance<typeof console.warn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.throttleHit.mockReset();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('runs the handler while under the limit', async () => {
+    mocks.throttleHit.mockResolvedValue({ allowed: true, count: 1 });
+    const handler = vi.fn(async () => ({ ok: true }));
+    const endpoint = Functions.endpoint
+      .throttling('fn', [Throttle.perField('email', 3, 60)])
+      .handle(handler);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ body: { data: { email: 'robin@example.com' } } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(mocks.throttleHit).toHaveBeenCalledWith(
+      expect.stringMatching(/^fn:email:[0-9a-f]{32}$/),
+      3,
+      60
+    );
+  });
+
+  it('answers 429 RESOURCE_EXHAUSTED over the limit, before validation', async () => {
+    mocks.throttleHit.mockResolvedValue({ allowed: false, count: 4 });
+    const handler = vi.fn();
+    const validator = vi.fn(() => suite(true));
+    const endpoint = Functions.endpoint
+      .throttling('fn', [Throttle.perClientIp(3, 60)])
+      .validating(validator)
+      .handle(handler);
+
+    const res = await invoke(
+      endpoint,
+      makeReq({ headers: { 'x-forwarded-for': '198.51.100.4' } })
+    );
+
+    expect(res.statusCode).toBe(429);
+    expect(res.body).toMatchObject({
+      error: { status: 'RESOURCE_EXHAUSTED' },
+    });
+    expect(validator).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"throttled"')
+    );
+  });
+
+  it('counts the front-end-appended (right-most) forwarded address', async () => {
+    mocks.throttleHit.mockResolvedValue({ allowed: true, count: 1 });
+    const seen: Array<string | undefined> = [];
+    const endpoint = Functions.endpoint
+      .throttling('fn', [
+        {
+          name: 'ip',
+          limit: 1,
+          windowSeconds: 60,
+          key: (_data, ctx) => {
+            seen.push(ctx.clientIp);
+            return ctx.clientIp;
+          },
+        },
+      ])
+      .handle(async () => ({}));
+
+    await invoke(
+      endpoint,
+      makeReq({ headers: { 'x-forwarded-for': '10.0.0.1, 203.0.113.9' } })
+    );
+
+    expect(seen).toEqual(['203.0.113.9']);
+  });
+
+  it('warmup is not counted', async () => {
+    const endpoint = Functions.endpoint
+      .throttling('fn', [Throttle.perClientIp(1, 60)])
+      .handle(vi.fn());
+
+    await invoke(endpoint, makeReq({ body: { data: { __warmup: true } } }));
+
+    expect(mocks.throttleHit).not.toHaveBeenCalled();
+  });
+});
+
+describe('extractTrustedClientIp', () => {
+  it('takes the right-most x-forwarded-for entry', () => {
+    expect(
+      extractTrustedClientIp({
+        headers: { 'x-forwarded-for': '192.0.2.1, 198.51.100.2 ,203.0.113.3' },
+      })
+    ).toBe('203.0.113.3');
+  });
+
+  it('joins a repeated header before choosing', () => {
+    expect(
+      extractTrustedClientIp({
+        headers: { 'x-forwarded-for': ['192.0.2.1', '198.51.100.2'] },
+      })
+    ).toBe('198.51.100.2');
+  });
+
+  it('falls back to req.ip, then undefined', () => {
+    expect(extractTrustedClientIp({ headers: {}, ip: '192.0.2.4' })).toBe(
+      '192.0.2.4'
+    );
+    expect(
+      extractTrustedClientIp({ headers: { 'x-forwarded-for': ' , ' } })
+    ).toBeUndefined();
   });
 });

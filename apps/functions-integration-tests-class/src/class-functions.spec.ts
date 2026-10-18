@@ -200,7 +200,7 @@ describe('Class Functions', () => {
         GetPublicClassRequest,
         GetPublicClassResponse
       >({
-        functionName: 'getPublicClass',
+        functionName: 'publicSite/getPublicClass',
         data: { id: classId },
       });
 

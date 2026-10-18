@@ -1,21 +1,4 @@
-import type { Instrument, LessonLength } from '@maple/ts/domain';
-
-export const INSTRUMENT_LABELS: Record<Instrument, string> = {
-  piano: 'Piano',
-  guitar: 'Guitar',
-  violin: 'Violin',
-  viola: 'Viola',
-  cello: 'Cello',
-  bass: 'Bass',
-  voice: 'Voice',
-  ukulele: 'Ukulele',
-  mandolin: 'Mandolin',
-  banjo: 'Banjo',
-  fiddle: 'Fiddle',
-  harp: 'Harp',
-  flute: 'Flute',
-  other: 'Other',
-};
+import type { LessonLength } from '@maple/ts/domain';
 
 export const LESSON_LENGTH_LABELS: Record<LessonLength, string> = {
   '30-min-initial': '30 min (initial)',

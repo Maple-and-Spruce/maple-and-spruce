@@ -50,6 +50,8 @@ vi.mock('@maple/react/agreements', () => ({
 // Google Pay / Apple Pay token events from outside the component.
 let capturedDigitalWalletTokenCallback: ((token: string) => void) | undefined;
 let capturedInitErrorCallback: (() => void) | undefined;
+let capturedBeforeDigitalWallet: (() => boolean) | undefined;
+let capturedHasOtherWallet: boolean | undefined;
 
 // Allow individual tests to override how the mocked tokenize function
 // behaves (e.g. to keep the promise pending and simulate Square's SDK
@@ -64,11 +66,15 @@ let mockTokenizeImpl: () => Promise<{
 // surface the parent depends on: signalling ready, exposing a tokenize
 // function, and rendering afterCardContent (which contains the button).
 vi.mock('./SquareCardForm', () => ({
+  WALLET_BUTTON_HEIGHT: 48,
+  WALLET_BUTTON_RADIUS: 8,
   SquareCardForm: ({
     onReady,
     onInitError,
     onTokenizeRef,
     onDigitalWalletToken,
+    beforeDigitalWallet,
+    hasOtherWallet,
     afterCardContent,
   }: {
     onReady?: () => void;
@@ -77,8 +83,12 @@ vi.mock('./SquareCardForm', () => ({
       fn: () => Promise<{ nonce: string; verificationToken?: string }>
     ) => void;
     onDigitalWalletToken?: (token: string) => void;
+    beforeDigitalWallet?: () => boolean;
+    hasOtherWallet?: boolean;
     afterCardContent?: React.ReactNode;
   }) => {
+    capturedBeforeDigitalWallet = beforeDigitalWallet;
+    capturedHasOtherWallet = hasOtherWallet;
     useEffect(() => {
       onTokenizeRef(() => mockTokenizeImpl());
       onReady?.();
@@ -487,6 +497,9 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
 
     await fillCustomerInfo();
 
+    // The Google Pay sheet must not open while the agreement is unsigned
+    expect(capturedBeforeDigitalWallet?.()).toBe(false);
+
     // Simulate Google Pay returning a token while agreement is unsigned
     await act(async () => {
       capturedDigitalWalletTokenCallback!('google-pay-nonce');
@@ -513,7 +526,8 @@ describe('RegistrationCheckoutForm — digital wallet + agreements', () => {
       expect(screen.getByText(/Class Waiver — Signed/)).toBeInTheDocument();
     });
 
-    // Now the digital wallet token should go through
+    // Now the Google Pay sheet may open and the token should go through
+    expect(capturedBeforeDigitalWallet?.()).toBe(true);
     await act(async () => {
       capturedDigitalWalletTokenCallback!('google-pay-nonce');
     });
@@ -786,5 +800,61 @@ describe('RegistrationCheckoutForm — hosted-checkout fallback', () => {
     // Still just the (disabled) pay button — no fallback offered.
     expect(screen.getByText(/Register & Pay/)).toBeInTheDocument();
     expect(screen.queryByText(/Continue to secure checkout/)).toBeNull();
+  });
+});
+
+/**
+ * Apple Pay only works in Safari with Wallet set up. The button used to show
+ * in every browser and open a popup that only said "Apple Pay is only
+ * available on Safari".
+ */
+describe('RegistrationCheckoutForm — Apple Pay availability', () => {
+  afterEach(() => {
+    cleanup();
+    delete (window as { ApplePaySession?: unknown }).ApplePaySession;
+  });
+
+  function renderWithWallets(): void {
+    render(
+      <RegistrationCheckoutForm
+        publicClass={mockPublicClass}
+        squareApplicationId="test-app"
+        squareLocationId="test-loc"
+        applePayCheckoutUrl="https://business.example.com/apple-pay-checkout"
+        showDigitalWallets
+        onCalculateCost={vi.fn().mockResolvedValue(mockCostResponse)}
+        onSubmit={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+  }
+
+  it('hides the Apple Pay button where the browser cannot make Apple Pay payments', async () => {
+    renderWithWallets();
+
+    await waitFor(() => expect(capturedHasOtherWallet).toBe(false));
+    expect(screen.queryByText(/Pay with Apple Pay/)).not.toBeInTheDocument();
+  });
+
+  it('shows it, full height, in Safari with Wallet set up', async () => {
+    (window as { ApplePaySession?: unknown }).ApplePaySession = {
+      canMakePayments: () => true,
+    };
+    renderWithWallets();
+
+    const button = await screen.findByText(/Pay with Apple Pay/);
+    expect(button).toHaveStyle({ height: '48px' });
+    // The card form shows the "or pay with card" divider for it.
+    expect(capturedHasOtherWallet).toBe(true);
+  });
+
+  it('hides it when the device has no Wallet card', async () => {
+    (window as { ApplePaySession?: unknown }).ApplePaySession = {
+      canMakePayments: () => false,
+    };
+    renderWithWallets();
+
+    await waitFor(() => expect(capturedHasOtherWallet).toBe(false));
+    expect(screen.queryByText(/Pay with Apple Pay/)).not.toBeInTheDocument();
   });
 });

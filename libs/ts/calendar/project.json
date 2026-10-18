@@ -4,12 +4,5 @@
   "sourceRoot": "libs/ts/calendar/src",
   "projectType": "library",
   "tags": ["scope:shared", "type:util"],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "reportsDirectory": "../../../coverage/libs/ts/calendar"
-      }
-    }
-  }
+  "targets": {}
 }

@@ -1,0 +1,12 @@
+{
+  "name": "functions-integration-tests-payouts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/functions-integration-tests-payouts/src",
+  "projectType": "application",
+  "tags": ["type:e2e"],
+  "implicitDependencies": [
+    "firebase-maple-functions-payouts",
+    "firebase-integration-test-utils"
+  ],
+  "targets": {}
+}

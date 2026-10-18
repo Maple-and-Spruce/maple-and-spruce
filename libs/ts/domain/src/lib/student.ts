@@ -12,41 +12,14 @@
  */
 
 /**
- * Instruments offered for music lessons. Suzuki-method leaning with room for
- * common studio instruments. Add to this list as the studio expands.
+ * An instrument, by its key (`violin`, `fiddle`, …).
+ *
+ * The instruments the studio offers are an app setting (#161), not a fixed
+ * list: see `InstrumentsConfig`. A student keeps whatever key they were
+ * recorded with, even after it stops being offered.
  */
-export type Instrument =
-  | 'piano'
-  | 'guitar'
-  | 'violin'
-  | 'viola'
-  | 'cello'
-  | 'bass'
-  | 'voice'
-  | 'ukulele'
-  | 'mandolin'
-  | 'banjo'
-  | 'fiddle'
-  | 'harp'
-  | 'flute'
-  | 'other';
-
-export const INSTRUMENTS: Instrument[] = [
-  'piano',
-  'guitar',
-  'violin',
-  'viola',
-  'cello',
-  'bass',
-  'voice',
-  'ukulele',
-  'mandolin',
-  'banjo',
-  'fiddle',
-  'harp',
-  'flute',
-  'other',
-];
+// eslint-disable-next-line sonarjs/redundant-type-aliases -- the name says which string: an instrument key, used across domain, validation and UI
+export type Instrument = string;
 
 /**
  * Lesson length. Values align with Katie's pricing tiers; "initial" is the
@@ -93,6 +66,12 @@ export interface Student {
   registeredLessonLength?: LessonLength;
   /** WV Hope Scholarship flag. Hope students are invoiced externally (legacy #282). */
   isHopeScholarship: boolean;
+  /**
+   * The EMA portal product this Hope student's lessons are billed under
+   * (`HopeProduct.id`). Sets what each lesson is worth; unset means the
+   * lessons have no price until one is chosen (nothing in code stands in).
+   */
+  hopeProductId?: string;
   /** Parent/guardian for minors; student themselves for adults */
   primaryContactName: string;
   primaryContactEmail: string;

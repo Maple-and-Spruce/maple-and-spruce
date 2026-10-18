@@ -9,7 +9,8 @@
  * Deployed to us-east4 via CI/CD pipeline.
  */
 import {
-  createPublicFunction,
+  Functions,
+  emailLinkThrottles,
   throwValidationError,
 } from '@maple/firebase/functions';
 import { CraftClubMemberRepository } from '@maple/firebase/database';
@@ -23,10 +24,11 @@ import type {
   RequestCraftClubAccessResponse,
 } from '@maple/ts/firebase/api-types';
 
-export const requestCraftClubAccess = createPublicFunction<
-  RequestCraftClubAccessRequest,
-  RequestCraftClubAccessResponse
->(async (data) => {
+export const requestCraftClubAccess = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('requestCraftClubAccess', emailLinkThrottles())
+  .handle<RequestCraftClubAccessRequest, RequestCraftClubAccessResponse>(
+    async (data) => {
   const result = craftClubMemberValidation({
     email: data.email,
     name: data.name,
@@ -52,4 +54,5 @@ export const requestCraftClubAccess = createPublicFunction<
   });
 
   return { status: 'requested' };
-});
+  }
+);

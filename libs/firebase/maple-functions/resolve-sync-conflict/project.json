@@ -4,12 +4,5 @@
   "sourceRoot": "libs/firebase/maple-functions/resolve-sync-conflict/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:feature"],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "libs/firebase/maple-functions/resolve-sync-conflict/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

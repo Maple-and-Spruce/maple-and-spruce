@@ -113,18 +113,19 @@ function SignedAgreementContent({
         <Tab label="Details" />
         <Tab label="Agreement" />
       </Tabs>
-
       {tab === 0 && (
         <>
           {/* Signer Info */}
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="textSecondary">
             Signer
           </Typography>
           <Box sx={{ pl: 1 }}>
-            <Typography variant="body1" fontWeight={500}>
+            <Typography variant="body1" sx={{
+              fontWeight: 500
+            }}>
               {agreement.printedName}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {agreement.signerEmail}
             </Typography>
           </Box>
@@ -139,7 +140,7 @@ function SignedAgreementContent({
               alignItems: 'center',
             }}
           >
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle2" color="textSecondary">
               Signed
             </Typography>
             <Typography variant="body2">
@@ -159,7 +160,7 @@ function SignedAgreementContent({
                   alignItems: 'center',
                 }}
               >
-                <Typography variant="subtitle2" color="text.secondary">
+                <Typography variant="subtitle2" color="textSecondary">
                   Photo / Media Release
                 </Typography>
                 <Chip
@@ -175,7 +176,7 @@ function SignedAgreementContent({
           {/* Minor Info */}
           {agreement.isMinor && (
             <>
-              <Typography variant="subtitle2" color="text.secondary">
+              <Typography variant="subtitle2" color="textSecondary">
                 Minor
               </Typography>
               <Box sx={{ pl: 1 }}>
@@ -191,7 +192,7 @@ function SignedAgreementContent({
           )}
 
           {/* Signature */}
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="textSecondary">
             Signature
           </Typography>
           <Box
@@ -219,7 +220,7 @@ function SignedAgreementContent({
             />
             {guardianSignatureImageUrl && (
               <>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="textSecondary">
                   Guardian Signature
                 </Typography>
                 <Box
@@ -242,7 +243,6 @@ function SignedAgreementContent({
           </Box>
         </>
       )}
-
       {tab === 1 && (
         <Box
           sx={{

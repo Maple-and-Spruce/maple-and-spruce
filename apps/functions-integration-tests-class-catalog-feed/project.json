@@ -8,12 +8,5 @@
     "firebase-maple-functions-class-catalog-feed",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-class-catalog-feed/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

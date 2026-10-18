@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import { callDeduped } from './call-deduped';
 import type {
   Product,
@@ -38,7 +41,7 @@ export function useProducts() {
       const result = await callDeduped<
         GetProductsRequest,
         GetProductsResponse
-      >('getProducts', {});
+      >({ router: 'products', route: 'getProducts' }, {});
       setProductsState({
         status: 'success',
         data: result.data.products,
@@ -56,10 +59,10 @@ export function useProducts() {
   const createProduct = useCallback(
     async (input: CreateProductInput): Promise<Product> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<CreateProductRequest, CreateProductResponse>(
-        functions,
-        'createProduct'
-      );
+      const create = httpsCallableFromURL<
+        CreateProductRequest,
+        CreateProductResponse
+      >(functions, routerCallableUrl('productCatalog', 'createProduct'));
 
       const result = await create(input);
 
@@ -80,10 +83,10 @@ export function useProducts() {
   const updateProduct = useCallback(
     async (input: UpdateProductInput): Promise<Product> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<UpdateProductRequest, UpdateProductResponse>(
-        functions,
-        'updateProduct'
-      );
+      const update = httpsCallableFromURL<
+        UpdateProductRequest,
+        UpdateProductResponse
+      >(functions, routerCallableUrl('productCatalog', 'updateProduct'));
 
       const result = await update(input);
 
@@ -105,10 +108,10 @@ export function useProducts() {
 
   const deleteProduct = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteProductRequest, DeleteProductResponse>(
-      functions,
-      'deleteProduct'
-    );
+    const del = httpsCallableFromURL<
+      DeleteProductRequest,
+      DeleteProductResponse
+    >(functions, routerCallableUrl('products', 'deleteProduct'));
 
     await del({ id });
 

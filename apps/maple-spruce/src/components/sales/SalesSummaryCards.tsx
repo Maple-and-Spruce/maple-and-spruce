@@ -42,14 +42,14 @@ export function SalesSummaryCards({ sales }: SalesSummaryCardsProps) {
     >
       {cards.map((c) => (
         <Paper key={c.label} variant="outlined" sx={{ p: 2 }}>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             {c.label}
           </Typography>
           <Typography variant="h4" component="div" sx={{ mt: 0.5 }}>
             {c.value}
           </Typography>
           {c.sub && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="textSecondary">
               {c.sub}
             </Typography>
           )}

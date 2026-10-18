@@ -124,7 +124,7 @@ export function RegistrationDetailDialog({
               alignItems: 'center',
             }}
           >
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle2" color="textSecondary">
               Status
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -144,18 +144,20 @@ export function RegistrationDetailDialog({
           <Divider />
 
           {/* Customer Info */}
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="textSecondary">
             Customer
           </Typography>
           <Box sx={{ pl: 1 }}>
-            <Typography variant="body1" fontWeight={500}>
+            <Typography variant="body1" sx={{
+              fontWeight: 500
+            }}>
               {registration.customerName}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {registration.customerEmail}
             </Typography>
             {registration.customerPhone && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {registration.customerPhone}
               </Typography>
             )}
@@ -171,7 +173,7 @@ export function RegistrationDetailDialog({
               alignItems: 'center',
             }}
           >
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle2" color="textSecondary">
               Class
             </Typography>
             <Typography variant="body2">
@@ -186,7 +188,7 @@ export function RegistrationDetailDialog({
               alignItems: 'center',
             }}
           >
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle2" color="textSecondary">
               Quantity
             </Typography>
             <Typography variant="body2">
@@ -197,7 +199,7 @@ export function RegistrationDetailDialog({
           <Divider />
 
           {/* Payment Info */}
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="textSecondary">
             Payment
           </Typography>
           <Box sx={{ pl: 1 }}>
@@ -211,7 +213,7 @@ export function RegistrationDetailDialog({
               </Typography>
             )}
             {registration.squarePaymentId && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="textSecondary">
                 Square: {registration.squarePaymentId}
               </Typography>
             )}
@@ -221,7 +223,7 @@ export function RegistrationDetailDialog({
           {registration.notes && (
             <>
               <Divider />
-              <Typography variant="subtitle2" color="text.secondary">
+              <Typography variant="subtitle2" color="textSecondary">
                 Notes
               </Typography>
               <Typography variant="body2">{registration.notes}</Typography>
@@ -238,7 +240,7 @@ export function RegistrationDetailDialog({
               alignItems: 'center',
             }}
           >
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography variant="subtitle2" color="textSecondary">
               Registered
             </Typography>
             <Typography variant="caption">

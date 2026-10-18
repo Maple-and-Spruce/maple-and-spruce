@@ -35,6 +35,7 @@ import {
 } from '@maple/firebase/webflow';
 import { ClassCategoryRepository } from '@maple/firebase/database';
 import { FirebaseProject } from '@maple/firebase/functions';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 // Define secrets INLINE - NOT at module level to avoid cold start delays
 const webflowSecretParams = WEBFLOW_SECRET_NAMES.map((name) =>
@@ -158,6 +159,14 @@ export const syncClassCategoryToWebflow = onDocumentWritten(
       }
     } catch (error) {
       console.error('Webflow sync error:', error);
+      await reportSyncFailure({
+        source: 'syncClassCategoryToWebflow',
+        destination: 'Webflow',
+        entityType: 'class category',
+        entityId: event.params.categoryId,
+        entityLabel: (afterCategory ?? beforeCategory)?.name,
+        error,
+      });
       // Don't throw - we don't want to trigger retries for Webflow API errors
     }
   }

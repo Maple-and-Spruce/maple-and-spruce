@@ -26,6 +26,8 @@
  * through `isSubmittableToHope`, not by a filter in a UI that could be
  * forgotten or bypassed.
  */
+import type { HopeRateSource } from './hope-product';
+import type { HopeLessonState } from './hope-order';
 import type { Lesson } from './lesson';
 import type { Student } from './student';
 
@@ -64,6 +66,11 @@ export interface HopeSubmission {
   paidAt?: Date;
   /** EMA portal reference, once Katie has one. */
   emaReference?: string;
+  /**
+   * The EMA order this lesson was invoiced against, stamped when the invoice is
+   * recorded. Absent on claims from before orders were tracked.
+   */
+  orderId?: string;
   /** What EMA said, so a resubmission can fix the actual problem. */
   rejectionReason?: string;
   /** Firebase Auth uid of whoever recorded it (server-stamped). */
@@ -85,12 +92,27 @@ export interface HopeQueueEntry {
   lesson: Lesson;
   studentId: string;
   studentName: string;
-  /** The student's registered tier, which sets the rate. */
+  /** The student's registered tier. Informational: it does not set the price. */
   registeredLessonLength?: Student['registeredLessonLength'];
-  /** The rate this lesson would be claimed at today, in cents. */
-  rateCents: number;
+  /**
+   * The rate this lesson would be claimed at today, in cents: the price of the
+   * EMA order it draws on, else the student's EMA product. Absent when neither
+   * exists, because the student is on no product. Such a lesson has no price
+   * and is never counted as money; see `rateSource`.
+   */
+  rateCents?: number;
+  /**
+   * `product` when the rate is an EMA product or order price; `unpriced` when
+   * the student is on no EMA product and no order covers the lesson, so the UI
+   * asks for a product instead of showing a number.
+   */
+  rateSource: HopeRateSource;
+  /** The EMA product's name, when the rate came from one. */
+  productName?: string;
   /** Absent until something has been claimed. */
   submission?: HopeSubmission;
+  /** Needs an order, ready to invoice, or invoiced (server-computed). */
+  state?: HopeLessonState;
 }
 
 /**
@@ -124,6 +146,29 @@ export interface HopeQueueTotals {
   paidCents: number;
   /** Claimed and refused — the subset of `awaiting` that needs a human. */
   rejectedCount: number;
+  /** Taught, but no EMA order has room: the family needs to order more. */
+  needsOrderCount: number;
+  needsOrderCents: number;
+  /** Taught, and an order has room: invoice these in the portal. */
+  readyCount: number;
+  readyCents: number;
+  /** Invoice done in the portal (submitted or paid, not rejected). */
+  invoicedCount: number;
+  invoicedCents: number;
+  /**
+   * Taught, not invoiced, and with no price: the student is on no EMA product.
+   * These are counted in the lesson counts above but add nothing to any cents
+   * total, so the money shown is only money that has a real price behind it.
+   */
+  unpricedCount: number;
+}
+
+/**
+ * The price a not-yet-invoiced lesson would be claimed at: today's rate, else
+ * whatever a rejected claim was stamped at. Undefined when it has no price.
+ */
+function claimableCents(entry: HopeQueueEntry): number | undefined {
+  return entry.rateCents ?? entry.submission?.rateCents;
 }
 
 /**
@@ -144,20 +189,48 @@ export function summarizeHopeQueue(entries: HopeQueueEntry[]): HopeQueueTotals {
     paidCount: 0,
     paidCents: 0,
     rejectedCount: 0,
+    needsOrderCount: 0,
+    needsOrderCents: 0,
+    readyCount: 0,
+    readyCents: 0,
+    invoicedCount: 0,
+    invoicedCents: 0,
+    unpricedCount: 0,
   };
 
   for (const entry of entries) {
+    // The order-aware view. Without a computed state (an older client or
+    // entry), an uninvoiced lesson counts as needing an order.
+    const invoiced =
+      !!entry.submission && entry.submission.status !== 'rejected';
+    // An invoiced lesson is worth what its claim was stamped at.
+    const cents = invoiced
+      ? (entry.submission?.rateCents ?? entry.rateCents)
+      : claimableCents(entry);
+    if (!invoiced && cents === undefined) totals.unpricedCount++;
+
+    if (invoiced) {
+      totals.invoicedCount++;
+      totals.invoicedCents += cents ?? 0;
+    } else if (entry.state?.kind === 'ready-to-invoice') {
+      totals.readyCount++;
+      totals.readyCents += cents ?? 0;
+    } else {
+      totals.needsOrderCount++;
+      totals.needsOrderCents += cents ?? 0;
+    }
+
     const status = entry.submission?.status;
 
     if (status === 'paid') {
       totals.paidCount++;
-      totals.paidCents += entry.submission?.rateCents ?? entry.rateCents;
+      totals.paidCents += cents ?? 0;
       continue;
     }
 
     if (status === 'submitted') {
       totals.submittedCount++;
-      totals.submittedCents += entry.submission?.rateCents ?? entry.rateCents;
+      totals.submittedCents += cents ?? 0;
       continue;
     }
 
@@ -165,8 +238,9 @@ export function summarizeHopeQueue(entries: HopeQueueEntry[]): HopeQueueTotals {
 
     totals.awaitingCount++;
     // Claim at today's rate: a rejected claim will be resubmitted, and an
-    // unclaimed one has never had a rate stamped.
-    totals.awaitingCents += entry.rateCents;
+    // unclaimed one has never had a rate stamped. An unpriced lesson is
+    // counted, not valued.
+    totals.awaitingCents += cents ?? 0;
   }
 
   return totals;

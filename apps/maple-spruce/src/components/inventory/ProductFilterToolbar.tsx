@@ -248,7 +248,7 @@ export function ProductFilterToolbar({
 
       {/* Results count */}
       <Box sx={{ mt: 1.5 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {hasActiveFilters
             ? `Showing ${filteredCount} of ${totalCount} products`
             : `${totalCount} products`}

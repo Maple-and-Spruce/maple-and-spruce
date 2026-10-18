@@ -6,7 +6,8 @@
  *
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 
 export interface ClassWaitlistValidationInput {
   classId?: string;

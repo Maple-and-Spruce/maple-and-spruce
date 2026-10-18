@@ -21,6 +21,7 @@
  */
 import {
   Functions,
+  paymentThrottles,
   isE2ETestEmail,
   reserveClassRegistration,
   processInlineAgreements,
@@ -71,6 +72,8 @@ function getAppUrl(allowedOrigins: string): string {
 }
 
 export const createRegistration = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('createRegistration', paymentThrottles('customerEmail'))
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
   .handle<CreateRegistrationRequest, CreateRegistrationResponse>(

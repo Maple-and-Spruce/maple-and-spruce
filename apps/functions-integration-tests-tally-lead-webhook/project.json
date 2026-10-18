@@ -10,12 +10,5 @@
     "firebase-ga4-test-mock-server",
     "firebase-meta-capi-test-mock-server"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-tally-lead-webhook/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

@@ -12,7 +12,7 @@
 | Firebase admin SDK | Complete | `libs/firebase/database/` |
 | MUI theme | Complete | `libs/react/theme/` |
 | React UI components | Complete | `libs/react/ui/` (ImageUpload, DeleteConfirmDialog) |
-| React auth library | Complete | `libs/react/auth/` (AuthGuard, AdminGuard, UserMenu, useAuth, useAdminStatus) |
+| React auth library | Complete | `libs/react/auth/` (AuthGuard, RoleGuard, RolesProvider, UserMenu, useAuth, useMyRoles) |
 | React layout library | Complete | `libs/react/layout/` (AppShell) |
 | React data hooks | Complete | `libs/react/data/` (useProducts, useArtists, useCategories) |
 | Domain types library | Complete | `libs/ts/domain/` |
@@ -21,15 +21,16 @@
 | Functions core library | Complete | `libs/firebase/functions/` |
 | Functions app | Complete | `apps/functions/` |
 | Authentication | Complete | `libs/react/auth/` (re-exported via app barrel) |
-| Admin authorization (UI) | Complete | `AdminGuard` + `useAdminStatus` + `checkAdminStatus` Cloud Function |
+| Admin authorization (UI) | Complete | `RoleGuard` + `RolesProvider` + `getMyRoles` Cloud Function (the binary `AdminGuard` / `checkAdminStatus` were retired in #65) |
 | Scoped roles framework (PR 1 of epic #49) | Complete | `Role` enum (admin, mt-teacher, clerk, lesson-teacher) + `userRoles/{uid}` + any-of `requiringRole([...])` + `getMyRoles`/`grantRole`/`revokeRole`; behavior-neutral — client plumbing legacy #614, re-scoping legacy #615 |
 | Scoped roles client plumbing (PR 2 of epic #49) | Complete | `RolesProvider`/`useRoles`/`RoleGuard` (ADR-028), role-filtered nav (`nav-groups.tsx`), `/users` scoped-role toggles, `listUsers` roles join — enforcement re-scoping is legacy #615 |
 | Scoped roles enforcement (PR 3 of epic #49) | Complete | 46 fns re-scoped to role sets (MT→mt-teacher, store/registrations→clerk, lesson reads→lesson-teacher, calendar→all staff); auth-only reads tightened; `PathRoleGuard` route gating; role-gated dashboard; matrix integration spec (`role-matrix.spec.ts`). Phase 2 ownership = #616, analyzer = #620 |
 | Callable-role analyzer (legacy #620) | Complete | `tools/check-callable-roles.ts` + `callable-roles` CI job; every exported callable must be role-gated / trigger / allowlisted. Caught + fixed leftover auth-only `getArtist`/`getStudent` |
+| App Check + request throttling on public callables (ADR-037) | In progress (monitor) | `.withAppCheck()` / `.throttling()` on `Functions.endpoint`; `requestThrottles` counters; widget App Check via reCAPTCHA Enterprise in `apps/webflow-components/src/firebase-init.ts`. Enforce phase follows once monitor data is reviewed |
 | Lesson-teacher manage-own (phase 2 of epic #49, legacy #616) | Complete | `Instructor.uid` link + `InstructorRepository.findByUid`; `assertCanManageLesson` ownership helper; create/update/delete-lesson + create-lesson-series re-scoped to `[Admin, LessonTeacher]` with ownership checks; permission-denied→403; instructor-form "Portal login" picker |
 | Portal role-scoping E2E (legacy #625) | Complete | First browser-level e2e (`apps/maple-spruce-e2e`): seeds admin + mt-teacher, signs in via login UI, asserts role-filtered nav + `/users` gate. `connectAuthEmulator` opt-in wiring; `tools/run-portal-e2e.sh` + `portal-e2e` CI job |
 | Lesson-teacher student + calendar scoping (epic #49) | Complete | `getStudents` reads-own (filter by `primaryTeacherId`); `getStudent`/create/update/delete-student → `[Admin, LessonTeacher]` + ownership; calendar events: lesson-teacher dropped from update/delete + create requires a `room` (book-room only) + Events nav hidden. `instructorScopeForUser`/`assertCanManageStudent`/`assertOwnsAsInstructor` helpers |
-| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel) |
+| Navigation (responsive) | Complete | `libs/react/layout/` (re-exported via app barrel). Square-style areas: accordion, page search (⌘K), pinned Create menu with `?new=1` create intents; flat list for roles with ≤10 pages |
 | Storybook | Complete | `apps/maple-spruce/.storybook/` |
 | Component stories | Complete | `apps/maple-spruce/src/components/**/*.stories.tsx`, `libs/react/*/src/**/*.stories.tsx` |
 | Chromatic CI | Removed (2026-09) | Snapshot quota kept running out; Storybook play tests cover it |
@@ -44,8 +45,8 @@
 |---------|--------|-------|----------|
 | Artist CRUD | Complete | legacy #2 | `libs/firebase/maple-functions/get-artists/`, etc. |
 | Square integration | Complete | legacy #69 | `libs/firebase/square/` |
-| Product management | Complete | legacy #3 | `libs/firebase/maple-functions/get-products/`, etc. |
-| Category management | Complete | - | `libs/firebase/maple-functions/get-categories/`, etc. |
+| Product management | Complete | legacy #3 | `libs/firebase/maple-functions/products/` (router); Square-backed writes in `create-product/`, `update-product/` |
+| Category management | Complete | - | `libs/firebase/maple-functions/products/` (router) |
 
 ## Phase 2 Features (COMPLETE)
 
@@ -196,14 +197,32 @@ Closes the last follow-up under legacy epic #10. Aggregates what Katie owes each
 |---------|--------|----------|
 | `Lesson.primaryTeacherAtCreateId` snapshot + stamped on create | **Complete** | `libs/ts/domain/src/lib/lesson.ts` + `create-lesson*/src/lib/*.ts` |
 | `wasTaughtBySubstitute` domain helper | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
-| Hope rates moved to domain (shared with payout calc) | **Complete** | `libs/ts/domain/src/lib/hope-rates.ts` |
+| Hope lessons priced from EMA products only (the length table `hope-rates.ts` was removed in #83 part 3; a Hope student on no product is unpriced: listed and flagged "N Hope lessons unpriced"; flat/hourly pay still owed, a percentage share left out of `totalOwedCents`) | **Complete** | `libs/ts/domain/src/lib/hope-product.ts`, `teacher-payout.ts` |
 | `teacher-payout.ts` — aggregator + compensation helpers | **Complete** | `libs/ts/domain/src/lib/teacher-payout.ts` (+ 26 unit tests) |
-| `getTeacherPayouts` cloud function (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/get-teacher-payouts/` |
+| `getTeacherPayouts` route on the `payouts` router (admin, date range + optional teacher filter) | **Complete** | `libs/firebase/maple-functions/payouts/src/lib/teacher-payouts.ts` |
 | Unit test for handler (7) + integration test (end-to-end with mixed sources, substitute flag, teacher filter, empty period) | **Complete** | `apps/functions-integration-tests-teacher-payout/` |
 | `useTeacherPayouts` hook | **Complete** | `libs/react/data/src/lib/useTeacherPayouts.ts` |
 | `PeriodPicker` + `TeacherPayoutsList` (expandable per teacher, Hope/Private/Sub chips, "Rate not set" warning) | **Complete** | `libs/react/payouts/` |
 | Storybook interaction tests (14) | **Complete** | `libs/react/payouts/src/lib/*.stories.tsx` |
 | `/payouts` admin page + Music Lessons nav entry | **Complete** | `apps/maple-spruce/src/app/payouts/page.tsx`, `AppShellWrapper.tsx` |
+
+### Class-Instructor Payouts (Complete, 3 PRs)
+
+Contract instructors get `payRate` (0.8) of what the student paid for the class, after discount and before tax. Revenue is split evenly across sessions, and each session is paid in the month it was held. Statements are generated monthly and marked paid by hand; the app never moves money. See the domain module's header for the full policy.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Domain: statement builder, per-session proration, cumulative share rounding, refund adjustments, stale check, year total | **Complete** (PR 1) | `libs/ts/domain/src/lib/class-instructor-payout.ts` |
+| `getNetAmountPaid` fixed: returns `subtotalCents` (it had subtracted the discount twice and included tax) | **Complete** (PR 1) | `libs/ts/domain/src/lib/registration.ts` |
+| Refunds record `refundedAt` / `refundedAmountCents` / `squareRefundId` | **Complete** (PR 1) | `cancel-registration`, `registration.repository.ts` |
+| Ledger + statement repositories (transactional generate / mark paid / void, ADR-035) | **Complete** (PR 2) | `libs/firebase/database/src/lib/class-instructor-statement.repository.ts` |
+| `payouts` router: preview / generate / list / get / mark paid / void, admin-only | **Complete** (PR 2) | `libs/firebase/maple-functions/payouts/` |
+| Vest suites for generate + mark paid | **Complete** (PR 2) | `libs/ts/validation/src/lib/class-instructor-statement.validation.ts` |
+| Integration suite (split across months, double generate, race, void + regenerate, refund after payment, gating) + role matrix | **Complete** (PR 2) | `apps/functions-integration-tests-payouts/` |
+| `useClassInstructorPayouts` / `useClassInstructorStatement` hooks (router routes, date hydration) | **Complete** (PR 3) | `libs/react/data/src/lib/useClassInstructorPayouts.ts` |
+| `MonthStepper`, `ClassInstructorPayoutPreview`, `ClassInstructorStatementsList`, `MarkStatementPaidDialog`, `ClassInstructorStatementView` (4 loading states each, 41 play tests) | **Complete** (PR 3) | `libs/react/payouts/` |
+| `/payouts` tabs (Lesson teachers / Class instructors, `?tab=classes`) | **Complete** (PR 3) | `apps/maple-spruce/src/app/(admin)/payouts/page.tsx` |
+| Printable statement (Print / Save PDF, admin chrome hidden in print) | **Complete** (PR 3) | `apps/maple-spruce/src/app/(admin)/payouts/instructor-statements/[id]/page.tsx` |
 
 ### Parent Invoice Delivery + Online Payment (legacy #281, Complete)
 
@@ -248,7 +267,7 @@ Uses Square Invoices API rather than a custom Webflow payment page — Square se
 | Feature | Status | Location |
 |---------|--------|----------|
 | Hope flag on Student (set/unset by Katie) | **Complete** | shipped in legacy #278 |
-| Hope per-lesson rate constants + helpers | **Complete** | `libs/react/lessons/src/lib/hope-rates.ts` (+ 7 unit tests) |
+| Hope per-lesson rate constants + helpers | **Removed (#83 part 3)** | prices come only from `HopeProduct` records and `HopeOrder` price stamps; `resolveHopeLessonRate` returns `{ source: 'unpriced' }` with no product |
 | `HopeRatesTable` (4-tier, highlight current) | **Complete** | `libs/react/lessons/src/lib/HopeRatesTable.tsx` |
 | `HopeScholarshipBanner` on student detail | **Complete** | `libs/react/lessons/src/lib/HopeScholarshipBanner.tsx` |
 | Mark-lesson-rendered action (past scheduled lessons) | **Complete** | `LessonList.tsx` + `/students/[id]/page.tsx` |
@@ -272,7 +291,7 @@ a weekly window a teacher's lessons must fall inside.
 | Week tab — calendar grid + This week / Typical week toggle (legacy #685/#722) | **Complete** | `libs/react/lessons/src/lib/MyWeek.tsx` |
 | **Openings tab — open chunks within blocks, read-only (legacy #687)** | **Complete** | `libs/ts/domain/src/lib/openings.ts`, `libs/react/lessons/src/lib/MyOpenings.tsx` |
 | Openings slot-math unit tests + tab Storybook play tests | **Complete** | `libs/ts/domain/src/lib/openings.spec.ts`, `libs/react/lessons/src/lib/MyOpenings.stories.tsx` |
-| My Day page (Today / Week / Openings tabs) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx` |
+| My Week page (Week / Today / Openings tabs; opens on Week, route stays `/my-day`) | **Complete** | `apps/maple-spruce/src/app/(admin)/my-day/page.tsx`, `apps/maple-spruce/src/components/my-day/MyWeekPageView.tsx` |
 | Needs Attention panel placement — collapsed on the dashboard and above the student table, not on My Day | **Complete** | `apps/maple-spruce/src/app/(admin)/page.tsx`, `apps/maple-spruce/src/app/(admin)/students/page.tsx` |
 
 ### Lesson Scheduling (legacy #279, Complete)
@@ -291,6 +310,24 @@ a weekly window a teacher's lessons must fall inside.
 | Storybook interaction tests (20) | **Complete** | `libs/react/lessons/src/lib/*.stories.tsx` |
 | Student detail page `/students/[id]` | **Complete** | `apps/maple-spruce/src/app/students/[id]/page.tsx` |
 | Student list row links to detail page | **Complete** | `StudentList.tsx` + `/students/page.tsx` |
+
+### Lesson cancellation and credits (#209, Complete)
+
+Studio policy: a family that cancels is still charged, and Katie may give a credit toward a
+later lesson. There is no credit balance: rescheduling with a credit moves the cancelled
+lesson's payment (the charge or invoice line that named it) onto the new lesson.
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| `Lesson.creditForLessonId` + `creditLessonId` / `replaceCoveredLesson` | **Complete** | `libs/ts/domain/src/lib/lesson.ts` |
+| `lessons/rescheduleLessonWithCredit` route (book replacement → move payment → cancel original; retry-safe) | **Complete** | `libs/firebase/maple-functions/lessons/src/lib/reschedule-lesson-with-credit.ts` |
+| `moveCoveredLesson` (charge) / `moveLineLesson` (invoice) | **Complete** | `libs/firebase/database/src/lib/{lesson-scheduled-charge,invoice}.repository.ts` |
+| `CancelLessonDialog` (Cancel / Cancel and reschedule with a credit) | **Complete** | `libs/react/lessons/src/lib/CancelLessonDialog.tsx` |
+| Cancel on Upcoming lessons, "Credit" chip; Activity links cancelled ↔ replacement | **Complete** | `UpcomingLessonsCard.tsx`, `LessonActivity.tsx`, `/students/[id]/page.tsx` |
+| Unit + integration + Storybook play tests | **Complete** | `reschedule-lesson-with-credit.spec.ts`, `apps/functions-integration-tests-lesson/src/lesson-credit.spec.ts`, `CancelLessonDialog.stories.tsx` |
+| Weather (#210): reschedule with a credit (`cancelledFor: 'weather'`) or hold online (`Lesson.virtual`) | **Complete** | `CancelLessonDialog` weather variant, Weather / In person on Upcoming + Activity |
+| Online lessons keep their calendar event (teacher's week) with no room (`lessonOccupiedRoom`) | **Complete** | `libs/ts/domain/src/lib/lesson.ts`, `on-lesson-write.ts`, `update-lesson.ts` |
+| "Online" label on My Week (own lessons, `MyWeekCommitment.online`) and the Today card | **Complete** | `get-my-week.ts`, `MyWeek.tsx`, `MyDayLessonCard.tsx` |
 
 ### Student Records (legacy #278, Complete)
 
@@ -337,6 +374,7 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | Mock Graph server for integration tests | Complete | `libs/firebase/meta-capi-test-mock-server/` |
 | Tally newsletter `Lead` (routed by form id to the owning pixel) | Complete | `tally-lead-webhook/` |
 | Craft-class `Purchase` (Firestore trigger) | Complete | `send-registration-conversion/` |
+| Craft-class GA4 `purchase` (server-side, same trigger) | Complete | `send-registration-conversion/`, `webflow-components/src/lib/ga-attribution.ts` |
 | Music Together `Purchase` (Firestore trigger) | Complete | `send-music-together-conversion/` |
 | **MT demo RSVP `Schedule` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-demo-rsvp/` + `libs/firebase/meta-capi/src/lib/music-together-top-funnel.ts` |
 | **MT interest signup `Lead` (inline in the callable)** (legacy #781) | **Complete** | `add-music-together-interest/` |
@@ -360,7 +398,9 @@ The Spruce Room is multi-tenant (music lessons, Music Together, ad hoc uses). Ro
 | `room` field on CalendarEvent + Class | **Complete** (PR 1, legacy #468) | flows through `onClassWrite` |
 | `onLessonWrite` trigger (lessons → private room events) | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/on-lesson-write/` |
 | `getRoomSchedule` Cloud Function | **Complete** (PR 1, legacy #468) | `libs/firebase/maple-functions/get-room-schedule/` |
-| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` |
+| Dashboard "Spruce Room right now" widget | **Complete** (PR 1, legacy #468) | `libs/react/events/src/lib/RoomStatusCard.tsx` — now shown only to roles without admin/clerk (teachers); the admin/clerk Home is the #235 card grid |
+| Home dashboard redesign, PR 1: date header + card grid (Today timeline, Recent registrations, Classes this week) | **Complete** (PR 1 of #235) | `apps/maple-spruce/src/components/dashboard/`, `lessons/getStudioDay` route, `lessonPaymentState` (`libs/ts/domain`), `useStudioDay`. Low Stock widget removed. PR 3 (Sales card) remaining |
+| Home dashboard redesign, PR 2: Inbox card | **Complete** (PR 2 of #235) | `InboxCard` in `apps/maple-spruce/src/components/dashboard/`; `lessons/getInbox` + `lessons/dismissInboxItem` routes; `buildInboxItems` freshness rules (`libs/ts/domain/src/lib/inbox.ts`); `InboxDismissalRepository` (`inboxDismissals`); `useInbox` with optimistic Mark done. Pending sync conflicts moved from their own card into the Inbox. Nav badge and a full inbox page not built |
 | Ad hoc room booking form | Planned (PR 2, legacy #469) | — |
 | Day strip + conflict warnings in scheduling flows | Planned (PR 2, legacy #469) | — |
 
@@ -423,7 +463,7 @@ Square foundation is complete. Ready for Product Management integration.
 | Category API types | Complete | `libs/ts/firebase/api-types/src/lib/category.types.ts` |
 | Category validation | Complete | `libs/ts/validation/src/lib/category.validation.ts` |
 | CategoryRepository | Complete | `libs/firebase/database/src/lib/category.repository.ts` |
-| Cloud Functions (4) | Complete | getCategories, createCategory, updateCategory, deleteCategory |
+| Cloud Functions | Complete | `products/*` routes: getCategories, createCategory, updateCategory, reorderCategories, deleteCategory |
 | useCategories hook | Complete | `apps/maple-spruce/src/hooks/useCategories.ts` |
 | Categories page | Complete | `/categories` with full CRUD UI |
 | ProductForm dropdown | Complete | Category selection in product form |
@@ -529,6 +569,12 @@ one card at the end of a lesson that carries the whole conversation.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | `LessonScheduledCharge` ledger + rules + daily `runLessonBilling` | **Complete** | Status lease, deterministic id keyed on the first lesson, `coveredLessonIds`; `triggerLessonBilling` is the admin-callable twin |
+| Booked lessons, not generated (#157, epic #156; ADR-034) | **Complete** | The weekly time books nothing; `planNextLessons` proposes "the next 4"; a past lesson nobody removed happened (`lessonHappened`) for past-lesson charging, the Hope queue and payouts — but needs-attention still flags only explicitly marked lessons, because unpaid past lessons are not problems to chase; daily auto-charge and auto-booking paused; `getMyRoles` returns `instructorId`; `tools/remove-unbooked-generated-lessons.ts` one-time cleanup. |
+| Student page in three tabs (#158, epic #156) | **Complete** | **Next lessons** (default): one orienting line, the next 4 (`buildNextLessons`, skip/move), one button that books the missing dates then charges the card or, with no card, sends one invoice (`book-and-pay.ts`); Hope students book only. **Settings**: weekly time, at most 5 upcoming lessons to move or delete (a paid one warns), card on file. **Activity**: every lesson newest first, Paid/Invoiced labels, no label on an unpaid past lesson, charge or invoice from its row menu; billing table; Hope EMA billing. No Mark taught / No-show / Cancel anywhere on the page |
+| Students list by day (#159, epic #156) | **Complete** | `StudentsByDay`: one section per weekday from each student's **weekly time** (not booked lessons), earliest first, then "No regular time" and "Inactive"; today marked. Defaults to the signed-in teacher's students (`useRoles().instructorId`), with My students / Everyone's for an admin who teaches. A row opens Next lessons; the row menu is Edit / Delete only. Retired: the MRT `StudentList`, the row-action launchers, `CommitLessonsCard` and `LessonList` (all superseded by the student page tabs) |
+| My Week by name (#160, epic #156) | **Complete** | `getMyWeek` attaches `studentId`/`studentName` to the caller's **own** lesson commitments only; the Typical week's own lesson slots come from active weekly times (`withWeeklyTimes`), not inferred recurrence. A lesson block reads by name and links to `/students/{id}?tab=next`. Today tab: no Mark taught / No-show / status chip / "No invoice yet"; the student's name links to Next lessons; recording a payment on a sent invoice and the Venmo QR stay |
+| Instruments as a setting (#161, epic #156) | **Complete** | `appConfig/instruments` (default violin, fiddle, guitar, harp) edited on Settings (`InstrumentsConfigCard`), served by the new **`settings` router** (`getInstruments` for Admin + LessonTeacher, `saveInstruments` for Admin). `Instrument` is now a key string. Student create/update and instructor create/update refuse an instrument not offered, except one the record already has. Student form, instructor rate editor and every label read the setting; retired keys still display |
+| Lesson Billing hidden (#162, ADR-034) | **Complete** | `/lesson-billing` removed from the nav while automatic charging is paused; the route and code stay (admin-only by URL). Restoring it is in ADR-034's Consequences |
 | Pay ahead at the desk (`chargeLessonsNow`) | **Complete** | `planPrepayment` is the one pure planner the screen and the function share |
 | Card charges actually reach Square (#99) | **Complete** | Idempotency key is `lc-` + a 64-bit FNV-1a of the charge id, 19 chars against Square's 45 limit; the mock server now enforces the limit too |
 | One failed charge no longer aborts the run (#100, #102) | **Complete** | `failed` is a covering status, plus a per-student `try/catch` and a `planningFailed` counter |

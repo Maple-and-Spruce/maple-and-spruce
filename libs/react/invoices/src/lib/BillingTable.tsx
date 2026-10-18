@@ -44,7 +44,7 @@ import SendIcon from '@mui/icons-material/Send';
 import BlockIcon from '@mui/icons-material/Block';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import {
@@ -141,6 +141,8 @@ function paymentAttribution(source: InvoicePaymentSource): {
       return { icon: <AccountBalanceWalletIcon />, label: 'Paid via Venmo' };
     case 'square-pos':
       return { icon: <CreditCardIcon />, label: 'Paid in person' };
+    case 'square-manual':
+      return { icon: <CreditCardIcon />, label: 'Paid by card in Square' };
     case 'admin-manual':
     default:
       return { icon: <PersonOutlineIcon />, label: 'Marked paid manually' };
@@ -230,7 +232,7 @@ function CoversCell({
       {range && (
         <Typography
           variant="caption"
-          color="text.secondary"
+          color="textSecondary"
           noWrap
           sx={{ display: 'block', lineHeight: 1.35 }}
         >
@@ -292,7 +294,7 @@ function StatusCell({ record }: { record: BillingRecord }) {
       {detail && (
         <Typography
           variant="caption"
-          color="text.secondary"
+          color="textSecondary"
           sx={{ display: 'block', mt: 0.25, lineHeight: 1.35 }}
         >
           {detail}
@@ -369,6 +371,10 @@ function InvoiceActions({
             <MenuItem onClick={() => recordAndClose('admin-manual')}>
               <PersonOutlineIcon fontSize="small" sx={{ mr: 1 }} />
               Cash, check, or other
+            </MenuItem>
+            <MenuItem onClick={() => recordAndClose('square-manual')}>
+              <CreditCardIcon fontSize="small" sx={{ mr: 1 }} />
+              Paid by card in Square
             </MenuItem>
           </Menu>
         </>
@@ -483,7 +489,7 @@ export function BillingTable({
             </Typography>
             <Typography
               variant="caption"
-              color="text.secondary"
+              color="textSecondary"
               noWrap
               sx={{ display: 'block', lineHeight: 1.35 }}
             >
@@ -666,7 +672,7 @@ export function BillingTable({
     renderEmptyRowsFallback: () => (
       <Typography
         variant="body2"
-        color="text.secondary"
+        color="textSecondary"
         sx={{ py: 4, textAlign: 'center', width: '100%' }}
       >
         {allRows.length === 0
@@ -713,7 +719,7 @@ export function BillingTable({
       >
         <DialogTitle>Waive this charge</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             The lessons stay on the books and nothing is charged for them. Say
             why, so the comped block still makes sense later.
           </Typography>

@@ -175,6 +175,27 @@ async function clearMailCollection(): Promise<void> {
   }
 }
 
+/**
+ * The reminder emails in `mail`, leaving out sync-failure alerts.
+ *
+ * `mail` is shared. Writing a class doc here fires `syncClassToSquare` and
+ * `syncClassToWebflow`, and a trigger still running when the next
+ * `beforeEach` wipes Firestore fails to write back to the deleted class.
+ * Each failure queues a "sync failed" alert (`reportSyncFailure`) into the
+ * freshly cleared `mail` collection. Those alerts are a different
+ * function's output, so this suite counts only what the reminder job sent.
+ */
+async function listReminderMail(): Promise<
+  Awaited<ReturnType<typeof listFirestoreDocs>>
+> {
+  const docs = await listFirestoreDocs('mail');
+  return docs.filter((d) => {
+    const subject = (d.data as { message?: { subject?: string } }).message
+      ?.subject;
+    return !subject?.includes(' sync failed: ');
+  });
+}
+
 async function callTriggerAsAdmin(
   adminToken: string
 ): Promise<{ status: number; data?: SendClassRemindersResult }> {
@@ -278,7 +299,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.classesWithSessionToday).toBe(1);
       expect(result.data?.skippedAlreadySent).toBe(0);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       expect(mailDocs).toHaveLength(1);
       const mail = mailDocs[0].data as {
         to: string;
@@ -331,7 +352,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(1);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       const mail = mailDocs[0].data as {
         template: { data: Record<string, unknown> };
       };
@@ -378,7 +399,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       const result = await callTriggerAsAdmin(adminUser.idToken);
       expect(result.status).toBe(200);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       const mail = mailDocs[0].data as {
         template: { data: Record<string, unknown> };
       };
@@ -416,7 +437,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(second.data?.mailQueued).toBe(0);
       expect(second.data?.skippedAlreadySent).toBe(1);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       expect(mailDocs).toHaveLength(1);
     });
   });
@@ -480,7 +501,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.mailQueued).toBe(1);
       expect(result.data?.skippedNotPaid).toBe(3);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       expect(mailDocs).toHaveLength(1);
       const mail = mailDocs[0].data as { to: string };
       expect(mail.to).toBe('confirmed@example.com');
@@ -512,7 +533,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
       expect(result.data?.classesWithSessionToday).toBe(0);
-      expect(await listFirestoreDocs('mail')).toHaveLength(0);
+      expect(await listReminderMail()).toHaveLength(0);
     });
 
     it('skips classes scheduled yesterday', async () => {
@@ -539,7 +560,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
       expect(result.data?.classesWithSessionToday).toBe(0);
-      expect(await listFirestoreDocs('mail')).toHaveLength(0);
+      expect(await listReminderMail()).toHaveLength(0);
     });
   });
 
@@ -587,7 +608,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(3);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       expect(mailDocs).toHaveLength(3);
       const recipients = mailDocs.map((d) => (d.data as { to: string }).to);
       expect(recipients.sort()).toEqual([
@@ -628,7 +649,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.mailQueued).toBe(1);
       expect(result.data?.classesWithSessionToday).toBe(1);
 
-      const mailDocs = await listFirestoreDocs('mail');
+      const mailDocs = await listReminderMail();
       expect(mailDocs).toHaveLength(1);
 
       // Only today's ISO key should be stamped — tomorrow and next week
@@ -676,7 +697,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       const result = await callTriggerAsAdmin(adminUser.idToken);
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
-      expect(await listFirestoreDocs('mail')).toHaveLength(0);
+      expect(await listReminderMail()).toHaveLength(0);
     });
 
     it('skips cancelled classes even if a session is today', async () => {
@@ -703,7 +724,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       const result = await callTriggerAsAdmin(adminUser.idToken);
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
-      expect(await listFirestoreDocs('mail')).toHaveLength(0);
+      expect(await listReminderMail()).toHaveLength(0);
     });
   });
 
@@ -714,11 +735,13 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
     async function staffAlerts(): Promise<
       Array<{ to: string; message: { subject: string; text: string } }>
     > {
+      // Match this alert by subject: `mail` also collects other functions'
+      // staff alerts (e.g. "sync failed" from the class sync triggers).
       const docs = await listFirestoreDocs('mail');
       return docs
         .map((d) => d.data as { to: string; message?: { subject: string; text: string } })
         .filter((m): m is { to: string; message: { subject: string; text: string } } =>
-          Boolean(m.message)
+          Boolean(m.message?.subject.startsWith('Below minimum: '))
         );
     }
 
@@ -804,9 +827,12 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(second.data?.underMinimum.skippedAlreadyAlerted).toBe(1);
       expect(await staffAlerts()).toHaveLength(1);
 
-      // Nothing was emailed to students.
-      const mail = await listFirestoreDocs('mail');
-      expect(mail).toHaveLength(1);
+      // Nothing was emailed to students: the only non-alert mail would be a
+      // templated student email, and there is none.
+      const studentMail = (await listReminderMail()).filter(
+        (d) => (d.data as { template?: unknown }).template !== undefined
+      );
+      expect(studentMail).toHaveLength(0);
     });
 
     it('does not alert when confirmed seats meet the minimum', async () => {

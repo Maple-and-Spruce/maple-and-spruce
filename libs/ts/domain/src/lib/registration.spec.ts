@@ -46,11 +46,20 @@ describe('canRefundRegistration', () => {
 });
 
 describe('getNetAmountPaid', () => {
-  it('returns full price when no discount', () => {
-    expect(getNetAmountPaid(baseRegistration)).toBe(5300);
+  it('excludes sales tax', () => {
+    expect(getNetAmountPaid(baseRegistration)).toBe(5000);
   });
 
-  it('subtracts discount amount', () => {
-    expect(getNetAmountPaid({ ...baseRegistration, discountAmountCents: 1000 })).toBe(4300);
+  it('does not take a discount off a subtotal that already has it removed', () => {
+    // $50 class, $10 code: subtotal is already $40, and $42.40 was charged.
+    expect(
+      getNetAmountPaid({
+        ...baseRegistration,
+        subtotalCents: 4000,
+        taxAmountCents: 240,
+        pricePaidCents: 4240,
+        discountAmountCents: 1000,
+      })
+    ).toBe(4000);
   });
 });

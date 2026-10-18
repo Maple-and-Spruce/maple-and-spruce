@@ -91,7 +91,7 @@ function billing(
   studentId?: string
 ): Promise<{ status: number; data?: GetLessonBillingResponse }> {
   return callFunction<GetLessonBillingRequest, GetLessonBillingResponse>({
-    functionName: 'getLessonBilling',
+    functionName: 'lessons/getLessonBilling',
     data: studentId ? { studentId } : {},
     idToken,
   });
@@ -102,7 +102,7 @@ function runBilling(
   dryRun = false
 ): Promise<{ status: number; data?: RunLessonBillingResult }> {
   return callFunction<RunLessonBillingRequest, RunLessonBillingResult>({
-    functionName: 'triggerLessonBilling',
+    functionName: 'lessonPayments/triggerLessonBilling',
     data: { dryRun },
     idToken,
   });
@@ -136,7 +136,7 @@ describe('Lesson billing (#81)', () => {
         SaveLessonBillingRuleRequest,
         SaveLessonBillingRuleResponse
       >({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           name: 'Standard 4-lesson block',
           cadence: 'every-n-lessons',
@@ -155,7 +155,7 @@ describe('Lesson billing (#81)', () => {
         SaveLessonBillingRuleRequest,
         SaveLessonBillingRuleResponse
       >({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           id: created.data?.rule.id,
           name: 'Standard 4-lesson block (edited)',
@@ -171,7 +171,7 @@ describe('Lesson billing (#81)', () => {
 
     it('refuses a rule that would charge months away from the teaching', async () => {
       const result = await callFunction<SaveLessonBillingRuleRequest>({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           name: 'Way off',
           cadence: 'every-n-lessons',
@@ -188,7 +188,7 @@ describe('Lesson billing (#81)', () => {
 
     it('refuses a rule that charges for zero lessons', async () => {
       const result = await callFunction<SaveLessonBillingRuleRequest>({
-        functionName: 'saveLessonBillingRule',
+        functionName: 'lessons/saveLessonBillingRule',
         data: {
           name: 'Zero',
           cadence: 'every-n-lessons',
@@ -204,7 +204,7 @@ describe('Lesson billing (#81)', () => {
     }, 30000);
 
     it('rejects an unauthenticated caller', async () => {
-      const result = await callFunction({ functionName: 'getLessonBilling' });
+      const result = await callFunction({ functionName: 'lessons/getLessonBilling' });
       expect(result.status).toBe(401);
     }, 30000);
   });
@@ -272,7 +272,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonScheduledChargeRequest,
         UpdateLessonScheduledChargeResponse
       >({
-        functionName: 'updateLessonScheduledCharge',
+        functionName: 'lessons/updateLessonScheduledCharge',
         data: {
           id: charges?.[0].id ?? '',
           status: 'waived',
@@ -304,7 +304,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonScheduledChargeRequest,
         UpdateLessonScheduledChargeResponse
       >({
-        functionName: 'updateLessonScheduledCharge',
+        functionName: 'lessons/updateLessonScheduledCharge',
         data: {
           id: planned?.[0].id ?? '',
           status: 'waived',
@@ -386,7 +386,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonScheduledChargeRequest,
         UpdateLessonScheduledChargeResponse
       >({
-        functionName: 'updateLessonScheduledCharge',
+        functionName: 'lessons/updateLessonScheduledCharge',
         data: {
           id: failed?.id ?? '',
           status: 'waived',
@@ -421,7 +421,7 @@ describe('Lesson billing (#81)', () => {
         UpdateLessonRequest,
         UpdateLessonResponse
       >({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: `${STUDENT}-lesson-1`, status: 'cancelled' },
         idToken: adminUser.idToken,
       });
@@ -449,7 +449,7 @@ describe('Lesson billing (#81)', () => {
 
       for (let i = 1; i <= 4; i++) {
         await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-          functionName: 'updateLesson',
+          functionName: 'lessons/updateLesson',
           data: { id: `${SOLO}-lesson-${i}`, status: 'cancelled' },
           idToken: adminUser.idToken,
         });
@@ -458,5 +458,46 @@ describe('Lesson billing (#81)', () => {
       const after = (await billing(adminUser.idToken, SOLO)).data?.charges?.[0];
       expect(after?.status).toBe('cancelled');
     }, 120000);
+  });
+
+  describe("a teacher's own rates", () => {
+    const RATED_TEACHER = 'instructor-billing-rated';
+
+    beforeAll(async () => {
+      await setFirestoreDoc('instructors', RATED_TEACHER, {
+        name: 'Rated Teacher',
+        email: 'rated-teacher@example.com',
+        status: 'active',
+        lessonRates: { violin: { '30-min-full': 4800, '60-min': 9000 } },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      await seedStudent('student-rated-violin', {
+        primaryTeacherId: RATED_TEACHER,
+      });
+      await seedStudent('student-rated-cello', {
+        primaryTeacherId: RATED_TEACHER,
+        instrument: 'cello',
+      });
+    }, 30000);
+
+    it("prices a student from their teacher's rate for their instrument", async () => {
+      const result = await billing(adminUser.idToken, 'student-rated-violin');
+      expect(result.status).toBe(200);
+      expect(result.data?.rateByLength).toEqual({
+        '30-min-full': 4800,
+        '60-min': 9000,
+      });
+    }, 30000);
+
+    it('falls back to the studio default for an instrument the teacher has not priced', async () => {
+      const result = await billing(adminUser.idToken, 'student-rated-cello');
+      expect(result.data?.rateByLength).toEqual({ '30-min-full': 4125 });
+    }, 30000);
+
+    it('studio-wide, the table is the studio default', async () => {
+      const result = await billing(adminUser.idToken);
+      expect(result.data?.rateByLength).toEqual({ '30-min-full': 4125 });
+    }, 30000);
   });
 });

@@ -3,22 +3,10 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/ts/domain/src",
   "projectType": "library",
-  "tags": [
-    "scope:shared",
-    "type:domain"
-  ],
+  "tags": ["scope:shared", "type:domain"],
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint"
-    },
-    "test": {
-      "executor": "@nx/vitest:test",
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
-      "options": {
-        "reportsDirectory": "{projectRoot}/../../../coverage/libs/ts/domain"
-      }
     }
   }
 }

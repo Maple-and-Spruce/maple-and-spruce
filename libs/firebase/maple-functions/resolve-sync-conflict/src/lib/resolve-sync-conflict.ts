@@ -139,15 +139,10 @@ async function applyUseLocal(
 
       case 'price_mismatch':
         // Push local price to Square
-        if (
-          product.squareItemId &&
-          product.squareVariationId &&
-          product.squareCatalogVersion !== undefined
-        ) {
+        if (product.squareItemId && product.squareVariationId) {
           await square.catalogService.updateItem({
             squareItemId: product.squareItemId,
             squareVariationId: product.squareVariationId,
-            squareCatalogVersion: product.squareCatalogVersion,
             priceCents: conflict.localState.price,
           });
         }

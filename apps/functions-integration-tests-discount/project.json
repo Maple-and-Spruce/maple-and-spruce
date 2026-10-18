@@ -5,19 +5,9 @@
   "projectType": "application",
   "tags": ["type:e2e"],
   "implicitDependencies": [
-    "firebase-maple-functions-create-discount",
-    "firebase-maple-functions-get-discounts",
-    "firebase-maple-functions-update-discount",
-    "firebase-maple-functions-delete-discount",
-    "firebase-maple-functions-lookup-discount",
+    "firebase-maple-functions-discounts",
+    "firebase-maple-functions-public-site",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-discount/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

@@ -19,6 +19,12 @@ export { categoryValidation } from './category.validation';
 export { productValidation } from './product.validation';
 export { saleValidation } from './sale.validation';
 export { payoutValidation } from './payout.validation';
+export {
+  generateClassInstructorStatementValidation,
+  markClassInstructorStatementPaidValidation,
+  type GenerateClassInstructorStatementInput,
+  type MarkClassInstructorStatementPaidInput,
+} from './class-instructor-statement.validation';
 export { inventoryMovementValidation } from './inventory-movement.validation';
 export { syncConflictResolutionValidation } from './sync-conflict.validation';
 
@@ -43,6 +49,8 @@ export {
 
 // Phase 4: Music Lessons
 export { studentValidation } from './student.validation';
+export { hopeProductValidation } from './hope-product.validation';
+export { hopeOrderValidation } from './hope-order.validation';
 export { lessonValidation, lessonSeriesValidation } from './lesson.validation';
 export { lessonBlockValidation } from './lesson-block.validation';
 export { invoiceValidation } from './invoice.validation';
@@ -114,3 +122,4 @@ export {
   type MusicTogetherSemesterBreakInput,
 } from './music-together-semester.validation';
 export * from './lesson-billing-rule.validation';
+export * from './inbox-dismissal.validation';

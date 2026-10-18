@@ -135,9 +135,9 @@ export const ValidationErrorsOnEmptySubmit: Story = {
       expect(nameInput).toHaveAttribute('aria-invalid', 'true');
     });
 
-    // Email field should show error
+    // Email is optional, so it is not flagged
     const emailInput = canvas.getByLabelText(/email/i);
-    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(emailInput).toHaveAttribute('aria-invalid', 'false');
 
     // onSubmit should not have been called
     await expect(args.onSubmit).not.toHaveBeenCalled();
@@ -184,6 +184,99 @@ export const SuccessfulSubmission: Story = {
         })
       );
     });
+  },
+};
+
+/**
+ * An instructor can be added without an email
+ */
+export const SubmitsWithoutEmail: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: /name/i }),
+      'Olive Thompson'
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    });
+    const submitted = (args.onSubmit as ReturnType<typeof fn>).mock.calls[0][0];
+    expect(submitted.name).toBe('Olive Thompson');
+    expect(submitted.email).toBeUndefined();
+  },
+};
+
+/**
+ * A percentage is typed as a percent and saved as a decimal
+ */
+export const PercentagePayRate: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const body = within(document.body);
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: /name/i }),
+      'Olive Thompson'
+    );
+    await userEvent.click(canvas.getByRole('combobox', { name: /pay rate type/i }));
+    await userEvent.click(
+      await body.findByRole('option', { name: /percentage of class revenue/i })
+    );
+    await userEvent.type(canvas.getByLabelText(/percentage \(%\)/i), '70');
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ payRateType: 'percentage', payRate: 0.7 })
+      );
+    });
+  },
+};
+
+/**
+ * A blocked save says so beside the button
+ */
+export const BlockedSaveSaysWhy: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: /name/i }),
+      'Olive Thompson'
+    );
+    await userEvent.click(canvas.getByRole('combobox', { name: /pay rate type/i }));
+    await userEvent.click(
+      await within(document.body).findByRole('option', { name: /flat rate/i })
+    );
+    // Pay rate left blank
+    await userEvent.click(canvas.getByRole('button', { name: /add/i }));
+
+    await waitFor(() => {
+      expect(
+        canvas.getByText('Fix the highlighted fields to save.')
+      ).toBeInTheDocument();
+    });
+    expect(
+      canvas.getByText('Pay rate is required when pay rate type is set')
+    ).toBeInTheDocument();
+    await expect(args.onSubmit).not.toHaveBeenCalled();
   },
 };
 
@@ -277,6 +370,105 @@ export const EmailValidation: Story = {
     });
 
     // onSubmit should not be called
+    await expect(args.onSubmit).not.toHaveBeenCalled();
+  },
+};
+
+// ============================================================
+// LESSON RATES
+// ============================================================
+
+/**
+ * What families pay, per instrument and length, lives on the teacher. Existing
+ * rates load as dollars; an instrument can be added and a length priced, and
+ * the whole table is sent in cents.
+ */
+export const EditingLessonRates: Story = {
+  args: {
+    open: true,
+    instructor: {
+      ...mockInstructor,
+      lessonRates: { violin: { '30-min-full': 4500 } },
+    },
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+
+    const violin30 = canvas.getByLabelText('Violin 30 min (full) rate');
+    await expect(violin30).toHaveValue(45);
+    await userEvent.clear(violin30);
+    await userEvent.type(violin30, '48');
+
+    await userEvent.click(canvas.getByLabelText('Add an instrument'));
+    await userEvent.click(
+      await canvas.findByRole('option', { name: 'Harp' })
+    );
+    await userEvent.type(canvas.getByLabelText('Harp 60 min rate'), '80');
+
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lessonRates: {
+            violin: { '30-min-full': 4800 },
+            harp: { '60-min': 8000 },
+          },
+        })
+      );
+    });
+  },
+};
+
+/** Removing an instrument sends the table without it, so it is really gone. */
+export const RemovingAnInstrumentsRates: Story = {
+  args: {
+    open: true,
+    instructor: {
+      ...mockInstructor,
+      lessonRates: {
+        violin: { '30-min-full': 4500 },
+        cello: { '45-min': 6000 },
+      },
+    },
+    isSubmitting: false,
+    onSubmit: fn().mockResolvedValue(undefined),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Remove Cello rates' })
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lessonRates: { violin: { '30-min-full': 4500 } },
+        })
+      );
+    });
+  },
+};
+
+/** A zero price would bill a family nothing; the form refuses it. */
+export const AZeroRateIsRefused: Story = {
+  args: {
+    open: true,
+    instructor: { ...mockInstructor, lessonRates: { violin: {} } },
+    isSubmitting: false,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    await userEvent.type(
+      canvas.getByLabelText('Violin 30 min (full) rate'),
+      '0'
+    );
+    await userEvent.click(canvas.getByRole('button', { name: /update/i }));
+    await expect(
+      await canvas.findByText('Lesson rates must be positive amounts')
+    ).toBeInTheDocument();
     await expect(args.onSubmit).not.toHaveBeenCalled();
   },
 };

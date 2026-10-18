@@ -25,8 +25,13 @@
  * Recording a no-show as 'rendered' would bill Hope for a service never
  * rendered; recording it as 'cancelled' would lose the fact and drop the
  * teacher's payout credit on the private-pay side. Hence a third status.
+ *
+ * Since #157 nobody *has* to set 'rendered' or 'no-show': a past lesson that
+ * was not removed happened (`lessonHappened`). Both statuses remain valid for
+ * lessons recorded under the old workflow.
  */
 
+import { lessonRoom } from './room';
 import type { Room } from './room';
 
 export type LessonStatus =
@@ -59,14 +64,63 @@ export function didConsumeSlot(status: LessonStatus): boolean {
 }
 
 /**
+ * Did this lesson happen? (#157)
+ *
+ * **A lesson whose time has come and that nobody removed happened.** Nothing
+ * has to be marked. Katie books lessons a few at a time and deletes the ones
+ * that do not take place; asking her to also confirm every one that did was
+ * a chore she would not do, and every downstream rule — past-unpaid charging,
+ * the Hope queue, teacher payouts — silently saw nothing until she did.
+ *
+ * 'rendered' and 'no-show' are still honoured, so lessons marked under the
+ * old workflow keep meaning what they meant. 'cancelled' never happened.
+ *
+ * "Has come" is the lesson's start, so the lesson Katie has just taught can be
+ * charged for before she leaves the room.
+ */
+export function lessonHappened(
+  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
+  now: Date
+): boolean {
+  switch (lesson.status) {
+    case 'cancelled':
+      return false;
+    case 'scheduled':
+      return lesson.scheduledAt.getTime() <= now.getTime();
+    case 'rendered':
+    case 'no-show':
+      return true;
+  }
+}
+
+/**
  * May this lesson be billed to the Hope Scholarship?
  *
- * Only a genuinely rendered lesson. Hope funds cannot be retained for services
- * not rendered, so a no-show is structurally excluded here rather than filtered
- * out in a UI somewhere — the exclusion has to be impossible to forget.
+ * Only a lesson that genuinely happened. Hope funds cannot be retained for
+ * services not rendered, so a recorded no-show is structurally excluded here
+ * rather than filtered out in a UI somewhere — the exclusion has to be
+ * impossible to forget. A lesson that did not happen is deleted (or, under the
+ * old workflow, cancelled), so it never reaches this test at all.
  */
-export function isSubmittableToHope(status: LessonStatus): boolean {
-  return status === 'rendered';
+export function isSubmittableToHope(
+  lesson: Pick<Lesson, 'status' | 'scheduledAt'>,
+  now: Date
+): boolean {
+  if (lesson.status === 'no-show') return false;
+  return lessonHappened(lesson, now);
+}
+
+/** Why the studio, rather than the family, cancelled a lesson (#210). */
+export type LessonCancelReason = 'weather';
+
+/**
+ * The room a lesson holds on the calendar: none when it is held online.
+ * Read this rather than `lessonRoom` wherever occupancy is the question.
+ */
+export function lessonOccupiedRoom(
+  lesson: Pick<Lesson, 'room' | 'virtual'>
+): Room | null {
+  return lesson.virtual ? null : lessonRoom(lesson.room);
 }
 
 export interface Lesson {
@@ -107,13 +161,38 @@ export interface Lesson {
   scheduleId?: string | null;
   /**
    * Bookable room the lesson occupies. Drives the room's calendar event
-   * (`onLessonWrite`) and thus the /room-schedule. Optional for backwards-
-   * compat with lessons created before this field existed; those fall back
-   * to the Spruce Room in the calendar trigger.
+   * (`onLessonWrite`) and thus the /room-schedule. Every write path now
+   * stamps it (Spruce when the caller names none), but it stays optional
+   * because lessons created before this field existed have none. Read it
+   * through `lessonRoom()`, never directly: the calendar trigger and the
+   * room-conflict check must agree that "no room" means Spruce (#156).
    */
   room?: Room;
   status: LessonStatus;
   notes?: string;
+  /**
+   * The cancelled lesson this one replaces, when Katie cancelled a lesson and
+   * rescheduled it with a credit (#209).
+   *
+   * Rescheduling moves the cancelled lesson's payment — the charge or invoice
+   * line that named it — onto this lesson, so it reads as paid for everywhere
+   * without any reader knowing about credits. This field is the record of why,
+   * for the Activity tab. Set only by `rescheduleLessonWithCredit`.
+   */
+  creditForLessonId?: string | null;
+  /**
+   * Why the studio cancelled this lesson, when it was the studio (#210). Only
+   * `weather` today: the Activity tab labels it. A family's cancellation leaves
+   * this unset. Set only by `rescheduleLessonWithCredit`.
+   */
+  cancelledFor?: LessonCancelReason | null;
+  /**
+   * Held online instead of in the room (#210) — the policy's alternative to
+   * cancelling for weather. The lesson keeps its time and its payment; its
+   * calendar event stays (so it is still on the teacher's week) but claims no
+   * room, so the room is free for someone else.
+   */
+  virtual?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,7 +210,16 @@ export type CreateLessonInput = Omit<
 >;
 
 export type UpdateLessonInput = Partial<
-  Omit<Lesson, 'id' | 'studentId' | 'seriesId' | 'createdAt' | 'updatedAt'>
+  Omit<
+    Lesson,
+    | 'id'
+    | 'studentId'
+    | 'seriesId'
+    | 'creditForLessonId'
+    | 'cancelledFor'
+    | 'createdAt'
+    | 'updatedAt'
+  >
 > & {
   id: string;
 };
@@ -222,4 +310,32 @@ export function wasTaughtBySubstitute(
     return false;
   }
   return lesson.teacherId !== baseline;
+}
+
+/**
+ * The document id of the lesson that replaces `lessonId` on a reschedule with
+ * credit (#209).
+ *
+ * Deterministic, so one cancelled lesson can carry at most one credit and a
+ * retried request finds the replacement it already made instead of booking a
+ * second one.
+ */
+export function creditLessonId(lessonId: string): string {
+  return `${lessonId}-credit`;
+}
+
+/**
+ * `lessonIds` with `from` replaced by `to`, or null when `from` is not there.
+ *
+ * How a reschedule with credit moves a payment from the cancelled lesson to
+ * its replacement (#209): the charge keeps its amount and its idempotency key,
+ * and simply names the teaching it now pays for.
+ */
+export function replaceCoveredLesson(
+  lessonIds: readonly string[],
+  from: string,
+  to: string
+): string[] | null {
+  if (!lessonIds.includes(from)) return null;
+  return lessonIds.map((id) => (id === from ? to : id));
 }

@@ -328,7 +328,7 @@ export function AgreementTemplateForm({
           {sections.value.map((section, index) => (
             <Paper key={section.id} variant="outlined" sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="subtitle2" color="text.secondary">
+                <Typography variant="subtitle2" color="textSecondary">
                   Section {index + 1}
                 </Typography>
                 <Box>

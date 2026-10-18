@@ -17,6 +17,7 @@ import {
   DataGrid,
   type GridColDef,
   type GridRenderCellParams,
+  type GridRowId,
   type GridRowSelectionModel,
   type GridRowParams,
 } from '@mui/x-data-grid';
@@ -24,8 +25,9 @@ import type { EtsyListingWithSyncInfo } from '@maple/ts/firebase/api-types';
 
 export interface EtsyImportTableProps {
   rows: EtsyListingWithSyncInfo[];
-  selection: GridRowSelectionModel;
-  onSelectionChange: (selection: GridRowSelectionModel) => void;
+  /** Ids of the selected listings. */
+  selection: GridRowId[];
+  onSelectionChange: (selection: GridRowId[]) => void;
   loading?: boolean;
   /** Hide rows where imported===true. Default: true. */
   hideImported?: boolean;
@@ -90,7 +92,7 @@ export function EtsyImportTable({
                 justifyContent: 'center',
               }}
             >
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="textSecondary">
                 —
               </Typography>
             </Box>
@@ -153,6 +155,27 @@ export function EtsyImportTable({
   const isRowSelectable = (params: GridRowParams<EtsyListingWithSyncInfo>) =>
     !params.row.imported;
 
+  const rowSelectionModel = useMemo<GridRowSelectionModel>(
+    () => ({ type: 'include', ids: new Set(selection) }),
+    [selection]
+  );
+
+  // "Select all" can arrive as { type: 'exclude', ids }: every row except
+  // `ids`. Resolve it against the rows on screen that can be selected, so
+  // callers always get the listings that are actually ticked.
+  const handleRowSelectionModelChange = (model: GridRowSelectionModel) => {
+    if (model.type === 'include') {
+      onSelectionChange([...model.ids]);
+      return;
+    }
+    onSelectionChange(
+      visibleRows
+        .filter((row) => !row.imported)
+        .map((row) => row.listing.listing_id)
+        .filter((id) => !model.ids.has(id))
+    );
+  };
+
   return (
     <DataGrid
       autoHeight
@@ -163,8 +186,8 @@ export function EtsyImportTable({
       checkboxSelection
       disableRowSelectionOnClick
       isRowSelectable={isRowSelectable}
-      rowSelectionModel={selection}
-      onRowSelectionModelChange={onSelectionChange}
+      rowSelectionModel={rowSelectionModel}
+      onRowSelectionModelChange={handleRowSelectionModelChange}
       initialState={{
         pagination: { paginationModel: { pageSize: 25 } },
         sorting: { sortModel: [{ field: 'title', sort: 'asc' }] },

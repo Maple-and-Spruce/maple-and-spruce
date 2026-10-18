@@ -27,6 +27,7 @@ import {
   Alert,
   Chip,
   Autocomplete,
+  Typography,
 } from '@mui/material';
 import { httpsCallable } from 'firebase/functions';
 import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
@@ -36,6 +37,7 @@ import type {
   PayeeStatus,
   InstructorPayRateType,
   AppUser,
+  InstrumentOption,
 } from '@maple/ts/domain';
 import type {
   UploadInstructorImageRequest,
@@ -43,6 +45,12 @@ import type {
 } from '@maple/ts/firebase/api-types';
 import { ImageUpload, type ImageUploadState } from '@maple/react/ui';
 import { instructorValidation } from '@maple/ts/validation';
+import {
+  InstructorLessonRatesEditor,
+  draftsToRates,
+  ratesToDrafts,
+  type LessonRateDrafts,
+} from './InstructorLessonRatesEditor';
 import {
   useSignal,
   useComputed,
@@ -64,6 +72,8 @@ interface InstructorFormProps {
    * manage their own lessons (#49 phase 2). Omit to hide the picker.
    */
   users?: readonly AppUser[];
+  /** The instruments the studio offers (#161), for the rate editor. */
+  instruments?: InstrumentOption[];
 }
 
 // Common specialties for autocomplete suggestions
@@ -108,6 +118,7 @@ export function InstructorForm({
   instructor,
   isSubmitting = false,
   users,
+  instruments,
 }: InstructorFormProps) {
   // Enable signals tracking in this component
   useSignals();
@@ -124,6 +135,7 @@ export function InstructorForm({
   const specialties = useSignal<string[]>([]);
   const payRate = useSignal<number | undefined>(undefined);
   const payRateType = useSignal<InstructorPayRateType | undefined>(undefined);
+  const lessonRates = useSignal<LessonRateDrafts>({});
   // Portal login link ('' = not a portal user). Only surfaced when `users`
   // is provided.
   const linkedUid = useSignal('');
@@ -154,6 +166,7 @@ export function InstructorForm({
       specialties: specialties.value.length > 0 ? specialties.value : undefined,
       payRate: payRate.value,
       payRateType: payRateType.value,
+      lessonRates: draftsToRates(lessonRates.value),
     });
   });
 
@@ -179,7 +192,7 @@ export function InstructorForm({
     if (instructor) {
       batch(() => {
         name.value = instructor.name;
-        email.value = instructor.email;
+        email.value = instructor.email ?? '';
         phone.value = instructor.phone ?? '';
         status.value = instructor.status;
         notes.value = instructor.notes ?? '';
@@ -187,6 +200,7 @@ export function InstructorForm({
         specialties.value = instructor.specialties ?? [];
         payRate.value = instructor.payRate;
         payRateType.value = instructor.payRateType;
+        lessonRates.value = ratesToDrafts(instructor.lessonRates);
         linkedUid.value = instructor.uid ?? '';
         photoUrl.value = instructor.photoUrl ?? '';
 
@@ -214,6 +228,7 @@ export function InstructorForm({
         specialties.value = [];
         payRate.value = undefined;
         payRateType.value = undefined;
+        lessonRates.value = {};
         linkedUid.value = '';
         photoUrl.value = '';
         imageUploadState.value = { status: 'idle' };
@@ -312,7 +327,8 @@ export function InstructorForm({
 
       const input: Omit<CreateInstructorInput, 'uid'> & { uid?: string | null } = {
         name: name.value,
-        email: email.value,
+        // Optional. Omitted on create; '' on edit clears a stored one.
+        email: email.value.trim() || (isEdit ? '' : undefined),
         phone: phone.value || undefined,
         status: status.value,
         notes: notes.value || undefined,
@@ -320,6 +336,9 @@ export function InstructorForm({
         specialties: specialties.value.length > 0 ? specialties.value : undefined,
         payRate: payRate.value,
         payRateType: payRateType.value,
+        // Always sent, even empty: the stored map is replaced whole, which is
+        // how removing an instrument's rates actually removes them.
+        lessonRates: draftsToRates(lessonRates.value),
         photoUrl: currentPhotoUrl || undefined,
         // Only emit uid when the picker is in play. '' => null (unlink /
         // not a portal user); a uid => link. undefined leaves it unchanged.
@@ -341,7 +360,7 @@ export function InstructorForm({
       }
       submitError.value = message;
     }
-  }, [onSubmit, onClose, instructor?.id]);
+  }, [onSubmit, onClose, instructor?.id, isEdit]);
 
   // ============================================================
   // RENDER
@@ -385,8 +404,7 @@ export function InstructorForm({
             value={email.value}
             onChange={(e) => (email.value = e.target.value)}
             error={!!getFieldError('email')}
-            helperText={getFieldError('email')}
-            required
+            helperText={getFieldError('email') ?? 'Optional'}
             fullWidth
           />
 
@@ -421,9 +439,9 @@ export function InstructorForm({
             onChange={(_, newValue) => {
               specialties.value = newValue;
             }}
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((option, index) => {
-                const { key, ...props } = getTagProps({ index });
+                const { key, ...props } = getItemProps({ index });
                 return (
                   <Chip
                     key={key}
@@ -440,7 +458,11 @@ export function InstructorForm({
                 {...params}
                 label="Specialties"
                 placeholder="Add specialty..."
-                helperText="Press Enter to add custom specialties"
+                error={!!getFieldError('specialties')}
+                helperText={
+                  getFieldError('specialties') ??
+                  'Press Enter to add custom specialties'
+                }
               />
             )}
           />
@@ -481,7 +503,7 @@ export function InstructorForm({
               value={
                 payRateType.value === 'percentage'
                   ? payRate.value !== undefined
-                    ? payRate.value
+                    ? Math.round(payRate.value * 10000) / 100
                     : ''
                   : payRate.value !== undefined
                     ? payRate.value / 100
@@ -492,18 +514,21 @@ export function InstructorForm({
                 if (isNaN(val)) {
                   payRate.value = undefined;
                 } else if (payRateType.value === 'percentage') {
-                  payRate.value = val;
+                  // Typed as a percent (70), stored as a decimal (0.7).
+                  payRate.value = val / 100;
                 } else {
                   // Convert dollars to cents for flat/hourly
                   payRate.value = Math.round(val * 100);
                 }
               }}
+              error={!!getFieldError('payRate')}
               helperText={
-                payRateType.value === 'flat'
+                getFieldError('payRate') ??
+                (payRateType.value === 'flat'
                   ? 'Amount paid per class'
                   : payRateType.value === 'hourly'
                     ? 'Amount paid per hour'
-                    : 'Percentage of class revenue'
+                    : 'Percentage of class revenue')
               }
               fullWidth
             />
@@ -524,6 +549,13 @@ export function InstructorForm({
               <FormHelperText>{getFieldError('status')}</FormHelperText>
             )}
           </FormControl>
+
+          <InstructorLessonRatesEditor
+            value={lessonRates.value}
+            onChange={(next) => (lessonRates.value = next)}
+            error={getFieldError('lessonRates')}
+            instruments={instruments}
+          />
 
           {/* Portal login — links a user account to this instructor so a
               lesson teacher can manage their own lessons (#49 phase 2). */}
@@ -566,6 +598,16 @@ export function InstructorForm({
         </Box>
       </DialogContent>
       <DialogActions>
+        {Object.keys(errors.value).length > 0 && (
+          <Typography
+            variant="body2"
+            color="error"
+            role="alert"
+            sx={{ mr: 'auto', pl: 2 }}
+          >
+            Fix the highlighted fields to save.
+          </Typography>
+        )}
         <Button onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>

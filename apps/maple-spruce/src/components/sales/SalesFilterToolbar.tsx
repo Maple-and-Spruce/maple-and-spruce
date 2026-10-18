@@ -72,7 +72,9 @@ export function SalesFilterToolbar({
         value={filters.from}
         onChange={(e) => update({ from: e.target.value })}
         size="small"
-        InputLabelProps={{ shrink: true }}
+        slotProps={{
+          inputLabel: { shrink: true }
+        }}
       />
       <TextField
         label="To"
@@ -80,7 +82,9 @@ export function SalesFilterToolbar({
         value={filters.to}
         onChange={(e) => update({ to: e.target.value })}
         size="small"
-        InputLabelProps={{ shrink: true }}
+        slotProps={{
+          inputLabel: { shrink: true }
+        }}
       />
       <FormControl size="small" sx={{ minWidth: 180 }}>
         <InputLabel id="sales-artist-label">Artist</InputLabel>
@@ -132,7 +136,7 @@ export function SalesFilterToolbar({
         </Button>
       )}
       <Box sx={{ flex: 1 }} />
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="textSecondary">
         {totalCount} sale{totalCount === 1 ? '' : 's'}
       </Typography>
     </Box>

@@ -40,6 +40,7 @@ import {
   ClassRepository,
   RegistrationRepository,
 } from '@maple/firebase/database';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) =>
   defineSecret(name)
@@ -130,6 +131,14 @@ export const syncClassInventoryToSquare = onDocumentWritten(
       });
     } catch (error) {
       console.error('Square inventory sync error (class):', error);
+      await reportSyncFailure({
+        source: 'syncClassInventoryToSquare',
+        destination: 'Square',
+        entityType: 'class spot count',
+        entityId: classId,
+        entityLabel: classEntity.name,
+        error,
+      });
     }
   }
 );

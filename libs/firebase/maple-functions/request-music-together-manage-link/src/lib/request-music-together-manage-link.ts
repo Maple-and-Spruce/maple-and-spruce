@@ -13,7 +13,11 @@
  *
  * Deployed to us-east4 via CI/CD (maple-core codebase).
  */
-import { Functions, throwInvalidArgument } from '@maple/firebase/functions';
+import {
+  Functions,
+  emailLinkThrottles,
+  throwInvalidArgument,
+} from '@maple/firebase/functions';
 import {
   MusicTogetherRegistrationRepository,
   MusicTogetherTokenRepository,
@@ -40,6 +44,8 @@ function isManageable(reg: MusicTogetherRegistration): boolean {
 }
 
 export const requestMusicTogetherManageLink = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('requestMusicTogetherManageLink', emailLinkThrottles())
   .usingStrings('MUSIC_TOGETHER_MANAGE_URL')
   .handle<
     RequestMusicTogetherManageLinkRequest,

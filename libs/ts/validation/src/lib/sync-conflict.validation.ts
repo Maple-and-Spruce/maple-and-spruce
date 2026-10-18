@@ -4,7 +4,8 @@
  * Vest validation for sync conflict resolution.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { ResolveSyncConflictInput } from '@maple/ts/domain';
 
 const VALID_RESOLUTIONS = [
@@ -40,7 +41,7 @@ export const syncConflictResolutionValidation = staticSuite(
 
     test('resolution', 'Resolution must be valid', () => {
       if (data.resolution) {
-        enforce(data.resolution).inside(VALID_RESOLUTIONS);
+        enforce(data.resolution).inside([...VALID_RESOLUTIONS]);
       }
     });
 

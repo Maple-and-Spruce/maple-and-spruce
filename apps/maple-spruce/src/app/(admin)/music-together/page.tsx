@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import GroupIcon from '@mui/icons-material/Group';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -399,7 +399,7 @@ export default function MusicTogetherPage() {
         </Alert>
       )}
       {semestersState.status === 'success' && semesters.length === 0 && (
-        <Typography color="text.secondary" sx={{ mb: 4 }}>
+        <Typography color="textSecondary" sx={{ mb: 4 }}>
           No semesters yet. Create a term (e.g. “Fall 2026”), then add sections
           under it.
         </Typography>
@@ -507,7 +507,7 @@ export default function MusicTogetherPage() {
         <Alert severity="error">{sectionsState.error}</Alert>
       )}
       {sectionsState.status === 'success' && sectionsState.data.length === 0 && (
-        <Typography color="text.secondary">
+        <Typography color="textSecondary">
           No sections yet. Create the first one.
         </Typography>
       )}
@@ -568,7 +568,7 @@ export default function MusicTogetherPage() {
                           {childCount}{' '}
                           {childCount === 1 ? 'child' : 'children'}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="textSecondary">
                           {families} / {section.capacityFamilies} families
                         </Typography>
                       </>
@@ -651,7 +651,7 @@ export default function MusicTogetherPage() {
         <Alert severity="error">{demosState.error}</Alert>
       )}
       {demosState.status === 'success' && demosState.data.length === 0 && (
-        <Typography color="text.secondary">
+        <Typography color="textSecondary">
           No demo classes yet. Add a free try-a-class (often offsite) — it shows
           on the demo RSVP widget and the public calendar.
         </Typography>
@@ -695,7 +695,7 @@ export default function MusicTogetherPage() {
                       {confirmed} / {demo.capacityFamilies} confirmed
                     </Typography>
                     {waitlisted > 0 && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="textSecondary">
                         {waitlisted} waitlisted
                       </Typography>
                     )}

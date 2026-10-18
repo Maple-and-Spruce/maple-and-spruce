@@ -26,36 +26,32 @@ if (getApps().length === 0) {
 export { healthCheck } from '@maple/firebase/maple-functions/health-check';
 
 // Auth functions
-export { checkAdminStatus } from '@maple/firebase/maple-functions/check-admin-status';
 
 // Artist functions
 // One domain router serving getArtists / getArtist / createArtist /
 // updateArtist / deleteArtist (ADR-029). The five single-purpose functions it
 // replaced were deleted once it was verified in dev.
 export { artists } from '@maple/firebase/maple-functions/artists';
+// Payouts domain router: class-instructor statements (ADR-029).
+export { payouts } from '@maple/firebase/maple-functions/payouts';
+export { hope } from '@maple/firebase/maple-functions/hope';
+export { settings } from '@maple/firebase/maple-functions/settings';
+export { discounts } from '@maple/firebase/maple-functions/discounts';
+// Agreements domain router: templates, requests, signed agreements (ADR-029, #66).
+export { agreements } from '@maple/firebase/maple-functions/agreements';
+export { products } from '@maple/firebase/maple-functions/products';
 export { uploadArtistImage } from '@maple/firebase/maple-functions/upload-artist-image';
 
 // Category functions
-export { getCategories } from '@maple/firebase/maple-functions/get-categories';
-export { createCategory } from '@maple/firebase/maple-functions/create-category';
-export { updateCategory } from '@maple/firebase/maple-functions/update-category';
-export { deleteCategory } from '@maple/firebase/maple-functions/delete-category';
-export { reorderCategories } from '@maple/firebase/maple-functions/reorder-categories';
 
 // Product functions (read/delete only — writes are in maple-square codebase)
-export { getProducts } from '@maple/firebase/maple-functions/get-products';
-export { getProduct } from '@maple/firebase/maple-functions/get-product';
-export { deleteProduct } from '@maple/firebase/maple-functions/delete-product';
 
 // Sync conflict functions (read-only — resolution is in maple-square codebase)
 export { getSyncConflicts } from '@maple/firebase/maple-functions/get-sync-conflicts';
 export { getSyncConflictSummary } from '@maple/firebase/maple-functions/get-sync-conflict-summary';
 // POS lesson attribution review queue + config (legacy #628)
-export { getPosLessonAttributions } from '@maple/firebase/maple-functions/get-pos-lesson-attributions';
-export { getPosLessonAttributionSummary } from '@maple/firebase/maple-functions/get-pos-lesson-attribution-summary';
-export { resolvePosLessonAttribution } from '@maple/firebase/maple-functions/resolve-pos-lesson-attribution';
-export { getPosLessonConfig } from '@maple/firebase/maple-functions/get-pos-lesson-config';
-export { updatePosLessonConfig } from '@maple/firebase/maple-functions/update-pos-lesson-config';
+// Lessons domain router (ADR-029, #67).
+export { lessons } from '@maple/firebase/maple-functions/lessons';
 
 // Instructor functions
 export { getInstructors } from '@maple/firebase/maple-functions/get-instructors';
@@ -66,34 +62,14 @@ export { deleteInstructor } from '@maple/firebase/maple-functions/delete-instruc
 export { uploadInstructorImage } from '@maple/firebase/maple-functions/upload-instructor-image';
 
 // Music lesson student functions (Phase 4)
-export { getStudents } from '@maple/firebase/maple-functions/get-students';
-export { getStudent } from '@maple/firebase/maple-functions/get-student';
-export { createStudent } from '@maple/firebase/maple-functions/create-student';
-export { updateStudent } from '@maple/firebase/maple-functions/update-student';
-export { deleteStudent } from '@maple/firebase/maple-functions/delete-student';
+// People domain router: students, users and roles (ADR-029, #65). getMyRoles stays
+// its own function: it gates every admin page on first paint.
+export { people } from '@maple/firebase/maple-functions/people';
 
 // Music lesson functions (Phase 4)
-export { getLessons } from '@maple/firebase/maple-functions/get-lessons';
-export { createLesson } from '@maple/firebase/maple-functions/create-lesson';
-export { createLessonSeries } from '@maple/firebase/maple-functions/create-lesson-series';
-export { updateLesson } from '@maple/firebase/maple-functions/update-lesson';
-export { deleteLesson } from '@maple/firebase/maple-functions/delete-lesson';
-export { getLessonBlocks } from '@maple/firebase/maple-functions/get-lesson-blocks';
-export { materializeLessonSchedules } from '@maple/firebase/maple-functions/materialize-lesson-schedules';
-export { triggerMaterializeLessonSchedules } from '@maple/firebase/maple-functions/trigger-materialize-lesson-schedules';
-export { getStudentLessonSchedules } from '@maple/firebase/maple-functions/get-student-lesson-schedules';
-export { createStudentLessonSchedule } from '@maple/firebase/maple-functions/create-student-lesson-schedule';
-export { updateStudentLessonSchedule } from '@maple/firebase/maple-functions/update-student-lesson-schedule';
 export { getNeedsAttention } from '@maple/firebase/maple-functions/get-needs-attention';
-export { getHopeQueue } from '@maple/firebase/maple-functions/get-hope-queue';
-export { recordHopeSubmissions } from '@maple/firebase/maple-functions/record-hope-submissions';
 export { syncLessonInquiries } from '@maple/firebase/maple-functions/sync-lesson-inquiries';
 export { triggerLessonInquirySync } from '@maple/firebase/maple-functions/trigger-lesson-inquiry-sync';
-export { getLessonInquiries } from '@maple/firebase/maple-functions/get-lesson-inquiries';
-export { updateLessonInquiryStatus } from '@maple/firebase/maple-functions/update-lesson-inquiry-status';
-export { createLessonBlock } from '@maple/firebase/maple-functions/create-lesson-block';
-export { updateLessonBlock } from '@maple/firebase/maple-functions/update-lesson-block';
-export { deleteLessonBlock } from '@maple/firebase/maple-functions/delete-lesson-block';
 
 // Music lesson invoice functions (Phase 4)
 export { getInvoices } from '@maple/firebase/maple-functions/get-invoices';
@@ -103,7 +79,6 @@ export { recordInvoicePayment } from '@maple/firebase/maple-functions/record-inv
 export { deleteInvoice } from '@maple/firebase/maple-functions/delete-invoice';
 
 // Teacher payout aggregation (Phase 4, legacy #283)
-export { getTeacherPayouts } from '@maple/firebase/maple-functions/get-teacher-payouts';
 
 // Class functions
 export { getClasses } from '@maple/firebase/maple-functions/get-classes';
@@ -116,15 +91,14 @@ export { uploadClassImage } from '@maple/firebase/maple-functions/upload-class-i
 export { uploadClassGalleryImage } from '@maple/firebase/maple-functions/upload-class-gallery-image';
 export { migrateClassSessions } from '@maple/firebase/maple-functions/migrate-class-sessions';
 
+// Public reads for the Webflow widgets, on one warm router (ADR-029). The
+// public writes below stay with their domains.
+export { publicSite } from '@maple/firebase/maple-functions/public-site';
+
 // Public class API (no auth required - for Webflow integration)
-export { getPublicClass } from '@maple/firebase/maple-functions/get-public-class';
-export { getRegistrationStatus } from '@maple/firebase/maple-functions/get-registration-status';
-export { getPublicMusicTogetherSection } from '@maple/firebase/maple-functions/get-public-music-together-section';
 export { addToMusicTogetherWaitlist } from '@maple/firebase/maple-functions/add-to-music-together-waitlist';
 export { addMusicTogetherDemoRsvp } from '@maple/firebase/maple-functions/add-music-together-demo-rsvp';
 export { getMusicTogetherDemoRsvps } from '@maple/firebase/maple-functions/get-music-together-demo-rsvps';
-export { getPublicMusicTogetherDemos } from '@maple/firebase/maple-functions/get-public-music-together-demos';
-export { getPublicMusicTogetherSections } from '@maple/firebase/maple-functions/get-public-music-together-sections';
 export { addMusicTogetherInterest } from '@maple/firebase/maple-functions/add-music-together-interest';
 export { getMusicTogetherInterest } from '@maple/firebase/maple-functions/get-music-together-interest';
 
@@ -160,71 +134,33 @@ export { deleteClassCategory } from '@maple/firebase/maple-functions/delete-clas
 export { reorderClassCategories } from '@maple/firebase/maple-functions/reorder-class-categories';
 export { uploadCategoryGalleryImage } from '@maple/firebase/maple-functions/upload-category-gallery-image';
 
-// Discount functions
-export { getDiscounts } from '@maple/firebase/maple-functions/get-discounts';
-export { createDiscount } from '@maple/firebase/maple-functions/create-discount';
-export { updateDiscount } from '@maple/firebase/maple-functions/update-discount';
-export { deleteDiscount } from '@maple/firebase/maple-functions/delete-discount';
-export { lookupDiscount } from '@maple/firebase/maple-functions/lookup-discount';
-
 // Calendar Event functions
-export { getCalendarEvents } from '@maple/firebase/maple-functions/get-calendar-events';
-export { getCalendarEvent } from '@maple/firebase/maple-functions/get-calendar-event';
-export { createCalendarEvent } from '@maple/firebase/maple-functions/create-calendar-event';
-export { updateCalendarEvent } from '@maple/firebase/maple-functions/update-calendar-event';
-export { deleteCalendarEvent } from '@maple/firebase/maple-functions/delete-calendar-event';
+// Calendar domain router: events, room schedule, embed config (ADR-029, #73).
+export { calendar } from '@maple/firebase/maple-functions/calendar';
 
 // Calendar ICS feeds are in the maple-calendar codebase
 
 // Calendar triggers (Firestore)
 export { onClassWrite } from '@maple/firebase/maple-functions/on-class-write';
 export { onLessonWrite } from '@maple/firebase/maple-functions/on-lesson-write';
-export { getLessonRatesConfig } from '@maple/firebase/maple-functions/get-lesson-rates-config';
 // Teacher My Day + business payment config (legacy #631)
-export { getMyDayLessons } from '@maple/firebase/maple-functions/get-my-day-lessons';
-export { getMyWeek } from '@maple/firebase/maple-functions/get-my-week';
-export { getBusinessPaymentConfig } from '@maple/firebase/maple-functions/get-business-payment-config';
-export { updateBusinessPaymentConfig } from '@maple/firebase/maple-functions/update-business-payment-config';
-export { updateLessonRatesConfig } from '@maple/firebase/maple-functions/update-lesson-rates-config';
 export { onMusicTogetherSectionWrite } from '@maple/firebase/maple-functions/on-music-together-section-write';
 export { onMusicTogetherDemoWrite } from '@maple/firebase/maple-functions/on-music-together-demo-write';
 
 // Room availability
-export { getRoomSchedule } from '@maple/firebase/maple-functions/get-room-schedule';
 
 // Calendar embed config
-export { getCalendarEmbedConfig } from '@maple/firebase/maple-functions/get-calendar-embed-config';
-export { updateCalendarEmbedConfig } from '@maple/firebase/maple-functions/update-calendar-embed-config';
-export { addCalendarEmbedSource } from '@maple/firebase/maple-functions/add-calendar-embed-source';
-export { removeCalendarEmbedSource } from '@maple/firebase/maple-functions/remove-calendar-embed-source';
 export { calendarEmbed } from '@maple/firebase/maple-functions/calendar-embed';
 
 // Registration functions (read/update only — create/cancel are in maple-square codebase)
 export { getRegistrations } from '@maple/firebase/maple-functions/get-registrations';
 export { getRegistration } from '@maple/firebase/maple-functions/get-registration';
 export { updateRegistration } from '@maple/firebase/maple-functions/update-registration';
-export { calculateRegistrationCost } from '@maple/firebase/maple-functions/calculate-registration-cost';
 
-// Agreement template functions
-export { getAgreementTemplates } from '@maple/firebase/maple-functions/get-agreement-templates';
-export { getAgreementTemplate } from '@maple/firebase/maple-functions/get-agreement-template';
-export { createAgreementTemplate } from '@maple/firebase/maple-functions/create-agreement-template';
-export { updateAgreementTemplate } from '@maple/firebase/maple-functions/update-agreement-template';
-export { deleteAgreementTemplate } from '@maple/firebase/maple-functions/delete-agreement-template';
-
-// Agreement request functions
-export { getAgreementRequests } from '@maple/firebase/maple-functions/get-agreement-requests';
-export { sendAgreementRequest } from '@maple/firebase/maple-functions/send-agreement-request';
-export { resendAgreementRequest } from '@maple/firebase/maple-functions/resend-agreement-request';
-
-// Signed agreement functions
-export { getSignedAgreements } from '@maple/firebase/maple-functions/get-signed-agreements';
-export { getSignedAgreement } from '@maple/firebase/maple-functions/get-signed-agreement';
-
-// Public signing functions (no auth required)
+// Agreements kept off the `agreements` router: the public signing page and the
+// expiry schedule. The widget's required-agreements lookup is on `publicSite`.
 export { getAgreementForSigning } from '@maple/firebase/maple-functions/get-agreement-for-signing';
 export { submitSignedAgreement } from '@maple/firebase/maple-functions/submit-signed-agreement';
-export { getRequiredAgreementsForClass } from '@maple/firebase/maple-functions/get-required-agreements-for-class';
 
 // Agreement scheduled functions
 export { expireAgreementRequests } from '@maple/firebase/maple-functions/expire-agreement-requests';
@@ -250,18 +186,8 @@ export { listEtsyListings } from '@maple/firebase/maple-functions/list-etsy-list
 export { recordSale } from '@maple/firebase/maple-functions/record-sale';
 export { getSales } from '@maple/firebase/maple-functions/get-sales';
 
-// Phase 5: Artist payouts (legacy #313)
-export { generatePayout } from '@maple/firebase/maple-functions/generate-payout';
-export { markPayoutPaid } from '@maple/firebase/maple-functions/mark-payout-paid';
-export { getPayouts } from '@maple/firebase/maple-functions/get-payouts';
-
 // User & role administration (admin /users page)
-export { listUsers } from '@maple/firebase/maple-functions/list-users';
-export { grantAdminRole } from '@maple/firebase/maple-functions/grant-admin-role';
-export { revokeAdminRole } from '@maple/firebase/maple-functions/revoke-admin-role';
 export { getMyRoles } from '@maple/firebase/maple-functions/get-my-roles';
-export { grantRole } from '@maple/firebase/maple-functions/grant-role';
-export { revokeRole } from '@maple/firebase/maple-functions/revoke-role';
 
 // Lead attribution: tallyLeadWebhook now lives in the maple-webhooks codebase
 // (apps/functions-webhooks). Tally hangs up at 10s and this bundle takes ~14s
@@ -294,6 +220,3 @@ export { startMusicTogetherManageSession } from '@maple/firebase/maple-functions
 // before" rules Katie and Nathan attach to students, plus a read of what is
 // going to be charged. Plain Firestore; the job that moves money needs the
 // Square SDK and lives in the maple-square codebase.
-export { getLessonBilling } from '@maple/firebase/maple-functions/get-lesson-billing';
-export { saveLessonBillingRule } from '@maple/firebase/maple-functions/save-lesson-billing-rule';
-export { updateLessonScheduledCharge } from '@maple/firebase/maple-functions/update-lesson-scheduled-charge';

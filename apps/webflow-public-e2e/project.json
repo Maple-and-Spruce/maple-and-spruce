@@ -1,0 +1,26 @@
+{
+  "name": "webflow-public-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/webflow-public-e2e/src",
+  "projectType": "application",
+  "tags": ["scope:webflow", "type:e2e"],
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webflow-public-e2e",
+        "command": "playwright test"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/webflow-public-e2e",
+        "command": "eslint ."
+      },
+      "metadata": {
+        "technologies": ["eslint"]
+      }
+    }
+  }
+}

@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { RequestState, Room, RoomBusyWindow } from '@maple/ts/domain';
 import type {
   GetRoomScheduleRequest,
@@ -35,10 +38,10 @@ export function useRoomScheduleRange(room: Room, start: Date, end: Date) {
 
     try {
       const functions = getMapleFunctions();
-      const getRoomSchedule = httpsCallable<
+      const getRoomSchedule = httpsCallableFromURL<
         GetRoomScheduleRequest,
         GetRoomScheduleResponse
-      >(functions, 'getRoomSchedule');
+      >(functions, routerCallableUrl('calendar', 'getRoomSchedule'));
 
       const result = await getRoomSchedule({
         room,

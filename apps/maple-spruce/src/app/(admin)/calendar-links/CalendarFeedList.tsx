@@ -124,19 +124,19 @@ function CalendarFeedRow({
       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
         {feed.name}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
         {feed.description}
       </Typography>
-
       <Stack spacing={1}>
         {webcal && (
           <Stack
             direction="row"
             spacing={1}
-            alignItems="center"
-            flexWrap="wrap"
             useFlexGap
-          >
+            sx={{
+              alignItems: 'center',
+              flexWrap: 'wrap'
+            }}>
             <Chip
               label="Subscribe"
               size="small"
@@ -159,10 +159,11 @@ function CalendarFeedRow({
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
-          flexWrap="wrap"
           useFlexGap
-        >
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
           <Chip
             label={feed.kind === 'view' ? 'View in browser' : 'View / download'}
             size="small"
@@ -209,7 +210,7 @@ export function CalendarFeedList({ feeds }: CalendarFeedListProps): React.ReactN
                 <Typography variant="h6" component="h2">
                   {group.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
                   {group.caption}
                 </Typography>
                 <Stack

@@ -4,7 +4,8 @@
  * Vest validation for inventory adjustments.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateInventoryMovementInput } from '@maple/ts/domain';
 
 const VALID_MOVEMENT_TYPES = [
@@ -44,7 +45,7 @@ export const inventoryMovementValidation = staticSuite(
 
     test('type', 'Movement type must be valid', () => {
       if (data.type) {
-        enforce(data.type).inside(VALID_MOVEMENT_TYPES);
+        enforce(data.type).inside([...VALID_MOVEMENT_TYPES]);
       }
     });
 
@@ -90,7 +91,7 @@ export const inventoryMovementValidation = staticSuite(
 
     test('source', 'Source must be valid', () => {
       if (data.source) {
-        enforce(data.source).inside(VALID_SOURCES);
+        enforce(data.source).inside([...VALID_SOURCES]);
       }
     });
 

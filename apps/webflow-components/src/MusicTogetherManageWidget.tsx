@@ -179,7 +179,7 @@ export function MusicTogetherManageWidget({
         {/* No token → ask for the email to send a link */}
         {mode === 'request' && (
           <Box component="form" onSubmit={handleRequestLink}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
               Enter the email you registered with and we&apos;ll send you a
               secure link to update the card on file for your installment plan.
             </Typography>

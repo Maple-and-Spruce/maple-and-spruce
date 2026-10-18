@@ -8,7 +8,8 @@
  *
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import { MT_MAX_CHILDREN } from '@maple/ts/domain';
 
 /** One child row from the form. `dob` may arrive as a Date or ISO string. */

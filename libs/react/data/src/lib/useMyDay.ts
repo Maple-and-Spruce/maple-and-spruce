@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { ManualInvoicePaymentSource, RequestState } from '@maple/ts/domain';
 import type {
   GetMyDayLessonsRequest,
   GetMyDayLessonsResponse,
   RecordInvoicePaymentRequest,
   RecordInvoicePaymentResponse,
-  UpdateLessonRequest,
-  UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
 
 /**
@@ -44,10 +45,10 @@ export function useMyDay() {
         999
       ).toISOString();
 
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetMyDayLessonsRequest,
         GetMyDayLessonsResponse
-      >(getMapleFunctions(), 'getMyDayLessons');
+      >(getMapleFunctions(), routerCallableUrl('lessons', 'getMyDayLessons'));
       const result = await fn({ from, to });
       setDayState({ status: 'success', data: result.data });
     } catch (error) {
@@ -58,30 +59,6 @@ export function useMyDay() {
       });
     }
   }, []);
-
-  const markRendered = useCallback(
-    async (lessonId: string): Promise<void> => {
-      const fn = httpsCallable<UpdateLessonRequest, UpdateLessonResponse>(
-        getMapleFunctions(),
-        'updateLesson'
-      );
-      await fn({ id: lessonId, status: 'rendered' });
-      await fetchDay();
-    },
-    [fetchDay]
-  );
-
-  const markNoShow = useCallback(
-    async (lessonId: string): Promise<void> => {
-      const fn = httpsCallable<UpdateLessonRequest, UpdateLessonResponse>(
-        getMapleFunctions(),
-        'updateLesson'
-      );
-      await fn({ id: lessonId, status: 'no-show' });
-      await fetchDay();
-    },
-    [fetchDay]
-  );
 
   const recordPayment = useCallback(
     async (
@@ -102,5 +79,5 @@ export function useMyDay() {
     fetchDay();
   }, [fetchDay]);
 
-  return { dayState, fetchDay, markRendered, markNoShow, recordPayment };
+  return { dayState, fetchDay, recordPayment };
 }

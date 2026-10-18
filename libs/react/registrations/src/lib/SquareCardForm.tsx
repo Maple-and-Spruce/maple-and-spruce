@@ -33,7 +33,6 @@ interface SquarePayments {
     currencyCode: string;
     total: { amount: string; label: string };
   }) => unknown;
-  applePay: (paymentRequest: unknown) => Promise<SquareDigitalWallet>;
   googlePay: (paymentRequest: unknown) => Promise<SquareDigitalWallet>;
   /**
    * Strong Customer Authentication step. For `intent: 'STORE'` this produces
@@ -61,16 +60,17 @@ interface SquareDigitalWallet {
       buttonType?: string;
     }
   ) => Promise<void>;
+  /**
+   * Opens the wallet's payment sheet. Square does not tokenize when its button
+   * is clicked; the page calls this from its own click handler.
+   */
   tokenize: () => Promise<SquareTokenizeResult>;
   destroy: () => Promise<void>;
-  addEventListener: (
-    event: string,
-    callback: (tokenResult: SquareTokenizeResult) => void
-  ) => void;
 }
 
 interface SquareTokenizeResult {
-  status: 'OK' | 'ERROR';
+  // Square's TokenStatus. 'Cancel' is the buyer closing a wallet sheet.
+  status: 'OK' | 'Error' | 'Invalid' | 'Abort' | 'Cancel' | 'Unknown' | 'ERROR';
   token?: string;
   errors?: Array<{ message: string }>;
 }
@@ -202,8 +202,20 @@ interface SquareCardFormProps {
   env?: string;
   /** Total amount in cents — used for Apple Pay / Google Pay payment sheet */
   totalCents?: number;
-  /** Whether to initialize digital wallet buttons (Apple Pay / Google Pay). Default false. */
+  /**
+   * Whether to show the Google Pay button. Default false.
+   *
+   * Apple Pay is not offered here: Square only allows it on a domain registered
+   * for Apple Pay, and the Webflow site cannot host Apple's verification file.
+   * `RegistrationCheckoutForm` opens it in a popup on the admin app instead.
+   */
   showDigitalWallets?: boolean;
+  /**
+   * True when the parent shows another wallet button above this form (the
+   * Apple Pay popup button), so the "or pay with card" divider appears even
+   * when Google Pay is unavailable.
+   */
+  hasOtherWallet?: boolean;
   /** Called when the form is ready to tokenize */
   onReady?: () => void;
   /**
@@ -233,8 +245,14 @@ interface SquareCardFormProps {
   verifyBuyerForStore?: boolean;
   /** Billing contact used for STORE-intent SCA verification (recommended). */
   billingContact?: SquareBillingContact;
-  /** Called when a digital wallet (Apple Pay / Google Pay) completes tokenization directly */
+  /** Called with the token once the buyer approves the Google Pay sheet */
   onDigitalWalletToken?: (token: string) => void;
+  /**
+   * Runs when the Google Pay button is clicked, before the sheet opens. Return
+   * false to keep it closed (e.g. the form still has errors), so the buyer is
+   * not asked to approve a payment that cannot be submitted.
+   */
+  beforeDigitalWallet?: () => boolean;
   /**
    * Optional content to render after the card form.
    * When in Shadow DOM, this content is portaled to the external
@@ -254,6 +272,28 @@ interface SquareCardFormProps {
 /**
  * Check if an element is inside a Shadow DOM tree.
  */
+/**
+ * Wallet buttons share one size so Apple Pay and Google Pay line up: full
+ * width, 48px tall (Apple's recommended minimum touch height), 8px corners.
+ */
+export const WALLET_BUTTON_HEIGHT = 48;
+export const WALLET_BUTTON_RADIUS = 8;
+
+const GOOGLE_PAY_CONTAINER_CSS = [
+  'width: 100%',
+  `height: ${WALLET_BUTTON_HEIGHT}px`,
+  `border-radius: ${WALLET_BUTTON_RADIUS}px`,
+  'overflow: hidden',
+].join('; ');
+
+const GOOGLE_PAY_BUTTON_OPTIONS = {
+  buttonColor: 'black',
+  // 'fill' makes the button take the container's size instead of Google's
+  // fixed ~240px, so it matches the full-width Apple Pay button.
+  buttonSizeMode: 'fill',
+  buttonType: 'long',
+} as const;
+
 function isInShadowDom(el: HTMLElement): boolean {
   let node: Node | null = el;
   while (node) {
@@ -297,6 +337,7 @@ export function SquareCardForm({
   env,
   totalCents,
   showDigitalWallets = false,
+  hasOtherWallet = false,
   onReady,
   onInitError,
   suppressInitError = false,
@@ -304,6 +345,7 @@ export function SquareCardForm({
   verifyBuyerForStore = false,
   billingContact,
   onDigitalWalletToken,
+  beforeDigitalWallet,
   afterCardContent,
   maxWidth,
 }: SquareCardFormProps) {
@@ -315,14 +357,14 @@ export function SquareCardForm({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null
   );
-  const [hasApplePay, setHasApplePay] = useState(false);
   const [hasGooglePay, setHasGooglePay] = useState(false);
   const cardRef = useRef<SquareCard | null>(null);
-  const applePayRef = useRef<SquareDigitalWallet | null>(null);
   const googlePayRef = useRef<SquareDigitalWallet | null>(null);
   const paymentRequestRef = useRef<SquarePaymentRequest | null>(null);
   const onDigitalWalletTokenRef = useRef(onDigitalWalletToken);
   onDigitalWalletTokenRef.current = onDigitalWalletToken;
+  const beforeDigitalWalletRef = useRef(beforeDigitalWallet);
+  beforeDigitalWalletRef.current = beforeDigitalWallet;
   const onInitErrorRef = useRef(onInitError);
   onInitErrorRef.current = onInitError;
   // Kept in refs so changing them doesn't re-init the SDK, and so the tokenize
@@ -333,8 +375,9 @@ export function SquareCardForm({
   const billingContactRef = useRef(billingContact);
   billingContactRef.current = billingContact;
   const placeholderRef = useRef<HTMLDivElement>(null);
-  const applePayContainerRef = useRef<HTMLDivElement>(null);
   const googlePayContainerRef = useRef<HTMLDivElement>(null);
+  // Shadow DOM mode only: the external divider element, toggled by an effect.
+  const externalDividerRef = useRef<HTMLDivElement | null>(null);
   const cardContainerRef = useRef<HTMLDivElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const initializedRef = useRef(false);
@@ -358,9 +401,6 @@ export function SquareCardForm({
     return () => {
       if (cardRef.current) {
         cardRef.current.destroy().catch(console.error);
-      }
-      if (applePayRef.current) {
-        applePayRef.current.destroy().catch(console.error);
       }
       if (googlePayRef.current) {
         googlePayRef.current.destroy().catch(console.error);
@@ -456,7 +496,6 @@ export function SquareCardForm({
       // Resolve attach targets — either React refs (normal DOM) or
       // dynamically created elements (Shadow DOM).
       let cardTarget: HTMLElement;
-      let applePayTarget: HTMLElement;
       let googlePayTarget: HTMLElement;
 
       if (placeholder && isInShadowDom(placeholder)) {
@@ -479,31 +518,42 @@ export function SquareCardForm({
         ].join('; ');
         wrapperRef.current = wrapper;
 
-        // Apple Pay container
-        applePayTarget = document.createElement('div');
-        wrapper.appendChild(applePayTarget);
-
         // Google Pay container
         googlePayTarget = document.createElement('div');
+        googlePayTarget.style.cssText = GOOGLE_PAY_CONTAINER_CSS;
+        googlePayTarget.style.display = 'none';
         wrapper.appendChild(googlePayTarget);
 
-        // Card container — styled to match MUI outlined input look
+        // "Or pay with card" divider — shown by an effect once a wallet is up.
+        const divider = document.createElement('div');
+        divider.style.cssText = [
+          'display: none',
+          'align-items: center',
+          'gap: 16px',
+          'margin: 16px 0',
+          'font-family: Georgia, Times, "Times New Roman", serif',
+          'font-size: 14px',
+          'color: rgba(0, 0, 0, 0.6)',
+        ].join('; ');
+        const rule = (): HTMLElement => {
+          const line = document.createElement('div');
+          line.style.cssText = 'flex: 1; border-bottom: 1px solid rgba(0, 0, 0, 0.12)';
+          return line;
+        };
+        const label = document.createElement('span');
+        label.textContent = 'Or pay with card';
+        divider.append(rule(), label, rule());
+        externalDividerRef.current = divider;
+        wrapper.appendChild(divider);
+
+        // Card container. Square's card field draws its own bordered box, so
+        // this one adds none — a border here showed as a box inside a box.
         const cardContainer = document.createElement('div');
         cardContainer.style.cssText = [
           'min-height: 56px',
-          'border: 1px solid rgba(0, 0, 0, 0.23)',
-          'border-radius: 8px',
-          'padding: 12px',
           'box-sizing: border-box',
-          'margin-bottom: 24px',
-          'transition: border-color 0.2s',
+          'margin-bottom: 8px',
         ].join('; ');
-        cardContainer.addEventListener('mouseenter', () => {
-          cardContainer.style.borderColor = 'rgba(0, 0, 0, 0.87)';
-        });
-        cardContainer.addEventListener('mouseleave', () => {
-          cardContainer.style.borderColor = 'rgba(0, 0, 0, 0.23)';
-        });
         cardContainerRef.current = cardContainer;
         wrapper.appendChild(cardContainer);
 
@@ -526,7 +576,6 @@ export function SquareCardForm({
       } else {
         // Normal DOM — use the React-rendered containers
         cardTarget = placeholder!;
-        applePayTarget = applePayContainerRef.current!;
         googlePayTarget = googlePayContainerRef.current!;
       }
 
@@ -546,31 +595,33 @@ export function SquareCardForm({
         }) as SquarePaymentRequest;
         paymentRequestRef.current = paymentRequest;
 
-        const handleWalletToken = (result: SquareTokenizeResult): void => {
-          if (result.status === 'OK' && result.token) {
-            onDigitalWalletTokenRef.current?.(result.token);
-          }
-        };
-
-        // Initialize Apple Pay (fails gracefully if not supported)
-        try {
-          const applePay = await payments.applePay(paymentRequest);
-          await applePay.attach(applePayTarget);
-          applePay.addEventListener('token', handleWalletToken);
-          applePayRef.current = applePay;
-          setHasApplePay(true);
-        } catch {
-          // Apple Pay not available — browser/device doesn't support it
-        }
-
-        // Initialize Google Pay (fails gracefully if not supported)
+        // Google Pay (fails gracefully if the browser can't offer it). Square
+        // renders the button but never tokenizes on its own: the documented
+        // pattern is a click handler that calls tokenize().
         try {
           const googlePay = await payments.googlePay(paymentRequest);
-          await googlePay.attach(googlePayTarget);
-          googlePay.addEventListener('token', handleWalletToken);
+          googlePayTarget.style.display = 'block';
+          await googlePay.attach(googlePayTarget, GOOGLE_PAY_BUTTON_OPTIONS);
+          googlePayTarget.addEventListener('click', async (event) => {
+            event.preventDefault();
+            if (beforeDigitalWalletRef.current?.() === false) return;
+            try {
+              const result = await googlePay.tokenize();
+              // Any other status is the buyer closing the sheet or a decline,
+              // which Google Pay has already shown them.
+              if (result.status === 'OK' && result.token) {
+                onDigitalWalletTokenRef.current?.(result.token);
+              } else if (result.status !== 'Cancel') {
+                console.error('[SquareCardForm] Google Pay did not tokenize', result);
+              }
+            } catch (err) {
+              console.error('[SquareCardForm] Google Pay tokenize failed', err);
+            }
+          });
           googlePayRef.current = googlePay;
           setHasGooglePay(true);
         } catch {
+          googlePayTarget.style.display = 'none';
           // Google Pay not available — browser/device doesn't support it
         }
       }
@@ -674,7 +725,15 @@ export function SquareCardForm({
     initializePayments();
   }, [sdkReady, totalCents, initializePayments]);
 
-  const showDivider = (hasApplePay || hasGooglePay) && !isLoading;
+  const showDivider =
+    showDigitalWallets && (hasGooglePay || hasOtherWallet) && !isLoading;
+
+  // Shadow DOM mode renders the divider outside React; keep it in step.
+  useEffect(() => {
+    if (externalDividerRef.current) {
+      externalDividerRef.current.style.display = showDivider ? 'flex' : 'none';
+    }
+  }, [showDivider]);
 
   return (
     <Box>
@@ -694,25 +753,23 @@ export function SquareCardForm({
           }}
         >
           <CircularProgress size={20} />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Loading payment form...
           </Typography>
         </Box>
       )}
 
-      {/* Digital wallet button containers — Square SDK renders its branded buttons here */}
-      <Box
-        ref={applePayContainerRef}
-        sx={{
-          display: portalContainer ? 'none' : 'block',
-          mb: hasApplePay ? 1 : 0,
-        }}
-      />
+      {/* Google Pay button container — Square SDK renders its branded button here */}
       <Box
         ref={googlePayContainerRef}
         sx={{
-          display: portalContainer ? 'none' : 'block',
-          mb: hasGooglePay ? 1 : 0,
+          // Hidden until Google Pay attaches; initializePayments flips it with
+          // an inline style, which wins over this class.
+          display: 'none',
+          width: '100%',
+          height: WALLET_BUTTON_HEIGHT,
+          borderRadius: `${WALLET_BUTTON_RADIUS}px`,
+          overflow: 'hidden',
         }}
       />
 
@@ -726,7 +783,7 @@ export function SquareCardForm({
           }}
         >
           <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ px: 2 }}>
             Or pay with card
           </Typography>
           <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }} />
@@ -739,11 +796,8 @@ export function SquareCardForm({
         id="square-card-container"
         sx={{
           display: initSuppressed ? 'none' : 'block',
+          // No border of our own: Square's card field draws its own box.
           minHeight: portalContainer ? 0 : 56,
-          border: isLoading || portalContainer ? 'none' : 1,
-          borderColor: 'divider',
-          borderRadius: 1,
-          p: isLoading || portalContainer ? 0 : 1,
         }}
       />
 

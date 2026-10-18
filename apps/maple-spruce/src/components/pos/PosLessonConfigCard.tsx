@@ -69,7 +69,7 @@ export function PosLessonConfigCard() {
         <Typography variant="h6" gutterBottom>
           POS Lesson Catalog Items
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           Square catalog object (variation) ids that count as music lessons when
           rung up at the POS — e.g. your “Guitar Lesson” item. A POS sale of one
           of these is routed to the POS Lessons review queue. Find the id in the
@@ -92,7 +92,7 @@ export function PosLessonConfigCard() {
           <>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
               {ids.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   No lesson items configured — POS lesson detection is off.
                 </Typography>
               ) : (

@@ -38,7 +38,7 @@ export function UserList({ users, callerUid, onManage }: UserListProps) {
   if (users.length === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="text.secondary">No users yet.</Typography>
+        <Typography color="textSecondary">No users yet.</Typography>
       </Paper>
     );
   }
@@ -61,7 +61,9 @@ export function UserList({ users, callerUid, onManage }: UserListProps) {
             return (
               <TableRow key={user.uid} hover>
                 <TableCell>
-                  <Stack direction="row" spacing={2} alignItems="center">
+                  <Stack direction="row" spacing={2} sx={{
+                    alignItems: 'center'
+                  }}>
                     <Avatar src={user.photoUrl} sx={{ width: 36, height: 36 }}>
                       {(user.displayName || user.email || '?')
                         .charAt(0)
@@ -74,21 +76,23 @@ export function UserList({ users, callerUid, onManage }: UserListProps) {
                           <Typography
                             component="span"
                             variant="caption"
-                            color="text.secondary"
+                            color="textSecondary"
                             sx={{ ml: 1 }}
                           >
                             (you)
                           </Typography>
                         )}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="textSecondary">
                         {user.email ?? '(no email)'}
                       </Typography>
                     </Box>
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                  <Stack direction="row" spacing={0.5} sx={{
+                    flexWrap: 'wrap'
+                  }}>
                     {chips.map((chip) => (
                       <Chip
                         key={chip.label}

@@ -82,12 +82,14 @@ function SortableRow({ category, onEdit, onDelete }: SortableRowProps) {
         </IconButton>
       </TableCell>
       <TableCell>
-        <Typography variant="body1" fontWeight="medium">
+        <Typography variant="body1" sx={{
+          fontWeight: 'medium'
+        }}>
           {category.name}
         </Typography>
       </TableCell>
       <TableCell>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           {category.description || '—'}
         </Typography>
       </TableCell>

@@ -24,7 +24,7 @@ import {
   Link,
   ThemeProvider,
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
@@ -177,7 +177,7 @@ export function CraftClubSignupWidget({
         <Typography variant="h5" component="h2" gutterBottom>
           Join the Craft Club
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
           ${MONTHLY_PRICE}/month for studio access during Craft Club hours.
           Materials are billed separately at checkout. Cancel anytime.
         </Typography>
@@ -325,12 +325,17 @@ export function CraftClubSignupWidget({
 
         {/* Step 3 — subscribed */}
         {step === 'success' && (
-          <Stack spacing={1} alignItems="center" sx={{ py: 2 }}>
+          <Stack
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+              py: 2
+            }}>
             <CheckCircleOutlineIcon color="success" sx={{ fontSize: 48 }} />
             <Typography variant="h6">You&apos;re in!</Typography>
             <Typography
               variant="body2"
-              color="text.secondary"
+              color="textSecondary"
               align="center"
             >
               Your ${MONTHLY_PRICE}/month Craft Club membership is active.

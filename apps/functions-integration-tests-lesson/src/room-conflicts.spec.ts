@@ -26,6 +26,7 @@ import type {
   UpdateLessonRequest,
   UpdateLessonResponse,
 } from '@maple/ts/firebase/api-types';
+import { easternToUtc } from './eastern-time';
 
 const TEACHER_ID = 'instructor-room-guard';
 const OTHER_TEACHER = 'instructor-room-guard-2';
@@ -50,14 +51,12 @@ function tuesdayAt(hour: number, minute = 0): Date {
   const delta = ((2 - day.getUTCDay() + 7) % 7) || 7;
   day.setUTCDate(day.getUTCDate() + delta + 21);
 
-  return new Date(
-    Date.UTC(
-      day.getUTCFullYear(),
-      day.getUTCMonth(),
-      day.getUTCDate(),
-      hour + 4, // ET -> UTC; may exceed 24 and roll, which is correct here
-      minute
-    )
+  return easternToUtc(
+    day.getUTCFullYear(),
+    day.getUTCMonth(),
+    day.getUTCDate(),
+    hour,
+    minute
   );
 }
 
@@ -70,7 +69,7 @@ describe('Room conflicts (legacy #841)', () => {
     over: Partial<CreateLessonRequest> = {}
   ) =>
     callFunction<CreateLessonRequest, CreateLessonResponse>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -190,13 +189,57 @@ describe('Room conflicts (legacy #841)', () => {
     expect(JSON.stringify(other.error)).toMatch(/already taken/i);
   }, 60000);
 
-  it('allows a lesson with no room — it claims nothing', async () => {
+  it('refuses a lesson with no room when Spruce is taken', async () => {
+    // A lesson that names no room is mirrored into Spruce by onLessonWrite, so
+    // it occupies Spruce on the calendar. It used to skip the check entirely
+    // and double-book the room (#156).
     const at = tuesdayAt(17);
     expect((await createLesson('room-stu-a', at)).status).toBe(200);
     await waitForTrigger();
 
     const roomless = await createLesson('room-stu-b', at, { room: undefined });
+
+    expect(roomless.status).toBe(400);
+    expect(JSON.stringify(roomless.error)).toMatch(/already taken/i);
+  }, 60000);
+
+  it('stamps a lesson with no room as Spruce', async () => {
+    // The stored lesson says where it is, rather than leaving every reader to
+    // know that "no room" means Spruce.
+    const at = tuesdayAt(18);
+    const roomless = await createLesson('room-stu-a', at, { room: undefined });
+
     expect(roomless.status).toBe(200);
+    expect(roomless.data!.lesson.room).toBe('spruce');
+  }, 60000);
+
+  it('refuses moving a pre-room lesson onto a taken slot', async () => {
+    // Lessons written before the room field existed have none. They are on the
+    // calendar as Spruce, so rescheduling one must be checked as Spruce.
+    const taken = tuesdayAt(16);
+    expect((await createLesson('room-stu-a', taken)).status).toBe(200);
+
+    const legacyAt = tuesdayAt(21);
+    await setFirestoreDoc('lessons', 'lesson-pre-room', {
+      studentId: 'room-stu-b',
+      teacherId: TEACHER_ID,
+      scheduledAt: legacyAt,
+      durationMinutes: 60,
+      blockId: BLOCK_ID,
+      status: 'scheduled',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await waitForTrigger();
+
+    const moved = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
+      functionName: 'lessons/updateLesson',
+      data: { id: 'lesson-pre-room', scheduledAt: taken },
+      idToken: adminUser.idToken,
+    });
+
+    expect(moved.status).toBe(400);
+    expect(JSON.stringify(moved.error)).toMatch(/already taken/i);
   }, 60000);
 
   it('lets a lesson be edited without clashing with itself', async () => {
@@ -208,7 +251,7 @@ describe('Room conflicts (legacy #841)', () => {
     await waitForTrigger();
 
     const edited = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-      functionName: 'updateLesson',
+      functionName: 'lessons/updateLesson',
       data: { id: created.data!.lesson.id, notes: 'ran long' },
       idToken: adminUser.idToken,
     });
@@ -225,7 +268,7 @@ describe('Room conflicts (legacy #841)', () => {
     await waitForTrigger();
 
     const cancelled = await callFunction<UpdateLessonRequest, UpdateLessonResponse>({
-      functionName: 'updateLesson',
+      functionName: 'lessons/updateLesson',
       data: { id: created.data!.lesson.id, status: 'cancelled' },
       idToken: adminUser.idToken,
     });

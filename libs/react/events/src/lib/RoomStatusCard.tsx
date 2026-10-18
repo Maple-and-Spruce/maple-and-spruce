@@ -110,7 +110,7 @@ function RoomStatusLines({ status }: { status: RoomStatus }) {
             : 'Free for the rest of the day'}
         </Typography>
         {status.next && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Next: {windowLabel(status.next)}
           </Typography>
         )}
@@ -123,7 +123,7 @@ function RoomStatusLines({ status }: { status: RoomStatus }) {
       <Typography variant="body1">
         In use until {formatTime(status.freeAt)}
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="textSecondary">
         Now: {windowLabel(status.current)}
         {status.next ? ` · Next: ${windowLabel(status.next)}` : ''}
       </Typography>

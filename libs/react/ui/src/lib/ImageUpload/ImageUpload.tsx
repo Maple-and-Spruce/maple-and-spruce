@@ -167,7 +167,6 @@ export function ImageUpload({
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
         {label}
       </Typography>
-
       {/* Error display */}
       {validationError && (
         <Alert severity="error" sx={{ mb: 1 }} onClose={() => setValidationError(null)}>
@@ -179,7 +178,6 @@ export function ImageUpload({
           {state.error}
         </Alert>
       )}
-
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -188,10 +186,9 @@ export function ImageUpload({
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
-
       {hasImage ? (
         /* Image preview with remove button */
-        <Box
+        (<Box
           sx={{
             position: 'relative',
             width: '100%',
@@ -242,10 +239,10 @@ export function ImageUpload({
               <DeleteIcon />
             </IconButton>
           )}
-        </Box>
+        </Box>)
       ) : (
         /* Drop zone */
-        <Box
+        (<Box
           onClick={handleClick}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -266,13 +263,13 @@ export function ImageUpload({
           }}
         >
           <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Drag and drop an image here, or click to browse
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="textSecondary">
             JPEG, PNG, WebP, GIF (max 5MB)
           </Typography>
-        </Box>
+        </Box>)
       )}
     </Box>
   );

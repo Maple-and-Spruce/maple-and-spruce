@@ -9,6 +9,11 @@ export interface RolesContextValue {
   /** Resolved roles; empty while loading or when the user has none. */
   roles: UserRole[];
   isAdmin: boolean;
+  /**
+   * The instructor this login is linked to, if any (#157). For choosing what
+   * to show first, such as "my students"; never a permission.
+   */
+  instructorId?: string;
   /** True once the user holds at least one role. */
   hasAnyRole: boolean;
   isCheckingRoles: boolean;
@@ -41,10 +46,12 @@ export function RolesProvider({ children }: { children: ReactNode }) {
  */
 export function StaticRolesProvider({
   roles,
+  instructorId,
   isChecking = false,
   children,
 }: {
   roles: UserRole[];
+  instructorId?: string;
   isChecking?: boolean;
   children: ReactNode;
 }) {
@@ -54,6 +61,7 @@ export function StaticRolesProvider({
       : { status: 'success', data: roles },
     roles: isChecking ? [] : roles,
     isAdmin: !isChecking && roles.includes('admin'),
+    instructorId: isChecking ? undefined : instructorId,
     hasAnyRole: !isChecking && roles.length > 0,
     isCheckingRoles: isChecking,
   };

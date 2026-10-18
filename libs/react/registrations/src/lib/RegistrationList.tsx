@@ -126,10 +126,12 @@ export function RegistrationList({
           {registrations.map((registration) => (
             <TableRow key={registration.id} hover>
               <TableCell>
-                <Typography variant="body2" fontWeight={500}>
+                <Typography variant="body2" sx={{
+                  fontWeight: 500
+                }}>
                   {registration.customerName}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="textSecondary">
                   {registration.customerEmail}
                 </Typography>
               </TableCell>

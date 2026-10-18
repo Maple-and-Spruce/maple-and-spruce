@@ -10,6 +10,7 @@
  */
 
 import type { Payee } from './payee';
+import type { InstructorLessonRates } from './lesson-rates-config';
 
 /**
  * How an instructor is paid for teaching
@@ -19,7 +20,12 @@ export type InstructorPayRateType = 'flat' | 'hourly' | 'percentage';
 /**
  * Instructor entity - implements Payee interface
  */
-export interface Instructor extends Payee {
+export interface Instructor extends Omit<Payee, 'email'> {
+  /**
+   * Optional: some instructors keep their email private, and the studio
+   * should not have to ask for it just to list them.
+   */
+  email?: string;
   /**
    * Firebase Auth UID of the portal user who IS this instructor, when they
    * have a login. Set only for lesson teachers who manage their own lessons
@@ -41,6 +47,13 @@ export interface Instructor extends Payee {
   payRate?: number;
   /** How payRate is interpreted */
   payRateType?: InstructorPayRateType;
+  /**
+   * What a family is charged for a private lesson with this teacher, by
+   * instrument and length, in cents. Not what the studio pays the teacher —
+   * that is `payRate`. A student's own `lessonRateCents` overrides it, and a
+   * length left blank falls back to the studio default.
+   */
+  lessonRates?: InstructorLessonRates;
   /**
    * Webflow CMS item ID for instructor profile sync.
    * @see docs/decisions/ADR-016-webflow-integration-strategy.md

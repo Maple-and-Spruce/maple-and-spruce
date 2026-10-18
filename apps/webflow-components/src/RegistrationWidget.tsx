@@ -5,7 +5,7 @@
  * Reuses RegistrationCheckoutForm and related components from the existing library.
  * No Next.js dependencies — all routing/navigation is handled inline.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -17,7 +17,7 @@ import {
   Stack,
   ThemeProvider,
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PrintIcon from '@mui/icons-material/Print';
 import { httpsCallable } from 'firebase/functions';
@@ -42,14 +42,16 @@ import type {
   AddToClassWaitlistRequest,
   AddToClassWaitlistResponse,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import {
   trackAddClassToCart,
   trackPurchaseClass,
   trackViewClass,
 } from './lib/class-analytics';
 import { readMetaAttribution } from './lib/meta-attribution';
+import { readGaAttribution } from './lib/ga-attribution';
 import { warmup } from './lib/warmup';
+import { scrollToConfirmation } from './lib/scroll-to-confirmation';
 
 
 /**
@@ -216,7 +218,7 @@ function SoldOutPanel({
         banner and repeats none of that copy — just the first-come fine print.
       */}
       <Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           Spots are first-come, first-served — we email everyone on the list.
         </Typography>
 
@@ -231,7 +233,9 @@ function SoldOutPanel({
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1.5}
-              alignItems={{ sm: 'flex-start' }}
+              sx={{
+                alignItems: { sm: 'flex-start' }
+              }}
             >
               <TextField
                 type="email"
@@ -263,7 +267,6 @@ function SoldOutPanel({
           </Box>
         )}
       </Box>
-
     </Box>
   );
 }
@@ -357,16 +360,12 @@ export function RegistrationWidget({
       return;
     }
 
-    // Pre-warm downstream callables the user will hit shortly (discount
-    // recalc + Pay submit). The page-mount fetches above can't benefit
-    // from warmup — they fire too early — but these typically run 5–60s
-    // later, by which point the warmup ping has spun their container up.
-    warmup(
-      functions,
-      'calculateRegistrationCost',
-      'createRegistration',
-      'createRegistrationCheckoutLink'
-    );
+    // Pre-warm the checkout callables the user will hit shortly (Pay
+    // submit). The page-mount fetches can't benefit from warmup — they fire
+    // too early — but these typically run 5–60s later, by which point the
+    // warmup ping has spun their container up. The discount recalc needs no
+    // ping: it is on `publicSite`, which the mount fetch has already woken.
+    warmup(functions, 'createRegistration', 'createRegistrationCheckoutLink');
 
     // Poll getRegistrationStatus for a returning hosted-checkout buyer. Returns
     // true if it took over the UI (confirmed or a "confirming payment" state),
@@ -376,10 +375,10 @@ export function RegistrationWidget({
       registrationId: string,
       publicClass: PublicClass
     ): Promise<boolean> => {
-      const getRegistrationStatus = httpsCallable<
+      const getRegistrationStatus = routeCallable<
         GetRegistrationStatusRequest,
         GetRegistrationStatusResponse
-      >(functions, 'getRegistrationStatus');
+      >(functions, 'publicSite', 'getRegistrationStatus');
 
       const MAX_POLLS = 6;
       const POLL_MS = 3000;
@@ -425,15 +424,15 @@ export function RegistrationWidget({
     const fetchClass = async () => {
       setState({ status: 'loading' });
       try {
-        const getPublicClass = httpsCallable<
+        const getPublicClass = routeCallable<
           GetPublicClassRequest,
           GetPublicClassResponse
-        >(functions, 'getPublicClass');
+        >(functions, 'publicSite', 'getPublicClass');
 
-        const getRequiredAgreements = httpsCallable<
+        const getRequiredAgreements = routeCallable<
           GetRequiredAgreementsForClassRequest,
           GetRequiredAgreementsForClassResponse
-        >(functions, 'getRequiredAgreementsForClass');
+        >(functions, 'publicSite', 'getRequiredAgreementsForClass');
 
         // Fetch class and required agreements in parallel
         const [classResult, agreementsResult] = await Promise.all([
@@ -489,10 +488,10 @@ export function RegistrationWidget({
       quantity: number,
       discountCode?: string
     ): Promise<CalculateRegistrationCostResponse> => {
-      const calculateCost = httpsCallable<
+      const calculateCost = routeCallable<
         CalculateRegistrationCostRequest,
         CalculateRegistrationCostResponse
-      >(functions, 'calculateRegistrationCost');
+      >(functions, 'publicSite', 'calculateRegistrationCost');
 
       const result = await calculateCost({
         classId: calcClassId,
@@ -533,11 +532,15 @@ export function RegistrationWidget({
         );
       }
 
-      // Snapshot _fbp/_fbc at submit time so the server-side CAPI `Purchase`
-      // can link this sale to the ad click it came from.
+      // Snapshot _fbp/_fbc and the GA4 ids at submit time so the server-side
+      // Meta CAPI and GA4 `purchase` events can credit this sale to the ad
+      // click / session it came from.
       const result = await createRegistration({
         ...data,
         metaAttribution: readMetaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
+        gaAttribution: readGaAttribution(
           typeof window !== 'undefined' ? window : null
         ),
       });
@@ -579,11 +582,26 @@ export function RegistrationWidget({
         metaAttribution: readMetaAttribution(
           typeof window !== 'undefined' ? window : null
         ),
+        // Same for GA4: the server-side `purchase` is the only one this path
+        // produces, and these ids are what credit it to the buyer's session.
+        gaAttribution: readGaAttribution(
+          typeof window !== 'undefined' ? window : null
+        ),
       });
       return { checkoutUrl: result.data.checkoutUrl };
     },
     [functions]
   );
+
+  // Bring the confirmation into view once payment completes. On a phone the
+  // pay button sits far below the top of the widget, and when the buyer comes
+  // back from the Apple Pay tab they were left staring at the page footer.
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  const isConfirmed = state.status === 'confirmed';
+  useEffect(() => {
+    if (!isConfirmed) return;
+    scrollToConfirmation(confirmationRef.current);
+  }, [isConfirmed]);
 
   const handleSuccess = useCallback(
     (details: {
@@ -644,7 +662,7 @@ export function RegistrationWidget({
                 ? 'Payment received — you’re all set!'
                 : 'Confirming your payment…'}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               {state.timedOut
                 ? 'We’re finalizing your registration. A confirmation email is on its way — no need to pay again.'
                 : 'Just a moment while we confirm your registration.'}
@@ -686,6 +704,7 @@ export function RegistrationWidget({
 
         {state.status === 'confirmed' && (
           <Box
+            ref={confirmationRef}
             className="registration-confirmation"
             sx={{ p: 4, textAlign: 'center' }}
           >
@@ -694,7 +713,9 @@ export function RegistrationWidget({
               color="success"
               sx={{ fontSize: 48, mb: 1 }}
             />
-            <Typography variant="h5" fontWeight={600} gutterBottom>
+            <Typography variant="h5" gutterBottom sx={{
+              fontWeight: 600
+            }}>
               You're Registered!
             </Typography>
 
@@ -702,21 +723,24 @@ export function RegistrationWidget({
 
             {/* Class details */}
             <Box sx={{ textAlign: 'left', mb: 2 }}>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h6" sx={{
+                fontWeight: 600
+              }}>
                 {state.className}
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" color="textSecondary">
                 {formatClassDateTime(state.classDate)}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatDuration(state.classDurationMinutes)} &middot;{' '}
                 {formatSkillLevel(state.skillLevel)}
               </Typography>
               <Typography
                 variant="body1"
-                fontWeight={500}
-                sx={{ mt: 1 }}
-              >
+                sx={{
+                  fontWeight: 500,
+                  mt: 1
+                }}>
                 ${(state.pricePaidCents / 100).toFixed(2)} paid
               </Typography>
             </Box>
@@ -735,14 +759,16 @@ export function RegistrationWidget({
             {/* Confirmation number — de-emphasized */}
             <Typography
               variant="body2"
-              color="text.secondary"
+              color="textSecondary"
               sx={{ mb: 2 }}
             >
               Confirmation:{' '}
               <Typography
                 component="span"
                 variant="body2"
-                fontFamily="monospace"
+                sx={{
+                  fontFamily: 'monospace'
+                }}
               >
                 {state.confirmationNumber}
               </Typography>
@@ -798,28 +824,31 @@ export function RegistrationWidget({
             </Box>
 
             {/* Email confirmation notice */}
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
               A confirmation email has been sent to{' '}
               <Typography
                 component="span"
                 variant="body2"
-                fontWeight={500}
+                sx={{
+                  fontWeight: 500
+                }}
               >
                 {state.customerEmail}
               </Typography>
             </Typography>
 
             {/* Contact info */}
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Questions? Contact us at{' '}
               <Typography
                 component="a"
                 href="mailto:katie@mapleandsprucefolkarts.com"
                 variant="body2"
                 color="primary"
-                fontWeight={500}
-                sx={{ textDecoration: 'none' }}
-              >
+                sx={{
+                  fontWeight: 500,
+                  textDecoration: 'none'
+                }}>
                 katie@mapleandsprucefolkarts.com
               </Typography>
             </Typography>

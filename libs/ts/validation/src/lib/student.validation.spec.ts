@@ -76,14 +76,12 @@ describe('studentValidation', () => {
       expect(result.getErrors('instrument')).toContain('Instrument is required');
     });
 
-    it('fails when not a valid enum value', () => {
-      // Deliberately an instrument the studio will never teach. This case used
-      // to use 'harp', which stopped being a counter-example the moment harp
-      // was added to INSTRUMENTS (legacy #819) — a test whose fixture can graduate
-      // into validity silently stops testing anything.
+    it('fails on a malformed instrument key', () => {
+      // Which instruments are offered is a setting checked on the server
+      // (#161); the shared suite only refuses a key no setting could hold.
       const result = studentValidation({
         ...validStudent,
-        instrument: 'kazoo' as 'violin',
+        instrument: 'Kazoo!',
       });
       expect(result.isValid()).toBe(false);
       expect(result.getErrors('instrument')).toContain(
@@ -91,24 +89,8 @@ describe('studentValidation', () => {
       );
     });
 
-    it('accepts each supported instrument', () => {
-      const supported = [
-        'piano',
-        'guitar',
-        'violin',
-        'viola',
-        'cello',
-        'bass',
-        'voice',
-        'ukulele',
-        'mandolin',
-        'banjo',
-        'fiddle',
-        'flute',
-        'other',
-      ] as const;
-
-      for (const instrument of supported) {
+    it('accepts any well-formed key, offered now or retired', () => {
+      for (const instrument of ['violin', 'piano', 'mountain-dulcimer']) {
         const result = studentValidation({ ...validStudent, instrument });
         expect(result.hasErrors('instrument')).toBe(false);
       }

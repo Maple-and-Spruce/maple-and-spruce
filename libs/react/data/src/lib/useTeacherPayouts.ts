@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { RequestState, TeacherPayout } from '@maple/ts/domain';
 import type {
   GetTeacherPayoutsRequest,
@@ -55,11 +58,10 @@ export function useTeacherPayouts({
   const fetchPayouts = useCallback(async () => {
     setPayoutsState({ status: 'loading' });
     try {
-      const functions = getMapleFunctions();
-      const get = httpsCallable<
+      const get = httpsCallableFromURL<
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
-      >(functions, 'getTeacherPayouts');
+      >(getMapleFunctions(), routerCallableUrl('payouts', 'getTeacherPayouts'));
 
       const result = await get({ from: fromIso, to: toIso, teacherId });
       setPayoutsState({

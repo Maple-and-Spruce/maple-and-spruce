@@ -257,7 +257,7 @@ describe('createMusicTogetherDemo blank-duration regression (legacy #714)', () =
     const pub = await callFunction<
       GetPublicMusicTogetherDemosRequest,
       GetPublicMusicTogetherDemosResponse
-    >({ functionName: 'getPublicMusicTogetherDemos', data: {} });
+    >({ functionName: 'publicSite/getPublicMusicTogetherDemos', data: {} });
     const demo = pub.data?.demos.find((d) => d.id === created.data!.demo.id);
     expect(demo?.durationMinutes).toBe(MT_CLASS_DURATION_MINUTES);
   });
@@ -282,7 +282,7 @@ describe('createMusicTogetherDemo blank-duration regression (legacy #714)', () =
     const pub = await callFunction<
       GetPublicMusicTogetherDemosRequest,
       GetPublicMusicTogetherDemosResponse
-    >({ functionName: 'getPublicMusicTogetherDemos', data: {} });
+    >({ functionName: 'publicSite/getPublicMusicTogetherDemos', data: {} });
     const demo = pub.data?.demos.find((d) => d.id === created.data!.demo.id);
     expect(demo?.durationMinutes).toBe(MT_CLASS_DURATION_MINUTES);
   });
@@ -358,7 +358,7 @@ describe('getPublicMusicTogetherDemos', () => {
     const result = await callFunction<
       GetPublicMusicTogetherDemosRequest,
       GetPublicMusicTogetherDemosResponse
-    >({ functionName: 'getPublicMusicTogetherDemos', data: {} });
+    >({ functionName: 'publicSite/getPublicMusicTogetherDemos', data: {} });
 
     expect(result.status).toBe(200);
     const demos = result.data!.demos;

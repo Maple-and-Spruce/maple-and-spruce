@@ -59,11 +59,23 @@ export interface MyWeekCommitment {
   ownership: MyWeekOwnership;
   cadence: MyWeekCadence;
   /**
+   * The student, on the caller's own lessons only (#160), so the week reads
+   * by name and a lesson opens that student. Absent on anything else —
+   * another teacher's students are not the caller's to see.
+   */
+  studentId?: string;
+  studentName?: string;
+  /**
    * True only for `mine` lesson commitments that aren't attributed to a
    * fitting block (legacy #689) — the "needs a block" flag. Always false for
    * classes, shared events, and block-attributed lessons.
    */
   unattributed: boolean;
+  /**
+   * Held online rather than in the room (#210), on the caller's own lessons
+   * only. Its `room` is null either way; this says why.
+   */
+  online?: boolean;
 }
 
 /**
@@ -87,6 +99,9 @@ export interface MyWeekStandingSlot {
   category: CalendarEventType;
   ownership: MyWeekOwnership;
   title: string;
+  /** On the caller's own weekly lesson times only (#160). */
+  studentId?: string;
+  studentName?: string;
 }
 
 export interface GetMyWeekRequest {

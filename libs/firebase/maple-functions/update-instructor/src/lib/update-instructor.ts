@@ -7,8 +7,13 @@ import {
   createAdminFunction,
   throwNotFound,
   throwFailedPrecondition,
+  throwInvalidArgument,
 } from '@maple/firebase/functions';
-import { InstructorRepository } from '@maple/firebase/database';
+import {
+  InstructorRepository,
+  InstrumentsConfigRepository,
+} from '@maple/firebase/database';
+import { instrumentLabel, unofferedRateInstruments } from '@maple/ts/domain';
 import { instructorValidation } from '@maple/ts/validation';
 import type {
   UpdateInstructorRequest,
@@ -37,6 +42,24 @@ export const updateInstructor = createAdminFunction<
       .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
       .join('; ');
     throw new Error(`Validation failed: ${errorMessages}`);
+  }
+
+  // Rates only for instruments the studio offers (#161), though rates the
+  // instructor already had for a retired one may stay.
+  if (data.lessonRates) {
+    const { instruments } = await InstrumentsConfigRepository.get();
+    const unoffered = unofferedRateInstruments(
+      data.lessonRates,
+      instruments,
+      existing.lessonRates
+    );
+    if (unoffered.length > 0) {
+      throwInvalidArgument(
+        `The studio does not offer ${unoffered
+          .map((key) => instrumentLabel(key, instruments))
+          .join(', ')}.`
+      );
+    }
   }
 
   // Check for duplicate email if email is being changed

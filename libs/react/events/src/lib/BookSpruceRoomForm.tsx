@@ -17,7 +17,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import type { CreateCalendarEventInput, Room } from '@maple/ts/domain';
 import { getRoomLabel } from '@maple/ts/domain';
 import { calendarEventValidation } from '@maple/ts/validation';
@@ -213,7 +213,9 @@ export function BookSpruceRoomForm({
                 }
                 label="Show on the public calendar"
               />
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography variant="caption" color="textSecondary" sx={{
+                display: 'block'
+              }}>
                 Off by default — the booking still blocks the room internally.
                 Turn on for things the public should see (e.g. Music Together).
               </Typography>

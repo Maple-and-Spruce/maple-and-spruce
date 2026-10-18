@@ -11,6 +11,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => ({
   studentFindById: vi.fn(),
   invoiceCreate: vi.fn(),
+  invoiceFindAll: vi.fn(),
+  chargeFindAll: vi.fn(),
 }));
 
 vi.mock('@maple/firebase/functions', () => ({
@@ -21,7 +23,11 @@ vi.mock('@maple/firebase/functions', () => ({
 
 vi.mock('@maple/firebase/database', () => ({
   StudentRepository: { findById: mocks.studentFindById },
-  InvoiceRepository: { create: mocks.invoiceCreate },
+  InvoiceRepository: {
+    create: mocks.invoiceCreate,
+    findAll: mocks.invoiceFindAll,
+  },
+  LessonScheduledChargeRepository: { findAll: mocks.chargeFindAll },
 }));
 
 import { createInvoice } from './create-invoice';
@@ -54,6 +60,8 @@ const validPayload = () => ({
 describe('createInvoice', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.invoiceFindAll.mockResolvedValue([]);
+    mocks.chargeFindAll.mockResolvedValue([]);
   });
 
   it('creates an invoice for a private-pay student', async () => {
@@ -70,7 +78,8 @@ describe('createInvoice', () => {
 
     expect(mocks.studentFindById).toHaveBeenCalledWith('student-1');
     expect(mocks.invoiceCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ studentId: 'student-1' })
+      expect.objectContaining({ studentId: 'student-1' }),
+      expect.anything()
     );
     expect(result.invoice.id).toBe('inv-new');
   });
@@ -123,5 +132,96 @@ describe('createInvoice', () => {
     await expect(
       handler({ studentId: '', lineItems: validPayload().lineItems })
     ).rejects.toThrow(/Validation failed/);
+  });
+
+  describe('recording a payment already taken (cash, check, Venmo)', () => {
+    const paidPayload = (over: Record<string, unknown> = {}) => ({
+      studentId: 'student-1',
+      status: 'paid',
+      paidWith: 'venmo-manual',
+      lineItems: [
+        {
+          id: 'line-1',
+          description: 'Lesson',
+          lessonId: 'lesson-1',
+          quantity: 1,
+          unitAmountCents: 4500,
+          subtotalCents: 4500,
+        },
+      ],
+      ...over,
+    });
+
+    beforeEach(() => {
+      mocks.studentFindById.mockResolvedValue(privateStudent);
+      mocks.invoiceCreate.mockResolvedValue({ id: 'inv-paid', status: 'paid' });
+    });
+
+    it('creates it paid, stamped with who recorded it', async () => {
+      await handler(paidPayload(), { uid: 'katie-uid' });
+
+      expect(mocks.invoiceCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'paid', paidWith: 'venmo-manual' }),
+        { recordedByUid: 'katie-uid' }
+      );
+    });
+
+    it('refuses a lesson a card charge already covers', async () => {
+      mocks.chargeFindAll.mockResolvedValue([
+        { id: 'chg-1', status: 'paid', lessonIds: ['lesson-1'] },
+      ]);
+
+      await expect(handler(paidPayload(), { uid: 'katie-uid' })).rejects.toThrow(
+        /already charged or invoiced/
+      );
+      expect(mocks.invoiceCreate).not.toHaveBeenCalled();
+    });
+
+    it('refuses a lesson already on a live invoice', async () => {
+      mocks.invoiceFindAll.mockResolvedValue([
+        {
+          id: 'inv-old',
+          status: 'sent',
+          lineItems: [{ id: 'l', lessonId: 'lesson-1' }],
+        },
+      ]);
+
+      await expect(handler(paidPayload(), { uid: 'katie-uid' })).rejects.toThrow(
+        /already charged or invoiced/
+      );
+    });
+
+    it('does allow a lesson whose earlier invoice was voided', async () => {
+      mocks.invoiceFindAll.mockResolvedValue([
+        {
+          id: 'inv-void',
+          status: 'void',
+          lineItems: [{ id: 'l', lessonId: 'lesson-1' }],
+        },
+      ]);
+
+      await handler(paidPayload(), { uid: 'katie-uid' });
+      expect(mocks.invoiceCreate).toHaveBeenCalled();
+    });
+
+    it('rejects paid-with on an invoice that is not being created paid', async () => {
+      await expect(
+        handler(paidPayload({ status: 'sent' }), { uid: 'katie-uid' })
+      ).rejects.toThrow(/Validation failed/);
+    });
+
+    it('accepts a card payment already taken in Square', async () => {
+      await handler(paidPayload({ paidWith: 'square-manual' }), { uid: 'katie-uid' });
+      expect(mocks.invoiceCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ paidWith: 'square-manual' }),
+        { recordedByUid: 'katie-uid' }
+      );
+    });
+
+    it('rejects a payment source a person cannot record by hand', async () => {
+      await expect(
+        handler(paidPayload({ paidWith: 'square-webhook' }), { uid: 'katie-uid' })
+      ).rejects.toThrow(/Validation failed/);
+    });
   });
 });

@@ -41,8 +41,11 @@ import {
   totalAttentionCount,
 } from '@maple/ts/domain';
 import type {
+  Lesson,
+  LessonScheduledCharge,
   NeedsAttentionGroup,
   NeedsAttentionRow,
+  Student,
 } from '@maple/ts/domain';
 import type {
   GetNeedsAttentionRequest,
@@ -61,174 +64,205 @@ function formatDate(d: Date): string {
   });
 }
 
+/**
+ * Everything needs-attention reads, and the groups it finds, for one scope.
+ *
+ * `ownInstructorId` narrows to a lesson teacher's own students and lessons;
+ * undefined is the whole studio. The admin Home inbox (#235) calls this too,
+ * and reuses the students, lessons and charges it already loaded rather than
+ * reading them a second time.
+ */
+export interface NeedsAttentionScan {
+  groups: NeedsAttentionGroup[];
+  students: Student[];
+  lessons: Lesson[];
+  charges: LessonScheduledCharge[];
+}
+
+export async function collectNeedsAttention(
+  ownInstructorId: string | undefined,
+  now: Date = new Date()
+): Promise<NeedsAttentionScan> {
+  const scopedToSelf = Boolean(ownInstructorId);
+
+  const [allStudents, allLessons, blocks, allInvoices, allCharges] =
+    await Promise.all([
+      StudentRepository.findAll(),
+      LessonRepository.findAll(),
+      LessonBlockRepository.findAll(),
+      InvoiceRepository.findAll(),
+      // Charges too, because charging the card is how most lessons get
+      // billed. Without them every card-paid lesson showed up as "never
+      // invoiced" (#111).
+      LessonScheduledChargeRepository.findAll(),
+    ]);
+
+  const students = scopedToSelf
+    ? allStudents.filter((s) => s.primaryTeacherId === ownInstructorId)
+    : allStudents;
+  const studentIds = new Set(students.map((s) => s.id));
+  const studentById = new Map(students.map((s) => [s.id, s]));
+
+  const lessons = allLessons.filter(
+    (l) =>
+      studentIds.has(l.studentId) &&
+      (!scopedToSelf || l.teacherId === ownInstructorId)
+  );
+  const invoices = allInvoices.filter((i) => studentIds.has(i.studentId));
+  const charges = allCharges.filter((c) => studentIds.has(c.studentId));
+
+  const hopeLessons = lessons.filter(
+    (l) => studentById.get(l.studentId)?.isHopeScholarship
+  );
+  const hopeSubmissions = await HopeSubmissionRepository.findByLessonIds(
+    hopeLessons.map((l) => l.id)
+  );
+
+  const nameFor = (studentId: string) =>
+    studentById.get(studentId)?.name ?? 'Unknown student';
+
+  const syncFailed: NeedsAttentionRow[] = invoices
+    .filter(hasInvoiceSyncFailed)
+    .map((invoice) => ({
+      kind: 'invoice-sync-failed' as const,
+      id: invoice.id,
+      label: nameFor(invoice.studentId),
+      detail: `${formatCents(invoice.totalCents)} · ${invoice.squareSyncError ?? ''}`,
+      href: `/students/${invoice.studentId}`,
+      resolution: 'navigate' as const,
+      amountCents: invoice.totalCents,
+      // The last write is the failed sync, so a new failure is a new date.
+      occurredAt: invoice.updatedAt.toISOString(),
+    }));
+
+  const unbilled: NeedsAttentionRow[] = lessons
+    .filter((lesson) => {
+      const student = studentById.get(lesson.studentId);
+      return (
+        student !== undefined &&
+        isLessonUnbilled(lesson, student, charges, invoices)
+      );
+    })
+    .map((lesson) => ({
+      kind: 'lesson-unbilled' as const,
+      id: lesson.id,
+      label: nameFor(lesson.studentId),
+      detail: `${lesson.status === 'no-show' ? 'Missed' : 'Taught'} ${formatDate(lesson.scheduledAt)}, never invoiced`,
+      // Carries the lesson, not just the student (#128). The student page
+      // opens the charge picker with this lesson ticked, so the row goes
+      // from noticing to collecting in one click instead of landing Katie
+      // on a page where she has to find the date again. Built through the
+      // shared helper so the page cannot read a different parameter name.
+      href: studentChargeHref(lesson.studentId, lesson.id),
+      resolution: 'navigate' as const,
+      teacherId: lesson.teacherId,
+      occurredAt: lesson.scheduledAt.toISOString(),
+    }));
+
+  const hopeUnsubmitted: NeedsAttentionRow[] = hopeLessons
+    .filter((lesson) =>
+      isHopeUnsubmitted(lesson, hopeSubmissions.get(lesson.id)?.status)
+    )
+    .map((lesson) => ({
+      kind: 'hope-unsubmitted' as const,
+      id: lesson.id,
+      label: nameFor(lesson.studentId),
+      detail:
+        hopeSubmissions.get(lesson.id)?.status === 'rejected'
+          ? `${formatDate(lesson.scheduledAt)} · EMA rejected, needs resubmitting`
+          : `Taught ${formatDate(lesson.scheduledAt)}, not yet claimed`,
+      href: '/hope',
+      resolution: 'navigate' as const,
+      teacherId: lesson.teacherId,
+      occurredAt: lesson.scheduledAt.toISOString(),
+    }));
+
+  const overdue: NeedsAttentionRow[] = invoices
+    .filter((invoice) => isInvoiceOverdue(invoice, now))
+    .map((invoice) => ({
+      kind: 'invoice-overdue' as const,
+      id: invoice.id,
+      label: nameFor(invoice.studentId),
+      detail: `${formatCents(invoice.totalCents)} sent ${invoice.issuedAt ? formatDate(invoice.issuedAt) : ''}`,
+      href: `/students/${invoice.studentId}`,
+      resolution: 'navigate' as const,
+      amountCents: invoice.totalCents,
+      occurredAt: invoice.issuedAt?.toISOString(),
+    }));
+
+  const unattributed: NeedsAttentionRow[] = lessons
+    .filter(
+      (lesson) =>
+        lesson.status !== 'cancelled' &&
+        blocks.length > 0 &&
+        isLessonUnattributed(lesson, blocks)
+    )
+    .map((lesson) => ({
+      kind: 'lesson-unattributed' as const,
+      id: lesson.id,
+      label: nameFor(lesson.studentId),
+      detail: `${formatDate(lesson.scheduledAt)} sits in no block`,
+      href: `/students/${lesson.studentId}`,
+      resolution: 'navigate' as const,
+      teacherId: lesson.teacherId,
+      occurredAt: lesson.scheduledAt.toISOString(),
+    }));
+
+  const groups: NeedsAttentionGroup[] = [
+    {
+      kind: 'invoice-sync-failed',
+      title: 'Invoices that never reached Square',
+      because: 'The family was never asked to pay.',
+      rows: syncFailed,
+    },
+    {
+      kind: 'lesson-unbilled',
+      title: 'Lessons taught but never invoiced',
+      because: 'Taught, and nobody has been asked to pay for them yet.',
+      rows: unbilled,
+    },
+    {
+      kind: 'hope-unsubmitted',
+      title: 'Hope lessons not yet claimed',
+      because: 'Taught, and the state has not been asked to pay for them.',
+      rows: hopeUnsubmitted,
+    },
+    {
+      kind: 'invoice-overdue',
+      title: 'Invoices unpaid for two weeks',
+      because: 'Sent, and nobody is chasing them.',
+      rows: overdue,
+    },
+    {
+      kind: 'lesson-unattributed',
+      title: 'Lessons with no block',
+      because:
+        'They do not appear in the openings finder and skew the weekly view.',
+      rows: unattributed,
+    },
+  ];
+
+  return {
+    groups: sortAttentionGroups(groups),
+    students,
+    lessons,
+    charges,
+  };
+}
+
 export const getNeedsAttention = Functions.endpoint
   .requiringRole([Role.Admin, Role.LessonTeacher])
   .handle<GetNeedsAttentionRequest, GetNeedsAttentionResponse>(
     async (_data, context) => {
-      const now = new Date();
-
       // An admin has no linked instructor record, so this is undefined for them
       // and defined for a lesson teacher — which is exactly the scoping test.
       const ownInstructorId = await instructorIdForUser(context?.uid);
-      const scopedToSelf = Boolean(ownInstructorId);
-
-      const [allStudents, allLessons, blocks, allInvoices, allCharges] =
-        await Promise.all([
-          StudentRepository.findAll(),
-          LessonRepository.findAll(),
-          LessonBlockRepository.findAll(),
-          InvoiceRepository.findAll(),
-          // Charges too, because charging the card is how most lessons get
-          // billed. Without them every card-paid lesson showed up as "never
-          // invoiced" (#111).
-          LessonScheduledChargeRepository.findAll(),
-        ]);
-
-      const students = scopedToSelf
-        ? allStudents.filter((s) => s.primaryTeacherId === ownInstructorId)
-        : allStudents;
-      const studentIds = new Set(students.map((s) => s.id));
-      const studentById = new Map(students.map((s) => [s.id, s]));
-
-      const lessons = allLessons.filter(
-        (l) =>
-          studentIds.has(l.studentId) &&
-          (!scopedToSelf || l.teacherId === ownInstructorId)
-      );
-      const invoices = allInvoices.filter((i) => studentIds.has(i.studentId));
-      const charges = allCharges.filter((c) => studentIds.has(c.studentId));
-
-      const hopeLessons = lessons.filter(
-        (l) => studentById.get(l.studentId)?.isHopeScholarship
-      );
-      const hopeSubmissions = await HopeSubmissionRepository.findByLessonIds(
-        hopeLessons.map((l) => l.id)
-      );
-
-      const nameFor = (studentId: string) =>
-        studentById.get(studentId)?.name ?? 'Unknown student';
-
-      const syncFailed: NeedsAttentionRow[] = invoices
-        .filter(hasInvoiceSyncFailed)
-        .map((invoice) => ({
-          kind: 'invoice-sync-failed' as const,
-          id: invoice.id,
-          label: nameFor(invoice.studentId),
-          detail: `${formatCents(invoice.totalCents)} · ${invoice.squareSyncError ?? ''}`,
-          href: `/students/${invoice.studentId}`,
-          resolution: 'navigate' as const,
-          amountCents: invoice.totalCents,
-        }));
-
-      const unbilled: NeedsAttentionRow[] = lessons
-        .filter((lesson) => {
-          const student = studentById.get(lesson.studentId);
-          return (
-            student !== undefined &&
-            isLessonUnbilled(lesson, student, charges, invoices)
-          );
-        })
-        .map((lesson) => ({
-          kind: 'lesson-unbilled' as const,
-          id: lesson.id,
-          label: nameFor(lesson.studentId),
-          detail: `${lesson.status === 'no-show' ? 'Missed' : 'Taught'} ${formatDate(lesson.scheduledAt)}, never invoiced`,
-          // Carries the lesson, not just the student (#128). The student page
-          // opens the charge picker with this lesson ticked, so the row goes
-          // from noticing to collecting in one click instead of landing Katie
-          // on a page where she has to find the date again. Built through the
-          // shared helper so the page cannot read a different parameter name.
-          href: studentChargeHref(lesson.studentId, lesson.id),
-          resolution: 'navigate' as const,
-          teacherId: lesson.teacherId,
-        }));
-
-      const hopeUnsubmitted: NeedsAttentionRow[] = hopeLessons
-        .filter((lesson) =>
-          isHopeUnsubmitted(lesson, hopeSubmissions.get(lesson.id)?.status)
-        )
-        .map((lesson) => ({
-          kind: 'hope-unsubmitted' as const,
-          id: lesson.id,
-          label: nameFor(lesson.studentId),
-          detail:
-            hopeSubmissions.get(lesson.id)?.status === 'rejected'
-              ? `${formatDate(lesson.scheduledAt)} · EMA rejected, needs resubmitting`
-              : `Taught ${formatDate(lesson.scheduledAt)}, not yet claimed`,
-          href: '/hope',
-          resolution: 'navigate' as const,
-          teacherId: lesson.teacherId,
-        }));
-
-      const overdue: NeedsAttentionRow[] = invoices
-        .filter((invoice) => isInvoiceOverdue(invoice, now))
-        .map((invoice) => ({
-          kind: 'invoice-overdue' as const,
-          id: invoice.id,
-          label: nameFor(invoice.studentId),
-          detail: `${formatCents(invoice.totalCents)} sent ${invoice.issuedAt ? formatDate(invoice.issuedAt) : ''}`,
-          href: `/students/${invoice.studentId}`,
-          resolution: 'navigate' as const,
-          amountCents: invoice.totalCents,
-        }));
-
-      const unattributed: NeedsAttentionRow[] = lessons
-        .filter(
-          (lesson) =>
-            lesson.status !== 'cancelled' &&
-            blocks.length > 0 &&
-            isLessonUnattributed(lesson, blocks)
-        )
-        .map((lesson) => ({
-          kind: 'lesson-unattributed' as const,
-          id: lesson.id,
-          label: nameFor(lesson.studentId),
-          detail: `${formatDate(lesson.scheduledAt)} sits in no block`,
-          href: `/students/${lesson.studentId}`,
-          resolution: 'navigate' as const,
-          teacherId: lesson.teacherId,
-        }));
-
-      const groups: NeedsAttentionGroup[] = [
-        {
-          kind: 'invoice-sync-failed',
-          title: 'Invoices that never reached Square',
-          because: 'The family was never asked to pay.',
-          rows: syncFailed,
-        },
-        {
-          kind: 'lesson-unbilled',
-          title: 'Lessons taught but never invoiced',
-          because: 'Taught, and nobody has been asked to pay for them yet.',
-          rows: unbilled,
-        },
-        {
-          kind: 'hope-unsubmitted',
-          title: 'Hope lessons not yet claimed',
-          because: 'Taught, and the state has not been asked to pay for them.',
-          rows: hopeUnsubmitted,
-        },
-        {
-          kind: 'invoice-overdue',
-          title: 'Invoices unpaid for two weeks',
-          because: 'Sent, and nobody is chasing them.',
-          rows: overdue,
-        },
-        {
-          kind: 'lesson-unattributed',
-          title: 'Lessons with no block',
-          because:
-            'They do not appear in the openings finder and skew the weekly view.',
-          rows: unattributed,
-        },
-      ];
-
-      const sorted = sortAttentionGroups(groups);
+      const { groups } = await collectNeedsAttention(ownInstructorId);
 
       return {
-        groups: sorted,
-        total: totalAttentionCount(sorted),
-        scopedToSelf,
+        groups,
+        total: totalAttentionCount(groups),
+        scopedToSelf: Boolean(ownInstructorId),
       };
     }
   );

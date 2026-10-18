@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Student,
   CreateStudentInput,
@@ -36,10 +39,10 @@ export function useStudents() {
 
     try {
       const functions = getMapleFunctions();
-      const getStudents = httpsCallable<
+      const getStudents = httpsCallableFromURL<
         GetStudentsRequest,
         GetStudentsResponse
-      >(functions, 'getStudents');
+      >(functions, routerCallableUrl('people', 'getStudents'));
 
       const result = await getStudents({});
       setStudentsState({
@@ -59,10 +62,10 @@ export function useStudents() {
   const createStudent = useCallback(
     async (input: CreateStudentInput): Promise<Student> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateStudentRequest,
         CreateStudentResponse
-      >(functions, 'createStudent');
+      >(functions, routerCallableUrl('people', 'createStudent'));
 
       const result = await create(input);
 
@@ -82,10 +85,10 @@ export function useStudents() {
   const updateStudent = useCallback(
     async (input: UpdateStudentInput): Promise<Student> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateStudentRequest,
         UpdateStudentResponse
-      >(functions, 'updateStudent');
+      >(functions, routerCallableUrl('people', 'updateStudent'));
 
       const result = await update(input);
 
@@ -106,9 +109,9 @@ export function useStudents() {
 
   const deleteStudent = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<DeleteStudentRequest, DeleteStudentResponse>(
+    const del = httpsCallableFromURL<DeleteStudentRequest, DeleteStudentResponse>(
       functions,
-      'deleteStudent'
+      routerCallableUrl('people', 'deleteStudent')
     );
 
     await del({ id });

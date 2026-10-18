@@ -275,6 +275,9 @@ export default function AgreementsPage() {
         isDeleting={isDeleting}
         title="Archive Template?"
         itemName={templateToDelete?.name ?? ''}
+        confirmationMessage={`Archive "${templateToDelete?.name ?? ''}"? It stops being offered for new requests. Agreements already signed against it are kept.`}
+        confirmLabel="Archive"
+        busyLabel="Archiving..."
       />
     </>
   );

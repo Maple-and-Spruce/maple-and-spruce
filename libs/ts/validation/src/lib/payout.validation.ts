@@ -4,7 +4,8 @@
  * Vest validation for payout generation forms.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { GeneratePayoutInput } from '@maple/ts/domain';
 
 /**

@@ -12,12 +12,5 @@
     "firebase-maple-functions-delete-instructor",
     "firebase-integration-test-utils"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-instructor/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

@@ -12,6 +12,7 @@ import {
   type CalendarEventFilterValues,
 } from '@maple/react/events';
 import { useCalendarEvents } from '../../../hooks';
+import { useCreateIntent } from '../../../components/layout';
 
 export default function EventsPage() {
   // Filter state
@@ -49,6 +50,9 @@ export default function EventsPage() {
     setEditingEvent(event);
     setIsFormOpen(true);
   }, []);
+
+  // The sidebar's Create → New event lands here with ?new=1.
+  useCreateIntent(() => handleOpenForm());
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);

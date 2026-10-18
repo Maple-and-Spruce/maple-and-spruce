@@ -32,11 +32,6 @@ export type CreateStudentLessonScheduleRequest =
 
 export interface CreateStudentLessonScheduleResponse {
   schedule: StudentLessonSchedule;
-  /**
-   * Lessons materialised immediately, so creating an arrangement produces
-   * visible lessons rather than waiting for the weekly job.
-   */
-  lessonsCreated: number;
 }
 
 export type UpdateStudentLessonScheduleRequest =

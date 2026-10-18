@@ -137,9 +137,10 @@ export function SyncConflictDataTable({
 
           if (type === 'missing_local') {
             return (
-              <Typography variant="body2" color="text.secondary" fontStyle="italic">
-                Not tracked
-              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{
+                fontStyle: 'italic'
+              }}>Not tracked
+                              </Typography>
             );
           }
 
@@ -148,7 +149,7 @@ export function SyncConflictDataTable({
               <Typography variant="body2">
                 Qty: {state.quantity}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatPrice(state.price)}
               </Typography>
             </Box>
@@ -179,9 +180,10 @@ export function SyncConflictDataTable({
 
           if (type === 'missing_external') {
             return (
-              <Typography variant="body2" color="text.secondary" fontStyle="italic">
-                Deleted
-              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{
+                fontStyle: 'italic'
+              }}>Deleted
+                              </Typography>
             );
           }
 
@@ -190,7 +192,7 @@ export function SyncConflictDataTable({
               <Typography variant="body2">
                 Qty: {state.quantity}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatPrice(state.price)}
               </Typography>
             </Box>
@@ -229,7 +231,7 @@ export function SyncConflictDataTable({
           }
 
           return (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               —
             </Typography>
           );
@@ -267,7 +269,7 @@ export function SyncConflictDataTable({
         renderCell: (params: GridRenderCellParams<SyncConflict>) => {
           if (!params.row.resolution) {
             return (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 —
               </Typography>
             );
@@ -300,7 +302,7 @@ export function SyncConflictDataTable({
         renderCell: (params: GridRenderCellParams<SyncConflict>) => {
           if (params.row.status !== 'pending') {
             return (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 —
               </Typography>
             );
@@ -383,7 +385,12 @@ export function SyncConflictDataTable({
         sx={{
           border: 'none',
           backgroundColor: surfaces.paper,
-          '--DataGrid-containerBackground': surfaces.tableHeader,
+          // MUI X 9 sets its theme variables from a later <style> rule with the
+          // same specificity as sx, so a plain sx variable loses. `&.MuiDataGrid-root`
+          // doubles the class and wins.
+          '&.MuiDataGrid-root': {
+            '--DataGrid-t-header-background-base': surfaces.tableHeader,
+          },
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: surfaces.tableHeader,
             borderBottom: `1px solid ${borders.subtle}`,

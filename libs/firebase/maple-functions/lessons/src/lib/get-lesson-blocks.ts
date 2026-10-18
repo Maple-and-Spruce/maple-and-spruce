@@ -1,0 +1,21 @@
+/**
+ * Get Lesson Blocks Cloud Function (legacy #686)
+ *
+ * Lists weekly LessonBlocks, optionally scoped to one teacher. Readable by
+ * admins and lesson-teachers (a teacher needs to see their own blocks to know
+ * where lessons can go); creation/editing stays admin-only.
+ */
+import { LessonBlockRepository } from '@maple/firebase/database';
+import type {
+  GetLessonBlocksRequest,
+  GetLessonBlocksResponse,
+} from '@maple/ts/firebase/api-types';
+
+export async function getLessonBlocks(
+  data: GetLessonBlocksRequest,
+): Promise<GetLessonBlocksResponse> {
+  const blocks = await LessonBlockRepository.findAll({
+    teacherId: data.teacherId,
+  });
+  return { blocks };
+}

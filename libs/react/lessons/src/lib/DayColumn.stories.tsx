@@ -28,7 +28,7 @@ const slot = (
   intervalWeeks = 1,
   startsOn = FROM
 ): StudentLessonSchedule =>
-  ({
+  (({
     id: `sched-${++seq}`,
     studentId,
     teacherId: TEACHER,
@@ -40,8 +40,8 @@ const slot = (
     status: 'active',
     startsOn,
     createdAt: new Date(),
-    updatedAt: new Date(),
-  }) as StudentLessonSchedule;
+    updatedAt: new Date()
+  }) as StudentLessonSchedule);
 
 /** Katie's actual Tuesday, from her spreadsheet. */
 const schedules = [

@@ -331,7 +331,7 @@ export function RosterDialog({
           <Alert severity="error">{rosterState.error}</Alert>
         )}
         {rosterState.status === 'success' && entries.length === 0 && (
-          <Typography sx={{ p: 2 }} color="text.secondary">
+          <Typography sx={{ p: 2 }} color="textSecondary">
             No families enrolled yet.
           </Typography>
         )}
@@ -377,7 +377,7 @@ export function RosterDialog({
                       ]
                         .filter(Boolean)
                         .join('\n') || (
-                        <Typography variant="body2" color="text.disabled">
+                        <Typography variant="body2" color="textDisabled">
                           —
                         </Typography>
                       )}
@@ -385,7 +385,9 @@ export function RosterDialog({
                     <TableCell>
                       {entry.registration.paymentPlan}
                       {entry.registration.discountCode && (
-                        <Typography variant="caption" display="block">
+                        <Typography variant="caption" sx={{
+                          display: 'block'
+                        }}>
                           {entry.registration.discountCode} (−
                           {fmtCents(
                             entry.registration.discountAmountCents ?? 0
@@ -397,17 +399,17 @@ export function RosterDialog({
                         <Typography
                           key={c.id}
                           variant="caption"
-                          display="block"
                           color={
                             c.status === 'waived'
-                              ? 'text.disabled'
-                              : 'text.secondary'
+                              ? 'textDisabled'
+                              : 'textSecondary'
                           }
-                          sx={
-                            c.status === 'waived'
-                              ? { textDecoration: 'line-through' }
-                              : undefined
-                          }
+                          sx={{
+                            display: 'block',
+                            ...(c.status === 'waived' && {
+                              textDecoration: 'line-through',
+                            }),
+                          }}
                         >
                           #{c.installmentNumber} {fmtCents(c.amountCents)}{' '}
                           {c.status === 'scheduled'
@@ -485,7 +487,7 @@ export function RosterDialog({
               </Button>
             </Box>
             {waitlist.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ p: 1 }}>
                 No signups yet.
               </Typography>
             ) : (
@@ -505,7 +507,7 @@ export function RosterDialog({
                             <Typography variant="body2">{w.name}</Typography>
                             <Typography
                               variant="caption"
-                              color="text.secondary"
+                              color="textSecondary"
                             >
                               {w.email}
                             </Typography>
@@ -518,7 +520,7 @@ export function RosterDialog({
                         sx={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}
                       >
                         {w.availability || (
-                          <Typography variant="body2" color="text.disabled">
+                          <Typography variant="body2" color="textDisabled">
                             —
                           </Typography>
                         )}
@@ -548,7 +550,6 @@ export function RosterDialog({
         </Button>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
-
       {/* Cancel / refund confirmation */}
       <Dialog open={!!cancelTarget} onClose={closeCancel} maxWidth="xs" fullWidth>
         <DialogTitle>Cancel registration</DialogTitle>
@@ -570,7 +571,7 @@ export function RosterDialog({
                 ? Any scheduled installment charges will be cancelled so they
                 never run.
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 Captured: {fmtCents(targetCaptured)} · Policy refund:{' '}
                 {fmtCents(targetPolicyCents)}
               </Typography>
@@ -580,7 +581,6 @@ export function RosterDialog({
                 onChange={(e) => setRefundDollars(e.target.value)}
                 type="number"
                 size="small"
-                inputProps={{ min: 0, max: targetCaptured / 100, step: 0.01 }}
                 error={refundInvalid}
                 helperText={
                   refundInvalid
@@ -588,6 +588,9 @@ export function RosterDialog({
                     : `Max ${fmtCents(targetCaptured)}. Enter $0.00 to cancel with no refund.`
                 }
                 fullWidth
+                slotProps={{
+                  htmlInput: { min: 0, max: targetCaptured / 100, step: 0.01 }
+                }}
               />
             </Box>
           )}
@@ -606,7 +609,6 @@ export function RosterDialog({
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Waive installment confirmation */}
       <Dialog open={!!waiveTarget} onClose={closeWaive} maxWidth="xs" fullWidth>
         <DialogTitle>Waive installment</DialogTitle>

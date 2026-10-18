@@ -33,9 +33,12 @@ import {
   Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   Product,
   CreateProductInput,
@@ -326,10 +329,10 @@ export function ProductForm({
    */
   const uploadImage = async (file: File, productId: string): Promise<string> => {
     const functions = getMapleFunctions();
-    const upload = httpsCallable<
+    const upload = httpsCallableFromURL<
       UploadProductImageRequest,
       UploadProductImageResponse
-    >(functions, 'uploadProductImage');
+    >(functions, routerCallableUrl('productCatalog', 'uploadProductImage'));
 
     const imageBase64 = await readFileAsBase64(file);
 
@@ -593,7 +596,7 @@ export function ProductForm({
 
           {/* Variants section */}
           <Divider textAlign="left">
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="overline" color="textSecondary">
               {variantMode.value === 'multi'
                 ? 'Variants'
                 : 'Price & Inventory'}
@@ -612,15 +615,17 @@ export function ProductForm({
                 }
                 error={!!getFieldError('priceCents')}
                 helperText={getFieldError('priceCents')}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">$</InputAdornment>
-                  ),
-                }}
-                inputProps={{ step: 0.01, min: 0 }}
                 required
                 fullWidth
-              />
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">$</InputAdornment>
+                    ),
+                  },
+
+                  htmlInput: { step: 0.01, min: 0 }
+                }} />
 
               {/* Quantity */}
               <TextField
@@ -632,9 +637,11 @@ export function ProductForm({
                 }
                 error={!!getFieldError('quantity')}
                 helperText={getFieldError('quantity')}
-                inputProps={{ min: 0 }}
                 required
                 fullWidth
+                slotProps={{
+                  htmlInput: { min: 0 }
+                }}
               />
 
               <Button
@@ -665,7 +672,9 @@ export function ProductForm({
                       key={index}
                       direction={{ xs: 'column', sm: 'row' }}
                       spacing={1}
-                      alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+                      sx={{
+                        alignItems: { xs: 'stretch', sm: 'flex-start' }
+                      }}
                     >
                       <TextField
                         label="Label"
@@ -687,15 +696,17 @@ export function ProductForm({
                           })
                         }
                         size="small"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">$</InputAdornment>
-                          ),
-                        }}
-                        inputProps={{ step: 0.01, min: 0 }}
                         sx={{ width: { xs: '100%', sm: 130 } }}
                         required
-                      />
+                        slotProps={{
+                          input: {
+                            startAdornment: (
+                              <InputAdornment position="start">$</InputAdornment>
+                            ),
+                          },
+
+                          htmlInput: { step: 0.01, min: 0 }
+                        }} />
                       <TextField
                         label="Qty"
                         type="number"
@@ -706,9 +717,11 @@ export function ProductForm({
                           })
                         }
                         size="small"
-                        inputProps={{ min: 0 }}
                         sx={{ width: { xs: '100%', sm: 90 } }}
                         required
+                        slotProps={{
+                          htmlInput: { min: 0 }
+                        }}
                       />
                       <TextField
                         label="SKU"
@@ -797,12 +810,14 @@ export function ProductForm({
               getFieldError('customCommissionRate') ||
               'Optional override (e.g., 30 = 30%)'
             }
-            inputProps={{ step: 1, min: 0, max: 100 }}
-            InputProps={{
-              endAdornment: <InputAdornment position="end">%</InputAdornment>,
-            }}
             fullWidth
-          />
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">%</InputAdornment>,
+              },
+
+              htmlInput: { step: 1, min: 0, max: 100 }
+            }} />
 
           {/* Image Upload - available for both create and edit */}
           <ImageUpload

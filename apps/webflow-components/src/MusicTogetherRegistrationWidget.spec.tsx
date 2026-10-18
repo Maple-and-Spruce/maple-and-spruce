@@ -38,9 +38,20 @@ function makeSection(
   };
 }
 
-vi.mock('./firebase-init', () => ({
-  getWidgetFunctions: () => ({ __mock: true }),
-}));
+vi.mock('./firebase-init', async () => {
+  // A router route resolves through the same mocked callable, keyed by route
+  // name; anything but the publicSite router fails loudly.
+  const { httpsCallable } = await import('firebase/functions');
+  return {
+    getWidgetFunctions: () => ({ __mock: true }),
+    routeCallable: (fns: never, router: string, route: string) => {
+      if (router !== 'publicSite') {
+        throw new Error(`unexpected router ${router}`);
+      }
+      return httpsCallable(fns, route);
+    },
+  };
+});
 
 vi.mock('./lib/warmup', () => ({ warmup: vi.fn() }));
 

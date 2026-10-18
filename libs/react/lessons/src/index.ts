@@ -1,14 +1,16 @@
 export {
-  LessonList,
-  type LessonPendingAction,
-  type LessonRowAction,
-} from './lib/LessonList';
-export {
   LessonInquiryList,
   type LessonInquiryListProps,
 } from './lib/LessonInquiryList';
 export { ScheduleLessonDialog } from './lib/ScheduleLessonDialog';
 export { EditLessonDialog } from './lib/EditLessonDialog';
+export {
+  CancelLessonDialog,
+  type CancelLessonDialogProps,
+  type CancelLessonChoice,
+  type CancelLessonVariant,
+  type ReschedulePlan,
+} from './lib/CancelLessonDialog';
 export {
   LessonBlockForm,
   type LessonBlockFormProps,
@@ -25,6 +27,7 @@ export {
 } from './lib/BlockAttributionChoice';
 export {
   PaymentMethodCard,
+  describeCard,
   type PaymentMethodCardProps,
 } from './lib/PaymentMethodCard';
 export {
@@ -42,12 +45,6 @@ export {
   UpcomingChargesCard,
   type UpcomingChargesCardProps,
 } from './lib/UpcomingChargesCard';
-export {
-  CommitLessonsCard,
-  type CommitLessonsCardProps,
-  type CommitLessonsChargeInput,
-  type CommitLessonsInvoiceInput,
-} from './lib/CommitLessonsCard';
 export { MyOpenings, type MyOpeningsProps } from './lib/MyOpenings';
 export {
   StandingScheduleCard,
@@ -58,22 +55,42 @@ export {
   StandingScheduleDialog,
   type StandingScheduleDialogProps,
 } from './lib/StandingScheduleDialog';
-export { HopeQueue, type HopeQueueProps } from './lib/HopeQueue';
 export {
-  NeedsAttentionPanel,
-  type NeedsAttentionPanelProps,
-} from './lib/NeedsAttentionPanel';
+  HopeStudentBilling,
+  type HopeStudentBillingProps,
+  type HopeOrderRow,
+  type SaveHopeOrderDraft,
+} from './lib/HopeStudentBilling';
+export {
+  HopeProductsCard,
+  type HopeProductsCardProps,
+} from './lib/HopeProductsCard';
 export {
   BackfillLessonsDialog,
   type BackfillLessonsDialogProps,
 } from './lib/BackfillLessonsDialog';
-export { HopeRatesTable } from './lib/HopeRatesTable';
 export { HopeScholarshipBanner } from './lib/HopeScholarshipBanner';
 export { generateWeeklyDates, type SeriesCadence } from './lib/series-dates';
+export { formatCents } from './lib/format-cents';
 export {
-  HOPE_PER_LESSON_RATE_CENTS,
-  HOPE_MONTHLY_EQUIVALENT_CENTS,
-  getHopePerLessonRateCents,
-  getHopeMonthlyEquivalentCents,
-  formatCents,
-} from './lib/hope-rates';
+  NextLessonsPanel,
+  type NextLessonsPanelProps,
+} from './lib/NextLessonsPanel';
+export {
+  UpcomingLessonsCard,
+  UPCOMING_LESSONS_SHOWN,
+  type UpcomingLessonsCardProps,
+} from './lib/UpcomingLessonsCard';
+export {
+  LessonActivity,
+  type LessonActivityLabel,
+  type LessonActivityProps,
+} from './lib/LessonActivity';
+export {
+  buildNextLessons,
+  isLessonPaid,
+  newLessonKey,
+  paidThrough,
+  type NextLessonItem,
+  type NextLessonsView,
+} from '@maple/ts/domain';

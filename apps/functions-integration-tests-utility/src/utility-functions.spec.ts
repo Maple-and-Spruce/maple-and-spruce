@@ -8,12 +8,17 @@ import {
 import type { TestUser } from '@maple/firebase/integration-test-utils';
 import { ADMIN_USER, NON_ADMIN_USER } from '@maple/firebase/integration-test-utils';
 import type {
-  CheckAdminStatusResponse,
+  GetBusinessPaymentConfigResponse,
+  GetLessonRatesConfigResponse,
+  GetPosLessonConfigResponse,
   GetMyRolesResponse,
   GrantRoleRequest,
   GrantRoleResponse,
   RevokeRoleRequest,
   RevokeRoleResponse,
+  UpdateBusinessPaymentConfigResponse,
+  UpdateLessonRatesConfigResponse,
+  UpdatePosLessonConfigResponse,
 } from '@maple/ts/firebase/api-types';
 
 describe('Utility Functions', () => {
@@ -76,14 +81,14 @@ describe('Utility Functions', () => {
     });
 
     it('bypasses required auth — no idToken needed', async () => {
-      // checkAdminStatus normally returns 401 without an idToken (see test
-      // below). With the warmup sentinel it must short-circuit BEFORE the
-      // auth check and return 200 even anonymously.
+      // getMyRoles requires sign-in and returns 401 without an idToken. With
+      // the warmup sentinel it must short-circuit BEFORE the auth check and
+      // return 200 even anonymously.
       const result = await callFunction<
         { __warmup: true },
         { warm: boolean }
       >({
-        functionName: 'checkAdminStatus',
+        functionName: 'getMyRoles',
         data: { __warmup: true },
       });
 
@@ -105,41 +110,6 @@ describe('Utility Functions', () => {
       expect(result.status).toBe(200);
       expect(result.data?.status).toBe('ok');
       expect(result.data?.timestamp).toBeDefined();
-    });
-  });
-
-  describe('checkAdminStatus', () => {
-    it('should reject unauthenticated requests', async () => {
-      const result = await callFunction({
-        functionName: 'checkAdminStatus',
-      });
-      expect(result.status).toBe(401);
-    });
-
-    it('should return true for admin user', async () => {
-      const result = await callFunction<
-        Record<string, never>,
-        CheckAdminStatusResponse
-      >({
-        functionName: 'checkAdminStatus',
-        idToken: adminUser.idToken,
-      });
-
-      expect(result.status).toBe(200);
-      expect(result.data?.isAdmin).toBe(true);
-    });
-
-    it('should return false for non-admin user', async () => {
-      const result = await callFunction<
-        Record<string, never>,
-        CheckAdminStatusResponse
-      >({
-        functionName: 'checkAdminStatus',
-        idToken: nonAdminUser.idToken,
-      });
-
-      expect(result.status).toBe(200);
-      expect(result.data?.isAdmin).toBe(false);
     });
   });
 
@@ -187,7 +157,7 @@ describe('Utility Functions', () => {
 
     it('grantRole is admin-only (403 for non-admin caller)', async () => {
       const result = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: scopedUser.idToken,
         data: { uid: scopedUser.uid, role: 'mt-teacher' },
       });
@@ -197,7 +167,7 @@ describe('Utility Functions', () => {
 
     it('grantRole rejects the admin role (admins/{uid} stays authoritative)', async () => {
       const result = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'admin' },
       });
@@ -207,7 +177,7 @@ describe('Utility Functions', () => {
 
     it('admin grants a scoped role; it shows in getMyRoles but not admin status', async () => {
       const grant = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'mt-teacher' },
       });
@@ -221,23 +191,15 @@ describe('Utility Functions', () => {
         functionName: 'getMyRoles',
         idToken: scopedUser.idToken,
       });
+      // A scoped role must NOT confer admin: the roles list holds only the
+      // scoped role, and the next test proves admin-only functions refuse it.
       expect(roles.data?.roles).toEqual(['mt-teacher']);
-
-      // A scoped role must NOT confer admin (back-compat contract)
-      const adminStatus = await callFunction<
-        Record<string, never>,
-        CheckAdminStatusResponse
-      >({
-        functionName: 'checkAdminStatus',
-        idToken: scopedUser.idToken,
-      });
-      expect(adminStatus.data?.isAdmin).toBe(false);
     });
 
     it('a scoped role does not open admin-only functions (any-of not wildcard)', async () => {
       // scopedUser now holds mt-teacher; grantRole itself requires admin
       const result = await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: scopedUser.idToken,
         data: { uid: scopedUser.uid, role: 'clerk' },
       });
@@ -247,12 +209,12 @@ describe('Utility Functions', () => {
 
     it('users can hold multiple roles at once', async () => {
       await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'clerk' },
       });
       await callFunction<GrantRoleRequest, GrantRoleResponse>({
-        functionName: 'grantRole',
+        functionName: 'people/grantRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'lesson-teacher' },
       });
@@ -276,7 +238,7 @@ describe('Utility Functions', () => {
         RevokeRoleRequest,
         RevokeRoleResponse
       >({
-        functionName: 'revokeRole',
+        functionName: 'people/revokeRole',
         idToken: adminUser.idToken,
         data: { uid: scopedUser.uid, role: 'mt-teacher' },
       });
@@ -303,7 +265,7 @@ describe('Utility Functions', () => {
         Record<string, never>,
         { users: Array<{ uid: string; isAdmin: boolean; roles: string[] }> }
       >({
-        functionName: 'listUsers',
+        functionName: 'people/listUsers',
         idToken: adminUser.idToken,
       });
 
@@ -322,7 +284,7 @@ describe('Utility Functions', () => {
         RevokeRoleRequest,
         RevokeRoleResponse
       >({
-        functionName: 'revokeRole',
+        functionName: 'people/revokeRole',
         idToken: scopedUser.idToken,
         data: { uid: scopedUser.uid, role: 'clerk' },
       });
@@ -331,4 +293,105 @@ describe('Utility Functions', () => {
     });
   });
 
+  /**
+   * The singleton app-config pairs moved onto the settings router (#156,
+   * ADR-029). What an admin saves through a route is what the next read
+   * returns, cleaned the same way the old functions cleaned it.
+   */
+  describe('settings router: app-config routes', () => {
+    it('saves and reads back the lesson rates, dropping bad entries', async () => {
+      const saved = await callFunction<
+        { rateByLength: Record<string, unknown> },
+        UpdateLessonRatesConfigResponse
+      >({
+        functionName: 'settings/updateLessonRatesConfig',
+        idToken: adminUser.idToken,
+        data: { rateByLength: { '30-min-full': 4000, '45-min': -1 } },
+      });
+      expect(saved.status).toBe(200);
+      expect(saved.data?.config.rateByLength).toEqual({ '30-min-full': 4000 });
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetLessonRatesConfigResponse
+      >({
+        functionName: 'settings/getLessonRatesConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.status).toBe(200);
+      expect(read.data?.config.rateByLength).toEqual({ '30-min-full': 4000 });
+      expect(read.data?.config.updatedByUid).toBe(adminUser.uid);
+    });
+
+    it('saves and reads back the Venmo handle without its @', async () => {
+      const saved = await callFunction<
+        { venmoHandle: string },
+        UpdateBusinessPaymentConfigResponse
+      >({
+        functionName: 'settings/updateBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+        data: { venmoHandle: '@Test-Studio' },
+      });
+      expect(saved.status).toBe(200);
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetBusinessPaymentConfigResponse
+      >({
+        functionName: 'settings/getBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.status).toBe(200);
+      expect(read.data?.config.venmoHandle).toBe('Test-Studio');
+    });
+
+    it('refuses a malformed Venmo handle and keeps the stored one', async () => {
+      const refused = await callFunction<{ venmoHandle: string }, unknown>({
+        functionName: 'settings/updateBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+        data: { venmoHandle: 'no' },
+      });
+      expect(refused.status).toBe(400);
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetBusinessPaymentConfigResponse
+      >({
+        functionName: 'settings/getBusinessPaymentConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.data?.config.venmoHandle).toBe('Test-Studio');
+    });
+
+    it('saves and reads back the POS lesson ids, trimmed and de-duped', async () => {
+      const saved = await callFunction<
+        { lessonCatalogObjectIds: string[] },
+        UpdatePosLessonConfigResponse
+      >({
+        functionName: 'settings/updatePosLessonConfig',
+        idToken: adminUser.idToken,
+        data: { lessonCatalogObjectIds: [' TEST_ITEM_1 ', 'TEST_ITEM_1', ''] },
+      });
+      expect(saved.status).toBe(200);
+
+      const read = await callFunction<
+        Record<string, never>,
+        GetPosLessonConfigResponse
+      >({
+        functionName: 'settings/getPosLessonConfig',
+        idToken: adminUser.idToken,
+      });
+      expect(read.status).toBe(200);
+      expect(read.data?.config.lessonCatalogObjectIds).toEqual(['TEST_ITEM_1']);
+    });
+
+    it('turns away a signed-in user who is not an admin', async () => {
+      const result = await callFunction({
+        functionName: 'settings/updatePosLessonConfig',
+        idToken: nonAdminUser.idToken,
+        data: { lessonCatalogObjectIds: ['TEST_ITEM_2'] },
+      });
+      expect(result.status).toBe(403);
+    });
+  });
 });

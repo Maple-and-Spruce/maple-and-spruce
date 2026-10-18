@@ -9,15 +9,10 @@
     "firebase-maple-functions-sync-class-inventory-to-square",
     "firebase-maple-functions-process-pos-sale",
     "firebase-maple-functions-square-webhook",
+    "firebase-maple-functions-create-registration-checkout-link",
+    "firebase-maple-functions-public-site",
     "firebase-integration-test-utils",
     "firebase-square-test-mock-server"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/functions-integration-tests-class-square/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

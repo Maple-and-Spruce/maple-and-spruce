@@ -17,9 +17,7 @@
     "firebase-maple-functions-calendar-music-together-feed": "maple-calendar",
     "firebase-maple-functions-calendar-family-music-together-feed": "maple-calendar",
     "firebase-maple-functions-calendar-private-feed": "maple-calendar",
-    "firebase-maple-functions-create-product": "maple-square",
-    "firebase-maple-functions-update-product": "maple-square",
-    "firebase-maple-functions-upload-product-image": "maple-square",
+    "firebase-maple-functions-product-catalog": "maple-square",
     "firebase-maple-functions-square-webhook": "maple-square-webhook",
     "firebase-maple-functions-process-catalog-sync-request": "maple-square",
     "firebase-maple-functions-process-pos-sale": "maple-square",
@@ -38,6 +36,7 @@
     "firebase-maple-functions-sync-music-together-demo-to-webflow": "maple-sync",
     "firebase-maple-functions-expire-past-class-pages": "maple-sync",
     "firebase-maple-functions-sync-registration-count": "maple-sync",
+    "firebase-maple-functions-sync-music-together-demo-rsvp-count": "maple-sync",
     "firebase-maple-functions-sync-music-together-registration-count": "maple-sync",
     "firebase-maple-functions-etsy-auth-url": "maple-sync",
     "firebase-maple-functions-etsy-auth-callback": "maple-sync",
@@ -64,11 +63,8 @@
     "firebase-maple-functions-admin-cancel-craft-club-subscription": "maple-square",
     "firebase-maple-functions-tally-lead-webhook": "maple-webhooks",
     "firebase-maple-functions-run-lesson-billing": "maple-square",
-    "firebase-maple-functions-get-square-card-candidates": "maple-square",
-    "firebase-maple-functions-update-student-square-card": "maple-square",
-    "firebase-maple-functions-trigger-music-together-installments": "maple-square",
-    "firebase-maple-functions-trigger-lesson-billing": "maple-square",
-    "firebase-maple-functions-charge-lessons-now": "maple-square"
+    "firebase-maple-functions-lesson-payments": "maple-square",
+    "firebase-maple-functions-trigger-music-together-installments": "maple-square"
   },
   "defaultCodebase": "maple-core"
 }

@@ -123,7 +123,11 @@ export interface Product {
   /** @deprecated Use product.variants[].squareVariationId */
   squareVariationId?: string;
 
-  /** Square catalog version for optimistic locking on updates */
+  /**
+   * The Square catalog version we last saw. A record, not a lock: Square moves
+   * an item's version without us writing to it, so updates write on the
+   * version Square returns at the time (see CatalogService.updateItem).
+   */
   squareCatalogVersion?: number;
 
   /** Square location ID where inventory is tracked */

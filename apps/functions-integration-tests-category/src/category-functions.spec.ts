@@ -3,6 +3,7 @@ import {
   clearAuthEmulator,
   clearFirestoreEmulator,
   setFirestoreDoc,
+  FirestoreTimestamp,
   callFunction,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -17,7 +18,21 @@ import type {
   DeleteCategoryResponse,
   ReorderCategoriesRequest,
   ReorderCategoriesResponse,
+  GetProductResponse,
+  GetProductsResponse,
 } from '@maple/ts/firebase/api-types';
+
+// Category routes on the products router (ADR-029, #68).
+const GET_CATEGORIES = 'products/getCategories';
+const CREATE_CATEGORY = 'products/createCategory';
+const UPDATE_CATEGORY = 'products/updateCategory';
+const DELETE_CATEGORY = 'products/deleteCategory';
+const REORDER_CATEGORIES = 'products/reorderCategories';
+// Product routes on the same router. Creating a product goes through Square
+// (maple-square), so these tests seed one straight into Firestore.
+const GET_PRODUCTS = 'products/getProducts';
+const GET_PRODUCT = 'products/getProduct';
+const DELETE_PRODUCT = 'products/deleteProduct';
 
 const SAMPLE_CATEGORY: CreateCategoryRequest = {
   name: 'Fiber Arts',
@@ -53,7 +68,7 @@ describe('Category Functions', () => {
   describe('Auth guard', () => {
     it('should reject unauthenticated requests', async () => {
       const result = await callFunction<CreateCategoryRequest>({
-        functionName: 'createCategory',
+        functionName: CREATE_CATEGORY,
         data: SAMPLE_CATEGORY,
       });
       expect(result.status).toBe(401);
@@ -61,7 +76,7 @@ describe('Category Functions', () => {
 
     it('should reject non-admin users', async () => {
       const result = await callFunction<CreateCategoryRequest>({
-        functionName: 'createCategory',
+        functionName: CREATE_CATEGORY,
         data: SAMPLE_CATEGORY,
         idToken: nonAdminUser.idToken,
       });
@@ -77,7 +92,7 @@ describe('Category Functions', () => {
         CreateCategoryRequest,
         CreateCategoryResponse
       >({
-        functionName: 'createCategory',
+        functionName: CREATE_CATEGORY,
         data: SAMPLE_CATEGORY,
         idToken: adminUser.idToken,
       });
@@ -99,7 +114,7 @@ describe('Category Functions', () => {
         Record<string, never>,
         GetCategoriesResponse
       >({
-        functionName: 'getCategories',
+        functionName: GET_CATEGORIES,
         idToken: adminUser.idToken,
       });
 
@@ -113,7 +128,7 @@ describe('Category Functions', () => {
         UpdateCategoryRequest,
         UpdateCategoryResponse
       >({
-        functionName: 'updateCategory',
+        functionName: UPDATE_CATEGORY,
         data: {
           id: categoryId,
           name: 'Fiber & Textile Arts',
@@ -135,7 +150,7 @@ describe('Category Functions', () => {
         DeleteCategoryRequest,
         DeleteCategoryResponse
       >({
-        functionName: 'deleteCategory',
+        functionName: DELETE_CATEGORY,
         data: { id: categoryId },
         idToken: adminUser.idToken,
       });
@@ -153,17 +168,17 @@ describe('Category Functions', () => {
     beforeAll(async () => {
       const [a, b, c] = await Promise.all([
         callFunction<CreateCategoryRequest, CreateCategoryResponse>({
-          functionName: 'createCategory',
+          functionName: CREATE_CATEGORY,
           data: { name: 'Pottery', order: 0 },
           idToken: adminUser.idToken,
         }),
         callFunction<CreateCategoryRequest, CreateCategoryResponse>({
-          functionName: 'createCategory',
+          functionName: CREATE_CATEGORY,
           data: { name: 'Woodworking', order: 1 },
           idToken: adminUser.idToken,
         }),
         callFunction<CreateCategoryRequest, CreateCategoryResponse>({
-          functionName: 'createCategory',
+          functionName: CREATE_CATEGORY,
           data: { name: 'Painting', order: 2 },
           idToken: adminUser.idToken,
         }),
@@ -177,17 +192,17 @@ describe('Category Functions', () => {
     afterAll(async () => {
       await Promise.all([
         callFunction<DeleteCategoryRequest>({
-          functionName: 'deleteCategory',
+          functionName: DELETE_CATEGORY,
           data: { id: catAId },
           idToken: adminUser.idToken,
         }),
         callFunction<DeleteCategoryRequest>({
-          functionName: 'deleteCategory',
+          functionName: DELETE_CATEGORY,
           data: { id: catBId },
           idToken: adminUser.idToken,
         }),
         callFunction<DeleteCategoryRequest>({
-          functionName: 'deleteCategory',
+          functionName: DELETE_CATEGORY,
           data: { id: catCId },
           idToken: adminUser.idToken,
         }),
@@ -200,7 +215,7 @@ describe('Category Functions', () => {
         ReorderCategoriesRequest,
         ReorderCategoriesResponse
       >({
-        functionName: 'reorderCategories',
+        functionName: REORDER_CATEGORIES,
         data: { categoryIds: [catCId, catBId, catAId] },
         idToken: adminUser.idToken,
       });
@@ -218,7 +233,7 @@ describe('Category Functions', () => {
   describe('Validation', () => {
     it('should reject category with missing name', async () => {
       const result = await callFunction<Partial<CreateCategoryRequest>>({
-        functionName: 'createCategory',
+        functionName: CREATE_CATEGORY,
         data: {
           description: 'No name',
           order: 0,
@@ -231,7 +246,7 @@ describe('Category Functions', () => {
 
     it('should reject category with name too short', async () => {
       const result = await callFunction<Partial<CreateCategoryRequest>>({
-        functionName: 'createCategory',
+        functionName: CREATE_CATEGORY,
         data: {
           name: 'X',
           order: 0,
@@ -240,6 +255,100 @@ describe('Category Functions', () => {
       });
 
       expect(result.status).not.toBe(200);
+    });
+  });
+
+  describe('products on the products router', () => {
+    const PRODUCT_ID = 'test-product-1';
+    let categoryId: string;
+
+    beforeAll(async () => {
+      const created = await callFunction<
+        CreateCategoryRequest,
+        CreateCategoryResponse
+      >({
+        functionName: CREATE_CATEGORY,
+        data: { name: 'Pottery', order: 9 },
+        idToken: adminUser.idToken,
+      });
+      expect(created.status).toBe(200);
+      categoryId = created.data?.category.id ?? '';
+
+      await setFirestoreDoc('products', PRODUCT_ID, {
+        artistId: 'test-artist-1',
+        categoryId,
+        status: 'active',
+        // findAll orders by createdAt, and Firestore leaves out documents
+        // that lack the ordered field.
+        createdAt: new FirestoreTimestamp(new Date()),
+        squareCache: { name: 'Test Mug' },
+        variants: [
+          { id: 'v1', label: 'Regular', sku: 'TEST-MUG', priceCents: 2500, quantity: 3 },
+        ],
+      });
+    });
+
+    it('lists and reads the product', async () => {
+      const list = await callFunction<Record<string, never>, GetProductsResponse>({
+        functionName: GET_PRODUCTS,
+        idToken: adminUser.idToken,
+      });
+      expect(list.status).toBe(200);
+      expect(list.data?.products.map((p) => p.id)).toContain(PRODUCT_ID);
+
+      const one = await callFunction<{ id: string }, GetProductResponse>({
+        functionName: GET_PRODUCT,
+        data: { id: PRODUCT_ID },
+        idToken: adminUser.idToken,
+      });
+      expect(one.status).toBe(200);
+      expect(one.data?.product.categoryId).toBe(categoryId);
+    });
+
+    it('refuses to delete a category a product still uses', async () => {
+      const result = await callFunction<DeleteCategoryRequest>({
+        functionName: DELETE_CATEGORY,
+        data: { id: categoryId },
+        idToken: adminUser.idToken,
+      });
+      expect(result.status).not.toBe(200);
+    });
+
+    it('turns away a user without a shop role', async () => {
+      const result = await callFunction<{ id: string }>({
+        functionName: DELETE_PRODUCT,
+        data: { id: PRODUCT_ID },
+        idToken: nonAdminUser.idToken,
+      });
+      expect(result.status).toBe(403);
+    });
+
+    it('deletes the product, after which it is gone and its category can go', async () => {
+      const deleted = await callFunction<{ id: string }>({
+        functionName: DELETE_PRODUCT,
+        data: { id: PRODUCT_ID },
+        idToken: adminUser.idToken,
+      });
+      expect(deleted.status).toBe(200);
+
+      const gone = await callFunction<{ id: string }>({
+        functionName: GET_PRODUCT,
+        data: { id: PRODUCT_ID },
+        idToken: adminUser.idToken,
+      });
+      // The request pipeline answers every error but permission-denied as 400.
+      expect(gone.status).toBe(400);
+      expect(JSON.stringify(gone.error)).toMatch(/not found/);
+
+      const categoryDeleted = await callFunction<
+        DeleteCategoryRequest,
+        DeleteCategoryResponse
+      >({
+        functionName: DELETE_CATEGORY,
+        data: { id: categoryId },
+        idToken: adminUser.idToken,
+      });
+      expect(categoryDeleted.status).toBe(200);
     });
   });
 });

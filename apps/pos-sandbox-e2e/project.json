@@ -11,12 +11,5 @@
     "firebase-integration-test-utils",
     "square"
   ],
-  "targets": {
-    "test": {
-      "executor": "@nx/vitest:test",
-      "options": {
-        "config": "apps/pos-sandbox-e2e/vitest.config.ts"
-      }
-    }
-  }
+  "targets": {}
 }

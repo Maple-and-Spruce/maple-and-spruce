@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { PosLessonConfig, RequestState } from '@maple/ts/domain';
 import type {
   GetPosLessonConfigRequest,
@@ -13,7 +16,8 @@ import type {
 
 /**
  * Hook for the "POS lesson catalog items" config manager (legacy #628): which Square
- * catalog object ids count as lessons when rung up at the POS.
+ * catalog object ids count as lessons when rung up at the POS. Served by the
+ * `settings` router (#156).
  */
 export function usePosLessonConfig() {
   const [configState, setConfigState] = useState<RequestState<PosLessonConfig>>({
@@ -23,10 +27,13 @@ export function usePosLessonConfig() {
   const fetchConfig = useCallback(async () => {
     setConfigState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetPosLessonConfigRequest,
         GetPosLessonConfigResponse
-      >(getMapleFunctions(), 'getPosLessonConfig');
+      >(
+        getMapleFunctions(),
+        routerCallableUrl('settings', 'getPosLessonConfig')
+      );
       const result = await fn({});
       setConfigState({ status: 'success', data: result.data.config });
     } catch (error) {
@@ -40,10 +47,13 @@ export function usePosLessonConfig() {
 
   const saveConfig = useCallback(
     async (lessonCatalogObjectIds: string[]): Promise<PosLessonConfig> => {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         UpdatePosLessonConfigRequest,
         UpdatePosLessonConfigResponse
-      >(getMapleFunctions(), 'updatePosLessonConfig');
+      >(
+        getMapleFunctions(),
+        routerCallableUrl('settings', 'updatePosLessonConfig')
+      );
       const result = await fn({ lessonCatalogObjectIds });
       setConfigState({ status: 'success', data: result.data.config });
       return result.data.config;

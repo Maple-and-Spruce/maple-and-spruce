@@ -19,11 +19,15 @@ import {
   useSignals,
   batch,
 } from '@maple/react/signals';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { fonts } from '@maple/react/theme';
-import { SquareCardForm } from './SquareCardForm';
+import {
+  SquareCardForm,
+  WALLET_BUTTON_HEIGHT,
+  WALLET_BUTTON_RADIUS,
+} from './SquareCardForm';
 import type { CardTokenizeResult } from './SquareCardForm';
 import { CostSummary } from './CostSummary';
 import { SigningForm } from '@maple/react/agreements';
@@ -450,6 +454,13 @@ export function RegistrationCheckoutForm({
     ]
   );
 
+  // Check the form before the Google Pay sheet opens, so nobody approves a
+  // payment the form then refuses to submit.
+  const canStartDigitalWallet = useCallback((): boolean => {
+    showValidationErrors.value = true;
+    return isValid.value && allAgreementsSigned.value;
+  }, [showValidationErrors, isValid, allAgreementsSigned]);
+
   const handleDigitalWalletToken = useCallback(
     (token: string) => {
       // Validate before submitting — if invalid, show errors and surface
@@ -568,6 +579,12 @@ export function RegistrationCheckoutForm({
   // ============================================================
   // APPLE PAY POPUP
   // ============================================================
+  // Apple Pay only works in Safari on an Apple device with Wallet set up, so
+  // the button is not offered anywhere else (the popup would just say so).
+  const canUseApplePay = useMemo((): boolean => canMakeApplePayments(), []);
+  const showApplePay =
+    !!applePayCheckoutUrl && showDigitalWallets && canUseApplePay;
+
   const applePayOrigin = useMemo(() => {
     if (!applePayCheckoutUrl) return null;
     try {
@@ -639,13 +656,11 @@ export function RegistrationCheckoutForm({
           {submitError.value}
         </Alert>
       )}
-
       {isFull.value && (
         <Alert severity="warning">
           This class is full. Registration is not available at this time.
         </Alert>
       )}
-
       {/* Customer Info Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -699,7 +714,6 @@ export function RegistrationCheckoutForm({
           />
         </Box>
       </Box>
-
       {/* Additional Attendees Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -831,7 +845,6 @@ export function RegistrationCheckoutForm({
           </Alert>
         )}
       </Box>
-
       {/* Discount Code Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -846,7 +859,9 @@ export function RegistrationCheckoutForm({
             }
             size="small"
             sx={{ flex: 1 }}
-            inputProps={{ style: { fontFamily: 'monospace' } }}
+            slotProps={{
+              htmlInput: { style: { fontFamily: 'monospace' } }
+            }}
           />
           <Button
             variant="outlined"
@@ -862,12 +877,10 @@ export function RegistrationCheckoutForm({
           </Alert>
         )}
       </Box>
-
       {/* Cost Summary — every number (including quantity and per-item
           price) comes from the server response so the line item and
           totals can't silently disagree. */}
       {costBreakdown.value && <CostSummary cost={costBreakdown.value} />}
-
       {/* Required Agreements Section */}
       {hasRequiredAgreements && (
         <Box>
@@ -949,14 +962,13 @@ export function RegistrationCheckoutForm({
           )}
         </Box>
       )}
-
       {/* Payment Section */}
       <Box>
         <Typography variant="h6" gutterBottom>
           Payment
         </Typography>
 
-        {applePayCheckoutUrl && showDigitalWallets && (
+        {showApplePay && (
           <button
             type="button"
             onClick={handleApplePayClick}
@@ -964,8 +976,12 @@ export function RegistrationCheckoutForm({
             style={{
               backgroundColor: '#000',
               color: '#fff',
-              borderRadius: 8,
-              padding: '14px 24px',
+              borderRadius: WALLET_BUTTON_RADIUS,
+              height: WALLET_BUTTON_HEIGHT,
+              padding: '0 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               width: '100%',
               fontSize: 16,
               fontWeight: 600,
@@ -989,6 +1005,7 @@ export function RegistrationCheckoutForm({
           // decoupled from the data backend.
           totalCents={costBreakdown.value?.totalCents}
           showDigitalWallets={showDigitalWallets}
+          hasOtherWallet={showApplePay}
           onReady={() => (isCardReady.value = true)}
           onInitError={() => (cardInitFailed.value = true)}
           // When we can offer the hosted-checkout fallback, hide SquareCardForm's
@@ -999,11 +1016,12 @@ export function RegistrationCheckoutForm({
             tokenizeRef.current = fn;
           }}
           onDigitalWalletToken={handleDigitalWalletToken}
+          beforeDigitalWallet={canStartDigitalWallet}
           afterCardContent={
             cardInitFailed.value && onHostedCheckout ? (
               // Card form couldn't initialize (e.g. Safari ITP) — offer Square's
               // hosted checkout instead of a dead-ended, disabled pay button.
-              <Box>
+              (<Box>
                 <Typography
                   variant="body2"
                   sx={{ mb: 1.5, color: 'text.secondary' }}
@@ -1034,7 +1052,7 @@ export function RegistrationCheckoutForm({
                     ? 'Redirecting…'
                     : `Continue to secure checkout${costBreakdown.value ? ` — $${(costBreakdown.value.totalCents / 100).toFixed(2)}` : ''} →`}
                 </button>
-              </Box>
+              </Box>)
             ) : (
               <button
                 type="button"
@@ -1066,4 +1084,21 @@ export function RegistrationCheckoutForm({
       </Box>
     </Box>
   );
+}
+
+/**
+ * Whether this browser can pay with Apple Pay at all: Safari, on an Apple
+ * device with Wallet set up. Domain registration is not checked here (the
+ * popup on the admin app is the registered domain), only the device.
+ */
+function canMakeApplePayments(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const session = (
+      window as unknown as { ApplePaySession?: { canMakePayments(): boolean } }
+    ).ApplePaySession;
+    return !!session && session.canMakePayments();
+  } catch {
+    return false;
+  }
 }

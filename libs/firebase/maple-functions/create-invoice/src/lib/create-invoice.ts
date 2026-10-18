@@ -9,8 +9,10 @@
 import { createAdminFunction } from '@maple/firebase/functions';
 import {
   InvoiceRepository,
+  LessonScheduledChargeRepository,
   StudentRepository,
 } from '@maple/firebase/database';
+import { coveredLessonIds, invoicedLessonIds } from '@maple/ts/domain';
 import { invoiceValidation } from '@maple/ts/validation';
 import type {
   CreateInvoiceRequest,
@@ -20,7 +22,7 @@ import type {
 export const createInvoice = createAdminFunction<
   CreateInvoiceRequest,
   CreateInvoiceResponse
->(async (data) => {
+>(async (data, context) => {
   const validationResult = invoiceValidation(data);
   if (!validationResult.isValid()) {
     const errors = validationResult.getErrors();
@@ -41,7 +43,35 @@ export const createInvoice = createAdminFunction<
     );
   }
 
-  const invoice = await InvoiceRepository.create(data);
+  // Recording a payment already taken (cash, check, Venmo) is the one create
+  // that settles lessons outright, so it must not settle teaching that is
+  // already charged or on another invoice: that would record the family as
+  // paying twice for the same lesson.
+  if (data.status === 'paid') {
+    const lessonIds = data.lineItems
+      .map((line) => line.lessonId)
+      .filter((id): id is string => Boolean(id));
+    if (lessonIds.length > 0) {
+      const [charges, invoices] = await Promise.all([
+        LessonScheduledChargeRepository.findAll({ studentId: data.studentId }),
+        InvoiceRepository.findAll({ studentId: data.studentId }),
+      ]);
+      const covered = coveredLessonIds(charges);
+      const invoiced = invoicedLessonIds(invoices);
+      const clash = lessonIds.filter(
+        (id) => covered.has(id) || invoiced.has(id)
+      );
+      if (clash.length > 0) {
+        throw new Error(
+          `${clash.length} of these lessons are already charged or invoiced. Refresh and try again.`
+        );
+      }
+    }
+  }
+
+  const invoice = await InvoiceRepository.create(data, {
+    recordedByUid: context?.uid,
+  });
 
   return { invoice };
 });

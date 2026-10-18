@@ -127,10 +127,6 @@ export const SaleRepository = {
     return docToSale(snapshot.docs[0]);
   },
 
-  async updatePayoutId(saleId: string, payoutId: string): Promise<void> {
-    await db.collection(COLLECTION).doc(saleId).update({ payoutId });
-  },
-
   async findUnpaidByArtist(
     artistId: string,
     dateFrom: Date,

@@ -65,6 +65,20 @@ export const ReadsLikeASentence: Story = {
   },
 };
 
+/**
+ * One weekly time per student. Next lessons plans from a single one, so once it
+ * exists the card offers Change and End, never a second "Set a weekly time".
+ */
+export const NoSecondWeeklyTime: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/Tuesdays at 4:00 PM/i);
+    expect(
+      canvas.queryByRole('button', { name: /set a weekly time/i })
+    ).not.toBeInTheDocument();
+  },
+};
+
 /** Moving a student is one edit — the card offers exactly that. */
 export const ChangeIsOneAction: Story = {
   play: async ({ args, canvasElement }) => {
@@ -77,16 +91,18 @@ export const ChangeIsOneAction: Story = {
 };
 
 /**
- * A student with no arrangement is the state that used to be invisible — and
- * the one whose lessons quietly run out.
+ * A student with no arrangement is the state that used to be invisible. The
+ * card must not promise that a weekly time books lessons: since the
+ * booked-lessons model (ADR-034) it is a planning note, and lessons are
+ * booked from Next lessons.
  */
 export const NoStandingSchedule: Story = {
   args: { schedulesState: loaded([]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    expect(
-      await canvas.findByText(/nothing keeps them on the books/i),
-    ).toBeInTheDocument();
+    const note = await canvas.findByText(/no weekly time yet/i);
+    expect(note).toHaveTextContent(/books nothing on its own/i);
+    expect(note).not.toHaveTextContent(/topped up/i);
   },
 };
 
@@ -100,12 +116,12 @@ export const Loading: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByLabelText(/loading standing schedule/i),
+      await canvas.findByLabelText(/loading weekly schedule/i),
     ).toBeInTheDocument();
-    expect(canvas.queryByText(/no standing schedule/i)).toBeNull();
+    expect(canvas.queryByText(/no weekly time yet/i)).toBeNull();
     // Adding before we know what exists invites a duplicate slot.
     expect(
-      canvas.getByRole('button', { name: /add a standing slot/i }),
+      canvas.getByRole('button', { name: /set a weekly time/i }),
     ).toBeDisabled();
   },
 };
@@ -116,9 +132,9 @@ export const NotYetRequested: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByLabelText(/loading standing schedule/i),
+      await canvas.findByLabelText(/loading weekly schedule/i),
     ).toBeInTheDocument();
-    expect(canvas.queryByText(/no standing schedule/i)).toBeNull();
+    expect(canvas.queryByText(/no weekly time yet/i)).toBeNull();
   },
 };
 
@@ -130,12 +146,12 @@ export const FailedToLoad: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByText(/could not load the standing schedule/i),
+      await canvas.findByText(/could not load the weekly schedule/i),
     ).toBeInTheDocument();
     expect(canvas.getByText(/network unavailable/i)).toBeInTheDocument();
-    expect(canvas.queryByText(/no standing schedule\./i)).toBeNull();
+    expect(canvas.queryByText(/no weekly time yet/i)).toBeNull();
     expect(
-      canvas.getByRole('button', { name: /add a standing slot/i }),
+      canvas.getByRole('button', { name: /set a weekly time/i }),
     ).toBeDisabled();
   },
 };
@@ -188,8 +204,8 @@ export const SavingOneSlot: Story = {
 };
 
 /**
- * The card says that changing the pattern does not move lessons already on the
- * calendar. Otherwise "I changed the day and next week didn't move" is a
+ * The card says that changing the pattern does not move lessons already
+ * booked. Otherwise "I changed the day and next week didn't move" is a
  * mystery rather than a documented rule.
  */
 export const ExplainsThatExistingLessonsStay: Story = {
@@ -197,7 +213,7 @@ export const ExplainsThatExistingLessonsStay: Story = {
     const canvas = within(canvasElement);
     expect(
       await canvas.findByText(
-        /lessons already on the calendar stay where they are/i,
+        /lessons already booked stay where they are/i,
       ),
     ).toBeInTheDocument();
   },

@@ -98,7 +98,7 @@ function CalendarEventCard({
             {/* Date and Time */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               <EventIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatDateTime(startDateTime)}
               </Typography>
             </Box>
@@ -106,7 +106,7 @@ function CalendarEventCard({
             {/* Time Range */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {formatTimeRange(startDateTime, endDateTime)}
               </Typography>
             </Box>
@@ -115,7 +115,7 @@ function CalendarEventCard({
             {event.recurrenceRule && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <RepeatIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   {event.recurrenceRule}
                 </Typography>
               </Box>
@@ -123,7 +123,7 @@ function CalendarEventCard({
 
             {/* Location */}
             {event.location && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                 {event.location}
               </Typography>
             )}

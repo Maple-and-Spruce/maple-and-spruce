@@ -27,7 +27,7 @@ import type {
 /**
  * End-to-end test: seed one private-pay student + one Hope student,
  * schedule lessons, render the Hope one, send + pay the private-pay
- * invoice, then call getTeacherPayouts for the current month. Verify
+ * invoice, then call payouts/getTeacherPayouts for the current month. Verify
  * each teacher's aggregated total, per-line payout math, and substitute
  * attribution using the primaryTeacherAtCreateId snapshot.
  */
@@ -40,6 +40,8 @@ import type {
 // Lessons scheduledAt below are computed from this same `now` for the
 // same reason.
 const NOW = new Date();
+const HOPE_PRODUCT_ID = 'prod-test-guitar-45';
+const HOPE_PRODUCT_PRICE_CENTS = 5500;
 const FROM = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
 const TO = new Date(
   Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() + 1, 0, 23, 59, 59, 999),
@@ -77,13 +79,14 @@ async function seedAllDayBlocks(teacherId: string): Promise<void> {
   }
 }
 
-describe('getTeacherPayouts integration', () => {
+describe('payouts/getTeacherPayouts integration', () => {
   let adminUser: TestUser;
   let nonAdminUser: TestUser;
   let primaryTeacherId: string;
   let substituteTeacherId: string;
   let privateStudentId: string;
   let hopeStudentId: string;
+  let unpricedHopeStudentId: string;
 
   beforeAll(async () => {
     await clearAuthEmulator();
@@ -141,7 +144,7 @@ describe('getTeacherPayouts integration', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: {
         name: 'Private Kid',
         instrument: 'violin',
@@ -156,19 +159,32 @@ describe('getTeacherPayouts integration', () => {
     });
     privateStudentId = priv.data!.student.id;
 
-    // Hope student — 45-min tier
+    // The EMA product the Hope student is billed under. Hope prices come only
+    // from products like this (edited on the Hope Billing page), never from a
+    // table in code (#83).
+    await setFirestoreDoc('hopeProducts', HOPE_PRODUCT_ID, {
+      emaProductId: '900001',
+      name: 'Test Guitar Lesson - 45 min',
+      priceCents: HOPE_PRODUCT_PRICE_CENTS,
+      active: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Hope student on that product
     const hope = await callFunction<
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: {
         name: 'Hope Kid',
-        instrument: 'piano',
+        instrument: 'guitar',
         isAdultStudent: false,
         primaryTeacherId,
         isHopeScholarship: true,
         registeredLessonLength: '45-min',
+        hopeProductId: HOPE_PRODUCT_ID,
         primaryContactName: 'Hope Parent',
         primaryContactEmail: 'hope@test.com',
         status: 'active',
@@ -176,6 +192,27 @@ describe('getTeacherPayouts integration', () => {
       idToken: adminUser.idToken,
     });
     hopeStudentId = hope.data!.student.id;
+
+    // Hope student on NO product: their lessons have no price at all.
+    const unpriced = await callFunction<
+      CreateStudentRequest,
+      CreateStudentResponse
+    >({
+      functionName: 'people/createStudent',
+      data: {
+        name: 'Unpriced Hope Kid',
+        instrument: 'violin',
+        isAdultStudent: false,
+        primaryTeacherId,
+        isHopeScholarship: true,
+        registeredLessonLength: '30-min-full',
+        primaryContactName: 'Unpriced Parent',
+        primaryContactEmail: 'unpriced@test.com',
+        status: 'active',
+      },
+      idToken: adminUser.idToken,
+    });
+    unpricedHopeStudentId = unpriced.data!.student.id;
   });
 
   afterAll(async () => {
@@ -186,7 +223,7 @@ describe('getTeacherPayouts integration', () => {
   describe('Auth guard', () => {
     it('rejects unauthenticated requests', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: FROM.toISOString(), to: TO.toISOString() },
       });
       expect(result.status).toBe(401);
@@ -194,31 +231,31 @@ describe('getTeacherPayouts integration', () => {
 
     it('rejects non-admin requests', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: FROM.toISOString(), to: TO.toISOString() },
         idToken: nonAdminUser.idToken,
       });
-      expect([403, 500]).toContain(result.status);
+      expect(result.status).toBe(403);
     });
   });
 
   describe('Validation', () => {
     it('rejects invalid date strings', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: 'not-a-date', to: TO.toISOString() },
         idToken: adminUser.idToken,
       });
-      expect(result.status).not.toBe(200);
+      expect(result.status).toBe(400);
     });
 
     it('rejects when from is after to', async () => {
       const result = await callFunction<GetTeacherPayoutsRequest>({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: { from: TO.toISOString(), to: FROM.toISOString() },
         idToken: adminUser.idToken,
       });
-      expect(result.status).not.toBe(200);
+      expect(result.status).toBe(400);
     });
   });
 
@@ -237,7 +274,7 @@ describe('getTeacherPayouts integration', () => {
           CreateLessonRequest,
           CreateLessonResponse
         >({
-          functionName: 'createLesson',
+          functionName: 'lessons/createLesson',
           data: {
             studentId: privateStudentId,
             teacherId: primaryTeacherId,
@@ -254,7 +291,7 @@ describe('getTeacherPayouts integration', () => {
       // 2. Schedule ONE of the private-pay lessons to be taught by substitute.
       //    This exercises asSubstitute flag.
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: {
           id: privateLessonIds[2],
           teacherId: substituteTeacherId,
@@ -299,7 +336,7 @@ describe('getTeacherPayouts integration', () => {
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,
@@ -311,35 +348,69 @@ describe('getTeacherPayouts integration', () => {
         idToken: adminUser.idToken,
       });
       await callFunction<UpdateLessonRequest>({
-        functionName: 'updateLesson',
+        functionName: 'lessons/updateLesson',
         data: { id: hopeRendered.data!.lesson.id, status: 'rendered' },
         idToken: adminUser.idToken,
       });
 
+      // A taught lesson for the Hope student on no product.
+      const unpricedLesson = await callFunction<
+        CreateLessonRequest,
+        CreateLessonResponse
+      >({
+        functionName: 'lessons/createLesson',
+        data: {
+          studentId: unpricedHopeStudentId,
+          teacherId: primaryTeacherId,
+          scheduledAt: dayInCurrentMonth(12),
+          durationMinutes: 30,
+          status: 'scheduled',
+          blockId: blockFor(primaryTeacherId, dayInCurrentMonth(12)),
+        },
+        idToken: adminUser.idToken,
+      });
+      expect(unpricedLesson.status).toBe(200);
+      await callFunction<UpdateLessonRequest>({
+        functionName: 'lessons/updateLesson',
+        data: { id: unpricedLesson.data!.lesson.id, status: 'rendered' },
+        idToken: adminUser.idToken,
+      });
+
+      // A Hope lesson still to come. A past one counts without being marked
+      // (#157), so this has to be genuinely in the future, and the query below
+      // reaches far enough to include it — otherwise "not paid" would be
+      // proved by the date range, not by the rule.
+      const upcomingAt = new Date(NOW.getTime() + 3 * 86_400_000);
+      // 13:00Z, off the 15:00Z hour every other lesson here uses, so it can
+      // never clash with one of them for the room whatever today's date is.
+      upcomingAt.setUTCHours(13, 0, 0, 0);
       const hopeScheduledOnly = await callFunction<
         CreateLessonRequest,
         CreateLessonResponse
       >({
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId: hopeStudentId,
           teacherId: primaryTeacherId,
-          scheduledAt: dayInCurrentMonth(17),
+          scheduledAt: upcomingAt,
           durationMinutes: 45,
           status: 'scheduled',
-          blockId: blockFor(primaryTeacherId, dayInCurrentMonth(17)),
+          blockId: blockFor(primaryTeacherId, upcomingAt),
         },
         idToken: adminUser.idToken,
       });
       expect(hopeScheduledOnly.status).toBe(200);
+      const queryTo = new Date(
+        Math.max(TO.getTime(), upcomingAt.getTime() + 86_400_000)
+      );
 
       // 5. Query payouts for April.
       const result = await callFunction<
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
       >({
-        functionName: 'getTeacherPayouts',
-        data: { from: FROM.toISOString(), to: TO.toISOString() },
+        functionName: 'payouts/getTeacherPayouts',
+        data: { from: FROM.toISOString(), to: queryTo.toISOString() },
         idToken: adminUser.idToken,
       });
 
@@ -349,17 +420,32 @@ describe('getTeacherPayouts integration', () => {
       const primary = payouts.find((p) => p.teacherId === primaryTeacherId);
       const sub = payouts.find((p) => p.teacherId === substituteTeacherId);
 
-      // Primary: 2 private-paid (flat $50 each = $100) + 1 Hope rendered
-      //   (45-min tier = $58.75, percentage N/A for flat rate).
+      // Primary: 2 private-paid (flat $50 each = $100) + 1 priced Hope
+      //   rendered (the student's EMA product, $55; percentage N/A for flat).
       //   Primary is FLAT — $50 per lesson regardless of base revenue.
-      //   So total: 2 private @ $50 + 1 Hope @ $50 = $150 = 15000c
+      //   The unpriced Hope lesson has no price, but flat pay never depended
+      //   on one, so it is owed too (flagged as needing a product).
+      //   So total: 2 private @ $50 + 2 Hope @ $50 = $200 = 20000c
       expect(primary).toBeDefined();
-      expect(primary!.totalOwedCents).toBe(15000);
-      expect(primary!.lines).toHaveLength(3);
+      expect(primary!.totalOwedCents).toBe(20000);
+      expect(primary!.lines).toHaveLength(4);
       // Hope-rendered should NOT be flagged asSubstitute (same teacher as primary).
-      expect(
-        primary!.lines.filter((l) => l.source === 'hope-rendered'),
-      ).toHaveLength(1);
+      const hopeLines = primary!.lines.filter(
+        (l) => l.source === 'hope-rendered',
+      );
+      expect(hopeLines).toHaveLength(2);
+      const pricedHope = hopeLines.find((l) => l.studentId === hopeStudentId);
+      expect(pricedHope?.baseRevenueCents).toBe(HOPE_PRODUCT_PRICE_CENTS);
+      expect(pricedHope?.compensationCents).toBe(5000);
+      // No product, no price: not $41.25 from a length table, not anything.
+      const unpricedHope = hopeLines.find(
+        (l) => l.studentId === unpricedHopeStudentId,
+      );
+      expect(unpricedHope?.baseRevenueCents).toBeUndefined();
+      expect(unpricedHope?.compensationCents).toBe(5000);
+      expect(primary!.unpricedHopeLessonCount).toBe(1);
+      expect(primary!.unpricedHopePayPendingCount).toBe(0);
+      expect(primary!.missingRateConfig).toBe(false);
 
       // Substitute: 1 private-paid line @ 60% × $40 = $24 = 2400c
       //   flagged asSubstitute because teacherId !== snapshot primaryTeacherId.
@@ -369,7 +455,7 @@ describe('getTeacherPayouts integration', () => {
       expect(sub!.lines[0].asSubstitute).toBe(true);
       expect(sub!.lines[0].source).toBe('private-paid');
 
-      // Scheduled-but-not-rendered Hope lesson should NOT appear.
+      // A Hope lesson still to come should NOT appear.
       const allLessonIds = [
         ...(primary?.lines ?? []),
         ...(sub?.lines ?? []),
@@ -382,7 +468,7 @@ describe('getTeacherPayouts integration', () => {
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
       >({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: {
           from: FROM.toISOString(),
           to: TO.toISOString(),
@@ -401,7 +487,7 @@ describe('getTeacherPayouts integration', () => {
         GetTeacherPayoutsRequest,
         GetTeacherPayoutsResponse
       >({
-        functionName: 'getTeacherPayouts',
+        functionName: 'payouts/getTeacherPayouts',
         data: {
           from: new Date('2025-01-01T00:00:00Z').toISOString(),
           to: new Date('2025-01-31T23:59:59Z').toISOString(),

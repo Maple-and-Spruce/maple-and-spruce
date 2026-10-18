@@ -71,12 +71,18 @@ interface RoomAvailabilityProps {
   ignoreEventId?: string;
   /** Skip every window from this source, e.g. a class's own sessions. */
   ignoreSourceRef?: string;
+  /**
+   * The save behind this form refuses an overlap (lessons do: the server
+   * checks the room). Says so, instead of offering to save anyway.
+   */
+  overlapRefused?: boolean;
 }
 
 /**
- * Inline availability for a room on the day of a proposed slot: a
- * warn-and-confirm conflict notice (never blocks submission — legitimate
- * overlaps like setup time exist) plus a day strip of open/busy bands.
+ * Inline availability for a room on the day of a proposed slot: a conflict
+ * notice plus a day strip of open/busy bands. Classes and events may overlap
+ * on purpose (setup time), so by default the notice warns and lets them save;
+ * a form whose save refuses overlaps passes `overlapRefused`.
  *
  * Drop into any scheduling dialog once a date/time is picked.
  */
@@ -86,6 +92,7 @@ export function RoomAvailability({
   end,
   ignoreEventId,
   ignoreSourceRef,
+  overlapRefused = false,
 }: RoomAvailabilityProps) {
   const { roomScheduleState } = useRoomScheduleForDate(room, start);
 
@@ -98,7 +105,7 @@ export function RoomAvailability({
 
   if (roomScheduleState.status === 'error') {
     return (
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="textSecondary">
         Couldn&apos;t check {getRoomLabel(room)} availability.
       </Typography>
     );
@@ -116,13 +123,15 @@ export function RoomAvailability({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
       {conflicts.length > 0 && (
-        <Alert severity="warning" sx={{ py: 0.5 }}>
-          {getRoomLabel(room)} is already booked {conflictSummary(conflicts)}.
-          You can still save — overlaps are sometimes intentional.
+        <Alert severity={overlapRefused ? 'error' : 'warning'} sx={{ py: 0.5 }}>
+          {getRoomLabel(room)} is already booked {conflictSummary(conflicts)}.{' '}
+          {overlapRefused
+            ? 'Pick another time: a booking that overlaps it won’t save.'
+            : 'You can still save. Overlaps are sometimes intentional.'}
         </Alert>
       )}
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="textSecondary">
         {windows.length === 0 ? (
           <>No other {getRoomLabel(room)} bookings that day.</>
         ) : (

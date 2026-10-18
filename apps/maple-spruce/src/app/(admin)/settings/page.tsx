@@ -12,8 +12,11 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { useEtsyConnection } from '@maple/react/data';
-import { LessonRatesConfigCard } from '../../../components/lessons';
+import { useEtsyConnection, useInstruments } from '@maple/react/data';
+import {
+  InstrumentsConfigCard,
+  LessonRatesConfigCard,
+} from '../../../components/lessons';
 import { PosLessonConfigCard } from '../../../components/pos';
 import { BusinessVenmoConfigCard } from '../../../components/my-day';
 
@@ -25,6 +28,7 @@ export default function SettingsPage(): React.ReactNode {
     generateAuthUrl,
     refreshShopId,
   } = useEtsyConnection();
+  const { instrumentsState, isSaving, saveInstruments } = useInstruments();
 
   const handleConnectEtsy = useCallback(async () => {
     const result = await generateAuthUrl();
@@ -55,11 +59,12 @@ export default function SettingsPage(): React.ReactNode {
       <Typography variant="h4" gutterBottom>
         Settings
       </Typography>
-
       <Card>
         <CardContent>
           <Stack spacing={2}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: 'center'
+            }}>
               <StorefrontIcon color="primary" />
               <Typography variant="h6">Etsy Connection</Typography>
               {connectionState.status === 'success' && (
@@ -93,10 +98,10 @@ export default function SettingsPage(): React.ReactNode {
 
             {connectionState.status === 'success' && isConnected && (
               <Stack spacing={1}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   Shop ID: {storedShopId ?? 'Unknown'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   User ID: {connectionState.data.userId ?? 'Unknown'}
                 </Typography>
                 {!isTokenValid && (
@@ -138,7 +143,7 @@ export default function SettingsPage(): React.ReactNode {
             )}
 
             {connectionState.status === 'success' && !isConnected && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 Connect your Etsy shop to sync product listings.
               </Typography>
             )}
@@ -164,15 +169,19 @@ export default function SettingsPage(): React.ReactNode {
           </Stack>
         </CardContent>
       </Card>
-
       <Box sx={{ mt: 3 }}>
         <PosLessonConfigCard />
       </Box>
-
+      <Box sx={{ mt: 3 }}>
+        <InstrumentsConfigCard
+          instrumentsState={instrumentsState}
+          isSaving={isSaving}
+          onSave={saveInstruments}
+        />
+      </Box>
       <Box sx={{ mt: 3 }}>
         <LessonRatesConfigCard />
       </Box>
-
       <Box sx={{ mt: 3 }}>
         <BusinessVenmoConfigCard />
       </Box>

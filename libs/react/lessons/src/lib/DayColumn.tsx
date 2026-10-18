@@ -80,7 +80,7 @@ export function DayColumn({
   if (rows.length === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 3 }}>
-        <Typography color="text.secondary">
+        <Typography color="textSecondary">
           No teaching blocks on {WEEKDAY_LONG[weekday]}s yet. Schedule a lesson
           and a block will be made for it.
         </Typography>
@@ -120,7 +120,7 @@ export function DayColumn({
             >
               <Typography
                 sx={{ minWidth: 150, fontVariantNumeric: 'tabular-nums' }}
-                color="text.secondary"
+                color="textSecondary"
               >
                 {time}
               </Typography>
@@ -128,7 +128,7 @@ export function DayColumn({
                 {studentNames[row.studentId] ?? row.studentId}
               </Typography>
               {showTeacher && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   {teacherNames?.[row.teacherId] ?? row.teacherId}
                 </Typography>
               )}
@@ -153,17 +153,17 @@ export function DayColumn({
           >
             <Typography
               sx={{ minWidth: 150, fontVariantNumeric: 'tabular-nums' }}
-              color="text.secondary"
+              color="textSecondary"
             >
               {time}
             </Typography>
-            <Typography sx={{ flexGrow: 1 }} color="text.secondary">
+            <Typography sx={{ flexGrow: 1 }} color="textSecondary">
               {openingLabel(row)}
               {row.fitsDurations.length > 0 && (
                 <Typography
                   component="span"
                   variant="body2"
-                  color="text.secondary"
+                  color="textSecondary"
                   sx={{ ml: 1 }}
                 >
                   fits {row.fitsDurations.join(', ')} min

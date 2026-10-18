@@ -6,7 +6,7 @@ import AddIcon from '@mui/icons-material/Add';
 import type { Instructor, CreateInstructorInput } from '@maple/ts/domain';
 import { DeleteConfirmDialog } from '@maple/react/ui';
 import { InstructorList, InstructorForm } from '@maple/react/instructors';
-import { useInstructors, useUsers } from '../../../hooks';
+import { useInstructors, useInstruments, useUsers } from '../../../hooks';
 
 export default function InstructorsPage() {
   // Instructor state from hook (fetches on mount)
@@ -20,6 +20,8 @@ export default function InstructorsPage() {
   // Users power the "Portal login" picker on the form (links a login to an
   // instructor so a lesson teacher can manage their own lessons, #49).
   const { usersState } = useUsers();
+  // The instruments the studio offers (#161), for the rate editor.
+  const { instrumentsState } = useInstruments();
   const users = usersState.status === 'success' ? usersState.data : undefined;
 
   // Form dialog state
@@ -125,6 +127,11 @@ export default function InstructorsPage() {
         instructor={editingInstructor}
         isSubmitting={isSubmitting}
         users={users}
+        instruments={
+          instrumentsState.status === 'success'
+            ? instrumentsState.data
+            : undefined
+        }
       />
 
       <DeleteConfirmDialog

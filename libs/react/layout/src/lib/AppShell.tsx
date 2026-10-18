@@ -1,63 +1,115 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   AppBar,
   Badge,
   Box,
+  Button,
+  Chip,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
+  InputAdornment,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
+  TextField,
   Toolbar,
   Typography,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { UserMenu } from '@maple/react/auth';
-
-export interface NavItem {
-  label: string;
-  href: string;
-  icon: ReactNode;
-  /** Optional badge count to display on the nav item */
-  badge?: number;
-  /** Badge color (defaults to 'error' for visibility) */
-  badgeColor?:
-    | 'primary'
-    | 'secondary'
-    | 'error'
-    | 'warning'
-    | 'info'
-    | 'success';
-}
-
-export interface NavGroup {
-  label: string;
-  items: NavItem[];
-}
+import {
+  FLAT_NAV_MAX_ITEMS,
+  findActiveHref,
+  groupBadge,
+  groupOfHref,
+  navModeFor,
+  searchNav,
+  type NavAction,
+  type NavGroup,
+  type NavItem,
+} from './nav-model';
 
 export interface AppShellProps {
   children: ReactNode;
   navGroups: NavGroup[];
+  /** Quick-create entries for the pinned Create menu; none hides it. */
+  createActions?: NavAction[];
+  /** At or under this many pages the nav is a plain grouped list. */
+  flatMaxItems?: number;
   title?: string;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
 }
 
 const DRAWER_WIDTH = 260;
 
-function NavContent({
+const rowSx = {
+  mx: 1,
+  borderRadius: 1,
+  mb: 0.25,
+  '&.Mui-selected': {
+    bgcolor: 'action.selected',
+    '&:hover': { bgcolor: 'action.selected' },
+  },
+} as const;
+
+function ItemBadge({
+  count,
+  color,
+  children,
+}: {
+  count?: number;
+  color?: NavItem['badgeColor'];
+  children: ReactNode;
+}): ReactNode {
+  if (!count || count <= 0) return children;
+  return (
+    <Badge badgeContent={count} color={color ?? 'error'} max={99}>
+      {children}
+    </Badge>
+  );
+}
+
+function ItemLabel({
+  label,
+  active,
+  size = '0.875rem',
+}: {
+  label: string;
+  active: boolean;
+  size?: string;
+}): ReactNode {
+  return (
+    <ListItemText
+      primary={label}
+      slotProps={{
+        primary: { sx: { fontSize: size, fontWeight: active ? 600 : 400 } },
+      }}
+    />
+  );
+}
+
+/** Today's layout: every group open, with a heading. For small roles. */
+function FlatNav({
   navGroups,
-  pathname,
+  activeHref,
   onNavigate,
 }: {
   navGroups: NavGroup[];
-  pathname: string;
+  activeHref: string | undefined;
   onNavigate?: () => void;
 }): ReactNode {
   return (
@@ -82,51 +134,30 @@ function NavContent({
           </Typography>
           <List disablePadding dense>
             {group.items.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = item.href === activeHref;
               return (
                 <ListItem key={item.href} disablePadding>
                   <ListItemButton
                     component={Link}
                     href={item.href}
                     selected={isActive}
+                    aria-current={isActive ? 'page' : undefined}
                     onClick={onNavigate}
-                    sx={{
-                      mx: 1,
-                      borderRadius: 1,
-                      mb: 0.25,
-                      '&.Mui-selected': {
-                        bgcolor: 'action.selected',
-                        '&:hover': {
-                          bgcolor: 'action.selected',
-                        },
-                      },
-                    }}
+                    sx={rowSx}
                   >
-                    <ListItemIcon
-                      sx={{
-                        color: isActive ? 'secondary.main' : 'text.secondary',
-                        minWidth: 36,
-                      }}
-                    >
-                      {item.badge && item.badge > 0 ? (
-                        <Badge
-                          badgeContent={item.badge}
-                          color={item.badgeColor || 'error'}
-                          max={99}
-                        >
+                    {item.icon && (
+                      <ListItemIcon
+                        sx={{
+                          color: isActive ? 'secondary.main' : 'text.secondary',
+                          minWidth: 36,
+                        }}
+                      >
+                        <ItemBadge count={item.badge} color={item.badgeColor}>
                           {item.icon}
-                        </Badge>
-                      ) : (
-                        item.icon
-                      )}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{
-                        fontSize: '0.875rem',
-                        fontWeight: isActive ? 600 : 400,
-                      }}
-                    />
+                        </ItemBadge>
+                      </ListItemIcon>
+                    )}
+                    <ItemLabel label={item.label} active={isActive} />
                   </ListItemButton>
                 </ListItem>
               );
@@ -139,25 +170,261 @@ function NavContent({
 }
 
 /**
- * Shared layout with shelf-style sidebar navigation.
- * Desktop: persistent left sidebar with grouped nav sections.
- * Mobile: overlay drawer triggered by hamburger menu.
- * Inspired by Mountain Sol admin drawer pattern.
+ * One row per area. The area you're in is open; the rest are closed.
+ * Clicking an area goes to its first page, which opens it. An area with
+ * a single page is just a link to that page.
+ */
+function AccordionNav({
+  navGroups,
+  activeHref,
+  onNavigate,
+}: {
+  navGroups: NavGroup[];
+  activeHref: string | undefined;
+  onNavigate?: () => void;
+}): ReactNode {
+  const activeGroup = groupOfHref(navGroups, activeHref);
+  return (
+    <List disablePadding dense>
+      {navGroups.map((group) => {
+        const isCurrent = group.label === activeGroup;
+        const multi = group.items.length > 1;
+        const open = isCurrent && multi;
+        const badge = groupBadge(group);
+        return (
+          <Box key={group.label} component="li" sx={{ listStyle: 'none' }}>
+            <ListItemButton
+              component={Link}
+              href={group.items[0].href}
+              selected={isCurrent && !multi}
+              aria-current={isCurrent && !multi ? 'page' : undefined}
+              aria-expanded={multi ? open : undefined}
+              onClick={onNavigate}
+              sx={{ ...rowSx, minHeight: 40 }}
+            >
+              {group.icon && (
+                <ListItemIcon
+                  sx={{
+                    color: isCurrent ? 'secondary.main' : 'text.secondary',
+                    minWidth: 36,
+                  }}
+                >
+                  <ItemBadge
+                    count={open ? undefined : badge?.count}
+                    color={badge?.color}
+                  >
+                    {group.icon}
+                  </ItemBadge>
+                </ListItemIcon>
+              )}
+              <ItemLabel
+                label={group.label}
+                active={isCurrent}
+                size="0.9375rem"
+              />
+              {multi &&
+                (open ? (
+                  <ExpandMoreIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                ) : (
+                  <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                ))}
+            </ListItemButton>
+            {multi && (
+              <Collapse in={open} timeout="auto" unmountOnExit>
+                <List
+                  disablePadding
+                  dense
+                  aria-label={`${group.label} pages`}
+                >
+                  {group.items.map((item) => {
+                    const isActive = item.href === activeHref;
+                    return (
+                      <ListItem key={item.href} disablePadding>
+                        <ListItemButton
+                          component={Link}
+                          href={item.href}
+                          selected={isActive}
+                          aria-current={isActive ? 'page' : undefined}
+                          onClick={onNavigate}
+                          sx={{ ...rowSx, pl: 6.5 }}
+                        >
+                          <ItemLabel label={item.label} active={isActive} />
+                          {item.badge && item.badge > 0 ? (
+                            <Chip
+                              label={item.badge > 99 ? '99+' : item.badge}
+                              color={item.badgeColor ?? 'error'}
+                              size="small"
+                              sx={{ height: 20, fontWeight: 600 }}
+                            />
+                          ) : null}
+                        </ListItemButton>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Collapse>
+            )}
+          </Box>
+        );
+      })}
+    </List>
+  );
+}
+
+function SearchResults({
+  navGroups,
+  query,
+  onNavigate,
+}: {
+  navGroups: NavGroup[];
+  query: string;
+  onNavigate: () => void;
+}): ReactNode {
+  const results = searchNav(navGroups, query);
+  if (results.length === 0) {
+    return (
+      <Typography variant="body2" color="textSecondary" sx={{ px: 2, py: 1 }}>
+        No pages match “{query.trim()}”.
+      </Typography>
+    );
+  }
+  return (
+    <List disablePadding dense aria-label="Search results">
+      {results.map(({ item, group }) => (
+        <ListItem key={item.href} disablePadding>
+          <ListItemButton
+            component={Link}
+            href={item.href}
+            onClick={onNavigate}
+            sx={rowSx}
+          >
+            <ListItemText
+              primary={item.label}
+              secondary={group === item.label ? undefined : group}
+              slotProps={{
+                primary: { sx: { fontSize: '0.875rem' } },
+                secondary: { sx: { fontSize: '0.75rem' } },
+              }}
+            />
+          </ListItemButton>
+        </ListItem>
+      ))}
+    </List>
+  );
+}
+
+function shortcutLabel(): string {
+  if (typeof navigator === 'undefined') return '⌘K';
+  return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+    ? '⌘K'
+    : 'Ctrl K';
+}
+
+function CreateMenu({
+  actions,
+  onNavigate,
+}: {
+  actions: NavAction[];
+  onNavigate?: () => void;
+}): ReactNode {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const close = (): void => setAnchor(null);
+  return (
+    <>
+      <Button
+        variant="contained"
+        color="primary"
+        fullWidth
+        startIcon={<AddIcon />}
+        aria-haspopup="menu"
+        aria-expanded={anchor ? true : undefined}
+        aria-controls={anchor ? 'create-menu' : undefined}
+        onClick={(e) => setAnchor(e.currentTarget)}
+        sx={{ minHeight: 44 }}
+      >
+        Create
+      </Button>
+      <Menu
+        id="create-menu"
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={close}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        slotProps={{ paper: { sx: { width: DRAWER_WIDTH - 24, mt: -1 } } }}
+      >
+        {actions.map((action) => (
+          <MenuItem
+            key={action.href}
+            component={Link}
+            href={action.href}
+            onClick={() => {
+              close();
+              onNavigate?.();
+            }}
+          >
+            <ListItemIcon sx={{ color: 'secondary.main' }}>
+              {action.icon ?? <AddIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText primary={action.label} />
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+}
+
+/**
+ * Shared layout with an accordion sidebar, modelled on Square Dashboard:
+ * a page search at the top, one row per area (the current area open),
+ * and a pinned Create menu. Roles that see only a few pages get the
+ * plain grouped list instead.
+ * Desktop: persistent left sidebar. Mobile: overlay drawer.
  */
 export function AppShell({
   children,
   navGroups,
+  createActions = [],
+  flatMaxItems = FLAT_NAV_MAX_ITEMS,
   title = 'Maple & Spruce',
   maxWidth = 'lg',
 }: AppShellProps): ReactNode {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [shortcut, setShortcut] = useState('⌘K');
+  const searchRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const handleDrawerToggle = (): void => {
-    setMobileOpen(!mobileOpen);
+  const activeHref = useMemo(
+    () => findActiveHref(navGroups, pathname),
+    [navGroups, pathname],
+  );
+  const mode = navModeFor(navGroups, flatMaxItems);
+  const searching = query.trim().length > 0;
+
+  useEffect(() => {
+    setShortcut(shortcutLabel());
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Whichever copy is on screen: the desktop sidebar or the drawer.
+        const visible = searchRefs.current.find(
+          (el) => el && el.offsetParent !== null,
+        );
+        visible?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const handleNavigate = (): void => {
+    setMobileOpen(false);
+    setQuery('');
   };
 
-  const drawerContent = (
+  const drawerContent = (slot: 0 | 1): ReactNode => (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box
         sx={{
@@ -179,17 +446,95 @@ export function AppShell({
         </Typography>
       </Box>
 
-      <Box sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
-        <NavContent
-          navGroups={navGroups}
-          pathname={pathname}
-          onNavigate={() => setMobileOpen(false)}
+      <Box sx={{ px: 1.5, pt: 1.5, pb: 1 }}>
+        <TextField
+          size="small"
+          fullWidth
+          placeholder="Search pages"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setQuery('');
+            } else if (e.key === 'Enter') {
+              const first = searchNav(navGroups, query)[0];
+              if (first) {
+                handleNavigate();
+                router.push(first.item.href);
+              }
+            }
+          }}
+          inputRef={(el: HTMLInputElement | null) => {
+            searchRefs.current[slot] = el;
+          }}
+          slotProps={{
+            htmlInput: { 'aria-label': 'Search pages' },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment
+                  position="end"
+                  sx={{ display: { xs: 'none', md: 'flex' } }}
+                >
+                  <Typography
+                    component="kbd"
+                    variant="caption"
+                    color="textSecondary"
+                    sx={{
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 0.5,
+                      px: 0.5,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {shortcut}
+                  </Typography>
+                </InputAdornment>
+              ),
+            },
+          }}
         />
       </Box>
 
-      {/* User menu pinned to bottom */}
+      <Box
+        component="nav"
+        aria-label="Main"
+        sx={{ flex: 1, overflowY: 'auto', pb: 1 }}
+      >
+        {searching && (
+          <SearchResults
+            navGroups={navGroups}
+            query={query}
+            onNavigate={handleNavigate}
+          />
+        )}
+        {!searching && mode === 'flat' && (
+          <FlatNav
+            navGroups={navGroups}
+            activeHref={activeHref}
+            onNavigate={handleNavigate}
+          />
+        )}
+        {!searching && mode === 'accordion' && (
+          <AccordionNav
+            navGroups={navGroups}
+            activeHref={activeHref}
+            onNavigate={handleNavigate}
+          />
+        )}
+      </Box>
+
+      {/* Create + user menu pinned to bottom */}
       <Divider />
-      <Box sx={{ p: 1 }}>
+      <Box sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {createActions.length > 0 && (
+          <CreateMenu actions={createActions} onNavigate={handleNavigate} />
+        )}
         <UserMenu variant="inline" />
       </Box>
     </Box>
@@ -199,7 +544,6 @@ export function AppShell({
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       {/* Desktop sidebar — persistent */}
       <Box
-        component="nav"
         sx={{
           width: { md: DRAWER_WIDTH },
           flexShrink: { md: 0 },
@@ -218,7 +562,7 @@ export function AppShell({
           }}
           open
         >
-          {drawerContent}
+          {drawerContent(0)}
         </Drawer>
       </Box>
 
@@ -226,7 +570,7 @@ export function AppShell({
       <Drawer
         variant="temporary"
         open={mobileOpen}
-        onClose={handleDrawerToggle}
+        onClose={() => setMobileOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
@@ -236,7 +580,7 @@ export function AppShell({
           },
         }}
       >
-        {drawerContent}
+        {drawerContent(1)}
       </Drawer>
 
       {/* Main content area */}
@@ -260,7 +604,7 @@ export function AppShell({
               color="inherit"
               aria-label="open navigation menu"
               edge="start"
-              onClick={handleDrawerToggle}
+              onClick={() => setMobileOpen(!mobileOpen)}
               sx={{ mr: 2 }}
             >
               <MenuIcon />

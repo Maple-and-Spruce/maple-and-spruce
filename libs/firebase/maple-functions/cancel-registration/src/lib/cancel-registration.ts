@@ -55,6 +55,7 @@ export const cancelRegistration = Functions.endpoint
       }
 
       let refundId: string | undefined;
+      let refundedAmountCents: number | undefined;
 
       // Process refund if requested and payment exists
       if (data.refund && registration.squarePaymentId) {
@@ -79,13 +80,21 @@ export const cancelRegistration = Functions.endpoint
         });
 
         refundId = refundResult.refundId;
+        refundedAmountCents = refundResult.amountCents || registration.pricePaidCents;
       }
 
-      // Update registration status
-      const newStatus = data.refund && refundId ? 'refunded' : 'cancelled';
+      // Update registration status. The refund's time and amount are kept so
+      // instructor payouts can tell a refund before a statement was paid from
+      // one after.
+      const refunded = Boolean(data.refund && refundId);
       const updated = await RegistrationRepository.update({
         id: data.id,
-        status: newStatus,
+        status: refunded ? 'refunded' : 'cancelled',
+        ...(refunded && {
+          refundedAt: new Date(),
+          refundedAmountCents,
+          squareRefundId: refundId,
+        }),
       });
 
       return {

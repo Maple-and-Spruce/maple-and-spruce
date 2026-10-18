@@ -37,9 +37,16 @@ import type {
   Student,
   StudentStatus,
   CreateStudentInput,
+  HopeProduct,
+  InstrumentOption,
   LessonBillingRule,
 } from '@maple/ts/domain';
-import { INSTRUMENTS, LESSON_LENGTHS } from '@maple/ts/domain';
+import {
+  DEFAULT_INSTRUMENT_OPTIONS,
+  LESSON_LENGTHS,
+  formatHopePrice,
+  instrumentChoices,
+} from '@maple/ts/domain';
 import { studentValidation } from '@maple/ts/validation';
 import {
   useSignal,
@@ -47,7 +54,7 @@ import {
   batch,
   useSignals,
 } from '@maple/react/signals';
-import { INSTRUMENT_LABELS, LESSON_LENGTH_LABELS } from './labels';
+import { LESSON_LENGTH_LABELS } from './labels';
 
 interface StudentFormProps {
   open: boolean;
@@ -63,6 +70,16 @@ interface StudentFormProps {
    * screen is where that gets fixed.
    */
   billingRules?: Array<Pick<LessonBillingRule, 'id' | 'name' | 'isDefault' | 'archived'>>;
+  /**
+   * EMA portal products, so a Hope student can be put on the one their lessons
+   * are billed under. Omit to hide the picker.
+   */
+  hopeProducts?: HopeProduct[];
+  /**
+   * The instruments the studio offers (#161), from Settings. A student on one
+   * no longer offered keeps it as a choice when edited.
+   */
+  instruments?: InstrumentOption[];
   isSubmitting?: boolean;
   /**
    * Seed values for a NEW student, e.g. everything a lesson inquiry already
@@ -88,6 +105,8 @@ export function StudentForm({
   student,
   instructors,
   billingRules = [],
+  hopeProducts,
+  instruments = DEFAULT_INSTRUMENT_OPTIONS,
   isSubmitting = false,
   prefill,
   prefillNote,
@@ -98,11 +117,12 @@ export function StudentForm({
   // FORM FIELD SIGNALS
   // ============================================================
   const name = useSignal('');
-  const instrument = useSignal<Instrument>('piano');
+  const instrument = useSignal<Instrument>(instruments[0]?.key ?? '');
   const isAdultStudent = useSignal(false);
   const primaryTeacherId = useSignal('');
   const registeredLessonLength = useSignal<LessonLength | ''>('');
   const isHopeScholarship = useSignal(false);
+  const hopeProductId = useSignal('');
   const primaryContactName = useSignal('');
   const primaryContactEmail = useSignal('');
   const primaryContactPhone = useSignal('');
@@ -189,6 +209,7 @@ export function StudentForm({
         primaryTeacherId.value = student.primaryTeacherId;
         registeredLessonLength.value = student.registeredLessonLength ?? '';
         isHopeScholarship.value = student.isHopeScholarship;
+        hopeProductId.value = student.hopeProductId ?? '';
         primaryContactName.value = student.primaryContactName;
         primaryContactEmail.value = student.primaryContactEmail;
         primaryContactPhone.value = student.primaryContactPhone ?? '';
@@ -208,11 +229,12 @@ export function StudentForm({
     } else {
       batch(() => {
         name.value = '';
-        instrument.value = 'piano';
+        instrument.value = instruments[0]?.key ?? '';
         isAdultStudent.value = false;
         primaryTeacherId.value = '';
         registeredLessonLength.value = '';
         isHopeScholarship.value = false;
+        hopeProductId.value = '';
         primaryContactName.value = '';
         primaryContactEmail.value = '';
         primaryContactPhone.value = '';
@@ -229,7 +251,14 @@ export function StudentForm({
         // button can never inherit the last inquiry's values.
         if (prefill) {
           if (prefill.name != null) name.value = prefill.name;
-          if (prefill.instrument != null) instrument.value = prefill.instrument;
+          // An inquiry's instrument only if the studio offers it; otherwise
+          // the default stands and the human picks.
+          if (
+            prefill.instrument != null &&
+            instruments.some((o) => o.key === prefill.instrument)
+          ) {
+            instrument.value = prefill.instrument;
+          }
           if (prefill.isAdultStudent != null) {
             isAdultStudent.value = prefill.isAdultStudent;
           }
@@ -285,6 +314,10 @@ export function StudentForm({
         primaryTeacherId: primaryTeacherId.value,
         registeredLessonLength: registeredLessonLength.value || undefined,
         isHopeScholarship: isHopeScholarship.value,
+        // Only meaningful on Hope. '' clears a product that was set.
+        ...(hopeProducts && isHopeScholarship.value
+          ? { hopeProductId: hopeProductId.value }
+          : {}),
           lessonRateCents: lessonRateCents.value
           ? Math.round(parseFloat(lessonRateCents.value) * 100)
           : undefined,
@@ -361,9 +394,9 @@ export function StudentForm({
                 (instrument.value = e.target.value as Instrument)
               }
             >
-              {INSTRUMENTS.map((inst) => (
-                <MenuItem key={inst} value={inst}>
-                  {INSTRUMENT_LABELS[inst]}
+              {instrumentChoices(instruments, student?.instrument).map((option) => (
+                <MenuItem key={option.key} value={option.key}>
+                  {option.label}
                 </MenuItem>
               ))}
             </Select>
@@ -455,6 +488,38 @@ export function StudentForm({
             />
           </Box>
 
+          {/*
+            What EMA pays per lesson for this student. Retired products still
+            appear when they are the one already set, so editing an older
+            student does not silently drop it.
+          */}
+          {hopeProducts && isHopeScholarship.value && (
+            <TextField
+              select
+              label="EMA product"
+              value={hopeProductId.value}
+              onChange={(e) => (hopeProductId.value = e.target.value)}
+              helperText={
+                hopeProducts.length === 0
+                  ? 'Add the EMA products on the Hope Billing page first.'
+                  : 'The EMA portal product this student’s lessons are billed under.'
+              }
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>Not set</em>
+              </MenuItem>
+              {hopeProducts
+                .filter((p) => p.active || p.id === hopeProductId.value)
+                .map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name} · {formatHopePrice(p.priceCents)}
+                    {p.active ? '' : ' (retired)'}
+                  </MenuItem>
+                ))}
+            </TextField>
+          )}
+
           {/* Lesson rate — the per-student override used when pricing a lesson */}
           <TextField
             label="Lesson rate override ($)"
@@ -463,7 +528,7 @@ export function StudentForm({
             error={!!getFieldError('lessonRateCents')}
             helperText={
               getFieldError('lessonRateCents') ||
-              'Dollars per lesson. Leave blank to use the standard rate for their lesson length.'
+              'Dollars per lesson. Leave blank to use their teacher’s rate for their instrument (set on the Instructors page), or the studio default.'
             }
             type="number"
             fullWidth
@@ -505,7 +570,7 @@ export function StudentForm({
           <Divider />
 
           {/* Primary contact — section header reflects adult-student flag */}
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             {isAdultStudent.value ? 'Contact' : 'Parent / guardian'}
           </Typography>
           <TextField
@@ -539,7 +604,7 @@ export function StudentForm({
           <Divider />
 
           {/* Secondary contact */}
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Secondary contact (optional)
           </Typography>
           <TextField
@@ -563,7 +628,7 @@ export function StudentForm({
           <Divider />
 
           {/* Payment */}
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="textSecondary">
             Payment (optional)
           </Typography>
           <TextField

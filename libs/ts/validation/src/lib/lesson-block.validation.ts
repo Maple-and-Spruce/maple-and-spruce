@@ -6,7 +6,8 @@
  * server-side cross-entity checks enforced in the lesson mutation functions.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import { MINUTES_PER_DAY } from '@maple/ts/domain';
 import type { CreateLessonBlockInput } from '@maple/ts/domain';
 

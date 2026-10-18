@@ -41,6 +41,7 @@ function docToInstructor(
     specialties: data.specialties,
     payRate: data.payRate,
     payRateType: data.payRateType,
+    lessonRates: data.lessonRates,
     webflowItemId: data.webflowItemId,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),

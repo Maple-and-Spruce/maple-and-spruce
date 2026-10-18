@@ -100,7 +100,7 @@ export default function TeachingDaysPage() {
       <Typography variant="h4" gutterBottom>
         Teaching Days
       </Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
+      <Typography color="textSecondary" sx={{ mb: 3 }}>
         Standing slots in time order, with the openings between them. An opening
         marked “every other week” is the alternate week of a biweekly student’s
         hour, so it fits exactly one more biweekly student.

@@ -4,8 +4,10 @@
  * Vest validation for instructor forms.
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 import type { CreateInstructorInput } from '@maple/ts/domain';
+import { LESSON_LENGTHS, instrumentKeyFromLabel } from '@maple/ts/domain';
 
 /**
  * Validate instructor form data
@@ -32,12 +34,11 @@ export const instructorValidation = staticSuite(
       enforce(data.name).longerThanOrEquals(2);
     });
 
-    test('email', 'Email is required', () => {
-      enforce(data.email).isNotBlank();
-    });
-
-    test('email', 'Email must be valid', () => {
-      enforce(data.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    // Optional: not every instructor shares an email.
+    test('email', 'Email must be valid if provided', () => {
+      if (data.email) {
+        enforce(data.email).matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+      }
     });
 
     test('phone', 'Phone must be valid if provided', () => {
@@ -95,6 +96,23 @@ export const instructorValidation = staticSuite(
       if (data.payRateType === 'percentage' && data.payRate !== undefined && data.payRate !== null) {
         enforce(data.payRate).greaterThanOrEquals(0);
         enforce(data.payRate).lessThanOrEquals(1);
+      }
+    });
+
+    // Lesson rates are what families are charged; every price must be a
+    // whole number of cents above zero, on an instrument and length that
+    // exist. A blank length is simply absent, never zero.
+    test('lessonRates', 'Lesson rates must be positive amounts', () => {
+      for (const [instrument, byLength] of Object.entries(
+        data.lessonRates ?? {}
+      )) {
+        // Offered or not is checked on the server against the setting (#161).
+        enforce(instrumentKeyFromLabel(instrument)).equals(instrument);
+        for (const [length, cents] of Object.entries(byLength ?? {})) {
+          enforce(length).inside(LESSON_LENGTHS);
+          enforce(cents).isNumber().greaterThan(0);
+          enforce(Number.isInteger(cents)).isTruthy();
+        }
       }
     });
   }

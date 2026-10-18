@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   CalendarEvent,
   CalendarEventType,
@@ -44,10 +47,10 @@ export function useCalendarEvents(filters?: UseCalendarEventsFilters) {
 
     try {
       const functions = getMapleFunctions();
-      const getCalendarEvents = httpsCallable<
+      const getCalendarEvents = httpsCallableFromURL<
         GetCalendarEventsRequest,
         GetCalendarEventsResponse
-      >(functions, 'getCalendarEvents');
+      >(functions, routerCallableUrl('calendar', 'getCalendarEvents'));
 
       const result = await getCalendarEvents({
         type: filters?.type,
@@ -72,10 +75,10 @@ export function useCalendarEvents(filters?: UseCalendarEventsFilters) {
   const createCalendarEvent = useCallback(
     async (input: CreateCalendarEventInput): Promise<CalendarEvent> => {
       const functions = getMapleFunctions();
-      const create = httpsCallable<
+      const create = httpsCallableFromURL<
         CreateCalendarEventRequest,
         CreateCalendarEventResponse
-      >(functions, 'createCalendarEvent');
+      >(functions, routerCallableUrl('calendar', 'createCalendarEvent'));
 
       const result = await create(input);
 
@@ -101,10 +104,10 @@ export function useCalendarEvents(filters?: UseCalendarEventsFilters) {
   const updateCalendarEvent = useCallback(
     async (input: UpdateCalendarEventInput): Promise<CalendarEvent> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateCalendarEventRequest,
         UpdateCalendarEventResponse
-      >(functions, 'updateCalendarEvent');
+      >(functions, routerCallableUrl('calendar', 'updateCalendarEvent'));
 
       const result = await update(input);
 
@@ -135,10 +138,10 @@ export function useCalendarEvents(filters?: UseCalendarEventsFilters) {
 
   const deleteCalendarEvent = useCallback(async (id: string): Promise<void> => {
     const functions = getMapleFunctions();
-    const del = httpsCallable<
+    const del = httpsCallableFromURL<
       DeleteCalendarEventRequest,
       DeleteCalendarEventResponse
-    >(functions, 'deleteCalendarEvent');
+    >(functions, routerCallableUrl('calendar', 'deleteCalendarEvent'));
 
     await del({ id });
 

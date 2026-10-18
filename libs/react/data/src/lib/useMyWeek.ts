@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { RequestState } from '@maple/ts/domain';
 import type {
   GetMyWeekRequest,
@@ -28,9 +31,9 @@ export function useMyWeek(weekStart: Date) {
     try {
       const from = new Date(startMs).toISOString();
       const to = new Date(startMs + 7 * DAY_MS).toISOString();
-      const fn = httpsCallable<GetMyWeekRequest, GetMyWeekResponse>(
+      const fn = httpsCallableFromURL<GetMyWeekRequest, GetMyWeekResponse>(
         getMapleFunctions(),
-        'getMyWeek',
+        routerCallableUrl('lessons', 'getMyWeek'),
       );
       const result = await fn({ from, to });
       setWeekState({ status: 'success', data: result.data });

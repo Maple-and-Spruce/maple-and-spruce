@@ -35,6 +35,7 @@ function docToSubmission(
     submittedAt: toDate(data.submittedAt),
     paidAt: data.paidAt ? toDate(data.paidAt) : undefined,
     emaReference: data.emaReference,
+    orderId: data.orderId,
     rejectionReason: data.rejectionReason,
     recordedByUid: data.recordedByUid,
     createdAt: toDate(data.createdAt),
@@ -82,6 +83,17 @@ export const HopeSubmissionRepository = {
     }
 
     return found;
+  },
+
+  /** Claims invoiced against one EMA order (single-field query, no index). */
+  async findByOrderId(orderId: string): Promise<HopeSubmission[]> {
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where('orderId', '==', orderId)
+      .get();
+    return snapshot.docs
+      .map(docToSubmission)
+      .filter((s): s is HopeSubmission => s !== undefined);
   },
 
   /**

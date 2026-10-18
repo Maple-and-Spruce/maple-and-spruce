@@ -23,6 +23,7 @@ export function useMyRoles() {
   const [rolesState, setRolesState] = useState<RequestState<UserRole[]>>({
     status: 'idle',
   });
+  const [instructorId, setInstructorId] = useState<string | undefined>();
 
   const fetchRoles = useCallback(async () => {
     setRolesState({ status: 'loading' });
@@ -35,6 +36,7 @@ export function useMyRoles() {
       );
 
       const result = await getMyRoles({});
+      setInstructorId(result.data.instructorId);
       setRolesState({ status: 'success', data: result.data.roles });
     } catch (error) {
       console.error('Failed to fetch roles:', error);
@@ -52,6 +54,7 @@ export function useMyRoles() {
     if (user) {
       fetchRoles();
     } else {
+      setInstructorId(undefined);
       setRolesState({ status: 'idle' });
     }
   }, [user, authLoading, fetchRoles]);
@@ -62,6 +65,7 @@ export function useMyRoles() {
     rolesState,
     roles,
     isAdmin: roles.includes('admin'),
+    instructorId,
     hasAnyRole: roles.length > 0,
     isCheckingRoles: rolesState.status === 'loading' || authLoading,
   };

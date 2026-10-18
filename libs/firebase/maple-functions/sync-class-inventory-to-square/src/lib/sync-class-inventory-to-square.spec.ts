@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const reportSyncFailureMock = vi.hoisted(() => vi.fn());
+vi.mock('@maple/firebase/sync-alerts', () => ({
+  reportSyncFailure: reportSyncFailureMock,
+}));
+
 /**
  * Tests for sync-class-inventory-to-square.ts
  *
@@ -214,6 +219,9 @@ describe('syncClassInventoryToSquare — Square API error', () => {
     const after = makeSnapshot(true, makeRegistrationData());
 
     await expect(handler(makeEvent(before, after))).resolves.toBeUndefined();
+    expect(reportSyncFailureMock).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'syncClassInventoryToSquare' })
+    );
     expect(mocks.setQuantity).toHaveBeenCalled();
   });
 });

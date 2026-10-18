@@ -32,7 +32,23 @@ export {
   type ValidatorFn,
   type UniquenessCheck,
   type FunctionRoute,
+  extractTrustedClientIp,
 } from './functions.utility';
+
+// App Check + request throttling for public callables (ADR-037)
+export {
+  resolveAppCheckMode,
+  type AppCheckMode,
+  type AppCheckResult,
+} from './app-check.utility';
+export {
+  Throttle,
+  THROTTLE_LIMITS,
+  paymentThrottles,
+  emailLinkThrottles,
+  codeLookupThrottles,
+  type ThrottleRule,
+} from './throttle.utility';
 
 // Route resolution — its own module so a spec can reach it without loading
 // functions.utility's real graph (see function-route-path.ts).

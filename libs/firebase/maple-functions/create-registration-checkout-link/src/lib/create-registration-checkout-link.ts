@@ -17,6 +17,7 @@
  */
 import {
   Functions,
+  paymentThrottles,
   reserveClassRegistration,
   processInlineAgreements,
 } from '@maple/firebase/functions';
@@ -88,6 +89,8 @@ async function releaseHold(
 }
 
 export const createRegistrationCheckoutLink = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('createRegistrationCheckoutLink', paymentThrottles('customerEmail'))
   .usingSecrets(...SQUARE_SECRET_NAMES)
   .usingStrings(...SQUARE_STRING_NAMES, 'ALLOWED_ORIGINS')
   .handle<

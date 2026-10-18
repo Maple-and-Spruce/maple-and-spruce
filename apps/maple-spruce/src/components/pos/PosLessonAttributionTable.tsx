@@ -78,7 +78,7 @@ export function PosLessonAttributionTable({
   const rows = filteredAttributions ?? attributionsState.data;
   if (rows.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="textSecondary">
         No POS lesson sales here.
       </Typography>
     );
@@ -118,12 +118,14 @@ export function PosLessonAttributionTable({
               {a.studentId ? (
                 studentsById.get(a.studentId)?.name ?? a.studentId
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   —
                 </Typography>
               )}
               {a.invoiceId && a.attributedBy === 'auto' && (
-                <Typography variant="caption" color="text.secondary" display="block">
+                <Typography variant="caption" color="textSecondary" sx={{
+                  display: 'block'
+                }}>
                   auto
                 </Typography>
               )}

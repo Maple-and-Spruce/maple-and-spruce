@@ -17,6 +17,7 @@
     "never breaks the matrix — it just packs a little less well until measured."
   ],
   "weights": {
+    "agreements": 3,
     "artist": 13,
     "calendar": 26,
     "category": 18,
@@ -31,6 +32,7 @@
     "lesson": 138,
     "lesson-inquiries": 3,
     "music-together": 97,
+    "payouts": 3,
     "registration": 75,
     "square": 110,
     "student": 14,

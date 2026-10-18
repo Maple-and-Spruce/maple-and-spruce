@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   CalendarEmbedConfig,
   UpdateCalendarEmbedSettingsInput,
@@ -29,10 +32,10 @@ export function useCalendarEmbedConfig() {
     setConfigState({ status: 'loading' });
     try {
       const functions = getMapleFunctions();
-      const getConfig = httpsCallable<
+      const getConfig = httpsCallableFromURL<
         GetCalendarEmbedConfigRequest,
         GetCalendarEmbedConfigResponse
-      >(functions, 'getCalendarEmbedConfig');
+      >(functions, routerCallableUrl('calendar', 'getCalendarEmbedConfig'));
 
       const result = await getConfig({});
       setConfigState({ status: 'success', data: result.data.config });
@@ -53,10 +56,10 @@ export function useCalendarEmbedConfig() {
       input: UpdateCalendarEmbedSettingsInput
     ): Promise<CalendarEmbedConfig> => {
       const functions = getMapleFunctions();
-      const update = httpsCallable<
+      const update = httpsCallableFromURL<
         UpdateCalendarEmbedConfigRequest,
         UpdateCalendarEmbedConfigResponse
-      >(functions, 'updateCalendarEmbedConfig');
+      >(functions, routerCallableUrl('calendar', 'updateCalendarEmbedConfig'));
 
       const result = await update(input);
       setConfigState({ status: 'success', data: result.data.config });
@@ -70,10 +73,10 @@ export function useCalendarEmbedConfig() {
       input: CreateCalendarEmbedSourceInput
     ): Promise<CalendarEmbedConfig> => {
       const functions = getMapleFunctions();
-      const add = httpsCallable<
+      const add = httpsCallableFromURL<
         AddCalendarEmbedSourceRequest,
         AddCalendarEmbedSourceResponse
-      >(functions, 'addCalendarEmbedSource');
+      >(functions, routerCallableUrl('calendar', 'addCalendarEmbedSource'));
 
       const result = await add(input);
       setConfigState({ status: 'success', data: result.data.config });
@@ -85,10 +88,10 @@ export function useCalendarEmbedConfig() {
   const removeSource = useCallback(
     async (sourceId: string): Promise<CalendarEmbedConfig> => {
       const functions = getMapleFunctions();
-      const remove = httpsCallable<
+      const remove = httpsCallableFromURL<
         RemoveCalendarEmbedSourceRequest,
         RemoveCalendarEmbedSourceResponse
-      >(functions, 'removeCalendarEmbedSource');
+      >(functions, routerCallableUrl('calendar', 'removeCalendarEmbedSource'));
 
       const result = await remove({ sourceId });
       setConfigState({ status: 'success', data: result.data.config });

@@ -2,6 +2,7 @@
  * Hope submission API contracts (legacy #799).
  */
 import type {
+  HopeOrder,
   HopeQueueEntry,
   HopeQueueTotals,
   HopeSubmissionStatus,
@@ -18,6 +19,15 @@ export interface GetHopeQueueRequest {
 export interface GetHopeQueueResponse {
   entries: HopeQueueEntry[];
   totals: HopeQueueTotals;
+  /**
+   * The same students' EMA orders, oldest first, with how many lessons each
+   * still has room for after invoiced and ready-to-invoice ones.
+   */
+  orders: HopeOrderWithRoom[];
+}
+
+export interface HopeOrderWithRoom extends HopeOrder {
+  remaining: number;
 }
 
 export interface RecordHopeSubmissionsRequest {

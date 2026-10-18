@@ -4,8 +4,23 @@
  * Avoids process.env and hostname detection used by the Next.js app.
  * Environment is passed explicitly as a prop from the Webflow component.
  */
-import { initializeApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import {
+  initializeApp,
+  getApps,
+  type FirebaseApp,
+  type FirebaseOptions,
+} from 'firebase/app';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+  CustomProvider,
+} from 'firebase/app-check';
+import {
+  getFunctions,
+  connectFunctionsEmulator,
+  httpsCallableFromURL,
+  type Functions,
+} from 'firebase/functions';
 
 const prodConfig: FirebaseOptions = {
   apiKey: 'AIzaSyCPcBR2xmErLQKo-fipRbM6pnOSbLMgi2U',
@@ -27,8 +42,72 @@ const devConfig: FirebaseOptions = {
 
 const FUNCTIONS_REGION = 'us-east4';
 
+/**
+ * reCAPTCHA Enterprise site keys for App Check (ADR-037), per project.
+ *
+ * Site keys are public identifiers, like the apiKey above. While a key is
+ * empty, App Check is not initialized for that project and calls go out
+ * without a token, which the functions accept in `monitor` mode.
+ */
+export const RECAPTCHA_ENTERPRISE_SITE_KEY: Record<'prod' | 'dev', string> = {
+  // "Webflow widgets App Check (prod)" in maple-and-spruce: the Webflow site's
+  // domains only.
+  prod: '6LeWQuctAAAAAOsL88xUrOMhEyLqH2XuHQt2qf5U',
+  // "Webflow widgets App Check (dev)" in maple-and-spruce-dev: the same
+  // domains plus localhost and the registration test site.
+  dev: '6Ld6UOctAAAAAIpBnMt-FssLGTI-IHlRJ2mDAB7M',
+};
+
 let cachedEnv: string | null = null;
 let emulatorConnected = false;
+let appCheckInitialized = false;
+
+/**
+ * Stories and harnesses can set `globalThis.__MAPLE_APP_CHECK_TEST_TOKEN__`
+ * to have every call carry a fixed App Check token, without reCAPTCHA.
+ * Same global indirection as the emulator port below.
+ */
+function getTestAppCheckToken(): string | undefined {
+  return (globalThis as { __MAPLE_APP_CHECK_TEST_TOKEN__?: string })
+    .__MAPLE_APP_CHECK_TEST_TOKEN__;
+}
+
+/**
+ * Start App Check once per page, in the browser only.
+ *
+ * Code components server-render a static shell, so this must not run there.
+ * Never throws: a widget that cannot get a token still works, and the
+ * function decides what an untokened call is worth.
+ */
+function ensureAppCheck(app: FirebaseApp, env: string): void {
+  if (appCheckInitialized || typeof window === 'undefined') return;
+
+  const testToken = getTestAppCheckToken();
+  const siteKey =
+    env === 'prod'
+      ? RECAPTCHA_ENTERPRISE_SITE_KEY.prod
+      : env === 'dev'
+        ? RECAPTCHA_ENTERPRISE_SITE_KEY.dev
+        : '';
+  if (!testToken && !siteKey) return;
+
+  try {
+    initializeAppCheck(app, {
+      provider: testToken
+        ? new CustomProvider({
+            getToken: async () => ({
+              token: testToken,
+              expireTimeMillis: Date.now() + 60 * 60 * 1000,
+            }),
+          })
+        : new ReCaptchaEnterpriseProvider(siteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+    appCheckInitialized = true;
+  } catch (error) {
+    console.warn('[maple] App Check unavailable', error);
+  }
+}
 
 /**
  * Resolve the local emulator host:port for `env="emulator"`. Host is
@@ -60,6 +139,8 @@ export function getWidgetFunctions(env: string) {
     cachedEnv = env;
   }
 
+  ensureAppCheck(getApps()[0], env);
+
   const functions = getFunctions(undefined, FUNCTIONS_REGION);
 
   if (env === 'emulator' && !emulatorConnected) {
@@ -69,4 +150,43 @@ export function getWidgetFunctions(env: string) {
   }
 
   return functions;
+}
+
+/**
+ * A callable for one route on a domain router (ADR-029), such as the
+ * `publicSite` reads the widgets make on mount.
+ *
+ * A router is one Cloud Function serving many endpoints, so the endpoint is in
+ * the URL path and `httpsCallable(functions, name)` cannot address it. The URL
+ * is built from the same `functions` instance the widget already holds, so the
+ * project and emulator choice made in `getWidgetFunctions` carry over.
+ */
+export function routeCallable<TRequest, TResponse>(
+  functions: Functions,
+  router: string,
+  route: string
+) {
+  return httpsCallableFromURL<TRequest, TResponse>(
+    functions,
+    routeUrl(functions, router, route)
+  );
+}
+
+/**
+ * The URL of one router route. The emulator's shape differs from production's,
+ * and getting it wrong is a 404 on every call, so both are spelled out:
+ *   emulator  http://127.0.0.1:<port>/<projectId>/<region>/<router>/<route>
+ *   deployed  https://<region>-<projectId>.cloudfunctions.net/<router>/<route>
+ */
+export function routeUrl(
+  functions: Functions,
+  router: string,
+  route: string
+): string {
+  const projectId = functions.app.options.projectId;
+  if (emulatorConnected) {
+    const { host, port } = getEmulatorEndpoint();
+    return `http://${host}:${port}/${projectId}/${FUNCTIONS_REGION}/${router}/${route}`;
+  }
+  return `https://${FUNCTIONS_REGION}-${projectId}.cloudfunctions.net/${router}/${route}`;
 }

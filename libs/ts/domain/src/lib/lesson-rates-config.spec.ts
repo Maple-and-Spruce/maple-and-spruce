@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  effectiveRateByLength,
   resolvePrivatePayLessonRateCents,
   type LessonRateByLength,
 } from './lesson-rates-config';
@@ -60,5 +61,65 @@ describe('resolvePrivatePayLessonRateCents', () => {
         CONFIG
       )
     ).toBe(5500);
+  });
+});
+
+describe('effectiveRateByLength', () => {
+  const studio: LessonRateByLength = { '30-min-full': 4000, '45-min': 5500 };
+  const teacher = {
+    lessonRates: {
+      violin: { '30-min-full': 4500 },
+      piano: { '30-min-full': 3800, '60-min': 7500 },
+    },
+  };
+
+  it("uses the teacher's rate for the student's instrument", () => {
+    expect(
+      effectiveRateByLength({ instrument: 'violin' }, teacher, studio)
+    ).toEqual({ '30-min-full': 4500, '45-min': 5500 });
+  });
+
+  it('fills lengths the teacher has not priced from the studio default', () => {
+    expect(
+      effectiveRateByLength({ instrument: 'piano' }, teacher, studio)
+    ).toEqual({ '30-min-full': 3800, '45-min': 5500, '60-min': 7500 });
+  });
+
+  it('falls back to the studio table for an instrument the teacher has not priced', () => {
+    expect(
+      effectiveRateByLength({ instrument: 'cello' }, teacher, studio)
+    ).toEqual(studio);
+  });
+
+  it('falls back to the studio table when there is no teacher', () => {
+    expect(effectiveRateByLength({ instrument: 'violin' }, undefined, studio)).toEqual(
+      studio
+    );
+  });
+
+  it('ignores a zero teacher rate rather than pricing lessons at nothing', () => {
+    expect(
+      effectiveRateByLength(
+        { instrument: 'violin' },
+        { lessonRates: { violin: { '30-min-full': 0 } } },
+        studio
+      )
+    ).toEqual(studio);
+  });
+
+  it("still loses to the student's own rate", () => {
+    const table = effectiveRateByLength({ instrument: 'violin' }, teacher, studio);
+    expect(
+      resolvePrivatePayLessonRateCents(
+        { durationMinutes: 30 },
+        { registeredLessonLength: '30-min-full', lessonRateCents: 5000 },
+        table
+      )
+    ).toBe(5000);
+  });
+
+  it('does not mutate the studio table', () => {
+    effectiveRateByLength({ instrument: 'violin' }, teacher, studio);
+    expect(studio).toEqual({ '30-min-full': 4000, '45-min': 5500 });
   });
 });

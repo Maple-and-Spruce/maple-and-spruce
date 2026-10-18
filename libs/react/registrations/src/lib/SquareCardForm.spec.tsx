@@ -34,6 +34,24 @@ const PROD_CDN = 'https://web.squarecdn.com/v1/square.js';
 
 const noop = () => undefined;
 
+/** Renders the form with wallets on and waits until it can tokenize. */
+async function renderWithWallets(
+  props: Partial<Parameters<typeof SquareCardForm>[0]> = {}
+): Promise<void> {
+  let ready = false;
+  render(
+    <SquareCardForm
+      applicationId="sandbox-sq0idb-abc123"
+      locationId="LOC1"
+      totalCents={4500}
+      showDigitalWallets
+      onTokenizeRef={() => (ready = true)}
+      {...props}
+    />
+  );
+  await waitFor(() => expect(ready).toBe(true));
+}
+
 describe('SquareCardForm SDK environment selection', () => {
   it('loads the SANDBOX CDN for a sandbox App ID when no env is given', () => {
     render(
@@ -370,5 +388,143 @@ describe('SquareCardForm corrupt-cache SDK recovery', () => {
     await waitFor(() => expect(onReady).toHaveBeenCalled());
     expect(screen.queryByText(/Failed to load payment form/i)).not.toBeInTheDocument();
     vi.restoreAllMocks();
+  });
+});
+
+/**
+ * Square's GooglePay renders a button but never tokenizes on its own (there is
+ * no 'token' event); the page must call tokenize() from a click handler. The
+ * first version listened for a 'token' event, so the button did nothing.
+ */
+describe('SquareCardForm Google Pay', () => {
+  function installFakeSquareWithGooglePay(
+    tokenResult: { status: string; token?: string } = {
+      status: 'OK',
+      token: 'cnon:google-pay-token',
+    }
+  ) {
+    const googlePay = {
+      attach: vi.fn().mockResolvedValue(undefined),
+      tokenize: vi.fn().mockResolvedValue(tokenResult),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+    const payments = {
+      card: vi.fn().mockResolvedValue({
+        attach: vi.fn().mockResolvedValue(undefined),
+        tokenize: vi.fn(),
+        destroy: vi.fn().mockResolvedValue(undefined),
+      }),
+      paymentRequest: vi.fn().mockReturnValue({ update: vi.fn() }),
+      googlePay: vi.fn().mockResolvedValue(googlePay),
+      applePay: vi.fn(),
+    };
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockResolvedValue(payments),
+    };
+    return { googlePay, payments };
+  }
+
+
+  it('tokenizes when the Google Pay button is clicked and hands the token over', async () => {
+    const { googlePay } = installFakeSquareWithGooglePay();
+    const onDigitalWalletToken = vi.fn();
+    await renderWithWallets({ onDigitalWalletToken });
+
+    const container = googlePay.attach.mock.calls[0][0] as HTMLElement;
+    expect(googlePay.tokenize).not.toHaveBeenCalled();
+    container.click();
+
+    await waitFor(() =>
+      expect(onDigitalWalletToken).toHaveBeenCalledWith('cnon:google-pay-token')
+    );
+    expect(googlePay.tokenize).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the sheet closed when beforeDigitalWallet returns false', async () => {
+    const { googlePay } = installFakeSquareWithGooglePay();
+    const onDigitalWalletToken = vi.fn();
+    await renderWithWallets({
+      onDigitalWalletToken,
+      beforeDigitalWallet: () => false,
+    });
+
+    (googlePay.attach.mock.calls[0][0] as HTMLElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(googlePay.tokenize).not.toHaveBeenCalled();
+    expect(onDigitalWalletToken).not.toHaveBeenCalled();
+  });
+
+  it('ignores a cancelled sheet', async () => {
+    const { googlePay } = installFakeSquareWithGooglePay({ status: 'Cancel' });
+    const onDigitalWalletToken = vi.fn();
+    await renderWithWallets({ onDigitalWalletToken });
+
+    (googlePay.attach.mock.calls[0][0] as HTMLElement).click();
+    await waitFor(() => expect(googlePay.tokenize).toHaveBeenCalled());
+
+    expect(onDigitalWalletToken).not.toHaveBeenCalled();
+  });
+
+  it('does not try Apple Pay inline (it only works on a registered domain)', async () => {
+    const { payments } = installFakeSquareWithGooglePay();
+    await renderWithWallets();
+
+    expect(payments.googlePay).toHaveBeenCalled();
+    expect(payments.applePay).not.toHaveBeenCalled();
+  });
+});
+
+describe('SquareCardForm wallet layout', () => {
+  function installFakeSquare(googlePayAvailable = true) {
+    const googlePay = {
+      attach: vi.fn().mockResolvedValue(undefined),
+      tokenize: vi.fn(),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+    (window as unknown as { Square: unknown }).Square = {
+      payments: vi.fn().mockResolvedValue({
+        card: vi.fn().mockResolvedValue({
+          attach: vi.fn().mockResolvedValue(undefined),
+          tokenize: vi.fn(),
+          destroy: vi.fn().mockResolvedValue(undefined),
+        }),
+        paymentRequest: vi.fn().mockReturnValue({ update: vi.fn() }),
+        googlePay: googlePayAvailable
+          ? vi.fn().mockResolvedValue(googlePay)
+          : vi.fn().mockRejectedValue(new Error('unsupported')),
+      }),
+    };
+    return { googlePay };
+  }
+
+
+  it('sizes Google Pay to fill a full-width, 48px container like the Apple Pay button', async () => {
+    const { googlePay } = installFakeSquare();
+    await renderWithWallets();
+
+    const [container, options] = googlePay.attach.mock.calls[0];
+    expect(options).toEqual(
+      expect.objectContaining({ buttonSizeMode: 'fill', buttonColor: 'black' })
+    );
+    expect(container as HTMLElement).toBeVisible();
+    expect(screen.getByText('Or pay with card')).toBeInTheDocument();
+  });
+
+  it('still shows the divider for the Apple Pay button when Google Pay is unavailable', async () => {
+    installFakeSquare(false);
+    await renderWithWallets({ hasOtherWallet: true });
+
+    await waitFor(() =>
+      expect(screen.getByText('Or pay with card')).toBeInTheDocument()
+    );
+  });
+
+  it('shows no divider when no wallet is offered', async () => {
+    installFakeSquare(false);
+    await renderWithWallets();
+
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText('Or pay with card')).not.toBeInTheDocument();
   });
 });

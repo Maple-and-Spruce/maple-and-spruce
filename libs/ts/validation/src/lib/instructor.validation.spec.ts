@@ -73,13 +73,18 @@ describe('instructorValidation', () => {
   });
 
   describe('email field', () => {
-    it('fails when email is missing', () => {
+    it('passes when email is blank (some instructors keep it private)', () => {
       const result = instructorValidation({
         ...validInstructor,
         email: '',
       });
-      expect(result.isValid()).toBe(false);
-      expect(result.getErrors('email')).toContain('Email is required');
+      expect(result.isValid()).toBe(true);
+    });
+
+    it('passes when email is absent', () => {
+      const { email: _email, ...withoutEmail } = validInstructor;
+      const result = instructorValidation(withoutEmail);
+      expect(result.isValid()).toBe(true);
     });
 
     it('fails when email format is invalid', () => {
@@ -88,7 +93,7 @@ describe('instructorValidation', () => {
         email: 'not-an-email',
       });
       expect(result.isValid()).toBe(false);
-      expect(result.getErrors('email')).toContain('Email must be valid');
+      expect(result.getErrors('email')).toContain('Email must be valid if provided');
     });
 
     it('passes with valid email', () => {
@@ -328,6 +333,56 @@ describe('instructorValidation', () => {
         payRateType: 'percentage',
       });
       expect(result.hasErrors('payRate')).toBe(false);
+    });
+  });
+
+  describe('lessonRates', () => {
+    const base = { name: 'Test Teacher', email: 'teacher@example.com', status: 'active' as const };
+
+    it('accepts positive whole-cent rates', () => {
+      const result = instructorValidation({
+        ...base,
+        lessonRates: { violin: { '30-min-full': 4500, '60-min': 8000 } },
+      });
+      expect(result.hasErrors('lessonRates')).toBe(false);
+    });
+
+    it('accepts no rates at all', () => {
+      expect(instructorValidation(base).hasErrors('lessonRates')).toBe(false);
+    });
+
+    it('rejects a zero or negative rate', () => {
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { violin: { '30-min-full': 0 } },
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+    });
+
+    it('rejects fractional cents', () => {
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { violin: { '30-min-full': 45.5 } },
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+    });
+
+    it('rejects a malformed instrument key or an unknown length', () => {
+      // Whether the instrument is offered is checked on the server (#161).
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { 'Kazoo!': { '30-min-full': 4500 } } as never,
+        }).hasErrors('lessonRates')
+      ).toBe(true);
+      expect(
+        instructorValidation({
+          ...base,
+          lessonRates: { violin: { '90-min': 4500 } } as never,
+        }).hasErrors('lessonRates')
+      ).toBe(true);
     });
   });
 

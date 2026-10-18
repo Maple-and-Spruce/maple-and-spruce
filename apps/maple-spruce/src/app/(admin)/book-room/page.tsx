@@ -29,7 +29,7 @@ export default function BookRoomPage() {
       <Typography variant="h4" component="h1" sx={{ mb: 1 }}>
         Book the Spruce Room
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
         Reserve the room for Music Together, a private rental, or any one-off
         use. Booked time blocks the Spruce Room across the portal.
       </Typography>

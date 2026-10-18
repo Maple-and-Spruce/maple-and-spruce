@@ -1,0 +1,317 @@
+<style>
+/* Upcoming Classes redesign (2026-10). Restyles the Classes collection list into a date-first list.
+   Source of truth: docs/design/upcoming-classes-redesign/ in the maple-and-spruce repo. */
+.msx-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 4px}
+.msx-chip{font-family:Archivo,sans-serif;font-size:14px;font-weight:600;min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid #D3CFC2;background:#fff;color:#4A3728;cursor:pointer;line-height:1}
+.msx-chip[aria-pressed="true"]{background:#4A3728;border-color:#4A3728;color:#fff}
+.msx-sep{flex:0 0 1px;align-self:stretch;background:#D3CFC2;margin:6px 4px}
+.msx-toggle{display:inline-flex;align-items:center;gap:8px}
+.msx-toggle::before{content:"";flex:0 0 16px;width:16px;height:16px;border-radius:4px;border:1.5px solid currentColor;box-sizing:border-box}
+.msx-toggle[aria-pressed="true"]::before{background:#fff;box-shadow:inset 0 0 0 3px #4A3728}
+.cls-card-grid.msx{display:flex!important;flex-direction:column;gap:0!important;grid-template-columns:none!important}
+.msx-month{font-family:Georgia,Times,"Times New Roman",serif;font-size:26px;font-weight:400;color:#4A3728;margin:28px 0 0;padding-bottom:10px;border-bottom:1.5px solid #4A3728;line-height:1.2}
+.msx .cls-card{background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;border-bottom:1px solid #E4E1D6!important;overflow:visible!important;transform:none!important;margin:0!important;padding:0!important;height:auto!important}
+.msx .cls-card-link{text-decoration:none!important;display:grid!important;grid-template-columns:64px 112px minmax(0,1fr);gap:16px 24px;align-items:center;padding:18px 0!important;text-decoration:none;color:#4A3728;height:auto!important;position:relative;background:none!important}
+.msx .cls-card-image{grid-column:2;grid-row:1;width:112px!important;height:84px!important;min-height:0!important;object-fit:cover;border-radius:10px!important;margin:0!important}
+.msx-date{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1.5px #D3CFC2;color:#4A3728;font-family:Archivo,sans-serif;line-height:1}
+.msx-date b{font-family:Georgia,serif;font-size:28px;font-weight:400}
+.msx-date span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.msx-date i{font-style:normal;font-size:11px;font-weight:600;color:#55524A;margin-top:2px}
+.msx .cls-card-body{grid-column:3;grid-row:1;display:grid!important;grid-template-columns:minmax(0,1fr) auto;column-gap:24px;row-gap:4px;align-items:center;padding:0!important;background:none!important}
+.msx .cls-card-body>*{grid-column:1;margin:0!important}
+.msx .cls-card-footer{grid-column:2!important;grid-row:1/span 6;display:flex!important;align-items:center;gap:18px;border:0!important;padding:0!important;justify-content:flex-end}
+.msx-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.msx-tag,.msx .cls-card-badge{font-family:Archivo,sans-serif!important;font-size:11px!important;font-weight:700!important;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px!important;border-radius:999px!important;background:#E6EADF!important;color:#3F5A30!important;line-height:1.2!important;margin:0!important;position:static!important}
+.msx .cls-card-badge{background:#F1EEE6!important;color:#55524A!important}
+.msx-tag.is-next{background:#9A4F1E!important;color:#fff!important}
+.msx-tag.is-series{background:#4A3728!important;color:#fff!important}
+.msx .cls-card-name{text-decoration:none!important;font-family:Georgia,serif;font-size:22px!important;font-weight:400!important;line-height:1.25!important;color:#4A3728}
+.msx .cls-card-instructor,.msx .cls-card-desc,.msx .cls-card-spots{display:none!important}
+.msx .cls-card-meta{display:flex!important;flex-wrap:wrap;gap:4px 0;font-family:Archivo,sans-serif;font-size:14px;color:#55524A;border:0!important;padding:0!important}
+.msx .cls-card-meta>*{margin:0!important;font-size:14px!important;color:#55524A!important;font-family:Archivo,sans-serif!important}
+.msx .cls-card-date{display:none!important}
+.msx-facts::before{content:"\00b7";margin:0 8px}
+.msx-price{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.msx .cls-card-price{font-family:Georgia,serif;font-size:24px!important;font-weight:400!important;margin:0!important;color:#4A3728;line-height:1}
+.msx-status{font-family:Archivo,sans-serif;font-size:13px;font-weight:700;color:#3F5A30;white-space:nowrap}
+.msx-status.is-few{color:#9A4F1E}.msx-status.is-full{color:#6E6A60}
+.msx-cta{display:inline-flex;align-items:center;justify-content:center;min-width:120px;min-height:44px;padding:0 18px;border-radius:999px;background:#56664A;color:#fff;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;border:1.5px solid #56664A;white-space:nowrap}
+.msx-full .msx-cta{background:transparent;color:#4A3728;border-color:#4A3728}
+.msx .cls-card-link:hover .msx-cta{filter:brightness(.92)}
+.msx .cls-card-link:hover .cls-card-name{text-decoration:underline}
+.msx-full .cls-card-image{filter:grayscale(.85);opacity:.6}
+.msx-full .msx-date{background:#EEEBE2;box-shadow:none;color:#6E6A60}
+/* Featured Studio Series card */
+.msx .msx-series{border-bottom:0!important;padding:16px 0!important}
+.msx .msx-series .cls-card-link{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:0;padding:0!important;background:#4A3728!important;border-radius:22px;overflow:hidden;color:#FBFAF6}
+.msx .msx-series .cls-card-image{grid-column:1;width:100%!important;height:100%!important;min-height:300px!important;border-radius:0!important}
+.msx .msx-series .msx-date{position:absolute;top:14px;left:14px;width:64px;z-index:1;box-shadow:none}
+.msx .msx-series .cls-card-body{grid-column:2;grid-template-columns:1fr;padding:32px 36px!important;row-gap:12px}
+.msx .msx-series .cls-card-footer{grid-column:1!important;grid-row:auto;justify-content:flex-start;margin-top:8px!important}
+.msx .msx-series .cls-card-name{font-size:32px!important;color:#FBFAF6}
+.msx .msx-series .cls-card-desc{display:block!important;font-size:16px;line-height:1.55;color:#E9E6DC!important}
+.msx .msx-series .cls-card-date{display:block!important}
+.msx .msx-series .cls-card-meta>*{color:#E9E6DC!important}
+.msx .msx-series .cls-card-price{color:#FBFAF6}
+.msx .msx-series .msx-price{align-items:flex-start}
+.msx .msx-series .msx-status{color:#F2C9A0}
+.msx .msx-series .msx-cta{background:#FBFAF6;color:#4A3728;border-color:#FBFAF6}
+.msx .msx-series .cls-card-badge{background:rgba(251,250,246,.15)!important;color:#FBFAF6!important}
+.msx-series-note{font-family:Archivo,sans-serif;font-size:13px;color:#E9E6DC}
+.msx-empty-filter{font-size:18px;color:#4A3728;margin:24px 0}
+/* Sticky next-class bar: phone + tablet only */
+.msx-bar{display:none}
+@media (max-width:991px){
+ .msx-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;gap:12px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E4E1D6;box-shadow:0 -6px 20px rgba(74,55,40,.08);transition:transform .2s ease}
+ .msx-bar.is-hidden{transform:translateY(110%)}
+ .msx-bar-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+ .msx-bar-text small{font-family:Archivo,sans-serif;font-size:12px;font-weight:700;color:#9A4F1E}
+ .msx-bar-text span{font-family:Georgia,serif;font-size:15px;color:#4A3728;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .msx-bar a{display:inline-flex;align-items:center;min-height:46px;padding:0 20px;border-radius:999px;background:#56664A;color:#fff;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;text-decoration:none}
+ body.msx-has-bar{padding-bottom:84px}
+}
+@media (max-width:767px){
+ .msx-filters{flex-wrap:wrap;gap:8px}
+ .msx-chip{flex:0 0 auto;white-space:nowrap;padding:0 14px}
+ .msx-sep{display:none}
+ .msx-month{font-size:20px;margin-top:20px}
+ .msx .cls-card-link{grid-template-columns:92px minmax(0,1fr);gap:14px;padding:12px 0!important}
+ .msx .cls-card-image{grid-column:1;width:92px!important;height:92px!important;border-radius:14px!important}
+ .msx-date{grid-column:1;align-self:end;justify-self:start;margin:0 0 6px 6px;width:auto;min-width:38px;padding:4px 5px;border-radius:8px;box-shadow:none;background:#FBFAF6;z-index:1}
+ .msx-date b{font-size:17px}.msx-date span{font-size:9px}.msx-date i{display:none}
+ .msx .cls-card-body{grid-column:2;column-gap:10px}
+ .msx .cls-card-name{font-size:17px!important}
+ .msx .cls-card-meta,.msx .cls-card-meta>*{font-size:12px!important}
+ .msx .cls-card-price{font-size:18px!important}
+ .msx .cls-card-footer{gap:0}
+ .msx-status{font-size:12px}
+ .msx-cta{display:none}
+ .msx-facts.is-materials{display:none}
+ .msx .msx-series .cls-card-link{display:block!important}
+ .msx .msx-series .cls-card-image{height:190px!important;min-height:0!important}
+ .msx .msx-series .msx-date{top:10px;left:10px;margin:0;width:auto;align-self:auto}
+ .msx .msx-series .cls-card-body{padding:16px!important}
+ .msx .msx-series .cls-card-name{font-size:21px!important}
+ .msx .msx-series .msx-cta{display:inline-flex}
+}
+/* Private-class card beside the existing "Can't find" card */
+.cls-cta-section.msx-two{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:stretch;padding-left:max(16px,calc((100% - 1120px)/2))!important;padding-right:max(16px,calc((100% - 1120px)/2))!important}
+.cls-cta-section.msx-two .cls-cta-container{margin:0!important;max-width:none!important;width:auto!important;height:100%;display:flex;flex-direction:column;align-items:center}
+.cls-cta-section.msx-two .cls-cta-btn{margin-top:auto}
+/* Made in the studio (Instagram) */
+.msx-made{padding:48px 16px;text-align:center}
+.msx-made .instagram-media{margin:16px auto 0!important}
+</style>
+<script>
+(function () {
+  var TZ = 'America/New_York';
+  var CRAFTS = [
+    { id: 'glass', label: 'Stained glass', re: /stain/i },
+    { id: 'jewelry', label: 'Jewelry', re: /copper|macram|jewel|bead/i },
+    { id: 'pottery', label: 'Pottery', re: /pott|clay|ceramic|wheel/i },
+    { id: 'fiber', label: 'Fiber arts', re: /fiber|weav|knit|embroid|felt/i }
+  ];
+
+  function parseDate(raw) {
+    if (!raw) return null;
+    var d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function part(d, opts) {
+    var o = Object.assign({}, opts);
+    if (d.__iso) o.timeZone = TZ;
+    return new Intl.DateTimeFormat('en-US', o).format(d);
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function init() {
+    var grid = document.querySelector('.cls-card-grid');
+    if (!grid || grid.classList.contains('msx')) return;
+    var items = Array.prototype.slice.call(grid.querySelectorAll('.cls-card'));
+    if (!items.length) return;
+    grid.classList.add('msx');
+
+    var rows = items.map(function (item) {
+      var name = (item.querySelector('.cls-card-name') || {}).textContent || '';
+      var cat = item.getAttribute('data-category') || '';
+      var raw = item.getAttribute('data-date') || '';
+      var d = parseDate(raw);
+      if (d && /T\d/.test(raw)) d.__iso = true;
+      var spotsAttr = item.getAttribute('data-spots');
+      var spots = spotsAttr === '' || spotsAttr == null ? null : parseInt(spotsAttr, 10);
+      var sessions = parseInt(item.getAttribute('data-sessions') || '', 10);
+      var text = cat + ' ' + name;
+      var series = /studio series/i.test(text) || sessions >= 3;
+      var workshop = !series && (sessions === 2 || /workshop/i.test(text) || /each/i.test(item.getAttribute('data-duration') || ''));
+      var craft = CRAFTS.filter(function (c) { return c.re.test(cat + ' ' + name); })[0];
+      return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
+        craft: craft ? craft.id : 'other', full: spots != null && spots <= 0,
+        time: item.getAttribute('data-time') || '' };
+    });
+
+    var next = rows.filter(function (r) { return !r.full; })[0];
+
+    rows.forEach(function (r) {
+      var item = r.item;
+      var link = item.querySelector('.cls-card-link');
+      var body = item.querySelector('.cls-card-body');
+      var footer = item.querySelector('.cls-card-footer');
+      if (!link || !body) return;
+      if (r.full) item.classList.add('msx-full');
+      if (r.series) item.classList.add('msx-series');
+
+      if (r.date) {
+        var block = el('div', 'msx-date');
+        block.setAttribute('aria-hidden', 'true');
+        block.appendChild(el('span', null, part(r.date, { weekday: 'short' })));
+        block.appendChild(el('b', null, part(r.date, { day: 'numeric' })));
+        block.appendChild(el('span', null, part(r.date, { month: 'short' })));
+        if (r.time && !/varies/i.test(r.time)) block.appendChild(el('i', null, r.time.replace(':00', '')));
+        link.insertBefore(block, link.firstChild);
+      }
+
+      var tags = el('div', 'msx-tags');
+      if (r === next) tags.appendChild(el('span', 'msx-tag is-next', 'Next up'));
+      tags.appendChild(el('span', 'msx-tag' + (r.series ? ' is-series' : ''), r.series ? 'Studio Series' : r.workshop ? 'Workshop' : 'Try It'));
+      var badge = body.querySelector('.cls-card-badge');
+      if (badge) tags.appendChild(badge);
+      body.insertBefore(tags, body.firstChild);
+
+      var meta = body.querySelector('.cls-card-meta');
+      if (meta && !r.series) {
+        if (r.time) meta.appendChild(el('span', 'msx-facts', r.time));
+        var wd = r.workshop && meta.querySelector('.cls-card-date');
+        if (wd && wd.textContent.trim()) meta.appendChild(el('span', 'msx-facts', 'Sessions: ' + wd.textContent.trim()));
+        meta.appendChild(el('span', 'msx-facts is-materials', 'Materials included'));
+      }
+      if (r.series && meta) {
+        var dates = meta.querySelector('.cls-card-date');
+        if (dates) dates.textContent = 'Sessions: ' + dates.textContent + (r.time ? ' at ' + r.time : '');
+      }
+
+      if (footer) {
+        var priceWrap = el('div', 'msx-price');
+        var price = footer.querySelector('.cls-card-price');
+        if (price) priceWrap.appendChild(price);
+        if (r.spots != null) {
+          var txt = r.full ? 'Full' : r.spots === 1 ? 'Only 1 seat left' : r.spots <= 3 ? r.spots + ' seats left' : r.spots + ' seats open';
+          priceWrap.appendChild(el('span', 'msx-status' + (r.full ? ' is-full' : r.spots <= 3 ? ' is-few' : ''), txt));
+        } else {
+          var spotsEl = footer.querySelector('.cls-card-spots');
+          if (spotsEl) priceWrap.appendChild(el('span', 'msx-status', spotsEl.textContent));
+        }
+        footer.insertBefore(priceWrap, footer.firstChild);
+        footer.appendChild(el('span', 'msx-cta', r.full ? 'Join waitlist' : r.series ? 'Save my seat' : 'Reserve'));
+      }
+    });
+
+    // Month headers
+    var months = [];
+    var lastKey = null;
+    var thisYear = new Date().getFullYear();
+    rows.forEach(function (r) {
+      if (!r.date) return;
+      var key = part(r.date, { year: 'numeric', month: 'long' });
+      if (key !== lastKey) {
+        var label = part(r.date, { month: 'long' });
+        if (+part(r.date, { year: 'numeric' }) !== thisYear) label = key;
+        var h = el('h2', 'msx-month', label);
+        grid.insertBefore(h, r.item);
+        months.push({ h: h, rows: [] });
+        lastKey = key;
+      }
+      months[months.length - 1].rows.push(r);
+    });
+
+    // Filter chips (only for crafts / formats that are on the calendar)
+    var chips = [{ id: 'all', label: 'All' }];
+    CRAFTS.concat([{ id: 'other', label: 'Other' }]).forEach(function (c) {
+      if (rows.some(function (r) { return r.craft === c.id; })) chips.push(c);
+    });
+    if (rows.some(function (r) { return r.workshop; })) chips.push({ id: 'workshop', label: 'Workshops' });
+    if (rows.some(function (r) { return r.series; })) chips.push({ id: 'series', label: 'Studio Series' });
+    var hasFull = rows.some(function (r) { return r.full; });
+    if (chips.length > 2 || hasFull) {
+      var bar = el('div', 'msx-filters');
+      bar.setAttribute('role', 'group');
+      bar.setAttribute('aria-label', 'Filter classes');
+      var empty = el('p', 'msx-empty-filter', 'Nothing on the calendar for that yet.');
+      empty.hidden = true;
+      var state = { id: 'all', open: false };
+      var toggle = null;
+      var apply = function () {
+        var id = state.id;
+        Array.prototype.forEach.call(bar.querySelectorAll('.msx-chip[data-id]'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === id)); });
+        if (toggle) toggle.setAttribute('aria-pressed', String(state.open));
+        var shown = 0;
+        rows.forEach(function (r) {
+          var ok = (id === 'all' || (id === 'series' ? r.series : id === 'workshop' ? r.workshop : r.craft === id)) && !(state.open && r.full);
+          r.item.style.display = ok ? '' : 'none';
+          if (ok) shown++;
+        });
+        months.forEach(function (m) {
+          m.h.style.display = m.rows.some(function (r) { return r.item.style.display !== 'none'; }) ? '' : 'none';
+        });
+        empty.hidden = shown > 0;
+      };
+      if (chips.length > 2) chips.forEach(function (c) {
+        var b = el('button', 'msx-chip', c.label);
+        b.type = 'button';
+        b.dataset.id = c.id;
+        b.addEventListener('click', function () { state.id = c.id; apply(); });
+        bar.appendChild(b);
+      });
+      if (hasFull) {
+        if (chips.length > 2) bar.appendChild(el('span', 'msx-sep'));
+        toggle = el('button', 'msx-chip msx-toggle', 'Open seats');
+        toggle.type = 'button';
+        toggle.addEventListener('click', function () { state.open = !state.open; apply(); });
+        bar.appendChild(toggle);
+      }
+      var list = grid.closest('.w-dyn-list') || grid;
+      list.parentNode.insertBefore(bar, list);
+      list.parentNode.insertBefore(empty, list.nextSibling);
+      apply();
+    }
+
+    // Sticky next-class bar (CSS shows it on phone + tablet only)
+    if (next && next.date) {
+      var link = next.item.querySelector('.cls-card-link');
+      var nb = el('div', 'msx-bar');
+      var t = el('div', 'msx-bar-text');
+      var seats = next.spots == null ? '' : ' · ' + (next.spots === 1 ? '1 seat left' : next.spots + (next.spots <= 3 ? ' seats left' : ' seats open'));
+      t.appendChild(el('small', null, 'Next class · ' + part(next.date, { weekday: 'short', month: 'short', day: 'numeric' }) + seats));
+      t.appendChild(el('span', null, next.name));
+      var a = el('a', null, 'Reserve');
+      a.href = link ? link.getAttribute('href') : '#';
+      a.setAttribute('aria-label', 'Reserve ' + next.name);
+      nb.appendChild(t);
+      nb.appendChild(a);
+      document.body.appendChild(nb);
+      document.body.classList.add('msx-has-bar');
+      if ('IntersectionObserver' in window) {
+        var hideFor = [next.item, document.querySelector('footer.footer, footer:not(.cls-card-footer)')].filter(Boolean);
+        var visible = new Set();
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { e.isIntersecting ? visible.add(e.target) : visible.delete(e.target); });
+          nb.classList.toggle('is-hidden', visible.size > 0);
+        });
+        hideFor.forEach(function (x) { io.observe(x); });
+      }
+    }
+  }
+
+  function twoUp() {
+    var cta = document.querySelector('.cls-cta-section');
+    if (cta && cta.querySelectorAll('.cls-cta-container').length > 1) cta.classList.add('msx-two');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { init(); twoUp(); });
+  else { init(); twoUp(); }
+})();
+</script>

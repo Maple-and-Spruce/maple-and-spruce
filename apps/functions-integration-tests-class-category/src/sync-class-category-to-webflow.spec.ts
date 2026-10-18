@@ -18,6 +18,7 @@ import {
   setFirestoreDoc,
   getFirestoreDoc,
   deleteFirestoreDoc,
+  listFirestoreDocs,
   EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -193,6 +194,79 @@ describe('syncClassCategoryToWebflow trigger', () => {
       await waitForTrigger();
 
       expect(await findMockCategory(categoryId)).toBeUndefined();
+    });
+  });
+
+  describe('Sync failure alert', () => {
+    const categoryId = 'test-cat-sync-fails';
+
+    async function armWebflowWriteFailures(count: number): Promise<void> {
+      const res = await fetch(
+        `${EMULATOR_CONFIG.webflowMockServerUrl}/_mock/fail-next-writes`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 400, count }),
+        }
+      );
+      expect(res.ok).toBe(true);
+    }
+
+    async function alertMails() {
+      const mails = await listFirestoreDocs('mail');
+      return mails.filter((m) =>
+        String(
+          (m.data['message'] as Record<string, unknown> | undefined)?.[
+            'subject'
+          ] ?? ''
+        ).includes('Failing Category')
+      );
+    }
+
+    afterAll(async () => {
+      await fetch(
+        `${EMULATOR_CONFIG.webflowMockServerUrl}/_mock/clear-failures`,
+        { method: 'POST' }
+      );
+    });
+
+    it('emails the studio once when a sync fails, then throttles repeats', async () => {
+      await armWebflowWriteFailures(1);
+      await setFirestoreDoc(
+        'classCategories',
+        categoryId,
+        categoryDoc({ name: 'Failing Category' })
+      );
+      await waitForTrigger();
+
+      expect(await findMockCategory(categoryId)).toBeUndefined();
+
+      const first = await alertMails();
+      expect(first).toHaveLength(1);
+      const message = first[0].data['message'] as Record<string, string>;
+      expect(message['subject']).toBe(
+        '[dev] Webflow sync failed: class category "Failing Category"'
+      );
+      expect(message['text']).toContain(`Record id: ${categoryId}`);
+      expect(message['text']).toContain('Function: syncClassCategoryToWebflow');
+      expect(first[0].data['to']).toEqual(expect.any(String));
+
+      // A second failure for the same record inside the window is counted,
+      // not emailed.
+      await armWebflowWriteFailures(1);
+      await setFirestoreDoc(
+        'classCategories',
+        categoryId,
+        categoryDoc({ name: 'Failing Category', order: 31 })
+      );
+      await waitForTrigger();
+
+      expect(await alertMails()).toHaveLength(1);
+      const throttle = await getFirestoreDoc(
+        'syncFailureAlerts',
+        `syncClassCategoryToWebflow__${categoryId}`
+      );
+      expect(throttle?.['suppressedCount']).toBe(1);
     });
   });
 });

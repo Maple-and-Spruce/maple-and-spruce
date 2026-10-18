@@ -38,7 +38,7 @@ import type {
   GetPublicMusicTogetherDemosResponse,
   PublicMusicTogetherDemo,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import { warmup } from './lib/warmup';
 import { readMetaAttribution } from './lib/meta-attribution';
 import {
@@ -125,10 +125,10 @@ export function MusicTogetherDemoWidget({
     const load = async () => {
       setDemosState({ status: 'loading' });
       try {
-        const call = httpsCallable<
+        const call = routeCallable<
           GetPublicMusicTogetherDemosRequest,
           GetPublicMusicTogetherDemosResponse
-        >(functions, 'getPublicMusicTogetherDemos');
+        >(functions, 'publicSite', 'getPublicMusicTogetherDemos');
         const result = await call({});
         if (cancelled) return;
         const demos = result.data.demos;
@@ -236,7 +236,7 @@ export function MusicTogetherDemoWidget({
         <Typography variant="h5" component="h2" gutterBottom>
           {heading}
         </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
           {intro}
         </Typography>
 
@@ -273,12 +273,12 @@ export function MusicTogetherDemoWidget({
                           <Typography variant="body1">
                             {formatDemoDateTime(demo.dateTime)}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="textSecondary">
                             {demo.location}
                           </Typography>
                           <Typography
                             variant="caption"
-                            color={demo.isFull ? 'warning.main' : 'text.secondary'}
+                            color={demo.isFull ? 'warning' : 'textSecondary'}
                           >
                             {spotsLabel(demo)}
                           </Typography>

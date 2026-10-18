@@ -20,6 +20,7 @@
  * Presentational — the page owns the data (`useMyWeek`) and week navigation.
  */
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   Alert,
   Box,
@@ -60,6 +61,11 @@ export interface MyWeekProps {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onThisWeek: () => void;
+  /**
+   * Where a lesson with a known student opens (#160) — the student's Next
+   * lessons tab. Omit to leave lessons as plain blocks.
+   */
+  studentHref?: (studentId: string) => string;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -115,6 +121,10 @@ interface WeekItem {
   unattributed: boolean;
   /** A this-week-only occurrence; faded so standing items stand out. */
   oneOff: boolean;
+  /** Set on the caller's own lessons, so the block can open the student. */
+  studentId?: string;
+  /** The caller's own lesson, held online (#210). */
+  online?: boolean;
 }
 
 function startMinutesOf(iso: string): number {
@@ -135,9 +145,12 @@ function commitmentToItem(c: MyWeekCommitment): WeekItem {
     endMin: endMinutesOf(c.endDateTime),
     category: c.category,
     ownership: c.ownership,
-    title: c.title,
+    // A lesson reads as who it is with, not "Music Lesson".
+    title: c.studentName ?? c.title,
     unattributed: c.unattributed,
     oneOff: c.cadence === 'one-off',
+    studentId: c.studentId,
+    online: c.online,
   };
 }
 
@@ -150,9 +163,10 @@ function standingToItem(s: MyWeekStandingSlot): WeekItem {
     endMin: s.startMinutes + s.durationMinutes,
     category: s.category,
     ownership: s.ownership,
-    title: s.title,
+    title: s.studentName ?? s.title,
     unattributed: false,
     oneOff: false,
+    studentId: s.studentId,
   };
 }
 
@@ -230,6 +244,7 @@ export function MyWeek({
   onPrevWeek,
   onNextWeek,
   onThisWeek,
+  studentHref,
 }: MyWeekProps) {
   const [hidden, setHidden] = useState<Set<CalendarEventType>>(new Set());
   const [mode, setMode] = useState<WeekMode>('this');
@@ -333,10 +348,11 @@ export function MyWeek({
       <Stack
         direction="row"
         spacing={1}
-        alignItems="center"
-        flexWrap="wrap"
-        sx={{ mb: 2 }}
-      >
+        sx={{
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          mb: 2
+        }}>
         <IconButton aria-label="Previous week" onClick={onPrevWeek} size="small">
           <ChevronLeftIcon />
         </IconButton>
@@ -356,7 +372,7 @@ export function MyWeek({
         </Typography>
       </Stack>
     ) : (
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         Your recurring lessons and classes from the last few weeks, on a generic
         week. One-offs are hidden.
       </Typography>
@@ -403,7 +419,13 @@ export function MyWeek({
   }
 
   const toggles = (
-    <Stack direction="row" flexWrap="wrap" sx={{ mb: 2, gap: 1 }}>
+    <Stack
+      direction="row"
+      sx={{
+        flexWrap: 'wrap',
+        mb: 2,
+        gap: 1
+      }}>
       {CATEGORIES.map((cat) => {
         const on = !hidden.has(cat);
         return (
@@ -471,7 +493,7 @@ export function MyWeek({
                 {mode === 'this' && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
+                    color="textSecondary"
                     sx={{ display: 'block' }}
                   >
                     {date.toLocaleDateString(undefined, {
@@ -499,7 +521,7 @@ export function MyWeek({
               <Typography
                 key={h}
                 variant="caption"
-                color="text.secondary"
+                color="textSecondary"
                 sx={{
                   position: 'absolute',
                   top: (h - gridStart) * PX_PER_MIN - 8,
@@ -522,6 +544,7 @@ export function MyWeek({
               gridEnd={gridEnd}
               gridHeight={gridHeight}
               hours={hours}
+              studentHref={studentHref}
             />
           ))}
         </Box>
@@ -538,7 +561,9 @@ function DayColumn({
   gridEnd,
   gridHeight,
   hours,
+  studentHref,
 }: {
+  studentHref?: (studentId: string) => string;
   blocks: MyWeekBlock[];
   otherBlocks: MyWeekOtherBlock[];
   items: WeekItem[];
@@ -661,10 +686,21 @@ function DayColumn({
         const height =
           Math.max(item.endMin - item.startMin, MIN_ITEM_MIN) * PX_PER_MIN;
         const widthPct = 100 / laneCount;
+        // The caller's own lesson opens that student's Next lessons (#160):
+        // the end of a lesson is when Katie books the next four.
+        const href =
+          item.studentId && studentHref ? studentHref(item.studentId) : undefined;
         return (
           <Box
             key={item.id}
-            title={`${formatMinutes(item.startMin)} ${item.title}`}
+            {...(href
+              ? {
+                  component: Link,
+                  href,
+                  'aria-label': `${formatMinutes(item.startMin)} ${item.title}${item.online ? ', online' : ''}`,
+                }
+              : {})}
+            title={`${formatMinutes(item.startMin)} ${item.title}${item.online ? ' · Online' : ''}`}
             sx={{
               position: 'absolute',
               top,
@@ -678,7 +714,10 @@ function DayColumn({
               overflow: 'hidden',
               fontSize: 11,
               lineHeight: 1.25,
-              cursor: 'default',
+              cursor: href ? 'pointer' : 'default',
+              textDecoration: 'none',
+              display: 'block',
+              '&:hover': href ? { filter: 'brightness(0.95)' } : undefined,
               opacity: item.oneOff ? 0.55 : 1,
               ...itemSx(item),
             }}
@@ -696,6 +735,11 @@ function DayColumn({
               {item.unattributed ? '⚠ ' : ''}
               {item.title}
             </Box>
+            {item.online && (
+              <Box component="span" sx={{ fontStyle: 'italic' }}>
+                {' · Online'}
+              </Box>
+            )}
           </Box>
         );
       })}

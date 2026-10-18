@@ -80,6 +80,12 @@ export interface Registration {
   discountAmountCents?: number;
   /** Registration status */
   status: RegistrationStatus;
+  /** When the payment was refunded through the app. Unset for refunds made in Square directly. */
+  refundedAt?: Date;
+  /** Amount refunded in cents (tax-inclusive, as charged). */
+  refundedAmountCents?: number;
+  /** Square refund ID, for reconciliation. */
+  squareRefundId?: string;
   /** Human-readable confirmation number (e.g. MS-XXXXXX) shown to the buyer. */
   confirmationNumber?: string;
   /**
@@ -121,6 +127,9 @@ export type CreateRegistrationInput = Omit<
   | 'confirmationSentAt'
   | 'reminderSentAt'
   | 'reminderSentForSessions'
+  | 'refundedAt'
+  | 'refundedAmountCents'
+  | 'squareRefundId'
 >;
 
 /**
@@ -149,8 +158,12 @@ export function canRefundRegistration(registration: Registration): boolean {
 }
 
 /**
- * Calculate the final amount paid after any discounts
+ * What the student paid for the class itself: after any discount, before
+ * sales tax. This is the revenue an instructor's share is taken from.
+ *
+ * `subtotalCents` is already post-discount, and `pricePaidCents` includes
+ * tax, so neither the discount nor the tax is applied again here.
  */
 export function getNetAmountPaid(registration: Registration): number {
-  return registration.pricePaidCents - (registration.discountAmountCents ?? 0);
+  return registration.subtotalCents;
 }

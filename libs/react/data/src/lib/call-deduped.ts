@@ -1,8 +1,26 @@
 import {
   httpsCallable,
+  httpsCallableFromURL,
   type HttpsCallableResult,
 } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
+
+/** A route on a domain router (ADR-029), e.g. `{ router: 'products', route: 'getProducts' }`. */
+export interface RouterRoute {
+  router: string;
+  route: string;
+}
+
+/** What a read calls: a standalone function by name, or a route on a router. */
+export type CallableTarget = string | RouterRoute;
+
+/** `getClasses`, or `products/getProducts` for a route — the default dedupe key's prefix. */
+function targetLabel(target: CallableTarget): string {
+  return typeof target === 'string' ? target : `${target.router}/${target.route}`;
+}
 
 /**
  * In-flight requests keyed by dedupe key. An entry exists only while its
@@ -24,16 +42,17 @@ const inFlight = new Map<string, Promise<HttpsCallableResult<unknown>>>();
  *
  * Use this for idempotent reads only. Mutations call `httpsCallable` directly.
  *
- * @param name       callable function name (e.g. 'getClasses')
+ * @param target     callable function name (e.g. 'getClasses'), or a router
+ *                   route (e.g. `{ router: 'products', route: 'getProducts' }`)
  * @param data       request payload
  * @param dedupeKey  override the key when the payload carries volatile fields
  *                   that shouldn't affect identity (e.g. a request timestamp).
- *                   Defaults to the function name + serialized payload.
+ *                   Defaults to the target + serialized payload.
  */
 export function callDeduped<Req, Res>(
-  name: string,
+  target: CallableTarget,
   data: Req,
-  dedupeKey = `${name}:${JSON.stringify(data ?? {})}`
+  dedupeKey = `${targetLabel(target)}:${JSON.stringify(data ?? {})}`
 ): Promise<HttpsCallableResult<Res>> {
   const existing = inFlight.get(dedupeKey);
   if (existing) {
@@ -41,10 +60,14 @@ export function callDeduped<Req, Res>(
   }
 
   const functions = getMapleFunctions();
-  const promise = httpsCallable<Req, Res>(
-    functions,
-    name
-  )(data).finally(() => {
+  const callable =
+    typeof target === 'string'
+      ? httpsCallable<Req, Res>(functions, target)
+      : httpsCallableFromURL<Req, Res>(
+          functions,
+          routerCallableUrl(target.router, target.route)
+        );
+  const promise = callable(data).finally(() => {
     inFlight.delete(dedupeKey);
   });
 

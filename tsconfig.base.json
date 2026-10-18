@@ -86,9 +86,6 @@
       "@maple/firebase/maple-functions/health-check": [
         "libs/firebase/maple-functions/health-check/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/trigger-materialize-lesson-schedules": [
-        "libs/firebase/maple-functions/trigger-materialize-lesson-schedules/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/trigger-lesson-inquiry-sync": [
         "libs/firebase/maple-functions/trigger-lesson-inquiry-sync/src/index.ts"
       ],
@@ -101,14 +98,41 @@
       "@maple/firebase/maple-functions/trigger-music-together-installments": [
         "libs/firebase/maple-functions/trigger-music-together-installments/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/trigger-lesson-billing": [
-        "libs/firebase/maple-functions/trigger-lesson-billing/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/charge-lessons-now": [
-        "libs/firebase/maple-functions/charge-lessons-now/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/artists": [
         "libs/firebase/maple-functions/artists/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/payouts": [
+        "libs/firebase/maple-functions/payouts/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/hope": [
+        "libs/firebase/maple-functions/hope/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/settings": [
+        "libs/firebase/maple-functions/settings/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/people": [
+        "libs/firebase/maple-functions/people/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/lessons": [
+        "libs/firebase/maple-functions/lessons/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/lesson-payments": [
+        "libs/firebase/maple-functions/lesson-payments/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/public-site": [
+        "libs/firebase/maple-functions/public-site/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/calendar": [
+        "libs/firebase/maple-functions/calendar/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/discounts": [
+        "libs/firebase/maple-functions/discounts/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/agreements": [
+        "libs/firebase/maple-functions/agreements/src/index.ts"
+      ],
+      "@maple/firebase/maple-functions/products": [
+        "libs/firebase/maple-functions/products/src/index.ts"
       ],
       "@maple/firebase/maple-functions/send-music-together-conversion": [
         "libs/firebase/maple-functions/send-music-together-conversion/src/index.ts"
@@ -122,38 +146,8 @@
       "@maple/firebase/maple-functions/upload-instructor-image": [
         "libs/firebase/maple-functions/upload-instructor-image/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-categories": [
-        "libs/firebase/maple-functions/get-categories/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-category": [
-        "libs/firebase/maple-functions/create-category/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-category": [
-        "libs/firebase/maple-functions/update-category/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-category": [
-        "libs/firebase/maple-functions/delete-category/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/reorder-categories": [
-        "libs/firebase/maple-functions/reorder-categories/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-products": [
-        "libs/firebase/maple-functions/get-products/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-product": [
-        "libs/firebase/maple-functions/get-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-product": [
-        "libs/firebase/maple-functions/create-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-product": [
-        "libs/firebase/maple-functions/update-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-product": [
-        "libs/firebase/maple-functions/delete-product/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/upload-product-image": [
-        "libs/firebase/maple-functions/upload-product-image/src/index.ts"
+      "@maple/firebase/maple-functions/product-catalog": [
+        "libs/firebase/maple-functions/product-catalog/src/index.ts"
       ],
       "@maple/ts/domain": ["libs/ts/domain/src/index.ts"],
       "@maple/ts/firebase/api-types": [
@@ -212,6 +206,9 @@
       "@maple/firebase/maple-functions/sync-registration-count": [
         "libs/firebase/maple-functions/sync-registration-count/src/index.ts"
       ],
+      "@maple/firebase/maple-functions/sync-music-together-demo-rsvp-count": [
+        "libs/firebase/maple-functions/sync-music-together-demo-rsvp-count/src/index.ts"
+      ],
       "@maple/firebase/maple-functions/sync-music-together-registration-count": [
         "libs/firebase/maple-functions/sync-music-together-registration-count/src/index.ts"
       ],
@@ -223,21 +220,6 @@
       ],
       "@maple/firebase/maple-functions/get-sync-conflicts": [
         "libs/firebase/maple-functions/get-sync-conflicts/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-pos-lesson-attributions": [
-        "libs/firebase/maple-functions/get-pos-lesson-attributions/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-pos-lesson-attribution-summary": [
-        "libs/firebase/maple-functions/get-pos-lesson-attribution-summary/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/resolve-pos-lesson-attribution": [
-        "libs/firebase/maple-functions/resolve-pos-lesson-attribution/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-pos-lesson-config": [
-        "libs/firebase/maple-functions/get-pos-lesson-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-pos-lesson-config": [
-        "libs/firebase/maple-functions/update-pos-lesson-config/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-sync-conflict-summary": [
         "libs/firebase/maple-functions/get-sync-conflict-summary/src/index.ts"
@@ -263,77 +245,11 @@
       "@maple/firebase/maple-functions/delete-instructor": [
         "libs/firebase/maple-functions/delete-instructor/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-students": [
-        "libs/firebase/maple-functions/get-students/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-student": [
-        "libs/firebase/maple-functions/get-student/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-student": [
-        "libs/firebase/maple-functions/create-student/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-student": [
-        "libs/firebase/maple-functions/update-student/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-student": [
-        "libs/firebase/maple-functions/delete-student/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-lesson": [
-        "libs/firebase/maple-functions/create-lesson/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-lesson-blocks": [
-        "libs/firebase/maple-functions/get-lesson-blocks/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/materialize-lesson-schedules": [
-        "libs/firebase/maple-functions/materialize-lesson-schedules/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-student-lesson-schedules": [
-        "libs/firebase/maple-functions/get-student-lesson-schedules/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-student-lesson-schedule": [
-        "libs/firebase/maple-functions/create-student-lesson-schedule/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-student-lesson-schedule": [
-        "libs/firebase/maple-functions/update-student-lesson-schedule/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-needs-attention": [
         "libs/firebase/maple-functions/get-needs-attention/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-hope-queue": [
-        "libs/firebase/maple-functions/get-hope-queue/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/record-hope-submissions": [
-        "libs/firebase/maple-functions/record-hope-submissions/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/sync-lesson-inquiries": [
         "libs/firebase/maple-functions/sync-lesson-inquiries/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-lesson-inquiries": [
-        "libs/firebase/maple-functions/get-lesson-inquiries/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-lesson-inquiry-status": [
-        "libs/firebase/maple-functions/update-lesson-inquiry-status/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-lesson-block": [
-        "libs/firebase/maple-functions/create-lesson-block/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-lesson-block": [
-        "libs/firebase/maple-functions/update-lesson-block/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-lesson-block": [
-        "libs/firebase/maple-functions/delete-lesson-block/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-lesson-series": [
-        "libs/firebase/maple-functions/create-lesson-series/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-lessons": [
-        "libs/firebase/maple-functions/get-lessons/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-lesson": [
-        "libs/firebase/maple-functions/update-lesson/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-lesson": [
-        "libs/firebase/maple-functions/delete-lesson/src/index.ts"
       ],
       "@maple/firebase/maple-functions/create-invoice": [
         "libs/firebase/maple-functions/create-invoice/src/index.ts"
@@ -349,9 +265,6 @@
       ],
       "@maple/firebase/maple-functions/delete-invoice": [
         "libs/firebase/maple-functions/delete-invoice/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-teacher-payouts": [
-        "libs/firebase/maple-functions/get-teacher-payouts/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-classes": [
         "libs/firebase/maple-functions/get-classes/src/index.ts"
@@ -398,21 +311,6 @@
       "@maple/firebase/maple-functions/reorder-class-categories": [
         "libs/firebase/maple-functions/reorder-class-categories/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-discounts": [
-        "libs/firebase/maple-functions/get-discounts/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-discount": [
-        "libs/firebase/maple-functions/create-discount/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-discount": [
-        "libs/firebase/maple-functions/update-discount/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-discount": [
-        "libs/firebase/maple-functions/delete-discount/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/lookup-discount": [
-        "libs/firebase/maple-functions/lookup-discount/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-registrations": [
         "libs/firebase/maple-functions/get-registrations/src/index.ts"
       ],
@@ -428,9 +326,6 @@
       "@maple/firebase/maple-functions/update-registration": [
         "libs/firebase/maple-functions/update-registration/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/calculate-registration-cost": [
-        "libs/firebase/maple-functions/calculate-registration-cost/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/create-registration": [
         "libs/firebase/maple-functions/create-registration/src/index.ts"
       ],
@@ -442,15 +337,6 @@
       ],
       "@maple/firebase/maple-functions/cancel-registration": [
         "libs/firebase/maple-functions/cancel-registration/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-class": [
-        "libs/firebase/maple-functions/get-public-class/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-registration-status": [
-        "libs/firebase/maple-functions/get-registration-status/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-music-together-section": [
-        "libs/firebase/maple-functions/get-public-music-together-section/src/index.ts"
       ],
       "@maple/firebase/maple-functions/get-music-together-semesters": [
         "libs/firebase/maple-functions/get-music-together-semesters/src/index.ts"
@@ -497,14 +383,8 @@
       "@maple/firebase/maple-functions/delete-music-together-demo": [
         "libs/firebase/maple-functions/delete-music-together-demo/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-public-music-together-demos": [
-        "libs/firebase/maple-functions/get-public-music-together-demos/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/on-music-together-demo-write": [
         "libs/firebase/maple-functions/on-music-together-demo-write/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-public-music-together-sections": [
-        "libs/firebase/maple-functions/get-public-music-together-sections/src/index.ts"
       ],
       "@maple/firebase/maple-functions/add-music-together-interest": [
         "libs/firebase/maple-functions/add-music-together-interest/src/index.ts"
@@ -512,32 +392,8 @@
       "@maple/firebase/maple-functions/get-music-together-interest": [
         "libs/firebase/maple-functions/get-music-together-interest/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/check-admin-status": [
-        "libs/firebase/maple-functions/check-admin-status/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-my-roles": [
         "libs/firebase/maple-functions/get-my-roles/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/grant-role": [
-        "libs/firebase/maple-functions/grant-role/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/revoke-role": [
-        "libs/firebase/maple-functions/revoke-role/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-calendar-events": [
-        "libs/firebase/maple-functions/get-calendar-events/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-calendar-event": [
-        "libs/firebase/maple-functions/get-calendar-event/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-calendar-event": [
-        "libs/firebase/maple-functions/create-calendar-event/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-calendar-event": [
-        "libs/firebase/maple-functions/update-calendar-event/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-calendar-event": [
-        "libs/firebase/maple-functions/delete-calendar-event/src/index.ts"
       ],
       "@maple/firebase/maple-functions/calendar-classes-feed": [
         "libs/firebase/maple-functions/calendar-classes-feed/src/index.ts"
@@ -578,44 +434,8 @@
       "@maple/firebase/maple-functions/on-lesson-write": [
         "libs/firebase/maple-functions/on-lesson-write/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-lesson-rates-config": [
-        "libs/firebase/maple-functions/get-lesson-rates-config/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/run-lesson-billing": [
         "libs/firebase/maple-functions/run-lesson-billing/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-square-card-candidates": [
-        "libs/firebase/maple-functions/get-square-card-candidates/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-student-square-card": [
-        "libs/firebase/maple-functions/update-student-square-card/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-lesson-billing": [
-        "libs/firebase/maple-functions/get-lesson-billing/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/save-lesson-billing-rule": [
-        "libs/firebase/maple-functions/save-lesson-billing-rule/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-lesson-scheduled-charge": [
-        "libs/firebase/maple-functions/update-lesson-scheduled-charge/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-my-day-lessons": [
-        "libs/firebase/maple-functions/get-my-day-lessons/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-my-week": [
-        "libs/firebase/maple-functions/get-my-week/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-business-payment-config": [
-        "libs/firebase/maple-functions/get-business-payment-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-business-payment-config": [
-        "libs/firebase/maple-functions/update-business-payment-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-lesson-rates-config": [
-        "libs/firebase/maple-functions/update-lesson-rates-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-room-schedule": [
-        "libs/firebase/maple-functions/get-room-schedule/src/index.ts"
       ],
       "@maple/react/instructors": ["libs/react/instructors/src/index.ts"],
       "@maple/react/students": ["libs/react/students/src/index.ts"],
@@ -628,18 +448,6 @@
       "@maple/react/agreements": ["libs/react/agreements/src/index.ts"],
       "@maple/react/events": ["libs/react/events/src/index.ts"],
       "@maple/react/rooms": ["libs/react/rooms/src/index.ts"],
-      "@maple/firebase/maple-functions/get-calendar-embed-config": [
-        "libs/firebase/maple-functions/get-calendar-embed-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-calendar-embed-config": [
-        "libs/firebase/maple-functions/update-calendar-embed-config/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/add-calendar-embed-source": [
-        "libs/firebase/maple-functions/add-calendar-embed-source/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/remove-calendar-embed-source": [
-        "libs/firebase/maple-functions/remove-calendar-embed-source/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/calendar-embed": [
         "libs/firebase/maple-functions/calendar-embed/src/index.ts"
       ],
@@ -697,15 +505,6 @@
       "@maple/firebase/maple-functions/get-sales": [
         "libs/firebase/maple-functions/get-sales/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/generate-payout": [
-        "libs/firebase/maple-functions/generate-payout/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/mark-payout-paid": [
-        "libs/firebase/maple-functions/mark-payout-paid/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-payouts": [
-        "libs/firebase/maple-functions/get-payouts/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/expire-agreement-requests": [
         "libs/firebase/maple-functions/expire-agreement-requests/src/index.ts"
       ],
@@ -721,44 +520,11 @@
       "@maple/firebase/integration-test-utils": [
         "libs/firebase/integration-test-utils/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/get-agreement-templates": [
-        "libs/firebase/maple-functions/get-agreement-templates/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-agreement-template": [
-        "libs/firebase/maple-functions/get-agreement-template/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/create-agreement-template": [
-        "libs/firebase/maple-functions/create-agreement-template/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/update-agreement-template": [
-        "libs/firebase/maple-functions/update-agreement-template/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/delete-agreement-template": [
-        "libs/firebase/maple-functions/delete-agreement-template/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-agreement-requests": [
-        "libs/firebase/maple-functions/get-agreement-requests/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/send-agreement-request": [
-        "libs/firebase/maple-functions/send-agreement-request/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/resend-agreement-request": [
-        "libs/firebase/maple-functions/resend-agreement-request/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-signed-agreements": [
-        "libs/firebase/maple-functions/get-signed-agreements/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-signed-agreement": [
-        "libs/firebase/maple-functions/get-signed-agreement/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/get-agreement-for-signing": [
         "libs/firebase/maple-functions/get-agreement-for-signing/src/index.ts"
       ],
       "@maple/firebase/maple-functions/submit-signed-agreement": [
         "libs/firebase/maple-functions/submit-signed-agreement/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/get-required-agreements-for-class": [
-        "libs/firebase/maple-functions/get-required-agreements-for-class/src/index.ts"
       ],
       "@maple/firebase/square-test-mock-server": [
         "libs/firebase/square-test-mock-server/src/index.ts"
@@ -769,15 +535,6 @@
       "@maple/firebase/etsy-test-mock-server": [
         "libs/firebase/etsy-test-mock-server/src/index.ts"
       ],
-      "@maple/firebase/maple-functions/list-users": [
-        "libs/firebase/maple-functions/list-users/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/grant-admin-role": [
-        "libs/firebase/maple-functions/grant-admin-role/src/index.ts"
-      ],
-      "@maple/firebase/maple-functions/revoke-admin-role": [
-        "libs/firebase/maple-functions/revoke-admin-role/src/index.ts"
-      ],
       "@maple/firebase/maple-functions/tally-lead-webhook": [
         "libs/firebase/maple-functions/tally-lead-webhook/src/index.ts"
       ],
@@ -785,6 +542,7 @@
         "libs/firebase/ga4-test-mock-server/src/index.ts"
       ],
       "@maple/firebase/meta-capi": ["libs/firebase/meta-capi/src/index.ts"],
+      "@maple/firebase/sync-alerts": ["libs/firebase/sync-alerts/src/index.ts"],
       "@maple/firebase/meta-capi-test-mock-server": [
         "libs/firebase/meta-capi-test-mock-server/src/index.ts"
       ],

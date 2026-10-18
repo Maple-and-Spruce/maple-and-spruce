@@ -31,6 +31,7 @@ function docToStudent(
     primaryTeacherId: data.primaryTeacherId,
     registeredLessonLength: data.registeredLessonLength,
     isHopeScholarship: data.isHopeScholarship ?? false,
+    hopeProductId: data.hopeProductId ?? undefined,
     primaryContactName: data.primaryContactName,
     primaryContactEmail: data.primaryContactEmail,
     primaryContactPhone: data.primaryContactPhone,

@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * Banner shown on a Hope Scholarship student's pages explaining the
- * external-invoicing / per-rendered-lesson billing rules, and surfacing
- * the current per-lesson rate plus an expandable rates table.
+ * What a Hope Scholarship student is billed as, at a glance.
  *
- * Billing rules are frozen in the component copy (not fetched) — they come
- * from the ESP Handbook and the studio policy tension documented in legacy #282.
+ * The one fact Katie needs on the student page is which EMA product this
+ * student's lessons go under and what EMA pays for it. The billing rules are
+ * fixed (ESP Handbook, legacy #282) and read once, so they fold away instead of
+ * taking up the top of every Hope student's page.
+ *
+ * With no product set there is no price at all, and the banner says so
+ * plainly instead of showing a figure: an estimate that looked like a fact is
+ * how a $30 lesson came to be shown as $41.25 (#83).
  */
-
 import { useState } from 'react';
 import {
   Alert,
@@ -22,107 +25,106 @@ import {
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import StarsIcon from '@mui/icons-material/Stars';
-import type { LessonLength } from '@maple/ts/domain';
-import { HopeRatesTable } from './HopeRatesTable';
-import {
-  formatCents,
-  getHopeMonthlyEquivalentCents,
-  getHopePerLessonRateCents,
-} from './hope-rates';
+import type { HopeProduct } from '@maple/ts/domain';
+import { formatHopePrice, resolveHopeLessonRate } from '@maple/ts/domain';
 
-interface HopeScholarshipBannerProps {
-  /**
-   * The student's registered tier. When present, the current rate is
-   * called out inline and the rates table highlights the matching row.
-   */
-  registeredLessonLength?: LessonLength;
-  /** Default expanded state for the rates table. Defaults to collapsed. */
-  defaultRatesExpanded?: boolean;
+export interface HopeScholarshipBannerProps {
+  /** The student's EMA product id, if one is set. */
+  hopeProductId?: string;
+  /** Every EMA product, to look the student's up. */
+  products?: HopeProduct[];
+  /** Open the student form to choose a product. */
+  onChooseProduct?: () => void;
+  /** Default expanded state for the billing rules. Defaults to collapsed. */
+  defaultRulesExpanded?: boolean;
 }
 
 export function HopeScholarshipBanner({
-  registeredLessonLength,
-  defaultRatesExpanded = false,
+  hopeProductId,
+  products = [],
+  onChooseProduct,
+  defaultRulesExpanded = false,
 }: HopeScholarshipBannerProps) {
-  const [ratesExpanded, setRatesExpanded] = useState(defaultRatesExpanded);
-
-  const perLessonCents = registeredLessonLength
-    ? getHopePerLessonRateCents(registeredLessonLength)
-    : undefined;
-  const monthlyCents = registeredLessonLength
-    ? getHopeMonthlyEquivalentCents(registeredLessonLength)
-    : undefined;
+  const [rulesOpen, setRulesOpen] = useState(defaultRulesExpanded);
+  const rate = resolveHopeLessonRate(
+    { hopeProductId },
+    new Map(products.map((p) => [p.id, p]))
+  );
 
   return (
     <Alert
-      severity="info"
+      severity={rate.product ? 'info' : 'warning'}
       icon={<StarsIcon />}
       sx={{ mb: 3, alignItems: 'flex-start' }}
     >
-      <AlertTitle>WV Hope Scholarship student</AlertTitle>
+      <AlertTitle>WV Hope Scholarship</AlertTitle>
       <Typography variant="body2" sx={{ mb: 1 }}>
-        Invoicing goes through the Hope / EMA portal —{' '}
-        <strong>not</strong> through Maple &amp; Spruce.
+        Billed in the EMA portal, one lesson at a time after it is taught.
+        No-shows are never billed.
       </Typography>
-      <Box component="ul" sx={{ pl: 2, mt: 0, mb: 1 }}>
-        <li>
-          <Typography variant="body2">
-            Invoice <strong>per lesson after it is rendered</strong>, not
-            monthly in advance.
-          </Typography>
-        </li>
-        <li>
-          <Typography variant="body2">
-            Hope funds cannot be retained for services not rendered — only
-            bill for lessons marked <em>rendered</em> below.
-          </Typography>
-        </li>
-        <li>
-          <Typography variant="body2">
-            Refunds credit back to the Hope account, not to the parent.
-          </Typography>
-        </li>
-        <li>
-          <Typography variant="body2">
-            Post-termination 30-day tuition in the studio policy is{' '}
-            <strong>private-pay only</strong>; it cannot be drawn from Hope.
-          </Typography>
-        </li>
-      </Box>
 
-      {perLessonCents !== undefined && monthlyCents !== undefined && (
+      {rate.source === 'product' ? (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
           <Chip
-            label={`Current rate: ${formatCents(perLessonCents)} / lesson`}
-            color="info"
             size="small"
+            color="info"
+            label={`${rate.product.name} · ${formatHopePrice(rate.rateCents)} / lesson`}
           />
           <Chip
-            label={`Monthly equiv: ${formatCents(monthlyCents)}`}
-            variant="outlined"
             size="small"
+            variant="outlined"
+            label={`EMA product ${rate.product.emaProductId}`}
           />
+        </Box>
+      ) : (
+        <Box sx={{ mb: 1 }}>
+          <Typography variant="body2">
+            <strong>No EMA product set.</strong> This student&apos;s lessons
+            have no price until you choose the product they are billed under,
+            and teacher pay leaves them out until then.
+          </Typography>
+          {onChooseProduct && (
+            <Button size="small" onClick={onChooseProduct} sx={{ mt: 0.5 }}>
+              Choose EMA product
+            </Button>
+          )}
         </Box>
       )}
 
       <Button
         size="small"
-        onClick={() => setRatesExpanded((v) => !v)}
-        startIcon={
-          ratesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />
-        }
-        sx={{ mt: 0.5 }}
-        aria-expanded={ratesExpanded}
-        aria-controls="hope-rates-details"
+        onClick={() => setRulesOpen((v) => !v)}
+        startIcon={rulesOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        aria-expanded={rulesOpen}
+        aria-controls="hope-billing-rules"
       >
-        {ratesExpanded ? 'Hide all rates' : 'View all rates'}
+        {rulesOpen ? 'Hide billing rules' : 'Billing rules'}
       </Button>
-      <Collapse in={ratesExpanded} id="hope-rates-details">
-        <Box sx={{ mt: 2 }}>
-          <HopeRatesTable
-            highlightTier={registeredLessonLength}
-            heading={null}
-          />
+      <Collapse in={rulesOpen} id="hope-billing-rules">
+        <Box component="ul" sx={{ pl: 2, mt: 1, mb: 0 }}>
+          <li>
+            <Typography variant="body2">
+              Invoice <strong>per lesson after it is taught</strong>, not
+              monthly in advance.
+            </Typography>
+          </li>
+          <li>
+            <Typography variant="body2">
+              Hope funds cannot be kept for lessons not given, so only lessons
+              marked taught are billed.
+            </Typography>
+          </li>
+          <li>
+            <Typography variant="body2">
+              Refunds credit back to the Hope account, not to the parent.
+            </Typography>
+          </li>
+          <li>
+            <Typography variant="body2">
+              The 30-day post-termination tuition in the studio policy is{' '}
+              <strong>private-pay only</strong>; it cannot be drawn from Hope.
+            </Typography>
+          </li>
         </Box>
       </Collapse>
     </Alert>

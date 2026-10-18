@@ -44,6 +44,18 @@ export default defineConfig({
       // The student page tables (#84) and pay-ahead card (legacy #864). Paid is the one
       // that tripped a mid-run re-optimize; the rest are listed so the next
       // story to reach one first does not trip it again.
+      '@mui/icons-material/Search',
+      '@mui/icons-material/ExpandMore',
+      '@mui/icons-material/Palette',
+      '@mui/icons-material/Storefront',
+      '@mui/icons-material/Payments',
+      '@mui/icons-material/Settings',
+      '@mui/icons-material/Home',
+      '@mui/icons-material/MusicNote',
+      '@mui/material/Collapse',
+      '@mui/material/InputAdornment',
+      '@mui/material/Menu',
+      '@mui/material/MenuItem',
       '@mui/icons-material/Add',
       '@mui/icons-material/Block',
       '@mui/icons-material/Cancel',
@@ -55,7 +67,7 @@ export default defineConfig({
       '@mui/icons-material/MoreVert',
       '@mui/icons-material/Paid',
       '@mui/icons-material/PersonOff',
-      '@mui/icons-material/PersonOutline',
+      '@mui/icons-material/PersonOutlined',
       '@mui/icons-material/ReceiptLong',
       '@mui/icons-material/Send',
       '@mui/icons-material/Stars',
@@ -80,6 +92,10 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['json'],
       reportsDirectory: path.join(dirname, 'coverage/storybook'),
+      // The stories are the tests, not the code under test. Vitest 4 left
+      // them out of coverage by default; Vitest 5 counts them, which pads
+      // lines/functions in the merged report and drags branches down.
+      exclude: ['**/*.stories.tsx'],
     },
   },
 });

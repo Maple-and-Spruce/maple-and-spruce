@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import type {
   Instructor,
   Lesson,
@@ -34,7 +34,7 @@ import type {
   Room,
   UpdateLessonInput,
 } from '@maple/ts/domain';
-import { ROOMS, getRoomLabel, lessonFitsBlock } from '@maple/ts/domain';
+import { ROOMS, getRoomLabel, lessonFitsBlock, lessonRoom } from '@maple/ts/domain';
 import { lessonValidation } from '@maple/ts/validation';
 import {
   batch,
@@ -89,7 +89,7 @@ export function EditLessonDialog({
       durationMinutes.value = lesson.durationMinutes as 30 | 45 | 60;
       teacherId.value = lesson.teacherId;
       blockId.value = lesson.blockId ?? '';
-      room.value = lesson.room ?? 'spruce';
+      room.value = lessonRoom(lesson.room);
       notes.value = lesson.notes ?? '';
       showValidationErrors.value = false;
       submitError.value = null;

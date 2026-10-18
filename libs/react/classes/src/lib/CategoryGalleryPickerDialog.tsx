@@ -62,13 +62,13 @@ export function CategoryGalleryPickerDialog({
       <DialogTitle>Add from {categoryName} pool</DialogTitle>
       <DialogContent>
         {pool.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No images in this category&apos;s pool yet. Upload pool images
             from the Class Categories admin first.
           </Typography>
         ) : (
           <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
               You can add up to {remainingCapacity} more image
               {remainingCapacity === 1 ? '' : 's'}. Pool images are shared —
               adding one here doesn&apos;t copy the file.

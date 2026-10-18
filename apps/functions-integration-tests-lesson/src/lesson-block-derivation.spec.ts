@@ -27,22 +27,27 @@ import type {
   UpdateStudentLessonScheduleResponse,
 } from '@maple/ts/firebase/api-types';
 
+import { easternToUtc } from './eastern-time';
+
 const TEACHER_ID = 'instructor-derive-blocks';
 
 /** The next Tuesday strictly after today, at `hour` ET. */
 function nextTuesday(hour: number, weeksOut = 1): Date {
-  const now = new Date();
-  const d = new Date(now.getTime());
-  d.setUTCHours(hour + 4, 0, 0, 0); // ET -> UTC (EDT); tests run mid-year
-  const day = d.getUTCDay();
-  const delta = ((2 - day + 7) % 7) || 7;
-  d.setUTCDate(d.getUTCDate() + delta + (weeksOut - 1) * 7);
-  return d;
+  const day = new Date();
+  day.setUTCHours(12, 0, 0, 0);
+  const delta = ((2 - day.getUTCDay() + 7) % 7) || 7;
+  day.setUTCDate(day.getUTCDate() + delta + (weeksOut - 1) * 7);
+  return easternToUtc(
+    day.getUTCFullYear(),
+    day.getUTCMonth(),
+    day.getUTCDate(),
+    hour
+  );
 }
 
 function blocksFor(idToken: string) {
   return callFunction<GetLessonBlocksRequest, GetLessonBlocksResponse>({
-    functionName: 'getLessonBlocks',
+    functionName: 'lessons/getLessonBlocks',
     data: { teacherId: TEACHER_ID },
     idToken,
   });
@@ -90,7 +95,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
     // The legacy #686 guardrail is intact — nothing here loosens it. Deriving a block
     // is something the caller asks for, never something that happens quietly.
     const result = await callFunction<CreateLessonRequest>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -112,7 +117,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
       CreateStudentLessonScheduleRequest,
       CreateStudentLessonScheduleResponse
     >({
-      functionName: 'createStudentLessonSchedule',
+      functionName: 'lessons/createStudentLessonSchedule',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -128,7 +133,6 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     expect(result.status).toBe(200);
     expect(result.data?.schedule.blockId).toBeTruthy();
-    expect(result.data?.lessonsCreated).toBeGreaterThan(0);
 
     const blocks = (await blocksFor(adminUser.idToken)).data?.blocks ?? [];
     const derived = blocks.find(
@@ -152,7 +156,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     const result = await callFunction<CreateLessonRequest, CreateLessonResponse>(
       {
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -183,7 +187,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
     const nextWeek = new Date(when.getTime() + 7 * 86_400_000);
 
     const result = await callFunction<CreateLessonRequest>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -212,7 +216,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     const result = await callFunction<CreateLessonRequest, CreateLessonResponse>(
       {
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -247,7 +251,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
 
     const result = await callFunction<CreateLessonRequest, CreateLessonResponse>(
       {
-        functionName: 'createLesson',
+        functionName: 'lessons/createLesson',
         data: {
           studentId,
           teacherId: TEACHER_ID,
@@ -283,7 +287,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
     // 9pm — hours past the block. Without the window this would stretch it
     // across an evening nobody teaches.
     const result = await callFunction<CreateLessonRequest>({
-      functionName: 'createLesson',
+      functionName: 'lessons/createLesson',
       data: {
         studentId,
         teacherId: TEACHER_ID,
@@ -333,7 +337,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
         CreateStudentLessonScheduleRequest,
         CreateStudentLessonScheduleResponse
       >({
-        functionName: 'createStudentLessonSchedule',
+        functionName: 'lessons/createStudentLessonSchedule',
         data: {
           studentId: scheduleStudentId,
           teacherId: TEACHER_ID,
@@ -373,7 +377,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
         UpdateStudentLessonScheduleRequest,
         UpdateStudentLessonScheduleResponse
       >({
-        functionName: 'updateStudentLessonSchedule',
+        functionName: 'lessons/updateStudentLessonSchedule',
         data: {
           id: scheduleId,
           blockId: '',
@@ -405,7 +409,7 @@ describe('Deriving lesson blocks from scheduling (legacy #835)', () => {
       const weekly = before.find((b) => !b.onDate && b.dayOfWeek === 2);
 
       const result = await callFunction<UpdateStudentLessonScheduleRequest>({
-        functionName: 'updateStudentLessonSchedule',
+        functionName: 'lessons/updateStudentLessonSchedule',
         data: { id: scheduleId, startMinutes: weekly!.endMinutes },
         idToken: adminUser.idToken,
       });

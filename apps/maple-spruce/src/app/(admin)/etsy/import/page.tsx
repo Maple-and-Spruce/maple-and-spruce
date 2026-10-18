@@ -17,7 +17,7 @@ import {
   Switch,
   Typography,
 } from '@mui/material';
-import type { GridRowSelectionModel } from '@mui/x-data-grid';
+import type { GridRowId } from '@mui/x-data-grid';
 import { useArtists, useCategories, useEtsyListings, useEtsyImport } from '@maple/react/data';
 import {
   EtsyImportTable,
@@ -31,7 +31,7 @@ export default function EtsyImportPage() {
   const { categoriesState } = useCategories();
   const { importState, importListings, reset: resetImport } = useEtsyImport();
 
-  const [selection, setSelection] = useState<GridRowSelectionModel>([]);
+  const [selection, setSelection] = useState<GridRowId[]>([]);
   const [hideImported, setHideImported] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -50,7 +50,7 @@ export default function EtsyImportPage() {
 
   const handleImport = useCallback(
     async (values: EtsyImportDialogSubmit): Promise<void> => {
-      const selectedIds = (selection as (string | number)[]).map(String);
+      const selectedIds = selection.map(String);
       await importListings({
         listings: selectedIds.map((id) => ({ listingId: id })),
         artistId: values.artistId,
@@ -66,7 +66,7 @@ export default function EtsyImportPage() {
     [selection, importListings, fetchListings]
   );
 
-  const selectionCount = (selection as (string | number)[]).length;
+  const selectionCount = selection.length;
   const isImporting = importState.status === 'loading';
   const importError =
     importState.status === 'error' ? importState.error : undefined;
@@ -79,24 +79,21 @@ export default function EtsyImportPage() {
         <Typography variant="h4" gutterBottom>
           Etsy Import
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Review your existing Etsy listings and pull selected ones into the
           product catalog. This is read-only on Etsy — no writes are sent.
         </Typography>
       </Box>
-
       {listingsState.status === 'error' && (
         <Alert severity="error" sx={{ mb: 2 }}>
           Failed to fetch Etsy listings: {listingsState.error}
         </Alert>
       )}
-
       {importError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={resetImport}>
           Import failed: {importError}
         </Alert>
       )}
-
       {importSummary && (
         <Alert
           severity={importSummary.failureCount === 0 ? 'success' : 'warning'}
@@ -109,13 +106,13 @@ export default function EtsyImportPage() {
             `${importSummary.failureCount} failed — see the status column or browser console for per-row errors.`}
         </Alert>
       )}
-
       <Stack
         direction="row"
         spacing={2}
-        alignItems="center"
-        sx={{ mb: 2 }}
-      >
+        sx={{
+          alignItems: 'center',
+          mb: 2
+        }}>
         <Button
           variant="contained"
           disabled={selectionCount === 0 || isImporting}
@@ -134,11 +131,10 @@ export default function EtsyImportPage() {
           label="Hide already-imported"
         />
         <Box sx={{ flex: 1 }} />
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="textSecondary">
           {total} listing{total === 1 ? '' : 's'} on Etsy
         </Typography>
       </Stack>
-
       <EtsyImportTable
         rows={listings}
         selection={selection}
@@ -146,7 +142,6 @@ export default function EtsyImportPage() {
         loading={listingsState.status === 'loading'}
         hideImported={hideImported}
       />
-
       <EtsyImportDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}

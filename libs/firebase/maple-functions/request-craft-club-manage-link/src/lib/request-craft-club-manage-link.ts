@@ -8,7 +8,11 @@
  *
  * Deployed to us-east4 via CI/CD pipeline.
  */
-import { Functions, throwInvalidArgument } from '@maple/firebase/functions';
+import {
+  Functions,
+  emailLinkThrottles,
+  throwInvalidArgument,
+} from '@maple/firebase/functions';
 import {
   CraftClubMemberRepository,
   CraftClubTokenRepository,
@@ -20,6 +24,8 @@ import type {
 } from '@maple/ts/firebase/api-types';
 
 export const requestCraftClubManageLink = Functions.endpoint
+  .withAppCheck('monitor')
+  .throttling('requestCraftClubManageLink', emailLinkThrottles())
   .usingStrings('CRAFT_CLUB_MANAGE_URL')
   .handle<
     RequestCraftClubManageLinkRequest,

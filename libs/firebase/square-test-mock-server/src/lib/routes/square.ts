@@ -7,7 +7,7 @@
  * - GET /v2/payments/:paymentId (get payment)
  * - POST /v2/refunds (refund payment)
  * - POST /v2/catalog/batch-upsert (create/update catalog items)
- * - GET /v2/catalog/object/:objectId (get catalog item)
+ * - GET /v2/catalog/object/:objectId (get catalog item, as last upserted)
  * - DELETE /v2/catalog/object/:objectId (delete catalog item)
  * - POST /v2/catalog/images (upload catalog image)
  * - POST /v2/inventory/changes/batch-create (set/adjust inventory)
@@ -24,6 +24,23 @@ let customerCounter = 0;
 let cardCounter = 0;
 let subscriptionCounter = 0;
 let paymentLinkCounter = 0;
+
+/**
+ * Catalog objects upserted through `batch-upsert`, keyed by server id, in
+ * Square WIRE shape (snake_case).
+ *
+ * Kept so the catalog behaves like Square's: a GET serves back what was
+ * written, every write bumps the version, and a write carrying a version
+ * other than the current one is refused with VERSION_MISMATCH. Square also
+ * moves an item's version without us writing to it (a Dashboard edit, and on
+ * dev a freshly created product by its first edit), which
+ * `POST /_mock/catalog/:objectId/touch` reproduces. Before this the mock
+ * answered every write with `version: 1` and every GET with a canned item, so
+ * a stale cached version could never surface in a suite.
+ */
+const catalogObjects = new Map<string, Record<string, unknown>>();
+/** Square versions only go up. One value per batch-upsert, as in Square. */
+let catalogVersionClock = 0;
 
 /** In-memory store of created payments for get/refund lookups */
 const payments = new Map<string, Record<string, unknown>>();
@@ -333,6 +350,39 @@ export function registerSquareRoutes(server: SquareMockServer): void {
     const mappings: Array<Record<string, string>> = [];
     const resolvedObjects: Array<Record<string, unknown>> = [];
 
+    // Square refuses the whole batch if any object it already holds is sent
+    // with a version other than its current one.
+    for (const batch of batches) {
+      const objects =
+        (batch['objects'] as Array<Record<string, unknown>>) ?? [];
+      for (const obj of objects) {
+        const itemData = (obj['item_data'] ?? obj['itemData']) as
+          | Record<string, unknown>
+          | undefined;
+        const nested =
+          (itemData?.['variations'] as Array<Record<string, unknown>>) ?? [];
+        for (const o of [obj, ...nested]) {
+          const stored = catalogObjects.get(o['id'] as string);
+          if (stored && Number(o['version']) !== Number(stored['version'])) {
+            return {
+              status: 400,
+              body: {
+                errors: [
+                  {
+                    category: 'INVALID_REQUEST_ERROR',
+                    code: 'VERSION_MISMATCH',
+                    detail: `Object version does not match for object: ${o['id']}`,
+                  },
+                ],
+              },
+            };
+          }
+        }
+      }
+    }
+    catalogVersionClock++;
+    const version = catalogVersionClock;
+
     // Build a map of client temp ID -> server ID so nested references resolve.
     // The SDK serializes to snake_case, so item_data and variations use
     // snake_case keys in the request body.
@@ -381,7 +431,7 @@ export function registerSquareRoutes(server: SquareMockServer): void {
         const resolved: Record<string, unknown> = {
           ...obj,
           id: serverId,
-          version: 1,
+          version,
         };
         // Resolve nested variation IDs inside item_data (snake_case from SDK)
         const itemData = (obj['item_data'] ?? obj['itemData']) as Record<string, unknown> | undefined;
@@ -393,11 +443,28 @@ export function registerSquareRoutes(server: SquareMockServer): void {
             return {
               ...v,
               id: idMap.get(vClientId) ?? vClientId,
+              version,
             };
           });
           resolved['item_data'] = { ...itemData, variations };
           delete resolved['itemData'];
+          // An item upsert replaces the item's variation list: a variation
+          // left out is deleted, as in Square.
+          const previous = catalogObjects.get(serverId);
+          const previousVariations =
+            ((previous?.['item_data'] as Record<string, unknown> | undefined)?.[
+              'variations'
+            ] as Array<Record<string, unknown>>) ?? [];
+          for (const old of previousVariations) {
+            if (!variations.some((v) => v['id'] === old['id'])) {
+              catalogObjects.delete(old['id'] as string);
+            }
+          }
+          for (const v of variations) {
+            catalogObjects.set(v['id'] as string, v);
+          }
         }
+        catalogObjects.set(serverId, resolved);
         resolvedObjects.push(resolved);
       }
     }
@@ -411,8 +478,14 @@ export function registerSquareRoutes(server: SquareMockServer): void {
     };
   });
 
-  // Get catalog object
-  server.get('/v2/catalog/object/:objectId', () => {
+  // Get catalog object. Anything written through batch-upsert is served back
+  // as stored; an id the mock never saw gets the canned item older suites
+  // rely on.
+  server.get('/v2/catalog/object/:objectId', (req) => {
+    const stored = catalogObjects.get(req.params['objectId']);
+    if (stored) {
+      return { status: 200, body: { object: stored, related_objects: [] } };
+    }
     catalogCounter++;
     return {
       status: 200,
@@ -431,6 +504,7 @@ export function registerSquareRoutes(server: SquareMockServer): void {
 
   // Delete catalog object
   server.delete('/v2/catalog/object/:objectId', (req) => {
+    catalogObjects.delete(req.params['objectId']);
     return {
       status: 200,
       body: {
@@ -554,6 +628,27 @@ function registerMockControlRoutes(server: SquareMockServer): void {
       posFixtureCustomers.set(id, obj);
     }
     return { status: 200, body: { ok: true } };
+  });
+
+  // Move a catalog object's version without changing anything else: what a
+  // Dashboard edit, or Square's own bookkeeping, does to a live item.
+  server.post('/_mock/catalog/:objectId/touch', (req) => {
+    const stored = catalogObjects.get(req.params['objectId']);
+    if (!stored) {
+      return { status: 404, body: { error: 'unknown catalog object' } };
+    }
+    catalogVersionClock++;
+    stored['version'] = catalogVersionClock;
+    return { status: 200, body: { object: stored } };
+  });
+
+  // Read a catalog object back as Square holds it.
+  server.get('/_mock/catalog/:objectId', (req) => {
+    const stored = catalogObjects.get(req.params['objectId']);
+    if (!stored) {
+      return { status: 404, body: { error: 'unknown catalog object' } };
+    }
+    return { status: 200, body: { object: stored } };
   });
 
   // Make the next payment fail, so a test can exercise a declined card and the
@@ -796,6 +891,8 @@ export function resetSquareState(): void {
   paymentCounter = 0;
   refundCounter = 0;
   catalogCounter = 0;
+  catalogObjects.clear();
+  catalogVersionClock = 0;
   imageCounter = 0;
   inventoryChangeCounter = 0;
   customerCounter = 0;

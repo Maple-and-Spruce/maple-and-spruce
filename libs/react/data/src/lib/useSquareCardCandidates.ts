@@ -8,8 +8,11 @@
  * server that validates the choice.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type { RequestState, SquareCardOnFile, Student } from '@maple/ts/domain';
 import type {
   GetSquareCardCandidatesRequest,
@@ -33,10 +36,10 @@ export function useSquareCardCandidates() {
   const fetchCards = useCallback(async () => {
     setCardsState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetSquareCardCandidatesRequest,
         GetSquareCardCandidatesResponse
-      >(getMapleFunctions(), 'getSquareCardCandidates');
+      >(getMapleFunctions(), routerCallableUrl('lessonPayments', 'getSquareCardCandidates'));
       const result = await fn({});
       setCardsState({
         status: 'success',
@@ -69,10 +72,10 @@ export function useSquareCardCandidates() {
       setIsSaving(true);
       setLinkError(null);
       try {
-        const fn = httpsCallable<
+        const fn = httpsCallableFromURL<
           UpdateStudentSquareCardRequest,
           UpdateStudentSquareCardResponse
-        >(getMapleFunctions(), 'updateStudentSquareCard');
+        >(getMapleFunctions(), routerCallableUrl('lessonPayments', 'updateStudentSquareCard'));
         const result = await fn({ studentId, squareCardId });
         // Refresh so "already linked to" is right for the next student.
         await fetchCards();

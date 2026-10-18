@@ -36,6 +36,7 @@ export * from './lib/lesson-inquiry';
 export * from './lib/inquiry-to-student';
 export * from './lib/hope-submission';
 export * from './lib/needs-attention';
+export * from './lib/inbox';
 export * from './lib/student-lesson-schedule';
 export * from './lib/lesson-billing-rule';
 export * from './lib/lesson-billing-state';
@@ -46,12 +47,17 @@ export * from './lib/square-card-match';
 export * from './lib/lesson-charge-view';
 export * from './lib/student-billing-view';
 export * from './lib/lesson-prepayment';
+export * from './lib/lesson-payment-state';
+export * from './lib/next-lessons';
+export * from './lib/instruments-config';
 export * from './lib/invoice';
 export * from './lib/lesson-invoice';
-export * from './lib/hope-rates';
+export * from './lib/hope-product';
+export * from './lib/hope-order';
 export * from './lib/lesson-rates-config';
 export * from './lib/business-payment-config';
 export * from './lib/teacher-payout';
+export * from './lib/class-instructor-payout';
 
 // Phase 4.5: Calendar
 export * from './lib/calendar-event';

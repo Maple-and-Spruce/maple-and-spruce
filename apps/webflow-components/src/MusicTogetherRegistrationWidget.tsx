@@ -35,7 +35,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import { httpsCallable } from 'firebase/functions';
 import { theme, fonts } from '@maple/react/theme';
 import { SquareCardForm } from '@maple/react/registrations';
@@ -57,7 +57,7 @@ import type {
   LookupDiscountRequest,
   LookupDiscountResponse,
 } from '@maple/ts/firebase/api-types';
-import { getWidgetFunctions } from './firebase-init';
+import { getWidgetFunctions, routeCallable } from './firebase-init';
 import { warmup } from './lib/warmup';
 import { readMetaAttribution } from './lib/meta-attribution';
 import {
@@ -337,7 +337,7 @@ function ComingSoonPanel({
       <Typography variant="h6" component="p" gutterBottom>
         Coming soon!
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
         Give us your email and we&apos;ll notify you the moment registration
         opens.
       </Typography>
@@ -415,13 +415,12 @@ export function MusicTogetherRegistrationWidget({
     // out the form, by which point the container is up.
     // Warm both downstream mutations: the checkout create, and the waitlist
     // capture (fired both when a section is full and in coming-soon mode).
+    // The discount lookup needs no ping: it is on `publicSite`, which the
+    // section fetch on mount has already woken.
     warmup(
       functions,
       'createMusicTogetherRegistration',
-      'addToMusicTogetherWaitlist',
-      // Typing a code is a mid-form action, so a cold lookup would stall the
-      // family right before they commit.
-      'lookupDiscount'
+      'addToMusicTogetherWaitlist'
     );
 
     // Init the MT pixel + its PageView. The site-wide GTM tag only loads the
@@ -432,10 +431,10 @@ export function MusicTogetherRegistrationWidget({
     const load = async () => {
       setState({ status: 'loading' });
       try {
-        const call = httpsCallable<
+        const call = routeCallable<
           GetPublicMusicTogetherSectionRequest,
           GetPublicMusicTogetherSectionResponse
-        >(functions, 'getPublicMusicTogetherSection');
+        >(functions, 'publicSite', 'getPublicMusicTogetherSection');
         const result = await call({ sectionId });
         setState({ status: 'ready', section: result.data.section });
         // ViewContent keyed to the section doc id — upper-funnel signal and the
@@ -579,8 +578,9 @@ export function MusicTogetherRegistrationWidget({
     setCheckingDiscount(true);
     setDiscountError(null);
     try {
-      const call = httpsCallable<LookupDiscountRequest, LookupDiscountResponse>(
+      const call = routeCallable<LookupDiscountRequest, LookupDiscountResponse>(
         functions,
+        'publicSite',
         'lookupDiscount'
       );
       const result = await call({ code, program: 'music-together' });
@@ -744,7 +744,7 @@ export function MusicTogetherRegistrationWidget({
                 {section.name}
               </Typography>
               {section.sessions[0] && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   First class:{' '}
                   {formatSessionDateTime(section.sessions[0].dateTime)}
                 </Typography>
@@ -785,11 +785,11 @@ export function MusicTogetherRegistrationWidget({
                 Register — {section.name}
               </Typography>
               {section.sessions[0] && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="textSecondary">
                   First class: {formatSessionDateTime(section.sessions[0].dateTime)}
                 </Typography>
               )}
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 {section.spotsRemaining} of {section.capacityFamilies} family
                 spots remaining
               </Typography>
@@ -840,7 +840,7 @@ export function MusicTogetherRegistrationWidget({
                   <Typography variant="subtitle1" gutterBottom>
                     Child / children
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5 }}>
                     Music Together is for children birth through age 5. Up to{' '}
                     {MT_MAX_CHILDREN} siblings per family.
                   </Typography>
@@ -850,7 +850,9 @@ export function MusicTogetherRegistrationWidget({
                         key={i}
                         direction={{ xs: 'column', sm: 'row' }}
                         spacing={1.5}
-                        alignItems={{ sm: 'center' }}
+                        sx={{
+                          alignItems: { sm: 'center' }
+                        }}
                       >
                         <TextField
                           label="Child's first name"
@@ -866,7 +868,9 @@ export function MusicTogetherRegistrationWidget({
                           onChange={(e) => setChild(i, { dob: e.target.value })}
                           required={i === 0}
                           fullWidth
-                          InputLabelProps={{ shrink: true }}
+                          slotProps={{
+                            inputLabel: { shrink: true }
+                          }}
                         />
                         {children.length > 1 && (
                           <IconButton
@@ -963,20 +967,23 @@ export function MusicTogetherRegistrationWidget({
                     <Stack
                       direction="row"
                       spacing={1}
-                      alignItems="center"
-                      flexWrap="wrap"
-                    >
+                      sx={{
+                        alignItems: 'center',
+                        flexWrap: 'wrap'
+                      }}>
                       <Chip
                         color="primary"
                         label={`${appliedDiscount.code} applied`}
                         onDelete={handleRemoveDiscount}
                       />
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="textSecondary">
                         {appliedDiscount.description}
                       </Typography>
                     </Stack>
                   ) : (
-                    <Stack direction="row" spacing={1} alignItems="flex-start">
+                    <Stack direction="row" spacing={1} sx={{
+                      alignItems: 'flex-start'
+                    }}>
                       <TextField
                         label="Code"
                         value={discountInput}
@@ -990,7 +997,9 @@ export function MusicTogetherRegistrationWidget({
                         size="small"
                         error={!!discountError}
                         helperText={discountError ?? 'Optional.'}
-                        inputProps={{ 'aria-label': 'Discount code' }}
+                        slotProps={{
+                          htmlInput: { 'aria-label': 'Discount code' }
+                        }}
                       />
                       <Button
                         onClick={handleApplyDiscount}
@@ -1011,7 +1020,7 @@ export function MusicTogetherRegistrationWidget({
                   {pricedChildCount > 1 && (
                     <Typography
                       variant="body2"
-                      color="text.secondary"
+                      color="textSecondary"
                       sx={{ mb: 1 }}
                     >
                       Tuition for {pricedChildCount} children: first child full
@@ -1021,7 +1030,7 @@ export function MusicTogetherRegistrationWidget({
                   {discountApplied && basePrice && (
                     <Typography
                       variant="body2"
-                      color="text.secondary"
+                      color="textSecondary"
                       sx={{ mb: 1 }}
                     >
                       Your discount comes off every payment
@@ -1191,7 +1200,7 @@ export function MusicTogetherRegistrationWidget({
                   {!formValid && missingFields.length > 0 && (
                     <Typography
                       variant="caption"
-                      color="text.secondary"
+                      color="textSecondary"
                       sx={{ display: 'block', mt: 1 }}
                     >
                       Still needed: {joinList(missingFields)}.
@@ -1204,19 +1213,27 @@ export function MusicTogetherRegistrationWidget({
         )}
 
         {state.status === 'confirmed' && (
-          <Stack spacing={2} alignItems="center" sx={{ py: 2, textAlign: 'center' }}>
+          <Stack
+            spacing={2}
+            sx={{
+              alignItems: 'center',
+              py: 2,
+              textAlign: 'center'
+            }}>
             <CheckCircleOutlineIcon color="success" sx={{ fontSize: 48 }} />
             <Typography variant="h5">You&apos;re registered!</Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" color="textSecondary">
               {state.section.name}
             </Typography>
             {state.section.sessions[0] && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 First class:{' '}
                 {formatSessionDateTime(state.section.sessions[0].dateTime)}
               </Typography>
             )}
-            <Typography variant="body1" fontWeight={500}>
+            <Typography variant="body1" sx={{
+              fontWeight: 500
+            }}>
               {formatMoney(state.amountChargedCents)} paid today
             </Typography>
             {state.scheduledChargeCount > 0 && (
@@ -1227,11 +1244,11 @@ export function MusicTogetherRegistrationWidget({
                 {state.scheduledChargeCount === 1 ? '' : 's'}. No action needed.
               </Alert>
             )}
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               A confirmation email has been sent to{' '}
               <strong>{state.email}</strong>.
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Questions? Email{' '}
               <Link href="mailto:musictogether@mapleandsprucefolkarts.com">
                 musictogether@mapleandsprucefolkarts.com

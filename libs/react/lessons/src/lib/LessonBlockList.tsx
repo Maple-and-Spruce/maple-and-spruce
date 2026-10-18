@@ -52,7 +52,7 @@ export function LessonBlockList({
   const blocks = lessonBlocksState.data;
   if (blocks.length === 0) {
     return (
-      <Typography color="text.secondary">
+      <Typography color="textSecondary">
         No lesson blocks yet. Add one so lessons can be scheduled.
       </Typography>
     );

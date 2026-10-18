@@ -106,7 +106,7 @@ export function BackfillLessonsDialog({
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
       <DialogTitle>Record lessons already taught</DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           Records lessons in the past as taught, so they can be claimed and so
           teacher payouts are right. Use this for teaching that happened before
           it was being recorded.
@@ -189,8 +189,10 @@ export function BackfillLessonsDialog({
               type="number"
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
-              inputProps={{ min: 1, max: 52 }}
               fullWidth
+              slotProps={{
+                htmlInput: { min: 1, max: 52 }
+              }}
             />
           </Stack>
 

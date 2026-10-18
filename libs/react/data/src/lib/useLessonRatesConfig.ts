@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { getMapleFunctions } from '@maple/ts/firebase/firebase-config';
+import { httpsCallableFromURL } from 'firebase/functions';
+import {
+  getMapleFunctions,
+  routerCallableUrl,
+} from '@maple/ts/firebase/firebase-config';
 import type {
   LessonRateByLength,
   LessonRatesConfig,
@@ -18,6 +21,7 @@ import type {
 /**
  * Hook for the admin-configured default private-pay lesson rates (legacy #629), shown
  * on the Settings page. Per-student overrides live on the student record.
+ * Served by the `settings` router (#156).
  */
 export function useLessonRatesConfig() {
   const [configState, setConfigState] = useState<
@@ -27,10 +31,13 @@ export function useLessonRatesConfig() {
   const fetchConfig = useCallback(async () => {
     setConfigState({ status: 'loading' });
     try {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         GetLessonRatesConfigRequest,
         GetLessonRatesConfigResponse
-      >(getMapleFunctions(), 'getLessonRatesConfig');
+      >(
+        getMapleFunctions(),
+        routerCallableUrl('settings', 'getLessonRatesConfig')
+      );
       const result = await fn({});
       setConfigState({ status: 'success', data: result.data.config });
     } catch (error) {
@@ -44,10 +51,13 @@ export function useLessonRatesConfig() {
 
   const saveConfig = useCallback(
     async (rateByLength: LessonRateByLength): Promise<LessonRatesConfig> => {
-      const fn = httpsCallable<
+      const fn = httpsCallableFromURL<
         UpdateLessonRatesConfigRequest,
         UpdateLessonRatesConfigResponse
-      >(getMapleFunctions(), 'updateLessonRatesConfig');
+      >(
+        getMapleFunctions(),
+        routerCallableUrl('settings', 'updateLessonRatesConfig')
+      );
       const result = await fn({ rateByLength });
       setConfigState({ status: 'success', data: result.data.config });
       return result.data.config;

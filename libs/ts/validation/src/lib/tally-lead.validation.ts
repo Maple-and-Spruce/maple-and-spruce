@@ -5,7 +5,8 @@
  * submission. Email is the only hard requirement — every other field is
  * optional context for downstream attribution.
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 
 export interface TallyLeadValidationInput {
   email?: string;

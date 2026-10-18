@@ -6,7 +6,8 @@
  *
  * @see https://vestjs.dev/
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 
 /** One session row; `dateTime` may arrive as a Date or ISO string. */
 export interface MusicTogetherSessionInput {

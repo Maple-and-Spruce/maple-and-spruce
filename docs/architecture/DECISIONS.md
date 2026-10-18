@@ -1617,6 +1617,167 @@ that does appear is reconciled by the next sync instead of persisting indefinite
 
 ---
 
+## ADR-034: Lessons Are Booked and Paid a Few at a Time, Not Generated and Marked
+
+**Status:** Accepted
+**Date:** 2026-10-05
+**Epic:** #156 (slices #157–#162)
+
+### Context
+Music lessons were built around two automations:
+- **Generated lessons.** A standing weekly arrangement materialised concrete lessons ahead of time:
+  12 weeks at first, then a daily top-up to 4 (#148).
+- **Marking.** A lesson counted for billing, the Hope queue, teacher payouts and needs-attention only
+  once someone marked it **taught** (or **no-show**).
+
+Behind both sat automatic charging: billing rules and a daily `runLessonBilling` job.
+
+That is not how the studio runs. Katie has about five minutes at the end of a lesson, roughly one
+lesson in four, to book the student's next four lessons and take payment. Nobody marks lessons taught.
+The result:
+- Every rule keyed on `rendered` saw nothing until someone did.
+- The calendar and the Spruce Room filled with unpaid lessons for students who hadn't committed to them.
+- The student page, built for auditing, buried the one thing she needed among tools she never used.
+
+### Decision
+1. **The weekly time is a planning note.**
+   - It records a student's usual slot, for the Students list (grouped by day) and the Typical week.
+   - **It books nothing.** Saving one creates no lessons. The materialiser's schedule is a logged
+     no-op, kept deployed because CI never prunes a function and deleting it would leave the old
+     revision running.
+2. **Lessons are booked on demand, a few at a time, with payment in the same action.**
+   - The student page opens on **Next lessons**: the upcoming lessons already booked and unpaid,
+     topped up from the weekly time (`planNextLessons`, `buildNextLessons`).
+   - One button books the missing dates, then charges the card. With no card, it sends one invoice.
+   - If payment fails, the lessons stay booked, and the message says so.
+3. **A past lesson that was not deleted happened** (`lessonHappened`).
+   - Past-lesson charging, the Hope queue, Hope submissions and teacher payouts use this rule.
+   - Hope still never takes a no-show.
+   - A lesson that didn't happen is **deleted**. There is no marking, and no cancel or no-show in the UI.
+4. **Unpaid past lessons are not problems to chase.**
+   - Past payments were settled outside the portal.
+   - Needs-attention keeps flagging only lessons someone explicitly marked, which no longer happens.
+   - The Activity tab labels paid lessons and leaves unpaid ones unlabelled. It can still charge or
+     invoice one from a row menu.
+5. **Automatic charging is paused.**
+   - `runLessonBilling` is a logged no-op (`LESSON_AUTOPAY_PAUSED`). `triggerLessonBilling` still runs
+     it by hand.
+   - **Lesson Billing** (`/lesson-billing`) is removed from the nav (#162). The route and its code
+     stay, admin-only by URL.
+
+### Rationale
+- It matches the real workflow: the end of a lesson is when the family commits and pays. Booking and
+  payment belong in one action at that moment, not in a job running at 9 AM.
+- Generated lessons claimed the Spruce Room for students who hadn't committed. Booked lessons claim
+  only what was paid for, or what was deliberately booked.
+- "Past and not deleted means it happened" removes a chore nobody did. The old rule made money and
+  Hope claims invisible until someone remembered to mark.
+
+### Alternatives Considered
+- **Keep the 4-ahead top-up and charge for the next 4 unpaid.** Rejected by the studio. The calendar
+  would show lessons nobody had committed to, and a forgotten student kept holding the room.
+- **Keep marking, but make it easier.** Rejected: no ritual is cheaper than none. Deletion already
+  covers the rare lesson that didn't happen.
+- **A cutover date** ("past means happened" only from merge on). Rejected: it hides real history and
+  leaves a permanent special case. The prod check found 25 private-pay and 2 Hope unmarked past
+  lessons, handled by not calling them out (decision 4).
+- **Delete the paused functions.** Rejected for now: CI doesn't prune, so deleting the code would
+  leave the old revisions live and running. They are no-ops first; retiring them is a hand-run
+  `firebase functions:delete` plus a cleanup PR.
+
+### Consequences
+- **One-time cleanup.** `tools/remove-unbooked-generated-lessons.ts` deleted 39 unpaid generated
+  lessons 4 or more weeks out in prod, and their room events.
+- **The Typical week reads lesson slots from weekly times,** not inferred recurrence, because a student
+  between bookings has no history (#160).
+- **Dead code was removed:** `CommitLessonsCard`, `LessonList`, the student-row launchers and the old
+  table.
+- **To bring automatic charging back:**
+  - set `LESSON_AUTOPAY_PAUSED` to false;
+  - restore the `Lesson Billing` nav entry (see the comment in `nav-groups.tsx`);
+  - change the paused-charging wording on `/lesson-billing` and in `RunBillingCard`, which say the morning job takes nothing;
+  - assign billing rules to students;
+  - check that rules and the one-button flow agree on what "the next lessons" are. Both use
+    `coveredLessonIds`, so a lesson can't be charged twice.
+- **Generated lessons are retired (2026-10-09).** The studio confirmed it won't want them back, so
+  `materializeLessonSchedules` and its admin twin `triggerMaterializeLessonSchedules` were removed from
+  the code and deleted from both projects. The twin was also a hazard while it existed: it called the
+  materialiser directly, past `AUTO_BOOKING_PAUSED`, so any admin request could still generate lessons.
+  Bringing generation back now means restoring those two libraries from git history. Booked lessons
+  would then mix with generated ones; the planner already counts any upcoming unpaid lesson toward the
+  four, whoever created it.
+- **`triggerLessonBilling` deliberately ignores `LESSON_AUTOPAY_PAUSED`.** It is the manual "run
+  billing" button on `/lesson-billing` (off the nav, admin-only), and the studio wants it to stay a
+  manual override that charges when pressed. Only the daily `runLessonBilling` schedule is paused.
+
+---
+
+## ADR-035: Payouts Are Claimed Through a Ledger of Deterministic IDs, in One Transaction
+
+**Status:** Accepted
+**Date:** 2026-09-29
+
+### Context
+Contract instructors are paid a monthly statement for the class sessions they taught (80% of
+what the student paid, after discount and before tax, split evenly across sessions). David pays
+them outside the app and records the payment. The one thing the software must get right is that
+**nothing is ever paid twice**: not by generating a statement twice, not by two admins pressing
+Generate together, and not by voiding a statement and regenerating it.
+
+The existing artist-payout path does not guarantee this. `generatePayout` creates the payout and
+then stamps each sale with `payoutId` in parallel, outside any transaction. Two concurrent
+generates can each read the same unstamped sales. A crash between the two steps leaves a payout
+whose sales were never stamped.
+
+### Decision
+A `payoutLedgerEntries` collection holds one document per payable unit, at an id derived from
+what it pays for:
+
+- `class-session_{registrationId}_{sessionIndex}`: one registration's share of one session
+- `class-refund_{registrationId}`: the clawback when a paid-out registration is later refunded
+
+Generating a statement is one Firestore transaction. It reads the instructor's statements for the
+month and every proposed entry id, then refuses if a live statement exists or if any entry already
+exists. Otherwise it writes the statement and all of its entries. Voiding a pending statement
+deletes its entries in the same kind of transaction, which releases them to be claimed again.
+Statements carry snapshots of their lines, so they read the same forever.
+
+The pure draft builder (`buildClassInstructorStatementDraft`) decides which ids a statement
+would claim. The transaction decides whether it may.
+
+### Rationale
+- A deterministic id makes "already paid?" a point read instead of a query, and it is a
+  question Firestore's transaction contention can answer: the loser of a race sees the winner's
+  entries and gets "refresh and try again".
+- A separate ledger, rather than a `payoutId` stamped on each registration, keeps registrations
+  moving toward immutability (#82). It also gives the lesson-teacher payout-owed ledger (#58) a
+  home, as another `kind`.
+
+### Alternatives Considered
+- **Stamp `payoutStatementId` on registrations (the artist model).** One registration spans
+  several sessions and months, so a single stamp can't say which sessions were paid. It would also
+  mutate a record we want append-only.
+- **One statement per (instructor, month) at a deterministic id.** That prevents duplicate
+  statements, but not a session being claimed by two different months' statements (stragglers
+  make that possible), and a voided statement couldn't be regenerated at the same id.
+
+### Consequences
+- Void is the only path that deletes ledger entries, and only for a pending statement. Paid
+  statements are final; a later refund is a negative `class-refund_` entry on the next one.
+- A statement's writes are bounded by Firestore's 10 MiB transaction size, not a document count.
+  A month is tens to low hundreds of entries.
+- Session keys are indexes into the class's sorted sessions. If sessions are edited after some
+  were paid, the keys can shift. A pending statement reports `sessions-changed` as stale; a paid
+  one is not reconciled.
+- Refunds made directly in the Square dashboard are invisible: only `cancelRegistration` records
+  `refundedAt`.
+- The artist-payout path was brought up to the same guarantee when it moved onto the `payouts`
+  router (#145), without a ledger: a sale is already one payable unit, so its `payoutId` stamp is
+  the claim. `PayoutRepository.generate` reads every sale, refuses if any is stamped, and writes
+  the payout and all the stamps in one transaction.
+
+---
+
 ## ADR-XXX: [Title]
 
 **Status:** Proposed | Accepted | Deprecated | Superseded
@@ -1640,4 +1801,120 @@ What becomes easier or harder as a result?
 
 ---
 
-*Last updated: 2026-09-16 (ADR-033 added for the one-class-one-CMS-item invariant)*
+*Last updated: 2026-10-09 (ADR-037 added for App Check and request throttling on public callables)*
+
+---
+
+## ADR-036: Unit Tests Run Per Nx Project, Merged by a Root `test.projects` Glob
+
+**Status:** Accepted
+**Date:** 2026-10-08
+
+### Context
+`pnpm test` ran `nx run-many -t test` and failed on main for ~30 projects. Those targets used the
+deprecated `@nx/vitest:test` executor, which could not load several hand-written lib configs, and
+they covered only 161 of the 328 unit specs. CI never used them: it ran one root `vitest run`
+over a flat glob, so the per-project targets were dead weight that drifted.
+
+### Decision
+Use the conventional Nx + Vitest layout:
+
+- Every project with unit specs owns a `vitest.config.mts`, written by
+  `nx g @nx/vitest:configuration`. The `@nx/vitest` plugin infers its `test` target, so
+  `nx test <project>`, `nx affected -t test` and `pnpm test` (`nx run-many -t test`) are cached
+  per project. Workspace tool specs are the `tools` project.
+- The root `vitest.config.mts` lists those configs in `test.projects` **by glob**, and holds the
+  root-only coverage options. CI runs it (`vitest run --coverage`) for the merged coverage gate.
+- Emulator-backed integration suites and `pos-sandbox-e2e` get an inferred `e2e` target from a
+  second plugin instance, so `nx run-many -t test` never needs emulators.
+- Configs use Vite's native `resolve.tsconfigPaths`, not the Nx 23-deprecated `nxViteTsPaths()`.
+  The default environment is `node`; a spec that needs a DOM says so in a
+  `// @vitest-environment jsdom` docblock, as before.
+- `tools/check-vitest-projects.ts` (CI) fails when a tracked spec belongs to no project.
+
+### Consequences
+- A new library with specs needs a config. The CI guard says so and prints the generator command.
+- About 140 small config files. They are generated, and each one is the project's own definition
+  of how its tests run, which is what makes per-project caching and `affected` possible.
+- An explicit `test.projects` list is how the Nx 23 migration once dropped ~90 specs from CI.
+  The glob and the guard together close that gap.
+
+---
+
+## ADR-037: App Check and Request Throttling on Public Callables
+
+**Status:** Accepted (monitor phase)
+**Date:** 2026-09-29
+
+### Context
+The Webflow widgets call about a dozen callables that take no sign-in: registration and
+checkout, Craft Club and Music Together payment-method updates, discount lookups, and the
+manage-link emails. We want these endpoints to verify that calls come from our widgets, and to
+serve them at the volume a family actually generates.
+
+Our functions are gen-2 `onRequest` built by `Functions.endpoint`, not `onCall`, so Firebase's
+built-in `enforceAppCheck` option does not apply.
+
+### Decision
+Two opt-in steps in `runRequestPipeline`, declared per endpoint on the builder chain:
+
+1. **`.withAppCheck(mode)`** verifies the `X-Firebase-AppCheck` header (which `httpsCallable`
+   attaches once the widget has initialized App Check with reCAPTCHA Enterprise) through
+   `firebase-admin/app-check`. Modes:
+
+   | mode | behaviour |
+   |---|---|
+   | `off` | not checked |
+   | `monitor` | verified and logged (`{"event":"app_check",…}`), never rejected |
+   | `enforce` | a missing or invalid token gets 401 `UNAUTHENTICATED` |
+
+   The effective mode is the lower of the endpoint's mode and the `APP_CHECK_MODE` value in
+   `.env.dev` / `.env.prod`. An unset value means `off`.
+
+2. **`.throttling(scope, rules)`** counts each request against fixed-window rules keyed on the
+   client IP and on an account field (email or session token). A request over a limit gets 429
+   `RESOURCE_EXHAUSTED` before validation or the handler run. Counters live in
+   `requestThrottles/{scope}:{rule}:{sha256(key)}:{windowStart}`, written in a transaction, with an
+   `expiresAt` for a TTL policy. Presets and limits are in `throttle.utility.ts`
+   (`paymentThrottles`, `emailLinkThrottles`, `codeLookupThrottles`).
+
+Rollout is two PRs: **monitor** first (all ten endpoints, `APP_CHECK_MODE=monitor`), then
+**enforce** once the logs show real widget traffic arriving with valid tokens across browsers,
+Safari included.
+
+### Rationale
+- **Opt-in per endpoint.** Admin callables already require a signed-in role, and the admin app's
+  public signing page is not a widget. Only endpoints that ask for it pay the verification call.
+- **Env ceiling.** Turning enforcement down is a one-line `.env.prod` change, not an edit to ten
+  libraries.
+- **Warmup runs first.** Warmup pings are answered before App Check and throttling, so they keep
+  booting instances and are never counted.
+- **Right-most `x-forwarded-for`.** Google's front end appends the address it saw, so the
+  right-most entry is the one it vouches for. `context.ip` keeps the left-most entry for ad
+  attribution; throttling uses `extractTrustedClientIp`.
+- **Firestore over memory.** `maxInstances` is 1 today, but an in-memory counter resets on every
+  cold start and deploy, and would silently split if an endpoint were ever given more instances.
+  Every access is a document-id read, so no composite index is needed.
+- **Fails open.** If the counter store errors, the request runs and the error is logged. A
+  Firestore problem must not turn into families being unable to register.
+- **Hashed keys.** Counter ids hold a truncated SHA-256 of the email, token or IP, never the raw
+  value.
+- **Generous limits.** Payment: 20 per IP and 8 per account per hour. Email links: 10 per IP and
+  3 per address per hour. Code lookups: 30 per IP per 10 minutes. A family retrying a declined
+  card should never reach them.
+
+### Alternatives Considered
+- **Converting to `onCall` for `enforceAppCheck`.** This changes the wire format for every
+  widget and the router, for a check that is a dozen lines in the pipeline.
+- **In-memory token bucket.** Rejected for the reasons above.
+- **reCAPTCHA checkbox challenge.** This adds friction to every checkout. Score-based reCAPTCHA
+  Enterprise behind App Check is invisible.
+
+### Consequences
+- Adding `.withAppCheck()` / `.throttling()` to an endpoint breaks its spec's hand-rolled builder
+  mock until those two methods are added to it.
+- The Admin App Check API is called once per protected request, adding a network hop.
+- A Firestore TTL policy on `requestThrottles.expiresAt` has to be enabled per project (manual,
+  `gcloud firestore fields ttls update`); without it, spent windows accumulate but are harmless.
+- The enforce PR must keep `.env.dev` at `monitor` (or supply a debug token), because the
+  post-merge E2E against dev runs the widgets without reCAPTCHA.

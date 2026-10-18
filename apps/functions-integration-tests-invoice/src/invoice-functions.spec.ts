@@ -40,7 +40,7 @@ const privatePayStudent: CreateStudentRequest = {
 
 const hopeStudent: CreateStudentRequest = {
   name: 'Hope Kid',
-  instrument: 'piano',
+  instrument: 'guitar',
   isAdultStudent: false,
   primaryTeacherId: 'instructor-test',
   isHopeScholarship: true,
@@ -74,7 +74,7 @@ describe('Invoice Functions', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: privatePayStudent,
       idToken: adminUser.idToken,
     });
@@ -84,7 +84,7 @@ describe('Invoice Functions', () => {
       CreateStudentRequest,
       CreateStudentResponse
     >({
-      functionName: 'createStudent',
+      functionName: 'people/createStudent',
       data: hopeStudent,
       idToken: adminUser.idToken,
     });
@@ -529,6 +529,75 @@ describe('Invoice Functions', () => {
     });
   });
 
+  describe('createInvoice already paid (cash, check, Venmo)', () => {
+    const paidFor = (lessonId: string): CreateInvoiceRequest => ({
+      studentId: privateStudentId,
+      status: 'paid',
+      paidWith: 'venmo-manual',
+      notes: 'Paid at the lesson',
+      lineItems: [
+        {
+          id: 'line-1',
+          description: 'Lesson',
+          lessonId,
+          quantity: 1,
+          unitAmountCents: 4500,
+          subtotalCents: 4500,
+        },
+      ],
+    });
+
+    it('records the lessons paid, attributed to how and by whom, without Square', async () => {
+      const result = await callFunction<
+        CreateInvoiceRequest,
+        CreateInvoiceResponse
+      >({
+        functionName: 'createInvoice',
+        data: paidFor('lesson-paid-venmo'),
+        idToken: adminUser.idToken,
+      });
+
+      expect(result.status).toBe(200);
+      const invoice = result.data!.invoice;
+      expect(invoice.status).toBe('paid');
+      expect(invoice.paidAt).toBeTruthy();
+      expect(invoice.totalCents).toBe(4500);
+      expect(invoice.paymentRecord?.source).toBe('venmo-manual');
+      expect(invoice.paymentRecord?.recordedByUid).toBe(adminUser.uid);
+
+      // Created paid, it never goes to Square: no Square invoice, so nobody is
+      // emailed a bill they have already settled.
+      await new Promise((r) => setTimeout(r, 2000));
+      const listed = await callFunction<GetInvoicesRequest, GetInvoicesResponse>({
+        functionName: 'getInvoices',
+        data: { studentId: privateStudentId },
+        idToken: adminUser.idToken,
+      });
+      const stored = listed.data!.invoices.find((i) => i.id === invoice.id);
+      expect(stored?.status).toBe('paid');
+      expect(stored?.squareInvoiceId).toBeUndefined();
+    }, 30000);
+
+    it('refuses to record a lesson that is already paid for', async () => {
+      const first = await callFunction<CreateInvoiceRequest, CreateInvoiceResponse>({
+        functionName: 'createInvoice',
+        data: paidFor('lesson-paid-twice'),
+        idToken: adminUser.idToken,
+      });
+      expect(first.status).toBe(200);
+
+      const second = await callFunction<CreateInvoiceRequest, CreateInvoiceResponse>({
+        functionName: 'createInvoice',
+        data: paidFor('lesson-paid-twice'),
+        idToken: adminUser.idToken,
+      });
+      expect(second.status).not.toBe(200);
+      expect(JSON.stringify(second.error ?? '')).toMatch(
+        /already charged or invoiced/
+      );
+    }, 30000);
+  });
+
   describe('resolvePosLessonAttribution (POS lesson review)', () => {
     async function seedPending(
       id: string,
@@ -597,7 +666,7 @@ describe('Invoice Functions', () => {
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
       >({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: {
           attributionId: 'PAYA__VAR_LESSON',
           action: 'attribute',
@@ -624,7 +693,7 @@ describe('Invoice Functions', () => {
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
       >({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: {
           attributionId: 'PAYB__VAR_LESSON',
           action: 'attribute',
@@ -649,7 +718,7 @@ describe('Invoice Functions', () => {
         ResolvePosLessonAttributionRequest,
         ResolvePosLessonAttributionResponse
       >({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: {
           attributionId: 'PAYC__VAR_LESSON',
           action: 'dismiss',
@@ -663,7 +732,7 @@ describe('Invoice Functions', () => {
 
     it('rejects re-resolving an already-resolved attribution', async () => {
       const res = await callFunction<ResolvePosLessonAttributionRequest>({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: { attributionId: 'PAYC__VAR_LESSON', action: 'dismiss' },
         idToken: adminUser.idToken,
       });
@@ -673,13 +742,13 @@ describe('Invoice Functions', () => {
     it('rejects unauthenticated + non-admin callers', async () => {
       await seedPending('PAYD__VAR_LESSON', 4000);
       const unauth = await callFunction<ResolvePosLessonAttributionRequest>({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: { attributionId: 'PAYD__VAR_LESSON', action: 'dismiss' },
       });
       expect(unauth.status).toBe(401);
 
       const nonAdmin = await callFunction<ResolvePosLessonAttributionRequest>({
-        functionName: 'resolvePosLessonAttribution',
+        functionName: 'lessons/resolvePosLessonAttribution',
         data: { attributionId: 'PAYD__VAR_LESSON', action: 'dismiss' },
         idToken: nonAdminUser.idToken,
       });

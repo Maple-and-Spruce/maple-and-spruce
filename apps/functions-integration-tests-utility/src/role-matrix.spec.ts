@@ -43,42 +43,61 @@ const CASES: MatrixCase[] = [
   { as: 'stephanie', functionName: 'getMusicTogetherSections', expect: 200 },
   { as: 'stephanie', functionName: 'getMusicTogetherSemesters', expect: 200 },
   { as: 'stephanie', functionName: 'getMusicTogetherInterest', expect: 200 },
-  { as: 'stephanie', functionName: 'getCalendarEvents', expect: 200 },
+  { as: 'stephanie', functionName: 'calendar/getCalendarEvents', expect: 200 },
   {
     as: 'stephanie',
-    functionName: 'getRoomSchedule',
+    functionName: 'calendar/getRoomSchedule',
     data: ROOM_SCHEDULE_REQ,
     expect: 200,
   },
-  { as: 'stephanie', functionName: 'getProducts', expect: 403 },
+  { as: 'stephanie', functionName: 'products/getProducts', expect: 403 },
   { as: 'stephanie', functionName: 'getClasses', expect: 403 },
   { as: 'stephanie', functionName: 'getRegistrations', expect: 403 },
-  { as: 'stephanie', functionName: 'getStudents', expect: 403 },
+  { as: 'stephanie', functionName: 'people/getStudents', expect: 403 },
   // getStudent (singular) was auth-only until legacy #620; now admin + lesson-teacher.
-  { as: 'stephanie', functionName: 'getStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'people/getStudent', expect: 403 },
   // Student mutations are now [Admin, LessonTeacher] (#49) — mt-teacher denied.
-  { as: 'stephanie', functionName: 'createStudent', expect: 403 },
-  { as: 'stephanie', functionName: 'updateStudent', expect: 403 },
-  { as: 'stephanie', functionName: 'getLessons', expect: 403 },
-  { as: 'stephanie', functionName: 'listUsers', expect: 403 },
+  { as: 'stephanie', functionName: 'people/createStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'settings/getInstruments', expect: 403 },
+  {
+    as: 'stephanie',
+    functionName: 'settings/getBusinessPaymentConfig',
+    expect: 403,
+  },
+  { as: 'stephanie', functionName: 'people/updateStudent', expect: 403 },
+  { as: 'stephanie', functionName: 'lessons/getLessons', expect: 403 },
+  { as: 'stephanie', functionName: 'lessons/getStudioDay', expect: 403 },
+  { as: 'stephanie', functionName: 'lessons/getInbox', expect: 403 },
+  { as: 'stephanie', functionName: 'people/listUsers', expect: 403 },
   { as: 'stephanie', functionName: 'createClass', expect: 403 },
   { as: 'stephanie', functionName: 'getSyncConflictSummary', expect: 403 },
   // Music Together discounts are hers to run (legacy #791) — the function is open to
   // her, and per-program authorization inside it keeps her off class codes
   // (proved in the discount suite).
-  { as: 'stephanie', functionName: 'getDiscounts', expect: 200 },
+  { as: 'stephanie', functionName: 'discounts/getDiscounts', expect: 200 },
 
   // ── Nathan: clerk + lesson-teacher (multi-role union) ─────────────
-  { as: 'nathan', functionName: 'getProducts', expect: 200 },
-  { as: 'nathan', functionName: 'getCategories', expect: 200 },
+  { as: 'nathan', functionName: 'products/getProducts', expect: 200 },
+  { as: 'nathan', functionName: 'products/getCategories', expect: 200 },
   { as: 'nathan', functionName: 'getSales', expect: 200 },
   { as: 'nathan', functionName: 'getClasses', expect: 200 },
   { as: 'nathan', functionName: 'getRegistrations', expect: 200 },
   { as: 'nathan', functionName: 'getClassWaitlistCounts', expect: 200 },
-  { as: 'nathan', functionName: 'getLessons', expect: 200 },
-  { as: 'nathan', functionName: 'getStudents', expect: 200 },
+  { as: 'nathan', functionName: 'lessons/getLessons', expect: 200 },
+  // Every teacher's day (#235) is the studio's view: a lesson teacher who is
+  // also a clerk still sees only their own (getMyDayLessons).
+  { as: 'nathan', functionName: 'lessons/getStudioDay', expect: 403 },
+  // The Home inbox (#235) is studio-wide money and leads: admin only.
+  { as: 'nathan', functionName: 'lessons/getInbox', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'lessons/dismissInboxItem',
+    data: { key: 'lesson-inquiry:role-matrix' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'people/getStudents', expect: 200 },
   { as: 'nathan', functionName: 'getInvoices', expect: 200 },
-  { as: 'nathan', functionName: 'getCalendarEvents', expect: 200 },
+  { as: 'nathan', functionName: 'calendar/getCalendarEvents', expect: 200 },
   { as: 'nathan', functionName: 'getMusicTogetherSections', expect: 403 },
   { as: 'nathan', functionName: 'getMusicTogetherRoster', expect: 403 },
   // Waiving an installment forgives money on Stephanie's Square account —
@@ -91,7 +110,6 @@ const CASES: MatrixCase[] = [
   },
   { as: 'nathan', functionName: 'createClass', expect: 403 },
   { as: 'nathan', functionName: 'updateClass', expect: 403 },
-  { as: 'nathan', functionName: 'getTeacherPayouts', expect: 403 },
   // Artists moved onto a domain router (ADR-029). The gate is declared per
   // route, so the matrix has to name routes — a router whose dispatch ran
   // before its gates would show up right here.
@@ -99,31 +117,178 @@ const CASES: MatrixCase[] = [
   // getArtist (singular) was auth-only until legacy #620; now admin-only like getArtists.
   { as: 'nathan', functionName: 'artists/getArtist', expect: 403 },
   { as: 'nathan', functionName: 'artists/deleteArtist', expect: 403 },
-  { as: 'nathan', functionName: 'listUsers', expect: 403 },
-  { as: 'nathan', functionName: 'grantRole', expect: 403 },
-  // Widening getDiscounts to mt-teacher must not leak it to the
-  // clerk/lesson-teacher union.
-  { as: 'nathan', functionName: 'getDiscounts', expect: 403 },
+  // The instruments list (#161): a teacher adds students, so reads it; only
+  // an admin changes it.
+  { as: 'nathan', functionName: 'settings/getInstruments', expect: 200 },
   {
     as: 'nathan',
-    functionName: 'createDiscount',
+    functionName: 'settings/saveInstruments',
+    data: { instruments: [{ key: 'violin', label: 'Violin' }] },
+    expect: 403,
+  },
+  // The singleton app-config routes (#156) stay admin-only on the settings
+  // router. Nathan teaches lessons and reads the instruments list next door,
+  // so he is the caller a too-wide gate would let in. Updates carry a valid
+  // payload so a 403 can only come from the gate.
+  { as: 'nathan', functionName: 'settings/getLessonRatesConfig', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'settings/updateLessonRatesConfig',
+    data: { rateByLength: { '30-min-full': 4000 } },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'settings/getBusinessPaymentConfig',
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'settings/updateBusinessPaymentConfig',
+    data: { venmoHandle: 'Test-Studio' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'settings/getPosLessonConfig', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'settings/updatePosLessonConfig',
+    data: { lessonCatalogObjectIds: ['TEST_ITEM'] },
+    expect: 403,
+  },
+  // Class-instructor statements are finance: admin-only on every route. The
+  // clerk/lesson-teacher union must not reach instructor pay, and a lesson
+  // teacher must not read another instructor's statement.
+  { as: 'nathan', functionName: 'payouts/previewClassInstructorPayouts', data: { month: '2026-10' }, expect: 403 },
+  { as: 'nathan', functionName: 'payouts/getClassInstructorStatements', expect: 403 },
+  { as: 'nathan', functionName: 'payouts/getClassInstructorStatement', data: { id: 'irrelevant' }, expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'payouts/generateClassInstructorStatement',
+    data: { instructorId: 'irrelevant', month: '2026-01' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/markClassInstructorStatementPaid',
+    data: { id: 'irrelevant', paidOn: '2026-01-05', paymentMethod: 'payroll' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'payouts/voidClassInstructorStatement', data: { id: 'irrelevant' }, expect: 403 },
+  // Artist consignment payouts and the lesson-teacher report moved onto the
+  // same router; a lesson teacher must not read what other teachers are owed.
+  { as: 'nathan', functionName: 'payouts/getArtistPayouts', expect: 403 },
+  // Agreements moved onto a router (#66), admin-only on every route. Signed
+  // agreements hold signatures and guardian details, so the clerk/teacher
+  // union must not read them.
+  { as: 'nathan', functionName: 'agreements/getAgreementTemplates', expect: 403 },
+  { as: 'nathan', functionName: 'agreements/getSignedAgreements', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'agreements/sendAgreementRequest',
+    data: { templateId: 'irrelevant', signerEmail: 'a@example.com', signerName: 'A' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/generateArtistPayout',
+    data: { artistId: 'irrelevant', periodStart: '2026-01-01', periodEnd: '2026-01-31' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/markArtistPayoutPaid',
+    data: { payoutId: 'irrelevant', paymentMethod: 'check' },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'payouts/getTeacherPayouts',
+    data: { from: '2026-01-01T00:00:00Z', to: '2026-01-31T23:59:59Z' },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'people/listUsers', expect: 403 },
+  { as: 'nathan', functionName: 'people/grantRole', expect: 403 },
+  // Promoting or demoting an admin had no integration coverage before the
+  // people router (#65). Nathan holds two scoped roles and is the caller a
+  // too-wide gate would let in; the payloads are valid, so a 403 can only
+  // come from the gate.
+  { as: 'nathan', functionName: 'people/grantAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
+  { as: 'nathan', functionName: 'people/revokeAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'people/revokeRole',
+    data: { uid: 'irrelevant', role: 'clerk' },
+    expect: 403,
+  },
+  { as: 'stephanie', functionName: 'people/grantAdminRole', data: { uid: 'irrelevant' }, expect: 403 },
+  // Taking lesson payments moved onto the lessonPayments router (#67). Two of
+  // these routes move money, and Nathan (lesson teacher + clerk) is exactly the
+  // caller a too-wide gate would let in. Payloads are valid, and the billing run
+  // is a dry run, so a 403 can only come from the gate and nothing is charged.
+  {
+    as: 'nathan',
+    functionName: 'lessonPayments/chargeLessonsNow',
+    data: { studentId: 'irrelevant', lessonCount: 1 },
+    expect: 403,
+  },
+  {
+    as: 'nathan',
+    functionName: 'lessonPayments/triggerLessonBilling',
+    data: { dryRun: true },
+    expect: 403,
+  },
+  { as: 'nathan', functionName: 'lessonPayments/getSquareCardCandidates', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'lessonPayments/updateStudentSquareCard',
+    data: { studentId: 'irrelevant', squareCardId: 'irrelevant' },
+    expect: 403,
+  },
+  // Widening getDiscounts to mt-teacher must not leak it to the
+  // clerk/lesson-teacher union.
+  { as: 'nathan', functionName: 'discounts/getDiscounts', expect: 403 },
+  {
+    as: 'nathan',
+    functionName: 'discounts/createDiscount',
     data: { code: 'NOPE', type: 'percent', percent: 10, program: 'classes' },
     expect: 403,
   },
 
   // ── Admin: unchanged, everything passes (spot checks per group) ───
   { as: 'admin', functionName: 'getMusicTogetherSections', expect: 200 },
-  { as: 'admin', functionName: 'getProducts', expect: 200 },
-  { as: 'admin', functionName: 'getLessons', expect: 200 },
-  { as: 'admin', functionName: 'getCalendarEvents', expect: 200 },
-  { as: 'admin', functionName: 'listUsers', expect: 200 },
+  { as: 'admin', functionName: 'products/getProducts', expect: 200 },
+  { as: 'admin', functionName: 'agreements/getAgreementTemplates', expect: 200 },
+  { as: 'admin', functionName: 'lessons/getLessons', expect: 200 },
+  { as: 'admin', functionName: 'lessons/getStudioDay', expect: 200 },
+  { as: 'admin', functionName: 'lessons/getInbox', expect: 200 },
+  {
+    as: 'admin',
+    functionName: 'lessons/dismissInboxItem',
+    data: { key: 'lesson-inquiry:role-matrix' },
+    expect: 200,
+  },
+  { as: 'admin', functionName: 'calendar/getCalendarEvents', expect: 200 },
+  { as: 'admin', functionName: 'people/listUsers', expect: 200 },
   { as: 'admin', functionName: 'artists/getArtists', expect: 200 },
+  { as: 'admin', functionName: 'settings/getInstruments', expect: 200 },
+  { as: 'admin', functionName: 'settings/getLessonRatesConfig', expect: 200 },
+  {
+    as: 'admin',
+    functionName: 'settings/getBusinessPaymentConfig',
+    expect: 200,
+  },
+  { as: 'admin', functionName: 'settings/getPosLessonConfig', expect: 200 },
+  { as: 'admin', functionName: 'payouts/getClassInstructorStatements', expect: 200 },
 
   // ── No roles at all: nothing opens ────────────────────────────────
-  { as: 'noRole', functionName: 'getCalendarEvents', expect: 403 },
-  { as: 'noRole', functionName: 'getProducts', expect: 403 },
+  { as: 'noRole', functionName: 'calendar/getCalendarEvents', expect: 403 },
+  { as: 'noRole', functionName: 'products/getProducts', expect: 403 },
   { as: 'noRole', functionName: 'getMusicTogetherSections', expect: 403 },
-  { as: 'noRole', functionName: 'getDiscounts', expect: 403 },
+  { as: 'noRole', functionName: 'discounts/getDiscounts', expect: 403 },
+  { as: 'noRole', functionName: 'settings/getInstruments', expect: 403 },
+  { as: 'noRole', functionName: 'settings/getLessonRatesConfig', expect: 403 },
+  { as: 'noRole', functionName: 'payouts/getClassInstructorStatements', expect: 403 },
+  { as: 'stephanie', functionName: 'payouts/getClassInstructorStatements', expect: 403 },
   {
     as: 'noRole',
     functionName: 'waiveMusicTogetherInstallment',

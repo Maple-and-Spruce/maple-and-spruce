@@ -111,8 +111,6 @@ export interface UpdateCatalogVariationInput {
 export interface UpdateCatalogItemInput {
   /** Square catalog item ID */
   squareItemId: string;
-  /** Current catalog version (for optimistic locking) */
-  squareCatalogVersion: number;
   /** Updated name (optional) */
   name?: string;
   /** Updated description (optional) */
@@ -436,7 +434,21 @@ export class CatalogService {
   /**
    * Update an existing catalog item
    *
-   * Uses optimistic locking via catalog version to prevent conflicts.
+   * A read-modify-write against Square's current copy of the item. The
+   * version sent back is the one Square just returned, so Square's own
+   * optimistic lock rejects the upsert only if something wrote to the item
+   * between our read and our write.
+   *
+   * It is deliberately NOT the version cached on our Firestore record. Square
+   * moves an item's version without us writing to it (a Dashboard or POS
+   * edit; on dev, a freshly created item had already moved by its first
+   * edit), so gating on the cached copy refused every name edit once it fell
+   * behind, with "Catalog version mismatch". Only the fields passed here are changed, so a
+   * write on a newer version still keeps everything else Square holds.
+   *
+   * Every existing variation is sent back, updated or not: Square deletes a
+   * variation left out of an item upsert.
+   *
    * Supports updating multiple variations via the `variations` array,
    * or a single variation via the legacy `squareVariationId`/`priceCents`/`sku` fields.
    */
@@ -452,36 +464,39 @@ export class CatalogService {
       throw new Error(`Catalog item not found: ${input.squareItemId}`);
     }
 
-    // Check version for optimistic locking
-    if (Number(currentItem.version) !== input.squareCatalogVersion) {
-      throw new Error(
-        `Catalog version mismatch: expected ${input.squareCatalogVersion}, got ${currentItem.version}`
-      );
-    }
-
     // Resolve which variations to update
     const variationUpdates = this.resolveVariationUpdates(input);
 
     // Collect all existing variations from the response
     const relatedObjects = currentResponse.relatedObjects || [];
-    const nestedVariations = currentItem.itemData?.variations || [];
+    const nestedVariations = (currentItem.itemData?.variations ||
+      []) as Square.CatalogObject[];
+    const relatedVariations = relatedObjects.filter(
+      (obj: Square.CatalogObject) =>
+        obj.type === 'ITEM_VARIATION' &&
+        !nestedVariations.some((v) => v.id === obj.id)
+    );
+    const existingVariations = [...nestedVariations, ...relatedVariations];
 
-    // Helper to find an existing variation by ID
-    const findVariation = (variationId: string): Square.CatalogObject | undefined => {
-      return (
-        relatedObjects.find((obj: Square.CatalogObject) => obj.id === variationId) ||
-        (nestedVariations.find((v) => v.id === variationId) as Square.CatalogObject | undefined)
+    for (const update of variationUpdates) {
+      const existing = existingVariations.find(
+        (v) => v.id === update.squareVariationId
       );
-    };
+      if (!existing || existing.type !== 'ITEM_VARIATION') {
+        throw new Error(
+          `Catalog variation not found: ${update.squareVariationId}`
+        );
+      }
+    }
 
-    // Build updated variation objects
-    const updatedVariations: Square.CatalogObject[] = variationUpdates.map(
-      (update) => {
-        const existing = findVariation(update.squareVariationId);
-        if (!existing || existing.type !== 'ITEM_VARIATION') {
-          throw new Error(
-            `Catalog variation not found: ${update.squareVariationId}`
-          );
+    // Every existing variation goes back, with any updates applied
+    const updatedVariations: Square.CatalogObject[] = existingVariations.map(
+      (existing) => {
+        const update = variationUpdates.find(
+          (u) => u.squareVariationId === existing.id
+        );
+        if (!update) {
+          return existing;
         }
 
         const existingTyped = existing as { itemVariationData?: Square.CatalogItemVariation };
@@ -524,13 +539,20 @@ export class CatalogService {
             {
               type: 'ITEM',
               id: input.squareItemId,
-              version: BigInt(input.squareCatalogVersion),
+              version: currentItem.version,
               itemData: updatedItemData,
             },
           ],
         },
       ],
     });
+
+    if (response.errors && response.errors.length > 0) {
+      const errorMessages = response.errors
+        .map((e) => e.detail || e.code || 'Unknown error')
+        .join(', ');
+      throw new Error(`Square API error: ${errorMessages}`);
+    }
 
     const updatedItem = response.objects?.find(
       (obj: Square.CatalogObject) => obj.id === input.squareItemId

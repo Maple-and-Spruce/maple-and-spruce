@@ -112,10 +112,12 @@ export function UserMenu({ variant = 'icon' }: UserMenuProps) {
         }}
       >
         <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Signed in as
           </Typography>
-          <Typography variant="body2" fontWeight="medium" noWrap>
+          <Typography variant="body2" noWrap sx={{
+            fontWeight: 'medium'
+          }}>
             {user.email}
           </Typography>
         </Box>

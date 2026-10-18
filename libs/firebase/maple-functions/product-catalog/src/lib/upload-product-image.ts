@@ -1,0 +1,120 @@
+/**
+ * Upload Product Image Cloud Function
+ *
+ * Uploads a product image to Square Catalog (admin and clerk, on the productCatalog router).
+ *
+ * Unlike artist images (stored in Firebase Storage), product images
+ * are stored in Square's CDN. This keeps product images in sync with
+ * the Square catalog and POS system.
+ *
+ * Flow:
+ * 1. Validate input (product must exist)
+ * 2. Upload image to Square via Catalog API
+ * 3. Update Firestore cache with the new image URL
+ */
+import {
+  type FunctionContext,
+  throwInvalidArgument,
+  throwNotFound,
+  throwValidationError,
+} from '@maple/firebase/functions';
+import { ProductRepository } from '@maple/firebase/database';
+import {
+  Square,
+  type SquareSecrets,
+  type SquareStrings,
+} from '@maple/firebase/square';
+import { imageUploadValidation } from '@maple/ts/validation';
+import type {
+  UploadProductImageRequest,
+  UploadProductImageResponse,
+} from '@maple/ts/firebase/api-types';
+
+/**
+ * Square's Catalog API rejects webp and caps images at 15MB, so we override
+ * the default allowlist + max size for product uploads.
+ */
+const SQUARE_ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/pjpeg',
+  'image/png',
+  'image/gif',
+] as const;
+const SQUARE_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+
+export async function uploadProductImage(
+  data: UploadProductImageRequest,
+  _context: FunctionContext,
+  secrets: SquareSecrets,
+  strings: SquareStrings,
+): Promise<UploadProductImageResponse> {
+  const { productId, imageBase64, contentType, caption } = data;
+
+  if (!productId) {
+    throwInvalidArgument('productId is required');
+  }
+
+  const validation = imageUploadValidation({
+    imageBase64,
+    contentType,
+    allowedMimeTypes: SQUARE_ALLOWED_IMAGE_TYPES,
+    maxSizeBytes: SQUARE_MAX_IMAGE_BYTES,
+  });
+  if (validation.hasErrors()) {
+    throwValidationError(validation.getErrors());
+  }
+
+  const product = await ProductRepository.findById(productId);
+  if (!product) {
+    throwNotFound('Product', productId);
+  }
+
+  if (!product.squareItemId) {
+    throw new Error(
+      'Product does not have a Square item ID. Cannot upload image.',
+    );
+  }
+
+  console.log('Uploading image for product:', {
+    productId,
+    squareItemId: product.squareItemId,
+    contentType,
+  });
+
+  // Initialize Square client
+  const square = new Square(secrets, strings);
+
+  // Convert base64 to Blob for Square API
+  const buffer = Buffer.from(imageBase64, 'base64');
+  const blob = new Blob([buffer], { type: contentType });
+
+  // Generate filename from content type
+  const extension = contentType.split('/')[1] || 'jpg';
+  const filename = `product-${productId}.${extension}`;
+
+  // Upload to Square
+  const result = await square.catalogService.uploadImage({
+    squareItemId: product.squareItemId,
+    imageBlob: blob,
+    filename,
+    caption: caption || product.squareCache.name,
+    isPrimary: true,
+  });
+
+  console.log('Square image upload successful:', result);
+
+  // Update Firestore cache with the new image URL and catalog version
+  // IMPORTANT: Uploading an image changes the catalog version, so we must
+  // update it in Firestore to avoid version mismatch errors on subsequent updates
+  await ProductRepository.updateSquareCache(
+    productId,
+    { imageUrl: result.imageUrl },
+    result.squareCatalogVersion,
+  );
+
+  return {
+    success: true,
+    imageUrl: result.imageUrl,
+    squareImageId: result.squareImageId,
+  };
+}

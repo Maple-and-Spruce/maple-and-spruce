@@ -53,6 +53,10 @@ on:
 
 env:
   NX_DAEMON: 'false'
+  # The steps that run firebase-tools through npx (rather than the repo's own
+  # install) use this version, not @latest, so a firebase-tools release can't
+  # change a deploy without a PR. Keep it in step with package.json.
+  FIREBASE_TOOLS_VERSION: '15.33.0'
 
 # Serialize merge-pipeline runs. Two back-to-back merges otherwise race
 # on the shared dev project (B's dev deploy overwrites A's mid-E2E),
@@ -90,11 +94,17 @@ jobs:
   prepare_and_build:
     runs-on: ubuntu-latest
     if: github.repository == 'Maple-and-Spruce/maple-and-spruce'
+    permissions:
+      contents: read
+      # skip_unchanged looks up the last fully successful run of this workflow.
+      actions: read
     outputs:
-      matrix: ${{ steps.get_affected.outputs.matrix }}
-      has_changes: ${{ steps.get_affected.outputs.has_changes }}
+      # Function outputs come from skip_unchanged, not get_affected: they are
+      # the affected codebases minus any whose bundle came out identical.
+      matrix: ${{ steps.skip_unchanged.outputs.matrix }}
+      has_changes: ${{ steps.skip_unchanged.outputs.has_changes }}
       cache_key: ${{ steps.set_cache_key.outputs.key }}
-      affected_codebases: ${{ steps.get_affected.outputs.affected_codebases }}
+      affected_codebases: ${{ steps.skip_unchanged.outputs.affected_codebases }}
       webflow_components_affected: ${{ steps.get_affected.outputs.webflow_components_affected }}
       web_app_affected: ${{ steps.get_affected.outputs.web_app_affected }}
     steps:
@@ -107,12 +117,12 @@ jobs:
         run: echo "commit=$(git rev-parse HEAD~1)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Generate cache key
@@ -303,6 +313,61 @@ jobs:
             pnpm exec nx run ${PROJECT}:build
           done
 
+      - name: Skip codebases whose bundle did not change
+        id: skip_unchanged
+        # nx marks every function that imports a changed lib as affected, but a
+        # codebase is one bundle, and often that bundle comes out byte-identical
+        # (a type, a component, a test). Redeploying it anyway costs a new Cloud
+        # Run revision per function, each booted once at 2 vCPU: in Oct 2026
+        # that was 43% of all revisions and most of the merge-day CPU bill.
+        # firebase-tools' own unchanged-function skip is disabled by `--only`,
+        # which we always pass. See tools/unchanged-function-codebases.sh.
+        # A manual `deploy_all` run deploys everything regardless.
+        #
+        # The comparison base is the last commit whose run of this workflow
+        # fully succeeded, NOT HEAD~1. If the previous run failed partway, its
+        # bundle may never have reached prod, so matching it proves nothing.
+        # If that commit can't be found or fetched, nothing is skipped.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_ALL: ${{ github.event.inputs.deploy_all }}
+          HAS_CHANGES: ${{ steps.get_affected.outputs.has_changes }}
+          MATRIX: ${{ steps.get_affected.outputs.matrix }}
+          CODEBASES: ${{ steps.get_affected.outputs.affected_codebases }}
+        run: |
+          UNCHANGED='[]'
+          if [ "$HAS_CHANGES" = "true" ] && [ "$DEPLOY_ALL" != "true" ]; then
+            LAST_GREEN=$(gh run list --workflow firebase-functions-merge.yml --branch main \
+              --status success --limit 1 --json headSha --jq '.[0].headSha // empty' 2>/dev/null || true)
+            if [ -n "$LAST_GREEN" ] && ! git fetch -q --depth=1 origin "$LAST_GREEN"; then
+              LAST_GREEN=""
+            fi
+            echo "Comparing bundles against the last green merge: ${LAST_GREEN:-none found}"
+            UNCHANGED=$(./tools/unchanged-function-codebases.sh "$LAST_GREEN" "$CODEBASES") || UNCHANGED='[]'
+            # Anything but a JSON array means "skip nothing": deploy as before.
+            jq -e 'type == "array"' <<<"$UNCHANGED" >/dev/null 2>&1 || UNCHANGED='[]'
+          fi
+          echo "Unchanged codebases (not deployed): $UNCHANGED"
+
+          CODEBASES=$(jq -c --argjson skip "$UNCHANGED" '. - $skip' <<<"$CODEBASES")
+          MATRIX=$(jq -c --argjson skip "$UNCHANGED" \
+            '.include |= map(select((.functions | split(":")[1]) as $cb | $skip | index($cb) | not))' <<<"$MATRIX")
+          if [ "$(jq '.include | length' <<<"$MATRIX")" -eq 0 ]; then
+            HAS_CHANGES=false
+          fi
+
+          {
+            echo "has_changes=$HAS_CHANGES"
+            echo "affected_codebases=$CODEBASES"
+            echo "matrix=$MATRIX"
+          } >> "$GITHUB_OUTPUT"
+          echo "Deploying codebases: $CODEBASES"
+          {
+            echo "### Function codebases"
+            echo "- Deploying: \`$CODEBASES\`"
+            echo "- Skipped, bundle identical to the last green merge (${LAST_GREEN:-none}): \`$UNCHANGED\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Remove generated lockfiles
         if: steps.get_affected.outputs.has_changes == 'true'
         run: |
@@ -391,12 +456,12 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -486,12 +551,12 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Restore node_modules cache
@@ -527,7 +592,7 @@ jobs:
         # `|| true` swallows the non-zero exit. Stable site name so the
         # Playwright config can hard-code the URL.
         run: |
-          npx -y firebase-tools@latest hosting:sites:create \
+          npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} hosting:sites:create \
             maple-spruce-registration-test \
             --project maple-and-spruce-dev \
             --token "${{ steps.auth.outputs.access_token }}" \
@@ -576,10 +641,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        # vercel.json's installCommand is `corepack enable && pnpm install`.
+        # pnpm 12 ships as a native binary that only corepack >= 0.35 can
+        # run; install it explicitly rather than depend on the version the
+        # runner's Node happens to bundle.
+        run: npm install --global vercel@latest corepack@latest
 
       # Same flow as deploy_vercel_prod, pointed at the dev project. The
       # dev project's *production* domain is business-dev.*, so `--prod`
@@ -639,19 +708,16 @@ jobs:
           create_credentials_file: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Pinned to 22.22.3: Node 22.23.0 (security release backporting the
-          # http.Agent "response queue poisoning" fix) exposes a node-fetch@2
-          # keep-alive regression — false "Premature close" on the concurrent
-          # Google auth requests the Admin SDK makes seeding dev Firestore
-          # (nodejs/node#63989). 22.22.3 is the last version verified to pass
-          # (deploy_all on 22.22.3 succeeded; 22.23.0 fails). Revert to '22'
-          # once Node ships the node-fetch keep-alive fix.
-          node-version: '22.22.3'
+          # At least 24.18.0: the Admin SDK seed of dev Firestore makes concurrent
+          # Google auth requests through node-fetch@2, which 22.23.0 / 24.17.0
+          # broke with false "Premature close" errors (nodejs/node#63989). The
+          # fix (nodejs/node#64004) shipped in 22.23.1 and 24.18.0.
+          node-version: '^24.18.0'
           cache: 'pnpm'
 
       - name: Restore node_modules cache
@@ -754,14 +820,14 @@ jobs:
           create_credentials_file: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Pinned to 22.22.3 for the same node-fetch keep-alive reason as
+          # At least 24.18.0, for the same node-fetch keep-alive reason as
           # e2e_dev (the Admin SDK dev-Firestore seed).
-          node-version: '22.22.3'
+          node-version: '^24.18.0'
           cache: 'pnpm'
 
       - name: Restore node_modules cache
@@ -893,12 +959,12 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -1015,7 +1081,7 @@ jobs:
           # twice, or hit any non-409 error.
           prev_err=""
           for attempt in $(seq 1 12); do
-            npx -y firebase-tools@latest deploy --only firestore:indexes \
+            npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only firestore:indexes \
               --project maple-and-spruce-dev \
               --token "${{ steps.auth.outputs.access_token }}" \
               < /dev/null 2>&1 | tee "$OUTPUT"
@@ -1123,7 +1189,7 @@ jobs:
 
           prev_err=""
           for attempt in $(seq 1 12); do
-            npx -y firebase-tools@latest deploy --only firestore:indexes \
+            npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only firestore:indexes \
               --project maple-and-spruce \
               --token "${{ steps.auth.outputs.access_token }}" \
               < /dev/null 2>&1 | tee "$OUTPUT"
@@ -1203,7 +1269,7 @@ jobs:
         if: steps.changed.outputs.changed == 'true'
         timeout-minutes: 10
         run: |
-          npx -y firebase-tools@latest deploy --only firestore:rules,storage \
+          npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only firestore:rules,storage \
             --project ${{ matrix.project }} \
             --token "${{ steps.auth.outputs.access_token }}" \
             --non-interactive < /dev/null
@@ -1291,7 +1357,7 @@ jobs:
         run: |
           set -o pipefail
           for attempt in $(seq 1 3); do
-            npx -y firebase-tools@latest deploy --only hosting:api \
+            npx -y firebase-tools@${FIREBASE_TOOLS_VERSION} deploy --only hosting:api \
               --project maple-and-spruce \
               --force \
               --token "${{ steps.auth.outputs.access_token }}" \
@@ -1320,12 +1386,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Restore node_modules cache
@@ -1339,10 +1405,12 @@ jobs:
         if: steps.restore-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Share webflow components library
+      - name: Import webflow components library
         env:
           WEBFLOW_WORKSPACE_API_TOKEN: ${{ secrets.WEBFLOW_WORKSPACE_API_TOKEN }}
-        run: pnpm exec webflow library share --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
+        # `devlink import` is the CLI 2.x name for `library share` (same
+        # implementation; the `library` group goes away in CLI 3).
+        run: pnpm exec webflow devlink import --no-input --skip-update-check --manifest apps/webflow-components/webflow.json
 
   deploy_vercel_prod:
     # Vercel's auto-deploy-on-main is disabled via vercel.json
@@ -1363,10 +1431,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        # vercel.json's installCommand is `corepack enable && pnpm install`.
+        # pnpm 12 ships as a native binary that only corepack >= 0.35 can
+        # run; install it explicitly rather than depend on the version the
+        # runner's Node happens to bundle.
+        run: npm install --global vercel@latest corepack@latest
 
       # `vercel pull` writes .vercel/project.json + the production env
       # to the working dir; `vercel build` and `vercel deploy --prebuilt`

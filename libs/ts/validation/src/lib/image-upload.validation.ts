@@ -11,7 +11,8 @@
  * product uploads require it (Square needs the item id), artist/class/
  * instructor uploads accept a missing id and fall back to a `temp/` path.
  */
-import { staticSuite, test, enforce, only } from 'vest';
+import { test, enforce, only } from 'vest';
+import { staticSuite } from './static-suite';
 
 /** Default allowed MIME types (matches Firebase Storage uploads). */
 export const DEFAULT_IMAGE_MIME_TYPES = [
@@ -61,7 +62,7 @@ export const imageUploadValidation = staticSuite(
       `Content type must be one of: ${allowed.join(', ')}`,
       () => {
         if (data.contentType) {
-          enforce(data.contentType).inside(allowed);
+          enforce(data.contentType).inside([...allowed]);
         }
       }
     );

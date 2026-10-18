@@ -16,7 +16,9 @@ export const mockMyWeekResponse: GetMyWeekResponse = {
       durationMinutes: 30,
       category: 'lesson',
       ownership: 'mine',
-      title: 'Music Lesson',
+      title: 'Test Student A',
+      studentId: 'stu-a',
+      studentName: 'Test Student A',
     },
     {
       id: 'std-class-thu',
@@ -72,6 +74,9 @@ export const mockMyWeekResponse: GetMyWeekResponse = {
       ownership: 'mine',
       cadence: 'recurring',
       unattributed: false,
+      // Own lessons carry the student (#160).
+      studentId: 'stu-a',
+      studentName: 'Test Student A',
     },
     {
       id: 'lesson-2',

@@ -1,10 +1,13 @@
 export { callDeduped } from './lib/call-deduped';
+export type { CallableTarget, RouterRoute } from './lib/call-deduped';
 export { useProducts } from './lib/useProducts';
 export { useArtists } from './lib/useArtists';
 export { useCategories } from './lib/useCategories';
 export { useSyncConflicts } from './lib/useSyncConflicts';
 export { useLessonRatesConfig } from './lib/useLessonRatesConfig';
 export { useMyDay } from './lib/useMyDay';
+export { useStudioDay } from './lib/useStudioDay';
+export { useInbox } from './lib/useInbox';
 export { useBusinessPaymentConfig } from './lib/useBusinessPaymentConfig';
 export { useSyncConflictSummary } from './lib/useSyncConflictSummary';
 export { usePosLessonAttributions } from './lib/usePosLessonAttributions';
@@ -27,15 +30,17 @@ export { useClassCategories } from './lib/useClassCategories';
 
 // Phase 4: Music Lessons
 export { useStudents } from './lib/useStudents';
-export { useHopeQueue, type UseHopeQueueOptions } from './lib/useHopeQueue';
+export {
+  useHopeQueue,
+  type UseHopeQueueOptions,
+  type HopeQueueData,
+} from './lib/useHopeQueue';
+export { useHopeProducts } from './lib/useHopeProducts';
+export { useInstruments } from './lib/useInstruments';
 export {
   useStudentLessonSchedules,
   useAllStudentLessonSchedules,
 } from './lib/useStudentLessonSchedules';
-export {
-  useNeedsAttention,
-  type NeedsAttentionData,
-} from './lib/useNeedsAttention';
 export {
   useLessonInquiries,
   type UseLessonInquiriesOptions,
@@ -51,6 +56,11 @@ export {
   useTeacherPayouts,
   type UseTeacherPayoutsOptions,
 } from './lib/useTeacherPayouts';
+export {
+  useClassInstructorPayouts,
+  useClassInstructorStatement,
+  hydrateStatement,
+} from './lib/useClassInstructorPayouts';
 
 // Phase 4.5: Calendar
 export {

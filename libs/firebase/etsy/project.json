@@ -16,13 +16,6 @@
         "format": ["cjs"],
         "generatePackageJson": true
       }
-    },
-    "test": {
-      "executor": "@nx/vitest:test",
-      "outputs": ["{options.reportsDirectory}"],
-      "options": {
-        "reportsDirectory": "{projectRoot}/../../../coverage/libs/firebase/etsy"
-      }
     }
   }
 }

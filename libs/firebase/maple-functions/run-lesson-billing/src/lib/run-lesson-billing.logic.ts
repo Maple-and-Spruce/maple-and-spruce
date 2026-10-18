@@ -26,6 +26,7 @@
  */
 import {
   coveredLessonIds,
+  effectiveRateByLength,
   isAutoChargeEligible,
   isChargeableLesson,
   isLessonChargeDue,
@@ -35,6 +36,7 @@ import {
   squareIdempotencyKeyFor,
 } from '@maple/ts/domain';
 import type {
+  InstructorLessonRates,
   Lesson,
   LessonBillingRule,
   LessonRateByLength,
@@ -71,7 +73,14 @@ export interface LessonBillingResult {
 export interface PlanDeps {
   rules: LessonBillingRule[];
   defaultRule?: LessonBillingRule;
+  /** The studio default rate table. */
   rateByLength: LessonRateByLength;
+  /**
+   * Each teacher's own rates by instrument, keyed by instructor id. A student
+   * is priced from their primary teacher's rate for their instrument, with
+   * `rateByLength` filling any length the teacher has not priced.
+   */
+  teacherRatesById?: Map<string, { lessonRates?: InstructorLessonRates }>;
   lessonsByStudent: Map<string, Lesson[]>;
   /**
    * Every charge that already exists, per student — not just the scheduled
@@ -159,12 +168,17 @@ export async function planCharges(
       lessonsAlreadyCovered += lessons.filter(
         (lesson) => isChargeableLesson(lesson) && covered.has(lesson.id)
       ).length;
+      const studentRates = effectiveRateByLength(
+        student,
+        deps.teacherRatesById?.get(student.primaryTeacherId),
+        deps.rateByLength
+      );
       const charges = planChargesForStudent(
         student.id,
         rule,
         lessons,
         (lesson) =>
-          resolvePrivatePayLessonRateCents(lesson, student, deps.rateByLength),
+          resolvePrivatePayLessonRateCents(lesson, student, studentRates),
         covered
       );
 

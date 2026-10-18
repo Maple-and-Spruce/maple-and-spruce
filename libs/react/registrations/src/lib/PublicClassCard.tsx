@@ -100,13 +100,15 @@ export function PublicClassCard({
           <Typography variant="h6" component="h2" gutterBottom>
             {publicClass.name}
           </Typography>
-          <Typography variant="h6" color="primary" fontWeight={600}>
+          <Typography variant="h6" color="primary" sx={{
+            fontWeight: 600
+          }}>
             {formatPrice(publicClass.priceCents)}
           </Typography>
         </Box>
 
         {publicClass.shortDescription && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             {publicClass.shortDescription}
           </Typography>
         )}

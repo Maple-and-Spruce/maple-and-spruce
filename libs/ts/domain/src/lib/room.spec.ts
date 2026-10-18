@@ -5,6 +5,8 @@ import {
   getRoomConflicts,
   getDayStrip,
   groupRoomScheduleByDay,
+  lessonRoom,
+  DEFAULT_LESSON_ROOM,
   type RoomBusyWindow,
 } from './room';
 
@@ -27,6 +29,20 @@ function win(
 describe('getRoomLabel', () => {
   it('labels the spruce room', () => {
     expect(getRoomLabel('spruce')).toBe('Spruce Room');
+  });
+});
+
+describe('lessonRoom', () => {
+  it('reads a lesson with no room as Spruce', () => {
+    // The calendar trigger has always mirrored a room-less lesson into Spruce;
+    // the conflict check must agree or it skips a slot the calendar shows taken.
+    expect(DEFAULT_LESSON_ROOM).toBe('spruce');
+    expect(lessonRoom(undefined)).toBe('spruce');
+    expect(lessonRoom(null)).toBe('spruce');
+  });
+
+  it('keeps a room the lesson names', () => {
+    expect(lessonRoom('spruce')).toBe('spruce');
   });
 });
 

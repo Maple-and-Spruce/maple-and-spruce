@@ -222,8 +222,6 @@ export type {
 
 // Auth types
 export type {
-  CheckAdminStatusRequest,
-  CheckAdminStatusResponse,
   UserRole,
   GetMyRolesRequest,
   GetMyRolesResponse,
@@ -262,6 +260,9 @@ export type {
 
 // Meta ad-attribution payload (shared by class + Music Together checkout)
 export type { MetaAttributionPayload } from './meta-attribution.types';
+
+// Google Analytics ids for the server-side GA4 `purchase` (class checkout)
+export type { GaAttributionPayload } from './ga-attribution.types';
 
 // Phase 3c: Registration types
 export type {
@@ -309,6 +310,9 @@ export type {
   UpdateLessonResponse,
   DeleteLessonRequest,
   DeleteLessonResponse,
+  RescheduleLessonWithCreditRequest,
+  RescheduleLessonWithCreditResponse,
+  CarriedLessonCoverage,
 } from './lesson.types';
 
 // Phase 4: Music Lessons - Lesson blocks (legacy #686)
@@ -353,6 +357,22 @@ export type {
   GetMyDayLessonsResponse,
 } from './my-day.types';
 
+// Admin Home dashboard: every teacher's lessons for a day (#235)
+export type {
+  StudioDayPayment,
+  StudioDayLesson,
+  GetStudioDayRequest,
+  GetStudioDayResponse,
+} from './studio-day.types';
+
+// Admin Home dashboard: the studio-wide inbox and "Mark done" (#235)
+export type {
+  GetInboxRequest,
+  GetInboxResponse,
+  DismissInboxItemRequest,
+  DismissInboxItemResponse,
+} from './inbox.types';
+
 // Phase 4: Music Lessons - Teacher My Week schedule (#60/#684)
 export type {
   MyWeekOwnership,
@@ -376,6 +396,23 @@ export type {
   GetTeacherPayoutsRequest,
   GetTeacherPayoutsResponse,
 } from './teacher-payout.types';
+
+// Class-instructor payouts (payouts router)
+export type {
+  ClassInstructorPayoutPreview,
+  PreviewClassInstructorPayoutsRequest,
+  PreviewClassInstructorPayoutsResponse,
+  GenerateClassInstructorStatementRequest,
+  GenerateClassInstructorStatementResponse,
+  GetClassInstructorStatementsRequest,
+  GetClassInstructorStatementsResponse,
+  GetClassInstructorStatementRequest,
+  GetClassInstructorStatementResponse,
+  MarkClassInstructorStatementPaidRequest,
+  MarkClassInstructorStatementPaidResponse,
+  VoidClassInstructorStatementRequest,
+  VoidClassInstructorStatementResponse,
+} from './class-instructor-payout.types';
 
 // Calendar Embed Config types
 export type {
@@ -573,9 +610,18 @@ export type {
 export type {
   GetHopeQueueRequest,
   GetHopeQueueResponse,
+  HopeOrderWithRoom,
   RecordHopeSubmissionsRequest,
   RecordHopeSubmissionsResponse,
 } from './hope-submission.types';
+export type {
+  GetHopeProductsRequest,
+  GetHopeProductsResponse,
+  SaveHopeProductRequest,
+  SaveHopeProductResponse,
+  SaveHopeOrderRequest,
+  SaveHopeOrderResponse,
+} from './hope-product.types';
 
 export type {
   GetNeedsAttentionRequest,
@@ -611,3 +657,11 @@ export type {
   UpdateStudentSquareCardRequest,
   UpdateStudentSquareCardResponse,
 } from './square-card-link.types';
+
+// Settings router (#161)
+export type {
+  GetInstrumentsRequest,
+  GetInstrumentsResponse,
+  SaveInstrumentsRequest,
+  SaveInstrumentsResponse,
+} from './settings.types';

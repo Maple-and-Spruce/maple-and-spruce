@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import type {
   Discount,
   CreateDiscountInput,
@@ -300,7 +300,9 @@ export function DiscountForm({
               }
               required
               fullWidth
-              inputProps={{ style: { fontFamily: 'monospace' } }}
+              slotProps={{
+                htmlInput: { style: { fontFamily: 'monospace' } }
+              }}
             />
 
             <TextField
@@ -361,13 +363,15 @@ export function DiscountForm({
                 helperText={getFieldError('percent') || '1-100'}
                 required
                 fullWidth
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">%</InputAdornment>
-                  ),
-                }}
-                inputProps={{ min: 1, max: 100 }}
-              />
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">%</InputAdornment>
+                    ),
+                  },
+
+                  htmlInput: { min: 1, max: 100 }
+                }} />
             )}
 
             {(type.value === 'amount' ||
@@ -381,13 +385,15 @@ export function DiscountForm({
                 helperText={getFieldError('amountCents')}
                 required
                 fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">$</InputAdornment>
-                  ),
-                }}
-                inputProps={{ min: 0.01, step: 0.01 }}
-              />
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">$</InputAdornment>
+                    ),
+                  },
+
+                  htmlInput: { min: 0.01, step: 0.01 }
+                }} />
             )}
 
             {type.value === 'amount-before-date' && (
@@ -461,7 +467,9 @@ export function DiscountForm({
                 }
                 required
                 fullWidth
-                inputProps={{ min: 2, max: 100, step: 1 }}
+                slotProps={{
+                  htmlInput: { min: 2, max: 100, step: 1 }
+                }}
               />
             )}
 
@@ -479,7 +487,9 @@ export function DiscountForm({
                 'Leave blank for unlimited uses. Set to 1 for a single-use code.'
               }
               fullWidth
-              inputProps={{ min: 1, max: 10000, step: 1 }}
+              slotProps={{
+                htmlInput: { min: 1, max: 10000, step: 1 }
+              }}
             />
 
             <DatePicker

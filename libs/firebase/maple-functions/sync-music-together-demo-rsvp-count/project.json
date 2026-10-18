@@ -1,0 +1,8 @@
+{
+  "name": "firebase-maple-functions-sync-music-together-demo-rsvp-count",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/maple-functions/sync-music-together-demo-rsvp-count/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:feature"],
+  "targets": {}
+}

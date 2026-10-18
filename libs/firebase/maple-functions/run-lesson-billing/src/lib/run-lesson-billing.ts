@@ -22,6 +22,7 @@ import {
   SQUARE_STRING_NAMES,
 } from '@maple/firebase/square';
 import {
+  InstructorRepository,
   InvoiceRepository,
   LessonBillingRuleRepository,
   LessonRatesConfigRepository,
@@ -59,6 +60,7 @@ export async function executeLessonBilling(
     allLessons,
     allCharges,
     allInvoices,
+    instructors,
   ] =
     await Promise.all([
       StudentRepository.findAll(),
@@ -73,6 +75,8 @@ export async function executeLessonBilling(
       // Invoices count as "already billed" too, now that invoicing is
       // explicit — a lesson Katie invoiced must not also be charged (#101).
       InvoiceRepository.findAll(),
+      // Each student is priced from their primary teacher's rates.
+      InstructorRepository.findAll(),
     ]);
 
   const lessonsByStudent = new Map<string, Lesson[]>();
@@ -103,6 +107,7 @@ export async function executeLessonBilling(
     rules,
     defaultRule,
     rateByLength: ratesConfig.rateByLength,
+    teacherRatesById: new Map(instructors.map((i) => [i.id, i])),
     lessonsByStudent,
     chargesByStudent,
     invoicedLessonIdsByStudent,
@@ -192,6 +197,18 @@ function buildSquare(): Square {
  * library directory name (`run-lesson-billing` -> `runLessonBilling`), so a
  * library whose name matches none of its exports fails the deploy outright.
  */
+/**
+ * Automatic charging is paused (#157). Nobody's card is charged unless someone
+ * presses the button: Katie takes payment for the next lessons at the end of a
+ * lesson, and the family sees it happen.
+ *
+ * The schedule stays deployed and does nothing, because deleting the function
+ * would not stop it — CI never prunes a deployed function, so the old revision
+ * would go on charging cards. `triggerLessonBilling` still runs the logic on
+ * demand, and turning automation back on is putting the call back here.
+ */
+export const LESSON_AUTOPAY_PAUSED = true;
+
 export const runLessonBilling = onSchedule(
   {
     schedule: '0 9 * * *',
@@ -200,6 +217,10 @@ export const runLessonBilling = onSchedule(
     secrets: squareSecretParams,
   },
   async () => {
+    if (LESSON_AUTOPAY_PAUSED) {
+      console.log('[lesson-billing] automatic charging is paused (#157)');
+      return;
+    }
     await executeLessonBilling(new Date(), buildSquare());
   }
 );

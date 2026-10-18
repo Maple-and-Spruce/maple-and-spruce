@@ -170,6 +170,7 @@ describe('cancelRegistration', () => {
       expect(result.status).toBe(200);
       expect(result.data?.registration.status).toBe('cancelled');
       expect(result.data?.refundId).toBeUndefined();
+      expect(result.data?.registration.refundedAt).toBeUndefined();
     });
 
     it('should cancel and refund a confirmed registration with payment', async () => {
@@ -192,6 +193,10 @@ describe('cancelRegistration', () => {
       expect(result.data?.registration.status).toBe('refunded');
       expect(result.data?.refundId).toBeDefined();
       expect(result.data?.refundId).toMatch(/^mock-refund-/);
+      // Instructor payouts need to know when a refund happened and for how much.
+      expect(result.data?.registration.refundedAt).toBeDefined();
+      expect(result.data?.registration.refundedAmountCents).toBeGreaterThan(0);
+      expect(result.data?.registration.squareRefundId).toBe(result.data?.refundId);
     });
 
     it('should cancel without refund when refund=true but no squarePaymentId', async () => {

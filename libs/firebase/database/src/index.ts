@@ -34,6 +34,7 @@ export {
 // Phase 4: Music Lessons
 export { StudentRepository } from './lib/student.repository';
 export { LessonRatesConfigRepository } from './lib/lesson-rates-config.repository';
+export { InstrumentsConfigRepository } from './lib/instruments-config.repository';
 export { BusinessPaymentConfigRepository } from './lib/business-payment-config.repository';
 export { LessonRepository, type LessonFilters } from './lib/lesson.repository';
 export { LessonBlockRepository } from './lib/lesson-block.repository';
@@ -44,7 +45,13 @@ export {
   type StudentLessonScheduleFilters,
 } from './lib/student-lesson-schedule.repository';
 export { LessonInquiryRepository } from './lib/lesson-inquiry.repository';
+export {
+  InboxDismissalRepository,
+  inboxDismissalDocId,
+} from './lib/inbox-dismissal.repository';
 export { HopeSubmissionRepository } from './lib/hope-submission.repository';
+export { HopeProductRepository } from './lib/hope-product.repository';
+export { HopeOrderRepository } from './lib/hope-order.repository';
 export {
   InvoiceRepository,
   type InvoiceFilters,
@@ -61,6 +68,12 @@ export {
   LEASE_TTL_MS,
   type CatalogSyncRequest,
 } from './lib/catalog-sync-request.repository';
+export {
+  RequestThrottleRepository,
+  REQUEST_THROTTLE_RETENTION_MS,
+  throttleWindowStart,
+  type RequestThrottleHit,
+} from './lib/request-throttle.repository';
 export { PosSaleRequestRepository } from './lib/pos-sale-request.repository';
 export {
   PosLessonAttributionRepository,
@@ -80,7 +93,15 @@ export {
   PayoutRepository,
   type PayoutFilters,
   type CreatePayoutInput,
+  type GeneratePayoutOutcome,
 } from './lib/payout.repository';
+export {
+  ClassInstructorStatementRepository,
+  PayoutLedgerRepository,
+  type ClassInstructorStatementFilters,
+  type GenerateStatementOutcome,
+  type StatementTransitionOutcome,
+} from './lib/class-instructor-statement.repository';
 
 // Agreements & Waivers
 export {

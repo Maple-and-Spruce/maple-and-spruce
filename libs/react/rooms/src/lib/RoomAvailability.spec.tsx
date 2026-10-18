@@ -56,6 +56,29 @@ describe('RoomAvailability', () => {
     expect(screen.getByText(/already booked/i)).toBeTruthy();
   });
 
+  it('lets a class or event save over an overlap by default', () => {
+    hook.state = {
+      status: 'success',
+      data: [win('2026-06-21T20:30:00Z', '2026-06-21T22:00:00Z')],
+    };
+    render(<RoomAvailability room="spruce" start={start} end={end} />);
+    expect(screen.getByText(/you can still save/i)).toBeTruthy();
+    expect(screen.queryByText(/won’t save/i)).toBeNull();
+  });
+
+  it('says an overlap won’t save when the form refuses it (lessons)', () => {
+    hook.state = {
+      status: 'success',
+      data: [win('2026-06-21T20:30:00Z', '2026-06-21T22:00:00Z')],
+    };
+    render(
+      <RoomAvailability overlapRefused room="spruce" start={start} end={end} />,
+    );
+    expect(screen.getByText(/already booked/i)).toBeTruthy();
+    expect(screen.getByText(/won’t save/i)).toBeTruthy();
+    expect(screen.queryByText(/you can still save/i)).toBeNull();
+  });
+
   it('shows the day strip and no warning when there is no overlap', () => {
     hook.state = {
       status: 'success',

@@ -16,6 +16,26 @@ export type Room = 'spruce';
 export const ROOMS: Room[] = ['spruce'];
 
 /**
+ * The room a lesson occupies when it names none.
+ *
+ * Lessons predate the `room` field and were all taught in Spruce, so the
+ * calendar trigger has always mirrored a room-less lesson into Spruce. The
+ * conflict check has to read it the same way, or a lesson that never had its
+ * slot checked still shows up holding the room.
+ */
+export const DEFAULT_LESSON_ROOM: Room = 'spruce';
+
+/**
+ * The room a lesson (or a standing lesson arrangement) actually occupies.
+ *
+ * The one place that decides it: the write paths stamp it, the conflict check
+ * tests it, and `onLessonWrite` mirrors it into the room's calendar.
+ */
+export function lessonRoom(room: Room | null | undefined): Room {
+  return room ?? DEFAULT_LESSON_ROOM;
+}
+
+/**
  * Human-readable label for a room
  */
 export function getRoomLabel(room: Room): string {

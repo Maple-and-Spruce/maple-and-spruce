@@ -35,6 +35,7 @@ import {
   ClassRepository,
   RegistrationRepository,
 } from '@maple/firebase/database';
+import { reportSyncFailure } from '@maple/firebase/sync-alerts';
 
 const squareSecretParams = SQUARE_SECRET_NAMES.map((name) =>
   defineSecret(name)
@@ -235,7 +236,6 @@ export const syncClassToSquare = onDocumentWritten(
         });
         const updated = await square.catalogService.updateItem({
           squareItemId: after.squareCatalogItemId,
-          squareCatalogVersion: after.squareCatalogVersion ?? 0,
           name: nameChanged ? after.name : undefined,
           description: descriptionChanged ? after.description : undefined,
           variations: priceChanged
@@ -268,6 +268,14 @@ export const syncClassToSquare = onDocumentWritten(
       // Don't throw — Cloud Functions retries triggers on uncaught errors,
       // and a flapping Square API call would fan out into a tight loop.
       console.error('Square sync error (class):', error);
+      await reportSyncFailure({
+        source: 'syncClassToSquare',
+        destination: 'Square',
+        entityType: 'class',
+        entityId: event.params.classId,
+        entityLabel: (after ?? before)?.name,
+        error,
+      });
     }
   }
 );
