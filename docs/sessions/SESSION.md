@@ -55,8 +55,8 @@ The six instructor functions are now routes on one `instructors` router in `mapl
 `upload-instructor-image.ts`, with their specs. Clients call `routerCallableUrl('instructors', …)`.
 `uploadInstructorImage` went onto the router, unlike `uploadArtistImage` in the artists pilot: it
 set no runtime options of its own, so the router's defaults are the ones it already ran with.
-**Still to do by hand after merge:** delete the six old deployed functions (dev, then prod); the
-command is in `docs/reference/deployed-functions.md`. Two integration projects declared
+**Done by hand after merge (2026-10-18):** the six old deployed functions were deleted from dev
+and then prod, once the router answered in each. Two integration projects declared
 `implicitDependencies` on the deleted libraries; nx refuses to build the graph until those go.
 
 ### Contractor agreement sent from the instructor page (2026-10-18, PRs #251, #254)
