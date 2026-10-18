@@ -21,13 +21,27 @@ class, payout and the January 1099:
   rate itself is left to "Rate not set", which also covers a non-percentage rate.
   **Existing contractors with no rate now show as not ready. Set their rate.**
 
-**Still with David, outside the code:**
-- Subscribe the Square webhook to `refund.created` + `refund.updated` (sandbox and production),
-  or #248's dashboard refunds never arrive.
+**Done outside the code (2026-10-18):** the Square webhook subscription now includes
+`refund.created` + `refund.updated` in both production and sandbox (7 → 9 events; URL, API version
+and signature key unchanged), and #248's deploy is live, so dashboard refunds reach the app.
+
+**Still with David:**
 - Flip on "Paid contractor (1099)" and set pay rates for existing contract instructors.
 - Ask the CPA how class revenue posts in Wave: gross, or net with "Due to Instructors".
-- Deploys are serialized and were backed up on 2026-10-18, so #248/#250/#253 reached prod only
-  after the queue drained.
+- Dashboard refunds made before 2026-10-18 were never recorded. Mark any that matter with
+  "Already refunded in Square".
+
+### Dev has no scheduled jobs (2026-10-13)
+
+- Scheduled functions now deploy to **prod only**: the merge workflow's dev deploy uses a
+  `dev_matrix` that drops every library `tools/list-prod-only-functions.ts` reports (any library
+  importing the scheduler). Cuts dev's 8 Cloud Scheduler jobs; a new schedule is prod-only by
+  construction.
+- In dev, run a job through its admin-callable twin; holds are released by hand with
+  `tools/release-stale-registration-holds.ts`. Table in `deployed-functions.md`.
+- **Follow-up, needs the owner's OK:** the 8 existing dev functions (and their jobs) stay until
+  deleted by hand, since CI never prunes:
+  `firebase functions:delete <name> --region us-east4 --project maple-and-spruce-dev`.
 
 ### App Check enforced on public callables (2026-10-18, #136, ADR-037)
 
@@ -66,9 +80,21 @@ The six instructor functions are now routes on one `instructors` router in `mapl
 `upload-instructor-image.ts`, with their specs. Clients call `routerCallableUrl('instructors', …)`.
 `uploadInstructorImage` went onto the router, unlike `uploadArtistImage` in the artists pilot: it
 set no runtime options of its own, so the router's defaults are the ones it already ran with.
-**Still to do by hand after merge:** delete the six old deployed functions (dev, then prod); the
-command is in `docs/reference/deployed-functions.md`. Two integration projects declared
+**Done by hand after merge (2026-10-18):** the six old deployed functions were deleted from dev
+and then prod, once the router answered in each. Two integration projects declared
 `implicitDependencies` on the deleted libraries; nx refuses to build the graph until those go.
+
+### Contractor agreement sent from the instructor page (2026-10-18, PRs #251, #254)
+
+The agreement itself is a portal template, **"Class Instructor Agreement (1099)"** (Agreements,
+manual-only, plain language; David decided against attorney review). In an instructor's form,
+**Cleared to teach → Contractor agreement** sends it to sign online and shows not sent / sent /
+expired / signed. The request carries `instructorId`; when it is signed, `submitSignedAgreement`
+writes `readiness.contractorAgreement` (studio-local day, `Signed online, agreement <id>`), keeps
+the other readiness items, and never overwrites a date already recorded (paper copies are still
+entered by hand). A signature landing while the form is open is mirrored into the form so saving
+doesn't clear it. #254 turned on the Storage emulator for integration runs so signing is tested
+end to end in the `agreements` suite.
 
 ### Contract instructor readiness (2026-10-17, PR #139)
 

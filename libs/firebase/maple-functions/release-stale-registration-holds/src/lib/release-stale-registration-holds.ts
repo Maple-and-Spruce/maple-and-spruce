@@ -21,7 +21,8 @@
  * the hold (see process-pos-sale reconciliation). The query is bounded so a
  * large backlog can't exceed Firestore's per-commit write limit.
  *
- * Deployed to us-east4 (maple-core codebase) via CI/CD.
+ * Deployed to us-east4 (maple-core codebase) via CI/CD, to prod only. In dev,
+ * release holds by hand with `tools/release-stale-registration-holds.ts`.
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getDb } from '@maple/firebase/database';
@@ -64,6 +65,49 @@ async function releaseHoldIfStale(
   return true;
 }
 
+/**
+ * Cancel every stale, unpaid `pending` hold (up to `MAX_PER_RUN`).
+ *
+ * Exported apart from the schedule so it can be run by hand: the schedule is
+ * prod-only (dev has no Cloud Scheduler jobs), so a hold abandoned while
+ * testing hosted checkout in dev is released with
+ * `npx tsx tools/release-stale-registration-holds.ts --execute`.
+ */
+export async function releaseStaleHolds(
+  db: FirebaseFirestore.Firestore,
+  now: Date = new Date()
+): Promise<{ found: number; released: number }> {
+  const cutoff = new Date(now.getTime() - HOLD_TTL_MINUTES * 60 * 1000);
+
+  const snapshot = await db
+    .collection('registrations')
+    .where('status', '==', 'pending')
+    .where('createdAt', '<', cutoff)
+    .limit(MAX_PER_RUN)
+    .get();
+
+  if (snapshot.empty) {
+    console.log('[release-stale-holds] no stale pending holds');
+    return { found: 0, released: 0 };
+  }
+
+  let released = 0;
+  for (const doc of snapshot.docs) {
+    // Cancel transactionally so we never overwrite a registration a
+    // concurrent webhook confirmed (and paid) after the query snapshot.
+    const didRelease = await db.runTransaction((txn) =>
+      releaseHoldIfStale(txn, doc.ref, now)
+    );
+    if (didRelease) released++;
+  }
+
+  console.log(
+    `[release-stale-holds] released ${released} of ${snapshot.size} stale pending hold(s)`
+  );
+  return { found: snapshot.size, released };
+}
+
+/** Prod only — see `tools/list-prod-only-functions.ts`. */
 export const releaseStaleRegistrationHolds = onSchedule(
   {
     schedule: 'every 5 minutes',
@@ -71,34 +115,6 @@ export const releaseStaleRegistrationHolds = onSchedule(
     region: 'us-east4',
   },
   async () => {
-    const db = getDb();
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - HOLD_TTL_MINUTES * 60 * 1000);
-
-    const snapshot = await db
-      .collection('registrations')
-      .where('status', '==', 'pending')
-      .where('createdAt', '<', cutoff)
-      .limit(MAX_PER_RUN)
-      .get();
-
-    if (snapshot.empty) {
-      console.log('[release-stale-holds] no stale pending holds');
-      return;
-    }
-
-    let released = 0;
-    for (const doc of snapshot.docs) {
-      // Cancel transactionally so we never overwrite a registration a
-      // concurrent webhook confirmed (and paid) after the query snapshot.
-      const didRelease = await db.runTransaction((txn) =>
-        releaseHoldIfStale(txn, doc.ref, now)
-      );
-      if (didRelease) released++;
-    }
-
-    console.log(
-      `[release-stale-holds] released ${released} of ${snapshot.size} stale pending hold(s)`
-    );
+    await releaseStaleHolds(getDb());
   }
 );

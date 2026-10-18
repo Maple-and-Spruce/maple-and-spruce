@@ -1,1 +1,4 @@
-export { releaseStaleRegistrationHolds } from './lib/release-stale-registration-holds';
+export {
+  releaseStaleHolds,
+  releaseStaleRegistrationHolds,
+} from './lib/release-stale-registration-holds';
