@@ -542,6 +542,54 @@ describe('classValidation', () => {
     });
   });
 
+  describe('minimumEnrollment field', () => {
+    it('passes when unset or null (optional)', () => {
+      expect(
+        classValidation({ ...validClass, minimumEnrollment: undefined }).hasErrors(
+          'minimumEnrollment'
+        )
+      ).toBe(false);
+      expect(
+        classValidation({ ...validClass, minimumEnrollment: null }).hasErrors(
+          'minimumEnrollment'
+        )
+      ).toBe(false);
+    });
+
+    it('passes from 1 up to and including capacity', () => {
+      for (const minimumEnrollment of [1, 4, validClass.capacity]) {
+        const result = classValidation({ ...validClass, minimumEnrollment });
+        expect(result.hasErrors('minimumEnrollment')).toBe(false);
+      }
+    });
+
+    it('fails below 1', () => {
+      const result = classValidation({ ...validClass, minimumEnrollment: 0 });
+      expect(result.getErrors('minimumEnrollment')).toContain(
+        'Minimum enrollment must be at least 1'
+      );
+    });
+
+    it('fails when not a whole number', () => {
+      const result = classValidation({ ...validClass, minimumEnrollment: 2.5 });
+      expect(result.getErrors('minimumEnrollment')).toContain(
+        'Minimum enrollment must be a whole number'
+      );
+    });
+
+    it('fails above capacity', () => {
+      const result = classValidation({
+        ...validClass,
+        capacity: 8,
+        minimumEnrollment: 9,
+      });
+      expect(result.isValid()).toBe(false);
+      expect(result.getErrors('minimumEnrollment')).toContain(
+        'Minimum enrollment cannot exceed capacity'
+      );
+    });
+  });
+
   describe('minimumAge field', () => {
     it('passes when minimumAge is undefined (optional)', () => {
       const result = classValidation({

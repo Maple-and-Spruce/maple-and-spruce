@@ -97,6 +97,20 @@ export interface Class {
   /** Minimum age requirement (undefined = no minimum) */
   minimumAge?: number;
   /**
+   * Fewest confirmed seats the instructor needs for the class to run.
+   * Admin-only: never synced to Webflow or exposed on `PublicClass`.
+   * `null`/`undefined` = no minimum. About a week before the first session,
+   * the daily class job emails staff if confirmed seats are below this.
+   * It never cancels or refunds anything; staff act by hand.
+   */
+  minimumEnrollment?: number | null;
+  /**
+   * When the "below minimum enrollment" staff alert was sent for this class.
+   * Set once by the daily class job so reruns and the admin trigger never
+   * resend. Written by the job only, never by create/update callers.
+   */
+  underMinimumAlertSentAt?: Date;
+  /**
    * Webflow CMS item ID for class listing sync.
    * @see docs/decisions/ADR-016-webflow-integration-strategy.md
    */
@@ -169,13 +183,14 @@ export type CreateClassInput = Omit<
   | 'squareVariationId'
   | 'squareModifierListId'
   | 'squareCatalogVersion'
+  | 'underMinimumAlertSentAt'
 >;
 
 /**
  * Input for updating a class (all fields optional except id)
  */
 export type UpdateClassInput = Partial<
-  Omit<Class, 'id' | 'createdAt' | 'updatedAt'>
+  Omit<Class, 'id' | 'createdAt' | 'updatedAt' | 'underMinimumAlertSentAt'>
 > & {
   id: string;
 };

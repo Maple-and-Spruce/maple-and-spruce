@@ -218,7 +218,7 @@ Codes are **globally unique across programs** — a customer types a code withou
 ### Registrations (read/update)
 - `getRegistrations`, `getRegistration`, `updateRegistration` (the public price preview,
   `calculateRegistrationCost`, is on `publicSite`)
-- `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`)_
+- `sendClassReminders` _(scheduled — daily at 8:00 AM ET; queues a day-of reminder email per paid registration whose class has a session today; idempotent via `reminderSentForSessions[sessionIso]`. Also emails staff (`ADMIN_ALERT_EMAIL`) once per class whose first session is 7 days out and whose confirmed seats are below `minimumEnrollment`, stamped by `underMinimumAlertSentAt`. Admin twin: `triggerClassReminders`)_
 
 ### Calendar Events
 - `calendar` — **domain router** in `maple-core` (ADR-029, #73) for the staff side of the calendar:
