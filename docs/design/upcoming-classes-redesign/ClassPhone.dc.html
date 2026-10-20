@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Class Page, iPhone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Georgia,Times,"Times New Roman",serif;color:#4A3728}
+a{color:#4A3728}a:hover{color:#2E2219}
+button,input{font:inherit}
+img{display:block}
+</style>
+</helmet>
+<div style="width: 393px; height: 852px; position: relative; overflow: hidden; background: #FFFFFF; color: #4A3728; font-family: Georgia, Times, 'Times New Roman', serif">
+  <div style="position: absolute; inset: 0; overflow-y: auto; padding-bottom: 96px">
+    <header style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #FBFAF6; border-bottom: 1px solid #E4E1D6">
+      <a href="#" style="font-size: 20px; font-weight: 700; text-decoration: none">Maple &amp; Spruce</a>
+      <button type="button" aria-label="Menu" style="width: 44px; height: 44px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4A3728" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      </button>
+    </header>
+
+    <div style="padding: 14px 16px 0">
+      <a href="#" style="font-family: Archivo, system-ui, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none">← All upcoming classes</a>
+    </div>
+
+    <!-- Title and the decision first -->
+    <section style="padding: 14px 16px 0; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; gap: 6px">
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: #4A3728; color: #FFFFFF">Studio Series</span>
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: #F1EEE6; color: #55524A">All levels</span>
+      </div>
+      <h1 style="margin: 0; font-size: 28px; line-height: 1.15; font-weight: 400">Stained Glass Studio Series</h1>
+      <div style="font-family: Archivo, system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #4A4740">6 Thursdays, Nov 5 to Dec 17<br>6:00 to 9:00 PM · with Katie McCoy</div>
+    </section>
+
+    <!-- Swipeable photos -->
+    <div role="group" aria-label="Photos" style="display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 16px 16px 4px">
+      <img src="/_blob/84dbd07457275b6fae5265538a036a79" alt="A stained glass panel being finished in the Studio Series" style="flex: 0 0 330px; width: 330px; height: 250px; object-fit: cover; border-radius: 16px; scroll-snap-align: start">
+      <img src="/_blob/9f56cbb8cb7ff1f4a5136e8054156555" alt="A pattern drawing beside the finished stained glass piece" style="flex: 0 0 330px; width: 330px; height: 250px; object-fit: cover; border-radius: 16px; scroll-snap-align: start">
+    </div>
+    <div aria-hidden="true" style="display: flex; justify-content: center; gap: 6px; padding: 6px 0 0">
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #4A3728"></span>
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #D3CFC2"></span>
+    </div>
+
+    <section style="padding: 16px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: baseline; gap: 10px">
+        <span style="font-size: 28px; line-height: 1">$240</span>
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 13px; color: #55524A">$40 a session · materials included</span>
+      </div>
+      <span style="font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700; color: #3F5A30">4 of 8 seats open</span>
+    </section>
+
+    <section style="margin: 0 16px; padding: 16px; background: #F6F4EE; border-radius: 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-family: Archivo, system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #56664A">What you'll make</div>
+      <p style="margin: 0; font-size: 17px; line-height: 1.45">Bigger, more complex pieces than a Try It or Workshop allows, from our patterns or one you design yourself.</p>
+    </section>
+
+    <section style="padding: 24px 16px 0; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 21px; font-weight: 400">Schedule</h2>
+      <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+        <sc-for list="{{sessions}}" as="s" hint-placeholder-count="3">
+          <li style="display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #E4E1D6">
+            <span style="font-size: 16px">{{s.date}}</span>
+            <span style="font-family: Archivo, system-ui, sans-serif; font-size: 12px; color: #6E6A60">Session {{s.n}} · 6 to 9 PM</span>
+          </li>
+        </sc-for>
+      </ol>
+      <sc-if value="{{canExpand}}" hint-placeholder-val="{{ true }}">
+        <button type="button" onClick="{{expand}}" style="align-self: flex-start; min-height: 44px; padding: 0; border: none; background: none; font-family: Archivo, system-ui, sans-serif; font-size: 14px; font-weight: 600; color: #4A3728; text-decoration: underline; cursor: pointer">Show all 6 sessions</button>
+      </sc-if>
+    </section>
+
+    <section style="padding: 20px 16px 0; display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 21px; font-weight: 400">About this class</h2>
+      <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #4A4740">In this 6-class studio series, you will have enough time to deeply learn and become comfortable making stained glass, with lots of time for personalized instruction.</p>
+      <sc-if value="{{moreAbout}}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #4A4740">You can design your own pattern or choose from ours, including ones larger and more complex than a TryIt or Workshop class. Choose your glass colors, score and cut glass, wrap in copper foil, and solder with our lead-free tin solder.</p>
+      </sc-if>
+      <sc-if value="{{showReadMore}}" hint-placeholder-val="{{ true }}">
+        <button type="button" onClick="{{readMore}}" style="align-self: flex-start; min-height: 44px; padding: 0; border: none; background: none; font-family: Archivo, system-ui, sans-serif; font-size: 14px; font-weight: 600; color: #4A3728; text-decoration: underline; cursor: pointer">Read more</button>
+      </sc-if>
+    </section>
+
+    <section style="padding: 12px 16px 0; display: flex; flex-direction: column; gap: 10px">
+      <div style="background: #F6F4EE; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+        <h3 style="margin: 0; font-size: 17px; font-weight: 400">What's included</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 600">
+          <span style="padding: 5px 9px; border-radius: 999px; background: #E6EADF; color: #3F5A30">Colored glass</span>
+          <span style="padding: 5px 9px; border-radius: 999px; background: #E6EADF; color: #3F5A30">Copper tape</span>
+          <span style="padding: 5px 9px; border-radius: 999px; background: #E6EADF; color: #3F5A30">Lead-free solder</span>
+          <span style="padding: 5px 9px; border-radius: 999px; background: #E6EADF; color: #3F5A30">Hanging wire</span>
+        </div>
+      </div>
+      <div style="background: #F6F4EE; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+        <h3 style="margin: 0; font-size: 17px; font-weight: 400">What to bring</h3>
+        <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4A4740">Closed-toed shoes. No food or open cups in the studio.</p>
+      </div>
+    </section>
+
+    <section style="padding: 20px 16px 0; display: flex; gap: 14px; align-items: center">
+      <img src="/_blob/b7461289a9fcb0ae2f009562afeff9d8" alt="Katie McCoy" style="width: 64px; height: 64px; flex: 0 0 64px; border-radius: 999px; object-fit: cover">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #56664A">Your instructor</span>
+        <span style="font-size: 18px">Katie McCoy</span>
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 13px; color: #55524A">Founder of Maple &amp; Spruce</span>
+      </div>
+    </section>
+
+    <!-- Stand-in for the existing registration widget -->
+    <section id="register-m" aria-label="Register" style="margin: 24px 16px 0; padding: 18px; border-radius: 16px; box-shadow: 0 1px 2px rgba(74,55,40,0.06), 0 8px 22px rgba(74,55,40,0.10); display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 22px; font-weight: 400">Register</h2>
+      <label for="m-name" style="position: absolute; left: -9999px">Full name</label>
+      <input id="m-name" placeholder="Full name *" style="min-height: 46px; padding: 0 14px; border: 1px solid #D3CFC2; border-radius: 10px; font-family: Georgia, serif; font-size: 16px">
+      <label for="m-email" style="position: absolute; left: -9999px">Email address</label>
+      <input id="m-email" type="email" placeholder="Email address *" style="min-height: 46px; padding: 0 14px; border: 1px solid #D3CFC2; border-radius: 10px; font-family: Georgia, serif; font-size: 16px">
+      <div style="background: #F6F4EE; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; font-family: Archivo, system-ui, sans-serif; font-size: 14px; font-weight: 700"><span>Total with WV tax</span><span>$254.40</span></div>
+      <button type="button" style="min-height: 50px; border-radius: 999px; border: none; background: #56664A; color: #FFFFFF; font-family: Archivo, system-ui, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer">Continue to payment</button>
+    </section>
+
+    <section style="padding: 20px 16px 8px">
+      <div style="background: #4A3728; color: #FBFAF6; border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #F2C9A0">After this series</span>
+        <p style="margin: 0; font-size: 15px; line-height: 1.5">Finishing a Studio Series opens up Craft Club: keep making in our studio for $30 a month.</p>
+      </div>
+      <p style="margin: 14px 0 0; font-family: Archivo, system-ui, sans-serif; font-size: 13px; line-height: 1.5; color: #55524A">Everyone signs a short waiver at check-in. <a href="#">Cancellation policy</a></p>
+    </section>
+  </div>
+
+  <!-- Sticky booking bar -->
+  <sc-if value="{{showBar}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 26px; background: #FFFFFF; border-top: 1px solid #E4E1D6; box-shadow: 0 -6px 20px rgba(74,55,40,0.08); display: flex; align-items: center; gap: 12px">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 20px; line-height: 1">$240</span>
+        <span style="font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 700; color: #3F5A30">4 seats open · starts Nov 5</span>
+      </div>
+      <a href="#register-m" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border-radius: 999px; background: #56664A; color: #FFFFFF; text-decoration: none; font-family: Archivo, system-ui, sans-serif; font-size: 16px; font-weight: 600">Save my seat</a>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { allSessions: false, about: false };
+  }
+
+  renderVals() {
+    const self = this;
+    const st = this.state || {};
+    const all = ['Nov 5', 'Nov 12', 'Nov 19', 'Dec 3', 'Dec 10', 'Dec 17'].map((d, i) => ({ n: i + 1, date: 'Thu, ' + d }));
+    return {
+      sessions: st.allSessions ? all : all.slice(0, 3),
+      canExpand: !st.allSessions,
+      expand: () => self.setState({ allSessions: true }),
+      moreAbout: !!st.about,
+      showReadMore: !st.about,
+      readMore: () => self.setState({ about: true }),
+      showBar: true,
+    };
+  }
+}
+</script>
+</body>
+</html>

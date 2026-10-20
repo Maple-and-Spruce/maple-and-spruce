@@ -1,0 +1,412 @@
+<style>
+/* Class page redesign (2026-10): book-first layout for the Classes template.
+   Rearranges the existing CMS-bound elements; never touches #register's widget.
+   Source of truth: docs/design/upcoming-classes-redesign/ in the maple-and-spruce repo. */
+.cpx .cls-hero-section{background:#fff!important;padding:28px 24px 40px!important}
+.cpx .cls-hero-container{max-width:1008px!important;margin:0 auto!important;padding:0!important;width:auto!important}
+.cpx .cls-hero-content{max-width:none!important;text-align:left!important;display:block!important;padding:0!important}
+.cpx .cls-back-link{display:inline-block;margin:0 0 20px!important;font-family:Archivo,sans-serif!important;font-size:14px!important;font-weight:600!important;color:#4A3728!important;text-decoration:none!important}
+.cpx-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-areas:"media top" "media buy";column-gap:40px;row-gap:18px;align-items:start}
+.cpx-media{grid-area:media;display:flex;flex-direction:column;gap:10px;min-width:0}
+.cpx-top{grid-area:top;display:flex;flex-direction:column;gap:14px;min-width:0}
+.cpx-buy{grid-area:buy;min-width:0}
+.cpx .cls-hero-image{width:100%!important;height:auto!important;aspect-ratio:4/3;object-fit:cover;border-radius:18px!important;margin:0!important;max-height:none!important}
+.cpx .cpx-media .w-dyn-items{display:flex!important;flex-wrap:wrap;gap:10px;margin:0!important}
+.cpx .cpx-media .w-dyn-item{width:96px!important;flex:0 0 96px;padding:0!important;float:none!important}
+.cpx .cpx-media .w-dyn-item img{width:96px;height:72px;object-fit:cover;border-radius:10px;display:block}
+.cpx-tags{display:flex;flex-wrap:wrap;gap:6px}
+.cpx-tag{font-family:Archivo,sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:#E6EADF;color:#3F5A30;line-height:1.2}
+.cpx-tag.is-series{background:#4A3728;color:#fff}
+.cpx-tag.is-level{background:#F1EEE6;color:#55524A}
+.cpx .cls-class-name{font-family:Georgia,Times,"Times New Roman",serif!important;font-size:40px!important;line-height:1.12!important;font-weight:400!important;color:#4A3728!important;margin:0!important;text-align:left!important}
+.cpx .cls-short-desc{font-family:Georgia,Times,"Times New Roman",serif!important;font-size:17px!important;line-height:1.55!important;color:#55524A!important;margin:0!important;text-align:left!important}
+.cpx-facts{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px 12px;align-items:start;margin:4px 0 0;font-family:Archivo,sans-serif;font-size:15px;color:#4A3728}
+.cpx-facts svg{margin-top:1px}
+.cpx .cls-pr{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;border-top:1px solid #E4E1D6;padding:18px 0 0!important;margin:0!important;background:none!important}
+.cpx-price-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.cpx .cls-price-v2{font-family:Georgia,serif!important;font-size:34px!important;font-weight:400!important;line-height:1!important;color:#4A3728!important;margin:0!important}
+.cpx-price-note{font-family:Archivo,sans-serif;font-size:14px;color:#55524A}
+.cpx .cls-spots-v2{display:none!important}
+.cpx-seats{display:flex;flex-direction:column;gap:6px}
+.cpx-seats span{font-family:Archivo,sans-serif;font-size:13px;font-weight:700;color:#3F5A30}
+.cpx-seats.is-few span{color:#9A4F1E}.cpx-seats.is-full span{color:#6E6A60}
+.cpx-actions{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.cpx .cls-register-btn{display:inline-flex!important;align-items:center;justify-content:center;min-height:50px;padding:0 28px!important;border-radius:999px!important;background:#56664A!important;color:#fff!important;text-decoration:none!important;font-family:Archivo,sans-serif!important;font-size:16px!important;font-weight:600!important;border:1.5px solid #56664A!important;margin:0!important}
+.cpx.cpx-full .cls-register-btn{background:transparent!important;color:#4A3728!important;border-color:#4A3728!important}
+.cpx-ask{font-family:Archivo,sans-serif;font-size:14px;font-weight:600;color:#4A3728}
+/* Details band */
+.cpx .cls-body-section{background:#F6F4EE!important;padding:48px 24px 56px!important}
+.cpx .cls-body-container{max-width:1008px!important;margin:0 auto!important;padding:0!important;width:auto!important}
+.cpx .cls-two-col{display:grid!important;grid-template-columns:minmax(0,1fr) 380px;gap:40px!important;align-items:start}
+.cpx .cls-main-col{display:flex!important;flex-direction:column;gap:32px;width:auto!important;max-width:none!important;padding:0!important}
+.cpx .cls-main-col .cls-section-title,.cpx-h2{font-family:Georgia,Times,"Times New Roman",serif!important;font-size:24px!important;font-weight:400!important;color:#4A3728!important;margin:0 0 10px!important;text-align:left!important}
+.cpx .cls-description,.cpx .cls-description p{font-family:Georgia,Times,"Times New Roman",serif!important;font-size:17px!important;line-height:1.65!important;color:#4A4740!important}
+.cpx .cls-mg{display:none!important}
+.cpx-schedule{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.cpx-schedule li{background:#fff;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.cpx-schedule small{font-family:Archivo,sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6E6A60}
+.cpx-schedule b{font-family:Georgia,serif;font-size:18px;font-weight:400;color:#4A3728}
+.cpx-schedule em{font-style:normal;font-family:Archivo,sans-serif;font-size:13px;color:#55524A}
+.cpx-cards{display:flex;flex-wrap:wrap;gap:16px}
+.cpx-card{flex:1 1 260px;background:#fff;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.cpx-card h3{margin:0;font-family:Georgia,serif;font-size:19px;font-weight:400;color:#4A3728}
+.cpx-card p{margin:0;font-family:Georgia,serif;font-size:15px;line-height:1.55;color:#4A4740}
+.cpx-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.cpx-chips li{font-family:Archivo,sans-serif;font-size:13px;font-weight:600;padding:6px 10px;border-radius:999px;background:#E6EADF;color:#3F5A30}
+.cpx-club{background:#4A3728;color:#FBFAF6;border-radius:18px;padding:24px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+.cpx-club div{flex:1 1 300px;display:flex;flex-direction:column;gap:6px}
+.cpx-club small{font-family:Archivo,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#F2C9A0}
+.cpx-club p{margin:0;font-family:Georgia,serif;font-size:17px;line-height:1.5;color:#FBFAF6}
+.cpx-club a{display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border-radius:999px;background:#FBFAF6;color:#4A3728;text-decoration:none;font-family:Archivo,sans-serif;font-size:15px;font-weight:600}
+.cpx-label{font-family:Archivo,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#56664A;margin:0 0 6px}
+.cpx .cls-instructor-section{display:none!important}
+.cpx .cpx-instructor .cls-instructor-card{display:flex!important;gap:18px;align-items:center;flex-wrap:wrap;background:none!important;padding:0!important;box-shadow:none!important;margin:0!important}
+.cpx .cpx-instructor .cls-instructor-photo{width:88px!important;height:88px!important;border-radius:999px!important;object-fit:cover;margin:0!important}
+.cpx .cpx-instructor .cls-instructor-info{flex:1 1 300px}
+.cpx .cpx-instructor .cls-instructor-name{font-family:Georgia,serif!important;font-size:21px!important;font-weight:400!important;color:#4A3728!important;margin:0 0 6px!important}
+.cpx .cpx-instructor .cls-instructor-bio{font-family:Georgia,serif!important;font-size:15px!important;line-height:1.55!important;color:#4A4740!important;margin:0!important}
+/* Registration card (the widget inside is untouched) */
+.cpx .cls-sidebar-col{background:#fff!important;border-radius:18px!important;box-shadow:0 1px 2px rgba(74,55,40,.06),0 10px 28px rgba(74,55,40,.10)!important;padding:24px!important;width:auto!important;max-width:none!important}
+.cpx .cls-sidebar-col .cls-section-title{font-family:Georgia,Times,"Times New Roman",serif!important;font-size:24px!important;font-weight:400!important;color:#4A3728!important;margin:0 0 4px!important}
+.cpx .cls-register-note{font-family:Archivo,sans-serif!important;font-size:13px!important;color:#55524A!important;margin:0 0 12px!important}
+/* Policies + more classes, aligned to the column */
+.cpx .cls-policies-section{background:#fff!important;padding:48px 24px 24px!important}
+.cpx .cls-policies-container{max-width:960px!important;margin:0 auto!important;display:grid;grid-template-columns:200px minmax(0,1fr);column-gap:32px;row-gap:10px;padding:0!important;width:auto!important}
+.cpx .cls-policies-title{grid-row:1/span 2;font-family:Georgia,serif!important;font-weight:400!important;font-size:24px!important;color:#4A3728!important;margin:0!important}
+.cpx .cls-policies-text{font-family:Georgia,serif!important;font-size:16px!important;line-height:1.6!important;color:#55524A!important;margin:0!important}
+.cpx .cls-policies-container a{font-family:Archivo,sans-serif!important;font-size:14px!important;font-weight:600!important;color:#4A3728!important}
+.cpx .cls-more-classes-section{background:#fff!important;padding:24px 24px 64px!important}
+.cpx .cls-more-classes-container{max-width:960px!important;margin:0 auto!important;padding:24px 0 0!important;border-top:1px solid #E4E1D6;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;text-align:left!important;width:auto!important}
+.cpx .cls-more-classes-heading{font-family:Georgia,serif!important;font-size:24px!important;font-weight:400!important;color:#4A3728!important;margin:0!important;flex:1 1 100%}
+.cpx .cls-more-classes-text{font-family:Georgia,serif!important;font-size:16px!important;color:#55524A!important;margin:0!important;flex:1 1 400px}
+.cpx .cls-more-classes-link{display:inline-flex!important;align-items:center;min-height:44px;padding:0 20px!important;border-radius:999px!important;border:1.5px solid #4A3728!important;background:transparent!important;color:#4A3728!important;text-decoration:none!important;font-family:Archivo,sans-serif!important;font-size:15px!important;font-weight:600!important;margin:0!important}
+/* Phone booking bar */
+.cpx-mbar{display:none}
+@media (max-width:991px){
+ .cpx .cls-two-col{grid-template-columns:minmax(0,1fr)}
+ .cpx-mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;gap:12px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E4E1D6;box-shadow:0 -6px 20px rgba(74,55,40,.08);transition:transform .2s ease}
+ .cpx-mbar.is-hidden{transform:translateY(110%)}
+ .cpx-mbar div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+ .cpx-mbar b{font-family:Georgia,serif;font-size:20px;font-weight:400;color:#4A3728;line-height:1}
+ .cpx-mbar small{font-family:Archivo,sans-serif;font-size:12px;font-weight:700;color:#3F5A30;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .cpx-mbar small.is-few{color:#9A4F1E}.cpx-mbar small.is-full{color:#6E6A60}
+ .cpx-mbar a{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;border-radius:999px;background:#56664A;color:#fff;font-family:Archivo,sans-serif;font-size:16px;font-weight:600;text-decoration:none;white-space:nowrap}
+ .cpx.cpx-full .cpx-mbar a{background:#4A3728}
+ body.cpx-has-bar{padding-bottom:84px}
+}
+@media (max-width:767px){
+ .cpx .cls-hero-section{padding:14px 16px 24px!important}
+ .cpx .cls-back-link{margin-bottom:14px!important}
+ .cpx-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "media" "buy";row-gap:16px}
+ .cpx .cls-class-name{font-size:28px!important}
+ .cpx .cls-short-desc{font-size:16px!important}
+ .cpx .cls-hero-image{aspect-ratio:4/3;border-radius:16px!important}
+ .cpx .cls-price-v2{font-size:28px!important}
+ .cpx .cls-body-section{padding:28px 16px 32px!important}
+ .cpx .cls-main-col{gap:24px}
+ .cpx .cls-description,.cpx .cls-description p{font-size:16px!important}
+ .cpx .cls-sidebar-col{padding:18px!important}
+ .cpx .cls-policies-section{padding:32px 16px 16px!important}
+ .cpx .cls-policies-container{grid-template-columns:1fr}
+ .cpx .cls-policies-title{grid-row:auto}
+ .cpx .cls-more-classes-section{padding:16px 16px 48px!important}
+}
+</style>
+<script>
+(function () {
+  var ICON = {
+    date: '<rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path>',
+    time: '<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>',
+    who: '<circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path>',
+    where: '<path d="M12 21s-7-4.4-7-10a7 7 0 0 1 14 0c0 5.6-7 10-7 10z"></path><circle cx="12" cy="11" r="2.5"></circle>'
+  };
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var LONG_DAYS = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function icon(name) {
+    var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('aria-hidden', 'true'); s.setAttribute('width', '20'); s.setAttribute('height', '20');
+    s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', '#56664A');
+    s.setAttribute('stroke-width', '1.8'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+    s.innerHTML = ICON[name];
+    return s;
+  }
+  function num(v) { var n = parseInt(v, 10); return isNaN(n) ? null : n; }
+  // "Nov 5" -> Date in the right year (classes are listed up to ~a year ahead)
+  function parseDay(s) {
+    var m = /^([A-Za-z]{3})\w*\s+(\d{1,2})/.exec((s || '').trim());
+    if (!m) return null;
+    var mi = MONTHS.indexOf(m[1].charAt(0).toUpperCase() + m[1].slice(1, 3).toLowerCase());
+    if (mi < 0) return null;
+    var now = new Date();
+    var d = new Date(now.getFullYear(), mi, +m[2]);
+    if (d < new Date(now.getFullYear(), now.getMonth() - 6, 1)) d.setFullYear(d.getFullYear() + 1);
+    return d;
+  }
+  function fmtDay(d) { return DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate(); }
+  // "6:00 PM" + 180 -> "6:00 to 9:00 PM"
+  function timeRange(t, minutes) {
+    var m = /^(\d{1,2}):(\d{2})\s*([AP]M)$/i.exec((t || '').trim());
+    if (!m) return t || '';
+    if (!minutes) return t;
+    var start = (+m[1] % 12 + (m[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + +m[2];
+    var end = start + minutes;
+    var eh = Math.floor(end / 60) % 24, em = end % 60;
+    var ep = eh >= 12 ? 'PM' : 'AM';
+    var eh12 = eh % 12 === 0 ? 12 : eh % 12;
+    var endStr = eh12 + ':' + (em < 10 ? '0' : '') + em;
+    var sp = m[3].toUpperCase();
+    return m[1] + ':' + m[2] + (sp === ep ? '' : ' ' + sp) + ' to ' + endStr + ' ' + ep;
+  }
+
+  // Height of whatever is pinned to the top (sticky nav + "We're open" banner), measured live
+  function topOffset() {
+    var h = 0;
+    var cand = document.querySelectorAll('body > *, body > * > *, body > * > * > *');
+    for (var i = 0; i < cand.length; i++) {
+      var c = cand[i];
+      if (c.classList && (c.classList.contains('cpx-mbar'))) continue;
+      var pos = getComputedStyle(c).position;
+      if (pos !== 'sticky' && pos !== 'fixed') continue;
+      var r = c.getBoundingClientRect();
+      if (r.top <= 1 && r.bottom > 0 && r.height < window.innerHeight / 2) h = Math.max(h, r.bottom);
+    }
+    return h;
+  }
+  function scrollToRegister(smooth) {
+    var reg = document.getElementById('register');
+    if (!reg) return;
+    var y = reg.getBoundingClientRect().top + window.pageYOffset - topOffset() - 16;
+    window.scrollTo({ top: Math.max(0, y), behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  function init() {
+    var hero = document.querySelector('.cls-hero-content');
+    if (!hero || document.body.classList.contains('cpx')) return;
+    document.body.classList.add('cpx');
+    var D = function (k) { return (hero.getAttribute('data-' + k) || '').trim(); };
+
+    var name = D('name') || ((document.querySelector('.cls-class-name') || {}).textContent || '').trim();
+    var capacity = num(D('capacity'));
+    var spots = num(D('spots'));
+    var sessionsN = num(D('sessions'));
+    var minutes = num(D('minutes'));
+    var dates = D('dates').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var text = D('category') + ' ' + name;
+    var series = /studio series/i.test(text) || (sessionsN || dates.length) >= 3;
+    var workshop = !series && ((sessionsN || dates.length) === 2 || /workshop/i.test(text));
+    var full = spots != null && spots <= 0;
+    if (full) document.body.classList.add('cpx-full');
+    var times = timeRange(D('time'), minutes);
+    var days = dates.map(parseDay).filter(Boolean);
+
+    // ---- Hero: media left, decision right
+    var back = hero.querySelector('.cls-back-link');
+    var img = hero.querySelector('.cls-hero-image');
+    var gallery = hero.querySelector('.w-dyn-list');
+    var h1 = hero.querySelector('.cls-class-name');
+    var shortDesc = hero.querySelector('.cls-short-desc');
+    var pr = hero.querySelector('.cls-pr');
+    var grid = el('div', 'cpx-grid');
+    var media = el('div', 'cpx-media');
+    var top = el('div', 'cpx-top');
+    var buy = el('div', 'cpx-buy');
+    if (img) media.appendChild(img);
+    if (gallery) media.appendChild(gallery);
+
+    var tags = el('div', 'cpx-tags');
+    tags.appendChild(el('span', 'cpx-tag' + (series ? ' is-series' : ''), series ? 'Studio Series' : workshop ? 'Workshop' : 'Try It'));
+    var level = D('level');
+    if (level && !/^[0-9a-f]{20,}$/i.test(level)) tags.appendChild(el('span', 'cpx-tag is-level', level));
+    top.appendChild(tags);
+    if (h1) top.appendChild(h1);
+    if (shortDesc) top.appendChild(shortDesc);
+
+    var facts = el('dl', 'cpx-facts');
+    function fact(key, label, value) {
+      if (!value) return;
+      facts.appendChild(icon(key));
+      var w = el('div');
+      var dt = el('dt', null, label); dt.style.cssText = 'position:absolute;left:-9999px';
+      var dd = el('dd', null, value); dd.style.margin = '0';
+      w.appendChild(dt); w.appendChild(dd); facts.appendChild(w);
+    }
+    var dateText = '';
+    if (days.length > 1) {
+      var sameDow = days.every(function (d) { return d.getDay() === days[0].getDay(); });
+      var first = days[0], last = days[days.length - 1];
+      dateText = days.length + ' ' + (sameDow ? LONG_DAYS[first.getDay()] : 'sessions') + ', ' +
+        MONTHS[first.getMonth()] + ' ' + first.getDate() + ' to ' + MONTHS[last.getMonth()] + ' ' + last.getDate();
+    } else if (days.length === 1) {
+      dateText = fmtDay(days[0]);
+    } else {
+      dateText = D('dates');
+    }
+    fact('date', 'Dates', dateText);
+    fact('time', 'Time', /varies/i.test(times) ? 'Times vary by session' : times + (days.length > 1 ? ' each week' : ''));
+    if (D('instructor')) fact('who', 'Instructor', 'Taught by ' + D('instructor'));
+    var loc = D('location');
+    fact('where', 'Location', !loc || /maple\s*&\s*spruce/i.test(loc) ? 'Maple & Spruce, 688 Beulah Rd, Morgantown' : loc);
+    top.appendChild(facts);
+
+    if (pr) {
+      var price = pr.querySelector('.cls-price-v2');
+      var btn = pr.querySelector('.cls-register-btn');
+      var row = el('div', 'cpx-price-row');
+      if (price) row.appendChild(price);
+      var cents = parseFloat((D('price') || '').replace(/[^0-9.]/g, ''));
+      var note = 'materials included';
+      if (series && sessionsN && cents) note = '$' + Math.round(cents / sessionsN) + ' a session · ' + note;
+      row.appendChild(el('span', 'cpx-price-note', note));
+      pr.insertBefore(row, pr.firstChild);
+      if (spots != null) {
+        var seats = el('div', 'cpx-seats' + (full ? ' is-full' : spots <= 3 ? ' is-few' : ''));
+        var label = full ? 'Full · join the waitlist and we will email you if a seat opens'
+          : (capacity ? spots + ' of ' + capacity + ' seats open' : spots + (spots === 1 ? ' seat open' : ' seats open'));
+        if (!full && spots === 1) label = 'Only 1 seat left';
+        seats.appendChild(el('span', null, label));
+        pr.insertBefore(seats, btn || null);
+      }
+      if (btn) {
+        btn.textContent = full ? 'Join the waitlist' : series ? 'Save my seat' : 'Reserve my seat';
+        var actions = el('div', 'cpx-actions');
+        pr.insertBefore(actions, btn);
+        actions.appendChild(btn);
+        var ask = el('a', 'cpx-ask', 'Questions? Email Katie');
+        ask.href = 'mailto:katie@mapleandsprucefolkarts.com?subject=' + encodeURIComponent('Question about ' + name);
+        actions.appendChild(ask);
+      }
+      buy.appendChild(pr);
+    }
+    grid.appendChild(media); grid.appendChild(top); grid.appendChild(buy);
+    hero.appendChild(grid);
+    if (back) hero.insertBefore(back, grid);
+
+    // ---- Details column
+    var main = document.querySelector('.cls-main-col');
+    if (main) {
+      var about = main.querySelector('.cls-section-title');
+      var desc = main.querySelector('.cls-description');
+      if (about) about.textContent = 'About this class';
+      if (days.length > 1) {
+        var sch = el('div');
+        sch.appendChild(el('h2', 'cpx-h2', 'Schedule'));
+        var ol = el('ol', 'cpx-schedule');
+        days.forEach(function (d, i) {
+          var li = el('li');
+          li.appendChild(el('small', null, 'Session ' + (i + 1)));
+          li.appendChild(el('b', null, fmtDay(d)));
+          if (times && !/varies/i.test(times)) li.appendChild(el('em', null, times));
+          ol.appendChild(li);
+        });
+        sch.appendChild(ol);
+        main.insertBefore(sch, main.firstChild);
+      }
+      var aboutWrap = el('div');
+      if (about) main.insertBefore(aboutWrap, about);
+      if (about) aboutWrap.appendChild(about);
+      if (desc) aboutWrap.appendChild(desc);
+
+      var materials = D('materials').replace(/\s+$/, '');
+      var bring = D('bring');
+      if (materials || bring) {
+        var cards = el('div', 'cpx-cards');
+        if (materials) {
+          var c1 = el('div', 'cpx-card');
+          c1.appendChild(el('h3', null, "What's included"));
+          var chips = el('ul', 'cpx-chips');
+          materials.split(/,\s*/).filter(Boolean).forEach(function (m) {
+            chips.appendChild(el('li', null, m.charAt(0).toUpperCase() + m.slice(1)));
+          });
+          c1.appendChild(chips); cards.appendChild(c1);
+        }
+        if (bring) {
+          var c2 = el('div', 'cpx-card');
+          c2.appendChild(el('h3', null, 'What to bring'));
+          c2.appendChild(el('p', null, bring));
+          cards.appendChild(c2);
+        }
+        main.appendChild(cards);
+      }
+
+      if (series) {
+        var club = el('div', 'cpx-club');
+        var cw = el('div');
+        cw.appendChild(el('small', null, 'After this series'));
+        cw.appendChild(el('p', null, 'Finishing a Studio Series opens up Craft Club: keep making with our studio, tools and materials for $30 a month.'));
+        club.appendChild(cw);
+        var ca = el('a', null, 'About Craft Club'); ca.href = '/craft-club';
+        club.appendChild(ca);
+        main.appendChild(club);
+      }
+
+      var card = document.querySelector('.cls-instructor-card');
+      if (card && (card.textContent || '').trim()) {
+        var iw = el('div', 'cpx-instructor');
+        iw.appendChild(el('div', 'cpx-label', 'Your instructor'));
+        iw.appendChild(card);
+        main.appendChild(iw);
+      }
+    }
+
+    // ---- Phone booking bar (CSS shows it under 992px)
+    var reg = document.getElementById('register');
+    if (reg && pr) {
+      var mb = el('div', 'cpx-mbar');
+      var mt = el('div');
+      var priceEl = pr.querySelector('.cls-price-v2');
+      mt.appendChild(el('b', null, priceEl ? priceEl.textContent.trim() : ''));
+      var st = full ? 'Full · join the waitlist' : spots === 1 ? 'Only 1 seat left' : spots != null ? spots + ' seats open' : '';
+      if (!full && days.length) st += (st ? ' · ' : '') + (days.length > 1 ? 'starts ' : '') + MONTHS[days[0].getMonth()] + ' ' + days[0].getDate();
+      mt.appendChild(el('small', full ? 'is-full' : spots != null && spots <= 3 ? 'is-few' : '', st));
+      mb.appendChild(mt);
+      var ma = el('a', null, full ? 'Join waitlist' : series ? 'Save my seat' : 'Reserve');
+      ma.href = '#register';
+      mb.appendChild(ma);
+      document.body.appendChild(mb);
+      document.body.classList.add('cpx-has-bar');
+      if ('IntersectionObserver' in window) {
+        var watch = [reg, document.querySelector('footer.footer, footer')].filter(Boolean);
+        var seen = new Set();
+        var io = new IntersectionObserver(function (es) {
+          es.forEach(function (e) { e.isIntersecting ? seen.add(e.target) : seen.delete(e.target); });
+          mb.classList.toggle('is-hidden', seen.size > 0);
+        });
+        watch.forEach(function (x) { io.observe(x); });
+      }
+    }
+  }
+
+  function wireRegisterLinks() {
+    // Capture phase on window so this runs before Webflow's own anchor-scroll handler
+    // (which ignores the sticky header) and stop that handler from also animating.
+    window.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href="#register"]');
+      if (!a || !document.getElementById('register')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      scrollToRegister(true);
+      try { history.replaceState(null, '', location.pathname + location.search + '#register'); } catch (err) { /* URL update is cosmetic */ }
+    }, true);
+    if (location.hash === '#register') {
+      // Arriving from the class list: re-align once layout settles and once the widget has rendered
+      var userMoved = false;
+      ['wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+        window.addEventListener(ev, function () { userMoved = true; }, { once: true, passive: true });
+      });
+      [0, 400, 1200, 2500].forEach(function (t) { setTimeout(function () { if (!userMoved) scrollToRegister(false); }, t); });
+    }
+  }
+
+  function start() { init(); wireRegisterLinks(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
