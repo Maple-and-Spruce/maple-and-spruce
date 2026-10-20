@@ -221,6 +221,7 @@ export function ClassForm({
   const materialsIncluded = useSignal('');
   const whatToBring = useSignal('');
   const minimumAge = useSignal<number | undefined>(undefined);
+  const isFeatured = useSignal(false);
 
   // Referral program (per-class opt-in). When the toggle is on, every
   // confirmed registration auto-generates a single-use code in the
@@ -394,6 +395,7 @@ export function ClassForm({
         materialsIncluded.value = classItem.materialsIncluded ?? '';
         whatToBring.value = classItem.whatToBring ?? '';
         minimumAge.value = classItem.minimumAge;
+        isFeatured.value = classItem.isFeatured === true;
         // Hydrate the toggle from the class doc; keep editable defaults of
         // 50% / 60d so toggling ON for a previously-disabled class shows
         // sensible starting values without requiring extra typing.
@@ -452,6 +454,7 @@ export function ClassForm({
         materialsIncluded.value = '';
         whatToBring.value = '';
         minimumAge.value = undefined;
+        isFeatured.value = false;
         referralEnabled.value = false;
         referralPercent.value = 50;
         referralExpiresAfterDays.value = 60;
@@ -654,6 +657,8 @@ export function ClassForm({
         materialsIncluded: materialsIncluded.value || undefined,
         whatToBring: whatToBring.value || undefined,
         minimumAge: minimumAge.value,
+        // false (not undefined) so switching it off on edit is saved.
+        isFeatured: isFeatured.value,
         referralDiscount: referralEnabled.value
           ? {
               percent: referralPercent.value,
@@ -823,6 +828,24 @@ export function ClassForm({
                   <MenuItem value="completed">Completed</MenuItem>
                 </Select>
               </FormControl>
+            </Box>
+
+            {/* Featured on /upcoming-classes */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isFeatured.value}
+                    onChange={(e) => (isFeatured.value = e.target.checked)}
+                  />
+                }
+                label="Feature on Upcoming Classes"
+              />
+              <Typography variant="caption" color="textSecondary" component="p">
+                Shows this class as a large photo card on the website. A
+                featured class that fills up goes back to a normal row until a
+                seat opens.
+              </Typography>
             </Box>
 
             {/* Short Description */}

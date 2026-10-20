@@ -9,6 +9,7 @@ import {
   mockClassWithGallery,
   mockClassWithReferral,
   mockClassWithMinimum,
+  mockClassFeatured,
   mockClassCategoriesWithPool,
 } from '@maple/react/storybook-fixtures';
 import {
@@ -303,6 +304,64 @@ export const EditWithReferralProgram: Story = {
     });
     expect(canvas.getByLabelText(/friend gets/i)).toHaveValue(50);
     expect(canvas.getByLabelText(/code expires after/i)).toHaveValue(60);
+  },
+};
+
+/**
+ * Featuring a class on /upcoming-classes: off by default, and switching it on
+ * submits `isFeatured: true`.
+ */
+export const FeatureClass: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClass,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const toggle = await waitFor(() => {
+      const el = canvas.getByLabelText(/feature on upcoming classes/i);
+      expect(el).not.toBeChecked();
+      return el;
+    });
+
+    await userEvent.click(toggle);
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ isFeatured: true })
+      );
+    });
+  },
+};
+
+/**
+ * Un-featuring submits `false`, not `undefined`, so the stored flag is cleared
+ * rather than dropped from the update and kept.
+ */
+export const UnfeatureClass: Story = {
+  args: {
+    open: true,
+    isSubmitting: false,
+    classItem: mockClassFeatured,
+    onSubmit: fn(),
+  },
+  play: async ({ args }) => {
+    const canvas = await waitForDialog();
+    const toggle = await waitFor(() => {
+      const el = canvas.getByLabelText(/feature on upcoming classes/i);
+      expect(el).toBeChecked();
+      return el;
+    });
+
+    await userEvent.click(toggle);
+    await userEvent.click(canvas.getByRole('button', { name: /^update$/i }));
+    await waitFor(() => {
+      expect(args.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ isFeatured: false })
+      );
+    });
   },
 };
 

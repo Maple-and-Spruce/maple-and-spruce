@@ -193,3 +193,45 @@ describe('class categories collection field contract', () => {
     expect(fieldData['firebase-id']).toBe('cat-contract-1');
   });
 });
+
+/**
+ * The /upcoming-classes listing (page 69d1284b1476685827c82d33) reads these
+ * through `data-*` attributes on each Collection List item, which the page
+ * script in docs/design/upcoming-classes-redesign/webflow-embed.html parses.
+ */
+const LISTING_PAGE_CONTRACT: {
+  slug: string;
+  type: 'string' | 'number' | 'boolean';
+  usedFor: string;
+}[] = [
+  {
+    slug: 'is-featured',
+    type: 'boolean',
+    usedFor: 'data-featured: the staff pick that gets the large photo card',
+  },
+  {
+    slug: 'session-count',
+    type: 'number',
+    usedFor: 'data-sessions: Try It vs Workshop vs Studio Series tag',
+  },
+  {
+    slug: 'spots-remaining',
+    type: 'number',
+    usedFor: 'data-spots: seat counts, waitlist state, and the featured card only while seats remain',
+  },
+];
+
+describe('/upcoming-classes listing field contract', () => {
+  it.each(LISTING_PAGE_CONTRACT)(
+    'sends `$slug` as a $type ($usedFor)',
+    ({ slug, type }) => {
+      const fieldData = mapClassToFieldData(baseClass, mapOptions);
+
+      expect(
+        fieldData[slug],
+        `Webflow field "${slug}" is missing. The /upcoming-classes listing binds to it.`
+      ).toBeDefined();
+      expect(typeof fieldData[slug]).toBe(type);
+    }
+  );
+});

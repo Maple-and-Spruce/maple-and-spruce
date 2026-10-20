@@ -10,6 +10,7 @@
  * - Firebase `sessions[0].dateTime` -> Webflow `date-time`
  * - Firebase `priceCents` -> Webflow `price-cents`
  * - Firebase `sessions.length` -> Webflow `session-count`
+ * - Firebase `isFeatured` -> Webflow `is-featured` (Switch)
  * - Enriched `instructorName` / `categoryName` -> denormalized text fields
  *
  * @see docs/decisions/ADR-016-webflow-integration-strategy.md
@@ -203,6 +204,9 @@ export function mapClassToFieldData(
     // sold-out "Other upcoming dates" list on the class template page, so the
     // rule lives here in code rather than as a Designer-only setting (legacy #776).
     'is-full': spotsRemaining <= 0,
+    // Staff pick for the large card on /upcoming-classes. Always written, so
+    // un-featuring a class in the admin clears it on the page.
+    'is-featured': classEntity.isFeatured === true,
     'price-display': priceDisplay,
     'duration-display': durationDisplay,
     'spots-display': spotsDisplay,

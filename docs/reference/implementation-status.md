@@ -113,6 +113,7 @@ Site is published and live with Facebook/Instagram ads running. Closed issues: #
 | Our Story text update | **Complete** | - | "soft opening mid-2026" → "Opening May 2026" |
 | Music Lessons page | **Complete** | - | `/music-lessons` — pricing, policies, instrument loan program |
 | Craft Classes page | **Complete** | - | `/classes` — 6 class offerings with pricing, pathway, policies |
+| Featured class on `/upcoming-classes` | **Complete** | - | Admin class form switch → `Class.isFeatured` → CMS `is-featured` → large card while seats remain (`docs/design/upcoming-classes-redesign/`) |
 | Shop page | **Complete** | - | `/shop` — What we carry, Etsy link, consignment info |
 | Navigation updated | **Complete** | - | Music Lessons + Shop added to maple-nav dropdowns |
 | SEO on new pages | **Complete** | - | All 3 new pages have SEO titles + descriptions + OG tags |
