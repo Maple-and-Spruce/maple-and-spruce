@@ -40,6 +40,20 @@ describe('ClassTable', () => {
     expect(screen.getByText('0/8')).toBeInTheDocument();
   });
 
+  it('marks only featured classes with a Featured chip', () => {
+    render(
+      <ClassTable
+        classesState={asState([
+          { ...baseClass, isFeatured: true },
+          { ...baseClass, id: 'class-2', name: 'Wheel Throwing' },
+        ])}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.getAllByText('Featured')).toHaveLength(1);
+  });
+
   it('shows filled/capacity from registrationCounts and highlights when full', () => {
     render(
       <ClassTable

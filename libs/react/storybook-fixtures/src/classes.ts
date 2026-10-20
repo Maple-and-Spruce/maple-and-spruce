@@ -65,6 +65,13 @@ export const mockClassWithMinimum: Class = {
   minimumEnrollment: 4,
 };
 
+export const mockClassFeatured: Class = {
+  ...mockClass,
+  id: 'class-featured-001',
+  name: 'Winter Ornament Workshop',
+  isFeatured: true,
+};
+
 export const mockClassWithReferral: Class = {
   ...mockClass,
   id: 'class-005',

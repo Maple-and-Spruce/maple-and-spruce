@@ -76,6 +76,15 @@ function rawClassData(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** Reads one raw Firestore document back through `docToClass`. */
+async function readBack(overrides: Record<string, unknown>) {
+  const doc = fakeDoc('class-1', rawClassData(overrides));
+  const mockGet = vi.fn().mockResolvedValue(doc);
+  const mockDocFn = vi.fn().mockReturnValue({ get: mockGet });
+  vi.mocked(db.collection).mockReturnValue({ doc: mockDocFn } as never);
+  return (await ClassRepository.findById('class-1'))!;
+}
+
 describe('ClassRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -554,14 +563,6 @@ describe('ClassRepository', () => {
   });
 
   describe('minimum enrollment fields', () => {
-    async function readBack(overrides: Record<string, unknown>) {
-      const doc = fakeDoc('class-1', rawClassData(overrides));
-      const mockGet = vi.fn().mockResolvedValue(doc);
-      const mockDocFn = vi.fn().mockReturnValue({ get: mockGet });
-      vi.mocked(db.collection).mockReturnValue({ doc: mockDocFn } as never);
-      return (await ClassRepository.findById('class-1'))!;
-    }
-
     it('reads back minimumEnrollment and the alert marker', async () => {
       const sentAt = new Date('2026-05-08T12:00:00.000Z');
       const result = await readBack({
@@ -579,6 +580,17 @@ describe('ClassRepository', () => {
       });
       expect(result.minimumEnrollment).toBeUndefined();
       expect(result.underMinimumAlertSentAt).toBeUndefined();
+    });
+  });
+
+  describe('isFeatured', () => {
+    it('reads back a featured class', async () => {
+      expect((await readBack({ isFeatured: true })).isFeatured).toBe(true);
+    });
+
+    it('reads an unfeatured or missing flag as unset', async () => {
+      expect((await readBack({ isFeatured: false })).isFeatured).toBeUndefined();
+      expect((await readBack({})).isFeatured).toBeUndefined();
     });
   });
 

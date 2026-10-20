@@ -97,6 +97,7 @@ function docToClass(
       typeof data.minimumEnrollment === 'number'
         ? data.minimumEnrollment
         : undefined,
+    isFeatured: data.isFeatured === true ? true : undefined,
     underMinimumAlertSentAt: data.underMinimumAlertSentAt
       ? toDate(data.underMinimumAlertSentAt)
       : undefined,

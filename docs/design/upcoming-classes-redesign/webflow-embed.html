@@ -41,23 +41,24 @@
 .msx .cls-card-link:hover .cls-card-name{text-decoration:underline}
 .msx-full .cls-card-image{filter:grayscale(.85);opacity:.6}
 .msx-full .msx-date{background:#EEEBE2;box-shadow:none;color:#6E6A60}
-/* Featured Studio Series card */
-.msx .msx-series{border-bottom:0!important;padding:16px 0!important}
-.msx .msx-series .cls-card-link{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:0;padding:0!important;background:#4A3728!important;border-radius:22px;overflow:hidden;color:#FBFAF6}
-.msx .msx-series .cls-card-image{grid-column:1;width:100%!important;height:100%!important;min-height:300px!important;border-radius:0!important}
-.msx .msx-series .msx-date{position:absolute;top:14px;left:14px;width:64px;z-index:1;box-shadow:none}
-.msx .msx-series .cls-card-body{grid-column:2;grid-template-columns:1fr;padding:32px 36px!important;row-gap:12px}
-.msx .msx-series .cls-card-footer{grid-column:1!important;grid-row:auto;justify-content:flex-start;margin-top:8px!important}
-.msx .msx-series .cls-card-name{font-size:32px!important;color:#FBFAF6}
-.msx .msx-series .cls-card-desc{display:block!important;font-size:16px;line-height:1.55;color:#E9E6DC!important}
-.msx .msx-series .cls-card-date{display:block!important}
-.msx .msx-series .cls-card-meta>*{color:#E9E6DC!important}
-.msx .msx-series .cls-card-price{color:#FBFAF6}
-.msx .msx-series .msx-price{align-items:flex-start}
-.msx .msx-series .msx-status{color:#F2C9A0}
-.msx .msx-series .msx-cta{background:#FBFAF6;color:#4A3728;border-color:#FBFAF6}
-.msx .msx-series .cls-card-badge{background:rgba(251,250,246,.15)!important;color:#FBFAF6!important}
+/* Featured card: the class staff mark "Feature on Upcoming Classes" in the admin portal, while it has seats */
+.msx .msx-feature{border-bottom:0!important;padding:16px 0!important}
+.msx .msx-feature .cls-card-link{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:0;padding:0!important;background:#4A3728!important;border-radius:22px;overflow:hidden;color:#FBFAF6}
+.msx .msx-feature .cls-card-image{grid-column:1;width:100%!important;height:100%!important;min-height:300px!important;border-radius:0!important}
+.msx .msx-feature .msx-date{position:absolute;top:14px;left:14px;width:64px;z-index:1;box-shadow:none}
+.msx .msx-feature .cls-card-body{grid-column:2;grid-template-columns:1fr;padding:32px 36px!important;row-gap:12px}
+.msx .msx-feature .cls-card-footer{grid-column:1!important;grid-row:auto;justify-content:flex-start;margin-top:8px!important}
+.msx .msx-feature .cls-card-name{font-size:32px!important;color:#FBFAF6}
+.msx .msx-feature .cls-card-desc{display:block!important;font-size:16px;line-height:1.55;color:#E9E6DC!important}
+.msx .msx-feature .cls-card-date{display:block!important;flex-basis:100%}
+.msx .msx-feature .cls-card-meta>*{color:#E9E6DC!important}
+.msx .msx-feature .cls-card-price{color:#FBFAF6}
+.msx .msx-feature .msx-price{align-items:flex-start}
+.msx .msx-feature .msx-status{color:#F2C9A0}
+.msx .msx-feature .msx-cta{background:#FBFAF6;color:#4A3728;border-color:#FBFAF6}
+.msx .msx-feature .cls-card-badge{background:rgba(251,250,246,.15)!important;color:#FBFAF6!important}
 .msx-series-note{font-family:Archivo,sans-serif;font-size:13px;color:#E9E6DC}
+[data-msx-featured],.msx-feat-flag{display:none!important}
 .msx-empty-filter{font-size:18px;color:#4A3728;margin:24px 0}
 /* Sticky next-class bar: phone + tablet only */
 .msx-bar{display:none}
@@ -87,12 +88,13 @@
  .msx-status{font-size:12px}
  .msx-cta{display:none}
  .msx-facts.is-materials{display:none}
- .msx .msx-series .cls-card-link{display:block!important}
- .msx .msx-series .cls-card-image{height:190px!important;min-height:0!important}
- .msx .msx-series .msx-date{top:10px;left:10px;margin:0;width:auto;align-self:auto}
- .msx .msx-series .cls-card-body{padding:16px!important}
- .msx .msx-series .cls-card-name{font-size:21px!important}
- .msx .msx-series .msx-cta{display:inline-flex}
+ .msx .msx-feature .cls-card-link{display:block!important}
+ .msx .msx-feature .cls-card-image{height:190px!important;min-height:0!important}
+ .msx .msx-feature .msx-date{top:10px;left:10px;margin:0;width:auto;align-self:auto}
+ .msx .msx-feature .cls-card-body{padding:16px!important}
+ .msx .msx-feature .cls-card-name{font-size:21px!important}
+ .msx .msx-feature .msx-cta{display:inline-flex}
+ .msx .msx-feature .cls-card-footer{gap:20px;flex-wrap:wrap}
 }
 /* Private-class card beside the existing "Can't find" card */
 .cls-cta-section.msx-two{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:stretch;padding-left:max(16px,calc((100% - 1120px)/2))!important;padding-right:max(16px,calc((100% - 1120px)/2))!important}
@@ -149,8 +151,14 @@
       var series = /studio series/i.test(text) || sessions >= 3;
       var workshop = !series && (sessions === 2 || /workshop/i.test(text) || /each/i.test(item.getAttribute('data-duration') || ''));
       var craft = CRAFTS.filter(function (c) { return c.re.test(cat + ' ' + name); })[0];
+      var full = spots != null && spots <= 0;
+      // The [data-msx-featured] marker's visibility is bound to the CMS is-featured Switch, set
+      // from the admin portal. (A Switch cannot bind to an attribute, only to visibility.)
+      // Off renders it with w-condition-invisible, or leaves it out.
+      var flag = item.querySelector('[data-msx-featured]');
+      var featured = !!flag && !flag.classList.contains('w-condition-invisible');
       return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
-        craft: craft ? craft.id : 'other', full: spots != null && spots <= 0,
+        craft: craft ? craft.id : 'other', full: full, big: featured && !full,
         time: item.getAttribute('data-time') || '' };
     });
 
@@ -163,7 +171,7 @@
       var footer = item.querySelector('.cls-card-footer');
       if (!link || !body) return;
       if (r.full) item.classList.add('msx-full');
-      if (r.series) item.classList.add('msx-series');
+      if (r.big) item.classList.add('msx-feature');
 
       if (r.date) {
         var block = el('div', 'msx-date');
@@ -183,15 +191,15 @@
       body.insertBefore(tags, body.firstChild);
 
       var meta = body.querySelector('.cls-card-meta');
-      if (meta && !r.series) {
+      if (meta && !r.big) {
         if (r.time) meta.appendChild(el('span', 'msx-facts', r.time));
         var wd = r.workshop && meta.querySelector('.cls-card-date');
         if (wd && wd.textContent.trim()) meta.appendChild(el('span', 'msx-facts', 'Sessions: ' + wd.textContent.trim()));
         meta.appendChild(el('span', 'msx-facts is-materials', 'Materials included'));
       }
-      if (r.series && meta) {
+      if (r.big && meta) {
         var dates = meta.querySelector('.cls-card-date');
-        if (dates) dates.textContent = 'Sessions: ' + dates.textContent + (r.time ? ' at ' + r.time : '');
+        if (dates) dates.textContent = (r.series || r.workshop ? 'Sessions: ' : '') + dates.textContent + (r.time ? ' at ' + r.time : '');
       }
 
       if (footer) {
@@ -206,7 +214,15 @@
           if (spotsEl) priceWrap.appendChild(el('span', 'msx-status', spotsEl.textContent));
         }
         footer.insertBefore(priceWrap, footer.firstChild);
-        footer.appendChild(el('span', 'msx-cta', r.full ? 'Join waitlist' : r.series ? 'Save my seat' : 'Reserve'));
+        var cta = el('span', 'msx-cta', r.full ? 'Join waitlist' : r.big ? 'Save my seat' : 'Reserve');
+        cta.addEventListener('click', function (e) {
+          var href = link.getAttribute('href');
+          if (!href) return;
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = href.split('#')[0] + '#register';
+        });
+        footer.appendChild(cta);
       }
     });
 
@@ -288,7 +304,7 @@
       t.appendChild(el('small', null, 'Next class · ' + part(next.date, { weekday: 'short', month: 'short', day: 'numeric' }) + seats));
       t.appendChild(el('span', null, next.name));
       var a = el('a', null, 'Reserve');
-      a.href = link ? link.getAttribute('href') : '#';
+      a.href = link ? link.getAttribute('href').split('#')[0] + '#register' : '#';
       a.setAttribute('aria-label', 'Reserve ' + next.name);
       nb.appendChild(t);
       nb.appendChild(a);

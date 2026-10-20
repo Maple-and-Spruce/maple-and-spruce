@@ -246,6 +246,25 @@ describe('mapClassToFieldData', () => {
     ).toBe(true);
   });
 
+  it('always writes is-featured, so un-featuring clears it on the page', () => {
+    expect(
+      mapClassToFieldData({ ...mockClass, isFeatured: true }, { isDev: false })[
+        'is-featured'
+      ]
+    ).toBe(true);
+    expect(
+      mapClassToFieldData({ ...mockClass, isFeatured: false }, { isDev: false })[
+        'is-featured'
+      ]
+    ).toBe(false);
+    // Classes created before the field existed have no value at all.
+    expect(
+      mapClassToFieldData({ ...mockClass, isFeatured: undefined }, { isDev: false })[
+        'is-featured'
+      ]
+    ).toBe(false);
+  });
+
   it('maps categoryWebflowItemId to the category Reference field', () => {
     // This reference is what lets the class template page filter a Collection
     // List to "other classes in this class's category" — a plain-text

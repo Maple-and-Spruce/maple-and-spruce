@@ -11,6 +11,8 @@
  *   materialsIncluded, whatToBring, minimumAge, minimumEnrollment.
  * - `underMinimumAlertSentAt` is not copied: the duplicate is a new run of
  *   the class and gets its own under-minimum alert.
+ * - `isFeatured` is not copied: featuring a class on /upcoming-classes is a
+ *   choice about one run, and a copy would put two large cards on the page.
  * - `name` gets a " (Copy)" suffix so the duplicate is easy to find in
  *   admin lists.
  * - `status` is forced to `draft`. Katie reviews the new dates before

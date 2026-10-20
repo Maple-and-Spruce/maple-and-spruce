@@ -61,6 +61,8 @@ interface ClassRow {
   classItem: Class;
   name: string;
   imageUrl?: string;
+  /** Staff pick for the large card on /upcoming-classes. */
+  isFeatured: boolean;
   /** Weekly-planning schedule summary — day(s) of week + time block, dates secondary. */
   dayDisplay: string;
   timeBlockDisplay: string;
@@ -110,6 +112,7 @@ export function ClassTable({
         classItem,
         name: classItem.name,
         imageUrl: classItem.imageUrl,
+        isFeatured: classItem.isFeatured === true,
         dayDisplay: schedule.dayDisplay,
         timeBlockDisplay: schedule.timeBlockDisplay,
         dateRangeDisplay: schedule.dateRangeDisplay,
@@ -158,6 +161,9 @@ export function ClassTable({
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
               {params.row.name}
             </Typography>
+            {params.row.isFeatured && (
+              <Chip label="Featured" size="small" color="primary" variant="outlined" />
+            )}
           </Stack>
         ),
       },

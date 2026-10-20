@@ -111,6 +111,13 @@ export interface Class {
    */
   underMinimumAlertSentAt?: Date;
   /**
+   * Staff pick for the large photo card on the public /upcoming-classes page.
+   * Synced to the Webflow `is-featured` Switch. The page shows the large card
+   * only while the class still has seats, so a featured class that fills up
+   * drops back to a normal row by itself. `undefined` = not featured.
+   */
+  isFeatured?: boolean;
+  /**
    * Webflow CMS item ID for class listing sync.
    * @see docs/decisions/ADR-016-webflow-integration-strategy.md
    */
