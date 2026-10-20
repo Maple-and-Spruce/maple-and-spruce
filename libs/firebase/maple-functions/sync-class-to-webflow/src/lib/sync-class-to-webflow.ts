@@ -52,6 +52,10 @@ const webflowStringParams = WEBFLOW_STRING_NAMES.map((name) =>
  * the item up, both miss, and both create one: two CMS items for one class,
  * and whichever loses the write-back is orphaned and never updated again.
  *
+ * Any field `mapClassToFieldData` reads must be here, or editing only that
+ * field never reaches Webflow. `sync-class-to-webflow.relevant-fields.spec.ts`
+ * checks this against the real mapper.
+ *
  * `registrationCount` is deliberately absent — it lives on the registrations
  * collection and is `syncRegistrationCount`'s job, not a field on this doc.
  */
@@ -74,6 +78,7 @@ const WEBFLOW_RELEVANT_FIELDS: ReadonlyArray<keyof Class> = [
   'materialsIncluded',
   'whatToBring',
   'minimumAge',
+  'isFeatured',
 ];
 
 /**
