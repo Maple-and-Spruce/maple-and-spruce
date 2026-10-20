@@ -207,7 +207,7 @@ const LISTING_PAGE_CONTRACT: {
   {
     slug: 'is-featured',
     type: 'boolean',
-    usedFor: 'data-featured: the staff pick that gets the large photo card',
+    usedFor: 'visibility of the [data-msx-featured] marker: the staff pick that gets the large photo card',
   },
   {
     slug: 'session-count',

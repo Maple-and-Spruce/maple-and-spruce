@@ -58,6 +58,7 @@
 .msx .msx-feature .msx-cta{background:#FBFAF6;color:#4A3728;border-color:#FBFAF6}
 .msx .msx-feature .cls-card-badge{background:rgba(251,250,246,.15)!important;color:#FBFAF6!important}
 .msx-series-note{font-family:Archivo,sans-serif;font-size:13px;color:#E9E6DC}
+[data-msx-featured],.msx-feat-flag{display:none!important}
 .msx-empty-filter{font-size:18px;color:#4A3728;margin:24px 0}
 /* Sticky next-class bar: phone + tablet only */
 .msx-bar{display:none}
@@ -151,8 +152,11 @@
       var workshop = !series && (sessions === 2 || /workshop/i.test(text) || /each/i.test(item.getAttribute('data-duration') || ''));
       var craft = CRAFTS.filter(function (c) { return c.re.test(cat + ' ' + name); })[0];
       var full = spots != null && spots <= 0;
-      // data-featured is bound to the CMS is-featured Switch, set from the admin portal.
-      var featured = /^(true|1|yes|on)$/i.test((item.getAttribute('data-featured') || '').trim());
+      // The [data-msx-featured] marker's visibility is bound to the CMS is-featured Switch, set
+      // from the admin portal. (A Switch cannot bind to an attribute, only to visibility.)
+      // Off renders it with w-condition-invisible, or leaves it out.
+      var flag = item.querySelector('[data-msx-featured]');
+      var featured = !!flag && !flag.classList.contains('w-condition-invisible');
       return { item: item, name: name.trim(), date: d, spots: spots, series: series, workshop: workshop,
         craft: craft ? craft.id : 'other', full: full, big: featured && !full,
         time: item.getAttribute('data-time') || '' };

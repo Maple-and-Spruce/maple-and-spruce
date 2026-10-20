@@ -70,7 +70,8 @@ The redesign is built on the live /upcoming-classes page (Webflow page
 - **Listing:** a native Classes Collection List, sorted by `date-time` ascending and
   filtered to `is-dev-environment` off and `date-time` on or after today. Each item
   (DynamoItem) carries CMS-bound data attributes: `data-date`, `data-category`,
-  `data-sessions`, `data-spots`, `data-time`, `data-duration`, `data-featured`.
+  `data-sessions`, `data-spots`, `data-time`, `data-duration`. It also holds an empty
+  `[data-msx-featured]` marker div whose visibility is bound to `is-featured`.
 - **Restyle:** the HtmlEmbed `669fad2a-29f5-7aac-40a7-5c949c2d33d5` inside the class
   list section holds the CSS and script in `webflow-embed.html`. At runtime it turns the
   list into date-first rows under month headers, adds the filter chips (craft inferred
@@ -116,8 +117,14 @@ sync.** These files are the source of truth the embeds point to.
 
 Staff choose the class that gets the large photo card. In the admin portal, the class form has a
 **Feature on Upcoming Classes** switch, and the class list shows a "Featured" chip on those
-classes. The flag is `Class.isFeatured`, synced to the Classes CMS Switch `is-featured`, and the
-list item exposes it as `data-featured`.
+classes. The flag is `Class.isFeatured`, synced to the Classes CMS Switch `is-featured`.
+
+Webflow cannot bind a Switch to a custom attribute (the API refuses it), so each list item holds an
+empty `<div class="msx-feat-flag" data-msx-featured="1">` whose **visibility** is bound to
+`is-featured`. The script treats an item as featured when that marker is present and not
+`w-condition-invisible`. A second, unbound `msx-feat-flag` div (Navigator name "UNUSED - safe to
+delete") sits in the item too: the API would not let it be bound, hidden or removed. It has no
+`data-msx-featured`, so the script ignores it. Delete it in the Designer when convenient.
 
 - The card shows only while the class **has seats**. A featured class that fills up drops back to
   a normal row with "Join waitlist", and comes back if a seat opens. A full class should not take
