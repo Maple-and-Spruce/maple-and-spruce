@@ -11,6 +11,7 @@ import {
   clearFirestoreEmulator,
   setFirestoreDoc,
   callFunction,
+  EMULATOR_CONFIG,
 } from '@maple/firebase/integration-test-utils';
 import type {
   CreateCraftClubSubscriptionRequest,
@@ -36,7 +37,7 @@ describe('createCraftClubSubscription', () => {
     await setFirestoreDoc(
       'craftClubMembers',
       'approved-1',
-      memberDoc({ email: APPROVED_EMAIL, status: 'approved' })
+      memberDoc({ email: APPROVED_EMAIL, status: 'approved' }),
     );
     await setFirestoreDoc(
       'craftClubMembers',
@@ -45,7 +46,7 @@ describe('createCraftClubSubscription', () => {
         email: ACTIVE_EMAIL,
         status: 'active',
         squareSubscriptionId: 'existing-sub',
-      })
+      }),
     );
   });
 
@@ -74,6 +75,31 @@ describe('createCraftClubSubscription', () => {
     expect(result.data?.member.squareCustomerId).toBeDefined();
     expect(result.data?.member.squareCardId).toBeDefined();
     expect(result.data?.cardLast4).toBe('1111');
+
+    // The new membership is recorded as one MailerLite order for the first
+    // month, keyed on the subscription, without subscribing the member.
+    const subscriptionId = result.data?.member.squareSubscriptionId;
+    const res = await fetch(
+      `${EMULATOR_CONFIG.mailerLiteMockServerUrl}/_mock/requests`,
+    );
+    const { requests } = (await res.json()) as {
+      requests: Array<{
+        method: string;
+        path: string;
+        body?: Record<string, unknown>;
+      }>;
+    };
+    const order = requests.find(
+      (r) =>
+        r.method === 'POST' &&
+        r.path === '/api/ecommerce/shops/test-shop/orders' &&
+        r.body?.['resource_id'] === `craftclub-${subscriptionId}`,
+    );
+    expect(order?.body).toMatchObject({
+      total_price: 30,
+      status: 'complete',
+      customer: { create_subscriber: false },
+    });
   });
 
   it('rejects an email that is not on the approved list', async () => {

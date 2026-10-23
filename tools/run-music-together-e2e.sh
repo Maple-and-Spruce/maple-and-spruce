@@ -79,7 +79,7 @@ printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test\nG
 
 # functions-square holds BOTH the default (M&S) and MT Square clients.
 MT_TOKEN_VALUE="${MT_SQUARE_ACCESS_TOKEN:-mock-token}"
-printf "SQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$MT_TOKEN_VALUE" > dist/apps/functions-square/.secret.local
+printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$MT_TOKEN_VALUE" > dist/apps/functions-square/.secret.local
 
 if [ "$USE_REAL_MT_SQUARE" = false ]; then
   # Point BOTH Square clients at the local mock server. The MT client honors

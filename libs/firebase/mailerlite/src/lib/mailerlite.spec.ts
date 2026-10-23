@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  adjustOrderForRefund,
+  isMailerLiteConfigured,
+  tryAdjustOrderForRefund,
   buildOrderBody,
   buildProductBody,
   createOrUpdateOrder,
@@ -175,5 +178,66 @@ describe('requests', () => {
     await expect(
       tryRecordOrder(config, [product], order, silent),
     ).resolves.toBe(false);
+  });
+});
+
+describe('isMailerLiteConfigured', () => {
+  it('is off for an empty or blank shop id', () => {
+    expect(isMailerLiteConfigured({ ...config, shopId: '' })).toBe(false);
+    expect(isMailerLiteConfigured({ ...config, shopId: '  ' })).toBe(false);
+    expect(isMailerLiteConfigured(config)).toBe(true);
+  });
+});
+
+describe('refund adjustments', () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('lowers the total to what was kept after a partial refund', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: {} }));
+    await expect(adjustOrderForRefund(config, 'MS-ABC123', 50)).resolves.toBe(
+      'updated',
+    );
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      'https://ml.test/api/ecommerce/shops/42/orders/MS-ABC123?with_resource_id',
+    );
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({
+      status: 'complete',
+      total_price: 50,
+    });
+  });
+
+  it('deletes the order when nothing was kept, with no request body', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(adjustOrderForRefund(config, 'MS-ABC123', 0)).resolves.toBe(
+      'deleted',
+    );
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.method).toBe('DELETE');
+    expect(init.body).toBeUndefined();
+  });
+
+  it('treats a missing order as nothing to correct', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(404, { message: 'Resource not found.' }),
+    );
+    await expect(adjustOrderForRefund(config, 'MS-NONE', 10)).resolves.toBe(
+      'missing',
+    );
+  });
+
+  it('swallows other failures', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(500, { message: 'down' }));
+    const logger = { log: vi.fn(), error: vi.fn() };
+    await expect(
+      tryAdjustOrderForRefund(config, 'MS-ABC123', 0, logger),
+    ).resolves.toBe(false);
+    expect(logger.error).toHaveBeenCalled();
   });
 });

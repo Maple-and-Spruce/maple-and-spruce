@@ -11,6 +11,7 @@
  *   message below. The client must update instead, so the mock enforces it:
  *   a client that ignored the 422 would count a retried sale twice.
  * - `create_subscriber: false` leaves `customer.subscriber` null.
+ * - Updating or deleting an unknown order id is a 404 (DELETE answers 204).
  *
  * Per-service mock server, parallel to libs/firebase/{ga4,meta-capi}-test-mock-server.
  */
@@ -216,6 +217,17 @@ export class MailerLiteMockServer {
               status: existing.status,
             },
           });
+        }
+
+        if (resource === 'orders' && method === 'DELETE' && id) {
+          const key = `${shopId}/${decodeURIComponent(id)}`;
+          if (!this.orders.has(key)) {
+            return send(404, { message: 'Resource not found.' });
+          }
+          this.orders.delete(key);
+          res.writeHead(204);
+          res.end();
+          return;
         }
 
         return send(405, { message: 'Method not allowed by mock.' });

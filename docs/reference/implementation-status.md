@@ -394,8 +394,10 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | MailerLite e-commerce client (product upsert, idempotent order, never subscribes) | Complete | `libs/firebase/mailerlite/` |
 | Mock MailerLite server, built from live responses | Complete | `libs/firebase/mailerlite-test-mock-server/` |
 | Craft-class order on confirmation (same trigger as Meta + GA4) | Complete (prod shop `189210`) | `send-registration-conversion/` |
-| MailerLite universal script on the Webflow site | Not Started | `docs/guides/mailerlite-revenue-attribution.md` |
-| Refund updates the order; Music Together and Craft Club | Not Started | #262 Phase 3 |
+| MailerLite universal script on the Webflow site | Complete (2026-10-23) | Webflow site-wide head code |
+| Refunds correct the order (partial: lower total; full: delete) | Complete | `send-registration-conversion/`, `libs/firebase/mailerlite/` |
+| Music Together enrollments as orders (committed tuition), deleted on refund | Complete | `send-music-together-conversion/` |
+| Craft Club first month as an order | Complete | `create-craft-club-subscription/` |
 
 The demo RSVP is the conversion the MT program optimizes against — paid
 enrollment is weeks later and in single digits, so `Purchase` alone can never

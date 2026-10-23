@@ -654,8 +654,11 @@ jobs:
 
           # maple-square: Square mock server URL + fake secrets
           echo "SQUARE_BASE_URL=http://localhost:9997" >> dist/apps/functions-square/.env
+          # createCraftClubSubscription -> MailerLite mock server, with a test shop id.
+          echo "MAILERLITE_BASE_URL=http://localhost:9992" >> dist/apps/functions-square/.env
+          echo "MAILERLITE_SHOP_ID=test-shop" >> dist/apps/functions-square/.env
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
-          printf "SQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+          printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
 
           # maple-sync: Webflow mock server URL + fake secrets
           echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
@@ -847,7 +850,7 @@ jobs:
           # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
           # uses its built-in sandbox endpoint). Etsy still mocked.
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
-          printf "SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
+          printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
 
           # maple-sync: Webflow + Etsy mock servers
           echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
@@ -1008,7 +1011,7 @@ jobs:
           # maple-square: real Square sandbox (no SQUARE_BASE_URL → SDK
           # uses its built-in sandbox endpoint). Etsy still mocked.
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
-          printf "SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
+          printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
 
           # maple-sync: Webflow + Etsy mock servers
           echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
@@ -1155,7 +1158,7 @@ jobs:
           # maple-square-webhook: squareWebhook declares this defineSecret param.
           printf "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square-webhook/.secret.local
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-square/.env
-          printf "SQUARE_ACCESS_TOKEN=unused-mock-token\nMT_SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$MT_SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
+          printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=unused-mock-token\nMT_SQUARE_ACCESS_TOKEN=%s\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" "$MT_SQUARE_SANDBOX_ACCESS_TOKEN" > dist/apps/functions-square/.secret.local
 
           echo "WEBFLOW_BASE_URL=http://localhost:9996" >> dist/apps/functions-sync/.env
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions-sync/.env
@@ -1282,7 +1285,7 @@ jobs:
 
           # maple-square-webhook: squareWebhook declares this defineSecret param.
           printf "SQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\n" > dist/apps/functions-square-webhook/.secret.local
-          printf "SQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+          printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=mock-token\nMT_SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
           printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
           # External integrations → closed port (portal login/nav flow needs none).

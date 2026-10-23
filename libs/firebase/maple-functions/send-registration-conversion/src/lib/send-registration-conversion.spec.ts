@@ -11,6 +11,8 @@ import {
   buildPurchaseEvent,
   emitGa4PurchaseIfConfirmed,
   emitMailerLiteOrderIfConfirmed,
+  adjustMailerLiteOrderIfRefunded,
+  mailerLiteRefundAdjustment,
   emitPurchaseIfConfirmed,
   sendGa4Payload,
   shouldEmitPurchase,
@@ -469,6 +471,137 @@ describe('emitMailerLiteOrderIfConfirmed', () => {
         confirmed,
         true,
         name,
+        async () => {
+          throw new Error('boom');
+        },
+        silentLogger,
+      ),
+    ).resolves.toBe(false);
+  });
+});
+
+describe('mailerLiteRefundAdjustment', () => {
+  it('lowers the order to what was kept after a partial refund', () => {
+    expect(
+      mailerLiteRefundAdjustment(confirmed, {
+        ...confirmed,
+        refundedAmountCents: 5300,
+      }),
+    ).toEqual({ orderResourceId: 'MS-ABC123', keptTotal: 53 });
+  });
+
+  it('follows a second partial refund from the new cumulative total', () => {
+    expect(
+      mailerLiteRefundAdjustment(
+        { ...confirmed, refundedAmountCents: 3000 },
+        { ...confirmed, refundedAmountCents: 8000 },
+      ),
+    ).toEqual({ orderResourceId: 'MS-ABC123', keptTotal: 26 });
+  });
+
+  it('deletes the order (kept 0) on a full refund', () => {
+    expect(
+      mailerLiteRefundAdjustment(confirmed, {
+        ...confirmed,
+        status: 'refunded',
+        refundedAmountCents: 10600,
+      }),
+    ).toEqual({ orderResourceId: 'MS-ABC123', keptTotal: 0 });
+  });
+
+  it('deletes even when a refund is recorded without an amount', () => {
+    // "Already refunded in Square" can flip the status without an amount.
+    expect(
+      mailerLiteRefundAdjustment(confirmed, {
+        ...confirmed,
+        status: 'refunded',
+      }),
+    ).toEqual({ orderResourceId: 'MS-ABC123', keptTotal: 0 });
+  });
+
+  it('ignores writes that are not a new refund', () => {
+    const partial = { ...confirmed, refundedAmountCents: 3000 };
+    expect(mailerLiteRefundAdjustment(partial, partial)).toBeNull();
+    expect(mailerLiteRefundAdjustment(confirmed, confirmed)).toBeNull();
+    expect(
+      mailerLiteRefundAdjustment({ ...confirmed, status: 'refunded' }, {
+        ...confirmed,
+        status: 'refunded',
+        notes: 'edited',
+      } as never),
+    ).toBeNull();
+    // A cancellation with no refund keeps the money, and the order.
+    expect(
+      mailerLiteRefundAdjustment(confirmed, {
+        ...confirmed,
+        status: 'cancelled',
+      }),
+    ).toBeNull();
+    expect(mailerLiteRefundAdjustment(undefined, confirmed)).toBeNull();
+    expect(mailerLiteRefundAdjustment(confirmed, undefined)).toBeNull();
+  });
+
+  it('ignores refunds on registrations that never got an order', () => {
+    const refund = { status: 'refunded' };
+    expect(
+      mailerLiteRefundAdjustment(
+        { ...confirmed, source: 'pos' },
+        { ...confirmed, source: 'pos', ...refund },
+      ),
+    ).toBeNull();
+    expect(
+      mailerLiteRefundAdjustment(
+        { ...confirmed, pricePaidCents: 0 },
+        { ...confirmed, pricePaidCents: 0, ...refund },
+      ),
+    ).toBeNull();
+    expect(
+      mailerLiteRefundAdjustment(
+        { ...confirmed, confirmationNumber: undefined },
+        { ...confirmed, confirmationNumber: undefined, ...refund },
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('adjustMailerLiteOrderIfRefunded', () => {
+  const refunded = { ...confirmed, status: 'refunded' };
+
+  it('sends the adjustment', async () => {
+    const adjust = vi.fn().mockResolvedValue(true);
+    await expect(
+      adjustMailerLiteOrderIfRefunded(
+        confirmed,
+        refunded,
+        true,
+        adjust,
+        silentLogger,
+      ),
+    ).resolves.toBe(true);
+    expect(adjust).toHaveBeenCalledWith({
+      orderResourceId: 'MS-ABC123',
+      keptTotal: 0,
+    });
+  });
+
+  it('does nothing until a shop is configured', async () => {
+    const adjust = vi.fn();
+    await adjustMailerLiteOrderIfRefunded(
+      confirmed,
+      refunded,
+      false,
+      adjust,
+      silentLogger,
+    );
+    expect(adjust).not.toHaveBeenCalled();
+  });
+
+  it('never throws', async () => {
+    await expect(
+      adjustMailerLiteOrderIfRefunded(
+        confirmed,
+        refunded,
+        true,
         async () => {
           throw new Error('boom');
         },

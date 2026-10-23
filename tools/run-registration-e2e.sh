@@ -60,7 +60,7 @@ for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sy
 done
 echo "ETSY_API_BASE=http://localhost:99999/v3/application" >> dist/apps/functions/.env
 printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
-printf "SQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
+printf "MAILERLITE_API_KEY=test-mailerlite-key\nSQUARE_ACCESS_TOKEN=mock-token\nSQUARE_WEBHOOK_SIGNATURE_KEY=mock-key\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-square/.secret.local
 printf "WEBFLOW_API_TOKEN=mock-token\nETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\n" > dist/apps/functions-sync/.secret.local
 
 # Point Webflow / Etsy at a closed local port so the Firestore triggers
