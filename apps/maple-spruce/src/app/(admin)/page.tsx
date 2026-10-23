@@ -1,21 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Card, CardActionArea } from '@mui/material';
-import Grid from '@mui/material/Grid';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import BusinessIcon from '@mui/icons-material/Business';
-import CampaignIcon from '@mui/icons-material/Campaign';
-import FolderSharedIcon from '@mui/icons-material/FolderShared';
-import LanguageIcon from '@mui/icons-material/Language';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import PhoneIcon from '@mui/icons-material/Phone';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
-import SchoolIcon from '@mui/icons-material/School';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import StorefrontIcon from '@mui/icons-material/Storefront';
+import { Box, Typography } from '@mui/material';
 import { RequestStateUtil, type RequestState } from '@maple/ts/domain';
 import type { StudioDayLesson } from '@maple/ts/firebase/api-types';
 import { fonts, text } from '@maple/react/theme';
@@ -34,22 +20,6 @@ import {
   todayCounts,
   todaySummaryText,
 } from '../../components/dashboard';
-
-const quickLinks = [
-  { label: 'Wave', href: 'https://my.waveapps.com', icon: AccountBalanceIcon, color: '#1c6dd0' },
-  { label: 'Tally', href: 'https://tally.so', icon: ListAltIcon, color: '#6c5ce7' },
-  { label: 'MailerLite', href: 'https://app.mailerlite.com', icon: CampaignIcon, color: '#09c269' },
-  { label: 'Google Drive', href: 'https://drive.google.com', icon: FolderSharedIcon, color: '#f4b400' },
-  { label: 'Square', href: 'https://squareup.com/dashboard', icon: ShoppingCartIcon, color: '#006aff' },
-  { label: 'Facebook Ads', href: 'https://adsmanager.facebook.com/adsmanager/manage/campaigns', icon: CampaignIcon, color: '#1877f2' },
-  { label: 'Webflow', href: 'https://webflow.com/dashboard', icon: LanguageIcon, color: '#4353ff' },
-  { label: 'Firebase', href: 'https://console.firebase.google.com', icon: AdminPanelSettingsIcon, color: '#f5820d' },
-  { label: 'Vercel', href: 'https://vercel.com/dashboard', icon: RocketLaunchIcon, color: '#000000' },
-  { label: 'Google Voice', href: 'https://voice.google.com', icon: PhoneIcon, color: '#34a853' },
-  { label: 'Hope Scholarship', href: 'https://app.hopescholarshipwv.com/esa/esa_vendor_admin/landing', icon: SchoolIcon, color: '#b71c1c' },
-  { label: 'WV MyTaxes', href: 'https://mytaxes.wvtax.gov', icon: ReceiptLongIcon, color: '#0b6e4f' },
-  { label: 'Apple Business', href: 'https://business.apple.com/main/home', icon: BusinessIcon, color: '#555555' },
-];
 
 /** The current time, ticking each minute so the NOW line and "ended" drift right. */
 function useNow(): Date {
@@ -183,52 +153,5 @@ export default function DashboardPage() {
     );
   }
 
-  return (
-    <>
-      <StaffDashboard isAdmin={isAdmin} now={now} />
-
-      <Grid container spacing={3} sx={{ mt: 1 }}>
-        {/* Quick Links — external business accounts, admin only */}
-        {isAdmin && (
-        <Grid size={12}>
-          <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
-            <StorefrontIcon
-              fontSize="small"
-              sx={{ verticalAlign: 'middle', mr: 0.5 }}
-            />
-            Quick Links
-          </Typography>
-          <Grid container spacing={1.5}>
-            {quickLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Grid key={link.label} size={{ xs: 6, sm: 4, md: 3, lg: 2.4 }}>
-                  <Card variant="outlined">
-                    <CardActionArea
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        py: 2,
-                        px: 1,
-                      }}
-                    >
-                      <Icon sx={{ fontSize: 36, color: link.color, mb: 0.5 }} />
-                      <Typography variant="body2" noWrap>
-                        {link.label}
-                      </Typography>
-                    </CardActionArea>
-                  </Card>
-                </Grid>
-              );
-            })}
-          </Grid>
-        </Grid>
-        )}
-      </Grid>
-    </>
-  );
+  return <StaffDashboard isAdmin={isAdmin} now={now} />;
 }
