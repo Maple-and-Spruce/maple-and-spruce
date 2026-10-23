@@ -200,7 +200,8 @@ The instructors router (#64) was waiting on this.
   stories (AppShell, AuthGuard, LoginPage) crashed with "Cannot read properties of undefined
   (reading 'data')". `patches/@storybook__nextjs-vite@10.6.1.patch` adds the field, mirroring the
   upstream fix storybookjs/storybook#36588, which hasn't been released. Delete the patch when a
-  Storybook release includes it. Real pages were never affected.
+  Storybook release includes it. Real pages were never affected. (Deleted 2026-10-23 with the
+  bump to Storybook 10.6.3 in #265, which ships the fix.)
 - How it was checked:
   - **`vercel build` run locally** with CLI 63.1.0 (the version CI uses) and local-only project
     settings, no `vercel pull`. It produced the same output as main: 68 functions and 140 static
