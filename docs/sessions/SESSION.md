@@ -17,8 +17,8 @@
   MailerLite order (class upserted as the product, confirmation number as the order id). Own branch,
   never throws, 5s timeout. No new function. Guide: `docs/guides/mailerlite-revenue-attribution.md`.
 - **Before merge:** set `MAILERLITE_API_KEY` in Secret Manager for dev **and** prod.
-- **Still to do:** create the prod shop and set `MAILERLITE_SHOP_ID` in `.env.prod` (empty = off);
-  add MailerLite's universal script to the Webflow site; add "e-commerce link tracking" to the send
+- Prod shop "Maple & Spruce" is `189210` (`MAILERLITE_SHOP_ID` in `.env.prod`).
+- **Still to do:** add MailerLite's universal script to the Webflow site; add "e-commerce link tracking" to the send
   checklist. Phase 3 (refunds, MT, Craft Club) is later.
 
 ### Contract-instructor workflow finished (2026-10-18, #250, #253)

@@ -393,7 +393,7 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 |---------|--------|----------|
 | MailerLite e-commerce client (product upsert, idempotent order, never subscribes) | Complete | `libs/firebase/mailerlite/` |
 | Mock MailerLite server, built from live responses | Complete | `libs/firebase/mailerlite-test-mock-server/` |
-| Craft-class order on confirmation (same trigger as Meta + GA4) | Complete, off in prod until the shop id is set | `send-registration-conversion/` |
+| Craft-class order on confirmation (same trigger as Meta + GA4) | Complete (prod shop `189210`) | `send-registration-conversion/` |
 | MailerLite universal script on the Webflow site | Not Started | `docs/guides/mailerlite-revenue-attribution.md` |
 | Refund updates the order; Music Together and Craft Club | Not Started | #262 Phase 3 |
 

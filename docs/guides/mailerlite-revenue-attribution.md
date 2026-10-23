@@ -28,7 +28,7 @@ $0 registrations are skipped.
 | Name | Kind | Dev | Prod |
 |---|---|---|---|
 | `MAILERLITE_API_KEY` | `defineSecret` (Secret Manager, **both** projects) | MailerLite → Integrations → API | same account |
-| `MAILERLITE_SHOP_ID` | `.env.dev` / `.env.prod` | `189112` ("Maple & Spruce (dev)") | empty = off until the prod shop exists |
+| `MAILERLITE_SHOP_ID` | `.env.dev` / `.env.prod` | `189112` ("Maple & Spruce (dev)") | `189210` ("Maple & Spruce"); empty turns it off |
 | `MAILERLITE_BASE_URL` | `.env.*` | `https://connect.mailerlite.com` | same |
 
 Dev and prod share **one** MailerLite account, so each environment has its own shop. Test orders
@@ -44,8 +44,8 @@ firebase functions:secrets:set MAILERLITE_API_KEY --project maple-and-spruce
 
 ## Turning it on in prod
 
-1. Create the prod shop (`name: "Maple & Spruce"`, `url: https://mapleandsprucefolkarts.com`,
-   `currency: USD`, `platform: custom`, pop-ups off) and put its id in `.env.prod`.
+1. ~~Create the prod shop~~ Done 2026-10-22: `189210`, `https://mapleandsprucefolkarts.com`,
+   USD, custom platform, pop-ups off.
 2. Add MailerLite's universal script (Sites → Integrations → JavaScript snippet, with
    `ml('account', '<account id>')`) to the Webflow site-wide custom code. Check it on the
    staging `webflow.io` site first, then publish. Keep pop-ups disabled.
