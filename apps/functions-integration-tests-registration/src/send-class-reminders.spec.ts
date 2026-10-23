@@ -23,7 +23,7 @@ import {
   clearFirestoreEmulator,
   createTestUser,
   getFirestoreDoc,
-  listFirestoreDocs,
+  listMail,
   setFirestoreDoc,
 } from '@maple/firebase/integration-test-utils';
 import type { TestUser } from '@maple/firebase/integration-test-utils';
@@ -162,40 +162,6 @@ function buildRegistration(overrides: {
   };
 }
 
-async function clearMailCollection(): Promise<void> {
-  // The `mail` collection isn't covered by the `clearFirestoreEmulator`
-  // call's project default — but clearFirestoreEmulator wipes the entire
-  // (default) database, so this is just defense against future divergence.
-  const docs = await listFirestoreDocs('mail');
-  // No-op if already empty; the per-suite clearFirestoreEmulator call
-  // handles wiping. Kept for explicitness inside individual tests.
-  if (docs.length > 0) {
-    // No bulk delete helper — recreate the firestore from scratch.
-    await clearFirestoreEmulator();
-  }
-}
-
-/**
- * The reminder emails in `mail`, leaving out sync-failure alerts.
- *
- * `mail` is shared. Writing a class doc here fires `syncClassToSquare` and
- * `syncClassToWebflow`, and a trigger still running when the next
- * `beforeEach` wipes Firestore fails to write back to the deleted class.
- * Each failure queues a "sync failed" alert (`reportSyncFailure`) into the
- * freshly cleared `mail` collection. Those alerts are a different
- * function's output, so this suite counts only what the reminder job sent.
- */
-async function listReminderMail(): Promise<
-  Awaited<ReturnType<typeof listFirestoreDocs>>
-> {
-  const docs = await listFirestoreDocs('mail');
-  return docs.filter((d) => {
-    const subject = (d.data as { message?: { subject?: string } }).message
-      ?.subject;
-    return !subject?.includes(' sync failed: ');
-  });
-}
-
 async function callTriggerAsAdmin(
   adminToken: string
 ): Promise<{ status: number; data?: SendClassRemindersResult }> {
@@ -291,7 +257,6 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
         })
       );
 
-      await clearMailCollection();
       const result = await callTriggerAsAdmin(adminUser.idToken);
 
       expect(result.status).toBe(200);
@@ -299,7 +264,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.classesWithSessionToday).toBe(1);
       expect(result.data?.skippedAlreadySent).toBe(0);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       expect(mailDocs).toHaveLength(1);
       const mail = mailDocs[0].data as {
         to: string;
@@ -352,7 +317,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(1);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       const mail = mailDocs[0].data as {
         template: { data: Record<string, unknown> };
       };
@@ -399,7 +364,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       const result = await callTriggerAsAdmin(adminUser.idToken);
       expect(result.status).toBe(200);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       const mail = mailDocs[0].data as {
         template: { data: Record<string, unknown> };
       };
@@ -437,7 +402,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(second.data?.mailQueued).toBe(0);
       expect(second.data?.skippedAlreadySent).toBe(1);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       expect(mailDocs).toHaveLength(1);
     });
   });
@@ -501,7 +466,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.mailQueued).toBe(1);
       expect(result.data?.skippedNotPaid).toBe(3);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       expect(mailDocs).toHaveLength(1);
       const mail = mailDocs[0].data as { to: string };
       expect(mail.to).toBe('confirmed@example.com');
@@ -533,7 +498,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
       expect(result.data?.classesWithSessionToday).toBe(0);
-      expect(await listReminderMail()).toHaveLength(0);
+      expect(await listMail()).toHaveLength(0);
     });
 
     it('skips classes scheduled yesterday', async () => {
@@ -560,7 +525,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
       expect(result.data?.classesWithSessionToday).toBe(0);
-      expect(await listReminderMail()).toHaveLength(0);
+      expect(await listMail()).toHaveLength(0);
     });
   });
 
@@ -608,7 +573,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(3);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       expect(mailDocs).toHaveLength(3);
       const recipients = mailDocs.map((d) => (d.data as { to: string }).to);
       expect(recipients.sort()).toEqual([
@@ -649,7 +614,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       expect(result.data?.mailQueued).toBe(1);
       expect(result.data?.classesWithSessionToday).toBe(1);
 
-      const mailDocs = await listReminderMail();
+      const mailDocs = await listMail();
       expect(mailDocs).toHaveLength(1);
 
       // Only today's ISO key should be stamped — tomorrow and next week
@@ -697,7 +662,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       const result = await callTriggerAsAdmin(adminUser.idToken);
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
-      expect(await listReminderMail()).toHaveLength(0);
+      expect(await listMail()).toHaveLength(0);
     });
 
     it('skips cancelled classes even if a session is today', async () => {
@@ -724,7 +689,7 @@ describe('sendClassReminders (via triggerClassReminders)', () => {
       const result = await callTriggerAsAdmin(adminUser.idToken);
       expect(result.status).toBe(200);
       expect(result.data?.mailQueued).toBe(0);
-      expect(await listReminderMail()).toHaveLength(0);
+      expect(await listMail()).toHaveLength(0);
     });
   });
 
