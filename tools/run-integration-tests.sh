@@ -33,15 +33,16 @@ ETSY_MOCK_SERVER_PORT=$((9998 + OFFSET))
 GA4_MOCK_SERVER_PORT=$((9995 + OFFSET))
 META_CAPI_MOCK_SERVER_PORT=$((9994 + OFFSET))
 TALLY_MOCK_SERVER_PORT=$((9993 + OFFSET))
+MAILERLITE_MOCK_SERVER_PORT=$((9992 + OFFSET))
 
 if [ "$OFFSET" != "0" ]; then
-  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, storage:$STORAGE_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT, tally-mock:$TALLY_MOCK_SERVER_PORT"
+  echo "Using EMULATOR_PORT_OFFSET=$OFFSET -> functions:$FUNCTIONS_PORT, firestore:$FIRESTORE_PORT, auth:$AUTH_PORT, storage:$STORAGE_PORT, ui:$UI_PORT, square-mock:$SQUARE_MOCK_SERVER_PORT, webflow-mock:$WEBFLOW_MOCK_SERVER_PORT, etsy-mock:$ETSY_MOCK_SERVER_PORT, ga4-mock:$GA4_MOCK_SERVER_PORT, meta-capi-mock:$META_CAPI_MOCK_SERVER_PORT, tally-mock:$TALLY_MOCK_SERVER_PORT, mailerlite-mock:$MAILERLITE_MOCK_SERVER_PORT"
 fi
 
 # ---------------------------------------------------------------------------
 # 1. Kill stale processes on OUR ports only (leave other worktrees alone)
 # ---------------------------------------------------------------------------
-for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$TALLY_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$STORAGE_PORT" "$UI_PORT"; do
+for port in "$SQUARE_MOCK_SERVER_PORT" "$WEBFLOW_MOCK_SERVER_PORT" "$ETSY_MOCK_SERVER_PORT" "$GA4_MOCK_SERVER_PORT" "$META_CAPI_MOCK_SERVER_PORT" "$TALLY_MOCK_SERVER_PORT" "$MAILERLITE_MOCK_SERVER_PORT" "$FUNCTIONS_PORT" "$FIRESTORE_PORT" "$AUTH_PORT" "$STORAGE_PORT" "$UI_PORT"; do
   lsof -ti:"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 1
@@ -92,7 +93,10 @@ echo "META_CAPI_API_VERSION=v20.0" >> dist/apps/functions/.env
 # safe because no real form id is ever contacted.
 echo "TALLY_API_BASE_URL=http://localhost:$TALLY_MOCK_SERVER_PORT" >> dist/apps/functions/.env
 echo "TALLY_LESSON_INQUIRY_FORM_IDS=testform,otherform" >> dist/apps/functions/.env
-printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nTALLY_API_KEY=test-tally-api-key\n" > dist/apps/functions/.secret.local
+# sendRegistrationConversion -> MailerLite mock server, with a test shop id.
+echo "MAILERLITE_BASE_URL=http://localhost:$MAILERLITE_MOCK_SERVER_PORT" >> dist/apps/functions/.env
+echo "MAILERLITE_SHOP_ID=test-shop" >> dist/apps/functions/.env
+printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nTALLY_API_KEY=test-tally-api-key\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
 # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
 # without them the emulator silently waits on stdin for each one.
@@ -150,6 +154,10 @@ GA4_MOCK_PID=$!
 echo "Starting Meta CAPI mock server on :$META_CAPI_MOCK_SERVER_PORT..."
 META_CAPI_MOCK_SERVER_PORT="$META_CAPI_MOCK_SERVER_PORT" npx tsx libs/firebase/meta-capi-test-mock-server/start.ts &
 META_CAPI_MOCK_PID=$!
+
+echo "Starting MailerLite mock server on :$MAILERLITE_MOCK_SERVER_PORT..."
+MAILERLITE_MOCK_SERVER_PORT="$MAILERLITE_MOCK_SERVER_PORT" npx tsx libs/firebase/mailerlite-test-mock-server/start.ts &
+MAILERLITE_MOCK_PID=$!
 sleep 2
 
 # ---------------------------------------------------------------------------
@@ -203,6 +211,7 @@ kill $ETSY_MOCK_PID 2>/dev/null || true
 kill $TALLY_MOCK_PID 2>/dev/null || true
 kill $GA4_MOCK_PID 2>/dev/null || true
 kill $META_CAPI_MOCK_PID 2>/dev/null || true
+kill $MAILERLITE_MOCK_PID 2>/dev/null || true
 
 if [ $EXIT_CODE -eq 0 ]; then
   echo ""

@@ -22,7 +22,13 @@
  * session id ride along on the registration so GA4 credits the sale to the
  * session, and channel, the buyer arrived in.
  *
- * Best-effort by design: a failure on either beacon is logged and swallowed —
+ * MailerLite: the same sale is recorded as an order in the MailerLite shop, so
+ * each newsletter campaign shows the registrations and revenue it earned
+ * (#262). MailerLite credits the order to a campaign when the buyer arrived
+ * through a tracked link; the order itself carries only the email. It is off
+ * until `MAILERLITE_SHOP_ID` is set.
+ *
+ * Best-effort by design: a failure on any beacon is logged and swallowed —
  * a dropped conversion must never retry-loop or affect the registration itself.
  */
 import {
@@ -37,6 +43,13 @@ import {
   type MetaCapiConfig,
   type MetaCapiEvent,
 } from '@maple/firebase/meta-capi';
+import {
+  tryRecordOrder,
+  type MailerLiteConfig,
+  type MailerLiteOrder,
+  type MailerLiteProduct,
+} from '@maple/firebase/mailerlite';
+import { ClassRepository } from '@maple/firebase/database';
 
 // Reuses the same secret + string params as `tallyLeadWebhook`, so no new
 // Secret Manager value or .env entry is required.
@@ -56,6 +69,13 @@ const metaCapiBaseUrl = defineString('META_CAPI_BASE_URL', {
 });
 const metaCapiApiVersion = defineString('META_CAPI_API_VERSION', {
   default: 'v20.0',
+});
+const mailerLiteApiKey = defineSecret('MAILERLITE_API_KEY');
+// Empty turns the MailerLite order off, so the trigger deploys safely before
+// the shop exists. Dev and prod use different shops in the one shared account.
+const mailerLiteShopId = defineString('MAILERLITE_SHOP_ID', { default: '' });
+const mailerLiteBaseUrl = defineString('MAILERLITE_BASE_URL', {
+  default: 'https://connect.mailerlite.com',
 });
 
 /** The subset of registration fields this trigger reads. */
@@ -99,7 +119,7 @@ export { splitName };
  */
 export function shouldEmitPurchase(
   before: RegistrationConversionData | undefined,
-  after: RegistrationConversionData | undefined
+  after: RegistrationConversionData | undefined,
 ): boolean {
   if (!after) return false;
   // Only when it just became confirmed — an already-confirmed doc being edited
@@ -116,7 +136,7 @@ export function shouldEmitPurchase(
 
 /** Build the Meta CAPI `Purchase` event for a confirmed registration. */
 export function buildPurchaseEvent(
-  data: RegistrationConversionData
+  data: RegistrationConversionData,
 ): MetaCapiEvent {
   const { firstName, lastName } = splitName(data.customerName);
   return {
@@ -168,7 +188,7 @@ export async function emitPurchaseIfConfirmed(
   before: RegistrationConversionData | undefined,
   after: RegistrationConversionData | undefined,
   send: (event: MetaCapiEvent) => Promise<void>,
-  logger: Pick<Console, 'log' | 'error'> = console
+  logger: Pick<Console, 'log' | 'error'> = console,
 ): Promise<boolean> {
   if (!shouldEmitPurchase(before, after)) return false;
   const data = after as RegistrationConversionData;
@@ -207,7 +227,7 @@ export const GA4_TIMEOUT_MS = 4_000;
 
 /** Build the GA4 Measurement Protocol `purchase` for a confirmed registration. */
 export function buildGa4PurchasePayload(
-  data: RegistrationConversionData
+  data: RegistrationConversionData,
 ): Ga4PurchasePayload {
   const value = Math.round(data.pricePaidCents ?? 0) / 100;
   const quantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
@@ -249,10 +269,10 @@ export function buildGa4PurchasePayload(
 /** POST one payload to GA4. Throws on a non-2xx so the caller can log it. */
 export async function sendGa4Payload(
   config: Ga4Config,
-  payload: Ga4PurchasePayload
+  payload: Ga4PurchasePayload,
 ): Promise<void> {
   const url = `${config.baseUrl}/mp/collect?measurement_id=${encodeURIComponent(
-    config.measurementId
+    config.measurementId,
   )}&api_secret=${encodeURIComponent(config.apiSecret)}`;
   const response = await fetch(url, {
     method: 'POST',
@@ -274,7 +294,7 @@ export async function emitGa4PurchaseIfConfirmed(
   before: RegistrationConversionData | undefined,
   after: RegistrationConversionData | undefined,
   send: (payload: Ga4PurchasePayload) => Promise<void>,
-  logger: Pick<Console, 'log' | 'error'> = console
+  logger: Pick<Console, 'log' | 'error'> = console,
 ): Promise<boolean> {
   if (!shouldEmitPurchase(before, after)) return false;
   const data = after as RegistrationConversionData;
@@ -293,11 +313,83 @@ export async function emitGa4PurchaseIfConfirmed(
   }
 }
 
+/** The MailerLite product and order for one confirmed registration. */
+export interface MailerLiteSale {
+  product: MailerLiteProduct;
+  order: MailerLiteOrder;
+}
+
+/**
+ * Build the MailerLite product (the class) and order for a confirmed
+ * registration. `className` comes from the class doc; without it the product is
+ * named after the class id, which MailerLite will show but still counts.
+ */
+export function buildMailerLiteSale(
+  data: RegistrationConversionData,
+  className?: string,
+): MailerLiteSale {
+  const total = Math.round(data.pricePaidCents ?? 0) / 100;
+  const quantity = data.quantity && data.quantity > 0 ? data.quantity : 1;
+  const unitPrice = Math.round((total / quantity) * 100) / 100;
+  const classId = data.classId as string;
+  return {
+    product: {
+      // Same id Meta's catalog and GA4's items use.
+      resourceId: classId,
+      name: className?.trim() || classId,
+      price: unitPrice,
+      url: data.eventSourceUrl || undefined,
+    },
+    order: {
+      // The confirmation number, so a retry updates this order rather than
+      // adding a second sale.
+      resourceId: data.confirmationNumber as string,
+      customerEmail: data.customerEmail as string,
+      items: [{ productResourceId: classId, quantity, price: unitPrice }],
+      totalPrice: total,
+      status: 'complete',
+    },
+  };
+}
+
+/**
+ * MailerLite twin of {@link emitPurchaseIfConfirmed}: same transition rule,
+ * never throws. Skips when no shop is configured, and when there is no
+ * confirmation number to key the order on (a retry could then double-count).
+ * Returns whether an order was sent.
+ */
+export async function emitMailerLiteOrderIfConfirmed(
+  before: RegistrationConversionData | undefined,
+  after: RegistrationConversionData | undefined,
+  shopConfigured: boolean,
+  lookupClassName: (classId: string) => Promise<string | undefined>,
+  record: (sale: MailerLiteSale) => Promise<boolean>,
+  logger: Pick<Console, 'log' | 'error'> = console,
+): Promise<boolean> {
+  if (!shopConfigured) return false;
+  if (!shouldEmitPurchase(before, after)) return false;
+  const data = after as RegistrationConversionData;
+  if (!data.confirmationNumber) return false;
+  let className: string | undefined;
+  try {
+    className = await lookupClassName(data.classId as string);
+  } catch (err) {
+    // The name is cosmetic; the order still counts without it.
+    logger.error('MailerLite: class lookup failed, using the class id', err);
+  }
+  try {
+    return await record(buildMailerLiteSale(data, className));
+  } catch (err) {
+    logger.error('MailerLite order send failed', err);
+    return false;
+  }
+}
+
 export const sendRegistrationConversion = onDocumentWritten(
   {
     document: 'registrations/{registrationId}',
     region: 'us-east4',
-    secrets: [metaCapiToken, ga4ApiSecret],
+    secrets: [metaCapiToken, ga4ApiSecret, mailerLiteApiKey],
   },
   async (event) => {
     const change = event.data as Change<DocumentSnapshot> | undefined;
@@ -323,15 +415,29 @@ export const sendRegistrationConversion = onDocumentWritten(
       apiSecret: ga4ApiSecret.value(),
     };
 
-    // Independent beacons: neither throws, and one being down must not hold
-    // up or suppress the other.
+    const mailerLiteConfig: MailerLiteConfig = {
+      baseUrl: mailerLiteBaseUrl.value(),
+      shopId: mailerLiteShopId.value(),
+      apiKey: mailerLiteApiKey.value(),
+    };
+
+    // Independent beacons: none throws, and one being down must not hold
+    // up or suppress another.
     await Promise.all([
       emitPurchaseIfConfirmed(before, after, async (evt) => {
         await trySendMetaCapiEvents(config, [evt]);
       }),
       emitGa4PurchaseIfConfirmed(before, after, (payload) =>
-        sendGa4Payload(ga4Config, payload)
+        sendGa4Payload(ga4Config, payload),
+      ),
+      emitMailerLiteOrderIfConfirmed(
+        before,
+        after,
+        Boolean(mailerLiteConfig.shopId.trim()),
+        async (classId) => (await ClassRepository.findById(classId))?.name,
+        ({ product, order }) =>
+          tryRecordOrder(mailerLiteConfig, [product], order),
       ),
     ]);
-  }
+  },
 );

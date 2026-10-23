@@ -6,6 +6,21 @@
 
 ## Current Status
 
+### MailerLite revenue attribution (2026-10-22, #262 Phase 0 + 2)
+
+- **Spike answers (live API, dev test shop `189112`):** an order with `create_subscriber: false`
+  creates no subscriber; a repeat order id is rejected with 422 "already exists" (the client then
+  updates it); creating a product whose id exists updates it in place. Whether a server-side order
+  is credited to a campaign needs a real tracked click, so it is checked end to end once the script
+  is on the site.
+- `sendRegistrationConversion` now also records each confirmed paid web registration as a
+  MailerLite order (class upserted as the product, confirmation number as the order id). Own branch,
+  never throws, 5s timeout. No new function. Guide: `docs/guides/mailerlite-revenue-attribution.md`.
+- **Before merge:** set `MAILERLITE_API_KEY` in Secret Manager for dev **and** prod.
+- **Still to do:** create the prod shop and set `MAILERLITE_SHOP_ID` in `.env.prod` (empty = off);
+  add MailerLite's universal script to the Webflow site; add "e-commerce link tracking" to the send
+  checklist. Phase 3 (refunds, MT, Craft Club) is later.
+
 ### Contract-instructor workflow finished (2026-10-18, #250, #253)
 
 These close the gaps found by walking the whole instructor flow end to end, from onboarding to

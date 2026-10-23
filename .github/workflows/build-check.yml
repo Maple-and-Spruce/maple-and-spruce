@@ -632,7 +632,10 @@ jobs:
           # at the mock keeps that safe because no real form is ever contacted.
           echo "TALLY_API_BASE_URL=http://localhost:9993" >> dist/apps/functions/.env
           echo "TALLY_LESSON_INQUIRY_FORM_IDS=testform,otherform" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nTALLY_API_KEY=test-tally-api-key\n" > dist/apps/functions/.secret.local
+          # sendRegistrationConversion -> MailerLite mock server, with a test shop id.
+          echo "MAILERLITE_BASE_URL=http://localhost:9992" >> dist/apps/functions/.env
+          echo "MAILERLITE_SHOP_ID=test-shop" >> dist/apps/functions/.env
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nTALLY_API_KEY=test-tally-api-key\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
           # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
@@ -680,6 +683,8 @@ jobs:
           META_CAPI_MOCK_PID=$!
           TALLY_MOCK_SERVER_PORT=9993 npx tsx libs/firebase/tally-test-mock-server/start.ts &
           TALLY_MOCK_PID=$!
+          MAILERLITE_MOCK_SERVER_PORT=9992 npx tsx libs/firebase/mailerlite-test-mock-server/start.ts &
+          MAILERLITE_MOCK_PID=$!
           sleep 2
 
           # Memory every 30s, with the number of node processes. If a runner is ever
@@ -717,6 +722,7 @@ jobs:
           kill $GA4_MOCK_PID 2>/dev/null || true
           kill $META_CAPI_MOCK_PID 2>/dev/null || true
           kill $TALLY_MOCK_PID 2>/dev/null || true
+          kill $MAILERLITE_MOCK_PID 2>/dev/null || true
           exit $EXIT_CODE
 
   integration-tests-result:
@@ -830,7 +836,7 @@ jobs:
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
           # maple-core: conversion functions declare these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
           # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
@@ -991,7 +997,7 @@ jobs:
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
           # maple-core: conversion functions declare these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
           # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
@@ -1140,7 +1146,7 @@ jobs:
           done
 
           echo "ETSY_API_BASE=http://localhost:9998/v3/application" >> dist/apps/functions/.env
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test-ga4-secret\nMETA_CAPI_TOKEN=test-meta-token\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
           # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
@@ -1268,7 +1274,7 @@ jobs:
           done
 
           # Mock secrets so the emulator doesn't stall on missing defineSecret params.
-          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\n" > dist/apps/functions/.secret.local
+          printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
           # maple-webhooks: tallyLeadWebhook declares these defineSecret params;
           # without them the emulator silently waits on stdin for each one.
