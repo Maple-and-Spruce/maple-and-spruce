@@ -10,6 +10,7 @@ const ETSY_MOCK_SERVER_PORT = 9998 + OFFSET;
 const GA4_MOCK_SERVER_PORT = 9995 + OFFSET;
 const META_CAPI_MOCK_SERVER_PORT = 9994 + OFFSET;
 const TALLY_MOCK_SERVER_PORT = 9993 + OFFSET;
+const MAILERLITE_MOCK_SERVER_PORT = 9992 + OFFSET;
 
 export const EMULATOR_CONFIG = {
   projectId: 'maple-and-spruce-dev',
@@ -30,6 +31,8 @@ export const EMULATOR_CONFIG = {
   metaCapiMockServerUrl: `http://localhost:${META_CAPI_MOCK_SERVER_PORT}`,
   /** Tally submissions API mock server */
   tallyMockServerUrl: `http://localhost:${TALLY_MOCK_SERVER_PORT}`,
+  /** MailerLite e-commerce API mock server */
+  mailerLiteMockServerUrl: `http://localhost:${MAILERLITE_MOCK_SERVER_PORT}`,
   portOffset: OFFSET,
 } as const;
 

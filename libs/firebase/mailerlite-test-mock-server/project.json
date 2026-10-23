@@ -1,0 +1,8 @@
+{
+  "name": "firebase-mailerlite-test-mock-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/firebase/mailerlite-test-mock-server/src",
+  "projectType": "library",
+  "tags": ["scope:firebase", "type:test-util"],
+  "targets": {}
+}

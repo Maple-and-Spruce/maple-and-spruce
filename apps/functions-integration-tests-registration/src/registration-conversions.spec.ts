@@ -32,6 +32,9 @@ import {
 
 const META_MOCK_URL = EMULATOR_CONFIG.metaCapiMockServerUrl;
 const GA4_MOCK_URL = EMULATOR_CONFIG.ga4MockServerUrl;
+const MAILERLITE_MOCK_URL = EMULATOR_CONFIG.mailerLiteMockServerUrl;
+// Must match what tools/run-integration-tests.sh writes to dist/apps/functions/.env
+const MAILERLITE_SHOP_ID = 'test-shop';
 // Must match what tools/run-integration-tests.sh writes to dist/apps/functions/.env
 const META_PIXEL_ID = 'test-pixel-id';
 // Music Together advertises from its own Meta ad account, so its conversions
@@ -89,7 +92,7 @@ async function recordedRequests(): Promise<RecordedRequest[]> {
 async function waitForPurchases(
   contentId: string,
   count = 1,
-  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS,
 ): Promise<CapiEvent[]> {
   const deadline = Date.now() + timeoutMs;
   let events: CapiEvent[] = [];
@@ -101,7 +104,7 @@ async function waitForPurchases(
         (e) =>
           e.event_name === 'Purchase' &&
           Array.isArray(e.custom_data?.['content_ids']) &&
-          (e.custom_data?.['content_ids'] as unknown[]).includes(contentId)
+          (e.custom_data?.['content_ids'] as unknown[]).includes(contentId),
       );
     if (events.length >= count) return events;
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -111,7 +114,7 @@ async function waitForPurchases(
 
 /** The recorded requests that carried a Purchase for `contentId`. */
 async function purchaseRequestsFor(
-  contentId: string
+  contentId: string,
 ): Promise<RecordedRequest[]> {
   const requests = await recordedRequests();
   return requests.filter((r) =>
@@ -119,8 +122,8 @@ async function purchaseRequestsFor(
       (e) =>
         e.event_name === 'Purchase' &&
         Array.isArray(e.custom_data?.['content_ids']) &&
-        (e.custom_data?.['content_ids'] as unknown[]).includes(contentId)
-    )
+        (e.custom_data?.['content_ids'] as unknown[]).includes(contentId),
+    ),
   );
 }
 
@@ -143,7 +146,7 @@ interface Ga4Request {
 async function waitForGa4Purchases(
   classId: string,
   count = 1,
-  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS,
 ): Promise<Ga4Request[]> {
   const deadline = Date.now() + timeoutMs;
   let matches: Ga4Request[] = [];
@@ -158,9 +161,9 @@ async function waitForGa4Purchases(
             e.name === 'purchase' &&
             Array.isArray(e.params['items']) &&
             (e.params['items'] as Array<{ item_id?: string }>).some(
-              (i) => i.item_id === classId
-            )
-        )
+              (i) => i.item_id === classId,
+            ),
+        ),
     );
     if (matches.length >= count) return matches;
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -170,6 +173,60 @@ async function waitForGa4Purchases(
 
 async function setGa4Failure(status: number | null): Promise<void> {
   await fetch(`${GA4_MOCK_URL}/_mock/failure-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+}
+
+interface MailerLiteRequest {
+  method: string;
+  path: string;
+  query: Record<string, string>;
+  headers: Record<string, string | undefined>;
+  body?: Record<string, unknown>;
+}
+
+interface MailerLiteState {
+  requests: MailerLiteRequest[];
+  orders: Record<string, { status: string; total_price: number }>;
+}
+
+async function mailerLiteState(): Promise<MailerLiteState> {
+  const res = await fetch(`${MAILERLITE_MOCK_URL}/_mock/requests`);
+  return (await res.json()) as MailerLiteState;
+}
+
+/**
+ * Poll the MailerLite mock for order requests (POST or PUT) carrying
+ * `confirmationNumber`. Keyed on the confirmation number, which each test
+ * makes unique, so sibling specs firing the same trigger don't interfere.
+ */
+async function waitForMailerLiteOrderCalls(
+  confirmationNumber: string,
+  count = 1,
+  timeoutMs = TRIGGER_WAIT_TIMEOUT_MS,
+): Promise<MailerLiteRequest[]> {
+  const deadline = Date.now() + timeoutMs;
+  let matches: MailerLiteRequest[] = [];
+  do {
+    const { requests } = await mailerLiteState();
+    matches = requests.filter(
+      (r) =>
+        (r.method === 'POST' &&
+          r.path.endsWith('/orders') &&
+          r.body?.['resource_id'] === confirmationNumber) ||
+        (r.method === 'PUT' &&
+          r.path.endsWith(`/orders/${confirmationNumber}`)),
+    );
+    if (matches.length >= count) return matches;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  } while (Date.now() < deadline);
+  return matches;
+}
+
+async function setMailerLiteFailure(status: number | null): Promise<void> {
+  await fetch(`${MAILERLITE_MOCK_URL}/_mock/failure-status`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
@@ -271,7 +328,7 @@ describe('Meta CAPI Purchase triggers', () => {
       });
       expect(event.action_source).toBe('website');
       expect(event.event_source_url).toBe(
-        'https://example.com/classes/pottery'
+        'https://example.com/classes/pottery',
       );
 
       // Email/phone/name hashed (lowercased + trimmed); cookies + browser
@@ -354,7 +411,7 @@ describe('Meta CAPI Purchase triggers', () => {
           classId: posClassId,
           status: 'confirmed',
           source: 'pos',
-        })
+        }),
       );
       await setFirestoreDoc(
         'registrations',
@@ -363,7 +420,7 @@ describe('Meta CAPI Purchase triggers', () => {
           classId: freeClassId,
           status: 'confirmed',
           pricePaidCents: 0,
-        })
+        }),
       );
       await settle();
 
@@ -485,7 +542,7 @@ describe('Meta CAPI Purchase triggers', () => {
           classId: posClassId,
           status: 'confirmed',
           source: 'pos',
-        })
+        }),
       );
       await settle();
 
@@ -518,6 +575,167 @@ describe('Meta CAPI Purchase triggers', () => {
         });
       } finally {
         await setGa4Failure(null);
+      }
+    });
+  });
+
+  describe('sendRegistrationConversion → MailerLite order', () => {
+    it('records one order in dollars, naming the class, without subscribing the buyer', async () => {
+      const stamp = Date.now();
+      const id = `conv-ml-${stamp}`;
+      const classId = `conv-class-ml-${stamp}`;
+      const confirmationNumber = `MS-ML${stamp}`;
+      await setFirestoreDoc('classes', classId, {
+        name: 'Beginner Wheel Throwing',
+        createdAt: now,
+        updatedAt: now,
+      });
+      const doc = classRegistration({ classId, confirmationNumber });
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      const [orderCall] = await waitForMailerLiteOrderCalls(confirmationNumber);
+      expect(orderCall.path).toBe(
+        `/api/ecommerce/shops/${MAILERLITE_SHOP_ID}/orders`,
+      );
+      expect(orderCall.query).toHaveProperty('with_resource_id');
+      expect(orderCall.headers['authorization']).toBe(
+        'Bearer test-mailerlite-key',
+      );
+      expect(orderCall.body).toMatchObject({
+        resource_id: confirmationNumber,
+        status: 'complete',
+        total_price: 95.4, // dollars, not 9540
+        customer: {
+          email: 'buyer@example.com',
+          // The consent guarantee: an order never adds anyone to the list.
+          create_subscriber: false,
+        },
+        cart: {
+          items: [{ product_resource_id: classId, quantity: 2, price: 47.7 }],
+        },
+      });
+      expect(orderCall.body?.['customer']).not.toHaveProperty(
+        'accepts_marketing',
+      );
+
+      // The class was upserted as a product, by name, before the order.
+      const { requests } = await mailerLiteState();
+      const productCall = requests.find(
+        (r) =>
+          r.path.endsWith('/products') && r.body?.['resource_id'] === classId,
+      );
+      expect(productCall?.body).toMatchObject({
+        name: 'Beginner Wheel Throwing',
+        price: 47.7,
+        exclude_from_automations: true,
+      });
+      const orderIndex = requests.findIndex(
+        (r) =>
+          r.path.endsWith('/orders') &&
+          r.body?.['resource_id'] === confirmationNumber,
+      );
+      expect(requests.indexOf(productCall as MailerLiteRequest)).toBeLessThan(
+        orderIndex,
+      );
+    });
+
+    it('updates the same order on a repeat confirmation instead of adding a second sale', async () => {
+      const stamp = Date.now();
+      const id = `conv-ml-repeat-${stamp}`;
+      const confirmationNumber = `MS-MLR${stamp}`;
+      const doc = classRegistration({
+        classId: `conv-class-ml-repeat-${stamp}`,
+        confirmationNumber,
+      });
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+      await waitForMailerLiteOrderCalls(confirmationNumber);
+
+      // Back to pending and confirmed again: the trigger fires a second time,
+      // the same way a retried delivery would.
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      // POST, then a rejected POST, then the PUT that updates.
+      const calls = await waitForMailerLiteOrderCalls(confirmationNumber, 3);
+      expect(calls.map((c) => c.method)).toEqual(['POST', 'POST', 'PUT']);
+      const { orders } = await mailerLiteState();
+      const stored = Object.keys(orders).filter((k) =>
+        k.endsWith(`/${confirmationNumber}`),
+      );
+      expect(stored).toHaveLength(1);
+    });
+
+    it('sends nothing for POS, free, or still-pending registrations', async () => {
+      const stamp = Date.now();
+      const cases = {
+        pos: { status: 'confirmed', source: 'pos' },
+        free: { status: 'confirmed', pricePaidCents: 0 },
+        pending: { status: 'pending' },
+      };
+      for (const [label, overrides] of Object.entries(cases)) {
+        await setFirestoreDoc(
+          'registrations',
+          `conv-ml-${label}-${stamp}`,
+          classRegistration({
+            classId: `conv-class-ml-${label}-${stamp}`,
+            confirmationNumber: `MS-ML${label.toUpperCase()}${stamp}`,
+            ...overrides,
+          }),
+        );
+      }
+      await settle();
+
+      for (const label of Object.keys(cases)) {
+        expect(
+          await waitForMailerLiteOrderCalls(
+            `MS-ML${label.toUpperCase()}${stamp}`,
+            1,
+            1000,
+          ),
+        ).toHaveLength(0);
+      }
+    });
+
+    // MailerLite being down must not block Meta or GA4, or touch the
+    // registration.
+    it('still sends Meta and GA4 and keeps the registration when MailerLite returns 500', async () => {
+      await setMailerLiteFailure(500);
+      try {
+        const stamp = Date.now();
+        const id = `conv-ml-fail-${stamp}`;
+        const classId = `conv-class-ml-fail-${stamp}`;
+        const doc = classRegistration({
+          classId,
+          confirmationNumber: `MS-MLF${stamp}`,
+        });
+        await setFirestoreDoc('registrations', id, doc);
+        await setFirestoreDoc('registrations', id, {
+          ...doc,
+          status: 'confirmed',
+          squarePaymentId: 'sqpay-ml-fail',
+        });
+
+        expect(await waitForPurchases(classId)).toHaveLength(1);
+        expect(await waitForGa4Purchases(classId)).toHaveLength(1);
+
+        await settle();
+        expect(await getFirestoreDoc('registrations', id)).toMatchObject({
+          status: 'confirmed',
+          squarePaymentId: 'sqpay-ml-fail',
+        });
+      } finally {
+        await setMailerLiteFailure(null);
       }
     });
   });
@@ -679,12 +897,12 @@ describe('Meta CAPI Purchase triggers', () => {
       await setFirestoreDoc(
         'musicTogetherRegistrations',
         `conv-mt-pending-${base}`,
-        mtRegistration({ sectionId: pendingSection })
+        mtRegistration({ sectionId: pendingSection }),
       );
       await setFirestoreDoc(
         'musicTogetherRegistrations',
         `conv-mt-cancelled-${base}`,
-        mtRegistration({ sectionId: cancelledSection, status: 'cancelled' })
+        mtRegistration({ sectionId: cancelledSection, status: 'cancelled' }),
       );
       await setFirestoreDoc(
         'musicTogetherRegistrations',
@@ -693,7 +911,7 @@ describe('Meta CAPI Purchase triggers', () => {
           sectionId: freeSection,
           status: 'confirmed',
           pricePaidCents: 0,
-        })
+        }),
       );
       await settle();
 

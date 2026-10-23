@@ -1,8 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+// The trigger reads the class name through the repository; keep these unit
+// tests off Firestore entirely (ADR-017).
+vi.mock('@maple/firebase/database', () => ({
+  ClassRepository: { findById: vi.fn() },
+}));
+
 import {
   buildGa4PurchasePayload,
+  buildMailerLiteSale,
   buildPurchaseEvent,
   emitGa4PurchaseIfConfirmed,
+  emitMailerLiteOrderIfConfirmed,
   emitPurchaseIfConfirmed,
   sendGa4Payload,
   shouldEmitPurchase,
@@ -27,7 +35,7 @@ const confirmed: RegistrationConversionData = {
 describe('shouldEmitPurchase', () => {
   it('fires on pending -> confirmed', () => {
     expect(
-      shouldEmitPurchase({ ...confirmed, status: 'pending' }, confirmed)
+      shouldEmitPurchase({ ...confirmed, status: 'pending' }, confirmed),
     ).toBe(true);
   });
 
@@ -43,37 +51,40 @@ describe('shouldEmitPurchase', () => {
 
   it('does not fire while still pending', () => {
     expect(
-      shouldEmitPurchase(undefined, { ...confirmed, status: 'pending' })
+      shouldEmitPurchase(undefined, { ...confirmed, status: 'pending' }),
     ).toBe(false);
   });
 
   it('does not fire on cancelled / refunded', () => {
     expect(
-      shouldEmitPurchase({ ...confirmed, status: 'pending' }, {
-        ...confirmed,
-        status: 'cancelled',
-      })
+      shouldEmitPurchase(
+        { ...confirmed, status: 'pending' },
+        {
+          ...confirmed,
+          status: 'cancelled',
+        },
+      ),
     ).toBe(false);
   });
 
   it('skips in-person POS registrations (not ad-driven)', () => {
     expect(shouldEmitPurchase(undefined, { ...confirmed, source: 'pos' })).toBe(
-      false
+      false,
     );
   });
 
   it('skips $0 registrations (free / fully discounted)', () => {
     expect(
-      shouldEmitPurchase(undefined, { ...confirmed, pricePaidCents: 0 })
+      shouldEmitPurchase(undefined, { ...confirmed, pricePaidCents: 0 }),
     ).toBe(false);
   });
 
   it('skips when classId or email is missing', () => {
     expect(
-      shouldEmitPurchase(undefined, { ...confirmed, classId: undefined })
+      shouldEmitPurchase(undefined, { ...confirmed, classId: undefined }),
     ).toBe(false);
     expect(
-      shouldEmitPurchase(undefined, { ...confirmed, customerEmail: undefined })
+      shouldEmitPurchase(undefined, { ...confirmed, customerEmail: undefined }),
     ).toBe(false);
   });
 
@@ -138,7 +149,7 @@ describe('buildPurchaseEvent', () => {
     expect(event.user.fbp).toBe('fb.1.1.2');
     expect(event.user.fbc).toBe('fb.1.1.click');
     expect(event.eventSourceUrl).toBe(
-      'https://mapleandsprucefolkarts.com/classes/x'
+      'https://mapleandsprucefolkarts.com/classes/x',
     );
   });
 
@@ -156,13 +167,13 @@ describe('emitPurchaseIfConfirmed', () => {
       { ...confirmed, status: 'pending' },
       confirmed,
       send,
-      silentLogger
+      silentLogger,
     );
 
     expect(sent).toBe(true);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ eventName: 'Purchase', eventId: 'MS-ABC123' })
+      expect.objectContaining({ eventName: 'Purchase', eventId: 'MS-ABC123' }),
     );
   });
 
@@ -248,7 +259,9 @@ describe('sendGa4Payload', () => {
   };
 
   it('POSTs the payload to /mp/collect with the encoded credentials', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
 
     const payload = buildGa4PurchasePayload(confirmed);
@@ -257,7 +270,7 @@ describe('sendGa4Payload', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(
-      'https://ga.example.com/mp/collect?measurement_id=G-TEST&api_secret=sec%20ret'
+      'https://ga.example.com/mp/collect?measurement_id=G-TEST&api_secret=sec%20ret',
     );
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual(payload);
@@ -267,10 +280,10 @@ describe('sendGa4Payload', () => {
   it('throws on a non-2xx so the caller logs it', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(new Response('bad', { status: 500 }))
+      vi.fn().mockResolvedValue(new Response('bad', { status: 500 })),
     );
     await expect(
-      sendGa4Payload(config, buildGa4PurchasePayload(confirmed))
+      sendGa4Payload(config, buildGa4PurchasePayload(confirmed)),
     ).rejects.toThrow('GA4 500: bad');
   });
 });
@@ -282,26 +295,31 @@ describe('emitGa4PurchaseIfConfirmed', () => {
       { ...confirmed, status: 'pending' },
       confirmed,
       send,
-      silentLogger
+      silentLogger,
     );
     expect(sent).toBe(true);
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ client_id: 'server.MS-ABC123' })
+      expect.objectContaining({ client_id: 'server.MS-ABC123' }),
     );
   });
 
   it('follows the same rule as Meta: no re-fire, no POS', async () => {
     const send = vi.fn();
     expect(
-      await emitGa4PurchaseIfConfirmed(confirmed, confirmed, send, silentLogger)
+      await emitGa4PurchaseIfConfirmed(
+        confirmed,
+        confirmed,
+        send,
+        silentLogger,
+      ),
     ).toBe(false);
     expect(
       await emitGa4PurchaseIfConfirmed(
         undefined,
         { ...confirmed, source: 'pos' },
         send,
-        silentLogger
-      )
+        silentLogger,
+      ),
     ).toBe(false);
     expect(send).not.toHaveBeenCalled();
   });
@@ -312,9 +330,150 @@ describe('emitGa4PurchaseIfConfirmed', () => {
       undefined,
       confirmed,
       vi.fn().mockRejectedValue(new Error('GA4 500')),
-      { log: () => undefined, error }
+      { log: () => undefined, error },
     );
     expect(sent).toBe(false);
     expect(error).toHaveBeenCalledOnce();
+  });
+});
+
+describe('buildMailerLiteSale', () => {
+  it('makes the class a product and the confirmation number the order id', () => {
+    expect(
+      buildMailerLiteSale(
+        { ...confirmed, eventSourceUrl: 'https://example.com/classes/x' },
+        'Intro to Pottery',
+      ),
+    ).toEqual({
+      product: {
+        resourceId: 'cls_1',
+        name: 'Intro to Pottery',
+        price: 53,
+        url: 'https://example.com/classes/x',
+      },
+      order: {
+        resourceId: 'MS-ABC123',
+        customerEmail: 'buyer@example.com',
+        // Dollars, not cents: 10600 cents for two seats.
+        items: [{ productResourceId: 'cls_1', quantity: 2, price: 53 }],
+        totalPrice: 106,
+        status: 'complete',
+      },
+    });
+  });
+
+  it('names the product after the class id when the name is unknown', () => {
+    const { product } = buildMailerLiteSale(confirmed, '  ');
+    expect(product.name).toBe('cls_1');
+    expect(product.url).toBeUndefined();
+  });
+
+  it('treats a missing quantity as one seat', () => {
+    const { order } = buildMailerLiteSale({
+      ...confirmed,
+      quantity: undefined,
+    });
+    expect(order.items[0]).toEqual({
+      productResourceId: 'cls_1',
+      quantity: 1,
+      price: 106,
+    });
+  });
+});
+
+describe('emitMailerLiteOrderIfConfirmed', () => {
+  const pending = { ...confirmed, status: 'pending' };
+  const name = async () => 'Intro to Pottery';
+
+  it('records one order on a fresh confirmation', async () => {
+    const record = vi.fn().mockResolvedValue(true);
+    await expect(
+      emitMailerLiteOrderIfConfirmed(
+        pending,
+        confirmed,
+        true,
+        name,
+        record,
+        silentLogger,
+      ),
+    ).resolves.toBe(true);
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(record.mock.calls[0][0].product.name).toBe('Intro to Pottery');
+  });
+
+  it('does nothing until a shop is configured', async () => {
+    const record = vi.fn();
+    await emitMailerLiteOrderIfConfirmed(
+      pending,
+      confirmed,
+      false,
+      name,
+      record,
+      silentLogger,
+    );
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('follows the Meta/GA4 rule: no POS, free, or repeat confirmations', async () => {
+    const record = vi.fn();
+    for (const [before, after] of [
+      [pending, { ...confirmed, source: 'pos' }],
+      [pending, { ...confirmed, pricePaidCents: 0 }],
+      [confirmed, confirmed],
+      [undefined, pending],
+    ] as const) {
+      await emitMailerLiteOrderIfConfirmed(
+        before,
+        after,
+        true,
+        name,
+        record,
+        silentLogger,
+      );
+    }
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('skips a registration with no confirmation number to key the order on', async () => {
+    const record = vi.fn();
+    await emitMailerLiteOrderIfConfirmed(
+      pending,
+      { ...confirmed, confirmationNumber: undefined },
+      true,
+      name,
+      record,
+      silentLogger,
+    );
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('still records the order when the class lookup fails', async () => {
+    const record = vi.fn().mockResolvedValue(true);
+    await emitMailerLiteOrderIfConfirmed(
+      pending,
+      confirmed,
+      true,
+      async () => {
+        throw new Error('firestore down');
+      },
+      record,
+      silentLogger,
+    );
+    expect(record.mock.calls[0][0].product.name).toBe('cls_1');
+  });
+
+  it('never throws when the send throws', async () => {
+    await expect(
+      emitMailerLiteOrderIfConfirmed(
+        pending,
+        confirmed,
+        true,
+        name,
+        async () => {
+          throw new Error('boom');
+        },
+        silentLogger,
+      ),
+    ).resolves.toBe(false);
   });
 });

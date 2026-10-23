@@ -387,6 +387,16 @@ survives, and a shared `event_id` keeps the pair from double-counting.
 | **`ct` / `st` / `zp` / `country` / `external_id` match keys** (legacy #781) | **Complete** | `meta-capi.ts` (`hashLocationToken`, `hashZip`) + `us-address.ts` |
 | Separate dev pixel (dev signups currently hit prod attribution) | **Not Started** | [legacy #78](legacy #78) |
 
+### Newsletter revenue — MailerLite orders (#262)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| MailerLite e-commerce client (product upsert, idempotent order, never subscribes) | Complete | `libs/firebase/mailerlite/` |
+| Mock MailerLite server, built from live responses | Complete | `libs/firebase/mailerlite-test-mock-server/` |
+| Craft-class order on confirmation (same trigger as Meta + GA4) | Complete (prod shop `189210`) | `send-registration-conversion/` |
+| MailerLite universal script on the Webflow site | Not Started | `docs/guides/mailerlite-revenue-attribution.md` |
+| Refund updates the order; Music Together and Craft Club | Not Started | #262 Phase 3 |
+
 The demo RSVP is the conversion the MT program optimizes against — paid
 enrollment is weeks later and in single digits, so `Purchase` alone can never
 train a bidder. Full rationale (inline vs trigger, why the top-funnel

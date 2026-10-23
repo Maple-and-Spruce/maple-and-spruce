@@ -527,6 +527,10 @@
         "libs/firebase/ga4-test-mock-server/src/index.ts"
       ],
       "@maple/firebase/meta-capi": ["libs/firebase/meta-capi/src/index.ts"],
+      "@maple/firebase/mailerlite": ["libs/firebase/mailerlite/src/index.ts"],
+      "@maple/firebase/mailerlite-test-mock-server": [
+        "libs/firebase/mailerlite-test-mock-server/src/index.ts"
+      ],
       "@maple/firebase/sync-alerts": ["libs/firebase/sync-alerts/src/index.ts"],
       "@maple/firebase/meta-capi-test-mock-server": [
         "libs/firebase/meta-capi-test-mock-server/src/index.ts"

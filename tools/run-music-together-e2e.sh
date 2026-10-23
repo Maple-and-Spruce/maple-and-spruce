@@ -75,7 +75,7 @@ for dir in dist/apps/functions dist/apps/functions-square dist/apps/functions-sy
   grep -v '^#' .env.dev | grep -v '^$' > "$dir/.env"
 done
 echo "ETSY_API_BASE=http://127.0.0.1:1/v3/application" >> dist/apps/functions/.env
-printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\n" > dist/apps/functions/.secret.local
+printf "ETSY_API_KEY=fake\nETSY_SHARED_SECRET=fake\nTALLY_WEBHOOK_SECRET=test\nGA4_API_SECRET=test\nMETA_CAPI_TOKEN=test\nMAILERLITE_API_KEY=test-mailerlite-key\n" > dist/apps/functions/.secret.local
 
 # functions-square holds BOTH the default (M&S) and MT Square clients.
 MT_TOKEN_VALUE="${MT_SQUARE_ACCESS_TOKEN:-mock-token}"
