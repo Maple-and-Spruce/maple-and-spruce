@@ -76,9 +76,9 @@ export class MailerLiteError extends Error {
 
 async function request(
   config: MailerLiteConfig,
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'DELETE',
   path: string,
-  body: unknown,
+  body?: unknown,
 ): Promise<unknown> {
   const url = `${config.baseUrl}/api/ecommerce/shops/${encodeURIComponent(
     config.shopId,
@@ -90,7 +90,7 @@ async function request(
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(
       config.timeoutMs ?? DEFAULT_MAILERLITE_TIMEOUT_MS,
     ),
@@ -210,4 +210,92 @@ export async function tryRecordOrder(
     });
     return false;
   }
+}
+
+/** Whether a shop is configured. An empty shop id turns MailerLite off. */
+export function isMailerLiteConfigured(config: MailerLiteConfig): boolean {
+  return Boolean(config.shopId.trim());
+}
+
+function isNotFound(err: unknown): boolean {
+  return err instanceof MailerLiteError && err.status === 404;
+}
+
+/**
+ * Bring an order in line with a refund. `keptTotal` is what the business kept,
+ * in dollars: the order's total becomes that, and an order with nothing kept
+ * is deleted so it stops counting as a sale in campaign reports.
+ *
+ * An order that was never sent (shop off at the time, or a failed send) is a
+ * 404, which counts as done: there is nothing to correct.
+ */
+export async function adjustOrderForRefund(
+  config: MailerLiteConfig,
+  orderResourceId: string,
+  keptTotal: number,
+): Promise<'updated' | 'deleted' | 'missing'> {
+  const path = `/orders/${encodeURIComponent(orderResourceId)}`;
+  try {
+    if (keptTotal <= 0) {
+      await request(config, 'DELETE', path);
+      return 'deleted';
+    }
+    await request(config, 'PUT', path, {
+      status: 'complete',
+      total_price: keptTotal,
+    });
+    return 'updated';
+  } catch (err) {
+    if (isNotFound(err)) return 'missing';
+    throw err;
+  }
+}
+
+/** Best-effort {@link adjustOrderForRefund}: logs and swallows every error. */
+export async function tryAdjustOrderForRefund(
+  config: MailerLiteConfig,
+  orderResourceId: string,
+  keptTotal: number,
+  logger: Pick<Console, 'log' | 'error'> = console,
+): Promise<boolean> {
+  try {
+    const outcome = await adjustOrderForRefund(
+      config,
+      orderResourceId,
+      keptTotal,
+    );
+    logger.log(`MailerLite order refund adjustment: ${outcome}`, {
+      orderResourceId,
+      keptTotal,
+    });
+    return outcome !== 'missing';
+  } catch (err) {
+    logger.error('MailerLite order refund adjustment failed', {
+      orderResourceId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+}
+
+/** Secret names for `Functions.endpoint.usingSecrets(...)`. */
+export const MAILERLITE_SECRET_NAMES = ['MAILERLITE_API_KEY'] as const;
+/** Param names for `Functions.endpoint.usingStrings(...)`. */
+export const MAILERLITE_STRING_NAMES = [
+  'MAILERLITE_SHOP_ID',
+  'MAILERLITE_BASE_URL',
+] as const;
+
+/** Build a config from a callable's resolved secrets and strings. */
+export function mailerLiteConfigFrom(
+  secrets: Record<(typeof MAILERLITE_SECRET_NAMES)[number], string>,
+  strings: Record<(typeof MAILERLITE_STRING_NAMES)[number], string>,
+  timeoutMs?: number,
+): MailerLiteConfig {
+  return {
+    apiKey: secrets.MAILERLITE_API_KEY,
+    shopId: strings.MAILERLITE_SHOP_ID ?? '',
+    baseUrl: strings.MAILERLITE_BASE_URL || 'https://connect.mailerlite.com',
+    timeoutMs,
+  };
 }

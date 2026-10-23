@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
+
+// The trigger reads the section name through the repository; keep these unit
+// tests off Firestore entirely (ADR-017).
+vi.mock('@maple/firebase/database', () => ({
+  MusicTogetherSectionRepository: { findById: vi.fn() },
+}));
+
 import {
+  buildMusicTogetherMailerLiteSale,
+  emitMusicTogetherMailerLiteOrderIfConfirmed,
+  musicTogetherOrderResourceId,
+  shouldDeleteMusicTogetherOrder,
   buildMusicTogetherPurchaseEvent,
   reportedValueCents,
   emitMusicTogetherPurchaseIfConfirmed,
@@ -10,7 +21,7 @@ import {
 const REG_ID = 'mtreg123';
 
 function confirmed(
-  overrides: Partial<MusicTogetherConversionData> = {}
+  overrides: Partial<MusicTogetherConversionData> = {},
 ): MusicTogetherConversionData {
   return {
     sectionId: 'sec-1',
@@ -30,7 +41,7 @@ function confirmed(
 describe('shouldEmitMusicTogetherPurchase', () => {
   it('fires on the pending -> confirmed transition', () => {
     expect(
-      shouldEmitMusicTogetherPurchase({ status: 'pending' }, confirmed())
+      shouldEmitMusicTogetherPurchase({ status: 'pending' }, confirmed()),
     ).toBe(true);
   });
 
@@ -45,19 +56,22 @@ describe('shouldEmitMusicTogetherPurchase', () => {
     expect(
       shouldEmitMusicTogetherPurchase(
         confirmed(),
-        confirmed({ scheduledChargeCount: 1 })
-      )
+        confirmed({ scheduledChargeCount: 1 }),
+      ),
     ).toBe(false);
   });
 
   it('ignores non-confirmed states and deletions', () => {
     expect(
-      shouldEmitMusicTogetherPurchase({ status: 'pending' }, {
-        status: 'pending',
-      })
+      shouldEmitMusicTogetherPurchase(
+        { status: 'pending' },
+        {
+          status: 'pending',
+        },
+      ),
     ).toBe(false);
     expect(
-      shouldEmitMusicTogetherPurchase(confirmed(), { status: 'cancelled' })
+      shouldEmitMusicTogetherPurchase(confirmed(), { status: 'cancelled' }),
     ).toBe(false);
     expect(shouldEmitMusicTogetherPurchase(confirmed(), undefined)).toBe(false);
   });
@@ -66,8 +80,8 @@ describe('shouldEmitMusicTogetherPurchase', () => {
     expect(
       shouldEmitMusicTogetherPurchase(
         { status: 'pending' },
-        confirmed({ pricePaidCents: 0 })
-      )
+        confirmed({ pricePaidCents: 0 }),
+      ),
     ).toBe(false);
   });
 
@@ -75,14 +89,14 @@ describe('shouldEmitMusicTogetherPurchase', () => {
     expect(
       shouldEmitMusicTogetherPurchase(
         { status: 'pending' },
-        confirmed({ email: undefined })
-      )
+        confirmed({ email: undefined }),
+      ),
     ).toBe(false);
     expect(
       shouldEmitMusicTogetherPurchase(
         { status: 'pending' },
-        confirmed({ sectionId: undefined })
-      )
+        confirmed({ sectionId: undefined }),
+      ),
     ).toBe(false);
   });
 });
@@ -97,13 +111,13 @@ describe('shouldEmitMusicTogetherPurchase', () => {
 describe('reportedValueCents', () => {
   it('uses the committed total, not the registration-time charge', () => {
     expect(
-      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: 26400 })
+      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: 26400 }),
     ).toBe(26400);
   });
 
   it('is identical to the charge for a pay-in-full family', () => {
     expect(
-      reportedValueCents({ pricePaidCents: 25200, totalCommittedCents: 25200 })
+      reportedValueCents({ pricePaidCents: 25200, totalCommittedCents: 25200 }),
     ).toBe(25200);
   });
 
@@ -115,10 +129,10 @@ describe('reportedValueCents', () => {
 
   it('ignores a zero or negative committed total and falls back', () => {
     expect(
-      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: 0 })
+      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: 0 }),
     ).toBe(13200);
     expect(
-      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: -5 })
+      reportedValueCents({ pricePaidCents: 13200, totalCommittedCents: -5 }),
     ).toBe(13200);
   });
 
@@ -147,7 +161,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
         pricePaidCents: 13200,
         totalCommittedCents: 26400,
         scheduledChargeCount: 1,
-      })
+      }),
     );
     expect(event.customData).toMatchObject({
       value: 264,
@@ -168,7 +182,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
         pricePaidCents: 19800,
         totalCommittedCents: 39600,
         scheduledChargeCount: 1,
-      })
+      }),
     );
     expect(twoChildren.customData).toMatchObject({
       value: 396,
@@ -184,7 +198,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
         pricePaidCents: 26400,
         totalCommittedCents: 52800,
         scheduledChargeCount: 1,
-      })
+      }),
     );
     expect(threeChildren.customData).toMatchObject({
       value: 528,
@@ -195,7 +209,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
   it('reports the sibling-discounted total for a multi-child pay-in-full family', () => {
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ pricePaidCents: 37800, totalCommittedCents: 37800 })
+      confirmed({ pricePaidCents: 37800, totalCommittedCents: 37800 }),
     );
     // 2 children paid in full: $252 * 1.5 = $378, and value === amount paid.
     expect(event.customData).toMatchObject({
@@ -213,7 +227,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
         pricePaidCents: 13200,
         totalCommittedCents: undefined,
         scheduledChargeCount: 1,
-      })
+      }),
     );
     expect(event.customData).toMatchObject({ value: 132 });
   });
@@ -221,7 +235,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
   it('rounds odd cents to a 2-decimal dollar value', () => {
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ pricePaidCents: 12533, totalCommittedCents: 12533 })
+      confirmed({ pricePaidCents: 12533, totalCommittedCents: 12533 }),
     );
     expect(event.customData?.['value']).toBe(125.33);
   });
@@ -238,7 +252,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
 
   it('uses a stable, registration-derived event id for idempotent delivery', () => {
     expect(buildMusicTogetherPurchaseEvent(REG_ID, confirmed()).eventId).toBe(
-      'mt-mtreg123'
+      'mt-mtreg123',
     );
   });
 
@@ -251,7 +265,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
         eventSourceUrl: 'https://example.com/music-together/fall',
         clientIp: '203.0.113.9',
         clientUserAgent: 'Mozilla/5.0',
-      })
+      }),
     );
     expect(event.user).toMatchObject({
       email: 'family@example.com',
@@ -264,7 +278,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
       userAgent: 'Mozilla/5.0',
     });
     expect(event.eventSourceUrl).toBe(
-      'https://example.com/music-together/fall'
+      'https://example.com/music-together/fall',
     );
     expect(event.eventName).toBe('Purchase');
     expect(event.actionSource).toBe('website');
@@ -275,7 +289,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
     // and it went unused for matching until now.
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ address: '123 Main St, Morgantown, WV 26505' })
+      confirmed({ address: '123 Main St, Morgantown, WV 26505' }),
     );
     expect(event.user).toMatchObject({
       city: 'Morgantown',
@@ -288,7 +302,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
     // A wrong city hash matches nobody while presenting as a supplied key.
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ address: 'ask us' })
+      confirmed({ address: 'ask us' }),
     );
     expect(event.user.city).toBeUndefined();
     expect(event.user.state).toBeUndefined();
@@ -301,7 +315,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
     // RSVP, interest signup, and enrollment to a single person.
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ email: 'Family@Example.com', address: null })
+      confirmed({ email: 'Family@Example.com', address: null }),
     );
     expect(event.user.country).toBe('us');
     expect(event.user.externalId).toBe('family@example.com');
@@ -310,7 +324,7 @@ describe('buildMusicTogetherPurchaseEvent', () => {
   it('normalizes absent optional fields to undefined rather than null', () => {
     const event = buildMusicTogetherPurchaseEvent(
       REG_ID,
-      confirmed({ fbp: null, fbc: null, clientIp: null, phone: null })
+      confirmed({ fbp: null, fbc: null, clientIp: null, phone: null }),
     );
     expect(event.user.fbp).toBeUndefined();
     expect(event.user.fbc).toBeUndefined();
@@ -331,8 +345,8 @@ describe('emitMusicTogetherPurchaseIfConfirmed', () => {
         { status: 'pending' },
         confirmed(),
         send,
-        logger
-      )
+        logger,
+      ),
     ).resolves.toBe(true);
     expect(send).toHaveBeenCalledOnce();
     expect(send.mock.calls[0][0]).toMatchObject({ eventName: 'Purchase' });
@@ -346,8 +360,8 @@ describe('emitMusicTogetherPurchaseIfConfirmed', () => {
         confirmed(),
         confirmed(),
         send,
-        logger
-      )
+        logger,
+      ),
     ).resolves.toBe(false);
     expect(send).not.toHaveBeenCalled();
   });
@@ -364,9 +378,151 @@ describe('emitMusicTogetherPurchaseIfConfirmed', () => {
         { status: 'pending' },
         confirmed(),
         send,
-        errorLogger
-      )
+        errorLogger,
+      ),
     ).resolves.toBe(false);
     expect(errorLogger.error).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Music Together MailerLite order', () => {
+  const mt = {
+    sectionId: 'sec-1',
+    email: 'Family@Example.com',
+    pricePaidCents: 13200,
+    totalCommittedCents: 26400,
+    paymentPlan: 'installments',
+    status: 'confirmed',
+    eventSourceUrl: 'https://example.com/music-together/fall',
+  };
+  const pendingMt = { ...mt, status: 'pending' };
+  const quiet = { log: () => undefined, error: () => undefined };
+
+  it('values the order at the full committed tuition, as on Meta', () => {
+    expect(
+      buildMusicTogetherMailerLiteSale('reg-1', mt, 'Fall Tuesdays'),
+    ).toEqual({
+      product: {
+        resourceId: 'mt-section-sec-1',
+        name: 'Music Together: Fall Tuesdays',
+        price: 264,
+        url: 'https://example.com/music-together/fall',
+      },
+      order: {
+        resourceId: 'mt-reg-1',
+        customerEmail: 'Family@Example.com',
+        items: [
+          { productResourceId: 'mt-section-sec-1', quantity: 1, price: 264 },
+        ],
+        totalPrice: 264,
+        status: 'complete',
+      },
+    });
+  });
+
+  it('falls back to the section id for the name and to the paid amount', () => {
+    const { product, order } = buildMusicTogetherMailerLiteSale('reg-2', {
+      ...mt,
+      totalCommittedCents: undefined,
+    });
+    expect(product.name).toBe('Music Together section sec-1');
+    expect(order.totalPrice).toBe(132);
+  });
+
+  it('keys orders apart from craft-class confirmation numbers', () => {
+    expect(musicTogetherOrderResourceId('abc')).toBe('mt-abc');
+  });
+
+  it('records once on confirmation, and only with a shop', async () => {
+    const record = vi.fn().mockResolvedValue(true);
+    const name = async () => 'Fall Tuesdays';
+    await emitMusicTogetherMailerLiteOrderIfConfirmed(
+      'reg-1',
+      pendingMt,
+      mt,
+      true,
+      name,
+      record,
+      quiet,
+    );
+    await emitMusicTogetherMailerLiteOrderIfConfirmed(
+      'reg-1',
+      mt,
+      mt,
+      true,
+      name,
+      record,
+      quiet,
+    );
+    await emitMusicTogetherMailerLiteOrderIfConfirmed(
+      'reg-1',
+      pendingMt,
+      mt,
+      false,
+      name,
+      record,
+      quiet,
+    );
+    await emitMusicTogetherMailerLiteOrderIfConfirmed(
+      'reg-1',
+      pendingMt,
+      { ...mt, pricePaidCents: 0 },
+      true,
+      name,
+      record,
+      quiet,
+    );
+    expect(record).toHaveBeenCalledTimes(1);
+  });
+
+  it('still records when the section lookup fails, and never throws', async () => {
+    const record = vi.fn().mockResolvedValue(true);
+    await emitMusicTogetherMailerLiteOrderIfConfirmed(
+      'reg-1',
+      pendingMt,
+      mt,
+      true,
+      async () => {
+        throw new Error('firestore down');
+      },
+      record,
+      quiet,
+    );
+    expect(record.mock.calls[0][0].product.name).toBe(
+      'Music Together section sec-1',
+    );
+    await expect(
+      emitMusicTogetherMailerLiteOrderIfConfirmed(
+        'reg-1',
+        pendingMt,
+        mt,
+        true,
+        async () => 'x',
+        async () => {
+          throw new Error('boom');
+        },
+        quiet,
+      ),
+    ).resolves.toBe(false);
+  });
+
+  it('deletes the order only when a confirmed enrollment is refunded', () => {
+    expect(
+      shouldDeleteMusicTogetherOrder(mt, { ...mt, status: 'refunded' }),
+    ).toBe(true);
+    // Cancelled with no money back keeps the sale.
+    expect(
+      shouldDeleteMusicTogetherOrder(mt, { ...mt, status: 'cancelled' }),
+    ).toBe(false);
+    expect(
+      shouldDeleteMusicTogetherOrder(pendingMt, { ...mt, status: 'refunded' }),
+    ).toBe(false);
+    expect(
+      shouldDeleteMusicTogetherOrder(
+        { ...mt, status: 'refunded' },
+        { ...mt, status: 'refunded' },
+      ),
+    ).toBe(false);
+    expect(shouldDeleteMusicTogetherOrder(undefined, mt)).toBe(false);
   });
 });

@@ -26,7 +26,9 @@
  * each newsletter campaign shows the registrations and revenue it earned
  * (#262). MailerLite credits the order to a campaign when the buyer arrived
  * through a tracked link; the order itself carries only the email. It is off
- * until `MAILERLITE_SHOP_ID` is set.
+ * until `MAILERLITE_SHOP_ID` is set. A later refund lowers the order's total to
+ * what was kept, or deletes it after a full refund, so campaign revenue does
+ * not overstate.
  *
  * Best-effort by design: a failure on any beacon is logged and swallowed —
  * a dropped conversion must never retry-loop or affect the registration itself.
@@ -44,6 +46,8 @@ import {
   type MetaCapiEvent,
 } from '@maple/firebase/meta-capi';
 import {
+  isMailerLiteConfigured,
+  tryAdjustOrderForRefund,
   tryRecordOrder,
   type MailerLiteConfig,
   type MailerLiteOrder,
@@ -104,6 +108,8 @@ export interface RegistrationConversionData {
   /** GA4 `_ga` client id and current session id, captured by the widget. */
   gaClientId?: string | null;
   gaSessionId?: string | null;
+  /** Cumulative cents refunded so far (in-app cancels and Square refunds). */
+  refundedAmountCents?: number;
 }
 
 // `splitName` now lives in @maple/firebase/meta-capi; re-exported so existing
@@ -385,6 +391,69 @@ export async function emitMailerLiteOrderIfConfirmed(
   }
 }
 
+/** How a refund changes the MailerLite order for a registration. */
+export interface MailerLiteRefundAdjustment {
+  orderResourceId: string;
+  /** What the business kept, in dollars. 0 means delete the order. */
+  keptTotal: number;
+}
+
+/**
+ * Decide whether a write is a refund that must correct the MailerLite order
+ * (#262 Phase 3), so campaign revenue does not overstate.
+ *
+ * Fires when the cumulative refund grows, or the status becomes `refunded`.
+ * Only for the registrations that got an order in the first place (paid web
+ * registrations with a confirmation number); a refund on anything else has
+ * no order to correct.
+ */
+export function mailerLiteRefundAdjustment(
+  before: RegistrationConversionData | undefined,
+  after: RegistrationConversionData | undefined,
+): MailerLiteRefundAdjustment | null {
+  if (!before || !after) return null;
+  if (after.source && after.source !== 'web') return null;
+  if (!after.pricePaidCents || after.pricePaidCents <= 0) return null;
+  if (!after.confirmationNumber) return null;
+
+  const refundedBefore = before.refundedAmountCents ?? 0;
+  const refundedAfter = after.refundedAmountCents ?? 0;
+  const becameRefunded =
+    after.status === 'refunded' && before.status !== 'refunded';
+  if (!becameRefunded && refundedAfter <= refundedBefore) return null;
+
+  const keptCents =
+    after.status === 'refunded'
+      ? 0
+      : Math.max(0, after.pricePaidCents - refundedAfter);
+  return {
+    orderResourceId: after.confirmationNumber,
+    keptTotal: Math.round(keptCents) / 100,
+  };
+}
+
+/**
+ * Apply {@link mailerLiteRefundAdjustment}. Never throws. Returns whether an
+ * adjustment was sent.
+ */
+export async function adjustMailerLiteOrderIfRefunded(
+  before: RegistrationConversionData | undefined,
+  after: RegistrationConversionData | undefined,
+  shopConfigured: boolean,
+  adjust: (adjustment: MailerLiteRefundAdjustment) => Promise<boolean>,
+  logger: Pick<Console, 'log' | 'error'> = console,
+): Promise<boolean> {
+  if (!shopConfigured) return false;
+  const adjustment = mailerLiteRefundAdjustment(before, after);
+  if (!adjustment) return false;
+  try {
+    return await adjust(adjustment);
+  } catch (err) {
+    logger.error('MailerLite refund adjustment failed', err);
+    return false;
+  }
+}
+
 export const sendRegistrationConversion = onDocumentWritten(
   {
     document: 'registrations/{registrationId}',
@@ -433,10 +502,17 @@ export const sendRegistrationConversion = onDocumentWritten(
       emitMailerLiteOrderIfConfirmed(
         before,
         after,
-        Boolean(mailerLiteConfig.shopId.trim()),
+        isMailerLiteConfigured(mailerLiteConfig),
         async (classId) => (await ClassRepository.findById(classId))?.name,
         ({ product, order }) =>
           tryRecordOrder(mailerLiteConfig, [product], order),
+      ),
+      adjustMailerLiteOrderIfRefunded(
+        before,
+        after,
+        isMailerLiteConfigured(mailerLiteConfig),
+        ({ orderResourceId, keptTotal }) =>
+          tryAdjustOrderForRefund(mailerLiteConfig, orderResourceId, keptTotal),
       ),
     ]);
   },

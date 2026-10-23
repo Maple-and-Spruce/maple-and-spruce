@@ -42,8 +42,13 @@
  * `custom_data.amount_paid_today` preserves the cash-timing story for anyone
  * reading Events Manager.
  *
- * Best-effort by design: a CAPI failure is logged and swallowed — a dropped
- * conversion must never retry-loop or affect the registration itself.
+ * MailerLite (#262 Phase 3): the same enrollment is recorded as an order in the
+ * MailerLite shop, valued the same way (full committed tuition), so newsletter
+ * campaigns show the Music Together enrollments they earned. A refund deletes
+ * the order. Off until `MAILERLITE_SHOP_ID` is set.
+ *
+ * Best-effort by design: a CAPI or MailerLite failure is logged and swallowed —
+ * a dropped conversion must never retry-loop or affect the registration itself.
  */
 import {
   onDocumentWritten,
@@ -57,6 +62,15 @@ import {
   type MetaCapiConfig,
   type MetaCapiEvent,
 } from '@maple/firebase/meta-capi';
+import {
+  isMailerLiteConfigured,
+  tryAdjustOrderForRefund,
+  tryRecordOrder,
+  type MailerLiteConfig,
+  type MailerLiteOrder,
+  type MailerLiteProduct,
+} from '@maple/firebase/mailerlite';
+import { MusicTogetherSectionRepository } from '@maple/firebase/database';
 
 // Reuses the same secret as `tallyLeadWebhook` and `sendRegistrationConversion`
 // (all maple-core) — one system-user token covers both pixels, so no new Secret
@@ -74,6 +88,13 @@ const metaCapiBaseUrl = defineString('META_CAPI_BASE_URL', {
 });
 const metaCapiApiVersion = defineString('META_CAPI_API_VERSION', {
   default: 'v20.0',
+});
+// Same params as `sendRegistrationConversion`: one MailerLite account and one
+// shop per environment, so craft classes and MT land in the same reports.
+const mailerLiteApiKey = defineSecret('MAILERLITE_API_KEY');
+const mailerLiteShopId = defineString('MAILERLITE_SHOP_ID', { default: '' });
+const mailerLiteBaseUrl = defineString('MAILERLITE_BASE_URL', {
+  default: 'https://connect.mailerlite.com',
 });
 
 /** The subset of Music Together registration fields this trigger reads. */
@@ -121,7 +142,7 @@ export interface MusicTogetherConversionData {
  */
 export function shouldEmitMusicTogetherPurchase(
   before: MusicTogetherConversionData | undefined,
-  after: MusicTogetherConversionData | undefined
+  after: MusicTogetherConversionData | undefined,
 ): boolean {
   if (!after) return false;
   // Only when it just became confirmed — an already-confirmed doc being edited
@@ -143,9 +164,7 @@ export function shouldEmitMusicTogetherPurchase(
  * its conversion entirely. Pay-in-full registrations are unaffected either way,
  * since for them the two fields are equal by construction.
  */
-export function reportedValueCents(
-  data: MusicTogetherConversionData
-): number {
+export function reportedValueCents(data: MusicTogetherConversionData): number {
   const committed = data.totalCommittedCents;
   if (typeof committed === 'number' && committed > 0) return committed;
   return data.pricePaidCents ?? 0;
@@ -154,7 +173,7 @@ export function reportedValueCents(
 /** Build the Meta CAPI `Purchase` event for a confirmed MT registration. */
 export function buildMusicTogetherPurchaseEvent(
   registrationId: string,
-  data: MusicTogetherConversionData
+  data: MusicTogetherConversionData,
 ): MetaCapiEvent {
   const isInstallments = data.paymentPlan === 'installments';
   // Best-effort, and deliberately conservative: `parseUsAddress` returns only
@@ -224,7 +243,7 @@ export async function emitMusicTogetherPurchaseIfConfirmed(
   before: MusicTogetherConversionData | undefined,
   after: MusicTogetherConversionData | undefined,
   send: (event: MetaCapiEvent) => Promise<void>,
-  logger: Pick<Console, 'log' | 'error'> = console
+  logger: Pick<Console, 'log' | 'error'> = console,
 ): Promise<boolean> {
   if (!shouldEmitMusicTogetherPurchase(before, after)) return false;
   const data = after as MusicTogetherConversionData;
@@ -237,7 +256,7 @@ export async function emitMusicTogetherPurchaseIfConfirmed(
         committedCents: reportedValueCents(data),
         paidTodayCents: data.pricePaidCents,
         paymentPlan: data.paymentPlan,
-      }
+      },
     );
     return true;
   } catch (err) {
@@ -246,11 +265,113 @@ export async function emitMusicTogetherPurchaseIfConfirmed(
   }
 }
 
+/** The MailerLite product and order for one confirmed MT registration. */
+export interface MusicTogetherMailerLiteSale {
+  product: MailerLiteProduct;
+  order: MailerLiteOrder;
+}
+
+/**
+ * The MailerLite order id for an MT registration. Same `mt-` prefix as the
+ * Meta `event_id`, and it can never collide with a craft-class confirmation
+ * number (`MS-…`) in the shared shop.
+ */
+export function musicTogetherOrderResourceId(registrationId: string): string {
+  return `mt-${registrationId}`;
+}
+
+/**
+ * Build the MailerLite product (the section) and order for a confirmed MT
+ * registration. One family enrollment is one item, valued at the full
+ * committed tuition, as on Meta (see the header for why).
+ */
+export function buildMusicTogetherMailerLiteSale(
+  registrationId: string,
+  data: MusicTogetherConversionData,
+  sectionName?: string,
+): MusicTogetherMailerLiteSale {
+  const total = Math.round(reportedValueCents(data)) / 100;
+  const sectionId = data.sectionId as string;
+  return {
+    product: {
+      // Section ids and class ids are both Firestore ids from different
+      // collections; the prefix keeps them apart in the shared shop.
+      resourceId: `mt-section-${sectionId}`,
+      name: sectionName?.trim()
+        ? `Music Together: ${sectionName.trim()}`
+        : `Music Together section ${sectionId}`,
+      price: total,
+      url: data.eventSourceUrl || undefined,
+    },
+    order: {
+      resourceId: musicTogetherOrderResourceId(registrationId),
+      customerEmail: data.email as string,
+      items: [
+        {
+          productResourceId: `mt-section-${sectionId}`,
+          quantity: 1,
+          price: total,
+        },
+      ],
+      totalPrice: total,
+      status: 'complete',
+    },
+  };
+}
+
+/**
+ * MailerLite twin of {@link emitMusicTogetherPurchaseIfConfirmed}: same rule,
+ * never throws. Returns whether an order was sent.
+ */
+export async function emitMusicTogetherMailerLiteOrderIfConfirmed(
+  registrationId: string,
+  before: MusicTogetherConversionData | undefined,
+  after: MusicTogetherConversionData | undefined,
+  shopConfigured: boolean,
+  lookupSectionName: (sectionId: string) => Promise<string | undefined>,
+  record: (sale: MusicTogetherMailerLiteSale) => Promise<boolean>,
+  logger: Pick<Console, 'log' | 'error'> = console,
+): Promise<boolean> {
+  if (!shopConfigured) return false;
+  if (!shouldEmitMusicTogetherPurchase(before, after)) return false;
+  const data = after as MusicTogetherConversionData;
+  let sectionName: string | undefined;
+  try {
+    sectionName = await lookupSectionName(data.sectionId as string);
+  } catch (err) {
+    // The name is cosmetic; the order still counts without it.
+    logger.error('MailerLite: MT section lookup failed, using the id', err);
+  }
+  try {
+    return await record(
+      buildMusicTogetherMailerLiteSale(registrationId, data, sectionName),
+    );
+  } catch (err) {
+    logger.error('MailerLite Music Together order send failed', err);
+    return false;
+  }
+}
+
+/**
+ * Whether a write is the refund of a confirmed MT registration, which deletes
+ * its MailerLite order. `cancelMusicTogetherRegistration` sets `refunded` when
+ * any money went back (a pre-class cancel keeps only the $25 fee) and
+ * `cancelled` when none did; the latter keeps its order, since the money was
+ * kept.
+ */
+export function shouldDeleteMusicTogetherOrder(
+  before: MusicTogetherConversionData | undefined,
+  after: MusicTogetherConversionData | undefined,
+): boolean {
+  if (!before || !after) return false;
+  return before.status === 'confirmed' && after.status === 'refunded';
+}
+
 export const sendMusicTogetherConversion = onDocumentWritten(
   {
     document: 'musicTogetherRegistrations/{registrationId}',
     region: 'us-east4',
-    secrets: [metaCapiToken],
+    secrets: [metaCapiToken, mailerLiteApiKey],
   },
   async (event) => {
     const change = event.data as Change<DocumentSnapshot> | undefined;
@@ -270,13 +391,42 @@ export const sendMusicTogetherConversion = onDocumentWritten(
       accessToken: metaCapiToken.value(),
     };
 
-    await emitMusicTogetherPurchaseIfConfirmed(
-      event.params.registrationId,
-      before,
-      after,
-      async (evt) => {
-        await trySendMetaCapiEvents(config, [evt]);
-      }
-    );
-  }
+    const mailerLiteConfig: MailerLiteConfig = {
+      baseUrl: mailerLiteBaseUrl.value(),
+      shopId: mailerLiteShopId.value(),
+      apiKey: mailerLiteApiKey.value(),
+    };
+    const registrationId = event.params.registrationId;
+
+    // Independent beacons: none throws, and one being down must not hold up
+    // or suppress another.
+    await Promise.all([
+      emitMusicTogetherPurchaseIfConfirmed(
+        registrationId,
+        before,
+        after,
+        async (evt) => {
+          await trySendMetaCapiEvents(config, [evt]);
+        },
+      ),
+      emitMusicTogetherMailerLiteOrderIfConfirmed(
+        registrationId,
+        before,
+        after,
+        isMailerLiteConfigured(mailerLiteConfig),
+        async (sectionId) =>
+          (await MusicTogetherSectionRepository.findById(sectionId))?.name,
+        ({ product, order }) =>
+          tryRecordOrder(mailerLiteConfig, [product], order),
+      ),
+      isMailerLiteConfigured(mailerLiteConfig) &&
+      shouldDeleteMusicTogetherOrder(before, after)
+        ? tryAdjustOrderForRefund(
+            mailerLiteConfig,
+            musicTogetherOrderResourceId(registrationId),
+            0,
+          )
+        : Promise.resolve(false),
+    ]);
+  },
 );

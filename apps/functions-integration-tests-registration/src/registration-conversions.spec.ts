@@ -216,7 +216,7 @@ async function waitForMailerLiteOrderCalls(
         (r.method === 'POST' &&
           r.path.endsWith('/orders') &&
           r.body?.['resource_id'] === confirmationNumber) ||
-        (r.method === 'PUT' &&
+        ((r.method === 'PUT' || r.method === 'DELETE') &&
           r.path.endsWith(`/orders/${confirmationNumber}`)),
     );
     if (matches.length >= count) return matches;
@@ -737,6 +737,132 @@ describe('Meta CAPI Purchase triggers', () => {
       } finally {
         await setMailerLiteFailure(null);
       }
+    });
+  });
+
+  describe('sendRegistrationConversion → MailerLite refunds', () => {
+    async function confirmed(stamp: number, label: string) {
+      const id = `conv-ml-refund-${label}-${stamp}`;
+      const confirmationNumber = `MS-MLRF${label.toUpperCase()}${stamp}`;
+      const doc = classRegistration({
+        classId: `conv-class-ml-refund-${label}-${stamp}`,
+        confirmationNumber,
+      });
+      await setFirestoreDoc('registrations', id, doc);
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+      expect(
+        await waitForMailerLiteOrderCalls(confirmationNumber),
+      ).toHaveLength(1);
+      return { id, confirmationNumber, doc };
+    }
+
+    it('lowers the order to what was kept after a partial refund', async () => {
+      const { id, confirmationNumber, doc } = await confirmed(
+        Date.now(),
+        'part',
+      );
+      // 9540 paid, 4000 refunded: 55.40 kept, still enrolled.
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'confirmed',
+        refundedAmountCents: 4000,
+      });
+
+      const calls = await waitForMailerLiteOrderCalls(confirmationNumber, 2);
+      expect(calls[1].method).toBe('PUT');
+      expect(calls[1].body).toEqual({ status: 'complete', total_price: 55.4 });
+      const { orders } = await mailerLiteState();
+      const stored = Object.entries(orders).find(([k]) =>
+        k.endsWith(`/${confirmationNumber}`),
+      );
+      expect(stored?.[1].total_price).toBe(55.4);
+    });
+
+    it('deletes the order after a full refund, so it stops counting', async () => {
+      const { id, confirmationNumber, doc } = await confirmed(
+        Date.now(),
+        'full',
+      );
+      await setFirestoreDoc('registrations', id, {
+        ...doc,
+        status: 'refunded',
+        refundedAmountCents: 9540,
+      });
+
+      const calls = await waitForMailerLiteOrderCalls(confirmationNumber, 2);
+      expect(calls[1].method).toBe('DELETE');
+      const { orders } = await mailerLiteState();
+      expect(
+        Object.keys(orders).some((k) => k.endsWith(`/${confirmationNumber}`)),
+      ).toBe(false);
+      // The registration itself is untouched by the beacon.
+      expect(await getFirestoreDoc('registrations', id)).toMatchObject({
+        status: 'refunded',
+      });
+    });
+  });
+
+  describe('sendMusicTogetherConversion → MailerLite order', () => {
+    it('records the enrollment at full committed tuition, and deletes it on refund', async () => {
+      const stamp = Date.now();
+      const id = `conv-mt-ml-${stamp}`;
+      const orderId = `mt-${id}`;
+      const doc = mtRegistration({
+        sectionId: `conv-mt-section-ml-${stamp}`,
+        paymentPlan: 'installments',
+        pricePaidCents: 13200,
+        totalCommittedCents: 26400,
+        scheduledChargeCount: 1,
+      });
+      await setFirestoreDoc('musicTogetherRegistrations', id, doc);
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+
+      const [create] = await waitForMailerLiteOrderCalls(orderId);
+      expect(create.body).toMatchObject({
+        resource_id: orderId,
+        total_price: 264,
+        status: 'complete',
+        customer: {
+          email: 'family@example.com',
+          create_subscriber: false,
+        },
+      });
+
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'refunded',
+      });
+      const calls = await waitForMailerLiteOrderCalls(orderId, 2);
+      expect(calls[1].method).toBe('DELETE');
+    });
+
+    it('keeps the order when a cancellation refunds nothing', async () => {
+      const stamp = Date.now();
+      const id = `conv-mt-ml-keep-${stamp}`;
+      const orderId = `mt-${id}`;
+      const doc = mtRegistration({
+        sectionId: `conv-mt-section-keep-${stamp}`,
+      });
+      await setFirestoreDoc('musicTogetherRegistrations', id, doc);
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'confirmed',
+      });
+      await waitForMailerLiteOrderCalls(orderId);
+      await setFirestoreDoc('musicTogetherRegistrations', id, {
+        ...doc,
+        status: 'cancelled',
+      });
+      await settle();
+      expect(await waitForMailerLiteOrderCalls(orderId, 2, 1000)).toHaveLength(
+        1,
+      );
     });
   });
 
