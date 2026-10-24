@@ -161,7 +161,7 @@ describe('buildPurchaseEvent', () => {
 
 describe('emitPurchaseIfConfirmed', () => {
   it('sends the Purchase and reports success on a fresh confirmation', async () => {
-    const send = vi.fn().mockResolvedValue(undefined);
+    const send = vi.fn().mockResolvedValue(true);
 
     const sent = await emitPurchaseIfConfirmed(
       { ...confirmed, status: 'pending' },
@@ -182,6 +182,27 @@ describe('emitPurchaseIfConfirmed', () => {
     const sent = await emitPurchaseIfConfirmed(confirmed, confirmed, send);
     expect(sent).toBe(false);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  // `trySendMetaCapiEvents` swallows Meta's errors and resolves `false`. That
+  // must not be logged as a success: it hid a weeks-long outage in which Meta
+  // rejected every event while the logs said "Sent Meta CAPI Purchase".
+  it('does not claim success when the sender reports Meta rejected it', async () => {
+    const send = vi.fn().mockResolvedValue(false);
+    const log = vi.fn();
+    const error = vi.fn();
+
+    const sent = await emitPurchaseIfConfirmed(undefined, confirmed, send, {
+      log,
+      error,
+    });
+
+    expect(sent).toBe(false);
+    expect(log).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(
+      'Meta CAPI Purchase NOT sent for confirmed registration',
+      expect.objectContaining({ confirmationNumber: 'MS-ABC123' }),
+    );
   });
 
   it('swallows send failures (best-effort) and reports not-sent', async () => {
