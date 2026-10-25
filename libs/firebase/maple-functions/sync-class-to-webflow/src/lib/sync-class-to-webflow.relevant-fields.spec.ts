@@ -81,6 +81,7 @@ const CHANGED: { [K in keyof Class]-?: Class[K] } = {
   shortDescription: 'Other.',
   instructorId: 'instructor-2',
   sessions: [{ dateTime: new Date('2030-02-10T18:00:00.000Z') }],
+  format: 'privateHours',
   durationMinutes: 90,
   registrationClosesAt: new Date('2030-02-09T18:00:00.000Z'),
   capacity: 10,

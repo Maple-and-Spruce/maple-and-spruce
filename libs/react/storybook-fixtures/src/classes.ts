@@ -81,7 +81,7 @@ export const mockClassPrivateHours: Class = {
   id: 'class-private-hours-001',
   name: 'Holiday Ornament Party',
   description:
-    'Book a private hour in the Spruce Room for your group and decorate stained glass or felt ball ornaments to take home.',
+    'Reserve an hour in the studio for your group to decorate holiday ornaments together.',
   shortDescription: 'A private hour for your group to decorate ornaments.',
   format: 'privateHours',
   sessions: [
