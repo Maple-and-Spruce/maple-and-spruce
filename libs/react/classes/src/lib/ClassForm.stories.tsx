@@ -787,7 +787,7 @@ export const SelectingInstructorTogglesWarning: Story = {
     const canvas = await waitForDialog();
     await expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
 
-    await userEvent.click(canvas.getByLabelText(/^instructor$/i));
+    await userEvent.click(canvas.getByRole('combobox', { name: /^instructor$/i }));
     await userEvent.click(canvas.getByRole('option', { name: mockContractorNotReady.name }));
     await expect(
       await canvas.findByTestId('instructor-not-ready-alert')
@@ -797,7 +797,7 @@ export const SelectingInstructorTogglesWarning: Story = {
       expect(canvas.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
-    await userEvent.click(canvas.getByLabelText(/^instructor$/i));
+    await userEvent.click(canvas.getByRole('combobox', { name: /^instructor$/i }));
     await userEvent.click(canvas.getByRole('option', { name: mockContractorReady.name }));
     await waitFor(() => {
       expect(canvas.queryByTestId('instructor-not-ready-alert')).not.toBeInTheDocument();
