@@ -1,20 +1,34 @@
 //@ts-check
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { composePlugins, withNx } = require('@nx/next');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const fs = require('fs');
 
 /**
- * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
- **/
+ * The workspace library aliases from tsconfig.base.json. Nx 23's `withNx`
+ * added the app's workspace dependencies to `transpilePackages`; Nx 24 removed
+ * it, so this reads the aliases from the tsconfig paths instead, leaving out
+ * the per-function libraries and test-only servers the app never imports.
+ * Listing an alias the app does not import has no effect.
+ */
+function workspaceAliases() {
+  const base = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, '../../tsconfig.base.json'), 'utf8')
+  );
+  return Object.keys(base.compilerOptions?.paths ?? {}).filter(
+    (alias) =>
+      alias.startsWith('@maple/') &&
+      !alias.startsWith('@maple/firebase/maple-functions/') &&
+      !/(test-mock-server|integration-test-utils)$/.test(alias)
+  );
+}
+
+/** @type {import('next').NextConfig} */
 // Firebase Functions base URL
 const FUNCTIONS_BASE_URL = process.env.FUNCTIONS_BASE_URL || 'https://us-east4-maple-and-spruce.cloudfunctions.net';
 
 const nextConfig = {
-  nx: {
-    svgr: false,
-  },
   // Required for Firebase App Hosting
   output: 'standalone',
   // Skip type checking during Next.js build - Nx workspace path aliases don't resolve
@@ -64,17 +78,17 @@ const nextConfig = {
     ];
   },
   // Transpile workspace packages
-  transpilePackages: [
-    '@maple/ts/domain',
-    '@maple/ts/validation',
-    '@maple/ts/firebase/firebase-config',
-    '@maple/ts/firebase/api-types',
-    '@maple/firebase/database',
-    '@maple/firebase/functions',
-    '@maple/react/instructors',
-    '@maple/react/classes',
-  ],
+  transpilePackages: workspaceAliases(),
   webpack: (config) => {
+    // Let `.js` import specifiers resolve to TypeScript sources (the Etsy lib
+    // writes ESM-style `./x.js` imports). Carried over from Nx 23's `withNx`.
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias || {}),
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.mjs': ['.mts', '.mjs'],
+      '.cjs': ['.cts', '.cjs'],
+      '.jsx': ['.tsx', '.jsx'],
+    };
     // Add aliases for workspace packages
     config.resolve.alias = {
       ...config.resolve.alias,
@@ -91,9 +105,4 @@ const nextConfig = {
   },
 };
 
-const plugins = [
-  // Add more Next.js plugins to this list if needed.
-  withNx,
-];
-
-module.exports = composePlugins(...plugins)(nextConfig);
+module.exports = nextConfig;

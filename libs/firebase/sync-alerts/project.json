@@ -4,9 +4,6 @@
   "sourceRoot": "libs/firebase/sync-alerts/src",
   "projectType": "library",
   "tags": ["scope:firebase", "type:util"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint"
-    }
-  }
+  "// targets": "to see all targets run: nx show project firebase-sync-alerts --web",
+  "targets": {}
 }
