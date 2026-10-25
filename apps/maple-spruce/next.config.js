@@ -79,6 +79,12 @@ const nextConfig = {
   },
   // Transpile workspace packages
   transpilePackages: workspaceAliases(),
+  // `next dev` runs Turbopack, which ignores the webpack callback below and
+  // resolves the tsconfig paths itself. Next refuses to start Turbopack when a
+  // plain-object config has a webpack callback and no turbopack section
+  // (Nx 23's withNx returned a function, which hid this). `build` passes
+  // --webpack, so it still uses the callback.
+  turbopack: {},
   webpack: (config) => {
     // Let `.js` import specifiers resolve to TypeScript sources (the Etsy lib
     // writes ESM-style `./x.js` imports). Carried over from Nx 23's `withNx`.
