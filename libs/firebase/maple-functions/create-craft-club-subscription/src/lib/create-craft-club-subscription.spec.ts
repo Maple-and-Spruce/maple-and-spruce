@@ -10,11 +10,20 @@ const mocks = vi.hoisted(() => ({
   upsertByEmail: vi.fn(),
   createCardOnFile: vi.fn(),
   subscriptionCreate: vi.fn(),
+  tryRecordOrder: vi.fn(),
+}));
+
+vi.mock('@maple/firebase/mailerlite', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@maple/firebase/mailerlite')>()),
+  tryRecordOrder: mocks.tryRecordOrder,
 }));
 
 vi.mock('@maple/firebase/functions', () => {
   class HttpsError extends Error {
-    constructor(public code: string, message: string) {
+    constructor(
+      public code: string,
+      message: string,
+    ) {
       super(message);
     }
   }
@@ -41,7 +50,10 @@ vi.mock('@maple/firebase/functions', () => {
       throw new HttpsError('invalid-argument', m);
     },
     throwValidationError: (e: Record<string, string[]>) => {
-      throw new HttpsError('invalid-argument', `validation: ${Object.keys(e).join(',')}`);
+      throw new HttpsError(
+        'invalid-argument',
+        `validation: ${Object.keys(e).join(',')}`,
+      );
     },
     throwFailedPrecondition: (m: string) => {
       throw new HttpsError('failed-precondition', m);
@@ -99,7 +111,10 @@ describe('createCraftClubSubscription', () => {
       status: 'approved',
     });
     mocks.upsertByEmail.mockResolvedValue('cust-1');
-    mocks.createCardOnFile.mockResolvedValue({ cardId: 'card-1', last4: '1111' });
+    mocks.createCardOnFile.mockResolvedValue({
+      cardId: 'card-1',
+      last4: '1111',
+    });
     mocks.subscriptionCreate.mockResolvedValue({
       subscriptionId: 'sub-1',
       status: 'ACTIVE',
@@ -120,14 +135,14 @@ describe('createCraftClubSubscription', () => {
         sourceId: 'cnon:card-nonce-abcdef',
         customerId: 'cust-1',
         verificationToken: 'verf:store-token',
-      })
+      }),
     );
     expect(mocks.subscriptionCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         planVariationId: 'PLAN_VAR_1',
         customerId: 'cust-1',
         cardId: 'card-1',
-      })
+      }),
     );
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -135,7 +150,7 @@ describe('createCraftClubSubscription', () => {
         status: 'active',
         squareSubscriptionId: 'sub-1',
         squareCardId: 'card-1',
-      })
+      }),
     );
     expect(result.member.status).toBe('active');
     expect(result.cardLast4).toBe('1111');
@@ -156,7 +171,7 @@ describe('createCraftClubSubscription', () => {
 
     expect(mocks.upsertByEmail).not.toHaveBeenCalled();
     expect(mocks.createCardOnFile).toHaveBeenCalledWith(
-      expect.objectContaining({ customerId: 'existing-cust' })
+      expect.objectContaining({ customerId: 'existing-cust' }),
     );
   });
 
@@ -174,7 +189,7 @@ describe('createCraftClubSubscription', () => {
 
   it('rejects invalid input before any Square call', async () => {
     await expect(
-      run({ email: 'bad', name: 'X', paymentNonce: 'n' })
+      run({ email: 'bad', name: 'X', paymentNonce: 'n' }),
     ).rejects.toThrow(/validation/);
     expect(mocks.findByEmail).not.toHaveBeenCalled();
   });
@@ -187,7 +202,7 @@ describe('createCraftClubSubscription', () => {
         paymentNonce: 'cnon:card-nonce-abcdef',
         // cardVerificationToken omitted — real Square can't vault a card on file
         // for the subscription without it.
-      })
+      }),
     ).rejects.toThrow(/card verification is required/i);
     expect(mocks.findByEmail).not.toHaveBeenCalled();
     expect(mocks.createCardOnFile).not.toHaveBeenCalled();
@@ -196,7 +211,7 @@ describe('createCraftClubSubscription', () => {
   it('fails clearly when the plan is not configured', async () => {
     mocks.findByEmail.mockResolvedValue({ id: 'm1', status: 'approved' });
     await expect(
-      run(validPayload, { ...STRINGS, CRAFT_CLUB_PLAN_VARIATION_ID: '' })
+      run(validPayload, { ...STRINGS, CRAFT_CLUB_PLAN_VARIATION_ID: '' }),
     ).rejects.toThrow(/plan is not configured/);
   });
 });
@@ -209,5 +224,64 @@ describe('createCraftClubSubscription declaration', () => {
       scope: 'createCraftClubSubscription',
       rules: ['ip', 'email'],
     });
+  });
+});
+
+describe('createCraftClubSubscription → MailerLite order', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findByEmail.mockResolvedValue({
+      id: 'm1',
+      email: 'member@example.com',
+      status: 'approved',
+    });
+    mocks.upsertByEmail.mockResolvedValue('cust-1');
+    mocks.createCardOnFile.mockResolvedValue({
+      cardId: 'card-1',
+      last4: '1111',
+    });
+    mocks.subscriptionCreate.mockResolvedValue({
+      subscriptionId: 'sub-1',
+      status: 'ACTIVE',
+    });
+    mocks.update.mockImplementation(async (input) => ({ id: 'm1', ...input }));
+  });
+
+  const withShop = {
+    ...STRINGS,
+    MAILERLITE_SHOP_ID: 'shop-1',
+    MAILERLITE_BASE_URL: 'https://ml.test',
+  };
+
+  it('records the first month as one order keyed on the subscription', async () => {
+    mocks.tryRecordOrder.mockResolvedValue(true);
+    await run(validPayload, withShop);
+
+    expect(mocks.tryRecordOrder).toHaveBeenCalledTimes(1);
+    const [config, products, order] = mocks.tryRecordOrder.mock.calls[0];
+    expect(config).toMatchObject({
+      shopId: 'shop-1',
+      baseUrl: 'https://ml.test',
+      timeoutMs: 3000,
+    });
+    expect(products[0]).toMatchObject({ resourceId: 'craft-club-membership' });
+    expect(order).toMatchObject({
+      resourceId: 'craftclub-sub-1',
+      customerEmail: 'member@example.com',
+      totalPrice: 30,
+    });
+  });
+
+  it('sends nothing when no shop is configured', async () => {
+    await run(validPayload, { ...STRINGS, MAILERLITE_SHOP_ID: '' });
+    expect(mocks.tryRecordOrder).not.toHaveBeenCalled();
+  });
+
+  it('still subscribes the member when MailerLite fails', async () => {
+    mocks.tryRecordOrder.mockResolvedValue(false);
+    const result = (await run(validPayload, withShop)) as {
+      member: { status: string };
+    };
+    expect(result.member.status).toBe('active');
   });
 });

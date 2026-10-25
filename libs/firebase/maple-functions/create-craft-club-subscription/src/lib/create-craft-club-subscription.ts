@@ -7,6 +7,12 @@
  * $30/mo subscription plan. Finally mirrors the resulting state onto the
  * member record.
  *
+ * The new membership is also recorded as a MailerLite order (#262 Phase 3) so
+ * newsletter campaigns show the members they brought in. One order per Square
+ * subscription, for the first month; renewals are not sent, since a campaign
+ * cannot fairly claim month six. Best-effort and capped at 3 seconds, so it
+ * can never fail or noticeably slow a signup.
+ *
  * Validation runs BEFORE any Square write so invalid data never reaches the
  * payment API and fails halfway through.
  *
@@ -19,13 +25,26 @@ import {
   throwValidationError,
   throwFailedPrecondition,
 } from '@maple/firebase/functions';
-import { Square, SQUARE_SECRET_NAMES, SQUARE_STRING_NAMES } from '@maple/firebase/square';
+import {
+  Square,
+  SQUARE_SECRET_NAMES,
+  SQUARE_STRING_NAMES,
+} from '@maple/firebase/square';
 import { CraftClubMemberRepository, getDb } from '@maple/firebase/database';
 import {
   isCraftClubMemberActive,
   canSubscribeToCraftClub,
 } from '@maple/ts/domain';
 import { craftClubMemberValidation } from '@maple/ts/validation';
+import {
+  isMailerLiteConfigured,
+  mailerLiteConfigFrom,
+  MAILERLITE_SECRET_NAMES,
+  MAILERLITE_STRING_NAMES,
+  tryRecordOrder,
+} from '@maple/firebase/mailerlite';
+import { CRAFT_CLUB_MONTHLY_PRICE_CENTS } from '@maple/ts/domain';
+import { buildCraftClubMailerLiteSale } from './craft-club-mailerlite';
 import type {
   CreateCraftClubSubscriptionRequest,
   CreateCraftClubSubscriptionResponse,
@@ -34,8 +53,12 @@ import type {
 export const createCraftClubSubscription = Functions.endpoint
   .withAppCheck('enforce')
   .throttling('createCraftClubSubscription', paymentThrottles('email'))
-  .usingSecrets(...SQUARE_SECRET_NAMES)
-  .usingStrings(...SQUARE_STRING_NAMES, 'CRAFT_CLUB_PLAN_VARIATION_ID')
+  .usingSecrets(...SQUARE_SECRET_NAMES, ...MAILERLITE_SECRET_NAMES)
+  .usingStrings(
+    ...SQUARE_STRING_NAMES,
+    'CRAFT_CLUB_PLAN_VARIATION_ID',
+    ...MAILERLITE_STRING_NAMES,
+  )
   .handle<
     CreateCraftClubSubscriptionRequest,
     CreateCraftClubSubscriptionResponse
@@ -61,25 +84,21 @@ export const createCraftClubSubscription = Functions.endpoint
     // 2. Server-side approval gate — never trust the client's eligibility check.
     const member = await CraftClubMemberRepository.findByEmail(data.email);
     if (!member) {
-      throwFailedPrecondition(
-        'This email is not approved for the Craft Club.'
-      );
+      throwFailedPrecondition('This email is not approved for the Craft Club.');
     }
     if (isCraftClubMemberActive(member)) {
       throwFailedPrecondition(
-        'You already have an active Craft Club membership.'
+        'You already have an active Craft Club membership.',
       );
     }
     if (!canSubscribeToCraftClub(member)) {
-      throwFailedPrecondition(
-        'This email is not approved for the Craft Club.'
-      );
+      throwFailedPrecondition('This email is not approved for the Craft Club.');
     }
 
     const planVariationId = strings.CRAFT_CLUB_PLAN_VARIATION_ID;
     if (!planVariationId) {
       throw new Error(
-        'Craft Club plan is not configured (CRAFT_CLUB_PLAN_VARIATION_ID).'
+        'Craft Club plan is not configured (CRAFT_CLUB_PLAN_VARIATION_ID).',
       );
     }
 
@@ -136,6 +155,17 @@ export const createCraftClubSubscription = Functions.endpoint
           data: { name: updated.name ?? '' },
         },
       });
+
+    // 6. MailerLite order for campaign revenue. Never throws.
+    const mailerLite = mailerLiteConfigFrom(secrets, strings, 3_000);
+    if (isMailerLiteConfigured(mailerLite)) {
+      const { product, order } = buildCraftClubMailerLiteSale({
+        email: member.email,
+        squareSubscriptionId: subscription.subscriptionId,
+        monthlyPriceCents: CRAFT_CLUB_MONTHLY_PRICE_CENTS,
+      });
+      await tryRecordOrder(mailerLite, [product], order);
+    }
 
     return { member: updated, cardLast4: card.last4 };
   });

@@ -94,8 +94,21 @@ Gotchas from that run:
 - The automated registration E2E tests also create orders in the dev shop (`@maplespruce.test`
   buyers). That is expected and stays out of prod reports.
 
-## Not done yet (#262 Phase 3)
+## What is sent, by program (#262 Phase 3)
 
-- A refund (`confirmed → refunded`) does not yet update the order, so campaign revenue can
-  overstate by the refunded amount.
-- Music Together and Craft Club are not sent.
+All three programs share one shop per environment, so campaign reports add them up.
+
+| Program | Sent when | Order id | Value | On refund |
+|---|---|---|---|---|
+| Craft classes (`sendRegistrationConversion`) | a paid **web** registration becomes `confirmed` | confirmation number (`MS-…`) | price paid, tax included | total drops to what was kept when `refundedAmountCents` grows; the order is deleted when the status becomes `refunded` |
+| Music Together (`sendMusicTogetherConversion`) | an MT registration becomes `confirmed` | `mt-<registration id>` | full committed tuition, same as Meta | deleted on `confirmed → refunded`. A `cancelled` enrollment that refunded nothing keeps its order. The $25 fee kept on a pre-class refund is not counted. |
+| Craft Club (`createCraftClubSubscription`) | a member subscribes | `craftclub-<Square subscription id>` | first month ($30) | not applicable. Renewals are not sent, and a re-subscribe is a new subscription, so a new sale. |
+
+Products are upserted per order: the class id, `mt-section-<section id>`, or
+`craft-club-membership`. The Craft Club call runs inside the signup callable, capped at
+3 seconds, and never fails the signup. A refund on an order that was never sent (shop off at the
+time, or a failed send) is a 404 and is ignored.
+
+Not covered: refunds on the Music Together Square account made in the Square dashboard (the
+webhook does not handle that account), and Music Together installments 2..N (already inside the
+committed value).

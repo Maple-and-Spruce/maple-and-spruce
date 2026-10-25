@@ -6,20 +6,19 @@
 
 ## Current Status
 
-### MailerLite revenue attribution (2026-10-22, #262 Phase 0 + 2)
+### MailerLite revenue attribution (2026-10-22 to 10-23, #262, all phases)
 
-- **Spike answers (live API, dev test shop `189112`):** an order with `create_subscriber: false`
-  creates no subscriber; a repeat order id is rejected with 422 "already exists" (the client then
-  updates it); creating a product whose id exists updates it in place. Whether a server-side order
-  is credited to a campaign needs a real tracked click, so it is checked end to end once the script
-  is on the site.
-- `sendRegistrationConversion` now also records each confirmed paid web registration as a
-  MailerLite order (class upserted as the product, confirmation number as the order id). Own branch,
-  never throws, 5s timeout. No new function. Guide: `docs/guides/mailerlite-revenue-attribution.md`.
-- **Before merge:** set `MAILERLITE_API_KEY` in Secret Manager for dev **and** prod.
-- Prod shop "Maple & Spruce" is `189210` (`MAILERLITE_SHOP_ID` in `.env.prod`).
-- **Still to do:** add MailerLite's universal script to the Webflow site; add "e-commerce link tracking" to the send
-  checklist. Phase 3 (refunds, MT, Craft Club) is later.
+- **Live and verified.** Every paid web class registration is a MailerLite order (prod shop
+  `189210`, dev `189112`), the universal script is in the Webflow site-wide head code, and an
+  end-to-end test on 2026-10-23 credited a test order to its campaign (guide, PR #267). Credit is
+  matched on the order's email, so ordinary campaign links are enough.
+- **Every campaign needs "Track links" on** (off by default; dashboard only). It is step 6 of the
+  newsletter playbook's drafting workflow, and it is already on for the late-October holiday draft.
+- **Phase 3:** refunds correct the order (partial lowers the total, full deletes it); Music
+  Together enrollments are orders at full committed tuition and are deleted on refund; a new Craft
+  Club membership is one order for the first month. Still no new function (153).
+- Read campaign revenue as an upper bound: any registration from a recent recipient is credited.
+- Guide: `docs/guides/mailerlite-revenue-attribution.md`.
 
 ### Contract-instructor workflow finished (2026-10-18, #250, #253)
 
