@@ -120,5 +120,8 @@
     "@nx/js": {
       "projectsAffectedByDependencyUpdates": "auto"
     }
+  },
+  "affected": {
+    "legacy": true
   }
 }

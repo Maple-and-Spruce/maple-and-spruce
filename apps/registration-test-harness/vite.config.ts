@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { resolve } from 'path';
+import { nxReadySignal } from '@nx/vite/plugins/nx-ready-signal.plugin';
 
 /**
  * Vite config for the registration E2E harness.
@@ -37,6 +38,7 @@ export default defineConfig({
     tsconfigPaths({
       projects: [resolve(__dirname, '../../tsconfig.base.json')],
     }),
+    nxReadySignal(),
   ],
   // Bind to `localhost` (not 127.0.0.1) — Square's Web Payments SDK
   // explicitly allows `localhost` as a secure-context exception, but

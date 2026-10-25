@@ -4,9 +4,6 @@
   "sourceRoot": "libs/ts/domain/src",
   "projectType": "library",
   "tags": ["scope:shared", "type:domain"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint"
-    }
-  }
+  "// targets": "to see all targets run: nx show project domain --web",
+  "targets": {}
 }

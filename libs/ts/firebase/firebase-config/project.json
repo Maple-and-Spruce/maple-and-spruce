@@ -4,9 +4,6 @@
   "sourceRoot": "libs/ts/firebase/firebase-config/src",
   "projectType": "library",
   "tags": [],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint"
-    }
-  }
+  "// targets": "to see all targets run: nx show project firebase-config --web",
+  "targets": {}
 }
